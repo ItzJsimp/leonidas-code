@@ -5675,7 +5675,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     !isComposerCollapsedMobile &&
     activeTasksProgress !== null &&
     activeTaskSteps !== null &&
-    activeTasksProgress.totalSteps > 0;
+    (activeTasksProgress.totalSteps > 0 || activeTasksProgress.activity !== undefined);
   const activityStackContent = hasBannerItems ? (
     shownSyncPhase ? (
       <ComposerActivityRow phase={shownSyncPhase} />

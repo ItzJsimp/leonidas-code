@@ -1,4 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as NodePath from "@effect/platform-node/NodePath";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -6,6 +7,31 @@ import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 
 import { resolveUserDataPath } from "./DesktopUserData.ts";
+
+it.effect("isolates dev locks per home without inspecting or copying live profiles", () =>
+  Effect.gen(function* () {
+    const path = yield* Path.Path;
+    for (const baseDir of ["/worktree/one/.t3", "/worktree/two/.t3"]) {
+      assert.equal(
+        yield* resolveUserDataPath({
+          baseDir,
+          appDataDirectory: "/live/profiles",
+          isDevelopment: true,
+          platform: "win32",
+        }),
+        path.join(baseDir, "electron", "t3code-dev"),
+      );
+    }
+  }).pipe(
+    Effect.provide(NodePath.layerPosix),
+    Effect.provideService(
+      FileSystem.FileSystem,
+      FileSystem.makeNoop({
+        exists: () => Effect.die("Dev must never inspect live profile"),
+      }),
+    ),
+  ),
+);
 
 it.effect("identifies a failed source read and preserves its cause", () => {
   const sourceState = "/profiles/t3code/Local State";
@@ -33,7 +59,7 @@ it.effect("identifies a failed source read and preserves its cause", () => {
         readFileString: () => Effect.fail(cause),
       }),
     ),
-    Effect.provide(NodeServices.layer),
+    Effect.provide(NodePath.layerPosix),
   );
 });
 

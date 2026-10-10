@@ -1,3 +1,4 @@
+import { deriveAgentActivity } from "../agentActivity";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
@@ -193,7 +194,6 @@ import {
   deriveTimelineEntriesFromVisibleTurnItemsWithState,
   selectHandoffImageResources,
   type TimelineEntriesProjection,
-  deriveActivePlanState,
   deriveActiveWorkStartedAt,
   deriveCanInterruptRunningThread,
   findLatestProposedPlan,
@@ -2453,31 +2453,29 @@ export default function ChatView(props: ChatViewProps) {
     });
   }, [activeTerminalDrawerPresence.present, activeThreadKey, existingOpenTerminalThreadKeys]);
   const latestRunSettled = isLatestRunSettled(activeLatestRun, activeRuntime);
-  const activePlan = useMemo(
-    () => deriveActivePlanState(serverProjection, activeActivityRun?.runId),
-    [activeActivityRun?.runId, serverProjection],
-  );
-  // Tasks progress for the running turn's own plan only — deriveActivePlanState
-  // falls back to older runs' plans, which must not label fresh work.
-  const activeComposerTasksProgress = useMemo(() => {
+  const activeComposerActivity = useMemo(() => {
     if (
-      isLatestRunSettled(activeActivityRun, activeRuntime) ||
-      !activePlan ||
-      activePlan.runId !== (activeActivityRun?.runId ?? null)
-    ) {
+      !serverProjection ||
+      !activeActivityRun ||
+      isLatestRunSettled(activeActivityRun, activeRuntime)
+    )
       return null;
-    }
-    const totalSteps = activePlan.steps.length;
-    if (totalSteps === 0) return null;
-    const completedSteps = activePlan.steps.filter((step) => step.status === "completed").length;
-    const step =
-      activePlan.steps.find((candidate) => candidate.status === "inProgress")?.step ??
-      activePlan.steps.find((candidate) => candidate.status === "pending")?.step ??
-      activePlan.steps.at(-1)!.step;
-    return { step, completedSteps, totalSteps };
-  }, [activeActivityRun, activePlan, activeRuntime]);
-  const activeComposerTaskSteps =
-    activeComposerTasksProgress && activePlan ? activePlan.steps : null;
+    const run = serverProjection.runs.find((candidate) => candidate.id === activeActivityRun.runId);
+    const plan = serverProjection.plans.findLast(
+      (candidate) =>
+        candidate.kind === "todo_list" &&
+        candidate.status !== "superseded" &&
+        candidate.runId === activeActivityRun.runId &&
+        candidate.nodeId === run?.rootNodeId,
+    );
+    return deriveAgentActivity({
+      runId: activeActivityRun.runId,
+      rootNodeId: run?.rootNodeId ?? null,
+      items: serverProjection.turnItems,
+      plan: plan?.kind === "todo_list" ? plan : null,
+    });
+  }, [activeActivityRun, activeRuntime, serverProjection]);
+  const activeComposerTaskSteps = activeComposerActivity?.steps ?? null;
   const activeProjectRef = useMemo(
     () =>
       activeThread ? scopeProjectRef(activeThread.environmentId, activeThread.projectId) : null,
@@ -5609,6 +5607,22 @@ export default function ChatView(props: ChatViewProps) {
       useRightPanelStore.getState().openFile(activeThreadRef, relativePath);
     },
     [activeProject, activeThreadRef],
+  );
+  const activeComposerTasksProgress = useMemo(
+    () =>
+      activeComposerActivity
+        ? {
+            step: activeComposerActivity.step,
+            completedSteps: activeComposerActivity.completedSteps,
+            totalSteps: activeComposerActivity.totalSteps,
+            activity: {
+              ...activeComposerActivity,
+              startedAt: activeWorkStartedAt,
+              onOpenFile: openFileSurface,
+            },
+          }
+        : null,
+    [activeComposerActivity, activeWorkStartedAt, openFileSurface],
   );
   // The thread's own change request, placed against the project it belongs to. Without a
   // project there is nothing to resolve it against, so the caller falls back to the browser.

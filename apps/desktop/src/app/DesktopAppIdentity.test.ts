@@ -159,14 +159,11 @@ describe("DesktopAppIdentity", () => {
     ),
   );
 
-  it.effect("keeps using the legacy development profile", () =>
+  it.effect("ignores the legacy development profile in favor of the dev home", () =>
     withIdentity(
       Effect.gen(function* () {
         const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
-        assert.equal(
-          yield* identity.resolveUserDataPath,
-          "/Users/alice/Library/Application Support/T3 Code (Dev)",
-        );
+        assert.equal(yield* identity.resolveUserDataPath, "/Users/alice/.t3/electron/t3code-dev");
       }),
       {
         legacyPathExists: true,
@@ -175,8 +172,8 @@ describe("DesktopAppIdentity", () => {
     ),
   );
 
-  it.effect("preserves failures while inspecting the legacy userData path", () => {
-    const legacyPath = "/Users/alice/Library/Application Support/T3 Code (Dev)";
+  it.effect("preserves failures while inspecting the production userData path", () => {
+    const legacyPath = "/Users/alice/Library/Application Support/t3code-v2/Local State";
     const cause = PlatformError.systemError({
       _tag: "PermissionDenied",
       module: "FileSystem",
@@ -200,7 +197,10 @@ describe("DesktopAppIdentity", () => {
       }),
       {
         legacyPathProbeError: cause,
-        environment: { env: { VITE_DEV_SERVER_URL: "http://localhost:5173" } },
+        environment: {
+          platform: "win32",
+          env: { APPDATA: "/Users/alice/Library/Application Support" },
+        },
       },
     );
   });
