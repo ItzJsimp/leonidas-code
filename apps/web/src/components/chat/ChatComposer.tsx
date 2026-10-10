@@ -1555,6 +1555,7 @@ export interface ChatComposerProps {
   isRevertingCheckpoint?: boolean;
   sendDisabledReason: string | null;
   isPreparingWorktree: boolean;
+  usageControl?: ReactNode;
   bannerItems: readonly ComposerBannerStackItem[];
   /** Tokens a stale session would re-read; null when the thread is not offered compaction. */
   resumeCompactionTokens: number | null;
@@ -7675,6 +7676,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       </Tooltip>
                     </>
                   ) : null}
+                  {props.usageControl}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}

@@ -444,6 +444,9 @@ export const ClientSettingsSchema = Schema.Struct({
   // default UI; this beta flag restores it (plus the /plan and /default slash
   // commands) for users who still rely on the old workflow.
   planModeEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  usageControlIcon: Schema.Literals(["chart", "gauge", "activity", "battery", "layers"]).pipe(
+    Schema.withDecodingDefault(Effect.succeed("chart" as const)),
+  ),
   // Legacy context window meter. The composer hides it by default; users who
   // still want the old usage indicator can restore it from Settings.
   contextWindowMeterEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
@@ -1612,6 +1615,9 @@ export const ClientSettingsPatch = Schema.Struct({
     Schema.Record(TrimmedNonEmptyString, PullRequestMergeMethod),
   ),
   planModeEnabled: Schema.optionalKey(Schema.Boolean),
+  usageControlIcon: Schema.optionalKey(
+    Schema.Literals(["chart", "gauge", "activity", "battery", "layers"]),
+  ),
   contextWindowMeterEnabled: Schema.optionalKey(Schema.Boolean),
   composerCollapseOnScroll: Schema.optionalKey(Schema.Boolean),
   composerPromptPredictionEnabled: Schema.optionalKey(Schema.Boolean),

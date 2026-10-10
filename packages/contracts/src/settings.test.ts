@@ -1053,3 +1053,17 @@ describe("ServerSettings.removeAgentCreditsOnMerge", () => {
     ).toBe(true);
   });
 });
+
+describe("ClientSettings usage control icon", () => {
+  it("defaults existing installations to chart and persists each supported choice", () => {
+    expect(decodeClientSettings({}).usageControlIcon).toBe("chart");
+    for (const usageControlIcon of ["chart", "gauge", "activity", "battery", "layers"] as const) {
+      const preference = { usageControlIcon };
+      expect(decodeClientSettingsPatch(preference)).toEqual(preference);
+      expect(encodeClientSettings(decodeClientSettings(preference))).toMatchObject(preference);
+    }
+  });
+  it("rejects unsupported icon names", () => {
+    expect(() => decodeClientSettingsPatch({ usageControlIcon: "unknown" })).toThrow();
+  });
+});

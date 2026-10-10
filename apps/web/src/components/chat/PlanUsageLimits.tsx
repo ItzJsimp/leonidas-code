@@ -19,6 +19,7 @@ import {
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { resetCreditsSummary } from "../usage/UsageLimits";
+import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
 import { AccountSummary } from "./ComposerUsageLimits";
 
 /** Bar fill by severity: blue while there is room, amber from 75%, red from 90%. */
@@ -101,8 +102,8 @@ function PlanWindowRow({
   const resets = formatResetLabel(window.resetsAt, now, formatAt);
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <div className="flex min-w-0 items-baseline gap-3 text-sm">
-        <span className="truncate font-semibold text-foreground">{label}</span>
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+        <span className="min-w-0 break-words font-semibold text-foreground">{label}</span>
         <span className="ms-auto flex shrink-0 items-baseline gap-2 tabular-nums">
           {resets ? <span className="text-muted-foreground">{resets}</span> : null}
           <span className="text-foreground">{used}%</span>
@@ -134,12 +135,15 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
           Math.ceil((Math.max(0, usage.usedPercentage) / 100) * CONTEXT_SEGMENTS),
         );
   const fill = SEVERITY_FILL[percent === null ? "normal" : usageSeverity(percent)];
+  const unreported = usage.updatedAt === new Date(0).toISOString();
   const figure =
-    usage.maxTokens != null && usage.maxTokens > 0
-      ? `${formatTokenCount(usage.usedTokens)} / ${formatTokenCount(usage.maxTokens)}${
-          percent === null ? "" : ` (${percent}%)`
-        }`
-      : `${formatTokenCount(usage.usedTokens)} tokens`;
+    unreported && usage.maxTokens != null
+      ? `Not reported / ${formatTokenCount(usage.maxTokens)}`
+      : usage.maxTokens != null && usage.maxTokens > 0
+        ? `${formatTokenCount(usage.usedTokens)} / ${formatTokenCount(usage.maxTokens)}${
+            percent === null ? "" : ` (${percent}%)`
+          }`
+        : `${formatTokenCount(usage.usedTokens)} tokens`;
   const details = [
     usage.remainingTokens != null ? `${formatTokenCount(usage.remainingTokens)} left` : null,
     usage.inputTokens != null ? `${formatTokenCount(usage.inputTokens)} input` : null,
@@ -154,7 +158,7 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
         aria-expanded={expanded}
         aria-controls={detailsId}
         onClick={() => setExpanded((value) => !value)}
-        className="flex min-w-0 items-center gap-2 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="flex min-w-0 flex-wrap items-center gap-2 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <span className="truncate">Context window</span>
         <span className="ms-auto shrink-0 tabular-nums">{figure}</span>
@@ -163,7 +167,7 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
           className={cn("size-3.5 shrink-0 transition-transform", expanded && "rotate-90")}
         />
       </button>
-      {percent !== null ? (
+      {percent !== null && !unreported ? (
         <div
           role="progressbar"
           aria-label={`Context window: ${percent}% used`}
@@ -197,13 +201,14 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
 export function PlanUsageAccounts({
   report,
   onOpenDetails,
+  activeAccountIds,
 }: {
   readonly report: UsageLimitsReport;
   readonly onOpenDetails: () => void;
+  readonly activeAccountIds?: ReadonlySet<string>;
 }) {
   const now = Date.parse(report.createdAt);
   const formatAt = useResetMomentFormatter(now);
-  const multiple = report.accounts.length > 1;
   return (
     <>
       {report.accounts.map((account) => {
@@ -212,25 +217,40 @@ export function PlanUsageAccounts({
         const windows = orderPlanWindows(account.limits.windows);
         const { plan, ...unplanned } = account;
         return (
-          <section key={account.id} className="flex min-w-0 flex-col gap-3">
+          <section
+            key={account.id}
+            className="flex min-w-0 flex-col gap-2 border-b border-border pb-3 last:border-0 last:pb-0"
+          >
             <button
               type="button"
               onClick={onOpenDetails}
-              className="flex min-w-0 items-center gap-2 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              className="flex min-w-0 flex-wrap items-center gap-2 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <span className="truncate">
-                Plan usage limits
-                {multiple ? (
-                  <>
-                    {" · "}
-                    <AccountSummary account={unplanned} />
-                  </>
-                ) : null}
+                <AccountSummary account={unplanned} />
                 {plan ? ` · ${shortPlanName(plan)}` : null}
               </span>
+              {activeAccountIds?.has(account.id) ? (
+                <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-xs text-accent-foreground">
+                  This chat
+                </span>
+              ) : null}
               <span className="sr-only">, open detailed breakdown</span>
               <ArrowRightIcon aria-hidden className="ms-auto size-3.5 shrink-0" />
             </button>
+            {account.email ? (
+              <RedactedSensitiveText
+                value={account.email}
+                ariaLabel="Toggle account email visibility"
+                revealTooltip="Click to reveal account email"
+                hideTooltip="Click to hide account email"
+                className="self-start max-w-full truncate text-xs text-muted-foreground"
+              />
+            ) : null}
+            <span className="text-xs text-muted-foreground">
+              {notice ? "Limits unavailable" : "Connected"} · Checked{" "}
+              {formatAt(Date.parse(account.limits.checkedAt))}
+            </span>
             {notice ? (
               <span className="text-xs text-muted-foreground">{notice}</span>
             ) : (

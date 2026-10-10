@@ -17,7 +17,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
@@ -39,8 +38,6 @@ import {
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
 import { useClientSettings } from "../../hooks/useSettings";
-import type { ContextWindowSnapshot } from "~/lib/contextWindow";
-import { ChatHeaderUsageLimits } from "./ChatHeaderUsageLimits";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -54,10 +51,6 @@ interface ChatHeaderProps {
   rightPanelOpen: boolean;
   onNewThreadInProject: () => void;
   onOpenProjectSettings?: (() => void) | undefined;
-  /** Where Limits has data for the thread's provider; null hides the usage button. */
-  usageLimits: Omit<ComponentProps<typeof ChatHeaderUsageLimits>, "contextWindow"> | null;
-  /** The thread's context window usage, shown atop the usage popover when known. */
-  contextWindow?: ContextWindowSnapshot | null;
 }
 
 /**
@@ -92,8 +85,6 @@ export const ChatHeader = memo(function ChatHeader({
   rightPanelOpen,
   onNewThreadInProject,
   onOpenProjectSettings,
-  usageLimits,
-  contextWindow = null,
 }: ChatHeaderProps) {
   const activeProjectName = activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
@@ -445,9 +436,6 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
-      {usageLimits ? (
-        <ChatHeaderUsageLimits {...usageLimits} contextWindow={contextWindow} />
-      ) : null}
     </div>
   );
 });
