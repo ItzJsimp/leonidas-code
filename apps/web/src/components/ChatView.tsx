@@ -1,4 +1,5 @@
 import { deriveAgentActivity } from "../agentActivity";
+import { LeonidasVaultPanel } from "./vault/LeonidasVaultPanel";
 import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
 import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
@@ -5487,6 +5488,16 @@ export default function ChatView(props: ChatViewProps) {
     }
     useRightPanelStore.getState().open(activeThreadRef, "device");
   }, [activeThreadRef, deviceState.onboardingCompleted, deviceState.hostStatus]);
+
+  const addVaultSurface = useCallback(() => {
+    if (!activeThreadRef) return;
+    useRightPanelStore.getState().open(activeThreadRef, "vault");
+  }, [activeThreadRef]);
+
+  const addGraphSurface = useCallback(() => {
+    if (!activeThreadRef) return;
+    useRightPanelStore.getState().open(activeThreadRef, "graph");
+  }, [activeThreadRef]);
   // A device the agent opens floats over chat like an agent-driven browser,
   // or becomes a panel tab when floating previews are off. Sessions opened by
   // another client arrive the same way; sheet layouts get neither. The first
@@ -11226,6 +11237,10 @@ export default function ChatView(props: ChatViewProps) {
           workspaceMutationId={workspaceMutationId}
         />
       </Suspense>
+    ) : renderedRightPanelSurface?.kind === "vault" ? (
+      <LeonidasVaultPanel initialView="vault" />
+    ) : renderedRightPanelSurface?.kind === "graph" ? (
+      <LeonidasVaultPanel initialView="graph" />
     ) : null
   ) : null;
   const threadDetailsPanelProps: ThreadDetailsPanelProps = {
@@ -12094,6 +12109,10 @@ export default function ChatView(props: ChatViewProps) {
           onAddPullRequest={addPullRequestSurface}
           onAddPullRequests={addPullRequestsSurface}
           onAddDevice={addDeviceSurface}
+          onAddVault={addVaultSurface}
+          onAddGraph={addGraphSurface}
+          vaultAvailable={true}
+          graphAvailable={true}
           browserAvailable={canOperatePreview && browserAvailable}
           terminalAvailable={activeProject !== null && canOperateTerminal}
           diffAvailable={isServerThread && isGitRepo}
@@ -12152,6 +12171,10 @@ export default function ChatView(props: ChatViewProps) {
             onAddPullRequest={addPullRequestSurface}
             onAddPullRequests={addPullRequestsSurface}
             onAddDevice={addDeviceSurface}
+            onAddVault={addVaultSurface}
+            onAddGraph={addGraphSurface}
+            vaultAvailable={true}
+            graphAvailable={true}
             browserAvailable={canOperatePreview && browserAvailable}
             terminalAvailable={activeProject !== null && canOperateTerminal}
             diffAvailable={isServerThread && isGitRepo}

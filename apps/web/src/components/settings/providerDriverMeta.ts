@@ -2,6 +2,7 @@ import {
   AntigravitySettings,
   ClaudeSettings,
   CodexSettings,
+  OpenRouterSettings,
   ProviderDriverKind,
 } from "@t3tools/contracts";
 import { acpRegistryClient } from "@t3tools/provider-acp-registry/client";
@@ -23,6 +24,11 @@ export const providerClients = makeProviderClientRegistry([
     driverKind: ProviderDriverKind.make("claudeAgent"),
     label: "Claude",
     settingsSchema: ClaudeSettings,
+  },
+  {
+    driverKind: ProviderDriverKind.make("openrouter"),
+    label: "OpenRouter",
+    settingsSchema: OpenRouterSettings,
   },
   cursorClient,
   grokClient,

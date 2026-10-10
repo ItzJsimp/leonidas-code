@@ -16,6 +16,8 @@ import type {
 import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import {
   Smartphone,
+  BookOpen,
+  Network,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -128,7 +130,11 @@ interface RightPanelTabsProps {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddVault?: () => void;
+  onAddGraph?: () => void;
   browserAvailable: boolean;
+  vaultAvailable?: boolean;
+  graphAvailable?: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
@@ -325,7 +331,11 @@ function RightPanelEmptyState(props: {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddVault?: () => void;
+  onAddGraph?: () => void;
   browserAvailable: boolean;
+  vaultAvailable?: boolean;
+  graphAvailable?: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
   filesAvailable: boolean;
@@ -393,6 +403,22 @@ function RightPanelEmptyState(props: {
       available: props.deviceAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Vault",
+      icon: BookOpen,
+      shortcut: "V",
+      available: Boolean(props.vaultAvailable),
+      disabledReason: "Vault unavailable.",
+      onClick: props.onAddVault ?? (() => {}),
+    },
+    {
+      label: "3D Graph",
+      icon: Network,
+      shortcut: "G",
+      available: Boolean(props.graphAvailable),
+      disabledReason: "Knowledge graph unavailable.",
+      onClick: props.onAddGraph ?? (() => {}),
     },
   ] as const;
 
@@ -604,6 +630,10 @@ function surfaceTitle(
       return "Pull requests";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
+    case "vault":
+      return "Vault";
+    case "graph":
+      return "3D Graph";
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return "Browser";
@@ -693,6 +723,10 @@ function SurfaceIcon({
       ) : (
         <Smartphone className="size-3 shrink-0" />
       );
+    case "vault":
+      return <BookOpen className="size-3 shrink-0 text-cyan-400" />;
+    case "graph":
+      return <Network className="size-3 shrink-0 text-purple-400" />;
   }
 }
 
@@ -919,6 +953,22 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.deviceAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Vault",
+      icon: BookOpen,
+      shortcut: "V",
+      available: Boolean(props.vaultAvailable),
+      disabledReason: "Vault unavailable.",
+      onClick: props.onAddVault ?? (() => {}),
+    },
+    {
+      label: "3D Graph",
+      icon: Network,
+      shortcut: "G",
+      available: Boolean(props.graphAvailable),
+      disabledReason: "Knowledge graph unavailable.",
+      onClick: props.onAddGraph ?? (() => {}),
     },
   ] as const;
 
