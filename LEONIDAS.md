@@ -15,7 +15,7 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - [x] Push-to-update: every push to `main` builds the Windows installer and publishes GitHub Release `v1.0.<run number>`; the desktop app's updater shows the update toast
 - [ ] Prove the update toast across both machines (install `v1.0.1`, push a small change, confirm the toast and the restart)
 - [ ] Synced task board panel in the web UI. Store: GitHub Issues on this repo (decided). Agents add tasks with `gh issue create`; the panel polls and shows the same list on both machines within about 10 seconds
-- [ ] Prompt predictor: ghost text of the prompt the user is most likely to send next, built from the user's own Leonidas Scribe `history.jsonl` (filtered to agent apps), Tab accepts, nothing is typed until Tab. Port of Jake's Claude Code mod `voice-predict`
+- [x] Prompt predictor: ghost text of the prompt the user is most likely to send next, built from the user's own Leonidas Scribe `history.jsonl` (filtered to agent apps), Tab accepts, nothing is typed until Tab. Port of Jake's Claude Code mod `voice-predict`
 - [x] Rebrand to Leonidas Code as a thin layer (name, icons, window title, installer, About). Keep the MIT notice. Internal ids stay (`@t3tools/*`, `T3CODE_*`, `~/.t3`, app id `com.t3tools.t3code`) so data survives and old installs upgrade in place
 - [ ] Leonidas shell: Command Center views as a tab; Scribe stays a tray app with a localhost API
 
@@ -55,7 +55,7 @@ That sets rebase pulls, links your AIOS identity, installs the latest Leonidas C
 
 ## Status log (newest first, one line per session, who and what)
 
-- 2026-10-10 Mob's agent: implemented local-history prompt prediction with bounded cached reads, Tab acceptance, Escape dismissal, Undo and a settings switch. Scoped checks pass; awaiting publication and live client verification.
+- 2026-10-10 Mob's agent: implemented local-history prompt prediction with bounded cached reads, Tab acceptance, Escape dismissal, Undo and a settings switch. Scoped checks pass; published to main, live client verification pending.
 - 2026-10-10 Jake's agent: rebranded to Leonidas Code (name, icons, sidebar, installer, branch prefix `leonidas`), added auto-pull hook and `scripts/leonidas-setup.ps1`. Ships as `v1.0.2`.
 - 2026-10-09 Jake's agent: merged Mob's `mob-base` into `main`, added the release workflow, wrote this file. `v1.0.1` is published.
 
