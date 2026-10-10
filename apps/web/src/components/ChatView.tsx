@@ -7,6 +7,7 @@ import type { ThreadGoalControl } from "@t3tools/contracts";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
+import { getProviderFailoverTargets } from "./chat/providerFailover";
 import {
   resolveBackgroundDraftWorkspaceOptions,
   resolveDraftHeroState,
@@ -7861,6 +7862,54 @@ export default function ChatView(props: ChatViewProps) {
           stoppedAt: activeThreadShell.latestRun.completedAt ?? activeThreadShell.updatedAt,
           recovery: activeThreadShell.limitRecovery ?? null,
           snoozedUntil: activeThreadShell.snoozedUntil,
+          failoverTargets: getProviderFailoverTargets({
+            entries: providerInstanceEntries,
+            settings,
+            current: activeThreadShell.modelSelection,
+            supportsHandoff: supportsProviderSwitchingViaHandoff,
+          }),
+          failoverDisabled:
+            !canOperateThread ||
+            isSendBusy ||
+            isConnecting ||
+            threadDetailLoading ||
+            activeEnvironmentUnavailable ||
+            isRevertingCheckpoint,
+          onFailover: async (target) => {
+            if (!canOperateThread || sendInFlightRef.current || !activeThreadShell.latestRun) {
+              throw new Error("This thread is busy or cannot be changed.");
+            }
+            const threadId = activeThreadShell.id;
+            sendInFlightRef.current = true;
+            try {
+              const result = await startThreadTurn({
+                environmentId,
+                input: {
+                  threadId,
+                  manualContinuationOfRunId: activeThreadShell.latestRun.runId,
+                  modelSelection: target.modelSelection,
+                  message: {
+                    messageId: newMessageId(),
+                    role: "user",
+                    text: "Continue where you left off. Check the saved conversation and unfinished work before taking action.",
+                    attachments: [],
+                  },
+                  runtimeMode: activeThreadShell.runtimeMode,
+                  interactionMode: activeThreadShell.interactionMode,
+                  dispatchMode: "start",
+                },
+              });
+              if (result._tag === "Failure") throw squashAtomCommandFailure(result);
+              setComposerDraftModelSelection(
+                scopeThreadRef(environmentId, threadId),
+                target.modelSelection,
+                { explicit: true, replaceOptions: true },
+              );
+              clearUsageLimitsFor(routeThreadKey);
+            } finally {
+              sendInFlightRef.current = false;
+            }
+          },
           onChange: async (limitRecovery) => {
             const result = await updateThreadMetadata({
               environmentId,

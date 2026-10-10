@@ -92,6 +92,7 @@ const modelSelection = {
   model: "gpt-5.4",
 } satisfies ModelSelection;
 const alternateInstanceId = ProviderInstanceId.make("codex_alternate");
+const failoverInstanceId = ProviderInstanceId.make("claude_failover");
 
 const layerVcsDriverRegistryTest = VcsDriverRegistry.layer.pipe(
   Layer.provide(VcsProcess.layer),
@@ -146,16 +147,36 @@ const alternateProviderInstance = {
   },
 } satisfies ProviderInstance;
 
+const failoverProviderInstance = {
+  ...alternateProviderInstance,
+  instanceId: failoverInstanceId,
+  driverKind: ProviderDriverKind.make("claudeAgent"),
+  continuationIdentity: {
+    driverKind: ProviderDriverKind.make("claudeAgent"),
+    continuationKey: "claude:failover",
+  },
+  displayName: "Claude failover test",
+  orchestrationAdapter: {
+    ...orchestrationAdapter,
+    instanceId: failoverInstanceId,
+    driver: ProviderDriverKind.make("claudeAgent"),
+  },
+} satisfies ProviderInstance;
+
 const layerTestProviderInstanceRegistry = Layer.succeed(
   ProviderInstanceRegistry.ProviderInstanceRegistry,
   {
     getInstance: (instanceId) =>
       Effect.succeed(
-        [providerInstance, alternateProviderInstance].find(
+        [providerInstance, alternateProviderInstance, failoverProviderInstance].find(
           (instance) => instanceId === instance.instanceId,
         ),
       ),
-    listInstances: Effect.succeed([providerInstance, alternateProviderInstance]),
+    listInstances: Effect.succeed([
+      providerInstance,
+      alternateProviderInstance,
+      failoverProviderInstance,
+    ]),
     listUnavailable: Effect.succeed([]),
     streamChanges: Stream.empty,
     subscribeChanges: Effect.never,
@@ -4770,7 +4791,7 @@ it.layer(layerSharedApplicationDataPlaneTest)("shared application data plane", (
 });
 
 it.layer(layerTest)("usage-limit recovery", (it) => {
-  it.effect.each(["interrupted", "usage_limit"] as const)(
+  it.effect.each(["interrupted", "usage_limit", "provider_failover"] as const)(
     "manually resumes an %s run ahead of its queued message only once",
     (reason) =>
       Effect.gen(function* () {
@@ -4853,7 +4874,7 @@ it.layer(layerTest)("usage-limit recovery", (it) => {
           ],
         });
         let scheduledResume: ReturnType<typeof limitRecoveryCommand> = null;
-        if (reason === "usage_limit") {
+        if (reason !== "interrupted") {
           const resetAt = DateTime.formatIso(DateTime.add(now, { minutes: 1 }));
           yield* events.write({
             events: [
@@ -4907,17 +4928,42 @@ it.layer(layerTest)("usage-limit recovery", (it) => {
           threadId,
           messageId: MessageId.make(`manual-resume:${suffix}:${reason}`),
           manualContinuationOfRunId: source.id,
+          ...(reason === "provider_failover"
+            ? {
+                modelSelection: { instanceId: failoverInstanceId, model: "claude-sonnet" },
+              }
+            : {}),
           text: "Continue where you left off.",
           attachments: [],
           dispatchMode: { type: "start_immediately" as const },
           createdBy: "user" as const,
           creationSource: "web" as const,
         });
+        if (reason === "provider_failover") {
+          const unavailable = yield* orchestrator
+            .dispatch({
+              ...resume("unavailable"),
+              modelSelection: {
+                instanceId: ProviderInstanceId.make("missing-provider"),
+                model: "missing",
+              },
+            })
+            .pipe(Effect.exit);
+          assert.equal(unavailable._tag, "Failure");
+          assert.lengthOf((yield* orchestrator.getThreadProjection(threadId)).runs, 2);
+        }
         yield* orchestrator.dispatch(resume("first"));
         const after = yield* orchestrator.getThreadProjection(threadId);
         assert.lengthOf(after.runs, 3);
         assert.equal(after.runs[1]?.status, "queued");
         assert.equal(after.runs[2]?.status, "starting");
+        if (reason === "provider_failover") {
+          assert.equal(after.thread.modelSelection.instanceId, failoverInstanceId);
+          assert.equal(after.runs[0]?.status, "failed");
+          assert.equal(after.runs[2]?.providerInstanceId, failoverInstanceId);
+          assert.lengthOf(after.contextHandoffs, 1);
+          assert.include(after.contextHandoffs[0]!.summaryText, "Start work.");
+        }
         assert.equal(
           (yield* orchestrator.dispatch(resume("second")).pipe(Effect.exit))._tag,
           "Failure",
