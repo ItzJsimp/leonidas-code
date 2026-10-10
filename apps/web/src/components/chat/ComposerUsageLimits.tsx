@@ -23,7 +23,12 @@ function accountLabel(account: UsageLimitsReport["accounts"][number]): string {
     : driver;
 }
 
-function AccountSummary({ account }: { readonly account: UsageLimitsReport["accounts"][number] }) {
+/** The account's label (redactable when it is an email) and plan. */
+export function AccountSummary({
+  account,
+}: {
+  readonly account: UsageLimitsReport["accounts"][number];
+}) {
   const label = accountLabel(account);
   return (
     <>

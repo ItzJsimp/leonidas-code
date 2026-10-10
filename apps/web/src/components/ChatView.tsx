@@ -11324,6 +11324,7 @@ export default function ChatView(props: ChatViewProps) {
             rightPanelOpen={inlineRightPanelOwnsTitleBar}
             onNewThreadInProject={handleNewThreadInActiveProject}
             usageLimits={headerUsageLimits}
+            contextWindow={activeContextWindow}
             {...(activeDraftLogicalProjectKey
               ? { onOpenProjectSettings: handleOpenDraftProjectSettings }
               : {})}
