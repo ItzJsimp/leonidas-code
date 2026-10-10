@@ -904,7 +904,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
 
     // `tailscale serve` config outlives the process, so a dry run that shared
     // would replace and then tear down whatever mapping the port already had.
-    // Base-dir precedence (--home-dir > worktree .t3 > ambient T3CODE_HOME)
+    // Base-dir precedence (--home-dir > checkout-local .t3)
     // lives in runDevRunnerWithInput; the env builder must not consult the
     // ambient variable on its own, or it would silently outrank the worktree
     // default and land dev state on the user's real database.
@@ -1320,7 +1320,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
         }).pipe(Effect.scoped),
       );
 
-      it.effect("falls back to an ambient T3CODE_HOME outside a worktree", () =>
+      it.effect("isolates the main checkout from an ambient live T3CODE_HOME", () =>
         Effect.gen(function* () {
           const path = yield* Path.Path;
           const home = yield* spawnedHome({
@@ -1328,18 +1328,19 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             cwd: NodeOS.tmpdir(),
             ambientHome: "/home/user/.t3",
           });
-          assert.equal(home, path.resolve("/home/user/.t3"));
+          assert.equal(home, path.join(path.resolve(NodeOS.tmpdir()), ".t3"));
         }),
       );
 
-      it.effect("leaves the home implicit with no worktree and no ambient value", () =>
+      it.effect("uses checkout-local state with no ambient home", () =>
         Effect.gen(function* () {
+          const path = yield* Path.Path;
           const home = yield* spawnedHome({
             t3Home: undefined,
             cwd: NodeOS.tmpdir(),
             ambientHome: undefined,
           });
-          assert.equal(home, undefined);
+          assert.equal(home, path.join(path.resolve(NodeOS.tmpdir()), ".t3"));
         }),
       );
     });

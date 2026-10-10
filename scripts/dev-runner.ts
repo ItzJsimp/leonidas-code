@@ -5,7 +5,7 @@ import * as NodeOS from "node:os";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NetService from "@t3tools/shared/Net";
-import { resolveGitWorktreePath, resolveWorktreeT3Home } from "@t3tools/shared/devHome";
+import { resolveGitWorktreePath } from "@t3tools/shared/devHome";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as Config from "effect/Config";
@@ -309,7 +309,7 @@ export function createDevRunnerEnv({
   return Effect.gen(function* () {
     const serverPort = port ?? BASE_SERVER_PORT + serverOffset;
     const webPort = BASE_WEB_PORT + webOffset;
-    // Precedence (--home-dir > worktree .t3 > ambient T3CODE_HOME) is resolved
+    // Precedence (--home-dir > checkout-local .t3) is resolved
     // by the caller; an unset t3Home here genuinely means "use the default".
     const configuredBaseDir = t3Home?.trim() || undefined;
     const resolvedBaseDir = yield* resolveBaseDir(configuredBaseDir);
@@ -664,17 +664,13 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
     });
 
     const hostEnvironment = yield* HostProcess.Environment;
-    // A dev server started inside a worktree defaults to that worktree's own
-    // (gitignored) `.t3` — see @t3tools/shared/devHome for why this must
-    // outrank an ambient T3CODE_HOME. `--home-dir` still wins.
-    const worktreeHome = yield* resolveWorktreeT3Home(yield* HostProcess.WorkingDirectory);
-    // Trim before choosing: `--home-dir ""` is not a selection, and treating it
-    // as one would skip the worktree default and land on the shared home —
-    // exactly the outcome this precedence exists to prevent.
+    // Development must not inherit the live application's home, including
+    // when an agent launches it from inside that application. Both main
+    // checkouts and worktrees use gitignored, checkout-local state.
+    const path = yield* Path.Path;
+    const cwd = yield* HostProcess.WorkingDirectory;
     const resolvedT3Home =
-      (input.t3Home?.trim() || undefined) ??
-      worktreeHome ??
-      (hostEnvironment.T3CODE_HOME?.trim() || undefined);
+      (input.t3Home?.trim() || undefined) ?? path.join(path.resolve(cwd), ".t3");
     const env = yield* createDevRunnerEnv({
       mode: input.mode,
       baseEnv: hostEnvironment,

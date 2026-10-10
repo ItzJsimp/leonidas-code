@@ -26,14 +26,26 @@ Add `--browser` to open a browser automatically.
 
 ### State and ports
 
-Linked worktrees default to their own `.t3/userdata`, even when `T3CODE_HOME` is set.
-The main checkout defaults to `~/.t3/dev/userdata`. An explicit `--home-dir` wins in both cases.
+Every checkout defaults to its own gitignored `.t3/userdata`, even when `T3CODE_HOME` is set.
+An explicit `--home-dir` wins. Existing development data is left in place; it is not copied.
 Never run a development server against the live `~/.t3/userdata`.
 See [test data](../../AGENTS.md#test-data) for copying a consistent database snapshot.
 
 Read ports from the `[dev-runner]` output. Worktrees derive stable preferences from their paths,
 but occupied ports can shift them. `T3CODE_PORT_OFFSET` or `T3CODE_DEV_INSTANCE` can select a
 different preference when needed.
+
+### Desktop isolation and live edits
+
+`vp run dev:desktop` launches Leonidas Code (Dev) with its own Electron profile
+(`t3code-dev`), application identity and development protocol. The installed app uses
+`t3code-v2` on Windows and continues running independently. Ports are probed before
+launch, so occupied ports move the dev stack to an available pair.
+
+Never restart the installed app to validate code. Test in development first. Theme CSS
+changes refresh through Vite in the dev app; installed assets change through a release.
+User theme settings can be changed live through Settings without restarting the app.
+Do not overwrite installed assets or inject unverified code into the live app.
 
 ### Sharing and remote debugging
 
