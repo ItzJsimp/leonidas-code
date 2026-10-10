@@ -32,7 +32,8 @@ type TextGenerationOp =
   | "generateCommitMessage"
   | "generatePrContent"
   | "generateBranchName"
-  | "generateThreadTitle";
+  | "generateThreadTitle"
+  | "evaluateGoal";
 
 const resolveInstance = (
   registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"],
@@ -57,6 +58,19 @@ export const make = Effect.gen(function* () {
   const registry = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
   const sourceControl = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
   return TextGeneration.of({
+    evaluateGoal: (input) =>
+      resolveInstance(registry, "evaluateGoal", input.modelSelection.instanceId).pipe(
+        Effect.flatMap((generation) =>
+          generation.evaluateGoal
+            ? generation.evaluateGoal(input)
+            : Effect.fail(
+                new TextGenerationError({
+                  operation: "evaluateGoal",
+                  detail: "This provider does not support goal evaluation.",
+                }),
+              ),
+        ),
+      ),
     generateCommitMessage: (input) =>
       resolveInstance(registry, "generateCommitMessage", input.modelSelection.instanceId).pipe(
         Effect.flatMap((textGeneration) => textGeneration.generateCommitMessage(input)),

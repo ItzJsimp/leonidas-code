@@ -3,6 +3,7 @@ import type {
   ChatAttachment,
   ModelSelection,
   TextGenerationError,
+  ThreadGoalVerdict,
 } from "@t3tools/contracts";
 import type * as Effect from "effect/Effect";
 
@@ -76,6 +77,13 @@ export interface ThreadTitleGenerationResult {
 
 /** Commit, change request, branch, and title generation backed by one provider instance. */
 export interface ProviderTextGeneration {
+  readonly evaluateGoal?: (input: {
+    cwd: string;
+    condition: string;
+    transcript: string;
+    modelSelection: ModelSelection;
+  }) => Effect.Effect<ThreadGoalVerdict, TextGenerationError>;
+
   /**
    * Generate a commit message from staged change context.
    */

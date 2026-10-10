@@ -1,3 +1,4 @@
+import * as GoalEvaluationService from "./GoalEvaluationService.ts";
 import { CommandId } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
@@ -87,6 +88,7 @@ export const layerExecutor: Layer.Layer<
   | ProviderTurnControlService.ProviderTurnControlServiceV2
   | ProviderTurnStartService.ProviderTurnStartServiceV2
   | RuntimeRequestService.RuntimeRequestServiceV2
+  | GoalEvaluationService.GoalEvaluationService
   | ThreadTitleRegenerationService.ThreadTitleRegenerationService
   | ThreadManagementService.ThreadManagementService
   | ServerSettings.ServerSettingsService
@@ -102,12 +104,31 @@ export const layerExecutor: Layer.Layer<
     const runtimeRequests = yield* RuntimeRequestService.RuntimeRequestServiceV2;
     const threadTitleRegeneration =
       yield* ThreadTitleRegenerationService.ThreadTitleRegenerationService;
+    const goalEvaluation = yield* GoalEvaluationService.GoalEvaluationService;
     const threads = yield* ThreadManagementService.ThreadManagementService;
     const settings = yield* ServerSettings.ServerSettingsService;
     return OrchestrationEffectExecutorV2.of({
       execute: (effect, options) => {
         const willRetry = options?.willRetry ?? false;
         switch (effect.request.type) {
+          case "goal.evaluate":
+            return goalEvaluation
+              .execute({
+                threadId: effect.threadId,
+                goalId: effect.request.goalId,
+                runId: effect.request.runId,
+                requestId: effect.commandId,
+              })
+              .pipe(
+                Effect.mapError(
+                  (cause) =>
+                    new OrchestrationEffectExecutionError({
+                      effectId: effect.id,
+                      effectType: effect.request.type,
+                      cause,
+                    }),
+                ),
+              );
           case "provider-runtime.continue": {
             const sourceRunId = effect.request.sourceRunId;
             return continueRestartedRun({ threadId: effect.threadId, sourceRunId }).pipe(

@@ -1,3 +1,4 @@
+import { completeGoalEvaluation, goalWorkPrompt } from "./GoalState.ts";
 import type {
   OrchestrationV2SearchThreadInput,
   OrchestrationV2SearchThreadResult,
@@ -449,6 +450,7 @@ function commandThreadId(command: OrchestrationV2ServerCommand): ThreadId {
     case "thread.pull-request.watch":
     case "thread.pull-request-watch.sync":
     case "thread.pull-request.sync":
+    case "thread.goal.advance":
     case "thread.title.regeneration.complete":
     case "thread.runtime-mode.set":
     case "thread.interaction-mode.set":
@@ -2388,6 +2390,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           | "thread.pull-request.watch"
           | "thread.pull-request-watch.sync"
           | "thread.pull-request.sync"
+          | "thread.goal.advance"
           | "thread.title.regeneration.complete"
           | "thread.runtime-mode.set"
           | "thread.interaction-mode.set"
@@ -2770,6 +2773,121 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       }
       markUnreadVisitedAt = DateTime.subtract(latestRunCompletedAt, { milliseconds: 1 });
     }
+    let controlledGoal = thread.appGoal;
+    if (command.type === "thread.metadata.update" && command.goalControl) {
+      const control = command.goalControl;
+      if (control.action === "clear") controlledGoal = null;
+      else if (control.action === "pause")
+        controlledGoal = controlledGoal
+          ? {
+              ...controlledGoal,
+              status: "paused",
+              evaluationRunId: null,
+              lastReason: "Paused by user.",
+            }
+          : null;
+      else {
+        const projection = yield* loadProjectionForCommand(command, [
+          "runs",
+          "runtimeRequests",
+          "providerThreads",
+          "turnItems",
+        ]);
+        if (
+          thread.archivedAt !== null ||
+          projection.runs.some((run) =>
+            ["preparing", "starting", "running", "waiting", "queued"].includes(run.status),
+          ) ||
+          projection.runtimeRequests.some((request) => request.status === "pending")
+        ) {
+          return yield* new OrchestratorDispatchError({
+            commandId: command.commandId,
+            commandType: command.type,
+            cause: "Finish or stop pending work before starting a goal.",
+          });
+        }
+        if (control.action === "start") {
+          const project = yield* projects.get(thread.projectId).pipe(mapDispatchError(command));
+          controlledGoal = {
+            id: command.commandId,
+            condition: control.condition,
+            status: "active",
+            startedAt: DateTime.formatIso(now),
+            maxTurns: control.maxTurns ?? 20,
+            ...(control.tokenBudget === undefined ? {} : { tokenBudget: control.tokenBudget }),
+            ...(control.check === undefined
+              ? {}
+              : {
+                  check: control.check,
+                  checkCwd:
+                    thread.worktreePath ??
+                    (Option.isSome(project) ? project.value.workspaceRoot : ""),
+                }),
+            turns: 0,
+            tokensUsed: 0,
+            noProgressTurns: 0,
+            transientFailures: 0,
+            lastRunOrdinal: projection.runs.at(-1)?.ordinal ?? 0,
+            evaluationRunId: null,
+            lastReason: "",
+            evidence: "",
+          };
+        } else {
+          if (
+            !controlledGoal ||
+            controlledGoal.status !== "paused" ||
+            controlledGoal.turns >= controlledGoal.maxTurns ||
+            (controlledGoal.tokenBudget !== undefined &&
+              controlledGoal.tokensUsed >= controlledGoal.tokenBudget)
+          ) {
+            return yield* new OrchestratorDispatchError({
+              commandId: command.commandId,
+              commandType: command.type,
+              cause: "This goal cannot resume. Start a new goal with new limits.",
+            });
+          }
+          controlledGoal = {
+            ...controlledGoal,
+            status: "active",
+            evaluationRunId: null,
+            noProgressTurns: 0,
+            transientFailures: 0,
+            lastReason: "Resumed by user.",
+          };
+        }
+      }
+    }
+    let claimedRunOrdinal: number | undefined;
+    if (
+      command.type === "thread.goal.advance" &&
+      command.result === undefined &&
+      command.pauseReason === undefined
+    ) {
+      const projection = yield* loadProjectionForCommand(command, [
+        "runs",
+        "runtimeRequests",
+        "providerThreads",
+        "turnItems",
+      ]);
+      const latest = projection.runs.at(-1);
+      if (
+        !latest ||
+        latest.id !== command.runId ||
+        !["completed", "failed", "interrupted", "cancelled"].includes(latest.status) ||
+        latest.ordinal <= (thread.appGoal?.lastRunOrdinal ?? 0) ||
+        projection.runtimeRequests.some((request) => request.status === "pending") ||
+        derivePendingBackgroundWork({
+          latestRun: latest,
+          runs: projection.runs,
+          providerThreads: projection.providerThreads,
+          turnItems: projection.turnItems,
+          activeProviderThreadId: thread.activeProviderThreadId,
+          pullRequests: thread.pullRequests,
+        }).length > 0
+      )
+        return;
+      claimedRunOrdinal = latest.ordinal;
+    }
     const updatedThread: OrchestrationV2AppThread = (() => {
       switch (command.type) {
         case "thread.archive":
@@ -2937,6 +3055,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                     Date.parse(thread.limitRecovery.resetAt)
                 ? { snoozedUntil: null, snoozedAt: null, lastSnoozeWakeAt: now }
                 : {}),
+            ...(command.goalControl === undefined ? {} : { appGoal: controlledGoal }),
             ...(command.branch === undefined ? {} : { branch: command.branch }),
             ...(command.worktreePath === undefined ? {} : { worktreePath: command.worktreePath }),
             ...(command.linkedPullRequest === undefined
@@ -3158,6 +3277,27 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                 }),
             updatedAt: thread.updatedAt,
           };
+        case "thread.goal.advance": {
+          const goal = thread.appGoal;
+          if (!goal || goal.id !== command.goalId) return thread;
+          if (command.result !== undefined || command.pauseReason !== undefined) {
+            if (goal.status !== "evaluating" || goal.evaluationRunId !== command.runId)
+              return thread;
+            return { ...thread, appGoal: completeGoalEvaluation(goal, command), updatedAt: now };
+          }
+          if (goal.status !== "active") return thread;
+          return {
+            ...thread,
+            appGoal: {
+              ...goal,
+              status: "evaluating" as const,
+              evaluationRunId: command.runId,
+              lastRunOrdinal: claimedRunOrdinal ?? goal.lastRunOrdinal,
+              turns: goal.turns + 1,
+            },
+            updatedAt: now,
+          };
+        }
         case "thread.title.regeneration.complete":
           return thread.titleRegeneration?.requestId === command.requestId
             ? {
@@ -3208,6 +3348,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         case "thread.mark-unread":
           return "thread.marked-unread" as const;
         case "thread.metadata.update":
+        case "thread.goal.advance":
         case "thread.title.regeneration.complete":
           return "thread.metadata-updated" as const;
         case "thread.pull-request.link":
@@ -3240,6 +3381,37 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       payload: updatedThread,
     });
 
+    const goal = updatedThread.appGoal;
+    if (
+      goal?.status === "active" &&
+      updatedThread !== thread &&
+      ((command.type === "thread.metadata.update" &&
+        (command.goalControl?.action === "start" || command.goalControl?.action === "resume")) ||
+        (command.type === "thread.goal.advance" && command.result !== undefined))
+    ) {
+      const projection = yield* getProjectionWithPendingEvents(command.threadId, events);
+      if (
+        !projection.runs.some((run) =>
+          ["preparing", "starting", "running", "waiting", "queued"].includes(run.status),
+        )
+      ) {
+        yield* dispatchMessage(
+          {
+            type: "message.dispatch",
+            commandId: command.commandId,
+            threadId: command.threadId,
+            messageId: MessageId.make(`${command.commandId}:goal-message`),
+            text: goalWorkPrompt(goal),
+            attachments: [],
+            dispatchMode: { type: "start_immediately" },
+            createdBy: "system",
+            creationSource: "server",
+          },
+          events,
+          effects,
+        );
+      }
+    }
     if (command.type === "thread.metadata.update" && command.regenerateTitle === true) {
       yield* Ref.update(effects, (existing) => [
         ...existing,
@@ -7744,7 +7916,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     });
 
   const loadProjectionForCommand = <K extends ProjectionRecordField>(
-    command: OrchestrationV2Command,
+    command: OrchestrationV2ServerCommand,
     fields: ReadonlyArray<K>,
     filter?: ProjectionRecordFilter,
   ) =>
@@ -10235,6 +10407,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       case "thread.pull-request-link.sync":
       case "thread.pull-request.watch":
       case "thread.pull-request.sync":
+      case "thread.goal.advance":
       case "thread.title.regeneration.complete":
       case "thread.runtime-mode.set":
       case "thread.interaction-mode.set":
@@ -10291,6 +10464,18 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         break;
       case "run.interrupt":
         cancelUnsettledEffects = yield* dispatchRunInterrupt(command, events, effects);
+        if (command.holdQueue === true)
+          yield* dispatchThreadMutation(
+            {
+              type: "thread.metadata.update",
+              commandId: command.commandId,
+              threadId: command.threadId,
+              goalControl: { action: "pause" },
+            },
+            events,
+            effects,
+          );
+
         // Stop also stops every delegated task under the thread once it commits.
         if (command.holdQueue === true) {
           yield* Ref.update(effects, (existing) => [
@@ -10309,6 +10494,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         break;
       case "thread.stop":
         cancelUnsettledEffects = yield* dispatchThreadStop(command, events, effects);
+        yield* dispatchThreadMutation(
+          {
+            type: "thread.metadata.update",
+            commandId: command.commandId,
+            threadId: command.threadId,
+            goalControl: { action: "pause" },
+          },
+          events,
+          effects,
+        );
+
         break;
       case "queued-message.promote-to-steer":
         yield* dispatchQueuedMessagePromoteToSteer(command, events, effects);
@@ -10501,6 +10697,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         // stop that finds nothing running, has nothing to record. That is
         // its expected outcome, not a failure.
         planned.events.length > 0 ||
+        command.type === "thread.goal.advance" ||
         command.type === "thread.background-work.settle" ||
         command.type === "thread.stop"
           ? Effect.succeed(planned)

@@ -1,3 +1,4 @@
+import * as GoalEvaluationService from "../GoalEvaluationService.ts";
 import * as OtelEnvironment from "@t3tools/shared/otelEnvironment";
 import { DEFAULT_SIGNAL_EXPORT } from "@t3tools/shared/observability";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -485,6 +486,7 @@ export function layerWithRegistry<Error>(
         layerProviderTurnStartServiceProvided,
         layerRuntimeRequestServiceProvided,
         layerThreadTitleRegenerationTest,
+        Layer.succeed(GoalEvaluationService.GoalEvaluationService, { execute: () => Effect.void }),
         layerServerSettings,
         layerThreadManagementProvided,
       ),

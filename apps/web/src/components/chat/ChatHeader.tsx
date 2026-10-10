@@ -18,6 +18,7 @@ import {
   useRef,
   useState,
   type ComponentProps,
+  type ReactNode,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
@@ -43,6 +44,7 @@ import type { ContextWindowSnapshot } from "~/lib/contextWindow";
 import { ChatHeaderUsageLimits } from "./ChatHeaderUsageLimits";
 
 interface ChatHeaderProps {
+  goalControls?: ReactNode;
   activeThreadEnvironmentId: EnvironmentId;
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -94,6 +96,7 @@ export const ChatHeader = memo(function ChatHeader({
   onOpenProjectSettings,
   usageLimits,
   contextWindow = null,
+  goalControls,
 }: ChatHeaderProps) {
   const activeProjectName = activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
@@ -445,6 +448,7 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
+      {goalControls}
       {usageLimits ? (
         <ChatHeaderUsageLimits {...usageLimits} contextWindow={contextWindow} />
       ) : null}
