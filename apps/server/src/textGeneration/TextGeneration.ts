@@ -18,6 +18,8 @@ export type {
   PrContentGenerationInput,
   PrContentGenerationResult,
   ThreadTitleGenerationInput,
+  PromptSuggestionInput,
+  PromptSuggestionResult,
   ThreadTitleGenerationResult,
 } from "@t3tools/provider-core/server/textGeneration";
 
@@ -33,7 +35,8 @@ type TextGenerationOp =
   | "generatePrContent"
   | "generateBranchName"
   | "generateThreadTitle"
-  | "evaluateGoal";
+  | "evaluateGoal"
+  | "generatePromptSuggestion";
 
 const resolveInstance = (
   registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"],
@@ -58,6 +61,19 @@ export const make = Effect.gen(function* () {
   const registry = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
   const sourceControl = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
   return TextGeneration.of({
+    generatePromptSuggestion: (input) =>
+      resolveInstance(registry, "generatePromptSuggestion", input.modelSelection.instanceId).pipe(
+        Effect.flatMap((generation) =>
+          generation.generatePromptSuggestion
+            ? generation.generatePromptSuggestion(input)
+            : Effect.fail(
+                new TextGenerationError({
+                  operation: "generatePromptSuggestion",
+                  detail: "This provider does not support prompt prediction.",
+                }),
+              ),
+        ),
+      ),
     evaluateGoal: (input) =>
       resolveInstance(registry, "evaluateGoal", input.modelSelection.instanceId).pipe(
         Effect.flatMap((generation) =>

@@ -23,10 +23,12 @@ import {
   buildBranchNamePrompt,
   buildCommitMessagePrompt,
   buildPrContentPrompt,
+  buildPromptSuggestionPrompt,
   buildThreadTitlePrompt,
 } from "./textGenerationPrompts.ts";
 import {
   sanitizeCommitSubject,
+  sanitizePromptSuggestion,
   sanitizePrTitle,
   sanitizeThreadTitle,
 } from "./textGenerationUtils.ts";
@@ -153,7 +155,19 @@ export function fromRunner(name: string, run: Runner): ProviderTextGeneration {
     };
   });
 
+  const generatePromptSuggestion: NonNullable<ProviderTextGeneration["generatePromptSuggestion"]> =
+    Effect.fn(`${name}.generatePromptSuggestion`)(function* (input) {
+      const generated = yield* run({
+        operation: "generatePromptSuggestion",
+        cwd: input.cwd,
+        modelSelection: input.modelSelection,
+        ...buildPromptSuggestionPrompt({ messages: input.messages }),
+      });
+      return { prompt: sanitizePromptSuggestion(generated.prompt) };
+    });
+
   return {
+    generatePromptSuggestion,
     evaluateGoal: (input) =>
       run({
         operation: "evaluateGoal",

@@ -375,6 +375,7 @@ export const WS_METHODS = {
   projectsListEntries: "projects.listEntries",
   projectsReadFile: "projects.readFile",
   projectsPromptCandidates: "projects.promptCandidates",
+  projectsPredictPrompt: "projects.predictPrompt",
   projectsSearchContents: "projects.searchContents",
   projectsSearchEntries: "projects.searchEntries",
   projectsWriteFile: "projects.writeFile",
@@ -1197,6 +1198,17 @@ const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidat
   error: EnvironmentAuthorizationError,
 });
 
+const WsProjectsPredictPromptRpc = Rpc.make(WS_METHODS.projectsPredictPrompt, {
+  payload: Schema.Struct({
+    cwd: Schema.String,
+    messages: Schema.Array(
+      Schema.Struct({ role: Schema.Literals(["user", "assistant"]), text: Schema.String }),
+    ),
+  }),
+  success: Schema.Struct({ prompt: Schema.NullOr(Schema.String) }),
+  error: EnvironmentAuthorizationError,
+});
+
 const WsProjectsReadFileRpc = Rpc.make(WS_METHODS.projectsReadFile, {
   payload: ProjectReadFileInput,
   success: ProjectReadFileResult,
@@ -1969,6 +1981,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsListEntriesRpc,
   WsProjectsReadFileRpc,
   WsProjectsPromptCandidatesRpc,
+  WsProjectsPredictPromptRpc,
   WsProjectsSearchContentsRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsEnsureScratchRpc,

@@ -156,18 +156,33 @@ export function contextualPromptCandidates(
       count: 1,
       lastSeen: 0,
     });
+  // Past prompts only ever complete what the user has started typing. An empty draft is
+  // answered by a prediction (the assistant's recommendation or the model), never by a replay.
   const add = (candidate: PromptCandidate | undefined) => {
     if (candidate && !unique.has(candidate.text.toLowerCase()))
-      unique.set(candidate.text.toLowerCase(), {
-        ...candidate,
-        prefixOnly: ![...words(candidate.text)].some((word) => context.has(word)),
-      });
+      unique.set(candidate.text.toLowerCase(), { ...candidate, prefixOnly: true });
   };
   for (let index = 0; index < Math.max(own.length, standard.length); index++) {
     add(own[index]);
     add(standard[index]);
   }
   return [...unique.values()].slice(0, 256);
+}
+
+/** Add a model-predicted prompt: it answers an empty draft and leads any prefix it extends. */
+export function withModelPrediction(
+  candidates: readonly PromptCandidate[],
+  prediction: string | null,
+): readonly PromptCandidate[] {
+  const text = prediction ? capSentences(prediction.trim()) : "";
+  if (!text || /[\r\n]/.test(text) || ACKNOWLEDGEMENT.test(text)) return candidates;
+  const others = candidates.filter(
+    (candidate) => candidate.text.toLowerCase() !== text.toLowerCase(),
+  );
+  // An explicit recommendation from the assistant (leading, not prefix-only) keeps first place.
+  const lead = others.findIndex((candidate) => candidate.prefixOnly);
+  const at = lead === -1 ? others.length : lead;
+  return [...others.slice(0, at), { text, count: 1, lastSeen: 0 }, ...others.slice(at)];
 }
 
 const AGENT_APPS =

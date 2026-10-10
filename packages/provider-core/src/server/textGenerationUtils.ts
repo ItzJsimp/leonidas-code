@@ -127,3 +127,29 @@ export function normalizeCliError(
     cause: error,
   });
 }
+
+const BARE_ACKNOWLEDGEMENT =
+  /^(?:yes|yep|yeah|ok(?:ay)?|sure|no|thanks|thank you|go ahead|continue|do it|ship it|sounds good|looks good)[.!\s]*$/i;
+const MAX_PROMPT_SUGGESTION_CHARS = 280;
+
+/** Normalise a predicted user message to one plain line, or null when it is not worth offering. */
+export function sanitizePromptSuggestion(raw: string): string | null {
+  const text = raw
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*`#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^["'“”]+|["'“”]+$/g, "")
+    .trim();
+  if (text.length < 8 || BARE_ACKNOWLEDGEMENT.test(text)) return null;
+  if (text.length <= MAX_PROMPT_SUGGESTION_CHARS) return text;
+  const head = text.slice(0, MAX_PROMPT_SUGGESTION_CHARS);
+  const lastSentence = Math.max(
+    head.lastIndexOf(". "),
+    head.lastIndexOf("? "),
+    head.lastIndexOf("! "),
+  );
+  return lastSentence >= 40
+    ? head.slice(0, lastSentence + 1)
+    : head.slice(0, head.lastIndexOf(" ")).trimEnd();
+}

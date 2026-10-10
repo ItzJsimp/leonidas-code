@@ -1,5 +1,7 @@
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
+import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
+import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as Crypto from "effect/Crypto";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 
@@ -1286,6 +1288,10 @@ const layerWsRpc = (
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
+      const promptSuggestion = PromptSuggestion.make(
+        yield* TextGeneration.TextGeneration,
+        serverSettings,
+      );
       const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
       const backgroundPolicy = yield* BackgroundPolicy.BackgroundPolicy;
       const rpcClientIds = yield* Ref.make(new Set<RpcClientId>());
@@ -2643,6 +2649,7 @@ const layerWsRpc = (
             ),
           ),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
+        [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsReadFile]: (input) =>
           workspaceFileSystem.readFile(input).pipe(
             Effect.mapError(
