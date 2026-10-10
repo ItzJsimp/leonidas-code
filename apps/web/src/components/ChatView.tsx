@@ -1,4 +1,5 @@
 import { deriveAgentActivity } from "../agentActivity";
+import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
 import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
 import type { ThreadGoalControl } from "@t3tools/contracts";
@@ -3636,6 +3637,14 @@ export default function ChatView(props: ChatViewProps) {
         ),
       ),
     [activeThreadLiveTokenUsage, serverVisibleTurnItems, serverProjection],
+  );
+  const activeVelocitySummary = useMemo(
+    () =>
+      deriveVelocitySummary(
+        serverProjection?.providerTurns ?? [],
+        serverVisibleTurnItems?.map((row) => row.item) ?? [],
+      ),
+    [serverProjection?.providerTurns, serverVisibleTurnItems],
   );
   const pendingBackgroundTasks = useMemo(() => {
     if (serverProjection === null || serverProjection === undefined) {
@@ -11818,6 +11827,7 @@ export default function ChatView(props: ChatViewProps) {
                                 activeProjectDefaultModelSelection
                               }
                               activeThreadModelSelection={activeThread?.modelSelection}
+                              activeVelocitySummary={activeVelocitySummary}
                               activeContextWindow={activeContextWindow}
                               activeTasksProgress={activeComposerTasksProgress}
                               activeTaskSteps={activeComposerTaskSteps}

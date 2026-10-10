@@ -7,6 +7,10 @@ import {
   UPDATE_WHEN_SAFE_WAITING_LABEL,
 } from "./desktopUpdate.logic";
 import { toastManager } from "./ui/toast";
+import {
+  MOB_NOTIFICATION_TEST_MESSAGE,
+  playTestSound,
+} from "./desktop/LeonidasMobNotificationNotice";
 
 type DesktopUpdateShell = Pick<DesktopBridge, "openExternal">;
 
@@ -52,6 +56,7 @@ export function showDesktopUpdateDownloadedToast(
   state: DesktopUpdateState,
   actions: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void },
 ): void {
+  playTestSound();
   const version = getDesktopUpdateDownloadedVersion(state);
   const releaseUrl = getDesktopUpdateReleaseUrl(version);
   const toastId = toastManager.add({
@@ -59,7 +64,10 @@ export function showDesktopUpdateDownloadedToast(
     title: "Update ready",
     description: (
       <>
-        Leonidas Code{version ? ` ${version}` : ""} is ready to install.
+        <span>Leonidas Code{version ? ` ${version}` : ""} is ready to install.</span>
+        <div className="mt-1.5 p-2 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-medium text-xs leading-relaxed">
+          {MOB_NOTIFICATION_TEST_MESSAGE}
+        </div>
         {releaseUrl ? <ReleaseNotesLink releaseUrl={releaseUrl} shell={shell} /> : null}
       </>
     ),

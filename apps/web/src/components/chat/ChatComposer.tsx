@@ -297,6 +297,8 @@ import {
   renderProviderTraitsMenuContent,
   renderProviderTraitsPicker,
 } from "./composerProviderState";
+import { AgentVelocityMeter } from "./AgentVelocityMeter";
+import type { VelocitySummary } from "./AgentVelocityMeter.logic";
 import { ContextWindowMeter, ContextWindowMeterPlaceholder } from "./ContextWindowMeter";
 import {
   providerSupportsManualCompaction,
@@ -1359,6 +1361,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
 const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(props: {
   compact: boolean;
   canOperateThread: boolean;
+  activeVelocitySummary?: VelocitySummary | null | undefined;
   activeContextWindow: ContextWindowSnapshot | null;
   reserveContextWindowMeter: boolean;
   activeThreadModelDisplayName: string | null;
@@ -1398,6 +1401,9 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
 }) {
   return (
     <>
+      {props.activeVelocitySummary ? (
+        <AgentVelocityMeter summary={props.activeVelocitySummary} />
+      ) : null}
       {props.activeContextWindow ? (
         <ContextWindowMeter
           usage={props.activeContextWindow}
@@ -1613,6 +1619,7 @@ export interface ChatComposerProps {
   reportedModelSelection?: ModelSelection | null;
 
   // Context window
+  activeVelocitySummary?: VelocitySummary | null | undefined;
   activeContextWindow: ContextWindowSnapshot | null;
   compactThreadUnavailable: boolean;
   compactDisabled: boolean;
@@ -7680,6 +7687,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
+                    activeVelocitySummary={props.activeVelocitySummary}
                     activeContextWindow={
                       settings.contextWindowMeterEnabled ? activeContextWindow : null
                     }
