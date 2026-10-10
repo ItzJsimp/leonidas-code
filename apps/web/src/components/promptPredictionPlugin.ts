@@ -58,15 +58,19 @@ export function createPromptPredictionPlugin(options: {
           Decoration.widget(
             state.selection.from,
             () => {
-              const span = document.createElement("span");
-              span.className = "pointer-events-none text-placeholder/75";
-              span.setAttribute("aria-hidden", "true");
-              span.textContent = suggestion;
-              const hint = document.createElement("span");
-              hint.className = "ml-2 text-xs";
-              hint.textContent = "Tab";
-              span.append(hint);
-              return span;
+              const wrapper = document.createElement("span");
+              wrapper.className = "pointer-events-none select-none";
+              wrapper.setAttribute("aria-hidden", "true");
+              const ghost = document.createElement("span");
+              ghost.className = "text-placeholder/75";
+              ghost.textContent = suggestion;
+              // Keycap, outside the ghost text: it is chrome, never part of what Tab inserts.
+              const keycap = document.createElement("kbd");
+              keycap.className =
+                "ml-3 inline-flex h-[18px] -translate-y-px items-center rounded border border-border bg-muted px-1.5 align-middle font-mono text-[10px] font-semibold leading-none text-muted-foreground shadow-[0_1px_0_0_var(--color-border)]";
+              keycap.textContent = "Tab";
+              wrapper.append(ghost, keycap);
+              return wrapper;
             },
             { side: 1, key: suggestion, ignoreSelection: true },
           ),
