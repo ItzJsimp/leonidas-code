@@ -18,7 +18,7 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - [x] Prompt predictor: ghost text of the prompt the user is most likely to send next, built from the user's own Leonidas Scribe `history.jsonl` (filtered to agent apps), Tab accepts, nothing is typed until Tab. Port of Jake's Claude Code mod `voice-predict`
 - [x] Rebrand to Leonidas Code as a thin layer (name, icons, window title, installer, About). Keep the MIT notice. Internal ids stay (`@t3tools/*`, `T3CODE_*`, `~/.t3`, app id `com.t3tools.t3code`) so data survives and old installs upgrade in place
 - [ ] Leonidas shell: Command Center views as a tab; Scribe stays a tray app with a localhost API
-- [ ] Dev instance isolation: agents test on a separate dev app (own profile and ports) and never restart the live app; small safe changes (theme CSS) apply live
+- [x] Dev instance isolation: agents test on a separate dev app (own profile and ports) and never restart the live app; Settings theme changes apply live, source CSS refreshes in dev and installed assets ship through releases
 - [ ] Agent activity bar: a live sliver above the composer (current step, step count, elapsed, file chips) that expands to the full plan, next steps, files and reasoning; updates instantly when the plan changes
 - [ ] Limit failover: when one provider subscription hits its limit, another provider (for example Codex) takes over the same chat in one click, using the existing context handoff
 
@@ -57,6 +57,8 @@ Paste this to your Claude in any folder:
 That sets rebase pulls, links your AIOS identity, installs the latest Leonidas Code (replacing any T3 Code install and shortcuts) and launches it. Right-click its taskbar icon and pick Pin to taskbar. After that: code changes arrive by the auto-pull at each Claude session start; app changes arrive as the in-app update toast after every push to `main`.
 
 ## Status log (newest first, one line per session, who and what)
+
+- 2026-10-10 Mob's agent: verified installed and dev desktop windows coexist with separate profiles, checkout-local server state and ports. Source CSS hot refresh and removal worked in Electron without restarting; closing dev left the installed app running. Accepted live-edit scope: Settings themes, with source CSS confined to dev. Isolation fix and acceptance records remain local; no push authorized.
 - 2026-10-10 Mob's agent: implemented local-history prompt prediction with bounded cached reads, Tab acceptance, Escape dismissal, Undo and a settings switch. Scoped checks pass; published to main, live client verification pending.
 - 2026-10-10 Jake's agent: repo moved into the AIOS at `projects/leonidas-code/` (own git repo, AIOS-gitignored) with the project workspace layer: `CLAUDE.md`, `project.md`, `agent-playbook.md`, `project/` docs. Same path on every machine; clone there. Re-run `pnpm install` and re-approve the `claude` import dialog after any move.
 - 2026-10-10 Jake's agent: rebranded to Leonidas Code (name, icons, sidebar, installer, branch prefix `leonidas`), added auto-pull hook and `scripts/leonidas-setup.ps1`. Ships as `v1.0.2`.
