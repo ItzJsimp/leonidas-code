@@ -39,3 +39,11 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 
 ## Status log (newest first, one line per session, who and what)
 - 2026-10-09 Jake's agent: merged Mob's `mob-base` into `main`, added the release workflow, wrote this file. `v1.0.1` is published.
+
+## Load your own AIOS on top (each person, once per machine)
+Select this repo folder in T3 Code. To also load your own AI operating system's identity in these sessions:
+1. Create `CLAUDE.local.md` in the repo root containing `@<path to your AIOS>/CLAUDE.md` (forward slashes, a backslash before every space, for example `@D:/Mob\ AIOS/CLAUDE.md`). Optionally add a second line importing your AIOS's playbook for this project.
+2. Make it local only: `mkdir -p .git/info` then add `CLAUDE.local.md` to `.git/info/exclude`.
+3. Run `claude` once in this folder and answer Yes to the external imports dialog. Without that approval the imports silently do not load.
+4. Check: ask an agent in a new session to quote a line that only your AIOS canon contains.
+Redo step 3 if the folder is moved or renamed. Never commit `CLAUDE.local.md`; it holds your own paths.
