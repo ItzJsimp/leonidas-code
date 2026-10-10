@@ -11,7 +11,10 @@ created: 2026-10-09
 verified: 2026-10-10
 tasks:
   - "tasks/approve-and-verify-the-aios-identity-link-in-the-t3-repo-then-roll-it-out-to-mob.md"
+  - "tasks/leonidas-code-agent-activity-bar-live-sliver-above-the-composer-that-expands-into-plan-steps-files-and-reasoning.md"
+  - "tasks/leonidas-code-dev-instance-isolation-and-hot-safe-live-edits.md"
   - "tasks/leonidas-code-goal-loop-keep-a-thread-working-until-a-verified-condition-holds.md"
+  - "tasks/leonidas-code-limit-failover-when-one-subscription-hits-its-limit-another-provider-takes-over-the-same-chat-in-one-click.md"
   - "tasks/leonidas-code-settings-parity-for-jake-and-mob.md"
   - "tasks/move-leonidas-code-repo-into-projectsleonidas-code-with-the-project-template.md"
   - "tasks/t3-code-prompt-predictor-from-scribe-transcripts.md"
