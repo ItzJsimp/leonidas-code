@@ -1,0 +1,60 @@
+name: Team release
+
+# Jake + Mob fork: every push to main builds the Windows installer and publishes it as a
+# GitHub Release (version 1.0.<run_number>, plain semver so it lands on the "latest" update
+# channel). The desktop app's own electron-updater polls this repo and shows the update toast.
+# The upstream workflows are disabled in the repo's Actions settings (they need upstream
+# runners and secrets); this is the only one that runs.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: team-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows x64 installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      VERSION: 1.0.${{ github.run_number }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: false
+
+      - run: vp install
+
+      - run: node scripts/update-release-package-versions.ts "$VERSION"
+
+      - name: Build JS bundle
+        run: vp run build:desktop
+
+      # No --wsl-runtime: it is optional and only powers the WSL backend. No signing: installs
+      # show a one-time SmartScreen warning, updates still apply.
+      - name: Build Windows installer
+        run: vp run dist:desktop:artifact --platform win --target nsis --arch x64 --build-version "$VERSION" --skip-build --verbose
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la release
+          gh release create "v$VERSION" release/*.exe release/*.blockmap release/latest.yml \
+            --title "v$VERSION" --notes "Built from ${GITHUB_SHA::7}" --latest
