@@ -930,7 +930,9 @@ export const make = Effect.gen(function* () {
       }
       yield* Ref.set(updaterConfiguredRef, true);
 
-      yield* electronUpdater.setAutoDownload(false);
+      // Download in the background as soon as an update is found. The
+      // download-progress and update-downloaded handlers drive the state machine.
+      yield* electronUpdater.setAutoDownload(true);
       yield* electronUpdater.setAutoInstallOnAppQuit(false);
       yield* applyAutoUpdaterChannel(settings.updateChannel);
       yield* electronUpdater.setDisableDifferentialDownload(

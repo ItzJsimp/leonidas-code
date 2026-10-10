@@ -11,6 +11,7 @@ import {
   getDesktopUpdateReleaseUrl,
   isDesktopUpdateButtonDisabled,
   resolveDesktopUpdateButtonAction,
+  resolveUpdateWhenSafeAction,
   shouldShowArm64IntelBuildWarning,
   shouldToastDesktopUpdateActionResult,
 } from "./desktopUpdate.logic";
@@ -280,6 +281,17 @@ describe("desktop update UI helpers", () => {
     ).toBe(
       "Install update 1.1.0 and restart Leonidas Code?\n\nAny running tasks will be interrupted. Make sure you're ready before continuing.",
     );
+  });
+});
+
+describe("resolveUpdateWhenSafeAction", () => {
+  it.each([
+    [0, false, "none"],
+    [3, false, "none"],
+    [2, true, "wait"],
+    [0, true, "install"],
+  ] as const)("with %i running and flag %s resolves to %s", (running, flag, expected) => {
+    expect(resolveUpdateWhenSafeAction(running, flag)).toBe(expected);
   });
 });
 

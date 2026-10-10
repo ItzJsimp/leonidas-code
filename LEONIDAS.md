@@ -2,8 +2,11 @@
 
 Read this first if you are an agent working in this repo. It is the shared brief for both machines. Jake's and Mob's private notes live in their own AI operating systems and are not visible here, so anything both sides need goes in this file.
 
-## What we are building
-**Leonidas Code**, our own app (it started as a fork of T3 Code and keeps diverging): the one app that replaces the Claude Code and Antigravity front ends for both of us, running on our own AI subscriptions, with extra built-in tools. Upstream is `pingdotgg/t3code` (MIT). Keep the original MIT notice and credit in `LICENSE`.
+## What Leonidas Code is (say it this way every time)
+- **T3 Code** is an open-source, MIT-licensed AI coding harness by T3 Tools (`pingdotgg/t3code`). We forked it.
+- **Leonidas Code** is our own product built from that fork by Jake and Mob, repo `ItzJsimp/leonidas-code`. It is not T3 Code: it gets its own features and direction, and it ships inside the **Leonidas app** we are building at the same time.
+- It replaces the Claude Code and Antigravity front ends for both of us, running on our own AI subscriptions, with extra built-in tools.
+- Credit stays: keep the original MIT notice in `LICENSE`. Say "T3 Code" only when talking about upstream (merges, credit, internal ids like `@t3tools/*`, `T3CODE_*`, `~/.t3` that stay for data safety). Everywhere a user sees the app, it is Leonidas Code.
 
 ## Roadmap (in order, tick when merged to main)
 - [x] Shared repo, based on Mob's build (branch `mob-base`, now `main`)
@@ -39,7 +42,7 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 
 ## New machine setup (Mob: do this once)
 Paste this to your Claude in any folder:
-> Clone https://github.com/ItzJsimp/t3code to a sibling folder of my AIOS (if not already cloned), then run `pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "<path to my AIOS>/CLAUDE.md"` from the clone, then run `claude` once in the clone so I can approve the import dialog.
+> Clone https://github.com/ItzJsimp/leonidas-code to a sibling folder of my AIOS (if not already cloned), then run `pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "<path to my AIOS>/CLAUDE.md"` from the clone, then run `claude` once in the clone so I can approve the import dialog.
 
 That sets rebase pulls, links your AIOS identity, installs the latest Leonidas Code (replacing any T3 Code install and shortcuts) and launches it. Right-click its taskbar icon and pick Pin to taskbar. After that: code changes arrive by the auto-pull at each Claude session start; app changes arrive as the in-app update toast after every push to `main`.
 

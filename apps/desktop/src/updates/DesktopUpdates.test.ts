@@ -76,6 +76,7 @@ describe("DesktopUpdates", () => {
             { provider: "generic", url: "http://localhost:4141" },
           ]);
           assert.equal(harness.listenerCount(), 6);
+          assert.equal(harness.autoDownload(), true);
           assert.equal(harness.checkCount(), 0);
 
           yield* TestClock.adjust(Duration.millis(15_000));

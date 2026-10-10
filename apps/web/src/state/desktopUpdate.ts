@@ -6,6 +6,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as AsyncResult from "effect/reactivity/AsyncResult";
 import { Atom } from "effect/reactivity";
+import { create } from "zustand";
 
 type DesktopUpdateBridge = Pick<DesktopBridge, "getUpdateState" | "onUpdateState">;
 
@@ -80,6 +81,15 @@ export function createDesktopUpdateStateAtom(getBridge: () => DesktopUpdateBridg
 }
 
 const desktopUpdateStateAtom = createDesktopUpdateStateAtom(getDesktopUpdateBridge);
+
+/** True once the user chose "Update when safe"; DesktopUpdateCoordinator acts on it. */
+export const useUpdateWhenSafeStore = create<{
+  readonly updateWhenSafe: boolean;
+  readonly setUpdateWhenSafe: (updateWhenSafe: boolean) => void;
+}>()((set) => ({
+  updateWhenSafe: false,
+  setUpdateWhenSafe: (updateWhenSafe) => set({ updateWhenSafe }),
+}));
 
 export function useDesktopUpdateState(): DesktopUpdateState | null {
   return AsyncResult.getOrElse(useAtomValue(desktopUpdateStateAtom), () => null);

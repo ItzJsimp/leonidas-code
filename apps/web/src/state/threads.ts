@@ -68,6 +68,26 @@ function isDetailDone<E>(result: AsyncResult.AsyncResult<EnvironmentThreadState,
   );
 }
 
+// Keeps its identity until a thread starts or stops, so ordinary shell
+// updates do not rebuild the keep-alive set.
+function createRunningThreadIdsAtom(
+  threadsAtom: (
+    environmentId: EnvironmentId,
+  ) => Atom.Atom<ReadonlyArray<Pick<OrchestrationV2ThreadShell, "id" | "status">>>,
+) {
+  return Atom.family((environmentId: EnvironmentId) => {
+    let previous: ReadonlyArray<ThreadId> = [];
+    return Atom.make((get) => {
+      const running = get(threadsAtom(environmentId)).flatMap((thread) =>
+        isRunning(thread.status) ? [thread.id] : [],
+      );
+      if (arrayElementsEqual(previous, running)) return previous;
+      previous = running;
+      return running;
+    }).pipe(Atom.withLabel(`web-running-thread-ids:${environmentId}`));
+  });
+}
+
 /**
  * Keeps the thread state atom mounted for each running thread in the listed
  * environments. Mount the result; its value is only bookkeeping.
@@ -87,19 +107,7 @@ export function createRunningThreadKeepAliveAtom<E>(input: {
     threadId: ThreadId,
   ) => Atom.Atom<AsyncResult.AsyncResult<EnvironmentThreadState, E>>;
 }) {
-  // Keeps its identity until a thread starts or stops, so ordinary shell
-  // updates do not rebuild the keep-alive set.
-  const runningThreadIdsAtom = Atom.family((environmentId: EnvironmentId) => {
-    let previous: ReadonlyArray<ThreadId> = [];
-    return Atom.make((get) => {
-      const running = get(input.threadsAtom(environmentId)).flatMap((thread) =>
-        isRunning(thread.status) ? [thread.id] : [],
-      );
-      if (arrayElementsEqual(previous, running)) return previous;
-      previous = running;
-      return running;
-    }).pipe(Atom.withLabel(`web-running-thread-ids:${environmentId}`));
-  });
+  const runningThreadIdsAtom = createRunningThreadIdsAtom(input.threadsAtom);
 
   return Atom.make((get): KeptThreads => {
     const previous = Option.getOrUndefined(get.self<KeptThreads>());
@@ -126,11 +134,25 @@ export function createRunningThreadKeepAliveAtom<E>(input: {
   }).pipe(Atom.withLabel("web-running-thread-keep-alive"));
 }
 
+const enabledEnvironmentIdsAtom = Atom.map(environmentCatalog.catalogValueAtom, (catalog) => [
+  ...enabledEnvironmentIds(catalog),
+]);
+
 /** Mounted by `RunningThreadKeepAlive` on desktop, for every enabled environment. */
 export const runningThreadKeepAliveAtom = createRunningThreadKeepAliveAtom({
-  environmentIdsAtom: Atom.map(environmentCatalog.catalogValueAtom, (catalog) => [
-    ...enabledEnvironmentIds(catalog),
-  ]),
+  environmentIdsAtom: enabledEnvironmentIdsAtom,
   threadsAtom: environmentThreadShells.environmentThreadsAtom,
   stateAtom: environmentThreads.stateAtom,
 });
+
+const runningThreadIdsAtom = createRunningThreadIdsAtom(
+  environmentThreadShells.environmentThreadsAtom,
+);
+
+/** Threads preparing, starting, or running across every enabled environment. */
+export const runningThreadCountAtom = Atom.make((get) =>
+  get(enabledEnvironmentIdsAtom).reduce(
+    (count, environmentId) => count + get(runningThreadIdsAtom(environmentId)).length,
+    0,
+  ),
+).pipe(Atom.withLabel("web-running-thread-count"));

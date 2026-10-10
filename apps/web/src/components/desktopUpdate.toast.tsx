@@ -4,6 +4,7 @@ import { ArrowRightIcon } from "lucide-react";
 import {
   getDesktopUpdateDownloadedVersion,
   getDesktopUpdateReleaseUrl,
+  UPDATE_WHEN_SAFE_WAITING_LABEL,
 } from "./desktopUpdate.logic";
 import { toastManager } from "./ui/toast";
 
@@ -49,16 +50,46 @@ function ReleaseNotesLink({
 export function showDesktopUpdateDownloadedToast(
   shell: DesktopUpdateShell,
   state: DesktopUpdateState,
+  actions: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void },
 ): void {
-  const releaseUrl = getDesktopUpdateReleaseUrl(getDesktopUpdateDownloadedVersion(state));
-  toastManager.add({
+  const version = getDesktopUpdateDownloadedVersion(state);
+  const releaseUrl = getDesktopUpdateReleaseUrl(version);
+  const toastId = toastManager.add({
     type: "success",
-    title: "Update downloaded",
+    title: "Update ready",
     description: (
       <>
-        Restart the app from the update button to install it.
+        Leonidas Code{version ? ` ${version}` : ""} is ready to install.
         {releaseUrl ? <ReleaseNotesLink releaseUrl={releaseUrl} shell={shell} /> : null}
       </>
     ),
+    timeout: 0,
+    actionProps: {
+      children: "Restart now",
+      onClick: () => {
+        toastManager.close(toastId);
+        actions.onRestartNow();
+      },
+    },
+    data: {
+      actionLayout: "stacked-end",
+      secondaryActionProps: {
+        children: "Update when safe",
+        onClick: () => {
+          toastManager.close(toastId);
+          actions.onUpdateWhenSafe();
+        },
+      },
+    },
+  });
+}
+
+/** Shown while "Update when safe" waits on running agents; returns the id so the caller can close it. */
+export function showDesktopUpdateWaitingToast(onCancel: () => void) {
+  return toastManager.add({
+    type: "info",
+    title: UPDATE_WHEN_SAFE_WAITING_LABEL,
+    timeout: 0,
+    actionProps: { children: "Cancel", onClick: onCancel },
   });
 }

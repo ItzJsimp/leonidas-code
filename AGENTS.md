@@ -1,3 +1,5 @@
+> **Leonidas Code:** this repo is Leonidas Code, Jake and Mob's own product forked from T3 Code (MIT, `pingdotgg/t3code`). Read [LEONIDAS.md](./LEONIDAS.md) first. The T3 Code text below is upstream's engineering guide; its code rules apply, its product claims describe T3, not us.
+
 # T3 Code
 
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity) and serves web, desktop, and mobile clients.

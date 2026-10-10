@@ -6,7 +6,7 @@ import { isElectron } from "../../env";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
-import { useDesktopUpdateState } from "../../state/desktopUpdate";
+import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import {
   canCheckForUpdate,
@@ -18,8 +18,8 @@ import {
   resolveDesktopUpdateButtonAction,
   shouldShowArm64IntelBuildWarning,
   shouldToastDesktopUpdateActionResult,
+  UPDATE_WHEN_SAFE_WAITING_LABEL,
 } from "../desktopUpdate.logic";
-import { showDesktopUpdateDownloadedToast } from "../desktopUpdate.toast";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Popover, PopoverCreateHandle, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { SidebarMenuItem } from "../ui/sidebar";
@@ -143,13 +143,18 @@ function SidebarUpdateControl() {
     isDownloading,
     showCheckIcon,
   });
-  const tooltip = showUpdateDetails
-    ? state
-      ? getDesktopUpdateButtonTooltip(state)
-      : "Update available"
-    : showCheckIcon
-      ? "Checking for updates…"
-      : "Check for updates";
+  const updateWhenSafe = useUpdateWhenSafeStore((store) => store.updateWhenSafe);
+  const setUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setUpdateWhenSafe);
+  const isWaitingToUpdate = updateWhenSafe && action === "install";
+  const tooltip = isWaitingToUpdate
+    ? `${UPDATE_WHEN_SAFE_WAITING_LABEL}. Click to cancel.`
+    : showUpdateDetails
+      ? state
+        ? getDesktopUpdateButtonTooltip(state)
+        : "Update available"
+      : showCheckIcon
+        ? "Checking for updates…"
+        : "Check for updates";
   const disabled = showCheckIcon
     ? true
     : showUpdateDetails
@@ -178,15 +183,17 @@ function SidebarUpdateControl() {
     if (!bridge || !state) return;
     if (isInteractionDisabled) return;
 
+    if (isWaitingToUpdate) {
+      setUpdateWhenSafe(false);
+      return;
+    }
+
     setIsActionPending(true);
 
     if (action === "download") {
       void bridge
         .downloadUpdate()
         .then((result) => {
-          if (result.completed) {
-            showDesktopUpdateDownloadedToast(bridge, result.state);
-          }
           if (!shouldToastDesktopUpdateActionResult(result)) return;
           const actionError = getDesktopUpdateActionError(result);
           if (!actionError) return;
@@ -286,7 +293,14 @@ function SidebarUpdateControl() {
         );
       })
       .finally(() => setIsActionPending(false));
-  }, [action, isInteractionDisabled, prefersReducedMotion, state]);
+  }, [
+    action,
+    isInteractionDisabled,
+    isWaitingToUpdate,
+    prefersReducedMotion,
+    setUpdateWhenSafe,
+    state,
+  ]);
 
   const handleCheckAnimationIteration = useCallback(() => {
     setIsCheckAnimationLatched(

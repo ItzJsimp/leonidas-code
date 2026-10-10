@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { DesktopUpdateState } from "@t3tools/contracts";
 
 const testState = vi.hoisted(() => ({
-  addToast: vi.fn(),
+  addToast: vi.fn((_toast: unknown) => "toast-1"),
+  closeToast: vi.fn(),
 }));
 
 vi.mock("./ui/toast", () => ({
-  toastManager: { add: testState.addToast },
+  toastManager: { add: testState.addToast, close: testState.closeToast },
 }));
 
 import { showDesktopUpdateDownloadedToast } from "./desktopUpdate.toast";
@@ -32,6 +33,8 @@ function findReleaseNotesLink(node: ReactNode): ClickableElement | null {
   }
   return findReleaseNotesLink(element.props.children);
 }
+
+const noActions = { onRestartNow: vi.fn(), onUpdateWhenSafe: vi.fn() };
 
 function getDescription(): ReactNode {
   const toast = testState.addToast.mock.calls[0]?.[0] as { description?: ReactNode } | undefined;
@@ -62,13 +65,40 @@ function downloadedState(overrides: Partial<DesktopUpdateState> = {}): DesktopUp
 
 describe("showDesktopUpdateDownloadedToast", () => {
   beforeEach(() => {
-    testState.addToast.mockReset();
+    testState.addToast.mockClear();
+    testState.closeToast.mockClear();
+  });
+
+  it("offers Restart now and Update when safe, and stays open until acted on", () => {
+    const onRestartNow = vi.fn();
+    const onUpdateWhenSafe = vi.fn();
+
+    showDesktopUpdateDownloadedToast({ openExternal: vi.fn() }, downloadedState(), {
+      onRestartNow,
+      onUpdateWhenSafe,
+    });
+    const toast = testState.addToast.mock.calls[0]?.[0] as unknown as {
+      title: string;
+      timeout: number;
+      actionProps: { children: string; onClick: () => void };
+      data: { secondaryActionProps: { children: string; onClick: () => void } };
+    };
+
+    expect(toast.title).toBe("Update ready");
+    expect(toast.timeout).toBe(0);
+    expect(toast.actionProps.children).toBe("Restart now");
+    expect(toast.data.secondaryActionProps.children).toBe("Update when safe");
+    toast.actionProps.onClick();
+    toast.data.secondaryActionProps.onClick();
+    expect(onRestartNow).toHaveBeenCalledTimes(1);
+    expect(onUpdateWhenSafe).toHaveBeenCalledTimes(1);
+    expect(testState.closeToast).toHaveBeenCalledTimes(2);
   });
 
   it("opens the downloaded version's release notes", async () => {
     const openExternal = vi.fn().mockResolvedValue(true);
 
-    showDesktopUpdateDownloadedToast({ openExternal }, downloadedState());
+    showDesktopUpdateDownloadedToast({ openExternal }, downloadedState(), noActions);
     const link = findReleaseNotesLink(getDescription());
     link?.props.onClick?.();
     await vi.waitFor(() => {
@@ -86,6 +116,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     showDesktopUpdateDownloadedToast(
       { openExternal },
       downloadedState({ downloadedVersion: null }),
+      noActions,
     );
     findReleaseNotesLink(getDescription())?.props.onClick?.();
 
@@ -100,6 +131,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     showDesktopUpdateDownloadedToast(
       { openExternal: vi.fn() },
       downloadedState({ availableVersion: null, downloadedVersion: null }),
+      noActions,
     );
 
     expect(findReleaseNotesLink(getDescription())).toBeNull();
@@ -109,7 +141,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     ["returns false", vi.fn().mockResolvedValue(false)],
     ["rejects", vi.fn().mockRejectedValue(new Error("open failed"))],
   ])("shows an error when opening release notes %s", async (_description, openExternal) => {
-    showDesktopUpdateDownloadedToast({ openExternal }, downloadedState());
+    showDesktopUpdateDownloadedToast({ openExternal }, downloadedState(), noActions);
     findReleaseNotesLink(getDescription())?.props.onClick?.();
 
     await vi.waitFor(() => {

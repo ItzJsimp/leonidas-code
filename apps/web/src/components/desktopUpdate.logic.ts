@@ -104,6 +104,19 @@ export function getDesktopUpdateInstallConfirmationMessage(
   return `Install update${version ? ` ${version}` : ""} and restart Leonidas Code?\n\nAny running tasks will be interrupted. Make sure you're ready before continuing.`;
 }
 
+export const UPDATE_WHEN_SAFE_WAITING_LABEL = "Will update when agents finish";
+
+export type UpdateWhenSafeAction = "none" | "wait" | "install";
+
+/** "Update when safe" waits for running agents, then installs the moment none are left. */
+export function resolveUpdateWhenSafeAction(
+  runningCount: number,
+  updateWhenSafe: boolean,
+): UpdateWhenSafeAction {
+  if (!updateWhenSafe) return "none";
+  return runningCount > 0 ? "wait" : "install";
+}
+
 export function getDesktopUpdateActionError(result: DesktopUpdateActionResult): string | null {
   if (!result.accepted || result.completed) return null;
   if (typeof result.state.message !== "string") return null;

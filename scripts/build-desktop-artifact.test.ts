@@ -325,7 +325,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(defaultConfig, {
         provider: "github",
         owner: "ItzJsimp",
-        repo: "t3code",
+        repo: "leonidas-code",
         releaseType: "release",
       });
 

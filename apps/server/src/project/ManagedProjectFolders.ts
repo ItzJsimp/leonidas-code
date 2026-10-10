@@ -202,7 +202,7 @@ function namedProjectReadme(name: string): string {
     "",
     `# ${name}`,
     "",
-    "Created in [Leonidas Code](https://github.com/ItzJsimp/t3code).",
+    "Created in [Leonidas Code](https://github.com/ItzJsimp/leonidas-code).",
     "",
   ].join("\n");
 }

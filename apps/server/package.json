@@ -4,7 +4,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ItzJsimp/t3code",
+    "url": "https://github.com/ItzJsimp/leonidas-code",
     "directory": "apps/server"
   },
   "bin": {
