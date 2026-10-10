@@ -162,3 +162,9 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 
 - Don't verify with browsers or computer use unless the user explicitly agrees or requests it.
 - Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
+
+## Leonidas fork
+
+This is the Jake and Mob fork. Read [LEONIDAS.md](./LEONIDAS.md) first: roadmap, working rules and status log.
+
+@LEONIDAS.md
