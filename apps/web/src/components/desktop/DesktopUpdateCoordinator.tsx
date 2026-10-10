@@ -18,6 +18,7 @@ import {
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { playTestSound } from "./LeonidasMobNotificationNotice";
 import { LeonidasWhatsNewDialog } from "./LeonidasWhatsNewDialog";
+import { fetchLatestReleaseWhatsNew, onWhatsNewPreviewRequested } from "./whatsNewPreview";
 
 function toastInstallError(description: string) {
   toastManager.add(
@@ -50,8 +51,19 @@ export function DesktopUpdateCoordinator() {
   const [whatsNew, setWhatsNew] = useState<{
     readonly version: string;
     readonly items: ReadonlyArray<string>;
-    readonly actions: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void };
+    readonly actions?: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void };
   } | null>(null);
+
+  // Settings > About "Preview": same popup, real latest-release bullets, no install buttons.
+  useEffect(
+    () =>
+      onWhatsNewPreviewRequested(() => {
+        void fetchLatestReleaseWhatsNew().then(({ version, items }) =>
+          setWhatsNew({ version, items }),
+        );
+      }),
+    [],
+  );
 
   const downloadedVersion =
     state?.status === "downloaded" ? getDesktopUpdateDownloadedVersion(state) : null;
@@ -107,8 +119,8 @@ export function DesktopUpdateCoordinator() {
     <LeonidasWhatsNewDialog
       version={whatsNew.version}
       items={whatsNew.items}
-      onRestartNow={whatsNew.actions.onRestartNow}
-      onUpdateWhenSafe={whatsNew.actions.onUpdateWhenSafe}
+      onRestartNow={whatsNew.actions?.onRestartNow}
+      onUpdateWhenSafe={whatsNew.actions?.onUpdateWhenSafe}
       onClose={() => setWhatsNew(null)}
     />
   ) : null;

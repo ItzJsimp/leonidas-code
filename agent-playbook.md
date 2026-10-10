@@ -43,6 +43,7 @@ verified: 2026-10-10
 ## 5. Gotchas already paid for
 
 - **The popup bullets are the GitHub release body:** `team-release.yml` builds `notes.md` from commit subjects since the previous release (drops docs/chore/test/ci/sync/style, strips `feat:` prefixes, oldest first because `releaseNotes.ts` reverses and keeps the last 8). No notes means the old toast shows. Notes cover only the newest release, so skipped versions are not listed. The "Read more" links still point at `pingdotgg/t3code` releases (`DESKTOP_RELEASE_HISTORY_URL` in `desktopUpdate.logic.ts`, asserted in 3 test files).
+- **Test the popup any time:** Settings > About > "What's new popup" > Preview opens it with the latest published release's bullets and no install buttons (`desktop/whatsNewPreview.ts`). Every push to `main` ships to Mob through the same release feed.
 - **No `vp` on PATH:** run `node_modules/.bin/vp test run <files>` and `node_modules/.bin/tsc --noEmit -p .` from `apps/web`.
 
 - **Identity link needs a manual approval:** `CLAUDE.local.md` in the repo imports the user's AIOS, but external imports stay silently unloaded until `claude` is run once in the folder and the dialog is approved (per path, so redo after a rename). Escape spaces as `\ ` in `@` paths. Standard: [`project-standard.md`](../../standards/project-standard.md) section 9.

@@ -53,6 +53,7 @@ That sets rebase pulls, links your AIOS identity, installs the latest Leonidas C
 
 ## Status log (newest first, one line per session, who and what)
 
+- 2026-10-10 Jake's agent: Settings > About now has a "What's new popup" Preview button (shows the latest release's bullets), so either of us can test patch notes without waiting for an update.
 - 2026-10-10 Jake's agent: "What's new" popup: when an update downloads, a centered dialog lists what shipped (bullets from the GitHub release body, which `team-release.yml` now generates from commit subjects since the last release); falls back to the old toast when there are no notes. Restart now / Update when safe / Later. Local commit, not pushed.
 - 2026-10-10 Jake's agent: implemented Mob notification test (sound + unmissable persistent toast + confirmation dialog) on next update, and live agent velocity & token-throughput tracker (instantaneous TPS, rolling 5/10/20 step windows, tool cadence, sparkline). Verified with 35 tests passing and typecheck clean. Pushed to main for release.
 - 2026-10-10 Jake's agent: usage control redesign (context ring, hover summary, top-right panel, email mask) and Claude limits fix (null usage read is retryable, not "no limits"). Antigravity quota has no reachable source yet. Pushed to main as the next `v1.0.N`.

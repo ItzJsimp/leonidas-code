@@ -64,6 +64,7 @@ import {
   resolveDesktopUpdateButtonAction,
 } from "../../components/desktopUpdate.logic";
 import { checkForDesktopUpdateWithFeedback } from "../desktopUpdate.toast";
+import { requestWhatsNewPreview } from "../desktop/whatsNewPreview";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import {
@@ -446,6 +447,15 @@ function AboutVersionSection() {
             />
             {buttonTooltip ? <TooltipPopup>{buttonTooltip}</TooltipPopup> : null}
           </Tooltip>
+        }
+      />
+      <SettingsRow
+        title="What's new popup"
+        description="Preview the patch notes popup using the latest published release."
+        control={
+          <Button size="sm" variant="outline" onClick={requestWhatsNewPreview}>
+            Preview
+          </Button>
         }
       />
       {hasDesktopBridge ? (

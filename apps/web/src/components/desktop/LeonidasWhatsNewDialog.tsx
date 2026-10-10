@@ -14,8 +14,9 @@ import {
 export interface WhatsNewDialogProps {
   readonly version: string | null;
   readonly items: ReadonlyArray<string>;
-  readonly onRestartNow: () => void;
-  readonly onUpdateWhenSafe: () => void;
+  /** Omit both actions for a preview: the footer is then just Close. */
+  readonly onRestartNow?: (() => void) | undefined;
+  readonly onUpdateWhenSafe?: (() => void) | undefined;
   readonly onClose: () => void;
 }
 
@@ -41,25 +42,29 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
         </DialogPanel>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Later
+            {onRestartNow ? "Later" : "Close"}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              onUpdateWhenSafe();
-              onClose();
-            }}
-          >
-            Update when safe
-          </Button>
-          <Button
-            onClick={() => {
-              onClose();
-              onRestartNow();
-            }}
-          >
-            Restart now
-          </Button>
+          {onUpdateWhenSafe ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                onUpdateWhenSafe();
+                onClose();
+              }}
+            >
+              Update when safe
+            </Button>
+          ) : null}
+          {onRestartNow ? (
+            <Button
+              onClick={() => {
+                onClose();
+                onRestartNow();
+              }}
+            >
+              Restart now
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogPopup>
     </Dialog>
