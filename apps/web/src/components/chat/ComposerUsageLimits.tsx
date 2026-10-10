@@ -6,7 +6,7 @@ import { ensureLocalApi } from "../../localApi";
 import { Button } from "../ui/button";
 import { providerClients } from "../settings/providerDriverMeta";
 import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
-import { LimitWindows, ResetCredits } from "../usage/UsageLimits";
+import { LimitWindows, ResetCredits, resetCreditsSummary } from "../usage/UsageLimits";
 import { ComposerBanner } from "./ComposerBanner";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
 
@@ -44,6 +44,16 @@ function AccountSummary({ account }: { readonly account: UsageLimitsReport["acco
   );
 }
 
+/** The single account's label and plan, or the account count. */
+export function UsageLimitsSummary({ report }: { readonly report: UsageLimitsReport }) {
+  const [first] = report.accounts;
+  return report.accounts.length === 1 && first ? (
+    <AccountSummary account={first} />
+  ) : (
+    `${report.accounts.length} accounts`
+  );
+}
+
 /** The /usage-limits result as a composer notice: it stacks under warnings and dismisses like one. */
 export function usageLimitsBannerItem(
   id: string,
@@ -51,20 +61,13 @@ export function usageLimitsBannerItem(
   environmentId: EnvironmentId,
   onDismiss: () => void,
 ): ComposerBannerStackItem {
-  const [first] = report.accounts;
-  const single = report.accounts.length === 1 && first ? first : null;
-  const summary = single ? (
-    <AccountSummary account={single} />
-  ) : (
-    `${report.accounts.length} accounts`
-  );
   return {
     id,
     variant: "info",
     priority: "notice",
     icon: <GaugeIcon />,
     title: "Usage limits",
-    description: summary,
+    description: <UsageLimitsSummary report={report} />,
     dismissLabel: "Dismiss usage limits",
     onDismiss,
     children: <UsageLimitsBannerBody report={report} environmentId={environmentId} />,
@@ -78,60 +81,85 @@ function UsageLimitsBannerBody({
   readonly report: UsageLimitsReport;
   readonly environmentId: EnvironmentId;
 }) {
-  const now = Date.parse(report.createdAt);
   return (
     <ComposerBanner.Scroll>
       <ComposerBanner.Body className="flex flex-col gap-2 pt-1 pb-1.5 pe-2">
-        {report.accounts.map((account) => {
-          const resetCreditInput =
-            account.resetCreditInput ??
-            (account.instanceId ? { instanceId: account.instanceId } : undefined);
-          const notice = limitsNotice(account.limits);
-          const externalUsage = account.limits.externalUsage;
-          return (
-            <div key={account.id} className="flex min-w-0 flex-col gap-1">
-              {report.accounts.length > 1 ? (
-                <span className="truncate text-xs text-muted-foreground">
-                  <AccountSummary account={account} />
-                </span>
-              ) : null}
-              {notice ? (
-                <span className="text-xs text-muted-foreground">{notice}</span>
-              ) : (
-                <LimitWindows
-                  compact
-                  driver={account.driver}
-                  windows={account.limits.windows}
-                  now={now}
-                />
-              )}
-              {externalUsage ? (
-                <Button
-                  size="sm"
-                  variant="link"
-                  className="self-start"
-                  onClick={() => void ensureLocalApi().shell.openExternal(externalUsage.url)}
-                >
-                  Manage usage
-                </Button>
-              ) : null}
-              {resetCreditInput && account.limits.resetCredits ? (
-                <ResetCredits
-                  environmentId={environmentId}
-                  input={resetCreditInput}
-                  credits={account.limits.resetCredits}
-                  now={now}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-        {report.notices.map((notice) => (
-          <span key={notice} className="text-xs text-muted-foreground">
-            {notice}
-          </span>
-        ))}
+        <UsageLimitsAccounts report={report} environmentId={environmentId} />
       </ComposerBanner.Body>
     </ComposerBanner.Scroll>
+  );
+}
+
+/**
+ * Each account's windows, usage link and reset credits, then the report's
+ * notices. Inside a popover pass `redeemable={false}`: the redeem confirm is a
+ * dialog, and dialogs stack under popovers, so credits show as a summary only.
+ */
+export function UsageLimitsAccounts({
+  report,
+  environmentId,
+  redeemable = true,
+}: {
+  readonly report: UsageLimitsReport;
+  readonly environmentId: EnvironmentId;
+  readonly redeemable?: boolean;
+}) {
+  const now = Date.parse(report.createdAt);
+  return (
+    <>
+      {report.accounts.map((account) => {
+        const resetCreditInput =
+          account.resetCreditInput ??
+          (account.instanceId ? { instanceId: account.instanceId } : undefined);
+        const notice = limitsNotice(account.limits);
+        const externalUsage = account.limits.externalUsage;
+        return (
+          <div key={account.id} className="flex min-w-0 flex-col gap-1">
+            {report.accounts.length > 1 ? (
+              <span className="truncate text-xs text-muted-foreground">
+                <AccountSummary account={account} />
+              </span>
+            ) : null}
+            {notice ? (
+              <span className="text-xs text-muted-foreground">{notice}</span>
+            ) : (
+              <LimitWindows
+                compact
+                driver={account.driver}
+                windows={account.limits.windows}
+                now={now}
+              />
+            )}
+            {externalUsage ? (
+              <Button
+                size="sm"
+                variant="link"
+                className="self-start"
+                onClick={() => void ensureLocalApi().shell.openExternal(externalUsage.url)}
+              >
+                Manage usage
+              </Button>
+            ) : null}
+            {!redeemable && account.limits.resetCredits?.availableCount ? (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {resetCreditsSummary(account.limits.resetCredits, now)}
+              </span>
+            ) : redeemable && resetCreditInput && account.limits.resetCredits ? (
+              <ResetCredits
+                environmentId={environmentId}
+                input={resetCreditInput}
+                credits={account.limits.resetCredits}
+                now={now}
+              />
+            ) : null}
+          </div>
+        );
+      })}
+      {report.notices.map((notice) => (
+        <span key={notice} className="text-xs text-muted-foreground">
+          {notice}
+        </span>
+      ))}
+    </>
   );
 }

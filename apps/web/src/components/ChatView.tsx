@@ -3543,6 +3543,18 @@ export default function ChatView(props: ChatViewProps) {
   const usageLimitsOffered =
     activeProviderStatus !== null &&
     hasProviderUsageLimits(activeProviderStatus.driver, providerStatuses, usageLimitSources);
+  // The header's usage button follows the same offer as the command.
+  const headerUsageLimits = useMemo(
+    () =>
+      usageLimitsOffered && activeProviderInstanceId !== null
+        ? {
+            instanceId: activeProviderInstanceId,
+            providers: providerStatuses,
+            sources: usageLimitSources,
+          }
+        : null,
+    [activeProviderInstanceId, providerStatuses, usageLimitSources, usageLimitsOffered],
+  );
   // Answered locally from the last Limits snapshot; the agent never sees it.
   const openUsageLimits = useCallback(() => {
     const now = Date.now();
@@ -11311,6 +11323,7 @@ export default function ChatView(props: ChatViewProps) {
             onOpenThread={onOpenRelatedThread}
             rightPanelOpen={inlineRightPanelOwnsTitleBar}
             onNewThreadInProject={handleNewThreadInActiveProject}
+            usageLimits={headerUsageLimits}
             {...(activeDraftLogicalProjectKey
               ? { onOpenProjectSettings: handleOpenDraftProjectSettings }
               : {})}
