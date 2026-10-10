@@ -47,9 +47,18 @@ function tryResolveClaudeModelCatalog(
     const profile = decodeClaudeProfileAdapter(entry.profileAdapter ?? {});
     const adapter = decodeClaudeModelAdapter(entry.adapter ?? {});
     if (Option.isNone(profile) || Option.isNone(adapter)) return null;
+    const runtime = profile.value.claudeCode ?? {};
+    const model = ModelCatalog.catalogServerModel(resolved, entry);
+    const contextWindowTokens = runtime.fixedContextWindowTokens;
     models.push({
-      model: ModelCatalog.catalogServerModel(resolved, entry),
-      runtime: profile.value.claudeCode ?? {},
+      // Clients show `0 / <size>` before the first usage report from this.
+      model:
+        contextWindowTokens !== undefined &&
+        Number.isInteger(contextWindowTokens) &&
+        contextWindowTokens > 0
+          ? { ...model, contextWindowTokens }
+          : model,
+      runtime,
       compatibility: adapter.value.claudeCode ?? {},
     });
   }

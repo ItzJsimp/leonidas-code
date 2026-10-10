@@ -1,8 +1,8 @@
 import type {
-  ModelCapabilities,
   ModelSelection,
   ProviderInstanceId,
   ServerProvider,
+  ServerProviderModel,
   ServerProviderUsageWindow,
   UsageLimitSourceSnapshots,
 } from "@t3tools/contracts";
@@ -109,21 +109,23 @@ export function parseContextWindowSize(value: string): number | null {
 }
 
 /**
- * The window size a model's `contextWindow` option selects, for models that
- * offer the choice. Models with a fixed window do not expose its size to
- * clients, so they return null.
+ * The model's context window in tokens: the size its `contextWindow` option
+ * selects when it offers the choice, otherwise the fixed size the server sends.
  */
 export function contextWindowTokensForModel(
-  capabilities: ModelCapabilities | null | undefined,
+  model: Pick<ServerProviderModel, "capabilities" | "contextWindowTokens"> | null | undefined,
   selection: ModelSelection | null | undefined,
 ): number | null {
-  if (!capabilities) return null;
-  const descriptor = getProviderOptionDescriptors({
-    caps: capabilities,
-    selections: selection?.options,
-  }).find((candidate) => candidate.id === "contextWindow");
+  if (!model) return null;
+  const descriptor = model.capabilities
+    ? getProviderOptionDescriptors({
+        caps: model.capabilities,
+        selections: selection?.options,
+      }).find((candidate) => candidate.id === "contextWindow")
+    : undefined;
   const value = getProviderOptionCurrentValue(descriptor, selection);
-  return typeof value === "string" ? parseContextWindowSize(value) : null;
+  const selected = typeof value === "string" ? parseContextWindowSize(value) : null;
+  return selected ?? model.contextWindowTokens ?? null;
 }
 
 /**

@@ -83,6 +83,12 @@ export const ServerProviderModel = Schema.Struct({
   isDefault: Schema.optional(Schema.Boolean),
   isLegacy: Schema.optional(Schema.Boolean),
   capabilities: Schema.NullOr(ModelCapabilities),
+  /**
+   * The model's fixed context window in tokens, when the driver knows it.
+   * Absent for models whose window is a selectable option (the
+   * `contextWindow` descriptor carries it) and from older servers.
+   */
+  contextWindowTokens: Schema.optional(PositiveInt),
 });
 export type ServerProviderModel = typeof ServerProviderModel.Type;
 

@@ -4291,10 +4291,7 @@ export default function ChatView(props: ChatViewProps) {
     () =>
       withKnownContextWindow(
         activeContextWindow,
-        contextWindowTokensForModel(
-          providerSubagentCatalogModel?.capabilities,
-          activeThread?.modelSelection,
-        ),
+        contextWindowTokensForModel(providerSubagentCatalogModel, activeThread?.modelSelection),
       ),
     [activeContextWindow, activeThread?.modelSelection, providerSubagentCatalogModel],
   );

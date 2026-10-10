@@ -124,6 +124,11 @@ describe("Claude model catalog", () => {
     assert.isUndefined(
       resolveClaudeCatalogContextWindowTokens(catalog, { ...selection, model: "custom" }),
     );
+    // Clients get the fixed window on the model; a selectable window stays on its descriptor.
+    const sentModel = (slug: string) =>
+      catalog.models.find((entry) => entry.model.slug === slug)?.model;
+    assert.equal(sentModel("fixed")?.contextWindowTokens, 64_000);
+    assert.isUndefined(sentModel("synthetic")?.contextWindowTokens);
   });
 
   it("filters models at runtime-version boundaries and derives the upgrade message", () => {

@@ -81,7 +81,8 @@ describe("usage limits popover helpers", () => {
     expect(parseContextWindowSize("1m")).toBe(1_000_000);
     expect(parseContextWindowSize("200k")).toBe(200_000);
     expect(parseContextWindowSize("high")).toBeNull();
-    const capabilities = {
+    const model = {
+      capabilities: {
       optionDescriptors: [
         {
           id: "contextWindow",
@@ -93,16 +94,26 @@ describe("usage limits popover helpers", () => {
           ],
         },
       ],
+      },
     };
-    expect(contextWindowTokensForModel(capabilities, undefined)).toBe(1_000_000);
+    expect(contextWindowTokensForModel(model, undefined)).toBe(1_000_000);
     expect(
-      contextWindowTokensForModel(capabilities, {
+      contextWindowTokensForModel(model, {
         instanceId: "claudeAgent" as never,
         model: "claude-sonnet-4-6",
         options: [{ id: "contextWindow", value: "200k" }],
       }),
     ).toBe(200_000);
-    expect(contextWindowTokensForModel({ optionDescriptors: [] }, undefined)).toBeNull();
+    expect(
+      contextWindowTokensForModel({ capabilities: { optionDescriptors: [] } }, undefined),
+    ).toBeNull();
+    expect(
+      contextWindowTokensForModel(
+        { capabilities: { optionDescriptors: [] }, contextWindowTokens: 1_000_000 },
+        undefined,
+      ),
+    ).toBe(1_000_000);
+    expect(contextWindowTokensForModel(undefined, undefined)).toBeNull();
   });
 
   it("fills in the model window before the first usage report", () => {
