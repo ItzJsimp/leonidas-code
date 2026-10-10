@@ -266,6 +266,16 @@ import {
   PreviewSessionSnapshot,
 } from "./preview.ts";
 import {
+  LocalVmConnectInput,
+  LocalVmPauseInput,
+  LocalVmTarget,
+  LocalVmInput,
+  LocalVmState,
+  LocalVmSession,
+  LocalVmScreenshotResult,
+  LocalVmError,
+} from "./localVm.ts";
+import {
   DeviceActionInput,
   DeviceCloseInput,
   DeviceConfigureInput,
@@ -449,6 +459,12 @@ export const WS_METHODS = {
   previewReportProfiles: "preview.reportProfiles",
   previewReportStatus: "preview.reportStatus",
 
+  localVmList: "localVm.list",
+  localVmConnect: "localVm.connect",
+  localVmPause: "localVm.pause",
+  localVmRelease: "localVm.release",
+  localVmScreenshot: "localVm.screenshot",
+  localVmInput: "localVm.input",
   // Device methods
   deviceConfigure: "device.configure",
   deviceList: "device.list",
@@ -1512,6 +1528,40 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
   stream: true,
 });
 
+const WsLocalVmListRpc = Rpc.make(WS_METHODS.localVmList, {
+  payload: Schema.Struct({ inspect: Schema.optional(Schema.Boolean) }),
+  success: LocalVmState,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmConnectRpc = Rpc.make(WS_METHODS.localVmConnect, {
+  payload: LocalVmConnectInput,
+  success: LocalVmSession,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmPauseRpc = Rpc.make(WS_METHODS.localVmPause, {
+  payload: LocalVmPauseInput,
+  success: LocalVmSession,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmReleaseRpc = Rpc.make(WS_METHODS.localVmRelease, {
+  payload: LocalVmTarget,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmScreenshotRpc = Rpc.make(WS_METHODS.localVmScreenshot, {
+  payload: LocalVmTarget,
+  success: LocalVmScreenshotResult,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmInputRpc = Rpc.make(WS_METHODS.localVmInput, {
+  payload: LocalVmInput,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
 const WsDeviceTestHostRpc = Rpc.make(WS_METHODS.deviceTestHost, {
   payload: SshDeviceHostConfig,
   success: DeviceHostSummary,
@@ -1976,6 +2026,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsPreviewReportStatusRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
+  WsLocalVmListRpc,
+  WsLocalVmConnectRpc,
+  WsLocalVmPauseRpc,
+  WsLocalVmReleaseRpc,
+  WsLocalVmScreenshotRpc,
+  WsLocalVmInputRpc,
   WsDeviceConfigureRpc,
   WsDeviceListRpc,
   WsDeviceTestHostRpc,

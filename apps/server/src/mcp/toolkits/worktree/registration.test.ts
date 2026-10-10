@@ -1,5 +1,6 @@
 import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "../../../orchestration-v2/ProjectionStore.ts";
+import * as LocalVmService from "../../../localVm/LocalVmService.ts";
 import * as DeviceService from "../../../device/DeviceService.ts";
 import * as ServerConfig from "../../../config.ts";
 import { expect, it } from "@effect/vitest";
@@ -38,6 +39,15 @@ const layerStubServices = Layer.mergeAll(
   Layer.mock(Orchestrator.OrchestratorV2)({}),
   Layer.mock(ProjectionStore.ProjectionStoreV2)({}),
   Layer.mock(DeviceService.DeviceService)({}),
+  Layer.mock(LocalVmService.LocalVmService)({
+    screenshot: ({ threadId }) => {
+      expect(threadId).toBe("thread-scratch");
+      return Effect.succeed({
+        session: { threadId, vmId: "test-vm", paused: true },
+        screenshot: { mimeType: "image/png", width: 1, height: 1, data: "iVBORw0KGgo=" },
+      });
+    },
+  }),
   Layer.mock(ThreadManagementService.ThreadManagementService)({}),
   Layer.mock(ProviderRegistry.ProviderRegistry)({}),
   Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({}),
@@ -77,6 +87,23 @@ const ToolsListPayload = Schema.fromJsonString(
   }),
 );
 const decodeToolsListPayload = Schema.decodeUnknownEffect(ToolsListPayload);
+const decodeImagePayload = Schema.decodeUnknownEffect(
+  Schema.fromJsonString(
+    Schema.Struct({
+      result: Schema.Struct({
+        isError: Schema.Boolean,
+        content: Schema.Array(
+          Schema.Struct({
+            type: Schema.String,
+            data: Schema.optional(Schema.String),
+            mimeType: Schema.optional(Schema.String),
+            text: Schema.optional(Schema.String),
+          }),
+        ),
+      }),
+    }),
+  ),
+);
 
 it.effect("production mcp layer lists worktree tools over http", () =>
   Effect.scoped(
@@ -137,6 +164,11 @@ it.effect("production mcp layer lists worktree tools over http", () =>
       const toolNames = tools.map((tool) => tool.name);
       expect(toolNames).toContain("t3_worktree_handoff");
       expect(toolNames).toContain("t3_worktree_status");
+      expect(toolNames).toContain("local_vm_list");
+      expect(toolNames).toContain("local_vm_input");
+      expect(toolNames).toContain("local_vm_screenshot");
+      expect(toolNames).not.toContain("local_vm_connect");
+      expect(toolNames).not.toContain("local_vm_pause");
       // The worktree registration merges alongside the other toolkits rather
       // than replacing them.
       expect(toolNames).toContain("preview_status");
@@ -159,6 +191,30 @@ it.effect("production mcp layer lists worktree tools over http", () =>
       for (const tool of tools) {
         expect(tool.inputSchema.type, `inputSchema.type of ${tool.name}`).toBe("object");
       }
+
+      const imageResponse = yield* httpClient.post("/mcp", {
+        headers: {
+          accept: "application/json, text/event-stream",
+          authorization: auth,
+          "mcp-protocol-version": "2025-06-18",
+          ...(sessionId ? { "mcp-session-id": sessionId } : {}),
+        },
+        body: HttpBody.text(
+          '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"local_vm_screenshot","arguments":{}}}',
+          "application/json",
+        ),
+      });
+      const imageText = yield* imageResponse.text;
+      const image = yield* decodeImagePayload(imageText.match(/\{.*\}/s)![0]);
+      expect(image.result.isError).toBe(false);
+      expect(image.result.content.find((item) => item.type === "image")).toEqual({
+        type: "image",
+        mimeType: "image/png",
+        data: "iVBORw0KGgo=",
+      });
+      expect(image.result.content.find((item) => item.type === "text")?.text).not.toContain(
+        "iVBORw0KGgo=",
+      );
     }),
   ).pipe(
     Effect.provide(
