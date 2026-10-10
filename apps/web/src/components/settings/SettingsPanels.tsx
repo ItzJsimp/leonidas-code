@@ -63,6 +63,7 @@ import {
   isDesktopUpdateButtonDisabled,
   resolveDesktopUpdateButtonAction,
 } from "../../components/desktopUpdate.logic";
+import { checkForDesktopUpdateWithFeedback } from "../desktopUpdate.toast";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import {
@@ -380,8 +381,7 @@ function AboutVersionSection() {
     }
 
     if (typeof bridge.checkForUpdate !== "function") return;
-    void bridge
-      .checkForUpdate()
+    void checkForDesktopUpdateWithFeedback(bridge)
       .then((result) => {
         if (!result.checked) {
           toastManager.add(

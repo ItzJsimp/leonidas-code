@@ -8,6 +8,7 @@ import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
 import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import { stackedThreadToast, toastManager } from "../ui/toast";
+import { checkForDesktopUpdateWithFeedback } from "../desktopUpdate.toast";
 import {
   canCheckForUpdate,
   getArm64IntelBuildWarningDescription,
@@ -146,7 +147,7 @@ function SidebarUpdateControl() {
   const updateWhenSafe = useUpdateWhenSafeStore((store) => store.updateWhenSafe);
   const setUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setUpdateWhenSafe);
   const isWaitingToUpdate = updateWhenSafe && action === "install";
-  const tooltip = isWaitingToUpdate
+  const actionTooltip = isWaitingToUpdate
     ? `${UPDATE_WHEN_SAFE_WAITING_LABEL}. Click to cancel.`
     : showUpdateDetails
       ? state
@@ -154,7 +155,12 @@ function SidebarUpdateControl() {
         : "Update available"
       : showCheckIcon
         ? "Checking for updates…"
-        : "Check for updates";
+        : state?.status === "up-to-date"
+          ? "Up to date. Click to check again."
+          : "Check for updates";
+  const tooltip = state
+    ? `${actionTooltip} · Leonidas Code ${state.currentVersion}`
+    : actionTooltip;
   const disabled = showCheckIcon
     ? true
     : showUpdateDetails
@@ -270,8 +276,7 @@ function SidebarUpdateControl() {
       setIsCheckAnimationLatched(true);
       setCheckAnimationKey((key) => key + 1);
     }
-    void bridge
-      .checkForUpdate()
+    void checkForDesktopUpdateWithFeedback(bridge)
       .then((result) => {
         if (result.checked) return;
         toastManager.add(

@@ -5,6 +5,7 @@ import { SparklesIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
+import { ProviderLimitTooltip } from "./ProviderLimitTooltip";
 import {
   isProviderInstancePickerReady,
   shouldShowInstanceBadge,
@@ -70,6 +71,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
   };
   const showFavorites = props.showFavorites ?? true;
   const [hoveredInstanceId, setHoveredInstanceId] = useState<ProviderInstanceId | null>(null);
+  const [tooltipOpenedAt, setTooltipOpenedAt] = useState(() => Date.now());
   const sidebarContentRef = useRef<HTMLDivElement>(null);
   const [selectedIndicatorTop, setSelectedIndicatorTop] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -234,14 +236,21 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                 className="relative w-full"
                 data-model-picker-provider={entry.instanceId}
               >
-                <Tooltip>
+                <Tooltip
+                  onOpenChange={(open) => {
+                    if (open) setTooltipOpenedAt(Date.now());
+                  }}
+                >
                   <TooltipTrigger render={trigger} />
                   <TooltipPopup
                     side={PICKER_TOOLTIP_SIDE}
                     sideOffset={PICKER_TOOLTIP_SIDE_OFFSET}
                     align="center"
                   >
-                    {tooltip}
+                    <div className="flex flex-col gap-2">
+                      <span className="font-medium">{tooltip}</span>
+                      <ProviderLimitTooltip provider={entry.snapshot} now={tooltipOpenedAt} />
+                    </div>
                   </TooltipPopup>
                 </Tooltip>
               </div>

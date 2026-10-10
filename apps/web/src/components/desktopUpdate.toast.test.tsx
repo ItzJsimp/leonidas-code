@@ -11,7 +11,10 @@ vi.mock("./ui/toast", () => ({
   toastManager: { add: testState.addToast, close: testState.closeToast },
 }));
 
-import { showDesktopUpdateDownloadedToast } from "./desktopUpdate.toast";
+import {
+  checkForDesktopUpdateWithFeedback,
+  showDesktopUpdateDownloadedToast,
+} from "./desktopUpdate.toast";
 
 type ClickableElement = ReactElement<{ readonly onClick?: () => void }>;
 
@@ -150,5 +153,74 @@ describe("showDesktopUpdateDownloadedToast", () => {
         title: "Unable to open release notes",
       });
     });
+  });
+});
+
+describe("manual desktop update feedback", () => {
+  beforeEach(() => testState.addToast.mockClear());
+
+  it("confirms a delayed up-to-date event exactly once and releases the listener", async () => {
+    let listener: ((state: DesktopUpdateState) => void) | undefined;
+    const unsubscribe = vi.fn();
+    const state = downloadedState({ status: "up-to-date", currentVersion: "1.0.7" });
+    await checkForDesktopUpdateWithFeedback({
+      onUpdateState: (next) => {
+        listener = next;
+        return unsubscribe;
+      },
+      checkForUpdate: async () => ({ checked: true, state: { ...state, status: "checking" } }),
+    });
+    expect(testState.addToast).not.toHaveBeenCalled();
+    listener?.(state);
+    listener?.(state);
+    expect(testState.addToast).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        type: "success",
+        title: "You're up to date",
+        description: "Leonidas Code 1.0.7 is the latest version on the latest channel.",
+      }),
+    );
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("confirms the result even when the event arrives before the RPC resolves", async () => {
+    const state = downloadedState({ status: "up-to-date" });
+    let listener: ((state: DesktopUpdateState) => void) | undefined;
+    const unsubscribe = vi.fn();
+    await checkForDesktopUpdateWithFeedback({
+      onUpdateState: (next) => {
+        listener = next;
+        return unsubscribe;
+      },
+      checkForUpdate: async () => {
+        listener?.(state);
+        return { checked: true, state };
+      },
+    });
+    expect(testState.addToast).toHaveBeenCalledOnce();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("reports a failed check without claiming the app is up to date", async () => {
+    const unsubscribe = vi.fn();
+    await checkForDesktopUpdateWithFeedback({
+      onUpdateState: () => unsubscribe,
+      checkForUpdate: async () => ({
+        checked: true,
+        state: downloadedState({
+          status: "error",
+          errorContext: "check",
+          message: "Network unavailable",
+        }),
+      }),
+    });
+    expect(testState.addToast).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        type: "error",
+        title: "Could not check for updates",
+        description: "Network unavailable",
+      }),
+    );
+    expect(unsubscribe).toHaveBeenCalledOnce();
   });
 });

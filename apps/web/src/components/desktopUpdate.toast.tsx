@@ -93,3 +93,44 @@ export function showDesktopUpdateWaitingToast(onCancel: () => void) {
     actionProps: { children: "Cancel", onClick: onCancel },
   });
 }
+
+/** The updater can publish its terminal state after the check RPC resolves. */
+export async function checkForDesktopUpdateWithFeedback(
+  shell: Pick<DesktopBridge, "checkForUpdate" | "onUpdateState">,
+) {
+  let finished = false;
+  let unsubscribe = () => {};
+  const finish = (state: DesktopUpdateState) => {
+    if (finished || state.status === "checking" || state.status === "idle") return;
+    finished = true;
+    unsubscribe();
+    if (state.status === "up-to-date") {
+      toastManager.add({
+        type: "success",
+        title: "You're up to date",
+        description: `Leonidas Code ${state.currentVersion} is the latest version on the ${state.channel} channel.`,
+      });
+    } else if (state.status === "error") {
+      toastManager.add({
+        type: "error",
+        title: "Could not check for updates",
+        description: state.message ?? "Update check failed.",
+      });
+    }
+  };
+  unsubscribe = shell.onUpdateState(finish);
+  if (finished) unsubscribe();
+  try {
+    const result = await shell.checkForUpdate();
+    if (result.checked) finish(result.state);
+    else {
+      finished = true;
+      unsubscribe();
+    }
+    return result;
+  } catch (error) {
+    finished = true;
+    unsubscribe();
+    throw error;
+  }
+}
