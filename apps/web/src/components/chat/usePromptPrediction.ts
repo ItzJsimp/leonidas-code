@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EnvironmentId } from "@t3tools/contracts";
-import type { PromptCandidate } from "@t3tools/shared/promptPrediction";
+import {
+  contextualPromptCandidates,
+  type PromptCandidate,
+  type PromptPredictionMessage,
+} from "@t3tools/shared/promptPrediction";
 import { createEnvironmentRpcQueryAtomFamily } from "@t3tools/client-runtime/state/runtime";
 import { WS_METHODS } from "@t3tools/contracts";
 import { connectionAtomRuntime } from "../../connection/runtime";
@@ -15,7 +19,12 @@ const query = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   idleTtlMs: 60_000,
 });
 
-export function usePromptPrediction(environmentId: EnvironmentId, cwd: string | null) {
+export function usePromptPrediction(
+  environmentId: EnvironmentId,
+  cwd: string | null,
+  messages: readonly PromptPredictionMessage[],
+  running: boolean,
+) {
   const [result, setResult] = useState<{
     environmentId: EnvironmentId;
     cwd: string;
@@ -52,7 +61,12 @@ export function usePromptPrediction(environmentId: EnvironmentId, cwd: string | 
       window.removeEventListener("focus", refresh);
     };
   }, [cwd, environmentId, run]);
-  return result?.environmentId === environmentId && result.cwd === cwd
-    ? result.candidates
-    : EMPTY_CANDIDATES;
+  const history =
+    result?.environmentId === environmentId && result.cwd === cwd
+      ? result.candidates
+      : EMPTY_CANDIDATES;
+  return useMemo(
+    () => (cwd && !running ? contextualPromptCandidates(history, messages) : EMPTY_CANDIDATES),
+    [cwd, running, history, messages],
+  );
 }

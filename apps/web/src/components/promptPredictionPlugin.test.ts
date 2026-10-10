@@ -4,14 +4,15 @@ import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { history, undo } from "@tiptap/pm/history";
 import type { EditorView } from "@tiptap/pm/view";
 import { createPromptPredictionPlugin, promptPredictionKey } from "./promptPredictionPlugin";
+import { contextualPromptCandidates, type PromptCandidate } from "@t3tools/shared/promptPrediction";
 
 const schema = new Schema({
   nodes: { doc: { content: "paragraph+" }, paragraph: { content: "text*" }, text: {} },
 });
 const candidates = [{ text: "Run the tests", count: 2, lastSeen: 1 }];
-function setup(text = "Run", enabled = true) {
+function setup(text = "Run", enabled = true, source: readonly PromptCandidate[] = candidates) {
   const plugin = createPromptPredictionPlugin({
-    candidates: () => candidates,
+    candidates: () => source,
     enabled: () => enabled,
   });
   const doc = schema.node("doc", null, [
@@ -36,6 +37,20 @@ function setup(text = "Run", enabled = true) {
   return { view, key, plugin };
 }
 describe("prompt prediction editor", () => {
+  it("accepts the contextual next message with Tab and leaves sending to Enter", () => {
+    const source = contextualPromptCandidates(
+      [{ text: "yes", count: 20, lastSeen: 1 }],
+      [{ role: "assistant", text: "Recommended reply: Check the predictor tests." }],
+    );
+    const { view, key } = setup("", true, source);
+    expect(view.state.doc.textContent).toBe("");
+    expect(promptPredictionKey.getState(view.state)?.suggestion).toBe("Check the predictor tests.");
+    expect(key("Tab")).toBe(true);
+    expect(view.state.doc.textContent).toBe("Check the predictor tests.");
+    expect(key("Enter")).toBe(false);
+    undo(view.state, view.dispatch);
+    expect(view.state.doc.textContent).toBe("");
+  });
   it("keeps ghost text out of the draft until Tab, with one undo step", () => {
     const { view, key } = setup();
     expect(view.state.doc.textContent).toBe("Run");

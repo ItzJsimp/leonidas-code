@@ -2473,6 +2473,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const promptCandidates = usePromptPrediction(
     environmentId,
     settings.composerPromptPredictionEnabled ? gitCwd : null,
+    promptHistoryMessages,
+    canInterrupt,
   );
   const composerEditorRef = useRef<ComposerPromptEditorHandle>(null);
   const pasteAsTextShortcutUntilRef = useRef(0);

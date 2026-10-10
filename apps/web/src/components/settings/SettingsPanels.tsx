@@ -2745,7 +2745,7 @@ export function GeneralSettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("prompt-prediction")}
-          description="Suggest prompts from your local Scribe history. Tab accepts; Escape dismisses."
+          description="Suggest the next reply from this conversation and relevant past prompts. Tab accepts; Escape dismisses."
           control={
             <Switch
               checked={settings.composerPromptPredictionEnabled}

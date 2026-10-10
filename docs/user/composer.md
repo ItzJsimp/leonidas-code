@@ -14,8 +14,12 @@ to keep a large paste editable in the composer instead.
 
 ## Prompt prediction
 
-When local Scribe history is available, the composer suggests matching prompts as
-muted text. Press Tab to accept or Escape to dismiss until you edit the draft.
+The composer uses the current conversation to suggest an explicitly recommended
+reply or a relevant past prompt as muted text. Local Scribe history and earlier
+prompts in this thread supply completions as you type. Generic acknowledgements
+such as "yes" are excluded. If the conversation gives no relevant suggestion,
+the empty composer stays blank. Suggestions pause while the agent is working.
+Press Tab to accept or Escape to dismiss until you edit the draft.
 Suggestions never send a message. Disable Prompt prediction in Settings > General.
 Suggestions currently appear only in a single plain paragraph, outside command menus.
 
