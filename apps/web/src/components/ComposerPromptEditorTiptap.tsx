@@ -1,3 +1,5 @@
+import { createPromptPredictionPlugin, promptPredictionKey } from "./promptPredictionPlugin";
+import type { PromptCandidate } from "@t3tools/shared/promptPrediction";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { Extension, InputRule, Node, wrappingInputRule, type JSONContent } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
@@ -38,7 +40,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 
 import {
   clampCollapsedComposerCursor,
@@ -155,6 +157,7 @@ export interface ComposerPromptEditorProps {
   skills: ReadonlyArray<ServerProviderSkill>;
   disabled: boolean;
   placeholder: string;
+  predictionCandidates?: readonly PromptCandidate[] | undefined;
   ariaLabel?: string | undefined;
   /** Identifies an editor with suggestions, even while its list is closed. */
   suggestionListId?: string | undefined;
@@ -862,6 +865,10 @@ function ComposerPromptEditorTiptapInner(props: ComposerPromptEditorProps) {
   // The editor instance for callbacks created before it exists (paste).
   // Effects flush before any user interaction, so this is always set.
   const editorHolder = useRef<TiptapEditor | null>(null);
+  const predictionRef = useRef(props);
+  useLayoutEffect(() => {
+    predictionRef.current = props;
+  });
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -1468,6 +1475,29 @@ function ComposerPromptEditorTiptapInner(props: ComposerPromptEditorProps) {
   );
 
   useEffect(() => {
+    if (!editor) return;
+    editor.registerPlugin(
+      createPromptPredictionPlugin({
+        candidates: () => predictionRef.current.predictionCandidates ?? [],
+        enabled: () =>
+          !predictionRef.current.disabled &&
+          !predictionRef.current.literalText &&
+          !predictionRef.current.activeSuggestionId &&
+          editor.isFocused,
+      }),
+    );
+    return () => {
+      if (!editor.isDestroyed) editor.unregisterPlugin(promptPredictionKey);
+    };
+  }, [editor]);
+
+  const hasPrediction = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current ? Boolean(promptPredictionKey.getState(current.state)?.suggestion) : false,
+  });
+
+  useEffect(() => {
     editor?.setEditable(!disabled);
   }, [disabled, editor]);
 
@@ -1704,6 +1734,28 @@ function ComposerPromptEditorTiptapInner(props: ComposerPromptEditorProps) {
     [editor, focusAt, literalText, readSnapshot],
   );
 
+  useEffect(() => {
+    if (!editor) return;
+    const refresh = () => {
+      if (!editor.isDestroyed)
+        editor.view.dispatch(
+          editor.state.tr.setMeta(promptPredictionKey, {
+            candidates: props.predictionCandidates,
+            disabled,
+            literalText,
+            activeSuggestionId,
+          }),
+        );
+    };
+    refresh();
+    editor.on("focus", refresh);
+    editor.on("blur", refresh);
+    return () => {
+      editor.off("focus", refresh);
+      editor.off("blur", refresh);
+    };
+  }, [editor, props.predictionCandidates, disabled, literalText, activeSuggestionId]);
+
   const handleCopyCut = useCallback(
     (event: React.ClipboardEvent, cut: boolean) => {
       const build = buildFragmentRef.current;
@@ -1788,7 +1840,7 @@ function ComposerPromptEditorTiptapInner(props: ComposerPromptEditorProps) {
               onCopyCapture={(event) => handleCopyCut(event, false)}
               onCutCapture={(event) => handleCopyCut(event, true)}
             />
-            {isEmpty && contextRecords.size === 0 && placeholder ? (
+            {isEmpty && contextRecords.size === 0 && placeholder && !hasPrediction ? (
               <div
                 className={cn(
                   "pointer-events-none absolute inset-0 leading-relaxed text-placeholder/75",

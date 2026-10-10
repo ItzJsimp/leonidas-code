@@ -12,6 +12,18 @@ becomes an attachment when inserting it would exceed the message limit. On a
 hardware keyboard, use `Cmd+Shift+V` on Apple devices or `Ctrl+Shift+V` elsewhere
 to keep a large paste editable in the composer instead.
 
+## Prompt prediction
+
+When local Scribe history is available, the composer suggests matching prompts as
+muted text. Press Tab to accept or Escape to dismiss until you edit the draft.
+Suggestions never send a message. Disable Prompt prediction in Settings > General.
+Suggestions currently appear only in a single plain paragraph, outside command menus.
+
+The host checks sibling LeonidasAI and leonidas-scribe folders, then leonidas-scribe
+in your home folder. For another location, set LEONIDAS_SCRIBE_HISTORY to the full
+history.jsonl path when starting the host. History stays on the host; only a bounded
+list of agent-app prompts reaches connected clients with file-read permission.
+
 ## Formatting
 
 The composer writes Markdown and shows it styled as you type. Markers such as

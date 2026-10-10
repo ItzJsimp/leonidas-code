@@ -1,5 +1,6 @@
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import type { RelayManagedEndpointRuntimeConfig } from "@t3tools/contracts/relay";
+import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as Clock from "effect/Clock";
 import * as Random from "effect/Random";
 import * as Semaphore from "effect/Semaphore";
@@ -427,6 +428,7 @@ const layerWorkspaceFileSystem = WorkspaceFileSystem.layer.pipe(
 );
 
 const layerWorkspace = Layer.mergeAll(
+  PromptPrediction.layer,
   WorkspacePaths.layer,
   layerWorkspaceEntries,
   layerWorkspaceFileSystem,

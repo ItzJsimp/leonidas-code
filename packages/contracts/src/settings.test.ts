@@ -93,6 +93,15 @@ describe("storage cleanup settings", () => {
   });
 });
 
+describe("ClientSettings prompt prediction", () => {
+  it("defaults to enabled and preserves an explicit opt-out through patches and persistence", () => {
+    expect(decodeClientSettings({}).composerPromptPredictionEnabled).toBe(true);
+    const preference = { composerPromptPredictionEnabled: false };
+    expect(decodeClientSettingsPatch(preference)).toEqual(preference);
+    expect(encodeClientSettings(decodeClientSettings(preference))).toMatchObject(preference);
+  });
+});
+
 describe("ClientSettings rich text composer", () => {
   it("enables rich text for new and existing settings without a saved preference", () => {
     expect(decodeClientSettings({}).composerRichTextEnabled).toBe(true);

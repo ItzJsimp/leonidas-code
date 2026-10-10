@@ -612,6 +612,10 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.composerCollapseOnScroll !== DEFAULT_UNIFIED_SETTINGS.composerCollapseOnScroll
         ? ["Collapse composer on scroll"]
         : []),
+      ...(settings.composerPromptPredictionEnabled !==
+      DEFAULT_UNIFIED_SETTINGS.composerPromptPredictionEnabled
+        ? ["Prompt prediction"]
+        : []),
       ...(settings.composerRichTextEnabled !== DEFAULT_UNIFIED_SETTINGS.composerRichTextEnabled
         ? ["Rich text composer"]
         : []),
@@ -680,6 +684,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.confirmThreadDelete,
       settings.confirmThreadUnpin,
       settings.composerCollapseOnScroll,
+      settings.composerPromptPredictionEnabled,
       settings.composerRichTextEnabled,
       settings.sendShortcut,
       settings.followUpBehavior,
@@ -802,6 +807,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       proactivePanelsEnabled: DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled,
       showSkillsInSlashMenu: DEFAULT_UNIFIED_SETTINGS.showSkillsInSlashMenu,
       composerCollapseOnScroll: DEFAULT_UNIFIED_SETTINGS.composerCollapseOnScroll,
+      composerPromptPredictionEnabled: DEFAULT_UNIFIED_SETTINGS.composerPromptPredictionEnabled,
       composerRichTextEnabled: DEFAULT_UNIFIED_SETTINGS.composerRichTextEnabled,
       sendShortcut: DEFAULT_UNIFIED_SETTINGS.sendShortcut,
       followUpBehavior: DEFAULT_UNIFIED_SETTINGS.followUpBehavior,
@@ -2733,6 +2739,20 @@ export function GeneralSettingsPanel() {
                 updateSettings({ showSkillsInSlashMenu: Boolean(checked) })
               }
               aria-label="Show skills in slash menu"
+            />
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("prompt-prediction")}
+          description="Suggest prompts from your local Scribe history. Tab accepts; Escape dismisses."
+          control={
+            <Switch
+              checked={settings.composerPromptPredictionEnabled}
+              onCheckedChange={(checked) =>
+                updateSettings({ composerPromptPredictionEnabled: Boolean(checked) })
+              }
+              aria-label="Prompt prediction"
             />
           }
         />

@@ -1,4 +1,5 @@
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
+import { usePromptPrediction } from "./usePromptPrediction";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
 import { runtimeModeConfig, runtimeModeOptions as runtimeModes } from "./runtimeModeConfig";
@@ -2469,6 +2470,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // ------------------------------------------------------------------
   // Refs
   // ------------------------------------------------------------------
+  const promptCandidates = usePromptPrediction(
+    environmentId,
+    settings.composerPromptPredictionEnabled ? gitCwd : null,
+  );
   const composerEditorRef = useRef<ComposerPromptEditorHandle>(null);
   const pasteAsTextShortcutUntilRef = useRef(0);
   const pastedTextFileNamesRef = useRef<{ targetKey: string; names: Set<string> }>({
@@ -7489,6 +7494,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         : undefined
                     }
                     editorRef={composerEditorRef}
+                    predictionCandidates={
+                      isComposerApprovalState ||
+                      activePendingProgress ||
+                      composerSuggestionListVisible
+                        ? undefined
+                        : promptCandidates
+                    }
                     richTextEnabled={settings.composerRichTextEnabled}
                     literalText={isLiteralPendingAnswer}
                     value={

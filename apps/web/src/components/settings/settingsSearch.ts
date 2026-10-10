@@ -395,6 +395,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["command menu dollar $ slash /"],
   },
   {
+    id: "prompt-prediction",
+    title: "Prompt prediction",
+    to: "/settings/general",
+    searchTerms: ["scribe history ghost text autocomplete tab suggestions"],
+  },
+  {
     id: "composer-rich-text",
     title: "Rich text composer",
     to: "/settings/general",
