@@ -5,6 +5,7 @@ import {
   contextWindowTokensForModel,
   formatResetLabel,
   formatTokenCount,
+  glanceWindows,
   orderPlanWindows,
   parseContextWindowSize,
   planWindowLabel,
@@ -83,17 +84,17 @@ describe("usage limits popover helpers", () => {
     expect(parseContextWindowSize("high")).toBeNull();
     const model = {
       capabilities: {
-      optionDescriptors: [
-        {
-          id: "contextWindow",
-          label: "Context Window",
-          type: "select" as const,
-          options: [
-            { id: "200k", label: "200k" },
-            { id: "1m", label: "1M", isDefault: true },
-          ],
-        },
-      ],
+        optionDescriptors: [
+          {
+            id: "contextWindow",
+            label: "Context Window",
+            type: "select" as const,
+            options: [
+              { id: "200k", label: "200k" },
+              { id: "1m", label: "1M", isDefault: true },
+            ],
+          },
+        ],
       },
     };
     expect(contextWindowTokensForModel(model, undefined)).toBe(1_000_000);
@@ -126,5 +127,20 @@ describe("usage limits popover helpers", () => {
     expect(withKnownContextWindow(reported, 200_000)?.usedPercentage).toBe(25);
     const sized = { ...empty!, maxTokens: 400_000 };
     expect(withKnownContextWindow(sized, 1_000_000)).toBe(sized);
+  });
+});
+
+describe("glanceWindows", () => {
+  const window = (id: string, kind: ServerProviderUsageWindow["kind"], label: string) =>
+    ({ id, kind, label, usedPercent: 10 }) satisfies ServerProviderUsageWindow;
+
+  it("keeps session then the plain weekly and drops per-model weeklies", () => {
+    expect(
+      glanceWindows([
+        window("w_fable", "weekly", "Weekly · Fable"),
+        window("w", "weekly", "Weekly"),
+        window("s", "session", "Session"),
+      ]).map((entry) => entry.id),
+    ).toEqual(["s", "w"]);
   });
 });

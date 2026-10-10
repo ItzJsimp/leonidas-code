@@ -54,7 +54,10 @@ export function collectConnectedUsageLimits(
           windows: [],
           unavailable: {
             reason: "unsupported",
-            message: "Connected. This provider does not report usage limits.",
+            message:
+              provider.driver === "antigravity"
+                ? "Connected. Google does not share Antigravity quota with Leonidas Code yet; check it in the Antigravity app."
+                : "Connected. This provider does not report usage limits.",
           },
         },
       });

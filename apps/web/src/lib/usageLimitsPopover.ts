@@ -202,3 +202,20 @@ export function peakUsedPercent(
   }
   return peak;
 }
+
+/** Account-wide windows for a glance: session first, then the plain weekly, never per-model weeklies. */
+export function glanceWindows(
+  windows: ReadonlyArray<ServerProviderUsageWindow>,
+): ServerProviderUsageWindow[] {
+  return orderPlanWindows(windows)
+    .filter(
+      (window) =>
+        window.kind === "session" || (window.kind === "weekly" && !window.label.includes("·")),
+    )
+    .slice(0, 2);
+}
+
+/** `Session` or `Weekly`: the short row label beside a glance bar. */
+export function glanceWindowLabel(window: ServerProviderUsageWindow): string {
+  return window.kind === "session" ? "Session" : window.kind === "weekly" ? "Weekly" : window.label;
+}

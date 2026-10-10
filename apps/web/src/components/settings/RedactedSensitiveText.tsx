@@ -1,3 +1,4 @@
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { cn } from "../../lib/utils";
@@ -24,6 +25,17 @@ export function redactedPlaceholder(value: string): string {
   }).join("");
 }
 
+/**
+ * `j••••••@gmail.com`: a crisp mask that keeps the first character and the domain behind a
+ * fixed bullet run, so the hidden part never leaks its length.
+ */
+export function maskedSensitiveText(value: string): string {
+  const at = value.indexOf("@");
+  const head = at > 0 ? value.slice(0, at) : value;
+  const tail = at > 0 ? value.slice(at) : "";
+  return `${head.slice(0, 1)}${"•".repeat(6)}${tail}`;
+}
+
 export function RedactedSensitiveText(props: {
   readonly value: string | null | undefined;
   readonly ariaLabel: string;
@@ -33,7 +45,7 @@ export function RedactedSensitiveText(props: {
 }) {
   const [revealed, setRevealed] = useState(false);
   const value = props.value?.trim();
-  const redacted = useMemo(() => (value ? redactedPlaceholder(value) : ""), [value]);
+  const masked = useMemo(() => (value ? maskedSensitiveText(value) : ""), [value]);
 
   if (!value) return null;
 
@@ -44,14 +56,19 @@ export function RedactedSensitiveText(props: {
           <button
             type="button"
             className={cn(
-              "min-w-0 cursor-pointer rounded-sm font-mono text-2xs leading-normal transition hover:text-foreground",
-              revealed ? "text-muted-foreground" : "select-none text-muted-foreground blur-xs",
+              "inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-2xs leading-normal text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
               props.className,
             )}
             onClick={() => setRevealed((current) => !current)}
             aria-label={props.ariaLabel}
+            aria-pressed={revealed}
           >
-            {revealed ? value : redacted}
+            <span className="min-w-0 truncate">{revealed ? value : masked}</span>
+            {revealed ? (
+              <EyeOffIcon aria-hidden className="size-3 shrink-0 opacity-70" />
+            ) : (
+              <EyeIcon aria-hidden className="size-3 shrink-0 opacity-70" />
+            )}
           </button>
         }
       />
