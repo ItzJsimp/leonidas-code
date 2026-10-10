@@ -9,6 +9,7 @@ import {
   getDesktopUpdateInstallConfirmationMessage,
   getDesktopUpdateReleaseHistoryUrl,
   getDesktopUpdateReleaseUrl,
+  getWhatsNewItems,
   isDesktopUpdateButtonDisabled,
   resolveDesktopUpdateButtonAction,
   resolveUpdateWhenSafeAction,
@@ -357,5 +358,22 @@ describe("getDesktopUpdateButtonTooltip", () => {
     expect(getDesktopUpdateButtonTooltip({ ...baseState, status: "up-to-date" })).toBe(
       "Up to date",
     );
+  });
+});
+
+describe("getWhatsNewItems", () => {
+  it("flattens release note groups in order and caps at 8 bullets", () => {
+    const items = Array.from({ length: 6 }, (_, i) => `item ${i}`);
+    const state = {
+      ...baseState,
+      releaseNotes: [
+        { version: "1.0.2", items, totalItems: 6 },
+        { version: "1.0.1", items, totalItems: 6 },
+      ],
+    };
+    const result = getWhatsNewItems(state);
+    expect(result).toHaveLength(8);
+    expect(result.slice(0, 2)).toEqual(["item 0", "item 1"]);
+    expect(getWhatsNewItems(baseState)).toEqual([]);
   });
 });

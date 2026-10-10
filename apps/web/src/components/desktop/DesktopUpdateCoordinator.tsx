@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ensureLocalApi } from "../../localApi";
 import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
@@ -8,6 +8,7 @@ import {
   getDesktopUpdateActionError,
   getDesktopUpdateDownloadedVersion,
   getDesktopUpdateInstallConfirmationMessage,
+  getWhatsNewItems,
   resolveUpdateWhenSafeAction,
 } from "../desktopUpdate.logic";
 import {
@@ -15,6 +16,8 @@ import {
   showDesktopUpdateWaitingToast,
 } from "../desktopUpdate.toast";
 import { stackedThreadToast, toastManager } from "../ui/toast";
+import { playTestSound } from "./LeonidasMobNotificationNotice";
+import { LeonidasWhatsNewDialog } from "./LeonidasWhatsNewDialog";
 
 function toastInstallError(description: string) {
   toastManager.add(
@@ -44,6 +47,11 @@ export function DesktopUpdateCoordinator() {
   const runningCountRef = useRef(runningCount);
   runningCountRef.current = runningCount;
   const toastedVersionRef = useRef<string | null>(null);
+  const [whatsNew, setWhatsNew] = useState<{
+    readonly version: string;
+    readonly items: ReadonlyArray<string>;
+    readonly actions: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void };
+  } | null>(null);
 
   const downloadedVersion =
     state?.status === "downloaded" ? getDesktopUpdateDownloadedVersion(state) : null;
@@ -52,7 +60,7 @@ export function DesktopUpdateCoordinator() {
     if (!bridge || !state || !downloadedVersion) return;
     if (toastedVersionRef.current === downloadedVersion) return;
     toastedVersionRef.current = downloadedVersion;
-    showDesktopUpdateDownloadedToast(bridge, state, {
+    const actions = {
       onRestartNow: () => {
         void (async () => {
           if (runningCountRef.current > 0) {
@@ -72,7 +80,14 @@ export function DesktopUpdateCoordinator() {
         })();
       },
       onUpdateWhenSafe: () => setUpdateWhenSafe(true),
-    });
+    };
+    const items = getWhatsNewItems(state);
+    if (items.length === 0) {
+      showDesktopUpdateDownloadedToast(bridge, state, actions);
+      return;
+    }
+    playTestSound();
+    setWhatsNew({ version: downloadedVersion, items, actions });
     // `state` only feeds the toast copy; the version is the once-per-update key.
   }, [downloadedVersion, setUpdateWhenSafe]);
 
@@ -88,5 +103,13 @@ export function DesktopUpdateCoordinator() {
     return () => toastManager.close(toastId);
   }, [whenSafeAction, setUpdateWhenSafe]);
 
-  return null;
+  return whatsNew ? (
+    <LeonidasWhatsNewDialog
+      version={whatsNew.version}
+      items={whatsNew.items}
+      onRestartNow={whatsNew.actions.onRestartNow}
+      onUpdateWhenSafe={whatsNew.actions.onUpdateWhenSafe}
+      onClose={() => setWhatsNew(null)}
+    />
+  ) : null;
 }

@@ -134,3 +134,10 @@ export function canCheckForUpdate(state: DesktopUpdateState | null): boolean {
     state.status !== "checking" && state.status !== "downloading" && state.status !== "disabled"
   );
 }
+
+const WHATS_NEW_MAX_ITEMS = 8;
+
+/** Flat bullet list for the "What's new" popup: every release note group, newest first, capped. */
+export function getWhatsNewItems(state: DesktopUpdateState): ReadonlyArray<string> {
+  return state.releaseNotes.flatMap((note) => note.items).slice(0, WHATS_NEW_MAX_ITEMS);
+}
