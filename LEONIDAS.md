@@ -58,6 +58,7 @@ That sets rebase pulls, links your AIOS identity, installs the latest Leonidas C
 
 ## Status log (newest first, one line per session, who and what)
 
+- 2026-10-10 Jake's agent: usage control redesign (context ring, hover summary, top-right panel, email mask) and Claude limits fix (null usage read is retryable, not "no limits"). Antigravity quota has no reachable source yet. Pushed to main as the next `v1.0.N`.
 - 2026-10-10 Mob's agent: verified installed and dev desktop windows coexist with separate profiles, checkout-local server state and ports. Source CSS hot refresh and removal worked in Electron without restarting; closing dev left the installed app running. Accepted live-edit scope: Settings themes, with source CSS confined to dev. Isolation fix and acceptance records remain local; no push authorized.
 - 2026-10-10 Mob's agent: implemented local-history prompt prediction with bounded cached reads, Tab acceptance, Escape dismissal, Undo and a settings switch. Scoped checks pass; published to main, live client verification pending.
 - 2026-10-10 Jake's agent: repo moved into the AIOS at `projects/leonidas-code/` (own git repo, AIOS-gitignored) with the project workspace layer: `CLAUDE.md`, `project.md`, `agent-playbook.md`, `project/` docs. Same path on every machine; clone there. Re-run `pnpm install` and re-approve the `claude` import dialog after any move.
