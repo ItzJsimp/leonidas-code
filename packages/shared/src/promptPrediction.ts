@@ -1,8 +1,18 @@
+import styleStandard from "./promptStyleStandard.json" with { type: "json" };
+
+/** Hard ceiling: longer candidates are trimmed at a sentence boundary. Soft target: 1 to 3. */
+export const MAX_SUGGESTION_SENTENCES = 6;
+export const SOFT_SUGGESTION_SENTENCES = 3;
+/** Ranking points lost per sentence beyond the soft target, against one point per shared word. */
+const LENGTH_PENALTY = 0.5;
+
 export interface PromptCandidate {
   readonly text: string;
   readonly count: number;
   readonly lastSeen: number;
   readonly prefixOnly?: boolean;
+  /** From the shipped style standard; own history wins when the user has typed a prefix. */
+  readonly standard?: boolean;
 }
 
 export interface PromptPredictionMessage {
@@ -13,6 +23,8 @@ export interface PromptPredictionMessage {
 
 const ACKNOWLEDGEMENT =
   /^(?:yes|yep|yeah|ok(?:ay)?|sure|no|thanks|thank you|go ahead|continue|do it|ship it)[.!\s]*$/i;
+/** Anonymized phrasing patterns; rebuilt by scripts/extract-prompt-style-standard.ts. */
+export const STYLE_STANDARD: readonly string[] = styleStandard.prompts;
 const STOP_WORDS = new Set(
   "a an and are as at be been but by can do for from have i in is it me my of on or our please that the this to we with you your".split(
     " ",
@@ -23,6 +35,23 @@ function words(text: string) {
   return new Set(
     (text.toLowerCase().match(/[a-z0-9_]{3,}/g) ?? []).filter((word) => !STOP_WORDS.has(word)),
   );
+}
+
+function sentenceEnds(text: string) {
+  return [...text.matchAll(/[.!?]+(?=\s|$)/g)].map((match) => match.index + match[0].length);
+}
+
+export function countSentences(text: string) {
+  const ends = sentenceEnds(text);
+  return ends.length + (ends.length === 0 || (ends.at(-1) ?? 0) < text.trim().length ? 1 : 0);
+}
+
+/** Trim at the sixth sentence boundary; shorter text passes through unchanged. */
+export function capSentences(text: string) {
+  const ends = sentenceEnds(text);
+  return ends.length > MAX_SUGGESTION_SENTENCES
+    ? text.slice(0, ends[MAX_SUGGESTION_SENTENCES - 1]).trim()
+    : text;
 }
 
 function cleanSuggestion(text: string) {
@@ -98,28 +127,46 @@ export function contextualPromptCandidates(
       .filter((message) => message.role === "user")
       .map((message, index) => ({ text: message.text.trim(), count: 1, lastSeen: index })),
   ];
-  const ranked = pool.filter(
-    (candidate) =>
-      !ACKNOWLEDGEMENT.test(candidate.text) &&
-      candidate.text.length >= 3 &&
-      candidate.text.length <= 2000 &&
-      candidate.text.toLowerCase() !== lastUser &&
-      !/[\r\n]/.test(candidate.text),
-  );
-  ranked.sort((a, b) => {
+  const rank = (source: readonly PromptCandidate[]) => {
     const relevance = (candidate: PromptCandidate) =>
-      [...words(candidate.text)].filter((word) => context.has(word)).length;
-    return relevance(b) - relevance(a) || b.count - a.count || b.lastSeen - a.lastSeen;
-  });
+      [...words(candidate.text)].filter((word) => context.has(word)).length -
+      LENGTH_PENALTY * Math.max(0, countSentences(candidate.text) - SOFT_SUGGESTION_SENTENCES);
+    return source
+      .map((candidate) => ({ ...candidate, text: capSentences(candidate.text) }))
+      .filter(
+        (candidate) =>
+          !ACKNOWLEDGEMENT.test(candidate.text) &&
+          candidate.text.length >= 3 &&
+          candidate.text.length <= 2000 &&
+          candidate.text.toLowerCase() !== lastUser &&
+          !/[\r\n]/.test(candidate.text),
+      )
+      .sort((a, b) => relevance(b) - relevance(a) || b.count - a.count || b.lastSeen - a.lastSeen);
+  };
+  // About half from the user's own history and thread, half from the shipped style standard;
+  // without Scribe history the standard half carries every prediction.
+  const own = rank(pool);
+  const standard = rank(
+    STYLE_STANDARD.map((text) => ({ text, count: 0, lastSeen: 0, standard: true })),
+  );
   const unique = new Map<string, PromptCandidate>();
   if (recommendation)
-    unique.set(recommendation.toLowerCase(), { text: recommendation, count: 1, lastSeen: 0 });
-  for (const candidate of ranked)
-    if (!unique.has(candidate.text.toLowerCase()))
+    unique.set(recommendation.toLowerCase(), {
+      text: capSentences(recommendation),
+      count: 1,
+      lastSeen: 0,
+    });
+  const add = (candidate: PromptCandidate | undefined) => {
+    if (candidate && !unique.has(candidate.text.toLowerCase()))
       unique.set(candidate.text.toLowerCase(), {
         ...candidate,
         prefixOnly: ![...words(candidate.text)].some((word) => context.has(word)),
       });
+  };
+  for (let index = 0; index < Math.max(own.length, standard.length); index++) {
+    add(own[index]);
+    add(standard[index]);
+  }
   return [...unique.values()].slice(0, 256);
 }
 
@@ -149,7 +196,11 @@ export function buildPromptCandidates(history: string): PromptCandidate[] {
       const text = record.cleaned_text.trim();
       if (text.length < 3 || text.length > 2000 || /[\r\n]/.test(text)) continue;
       const key = text.toLocaleLowerCase();
-      prompts.set(key, { text, count: (prompts.get(key)?.count ?? 0) + 1, lastSeen });
+      prompts.set(key, {
+        text: capSentences(text),
+        count: (prompts.get(key)?.count ?? 0) + 1,
+        lastSeen,
+      });
     } catch {
       // The writer may be midway through its final JSONL record.
     }
@@ -165,12 +216,14 @@ export function predictPrompt(
 ): string | null {
   if (/[\r\n]/.test(prefix) || /^[\s]*[/$@]/.test(prefix)) return null;
   const normalized = prefix.toLocaleLowerCase();
-  const match = candidates.find(
+  const matches = candidates.filter(
     (candidate) =>
       !ACKNOWLEDGEMENT.test(candidate.text) &&
       (prefix.trim().length > 0 || !candidate.prefixOnly) &&
       candidate.text.length > prefix.length &&
       candidate.text.toLocaleLowerCase().startsWith(normalized),
   );
+  const match =
+    prefix.trim().length > 0 ? (matches.find((c) => !c.standard) ?? matches[0]) : matches[0];
   return match ? prefix + match.text.slice(prefix.length) : null;
 }
