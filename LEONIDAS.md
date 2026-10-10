@@ -18,6 +18,9 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - [x] Prompt predictor: ghost text of the prompt the user is most likely to send next, built from the user's own Leonidas Scribe `history.jsonl` (filtered to agent apps), Tab accepts, nothing is typed until Tab. Port of Jake's Claude Code mod `voice-predict`
 - [x] Rebrand to Leonidas Code as a thin layer (name, icons, window title, installer, About). Keep the MIT notice. Internal ids stay (`@t3tools/*`, `T3CODE_*`, `~/.t3`, app id `com.t3tools.t3code`) so data survives and old installs upgrade in place
 - [ ] Leonidas shell: Command Center views as a tab; Scribe stays a tray app with a localhost API
+- [ ] Dev instance isolation: agents test on a separate dev app (own profile and ports) and never restart the live app; small safe changes (theme CSS) apply live
+- [ ] Agent activity bar: a live sliver above the composer (current step, step count, elapsed, file chips) that expands to the full plan, next steps, files and reasoning; updates instantly when the plan changes
+- [ ] Limit failover: when one provider subscription hits its limit, another provider (for example Codex) takes over the same chat in one click, using the existing context handoff
 
 Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Scribe).
 
@@ -48,6 +51,7 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 ## New machine setup (Mob: do this once)
 
 Paste this to your Claude in any folder:
+
 > Clone https://github.com/ItzJsimp/leonidas-code into `projects/leonidas-code` inside my AIOS (if not already cloned), then run `pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "<path to my AIOS>/CLAUDE.md"` from the clone, then run `claude` once in the clone so I can approve the import dialog.
 
 That sets rebase pulls, links your AIOS identity, installs the latest Leonidas Code (replacing any T3 Code install and shortcuts) and launches it. Right-click its taskbar icon and pick Pin to taskbar. After that: code changes arrive by the auto-pull at each Claude session start; app changes arrive as the in-app update toast after every push to `main`.
