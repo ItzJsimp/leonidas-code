@@ -1,4 +1,7 @@
 import { deriveAgentActivity } from "../agentActivity";
+import { ThreadGoalControls } from "./chat/ThreadGoalControls";
+import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
+import type { ThreadGoalControl } from "@t3tools/contracts";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
@@ -7527,9 +7530,60 @@ export default function ChatView(props: ChatViewProps) {
   );
   // A native /goal keeps the agent working across turns. Stop pauses a Codex
   // goal; once the thread is idle the row offers the native follow-ups.
+  const appGoal = activeThreadShell?.appGoal ?? null;
+  const [goalRequest, setGoalRequest] = useState<{
+    action: "start" | "resume" | "show";
+    condition: string;
+    nonce: number;
+    threadId: ThreadId;
+  } | null>(null);
+  const handleGoalControl = useCallback(
+    async (goalControl: ThreadGoalControl) => {
+      if (!activeThread || !isServerThread) return false;
+      if ((goalControl.action === "pause" || goalControl.action === "clear") && isWorking) {
+        const stopped = await interruptThreadTurn({
+          environmentId,
+          input: { threadId: activeThread.id },
+        });
+        if (stopped._tag === "Failure") return false;
+      }
+      const result = await updateThreadMetadata({
+        environmentId,
+        input: { threadId: activeThread.id, goalControl },
+      });
+      if (result._tag === "Failure") {
+        const error = squashAtomCommandFailure(result);
+        setThreadError(
+          activeThread.id,
+          error instanceof Error ? error.message : "Goal update failed.",
+        );
+        return false;
+      }
+      return true;
+    },
+    [
+      activeThread,
+      environmentId,
+      interruptThreadTurn,
+      isServerThread,
+      isWorking,
+      setThreadError,
+      updateThreadMetadata,
+    ],
+  );
   const activeGoal = activeThreadShell?.goal ?? null;
   const goalBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
-    if (!activeThread || activeGoal === null) return null;
+    if (!activeThread) return null;
+    if (appGoal)
+      return {
+        id: `app-goal:${activeThread.id}`,
+        variant: "default",
+        priority: "activity",
+        icon: <TargetIcon />,
+        title: `Goal ${appGoal.status} · ${appGoal.turns}/${appGoal.maxTurns} turns · ${appGoal.tokensUsed} tokens`,
+        description: `${appGoal.condition}${appGoal.lastReason ? ` · ${appGoal.lastReason}` : ""}`,
+      };
+    if (activeGoal === null) return null;
     const presentation = presentProviderGoal(activeGoal, isWorking);
     return {
       id: `goal:${activeThread.id}`,
@@ -7563,7 +7617,7 @@ export default function ChatView(props: ChatViewProps) {
         </>
       ),
     };
-  }, [activeGoal, activeThread, isWorking, sendStandaloneCommand]);
+  }, [appGoal, activeGoal, activeThread, isWorking, sendStandaloneCommand]);
 
   const backgroundWorkBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
     const presentation = presentPendingBackgroundWork(activeBackgroundTasks);
@@ -8765,6 +8819,30 @@ export default function ChatView(props: ChatViewProps) {
     },
   ) => {
     e?.preventDefault();
+    const goalCommand =
+      !directAnnotation && !composerHasNonPromptContent
+        ? parseThreadGoalCommand(promptRef.current)
+        : null;
+    if (
+      goalCommand &&
+      activeThread &&
+      isServerThread &&
+      readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)
+    ) {
+      if (goalCommand.action === "pause" || goalCommand.action === "clear")
+        await handleGoalControl({ action: goalCommand.action });
+      else
+        setGoalRequest({
+          action: goalCommand.action,
+          condition: goalCommand.action === "start" ? goalCommand.condition : "",
+          nonce: Date.now(),
+          threadId: activeThread.id,
+        });
+      promptRef.current = "";
+      setComposerDraftPrompt(composerDraftTarget, "");
+      composerRef.current?.resetCursorState();
+      return;
+    }
     // Typed out in full rather than picked from the menu. Attachments or contexts
     // mean the user is sending a prompt, so those go through as usual.
     if (
@@ -11327,6 +11405,20 @@ export default function ChatView(props: ChatViewProps) {
           {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
           {inlineRightPanelOwnsTitleBar ? threadPanelHeaderControl : null}
           <ChatHeader
+            goalControls={
+              isServerThread ? (
+                <ThreadGoalControls
+                  key={`${environmentId}:${activeThread.id}`}
+                  goal={appGoal}
+                  disabled={
+                    !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope) ||
+                    activeEnvironmentUnavailable
+                  }
+                  request={goalRequest?.threadId === activeThread.id ? goalRequest : null}
+                  onControl={handleGoalControl}
+                />
+              ) : null
+            }
             activeThreadEnvironmentId={activeThread.environmentId}
             activeThreadId={activeThread.id}
             isServerThread={isServerThread}

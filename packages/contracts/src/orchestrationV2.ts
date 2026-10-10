@@ -1,3 +1,4 @@
+import { ThreadGoal, ThreadGoalControl, ThreadGoalVerdict } from "./threadGoal.ts";
 import { OrchestrationMessageContext } from "./composerContext.ts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -418,6 +419,7 @@ export const OrchestrationV2AppThread = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   /** In-flight title regeneration marker; cleared when a new title lands. */
+  appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -1918,6 +1920,7 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
    */
   lastVisitedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
   /** In-flight title regeneration marker; null/absent when no request is pending. */
+  appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -2746,6 +2749,7 @@ export const OrchestrationV2Command = Schema.Union([
     title: Schema.optional(TrimmedNonEmptyString),
     /** Kick off (true) or abandon (false) an async title regeneration. */
     regenerateTitle: Schema.optional(Schema.Boolean),
+    goalControl: Schema.optional(ThreadGoalControl),
     branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
     worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
     expectedWorktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -3063,6 +3067,18 @@ export type OrchestrationV2Command = typeof OrchestrationV2Command.Type;
  * send them.
  */
 const OrchestrationV2InternalCommand = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("thread.goal.advance"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    goalId: CommandId,
+    runId: RunId,
+    result: Schema.optional(ThreadGoalVerdict),
+    pauseReason: Schema.optional(TrimmedNonEmptyString),
+    tokensUsed: Schema.optional(NonNegativeInt),
+    madeProgress: Schema.optional(Schema.Boolean),
+    retryableFailure: Schema.optional(Schema.Boolean),
+  }),
   /**
    * Records what a pull request watch saw, and wakes the agent in the same transaction when
    * `wake` is set. Rejected once the watch started at `startedAt` has ended, and a wake is

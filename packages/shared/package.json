@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./threadGoalCommand": {
+      "types": "./src/threadGoalCommand.ts",
+      "import": "./src/threadGoalCommand.ts"
+    },
     "./promptPrediction": {
       "types": "./src/promptPrediction.ts",
       "import": "./src/promptPrediction.ts"

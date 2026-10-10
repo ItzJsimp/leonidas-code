@@ -1,3 +1,4 @@
+import { ThreadGoal, ThreadGoalControl } from "./threadGoal.ts";
 import * as Schema from "effect/Schema";
 
 import {
@@ -59,13 +60,14 @@ const ThreadMetadataMcpPullRequestUrl = TrimmedNonEmptyString.check(
 });
 
 export const ThreadMetadataMcpAction = Schema.Literals([
+  "goal",
   "rename",
   "regenerate_title",
   "link_pull_request",
   "unlink_pull_request",
 ]).annotate({
   description:
-    "Metadata mutation: rename, regenerate_title, link_pull_request, or unlink_pull_request.",
+    "Metadata mutation: goal, rename, regenerate_title, link_pull_request, or unlink_pull_request. Goal start/resume requires explicit user approval of spending and any check command.",
 });
 export type ThreadMetadataMcpAction = typeof ThreadMetadataMcpAction.Type;
 
@@ -83,6 +85,7 @@ export const ThreadMetadataMcpUpdateInput = Schema.Struct({
     description: "Thread to update. Omit to update the calling thread.",
   }),
   action: ThreadMetadataMcpAction,
+  goalControl: Schema.optional(ThreadGoalControl),
   title: Schema.optional(ThreadMetadataTitle),
   pullRequest: Schema.optional(ThreadMetadataMcpPullRequest).annotate({
     description: "Pull request to link. Required only when action is link_pull_request.",
@@ -90,7 +93,15 @@ export const ThreadMetadataMcpUpdateInput = Schema.Struct({
   clientRequestId: Schema.optional(ThreadMetadataClientRequestId),
 }).check(
   Schema.makeFilter((input) => {
+    if (input.action !== "goal" && input.goalControl !== undefined)
+      return "goalControl requires action goal.";
     switch (input.action) {
+      case "goal":
+        return input.goalControl !== undefined &&
+          input.title === undefined &&
+          input.pullRequest === undefined
+          ? true
+          : "goal requires goalControl only; starting or resuming requires explicit user spending approval.";
       case "rename":
         return input.title !== undefined && input.pullRequest === undefined
           ? true
@@ -115,6 +126,7 @@ export const ThreadMetadataMcpUpdateResult = Schema.Struct({
   commandId: CommandId,
   sequence: NonNegativeInt,
   title: Schema.String,
+  appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   titleRegeneration: Schema.NullOr(ThreadTitleRegeneration),
   linkedPullRequest: Schema.NullOr(ThreadLinkedPullRequest),
   updatedAt: IsoDateTime,

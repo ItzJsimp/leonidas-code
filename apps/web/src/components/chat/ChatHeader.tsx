@@ -17,6 +17,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
@@ -40,6 +41,7 @@ import { cn } from "~/lib/utils";
 import { useClientSettings } from "../../hooks/useSettings";
 
 interface ChatHeaderProps {
+  goalControls?: ReactNode;
   activeThreadEnvironmentId: EnvironmentId;
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -85,6 +87,7 @@ export const ChatHeader = memo(function ChatHeader({
   rightPanelOpen,
   onNewThreadInProject,
   onOpenProjectSettings,
+  goalControls,
 }: ChatHeaderProps) {
   const activeProjectName = activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
@@ -436,6 +439,7 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
+      {goalControls}
     </div>
   );
 });

@@ -1,3 +1,4 @@
+import * as GoalEvaluationService from "./GoalEvaluationService.ts";
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as Layer from "effect/Layer";
@@ -289,6 +290,16 @@ const layerThreadTitleRegenerationProvided = ThreadTitleRegenerationService.laye
     Layer.mergeAll(layerThreadManagementProvided, ProjectStore.layer, TextGeneration.layer),
   ),
 );
+const layerGoalEvaluationProvided = GoalEvaluationService.layer.pipe(
+  Layer.provide(
+    Layer.mergeAll(
+      layerThreadManagementProvided,
+      ProjectStore.layer,
+      TextGeneration.layer,
+      GoalEvaluationService.layerCheckRunner,
+    ),
+  ),
+);
 const layerEffectExecutorProvided = EffectWorker.layerExecutor.pipe(
   Layer.provide(
     Layer.mergeAll(
@@ -299,6 +310,7 @@ const layerEffectExecutorProvided = EffectWorker.layerExecutor.pipe(
       layerProviderTurnStartServiceProvided,
       layerRuntimeRequestServiceProvided,
       layerThreadTitleRegenerationProvided,
+      layerGoalEvaluationProvided,
       layerThreadManagementProvided,
     ),
   ),

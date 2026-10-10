@@ -227,7 +227,20 @@ const layerBase: Layer.Layer<
         }
       });
     const publishStoredEvents = (events: ReadonlyArray<OrchestrationV2StoredEvent>) =>
-      eventStore.publishCommitted(events).pipe(Effect.andThen(publishLiveEvents(events)));
+      eventStore
+        .publishCommitted(events)
+        .pipe(
+          Effect.andThen(publishLiveEvents(events)),
+          Effect.andThen(
+            events.some((stored) =>
+              ["run.updated", "provider-thread.updated", "turn-item.updated"].includes(
+                stored.event.type,
+              ),
+            )
+              ? effectOutbox.notifyAvailable(1)
+              : Effect.void,
+          ),
+        );
 
     // Transactions commit one at a time, but each writer publishes after its
     // commit. If a writer is descheduled in between, a later commit reaches
@@ -334,6 +347,41 @@ const layerBase: Layer.Layer<
         yield* Effect.forEach(storedEvents, (stored) => projectionStore.apply(stored.event), {
           concurrency: 1,
         });
+        const candidates = new Map<ThreadId, number>();
+        for (const stored of storedEvents) {
+          if (
+            (stored.event.type === "run.updated" &&
+              ["completed", "failed", "interrupted", "cancelled"].includes(
+                stored.event.payload.status,
+              )) ||
+            stored.event.type === "provider-thread.updated" ||
+            (stored.event.type === "turn-item.updated" &&
+              ["completed", "failed", "cancelled"].includes(stored.event.payload.status))
+          ) {
+            candidates.set(stored.event.threadId, stored.sequence);
+          }
+        }
+        for (const [threadId, sequence] of candidates) {
+          const thread = yield* projectionStore.getThread(threadId);
+          const goal = thread.appGoal;
+          if (goal?.status !== "active") continue;
+          const records = yield* projectionStore.getThreadRecords(threadId, ["runs"]);
+          const run = records.runs.at(-1);
+          if (
+            !run ||
+            !["completed", "failed", "interrupted", "cancelled"].includes(run.status) ||
+            run.ordinal <= goal.lastRunOrdinal
+          )
+            continue;
+          yield* effectOutbox.enqueue([
+            {
+              id: `effect:goal:${goal.id}:${run.id}:${sequence}`,
+              commandId: CommandId.make(`command:goal:${goal.id}:${run.id}:${sequence}`),
+              threadId,
+              request: { type: "goal.evaluate", goalId: goal.id, runId: run.id },
+            },
+          ]);
+        }
         const sequence = storedEvents.at(-1)?.sequence;
         if (sequence !== undefined) {
           const now = DateTime.formatIso(yield* DateTime.now);
