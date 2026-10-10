@@ -1,4 +1,5 @@
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
+import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as Crypto from "effect/Crypto";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
@@ -1283,6 +1284,7 @@ const layerWsRpc = (
       const startup = yield* ServerRuntimeStartup.ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
+      const taskBoard = yield* TaskBoardService.TaskBoardService;
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
       const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
       const backgroundPolicy = yield* BackgroundPolicy.BackgroundPolicy;
@@ -2640,6 +2642,7 @@ const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.taskBoardList]: () => taskBoard.list,
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsReadFile]: (input) =>
           workspaceFileSystem.readFile(input).pipe(

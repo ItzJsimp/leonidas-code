@@ -231,3 +231,17 @@ Choose **Snooze → Custom…** from a thread's menu to pick a date and time in 
 local time zone, or a duration in minutes, hours, or days. Durations start when
 you confirm; one day means 24 hours. On web and desktop, you can also snooze
 several selected threads together. Choose **Wake thread** to bring a thread back early.
+
+## Shared tasks
+
+On web and desktop, open **Tasks** in the sidebar utility bar to read the open
+GitHub Issues in `ItzJsimp/leonidas-code`. Filter by title, number, label or
+assignee. Open an issue to edit it on GitHub, or choose **New task** to create one.
+Agents can add tasks with `gh issue create --repo ItzJsimp/leonidas-code`.
+
+The server needs GitHub CLI installed and authenticated with `gh auth login`,
+and a repository administrator must enable Issues. The board reads through your
+connected primary server, including remote connections. It refreshes about every
+10 seconds while you are active; hidden or idle windows pause polling and refresh
+when you return. Up to 200 open issues are shown; use GitHub for the full queue.
+If a refresh fails, the last successful list stays visible with an error.

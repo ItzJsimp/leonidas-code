@@ -21,6 +21,7 @@ import {
   ChatGptHandoffInput,
   ChatGptHandoffState,
 } from "./providerSetup.ts";
+import { TaskBoardSnapshot, TaskBoardReadError } from "./taskBoard.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -364,6 +365,7 @@ export const WS_METHODS = {
   projectsRemove: "projects.remove",
   projectsListEntries: "projects.listEntries",
   projectsReadFile: "projects.readFile",
+  taskBoardList: "taskBoard.list",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsSearchContents: "projects.searchContents",
   projectsSearchEntries: "projects.searchEntries",
@@ -1173,6 +1175,12 @@ const WsProjectsListEntriesRpc = Rpc.make(WS_METHODS.projectsListEntries, {
   error: Schema.Union([ProjectListEntriesError, EnvironmentAuthorizationError]),
 });
 
+const WsTaskBoardListRpc = Rpc.make(WS_METHODS.taskBoardList, {
+  payload: Schema.Struct({}),
+  success: TaskBoardSnapshot,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
 const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidates, {
   payload: Schema.Struct({ cwd: Schema.String }),
   success: Schema.Array(
@@ -1918,6 +1926,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeProjectClonesRpc,
   WsProjectsListEntriesRpc,
   WsProjectsReadFileRpc,
+  WsTaskBoardListRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsSearchContentsRpc,
   WsProjectsSearchEntriesRpc,
