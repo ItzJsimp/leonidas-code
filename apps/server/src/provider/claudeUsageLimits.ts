@@ -159,10 +159,22 @@ export function claudeUsageResponseToLimits(input: {
   readonly checkedAt: string;
 }): { readonly limits: ServerProviderUsageLimits; readonly names: ClaudeScopedLimitNames } {
   const { response, checkedAt } = input;
-  if (!response.rate_limits_available || !response.rate_limits) {
+  const names = { overageIncluded: undefined };
+  if (!response.rate_limits_available) {
+    return { limits: makeUnavailableUsageLimits({ checkedAt, reason: "unsupported" }), names };
+  }
+  // A subscription whose `rate_limits` came back null is not limitless: the CLI's usage
+  // endpoint was rate limited (HTTP 429) or has not seen a request yet. `probeFailed`
+  // stays retryable, so the next probe or a streamed `rate_limit_event` fills the bars;
+  // `unsupported` would be sticky and hide them for good.
+  if (!response.rate_limits) {
     return {
-      limits: makeUnavailableUsageLimits({ checkedAt, reason: "unsupported" }),
-      names: { overageIncluded: undefined },
+      limits: makeUnavailableUsageLimits({
+        checkedAt,
+        reason: "probeFailed",
+        message: "Claude has not reported limits yet. They appear after your next message.",
+      }),
+      names,
     };
   }
   const windows: ServerProviderUsageWindow[] = [];

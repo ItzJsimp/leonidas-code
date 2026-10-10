@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { applyUsageLimitsUpdate } from "@t3tools/provider-core/server/usageLimits";
 
 import { claudeRateLimitEventToUpdate, claudeUsageResponseToLimits } from "./claudeUsageLimits.ts";
 
@@ -93,6 +94,24 @@ describe("claudeUsageResponseToLimits", () => {
         response: { rate_limits_available: false, rate_limits: null },
       }).limits,
     ).toEqual({ checkedAt, windows: [], unavailable: { reason: "unsupported" } });
+  });
+
+  it("keeps a subscription with null rate limits retryable instead of unsupported", () => {
+    const { limits } = claudeUsageResponseToLimits({
+      checkedAt,
+      response: { rate_limits_available: true, rate_limits: null },
+    });
+    expect(limits.unavailable?.reason).toBe("probeFailed");
+    // A streamed event must be able to fill the bars afterwards.
+    expect(
+      applyUsageLimitsUpdate({
+        previous: limits,
+        checkedAt,
+        update: {
+          windows: [{ id: "five_hour", kind: "session", label: "Session", usedPercent: 12 }],
+        },
+      })?.unavailable,
+    ).toBeUndefined();
   });
 
   it("skips a window the endpoint reports without a utilization", () => {
