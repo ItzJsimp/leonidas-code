@@ -1,5 +1,4 @@
 import type {
-  NodeId,
   OrchestrationV2PlanArtifact,
   OrchestrationV2TurnItem,
   RunId,
@@ -7,15 +6,68 @@ import type {
 import { collectToolFilePaths } from "@t3tools/shared/toolActivity";
 import * as DateTime from "effect/DateTime";
 
+import {
+  type AccessKind,
+  type ActivityEvent,
+  type ActivityKind,
+  classifyAccessPath,
+  classifyActivityItem,
+  firstThought,
+} from "./agentActivityAccess";
+
+export interface AccessedFile {
+  readonly path: string;
+  readonly name: string;
+  readonly access: AccessKind;
+  readonly count: number;
+}
+
+export interface AccessedAiosFile extends AccessedFile {
+  /** Canon folder (`memory`, `tasks`, ...) or `root` for the top-level canon files. */
+  readonly folder: string;
+  readonly relative: string;
+}
+
+const MAX_EVENTS = 12;
+const MAX_FILES = 20;
+const MAX_AIOS = 40;
+
+function fileName(path: string): string {
+  return path.replaceAll("\\", "/").split("/").filter(Boolean).at(-1) ?? path;
+}
+
+/** Counts uses per key in first-use order; a write upgrades a read of the same file. */
+function tally<T extends { access: AccessKind; count: number }>(
+  entries: Map<string, T>,
+  key: string,
+  access: AccessKind,
+  create: () => T,
+) {
+  const existing = entries.get(key);
+  entries.set(
+    key,
+    existing
+      ? {
+          ...existing,
+          count: existing.count + 1,
+          access: access === "write" ? "write" : existing.access,
+        }
+      : create(),
+  );
+}
+
+/**
+ * What the agent is doing in the current run, for the composer's activity bar:
+ * one sentence for now, a short feed of recent actions, and the skills, AIOS files
+ * and project files it has used. Tool calls hang off the run's nodes beside the root,
+ * so every item of the run counts, not just the root node's.
+ */
 export function deriveAgentActivity(input: {
   runId: RunId;
-  rootNodeId: NodeId | null;
   items: readonly OrchestrationV2TurnItem[];
   plan: Extract<OrchestrationV2PlanArtifact, { kind: "todo_list" }> | null;
 }) {
-  const items = input.items.filter(
-    (item) => item.runId === input.runId && item.nodeId === input.rootNodeId,
-  );
+  const items = input.items.filter((item) => item.runId === input.runId);
   const steer = items.findLast(
     (item) =>
       item.type === "user_message" &&
@@ -45,29 +97,85 @@ export function deriveAgentActivity(input: {
         (item) => DateTime.toEpochMillis(item.updatedAt) > DateTime.toEpochMillis(steer.updatedAt),
       )
     : items;
-  const tools = recentItems.filter((item) =>
-    ["dynamic_tool", "command_execution", "file_change", "file_search", "web_search"].includes(
-      item.type,
-    ),
+
+  const events: ActivityEvent[] = [];
+  for (const item of recentItems) {
+    const { event } = classifyActivityItem(item);
+    if (event) events.push(event);
+  }
+
+  // Context the agent used across the whole run, not only since the last steer.
+  const skills = new Map<string, { name: string; count: number }>();
+  const aios = new Map<string, AccessedAiosFile>();
+  const project = new Map<string, AccessedFile>();
+  const tools = new Map<string, { name: string; count: number }>();
+  const paths: string[] = [];
+  for (const item of items) {
+    const classified = classifyActivityItem(item);
+    for (const name of classified.skills) {
+      const existing = skills.get(name);
+      skills.set(name, { name, count: (existing?.count ?? 0) + 1 });
+    }
+    if (classified.tool) {
+      const existing = tools.get(classified.tool);
+      tools.set(classified.tool, { name: classified.tool, count: (existing?.count ?? 0) + 1 });
+    }
+    for (const { path, access } of classified.access) {
+      paths.push(path);
+      const found = classifyAccessPath(path);
+      if (found.area === "aios") {
+        tally(aios, path, access, () => ({
+          path,
+          name: fileName(path),
+          access,
+          count: 1,
+          folder: found.folder,
+          relative: found.relative,
+        }));
+      } else if (found.area === "file") {
+        tally(project, path, access, () => ({ path, name: fileName(path), access, count: 1 }));
+      }
+    }
+    // Other tools carry paths in their input that the classifier does not model.
+    if (item.type === "dynamic_tool" && classified.access.length === 0) {
+      for (const path of collectToolFilePaths(item.input)) paths.push(path);
+    }
+  }
+
+  const running = events.findLast((event) => event.running);
+  const thoughtItem = recentItems.findLast((item) => item.type === "reasoning");
+  const thought = thoughtItem?.type === "reasoning" ? firstThought(thoughtItem.text) : null;
+  const saidItem = recentItems.findLast((item) => item.type === "assistant_message");
+  const said = saidItem?.type === "assistant_message" ? firstThought(saidItem.text, 180) : null;
+  // The newest of reasoning and tool work is what the agent is doing right now.
+  const lastWork = recentItems.findLast(
+    (item) => item.type === "reasoning" || classifyActivityItem(item).event !== null,
   );
-  const tool =
-    tools.findLast((item) => item.status === "running" || item.status === "pending") ??
-    tools.at(-1);
-  const toolLabel =
-    tool?.title ??
-    (tool?.type === "dynamic_tool" ? tool.toolName : tool?.type.replaceAll("_", " ")) ??
-    null;
-  const files = [
-    ...new Set(
-      tools.flatMap((item) => {
-        if (item.type === "file_change")
-          return [item.fileName, ...(item.changes?.map((change) => change.path) ?? [])];
-        if (item.type === "file_search")
-          return item.results?.map((result) => result.fileName) ?? [];
-        return item.type === "dynamic_tool" ? collectToolFilePaths(item.input) : [];
-      }),
-    ),
-  ].slice(-20);
+  const lastEvent = events.at(-1);
+  const now: {
+    readonly text: string;
+    readonly kind: ActivityKind | "think" | "idle";
+    readonly running: boolean;
+  } = running
+    ? {
+        text: `${running.label} ${running.target ?? ""}`.trim(),
+        kind: running.kind,
+        running: true,
+      }
+    : lastWork?.type === "reasoning"
+      ? { text: thought ? `Thinking: ${thought}` : "Thinking", kind: "think", running: true }
+      : lastEvent
+        ? {
+            text: `${lastEvent.label} ${lastEvent.target ?? ""}`.trim(),
+            kind: lastEvent.kind,
+            running: false,
+          }
+        : {
+            text: steer && !plan ? "Updating plan" : "Getting started",
+            kind: "idle",
+            running: false,
+          };
+
   const notes = recentItems
     .flatMap((item) => {
       if (item.type !== "dynamic_tool" || !item.input || typeof item.input !== "object") return [];
@@ -79,16 +187,26 @@ export function deriveAgentActivity(input: {
     })
     .slice(-5);
   return {
-    step: current?.step ?? (steer && !plan ? "Updating plan" : (toolLabel ?? "Working")),
+    step: current?.step ?? now.text,
+    now,
+    thought,
+    said,
+    events: events.slice(-MAX_EVENTS),
     steps,
     completedSteps: steps.filter((step) => step.status === "completed").length,
     totalSteps: steps.length,
     currentStep: currentIndex >= 0 ? currentIndex + 1 : null,
     remaining: steps.filter((step) => step.status !== "completed").length,
     finishing: currentIndex >= 0 && currentIndex === steps.length - 1,
-    tool: toolLabel,
-    files,
+    skills: [...skills.values()],
+    aios: [...aios.values()].slice(-MAX_AIOS),
+    project: [...project.values()].slice(-MAX_FILES),
+    tools: [...tools.values()],
+    actionCount: events.length,
+    files: [...new Set(paths)].slice(-MAX_FILES),
     explanation: plan?.explanation ?? null,
     notes,
   };
 }
+
+export type AgentActivity = ReturnType<typeof deriveAgentActivity>;

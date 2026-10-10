@@ -49,7 +49,6 @@ function plan(count: number): Extract<OrchestrationV2PlanArtifact, { kind: "todo
 const derive = (items: OrchestrationV2TurnItem[], nextPlan = plan(6)) =>
   deriveAgentActivity({
     runId: base.runId,
-    rootNodeId: base.nodeId,
     items,
     plan: nextPlan,
   });
@@ -102,21 +101,71 @@ describe("agent activity", () => {
     };
     expect(derive([replacement, steer], plan(5)).totalSteps).toBe(5);
   });
-  it("uses only root tools and published explanations, omitting model reasoning", () => {
+  it("reads tools from every node of the run, not only the root, and skips other runs", () => {
     const activity = derive([
-      { ...base, type: "reasoning", text: "private deliberation", streaming: false },
       {
         ...base,
+        type: "reasoning",
+        text: "**Checking the app**\n\nlooking at src",
+        streaming: false,
+      },
+      {
+        ...base,
+        nodeId: NodeId.make("provider-tool"),
         type: "dynamic_tool",
         toolName: "Read",
         input: { file_path: "src/app.ts", justification: "Check the current implementation" },
       },
-      { ...base, nodeId: NodeId.make("child"), type: "file_change", fileName: "child.txt" },
       { ...base, runId: RunId.make("old"), type: "file_change", fileName: "old.txt" },
     ]);
     expect(activity.files).toEqual(["src/app.ts"]);
     expect(activity.notes).toEqual(["Read: Check the current implementation"]);
-    expect(JSON.stringify(activity)).not.toContain("private deliberation");
+    expect(activity.thought).toBe("Checking the app");
+    expect(activity.project.map((file) => file.name)).toEqual(["app.ts"]);
+  });
+  it("does not report workspace preparation as the current tool", () => {
+    const activity = derive([
+      {
+        ...base,
+        status: "completed",
+        type: "command_execution",
+        title: "Workspace ready",
+        input: "Preparing workspace",
+      },
+    ]);
+    expect(activity.events).toEqual([]);
+    expect(activity.now.text).toBe("Getting started");
+  });
+  it("names what is running now and tracks skills and AIOS files", () => {
+    const tool = (
+      id: string,
+      toolName: string,
+      input: unknown,
+      status: "completed" | "running" = "completed",
+    ) =>
+      ({
+        ...base,
+        id: TurnItemId.make(id),
+        status,
+        type: "dynamic_tool",
+        toolName,
+        input,
+      }) as OrchestrationV2TurnItem;
+    const activity = derive([
+      tool("a", "Read", { file_path: "D:/Leonidas AIOS/memory/core.md" }),
+      tool("b", "Read", { file_path: "D:/Leonidas AIOS/.agents/skills/design-build/SKILL.md" }),
+      tool("c", "Skill", { skill: "impeccable" }),
+      tool("d", "mem0.search", { query: "taste" }),
+      tool("e", "Edit", { file_path: "D:/Leonidas AIOS/tasks/x.md" }),
+      tool("f", "Grep", { pattern: "usage limits" }, "running"),
+    ]);
+    expect(activity.now).toEqual({ text: "Searching usage limits", kind: "search", running: true });
+    expect(activity.skills.map((skill) => skill.name)).toEqual(["design-build", "impeccable"]);
+    expect(activity.aios.map((file) => [file.folder, file.access])).toEqual([
+      ["memory", "read"],
+      ["tasks", "write"],
+    ]);
+    expect(activity.tools.map((entry) => entry.name)).toEqual(["Memory"]);
   });
   it("shows remaining steps and finishing without inventing an ETA", () => {
     const last = plan(1);

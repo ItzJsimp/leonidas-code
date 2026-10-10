@@ -6,13 +6,14 @@ import { cn } from "~/lib/utils";
 import { ComposerBanner } from "./ComposerBanner";
 import { AgentElapsed } from "./AgentElapsed";
 import { Button } from "../ui/button";
-import type { deriveAgentActivity } from "../../agentActivity";
+import type { AgentActivity } from "../../agentActivity";
+import { ActivityCounters, ActivityDetails, ActivityKindIcon } from "./ComposerActivityDetails";
 
 export interface ComposerTasksProgress {
   readonly step: string;
   readonly completedSteps: number;
   readonly totalSteps: number;
-  readonly activity?: ReturnType<typeof deriveAgentActivity> & {
+  readonly activity?: AgentActivity & {
     readonly startedAt: string | null;
     readonly onOpenFile: (path: string) => void;
   };
@@ -81,7 +82,11 @@ function TaskSummary({
   return (
     <>
       <ComposerBanner.Icon>
-        <ListTodoIcon />
+        {progress.activity ? (
+          <ActivityKindIcon kind={progress.activity.now.kind} />
+        ) : (
+          <ListTodoIcon />
+        )}
       </ComposerBanner.Icon>
       <ComposerBanner.Content>
         <span className="shrink-0 text-muted-foreground">Activity</span>
@@ -93,6 +98,7 @@ function TaskSummary({
         </span>
       </ComposerBanner.Content>
       <ComposerBanner.Actions>
+        {progress.activity ? <ActivityCounters activity={progress.activity} /> : null}
         {progress.activity?.startedAt ? (
           <AgentElapsed
             compact
@@ -194,100 +200,78 @@ export const ComposerTasksContent = memo(function ComposerTasksContent({
       />
       {expanded ? (
         <ComposerBanner.Scroll data-composer-tasks-scroll="true">
-          <ComposerBanner.Children
-            render={<ul role="list" />}
-            aria-label={`Task list. ${progress.completedSteps} of ${progress.totalSteps} complete.`}
-            data-composer-tasks-list="true"
-          >
-            {keyedTaskSteps(steps).map(({ key, step }) => (
-              <ComposerBanner.Row key={key} render={<li />} className="items-start py-1 pe-2">
-                <ComposerBanner.Icon
-                  className={cn(
-                    "h-4",
-                    step.status === "completed"
-                      ? "text-success"
-                      : step.status === "inProgress"
-                        ? "text-primary"
-                        : "text-muted-foreground/40",
-                  )}
-                >
-                  {step.status === "completed" ? (
-                    <CheckIcon />
-                  ) : step.status === "inProgress" ? (
-                    <CircleDotIcon />
-                  ) : (
-                    <CircleIcon />
-                  )}
-                </ComposerBanner.Icon>
-                <ComposerBanner.Content
-                  className={cn(
-                    "block wrap-anywhere",
-                    step.status === "completed"
-                      ? "text-muted-foreground/55"
-                      : step.status === "inProgress"
-                        ? "text-foreground/90"
-                        : "text-muted-foreground/70",
-                  )}
-                >
-                  <span className="sr-only">{taskStatusLabels[step.status]}: </span>
-                  {step.step}
-                </ComposerBanner.Content>
-                <ComposerBanner.Actions>
-                  <span
-                    className="w-12 text-right text-3xs/4 text-muted-foreground/45 tabular-nums"
-                    data-composer-task-duration="true"
+          {steps.length > 0 ? (
+            <ComposerBanner.Children
+              render={<ul role="list" />}
+              aria-label={`Task list. ${progress.completedSteps} of ${progress.totalSteps} complete.`}
+              data-composer-tasks-list="true"
+            >
+              {keyedTaskSteps(steps).map(({ key, step }) => (
+                <ComposerBanner.Row key={key} render={<li />} className="items-start py-1 pe-2">
+                  <ComposerBanner.Icon
+                    className={cn(
+                      "h-4",
+                      step.status === "completed"
+                        ? "text-success"
+                        : step.status === "inProgress"
+                          ? "text-primary"
+                          : "text-muted-foreground/40",
+                    )}
                   >
-                    {step.durationMs !== undefined
-                      ? formatDuration(step.durationMs)
-                      : step.status === "inProgress"
-                        ? "now"
-                        : null}
-                  </span>
-                </ComposerBanner.Actions>
-              </ComposerBanner.Row>
-            ))}
-          </ComposerBanner.Children>
+                    {step.status === "completed" ? (
+                      <CheckIcon />
+                    ) : step.status === "inProgress" ? (
+                      <CircleDotIcon />
+                    ) : (
+                      <CircleIcon />
+                    )}
+                  </ComposerBanner.Icon>
+                  <ComposerBanner.Content
+                    className={cn(
+                      "block wrap-anywhere",
+                      step.status === "completed"
+                        ? "text-muted-foreground/55"
+                        : step.status === "inProgress"
+                          ? "text-foreground/90"
+                          : "text-muted-foreground/70",
+                    )}
+                  >
+                    <span className="sr-only">{taskStatusLabels[step.status]}: </span>
+                    {step.step}
+                  </ComposerBanner.Content>
+                  <ComposerBanner.Actions>
+                    <span
+                      className="w-12 text-right text-3xs/4 text-muted-foreground/45 tabular-nums"
+                      data-composer-task-duration="true"
+                    >
+                      {step.durationMs !== undefined
+                        ? formatDuration(step.durationMs)
+                        : step.status === "inProgress"
+                          ? "now"
+                          : null}
+                    </span>
+                  </ComposerBanner.Actions>
+                </ComposerBanner.Row>
+              ))}
+            </ComposerBanner.Children>
+          ) : null}
           {progress.activity ? (
-            <div className="space-y-2 px-3 pb-3 text-xs text-muted-foreground">
-              <p>
-                {progress.totalSteps === 0
-                  ? "No plan published yet."
-                  : progress.activity.finishing
+            <>
+              {progress.totalSteps > 0 ? (
+                <p className="px-3 pb-2 text-xs text-muted-foreground">
+                  {progress.activity.finishing
                     ? "Finishing the last step"
                     : `${progress.activity.remaining} steps remaining`}
-              </p>
-              {progress.activity.tool ? <p>Current tool: {progress.activity.tool}</p> : null}
-              {progress.activity.explanation ? <p>{progress.activity.explanation}</p> : null}
-              {steps.some((step) => step.status === "pending") ? (
-                <p>Next: {steps.find((step) => step.status === "pending")?.step}</p>
+                  {steps.some((step) => step.status === "pending")
+                    ? ` · Next: ${steps.find((step) => step.status === "pending")?.step}`
+                    : null}
+                </p>
               ) : null}
-              {progress.activity.files.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {progress.activity.files.map((path) => (
-                    <Button
-                      key={path}
-                      size="xs"
-                      variant="outline"
-                      onClick={() => progress.activity?.onOpenFile(path)}
-                    >
-                      {path}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-              {progress.activity.notes.length > 0 ? (
-                <details key={progress.activity.startedAt}>
-                  <summary className="cursor-pointer focus-visible:outline-2">
-                    Show action notes
-                  </summary>
-                  <ul className="mt-2 space-y-1">
-                    {progress.activity.notes.map((note, index) => (
-                      <li key={index}>{note}</li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
-            </div>
+              <ActivityDetails
+                activity={progress.activity}
+                onOpenFile={progress.activity.onOpenFile}
+              />
+            </>
           ) : null}
         </ComposerBanner.Scroll>
       ) : null}

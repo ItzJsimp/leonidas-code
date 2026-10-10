@@ -2464,17 +2464,15 @@ export default function ChatView(props: ChatViewProps) {
       isLatestRunSettled(activeActivityRun, activeRuntime)
     )
       return null;
-    const run = serverProjection.runs.find((candidate) => candidate.id === activeActivityRun.runId);
+    // Plans are published from the provider's own node, not the run's root node.
     const plan = serverProjection.plans.findLast(
       (candidate) =>
         candidate.kind === "todo_list" &&
         candidate.status !== "superseded" &&
-        candidate.runId === activeActivityRun.runId &&
-        candidate.nodeId === run?.rootNodeId,
+        candidate.runId === activeActivityRun.runId,
     );
     return deriveAgentActivity({
       runId: activeActivityRun.runId,
-      rootNodeId: run?.rootNodeId ?? null,
       items: serverProjection.turnItems,
       plan: plan?.kind === "todo_list" ? plan : null,
     });
