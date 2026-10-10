@@ -1,9 +1,14 @@
 import type {
+  ModelCapabilities,
+  ModelSelection,
   ProviderInstanceId,
   ServerProvider,
   ServerProviderUsageWindow,
   UsageLimitSourceSnapshots,
 } from "@t3tools/contracts";
+import { getProviderOptionCurrentValue, getProviderOptionDescriptors } from "@t3tools/shared/model";
+
+import type { ContextWindowSnapshot } from "./contextWindow";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -77,24 +82,90 @@ export function orderPlanWindows(
     .map(({ window }) => window);
 }
 
-/**
- * Row label in Claude's wording: the session window reads `Session limit`, and
- * the account-wide weekly reads `Weekly · all models` when per-model weeklies
- * sit beside it.
- */
-export function planWindowLabel(
-  window: ServerProviderUsageWindow,
-  windows: ReadonlyArray<ServerProviderUsageWindow>,
-): string {
+/** Row label in Claude's wording: `Session limit` and `Weekly · all models`. */
+export function planWindowLabel(window: ServerProviderUsageWindow): string {
   if (window.kind === "session" && window.label === "Session") return "Session limit";
-  if (
-    window.kind === "weekly" &&
-    window.label === "Weekly" &&
-    windows.some((other) => other.kind === "weekly" && other.label.includes("·"))
-  ) {
-    return "Weekly · all models";
-  }
+  // The plain weekly is account-wide; per-model weeklies are named `Weekly · <model>`.
+  if (window.kind === "weekly" && window.label === "Weekly") return "Weekly · all models";
   return window.label;
+}
+
+const PLAN_BRAND_PREFIX = /^(?:claude|chatgpt|codex|cursor|grok|opencode|gemini)\s+/i;
+const PLAN_SUFFIX = /\s+(?:subscription|plan)$/i;
+
+/** `Claude Pro Subscription` reads `Pro`, `ChatGPT Plus Subscription` reads `Plus`. */
+export function shortPlanName(plan: string): string {
+  const short = plan.trim().replace(PLAN_SUFFIX, "").replace(PLAN_BRAND_PREFIX, "").trim();
+  return short || plan.trim();
+}
+
+/** `1m`, `1M`, `200k`, `128000` as tokens; null when the value is not a size. */
+export function parseContextWindowSize(value: string): number | null {
+  const match = /^\s*(\d+(?:\.\d+)?)\s*([km])?\s*$/i.exec(value);
+  if (!match) return null;
+  const unit = match[2]?.toLowerCase();
+  const tokens = Number(match[1]) * (unit === "m" ? 1_000_000 : unit === "k" ? 1_000 : 1);
+  return Number.isFinite(tokens) && tokens > 0 ? tokens : null;
+}
+
+/**
+ * The window size a model's `contextWindow` option selects, for models that
+ * offer the choice. Models with a fixed window do not expose its size to
+ * clients, so they return null.
+ */
+export function contextWindowTokensForModel(
+  capabilities: ModelCapabilities | null | undefined,
+  selection: ModelSelection | null | undefined,
+): number | null {
+  if (!capabilities) return null;
+  const descriptor = getProviderOptionDescriptors({
+    caps: capabilities,
+    selections: selection?.options,
+  }).find((candidate) => candidate.id === "contextWindow");
+  const value = getProviderOptionCurrentValue(descriptor, selection);
+  return typeof value === "string" ? parseContextWindowSize(value) : null;
+}
+
+/**
+ * The thread's snapshot with the model's window filled in when the provider
+ * has not reported one yet, or an empty `0 / <size>` snapshot before the
+ * first report. Null when neither usage nor the size is known.
+ */
+export function withKnownContextWindow(
+  snapshot: ContextWindowSnapshot | null,
+  modelMaxTokens: number | null,
+): ContextWindowSnapshot | null {
+  if (snapshot && snapshot.maxTokens != null && snapshot.maxTokens > 0) return snapshot;
+  if (modelMaxTokens === null) return snapshot;
+  const usedTokens = snapshot?.usedTokens ?? 0;
+  const usedPercentage = Math.min(100, (usedTokens / modelMaxTokens) * 100);
+  const sized = {
+    maxTokens: modelMaxTokens,
+    remainingTokens: Math.max(0, Math.round(modelMaxTokens - usedTokens)),
+    usedPercentage,
+    remainingPercentage: Math.max(0, 100 - usedPercentage),
+  };
+  if (snapshot) return { ...snapshot, ...sized };
+  return {
+    usedTokens: 0,
+    totalProcessedTokens: null,
+    ...sized,
+    inputTokens: null,
+    cachedInputTokens: null,
+    outputTokens: null,
+    reasoningOutputTokens: null,
+    lastUsedTokens: null,
+    lastInputTokens: null,
+    lastCachedInputTokens: null,
+    lastOutputTokens: null,
+    lastReasoningOutputTokens: null,
+    toolUses: null,
+    durationMs: null,
+    compactsAutomatically: null,
+    autoCompactThreshold: null,
+    cost: null,
+    updatedAt: new Date(0).toISOString(),
+  };
 }
 
 /**

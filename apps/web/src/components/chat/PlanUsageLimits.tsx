@@ -1,10 +1,6 @@
-import type {
-  ServerProvider,
-  ServerProviderUsageWindow,
-  UsageLimitsReport,
-} from "@t3tools/contracts";
+import type { ServerProviderUsageWindow, UsageLimitsReport } from "@t3tools/contracts";
 import { limitsNotice } from "@t3tools/shared/usageLimits";
-import { ChevronRightIcon } from "lucide-react";
+import { ArrowRightIcon, ChevronRightIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 
 import { usePrimarySettings } from "../../hooks/useSettings";
@@ -15,28 +11,25 @@ import {
   formatTokenCount,
   orderPlanWindows,
   planWindowLabel,
+  shortPlanName,
   type UsageSeverity,
   usageSeverity,
   usedPercentLabel,
 } from "../../lib/usageLimitsPopover";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import { barColor, resetCreditsSummary } from "../usage/UsageLimits";
+import { resetCreditsSummary } from "../usage/UsageLimits";
 import { AccountSummary } from "./ComposerUsageLimits";
 
-const SEVERITY_FILL: Record<Exclude<UsageSeverity, "normal">, string> = {
+/** Bar fill by severity: blue while there is room, amber from 75%, red from 90%. */
+const SEVERITY_FILL: Record<UsageSeverity, string> = {
+  normal: "bg-info",
   warning: "bg-warning",
   critical: "bg-destructive",
 };
 
-const SEVERITY_TEXT: Record<UsageSeverity, string> = {
-  normal: "text-muted-foreground",
-  warning: "text-warning",
-  critical: "text-destructive",
-};
-
-/** Context window segments: enough to read 5% steps at popover width. */
-const CONTEXT_SEGMENTS = 20;
+/** Context window segments: fine enough to read 2.5% steps at popover width. */
+const CONTEXT_SEGMENTS = 40;
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -66,18 +59,15 @@ function useResetMomentFormatter(now: number): (at: number) => string {
   }, [now, timestampFormat]);
 }
 
-/** A thin used-quota bar; amber and red past the warning thresholds. */
+/** A 4px used-quota bar coloured by severity. */
 function UsageBar({
   usedPercent,
   label,
-  color,
 }: {
   readonly usedPercent: number;
   readonly label: string;
-  readonly color: string;
 }) {
   const used = usedPercentLabel(usedPercent);
-  const severity = usageSeverity(used);
   return (
     <div
       role="progressbar"
@@ -89,14 +79,8 @@ function UsageBar({
     >
       {used > 0 ? (
         <div
-          className={cn(
-            "h-full rounded-full",
-            severity === "normal" ? null : SEVERITY_FILL[severity],
-          )}
-          style={{
-            width: `${used}%`,
-            ...(severity === "normal" ? { backgroundColor: color } : {}),
-          }}
+          className={cn("h-full rounded-full", SEVERITY_FILL[usageSeverity(used)])}
+          style={{ width: `${used}%` }}
         />
       ) : null}
     </div>
@@ -105,51 +89,51 @@ function UsageBar({
 
 function PlanWindowRow({
   window,
-  windows,
-  driver,
   now,
   formatAt,
 }: {
   readonly window: ServerProviderUsageWindow;
-  readonly windows: ReadonlyArray<ServerProviderUsageWindow>;
-  readonly driver: ServerProvider["driver"];
   readonly now: number;
   readonly formatAt: (at: number) => string;
 }) {
-  const label = planWindowLabel(window, windows);
+  const label = planWindowLabel(window);
   const used = usedPercentLabel(window.usedPercent);
   const resets = formatResetLabel(window.resetsAt, now, formatAt);
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <div className="flex min-w-0 items-baseline gap-3 text-xs">
-        <span className="truncate text-foreground">{label}</span>
-        <span className="ms-auto flex shrink-0 items-baseline gap-3 tabular-nums">
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex min-w-0 items-baseline gap-3 text-sm">
+        <span className="truncate font-semibold text-foreground">{label}</span>
+        <span className="ms-auto flex shrink-0 items-baseline gap-2 tabular-nums">
           {resets ? <span className="text-muted-foreground">{resets}</span> : null}
-          <span className={cn("w-9 text-end font-medium", SEVERITY_TEXT[usageSeverity(used)])}>
-            {used}%
-          </span>
+          <span className="text-foreground">{used}%</span>
         </span>
       </div>
       <UsageBar
         usedPercent={window.usedPercent}
         label={`${label}: ${used}% used${resets ? `, ${resets.toLowerCase()}` : ""}`}
-        color={barColor(driver)}
       />
     </div>
   );
 }
 
 /**
- * The thread's context window as a segmented bar. The chevron discloses the
- * token breakdown when the provider reports one.
+ * The thread's context window: muted label, `used / size (percent)`, a chevron
+ * that discloses the token breakdown, and a thin segmented bar.
  */
 export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnapshot }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
   const percent =
     usage.usedPercentage == null ? null : Math.round(Math.max(0, usage.usedPercentage));
-  const severity = percent === null ? "normal" : usageSeverity(percent);
-  const filled = percent === null ? 0 : Math.round((percent / 100) * CONTEXT_SEGMENTS);
+  const filled =
+    usage.usedPercentage == null
+      ? 0
+      : Math.min(
+          CONTEXT_SEGMENTS,
+          // Any usage lights the first segment, as Claude's bar does.
+          Math.ceil((Math.max(0, usage.usedPercentage) / 100) * CONTEXT_SEGMENTS),
+        );
+  const fill = SEVERITY_FILL[percent === null ? "normal" : usageSeverity(percent)];
   const figure =
     usage.maxTokens != null && usage.maxTokens > 0
       ? `${formatTokenCount(usage.usedTokens)} / ${formatTokenCount(usage.maxTokens)}${
@@ -164,26 +148,20 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
   ].filter((part) => part !== null);
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-2">
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={detailsId}
-        disabled={details.length === 0}
         onClick={() => setExpanded((value) => !value)}
-        className="flex min-w-0 items-center gap-2 rounded-sm text-xs outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default"
+        className="flex min-w-0 items-center gap-2 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <span className="truncate text-foreground">Context window</span>
-        <span className="ms-auto shrink-0 text-muted-foreground tabular-nums">{figure}</span>
-        {details.length > 0 ? (
-          <ChevronRightIcon
-            aria-hidden
-            className={cn(
-              "size-3.5 shrink-0 text-muted-foreground transition-transform",
-              expanded && "rotate-90",
-            )}
-          />
-        ) : null}
+        <span className="truncate">Context window</span>
+        <span className="ms-auto shrink-0 tabular-nums">{figure}</span>
+        <ChevronRightIcon
+          aria-hidden
+          className={cn("size-3.5 shrink-0 transition-transform", expanded && "rotate-90")}
+        />
       </button>
       {percent !== null ? (
         <div
@@ -192,26 +170,19 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={percent}
-          className="flex h-1 w-full gap-0.5"
+          className="flex h-1 w-full gap-px"
         >
           {Array.from({ length: CONTEXT_SEGMENTS }, (_, index) => (
             <span
               key={index}
-              className={cn(
-                "h-full flex-1 rounded-full",
-                index < filled
-                  ? severity === "normal"
-                    ? "bg-foreground/60"
-                    : SEVERITY_FILL[severity]
-                  : "bg-muted",
-              )}
+              className={cn("h-full flex-1 rounded-xs", index < filled ? fill : "bg-muted")}
             />
           ))}
         </div>
       ) : null}
-      {expanded && details.length > 0 ? (
+      {expanded ? (
         <span id={detailsId} className="text-xs text-muted-foreground tabular-nums">
-          {details.join(" · ")}
+          {details.length > 0 ? details.join(" · ") : "No token breakdown reported yet."}
         </span>
       ) : null}
     </div>
@@ -219,11 +190,17 @@ export function ContextWindowRow({ usage }: { readonly usage: ContextWindowSnaps
 }
 
 /**
- * Each account as Claude's "Plan usage limits" block: session, then weekly,
- * then any other windows, one thin bar each. Reset credits show as a summary
- * because the redeem confirm cannot open above a popover.
+ * Each account as Claude's "Plan usage limits" block: a muted header with the
+ * short plan name, then session, weekly and any other windows. Reset credits
+ * show as a summary because the redeem confirm cannot open above a popover.
  */
-export function PlanUsageAccounts({ report }: { readonly report: UsageLimitsReport }) {
+export function PlanUsageAccounts({
+  report,
+  onOpenDetails,
+}: {
+  readonly report: UsageLimitsReport;
+  readonly onOpenDetails: () => void;
+}) {
   const now = Date.parse(report.createdAt);
   const formatAt = useResetMomentFormatter(now);
   const multiple = report.accounts.length > 1;
@@ -233,31 +210,32 @@ export function PlanUsageAccounts({ report }: { readonly report: UsageLimitsRepo
         const notice = limitsNotice(account.limits);
         const externalUsage = account.limits.externalUsage;
         const windows = orderPlanWindows(account.limits.windows);
+        const { plan, ...unplanned } = account;
         return (
-          <section key={account.id} className="flex min-w-0 flex-col gap-2">
-            <span className="truncate text-xs font-medium text-foreground">
-              Plan usage limits
-              {multiple ? (
-                <span className="font-normal text-muted-foreground">
-                  {" · "}
-                  <AccountSummary account={account} />
-                </span>
-              ) : account.plan ? (
-                <span className="font-normal text-muted-foreground"> · {account.plan}</span>
-              ) : null}
-            </span>
+          <section key={account.id} className="flex min-w-0 flex-col gap-3">
+            <button
+              type="button"
+              onClick={onOpenDetails}
+              className="flex min-w-0 items-center gap-2 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              <span className="truncate">
+                Plan usage limits
+                {multiple ? (
+                  <>
+                    {" · "}
+                    <AccountSummary account={unplanned} />
+                  </>
+                ) : null}
+                {plan ? ` · ${shortPlanName(plan)}` : null}
+              </span>
+              <span className="sr-only">, open detailed breakdown</span>
+              <ArrowRightIcon aria-hidden className="ms-auto size-3.5 shrink-0" />
+            </button>
             {notice ? (
               <span className="text-xs text-muted-foreground">{notice}</span>
             ) : (
               windows.map((window) => (
-                <PlanWindowRow
-                  key={window.id}
-                  window={window}
-                  windows={windows}
-                  driver={account.driver}
-                  now={now}
-                  formatAt={formatAt}
-                />
+                <PlanWindowRow key={window.id} window={window} now={now} formatAt={formatAt} />
               ))
             )}
             {account.limits.resetCredits?.availableCount ? (

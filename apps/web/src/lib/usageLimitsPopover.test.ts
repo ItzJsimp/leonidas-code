@@ -2,11 +2,15 @@ import type { ServerProviderUsageWindow } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  contextWindowTokensForModel,
   formatResetLabel,
   formatTokenCount,
   orderPlanWindows,
+  parseContextWindowSize,
   planWindowLabel,
+  shortPlanName,
   usageSeverity,
+  withKnownContextWindow,
 } from "./usageLimitsPopover";
 
 const window = (
@@ -59,9 +63,57 @@ describe("usage limits popover helpers", () => {
       "model",
       "other",
     ]);
-    expect(planWindowLabel(windows[3]!, windows)).toBe("Session limit");
-    expect(planWindowLabel(windows[2]!, windows)).toBe("Weekly · all models");
-    expect(planWindowLabel(windows[2]!, [windows[2]!])).toBe("Weekly");
-    expect(planWindowLabel(windows[0]!, windows)).toBe("Weekly · Fable");
+    expect(planWindowLabel(windows[3]!)).toBe("Session limit");
+    expect(planWindowLabel(windows[2]!)).toBe("Weekly · all models");
+    expect(planWindowLabel(windows[0]!)).toBe("Weekly · Fable");
+    expect(planWindowLabel(windows[1]!)).toBe("Credits");
+  });
+
+  it("shortens plan names to the tier", () => {
+    expect(shortPlanName("Claude Pro Subscription")).toBe("Pro");
+    expect(shortPlanName("Claude Max 20x Subscription")).toBe("Max 20x");
+    expect(shortPlanName("ChatGPT Plus Subscription")).toBe("Plus");
+    expect(shortPlanName("SuperGrok")).toBe("SuperGrok");
+    expect(shortPlanName("Claude")).toBe("Claude");
+  });
+
+  it("reads the model's selected context window size", () => {
+    expect(parseContextWindowSize("1m")).toBe(1_000_000);
+    expect(parseContextWindowSize("200k")).toBe(200_000);
+    expect(parseContextWindowSize("high")).toBeNull();
+    const capabilities = {
+      optionDescriptors: [
+        {
+          id: "contextWindow",
+          label: "Context Window",
+          type: "select" as const,
+          options: [
+            { id: "200k", label: "200k" },
+            { id: "1m", label: "1M", isDefault: true },
+          ],
+        },
+      ],
+    };
+    expect(contextWindowTokensForModel(capabilities, undefined)).toBe(1_000_000);
+    expect(
+      contextWindowTokensForModel(capabilities, {
+        instanceId: "claudeAgent" as never,
+        model: "claude-sonnet-4-6",
+        options: [{ id: "contextWindow", value: "200k" }],
+      }),
+    ).toBe(200_000);
+    expect(contextWindowTokensForModel({ optionDescriptors: [] }, undefined)).toBeNull();
+  });
+
+  it("fills in the model window before the first usage report", () => {
+    expect(withKnownContextWindow(null, null)).toBeNull();
+    const empty = withKnownContextWindow(null, 1_000_000);
+    expect(empty?.usedTokens).toBe(0);
+    expect(empty?.maxTokens).toBe(1_000_000);
+    expect(empty?.usedPercentage).toBe(0);
+    const reported = { ...empty!, usedTokens: 50_000, maxTokens: null, usedPercentage: null };
+    expect(withKnownContextWindow(reported, 200_000)?.usedPercentage).toBe(25);
+    const sized = { ...empty!, maxTokens: 400_000 };
+    expect(withKnownContextWindow(sized, 1_000_000)).toBe(sized);
   });
 });

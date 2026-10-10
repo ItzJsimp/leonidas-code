@@ -60,6 +60,11 @@ export const ChatHeaderUsageLimits = memo(function ChatHeaderUsageLimits({
   const triggerLabel =
     peak === null ? "Usage limits" : `Usage limits: ${usedPercentLabel(peak)}% used at most`;
 
+  const openDetails = () => {
+    setOpenedAt(null);
+    void navigate({ to: "/usage" });
+  };
+
   return (
     <Popover
       open={openedAt !== null}
@@ -84,7 +89,7 @@ export const ChatHeaderUsageLimits = memo(function ChatHeaderUsageLimits({
         width="lg"
         padding="compact"
       >
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 py-1">
           {contextWindow ? (
             <>
               <ContextWindowRow usage={contextWindow} />
@@ -92,19 +97,11 @@ export const ChatHeaderUsageLimits = memo(function ChatHeaderUsageLimits({
             </>
           ) : null}
           {report ? (
-            <PlanUsageAccounts report={report} />
+            <PlanUsageAccounts report={report} onOpenDetails={openDetails} />
           ) : (
-            <span className="text-xs text-muted-foreground">No usage limits reported.</span>
+            <span className="text-sm text-muted-foreground">No usage limits reported.</span>
           )}
-          <Button
-            size="xs"
-            variant="ghost-muted"
-            className="self-start"
-            onClick={() => {
-              setOpenedAt(null);
-              void navigate({ to: "/usage" });
-            }}
-          >
+          <Button size="sm" variant="secondary" className="self-start" onClick={openDetails}>
             See detailed breakdown
           </Button>
         </div>

@@ -497,6 +497,7 @@ import {
   shouldOfferResumeCompaction,
 } from "./chat/ContextWindowMeter.logic";
 import { deriveLatestContextWindowSnapshot } from "../lib/contextWindow";
+import { contextWindowTokensForModel, withKnownContextWindow } from "../lib/usageLimitsPopover";
 import {
   DRAFT_HERO_TRANSITION_ANIMATION_ID,
   DRAFT_HERO_TRANSITION_EASING,
@@ -4284,6 +4285,18 @@ export default function ChatView(props: ChatViewProps) {
     : null;
   const providerSubagentCatalogModel = providerSubagentModels.find(
     (model) => model.slug === providerSubagentModelSlug,
+  );
+  // The header shows `0 / <size>` before the provider's first usage report.
+  const headerContextWindow = useMemo(
+    () =>
+      withKnownContextWindow(
+        activeContextWindow,
+        contextWindowTokensForModel(
+          providerSubagentCatalogModel?.capabilities,
+          activeThread?.modelSelection,
+        ),
+      ),
+    [activeContextWindow, activeThread?.modelSelection, providerSubagentCatalogModel],
   );
   const providerSubagentModelLabel = providerSubagentCatalogModel
     ? getTriggerDisplayModelName(providerSubagentCatalogModel)
@@ -11324,7 +11337,7 @@ export default function ChatView(props: ChatViewProps) {
             rightPanelOpen={inlineRightPanelOwnsTitleBar}
             onNewThreadInProject={handleNewThreadInActiveProject}
             usageLimits={headerUsageLimits}
-            contextWindow={activeContextWindow}
+            contextWindow={headerContextWindow}
             {...(activeDraftLogicalProjectKey
               ? { onOpenProjectSettings: handleOpenDraftProjectSettings }
               : {})}
