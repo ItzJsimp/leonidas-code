@@ -48,14 +48,13 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 ## New machine setup (Mob: do this once)
 
 Paste this to your Claude in any folder:
-
-> Clone https://github.com/ItzJsimp/leonidas-code to a sibling folder of my AIOS (if not already cloned), then run `pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "<path to my AIOS>/CLAUDE.md"` from the clone, then run `claude` once in the clone so I can approve the import dialog.
+> Clone https://github.com/ItzJsimp/leonidas-code into `projects/leonidas-code` inside my AIOS (if not already cloned), then run `pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "<path to my AIOS>/CLAUDE.md"` from the clone, then run `claude` once in the clone so I can approve the import dialog.
 
 That sets rebase pulls, links your AIOS identity, installs the latest Leonidas Code (replacing any T3 Code install and shortcuts) and launches it. Right-click its taskbar icon and pick Pin to taskbar. After that: code changes arrive by the auto-pull at each Claude session start; app changes arrive as the in-app update toast after every push to `main`.
 
 ## Status log (newest first, one line per session, who and what)
-
 - 2026-10-10 Mob's agent: implemented local-history prompt prediction with bounded cached reads, Tab acceptance, Escape dismissal, Undo and a settings switch. Scoped checks pass; published to main, live client verification pending.
+- 2026-10-10 Jake's agent: repo moved into the AIOS at `projects/leonidas-code/` (own git repo, AIOS-gitignored) with the project workspace layer: `CLAUDE.md`, `project.md`, `agent-playbook.md`, `project/` docs. Same path on every machine; clone there. Re-run `pnpm install` and re-approve the `claude` import dialog after any move.
 - 2026-10-10 Jake's agent: rebranded to Leonidas Code (name, icons, sidebar, installer, branch prefix `leonidas`), added auto-pull hook and `scripts/leonidas-setup.ps1`. Ships as `v1.0.2`.
 - 2026-10-09 Jake's agent: merged Mob's `mob-base` into `main`, added the release workflow, wrote this file. `v1.0.1` is published.
 
