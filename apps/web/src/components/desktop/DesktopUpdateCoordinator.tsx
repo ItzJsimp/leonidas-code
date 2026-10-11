@@ -45,6 +45,7 @@ export function DesktopUpdateCoordinator() {
   const runningCount = useAtomValue(runningThreadCountAtom);
   const updateWhenSafe = useUpdateWhenSafeStore((store) => store.updateWhenSafe);
   const autoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.autoUpdateWhenSafe);
+  const setAutoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setAutoUpdateWhenSafe);
   const setUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setUpdateWhenSafe);
   const runningCountRef = useRef(runningCount);
   runningCountRef.current = runningCount;
@@ -118,9 +119,21 @@ export function DesktopUpdateCoordinator() {
       return;
     }
     if (whenSafeAction !== "wait") return;
-    const toastId = showDesktopUpdateWaitingToast(() => setUpdateWhenSafe(false));
+    const toastId = showDesktopUpdateWaitingToast(
+      () => {
+        setUpdateWhenSafe(false);
+        if (autoUpdateWhenSafe) setAutoUpdateWhenSafe(false);
+      },
+      autoUpdateWhenSafe ? "Turn off automatic updates" : "Cancel",
+    );
     return () => toastManager.close(toastId);
-  }, [whenSafeAction, setUpdateWhenSafe, downloadedVersion]);
+  }, [
+    whenSafeAction,
+    setUpdateWhenSafe,
+    downloadedVersion,
+    autoUpdateWhenSafe,
+    setAutoUpdateWhenSafe,
+  ]);
 
   return whatsNew ? (
     <LeonidasWhatsNewDialog

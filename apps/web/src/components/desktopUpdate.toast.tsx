@@ -93,12 +93,12 @@ export function showDesktopUpdateDownloadedToast(
 }
 
 /** Shown while "Update when safe" waits on running agents; returns the id so the caller can close it. */
-export function showDesktopUpdateWaitingToast(onCancel: () => void) {
+export function showDesktopUpdateWaitingToast(onCancel: () => void, cancelLabel = "Cancel") {
   return toastManager.add({
     type: "info",
     title: UPDATE_WHEN_SAFE_WAITING_LABEL,
     timeout: 0,
-    actionProps: { children: "Cancel", onClick: onCancel },
+    actionProps: { children: cancelLabel, onClick: onCancel },
   });
 }
 
