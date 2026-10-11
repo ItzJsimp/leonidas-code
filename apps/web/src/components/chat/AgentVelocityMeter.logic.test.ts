@@ -5,6 +5,7 @@ import {
   calculateTurnVelocity,
   deriveVelocitySummary,
   extractTurnOutputTokens,
+  formatRollingLabel,
   formatToolDuration,
   formatTpsLabel,
   type TurnSpeedSample,
@@ -32,7 +33,7 @@ describe("AgentVelocityMeter.logic", () => {
       expect(extractTurnOutputTokens(turn)).toBe(64);
     });
 
-    it("falls back to tokenUsage when turnTokenUsage is not available", () => {
+    it("ignores response-level tokenUsage when turnTokenUsage is not available", () => {
       const turn = {
         tokenUsage: {
           usedTokens: 164,
@@ -41,7 +42,7 @@ describe("AgentVelocityMeter.logic", () => {
         },
       } as unknown as OrchestrationV2ProviderTurn;
 
-      expect(extractTurnOutputTokens(turn)).toBe(50);
+      expect(extractTurnOutputTokens(turn)).toBe(0);
     });
 
     it("returns 0 if neither is present or values are missing", () => {
@@ -116,10 +117,10 @@ describe("AgentVelocityMeter.logic", () => {
       expect(avg).toBe(63.3);
     });
 
-    it("handles windows larger than sample count gracefully", () => {
-      // All 6 samples: tokens = 60 + 380 = 440, duration = 7000ms => 440 / 7 = 62.9 t/s
-      const avg = calculateRollingVelocity(samples, 20);
-      expect(avg).toBe(62.9);
+    it("returns null until the window is full instead of repeating a smaller window", () => {
+      expect(calculateRollingVelocity(samples, 10)).toBeNull();
+      expect(calculateRollingVelocity(samples, 20)).toBeNull();
+      expect(calculateRollingVelocity(samples, 6)).toBe(62.9);
     });
 
     it("returns null for empty samples", () => {
@@ -254,7 +255,28 @@ describe("AgentVelocityMeter.logic", () => {
       const summary = deriveVelocitySummary([completed, interrupted], []);
       expect(summary.outputTokens).toBe(30);
       expect(summary.averageTurnTps).toBe(10);
-      expect(summary.rolling5Tps).toBe(50);
+      expect(summary.rolling5Tps).toBeNull();
+      expect(summary.totalTurnsTracked).toBe(1);
+    });
+    it("keeps the headline pace and rolling pace on the same turn totals", () => {
+      const turns = Array.from({ length: 5 }, (_, i) => ({
+        id: `t${i}`,
+        status: "completed",
+        startedAt: `2026-10-10T12:0${i}:00Z`,
+        completedAt: `2026-10-10T12:0${i}:02Z`,
+        turnTokenUsage: {
+          usageStatus: "complete",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 280,
+        },
+        tokenUsage: { usedTokens: 900, outputTokens: 25, updatedAt: `2026-10-10T12:0${i}:02Z` },
+      })) as unknown as OrchestrationV2ProviderTurn[];
+      const summary = deriveVelocitySummary(turns, []);
+      expect(summary.averageTurnTps).toBe(140);
+      expect(summary.rolling5Tps).toBe(140);
+      expect(summary.rolling10Tps).toBeNull();
+      expect(summary.rolling20Tps).toBeNull();
     });
     it("does not present one response's context usage as a live turn total", () => {
       const turn = {
@@ -283,6 +305,11 @@ describe("AgentVelocityMeter.logic", () => {
   });
 
   describe("formatting helpers", () => {
+    it("explains a rolling window that is not full yet", () => {
+      expect(formatRollingLabel(null, 10, 3)).toBe("Needs 10 turns (3 so far)");
+      expect(formatRollingLabel(null, 5, 12)).toBe("Needs 5 turns (5 so far)");
+      expect(formatRollingLabel(42.5, 5, 5)).toBe("42.5 t/s");
+    });
     it("formats TPS labels cleanly", () => {
       expect(formatTpsLabel(null)).toBe("--");
       expect(formatTpsLabel(64.2)).toBe("64.2 t/s");

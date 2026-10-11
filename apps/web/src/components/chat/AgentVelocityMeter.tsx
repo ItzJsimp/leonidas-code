@@ -1,7 +1,11 @@
 import { ZapIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import { formatTpsLabel, type VelocitySummary } from "./AgentVelocityMeter.logic";
+import {
+  formatRollingLabel,
+  formatTpsLabel,
+  type VelocitySummary,
+} from "./AgentVelocityMeter.logic";
 import { composerFloatingLayerProps } from "./composerEventScope";
 
 /** Provider-reported output (including reasoning) and average pace for the current turn. */
@@ -17,11 +21,13 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
           <Button
             size="compact"
             variant="ghost-muted"
+            className="shrink-0 whitespace-nowrap"
             aria-label={`Token counter: ${count} tokens, average turn throughput ${formatTpsLabel(summary.averageTurnTps)}`}
           >
             <ZapIcon aria-hidden />
             <span className="tabular-nums">
-              {count} tokens · avg {formatTpsLabel(summary.averageTurnTps)}
+              <span className="hidden sm:inline">{count} tokens · </span>
+              {formatTpsLabel(summary.averageTurnTps)}
             </span>
           </Button>
         }
@@ -44,9 +50,17 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
             <dt className="text-muted-foreground">Average turn throughput</dt>
             <dd className="text-right">{formatTpsLabel(summary.averageTurnTps)}</dd>
             <dt className="text-muted-foreground">Last 5 turns</dt>
-            <dd className="text-right">{formatTpsLabel(summary.rolling5Tps)}</dd>
+            <dd className="text-right">
+              {formatRollingLabel(summary.rolling5Tps, 5, summary.totalTurnsTracked)}
+            </dd>
+            <dt className="text-muted-foreground">Last 10 turns</dt>
+            <dd className="text-right">
+              {formatRollingLabel(summary.rolling10Tps, 10, summary.totalTurnsTracked)}
+            </dd>
             <dt className="text-muted-foreground">Last 20 turns</dt>
-            <dd className="text-right">{formatTpsLabel(summary.rolling20Tps)}</dd>
+            <dd className="text-right">
+              {formatRollingLabel(summary.rolling20Tps, 20, summary.totalTurnsTracked)}
+            </dd>
           </dl>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {summary.outputTokens === null

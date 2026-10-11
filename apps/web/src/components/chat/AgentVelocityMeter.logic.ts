@@ -49,19 +49,15 @@ function parseTimestamp(timestamp: unknown): number | null {
 }
 
 /**
- * Extracts output token count from a turn's reported usages.
+ * Extracts a turn's output token total. Only provider turn totals count: `tokenUsage` describes
+ * one response's context window, so dividing it by the whole turn's elapsed time understates
+ * speed and made the headline number disagree with the rolling averages.
  */
 export function extractTurnOutputTokens(
   turn: OrchestrationV2ProviderTurn | null | undefined,
 ): number {
-  if (!turn) return 0;
-  if (turn.turnTokenUsage && typeof turn.turnTokenUsage.outputTokens === "number") {
-    return turn.turnTokenUsage.outputTokens;
-  }
-  if (turn.tokenUsage && typeof turn.tokenUsage.outputTokens === "number") {
-    return turn.tokenUsage.outputTokens;
-  }
-  return 0;
+  const outputTokens = turn?.turnTokenUsage?.outputTokens;
+  return typeof outputTokens === "number" ? outputTokens : 0;
 }
 
 /**
@@ -88,7 +84,8 @@ export function calculateTurnVelocity(
 }
 
 /**
- * Calculates weighted rolling tokens per second over the last N valid turns.
+ * Calculates weighted rolling tokens per second over exactly the last N valid turns.
+ * Returns null until N turns exist, so "last 20" never silently repeats a smaller window.
  * Weighted by total tokens / total duration to avoid bias from 1-token turns.
  * Hermes compatible (no ES2023 array mutation methods).
  */
@@ -96,11 +93,9 @@ export function calculateRollingVelocity(
   samples: ReadonlyArray<TurnSpeedSample>,
   windowSize: number,
 ): number | null {
-  if (samples.length === 0 || windowSize <= 0) return null;
+  if (windowSize <= 0 || samples.length < windowSize) return null;
 
-  // Take the most recent `windowSize` samples
-  const startIndex = Math.max(0, samples.length - windowSize);
-  const slice = samples.slice(startIndex);
+  const slice = samples.slice(samples.length - windowSize);
 
   let totalTokens = 0;
   let totalDurationMs = 0;
@@ -260,20 +255,14 @@ export function deriveVelocitySummary(
   const isLive = latestTurn?.status === "running";
   const measuredTurn = isLive
     ? latestTurn
-    : turns.findLast(
-        (turn) =>
-          turn.turnTokenUsage?.outputTokens !== undefined ||
-          turn.tokenUsage?.outputTokens !== undefined,
-      );
-  const hasOutput =
-    measuredTurn?.turnTokenUsage?.outputTokens !== undefined ||
-    (!isLive && measuredTurn?.tokenUsage?.outputTokens !== undefined);
+    : turns.findLast((turn) => turn.turnTokenUsage?.outputTokens !== undefined);
+  const hasOutput = measuredTurn?.turnTokenUsage?.outputTokens !== undefined;
   const outputTokens = hasOutput ? extractTurnOutputTokens(measuredTurn) : null;
   const reasoningTokens = measuredTurn?.turnTokenUsage?.reasoningTokens ?? null;
   const reportMs = parseTimestamp(measuredTurn?.tokenUsage?.updatedAt);
   const startMs = parseTimestamp(measuredTurn?.startedAt);
   const liveDurationMs = reportMs !== null && startMs !== null ? reportMs - startMs : 0;
-  // Live context output may cover only one response, so only turn aggregates measure live pace.
+  // Only turn aggregates measure pace; response-level context usage is never mixed in.
   // Provider counts arrive in batches. This is turn-average pace, including tool waits,
   // not an invented measurement of the model's private thinking speed.
   const averageTurnTps = isLive
@@ -309,6 +298,16 @@ export function deriveVelocitySummary(
 export function formatTpsLabel(tps: number | null): string {
   if (tps === null || !Number.isFinite(tps)) return "--";
   return `${tps.toFixed(1).replace(/\.0$/, "")} t/s`;
+}
+
+/** Rolling averages need a full window; until then say how far along it is. */
+export function formatRollingLabel(
+  tps: number | null,
+  windowSize: number,
+  turnsTracked: number,
+): string {
+  if (tps !== null) return formatTpsLabel(tps);
+  return `Needs ${windowSize} turns (${Math.min(turnsTracked, windowSize)} so far)`;
 }
 
 export function formatToolDuration(ms: number | null): string {
