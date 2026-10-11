@@ -297,6 +297,10 @@ export const DiffColorScheme = Schema.Literals(["red-green", "blue-orange"]);
 export const ChatWidth = Schema.Literals(["comfortable", "wide", "full"]);
 export type ChatWidth = typeof ChatWidth.Type;
 
+/** Leonidas Autorouter goal. Null in settings means the composer uses the picked model. */
+export const AutoRoutePreference = Schema.Literals(["balanced", "cost", "quality", "speed"]);
+export type AutoRoutePreference = typeof AutoRoutePreference.Type;
+
 export const ClientSettingsSchema = Schema.Struct({
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
@@ -456,6 +460,9 @@ export const ClientSettingsSchema = Schema.Struct({
   // Rich text is the default; users can opt out for literal Markdown editing.
   composerPromptPredictionEnabled: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(true)),
+  ),
+  composerAutoRoutePreference: Schema.NullOr(AutoRoutePreference).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   composerRichTextEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   sendShortcut: Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"]).pipe(
@@ -1688,6 +1695,7 @@ export const ClientSettingsPatch = Schema.Struct({
   contextWindowMeterEnabled: Schema.optionalKey(Schema.Boolean),
   composerCollapseOnScroll: Schema.optionalKey(Schema.Boolean),
   composerPromptPredictionEnabled: Schema.optionalKey(Schema.Boolean),
+  composerAutoRoutePreference: Schema.optionalKey(Schema.NullOr(AutoRoutePreference)),
   composerRichTextEnabled: Schema.optionalKey(Schema.Boolean),
   sendShortcut: Schema.optionalKey(Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"])),
   followUpBehavior: Schema.optionalKey(Schema.Literals(["queue", "steer"])),
