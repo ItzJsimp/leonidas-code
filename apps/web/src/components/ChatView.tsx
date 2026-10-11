@@ -7,6 +7,10 @@ import type { ThreadGoalControl } from "@t3tools/contracts";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
+import { quotaPreflightBannerItem } from "./chat/QuotaPreflightBanner";
+import { getQuotaPreflightAdvice } from "./chat/quotaPreflight";
+import { uiVerificationBannerItem } from "./chat/UiVerificationBanner";
+import { uiChangedPaths, uiVerificationPrompt } from "./chat/uiVerification";
 import { getProviderFailoverTargets } from "./chat/providerFailover";
 import {
   resolveBackgroundDraftWorkspaceOptions,
@@ -7864,6 +7868,110 @@ export default function ChatView(props: ChatViewProps) {
           supportsHandoff: supportsProviderSwitchingViaHandoff,
         })
       : [];
+  const [dismissedQuotaPreflightId, setDismissedQuotaPreflightId] = useState<string | null>(null);
+  const quotaPreflightBanner = useMemo(() => {
+    if (!activeThread || !activeThreadShell || isSendBusy || serverRuntime?.status === "failed") {
+      return null;
+    }
+    const entry = providerInstanceEntries.find(
+      (candidate) => candidate.instanceId === activeThreadShell.modelSelection.instanceId,
+    );
+    if (!entry) return null;
+    const recentTurnTokenUsages = (serverProjection?.providerTurns ?? [])
+      .flatMap((turn) => {
+        const usage = turn.turnTokenUsage;
+        return usage?.usageStatus === "complete" ? [usage.inputTokens + usage.outputTokens] : [];
+      })
+      .slice(-5);
+    const advice = getQuotaPreflightAdvice({
+      current: {
+        instanceId: entry.instanceId,
+        driverKind: entry.driverKind,
+        label: entry.displayName,
+        windows: entry.snapshot.usageLimits?.windows ?? [],
+      },
+      recentTurnTokenUsages,
+      targets: getProviderFailoverTargets({
+        entries: providerInstanceEntries,
+        settings,
+        current: activeThreadShell.modelSelection,
+        supportsHandoff: supportsProviderSwitchingViaHandoff,
+        usageLimitSources,
+      }),
+      nowMs: Date.now(),
+    });
+    const bannerId = `quota-preflight:${entry.instanceId}`;
+    if (advice === null || bannerId === dismissedQuotaPreflightId) return null;
+    return quotaPreflightBannerItem({
+      advice,
+      currentInstanceId: entry.instanceId,
+      currentLabel: entry.displayName,
+      onUse: (target) =>
+        setComposerDraftModelSelection(
+          scopeThreadRef(activeThread.environmentId, activeThread.id),
+          target.modelSelection,
+          { explicit: true, replaceOptions: true },
+        ),
+      onDismiss: () => setDismissedQuotaPreflightId(bannerId),
+    });
+  }, [
+    activeThread,
+    activeThreadShell,
+    dismissedQuotaPreflightId,
+    isSendBusy,
+    providerInstanceEntries,
+    serverProjection?.providerTurns,
+    serverRuntime?.status,
+    setComposerDraftModelSelection,
+    settings,
+    supportsProviderSwitchingViaHandoff,
+    usageLimitSources,
+  ]);
+  const [dismissedUiVerifyRunId, setDismissedUiVerifyRunId] = useState<string | null>(null);
+  const uiVerificationBanner = useMemo(() => {
+    const latestRun = activeThreadShell?.latestRun;
+    if (
+      !activeThread ||
+      !latestRun ||
+      latestRun.status !== "completed" ||
+      isSendBusy ||
+      dismissedUiVerifyRunId === latestRun.runId
+    ) {
+      return null;
+    }
+    const paths = uiChangedPaths(
+      serverVisibleTurnItems?.map((row) => row.item) ?? [],
+      latestRun.runId,
+    );
+    if (paths.length === 0) return null;
+    const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
+    return uiVerificationBannerItem({
+      runId: latestRun.runId,
+      paths,
+      onVerify: () => {
+        // Never replace a message the user is still writing.
+        const draft = useComposerDraftStore.getState().getComposerDraft(threadRef);
+        if (draft && draft.prompt.trim().length > 0) {
+          toastManager.add({
+            type: "warning",
+            title: "Finish your draft first",
+            description: "Send or clear your message, then verify the screens.",
+          });
+          return;
+        }
+        setComposerDraftPrompt(threadRef, uiVerificationPrompt(paths));
+        setDismissedUiVerifyRunId(latestRun.runId);
+      },
+      onDismiss: () => setDismissedUiVerifyRunId(latestRun.runId),
+    });
+  }, [
+    activeThread,
+    activeThreadShell?.latestRun,
+    dismissedUiVerifyRunId,
+    isSendBusy,
+    serverVisibleTurnItems,
+    setComposerDraftPrompt,
+  ]);
   const limitRecoveryBanner =
     serverRuntime?.status === "failed" &&
     serverRuntime.lastErrorClass === "usage_limit" &&
@@ -7942,7 +8050,10 @@ export default function ChatView(props: ChatViewProps) {
         })
       : null;
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
-    const limitRecoveryItems = limitRecoveryBanner === null ? [] : [limitRecoveryBanner];
+    // A stopped turn outranks a warning about the next one, so the pre-flight only fills an empty slot.
+    const limitRecoveryItems = [
+      limitRecoveryBanner ?? quotaPreflightBanner ?? uiVerificationBanner,
+    ].filter((item) => item !== null);
     const backgroundWorkItems = [goalBannerItem, backgroundWorkBannerItem].filter(
       (item) => item !== null,
     );
@@ -8012,6 +8123,8 @@ export default function ChatView(props: ChatViewProps) {
     canWriteSourceControl,
     feedbackBannerItems,
     limitRecoveryBanner,
+    quotaPreflightBanner,
+    uiVerificationBanner,
     handleRestoreThreadBranch,
     isRestoringThreadBranch,
     backgroundWorkBannerItem,
