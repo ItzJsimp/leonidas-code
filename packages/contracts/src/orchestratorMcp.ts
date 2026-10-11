@@ -29,6 +29,7 @@ import {
   OrchestrationV2Actor,
   OrchestrationV2CreationSource,
   OrchestrationV2RunStatus,
+  OrchestrationV2ThreadLaunchWorkspaceStrategy,
   OrchestrationV2TurnItemStatus,
 } from "./orchestrationV2.ts";
 import {
@@ -187,6 +188,12 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
   clientRequestId: Schema.optional(OrchestratorMcpClientRequestId),
   runtimeMode: Schema.optional(OrchestratorMcpRuntimeMode),
   interactionMode: Schema.optional(OrchestratorMcpInteractionMode),
+  workspaceStrategy: Schema.optional(
+    OrchestrationV2ThreadLaunchWorkspaceStrategy.annotate({
+      description:
+        "Optional workspace strategy for isolated speculative branching ({type:\x27worktree\x27, baseRef, branch?, startFromOrigin?} or {type:\x27existing_worktree\x27, worktreePath, branch?} or {type:\x27root\x27, branch?}). When omitted, child inherits the parent\x27s worktree.",
+    }),
+  ),
 });
 export type OrchestratorMcpDelegateTaskInput = typeof OrchestratorMcpDelegateTaskInput.Type;
 
@@ -210,6 +217,8 @@ export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
     description:
       "True only on that mode=wait call when timeoutMs elapsed. The timeout does not cancel the child. Later task_status reads return false and use status for liveness.",
   }),
+  worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
 });
 export type OrchestratorMcpDelegateTaskResult = typeof OrchestratorMcpDelegateTaskResult.Type;
 

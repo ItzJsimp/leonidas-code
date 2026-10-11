@@ -1495,6 +1495,8 @@ const make = Effect.gen(function* () {
           : null,
         latestTerminalResultContextTransferId: resultTransferForRun(terminalRun)?.id ?? null,
         waitTimedOut,
+        worktreePath: task.worktreePath ?? childProjection.thread.worktreePath ?? null,
+        branch: task.branch ?? childProjection.thread.branch ?? null,
       } satisfies OrchestratorMcpDelegateTaskResult;
       if (
         acknowledgeTerminal &&
@@ -2035,6 +2037,26 @@ const make = Effect.gen(function* () {
             // delegations deliver through the blocking tool call, so a wake is
             // only needed if the parent settled first (timeout, disconnect).
             completionWake: input.mode === "wait" ? "settled_only" : "always",
+            ...(input.workspaceStrategy !== undefined
+              ? {
+                  workspaceStrategy: input.workspaceStrategy,
+                  ...(input.workspaceStrategy.type === "existing_worktree"
+                    ? {
+                        worktreePath: input.workspaceStrategy.worktreePath,
+                        branch: input.workspaceStrategy.branch ?? null,
+                      }
+                    : input.workspaceStrategy.type === "root"
+                      ? {
+                          worktreePath: null,
+                          branch: input.workspaceStrategy.branch ?? null,
+                        }
+                      : input.workspaceStrategy.branch !== undefined
+                        ? {
+                            branch: input.workspaceStrategy.branch,
+                          }
+                        : {}),
+                }
+              : {}),
           })
           .pipe(
             Effect.mapError((error) =>

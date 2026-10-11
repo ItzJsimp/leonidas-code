@@ -688,6 +688,9 @@ export const OrchestrationV2Subagent = Schema.Struct({
   // blocking tool call). Absent on legacy records; treated as settled_only.
   completionWake: Schema.optional(Schema.Literals(["always", "settled_only"])),
   completionDelivery: Schema.optional(OrchestrationV2DelegatedCompletionTaskDelivery),
+  workspaceStrategy: Schema.optional(Schema.NullOr(OrchestrationV2ThreadLaunchWorkspaceStrategy)),
+  worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   status: Schema.Literals([
     "idle",
     "pending",
@@ -3031,6 +3034,9 @@ export const OrchestrationV2Command = Schema.Union([
     // Omitted behaves as "settled_only" (no wake while the parent has a live
     // run); producers that want fire-and-forget wakes must set "always".
     completionWake: Schema.optional(Schema.Literals(["always", "settled_only"])),
+    workspaceStrategy: Schema.optional(OrchestrationV2ThreadLaunchWorkspaceStrategy),
+    worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+    branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
     createdAt: Schema.optional(Schema.DateTimeUtc),
   }),
   Schema.Struct({
