@@ -39,10 +39,7 @@ jobs:
       - uses: voidzero-dev/setup-vp@v1
         with:
           node-version-file: package.json
-          cache: true
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            .github/workflows/team-release.yml
+          cache: false
           run-install: false
 
       - name: Plan version and patch notes
@@ -51,6 +48,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_KIND: ${{ inputs.release_kind || 'auto' }}
         run: node scripts/leonidas-release.ts
+
+      - name: Locate dependency cache
+        id: dependencies
+        run: echo "path=$(vp pm cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore desktop dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.dependencies.outputs.path }}
+          key: desktop-deps-${{ runner.os }}-x64-${{ hashFiles('pnpm-lock.yaml', '.github/workflows/team-release.yml') }}
 
       - name: Install desktop build dependencies
         run: vp install --frozen-lockfile --filter @t3tools/monorepo --filter @t3tools/desktop... --filter t3... --filter @t3tools/web... --filter @t3tools/scripts...
