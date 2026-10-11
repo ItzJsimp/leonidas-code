@@ -32,6 +32,23 @@ foreach ($workspace in @($fixture,$project,$other)) {
     Assert (Test-Path -LiteralPath (Join-Path $workspace '.agents/skills/next-action/scripts/resolve_tasks.py')) 'Workspace resolver missing'
     Assert (Test-Path -LiteralPath (Join-Path $workspace '.claude/skills/next-action/SKILL.md')) 'Provider discovery missing'
 }
+# Core skills link from the AIOS canon into every workspace; a workspace's own folder of the same name wins.
+foreach ($name in @('session-handoff', 'implement')) {
+    New-Item -ItemType Directory -Path (Join-Path $fixture ".agents/skills/$name") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $fixture ".agents/skills/$name/SKILL.md") "---`nname: $name`n---"
+}
+New-Item -ItemType Directory -Path (Join-Path $other '.agents/skills/implement') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $other '.agents/skills/implement/SKILL.md') 'Game owned implement'
+git -C $fixture init --quiet
+Assert ($LASTEXITCODE -eq 0) 'Fixture git initialization failed'
+& $install -AiosRoot $fixture
+Assert ((Get-Item -LiteralPath (Join-Path $project '.agents/skills/session-handoff')).LinkType -eq 'Junction') 'Core skill was not linked into a project'
+Assert (Test-Path -LiteralPath (Join-Path $project '.claude/skills/session-handoff/SKILL.md')) 'Linked core skill is not discoverable to Claude'
+Assert ((Get-Content -LiteralPath (Join-Path $other '.agents/skills/implement/SKILL.md') -Raw).Trim() -eq 'Game owned implement') 'Project-owned skill was overwritten by the core link'
+Assert ((Get-Item -LiteralPath (Join-Path $other '.claude/skills/implement')).LinkType -eq 'Junction') 'Project-owned core skill was not exposed to Claude by its adapter'
+Assert ((Get-Content -LiteralPath (Join-Path $fixture '.git/info/exclude') -Raw) -match '(?m)^/projects/game/\.agents/skills/session-handoff/$') 'Core link is not excluded from the enclosing repository'
+Write-Host '[PASS] Core skills linked from the AIOS canon, discoverable to Claude, project-owned copies kept'
+
 # Test automatic parent detection with the exact projects/leonidas-code layout.
 New-Item -ItemType Directory -Path (Join-Path $project 'scripts'),(Join-Path $project '.agents/skills') -Force | Out-Null
 foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1')) {

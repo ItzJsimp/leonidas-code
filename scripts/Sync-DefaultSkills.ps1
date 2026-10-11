@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Install the portable next-action default in an AIOS and its existing projects.
+    Install the portable next-action default and link the core skills in an AIOS and its existing projects.
 .DESCRIPTION
     Re-run after updating the AIOS skills. Changed destination files are backed up;
     project instructions and user task data are preserved. New-Project calls this
@@ -65,4 +65,66 @@ foreach ($target in $targets | Select-Object -Unique) {
         }
     }
 }
-Write-Host "[OK] Updated $updated default skill files across $($targets.Count) workspace(s)."
+# Core skills (standards/project-standard.md section 11). Every workspace links these from this AIOS
+# canon and never copies them, so one canonical edit reaches every workspace. A workspace's own folder
+# with the same name wins. A name the canon lacks is reported, never invented.
+$coreSkills = @('session-handoff', 'chat-sync', 'chat-closeout', 'recap', 'daily-briefing', 'daily-closeout', 'find-skills', 'ask-leonidas', 'implement')
+$canonCore = @($coreSkills | Where-Object { Test-Path -LiteralPath (Join-Path $repo ".agents/skills/$_/SKILL.md") })
+$absentCore = @($coreSkills | Where-Object { $_ -notin $canonCore })
+if ($absentCore) { Write-Warning "Core skills missing from ${repo}: $($absentCore -join ', ')" }
+$linked = 0
+function New-SkillLink([string]$Link, [string]$Destination) {
+    if ($IsWindows) { New-Item -ItemType Junction -Path $Link -Target $Destination | Out-Null }
+    else { New-Item -ItemType SymbolicLink -Path $Link -Target $Destination | Out-Null }
+}
+function Add-LocalExclude([string]$Workspace, [string]$Relative) {
+    # Links stay out of git: a local exclude in the nearest repository from the workspace up to the AIOS root.
+    $gitRoot = $Workspace
+    while (-not (Test-Path -LiteralPath (Join-Path $gitRoot '.git') -PathType Container)) {
+        $parent = Split-Path $gitRoot
+        if ($gitRoot -eq $repo -or $parent -eq $gitRoot) { return }
+        $gitRoot = $parent
+    }
+    New-Item -ItemType Directory -Path (Join-Path $gitRoot '.git/info') -Force | Out-Null
+    $exclude = Join-Path $gitRoot '.git/info/exclude'
+    $pattern = '/' + [IO.Path]::GetRelativePath($gitRoot, (Join-Path $Workspace $Relative)).Replace('\', '/') + '/'
+    $raw = if (Test-Path -LiteralPath $exclude) { [IO.File]::ReadAllText($exclude) } else { '' }
+    if ($raw -split "`r?`n" -notcontains $pattern) { [IO.File]::AppendAllText($exclude, $(if ($raw -and -not $raw.EndsWith("`n")) { "`n" }) + $pattern + "`n") }
+}
+foreach ($name in $canonCore) {
+    $canon = Join-Path $repo ".agents/skills/$name"
+    foreach ($target in $targets | Select-Object -Unique) {
+        $link = Join-Path $target ".agents/skills/$name"
+        if ($target -ne $repo) {
+            if (-not (Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue) -and $PSCmdlet.ShouldProcess($link, 'Link core skill from the AIOS canon')) {
+                New-Item -ItemType Directory -Path (Split-Path $link) -Force | Out-Null
+                New-SkillLink $link $canon
+                $linked++
+            }
+            if (-not $WhatIfPreference -and (Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue)) { Add-LocalExclude $target ".agents/skills/$name" }
+        }
+        # A provider folder that is itself a link already exposes every skill in .agents/skills.
+        $adapterRoot = Join-Path $target '.claude/skills'
+        $adapterItem = Get-Item -LiteralPath $adapterRoot -Force -ErrorAction SilentlyContinue
+        if ($adapterItem -and $adapterItem.LinkType) { continue }
+        $adapter = Join-Path $adapterRoot $name
+        if (-not (Get-Item -LiteralPath $adapter -Force -ErrorAction SilentlyContinue) -and $PSCmdlet.ShouldProcess($adapter, 'Make core skill discoverable to the Claude provider')) {
+            if (-not $adapterItem) {
+                New-Item -ItemType Directory -Path $adapterRoot -Force | Out-Null
+                [IO.File]::WriteAllText((Join-Path $adapterRoot '.gitignore'), "*`n!.gitignore`n")
+            }
+            New-SkillLink $adapter $link
+            $linked++
+        }
+        if (-not $WhatIfPreference -and (Get-Item -LiteralPath $adapter -Force -ErrorAction SilentlyContinue)) { Add-LocalExclude $target ".claude/skills/$name" }
+    }
+}
+if (-not $WhatIfPreference) {
+    foreach ($target in $targets | Select-Object -Unique) {
+        foreach ($name in $canonCore) {
+            $probe = Join-Path $target ".claude/skills/$name/SKILL.md"
+            if (-not (Test-Path -LiteralPath $probe)) { throw "Core skill not discoverable to Claude: $probe" }
+        }
+    }
+}Write-Host "[OK] Updated $updated default skill files across $($targets.Count) workspace(s)."
+Write-Host "[OK] Core skills: $linked link(s) created across $($targets.Count) workspace(s)."

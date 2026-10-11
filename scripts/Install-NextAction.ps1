@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Install and verify next-action in the owner's AIOS and its existing projects.
+    Install and verify next-action and the core skills in the owner's AIOS and its existing projects.
 .DESCRIPTION
     Uses the skill shipped with Leonidas Code. Backs up changed skill files and
     preserves user tasks and instructions. In the usual projects/leonidas-code
