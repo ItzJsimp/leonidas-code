@@ -175,7 +175,7 @@ export const MUSE_DEFAULT_MODEL = "default";
 
 export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, string>> = {
   [CODEX_DRIVER_KIND]: DEFAULT_MODEL,
-  [CLAUDE_DRIVER_KIND]: "claude-fable-5-1",
+  [CLAUDE_DRIVER_KIND]: "claude-sonnet-5-5",
   [CURSOR_DRIVER_KIND]: "auto",
   // Product slug, not an ACP model id. The Grok adapter treats it as "the session's current model".
   [GROK_DRIVER_KIND]: "grok-build",
@@ -185,7 +185,7 @@ export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, strin
   [PI_DRIVER_KIND]: "default",
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
   [ProviderDriverKind.make("antigravity")]: ANTIGRAVITY_DEFAULT_MODEL,
-  [OPENROUTER_DRIVER_KIND]: "anthropic/claude-3.7-sonnet",
+  [OPENROUTER_DRIVER_KIND]: "openrouter/auto",
 };
 
 /** Per-provider text generation model defaults. */
@@ -197,7 +197,7 @@ export const DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER: Partial<
   [CLAUDE_DRIVER_KIND]: "claude-haiku-4-5",
   [CURSOR_DRIVER_KIND]: "composer-2",
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
-  [OPENROUTER_DRIVER_KIND]: "google/gemini-2.0-flash-001",
+  [OPENROUTER_DRIVER_KIND]: "meta-llama/llama-3.1-8b-instruct:free",
 };
 
 export const MODEL_SLUG_ALIASES_BY_PROVIDER: Partial<
