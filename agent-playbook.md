@@ -60,12 +60,17 @@ verified: 2026-10-10
 
 - **Claude "no subscription limits" was a 429:** the SDK `get_usage` returns `rate_limits_available: true, rate_limits: null` when Anthropic's usage endpoint is rate limited; that must map to `probeFailed` (retryable), never `unsupported` (sticky, drops streamed `rate_limit_event`s). Antigravity has no reachable quota source: the harness credential gets 403 on `fetchAvailableModels` and `retrieveUserQuota`. Found 2026-10-10.
 
+- **Windows desktop preflight is not a dry run:** `node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64` runs the full build unless its prerequisite probe fails first. The probe reads `KitsRoot10` under `HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots`; on this machine it points at `C:\Program Files\Windows Kits\10\` (no `Lib`) while the SDK sits under `Program Files (x86)`. Spectre libraries live at `VC\Tools\MSVC\<ver>\lib\spectre\x64`. Found 2026-10-11.
+- **Node-spawned PowerShell drops backslashes:** a `-Command` probe with `\` paths exits 1 with no stderr. `windowsVswherePrerequisiteScript` in `scripts/build-desktop-artifact.ts` uses forward slashes; that fix was uncommitted when written. Debug a probe by printing each step, not by re-running the whole string.
+
 ## 6. Why it is this way
 
 - **Reuse electron-updater over a git-pull updater:** installed apps cannot `git pull`; the existing GitHub Releases path needs only a CI workflow. Card: [`t3-code-push-to-update-release-pipeline`](../../tasks/t3-code-push-to-update-release-pipeline.md).
 - **Thin rebrand layer:** every branding touch makes `upstream/main` merges harder. Card: [`t3-code-rebrand`](../../tasks/t3-code-rebrand.md).
 
 ## 7. Session notes (newest first, one line each, keep 10)
+
+- **2026-10-11 (desktop build preflight):** installed the Spectre libraries through the VS Installer; the preflight still fails on the stale `KitsRoot10` value, and the probe's slash fix is uncommitted in `scripts/build-desktop-artifact.ts`. Open: approve the registry fix (machine-wide, admin) or a probe fallback to `Program Files (x86)`.
 
 - **2026-10-10 (usage/update visual polish):** refined metadata, context legend, file/tool rows and update lists in the [context breakdown](./apps/web/src/components/chat/DetailedContextBreakdownView.tsx), [usage panel](./apps/web/src/components/chat/ChatComposerUsageLimits.tsx), [hover summary](./apps/web/src/components/chat/ChatUsageHoverCard.tsx), [release history](./apps/web/src/components/desktop/ReleaseHistoryDialog.tsx) and [update dialog](./apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx). Requested 28 tests and web typecheck pass. Local only; integrated browser review remains with the primary agent.
 
