@@ -1,10 +1,38 @@
 const RELEASES_URL = "https://api.github.com/repos/ItzJsimp/leonidas-code/releases";
 
+export interface ReleaseHistoryMeta {
+  readonly commit?: string;
+  readonly authors?: ReadonlyArray<string>;
+  readonly coAuthors?: ReadonlyArray<string>;
+}
+
 export interface ReleaseHistoryEntry {
   readonly version: string;
   readonly publishedAt: string;
   readonly notes: ReadonlyArray<string>;
   readonly url: string;
+  readonly meta?: ReleaseHistoryMeta | null;
+}
+
+export function formatFriendlyReleaseDate(isoString: string): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatExactReleaseDate(isoString: string): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 export function parseReleaseHistory(value: unknown): ReleaseHistoryEntry[] {
@@ -26,6 +54,17 @@ export function parseReleaseHistory(value: unknown): ReleaseHistoryEntry[] {
             .filter((line) => /^\s*[-*]\s/.test(line))
             .map((line) => line.replace(/^\s*[-*]\s+/, "").trim())
         : [];
+    let meta: ReleaseHistoryMeta | null = null;
+    if (typeof row.body === "string") {
+      const match = /<!--\s*leonidas-release\s+({.*?})\s*-->/.exec(row.body);
+      if (match && match[1]) {
+        try {
+          meta = JSON.parse(match[1]);
+        } catch {
+          meta = null;
+        }
+      }
+    }
     return [
       {
         version: row.tag_name.slice(1),
@@ -36,6 +75,7 @@ export function parseReleaseHistory(value: unknown): ReleaseHistoryEntry[] {
           row.html_url.startsWith("https://github.com/ItzJsimp/leonidas-code/releases/")
             ? row.html_url
             : "",
+        meta,
       },
     ];
   });

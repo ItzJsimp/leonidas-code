@@ -26,7 +26,7 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
   const { version, items, onRestartNow, onUpdateWhenSafe, onClose } = props;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogPopup className="max-w-md" bottomStickOnMobile={false}>
+      <DialogPopup className="max-w-lg" bottomStickOnMobile={false}>
         <DialogHeader>
           <DialogTitle>
             <span className="flex items-center gap-2">
@@ -43,32 +43,36 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
             ))}
           </ul>
         </DialogPanel>
-        <DialogFooter>
-          <ReleaseHistoryButton />
-          <Button variant="ghost" onClick={onClose}>
-            {onRestartNow ? "Later" : "Close"}
-          </Button>
-          {onUpdateWhenSafe ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                onUpdateWhenSafe();
-                onClose();
-              }}
-            >
-              Update when safe
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="flex items-center">
+            <ReleaseHistoryButton />
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              {onRestartNow ? "Later" : "Close"}
             </Button>
-          ) : null}
-          {onRestartNow ? (
-            <Button
-              onClick={() => {
-                onClose();
-                onRestartNow();
-              }}
-            >
-              Restart now
-            </Button>
-          ) : null}
+            {onUpdateWhenSafe ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onUpdateWhenSafe();
+                  onClose();
+                }}
+              >
+                Update when safe
+              </Button>
+            ) : null}
+            {onRestartNow ? (
+              <Button
+                onClick={() => {
+                  onClose();
+                  onRestartNow();
+                }}
+              >
+                Restart now
+              </Button>
+            ) : null}
+          </div>
         </DialogFooter>
       </DialogPopup>
     </Dialog>
