@@ -15,6 +15,8 @@ import * as Scope from "effect/Scope";
 import * as EffectAcpErrors from "effect-acp/errors";
 
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
+import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
+import { readLatestAntigravityTurnTokenUsage } from "../../provider/Drivers/antigravityUsageReader.ts";
 import type { AntigravityAuth } from "../../provider/AntigravityAuth.ts";
 import type * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
 import {
@@ -221,6 +223,27 @@ export function makeAntigravityAcpAdapterFlavor(
     },
     normalizeToolCall: normalizeAntigravityToolCall,
     extractSubagentUpdate: extractAntigravitySubagentUpdate,
+    resolveTurnTokenUsage: (input) =>
+      Effect.gen(function* () {
+        if (!input.sessionId) return undefined;
+        const dbPath = options.path.join(
+          options.host.paths.stateDir,
+          "providers",
+          "antigravity",
+          String(options.instanceId),
+          "antigravity-acp",
+          "conversations",
+          `${input.sessionId}.db`,
+        );
+        const exists = yield* options.fileSystem
+          .exists(dbPath)
+          .pipe(Effect.orElseSucceed(() => false));
+        if (!exists) return undefined;
+        return yield* readLatestAntigravityTurnTokenUsage(dbPath).pipe(
+          Effect.provide(NodeSqliteClient.layer({ filename: dbPath, readonly: true })),
+          Effect.orElseSucceed(() => undefined),
+        );
+      }),
     supportsImagePrompts: true,
     supportsCompaction: true,
   };

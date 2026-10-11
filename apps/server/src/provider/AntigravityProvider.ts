@@ -6,6 +6,7 @@ import {
   type ServerProvider,
   type ServerProviderModel,
   type ServerProviderSlashCommand,
+  type ServerProviderUsageLimits,
 } from "@t3tools/contracts";
 import { createModelCapabilities } from "@t3tools/shared/model";
 import * as DateTime from "effect/DateTime";
@@ -126,6 +127,14 @@ interface AntigravityProviderOptions {
   readonly maintenanceCapabilities?: ProviderMaintenanceCapabilities;
   /** Auth type and label published once a session authenticates. */
   readonly auth?: { readonly type: string; readonly label: string };
+  readonly probeUsageLimits?: Effect.Effect<
+    | {
+        readonly usageLimits: ServerProviderUsageLimits;
+        readonly email?: string | undefined;
+        readonly plan?: string | undefined;
+      }
+    | undefined
+  >;
 }
 
 /** Health uses initialize only. Session callbacks supply account-specific metadata. */
@@ -192,11 +201,19 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
               : `Antigravity did not respond to its local health check within ${HEALTH_CHECK_TIMEOUT}.`;
     const supportsTextGeneration =
       initialized !== undefined ? yield* options.supportsTextGeneration : false;
+    const probedLimits = options.probeUsageLimits
+      ? yield* options.probeUsageLimits.pipe(Effect.orElseSucceed(() => undefined))
+      : undefined;
     const updatedAt = DateTime.formatIso(yield* DateTime.now);
     const next = yield* SubscriptionRef.updateAndGet(metadata, (state) => {
       if (state.authRevision !== before.authRevision) return state;
       const { message: _previousMessage, ...draft } = state.draft;
-      const authenticated = draft.auth.status === "authenticated";
+      const authenticated = draft.auth.status === "authenticated" || probedLimits !== undefined;
+      const usageLimits = probedLimits?.usageLimits ?? draft.usageLimits;
+      const email = probedLimits?.email ?? draft.auth.email;
+      const planLabel = probedLimits?.plan
+        ? `${probedLimits.plan} plan`
+        : (draft.auth.label ?? options.auth?.label ?? "Google account");
       const message =
         errorMessage ??
         (authenticated
@@ -211,7 +228,16 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
           installed: !missingInstallation,
           version: initialized?.agentInfo?.version || draft.version,
           status: errorMessage ? "error" : authenticated ? "ready" : "warning",
+          auth: authenticated
+            ? {
+                status: "authenticated",
+                type: draft.auth.type ?? options.auth?.type ?? "oauth-personal",
+                label: planLabel,
+                ...(email ? { email } : {}),
+              }
+            : draft.auth,
           checkedAt: updatedAt,
+          ...(usageLimits ? { usageLimits } : {}),
           ...(missingInstallation
             ? {
                 models: [],
@@ -261,6 +287,9 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
   ) {
     const before = yield* SubscriptionRef.get(metadata);
     const supportsTextGeneration = yield* options.supportsTextGeneration;
+    const probedLimits = options.probeUsageLimits
+      ? yield* options.probeUsageLimits.pipe(Effect.orElseSucceed(() => undefined))
+      : undefined;
     const updatedAt = DateTime.formatIso(yield* DateTime.now);
     yield* SubscriptionRef.update(metadata, (state) => {
       if (
@@ -282,11 +311,23 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
           auth: {
             status: "authenticated",
             type: options.auth?.type ?? "oauth-personal",
-            label: options.auth?.label ?? "Google account",
+            label: probedLimits?.plan
+              ? `${probedLimits.plan} plan`
+              : (options.auth?.label ?? "Google account"),
+            ...(probedLimits?.email
+              ? { email: probedLimits.email }
+              : draft.auth.email
+                ? { email: draft.auth.email }
+                : {}),
           },
           checkedAt: updatedAt,
           models: buildAntigravityModelsFromSession(started.sessionSetupResult),
           supportsTextGeneration,
+          ...(probedLimits?.usageLimits
+            ? { usageLimits: probedLimits.usageLimits }
+            : draft.usageLimits
+              ? { usageLimits: draft.usageLimits }
+              : {}),
           ...(cwd
             ? {
                 workspaceSnapshots: [
