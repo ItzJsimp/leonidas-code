@@ -21,7 +21,7 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - [x] Rebrand to Leonidas Code as a thin layer (name, icons, window title, installer, About). Keep the MIT notice. Internal ids stay (`@t3tools/*`, `T3CODE_*`, `~/.t3`, app id `com.t3tools.t3code`) so data survives and old installs upgrade in place
 - [x] Leonidas shell: Command Center views as a tab; Scribe stays a tray app with a localhost API
 - [x] Dev instance isolation: agents test on a separate dev app (own profile and ports) and never restart the live app; Settings theme changes apply live, source CSS refreshes in dev and installed assets ship through releases
-- [ ] Agent activity bar: a live sliver above the composer (current step, step count, elapsed, file chips) that expands to the full plan, next steps, files and reasoning; updates instantly when the plan changes
+- [x] Agent activity bar: a live sliver above the composer (current step, step count, elapsed, file chips) that expands to the full plan, next steps, files and reasoning; updates instantly when the plan changes
 - [ ] Limit failover: when one provider subscription hits its limit, another provider (for example Codex) takes over the same chat in one click, using the existing context handoff
 
 Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Scribe).
@@ -62,6 +62,8 @@ The project's `tasks/` folder is a generated view: one symlink per task card who
 > In my AIOS root, copy `projects/leonidas-code/scripts/Sync-ProjectTaskViews.ps1` to `scripts/Sync-ProjectTaskViews.ps1`. Add a call to it at the end of `scripts/New-Task.ps1` right before the final "Created task" message: `if ($Project) { & (Join-Path $PSScriptRoot 'Sync-ProjectTaskViews.ps1') -RepoPath $RepoPath -Project $Project | Out-Null }` (use the repo-root variable that script already has). If `scripts/Build-TasksIndex.ps1` exists, call the script with `-RepoPath $RepoPath` at its end too. Add one line to my AIOS `AGENTS.md`: every `projects/<slug>/tasks/` is a generated symlink view of that project's cards, so cards are written only in the AIOS `tasks/`, never inside a project. Run `pwsh scripts/Sync-ProjectTaskViews.ps1`, then `-Check` and show me the output. It needs Windows Developer Mode on (Settings > System > For developers). Commit only those files.
 
 ## Status log (newest first, one line per session, who and what)
+
+- 2026-10-11 Mob's agent: closed the agent activity bar item. Most of it was already shipped (`ComposerTasksBadge.tsx`); added up to 3 file chips (oldest hide below 560px and 420px) and ordered touched files by most recent use so a re-read file becomes the newest. 11 focused tests and web typecheck pass. Layout proven with the real component and fixture data in the isolated dev app: no overflow at 692, 420, 320 and 240px, chips 3/2/1/1. A live agent run was not possible because both Codex and the Claude weekly limit were reached (Claude resets 9 PM ET); the bar rendered live ("Getting started") but no plan or file reads were seen, so repeat once with a live turn.
 
 - 2026-10-11 Mob's agent: closed the Leonidas shell item. Command Center (page at `/command-center`, sidebar footer and command palette) shows per-environment Scribe status read from the Scribe localhost API; Scribe stays a tray app and keeps recording controls and transcripts. 33 focused Scribe tests pass and a live Scribe on 127.0.0.1:8766 answered `ready`. Docs only, no release.
 
