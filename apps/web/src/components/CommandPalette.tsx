@@ -49,6 +49,7 @@ import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
+  LayoutDashboardIcon,
   CheckIcon,
   ChevronRightIcon,
   CornerLeftUpIcon,
@@ -2246,6 +2247,25 @@ function OpenCommandPaletteDialog(props: {
       },
     });
   }
+
+  actionItems.push({
+    kind: "action",
+    value: "action:command-center",
+    searchTerms: [
+      "command center",
+      "dashboard",
+      "agents",
+      "running",
+      "approvals",
+      "attention",
+      "limits",
+    ],
+    title: "Open Command Center",
+    icon: <LayoutDashboardIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/command-center" });
+    },
+  });
 
   actionItems.push({
     kind: "action",

@@ -58,7 +58,7 @@ function SectionHeading({
   readonly count?: number;
 }) {
   return (
-    <h3 className="flex items-center gap-2 text-sm font-semibold">
+    <h3 className="flex flex-1 items-center gap-2 text-sm font-semibold">
       <SectionIcon aria-hidden className="size-4 text-muted-foreground" />
       {title}
       {count === undefined ? null : (
@@ -207,18 +207,49 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
         align="end"
         sideOffset={0}
         padding="compact"
-        className="w-[min(26rem,calc(100vw-1.5rem))]"
+        className="w-[min(24rem,calc(100vw-1.5rem))]"
       >
-        <div className="flex max-h-[min(44rem,calc(100dvh-7.5rem))] min-w-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-3 pb-3 pt-1">
-            <span className="text-sm font-semibold">Usage</span>
-            <PopoverClose
-              render={<Button size="icon-xs" variant="ghost" aria-label="Close usage panel" />}
-            >
-              <XIcon aria-hidden />
-            </PopoverClose>
-          </div>
-          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain pb-3 [scrollbar-width:thin]">
+        <div className="flex max-h-[min(21rem,calc(100dvh-7.5rem))] min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
+            <section className="flex min-w-0 flex-col gap-3" aria-label="Connected accounts">
+              <div className="flex items-center gap-2">
+                <SectionHeading
+                  icon={UsersIcon}
+                  title="Connected accounts"
+                  count={report.accounts.length}
+                />
+                <PopoverClose
+                  render={<Button size="icon-xs" variant="ghost" aria-label="Close usage panel" />}
+                >
+                  <XIcon aria-hidden />
+                </PopoverClose>
+              </div>
+              {report.accounts.length ? (
+                <PlanUsageAccounts
+                  report={{
+                    ...report,
+                    accounts: [
+                      ...activeAccounts,
+                      ...report.accounts.filter((account) => !activeAccountIds.has(account.id)),
+                    ],
+                  }}
+                  onOpenDetails={openDetails}
+                  activeAccountIds={activeAccountIds}
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  No connected accounts reported yet.
+                </span>
+              )}
+              {!report.accounts.length
+                ? report.notices.map((notice) => (
+                    <span key={notice} className="text-xs text-warning">
+                      {notice}
+                    </span>
+                  ))
+                : null}
+            </section>
+            <Separator />
             <section className="flex min-w-0 flex-col gap-3" aria-label="This chat">
               <SectionHeading icon={MessageSquareIcon} title="This chat" />
               <div className="flex min-w-0 flex-col gap-4 rounded-xl border bg-muted/30 p-3">
@@ -258,72 +289,50 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
               </div>
             </section>
             <Separator />
-            <section className="flex min-w-0 flex-col gap-3" aria-label="Connected accounts">
-              <SectionHeading
-                icon={UsersIcon}
-                title="Connected accounts"
-                count={report.accounts.length}
-              />
-              {report.accounts.length ? (
-                <PlanUsageAccounts
-                  report={report}
-                  onOpenDetails={openDetails}
-                  activeAccountIds={activeAccountIds}
-                />
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  No connected accounts reported yet.
-                </span>
-              )}
-              {!report.accounts.length
-                ? report.notices.map((notice) => (
-                    <span key={notice} className="text-xs text-warning">
-                      {notice}
-                    </span>
-                  ))
-                : null}
-            </section>
-          </div>
-          <Separator />
-          <div className="flex shrink-0 flex-col gap-2 pt-3 pb-1">
-            <div className="flex items-center justify-between gap-2">
-              <Button size="sm" variant="secondary" onClick={openDetails}>
-                Detailed breakdown
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-expanded={chooseIcon}
-                onClick={() => setChooseIcon((value) => !value)}
-              >
-                Change icon
-              </Button>
-            </div>
-            {chooseIcon ? (
-              <div role="group" aria-label="Usage button icon" className="flex items-center gap-2">
-                {ICONS.map((option) => (
-                  <Tooltip key={option.id}>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          size="icon-sm"
-                          variant={option.id === iconId ? "secondary" : "ghost"}
-                          aria-label={option.label}
-                          aria-pressed={option.id === iconId}
-                          onClick={() => void updateSettings({ usageControlIcon: option.id })}
-                        />
-                      }
-                    >
-                      <option.Icon aria-hidden />
-                    </TooltipTrigger>
-                    <TooltipPopup side="top">{option.label}</TooltipPopup>
-                  </Tooltip>
-                ))}
-                <span className="text-xs text-muted-foreground">
-                  {ICONS.find((option) => option.id === iconId)?.label}
-                </span>
+            <div className="flex shrink-0 flex-col gap-2 pb-1">
+              <div className="flex items-center justify-between gap-2">
+                <Button size="sm" variant="secondary" onClick={openDetails}>
+                  Detailed breakdown
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-expanded={chooseIcon}
+                  onClick={() => setChooseIcon((value) => !value)}
+                >
+                  Change icon
+                </Button>
               </div>
-            ) : null}
+              {chooseIcon ? (
+                <div
+                  role="group"
+                  aria-label="Usage button icon"
+                  className="flex items-center gap-2"
+                >
+                  {ICONS.map((option) => (
+                    <Tooltip key={option.id}>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="icon-sm"
+                            variant={option.id === iconId ? "secondary" : "ghost"}
+                            aria-label={option.label}
+                            aria-pressed={option.id === iconId}
+                            onClick={() => void updateSettings({ usageControlIcon: option.id })}
+                          />
+                        }
+                      >
+                        <option.Icon aria-hidden />
+                      </TooltipTrigger>
+                      <TooltipPopup side="top">{option.label}</TooltipPopup>
+                    </Tooltip>
+                  ))}
+                  <span className="text-xs text-muted-foreground">
+                    {ICONS.find((option) => option.id === iconId)?.label}
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </PopoverPopup>

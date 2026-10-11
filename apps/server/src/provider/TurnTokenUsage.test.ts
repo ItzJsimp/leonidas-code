@@ -5,6 +5,7 @@ import {
   completeCodexTurnTokenUsage,
   getCodexTurnAccumulator,
   makeCodexTurnTokenUsageState,
+  snapshotCodexTurnTokenUsage,
 } from "./CodexTurnTokenUsage.ts";
 
 const breakdown = (input: number, cached: number, output: number) => ({
@@ -21,6 +22,21 @@ const update = (total: ReturnType<typeof breakdown>, last = total) => ({
 });
 
 describe("billable native turn usage", () => {
+  it("publishes live output across responses without consuming final usage", () => {
+    const state = makeCodexTurnTokenUsageState();
+    state.activeTurnId = "turn";
+    accumulateCodexTurnTokenUsage(state, "turn", update(breakdown(100, 20, 40)));
+    expect(snapshotCodexTurnTokenUsage(state, "turn")).toMatchObject({
+      usageStatus: "partial",
+      outputTokens: 40,
+    });
+    accumulateCodexTurnTokenUsage(state, "turn", update(breakdown(200, 40, 70)));
+    expect(snapshotCodexTurnTokenUsage(state, "turn").outputTokens).toBe(70);
+    expect(completeCodexTurnTokenUsage(state, "turn", true)).toMatchObject({
+      usageStatus: "complete",
+      outputTokens: 70,
+    });
+  });
   it("adds each Codex response once and excludes the prior resumed history", () => {
     const state = makeCodexTurnTokenUsageState();
     state.activeTurnId = "turn";

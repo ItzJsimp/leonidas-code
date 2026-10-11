@@ -7,6 +7,7 @@ import {
   MAX_SUGGESTION_SENTENCES,
   predictPrompt,
   STYLE_STANDARD,
+  withModelPrediction,
 } from "./promptPrediction.js";
 
 const row = (text: string, app = "claude.exe", lens = "agent") =>
@@ -33,7 +34,7 @@ describe("prompt prediction", () => {
     );
     expect(predictPrompt(candidates, "")).toBe("Check the predictor ranking.");
   });
-  it("ranks relevant work above unrelated repeated prompts", () => {
+  it("ranks relevant history above unrelated prompts when completing a typed prefix", () => {
     const history = buildPromptCandidates(
       [
         row("Build the Roblox tower"),
@@ -45,7 +46,8 @@ describe("prompt prediction", () => {
       { role: "user", text: "The predictor keeps suggesting yes" },
       { role: "assistant", text: "The predictor ranking uses frequency." },
     ]);
-    expect(predictPrompt(candidates, "")).toBe("Fix the predictor ranking");
+    expect(predictPrompt(candidates, "")).toBeNull();
+    expect(predictPrompt(candidates, "Fix")).toBe("Fix the predictor ranking");
     expect(predictPrompt(candidates, "Build")).toBe("Build the Roblox tower");
   });
   it("offers no unrelated empty-draft fallback and never suggests yes", () => {
@@ -57,7 +59,7 @@ describe("prompt prediction", () => {
     expect(predictPrompt(candidates, "y")).toBeNull();
     expect(predictPrompt(candidates, "Run")).toBe("Run the tests");
   });
-  it("uses earlier thread prompts without Scribe and excludes the just-sent prompt", () => {
+  it("never replays an earlier prompt into an empty draft, only completes a typed prefix", () => {
     const candidates = contextualPromptCandidates(
       [],
       [
@@ -67,7 +69,8 @@ describe("prompt prediction", () => {
         { role: "assistant", text: "The ranking order is fixed." },
       ],
     );
-    expect(predictPrompt(candidates, "")).toBe("Check the ranking tests");
+    expect(predictPrompt(candidates, "")).toBeNull();
+    expect(predictPrompt(candidates, "Check")).toBe("Check the ranking tests");
     expect(STYLE_STANDARD).toContain(predictPrompt(candidates, "Fix"));
   });
   it("uses the recommended option rather than blindly picking the first quick reply", () => {
@@ -221,5 +224,33 @@ describe("prompt prediction", () => {
         expect(text).not.toMatch(/[0-9@\/:]/);
       }
     });
+  });
+  it("shows the model prediction on an empty draft and extends a matching prefix", () => {
+    const history = buildPromptCandidates(row("Run the old tests"));
+    const base = contextualPromptCandidates(history, [
+      { role: "user", text: "Fix the login bug" },
+      { role: "assistant", text: "Fixed the token refresh in auth.ts." },
+    ]);
+    const candidates = withModelPrediction(base, "Add a regression test for the token refresh.");
+    expect(predictPrompt(candidates, "")).toBe("Add a regression test for the token refresh.");
+    expect(predictPrompt(candidates, "Add a reg")).toBe(
+      "Add a regression test for the token refresh.",
+    );
+    expect(predictPrompt(candidates, "Run")).toBe("Run the old tests");
+  });
+  it("keeps the assistant's explicit recommendation ahead of the model prediction", () => {
+    const base = contextualPromptCandidates(
+      [],
+      [{ role: "assistant", text: "**Recommended next step:** Run the regression tests." }],
+    );
+    const candidates = withModelPrediction(base, "Review the diff before committing.");
+    expect(predictPrompt(candidates, "")).toBe("Run the regression tests.");
+    expect(predictPrompt(candidates, "Review")).toBe("Review the diff before committing.");
+  });
+  it("ignores empty, multi-line and acknowledgement model predictions", () => {
+    const base = contextualPromptCandidates([], []);
+    expect(withModelPrediction(base, null)).toBe(base);
+    expect(withModelPrediction(base, "ok")).toBe(base);
+    expect(withModelPrediction(base, "line one\nline two")).toBe(base);
   });
 });

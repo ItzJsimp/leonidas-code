@@ -17,6 +17,19 @@ to retrieve saved messages and activity, including the remainder of a long item.
 constraint, you can still repeat it in your next message. A handoff is a budgeted selection, not an
 agent-written summary.
 
+## Continue after a subscription limit
+
+When a Claude or Codex task stops at a usage limit, choose **Continue with Codex** or
+**Continue with Claude** in the limit notice to continue in the same chat. Leonidas Code uses
+the alternate connection's visible default model and transfers conversation context through
+the same portable handoff. Hover over the action to see the selected model.
+
+The action appears for an enabled, ready Claude or Codex connection with a selectable model.
+Connections sharing the limited provider's native account identity, or reporting exhausted quota,
+are excluded. Unreported quota is unknown, so the new provider may still refuse the request.
+Other provider types remain available through the model picker. Waiting until reset and snoozing
+remain available when the provider reports a reset time.
+
 ## Context limits
 
 A handoff must leave room for existing provider context, your request and attachments, instructions,

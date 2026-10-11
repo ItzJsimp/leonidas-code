@@ -47,23 +47,10 @@ if ($AiosClaudeMd) {
 if ($SkipApp) { return }
 
 # 3. App
-$release = Invoke-RestMethod "https://api.github.com/repos/$Repository/releases/latest"
-$asset = $release.assets | Where-Object name -like "*.exe" | Select-Object -First 1
-if (-not $asset) { throw "No .exe asset on release $($release.tag_name)." }
-$installer = Join-Path $env:TEMP $asset.name
-Invoke-WebRequest $asset.browser_download_url -OutFile $installer
-Get-Process -Name "T3 Code*", "Leonidas Code*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 2
-Start-Process -FilePath $installer -ArgumentList "/S", "/currentuser" -Wait
-Write-Host "Installed Leonidas Code $($release.tag_name)."
+& (Join-Path $PSScriptRoot 'leonidas-update.ps1') -Repository $Repository
 
-# Leftover T3 Code: other uninstall entries, then shortcuts anywhere a launch could start it.
-Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall" |
-  Get-ItemProperty | Where-Object { $_.DisplayName -like "T3 Code*" -and $_.UninstallString } |
-  ForEach-Object {
-    $exe = ($_.UninstallString -split '"')[1]
-    if ($exe -and (Test-Path -LiteralPath $exe)) { Start-Process $exe -ArgumentList "/S", "/currentuser" -Wait }
-  }
+# Same app identity: an old uninstall entry can point to the app we just installed.
+# Remove obsolete shortcuts only.
 $shortcutDirs = @(
   [Environment]::GetFolderPath("Desktop"),
   [Environment]::GetFolderPath("Programs"),

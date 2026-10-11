@@ -44,6 +44,8 @@ export function DesktopUpdateCoordinator() {
   const state = useDesktopUpdateState();
   const runningCount = useAtomValue(runningThreadCountAtom);
   const updateWhenSafe = useUpdateWhenSafeStore((store) => store.updateWhenSafe);
+  const autoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.autoUpdateWhenSafe);
+  const setAutoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setAutoUpdateWhenSafe);
   const setUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setUpdateWhenSafe);
   const runningCountRef = useRef(runningCount);
   runningCountRef.current = runningCount;
@@ -103,17 +105,35 @@ export function DesktopUpdateCoordinator() {
     // `state` only feeds the toast copy; the version is the once-per-update key.
   }, [downloadedVersion, setUpdateWhenSafe]);
 
-  const whenSafeAction = resolveUpdateWhenSafeAction(runningCount, updateWhenSafe);
+  const whenSafeAction = resolveUpdateWhenSafeAction(
+    runningCount,
+    downloadedVersion !== null && (updateWhenSafe || autoUpdateWhenSafe),
+  );
+  const installingVersionRef = useRef<string | null>(null);
   useEffect(() => {
     if (whenSafeAction === "install") {
+      if (installingVersionRef.current === downloadedVersion) return;
+      installingVersionRef.current = downloadedVersion;
       setUpdateWhenSafe(false);
       void installUpdate();
       return;
     }
     if (whenSafeAction !== "wait") return;
-    const toastId = showDesktopUpdateWaitingToast(() => setUpdateWhenSafe(false));
+    const toastId = showDesktopUpdateWaitingToast(
+      () => {
+        setUpdateWhenSafe(false);
+        if (autoUpdateWhenSafe) setAutoUpdateWhenSafe(false);
+      },
+      autoUpdateWhenSafe ? "Turn off automatic updates" : "Cancel",
+    );
     return () => toastManager.close(toastId);
-  }, [whenSafeAction, setUpdateWhenSafe]);
+  }, [
+    whenSafeAction,
+    setUpdateWhenSafe,
+    downloadedVersion,
+    autoUpdateWhenSafe,
+    setAutoUpdateWhenSafe,
+  ]);
 
   return whatsNew ? (
     <LeonidasWhatsNewDialog

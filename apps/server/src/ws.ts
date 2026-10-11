@@ -1,6 +1,8 @@
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
+import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
+import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as Crypto from "effect/Crypto";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 
@@ -182,6 +184,7 @@ import * as TerminalManager from "./terminal/Manager.ts";
 import { withTerminalOutputWindow } from "./terminal/OutputProtocol.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
+import * as LocalVmService from "./localVm/LocalVmService.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import { remoteSshDeviceHosts } from "./device/localSshDeviceHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
@@ -1226,6 +1229,7 @@ const layerWsRpc = (
       const secretRequests = yield* SecretRequests.SecretRequests;
       const pullRequests = yield* PullRequestService.PullRequestService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
+      const localVmService = yield* LocalVmService.LocalVmService;
       const deviceService = yield* DeviceService.DeviceService;
       const deviceHostContext =
         yield* Effect.context<Effect.Services<ReturnType<typeof remoteSshDeviceHosts>>>();
@@ -1286,6 +1290,10 @@ const layerWsRpc = (
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
+      const promptSuggestion = PromptSuggestion.make(
+        yield* TextGeneration.TextGeneration,
+        serverSettings,
+      );
       const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
       const backgroundPolicy = yield* BackgroundPolicy.BackgroundPolicy;
       const rpcClientIds = yield* Ref.make(new Set<RpcClientId>());
@@ -2644,6 +2652,7 @@ const layerWsRpc = (
           ),
         [WS_METHODS.taskBoardList]: () => taskBoard.list,
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
+        [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsReadFile]: (input) =>
           workspaceFileSystem.readFile(input).pipe(
             Effect.mapError(
@@ -2904,6 +2913,12 @@ const layerWsRpc = (
         [WS_METHODS.previewReportProfiles]: (input) => serverBrowser.reportProfiles(input),
         [WS_METHODS.previewReportStatus]: (input) => previewManager.reportStatus(input),
         [WS_METHODS.subscribePreviewEvents]: (_input) => previewManager.events,
+        [WS_METHODS.localVmList]: () => localVmService.list,
+        [WS_METHODS.localVmConnect]: (input) => localVmService.connect(input),
+        [WS_METHODS.localVmPause]: (input) => localVmService.pause(input),
+        [WS_METHODS.localVmRelease]: (input) => localVmService.release(input),
+        [WS_METHODS.localVmScreenshot]: (input) => localVmService.screenshot(input),
+        [WS_METHODS.localVmInput]: (input) => localVmService.input(input),
         [WS_METHODS.deviceConfigure]: (input) => deviceService.configure(input),
         [WS_METHODS.deviceTestHost]: (input) => deviceService.testHost(input),
         [WS_METHODS.deviceList]: (input) =>

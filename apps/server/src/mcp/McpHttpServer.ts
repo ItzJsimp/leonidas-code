@@ -17,6 +17,13 @@ import { OrchestratorMcpFailure, PreviewAutomationError } from "@t3tools/contrac
 
 import packageJson from "../../package.json" with { type: "json" };
 import * as ServerConfig from "../config.ts";
+import * as LocalVmService from "../localVm/LocalVmService.ts";
+import * as LocalVmHandlers from "./toolkits/localVm/handlers.ts";
+import {
+  LocalVmScreenshotTool,
+  LocalVmScreenshotToolkit,
+  LocalVmStandardToolkit,
+} from "./toolkits/localVm/tools.ts";
 import * as DeviceService from "../device/DeviceService.ts";
 import * as HtmlRender from "../htmlRender/HtmlRender.ts";
 import * as ThreadCommandExecutor from "../orchestration-v2/ThreadCommandExecutor.ts";
@@ -714,6 +721,28 @@ const registerImageTool = <T extends Tool.Any, E, R>(
     });
   });
 
+const registerLocalVmScreenshot = Effect.fn("McpHttpServer.registerLocalVmScreenshot")(
+  function* () {
+    const service = yield* LocalVmService.LocalVmService;
+    const threads = yield* ThreadManagementService.ThreadManagementService;
+    const built = yield* LocalVmScreenshotToolkit;
+    yield* registerImageTool(
+      LocalVmScreenshotTool,
+      (payload) =>
+        built
+          .handle("local_vm_screenshot", payload)
+          .pipe(Stream.unwrap, Stream.run(Sink.last()), Effect.flatMap(Effect.fromOption)),
+      (effect) =>
+        effect.pipe(
+          Effect.provideService(LocalVmService.LocalVmService, service),
+          Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
+        ),
+      "screenshot",
+      "Guest screenshot failed.",
+    );
+  },
+);
+
 const registerDeviceScreenshot = Effect.fn("McpHttpServer.registerDeviceScreenshot")(function* () {
   const devices = yield* DeviceService.DeviceService;
   const threads = yield* ThreadManagementService.ThreadManagementService;
@@ -877,5 +906,7 @@ export const layer = Layer.mergeAll(
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
   layerDeviceToolkit,
+  toolkitRegistration(LocalVmStandardToolkit, LocalVmHandlers.layerStandard),
+  imageToolRegistration(registerLocalVmScreenshot(), LocalVmHandlers.layerScreenshot),
   layerHtmlToolkit,
 ).pipe(Layer.provideMerge(layerMcpTransport));

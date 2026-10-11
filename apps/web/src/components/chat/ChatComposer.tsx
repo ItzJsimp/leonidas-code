@@ -297,7 +297,7 @@ import {
   renderProviderTraitsMenuContent,
   renderProviderTraitsPicker,
 } from "./composerProviderState";
-import { AgentVelocityMeter } from "./AgentVelocityMeter";
+import { TokenCounter } from "./AgentVelocityMeter";
 import type { VelocitySummary } from "./AgentVelocityMeter.logic";
 import { ContextWindowMeter, ContextWindowMeterPlaceholder } from "./ContextWindowMeter";
 import {
@@ -1401,9 +1401,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
 }) {
   return (
     <>
-      {props.activeVelocitySummary ? (
-        <AgentVelocityMeter summary={props.activeVelocitySummary} />
-      ) : null}
+      {props.activeVelocitySummary ? <TokenCounter summary={props.activeVelocitySummary} /> : null}
       {props.activeContextWindow ? (
         <ContextWindowMeter
           usage={props.activeContextWindow}

@@ -73,6 +73,30 @@ describe("command permissions", () => {
       }),
     ),
   );
+  it.effect("AI Desktop mutations require the destination environment operate grant", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const registry = yield* setup;
+        registry.set(sessions(env), AsyncResult.success(grant(false)));
+        for (const method of [
+          WS_METHODS.localVmConnect,
+          WS_METHODS.localVmPause,
+          WS_METHODS.localVmRelease,
+          WS_METHODS.localVmInput,
+        ]) {
+          const vmPermissions = createCommandPermissions(runtime, method);
+          expect(registry.get(vmPermissions.permissionAtom(env))).toBe(false);
+          expect((yield* vmPermissions.authorize(registry, env).pipe(Effect.flip))._tag).toBe(
+            "EnvironmentAuthorizationError",
+          );
+          registry.set(sessions(env), AsyncResult.success(grant(true)));
+          expect(registry.get(vmPermissions.permissionAtom(env))).toBe(true);
+          yield* vmPermissions.authorize(registry, env);
+          registry.set(sessions(env), AsyncResult.success(grant(false)));
+        }
+      }),
+    ),
+  );
   it.effect("waits for an initial grant", () =>
     Effect.scoped(
       Effect.gen(function* () {

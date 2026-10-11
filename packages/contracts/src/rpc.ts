@@ -267,6 +267,16 @@ import {
   PreviewSessionSnapshot,
 } from "./preview.ts";
 import {
+  LocalVmConnectInput,
+  LocalVmPauseInput,
+  LocalVmTarget,
+  LocalVmInput,
+  LocalVmState,
+  LocalVmSession,
+  LocalVmScreenshotResult,
+  LocalVmError,
+} from "./localVm.ts";
+import {
   DeviceActionInput,
   DeviceCloseInput,
   DeviceConfigureInput,
@@ -367,6 +377,7 @@ export const WS_METHODS = {
   projectsReadFile: "projects.readFile",
   taskBoardList: "taskBoard.list",
   projectsPromptCandidates: "projects.promptCandidates",
+  projectsPredictPrompt: "projects.predictPrompt",
   projectsSearchContents: "projects.searchContents",
   projectsSearchEntries: "projects.searchEntries",
   projectsWriteFile: "projects.writeFile",
@@ -451,6 +462,12 @@ export const WS_METHODS = {
   previewReportProfiles: "preview.reportProfiles",
   previewReportStatus: "preview.reportStatus",
 
+  localVmList: "localVm.list",
+  localVmConnect: "localVm.connect",
+  localVmPause: "localVm.pause",
+  localVmRelease: "localVm.release",
+  localVmScreenshot: "localVm.screenshot",
+  localVmInput: "localVm.input",
   // Device methods
   deviceConfigure: "device.configure",
   deviceList: "device.list",
@@ -1189,6 +1206,17 @@ const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidat
   error: EnvironmentAuthorizationError,
 });
 
+const WsProjectsPredictPromptRpc = Rpc.make(WS_METHODS.projectsPredictPrompt, {
+  payload: Schema.Struct({
+    cwd: Schema.String,
+    messages: Schema.Array(
+      Schema.Struct({ role: Schema.Literals(["user", "assistant"]), text: Schema.String }),
+    ),
+  }),
+  success: Schema.Struct({ prompt: Schema.NullOr(Schema.String) }),
+  error: EnvironmentAuthorizationError,
+});
+
 const WsProjectsReadFileRpc = Rpc.make(WS_METHODS.projectsReadFile, {
   payload: ProjectReadFileInput,
   success: ProjectReadFileResult,
@@ -1518,6 +1546,40 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
   success: DiscoveredLocalServerList,
   error: EnvironmentAuthorizationError,
   stream: true,
+});
+
+const WsLocalVmListRpc = Rpc.make(WS_METHODS.localVmList, {
+  payload: Schema.Struct({ inspect: Schema.optional(Schema.Boolean) }),
+  success: LocalVmState,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmConnectRpc = Rpc.make(WS_METHODS.localVmConnect, {
+  payload: LocalVmConnectInput,
+  success: LocalVmSession,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmPauseRpc = Rpc.make(WS_METHODS.localVmPause, {
+  payload: LocalVmPauseInput,
+  success: LocalVmSession,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmReleaseRpc = Rpc.make(WS_METHODS.localVmRelease, {
+  payload: LocalVmTarget,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmScreenshotRpc = Rpc.make(WS_METHODS.localVmScreenshot, {
+  payload: LocalVmTarget,
+  success: LocalVmScreenshotResult,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
+});
+
+const WsLocalVmInputRpc = Rpc.make(WS_METHODS.localVmInput, {
+  payload: LocalVmInput,
+  error: Schema.Union([LocalVmError, EnvironmentAuthorizationError]),
 });
 
 const WsDeviceTestHostRpc = Rpc.make(WS_METHODS.deviceTestHost, {
@@ -1928,6 +1990,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsReadFileRpc,
   WsTaskBoardListRpc,
   WsProjectsPromptCandidatesRpc,
+  WsProjectsPredictPromptRpc,
   WsProjectsSearchContentsRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsEnsureScratchRpc,
@@ -1985,6 +2048,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsPreviewReportStatusRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
+  WsLocalVmListRpc,
+  WsLocalVmConnectRpc,
+  WsLocalVmPauseRpc,
+  WsLocalVmReleaseRpc,
+  WsLocalVmScreenshotRpc,
+  WsLocalVmInputRpc,
   WsDeviceConfigureRpc,
   WsDeviceListRpc,
   WsDeviceTestHostRpc,

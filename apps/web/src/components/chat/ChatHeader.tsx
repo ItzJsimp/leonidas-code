@@ -39,6 +39,7 @@ import {
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
 import { useClientSettings } from "../../hooks/useSettings";
+import { LocalVmPanel } from "../localVm/LocalVmPanel";
 
 interface ChatHeaderProps {
   goalControls?: ReactNode;
@@ -440,6 +441,9 @@ export const ChatHeader = memo(function ChatHeader({
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
       {goalControls}
+      {isServerThread && (
+        <LocalVmPanel environmentId={activeThreadEnvironmentId} threadId={activeThreadId} />
+      )}
     </div>
   );
 });

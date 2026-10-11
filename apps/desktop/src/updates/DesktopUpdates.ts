@@ -48,7 +48,7 @@ import {
 } from "./updateMachine.ts";
 
 const AUTO_UPDATE_STARTUP_DELAY = "15 seconds";
-const AUTO_UPDATE_POLL_INTERVAL = "4 minutes";
+const AUTO_UPDATE_POLL_INTERVAL = "1 minute";
 const PREPARED_INSTALL_CHECK_WAIT = Duration.seconds(90);
 
 type UpdateAction = "check" | "download" | "install" | "install-recovery" | "channel";
@@ -283,6 +283,26 @@ export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const fileSystem = yield* FileSystem.FileSystem;
   const desktopSettings = yield* DesktopAppSettings.DesktopAppSettings;
+
+  // Local receipts contain only updater state, never conversation or account data.
+  const receipts = yield* DesktopObservability.makeRotatingLogFileWriter({
+    filePath: environment.path.join(environment.logDir, "update-delivery.ndjson"),
+    maxBytes: 256 * 1024,
+    maxFiles: 4,
+  }).pipe(Effect.option);
+  const recordDelivery = (status: string, version: string | null) =>
+    currentIsoTimestamp.pipe(
+      Effect.flatMap((at) =>
+        Option.match(receipts, {
+          onNone: () => Effect.void,
+          onSome: (writer) =>
+            writer.writeText(
+              `${JSON.stringify({ at, status, version, currentVersion: environment.appVersion })}\n`,
+            ),
+        }),
+      ),
+    );
+  yield* recordDelivery("started", environment.appVersion);
 
   const appUpdateYmlConfigRef = yield* Ref.make<Option.Option<AppUpdateYmlConfig>>(Option.none());
   const activeUpdateActionRef = yield* Ref.make<Option.Option<UpdateAction>>(Option.none());
@@ -643,6 +663,7 @@ export const make = Effect.gen(function* () {
             (instance) => instance.stop({ timeout: Duration.seconds(5) }),
             { concurrency: "unbounded" },
           );
+          yield* recordDelivery("installing", (yield* Ref.get(updateStateRef)).downloadedVersion);
           yield* electronUpdater.quitAndInstall({
             isSilent: true,
             isForceRunAfter: true,
@@ -768,6 +789,8 @@ export const make = Effect.gen(function* () {
             ),
           );
           yield* Ref.set(lastLoggedDownloadMilestoneRef, -1);
+          if (state.availableVersion !== info.version)
+            yield* recordDelivery("available", info.version);
           yield* logUpdaterInfo("update available", {
             version: info.version,
             releaseNoteGroups: releaseNotes.length,
@@ -800,6 +823,7 @@ export const make = Effect.gen(function* () {
     cause: unknown,
   ) {
     const activeAction = yield* activeUpdateAction;
+    yield* recordDelivery("error", (yield* Ref.get(updateStateRef)).availableVersion);
     const error = new DesktopUpdaterReportedError({
       operation: Option.match(activeAction, {
         onNone: () => "background" as const,
@@ -875,6 +899,8 @@ export const make = Effect.gen(function* () {
         Effect.fn("desktop.updates.applyUpdateDownloaded")(function* (info) {
           const state = yield* Ref.get(updateStateRef);
           yield* setState(reduceDesktopUpdateStateOnDownloadComplete(state, info.version));
+          if (state.downloadedVersion !== info.version)
+            yield* recordDelivery("downloaded", info.version);
           yield* logUpdaterInfo("update downloaded", { version: info.version });
         }),
       ),

@@ -267,6 +267,88 @@ function cursorSource(summary: { readonly sources: readonly UsageSource[] }) {
 }
 
 describe("UsageService", () => {
+  it.live(
+    "correlates exact account transcript intervals without duplicates or shared-home attribution",
+    () =>
+      Effect.gen(function* () {
+        const { home, settings, transcript } = yield* setup;
+        const since = Date.parse("2026-10-11T00:00:00Z");
+        const until = since + 60_000;
+        const line = (id: string, timestamp: string) =>
+          encodeUnknownJsonString({
+            type: "assistant",
+            timestamp,
+            requestId: id,
+            sessionId: "fixture-session",
+            message: {
+              id,
+              model: "claude-fable-5",
+              usage: {
+                input_tokens: 100,
+                cache_read_input_tokens: 200,
+                cache_creation_input_tokens: 50,
+                output_tokens: 150,
+              },
+            },
+          });
+        yield* Effect.promise(() =>
+          NodeFSP.writeFile(
+            transcript,
+            [
+              line("before", "2026-10-10T23:59:59Z"),
+              line("included", "2026-10-11T00:00:00Z"),
+              line("included", "2026-10-11T00:00:00Z"),
+              line("after", "2026-10-11T00:01:00Z"),
+            ].join("\r\n") + "\r\n",
+          ),
+        );
+        const service = yield* UsageService.make.pipe(
+          Effect.provide(layerService({ prefix: "usage-subscription-interval", home, settings })),
+        );
+        const sample = yield* service.readSubscriptionTokens(
+          ProviderInstanceId.make("claudeAgent"),
+          since,
+          until,
+        );
+        assert.deepEqual(sample?.totals, {
+          uncachedInputTokens: 100,
+          cachedInputTokens: 200,
+          cacheCreationTokens: 50,
+          outputTokens: 150,
+          reasoningTokens: 0,
+        });
+        assert.isNull(
+          yield* service.readSubscriptionTokens(
+            ProviderInstanceId.make("claudeAgent"),
+            since,
+            since + 25 * 60 * 60_000,
+          ),
+        );
+        const ambiguous = yield* UsageService.make.pipe(
+          Effect.provide(
+            layerService({
+              prefix: "usage-subscription-ambiguous",
+              home,
+              settings: {
+                providerInstances: {
+                  ...settings.providerInstances,
+                  [ProviderInstanceId.make("claude-other")]: {
+                    ...settings.providerInstances.claudeAgent,
+                  },
+                },
+              },
+            }),
+          ),
+        );
+        assert.isNull(
+          yield* ambiguous.readSubscriptionTokens(
+            ProviderInstanceId.make("claudeAgent"),
+            since,
+            until,
+          ),
+        );
+      }).pipe(Effect.scoped),
+  );
   it.live("reads shared managed default and disabled extra account history once", () =>
     Effect.gen(function* () {
       const { home, settings } = yield* setup;

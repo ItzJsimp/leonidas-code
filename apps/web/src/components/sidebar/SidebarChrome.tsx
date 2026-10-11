@@ -1,5 +1,10 @@
 import { TaskBoardPanel } from "../taskBoard/TaskBoardPanel";
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChartNoAxesColumnIcon,
+  LayoutDashboardIcon,
+  SettingsIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -189,6 +194,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/settings" });
   }, [closeMobileSidebar, navigate]);
 
+  const handleCommandCenterClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/command-center" });
+  }, [closeMobileSidebar, navigate]);
+
   const handleUsageClick = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -212,6 +222,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         </SidebarMenuItem>
       ) : (
         <>
+          <SidebarUtilityItem
+            icon={<LayoutDashboardIcon />}
+            label="Command Center"
+            onClick={handleCommandCenterClick}
+          />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
