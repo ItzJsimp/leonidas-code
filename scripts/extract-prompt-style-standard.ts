@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalConsole:off - An offline CLI that reads a local history file with Node built-ins only.
 // Rebuilds packages/shared/src/promptStyleStandard.json from a Scribe history.jsonl.
 // Usage: node scripts/extract-prompt-style-standard.ts <history.jsonl> [--out <file>]
 // Anonymization rules are in ANONYMIZATION below and must stay in step with the review notes.
