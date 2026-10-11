@@ -1,7 +1,19 @@
 import { DEFAULT_UNIFIED_SETTINGS, type UnifiedSettings } from "@t3tools/contracts";
+import { EFFECTIVE_SERVER_SETTINGS_DEFAULTS } from "@t3tools/shared/serverSettings";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { reactHookHarness as hooks } from "../../test/reactHookHarness";
+
+/**
+ * What a machine that has chosen nothing looks like: the schema defaults with
+ * the fork's team defaults folded in. The server applies the team defaults, so
+ * a pristine client sees those values.
+ */
+const PRISTINE_SETTINGS: UnifiedSettings = {
+  ...DEFAULT_UNIFIED_SETTINGS,
+  continueThreadsAfterServerUpdate:
+    EFFECTIVE_SERVER_SETTINGS_DEFAULTS.continueThreadsAfterServerUpdate,
+};
 
 const state = vi.hoisted(() => ({
   settings: null as UnifiedSettings | null,
@@ -56,7 +68,7 @@ import { useSettingsRestore } from "./SettingsPanels";
 beforeEach(() => {
   hooks.reset();
   vi.clearAllMocks();
-  state.settings = { ...DEFAULT_UNIFIED_SETTINGS };
+  state.settings = { ...PRISTINE_SETTINGS };
   state.confirm.mockResolvedValue(true);
 });
 
@@ -66,7 +78,7 @@ describe("restoring V2 settings", () => {
     ["autoResumeLimitedThreads", "Auto-resume limited threads"],
     ["snoozeLimitedThreads", "Snooze limited threads"],
   ] as const)("restores %s when it is the only changed setting", async (key, label) => {
-    state.settings = { ...DEFAULT_UNIFIED_SETTINGS, [key]: true };
+    state.settings = { ...PRISTINE_SETTINGS, [key]: true };
     hooks.beginRender();
     const restore = useSettingsRestore();
 
@@ -78,8 +90,24 @@ describe("restoring V2 settings", () => {
     expect(state.update.mock.calls[0]?.[0][key]).toBe(DEFAULT_UNIFIED_SETTINGS[key]);
   });
 
+  // A machine still on the schema default is modified relative to the fork's
+  // team default, and Reset must return it to the team default rather than
+  // pinning the schema default.
+  it("treats the schema default as changed when a team default covers it", async () => {
+    state.settings = { ...PRISTINE_SETTINGS, continueThreadsAfterServerUpdate: false };
+    hooks.beginRender();
+    const restore = useSettingsRestore();
+
+    expect(restore.changedSettingLabels).toContain("Continue threads after restarts");
+    await restore.restoreDefaults();
+
+    expect(state.update.mock.calls[0]?.[0].continueThreadsAfterServerUpdate).toBe(
+      EFFECTIVE_SERVER_SETTINGS_DEFAULTS.continueThreadsAfterServerUpdate,
+    );
+  });
+
   it("does not reset settings after cancellation", async () => {
-    state.settings = { ...DEFAULT_UNIFIED_SETTINGS, autoResumeLimitedThreads: true };
+    state.settings = { ...PRISTINE_SETTINGS, autoResumeLimitedThreads: true };
     state.confirm.mockResolvedValue(false);
     hooks.beginRender();
 

@@ -11,6 +11,7 @@ import {
   ServerSettingsPatch,
 } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
+import { EFFECTIVE_SERVER_SETTINGS_DEFAULTS } from "@t3tools/shared/serverSettings";
 import { assert, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -1900,6 +1901,88 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       assert.deepEqual(settings.projectSettingsOverrides, {});
       // The user's file is still there to repair; nothing was written over it.
       assert.equal(yield* fileSystem.readFileString(serverConfig.settingsPath), broken);
+    }).pipe(Effect.provide(layerServerSettings())),
+  );
+  it.effect("gives a fresh install the team defaults", () =>
+    Effect.gen(function* () {
+      const config = yield* ServerConfig.ServerConfig;
+      const fs = yield* FileSystem.FileSystem;
+      const service = yield* ServerSettingsModule.ServerSettingsService;
+      assert.isFalse(yield* fs.exists(config.settingsPath));
+
+      const settings = yield* service.getSettings;
+      assert.isTrue(settings.continueThreadsAfterServerUpdate);
+      assert.equal(settings.branchNamingMode, "semantic");
+      assert.equal(settings.storageCleanup.worktreeAfterDays, 14);
+      assert.equal(settings.storageCleanup.logsAfterDays, 30);
+      assert.isFalse(settings.storageCleanup.worktreeOnMerge);
+    }).pipe(Effect.provide(layerServerSettings())),
+  );
+
+  it.effect("keeps a value the settings file chose and never writes the seed to disk", () =>
+    Effect.gen(function* () {
+      const config = yield* ServerConfig.ServerConfig;
+      const fs = yield* FileSystem.FileSystem;
+      const service = yield* ServerSettingsModule.ServerSettingsService;
+      yield* fs.writeFileString(
+        config.settingsPath,
+        `{ "continueThreadsAfterServerUpdate": false }`,
+      );
+
+      const settings = yield* service.getSettings;
+      assert.isFalse(settings.continueThreadsAfterServerUpdate);
+      // Keys the file never mentioned still take the team default.
+      assert.equal(settings.branchNamingMode, "semantic");
+      // The seed stays an overlay, so it is not baked into the user's file.
+      const raw = yield* fs.readFileString(config.settingsPath);
+      assert.notInclude(raw, "branchNamingMode");
+      assert.notInclude(raw, "storageCleanup");
+      assert.isFalse((yield* decodeServerSettingsJson(raw)).continueThreadsAfterServerUpdate);
+    }).pipe(Effect.provide(layerServerSettings())),
+  );
+
+  it.effect("keeps the seed out of the file after the user changes a setting", () =>
+    Effect.gen(function* () {
+      const config = yield* ServerConfig.ServerConfig;
+      const fs = yield* FileSystem.FileSystem;
+      const service = yield* ServerSettingsModule.ServerSettingsService;
+      yield* service.updateSettings({ addProjectBaseDirectory: "~/Development" });
+
+      const raw = yield* fs.readFileString(config.settingsPath);
+      assert.include(raw, "addProjectBaseDirectory");
+      // A value the machine never chose is still absent, so the team default
+      // keeps applying and can be changed for both machines at once.
+      assert.notInclude(raw, "branchNamingMode");
+      assert.notInclude(raw, "storageCleanup");
+      assert.equal((yield* service.getSettings).branchNamingMode, "semantic");
+    }).pipe(Effect.provide(layerServerSettings())),
+  );
+
+  // What the Settings Reset buttons rely on: resetting a seeded key writes the
+  // effective default, which the write path strips, so the key leaves the file
+  // and the team default governs it again rather than being pinned.
+  it.effect("returns a reset seeded key to the team default instead of pinning it", () =>
+    Effect.gen(function* () {
+      const config = yield* ServerConfig.ServerConfig;
+      const fs = yield* FileSystem.FileSystem;
+      const service = yield* ServerSettingsModule.ServerSettingsService;
+      yield* fs.writeFileString(
+        config.settingsPath,
+        `{ "branchNamingMode": "static", "continueThreadsAfterServerUpdate": false }`,
+      );
+
+      yield* service.updateSettings({
+        branchNamingMode: EFFECTIVE_SERVER_SETTINGS_DEFAULTS.branchNamingMode,
+        continueThreadsAfterServerUpdate:
+          EFFECTIVE_SERVER_SETTINGS_DEFAULTS.continueThreadsAfterServerUpdate,
+      });
+
+      const raw = yield* fs.readFileString(config.settingsPath);
+      assert.notInclude(raw, "branchNamingMode");
+      assert.notInclude(raw, "continueThreadsAfterServerUpdate");
+      const settings = yield* service.getSettings;
+      assert.equal(settings.branchNamingMode, "semantic");
+      assert.isTrue(settings.continueThreadsAfterServerUpdate);
     }).pipe(Effect.provide(layerServerSettings())),
   );
 });

@@ -1,5 +1,6 @@
 import { useRef } from "react";
-import { BranchNamingMode, DEFAULT_SERVER_SETTINGS } from "@t3tools/contracts";
+import { BranchNamingMode } from "@t3tools/contracts";
+import { EFFECTIVE_SERVER_SETTINGS_DEFAULTS } from "@t3tools/shared/serverSettings";
 
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
@@ -43,11 +44,14 @@ export function BranchNamingSettings() {
             : undefined
         }
         resetAction={
-          settings.branchNamingMode !== DEFAULT_SERVER_SETTINGS.branchNamingMode || modeMixed ? (
+          settings.branchNamingMode !== EFFECTIVE_SERVER_SETTINGS_DEFAULTS.branchNamingMode ||
+          modeMixed ? (
             <SettingResetButton
               label="branch naming"
               onClick={() =>
-                updateSettings({ branchNamingMode: DEFAULT_SERVER_SETTINGS.branchNamingMode })
+                updateSettings({
+                  branchNamingMode: EFFECTIVE_SERVER_SETTINGS_DEFAULTS.branchNamingMode,
+                })
               }
             />
           ) : null
@@ -84,11 +88,13 @@ export function BranchNamingSettings() {
           description="For example, t3 or t3/ produces t3/add-search. Leave empty for no prefix."
           resetAction={
             prefixMixed ||
-            settings.branchNamePrefix !== DEFAULT_SERVER_SETTINGS.branchNamePrefix ? (
+            settings.branchNamePrefix !== EFFECTIVE_SERVER_SETTINGS_DEFAULTS.branchNamePrefix ? (
               <SettingResetButton
                 label="branch prefix"
                 onClick={() =>
-                  updateSettings({ branchNamePrefix: DEFAULT_SERVER_SETTINGS.branchNamePrefix })
+                  updateSettings({
+                    branchNamePrefix: EFFECTIVE_SERVER_SETTINGS_DEFAULTS.branchNamePrefix,
+                  })
                 }
               />
             ) : null
