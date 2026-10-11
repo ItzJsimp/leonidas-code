@@ -62,7 +62,19 @@ export function seedUserInputDraftAnswers<Draft extends { readonly customAnswer?
   return seeded;
 }
 
-/** Joins pending request entities to the request items that carry display data. */
+/** History pages append older local items, so array position is not recency. */
+function latestMatchingItem<T extends { readonly ordinal: number }>(
+  items: readonly T[],
+  matches: (item: T) => boolean,
+): T | undefined {
+  let latest: T | undefined;
+  for (const item of items) {
+    if (matches(item) && (latest === undefined || item.ordinal >= latest.ordinal)) latest = item;
+  }
+  return latest;
+}
+
+/** Joins pending request entities to the newest request items carrying display data. */
 export function derivePendingThreadRequests(
   projection: Pick<OrchestrationV2ThreadProjection, "runtimeRequests" | "turnItems">,
 ): PendingThreadRequests {
@@ -73,7 +85,8 @@ export function derivePendingThreadRequests(
     if (request.status !== "pending") continue;
     const responseCapability = request.responseCapability.type;
     if (request.kind === "user_input") {
-      const item = projection.turnItems.findLast(
+      const item = latestMatchingItem(
+        projection.turnItems,
         (candidate) =>
           candidate.type === "user_input_request" && candidate.requestId === request.id,
       );
@@ -95,7 +108,8 @@ export function derivePendingThreadRequests(
     }
 
     if (request.kind === "auth_refresh" || request.kind === "dynamic_tool_call") continue;
-    const item = projection.turnItems.findLast(
+    const item = latestMatchingItem(
+      projection.turnItems,
       (candidate) => candidate.type === "approval_request" && candidate.requestId === request.id,
     );
     approvals.push({

@@ -42,6 +42,8 @@ function sentenceEnds(text: string) {
 }
 
 export function countSentences(text: string) {
+  text = text.trim();
+  if (!text) return 0;
   const ends = sentenceEnds(text);
   return ends.length + (ends.length === 0 || (ends.at(-1) ?? 0) < text.trim().length ? 1 : 0);
 }
@@ -49,7 +51,7 @@ export function countSentences(text: string) {
 /** Trim at the sixth sentence boundary; shorter text passes through unchanged. */
 export function capSentences(text: string) {
   const ends = sentenceEnds(text);
-  return ends.length > MAX_SUGGESTION_SENTENCES
+  return ends.length >= MAX_SUGGESTION_SENTENCES
     ? text.slice(0, ends[MAX_SUGGESTION_SENTENCES - 1]).trim()
     : text;
 }
@@ -106,7 +108,12 @@ export function contextualPromptCandidates(
   history: readonly PromptCandidate[],
   messages: readonly PromptPredictionMessage[],
 ): PromptCandidate[] {
-  const recent = messages.filter((message) => message.role !== "system").slice(-12);
+  const recent: PromptPredictionMessage[] = [];
+  for (let index = messages.length - 1; index >= 0 && recent.length < 12; index--) {
+    const message = messages[index]!;
+    if (message.role !== "system") recent.push(message);
+  }
+  recent.reverse();
   const latest = recent.at(-1);
   if (latest?.streaming) return [];
   const recommendation =
@@ -141,7 +148,14 @@ export function contextualPromptCandidates(
           candidate.text.toLowerCase() !== lastUser &&
           !/[\r\n]/.test(candidate.text),
       )
-      .sort((a, b) => relevance(b) - relevance(a) || b.count - a.count || b.lastSeen - a.lastSeen);
+      .map((candidate) => ({ candidate, score: relevance(candidate) }))
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          b.candidate.count - a.candidate.count ||
+          b.candidate.lastSeen - a.candidate.lastSeen,
+      )
+      .map(({ candidate }) => candidate);
   };
   // About half from the user's own history and thread, half from the shipped style standard;
   // without Scribe history the standard half carries every prediction.
@@ -162,9 +176,9 @@ export function contextualPromptCandidates(
     if (candidate && !unique.has(candidate.text.toLowerCase()))
       unique.set(candidate.text.toLowerCase(), { ...candidate, prefixOnly: true });
   };
-  for (let index = 0; index < Math.max(own.length, standard.length); index++) {
+  for (let index = 0; index < Math.max(own.length, standard.length) && unique.size < 256; index++) {
     add(own[index]);
-    add(standard[index]);
+    if (unique.size < 256) add(standard[index]);
   }
   return [...unique.values()].slice(0, 256);
 }
@@ -174,6 +188,7 @@ export function withModelPrediction(
   candidates: readonly PromptCandidate[],
   prediction: string | null,
 ): readonly PromptCandidate[] {
+  if (prediction && prediction.length > 2000) return candidates;
   const text = prediction ? capSentences(prediction.trim()) : "";
   if (!text || /[\r\n]/.test(text) || ACKNOWLEDGEMENT.test(text)) return candidates;
   const others = candidates.filter(
@@ -182,7 +197,10 @@ export function withModelPrediction(
   // An explicit recommendation from the assistant (leading, not prefix-only) keeps first place.
   const lead = others.findIndex((candidate) => candidate.prefixOnly);
   const at = lead === -1 ? others.length : lead;
-  return [...others.slice(0, at), { text, count: 1, lastSeen: 0 }, ...others.slice(at)];
+  return [...others.slice(0, at), { text, count: 1, lastSeen: 0 }, ...others.slice(at)].slice(
+    0,
+    256,
+  );
 }
 
 const AGENT_APPS =
@@ -208,11 +226,13 @@ export function buildPromptCandidates(history: string): PromptCandidate[] {
       if (!AGENT_APPS.test(record.app) && !(TERMINALS.test(record.app) && record.lens === "agent"))
         continue;
       if (typeof record.cleaned_text !== "string") continue;
-      const text = record.cleaned_text.trim();
+      const original = record.cleaned_text.trim();
+      if (original.length > 2000) continue;
+      const text = capSentences(original);
       if (text.length < 3 || text.length > 2000 || /[\r\n]/.test(text)) continue;
-      const key = text.toLocaleLowerCase();
+      const key = text.toLowerCase();
       prompts.set(key, {
-        text: capSentences(text),
+        text,
         count: (prompts.get(key)?.count ?? 0) + 1,
         lastSeen,
       });
@@ -230,15 +250,22 @@ export function predictPrompt(
   prefix: string,
 ): string | null {
   if (/[\r\n]/.test(prefix) || /^[\s]*[/$@]/.test(prefix)) return null;
-  const normalized = prefix.toLocaleLowerCase();
-  const matches = candidates.filter(
-    (candidate) =>
-      !ACKNOWLEDGEMENT.test(candidate.text) &&
-      (prefix.trim().length > 0 || !candidate.prefixOnly) &&
-      candidate.text.length > prefix.length &&
-      candidate.text.toLocaleLowerCase().startsWith(normalized),
-  );
-  const match =
-    prefix.trim().length > 0 ? (matches.find((c) => !c.standard) ?? matches[0]) : matches[0];
+  const normalized = prefix.toLowerCase();
+  const hasPrefix = prefix.trim().length > 0;
+  let match: PromptCandidate | undefined;
+  for (const candidate of candidates) {
+    if (
+      ACKNOWLEDGEMENT.test(candidate.text) ||
+      (!hasPrefix && candidate.prefixOnly) ||
+      candidate.text.length <= prefix.length ||
+      !candidate.text.toLowerCase().startsWith(normalized)
+    )
+      continue;
+    match ??= candidate;
+    if (!hasPrefix || !candidate.standard) {
+      match = candidate;
+      break;
+    }
+  }
   return match ? prefix + match.text.slice(prefix.length) : null;
 }

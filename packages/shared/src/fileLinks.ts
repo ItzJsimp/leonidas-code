@@ -47,8 +47,8 @@ export function splitFilePathPosition(path: string, hash = ""): FilePathPosition
   const column = match[2] === undefined ? undefined : Number.parseInt(match[2], 10);
   return {
     path: suffixMatch ? path.slice(0, -suffixMatch[0].length) : path,
-    ...(line > 0 ? { line } : {}),
-    ...(column !== undefined && column > 0 ? { column } : {}),
+    ...(Number.isSafeInteger(line) && line > 0 ? { line } : {}),
+    ...(column !== undefined && Number.isSafeInteger(column) && column > 0 ? { column } : {}),
   };
 }
 
@@ -80,7 +80,7 @@ function inferHomeFromCwd(cwd: string): string | undefined {
     return `/home/${posixHome[1]}`;
   }
 
-  const windowsUser = cwd.match(/^([A-Za-z]:[\\/]Users[\\/][^\\/]+)/);
+  const windowsUser = cwd.match(/^([A-Za-z]:[\\/]Users[\\/][^\\/]+)/i);
   if (windowsUser?.[1]) {
     return windowsUser[1];
   }
@@ -93,7 +93,7 @@ export function resolvePathLinkTarget(rawPath: string, cwd: string): string {
   const { path } = position;
 
   let resolvedPath = path;
-  if (path.startsWith("~/")) {
+  if (path.startsWith("~/") || (isWindowsPathStyle(cwd) && path.startsWith("~\\"))) {
     const home = inferHomeFromCwd(cwd);
     if (home) {
       const separator: "/" | "\\" = isWindowsPathStyle(home) ? "\\" : "/";
