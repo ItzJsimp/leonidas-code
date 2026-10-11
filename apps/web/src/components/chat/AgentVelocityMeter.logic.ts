@@ -10,6 +10,9 @@ export interface ToolStepSummary {
 }
 
 export interface VelocitySummary {
+  readonly outputTokens: number | null;
+  readonly reasoningTokens: number | null;
+  readonly isLive: boolean;
   readonly instantaneousTps: number | null;
   readonly rolling5Tps: number | null;
   readonly rolling10Tps: number | null;
@@ -212,6 +215,9 @@ export function deriveVelocitySummary(
   if (!turns || turns.length === 0) {
     const { avgToolDurationMs, recentTools, totalTools } = analyzeToolCallCadence(turnItems);
     return {
+      outputTokens: null,
+      reasoningTokens: null,
+      isLive: false,
       instantaneousTps: null,
       rolling5Tps: null,
       rolling10Tps: null,
@@ -251,7 +257,35 @@ export function deriveVelocitySummary(
   }
 
   const latestSample = samples.length > 0 ? samples[samples.length - 1] : null;
-  const instantaneousTps = latestSample ? latestSample.tps : null;
+  const latestTurn = turns[turns.length - 1];
+  const isLive = latestTurn?.status === "running";
+  const measuredTurn = isLive
+    ? latestTurn
+    : turns.findLast(
+        (turn) =>
+          turn.turnTokenUsage?.outputTokens !== undefined ||
+          turn.tokenUsage?.outputTokens !== undefined,
+      );
+  const hasOutput =
+    measuredTurn?.turnTokenUsage?.outputTokens !== undefined ||
+    measuredTurn?.tokenUsage?.outputTokens !== undefined;
+  const outputTokens = hasOutput ? extractTurnOutputTokens(measuredTurn) : null;
+  const reasoningTokens =
+    measuredTurn?.turnTokenUsage?.reasoningTokens ??
+    measuredTurn?.tokenUsage?.reasoningOutputTokens ??
+    null;
+  const reportMs = parseTimestamp(measuredTurn?.tokenUsage?.updatedAt);
+  const startMs = parseTimestamp(measuredTurn?.startedAt);
+  const liveDurationMs = reportMs !== null && startMs !== null ? reportMs - startMs : 0;
+  // Provider counts arrive in batches. This is turn-average pace, including tool waits,
+  // not an invented measurement of the model's private thinking speed.
+  const instantaneousTps = isLive
+    ? outputTokens !== null && liveDurationMs >= 50
+      ? Math.round((outputTokens / liveDurationMs) * 1000 * 10) / 10
+      : null
+    : latestSample
+      ? latestSample.tps
+      : null;
 
   const rolling5Tps = calculateRollingVelocity(samples, 5);
   const rolling10Tps = calculateRollingVelocity(samples, 10);
@@ -262,6 +296,9 @@ export function deriveVelocitySummary(
   const { avgToolDurationMs, recentTools, totalTools } = analyzeToolCallCadence(turnItems);
 
   return {
+    outputTokens,
+    reasoningTokens,
+    isLive,
     instantaneousTps,
     rolling5Tps,
     rolling10Tps,

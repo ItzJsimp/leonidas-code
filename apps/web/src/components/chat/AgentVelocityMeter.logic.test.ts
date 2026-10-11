@@ -157,6 +157,43 @@ describe("AgentVelocityMeter.logic", () => {
   });
 
   describe("deriveVelocitySummary", () => {
+    it("shows a running Codex turn and includes reasoning once in output", () => {
+      const turn = {
+        id: "live",
+        status: "running",
+        startedAt: "2026-10-10T12:00:00Z",
+        completedAt: null,
+        tokenUsage: { usedTokens: 900, outputTokens: 40, updatedAt: "2026-10-10T12:00:02Z" },
+        turnTokenUsage: {
+          usageStatus: "partial",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 100,
+          reasoningTokens: 60,
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      const summary = deriveVelocitySummary([turn], []);
+      expect(summary.outputTokens).toBe(100);
+      expect(summary.reasoningTokens).toBe(60);
+      expect(summary.instantaneousTps).toBe(50);
+      expect(summary.isLive).toBe(true);
+      expect(summary.totalTurnsTracked).toBe(0);
+    });
+
+    it("keeps missing provider telemetry distinct from measured zero", () => {
+      const turn = {
+        status: "running",
+        startedAt: "2026-10-10T12:00:00Z",
+        tokenUsage: { usedTokens: 200, updatedAt: "2026-10-10T12:00:02Z" },
+      } as unknown as OrchestrationV2ProviderTurn;
+      expect(deriveVelocitySummary([turn], []).outputTokens).toBeNull();
+      expect(
+        deriveVelocitySummary(
+          [{ ...turn, tokenUsage: { ...turn.tokenUsage!, outputTokens: 0 } }],
+          [],
+        ).outputTokens,
+      ).toBe(0);
+    });
     it("returns null-safe empty summary when no turns exist", () => {
       const summary = deriveVelocitySummary([], []);
       expect(summary.instantaneousTps).toBeNull();

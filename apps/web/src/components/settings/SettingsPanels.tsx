@@ -65,6 +65,7 @@ import {
 } from "../../components/desktopUpdate.logic";
 import { checkForDesktopUpdateWithFeedback } from "../desktopUpdate.toast";
 import { requestWhatsNewPreview } from "../desktop/whatsNewPreview";
+import { ReleaseHistoryButton } from "../desktop/ReleaseHistoryButton";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import {
@@ -90,7 +91,7 @@ import { useScopedModelDisabledReason } from "./useScopedModelAvailability";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
 import { useThreadActions } from "../../hooks/useThreadActions";
-import { useDesktopUpdateState } from "../../state/desktopUpdate";
+import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import {
   getCustomModelOptionsByInstance,
   resolveAppModelSelectionState,
@@ -281,6 +282,8 @@ function AboutVersionTitle() {
 }
 
 function AboutVersionSection() {
+  const autoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.autoUpdateWhenSafe);
+  const setAutoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setAutoUpdateWhenSafe);
   const updateState = useDesktopUpdateState();
   const [isChangingUpdateChannel, setIsChangingUpdateChannel] = useState(false);
   const [isUpdateActionPending, setIsUpdateActionPending] = useState(false);
@@ -458,6 +461,19 @@ function AboutVersionSection() {
           </Button>
         }
       />
+      {hasDesktopBridge ? (
+        <SettingsRow
+          title="Install updates when agents finish"
+          description="Automatically restart this device once an update is ready and no agent threads are running."
+          control={
+            <Switch
+              checked={autoUpdateWhenSafe}
+              onCheckedChange={setAutoUpdateWhenSafe}
+              aria-label="Install updates when agents finish"
+            />
+          }
+        />
+      ) : null}
       {hasDesktopBridge ? (
         <SettingsRow
           title="Update track"
@@ -3370,6 +3386,11 @@ export function GeneralSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="about" title="About">
+        <SettingsRow
+          title="Updates and patch notes"
+          description="Browse what changed in every version."
+          control={<ReleaseHistoryButton />}
+        />
         {isElectron || HOSTED_APP_CHANNEL ? (
           <AboutVersionSection />
         ) : (

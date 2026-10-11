@@ -81,6 +81,8 @@ describe("DesktopUpdates", () => {
 
           yield* TestClock.adjust(Duration.millis(15_000));
           assert.equal(harness.checkCount(), 1);
+          yield* TestClock.adjust(Duration.millis(45_000));
+          assert.equal(harness.checkCount(), 2);
         }),
       );
 

@@ -1,6 +1,7 @@
 import { SparklesIcon } from "lucide-react";
 
 import { Button } from "../ui/button";
+import { ReleaseHistoryButton } from "./ReleaseHistoryButton";
 import {
   Dialog,
   DialogDescription,
@@ -27,20 +28,23 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogPopup className="max-w-md" bottomStickOnMobile={false}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <SparklesIcon aria-hidden className="size-5 text-cyan-400" />
-            What's new{version ? ` in ${version}` : ""}
+          <DialogTitle>
+            <span className="flex items-center gap-2">
+              <SparklesIcon aria-hidden className="size-5 text-accent" />
+              What's new{version ? ` in ${version}` : ""}
+            </span>
           </DialogTitle>
           <DialogDescription>Here is what shipped in this update.</DialogDescription>
         </DialogHeader>
         <DialogPanel>
-          <ul className="list-disc space-y-1.5 ps-5 text-sm leading-relaxed marker:text-cyan-400">
+          <ul className="list-disc space-y-1.5 ps-5 text-sm leading-relaxed marker:text-accent">
             {items.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
         </DialogPanel>
         <DialogFooter>
+          <ReleaseHistoryButton />
           <Button variant="ghost" onClick={onClose}>
             {onRestartNow ? "Later" : "Close"}
           </Button>

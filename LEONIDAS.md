@@ -11,7 +11,7 @@ Read this first if you are an agent working in this repo. It is the shared brief
 
 ## Roadmap (in order, tick when merged to main)
 
-- [x] Shared repo, based on Mob's build (branch `mob-base`, now `main`)\n- [x] Push-to-update: every push to `main` builds the Windows installer and publishes GitHub Release `v1.0.<run number>`; the desktop app's updater shows the update toast
+- [x] Shared repo, based on Mob's build (branch `mob-base`, now `main`)\n- [x] Push-to-update: every push to `main` builds the Windows installer and publishes a semantic development release (`0.x` until public launch); the desktop app's updater shows the update toast
 - [x] Prove the update toast across both machines (sound, OS notification, and confirmation dialog for Mob to test on next update)
 - [x] Live agent velocity & token-throughput tracker: real-time speed in t/s with rolling 5, 10, 20 step windows, tool execution cadence, and trend sparklines
 - [ ] Synced task board panel in the web UI. Store: GitHub Issues on this repo (decided). Agents add tasks with `gh issue create`; the panel polls and shows the same list on both machines within about 10 seconds
@@ -38,7 +38,8 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 - Dev: `vp run dev` (all), `vp run dev:desktop` (Electron). Upstream `AGENTS.md` has the project's code rules (performance, no unrequested abstractions); they still apply to code quality. Its product statements describe T3, not us.
 - Checks: `vp run typecheck`, `vp lint`, `vp fmt`, `vp test run <files>`.
 - Updater logic lives in `apps/desktop/src/updates/DesktopUpdates.ts` and the toast in `apps/web/src/components/desktopUpdate.toast.tsx`. They already work; the repo they poll is whatever `GITHUB_REPOSITORY` was at build time.
-- Update-channel trap: our versions must be plain semver (`1.0.N`), otherwise the updater ignores them silently.
+- Versions use plain semver. Development is `0.MINOR.PATCH`; `1.0.0` is reserved for explicit public launch. `feat:` (and legacy `Build:`) advances minor; fixes/maintenance advance patch; breaking development changes advance minor. After launch, breaking changes advance major. Use `Release-Note:` commit trailers for clear patch-note bullets. See [release policy](.agents/skills/leonidas-release/SKILL.md).
+- Existing `1.0.x` installs need the one-time `0.2.0` installer migration; app identity and user data stay intact. Later development updates use the normal updater.
 - Keep the `claude` CLI installed: T3's Claude provider runs the Claude Agent SDK, which is what loads `CLAUDE.md`, hooks and skills.\n\n## Gotchas already paid for\n\n- A copied AIOS git `pre-commit` hook can point at a script that does not exist in this repo and block commits. Fix: rename `.git/hooks/pre-commit` to `pre-commit.aios-disabled` in this clone (do not use `--no-verify`).
 - First installs show a one-time Windows SmartScreen warning (unsigned). Updates still apply.
 - Two Claude accounts do not share threads: threads move only between instances with the same `CLAUDE_CONFIG_DIR`.
@@ -53,6 +54,7 @@ That sets rebase pulls, links your AIOS identity, installs the latest Leonidas C
 
 ## Status log (newest first, one line per session, who and what)
 
+- 2026-10-10 Jake's agent: working on the token counter, release history, and team-release.yml optimizations (filtered dependencies, Rust cache, superseded builds, semantic development versions). Jake approved resetting to 0.2.0 with a one-time installer migration; 1.0.0 is reserved for public launch.
 - 2026-10-10 Mob's agent: added local AI Desktop for existing Windows VirtualBox guests: human VM grants, exclusive thread ownership, pause/release, guest-only MCP input and PNG screenshots, and a nonmodal web/desktop viewer. Verified 36 focused tests, affected package typechecks, scoped lint, real guest click/type with unchanged host cursor, and isolated client selection/screenshot/pause/reopen/resume/release. Native mobile viewer and automatic VM provisioning are not included.
 - 2026-10-10 Jake's agent: Settings > About now has a "What's new popup" Preview button (shows the latest release's bullets), so either of us can test patch notes without waiting for an update.
 - 2026-10-10 Jake's agent: "What's new" popup: when an update downloads, a centered dialog lists what shipped (bullets from the GitHub release body, which `team-release.yml` now generates from commit subjects since the last release); falls back to the old toast when there are no notes. Restart now / Update when safe / Later. Local commit, not pushed.

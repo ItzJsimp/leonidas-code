@@ -170,3 +170,7 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 This is the Jake and Mob fork. Read [LEONIDAS.md](./LEONIDAS.md) first: roadmap, working rules and status log.
 
 @LEONIDAS.md
+
+## Leonidas releases
+
+When preparing a Leonidas update, follow [.agents/skills/leonidas-release/SKILL.md](.agents/skills/leonidas-release/SKILL.md). Keep development releases on 0.x; 1.0.0 requires an explicit public launch.

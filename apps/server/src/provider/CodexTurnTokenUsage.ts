@@ -145,9 +145,19 @@ export function completeCodexTurnTokenUsage(
   turnId: string,
   completed: boolean,
 ): TurnTokenUsage {
-  const usage = state.byTurnId.get(turnId);
+  const result = snapshotCodexTurnTokenUsage(state, turnId, completed);
   state.byTurnId.delete(turnId);
   if (state.activeTurnId === turnId) state.activeTurnId = undefined;
+  return result;
+}
+
+/** Read live accumulated output without consuming the turn's billing record. */
+export function snapshotCodexTurnTokenUsage(
+  state: CodexTurnTokenUsageState,
+  turnId: string,
+  completed = false,
+): TurnTokenUsage {
+  const usage = state.byTurnId.get(turnId);
   if (!usage) {
     return {
       usageStatus: "unavailable",
