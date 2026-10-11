@@ -175,9 +175,35 @@ describe("AgentVelocityMeter.logic", () => {
       const summary = deriveVelocitySummary([turn], []);
       expect(summary.outputTokens).toBe(100);
       expect(summary.reasoningTokens).toBe(60);
-      expect(summary.instantaneousTps).toBe(50);
+      expect(summary.averageTurnTps).toBe(50);
       expect(summary.isLive).toBe(true);
       expect(summary.totalTurnsTracked).toBe(0);
+    });
+
+    it("averages reported turn totals over the whole turn, including tool waits", () => {
+      const turn = {
+        id: "live",
+        status: "running",
+        startedAt: "2026-10-10T12:00:00Z",
+        completedAt: null,
+        tokenUsage: { usedTokens: 900, outputTokens: 40, updatedAt: "2026-10-10T12:00:02Z" },
+        turnTokenUsage: {
+          usageStatus: "partial",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 100,
+          reasoningTokens: 60,
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      expect(deriveVelocitySummary([turn], []).averageTurnTps).toBe(50);
+      const laterReport = {
+        ...turn,
+        tokenUsage: { ...turn.tokenUsage!, outputTokens: 100, updatedAt: "2026-10-10T12:00:10Z" },
+        turnTokenUsage: { ...turn.turnTokenUsage!, outputTokens: 200, reasoningTokens: 80 },
+      };
+      const summary = deriveVelocitySummary([laterReport], []);
+      expect(summary.outputTokens).toBe(200);
+      expect(summary.averageTurnTps).toBe(20);
     });
 
     it("keeps missing provider telemetry distinct from measured zero", () => {
@@ -217,12 +243,12 @@ describe("AgentVelocityMeter.logic", () => {
       } as unknown as OrchestrationV2ProviderTurn;
       const summary = deriveVelocitySummary([turn], []);
       expect(summary.outputTokens).toBeNull();
-      expect(summary.instantaneousTps).toBeNull();
+      expect(summary.averageTurnTps).toBeNull();
       expect(summary.reasoningTokens).toBeNull();
     });
     it("returns null-safe empty summary when no turns exist", () => {
       const summary = deriveVelocitySummary([], []);
-      expect(summary.instantaneousTps).toBeNull();
+      expect(summary.averageTurnTps).toBeNull();
       expect(summary.rolling5Tps).toBeNull();
       expect(summary.rolling10Tps).toBeNull();
       expect(summary.rolling20Tps).toBeNull();

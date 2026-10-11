@@ -17,11 +17,11 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
           <Button
             size="compact"
             variant="ghost-muted"
-            aria-label={`Token counter: ${count} tokens, ${formatTpsLabel(summary.instantaneousTps)}`}
+            aria-label={`Token counter: ${count} tokens, average turn throughput ${formatTpsLabel(summary.averageTurnTps)}`}
           >
             <ZapIcon aria-hidden />
             <span className="tabular-nums">
-              {count} tokens · {formatTpsLabel(summary.instantaneousTps)}
+              {count} tokens · avg {formatTpsLabel(summary.averageTurnTps)}
             </span>
           </Button>
         }
@@ -41,8 +41,8 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
             <dd className="text-right">
               {summary.reasoningTokens?.toLocaleString() ?? "Not reported"}
             </dd>
-            <dt className="text-muted-foreground">Average pace</dt>
-            <dd className="text-right">{formatTpsLabel(summary.instantaneousTps)}</dd>
+            <dt className="text-muted-foreground">Average turn throughput</dt>
+            <dd className="text-right">{formatTpsLabel(summary.averageTurnTps)}</dd>
             <dt className="text-muted-foreground">Last 5 turns</dt>
             <dd className="text-right">{formatTpsLabel(summary.rolling5Tps)}</dd>
             <dt className="text-muted-foreground">Last 20 turns</dt>
@@ -51,7 +51,7 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
           <p className="text-xs leading-relaxed text-muted-foreground">
             {summary.outputTokens === null
               ? "Waiting for the provider to report turn totals. Some providers report only when the turn finishes or do not report output counts."
-              : "Output includes thinking tokens when reported. Pace is output divided by elapsed turn time, including tools and waits; it is not raw model generation speed."}
+              : "Output includes thinking tokens when reported. Average turn throughput is output divided by elapsed turn time, including tools and waits; it is not raw model generation speed."}
           </p>
         </div>
       </PopoverPopup>

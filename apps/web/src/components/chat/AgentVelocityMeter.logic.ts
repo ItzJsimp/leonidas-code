@@ -13,7 +13,7 @@ export interface VelocitySummary {
   readonly outputTokens: number | null;
   readonly reasoningTokens: number | null;
   readonly isLive: boolean;
-  readonly instantaneousTps: number | null;
+  readonly averageTurnTps: number | null;
   readonly rolling5Tps: number | null;
   readonly rolling10Tps: number | null;
   readonly rolling20Tps: number | null;
@@ -218,7 +218,7 @@ export function deriveVelocitySummary(
       outputTokens: null,
       reasoningTokens: null,
       isLive: false,
-      instantaneousTps: null,
+      averageTurnTps: null,
       rolling5Tps: null,
       rolling10Tps: null,
       rolling20Tps: null,
@@ -277,7 +277,7 @@ export function deriveVelocitySummary(
   // Live context output may cover only one response, so only turn aggregates measure live pace.
   // Provider counts arrive in batches. This is turn-average pace, including tool waits,
   // not an invented measurement of the model's private thinking speed.
-  const instantaneousTps = isLive
+  const averageTurnTps = isLive
     ? outputTokens !== null && liveDurationMs >= 50
       ? Math.round((outputTokens / liveDurationMs) * 1000 * 10) / 10
       : null
@@ -297,7 +297,7 @@ export function deriveVelocitySummary(
     outputTokens,
     reasoningTokens,
     isLive,
-    instantaneousTps,
+    averageTurnTps,
     rolling5Tps,
     rolling10Tps,
     rolling20Tps,
