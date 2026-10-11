@@ -52,15 +52,14 @@ describe("claudeContextReportFromUsage", () => {
   });
 
   it("tolerates missing skills, an unknown window and bad numbers", () => {
-    const report = claudeContextReportFromUsage(
-      usage({
-        skills: undefined,
-        rawMaxTokens: 0,
-        maxTokens: 0,
-        totalTokens: Number.NaN,
-        model: "",
-      }),
-    );
+    const legacyUsage = usage({
+      rawMaxTokens: 0,
+      maxTokens: 0,
+      totalTokens: Number.NaN,
+      model: "",
+    });
+    Reflect.deleteProperty(legacyUsage, "skills");
+    const report = claudeContextReportFromUsage(legacyUsage);
     expect(report.skills).toEqual([]);
     expect(report.maxTokens).toBeNull();
     expect(report.totalTokens).toBe(0);
