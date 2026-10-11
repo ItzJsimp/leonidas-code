@@ -104,10 +104,10 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
               return (
                 <article key={entry.version} className="space-y-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-2.5">
-                    <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                    <h3 className="flex items-baseline gap-2 text-sm font-semibold tabular-nums tracking-tight text-foreground">
                       {entry.version}
                       {entry.version.startsWith("0.") ? (
-                        <span className="ml-2 text-xs font-normal tracking-normal text-muted-foreground">
+                        <span className="text-2xs font-normal tracking-normal text-muted-foreground">
                           Development
                         </span>
                       ) : null}
@@ -146,9 +146,13 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
 
                   {entry.notes.length ? (
                     <div className="flex flex-col gap-1.5">
-                      <ul className="list-disc space-y-2 ps-4 text-sm leading-relaxed text-popover-foreground marker:text-muted-foreground/50">
+                      <ul className="space-y-2 text-sm leading-relaxed text-popover-foreground">
                         {displayedNotes.map((note) => (
-                          <li key={note} className="break-words ps-1">
+                          <li key={note} className="relative break-words ps-4">
+                            <span
+                              aria-hidden
+                              className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
+                            />
                             {note}
                           </li>
                         ))}
@@ -157,7 +161,7 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
                         <Button
                           size="xs"
                           variant="link"
-                          className="self-start -ms-2"
+                          className="self-start -ms-2 text-muted-foreground hover:text-foreground"
                           aria-expanded={isExpanded}
                           onClick={() => toggleExpanded(entry.version)}
                         >

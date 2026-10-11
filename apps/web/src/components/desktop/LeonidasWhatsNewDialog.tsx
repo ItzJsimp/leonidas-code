@@ -37,9 +37,13 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
           <DialogDescription>Here is what shipped in this update.</DialogDescription>
         </DialogHeader>
         <DialogPanel className="max-h-[55dvh] overflow-y-auto [scrollbar-width:thin]">
-          <ul className="list-disc space-y-3 ps-4 text-sm leading-relaxed marker:text-muted-foreground/50">
+          <ul className="space-y-3 text-sm leading-relaxed">
             {items.map((item) => (
-              <li key={item} className="break-words ps-1">
+              <li key={item} className="relative break-words ps-4">
+                <span
+                  aria-hidden
+                  className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
+                />
                 {item}
               </li>
             ))}

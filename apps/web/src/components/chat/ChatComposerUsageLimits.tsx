@@ -251,46 +251,51 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
 
               {/* SECTION 1: Context Window (FIRST!) */}
               <section
-                className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border/60 bg-muted/15 p-3.5"
+                className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-muted/15"
                 aria-label="Context window"
               >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Context window</span>
-                  {contextReported && contextPercent !== null ? (
-                    <span className="text-2xs tabular-nums text-muted-foreground">
-                      {contextPercent}% used
-                    </span>
-                  ) : null}
-                </div>
+                <div className="flex min-w-0 flex-col gap-2.5 p-3.5">
+                  <div className="flex items-baseline justify-between gap-3 text-xs">
+                    <span className="font-semibold text-foreground">Context window</span>
+                    {contextReported && contextPercent !== null ? (
+                      <span className="tabular-nums font-medium text-foreground">
+                        {contextPercent}%
+                      </span>
+                    ) : null}
+                  </div>
 
-                <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground">
-                  <span>
-                    {figures.state === "reported"
-                      ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"} tokens`
-                      : figures.state === "pending"
-                        ? `0 / ${formatTokenCount(figures.maxTokens)} tokens`
-                        : "Not reported yet"}
-                  </span>
-                  {figures.state === "reported" && figures.maxTokens ? (
+                  <UsageBar
+                    usedPercent={contextPercent ?? 0}
+                    label={`Context: ${contextPercent ?? 0}% used`}
+                  />
+
+                  <div className="flex items-center justify-between gap-3 text-2xs tabular-nums text-muted-foreground">
                     <span>
-                      {formatTokenCount(Math.max(0, figures.maxTokens - figures.usedTokens))} left
+                      {figures.state === "reported"
+                        ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"} tokens`
+                        : figures.state === "pending"
+                          ? `0 / ${formatTokenCount(figures.maxTokens)} tokens`
+                          : "Not reported yet"}
                     </span>
-                  ) : null}
+                    {figures.state === "reported" && figures.maxTokens ? (
+                      <span>
+                        {formatTokenCount(Math.max(0, figures.maxTokens - figures.usedTokens))} left
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-
-                <UsageBar
-                  usedPercent={contextPercent ?? 0}
-                  label={`Context: ${contextPercent ?? 0}% used`}
-                />
 
                 {threadId ? (
                   <button
                     type="button"
                     onClick={() => setView("context-breakdown")}
-                    className="mt-1 flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                    className="group flex cursor-pointer items-center justify-between gap-2 rounded-b-xl border-t border-border/50 px-3.5 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:bg-muted/40 focus-visible:text-foreground focus-visible:outline-none"
                   >
-                    <span className="font-medium">Detailed breakdown</span>
-                    <ChevronRightIcon className="size-3.5 text-muted-foreground" />
+                    <span>See what is using context</span>
+                    <ChevronRightIcon
+                      aria-hidden
+                      className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5"
+                    />
                   </button>
                 ) : null}
               </section>
@@ -300,7 +305,10 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
               {/* SECTION 2: Active Account Limits */}
               <section className="flex min-w-0 flex-col gap-2.5" aria-label="Active account">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">Active account</span>
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <span aria-hidden className="size-1.5 rounded-full bg-success" />
+                    Active account
+                  </span>
                   {modelLabel ? (
                     <span className="truncate text-2xs text-muted-foreground">{modelLabel}</span>
                   ) : null}
@@ -330,7 +338,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                             </span>
                           </div>
                           {account.plan ? (
-                            <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
+                            <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-2xs leading-4 text-muted-foreground">
                               {shortPlanName(account.plan)}
                             </span>
                           ) : null}
@@ -415,7 +423,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                                 </span>
                               </div>
                               {account.plan ? (
-                                <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
+                                <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-2xs leading-4 text-muted-foreground">
                                   {shortPlanName(account.plan)}
                                 </span>
                               ) : null}
@@ -453,15 +461,6 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
               <div className="flex shrink-0 flex-col gap-2 pb-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    {threadId ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setView("context-breakdown")}
-                      >
-                        Context breakdown
-                      </Button>
-                    ) : null}
                     <Button size="sm" variant="outline" onClick={openDetails}>
                       Usage overview
                     </Button>

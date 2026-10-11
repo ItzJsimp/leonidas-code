@@ -1,7 +1,6 @@
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import {
   ArrowLeftIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   FileCodeIcon,
   FileTextIcon,
@@ -112,40 +111,47 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
     <div className="flex max-h-[min(32rem,calc(100dvh-6rem))] flex-col gap-4 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
       {/* Header with back button */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button size="icon-xs" variant="ghost" onClick={onBack} aria-label="Go back to overview">
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <span className="text-sm font-semibold">Context Breakdown</span>
+          <span className="text-sm font-semibold tracking-tight">Context breakdown</span>
         </div>
-      </div>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
-        <span className="tabular-nums text-muted-foreground">
-          <span className="font-medium text-foreground">
-            {formatTokenCount(breakdown.totalTokens)}
-          </span>
-          {breakdown.maxTokens ? ` / ${formatTokenCount(breakdown.maxTokens)}` : ""} tokens
-          {percentLabel ? <span className="ml-2 text-foreground">{percentLabel}</span> : null}
-        </span>
-        <span className="text-2xs text-muted-foreground">
+        <span className="pe-1 text-2xs text-muted-foreground">
           {breakdown.source === "provider"
-            ? "Provider reported"
+            ? "Reported by provider"
             : breakdown.source === "estimated"
               ? "Estimated"
-              : "Mixed"}
+              : "Reported + estimated"}
+        </span>
+      </div>
+
+      {/* Hero figure */}
+      <div className="flex items-baseline gap-2 px-1 tabular-nums">
+        <span className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+          {percentLabel ?? formatTokenCount(breakdown.totalTokens)}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {percentLabel ? `${formatTokenCount(breakdown.totalTokens)} of ` : "tokens"}
+          {percentLabel && breakdown.maxTokens
+            ? `${formatTokenCount(breakdown.maxTokens)} tokens`
+            : ""}
         </span>
       </div>
 
       {/* Visual Context Gauge Bar */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="flex flex-col gap-3 px-1">
+        <div className="flex h-2 w-full gap-px overflow-hidden rounded-full bg-muted/60">
           {segments
             .filter((seg) => seg.width > 0)
             .map((seg) => (
               <Tooltip key={seg.name}>
                 <TooltipTrigger
                   render={
-                    <div className={`${seg.fill} opacity-75`} style={{ width: `${seg.width}%` }} />
+                    <div
+                      className={`${seg.fill} min-w-0.5 opacity-80 transition-opacity hover:opacity-100`}
+                      style={{ width: `${seg.width}%` }}
+                    />
                   }
                 />
                 <TooltipPopup>
@@ -154,10 +160,10 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
               </Tooltip>
             ))}
         </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-2xs">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
           {segments.map((seg) => (
-            <div key={seg.name} className="flex min-w-0 items-center gap-1.5">
-              <span className={`size-1.5 shrink-0 rounded-full ${seg.fill} opacity-75`} />
+            <div key={seg.name} className="flex min-w-0 items-center gap-2">
+              <span className={`size-2 shrink-0 rounded-full ${seg.fill} opacity-80`} />
               <Tooltip>
                 <TooltipTrigger
                   render={<span className="min-w-0 truncate text-muted-foreground" />}
@@ -169,7 +175,9 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
               <span className="ml-auto shrink-0 tabular-nums text-foreground">
                 {formatTokenCount(seg.tokens)}
               </span>
-              {seg.estimated ? <span className="text-muted-foreground">est.</span> : null}
+              {seg.estimated ? (
+                <span className="shrink-0 text-2xs text-muted-foreground/70">est.</span>
+              ) : null}
             </div>
           ))}
         </div>
@@ -189,8 +197,8 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
         </div>
         <Button
           size="sm"
-          variant="outline"
-          className="h-8 shrink-0"
+          variant="ghost"
+          className="h-8 shrink-0 text-muted-foreground"
           onClick={() => setSort((prev) => (prev === "size" ? "name" : "size"))}
         >
           Sort: {sort === "size" ? "Size ↓" : "Name A-Z"}
@@ -234,30 +242,27 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
                       type="button"
                       onClick={() => toggleToolExpanded(group.name)}
                       aria-expanded={isExpanded}
-                      className="flex items-center justify-between gap-3 rounded-md px-1.5 py-2 text-left text-xs transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 -mx-1.5"
+                      className="-mx-1.5 flex cursor-pointer items-center justify-between gap-3 rounded-md px-1.5 py-2 text-left text-xs transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
                     >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {isExpanded ? (
-                          <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        ) : (
-                          <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        )}
-                        <span className="font-medium text-foreground truncate">{group.name}</span>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <ChevronRightIcon
+                          aria-hidden
+                          className={`size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+                        />
+                        <span className="truncate font-medium text-foreground">{group.name}</span>
                         <span className="shrink-0 text-2xs text-muted-foreground">
                           {group.detail}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
-                        <span className="font-medium text-foreground">
-                          {formatTokenCount(group.tokens)}
-                        </span>
-                        <span className="text-2xs text-muted-foreground">
+                      <div className="flex shrink-0 items-baseline gap-2 tabular-nums">
+                        <span className="text-foreground">{formatTokenCount(group.tokens)}</span>
+                        <span className="w-11 text-right text-2xs text-muted-foreground">
                           {formatWindowPercent(group.tokens, breakdown.maxTokens)}
                         </span>
                       </div>
                     </button>
                     {isExpanded ? (
-                      <div className="ml-3 mb-1 flex min-w-0 flex-col divide-y divide-border/20 border-l border-border/50 pl-4">
+                      <div className="mb-1 ml-2 flex min-w-0 flex-col divide-y divide-border/30 border-l border-border/60 pl-4">
                         {group.calls.map((call) => (
                           <RowItem
                             key={call.key}
@@ -373,16 +378,18 @@ function SectionContainer({
   readonly children: React.ReactNode;
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-1">
+    <section className="flex min-w-0 flex-col">
       <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/60 pb-2 text-xs">
         <div className="flex min-w-0 items-center gap-2 font-medium text-foreground">
-          <Icon className="size-3.5 text-muted-foreground" />
+          <Icon aria-hidden className="size-3.5 text-muted-foreground" />
           <span>{title}</span>
-          <span className="text-2xs font-normal text-muted-foreground">({count})</span>
+          <span className="text-2xs font-normal tabular-nums text-muted-foreground">{count}</span>
         </div>
-        <div className="flex items-center gap-1.5 tabular-nums text-2xs">
+        <div className="flex items-baseline gap-2 tabular-nums">
           <span className="font-medium text-foreground">{formatTokenCount(tokens)}</span>
-          <span className="text-muted-foreground">{formatWindowPercent(tokens, maxTokens)}</span>
+          <span className="w-11 text-right text-2xs text-muted-foreground">
+            {formatWindowPercent(tokens, maxTokens)}
+          </span>
         </div>
       </div>
       {children}
@@ -405,16 +412,16 @@ function RowItem({
     <div
       className={`flex items-baseline justify-between gap-3 py-2 ${compact ? "text-2xs" : "text-xs"}`}
     >
-      <div className="flex flex-col min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Tooltip>
           <TooltipTrigger
             render={
               <span
-                className={`truncate font-normal leading-5 text-foreground ${isPath ? "font-mono text-2xs" : ""}`}
+                className={`truncate leading-5 text-foreground ${isPath ? "text-left font-mono text-2xs [direction:rtl]" : ""}`}
               />
             }
           >
-            {row.name}
+            {isPath ? <bdi>{row.name}</bdi> : row.name}
           </TooltipTrigger>
           <TooltipPopup variant={isPath ? "code" : "default"}>{row.name}</TooltipPopup>
         </Tooltip>
@@ -422,10 +429,12 @@ function RowItem({
           <span className="truncate text-2xs text-muted-foreground">{row.detail}</span>
         ) : null}
       </div>
-      <div className="flex items-center gap-1 shrink-0 tabular-nums text-2xs">
-        <span className="font-medium text-foreground">{formatTokenCount(row.tokens)}</span>
-        {row.estimated ? <span className="text-muted-foreground">est.</span> : null}
-        <span className="text-muted-foreground w-11 text-right">
+      <div className="flex shrink-0 items-baseline gap-2 tabular-nums text-2xs">
+        <span className="text-foreground">
+          {formatTokenCount(row.tokens)}
+          {row.estimated ? <span className="ms-1 text-muted-foreground/70">est.</span> : null}
+        </span>
+        <span className="w-11 text-right text-muted-foreground">
           {formatWindowPercent(row.tokens, maxTokens)}
         </span>
       </div>

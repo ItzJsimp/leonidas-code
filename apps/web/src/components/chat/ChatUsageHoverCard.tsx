@@ -101,7 +101,8 @@ export function ChatUsageHoverCard({
                   <div className="flex items-center justify-between gap-1">
                     <span className="truncate text-xs font-medium">{title}</span>
                     {activeAccountIds.has(account.id) ? (
-                      <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
+                      <span className="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground">
+                        <span aria-hidden className="size-1.5 rounded-full bg-success" />
                         Active
                       </span>
                     ) : null}
@@ -163,10 +164,13 @@ export function ChatUsageHoverCard({
         <button
           type="button"
           onClick={onOpenFull}
-          className="flex w-full items-center justify-between text-2xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+          className="group flex w-full cursor-pointer items-center justify-between rounded-sm text-2xs text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
         >
           <span>Click for full breakdown</span>
-          <ChevronRightIcon aria-hidden className="size-3" />
+          <ChevronRightIcon
+            aria-hidden
+            className="size-3 transition-transform duration-150 group-hover:translate-x-0.5"
+          />
         </button>
       </div>
     </div>
