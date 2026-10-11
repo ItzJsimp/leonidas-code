@@ -127,3 +127,42 @@ export function normalizeCliError(
     cause: error,
   });
 }
+
+const BARE_ACKNOWLEDGEMENT =
+  /^(?:yes|yep|yeah|ok(?:ay)?|sure|no|thanks|thank you|go ahead|continue|do it|ship it|sounds good|looks good)[.!\s]*$/i;
+const MAX_PROMPT_SUGGESTION_CHARS = 280;
+const SUGGESTION_PLACEHOLDER =
+  /\.{3}|\u2026|\b(?:TBD|TODO)\b|\{\{[^}]*\}\}|<(?:placeholder|insert\b|result\b|your\b)[^>]*>|\[(?:insert\b|placeholder\b|result\b|your\b)[^\]]*\]/i;
+// These predictions offer a next request, never a report of an unobserved manual test.
+// Keep this scoped to declarative clauses so requests such as "check why tests failed" survive.
+const SUGGESTION_RESULT_REPORT =
+  /(?:^|[.!?]\s+)(?:i(?:['\u2019]ve| have)?\s+(?:clicked|pressed|ran|run|tested|verified|checked|got|saw|observed|confirmed|tried|accepted|undid)\b|(?:all\s+|the\s+)?tests?\s+(?:passed|failed|pass|fail)\b|(?:tab|ctrl\+z|undo)\s+(?:inserted|accepted|removed|worked|failed)\b|it\s+(?:worked|passed|failed)\b)/i;
+
+/** Normalise a predicted user message to one plain line, or null when it is not worth offering. */
+export function sanitizePromptSuggestion(raw: string): string | null {
+  if (SUGGESTION_PLACEHOLDER.test(raw)) return null;
+  const text = raw
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*`#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^["'“”]+|["'“”]+$/g, "")
+    .trim();
+  if (
+    text.length < 8 ||
+    BARE_ACKNOWLEDGEMENT.test(text) ||
+    SUGGESTION_PLACEHOLDER.test(text) ||
+    SUGGESTION_RESULT_REPORT.test(text)
+  )
+    return null;
+  if (text.length <= MAX_PROMPT_SUGGESTION_CHARS) return text;
+  const head = text.slice(0, MAX_PROMPT_SUGGESTION_CHARS);
+  const lastSentence = Math.max(
+    head.lastIndexOf(". "),
+    head.lastIndexOf("? "),
+    head.lastIndexOf("! "),
+  );
+  return lastSentence >= 40
+    ? head.slice(0, lastSentence + 1)
+    : head.slice(0, head.lastIndexOf(" ")).trimEnd();
+}

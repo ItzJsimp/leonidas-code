@@ -529,6 +529,43 @@ export interface ProviderAdapterV2McpApps {
   }) => Effect.Effect<{ readonly contents: ReadonlyArray<unknown> }, ProviderAdapterV2Error>;
 }
 
+/**
+ * A provider's own account of what fills a thread's context window, for
+ * runtimes whose protocol can report it (Claude Agent SDK getContextUsage).
+ * Token counts are provider-reported, never estimated.
+ */
+export interface ProviderAdapterV2ContextReport {
+  readonly model: string | null;
+  readonly totalTokens: number;
+  /** The window the provider measured against; null when it reports none. */
+  readonly maxTokens: number | null;
+  readonly categories: ReadonlyArray<{
+    readonly name: string;
+    readonly kind: "used" | "free" | "buffer" | "deferred";
+    readonly tokens: number;
+  }>;
+  readonly memoryFiles: ReadonlyArray<{
+    readonly path: string;
+    readonly type: string;
+    readonly tokens: number;
+  }>;
+  readonly mcpTools: ReadonlyArray<{
+    readonly name: string;
+    readonly server: string;
+    readonly tokens: number;
+  }>;
+  readonly skills: ReadonlyArray<{
+    readonly name: string;
+    readonly source: string;
+    readonly tokens: number;
+  }>;
+  readonly agents: ReadonlyArray<{
+    readonly name: string;
+    readonly source: string;
+    readonly tokens: number;
+  }>;
+}
+
 export interface ProviderAdapterV2SessionRuntime {
   readonly instanceId: ProviderInstanceId;
   readonly driver: ProviderDriverKind;
@@ -569,6 +606,15 @@ export interface ProviderAdapterV2SessionRuntime {
    * Compaction thresholds are still discarded. Unknown transitions invalidate usage.
    */
   readonly canReuseContextUsage?: (previous: ModelSelection, next: ModelSelection) => boolean;
+  /**
+   * Asks the live native session what fills this provider thread's context.
+   * Resolves null when no live native session exists for the thread (nothing
+   * to ask); fails when the provider call itself fails. Absent means the driver
+   * has no such report and callers fall back to transcript estimates.
+   */
+  readonly getContextReport?: (input: {
+    readonly providerThread: OrchestrationV2ProviderThread;
+  }) => Effect.Effect<ProviderAdapterV2ContextReport | null, ProviderAdapterV2Error>;
   readonly ensureThread: (
     input: ProviderAdapterV2EnsureThreadInput,
   ) => Effect.Effect<OrchestrationV2ProviderThread, ProviderAdapterV2Error>;

@@ -42,7 +42,7 @@ verified: 2026-10-10
 
 ## 5. Gotchas already paid for
 
-- **The popup bullets are the GitHub release body:** `team-release.yml` builds `notes.md` from commit subjects since the previous release (drops docs/chore/test/ci/sync/style, strips `feat:` prefixes, oldest first because `releaseNotes.ts` reverses and keeps the last 8). No notes means the old toast shows. Notes cover only the newest release, so skipped versions are not listed. The "Read more" links still point at `pingdotgg/t3code` releases (`DESKTOP_RELEASE_HISTORY_URL` in `desktopUpdate.logic.ts`, asserted in 3 test files).
+- **The popup bullets are the GitHub release body:** `scripts/leonidas-release.ts` writes `notes.md`: up to 5 highlight `- ` bullets (`Release-Note:` trailers first, then cleaned subjects of commits without one; internal `ci/chore/refactor/test/docs/style/sync` subjects are skipped), an optional `## Details` list (overflow plus `Release-Detail:` trailers) and a last `<!-- leonidas-release {...} -->` metadata line (commit, authors, coAuthors). Wording standard: the leonidas-release skill. `apps/desktop/src/updates/releaseNotes.ts` still treats every `- ` line as one flat list, reverses it and keeps 8, so Details lines mix into the popup until the dialog parses the new format. No notes means the old toast shows. Notes cover only the newest release, so skipped versions are not listed. The "Read more" links still point at `pingdotgg/t3code` releases (`DESKTOP_RELEASE_HISTORY_URL` in `desktopUpdate.logic.ts`, asserted in 3 test files).
 - **Test the popup any time:** Settings > About > "What's new popup" > Preview opens it with the latest published release's bullets and no install buttons (`desktop/whatsNewPreview.ts`). Every push to `main` ships to Mob through the same release feed.
 - **No `vp` on PATH:** run `node_modules/.bin/vp test run <files>` and `node_modules/.bin/tsc --noEmit -p .` from `apps/web`.
 
@@ -66,6 +66,10 @@ verified: 2026-10-10
 - **Thin rebrand layer:** every branding touch makes `upstream/main` merges harder. Card: [`t3-code-rebrand`](../../tasks/t3-code-rebrand.md).
 
 ## 7. Session notes (newest first, one line each, keep 10)
+
+- **2026-10-10 (activity filename overflow):** bounded the last-file chip and its button in [`ComposerTasksBadge.tsx`](./apps/web/src/components/chat/ComposerTasksBadge.tsx), with a shrinking ellipsis label and full-path hover/click preserved. Actual component browser checks at 692, 420, 320 and 240 pixels fit; removing width bounds reproduces overflow. Scoped lint/typecheck pass; full web typecheck is blocked by a concurrent test importing unavailable vitest.
+
+- **2026-10-10 (subscription calibration):** [`SubscriptionTracker.ts`](./apps/server/src/usage/SubscriptionTracker.ts) correlates exact local Claude/Codex transcript intervals with provider percentage-point deltas and persists a ledger plus observations beside the provider cache. Composer and web/mobile account details show approximate capacity after 5 points; account, plan, home and reset changes rebaseline. 86 focused tests and server/web/mobile typechecks pass; 18 ProviderRegistry failures reproduced against HEAD. Shipped in v0.2.0; installer SHA-512, packaged server startup, account-separated persisted quota baselines and Usage popup collecting state verified in an isolated profile. Live 1.0.16 predates the feature and was left running. One-time migration to 0.x is required; remote account acceptance is still machine-specific.
 
 - **2026-10-10 (What's new popup):** centered dialog on update download lists the release bullets (Restart now / Update when safe / Later); CI now writes release notes from commits. 45 tests and tsc green; not seen in a live window, CI step not yet run, committed locally (`d622e654be`) not pushed. Open: repoint the "Read more" links to our repo.
 

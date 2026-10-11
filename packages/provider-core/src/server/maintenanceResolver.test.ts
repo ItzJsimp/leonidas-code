@@ -27,6 +27,8 @@ import {
   normalizeCommandPath,
   npmGlobalPrefixFromCommandPath,
   parseHomebrewLatestVersion,
+  parseWingetLatestVersion,
+  wingetOwnershipFromCommandPath,
   resolveLatestProviderVersion,
   resolvePackageManagedProviderMaintenance,
   resolveProviderMaintenanceCapabilitiesEffect,
@@ -124,6 +126,139 @@ function stdoutSpawner(onSpawn: (command: string, args: ReadonlyArray<string>) =
 }
 
 it.layer(NodeServices.layer)("providerMaintenance", (it) => {
+  it.effect("checks WinGet's release instead of npm and upgrades the owning package", () =>
+    Effect.gen(function* () {
+      const spawned: Array<ReadonlyArray<string>> = [];
+      const binary =
+        "C:\\Users\\Theo\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe\\claude.exe";
+      const capabilities = yield* resolvePackageManagedProviderMaintenance(
+        {
+          provider: driver("claudeAgent"),
+          npmPackageName: "@anthropic-ai/claude-code",
+          nativeUpdate: { args: ["update"] },
+        },
+        {
+          binaryPath: "claude",
+          resolvedCommandPath: binary,
+          realCommandPath: binary,
+          env: {},
+          platform: "win32",
+        },
+      ).pipe(
+        Effect.provideService(HostProcess.Platform, "win32"),
+        Effect.provideService(
+          ChildProcessSpawner.ChildProcessSpawner,
+          stdoutSpawner((command, args) => {
+            spawned.push([command, ...args]);
+            return "Found Claude Code [Anthropic.ClaudeCode]\r\nVersion\r\n-------\r\n2.1.292\r\n2.1.291\r\n";
+          }),
+        ),
+      );
+      expect(spawned).toEqual([
+        [
+          "winget",
+          "show",
+          "--id",
+          "Anthropic.ClaudeCode",
+          "--exact",
+          "--source",
+          "winget",
+          "--versions",
+          "--disable-interactivity",
+        ],
+      ]);
+      expect(capabilities.latestVersion).toBe("2.1.292");
+      expect(capabilities.update).toMatchObject({
+        executable: "winget",
+        args: [
+          "upgrade",
+          "--id",
+          "Anthropic.ClaudeCode",
+          "--exact",
+          "--source",
+          "winget",
+          "--disable-interactivity",
+        ],
+        lockKey: "winget:anthropic.claudecode",
+      });
+      expect(
+        createProviderVersionAdvisory({
+          driver: driver("claudeAgent"),
+          currentVersion: "2.1.292",
+          latestVersion: yield* resolveLatestProviderVersion(capabilities).pipe(
+            Effect.provide(ProviderLatestVersions.layer),
+            Effect.provideService(
+              HttpClient.HttpClient,
+              HttpClient.make(() => Effect.die("WinGet must not fall back to npm")),
+            ),
+          ),
+          maintenanceCapabilities: capabilities,
+        }).status,
+      ).toBe("current");
+    }),
+  );
+  it("recognizes only WinGet-owned portable package paths", () => {
+    expect(
+      wingetOwnershipFromCommandPath(
+        "C:/Users/Theo/AppData/Local/Microsoft/WinGet/Packages/Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe/claude.exe",
+      ),
+    ).toBe("Anthropic.ClaudeCode");
+    expect(wingetOwnershipFromCommandPath("C:/tools/claude.exe")).toBeNull();
+    expect(
+      wingetOwnershipFromCommandPath("C:/Microsoft/WinGet/Packages/invalid_id/claude.exe"),
+    ).toBeNull();
+  });
+  it.each([
+    [
+      "Gefunden Claude Code [Anthropic.ClaudeCode]\r\nVersion\r\n-------\r\n2.1.292\r\n2.1.291",
+      "2.1.292",
+    ],
+    ["No package found matching input criteria.", null],
+    ["Version\n-------\nUnknown", null],
+  ] as const)(
+    "reads localized WinGet version tables without inventing an update: %s",
+    (output, expected) => {
+      expect(parseWingetLatestVersion(output)).toBe(expected);
+    },
+  );
+  it.effect("does not advertise an npm release when the WinGet probe fails", () =>
+    Effect.gen(function* () {
+      const binary =
+        "C:/Microsoft/WinGet/Packages/Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe/claude.exe";
+      const capabilities = yield* resolvePackageManagedProviderMaintenance(
+        {
+          provider: driver("claudeAgent"),
+          npmPackageName: "@anthropic-ai/claude-code",
+          nativeUpdate: { args: ["update"] },
+        },
+        {
+          binaryPath: binary,
+          resolvedCommandPath: binary,
+          realCommandPath: binary,
+          env: {},
+          platform: "win32",
+        },
+      ).pipe(
+        Effect.provideService(
+          ChildProcessSpawner.ChildProcessSpawner,
+          stdoutSpawner(() => {
+            throw new Error("WinGet unavailable");
+          }),
+        ),
+      );
+      expect(capabilities.latestVersion).toBeNull();
+      expect(capabilities.update).toBeNull();
+      expect(
+        yield* resolveLatestProviderVersion(capabilities).pipe(
+          Effect.provide(ProviderLatestVersions.layer),
+          Effect.provideService(
+            HttpClient.HttpClient,
+            HttpClient.make(() => Effect.die("WinGet must not fall back to npm")),
+          ),
+        ),
+      ).toBeNull();
+    }),
+  );
   it.effect("reads cached versions through ProviderLatestVersions", () =>
     resolveLatestProviderVersion(manualPackageTool).pipe(
       Effect.provideServiceEffect(

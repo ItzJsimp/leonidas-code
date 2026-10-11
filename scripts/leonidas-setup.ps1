@@ -25,6 +25,13 @@ $repo = Split-Path -Parent $PSScriptRoot
 git -C $repo config pull.rebase true
 git -C $repo config rebase.autoStash true
 git -C $repo config fetch.prune true
+# .claude/skills is a symlink to .agents/skills; with core.symlinks off, Windows checks it out as a
+# text file and Claude finds no project skills. Needs Developer Mode.
+git -C $repo config core.symlinks true
+if (-not (Get-Item -LiteralPath (Join-Path $repo ".claude/skills")).LinkType) {
+  Remove-Item -LiteralPath (Join-Path $repo ".claude/skills") -Force
+  git -C $repo checkout -- .claude/skills
+}
 $hook = Join-Path $repo ".git/hooks/pre-commit"
 if ((Test-Path -LiteralPath $hook) -and (Select-String -LiteralPath $hook -Pattern "AIOS|Leonidas AIOS" -Quiet)) {
   Move-Item -LiteralPath $hook -Destination "$hook.aios-disabled" -Force
@@ -47,23 +54,10 @@ if ($AiosClaudeMd) {
 if ($SkipApp) { return }
 
 # 3. App
-$release = Invoke-RestMethod "https://api.github.com/repos/$Repository/releases/latest"
-$asset = $release.assets | Where-Object name -like "*.exe" | Select-Object -First 1
-if (-not $asset) { throw "No .exe asset on release $($release.tag_name)." }
-$installer = Join-Path $env:TEMP $asset.name
-Invoke-WebRequest $asset.browser_download_url -OutFile $installer
-Get-Process -Name "T3 Code*", "Leonidas Code*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Seconds 2
-Start-Process -FilePath $installer -ArgumentList "/S", "/currentuser" -Wait
-Write-Host "Installed Leonidas Code $($release.tag_name)."
+& (Join-Path $PSScriptRoot 'leonidas-update.ps1') -Repository $Repository
 
-# Leftover T3 Code: other uninstall entries, then shortcuts anywhere a launch could start it.
-Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall" |
-  Get-ItemProperty | Where-Object { $_.DisplayName -like "T3 Code*" -and $_.UninstallString } |
-  ForEach-Object {
-    $exe = ($_.UninstallString -split '"')[1]
-    if ($exe -and (Test-Path -LiteralPath $exe)) { Start-Process $exe -ArgumentList "/S", "/currentuser" -Wait }
-  }
+# Same app identity: an old uninstall entry can point to the app we just installed.
+# Remove obsolete shortcuts only.
 $shortcutDirs = @(
   [Environment]::GetFolderPath("Desktop"),
   [Environment]::GetFolderPath("Programs"),

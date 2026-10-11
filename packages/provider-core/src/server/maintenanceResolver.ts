@@ -34,8 +34,8 @@ import { collectUint8StreamText } from "./collectStreamText.ts";
 import * as ProviderLatestVersions from "./ProviderLatestVersions.ts";
 
 const LATEST_VERSION_TIMEOUT_MS = 4_000;
-const HOMEBREW_INFO_TIMEOUT_MS = 10_000;
-const HOMEBREW_INFO_MAX_BYTES = 256 * 1_024;
+const PACKAGE_MANAGER_PROBE_TIMEOUT_MS = 10_000;
+const PACKAGE_MANAGER_PROBE_MAX_BYTES = 256 * 1_024;
 const MISE_WRAPPER_MAX_BYTES = 16 * 1_024;
 const PROVIDER_UPDATE_ACTION_TOAST_MESSAGE = "Install the update now or review provider settings.";
 
@@ -274,6 +274,25 @@ export function npmGlobalPrefixFromCommandPath(
 // Homebrew always nests a version directory under the keg.
 const HOMEBREW_KEG_PATTERN = /^(.*)\/(cellar|caskroom)\/([^/]+)\/[^/]+\//i;
 
+/** WinGet portable packages expose their package ID in the resolved install path. */
+export function wingetOwnershipFromCommandPath(commandPath: string): string | null {
+  return (
+    /\/Microsoft\/WinGet\/Packages\/([a-z0-9][a-z0-9.-]+)_Microsoft\.Winget\.Source_[a-z0-9]+\//i.exec(
+      commandPath.replaceAll("\\", "/"),
+    )?.[1] ?? null
+  );
+}
+
+/** `show --versions` lists newest first; version rows do not depend on display language. */
+export function parseWingetLatestVersion(output: string): string | null {
+  return (
+    output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => /^\d+\.\d+\.\d+$/.test(line)) ?? null
+  );
+}
+
 export interface HomebrewOwnership {
   readonly kind: "formula" | "cask";
   readonly name: string;
@@ -329,20 +348,22 @@ export function parseHomebrewLatestVersion(
   return nonEmptyString(raw);
 }
 
-/** Run `brew <args>` and return stdout, or null on failure, timeout, or oversized output. */
-const runHomebrew = Effect.fn("runHomebrew")(function* (
-  brewPath: string,
+/** Return probe stdout, or null on failure, timeout, or oversized output. */
+const runPackageManagerProbe = Effect.fn("runPackageManagerProbe")(function* (
+  executable: string,
   args: ReadonlyArray<string>,
   env: NodeJS.ProcessEnv,
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const collect = Effect.gen(function* () {
-    const child = yield* spawner.spawn(ChildProcess.make(brewPath, args, { env, extendEnv: true }));
+    const child = yield* spawner.spawn(
+      ChildProcess.make(executable, args, { env, extendEnv: true }),
+    );
     yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
-    // stderr is drained so a chatty brew cannot block on a full pipe.
+    // stderr is drained so a chatty package manager cannot block on a full pipe.
     const [stdout, exitCode] = yield* Effect.all(
       [
-        collectUint8StreamText({ stream: child.stdout, maxBytes: HOMEBREW_INFO_MAX_BYTES }),
+        collectUint8StreamText({ stream: child.stdout, maxBytes: PACKAGE_MANAGER_PROBE_MAX_BYTES }),
         child.exitCode,
         Stream.runDrain(child.stderr),
       ],
@@ -352,10 +373,11 @@ const runHomebrew = Effect.fn("runHomebrew")(function* (
   });
   return yield* collect.pipe(
     Effect.scoped,
-    Effect.timeoutOption(Duration.millis(HOMEBREW_INFO_TIMEOUT_MS)),
+    Effect.timeoutOption(Duration.millis(PACKAGE_MANAGER_PROBE_TIMEOUT_MS)),
     Effect.map(Option.getOrNull),
     Effect.catchCause((cause) =>
-      Effect.logWarning("Homebrew probe failed", {
+      Effect.logWarning("Package manager probe failed", {
+        command: executable,
         subcommand: args[0],
         errorTag: causeErrorTag(cause),
       }).pipe(Effect.as(null)),
@@ -382,6 +404,26 @@ export const resolvePackageManagedProviderMaintenance = Effect.fn(
   });
   if (!context) {
     return manual;
+  }
+  const winget =
+    context.platform === "win32" ? wingetOwnershipFromCommandPath(context.realCommandPath) : null;
+  if (winget) {
+    const args = ["--id", winget, "--exact", "--source", "winget", "--disable-interactivity"];
+    const info = yield* runPackageManagerProbe(
+      "winget",
+      ["show", ...args.slice(0, -1), "--versions", "--disable-interactivity"],
+      context.env,
+    );
+    // Never fall back to npm when the owning installer cannot be queried.
+    return makeProviderMaintenanceCapabilities({
+      provider: definition.provider,
+      packageName: definition.npmPackageName,
+      updateExecutable: info === null ? null : "winget",
+      updateArgs: ["upgrade", ...args],
+      updateLockKey: info === null ? null : `winget:${winget.toLowerCase()}`,
+      platform: context.platform,
+      latestVersion: info === null ? null : parseWingetLatestVersion(info),
+    });
   }
   const commandPaths = [context.resolvedCommandPath, context.realCommandPath];
   const packageName = definition.npmPackageName;
@@ -506,7 +548,9 @@ export const resolvePackageManagedProviderMaintenance = Effect.fn(
     }
     // A keg-shaped path is only Homebrew's if it sits under the prefix of the
     // `brew` that would upgrade it; `brew --prefix` is a cheap shell script.
-    const brewPrefix = nonEmptyString(yield* runHomebrew(brewPath, ["--prefix"], context.env));
+    const brewPrefix = nonEmptyString(
+      yield* runPackageManagerProbe(brewPath, ["--prefix"], context.env),
+    );
     const realBrewPrefix = brewPrefix
       ? yield* fileSystem.realPath(brewPrefix).pipe(Effect.orElseSucceed(() => brewPrefix))
       : null;
@@ -520,7 +564,11 @@ export const resolvePackageManagedProviderMaintenance = Effect.fn(
       homebrew.kind === "cask" ? ["upgrade", "--cask", homebrew.name] : ["upgrade", homebrew.name];
     // Homebrew lags npm by hours on every release, so compare against what
     // `brew upgrade` can actually deliver.
-    const info = yield* runHomebrew(brewPath, ["info", "--json=v2", homebrew.name], context.env);
+    const info = yield* runPackageManagerProbe(
+      brewPath,
+      ["info", "--json=v2", homebrew.name],
+      context.env,
+    );
     return makeProviderMaintenanceCapabilities({
       provider: definition.provider,
       packageName,

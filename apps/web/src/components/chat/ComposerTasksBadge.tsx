@@ -151,14 +151,15 @@ export const ComposerTasksBadge = memo(function ComposerTasksBadge({
     <div className="flex min-w-0 items-center">
       <div className="min-w-0 flex-1">{row}</div>
       {progress.activity?.files.at(-1) ? (
-        <div className="max-w-28 shrink-0 pe-2">
+        <div className="w-28 min-w-0 max-w-[35%] shrink-0 pe-2">
           <Button
+            className="w-full min-w-0 max-w-full"
             size="xs"
             variant="ghost"
             title={progress.activity.files.at(-1)}
             onClick={() => progress.activity?.onOpenFile(progress.activity.files.at(-1)!)}
           >
-            <span className="truncate">
+            <span className="min-w-0 flex-1 truncate">
               {progress.activity.files.at(-1)!.split(/[/\\]/).at(-1)}
             </span>
           </Button>

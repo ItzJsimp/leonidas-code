@@ -1,4 +1,3 @@
 # Tasks
 
-Task cards for this project are not stored here. They live in the AIOS `tasks/` folder (one write path, `scripts/New-Task.ps1`, `project:` set to this project's slug) and are listed in [`../project.md`](../project.md) under `tasks:`.
-From this folder the AIOS tasks are at `../../../tasks/`.
+A generated view of this project's task cards. Each `.md` here is a symlink to the real card in the AIOS `tasks/` folder (one write path: `scripts/New-Task.ps1`, `project: "leonidas-code"`). Open and edit a card through either path; never create a card here, it is deleted on the next sync. Links are rebuilt by `scripts/Sync-ProjectTaskViews.ps1` (runs from `Build-TasksIndex.ps1` and `New-Task.ps1`) and are git-ignored by the `.gitignore` beside this file. Ledger: [`../project.md`](../project.md).

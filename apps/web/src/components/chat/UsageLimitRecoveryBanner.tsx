@@ -4,7 +4,8 @@ import {
   type RunId,
 } from "@t3tools/contracts";
 import { GaugeIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { continueWithProvider, type ProviderFailoverTarget } from "./providerFailover";
 import { Button } from "../ui/button";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
 
@@ -15,6 +16,9 @@ type RecoveryProps = {
   snoozedUntil: string | null;
   recovery: OrchestrationV2LimitRecovery | null;
   onChange: (recovery: OrchestrationV2LimitRecoveryUpdate) => Promise<void>;
+  failoverTargets: ReadonlyArray<ProviderFailoverTarget>;
+  failoverDisabled: boolean;
+  onFailover: (target: ProviderFailoverTarget) => Promise<void>;
 };
 
 export function usageLimitRecoveryBannerItem(props: RecoveryProps): ComposerBannerStackItem {
@@ -29,14 +33,43 @@ export function usageLimitRecoveryBannerItem(props: RecoveryProps): ComposerBann
     description: resetAt
       ? `Resets ${new Date(resetAt).toLocaleString()}`
       : "Reset time unavailable; retry manually",
-    actions: canSchedule ? <RecoveryActions key={`${runId}:${resetAt}`} {...props} /> : null,
+    actions: <RecoveryActions key={`${runId}:${resetAt}`} {...props} canSchedule={canSchedule} />,
   };
 }
 
-function RecoveryActions({ runId, resetAt, recovery, snoozedUntil, onChange }: RecoveryProps) {
+function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
+  const {
+    runId,
+    resetAt,
+    recovery,
+    snoozedUntil,
+    onChange,
+    canSchedule,
+    failoverTargets,
+    failoverDisabled,
+  } = props;
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  async function continueWith(target: ProviderFailoverTarget) {
+    if (pendingRef.current) return;
+    setPending(true);
+    setError(null);
+    try {
+      await continueWithProvider({
+        pending: pendingRef,
+        targets: failoverDisabled ? [] : failoverTargets,
+        target,
+        continueWith: props.onFailover,
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not switch providers.");
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  }
   useEffect(() => {
     const delay = Date.parse(resetAt ?? "") - Math.max(nowMs, Date.now());
     if (!Number.isFinite(delay) || delay <= 0) return;
@@ -54,12 +87,13 @@ function RecoveryActions({ runId, resetAt, recovery, snoozedUntil, onChange }: R
     snoozedUntil !== null &&
     Date.parse(snoozedUntil) === Date.parse(resetAt);
   async function toggle(action: "resume" | "snooze") {
-    if (resetAt === null) return;
+    if (resetAt === null || pendingRef.current) return;
     if (action === "snooze" && !snoozed && Date.parse(resetAt) <= Date.now()) {
       setError("The reset time has passed. Retry the thread manually.");
       setNowMs(Date.now());
       return;
     }
+    pendingRef.current = true;
     setPending(true);
     setError(null);
     try {
@@ -71,14 +105,29 @@ function RecoveryActions({ runId, resetAt, recovery, snoozedUntil, onChange }: R
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not change limit recovery.");
     }
+    pendingRef.current = false;
     setPending(false);
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="xs" variant="ghost" disabled={pending} onClick={() => void toggle("resume")}>
-        {pending ? "Saving..." : scheduled ? "Cancel auto-resume" : "Resume at reset"}
-      </Button>
-      {!snoozed ? (
+      {failoverTargets.map((target) => (
+        <Button
+          key={target.modelSelection.instanceId}
+          size="xs"
+          variant="ghost"
+          disabled={pending || failoverDisabled}
+          onClick={() => void continueWith(target)}
+          title={`Continue in this chat using ${target.modelSelection.model} with conversation context`}
+        >
+          {pending ? "Starting..." : `Continue with ${target.label}`}
+        </Button>
+      ))}
+      {canSchedule ? (
+        <Button size="xs" variant="ghost" disabled={pending} onClick={() => void toggle("resume")}>
+          {pending ? "Saving..." : scheduled ? "Cancel auto-resume" : "Resume at reset"}
+        </Button>
+      ) : null}
+      {canSchedule && !snoozed ? (
         <Button
           size="xs"
           variant="ghost"

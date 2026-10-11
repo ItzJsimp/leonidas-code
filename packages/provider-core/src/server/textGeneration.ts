@@ -75,8 +75,31 @@ export interface ThreadTitleGenerationResult {
   needsRefinement?: boolean | undefined;
 }
 
+export interface PromptSuggestionMessage {
+  readonly role: "user" | "assistant";
+  readonly text: string;
+}
+
+export interface PromptSuggestionInput {
+  cwd: string;
+  /** Recent finished chat messages, oldest first. */
+  messages: ReadonlyArray<PromptSuggestionMessage>;
+  /** What model and provider to use for generation. */
+  modelSelection: ModelSelection;
+}
+
+export interface PromptSuggestionResult {
+  /** The predicted next user message, or null when no confident prediction exists. */
+  prompt: string | null;
+}
+
 /** Commit, change request, branch, and title generation backed by one provider instance. */
 export interface ProviderTextGeneration {
+  /** Predict the user's next message from the chat so far. */
+  readonly generatePromptSuggestion?: (
+    input: PromptSuggestionInput,
+  ) => Effect.Effect<PromptSuggestionResult, TextGenerationError>;
+
   readonly evaluateGoal?: (input: {
     cwd: string;
     condition: string;

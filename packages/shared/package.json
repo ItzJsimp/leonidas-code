@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./subscriptionEstimate": {
+      "types": "./src/subscriptionEstimate.ts",
+      "import": "./src/subscriptionEstimate.ts"
+    },
     "./threadGoalCommand": {
       "types": "./src/threadGoalCommand.ts",
       "import": "./src/threadGoalCommand.ts"

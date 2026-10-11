@@ -1,71 +1,184 @@
 name: Team release
 
-# Jake + Mob fork: every push to main builds the Windows installer and publishes it as a
-# GitHub Release (version 1.0.<run_number>, plain semver so it lands on the "latest" update
-# channel). The desktop app's own electron-updater polls this repo and shows the update toast.
-# The upstream workflows are disabled in the repo's Actions settings (they need upstream
-# runners and secrets); this is the only one that runs.
-
+# Development releases stay on 0.x; 1.0.0 is an explicit public launch.
 on:
   push:
     branches: [main]
     paths-ignore:
       - "**.md"
   workflow_dispatch:
-
-concurrency:
-  group: team-release
-  cancel-in-progress: false
+    inputs:
+      release_kind:
+        description: "Version bump (launch explicitly publishes 1.0.0)"
+        type: choice
+        default: auto
+        options: [auto, patch, minor, major, launch]
 
 permissions:
   contents: write
+  actions: read
+  issues: write
 
 jobs:
   windows:
     name: Windows x64 installer
     runs-on: windows-latest
-    timeout-minutes: 60
-    env:
-      VERSION: 1.0.${{ github.run_number }}
+    timeout-minutes: 30
+    concurrency:
+      group: team-release-build
+      cancel-in-progress: true
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      previous: ${{ steps.release.outputs.previous }}
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # full history + tags, so the release notes can diff against the last release
+          fetch-depth: 1
 
       - uses: voidzero-dev/setup-vp@v1
         with:
           node-version-file: package.json
-          cache: true
+          cache: false
           run-install: false
 
-      - run: vp install
+      - name: Plan version and patch notes
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_KIND: ${{ inputs.release_kind || 'auto' }}
+        run: node scripts/leonidas-release.ts
 
-      - run: node scripts/update-release-package-versions.ts "$VERSION"
+      - name: Locate dependency cache
+        id: dependencies
+        run: echo "path=$(vp pm cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore desktop dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.dependencies.outputs.path }}
+          key: desktop-deps-${{ runner.os }}-x64-${{ hashFiles('pnpm-lock.yaml', '.github/workflows/team-release.yml') }}
+
+      - name: Install desktop build dependencies
+        run: vp install --frozen-lockfile --filter @t3tools/monorepo --filter @t3tools/desktop... --filter t3... --filter @t3tools/web... --filter @t3tools/scripts...
+
+      - name: Identify Rust toolchain
+        id: rust
+        run: echo "version=$(rustc --version | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore resource monitor
+        id: monitor
+        uses: actions/cache@v4
+        with:
+          path: native/resource-monitor/target/x86_64-pc-windows-msvc/release/t3-resource-monitor.exe
+          key: monitor-${{ runner.os }}-x64-${{ steps.rust.outputs.version }}-${{ hashFiles('native/resource-monitor/Cargo.toml', 'native/resource-monitor/Cargo.lock', 'native/resource-monitor/src/**', 'native/resource-monitor/build.rs', 'native/resource-monitor/.cargo/**', '.cargo/**') }}
+
+      - name: Set release version
+        run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"
 
       - name: Build JS bundle
         run: vp run build:desktop
 
-      # No --wsl-runtime: it is optional and only powers the WSL backend. No signing: installs
-      # show a one-time SmartScreen warning, updates still apply.
       - name: Build Windows installer
-        run: vp run dist:desktop:artifact --platform win --target nsis --arch x64 --build-version "$VERSION" --skip-build --verbose
+        env:
+          T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: ${{ steps.monitor.outputs.cache-hit == 'true' && 'true' || 'false' }}
+        run: vp run dist:desktop:artifact --platform win --target nsis --arch x64 --build-version "${{ steps.release.outputs.version }}" --skip-build
 
-      # The release body is the app's "What's new" popup: one bullet per user-facing commit since
-      # the previous release, oldest first (the app shows the newest first and keeps the last 8).
-      - name: Publish release
+      - name: Save release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+            notes.md
+          retention-days: 3
+          if-no-files-found: error
+
+  publish:
+    name: Publish complete release
+    needs: windows
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    runs-on: ubuntu-latest
+    # A newer push may cancel a build, but must never interrupt publication.
+    concurrency:
+      group: team-release-publish
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: artifacts
+      - name: Publish if this is still the newest main commit
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.windows.outputs.version }}
+          EXPECTED_PREVIOUS: ${{ needs.windows.outputs.previous }}
         run: |
-          ls -la release
-          PREV=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')
-          RANGE=${PREV:+"$PREV..HEAD"}
-          git log ${RANGE:--20} --no-merges --reverse --pretty=%s \
-            | grep -viE '^(docs|chore|test|ci|sync|style)(\(|:)' \
-            | sed -E 's/^[a-z]+(\([^)]*\))?!?: ?//; s/^(.)/- \u\1/' > notes.md || true
-          [ -s notes.md ] || echo "- Behind-the-scenes improvements and fixes" > notes.md
-          cat notes.md
-          gh release create "v$VERSION" release/*.exe release/*.blockmap release/latest.yml \
-            --title "v$VERSION" --notes-file notes.md --latest
+          TIP=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ "$TIP" != "$GITHUB_SHA" ]; then
+            git fetch --no-tags --depth=1 origin main
+            if git diff --name-only "$GITHUB_SHA" FETCH_HEAD | grep -qvE '[.]md$'; then
+              echo "Superseded by newer app changes; skipping publication."
+              exit 0
+            fi
+            echo "Only documentation changed; publishing this verified app build."
+          fi
+          STAGE=$(jq -r '.stage' leonidas-release.json)
+          FILTER='[.[] | select(.draft == false and .prerelease == false) | select(.tag_name | test("^v[0-9]+[.][0-9]+[.][0-9]+$"))][0].tag_name // ""'
+          if [ "$STAGE" = "development" ]; then
+            FILTER='[.[] | select(.draft == false and .prerelease == false) | select(.tag_name | test("^v0[.][0-9]+[.][0-9]+$"))][0].tag_name // ""'
+          fi
+          PREVIOUS=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq "$FILTER")
+          if [ "$EXPECTED_PREVIOUS" != "$PREVIOUS" ]; then
+            echo "::error::Release baseline changed during the build. Rerun this workflow to generate the correct version."
+            exit 1
+          fi
+          # Assets are fully uploaded before the release becomes visible to updaters.
+          if gh release view "v$VERSION" --json isDraft --jq '.isDraft' > existing-release.txt 2>/dev/null; then
+            if [ "$(cat existing-release.txt)" != "true" ]; then
+              echo "::error::Refusing to overwrite a published release."
+              exit 1
+            fi
+            gh release edit "v$VERSION" --target "$GITHUB_SHA" --notes-file artifacts/notes.md
+          else
+            gh release create "v$VERSION" --target "$GITHUB_SHA" --draft --title "v$VERSION" --notes-file artifacts/notes.md
+          fi
+          find artifacts -type f \( -name '*.exe' -o -name '*.blockmap' -o -name 'latest.yml' \) -print0 | xargs -0 gh release upload "v$VERSION" --clobber
+          gh release edit "v$VERSION" --draft=false --latest
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+  health:
+    name: Verify delivery and timings
+    needs: [windows, publish]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+      - name: Verify published assets and report slow or failed releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.windows.outputs.version }}
+          RELEASE_PUBLISHED: ${{ needs.publish.outputs.published }}
+        run: node scripts/leonidas-release-health.ts
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: release-health
+          path: release-health.json
+          retention-days: 90

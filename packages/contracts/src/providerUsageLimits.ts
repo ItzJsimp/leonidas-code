@@ -7,6 +7,7 @@ import {
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
 import { ProviderDriverKind, ProviderInstanceId } from "./providerInstance.ts";
+import { UsageTokenTotals } from "./usage.ts";
 import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
 
 /**
@@ -17,6 +18,19 @@ import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
  * sparse turn-driven update lands on the same row a full probe produced.
  * `kind` only orders and labels the bar.
  */
+export const SubscriptionTokenEstimate = Schema.Struct({
+  status: Schema.Literals(["collecting", "estimated", "unavailable"]),
+  message: Schema.String,
+  observedTokens: UsageTokenTotals,
+  observedPercent: Schema.Number,
+  samples: NonNegativeInt,
+  since: IsoDateTime,
+  through: IsoDateTime,
+  capacityTokens: Schema.optional(NonNegativeInt),
+  remainingTokens: Schema.optional(NonNegativeInt),
+});
+export type SubscriptionTokenEstimate = typeof SubscriptionTokenEstimate.Type;
+
 export const ServerProviderUsageWindow = Schema.Struct({
   id: TrimmedNonEmptyString,
   kind: Schema.Literals(["session", "weekly", "monthly", "other"]),
@@ -24,6 +38,7 @@ export const ServerProviderUsageWindow = Schema.Struct({
   usedPercent: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
   resetsAt: Schema.optional(IsoDateTime),
   windowDurationMins: Schema.optional(NonNegativeInt),
+  tokenEstimate: Schema.optional(SubscriptionTokenEstimate),
 });
 export type ServerProviderUsageWindow = typeof ServerProviderUsageWindow.Type;
 

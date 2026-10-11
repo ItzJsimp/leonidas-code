@@ -7,6 +7,7 @@ import * as Stream from "effect/Stream";
 import * as AsyncResult from "effect/reactivity/AsyncResult";
 import { Atom } from "effect/reactivity";
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 type DesktopUpdateBridge = Pick<DesktopBridge, "getUpdateState" | "onUpdateState">;
 
@@ -86,10 +87,22 @@ const desktopUpdateStateAtom = createDesktopUpdateStateAtom(getDesktopUpdateBrid
 export const useUpdateWhenSafeStore = create<{
   readonly updateWhenSafe: boolean;
   readonly setUpdateWhenSafe: (updateWhenSafe: boolean) => void;
-}>()((set) => ({
-  updateWhenSafe: false,
-  setUpdateWhenSafe: (updateWhenSafe) => set({ updateWhenSafe }),
-}));
+  readonly autoUpdateWhenSafe: boolean;
+  readonly setAutoUpdateWhenSafe: (enabled: boolean) => void;
+}>()(
+  persist(
+    (set) => ({
+      updateWhenSafe: false,
+      setUpdateWhenSafe: (updateWhenSafe) => set({ updateWhenSafe }),
+      autoUpdateWhenSafe: false,
+      setAutoUpdateWhenSafe: (autoUpdateWhenSafe) => set({ autoUpdateWhenSafe }),
+    }),
+    {
+      name: "leonidas-safe-updates",
+      partialize: ({ autoUpdateWhenSafe }) => ({ autoUpdateWhenSafe }),
+    },
+  ),
+);
 
 export function useDesktopUpdateState(): DesktopUpdateState | null {
   return AsyncResult.getOrElse(useAtomValue(desktopUpdateStateAtom), () => null);
