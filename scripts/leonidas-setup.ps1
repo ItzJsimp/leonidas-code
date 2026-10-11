@@ -25,6 +25,13 @@ $repo = Split-Path -Parent $PSScriptRoot
 git -C $repo config pull.rebase true
 git -C $repo config rebase.autoStash true
 git -C $repo config fetch.prune true
+# .claude/skills is a symlink to .agents/skills; with core.symlinks off, Windows checks it out as a
+# text file and Claude finds no project skills. Needs Developer Mode.
+git -C $repo config core.symlinks true
+if (-not (Get-Item -LiteralPath (Join-Path $repo ".claude/skills")).LinkType) {
+  Remove-Item -LiteralPath (Join-Path $repo ".claude/skills") -Force
+  git -C $repo checkout -- .claude/skills
+}
 $hook = Join-Path $repo ".git/hooks/pre-commit"
 if ((Test-Path -LiteralPath $hook) -and (Select-String -LiteralPath $hook -Pattern "AIOS|Leonidas AIOS" -Quiet)) {
   Move-Item -LiteralPath $hook -Destination "$hook.aios-disabled" -Force

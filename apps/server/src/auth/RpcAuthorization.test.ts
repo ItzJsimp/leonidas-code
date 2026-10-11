@@ -16,6 +16,7 @@ import {
   AuthTerminalReadScope,
   AuthTerminalOperateScope,
   WS_METHODS,
+  ORCHESTRATION_V2_WS_METHODS,
   WsRpcGroup,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
@@ -31,6 +32,13 @@ import {
 import * as RpcAuthorization from "./RpcAuthorization.ts";
 
 describe("RPC authorization scopes", () => {
+  it("keeps shared tasks and thread context reports behind read scope", () => {
+    expect(requiredScopeForRpcMethod(WS_METHODS.taskBoardList)).toBe(AuthOrchestrationReadScope);
+    expect(requiredScopeForRpcMethod(ORCHESTRATION_V2_WS_METHODS.getThreadContextBreakdown)).toBe(
+      AuthOrchestrationReadScope,
+    );
+  });
+
   it("declares exactly one scope for every RPC in the server group", () => {
     expect(new Set(Object.keys(RPC_REQUIRED_SCOPES))).toEqual(new Set(WsRpcGroup.requests.keys()));
   });

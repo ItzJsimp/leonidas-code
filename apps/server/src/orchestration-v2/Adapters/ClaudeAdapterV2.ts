@@ -21,6 +21,7 @@ import {
   type Settings as ClaudeSdkSettings,
   type SDKAssistantMessage,
   type SDKAPIRetryMessage,
+  type SDKControlGetContextUsageResponse,
   type SDKMessage,
   type SDKRateLimitInfo,
   type SDKResultMessage,
@@ -104,6 +105,7 @@ import {
   shouldPersistProviderEvent,
 } from "../../provider/EventNdjsonLogger.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
+import { claudeContextReportFromUsage } from "../../provider/ClaudeContextReport.ts";
 import {
   claudeRateLimitEventToUpdate,
   type ClaudeScopedLimitNames,
@@ -336,6 +338,10 @@ export interface ClaudeAgentSdkQuerySession {
     mode: PermissionMode,
   ) => Effect.Effect<void, ClaudeAgentSdkQueryRunnerError>;
   readonly interrupt: Effect.Effect<void, ClaudeAgentSdkQueryRunnerError>;
+  /** Optional so replay fakes need not model it; the real query always provides it. */
+  readonly getContextUsage?: (input: {
+    readonly detail: "summary" | "full";
+  }) => Effect.Effect<SDKControlGetContextUsageResponse, ClaudeAgentSdkQueryRunnerError>;
   readonly close: Effect.Effect<void, ClaudeAgentSdkQueryRunnerError>;
 }
 
@@ -716,6 +722,11 @@ export const layerQueryRunner: Layer.Layer<
               }),
             ),
           ),
+          getContextUsage: ({ detail }) =>
+            Effect.tryPromise({
+              try: () => queryRuntime.getContextUsage({ detail }),
+              catch: (cause) => queryRunnerError(cause, "getContextUsage"),
+            }),
           close: Queue.shutdown(promptQueue).pipe(
             Effect.andThen(closeClaudeQuery(queryRuntime)),
             Effect.tap(() =>
@@ -7900,6 +7911,31 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   nativeThreadId,
                 ).size > 0
               );
+            }),
+          getContextReport: ({ providerThread }) =>
+            Effect.gen(function* () {
+              const nativeThreadId = providerThread.nativeThreadRef?.nativeId;
+              const live = yield* Ref.get(queryContext);
+              if (
+                live === null ||
+                live.query.getContextUsage === undefined ||
+                nativeThreadId === undefined ||
+                nativeThreadId === null ||
+                live.nativeThreadId !== nativeThreadId
+              ) {
+                return null;
+              }
+              const usage = yield* live.query.getContextUsage({ detail: "full" }).pipe(
+                Effect.mapError(
+                  (cause) =>
+                    new ProviderAdapter.ProviderAdapterProtocolError({
+                      driver: CLAUDE_PROVIDER,
+                      detail: "getContextUsage failed",
+                      cause,
+                    }),
+                ),
+              );
+              return claudeContextReportFromUsage(usage);
             }),
           ensureThread: Effect.fn("ClaudeAdapterV2.ensureThread")(
             function* (threadInput: ProviderAdapter.ProviderAdapterV2EnsureThreadInput) {
