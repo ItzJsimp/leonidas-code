@@ -11,6 +11,7 @@ import {
 import { CircleAlertIcon, ChevronDownIcon, InfoIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
+  DEFAULT_LIMITS_REFRESH_COOLDOWN_MS,
   cursorKeychainAccessEnvironments,
   refreshUsageLimits,
 } from "@t3tools/client-runtime/state/usage";
@@ -372,7 +373,14 @@ export function UsagePage() {
     void refreshLimits(true);
   });
   useEffect(() => {
-    if (showingLimits && connectedLimitsEnvironments) autoRefreshLimits();
+    if (!showingLimits || !connectedLimitsEnvironments) return;
+    autoRefreshLimits();
+    // Claude's quota probe is cached for five minutes. In-turn rate-limit
+    // events update these rows live, so this poll only catches other devices.
+    const interval = setInterval(() => {
+      autoRefreshLimits();
+    }, DEFAULT_LIMITS_REFRESH_COOLDOWN_MS + 5_000);
+    return () => clearInterval(interval);
   }, [showingLimits, connectedLimitsEnvironments]);
 
   // Names the period on screen, which is the previous one until the new one answers.

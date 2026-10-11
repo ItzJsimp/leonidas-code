@@ -185,7 +185,7 @@ describe("claudeRateLimitEventToUpdate", () => {
     });
   });
 
-  it("ignores windows the page does not render and events without a utilization", () => {
+  it("ignores windows the page does not render and allowed events without a utilization", () => {
     expect(
       claudeRateLimitEventToUpdate(
         { status: "allowed", rateLimitType: "seven_day_opus", utilization: 0.1 },
@@ -193,7 +193,23 @@ describe("claudeRateLimitEventToUpdate", () => {
       ),
     ).toBeUndefined();
     expect(
-      claudeRateLimitEventToUpdate({ status: "rejected", rateLimitType: "five_hour" }, noNames),
+      claudeRateLimitEventToUpdate({ status: "allowed", rateLimitType: "five_hour" }, noNames),
     ).toBeUndefined();
+  });
+
+  it("treats rejected events without utilization as 100% used", () => {
+    expect(
+      claudeRateLimitEventToUpdate({ status: "rejected", rateLimitType: "five_hour" }, noNames),
+    ).toEqual({
+      windows: [
+        {
+          id: "five_hour",
+          kind: "session",
+          label: "Session",
+          usedPercent: 100,
+          windowDurationMins: 300,
+        },
+      ],
+    });
   });
 });

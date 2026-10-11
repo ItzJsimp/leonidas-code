@@ -1,4 +1,4 @@
-import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
+import { OrchestrationDispatchCommandError, TaskBoardReadError } from "@t3tools/contracts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
@@ -2664,7 +2664,41 @@ const layerWsRpc = (
                 }),
             ),
           ),
-        [WS_METHODS.taskBoardList]: () => taskBoard.list,
+        [WS_METHODS.taskBoardList]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.list(project.value)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
+        [WS_METHODS.taskBoardCreate]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.create(project.value, input)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
+        [WS_METHODS.taskBoardClaim]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.claim(project.value, input)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
+        [WS_METHODS.taskBoardRelease]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.release(project.value, input)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
+        [WS_METHODS.taskBoardComplete]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.complete(project.value, input)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
+        [WS_METHODS.taskBoardUpdate]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.update(project.value, input)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
+        [WS_METHODS.taskBoardSync]: (input) => projectService.getById(input.projectId).pipe(
+          Effect.flatMap((project) => Option.isSome(project)
+            ? taskBoard.sync(project.value, input)
+            : Effect.fail(new TaskBoardReadError({ reason: "project_not_found", cause: input.projectId }))),
+        ),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsReadFile]: (input) =>

@@ -1,10 +1,10 @@
 /**
  * OpenRouterDriver — `ProviderDriver` for the OpenRouter AI provider and router.
  *
- * Runs OpenRouter through the Claude Agent SDK runtime with OpenRouter API
- * endpoints pre-configured (ANTHROPIC_BASE_URL=https://openrouter.ai/api),
- * providing access to any OpenRouter model (Claude 3.7 Sonnet, DeepSeek R1,
- * GPT-4o, Gemini 2.0 Flash, Llama 3.3, Qwen, etc.).
+ * Runs selected OpenRouter models through the Claude Agent SDK and OpenRouter
+ * Anthropic-compatible endpoint. Model and provider compatibility varies;
+ * non-Anthropic routes are not guaranteed. A native OpenAI-compatible adapter
+ * is a separate incomplete path.
  *
  * @module provider/Drivers/OpenRouterDriver
  */

@@ -143,8 +143,13 @@ function formatClaudeSubscriptionAuthLabel(subscriptionType: string): string {
 function claudeAuthMetadata(input: {
   readonly subscriptionType: string | undefined;
   readonly authMethod: string | undefined;
+  readonly apiKeySource: string | undefined;
 }): { readonly type: string; readonly label: string } | undefined {
-  if (normalizeClaudeAuthMethod(input.authMethod) === "apiKey") {
+  const apiKeySource = input.apiKeySource?.trim().toLowerCase();
+  if (
+    normalizeClaudeAuthMethod(input.authMethod) === "apiKey" ||
+    Boolean(apiKeySource && apiKeySource !== "none")
+  ) {
     return {
       type: "apiKey",
       label: "Claude API Key",
@@ -648,15 +653,33 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     claudeAuthMetadata({
       subscriptionType: capabilities.subscriptionType,
       authMethod: capabilities.tokenSource,
+      apiKeySource: capabilities.apiKeySource,
     }) ?? apiProviderAuthMetadata(capabilities.apiProvider);
-  const usageLimits = !capabilities.usage
-    ? makeUnavailableUsageLimits({ checkedAt, reason: "probeFailed" })
-    : scopedLimitNames
-      ? yield* recordClaudeUsageResponse(scopedLimitNames, {
-          response: capabilities.usage,
+  const unsupportedUsageMessage =
+    authMetadata?.type === "apiKey"
+      ? "Claude's 5-hour and weekly subscription limits require Claude subscription sign-in. This environment is using an API key; run `claude auth login` with the subscription account."
+      : capabilities.apiProvider !== undefined && capabilities.apiProvider !== "firstParty"
+        ? `Claude subscription limits are not available for ${authMetadata?.label ?? "this backend"}.`
+        : undefined;
+  const usageLimits = unsupportedUsageMessage
+    ? makeUnavailableUsageLimits({
+        checkedAt,
+        reason: "unsupported",
+        message: unsupportedUsageMessage,
+      })
+    : !capabilities.usage
+      ? makeUnavailableUsageLimits({
           checkedAt,
+          reason: "probeFailed",
+          message:
+            "Claude did not return subscription limits. Try Refresh, then check this environment's Claude subscription login.",
         })
-      : claudeUsageResponseToLimits({ response: capabilities.usage, checkedAt }).limits;
+      : scopedLimitNames
+        ? yield* recordClaudeUsageResponse(scopedLimitNames, {
+            response: capabilities.usage,
+            checkedAt,
+          })
+        : claudeUsageResponseToLimits({ response: capabilities.usage, checkedAt }).limits;
   const resetCredits =
     resolveResetCredits &&
     capabilities.subscriptionType &&

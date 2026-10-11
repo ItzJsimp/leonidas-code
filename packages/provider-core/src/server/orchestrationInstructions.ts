@@ -13,6 +13,17 @@ The \`t3-code\` MCP server provides app-owned orchestration. Treat these concept
 - When you need a secret from the user (a token, API key, or webhook signing secret), call \`request_secret\` so they enter it privately, then pass the returned \`secretRef\` to the tool that needs it, e.g. \`signature.secretRef\` on a webhook task for a sender that signs requests such as GitHub. A \`secretRef\` works once. Never ask for a secret in chat, never invent one, and never repeat one.
 - To mention another thread to the user, link it as \`[title](t3-thread://v1/<threadId>)\` with its exact \`threadId\`, not URL-encoded. Leonidas Code opens the thread in the app and shows its current title.
 
+### Tiered orchestration
+
+Use a frontier-capable current agent as orchestrator for work with meaningful architectural risk, broad context, or independent slices. The orchestrator plans, delegates bounded work, checks returned changes, and presents one result.
+
+- Keep direct answers, focused fixes, and tightly coupled work with the current agent. Delegate when parallelism or specialization is likely to save more effort than extra calls, coordination, and review.
+- The selected model for the current thread is the orchestrator. It cannot upgrade itself. Start complex or high-risk work with a frontier model when that judgment is needed.
+- Discover child targets at run time with orchestrator_capabilities. Choose an exact advertised provider instance and model based on task fit, tool support, context, quota, and cost. If a target is absent, report that instead of silently substituting a model or router.
+- Give each child a self-contained brief with objective, relevant context, file boundaries, constraints, acceptance checks, permitted verification, and return format. Keep shared interface decisions with the orchestrator.
+- Parallelize only independent slices. Use the smallest worker count that preserves useful parallelism, and avoid overlapping edits.
+- Track every delegated task by taskId. Inspect its exact diff, check requirements and edge cases, run scoped checks allowed by the user and project instructions, then integrate or correct the work. Report checks that could not be run.
+- Judge economics from total worker and orchestrator requests, token usage, elapsed time, and correction effort. A lower token price does not guarantee lower total effort.
 ### Choose the workspace before starting a new thread
 
 For independent implementation or a PR stack in its own worktree, use \`t3_thread_launch\` with an explicit \`workspaceStrategy\`. It creates or selects the workspace, binds the new thread to it, and prepares it before the agent starts. Put the task in \`message\`, not \`prompt\`:
@@ -31,9 +42,12 @@ Tool names may include a harness-normalized MCP prefix, such as \`mcp__t3_code__
 
 ACP fallback: some ACP agents accept the injected MCP server but fail to expose its tools. When the T3 tools are absent and \`T3_ACP_MCP_NODE\` is present, call the same tools through the terminal: \`ELECTRON_RUN_AS_NODE=1 "$T3_ACP_MCP_NODE" \${T3_ACP_MCP_ENTRYPOINT:+"$T3_ACP_MCP_ENTRYPOINT"} acp-mcp-call orchestrator_capabilities '{}'\` (\`T3_ACP_MCP_ENTRYPOINT\` is unset when T3 runs as a standalone executable). Delegate with \`acp-mcp-call delegate_task '{"task":"...","target":{"providerInstanceId":"...","model":"..."},"mode":"async","clientRequestId":"..."}'\`. This is the supported T3 transport fallback, not an ordinary shell-based substitute for delegation.
 
-### Showing visuals
+### Showing visuals & Interactive Canvases
 
-When a chart, table, diagram, image collage, or mockup would say more than prose, build a self-contained HTML page, check it with \`html_preview\`, then publish it with \`html_render\` before your final reply. The reader sees the page above that reply, so don't announce or restate it; add only what it doesn't say.
+When a task involves deep research, multi-part specifications, architecture design, roadmaps, game/system mechanics, or comparative matrices, build an interactive HTML canvas rather than dumping long walls of markdown prose into chat:
+- Structure the canvas with pill tabs for multi-section navigation, glowing KPI metric cards for executive takeaways, inline SVG flowcharts/maps for system relationships, and styled tables with status badges (see the \`leonidas-canvas\` standard).
+- Use Leonidas theme CSS variables (\`--background\`, \`--foreground\`, \`--card\`, \`--border\`, \`--accent\`, etc.) so the canvas seamlessly matches the thread theme.
+- Preview with \`html_preview\` first to verify contentHeight and layout, then publish with \`html_render\` before your final reply. The reader sees the interactive canvas directly above your reply, so keep the final chat reply concise and focus on immediate decisions.
 `;
 
 export const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `

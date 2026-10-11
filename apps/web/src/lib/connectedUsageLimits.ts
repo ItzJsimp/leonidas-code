@@ -83,10 +83,10 @@ export function collectConnectedUsageLimits(
           checkedAt: provider.checkedAt,
           windows: [],
           unavailable: {
-            reason: "unsupported",
+            reason: provider.driver === "antigravity" ? "probeFailed" : "unsupported",
             message:
               provider.driver === "antigravity"
-                ? "Checking Antigravity usage limits."
+                ? "Could not read Antigravity quota."
                 : "Connected. This provider does not report usage limits.",
           },
         },

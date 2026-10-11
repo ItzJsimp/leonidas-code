@@ -20,6 +20,22 @@ describe("T3 orchestration provider instructions", () => {
     );
   });
 
+  it("guides model discovery, bounded delegation, and review", () => {
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Tiered orchestration");
+    assert.include(
+      T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+      "The selected model for the current thread is the orchestrator",
+    );
+    assert.include(
+      T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+      "Discover child targets at run time with orchestrator_capabilities",
+    );
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Track every delegated task by taskId");
+    assert.include(
+      T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+      "Judge economics from total worker and orchestrator requests",
+    );
+  });
   it("documents structured schedules instead of JSON strings", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "structured object, never as JSON text");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, '"everyMs":3600000');

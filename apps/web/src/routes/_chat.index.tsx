@@ -12,6 +12,7 @@ import { Button } from "../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { SidebarInset } from "../components/ui/sidebar";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
+import { useComposerDraftStore } from "../composerDraftStore";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
 import {
   useAllEnvironmentShellsBootstrapped,
@@ -24,6 +25,7 @@ import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 
 function ChatIndexRouteView() {
   const { authGateState } = Route.useRouteContext();
+  const { guidePrompt } = Route.useSearch();
   const { environments, isReady } = useEnvironments();
 
   if (authGateState.status === "hosted-static") {
@@ -31,7 +33,7 @@ function ChatIndexRouteView() {
     if (environments.length === 0) return <HostedStaticOnboardingState />;
   }
 
-  return <IndexDraftLanding />;
+  return <IndexDraftLanding guidePrompt={guidePrompt} />;
 }
 
 /**
@@ -39,7 +41,7 @@ function ChatIndexRouteView() {
  * recently active project, so the first screen is a prompt instead of a dead
  * end. Falls back to an add-project hero when no project exists yet.
  */
-function IndexDraftLanding() {
+function IndexDraftLanding({ guidePrompt }: { readonly guidePrompt?: string }) {
   const projects = useProjects();
   const threads = useThreadShells();
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
@@ -62,11 +64,17 @@ function IndexDraftLanding() {
     startingRef.current = true;
     void handleNewThread(scopeProjectRef(mostRecentProject.environmentId, mostRecentProject.id), {
       replace: true,
-    }).catch(() => {
-      startingRef.current = false;
-      setStartState((state) => ({ ...state, failed: true }));
-    });
-  }, [handleNewThread, mostRecentProject, startState.retryRequest]);
+    })
+      .then((created) => {
+        if (created && guidePrompt) {
+          useComposerDraftStore.getState().setPrompt(created.draftId, guidePrompt);
+        }
+      })
+      .catch(() => {
+        startingRef.current = false;
+        setStartState((state) => ({ ...state, failed: true }));
+      });
+  }, [guidePrompt, handleNewThread, mostRecentProject, startState.retryRequest]);
 
   if (!bootstrapped) {
     return null;
@@ -111,6 +119,10 @@ function DraftStartError({ onRetry }: { readonly onRetry: () => void }) {
 }
 
 export const Route = createFileRoute("/_chat/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    guidePrompt:
+      typeof search.guidePrompt === "string" ? search.guidePrompt.slice(0, 1200) : undefined,
+  }),
   component: ChatIndexRouteView,
 });
 

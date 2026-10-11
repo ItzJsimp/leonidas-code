@@ -21,7 +21,19 @@ import {
   ChatGptHandoffInput,
   ChatGptHandoffState,
 } from "./providerSetup.ts";
-import { TaskBoardSnapshot, TaskBoardReadError } from "./taskBoard.ts";
+import {
+  TaskBoardSnapshot,
+  TaskBoardReadError,
+  TaskBoardTask,
+  TaskBoardListInput,
+  TaskBoardCreateInput,
+  TaskBoardClaimInput,
+  TaskBoardReleaseInput,
+  TaskBoardCompleteInput,
+  TaskBoardUpdateInput,
+  TaskBoardSyncInput,
+  TaskBoardOperationError,
+} from "./taskBoard.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -394,6 +406,12 @@ export const WS_METHODS = {
   projectsListEntries: "projects.listEntries",
   projectsReadFile: "projects.readFile",
   taskBoardList: "taskBoard.list",
+  taskBoardCreate: "taskBoard.create",
+  taskBoardClaim: "taskBoard.claim",
+  taskBoardRelease: "taskBoard.release",
+  taskBoardComplete: "taskBoard.complete",
+  taskBoardUpdate: "taskBoard.update",
+  taskBoardSync: "taskBoard.sync",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsSearchContents: "projects.searchContents",
@@ -1211,9 +1229,45 @@ const WsProjectsListEntriesRpc = Rpc.make(WS_METHODS.projectsListEntries, {
 });
 
 const WsTaskBoardListRpc = Rpc.make(WS_METHODS.taskBoardList, {
-  payload: Schema.Struct({}),
+  payload: TaskBoardListInput,
   success: TaskBoardSnapshot,
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardCreateRpc = Rpc.make(WS_METHODS.taskBoardCreate, {
+  payload: TaskBoardCreateInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardClaimRpc = Rpc.make(WS_METHODS.taskBoardClaim, {
+  payload: TaskBoardClaimInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardReleaseRpc = Rpc.make(WS_METHODS.taskBoardRelease, {
+  payload: TaskBoardReleaseInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardCompleteRpc = Rpc.make(WS_METHODS.taskBoardComplete, {
+  payload: TaskBoardCompleteInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardUpdateRpc = Rpc.make(WS_METHODS.taskBoardUpdate, {
+  payload: TaskBoardUpdateInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardSyncRpc = Rpc.make(WS_METHODS.taskBoardSync, {
+  payload: TaskBoardSyncInput,
+  success: TaskBoardSnapshot,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
 const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidates, {
@@ -2023,6 +2077,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsListEntriesRpc,
   WsProjectsReadFileRpc,
   WsTaskBoardListRpc,
+  WsTaskBoardCreateRpc,
+  WsTaskBoardClaimRpc,
+  WsTaskBoardReleaseRpc,
+  WsTaskBoardCompleteRpc,
+  WsTaskBoardUpdateRpc,
+  WsTaskBoardSyncRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsSearchContentsRpc,

@@ -87,3 +87,68 @@ it.effect("loads the shared repository and refreshes cached issues after five se
     );
   }),
 );
+
+it.effect("supports task creation, claims by agent, releases, and completion with audit history", () =>
+  Effect.gen(function* () {
+    const runner = ProcessRunner.ProcessRunner.of({
+      run: () => Effect.succeed(output("[]")),
+    });
+
+    yield* Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+
+      // 1. Create a task
+      const created = yield* board.create({
+        title: "Verify agent claim sync",
+        description: "Test claiming across Jake and Mob environments",
+        priority: "high",
+      });
+      expect(created.title).toBe("Verify agent claim sync");
+      expect(created.status).toBe("todo");
+      expect(created.claimedBy).toBeNull();
+      expect(created.history.length).toBeGreaterThanOrEqual(1);
+      expect(created.history[0]?.action).toBe("created");
+
+      // 2. Claim task by Mob's agent
+      const claimed = yield* board.claim({
+        taskId: created.id,
+        claimedBy: "Mob (claude)",
+      });
+      expect(claimed.status).toBe("in_progress");
+      expect(claimed.claimedBy).toBe("Mob (claude)");
+      expect(claimed.claimedAt).not.toBeNull();
+      const claimEvent = claimed.history.find((h) => h.action === "claimed");
+      expect(claimEvent?.actor).toBe("Mob (claude)");
+
+      // 3. Release claim back to queue
+      const released = yield* board.release({
+        taskId: created.id,
+      });
+      expect(released.status).toBe("todo");
+      expect(released.claimedBy).toBeNull();
+      expect(released.claimedAt).toBeNull();
+
+      // 4. Claim by Jake's agent and complete
+      yield* board.claim({
+        taskId: created.id,
+        claimedBy: "Jake (gemini)",
+      });
+      const completed = yield* board.complete({
+        taskId: created.id,
+        completedBy: "Jake (gemini)",
+        summary: "Verified synchronized claim database and UI",
+      });
+      expect(completed.status).toBe("done");
+      expect(completed.completedBy).toBe("Jake (gemini)");
+      expect(completed.completionSummary).toBe("Verified synchronized claim database and UI");
+      const doneEvent = completed.history.find((h) => h.action === "completed");
+      expect(doneEvent?.actor).toBe("Jake (gemini)");
+    }).pipe(
+      Effect.provide(
+        TaskBoardService.layer.pipe(
+          Layer.provide(Layer.succeed(ProcessRunner.ProcessRunner, runner)),
+        ),
+      ),
+    );
+  }),
+);

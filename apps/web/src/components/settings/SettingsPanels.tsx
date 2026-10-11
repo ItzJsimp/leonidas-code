@@ -454,8 +454,8 @@ function AboutVersionSection() {
         }
       />
       <SettingsRow
-        title="What's new popup"
-        description="Preview the patch notes popup using the latest published release."
+        title="What's new"
+        description="Preview the latest release notes and open a guided chat for any change."
         control={
           <Button size="sm" variant="outline" onClick={requestWhatsNewPreview}>
             Preview

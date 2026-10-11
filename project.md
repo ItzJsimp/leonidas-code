@@ -14,6 +14,7 @@ tasks:
   - "tasks/leonidas-code-agent-activity-bar-live-sliver-above-the-composer-that-expands-into-plan-steps-files-and-reasoning.md"
   - "tasks/leonidas-code-dev-instance-isolation-and-hot-safe-live-edits.md"
   - "tasks/leonidas-code-goal-loop-keep-a-thread-working-until-a-verified-condition-holds.md"
+  - "tasks/leonidas-code-hierarchical-tiered-orchestration-workflow.md"
   - "tasks/leonidas-code-limit-failover-when-one-subscription-hits-its-limit-another-provider-takes-over-the-same-chat-in-one-click.md"
   - "tasks/leonidas-code-settings-parity-for-jake-and-mob.md"
   - "tasks/move-leonidas-code-repo-into-projectsleonidas-code-with-the-project-template.md"

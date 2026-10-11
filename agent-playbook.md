@@ -19,13 +19,13 @@ verified: 2026-10-10
 ## 2. Module map
 
 | Area                                                   | Files                                                                                                                                                             | Self-test                                |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Desktop auto-update (poll, download, install, restart) | `apps/desktop/src/updates/DesktopUpdates.ts`, `apps/desktop/src/electron/ElectronUpdater.ts`                                                                      | `DesktopRemoteUpdates.test.ts`           |
-| Update toast and sidebar pill                          | `apps/web/src/components/desktopUpdate.toast.tsx`, `sidebar/SidebarUpdatePill.tsx`                                                                                | `desktopUpdate.toast.test.tsx`           |
-| What's new popup (shown when an update downloads)      | `apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx`, wired in `DesktopUpdateCoordinator.tsx`; bullets via `getWhatsNewItems` in `desktopUpdate.logic.ts` | `desktopUpdate.logic.test.ts`            |
-| Release feed target                                    | `scripts/build-desktop-artifact.ts` `resolveGitHubPublishConfig`                                                                                                  | `scripts/build-desktop-artifact.test.ts` |
-| Settings UI                                            | `apps/web/src/components/settings/`                                                                                                                               | n/a                                      |
-| Local mock update server                               | `pnpm start:mock-update-server` (`scripts/mock-update-server.ts`)                                                                                                 | n/a                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |\
+| Desktop auto-update (poll, download, install, restart) | `apps/desktop/src/updates/DesktopUpdates.ts`, `apps/desktop/src/electron/ElectronUpdater.ts`                                                                      | `DesktopRemoteUpdates.test.ts`           |\
+| Update toast and sidebar pill                          | `apps/web/src/components/desktopUpdate.toast.tsx`, `sidebar/SidebarUpdatePill.tsx`                                                                                | `desktopUpdate.toast.test.tsx`           |\
+| What's new popup (shown when an update downloads)      | `apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx`, wired in `DesktopUpdateCoordinator.tsx`; bullets via `getWhatsNewItems` in `desktopUpdate.logic.ts` | `desktopUpdate.logic.test.ts`            |\
+| Release feed target                                    | `scripts/build-desktop-artifact.ts` `resolveGitHubPublishConfig`                                                                                                  | `scripts/build-desktop-artifact.test.ts` |\
+| Settings UI                                            | `apps/web/src/components/settings/`                                                                                                                               | n/a                                      |\
+| Local mock update server                               | `pnpm start:mock-update-server` (`scripts/mock-update-server.ts`)                                                                                                 | n/a                                      |\
 
 ## 3. Data sources: shape, cost, traps
 
@@ -67,6 +67,10 @@ verified: 2026-10-10
 
 ## 7. Session notes (newest first, one line each, keep 10)
 
+- **2026-10-11 (tiered orchestration and benchmark follow-up):** replaced static worker IDs with live capability discovery and review-overhead guidance; added the exact Apodex 1.1 Mini free model to the source catalog as experimental; prepared the private AIOS 15-task F/C/H comparison. Open: rebuild the app, smoke-test tool use, and run the suite. No benchmark requests or tests were run.
+
+- **2026-10-11 (tiered orchestration workflow):** established Frontier Brain + Workhorse Swarm + Review Gate pattern in Leonidas Code provider core (`orchestrationInstructions.ts`), added `.agents/skills/tiered-orchestration/` skill, created AIOS standards/workflows/templates (`tiered-orchestration-standard.md`, `tiered-orchestration-workflow.md`, `tiered-task-spec-template.md`), and updated `ai-build-protocol.md`. 7/7 orchestration instruction tests pass.
+
 - **2026-10-10 (usage/update visual polish):** refined metadata, context legend, file/tool rows and update lists in the [context breakdown](./apps/web/src/components/chat/DetailedContextBreakdownView.tsx), [usage panel](./apps/web/src/components/chat/ChatComposerUsageLimits.tsx), [hover summary](./apps/web/src/components/chat/ChatUsageHoverCard.tsx), [release history](./apps/web/src/components/desktop/ReleaseHistoryDialog.tsx) and [update dialog](./apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx). Requested 28 tests and web typecheck pass. Local only; integrated browser review remains with the primary agent.
 
 - **2026-10-10 (activity filename overflow):** bounded the last-file chip and its button in [`ComposerTasksBadge.tsx`](./apps/web/src/components/chat/ComposerTasksBadge.tsx), with a shrinking ellipsis label and full-path hover/click preserved. Actual component browser checks at 692, 420, 320 and 240 pixels fit; removing width bounds reproduces overflow. Scoped lint/typecheck pass; full web typecheck is blocked by a concurrent test importing unavailable vitest.
@@ -76,8 +80,11 @@ verified: 2026-10-10
 - **2026-10-10 (What's new popup):** centered dialog on update download lists the release bullets (Restart now / Update when safe / Later); CI now writes release notes from commits. 45 tests and tsc green; not seen in a live window, CI step not yet run, committed locally (`d622e654be`) not pushed. Open: repoint the "Read more" links to our repo.
 
 - **2026-10-10 (usage panel redesign):** composer usage control now has a context ring and hover summary, a top-right panel with separate This chat and Connected accounts sections, a crisp email mask instead of blur, and the Claude Pro null-limits fix; pushed to main. Not verified in a live client. Open: Antigravity quota via the local language server (card `leonidas-code-antigravity-usage-limits-via-local-language-server`), stale `T3` assertions in `MessagesTimeline` tests.
+
 - **2026-10-10 (folder move, ADR-0072):** repo moved from `D:\t3code` to `projects/leonidas-code/` inside the AIOS (own git repo, AIOS-gitignored); project docs now live in the repo (`project.md`, this file, `project/`). The `../../tasks/` and `../../standards/` links resolve only inside an AIOS checkout. Moving a repo re-requires the one-time `claude` import approval and `vp install` (pnpm junctions are absolute).
+
 - **2026-10-10 (Leonidas Code v1.0.2 shipped):** rebrand pushed `ded8ae8d08`, release v1.0.2 installed over T3 0.0.45 in place (app id kept `com.t3tools.t3code` on purpose so NSIS upgrades instead of side-by-side), auto-pull SessionStart hook and `scripts/leonidas-setup.ps1` for Mob. Windows 11 blocks scripted taskbar pins; Jake pins by hand. Open: Mob runs setup, toast proof across machines, optional repo rename.
+
 - **2026-10-10 (Name set, settings mapped):** Jake named it Leonidas Code and approved the predictor build; rebrand running as a Sonnet executor (local commit, no push), settings inventory written with 21 proposed values awaiting approval. Open: land rebrand, predictor port (copy `ThreadTitleRegenerationService.ts` for the one-shot call), settings seed.
+
 - **2026-10-09 (Shared repo live):** Mob's `mob-base` fast-forwarded into `main`, `team-release.yml` builds `v1.0.N` releases, upstream workflows disabled, `LEONIDAS.md` added to the fork as the cross-machine brief. Open: prove the toast on both machines, then task board, prompt predictor (`t3-code-prompt-predictor-from-scribe-transcripts`), rebrand.
-- **2026-10-09:** Scaffolded project, 4 task cards, name research (Leonidas Code low risk), settings walkthrough in progress; open: repo home (A/B/C) and task board store (GitHub Issues vs Supabase), Mob's source state.

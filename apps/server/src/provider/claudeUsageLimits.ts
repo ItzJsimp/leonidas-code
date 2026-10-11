@@ -56,9 +56,7 @@ export interface ClaudeScopedLimitNames {
   readonly overageIncluded: string | undefined;
 }
 
-export const makeClaudeScopedLimitNames = Ref.make<ClaudeScopedLimitNames>({
-  overageIncluded: undefined,
-});
+export const makeClaudeScopedLimitNames = Ref.make<ClaudeScopedLimitNames>({ overageIncluded: undefined });
 
 function scopedWindowId(displayName: string): string {
   return `seven_day_${displayName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
@@ -136,10 +134,14 @@ export function claudeRateLimitEventToUpdate(
   names: ClaudeScopedLimitNames,
 ): ProviderUsageLimitsUpdate | undefined {
   const type: string | undefined = info.rateLimitType;
-  if (!type || typeof info.utilization !== "number") {
+  if (!type) {
     return undefined;
   }
-  const usedPercent = info.utilization * 100;
+  const isRejected = info.status === "rejected";
+  if (typeof info.utilization !== "number" && !isRejected) {
+    return undefined;
+  }
+  const usedPercent = typeof info.utilization === "number" ? info.utilization * 100 : 100;
   const resetsAt = isoFromEpochSeconds(info.resetsAt);
   if (type in WINDOWS) {
     return { windows: [makeWindow(type, usedPercent, resetsAt)] };

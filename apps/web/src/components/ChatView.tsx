@@ -7874,8 +7874,22 @@ export default function ChatView(props: ChatViewProps) {
           stoppedAt: activeThreadShell.latestRun.completedAt ?? activeThreadShell.updatedAt,
           recovery: activeThreadShell.limitRecovery ?? null,
           snoozedUntil: activeThreadShell.snoozedUntil,
-          failoverTargets,
-          failoverUnavailable: supportsProviderSwitchingViaHandoff && failoverTargets.length === 0,
+          failoverTargets: getProviderFailoverTargets({
+            entries: providerInstanceEntries,
+            settings,
+            current: activeThreadShell.modelSelection,
+            supportsHandoff: supportsProviderSwitchingViaHandoff,
+            usageLimitSources,
+          }),
+          failoverUnavailable:
+            supportsProviderSwitchingViaHandoff &&
+            getProviderFailoverTargets({
+              entries: providerInstanceEntries,
+              settings,
+              current: activeThreadShell.modelSelection,
+              supportsHandoff: supportsProviderSwitchingViaHandoff,
+              usageLimitSources,
+            }).length === 0,
           failoverDisabled:
             !canOperateThread ||
             isSendBusy ||

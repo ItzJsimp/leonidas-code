@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off globalFetch:off globalTimers:off globalDate:off
+// @effect-diagnostics nodeBuiltinImport:off globalFetch:off globalTimers:off globalDate:off cryptoRandomUUID:off globalRandom:off
 /**
  * Antigravity subscription usage and quota reader.
  *
@@ -46,6 +46,8 @@ export interface AntigravityUserStatus {
       readonly planName?: string | null;
       readonly teamsTier?: string | null;
     } | null;
+    readonly availablePromptCredits?: number | null;
+    readonly availableFlowCredits?: number | null;
   } | null;
   readonly cascadeModelConfigData?: {
     readonly clientModelConfigs?: ReadonlyArray<AntigravityClientModelConfig> | null;
@@ -221,16 +223,57 @@ export function resolveLanguageServerLogPath(): string | null {
   return home ? Path.join(home, ".config", "Antigravity", "logs", "language_server.log") : null;
 }
 
-async function queryLanguageServerPort(
+/**
+ * Discovers the CSRF token of a currently running Antigravity language_server process.
+ */
+export function discoverRunningCsrfToken(): string | null {
+  try {
+    if (process.platform === "win32") {
+      try {
+        const out = ChildProcess.execSync(
+          'wmic process where "name like \'%language_server%\'" get commandline',
+          { timeout: 1500, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+        );
+        const match = out.match(/--csrf_token\s+([^\s]+)/);
+        if (match && match[1]) return match[1].trim();
+      } catch {
+        const out = ChildProcess.execSync(
+          'powershell -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -like \'*language_server*\' } | Select-Object -ExpandProperty CommandLine"',
+          { timeout: 2500, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+        );
+        const match = out.match(/--csrf_token\s+([^\s]+)/);
+        if (match && match[1]) return match[1].trim();
+      }
+    } else {
+      const out = ChildProcess.execSync("ps -eo command", {
+        timeout: 1500,
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+      const match = out.match(/language_server.*--csrf_token\s+([^\s]+)/);
+      if (match && match[1]) return match[1].trim();
+    }
+  } catch {
+    // Process inspection unavailable
+  }
+  return null;
+}
+
+export async function queryLanguageServerPort(
   port: number,
+  csrfToken?: string,
   timeoutMs = 1500,
 ): Promise<AntigravityGetUserStatusResponse | null> {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (csrfToken) {
+      headers["x-codeium-csrf-token"] = csrfToken;
+    }
     const res = await fetch(
       `http://127.0.0.1:${port}/exa.language_server_pb.LanguageServerService/GetUserStatus`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: "{}",
         signal: AbortSignal.timeout(timeoutMs),
       },
@@ -245,13 +288,13 @@ async function queryLanguageServerPort(
 /**
  * Checks if a language server is currently running and listening on a logged port.
  */
-async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusResponse | null> {
+export async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusResponse | null> {
   const logPath = resolveLanguageServerLogPath();
   if (!logPath || !FS.existsSync(logPath)) return null;
 
   try {
     const content = await FS.promises.readFile(logPath, "utf-8");
-    const lines = content.split("\n").slice(-30);
+    const lines = content.split("\n").slice(-50);
     let lastPort: number | null = null;
     for (const line of lines) {
       const match = line.match(/listening on random port at (\d+) for HTTP\b/);
@@ -260,7 +303,8 @@ async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusRes
       }
     }
     if (lastPort && lastPort > 0) {
-      return await queryLanguageServerPort(lastPort, 1200);
+      const csrfToken = discoverRunningCsrfToken() ?? undefined;
+      return await queryLanguageServerPort(lastPort, csrfToken, 2000);
     }
   } catch {
     // Log unreadable or missing
@@ -272,12 +316,17 @@ async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusRes
  * Spawns a standalone language server instance, captures its port, queries GetUserStatus,
  * and shuts it down.
  */
-async function probeStandaloneLanguageServer(
+export async function probeStandaloneLanguageServer(
   executablePath?: string,
   timeoutMs = 6000,
 ): Promise<AntigravityGetUserStatusResponse | null> {
   const exe = executablePath ?? resolveLanguageServerCandidates().find((p) => FS.existsSync(p));
   if (!exe || !FS.existsSync(exe)) return null;
+
+  const csrfToken =
+    typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `t3-antigravity-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   return new Promise<AntigravityGetUserStatusResponse | null>((resolve) => {
     let proc: ChildProcess.ChildProcess | null = null;
@@ -316,6 +365,8 @@ async function probeStandaloneLanguageServer(
           "antigravity",
           "--http_server_port",
           "0",
+          "--csrf_token",
+          csrfToken,
           "--app_data_dir",
           "antigravity",
           "--api_server_url",
@@ -337,7 +388,7 @@ async function probeStandaloneLanguageServer(
         }
         if (text.includes("initialized server successfully") && port && !finished) {
           try {
-            const result = await queryLanguageServerPort(port, 2500);
+            const result = await queryLanguageServerPort(port, csrfToken, 2500);
             clearTimeout(timer);
             cleanup();
             resolve(result);
