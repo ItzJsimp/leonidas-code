@@ -140,8 +140,7 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
         const catalogService = yield* ModelCatalog.ModelCatalog;
         const modelCatalog = catalogService
           .current(DRIVER_KIND)
-          .pipe(Effect.map((catalog) => resolveClaudeModelCatalog(catalog ?? { models: [], defaultChatModel: undefined })));
-        // Note: direct OpenRouter manifest read (not Claude-mapped) needed for picker; kept Claude mapping here for checkProvider compatibility until native adapter completes.
+          .pipe(Effect.map((catalog) => catalog ?? { models: [], defaultChatModel: undefined }));
 
         const effectiveBaseUrl = config.baseUrl.trim() || "https://openrouter.ai/api";
         const effectiveApiKey = config.apiKey.trim();
@@ -223,7 +222,7 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
         const textGeneration = yield* makeClaudeTextGeneration(
           claudeCompatibleConfig,
           processEnv,
-          modelCatalog,
+          modelCatalog as any,
         );
 
         const capabilitiesProbeCache = yield* Cache.make({
@@ -249,7 +248,7 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
                   () => Cache.get(capabilitiesProbeCache, capabilitiesCacheKey),
                   processEnv,
                   cwd,
-                  catalog,
+                  catalog as any,
                   scopedLimitNames,
                   () => Effect.succeed(undefined),
                 ),
