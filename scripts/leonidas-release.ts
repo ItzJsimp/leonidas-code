@@ -106,23 +106,30 @@ function main() {
       /^v\d+\.\d+\.\d+$/.test(release.tag_name) &&
       (!development || release.tag_name.startsWith("v0.")),
   );
+  // The first 0.x release still describes changes since the last legacy install.
+  const notesBaseline =
+    previous ??
+    releases.find(
+      (release) =>
+        !release.draft && !release.prerelease && /^v\d+\.\d+\.\d+$/.test(release.tag_name),
+    );
   let range = "-1";
-  if (previous) {
+  if (notesBaseline) {
     run("git", [
       "fetch",
       "--no-tags",
       "origin",
-      `refs/tags/${previous.tag_name}:refs/tags/${previous.tag_name}`,
+      `refs/tags/${notesBaseline.tag_name}:refs/tags/${notesBaseline.tag_name}`,
     ]);
     // Fetch only main's history, instead of every upstream branch.
     if (run("git", ["rev-parse", "--is-shallow-repository"]) === "true")
       run("git", ["fetch", "--no-tags", "--unshallow", "origin", "main"]);
     if (
-      run("git", ["merge-base", previous.tag_name, "HEAD"]) !==
-      run("git", ["rev-list", "-1", previous.tag_name])
+      run("git", ["merge-base", notesBaseline.tag_name, "HEAD"]) !==
+      run("git", ["rev-list", "-1", notesBaseline.tag_name])
     )
       throw new Error("Previous release is not an ancestor of this build");
-    range = `${previous.tag_name}..HEAD`;
+    range = `${notesBaseline.tag_name}..HEAD`;
   }
   const raw = run("git", ["log", range, "--no-merges", "--reverse", "--format=%s%x1f%b%x1e"]);
   const commits = raw

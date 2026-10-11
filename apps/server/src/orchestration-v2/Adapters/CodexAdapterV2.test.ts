@@ -1568,7 +1568,11 @@ function codexReplayPreamble(input: {
         id: 1,
         method: "initialize",
         params: {
-          clientInfo: { name: "Leonidas Code", title: "Leonidas Code", version: packageJson.version },
+          clientInfo: {
+            name: "Leonidas Code",
+            title: "Leonidas Code",
+            version: packageJson.version,
+          },
           capabilities: {
             experimentalApi: true,
             optOutNotificationMethods: ["turn/diff/updated"],
@@ -2165,7 +2169,11 @@ describe("CodexAdapterV2 post-settle continuation", () => {
       // version, so pin the whole value here.
       assert.deepEqual(initializeParams, [
         {
-          clientInfo: { name: "Leonidas Code", title: "Leonidas Code", version: packageJson.version },
+          clientInfo: {
+            name: "Leonidas Code",
+            title: "Leonidas Code",
+            version: packageJson.version,
+          },
           capabilities: {
             experimentalApi: true,
             optOutNotificationMethods: ["turn/diff/updated"],
@@ -2709,6 +2717,15 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           assert.equal(contextReport.providerTurn.providerThreadId, harness.providerThread.id);
           assert.equal(contextReport.providerTurn.tokenUsage?.usedTokens, 15);
           assert.equal(contextReport.providerTurn.tokenUsage?.maxTokens, 200_000);
+          assert.deepEqual(contextReport.providerTurn.turnTokenUsage, {
+            usageStatus: "partial",
+            usageScope: "main_agent",
+            hasSubagents: false,
+            inputTokens: 10,
+            cachedInputTokens: 2,
+            outputTokens: 5,
+            reasoningTokens: 1,
+          });
         }
         const completed = harness.events.find(
           (event) =>

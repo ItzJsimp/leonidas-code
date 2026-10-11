@@ -51,6 +51,17 @@ Download the latest installer from [GitHub Releases](https://github.com/ItzJsimp
 The Windows build is unsigned, so SmartScreen warns once on first install.
 Package-manager installs (winget, Homebrew, AUR) are not published for Leonidas Code.
 
+Development releases use `0.MINOR.PATCH`: new features advance MINOR, and fixes
+advance PATCH. Version `1.0.0` is reserved for the public launch. If you have a
+legacy `1.0.x` installation, run the `0.2.0` installer once to switch to development
+releases. Your projects and conversations stay in the same app data directory;
+subsequent `0.x` updates use the normal updater.
+
+Open **Settings → General → About → Update history** to browse patch notes for
+current and older versions. In the desktop app, enable **Install updates when
+agents finish** to automatically restart after an update downloads and your
+agents stop working. Otherwise, choose when to install each downloaded update.
+
 The `.deb` updates itself like the other desktop builds. It asks for your
 password to install each update. If your desktop has no password prompt, the
 update fails. Download the new `.deb` and install it the same way.
@@ -110,7 +121,7 @@ computer.
 | Cursor      | Install [Cursor CLI](https://cursor.com/cli), then run `agent login`.                                                                                     |
 | Grok Build  | Install [Grok Build CLI](https://x.ai/cli), then run `grok login`.                                                                                        |
 | OpenCode    | Install [OpenCode](https://opencode.ai), then run `opencode auth login`.                                                                                  |
-| Antigravity | Install and sign in with Google from Leonidas Code's provider settings.                                                                                         |
+| Antigravity | Install and sign in with Google from Leonidas Code's provider settings.                                                                                   |
 | Pi          | Install [Pi](https://pi.dev), then run `pi` once to finish its login or API-key setup.                                                                    |
 | Muse Code   | Install [Muse Code](https://dev.meta.ai/docs/muse-code) on the server, run `muse login`, then enable it in Settings → Providers.                          |
 
