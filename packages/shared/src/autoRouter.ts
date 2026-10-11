@@ -25,9 +25,15 @@ import type {
 import { AutoRoutePreference } from "@t3tools/contracts/settings";
 
 import { elapsedShare } from "./usageLimits.ts";
+import {
+  forecastWindowUsedPercentAtReset,
+  type UsageHistoryProfile,
+  type UsageObservationPoint,
+} from "./usageForecast.ts";
 
 export const AUTO_ROUTE_PREFERENCES = AutoRoutePreference.literals;
 export type { AutoRoutePreference };
+export type { UsageHistoryProfile, UsageObservationPoint };
 
 export const AUTO_ROUTE_PREFERENCE_LABELS: Record<AutoRoutePreference, string> = {
   balanced: "Balanced",
@@ -60,6 +66,7 @@ export interface AutoRouteCandidate {
   readonly label: string;
   readonly continuationGroupKey?: string | undefined;
   readonly usageLimits?: ServerProviderUsageLimits | undefined;
+  readonly usageHistory?: UsageHistoryProfile | ReadonlyArray<UsageObservationPoint> | undefined;
   readonly models: ReadonlyArray<AutoRouteModel>;
 }
 
@@ -187,7 +194,14 @@ export interface QuotaOutlook {
 export function projectUsedPercentAtReset(
   window: ServerProviderUsageWindow,
   now: number,
+  history?: UsageHistoryProfile | ReadonlyArray<UsageObservationPoint>,
 ): number | null {
+  if (window.projectedUsedPercentAtReset !== undefined) {
+    return window.projectedUsedPercentAtReset;
+  }
+  if (history !== undefined) {
+    return forecastWindowUsedPercentAtReset(window, now, history);
+  }
   const elapsed = elapsedShare(window, now);
   if (elapsed === null || elapsed < 0.1 || window.windowDurationMins === undefined) return null;
   const resetsAt = window.resetsAt === undefined ? Number.NaN : Date.parse(window.resetsAt);
@@ -206,13 +220,14 @@ export function projectUsedPercentAtReset(
 export function quotaOutlook(
   limits: ServerProviderUsageLimits | undefined,
   now: number,
+  history?: UsageHistoryProfile | ReadonlyArray<UsageObservationPoint>,
 ): QuotaOutlook | null {
   if (!limits || limits.windows.length === 0) return { scarcity: 0, spare: 0 };
   let scarcity = 0;
   let spare = 1;
   for (const window of limits.windows) {
     if (window.usedPercent >= 100) return null;
-    const projected = projectUsedPercentAtReset(window, now) ?? window.usedPercent;
+    const projected = projectUsedPercentAtReset(window, now, history) ?? window.usedPercent;
     scarcity = Math.max(scarcity, clamp01((projected - 90) / 10));
     // Keep a ten-point margin for this thread's own work before calling quota spare.
     spare = Math.min(spare, clamp01((90 - projected) / 30));
@@ -414,7 +429,7 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
 
   const options: ScoredOption[] = [];
   for (const candidate of input.candidates) {
-    const outlook = quotaOutlook(candidate.usageLimits, input.now);
+    const outlook = quotaOutlook(candidate.usageLimits, input.now, candidate.usageHistory);
     if (outlook === null) continue;
     // Instances sharing a continuation group resume the same native session.
     const sameProviderSession =

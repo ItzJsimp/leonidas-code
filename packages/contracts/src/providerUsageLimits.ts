@@ -39,6 +39,7 @@ export const ServerProviderUsageWindow = Schema.Struct({
   resetsAt: Schema.optional(IsoDateTime),
   windowDurationMins: Schema.optional(NonNegativeInt),
   tokenEstimate: Schema.optional(SubscriptionTokenEstimate),
+  projectedUsedPercentAtReset: Schema.optional(Schema.Number),
 });
 export type ServerProviderUsageWindow = typeof ServerProviderUsageWindow.Type;
 

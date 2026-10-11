@@ -243,6 +243,37 @@ describe("subscription quota", () => {
     expect(decision?.modelSelection.instanceId).toBe(claudeWork);
   });
 
+  it("prioritizes explicit projectedUsedPercentAtReset when present", () => {
+    const win = { ...session(40, 1).windows[0]!, projectedUsedPercentAtReset: 82.5 };
+    expect(projectUsedPercentAtReset(win, NOW)).toBe(82.5);
+  });
+
+  it("prefers an account at 80% whose history shows safe remaining burn over an account projected to run dry", () => {
+    // Claude is at 80% after 3 hours, but projected at reset to only reach 83% (spare quota).
+    // Codex is at 40% in 1st hour, on track to run dry (200%).
+    const claudeSafeAt80: ServerProviderUsageLimits = {
+      checkedAt: iso(NOW),
+      windows: [
+        {
+          id: "session",
+          kind: "session",
+          label: "Session",
+          usedPercent: 80,
+          windowDurationMins: 300,
+          resetsAt: iso(NOW + 2 * HOUR),
+          projectedUsedPercentAtReset: 83,
+        },
+      ],
+    };
+    const decision = routeTurn({
+      preference: "balanced",
+      prompt: STANDARD,
+      candidates: [claudeCandidate(claudeSafeAt80), codexCandidate(session(40, 1))],
+      now: NOW,
+    });
+    expect(decision?.modelSelection.instanceId).toBe(claude);
+  });
+
   it("skips exhausted accounts and returns null when none can run", () => {
     expect(
       routeTurn({

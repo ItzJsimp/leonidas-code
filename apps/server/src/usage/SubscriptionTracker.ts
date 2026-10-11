@@ -8,11 +8,27 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
 import { writeFileStringAtomically } from "@t3tools/shared/atomicWrite";
+import {
+  forecastWindowUsedPercentAtReset,
+  type UsageObservationPoint,
+} from "@t3tools/shared/usageForecast";
 import { UsageService } from "./UsageService.ts";
 import { SubscriptionLedger, advanceSubscriptionWindow } from "./subscriptionTracking.ts";
 
 const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 const encodeLedger = Schema.encodeSync(Schema.fromJsonString(SubscriptionLedger));
+const ObservationLine = Schema.Struct({
+  accountKey: Schema.String,
+  checkedAt: Schema.String,
+  windows: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      usedPercent: Schema.Number,
+      resetsAt: Schema.optional(Schema.String),
+    }),
+  ),
+});
+const decodeObservationLine = Schema.decodeUnknownOption(Schema.fromJsonString(ObservationLine));
 
 /** Persisted server-owned calibration, shared by all clients and agent snapshots. */
 export const makeSubscriptionTracker = Effect.fn("makeSubscriptionTracker")(function* (
@@ -27,6 +43,34 @@ export const makeSubscriptionTracker = Effect.fn("makeSubscriptionTracker")(func
   const raw = yield* fs.readFileString(ledgerPath).pipe(Effect.orElseSucceed(() => "{}"));
   const decode = Schema.decodeUnknownOption(Schema.fromJsonString(SubscriptionLedger));
   let ledger: SubscriptionLedger = Option.getOrElse(decode(raw), () => ({}));
+
+  const observationsPath = path.join(cacheDir, "subscription-observations.jsonl");
+  const rawObservations = yield* fs
+    .readFileString(observationsPath)
+    .pipe(Effect.orElseSucceed(() => ""));
+  const historyByAccountAndWindow = new Map<string, UsageObservationPoint[]>();
+  for (const line of rawObservations.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const decoded = decodeObservationLine(trimmed);
+    if (Option.isNone(decoded)) continue;
+    const parsed = decoded.value;
+    const checkedAtMs = Date.parse(parsed.checkedAt);
+    if (!Number.isFinite(checkedAtMs)) continue;
+    for (const win of parsed.windows) {
+      const key = parsed.accountKey + ":" + win.id;
+      let list = historyByAccountAndWindow.get(key);
+      if (!list) {
+        list = [];
+        historyByAccountAndWindow.set(key, list);
+      }
+      list.push({
+        checkedAt: checkedAtMs,
+        usedPercent: win.usedPercent,
+        resetsAt: win.resetsAt,
+      });
+    }
+  }
 
   return (provider: ServerProvider) =>
     mutex.withPermit(
@@ -73,8 +117,27 @@ export const makeSubscriptionTracker = Effect.fn("makeSubscriptionTracker")(func
               observation?.totals ?? null,
             );
             windows[window.id] = result.state;
+            const historyKey = accountKey + ":" + window.id;
+            const history = historyByAccountAndWindow.get(historyKey);
+            const forecast = forecastWindowUsedPercentAtReset(window, at, history);
+            const projectedUsedPercentAtReset =
+              forecast !== null ? Math.round(forecast * 10) / 10 : undefined;
+            let historyList = historyByAccountAndWindow.get(historyKey);
+            if (!historyList) {
+              historyList = [];
+              historyByAccountAndWindow.set(historyKey, historyList);
+            }
+            historyList.push({
+              checkedAt: at,
+              usedPercent: window.usedPercent,
+              resetsAt: window.resetsAt,
+            });
+            if (historyList.length > 500) {
+              historyList.shift();
+            }
             return {
               ...window,
+              ...(projectedUsedPercentAtReset !== undefined ? { projectedUsedPercentAtReset } : {}),
               tokenEstimate: !identity
                 ? {
                     ...result.estimate,
@@ -102,12 +165,17 @@ export const makeSubscriptionTracker = Effect.fn("makeSubscriptionTracker")(func
               instanceId: provider.instanceId,
               accountKey,
               checkedAt: limits.checkedAt,
-              windows: enriched.map(({ id, usedPercent, resetsAt, tokenEstimate }) => ({
-                id,
-                usedPercent,
-                resetsAt,
-                tokenEstimate,
-              })),
+              windows: enriched.map(
+                ({ id, usedPercent, resetsAt, tokenEstimate, projectedUsedPercentAtReset }) => ({
+                  id,
+                  usedPercent,
+                  resetsAt,
+                  tokenEstimate,
+                  ...(projectedUsedPercentAtReset !== undefined
+                    ? { projectedUsedPercentAtReset }
+                    : {}),
+                }),
+              ),
             }) + "\n",
             { flag: "a" },
           );
