@@ -57,7 +57,9 @@ That sets rebase pulls, links your AIOS identity, installs the latest Leonidas C
 
 ## Next action (existing AIOS installs)
 
-The [next action skill](./.agents/skills/next-action/SKILL.md) ships in this repository. Setup and the Claude session-start hook install it in the parent AIOS and existing projects, with backups for changed files. A fresh conversation discovers the new skill; an already-running agent can retain its old skill catalog.
+The [next action skill](./.agents/skills/next-action/SKILL.md) ships in this repository. Setup and the Claude and Codex session-start hooks install it in the parent AIOS and existing projects, with backups for changed files. A fresh conversation discovers the new skill; an already-running agent can retain its old skill catalog.
+
+After pulling `main`, Codex loads [its project hook](./.codex/hooks.json) on startup and resume, including when started in a project subdirectory. With a current Codex CLI, trust this project and review the new hook once using `/hooks`; Codex skips untrusted hooks until reviewed. After that, installation runs automatically. The Codex hook installs from the checked-out source; it does not pull changes. Older Codex versions without lifecycle hooks need an update or the manual installer below. See [Codex hook setup](https://learn.chatgpt.com/docs/hooks).
 
 To install now, from your AIOS root run `git -C projects/leonidas-code pull --rebase --autostash origin main`, then `pwsh -NoProfile -File projects/leonidas-code/scripts/Install-NextAction.ps1 -AiosRoot .`. The installer prints the machine-local verification result. Say `next action, skip` in a fresh Leonidas Code conversation to get a recommendation without the energy interview.
 
