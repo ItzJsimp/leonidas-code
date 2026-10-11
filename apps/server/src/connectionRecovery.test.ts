@@ -27,6 +27,10 @@ import { PrimaryConnectionTarget } from "../../../packages/client-runtime/src/co
 import * as Supervisor from "../../../packages/client-runtime/src/connection/supervisor.ts";
 import * as Wakeups from "../../../packages/client-runtime/src/connection/wakeups.ts";
 import * as RpcSession from "../../../packages/client-runtime/src/rpc/session.ts";
+import {
+  recordAcceptance,
+  recoverySampleCount,
+} from "../../../scripts/harness-acceptance.record.ts";
 
 const environmentId = EnvironmentId.make("socket-recovery-test");
 const config: ServerConfig = {
@@ -144,126 +148,142 @@ describe("real socket connection recovery", () => {
     ),
   );
 
-  it.live("reconnects, resubscribes and probes after an abrupt peer disconnect", () =>
-    Effect.scoped(
-      Effect.gen(function* () {
-        const server = yield* openServer;
-        const peers = yield* Queue.unbounded<NodeWS.WebSocket>();
-        const subscriptions: string[] = [];
-        server.on("connection", (peer) => {
-          peer.on("message", (data) => {
-            const message = decodeJson(data.toString());
-            if (isPing(message)) {
-              peer.send(JSON.stringify({ _tag: "Pong" }));
-              return;
-            }
-            const request = decodeRequest(message);
-            if (Option.isNone(request)) return;
-            if (request.value.tag === WS_METHODS.subscribeServerConfig) {
-              subscriptions.push(request.value.tag);
-              peer.send(
-                JSON.stringify({
-                  _tag: "Chunk",
-                  requestId: request.value.id,
-                  values: [{ version: 1, type: "snapshot", config: encodeConfig(config) }],
-                }),
-              );
-            } else if (request.value.tag === WS_METHODS.serverProbe) {
-              peer.send(
-                JSON.stringify({
-                  _tag: "Exit",
-                  requestId: request.value.id,
-                  exit: { _tag: "Success", value: {} },
-                }),
-              );
-            }
-          });
-          Queue.offerUnsafe(peers, peer);
-        });
-        const address = server.address();
-        if (address === null || typeof address === "string") {
-          return yield* Effect.die(new Error("Expected an ephemeral TCP port"));
-        }
-        const target = new PrimaryConnectionTarget({
-          environmentId,
-          label: config.environment.label,
-          httpBaseUrl: `http://127.0.0.1:${address.port}/`,
-          wsBaseUrl: `ws://127.0.0.1:${address.port}/`,
-        });
-        const entry = { target, profile: Option.none(), enabled: true };
-        const prepared = {
-          environmentId,
-          label: target.label,
-          httpBaseUrl: target.httpBaseUrl,
-          socketUrl: target.wsBaseUrl,
-          httpAuthorization: null,
-          target,
-        };
-        const factory = yield* RpcSession.make().pipe(Effect.provide(layerWebSocketConstructorWS));
-        const dependencies = Layer.mergeAll(
-          Connectivity.layer({ status: Effect.succeed("online"), changes: Stream.never }),
-          Wakeups.layer({ changes: Stream.never }),
-          Layer.succeed(ConnectionDriver.ConnectionDriver, {
-            connect: (savedEntry) =>
-              ConnectionDriver.connectOverRoutes(
-                savedEntry,
-                () => Effect.succeed("unchecked"),
-                () =>
-                  Effect.gen(function* () {
-                    const session = yield* factory.connect(prepared);
-                    yield* session.ready;
-                    return { prepared, session };
+  it.live.each(Array.from({ length: recoverySampleCount() }, (_, index) => index + 1))(
+    "reconnects, resubscribes and probes after an abrupt peer disconnect (sample %i)",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const server = yield* openServer;
+          const peers = yield* Queue.unbounded<NodeWS.WebSocket>();
+          const subscriptions: string[] = [];
+          server.on("connection", (peer) => {
+            peer.on("message", (data) => {
+              const message = decodeJson(data.toString());
+              if (isPing(message)) {
+                peer.send(JSON.stringify({ _tag: "Pong" }));
+                return;
+              }
+              const request = decodeRequest(message);
+              if (Option.isNone(request)) return;
+              if (request.value.tag === WS_METHODS.subscribeServerConfig) {
+                subscriptions.push(request.value.tag);
+                peer.send(
+                  JSON.stringify({
+                    _tag: "Chunk",
+                    requestId: request.value.id,
+                    values: [{ version: 1, type: "snapshot", config: encodeConfig(config) }],
                   }),
-              ),
-            checkRoute: () => Effect.succeed("unchecked"),
-            preflight: () => Effect.succeed(false),
-          }),
-        );
-        const started = performance.now();
-        const supervisor = yield* Supervisor.make(entry, { initiallyDesired: true }).pipe(
-          Effect.provide(dependencies),
-        );
-        const connected = (generation: number) =>
-          SubscriptionRef.changes(supervisor.state).pipe(
-            Stream.filter((state) => state.phase === "connected" && state.generation >= generation),
-            Stream.runHead,
-            Effect.map(Option.getOrThrow),
+                );
+              } else if (request.value.tag === WS_METHODS.serverProbe) {
+                peer.send(
+                  JSON.stringify({
+                    _tag: "Exit",
+                    requestId: request.value.id,
+                    exit: { _tag: "Success", value: {} },
+                  }),
+                );
+              }
+            });
+            Queue.offerUnsafe(peers, peer);
+          });
+          const address = server.address();
+          if (address === null || typeof address === "string") {
+            return yield* Effect.die(new Error("Expected an ephemeral TCP port"));
+          }
+          const target = new PrimaryConnectionTarget({
+            environmentId,
+            label: config.environment.label,
+            httpBaseUrl: `http://127.0.0.1:${address.port}/`,
+            wsBaseUrl: `ws://127.0.0.1:${address.port}/`,
+          });
+          const entry = { target, profile: Option.none(), enabled: true };
+          const prepared = {
+            environmentId,
+            label: target.label,
+            httpBaseUrl: target.httpBaseUrl,
+            socketUrl: target.wsBaseUrl,
+            httpAuthorization: null,
+            target,
+          };
+          const factory = yield* RpcSession.make().pipe(
+            Effect.provide(layerWebSocketConstructorWS),
           );
-        yield* connected(1);
-        const initialConnectMs = performance.now() - started;
-        const firstSession = Option.getOrThrow(yield* SubscriptionRef.get(supervisor.session));
-        yield* firstSession.probe;
-        const firstPeer = yield* Queue.take(peers);
-        const disconnected = performance.now();
-        firstPeer.terminate();
-        yield* connected(2);
-        const reconnectMs = performance.now() - disconnected;
-        const secondSession = Option.getOrThrow(yield* SubscriptionRef.get(supervisor.session));
-        expect(secondSession).not.toBe(firstSession);
-        yield* secondSession.probe;
-        expect((yield* secondSession.initialConfig).environment.environmentId).toBe(environmentId);
-        expect(subscriptions).toHaveLength(2);
-        const secondPeer = yield* Queue.take(peers);
-        const peerClosed = Effect.callback<void>((resume) => {
-          secondPeer.once("close", () => resume(Effect.void));
-        });
-        const closed = yield* Effect.forkChild(peerClosed);
-        yield* supervisor.disconnect;
-        yield* SubscriptionRef.changes(supervisor.state).pipe(
-          Stream.filter((state) => state.phase === "available"),
-          Stream.runHead,
-        );
-        yield* Fiber.join(closed);
-        expect(Option.isNone(yield* SubscriptionRef.get(supervisor.session))).toBe(true);
-        expect(server.clients.size).toBe(0);
-        yield* Effect.logInfo("connectionRecovery.loopback", {
-          initialConnectMs,
-          reconnectMs,
-        }).pipe(
-          Effect.provide(Logger.layer([Logger.consoleLogFmt])),
-          Effect.provideService(References.MinimumLogLevel, "Info"),
-        );
-      }),
-    ),
+          const dependencies = Layer.mergeAll(
+            Connectivity.layer({ status: Effect.succeed("online"), changes: Stream.never }),
+            Wakeups.layer({ changes: Stream.never }),
+            Layer.succeed(ConnectionDriver.ConnectionDriver, {
+              connect: (savedEntry) =>
+                ConnectionDriver.connectOverRoutes(
+                  savedEntry,
+                  () => Effect.succeed("unchecked"),
+                  () =>
+                    Effect.gen(function* () {
+                      const session = yield* factory.connect(prepared);
+                      yield* session.ready;
+                      return { prepared, session };
+                    }),
+                ),
+              checkRoute: () => Effect.succeed("unchecked"),
+              preflight: () => Effect.succeed(false),
+            }),
+          );
+          const started = performance.now();
+          const supervisor = yield* Supervisor.make(entry, { initiallyDesired: true }).pipe(
+            Effect.provide(dependencies),
+          );
+          const connected = (generation: number) =>
+            SubscriptionRef.changes(supervisor.state).pipe(
+              Stream.filter(
+                (state) => state.phase === "connected" && state.generation >= generation,
+              ),
+              Stream.runHead,
+              Effect.map(Option.getOrThrow),
+            );
+          yield* connected(1);
+          const initialConnectMs = performance.now() - started;
+          const firstSession = Option.getOrThrow(yield* SubscriptionRef.get(supervisor.session));
+          const initialProbeStarted = performance.now();
+          yield* firstSession.probe;
+          const initialProbeMs = performance.now() - initialProbeStarted;
+          const firstPeer = yield* Queue.take(peers);
+          const disconnected = performance.now();
+          firstPeer.terminate();
+          yield* connected(2);
+          const reconnectMs = performance.now() - disconnected;
+          const secondSession = Option.getOrThrow(yield* SubscriptionRef.get(supervisor.session));
+          expect(secondSession).not.toBe(firstSession);
+          const recoveredProbeStarted = performance.now();
+          yield* secondSession.probe;
+          const recoveredProbeMs = performance.now() - recoveredProbeStarted;
+          expect((yield* secondSession.initialConfig).environment.environmentId).toBe(
+            environmentId,
+          );
+          expect(subscriptions).toHaveLength(2);
+          const secondPeer = yield* Queue.take(peers);
+          const peerClosed = Effect.callback<void>((resume) => {
+            secondPeer.once("close", () => resume(Effect.void));
+          });
+          const closed = yield* Effect.forkChild(peerClosed);
+          yield* supervisor.disconnect;
+          yield* SubscriptionRef.changes(supervisor.state).pipe(
+            Stream.filter((state) => state.phase === "available"),
+            Stream.runHead,
+          );
+          yield* Fiber.join(closed);
+          expect(Option.isNone(yield* SubscriptionRef.get(supervisor.session))).toBe(true);
+          expect(server.clients.size).toBe(0);
+          recordAcceptance("loopback.initial-connect", [initialConnectMs]);
+          recordAcceptance("loopback.drop-to-reconnected", [reconnectMs]);
+          recordAcceptance("loopback.initial-rpc-probe", [initialProbeMs]);
+          recordAcceptance("loopback.recovered-rpc-probe", [recoveredProbeMs]);
+          yield* Effect.logInfo("connectionRecovery.loopback", {
+            initialConnectMs,
+            reconnectMs,
+          }).pipe(
+            Effect.provide(Logger.layer([Logger.consoleLogFmt])),
+            Effect.provideService(References.MinimumLogLevel, "Info"),
+          );
+        }),
+      ),
   );
 });
