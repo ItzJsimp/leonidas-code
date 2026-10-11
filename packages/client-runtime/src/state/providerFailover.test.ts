@@ -31,7 +31,14 @@ const targets = (providers: ServerProvider[], supportsHandoff = true) =>
 describe("selectProviderFailoverTargets", () => {
   it("offers a ready alternate subscription with its default model", () => {
     expect(targets([provider()])).toEqual([
-      { label: "Codex", modelSelection: { instanceId: "codex", model: "gpt-test" } },
+      {
+        label: "Codex",
+        modelSelection: {
+          instanceId: "codex",
+          model: "gpt-test",
+          options: [{ id: "effort", value: "medium" }],
+        },
+      },
     ]);
   });
 
@@ -44,6 +51,35 @@ describe("selectProviderFailoverTargets", () => {
       }),
     ]);
     expect(target?.modelSelection.model).toBe("first");
+  });
+
+  it("resumes Claude on Sonnet 5.5 at medium effort, not the catalog default", () => {
+    const [target] = targets([
+      provider("claude_second", {
+        driver: ProviderDriverKind.make("claudeAgent"),
+        models: [
+          {
+            slug: "claude-fable-5-1",
+            name: "Fable 5.1",
+            isCustom: false,
+            isDefault: true,
+            capabilities: {},
+          },
+          {
+            slug: "claude-sonnet-5-5",
+            name: "Sonnet 5.5",
+            isCustom: false,
+            isDefault: false,
+            capabilities: {},
+          },
+        ],
+      }),
+    ]);
+    expect(target?.modelSelection).toEqual({
+      instanceId: "claude_second",
+      model: "claude-sonnet-5-5",
+      options: [{ id: "effort", value: "medium" }],
+    });
   });
 
   it("skips the current, disabled, unavailable, uninstalled, unready and paid providers", () => {

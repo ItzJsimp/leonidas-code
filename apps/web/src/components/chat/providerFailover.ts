@@ -1,11 +1,159 @@
-import type { ModelSelection } from "@t3tools/contracts";
+import type {
+  ModelSelection,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  ServerProviderUsageWindow,
+  UsageLimitSourceSnapshots,
+} from "@t3tools/contracts";
 import type { UnifiedSettings } from "@t3tools/contracts/settings";
-import { getAppModelOptionsForInstance } from "../../modelSelection";
+import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
 import { isProviderInstancePickerReady, type ProviderInstanceEntry } from "../../providerInstances";
 
+export interface ProviderFailoverModelChoice {
+  readonly slug: string;
+  readonly name: string;
+  readonly isDefault?: boolean;
+}
+
 export interface ProviderFailoverTarget {
+  readonly instanceId: ProviderInstanceId;
+  readonly driverKind: ProviderDriverKind;
   readonly label: string;
   readonly modelSelection: ModelSelection;
+  readonly availableModels: ReadonlyArray<ProviderFailoverModelChoice>;
+}
+
+export const FAILOVER_SUPPORTED_DRIVERS: ReadonlySet<string> = new Set([
+  "codex",
+  "claudeAgent",
+  "antigravity",
+  "cursor",
+]);
+
+export function isProviderUsageWindowExhausted(
+  window: ServerProviderUsageWindow,
+  nowMs = Date.now(),
+): boolean {
+  if (Math.round(window.usedPercent) < 100) return false;
+  if (window.resetsAt !== undefined) {
+    const resetTime = Date.parse(window.resetsAt);
+    if (Number.isFinite(resetTime) && resetTime <= nowMs) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function isProviderInstanceRateLimited(
+  entry: ProviderInstanceEntry,
+  sources?: UsageLimitSourceSnapshots,
+  nowMs = Date.now(),
+): boolean {
+  // 1. Check direct windows on usageLimits
+  if (
+    entry.snapshot.usageLimits?.windows.some((window) =>
+      isProviderUsageWindowExhausted(window, nowMs),
+    )
+  ) {
+    return true;
+  }
+
+  // 2. Check message for explicit rate/quota limit mentions
+  if (
+    entry.snapshot.message &&
+    /usage limit|rate limit|quota exceeded|limit reached/i.test(entry.snapshot.message)
+  ) {
+    return true;
+  }
+
+  // 3. Check hub / proxy sources if provided
+  if (sources && sources.length > 0) {
+    const email = entry.snapshot.auth.email?.trim().toLowerCase();
+    const fingerprint = entry.snapshot.usageLimits?.credentialFingerprint;
+    for (const source of sources) {
+      for (const account of source.accounts) {
+        if (account.driver !== entry.driverKind) continue;
+        const accountEmail = account.email?.trim().toLowerCase();
+        const matchesAccount =
+          (email && accountEmail && email === accountEmail) ||
+          (fingerprint &&
+            account.usageLimits.credentialFingerprint &&
+            fingerprint === account.usageLimits.credentialFingerprint);
+        if (matchesAccount) {
+          if (
+            account.usageLimits.windows.some((window) =>
+              isProviderUsageWindowExhausted(window, nowMs),
+            )
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+export function resolveRecommendedFailoverModel(
+  driverKind: ProviderDriverKind,
+  models: ReadonlyArray<AppModelOption>,
+): { readonly modelSlug: string; readonly effort?: "medium" } {
+  if (driverKind === "claudeAgent") {
+    // Claude: Sonnet 5.5 on Medium effort
+    const sonnet =
+      models.find((m) => m.slug === "claude-sonnet-5-5") ??
+      models.find((m) => /sonnet.*5\.5/i.test(m.slug) || /sonnet.*5\.5/i.test(m.name)) ??
+      models.find((m) => /sonnet/i.test(m.slug) || /sonnet/i.test(m.name)) ??
+      models.find((m) => m.isDefault) ??
+      models[0]!;
+    return { modelSlug: sonnet.slug, effort: "medium" };
+  }
+  if (driverKind === "codex") {
+    // ChatGPT: GPT 6.1 Sol on Medium effort
+    const sol =
+      models.find((m) => m.slug === "gpt-6.1-sol") ??
+      models.find((m) => /6\.1.*sol/i.test(m.slug) || /6\.1.*sol/i.test(m.name)) ??
+      models.find((m) => /sol/i.test(m.slug) || /sol/i.test(m.name)) ??
+      models.find((m) => m.isDefault) ??
+      models[0]!;
+    return { modelSlug: sol.slug, effort: "medium" };
+  }
+  if (driverKind === "antigravity") {
+    // Antigravity: Gemini 3.8 flash on Medium
+    const flashMedium =
+      models.find((m) => m.slug === "gemini-3.8-flash-medium") ??
+      models.find(
+        (m) => /3\.8.*flash.*medium/i.test(m.slug) || /3\.8.*flash.*medium/i.test(m.name),
+      ) ??
+      models.find((m) => /flash.*medium/i.test(m.slug) || /flash.*medium/i.test(m.name)) ??
+      models.find((m) => /flash/i.test(m.slug) || /flash/i.test(m.name)) ??
+      models.find((m) => m.isDefault) ??
+      models[0]!;
+    return { modelSlug: flashMedium.slug, effort: "medium" };
+  }
+  const defaultModel = models.find((m) => m.isDefault) ?? models[0]!;
+  return { modelSlug: defaultModel.slug };
+}
+
+export function createTargetForModel(
+  target: ProviderFailoverTarget,
+  modelSlug: string,
+): ProviderFailoverTarget {
+  const effort =
+    target.driverKind === "claudeAgent" ||
+    target.driverKind === "codex" ||
+    target.driverKind === "antigravity"
+      ? "medium"
+      : undefined;
+  return {
+    ...target,
+    modelSelection: {
+      instanceId: target.instanceId,
+      model: modelSlug,
+      ...(effort ? { options: [{ id: "effort", value: effort }] } : {}),
+    },
+  };
 }
 
 export function getProviderFailoverTargets(input: {
@@ -13,40 +161,83 @@ export function getProviderFailoverTargets(input: {
   readonly settings: UnifiedSettings;
   readonly current: ModelSelection;
   readonly supportsHandoff: boolean;
+  readonly usageLimitSources?: UsageLimitSourceSnapshots | undefined;
+  readonly nowMs?: number | undefined;
 }): ProviderFailoverTarget[] {
   if (!input.supportsHandoff) return [];
+  const nowMs = input.nowMs ?? Date.now();
   const source = input.entries.find((entry) => entry.instanceId === input.current.instanceId);
   return input.entries
     .flatMap((entry) => {
-      // The first slice stays on the user's Claude/Codex subscriptions. API-key
-      // providers need an explicit cost choice rather than an incidental failover.
+      // Must be a supported subscription driver or authenticated with usage limits
+      const isSupportedDriver =
+        FAILOVER_SUPPORTED_DRIVERS.has(entry.driverKind) ||
+        (entry.snapshot.auth.status === "authenticated" &&
+          entry.snapshot.usageLimits !== undefined);
       if (
         entry.instanceId === input.current.instanceId ||
-        (entry.driverKind !== "codex" && entry.driverKind !== "claudeAgent") ||
+        !isSupportedDriver ||
         !entry.installed ||
-        !isProviderInstancePickerReady(entry) ||
+        !isProviderInstancePickerReady(entry)
+      ) {
+        return [];
+      }
+
+      // Check if candidate shares the same underlying account as the current instance
+      const isSameAccount =
         (source?.continuationGroupKey !== undefined &&
           source.continuationGroupKey === entry.continuationGroupKey) ||
-        entry.snapshot.usageLimits?.windows.some((window) => window.usedPercent >= 100)
-      )
+        (source?.snapshot.driver === entry.snapshot.driver &&
+          source.snapshot.auth.email &&
+          entry.snapshot.auth.email &&
+          source.snapshot.auth.email.trim().toLowerCase() ===
+            entry.snapshot.auth.email.trim().toLowerCase()) ||
+        (source?.snapshot.usageLimits?.credentialFingerprint &&
+          entry.snapshot.usageLimits?.credentialFingerprint &&
+          source.snapshot.usageLimits.credentialFingerprint ===
+            entry.snapshot.usageLimits.credentialFingerprint);
+      if (isSameAccount) {
         return [];
+      }
+
+      // Check if candidate is already rate-limited
+      if (isProviderInstanceRateLimited(entry, input.usageLimitSources, nowMs)) {
+        return [];
+      }
+
       const models = getAppModelOptionsForInstance(input.settings, entry).filter(
         (model) => !model.isUnavailable,
       );
-      const model = models.find((candidate) => candidate.isDefault) ?? models[0];
-      return model
-        ? [
-            {
-              label: entry.displayName,
-              modelSelection: { instanceId: entry.instanceId, model: model.slug },
-            },
-          ]
-        : [];
+      if (models.length === 0) {
+        return [];
+      }
+
+      const { modelSlug, effort } = resolveRecommendedFailoverModel(entry.driverKind, models);
+      const options = effort ? [{ id: "effort", value: effort }] : undefined;
+
+      const availableModels: ProviderFailoverModelChoice[] = models.map((m) => ({
+        slug: m.slug,
+        name: m.name,
+        isDefault: m.slug === modelSlug,
+      }));
+
+      return [
+        {
+          instanceId: entry.instanceId,
+          driverKind: entry.driverKind,
+          label: entry.displayName,
+          modelSelection: {
+            instanceId: entry.instanceId,
+            model: modelSlug,
+            ...(options ? { options } : {}),
+          },
+          availableModels,
+        },
+      ];
     })
     .sort((left, right) => {
       const driverOf = (target: ProviderFailoverTarget) =>
-        input.entries.find((entry) => entry.instanceId === target.modelSelection.instanceId)
-          ?.driverKind;
+        input.entries.find((entry) => entry.instanceId === target.instanceId)?.driverKind;
       return (
         Number(driverOf(left) === source?.driverKind) -
         Number(driverOf(right) === source?.driverKind)
@@ -63,14 +254,14 @@ export async function continueWithProvider(input: {
 }): Promise<void> {
   if (input.pending.current) return;
   const { target } = input;
+  const matched = input.targets.find((candidate) => candidate.instanceId === target.instanceId);
   if (
-    !input.targets.some(
-      (candidate) =>
-        candidate.modelSelection.instanceId === target.modelSelection.instanceId &&
-        candidate.modelSelection.model === target.modelSelection.model,
-    )
-  )
+    !matched ||
+    (matched.modelSelection.model !== target.modelSelection.model &&
+      !matched.availableModels.some((m) => m.slug === target.modelSelection.model))
+  ) {
     throw new Error("This provider is no longer available. Choose another provider.");
+  }
   input.pending.current = true;
   try {
     await input.continueWith(target);
