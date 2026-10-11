@@ -43,6 +43,19 @@ in a new thread's model picker to add or remove them. A regular click returns to
 single model. Choose a base branch and send. Each selection starts a separate thread
 and worktree while you stay in the new thread composer. This requires a Git project.
 
+## Command Center
+
+On web and desktop, open **Command Center** from the sidebar footer or search for
+**Open Command Center** in the command palette. It shows approvals and questions
+under **Needs attention**, subscription-limited threads under **Limited**, and
+active turns and background work under **Running**. The view updates with the
+existing live thread connection; click a row to open its chat.
+
+Command Center is read-only. Review approvals or continue work inside the chat.
+Archived and deleted threads are excluded. Disconnected environments show a warning
+and label their saved statuses; reconnect in **Settings > Connections** to restore
+live updates. Use the sidebar's **Back** button to return to the previous chat.
+
 ## Pin and reorder threads
 
 Pin a thread from its menu to keep it above your active work.

@@ -1,0 +1,218 @@
+import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  ArrowUpRightIcon,
+  CirclePauseIcon,
+  LayoutDashboardIcon,
+  ShieldQuestionIcon,
+  ActivityIcon,
+} from "lucide-react";
+import { useMemo } from "react";
+
+import { groupCommandCenterThreads, type CommandCenterStatus } from "../commandCenter";
+import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
+import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
+import { SidebarInset } from "../components/ui/sidebar";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
+import { Spinner } from "../components/ui/spinner";
+import { isElectron } from "../env";
+import {
+  useAllEnvironmentShellsBootstrapped,
+  useProjects,
+  useThreadShells,
+} from "../state/entities";
+import { useEnvironments } from "../state/environments";
+import { buildThreadRouteParams } from "../threadRoutes";
+import { cn } from "../lib/utils";
+
+const STATUS_LABELS: Record<CommandCenterStatus, string> = {
+  approval: "Approval needed",
+  input: "Reply needed",
+  limited: "Subscription limit",
+  working: "Working",
+  waiting: "Waiting for background work",
+};
+const SECTIONS = [
+  {
+    key: "attention",
+    title: "Needs attention",
+    description: "Approvals and questions waiting for you.",
+    empty: "No pending approvals or questions.",
+    Icon: ShieldQuestionIcon,
+    tone: "text-warning",
+  },
+  {
+    key: "limited",
+    title: "Limited",
+    description: "Threads paused by a subscription limit.",
+    empty: "No threads stopped by subscription limits.",
+    Icon: CirclePauseIcon,
+    tone: "text-destructive",
+  },
+  {
+    key: "running",
+    title: "Running",
+    description: "Active turns and background work.",
+    empty: "No agents working right now.",
+    Icon: ActivityIcon,
+    tone: "text-primary",
+  },
+] as const;
+
+function CommandCenterPage() {
+  const threads = useThreadShells();
+  const projects = useProjects();
+  const bootstrapped = useAllEnvironmentShellsBootstrapped();
+  const { environments, isReady } = useEnvironments();
+  const groups = useMemo(() => groupCommandCenterThreads(threads), [threads]);
+  const projectNames = useMemo(
+    () =>
+      new Map(
+        projects.map((project) => [
+          JSON.stringify([project.environmentId, project.id]),
+          project.title,
+        ]),
+      ),
+    [projects],
+  );
+  const environmentById = useMemo(
+    () => new Map(environments.map((environment) => [environment.environmentId, environment])),
+    [environments],
+  );
+  const disconnected = environments.filter(
+    (environment) => environment.connection.phase !== "connected",
+  );
+  const total = groups.attention.length + groups.limited.length + groups.running.length;
+
+  return (
+    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
+      <WorkspacePageHeader electron={isElectron} className="border-b border-border">
+        <LayoutDashboardIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <h1 className="truncate text-sm font-medium">Command Center</h1>
+      </WorkspacePageHeader>
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        <WorkspacePageContainer width="wide">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Your agents, at a glance</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Live status across connected environments. Open a thread to review or continue its
+              work.
+            </p>
+          </div>
+          {disconnected.length > 0 ? (
+            <div
+              role="status"
+              className="rounded-lg border border-warning/30 bg-warning/5 p-4 text-sm"
+            >
+              <p className="font-medium">Some environments are disconnected</p>
+              <p className="mt-1 text-muted-foreground">
+                {disconnected.map((environment) => environment.label).join(", ")}. Their saved
+                statuses may be out of date.
+              </p>
+              <Link
+                to="/settings/connections"
+                className="mt-2 inline-block rounded-sm text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                Open Connections
+              </Link>
+            </div>
+          ) : null}
+          {!isReady || !bootstrapped ? (
+            <div
+              role="status"
+              className="flex items-center gap-2 py-12 text-sm text-muted-foreground"
+            >
+              <Spinner /> Loading thread statuses...
+            </div>
+          ) : (
+            <>
+              {total === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>
+                      {disconnected.length > 0
+                        ? "No work in the saved statuses"
+                        : "Nothing needs attention"}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {environments.length === 0
+                        ? "Connect an environment to see its agents here."
+                        : "Active work, approvals and subscription limits will appear here automatically."}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : null}
+              {SECTIONS.map(({ key, title, description, empty, Icon, tone }) => (
+                <section key={key} aria-labelledby={`command-center-${key}`}>
+                  <div className="mb-3 flex items-start gap-3">
+                    <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", tone)} />
+                    <div className="min-w-0 flex-1">
+                      <h2 id={`command-center-${key}`} className="text-sm font-semibold">
+                        {title}{" "}
+                        <span className="ml-1 font-normal text-muted-foreground">
+                          ({groups[key].length})
+                        </span>
+                      </h2>
+                      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+                    </div>
+                  </div>
+                  {groups[key].length === 0 ? (
+                    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      {empty}
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+                      {groups[key].map(({ thread, status }) => {
+                        const ref = scopeThreadRef(thread.environmentId, thread.id);
+                        const environment = environmentById.get(thread.environmentId);
+                        const stale = environment?.connection.phase !== "connected";
+                        return (
+                          <li key={scopedThreadKey(ref)}>
+                            <Link
+                              to="/$environmentId/$threadId"
+                              params={buildThreadRouteParams(ref)}
+                              title={`Open ${thread.title}`}
+                              className="flex min-w-0 items-center gap-3 p-4 transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">
+                                  {thread.title || "Untitled thread"}
+                                </p>
+                                <p className="mt-1 truncate text-xs text-muted-foreground">
+                                  {projectNames.get(
+                                    JSON.stringify([thread.environmentId, thread.projectId]),
+                                  ) ?? "Unknown project"}{" "}
+                                  · {environment?.label ?? thread.environmentId} ·{" "}
+                                  {thread.runtime?.providerName ?? thread.providerInstanceId}
+                                </p>
+                                <p
+                                  className={cn(
+                                    "mt-2 text-xs",
+                                    stale ? "text-muted-foreground" : tone,
+                                  )}
+                                >
+                                  {STATUS_LABELS[status]}
+                                  {stale ? " (saved status)" : ""}
+                                </p>
+                              </div>
+                              <ArrowUpRightIcon
+                                aria-hidden
+                                className="size-4 shrink-0 text-muted-foreground"
+                              />
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+              ))}
+            </>
+          )}
+        </WorkspacePageContainer>
+      </main>
+    </SidebarInset>
+  );
+}
+
+export const Route = createFileRoute("/_chat/command-center")({ component: CommandCenterPage });
