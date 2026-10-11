@@ -26,6 +26,7 @@ import {
 } from "../../textGeneration/AntigravityTextGeneration.ts";
 import { makeAntigravityAuth, type AntigravityAuth } from "../AntigravityAuth.ts";
 import * as AntigravityInstallation from "../AntigravityInstallation.ts";
+import { probeAntigravityUsageLimits } from "../antigravityUsageLimits.ts";
 import * as AntigravityUsage from "./AntigravityUsage.ts";
 import {
   antigravityAuthConfigIssue,
@@ -384,9 +385,26 @@ export const AntigravityDriver: ProviderDriver<
         };
       });
 
+      const probeUsageLimits = Effect.tryPromise({
+        try: () => probeAntigravityUsageLimits({ executablePath: settings.binaryPath }),
+        catch: () => null,
+      }).pipe(
+        Effect.map((res) =>
+          res
+            ? {
+                usageLimits: res.limits,
+                email: res.email,
+                plan: res.plan,
+              }
+            : undefined,
+        ),
+        Effect.orElseSucceed(() => undefined),
+      );
+
       const provider = yield* makeAntigravityProvider(settings, {
         stampIdentity: classifyModels,
         probe,
+        probeUsageLimits,
         auth: { type: auth.authMethod, label: antigravityAuthLabel(auth.authMethod) },
         supportsTextGeneration: isAntigravityTextGenerationAvailable(profileDirectory).pipe(
           Effect.provideService(FileSystem.FileSystem, fileSystem),
