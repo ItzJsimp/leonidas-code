@@ -11,6 +11,8 @@ Read this first if you are an agent working in this repo. It is the shared brief
 
 ## Roadmap (in order, tick when merged to main)
 
+- [ ] Subscription token calibration: implementation verified locally, release pending; session/weekly estimates pair local Claude/Codex tokens with provider quota percentages.
+
 - [x] Shared repo, based on Mob's build (branch `mob-base`, now `main`)\n- [x] Push-to-update: every push to `main` builds the Windows installer and publishes a semantic development release (`0.x` until public launch); the desktop app's updater shows the update toast
 - [x] Prove the update toast across both machines (sound, OS notification, and confirmation dialog for Mob to test on next update)
 - [x] Live agent velocity & token-throughput tracker: real-time speed in t/s with rolling 5, 10, 20 step windows, tool execution cadence, and trend sparklines
@@ -53,6 +55,8 @@ Paste this to your Claude in any folder:
 That sets rebase pulls, links your AIOS identity, installs the latest Leonidas Code (replacing any T3 Code install and shortcuts) and launches it. Right-click its taskbar icon and pick Pin to taskbar. After that: code changes arrive by the auto-pull at each Claude session start; app changes arrive as the in-app update toast after every push to `main`.
 
 ## Status log (newest first, one line per session, who and what)
+
+- 2026-10-10 Jake's agent: implemented persisted subscription calibration from exact Claude/Codex transcript intervals and provider quota deltas, with session/weekly estimates in composer and web/mobile usage details. Reset/account/plan/home isolation, coverage guards and delayed quota reports are tested; 86 focused checks pass, server/web/mobile typechecks pass. ProviderRegistry has 18 unchanged baseline failures on Windows. Local implementation, release and installed-client verification pending. User guide: [`subscription-usage.md`](./docs/user/subscription-usage.md).
 
 - 2026-10-10 Jake's agent: working on the token counter, release history, and team-release.yml optimizations (filtered dependencies, Rust cache, superseded builds, semantic development versions). Jake approved resetting to 0.2.0 with a one-time installer migration; 1.0.0 is reserved for public launch.
 - 2026-10-10 Mob's agent: added local AI Desktop for existing Windows VirtualBox guests: human VM grants, exclusive thread ownership, pause/release, guest-only MCP input and PNG screenshots, and a nonmodal web/desktop viewer. Verified 36 focused tests, affected package typechecks, scoped lint, real guest click/type with unchanged host cursor, and isolated client selection/screenshot/pause/reopen/resume/release. Native mobile viewer and automatic VM provisioning are not included.

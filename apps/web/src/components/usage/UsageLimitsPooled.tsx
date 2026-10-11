@@ -1,3 +1,4 @@
+import { subscriptionEstimateSummary } from "@t3tools/shared/subscriptionEstimate";
 import {
   CHATGPT_USAGE_URL,
   collectLimitAccounts,
@@ -189,6 +190,16 @@ function SegmentPopover({
       </div>
       <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
         <Row label="Left">{remaining}%</Row>
+        {window.tokenEstimate ? (
+          <span className="text-xs text-muted-foreground">
+            {subscriptionEstimateSummary(window.tokenEstimate)}
+            {window.tokenEstimate.capacityTokens === undefined ? null : (
+              <span className="block">
+                Approximate local token equivalent; workload and outside usage affect it.
+              </span>
+            )}
+          </span>
+        ) : null}
         {window.resetsAt ? (
           <Row label="Resets">
             {formatUpcomingTimestamp(window.resetsAt, timestampFormat, now)}

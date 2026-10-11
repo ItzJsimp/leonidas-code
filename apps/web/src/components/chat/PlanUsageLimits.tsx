@@ -1,4 +1,5 @@
 import type { ServerProviderUsageWindow, UsageLimitsReport } from "@t3tools/contracts";
+import { subscriptionEstimateSummary } from "@t3tools/shared/subscriptionEstimate";
 import { limitsNotice } from "@t3tools/shared/usageLimits";
 import { ChevronRightIcon, InfoIcon } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
@@ -169,6 +170,16 @@ function PlanWindowRow({
         usedPercent={window.usedPercent}
         label={`${label}: ${used}% used${resets ? `, ${resets.toLowerCase()}` : ""}`}
       />
+      {window.tokenEstimate ? (
+        <span className="text-2xs text-muted-foreground">
+          {subscriptionEstimateSummary(window.tokenEstimate)}
+          {window.tokenEstimate.capacityTokens === undefined ? null : (
+            <span className="block">
+              Approximate local token equivalent; workload and outside usage affect it.
+            </span>
+          )}
+        </span>
+      ) : null}
       {resets ? <span className="text-2xs text-muted-foreground">{resets}</span> : null}
     </div>
   );

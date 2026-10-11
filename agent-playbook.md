@@ -67,6 +67,8 @@ verified: 2026-10-10
 
 ## 7. Session notes (newest first, one line each, keep 10)
 
+- **2026-10-10 (subscription calibration):** [`SubscriptionTracker.ts`](./apps/server/src/usage/SubscriptionTracker.ts) correlates exact local Claude/Codex transcript intervals with provider percentage-point deltas and persists a ledger plus observations beside the provider cache. Composer and web/mobile account details show approximate capacity after 5 points; account, plan, home and reset changes rebaseline. 86 focused tests and server/web/mobile typechecks pass; 18 ProviderRegistry failures reproduced against HEAD. Local implementation, release/client verification pending.
+
 - **2026-10-10 (What's new popup):** centered dialog on update download lists the release bullets (Restart now / Update when safe / Later); CI now writes release notes from commits. 45 tests and tsc green; not seen in a live window, CI step not yet run, committed locally (`d622e654be`) not pushed. Open: repoint the "Read more" links to our repo.
 
 - **2026-10-10 (usage panel redesign):** composer usage control now has a context ring and hover summary, a top-right panel with separate This chat and Connected accounts sections, a crisp email mask instead of blur, and the Claude Pro null-limits fix; pushed to main. Not verified in a live client. Open: Antigravity quota via the local language server (card `leonidas-code-antigravity-usage-limits-via-local-language-server`), stale `T3` assertions in `MessagesTimeline` tests.

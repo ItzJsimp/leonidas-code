@@ -1,3 +1,4 @@
+import { subscriptionEstimateSummary } from "@t3tools/shared/subscriptionEstimate";
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigation, type StaticScreenProps } from "@react-navigation/native";
 import { EnvironmentId } from "@t3tools/contracts";
@@ -388,6 +389,14 @@ export function UsageLimitAccountScreen({ route }: AccountScreenProps) {
               <Text className="text-3xl font-t3-bold tabular-nums text-foreground">
                 {remainingPercent(window)}% left
               </Text>
+              {window.tokenEstimate ? (
+                <Text selectable className="text-sm text-foreground-muted">
+                  {subscriptionEstimateSummary(window.tokenEstimate)}
+                  {window.tokenEstimate.capacityTokens === undefined
+                    ? ""
+                    : "\nApproximate local token equivalent; workload and outside usage affect it."}
+                </Text>
+              ) : null}
               {window.resetsAt ? (
                 <Text selectable className="text-sm text-foreground-muted">
                   Resets{" "}

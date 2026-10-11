@@ -30,6 +30,7 @@ import {
   type UsageSummary,
   type UsageSummaryInput,
   UsageReadError,
+  UsageDay,
 } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Cause from "effect/Cause";
@@ -188,6 +189,14 @@ const decodeCachedSources = Schema.decodeUnknownOption(
 export class UsageService extends Context.Service<
   UsageService,
   {
+    readonly readSubscriptionTokens?: (
+      instanceId: ProviderInstanceId,
+      since: number,
+      until: number,
+    ) => Effect.Effect<
+      { sourceKey: string; totals: import("@t3tools/contracts").UsageTokenTotals } | null,
+      UsageReadError
+    >;
     readonly readSummary: (input: UsageSummaryInput) => Effect.Effect<UsageSummary, UsageReadError>;
     /** Refetches the rate table ahead of its TTL. See `ensureRates`. */
     readonly refreshRates: Effect.Effect<UsagePricing>;
@@ -373,11 +382,13 @@ export const make = Effect.gen(function* () {
   const resolveTranscriptDirs = Effect.fn("UsageService.resolveTranscriptDirs")(function* (
     settings: ServerSettingsValue,
     retentionCutoffMs: number,
+    onlyProvider?: UsageProviderKind,
   ) {
     const dirs: Array<TranscriptSource> = [];
     const seen = new Set<string>();
     for (const { driver, reader } of transcriptReaders) {
       const { provider, format } = reader;
+      if (onlyProvider !== undefined && provider !== onlyProvider) continue;
       const directories = yield* Effect.forEach(
         yield* usageInstances(driver, settings),
         (instance) => reader.directories(instance),
@@ -637,13 +648,16 @@ export const make = Effect.gen(function* () {
     settings: ServerSettingsValue,
     retentionCutoffMs: number,
     awaitRefresh: boolean,
+    onlyProvider?: UsageProviderKind,
   ) {
-    const dirs = yield* resolveTranscriptDirs(settings, retentionCutoffMs).pipe(
+    const dirs = yield* resolveTranscriptDirs(settings, retentionCutoffMs, onlyProvider).pipe(
       Effect.provideContext(readerContext),
     );
 
     const scans = Effect.forEach(
-      scanReaders,
+      scanReaders.filter(
+        ({ reader }) => onlyProvider === undefined || reader.provider === onlyProvider,
+      ),
       ({ driver, reader }) =>
         usageInstances(driver, settings)
           .pipe(
@@ -685,6 +699,7 @@ export const make = Effect.gen(function* () {
   const scanSummary = Effect.fn("UsageService.scanSummary")(function* (
     input: UsageSummaryInput,
     settings: ServerSettingsValue,
+    onlyProvider?: UsageProviderKind,
   ) {
     if (input.sinceDay > input.untilDay) {
       return yield* new UsageReadError({
@@ -738,8 +753,14 @@ export const make = Effect.gen(function* () {
     // fetch on a slow network no longer delays the scan by its own timeout.
     const [, scannedDirs] = yield* Effect.all(
       [
-        ensureRates(false),
-        collectDirs(windowStartMs, settings, retentionCutoffMs, input.awaitRefresh === true),
+        onlyProvider === undefined ? ensureRates(false) : Effect.void,
+        collectDirs(
+          windowStartMs,
+          settings,
+          retentionCutoffMs,
+          input.awaitRefresh === true,
+          onlyProvider,
+        ),
       ],
       { concurrency: 2 },
     );
@@ -915,7 +936,88 @@ export const make = Effect.gen(function* () {
 
   // `awaitPersisted` is outside the service interface: tests use it to restart
   // against what a previous instance wrote.
-  return { readSummary, refreshRates, awaitPersisted } as const;
+  const readSubscriptionTokens = Effect.fn("UsageService.readSubscriptionTokens")(function* (
+    instanceId: ProviderInstanceId,
+    since: number,
+    until: number,
+  ) {
+    // Reuse exact-time aggregation and its transcript de-duplication. Long offline
+    // gaps rebaseline rather than attributing an unseen reset to this account.
+    if (until <= since || until - since > MAX_HOURLY_WINDOW_MS) return null;
+    const settings = yield* readSettings;
+    const configured = settings.providerInstances[instanceId];
+    const driverKind = configured?.driver ?? String(instanceId);
+    const candidate = transcriptReaders.find(({ driver }) => driver.driverKind === driverKind);
+    if (!candidate || !["claude", "codex"].includes(candidate.reader.provider)) return null;
+    const instances = yield* usageInstances(candidate.driver, settings);
+    const directories = yield* Effect.forEach(instances, (instance) =>
+      candidate.reader.directories(instance).pipe(
+        Effect.provideContext(readerContext),
+        Effect.flatMap((dirs) =>
+          Effect.forEach(dirs, ({ dir }) =>
+            fileSystem.realPath(dir).pipe(
+              Effect.orElseSucceed(() => path.resolve(dir)),
+              Effect.map((resolved) => ({ instanceId: instance.instanceId, dir: resolved })),
+            ),
+          ),
+        ),
+      ),
+    );
+    const all = directories.flat();
+    const owned = all.filter((entry) => entry.instanceId === instanceId);
+    if (
+      owned.length === 0 ||
+      owned.some((entry) =>
+        all.some((other) => other.instanceId !== instanceId && other.dir === entry.dir),
+      )
+    )
+      return null;
+    const summary = yield* scanSummary(
+      {
+        sinceDay: UsageDay.make(DateTime.formatIso(DateTime.makeUnsafe(since)).slice(0, 10)),
+        untilDay: UsageDay.make(DateTime.formatIso(DateTime.makeUnsafe(until)).slice(0, 10)),
+        timeZone: "UTC",
+        resolution: "hour",
+        sinceTime: DateTime.formatIso(DateTime.makeUnsafe(since)),
+        untilTime: DateTime.formatIso(DateTime.makeUnsafe(until)),
+      },
+      settings,
+      candidate.reader.provider,
+    ).pipe(Effect.tap(() => schedulePersist));
+    const dirs = new Set(owned.map(({ dir }) => dir));
+    const sources = summary.sources.filter(
+      (source) =>
+        source.fingerprint.provider === candidate.reader.provider &&
+        dirs.has(source.fingerprint.resolvedHomePath),
+    );
+    if (
+      sources.length !== dirs.size ||
+      sources.some((source) => source.status !== "ok" || source.malformedRecords > 0)
+    )
+      return null;
+    const totals = {
+      uncachedInputTokens: 0,
+      cachedInputTokens: 0,
+      cacheCreationTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+    };
+    for (const bucket of summary.buckets) {
+      if (
+        bucket.provider !== candidate.reader.provider ||
+        !bucket.sourcePath ||
+        !dirs.has(bucket.sourcePath)
+      )
+        continue;
+      totals.uncachedInputTokens += bucket.totals.uncachedInputTokens;
+      totals.cachedInputTokens += bucket.totals.cachedInputTokens;
+      totals.cacheCreationTokens += bucket.totals.cacheCreationTokens;
+      totals.outputTokens += bucket.totals.outputTokens;
+      totals.reasoningTokens += bucket.totals.reasoningTokens;
+    }
+    return { sourceKey: [...dirs].sort().join("\0"), totals };
+  });
+  return { readSummary, readSubscriptionTokens, refreshRates, awaitPersisted } as const;
 });
 
 export const layer = Layer.effect(UsageService, make);
