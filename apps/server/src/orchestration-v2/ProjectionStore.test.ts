@@ -22,6 +22,7 @@ import {
   RunId,
   ThreadId,
   TurnItemId,
+  PlanId,
   type ThreadPullRequestLink,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
@@ -350,6 +351,138 @@ it.effect("memory recovery selection includes unfinished items from missing runs
 );
 
 it.layer(layerTest)("ProjectionStoreV2", (it) => {
+  it.effect("streams bounded root-plan activity and clears it after steering or completion", () =>
+    Effect.gen(function* () {
+      const store = yield* ProjectionStore.ProjectionStoreV2;
+      const threadId = yield* addRolledBackRecoveryCandidate("sidebar-activity");
+      const previous = (yield* store.getThreadProjection(threadId)).runs[0]!;
+      const now = yield* DateTime.now;
+      const run = {
+        ...previous,
+        id: RunId.make("run:sidebar-activity:current"),
+        providerThreadId: ProviderThreadId.make("provider-thread:root"),
+        ordinal: 2,
+        status: "running" as const,
+        requestedAt: now,
+        startedAt: now,
+        completedAt: null,
+      };
+      yield* store.apply({
+        id: EventId.make("event:sidebar-activity:run"),
+        type: "run.created",
+        threadId,
+        occurredAt: now,
+        payload: run,
+      });
+      const plan = {
+        id: TurnItemId.make("item:sidebar-activity:plan"),
+        threadId,
+        runId: run.id,
+        nodeId: NodeId.make("node:sidebar-activity:plan"),
+        providerThreadId: run.providerThreadId,
+        providerTurnId: null,
+        nativeItemRef: null,
+        parentItemId: null,
+        ordinal: 2,
+        status: "running" as const,
+        title: null,
+        startedAt: now,
+        completedAt: null,
+        updatedAt: now,
+        type: "todo_list" as const,
+        planId: PlanId.make("plan:sidebar-activity"),
+        steps: [
+          { id: "first", text: "Inspect", status: "completed" as const },
+          { id: "second", text: "Check layout " + "x".repeat(10000), status: "running" as const },
+        ],
+      };
+      const applyItem = (
+        suffix: string,
+        payload: import("@t3tools/contracts").OrchestrationV2TurnItem,
+      ) =>
+        store.apply({
+          id: EventId.make(`event:sidebar-activity:${suffix}`),
+          type: "turn-item.updated",
+          threadId,
+          occurredAt: payload.updatedAt,
+          payload,
+        });
+      const read = () => store.getThreadShell(threadId);
+      yield* applyItem("plan", plan);
+      const shell = yield* read();
+      assert.equal(shell?.activitySummary?.text.length, 160);
+      assert.deepEqual(shell?.activitySummary, {
+        text: plan.steps[1]!.text.slice(0, 160),
+        currentStep: 2,
+        completedSteps: 1,
+        totalSteps: 2,
+      });
+      assert.deepEqual(
+        shell?.activitySummary,
+        ProjectionStore.threadShellFromProjection(yield* store.getThreadProjection(threadId))
+          .activitySummary,
+      );
+      assert.isBelow(JSON.stringify(shell?.activitySummary).length, 300);
+      yield* applyItem("child-plan", {
+        ...plan,
+        id: TurnItemId.make("item:sidebar-activity:child"),
+        nodeId: NodeId.make("node:child"),
+        providerThreadId: ProviderThreadId.make("provider-thread:child"),
+        updatedAt: DateTime.add(now, { seconds: 1 }),
+        steps: [{ id: "child", text: "Unrelated subagent work", status: "running" }],
+      });
+      assert.equal((yield* read())?.activitySummary?.currentStep, 2);
+      const steerAt = DateTime.add(now, { seconds: 2 });
+      yield* applyItem("steer", {
+        ...plan,
+        id: TurnItemId.make("item:sidebar-activity:steer"),
+        nodeId: run.rootNodeId,
+        ordinal: 4,
+        type: "user_message",
+        createdBy: "user",
+        creationSource: "web",
+        messageId: MessageId.make("message:sidebar-activity:steer"),
+        inputIntent: "steer",
+        text: "Change the layout",
+        attachments: [],
+        updatedAt: steerAt,
+      });
+      assert.isNull((yield* read())?.activitySummary);
+      yield* applyItem("tool", {
+        ...plan,
+        id: TurnItemId.make("item:sidebar-activity:tool"),
+        type: "command_execution",
+        title: "Run focused checks",
+        input: "private command input",
+        updatedAt: DateTime.add(now, { seconds: 3 }),
+      });
+      assert.deepEqual((yield* read())?.activitySummary, {
+        text: "Run focused checks",
+        currentStep: null,
+        totalSteps: 0,
+        completedSteps: 0,
+      });
+      assert.deepEqual(
+        (yield* read())?.activitySummary,
+        ProjectionStore.threadShellFromProjection(yield* store.getThreadProjection(threadId))
+          .activitySummary,
+      );
+      yield* applyItem("new-plan", {
+        ...plan,
+        updatedAt: DateTime.add(now, { seconds: 3 }),
+        steps: [{ id: "replacement", text: "Rework layout", status: "running" }],
+      });
+      assert.equal((yield* read())?.activitySummary?.text, "Rework layout");
+      yield* store.apply({
+        id: EventId.make("event:sidebar-activity:complete"),
+        type: "run.updated",
+        threadId,
+        occurredAt: DateTime.add(now, { seconds: 4 }),
+        payload: { ...run, status: "completed", completedAt: DateTime.add(now, { seconds: 4 }) },
+      });
+      assert.isNull((yield* read())?.activitySummary);
+    }),
+  );
   it.effect(
     "keeps restart-cancelled work through a stale run.updated",
     () => restartCancelledWorkSurvivesStaleRunUpdate,

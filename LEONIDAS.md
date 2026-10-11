@@ -63,6 +63,8 @@ The project's `tasks/` folder is a generated view: one symlink per task card who
 
 ## Status log (newest first, one line per session, who and what)
 
+- 2026-10-11 Jake's agent: implemented chat topic glyphs, automatic project visual identities, live plan/tool activity progress lines, and branch checkout warnings across web and mobile sidebars. 121 focused tests, scoped formatting, lint and typechecks pass across shared/contracts/client-runtime/provider-core/server/web.
+
 - 2026-10-11 Mob's agent: closed the limit failover item. Web/desktop "Continue with Codex/Claude" already shipped in `fc762cac39`; added the mobile button (`UsageLimitRecoveryCard.tsx`, shared selector in `packages/client-runtime/src/state/providerFailover.ts`) and a "no other subscription is ready" note on web and mobile. 5 shared + 6 web + 6 mobile focused tests, and web/mobile/client-runtime typechecks pass. Not seen live: both Codex and Claude were at their limits, and mobile was not run on a device or simulator. Web keeps its settings-aware selector (hidden models), so the two share rules by comment, not code.
 
 - 2026-10-11 Mob's agent: closed the agent activity bar item. Most of it was already shipped (`ComposerTasksBadge.tsx`); added up to 3 file chips (oldest hide below 560px and 420px) and ordered touched files by most recent use so a re-read file becomes the newest. 11 focused tests and web typecheck pass. Layout proven with the real component and fixture data in the isolated dev app: no overflow at 692, 420, 320 and 240px, chips 3/2/1/1. A live agent run was not possible because both Codex and the Claude weekly limit were reached (Claude resets 9 PM ET); the bar rendered live ("Getting started") but no plan or file reads were seen, so repeat once with a live turn.

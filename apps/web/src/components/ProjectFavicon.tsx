@@ -9,7 +9,7 @@ import type { ComponentType } from "react";
 import { lazy, Suspense, useState } from "react";
 import { useAtomValue } from "@effect/atom-react";
 import { projectFaviconUrlAtom } from "../state/assets";
-import { deriveProjectIdentity } from "../projectIdentity";
+import { projectIdentityGlyph } from "@t3tools/shared/threadIdentity";
 import { projectIconColorClassName } from "../projectIconColors";
 import { ProjectMonogram } from "./ProjectMonogram";
 import { cn } from "~/lib/utils";
@@ -121,9 +121,12 @@ function ProjectFaviconFallback({
   readonly projectName?: string | undefined;
 }) {
   if (projectName && projectName.trim().length > 0) {
-    const identity = deriveProjectIdentity(projectName);
     return (
-      <ProjectMonogram text={identity.monogram} color={identity.color} className={className} />
+      <ProjectFaviconFallback
+        className={className}
+        icon={Icon}
+        emoji={projectIdentityGlyph(projectName)}
+      />
     );
   }
 

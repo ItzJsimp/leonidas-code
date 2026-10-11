@@ -248,7 +248,10 @@ Before answering, silently reduce the request to:
 Title the subject and outcome. Discard incidental instructions.
 
 Editorial rules:
-- 3-8 words, fewer than 40 characters.
+- 3-6 words, fewer than 40 characters.
+- Use sentence case, preserving product names and acronyms.
+- Put the specific subject early so it survives sidebar truncation.
+- Do not add emoji or status labels; the app supplies separate visual and live activity cues.
 - Use a compact noun phrase or clear action phrase.
 - Capture the umbrella goal when the request lists several symptoms or steps.
 - Name the product change, not the mock, plan, report, branch, or PR used to produce it.
@@ -275,7 +278,10 @@ Determine the title in this order:
 4. Title the durable subject and desired outcome, not the current workflow state.
 
 Editorial rules:
-- 3-8 words, fewer than 40 characters.
+- 3-6 words, fewer than 40 characters.
+- Use sentence case, preserving product names and acronyms.
+- Put the specific subject early so it survives sidebar truncation.
+- Do not add emoji or status labels; the app supplies separate visual and live activity cues.
 - Use a compact noun phrase or clear action phrase.
 - Preserve the umbrella subject when later messages focus on one finding, provider, platform, or implementation detail.
 - A thread progressing through research, planning, implementation, review, CI, merge, and monitoring has usually not changed subjects.

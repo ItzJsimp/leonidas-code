@@ -72,6 +72,7 @@ import {
   EyeIcon,
   FolderIcon,
   GitBranchIcon,
+  TriangleAlertIcon,
   ListFilterIcon,
   MessageCircleQuestionIcon,
   PinIcon,
@@ -250,6 +251,7 @@ import {
 } from "./ThreadStatusIndicators";
 import { resolveSnoozePresets, snoozeWakeLabel, type SnoozePreset } from "./Sidebar.snooze";
 import { ProjectFavicon, type ProjectFaviconProject } from "./ProjectFavicon";
+import { threadTopicGlyph, threadActivityLine } from "@t3tools/shared/threadIdentity";
 import { ThreadSearchMatchExcerpt } from "./ThreadSearchMatch";
 import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
@@ -459,6 +461,10 @@ function SidebarThreadTooltip({
   terminalProcessCount: number;
 }) {
   const driverKind = providerEntry?.driverKind ?? null;
+  const activityLine = threadActivityLine({
+    status: resolveSidebarThreadStatus(thread),
+    summary: thread.activitySummary,
+  });
   const previousProviderNames = thread.providerInstanceHistory
     .filter((instanceId) => instanceId !== modelInstanceId)
     .map((instanceId) => providerEntryByInstanceId.get(instanceId)?.displayName ?? instanceId);
@@ -475,6 +481,14 @@ function SidebarThreadTooltip({
           ) : null
         }
       >
+        {activityLine ? (
+          <div className="min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+            {activityLine.text}
+            {activityLine.progress
+              ? ` · Step ${activityLine.progress} (${thread.activitySummary?.completedSteps ?? 0} completed)`
+              : ""}
+          </div>
+        ) : null}
         {projectDisplayName ? (
           <div className="flex min-w-0 items-center gap-2">
             {project ? <ProjectFavicon project={project} className="size-3 shrink-0" /> : null}
@@ -1263,6 +1277,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // switching sidebars must not light up every historical thread as unread.
   const isUnread = hasUnseenCompletion({ ...thread, lastVisitedAt });
   const status = resolveSidebarThreadStatus(thread);
+  const activityLine = threadActivityLine({ status, summary: thread.activitySummary });
+  const topicGlyph = threadTopicGlyph(thread.title);
   const isInFlight =
     status === "working" || status === "waiting" || status === "approval" || status === "input";
   // A woken thread reappears at its original position (the sort is
@@ -1692,6 +1708,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           isRegeneratingTitle && "opacity-55",
         )}
       >
+        {topicGlyph ? (
+          <span aria-hidden className="mr-1.5">
+            {topicGlyph}
+          </span>
+        ) : null}
         {thread.title}
       </span>
     );
@@ -1808,7 +1829,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 ref={rowRef}
                 role="button"
                 tabIndex={0}
-                aria-label={accessibility.label}
+                aria-label={
+                  activityLine
+                    ? `${accessibility.label}. ${activityLine.text}${activityLine.progress ? `, step ${activityLine.progress}` : ""}`
+                    : accessibility.label
+                }
                 aria-current={accessibility.current}
                 data-testid="sidebar-row-slim"
                 aria-busy={isRegeneratingTitle || undefined}
@@ -1961,8 +1986,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       {...sortableRootProps}
       {...(fileDropHandlers ?? {})}
       className={cn(
-        // Matches the h-[4.875rem] content box; the py-0.5 padding is added on top.
-        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_78px]",
+        "list-none py-0.5 [content-visibility:auto]",
+        activityLine ? "[contain-intrinsic-size:auto_100px]" : "[contain-intrinsic-size:auto_78px]",
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1973,7 +1998,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               ref={rowRef}
               role="button"
               tabIndex={0}
-              aria-label={accessibility.label}
+              aria-label={
+                activityLine
+                  ? `${accessibility.label}. ${activityLine.text}${activityLine.progress ? `, step ${activityLine.progress}` : ""}`
+                  : accessibility.label
+              }
               aria-current={accessibility.current}
               data-testid="sidebar-row-card"
               aria-busy={isRegeneratingTitle || undefined}
@@ -1986,7 +2015,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           }
         >
           {accessibleTitle}
-          <div className="relative z-10 h-[4.875rem] px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)">
+          <div
+            className={cn(
+              "relative z-10 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+              activityLine ? "min-h-[6.25rem]" : "h-[4.875rem]",
+            )}
+          >
             <div className="flex h-5 min-w-0 items-center gap-1.5">
               {draftIndicator}
               {props.project ? (
@@ -2157,16 +2191,50 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 </span>
               ) : null}
             </div>
+            {activityLine ? (
+              <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                <span className="min-w-0 flex-1 truncate">{activityLine.text}</span>
+                {activityLine.progress ? (
+                  <span
+                    className="shrink-0 tabular-nums text-info-foreground"
+                    aria-label={`Step ${activityLine.progress}`}
+                  >
+                    {activityLine.progress}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
-              {/* Always the branch. The plan step used to take this slot while
-                  working, but it truncated to a half-sentence and dropped the
-                  branch, so the row lost its most stable identifier. */}
+              {/* The branch remains independent of the live plan step. */}
               {thread.branch ? (
                 <>
                   <ThreadWorktreeIndicator thread={thread} />
-                  <span className="flex min-w-0 flex-1 text-muted-foreground/40">
-                    <MiddleTruncate value={thread.branch} showTitle={false} />
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <span
+                          className={cn(
+                            "flex min-w-0 flex-1 items-center gap-1",
+                            branchMismatch ? "text-warning-foreground" : "text-muted-foreground",
+                          )}
+                        />
+                      }
+                    >
+                      <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+                      <MiddleTruncate value={thread.branch} showTitle={false} />
+                      {branchMismatch ? (
+                        <TriangleAlertIcon
+                          aria-label="Checkout is on another branch"
+                          className="size-3 shrink-0"
+                        />
+                      ) : null}
+                    </TooltipTrigger>
+                    <TooltipPopup side="top">
+                      {branchMismatch
+                        ? `Chat branch: ${thread.branch}. Checkout now: ${visibleGitStatus?.refName}. Local chats share this checkout.`
+                        : `${thread.worktreePath ? "Isolated worktree" : "Shared checkout"}: ${thread.branch}`}
+                    </TooltipPopup>
+                  </Tooltip>
                 </>
               ) : showsScratchMachine ? (
                 <>
@@ -2346,7 +2414,14 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
           ) : null}
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="flex min-w-0 items-center gap-2.5">
-              <span className="min-w-0 flex-1 truncate">{thread.title}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {threadTopicGlyph(thread.title) ? (
+                  <span aria-hidden className="mr-1.5">
+                    {threadTopicGlyph(thread.title)}
+                  </span>
+                ) : null}
+                {thread.title}
+              </span>
               <span className="shrink-0 text-xs text-muted-foreground/55 tabular-nums">
                 {threadTimeLabel(thread)}
               </span>

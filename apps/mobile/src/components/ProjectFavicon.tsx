@@ -1,9 +1,9 @@
-import { SymbolView } from "./AppSymbol";
 import { AppText } from "./AppText";
 import { Image } from "expo-image";
 import { memo, useLayoutEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import type { EnvironmentId, ProjectIconOverride } from "@t3tools/contracts";
+import { projectIdentityGlyph } from "@t3tools/shared/threadIdentity";
 import {
   getProjectFaviconCacheKey,
   getProjectFaviconResourceKey,
@@ -180,11 +180,9 @@ function ProjectFaviconImage(props: {
     >
       {/* Folder icon fallback (matches web's FolderIcon) */}
       {!showImage ? (
-        <SymbolView
-          name={{ ios: "folder.fill", android: props.open ? "folder_open" : "folder" }}
+        <ProjectIconGlyphView
+          glyph={{ kind: "emoji", emoji: projectIdentityGlyph(props.projectTitle) }}
           size={props.size}
-          tintColorClassName={"accent-icon-subtle"}
-          type="monochrome"
         />
       ) : null}
 
