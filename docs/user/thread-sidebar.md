@@ -56,6 +56,14 @@ Archived and deleted threads are excluded. Disconnected environments show a warn
 and label their saved statuses; reconnect in **Settings > Connections** to restore
 live updates. Use the sidebar's **Back** button to return to the previous chat.
 
+Command Center also shows **Scribe** status for each environment on web and desktop:
+Checking, Ready, Listening, Processing, Microphone error, Offline, or Disconnected.
+Status checks run every five seconds while the page is visible and pause when you leave
+or hide it. Scribe must run with status support on the environment's server machine,
+including for remote connections. An unavailable or stale response shows Offline;
+an environment connection failure shows Disconnected. This card provides status only.
+Recording controls and transcripts remain in Scribe. Mobile has no Command Center card.
+
 ## Pin and reorder threads
 
 Pin a thread from its menu to keep it above your active work.
