@@ -197,6 +197,7 @@
     "antigravity": ["gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low"],
     "openrouter": [
       "openrouter/auto",
+      "apodex/apodex-1.1-mini:free",
       "anthropic/claude-3.7-sonnet",
       "anthropic/claude-3.5-sonnet",
       "openai/gpt-4.5-preview",
@@ -1057,6 +1058,11 @@
           "name": "OpenRouter Auto (Free Router)",
           "status": "current",
           "badge": "new"
+        },
+        {
+          "slug": "apodex/apodex-1.1-mini:free",
+          "name": "Apodex 1.1 Mini (Free, Experimental)",
+          "status": "current"
         },
         {
           "slug": "anthropic/claude-3.7-sonnet",
