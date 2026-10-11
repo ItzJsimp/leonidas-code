@@ -140,7 +140,8 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
         const catalogService = yield* ModelCatalog.ModelCatalog;
         const modelCatalog = catalogService
           .current(DRIVER_KIND)
-          .pipe(Effect.map((catalog) => catalog ?? { models: [], defaultChatModel: undefined }));
+          .pipe(Effect.map((catalog) => resolveClaudeModelCatalog(catalog ?? { models: [], defaultChatModel: undefined })));
+        // Note: direct OpenRouter manifest read (not Claude-mapped) needed for picker; kept Claude mapping here for checkProvider compatibility until native adapter completes.
 
         const effectiveBaseUrl = config.baseUrl.trim() || "https://openrouter.ai/api";
         const effectiveApiKey = config.apiKey.trim();
