@@ -670,4 +670,44 @@ it.layer(layerTest)("Antigravity provider snapshots", (it) => {
       }),
     ),
   );
+  it.effect("attaches probed usage limits and account details to the snapshot", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const usageLimits = {
+          checkedAt: "2026-10-11T04:00:00.000Z",
+          windows: [
+            {
+              id: "session",
+              kind: "session" as const,
+              label: "Session",
+              windowDurationMins: 300,
+              usedPercent: 45,
+            },
+            {
+              id: "weekly",
+              kind: "weekly" as const,
+              label: "Weekly",
+              windowDurationMins: 10080,
+              usedPercent: 60,
+            },
+          ],
+        };
+        const provider = yield* makeAntigravityProvider(decodeSettings({ enabled: true }), {
+          stampIdentity: (snapshot) => Effect.succeed({ ...snapshot, instanceId, driver }),
+          probe: Effect.succeed(initializeResult),
+          supportsTextGeneration: Effect.succeed(true),
+          probeUsageLimits: Effect.succeed({
+            usageLimits,
+            email: "simplygersi@gmail.com",
+            plan: "Pro",
+          }),
+        });
+        yield* provider.snapshot.refresh;
+        const snapshot = yield* provider.snapshot.getSnapshot;
+        expect(snapshot.usageLimits).toEqual(usageLimits);
+        expect(snapshot.auth.email).toBe("simplygersi@gmail.com");
+        expect(snapshot.auth.label).toBe("Pro plan");
+      }),
+    ),
+  );
 });

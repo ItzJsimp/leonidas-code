@@ -30,6 +30,8 @@ import {
   type RuntimeRequestId,
   type ThreadTokenUsageSnapshot,
   type ThreadId,
+  type OrchestrationV2ProviderTurnTokenUsage,
+  type TurnTokenUsage,
 } from "@t3tools/contracts";
 import { modelSelectionsEqual } from "@t3tools/shared/model";
 import { type SelfInvocation, selfInvocationArgs } from "@t3tools/shared/nodeRuntime";
@@ -429,6 +431,13 @@ export interface AcpAdapterV2Flavor {
    * false; without this override, screenshot turns fail before `session/prompt`.
    */
   readonly supportsImagePrompts?: boolean;
+  readonly resolveTurnTokenUsage?: (input: {
+    readonly sessionId?: string | undefined;
+    readonly nativeThreadId?: string | undefined;
+    readonly nativeTurnId?: string | undefined;
+    readonly startedAt: DateTime.Utc | null;
+    readonly completedAt: DateTime.Utc;
+  }) => Effect.Effect<TurnTokenUsage | undefined, never, never>;
 }
 
 /** Whether image attachment blocks may be included in session/prompt. */
@@ -1151,6 +1160,8 @@ interface ActiveAcpTurn {
     | undefined;
   contextUsage: ThreadTokenUsageSnapshot | null;
   nativeMetadata: OrchestrationV2ProviderThreadNativeMetadata | null;
+  tokenUsage?: OrchestrationV2ProviderTurnTokenUsage | undefined;
+  turnTokenUsage?: TurnTokenUsage | undefined;
   readonly tools: Map<string, AcpToolCallState>;
   /** Streamed tool updates skipped since the last persisted one; see `shouldPersistToolUpdate`. */
   readonly toolUpdatesSkipped: Map<string, number>;
@@ -2424,6 +2435,39 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             strength: "weak" as const,
           };
           if (kind !== "user") {
+            const assistantLen = context.assistant.current?.text.length ?? 0;
+            const reasoningLen = context.reasoning.current?.text.length ?? 0;
+            const reasoningTokens =
+              reasoningLen > 0 ? Math.max(1, Math.round(reasoningLen / 3.8)) : 0;
+            const assistantTokens =
+              assistantLen > 0 ? Math.max(1, Math.round(assistantLen / 3.8)) : 0;
+            const outputTokens = assistantTokens + reasoningTokens;
+            if (outputTokens > 0) {
+              context.turnTokenUsage = {
+                usageStatus: "partial",
+                usageScope: "main_agent",
+                outputTokens,
+                reasoningTokens,
+                hasSubagents: context.subagents.size > 0,
+              };
+              context.tokenUsage = {
+                ...context.tokenUsage,
+                usedTokens: context.tokenUsage?.usedTokens ?? outputTokens,
+                updatedAt: DateTime.formatIso(now),
+              };
+              const runningTurn = providerTurnPayload(context, "running", null);
+              yield* Ref.update(providerTurns, (current) => {
+                const updated = new Map(current);
+                updated.set(String(runningTurn.id), runningTurn);
+                return updated;
+              });
+              yield* emitProviderEvent({
+                type: "provider_turn.updated",
+                driver,
+                threadId: context.input.threadId,
+                providerTurn: runningTurn,
+              });
+            }
             yield* emitProviderEvent({
               type: "node.updated",
               driver,
@@ -6508,6 +6552,8 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
           status,
           startedAt: context.startedAt,
           completedAt,
+          ...(context.tokenUsage ? { tokenUsage: context.tokenUsage } : {}),
+          ...(context.turnTokenUsage ? { turnTokenUsage: context.turnTokenUsage } : {}),
         });
 
         const terminalizeOpenRunOwnedItems = Effect.fnUntraced(function* (
@@ -6630,6 +6676,20 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                 updatedAt: now,
               },
             });
+          }
+          if (flavor.resolveTurnTokenUsage) {
+            const resolvedUsage = yield* flavor
+              .resolveTurnTokenUsage({
+                sessionId: input.providerSessionId ?? undefined,
+                nativeThreadId: context.nativeThreadId,
+                nativeTurnId: context.nativeTurnId,
+                startedAt: context.startedAt,
+                completedAt: now,
+              })
+              .pipe(Effect.orElseSucceed(() => undefined));
+            if (resolvedUsage) {
+              context.turnTokenUsage = resolvedUsage;
+            }
           }
           const turn = providerTurnPayload(context, settledStatus, now);
           yield* Ref.update(providerTurns, (current) => {
