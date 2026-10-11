@@ -58,6 +58,8 @@ export interface AutoRouteModel {
   readonly name: string;
   readonly capabilities?: ModelCapabilities | null | undefined;
   readonly isLegacy?: boolean | undefined;
+  readonly inputCostPerMillionTokens?: number | undefined;
+  readonly outputCostPerMillionTokens?: number | undefined;
 }
 
 export interface AutoRouteCandidate {
@@ -129,6 +131,7 @@ const MODEL_FAMILIES: ReadonlyArray<{
   { pattern: /deepseek.*(r1|reasoner)/, profile: { quality: 4, speed: 2, economy: 4 } },
   { pattern: /deepseek|qwen|llama|mistral/, profile: { quality: 3, speed: 4, economy: 5 } },
   { pattern: /gpt-4o|gpt-4\.1/, profile: { quality: 3, speed: 4, economy: 3 } },
+  { pattern: /^openrouter\/free$/, profile: { quality: 3, speed: 3, economy: 5 } },
 ];
 
 const UNKNOWN_PROFILE: ModelRouteProfile = { quality: 3, speed: 3, economy: 3, known: false };
@@ -255,6 +258,8 @@ const CACHE_PROFILES: Record<
 };
 const DEFAULT_CACHE_PROFILE = { ttlMs: 5 * 60_000, baselineTokens: 20_000, read: 0.25, write: 1 };
 const cacheProfile = (driverKind: string) => CACHE_PROFILES[driverKind] ?? DEFAULT_CACHE_PROFILE;
+// Convert live OpenRouter prices into the existing cache-switch score units.
+const SONNET_REFERENCE_INPUT_PRICE_PER_MILLION_TOKENS_USD = 3;
 
 /** Matches the server's `DEFAULT_HANDOFF_TOKEN_CAP`: a provider switch carries at most this much chat. */
 const HANDOFF_TOKEN_CAP = 16_000;
@@ -275,13 +280,17 @@ export function nextTurnInputCost(input: {
   readonly thread: AutoRouteThreadState;
   readonly driverKind: string;
   readonly profile: ModelRouteProfile;
+  readonly inputCostPerMillionTokens?: number | undefined;
   readonly sameProviderSession: boolean;
   readonly sameModel: boolean;
   readonly now: number;
 }): number {
   const { thread } = input;
   const target = cacheProfile(input.driverKind);
-  const price = PRICE_INDEX[input.profile.economy] ?? 1;
+  const price =
+    input.inputCostPerMillionTokens === undefined
+      ? (PRICE_INDEX[input.profile.economy] ?? 1)
+      : input.inputCostPerMillionTokens / SONNET_REFERENCE_INPUT_PRICE_PER_MILLION_TOKENS_USD;
   if (input.sameProviderSession) {
     const warm =
       thread.lastActivityAt !== null &&
@@ -360,10 +369,11 @@ function effortOptions(
 
 /** Fit for the task and goal, ignoring where the thread is now. */
 function fitScore(input: {
+  readonly model: AutoRouteModel;
   readonly profile: ModelRouteProfile;
   readonly preference: AutoRoutePreference;
   readonly task: AutoRouteTaskSize;
-  readonly metered: boolean;
+  readonly driverKind: string;
   readonly outlook: QuotaOutlook;
   readonly isLegacy: boolean;
 }): number {
@@ -372,13 +382,30 @@ function fitScore(input: {
     input.preference === "quality"
       ? input.profile.quality
       : Math.min(input.profile.quality, QUALITY_CEILING[input.task]);
-  // Metered keys bill every token; subscription quota that would expire unused is free.
+  const outputShare = input.task === "heavy" ? 0.3 : input.task === "light" ? 0.15 : 0.2;
+  const inputPrice = input.model.inputCostPerMillionTokens;
+  const outputPrice = input.model.outputCostPerMillionTokens;
+  const estimatedPricePerMillionTokens =
+    inputPrice === undefined && outputPrice === undefined
+      ? undefined
+      : (inputPrice ?? outputPrice ?? 0) * (1 - outputShare) +
+        (outputPrice ?? inputPrice ?? 0) * outputShare;
+  // Actual OpenRouter rates replace the old blanket metered penalty. When a
+  // provider has no rate metadata, retain the conservative fallback.
+  const economyBeforeQuota =
+    estimatedPricePerMillionTokens === undefined
+      ? input.profile.economy - (METERED_DRIVERS.has(input.driverKind) ? 2 : 0)
+      : estimatedPricePerMillionTokens === 0
+        ? 5
+        : 5 - Math.log10(Math.max(estimatedPricePerMillionTokens, 0.01) / 0.01);
   const economy = Math.max(
     1,
     Math.min(
       5,
-      input.profile.economy +
-        (input.metered ? -2 : input.outlook.spare) -
+      economyBeforeQuota +
+        (estimatedPricePerMillionTokens === undefined && !METERED_DRIVERS.has(input.driverKind)
+          ? input.outlook.spare
+          : 0) -
         input.outlook.scarcity * 3,
     ),
   );
@@ -446,10 +473,11 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
         quality: profile.quality,
         scarcity: outlook.scarcity,
         fit: fitScore({
+          model,
           profile,
           preference: input.preference,
           task,
-          metered: METERED_DRIVERS.has(candidate.driverKind),
+          driverKind: candidate.driverKind,
           outlook,
           isLegacy: model.isLegacy === true,
         }),
@@ -458,6 +486,7 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
               thread,
               driverKind: candidate.driverKind,
               profile,
+              inputCostPerMillionTokens: model.inputCostPerMillionTokens,
               sameProviderSession,
               sameModel: isCurrent,
               now: input.now,

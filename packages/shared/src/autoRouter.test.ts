@@ -168,6 +168,37 @@ describe("routeTurn on a new chat", () => {
     });
     expect(decision?.modelSelection.instanceId).toBe(claude);
   });
+
+  it("uses live OpenRouter prices to choose the cheaper model within a family", () => {
+    const decision = routeTurn({
+      preference: "cost",
+      prompt: STANDARD,
+      candidates: [
+        {
+          instanceId: openrouter,
+          driverKind: "openrouter",
+          label: "OpenRouter",
+          models: [
+            {
+              slug: "deepseek/deepseek-v4.1-flash",
+              name: "DeepSeek V4.1 Flash",
+              inputCostPerMillionTokens: 1,
+              outputCostPerMillionTokens: 4,
+            },
+            {
+              slug: "qwen/qwen3-flash",
+              name: "Qwen 3 Flash",
+              inputCostPerMillionTokens: 0.1,
+              outputCostPerMillionTokens: 0.4,
+            },
+          ],
+        },
+      ],
+      now: NOW,
+    });
+
+    expect(decision?.modelSelection.model).toBe("qwen/qwen3-flash");
+  });
 });
 
 describe("routeTurn on a running chat", () => {

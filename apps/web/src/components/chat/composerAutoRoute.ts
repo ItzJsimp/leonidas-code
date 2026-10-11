@@ -30,8 +30,17 @@ export function buildComposerAutoRouteCandidates(input: {
     const models = (input.modelOptionsByInstance.get(entry.instanceId) ?? []).flatMap((option) => {
       if (option.isUnavailable || input.getModelDisabledReason(entry.instanceId, option.slug))
         return [];
-      const capabilities = entry.models.find((model) => model.slug === option.slug)?.capabilities;
-      return [{ slug: option.slug, name: option.name, capabilities, isLegacy: option.isLegacy }];
+      const model = entry.models.find((candidate) => candidate.slug === option.slug);
+      return [
+        {
+          slug: option.slug,
+          name: option.name,
+          capabilities: model?.capabilities,
+          isLegacy: option.isLegacy,
+          inputCostPerMillionTokens: model?.inputCostPerMillionTokens,
+          outputCostPerMillionTokens: model?.outputCostPerMillionTokens,
+        },
+      ];
     });
     if (models.length === 0) return [];
     return [

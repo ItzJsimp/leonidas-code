@@ -730,7 +730,8 @@ export const OpenRouterSettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
         title: "OpenRouter API Key",
-        description: "Your OpenRouter API Key (sk-or-v1-...)",
+        description:
+          "Create a key at openrouter.ai/keys and paste it here. OpenRouter Free Model Router is the default; paid models are billed per token.",
         providerSettingsForm: {
           control: "password",
           placeholder: "sk-or-v1-...",
@@ -743,17 +744,14 @@ export const OpenRouterSettings = makeProviderSettingsSchema(
       Schema.annotateKey({
         title: "Base URL",
         description: "OpenRouter API endpoint.",
-        providerSettingsForm: {
-          placeholder: "https://openrouter.ai/api",
-          clearWhenEmpty: "omit",
-        },
+        providerSettingsForm: { hidden: true },
       }),
     ),
     binaryPath: makeBinaryPathSetting("claude").pipe(
       Schema.annotateKey({
         title: "Binary path",
         description: "Path to the Claude agent CLI runner used by OpenRouter.",
-        providerSettingsForm: { placeholder: "claude", clearWhenEmpty: "omit" },
+        providerSettingsForm: { hidden: true },
       }),
     ),
     homePath: TrimmedString.pipe(
@@ -762,7 +760,7 @@ export const OpenRouterSettings = makeProviderSettingsSchema(
         title: "Config directory",
         description:
           "Isolated config directory for OpenRouter sessions. Defaults to ~/.claude_openrouter.",
-        providerSettingsForm: { placeholder: "~/.claude_openrouter", clearWhenEmpty: "omit" },
+        providerSettingsForm: { hidden: true },
       }),
     ),
     customModels: Schema.Array(CustomModelSetting).pipe(
@@ -774,10 +772,7 @@ export const OpenRouterSettings = makeProviderSettingsSchema(
       Schema.annotateKey({
         title: "Launch arguments",
         description: "Additional CLI arguments passed on session start.",
-        providerSettingsForm: {
-          placeholder: "e.g. --verbose",
-          clearWhenEmpty: "omit",
-        },
+        providerSettingsForm: { hidden: true },
       }),
     ),
   },

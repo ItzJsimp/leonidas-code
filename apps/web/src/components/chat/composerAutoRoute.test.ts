@@ -77,4 +77,25 @@ describe("buildComposerAutoRouteCandidates", () => {
       ),
     ).toEqual(["codex:codex-big,codex-small"]);
   });
+
+  it("passes OpenRouter token prices into the Autorouter candidates", () => {
+    const openRouter = provider("openrouter", "openrouter", {
+      models: [
+        {
+          slug: "deepseek/deepseek-v4.1-flash",
+          name: "DeepSeek V4.1 Flash",
+          isCustom: false,
+          capabilities: null,
+          inputCostPerMillionTokens: 0.25,
+          outputCostPerMillionTokens: 1,
+        },
+      ],
+    });
+
+    expect(candidates([openRouter])[0]?.models[0]).toMatchObject({
+      slug: "deepseek/deepseek-v4.1-flash",
+      inputCostPerMillionTokens: 0.25,
+      outputCostPerMillionTokens: 1,
+    });
+  });
 });

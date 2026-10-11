@@ -185,7 +185,7 @@ export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, strin
   [PI_DRIVER_KIND]: "default",
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
   [ProviderDriverKind.make("antigravity")]: ANTIGRAVITY_DEFAULT_MODEL,
-  [OPENROUTER_DRIVER_KIND]: "anthropic/claude-3.7-sonnet",
+  [OPENROUTER_DRIVER_KIND]: "openrouter/free",
 };
 
 /** Per-provider text generation model defaults. */
@@ -197,7 +197,7 @@ export const DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER: Partial<
   [CLAUDE_DRIVER_KIND]: "claude-haiku-4-5",
   [CURSOR_DRIVER_KIND]: "composer-2",
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
-  [OPENROUTER_DRIVER_KIND]: "google/gemini-2.0-flash-001",
+  [OPENROUTER_DRIVER_KIND]: "openrouter/free",
 };
 
 export const MODEL_SLUG_ALIASES_BY_PROVIDER: Partial<

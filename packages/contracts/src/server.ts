@@ -89,6 +89,14 @@ export const ServerProviderModel = Schema.Struct({
    * `contextWindow` descriptor carries it) and from older servers.
    */
   contextWindowTokens: Schema.optional(PositiveInt),
+  /** OpenRouter's current input price in USD per million tokens. */
+  inputCostPerMillionTokens: Schema.optional(
+    Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0)),
+  ),
+  /** OpenRouter's current output price in USD per million tokens. */
+  outputCostPerMillionTokens: Schema.optional(
+    Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0)),
+  ),
 });
 export type ServerProviderModel = typeof ServerProviderModel.Type;
 

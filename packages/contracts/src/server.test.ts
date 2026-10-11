@@ -137,6 +137,27 @@ describe("ServerProvider", () => {
 
     expect(parsed.models[0]?.isLegacy).toBe(true);
   });
+
+  it("decodes optional per-token model pricing", () => {
+    const parsed = decodeServerProvider({
+      ...baseProviderSnapshot,
+      models: [
+        {
+          slug: "deepseek/deepseek-v4.1-flash",
+          name: "DeepSeek V4.1 Flash",
+          isCustom: false,
+          capabilities: null,
+          inputCostPerMillionTokens: 0.25,
+          outputCostPerMillionTokens: 1,
+        },
+      ],
+    });
+
+    expect(parsed.models[0]).toMatchObject({
+      inputCostPerMillionTokens: 0.25,
+      outputCostPerMillionTokens: 1,
+    });
+  });
 });
 
 describe("server config forward compatibility", () => {
