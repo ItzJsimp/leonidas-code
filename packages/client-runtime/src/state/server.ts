@@ -6,6 +6,7 @@ import {
   type ServerLifecycleStreamReadyEvent,
   type ServerSelfUpdateProgressEvent,
   type ServerSelfUpdateResult,
+  type ScribeStatusResult,
   WS_METHODS,
 } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
@@ -56,6 +57,63 @@ import {
 
 // Exported server state includes this type in its inferred public return type.
 export type { ServerConfigProjection } from "./serverConfigProjection.ts";
+
+/** Poll only while the caller's page is visible; abort also releases its query mount. */
+export function startScribeStatusPolling(
+  page: {
+    readonly visibilityState: string;
+    readonly addEventListener: (event: "visibilitychange", listener: () => void) => void;
+    readonly removeEventListener: (event: "visibilitychange", listener: () => void) => void;
+  },
+  read: (signal: AbortSignal) => Promise<unknown>,
+): () => void {
+  let controller: AbortController | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
+  const cancel = () => {
+    controller?.abort();
+    controller = undefined;
+    clearTimeout(timer);
+    timer = undefined;
+  };
+  const tick = async (current: AbortController) => {
+    try {
+      await read(current.signal);
+    } catch {
+      // A disconnected or older host must not end future status checks.
+    }
+    if (!current.signal.aborted && !disposed) {
+      // Schedule after settlement so slow reads never overlap.
+      // @effect-diagnostics-next-line globalTimers:off
+      timer = setTimeout(() => void tick(current), 5_000);
+    }
+  };
+  const update = () => {
+    if (page.visibilityState !== "visible") return cancel();
+    if (controller !== undefined || disposed) return;
+    controller = new AbortController();
+    void tick(controller);
+  };
+  page.addEventListener("visibilitychange", update);
+  update();
+  return () => {
+    disposed = true;
+    cancel();
+    page.removeEventListener("visibilitychange", update);
+  };
+}
+
+export function scribeStatusLabel(connected: boolean, result: ScribeStatusResult | null): string {
+  if (!connected) return "Disconnected";
+  if (result === null) return "Checking";
+  if (result.status === "unavailable") return "Offline";
+  return {
+    ready: "Ready",
+    listening: "Listening",
+    processing: "Processing",
+    mic_error: "Microphone error",
+  }[result.snapshot.state];
+}
 
 export type ServerUpdateStage = "downloading" | "installing" | "resuming";
 
@@ -1060,6 +1118,13 @@ export function createServerEnvironmentAtoms<R, E>(
     traceDiagnostics: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:trace-diagnostics",
       tag: WS_METHODS.serverGetTraceDiagnostics,
+    }),
+    scribeStatus: createEnvironmentQueryAtomFamily(runtime, {
+      label: "environment-data:scribe:status",
+      idleTtlMs: 0,
+      staleTimeMs: 0,
+      execute: (input: EnvironmentRpcInput<typeof WS_METHODS.scribeGetStatus>) =>
+        request(WS_METHODS.scribeGetStatus, input).pipe(Effect.timeout("5 seconds")),
     }),
     processDiagnostics: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:process-diagnostics",

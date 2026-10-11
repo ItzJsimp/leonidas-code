@@ -56,6 +56,14 @@ Archived and deleted threads are excluded. Disconnected environments show a warn
 and label their saved statuses; reconnect in **Settings > Connections** to restore
 live updates. Use the sidebar's **Back** button to return to the previous chat.
 
+Command Center also shows **Scribe** status for each environment on web and desktop:
+Checking, Ready, Listening, Processing, Microphone error, Offline, or Disconnected.
+Status checks run every five seconds while the page is visible and pause when you leave
+or hide it. Scribe must run with status support on the environment's server machine,
+including for remote connections. An unavailable or stale response shows Offline;
+an environment connection failure shows Disconnected. This card provides status only.
+Recording controls and transcripts remain in Scribe. Mobile has no Command Center card.
+
 ## Pin and reorder threads
 
 Pin a thread from its menu to keep it above your active work.
@@ -244,3 +252,17 @@ Choose **Snooze → Custom…** from a thread's menu to pick a date and time in 
 local time zone, or a duration in minutes, hours, or days. Durations start when
 you confirm; one day means 24 hours. On web and desktop, you can also snooze
 several selected threads together. Choose **Wake thread** to bring a thread back early.
+
+## Shared tasks
+
+On web and desktop, open **Tasks** in the sidebar utility bar to read the open
+GitHub Issues in `ItzJsimp/leonidas-code`. Filter by title, number, label or
+assignee. Open an issue to edit it on GitHub, or choose **New task** to create one.
+Agents can add tasks with `gh issue create --repo ItzJsimp/leonidas-code`.
+
+The server needs GitHub CLI installed and authenticated with `gh auth login`,
+and a repository administrator must enable Issues. The board reads through your
+connected primary server, including remote connections. It refreshes about every
+10 seconds while you are active; hidden or idle windows pause polling and refresh
+when you return. Up to 200 open issues are shown; use GitHub for the full queue.
+If a refresh fails, the last successful list stays visible with an error.

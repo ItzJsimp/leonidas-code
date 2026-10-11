@@ -7853,6 +7853,17 @@ export default function ChatView(props: ChatViewProps) {
       }),
     [feedbackSubmissions, routeThreadKey],
   );
+  const failoverTargets =
+    activeThreadShell &&
+    serverRuntime?.status === "failed" &&
+    serverRuntime.lastErrorClass === "usage_limit"
+      ? getProviderFailoverTargets({
+          entries: providerInstanceEntries,
+          settings,
+          current: activeThreadShell.modelSelection,
+          supportsHandoff: supportsProviderSwitchingViaHandoff,
+        })
+      : [];
   const limitRecoveryBanner =
     serverRuntime?.status === "failed" &&
     serverRuntime.lastErrorClass === "usage_limit" &&
@@ -7863,12 +7874,8 @@ export default function ChatView(props: ChatViewProps) {
           stoppedAt: activeThreadShell.latestRun.completedAt ?? activeThreadShell.updatedAt,
           recovery: activeThreadShell.limitRecovery ?? null,
           snoozedUntil: activeThreadShell.snoozedUntil,
-          failoverTargets: getProviderFailoverTargets({
-            entries: providerInstanceEntries,
-            settings,
-            current: activeThreadShell.modelSelection,
-            supportsHandoff: supportsProviderSwitchingViaHandoff,
-          }),
+          failoverTargets,
+          failoverUnavailable: supportsProviderSwitchingViaHandoff && failoverTargets.length === 0,
           failoverDisabled:
             !canOperateThread ||
             isSendBusy ||

@@ -1267,6 +1267,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                     key={props.selectedThread.latestRun?.runId}
                     thread={props.selectedThread}
                     environmentId={props.environmentId}
+                    canSwitchProvider={props.canSwitchThreadProvider}
                   />
                   {props.feedbackSubmissions.map((submission) => (
                     <ComposerFeedback

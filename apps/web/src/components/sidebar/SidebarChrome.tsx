@@ -1,3 +1,4 @@
+import { TaskBoardPanel } from "../taskBoard/TaskBoardPanel";
 import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
@@ -259,6 +260,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           />
         </>
       )}
+      <TaskBoardPanel />
       <SidebarUpdatePill />
     </SidebarMenu>
   );

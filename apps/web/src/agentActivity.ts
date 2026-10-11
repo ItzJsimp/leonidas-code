@@ -203,7 +203,8 @@ export function deriveAgentActivity(input: {
     project: [...project.values()].slice(-MAX_FILES),
     tools: [...tools.values()],
     actionCount: events.length,
-    files: [...new Set(paths)].slice(-MAX_FILES),
+    // Ordered by most recent touch, so a re-read file moves to the end.
+    files: [...new Set(paths.toReversed())].toReversed().slice(-MAX_FILES),
     explanation: plan?.explanation ?? null,
     notes,
   };

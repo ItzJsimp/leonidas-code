@@ -21,6 +21,7 @@ import {
   ChatGptHandoffInput,
   ChatGptHandoffState,
 } from "./providerSetup.ts";
+import { TaskBoardSnapshot, TaskBoardReadError } from "./taskBoard.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -368,13 +369,31 @@ import {
 import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
+export const ScribeStatusSnapshot = Schema.Struct({
+  service: Schema.Literal("leonidas-scribe"),
+  apiVersion: Schema.Literal(1),
+  state: Schema.Literals(["ready", "listening", "processing", "mic_error"]),
+  sampledAt: Schema.String,
+});
+
+export const ScribeStatusResult = Schema.Union([
+  Schema.Struct({ status: Schema.Literal("available"), snapshot: ScribeStatusSnapshot }),
+  Schema.Struct({
+    status: Schema.Literal("unavailable"),
+    reason: Schema.Literals(["offline", "timeout", "invalid_response", "stale", "http_error"]),
+  }),
+]);
+export type ScribeStatusResult = typeof ScribeStatusResult.Type;
+
 export const WS_METHODS = {
+  scribeGetStatus: "scribe.getStatus",
   // Project registry methods
   projectsList: "projects.list",
   projectsAdd: "projects.add",
   projectsRemove: "projects.remove",
   projectsListEntries: "projects.listEntries",
   projectsReadFile: "projects.readFile",
+  taskBoardList: "taskBoard.list",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsSearchContents: "projects.searchContents",
@@ -1191,6 +1210,12 @@ const WsProjectsListEntriesRpc = Rpc.make(WS_METHODS.projectsListEntries, {
   error: Schema.Union([ProjectListEntriesError, EnvironmentAuthorizationError]),
 });
 
+const WsTaskBoardListRpc = Rpc.make(WS_METHODS.taskBoardList, {
+  payload: Schema.Struct({}),
+  success: TaskBoardSnapshot,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
 const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidates, {
   payload: Schema.Struct({ cwd: Schema.String }),
   success: Schema.Array(
@@ -1539,6 +1564,12 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
   success: DiscoveredLocalServerList,
   error: EnvironmentAuthorizationError,
   stream: true,
+});
+
+const WsScribeGetStatusRpc = Rpc.make(WS_METHODS.scribeGetStatus, {
+  payload: Schema.Struct({}),
+  success: ScribeStatusResult,
+  error: EnvironmentAuthorizationError,
 });
 
 const WsLocalVmListRpc = Rpc.make(WS_METHODS.localVmList, {
@@ -1890,6 +1921,7 @@ export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthori
 ) {}
 
 export const WsRpcGroup = RpcGroup.make(
+  WsScribeGetStatusRpc,
   WsServerProbeRpc,
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,
@@ -1990,6 +2022,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeProjectClonesRpc,
   WsProjectsListEntriesRpc,
   WsProjectsReadFileRpc,
+  WsTaskBoardListRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsSearchContentsRpc,

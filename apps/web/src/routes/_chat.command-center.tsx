@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { groupCommandCenterThreads, type CommandCenterStatus } from "../commandCenter";
 import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
+import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { Spinner } from "../components/ui/spinner";
@@ -116,6 +117,16 @@ function CommandCenterPage() {
                 Open Connections
               </Link>
             </div>
+          ) : null}
+          {isReady && environments.length > 0 ? (
+            <section aria-label="Scribe status" className="grid gap-3 sm:grid-cols-2">
+              {environments.map((environment) => (
+                <ScribeStatusCard
+                  key={`${environment.environmentId}:${environment.connection.phase}`}
+                  environment={environment}
+                />
+              ))}
+            </section>
           ) : null}
           {!isReady || !bootstrapped ? (
             <div
