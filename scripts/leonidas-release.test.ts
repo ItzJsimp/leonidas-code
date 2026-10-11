@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
-import { classifyRelease, nextReleaseVersion, releaseNotes } from "./leonidas-release.ts";
+import {
+  classifyRelease,
+  coAuthorNames,
+  nextReleaseVersion,
+  releaseMetaComment,
+  releaseNotes,
+} from "./leonidas-release.ts";
 
 describe("Leonidas release policy", () => {
   it("reserves 1.0.0 for an explicit public launch", () => {
@@ -25,12 +31,12 @@ describe("Leonidas release policy", () => {
     expect(() => nextReleaseVersion("1.2.3", "launch", false)).toThrow();
     expect(() => nextReleaseVersion("01.2.3", "patch", false)).toThrow();
   });
-  it("groups all patch notes and uses human-readable release trailers", () => {
+  it("uses release trailers first, then cleaned subjects, and skips internal commits", () => {
     const notes = releaseNotes(
       [
         {
           subject: "feat: internal implementation",
-          body: "Release-Note: Browse past updates\nRelease-Note: See live tokens",
+          body: "Release-Note: Added a list of past updates\nRelease-Note: Added a live token counter",
         },
         { subject: "fix: missing counter", body: "" },
         { subject: "ci: cache Rust", body: "" },
@@ -38,12 +44,88 @@ describe("Leonidas release policy", () => {
       ],
       "0.2.0",
       true,
+      "a".repeat(40),
     );
-    expect(notes).toContain("0.2.0 · Development");
-    expect(notes).toContain("## New\n- Browse past updates\n- See live tokens");
-    expect(notes).toContain("## Fixed\n- missing counter");
-    expect(notes).toContain("## Improved\n- cache Rust");
+    expect(notes).toContain(
+      "# 0.2.0 · Development\n\n- Added a list of past updates\n- Added a live token counter\n- Missing counter\n",
+    );
+    expect(notes).not.toContain("## Details");
     expect(notes).not.toContain("internal implementation");
+    expect(notes).not.toContain("cache Rust");
     expect(notes).not.toContain("status");
+  });
+  it("caps highlights at five and moves overflow and Release-Detail lines under Details", () => {
+    const notes = releaseNotes(
+      [
+        {
+          subject: "feat: a",
+          body: Array.from({ length: 7 }, (_, i) => `Release-Note: Added thing ${i + 1}`).join(
+            "\n",
+          ),
+        },
+        {
+          subject: "fix: b",
+          body: "Release-Note: Added thing 1\nRelease-Detail: Takes effect after a restart",
+        },
+      ],
+      "0.3.0",
+      true,
+    );
+    const [highlights, details] = notes.split("\n## Details\n") as [string, string];
+    expect(highlights.match(/^- /gm)).toHaveLength(5);
+    expect(highlights).toContain("- Added thing 5\n");
+    expect(details).toContain("- Added thing 6\n- Added thing 7\n- Takes effect after a restart\n");
+    expect(details.match(/^- /gm)).toHaveLength(3);
+  });
+  it("ends with a metadata comment of full sha, aliased authors and co-authors", () => {
+    const sha = "0123456789abcdef0123456789abcdef01234567";
+    const notes = releaseNotes(
+      [
+        {
+          subject: "feat: x",
+          author: "ItzJsimp",
+          body: "Release-Note: Added x\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>",
+        },
+        {
+          subject: "fix: y",
+          author: "Seth Moncada",
+          body: "Co-authored-by: Pat Lee <pat@example.com>",
+        },
+        {
+          subject: "fix: z",
+          author: "ItzJsimp",
+          body: "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>",
+        },
+        { subject: "fix: w", author: "Someone Else", body: "" },
+      ],
+      "0.3.0",
+      true,
+      sha,
+    );
+    const lines = notes.trimEnd().split("\n");
+    expect(lines.at(-1)).toBe(
+      `<!-- leonidas-release {"commit":"${sha}","authors":["Jake","Mob","Someone Else"],"coAuthors":["Claude","Pat Lee"]} -->`,
+    );
+    expect(lines.at(-2)).toBe("");
+  });
+  it("keeps a safe fallback bullet and cannot be broken out of the comment by a name", () => {
+    const quiet = releaseNotes(
+      [{ subject: "ci: cache Rust", body: "", author: "A --> B" }],
+      "0.3.1",
+      true,
+    );
+    expect(quiet).toContain("\n- Behind-the-scenes reliability improvements\n");
+    const comment = quiet.trimEnd().split("\n").at(-1)!;
+    expect(comment.indexOf("-->")).toBe(comment.length - 3);
+    const json = JSON.parse(comment.slice("<!-- leonidas-release ".length, -4));
+    expect(json.authors).toEqual(["A --> B"]);
+  });
+  it("parses commit trailers case-insensitively and emits an empty commit when unknown", () => {
+    expect(
+      coAuthorNames("co-authored-by: Pat <p@x.io>\nCo-Authored-By: Claude <a@anthropic.com>"),
+    ).toEqual(["Pat", "Claude"]);
+    expect(releaseMetaComment({ commit: "", authors: [], coAuthors: [] })).toBe(
+      '<!-- leonidas-release {"commit":"","authors":[],"coAuthors":[]} -->',
+    );
   });
 });

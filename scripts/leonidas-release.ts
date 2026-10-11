@@ -7,6 +7,8 @@ export type ReleaseKind = "patch" | "minor" | "major" | "launch";
 export interface ReleaseCommit {
   subject: string;
   body: string;
+  /** Git author name of the commit, when known. */
+  author?: string;
 }
 
 /** Features advance minor; breaking changes advance major only after public launch. */
@@ -44,39 +46,117 @@ export function nextReleaseVersion(
   return `${major}.${minor}.${patch + 1}`;
 }
 
-/** Keep release notes readable while retaining the complete change list. */
+/** Git author names shown to users; unknown names pass through unchanged. */
+export const AUTHOR_ALIASES: Readonly<Record<string, string>> = {
+  ItzJsimp: "Jake",
+  "Seth Moncada": "Mob",
+};
+
+/** Highlights are the bullets a user reads in the update dialog; the rest go under Details. */
+export const MAX_HIGHLIGHTS = 5;
+
+export interface ReleaseMeta {
+  /** Full sha of the release commit. */
+  commit: string;
+  authors: string[];
+  coAuthors: string[];
+}
+
+const INTERNAL_SUBJECT = /^(?:docs|test|style|sync|ci|chore|refactor)(?:\([^)]*\))?!?:/i;
+
+function aliasName(name: string): string {
+  return AUTHOR_ALIASES[name] ?? name;
+}
+
+function distinct(names: ReadonlyArray<string>): string[] {
+  return [...new Set(names.filter(Boolean))];
+}
+
+/** `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` becomes "Claude". */
+export function coAuthorNames(body: string): string[] {
+  return [...body.matchAll(/^Co-Authored-By:\s*(.+?)\s*$/gim)].map((match) => {
+    const raw = match[1]!;
+    const name = raw.replace(/\s*<[^>]*>\s*$/, "").trim();
+    return /claude|anthropic/i.test(raw) ? "Claude" : aliasName(name);
+  });
+}
+
+/** Metadata comment the update dialog parses; `<` and `>` are escaped so a name cannot end the comment. */
+export function releaseMetaComment(meta: ReleaseMeta): string {
+  const json = JSON.stringify({
+    commit: meta.commit,
+    authors: meta.authors,
+    coAuthors: meta.coAuthors,
+  })
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e");
+  return `<!-- leonidas-release ${json} -->`;
+}
+
+/**
+ * Highlights (max 5) come from `Release-Note:` trailers first, then from cleaned subjects of
+ * commits without trailers. Overflow plus `Release-Detail:` trailers go under `## Details`.
+ * The last line is a machine-readable metadata comment.
+ */
 export function releaseNotes(
   commits: ReadonlyArray<ReleaseCommit>,
   version: string,
   development: boolean,
+  commit = "",
 ): string {
-  const features: string[] = [],
-    fixes: string[] = [],
-    improvements: string[] = [];
+  const rank = (subject: string) =>
+    /^feat(?:\(|:)/i.test(subject) || /^Build:/i.test(subject)
+      ? 0
+      : /^fix(?:\(|:)/i.test(subject)
+        ? 1
+        : 2;
+  const trailerValues = (body: string, key: string) =>
+    [...body.matchAll(new RegExp(`^${key}:\\s*(.+)$`, "gim"))].map((match) => match[1]!.trim());
+  const trailers: Array<{ rank: number; text: string }> = [];
+  const fallbacks: Array<{ rank: number; text: string }> = [];
+  const details: string[] = [];
   for (const { subject, body } of commits) {
-    if (/^(?:docs|test|style|sync)(?:\(|:)/i.test(subject)) continue;
-    const notes = [...body.matchAll(/^Release-Note:\s*(.+)$/gim)].map((match) => match[1]!.trim());
-    const texts = notes.length ? notes : [subject.replace(/^[a-z]+(?:\([^)]*\))?!?:\s*/i, "")];
-    const group =
-      /^feat(?:\(|:)/i.test(subject) || /^Build:/i.test(subject)
-        ? features
-        : /^fix(?:\(|:)/i.test(subject)
-          ? fixes
-          : improvements;
-    for (const text of texts) if (text && !group.includes(text)) group.push(text);
+    const notes = trailerValues(body, "Release-Note");
+    details.push(...trailerValues(body, "Release-Detail"));
+    if (notes.length) {
+      for (const text of notes) trailers.push({ rank: rank(subject), text });
+      continue;
+    }
+    if (INTERNAL_SUBJECT.test(subject)) continue;
+    const cleaned = subject.replace(/^[a-z]+(?:\([^)]*\))?!?:\s*/i, "").trim();
+    if (cleaned)
+      fallbacks.push({ rank: rank(subject), text: cleaned[0]!.toUpperCase() + cleaned.slice(1) });
   }
-  const sections = [
-    ["New", features],
-    ["Fixed", fixes],
-    ["Improved", improvements],
-  ] as const;
+  const seen = new Set<string>();
+  const ordered = [
+    ...trailers.toSorted((a, b) => a.rank - b.rank),
+    ...fallbacks.toSorted((a, b) => a.rank - b.rank),
+  ]
+    .map(({ text }) => text)
+    .filter((text) => {
+      const key = text.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  const highlights = ordered.slice(0, MAX_HIGHLIGHTS);
+  const shown = new Set(highlights.map((text) => text.toLowerCase()));
+  const extra = [...ordered.slice(MAX_HIGHLIGHTS), ...details].filter((text) => {
+    const key = text.toLowerCase();
+    if (shown.has(key)) return false;
+    shown.add(key);
+    return true;
+  });
+  const authors = distinct(commits.map(({ author }) => (author ? aliasName(author.trim()) : "")));
+  const coAuthors = distinct(commits.flatMap(({ body }) => coAuthorNames(body))).filter(
+    (name) => !authors.includes(name),
+  );
+  const bullets = (items: ReadonlyArray<string>) => items.map((item) => `- ${item}`).join("\n");
   return (
     `# ${version}${development ? " · Development" : ""}\n\n` +
-    sections
-      .filter(([, items]) => items.length)
-      .map(([title, items]) => `## ${title}\n${items.map((item) => `- ${item}`).join("\n")}`)
-      .join("\n\n") +
-    (features.length + fixes.length + improvements.length ? "\n" : "- Maintenance improvements\n")
+    `${bullets(highlights.length ? highlights : ["Behind-the-scenes reliability improvements"])}\n` +
+    (extra.length ? `\n## Details\n${bullets(extra)}\n` : "") +
+    `\n${releaseMetaComment({ commit, authors, coAuthors })}\n`
   );
 }
 
@@ -131,14 +211,20 @@ function main() {
       throw new Error("Previous release is not an ancestor of this build");
     range = `${notesBaseline.tag_name}..HEAD`;
   }
-  const raw = run("git", ["log", range, "--no-merges", "--reverse", "--format=%s%x1f%b%x1e"]);
+  const raw = run("git", [
+    "log",
+    range,
+    "--no-merges",
+    "--reverse",
+    "--format=%an%x1f%s%x1f%b%x1e",
+  ]);
   const commits = raw
     .split("\x1e")
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => {
-      const [subject = "", body = ""] = entry.split("\x1f");
-      return { subject, body };
+      const [author = "", subject = "", body = ""] = entry.split("\x1f");
+      return { author, subject, body };
     });
   const override = process.env.RELEASE_KIND;
   if (override && !["auto", "patch", "minor", "major", "launch"].includes(override))
@@ -152,7 +238,12 @@ function main() {
   );
   NodeFS.writeFileSync(
     "notes.md",
-    releaseNotes(commits, version, development && kind !== "launch"),
+    releaseNotes(
+      commits,
+      version,
+      development && kind !== "launch",
+      process.env.GITHUB_SHA ?? run("git", ["rev-parse", "HEAD"]),
+    ),
   );
   if (process.env.GITHUB_OUTPUT)
     NodeFS.appendFileSync(
