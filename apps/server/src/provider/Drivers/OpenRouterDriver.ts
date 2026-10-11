@@ -140,7 +140,7 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
         const catalogService = yield* ModelCatalog.ModelCatalog;
         const modelCatalog = catalogService
           .current(DRIVER_KIND)
-          .pipe(Effect.map(resolveClaudeModelCatalog));
+          .pipe(Effect.map((catalog) => catalog ?? { models: [], defaultChatModel: undefined }));
 
         const effectiveBaseUrl = config.baseUrl.trim() || "https://openrouter.ai/api";
         const effectiveApiKey = config.apiKey.trim();
