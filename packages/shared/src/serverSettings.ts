@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SERVER_SETTINGS,
   isProviderAvailable,
   isUnconfiguredDefaultInstanceEnabled,
   resolveProviderInstanceEnabled,
@@ -25,6 +26,78 @@ import {
 
 const ServerSettingsJson = fromLenientJson(ServerSettings);
 const decodeServerSettingsJson = Schema.decodeUnknownOption(ServerSettingsJson);
+
+/**
+ * Defaults this fork applies to every environment that has not chosen its own
+ * value, so both machines come up configured the same way.
+ * `continueThreadsAfterServerUpdate` matters here because every push to `main`
+ * ships an update: without it an update restart cancels the running turn and
+ * never resumes it. The cleanup windows stop silent disk growth in worktrees,
+ * browser artifacts and logs.
+ *
+ * The type annotation is the allowlist. Keys outside it — secrets, accounts,
+ * machine paths — cannot be seeded without naming them here, which is a change
+ * a reviewer sees.
+ */
+export const TEAM_SERVER_SETTINGS_DEFAULTS: {
+  readonly continueThreadsAfterServerUpdate: ServerSettings["continueThreadsAfterServerUpdate"];
+  readonly branchNamingMode: ServerSettings["branchNamingMode"];
+  readonly storageCleanup: Partial<ServerSettings["storageCleanup"]>;
+} = {
+  continueThreadsAfterServerUpdate: true,
+  branchNamingMode: "semantic",
+  storageCleanup: {
+    worktreeAfterDays: 14,
+    browserArtifactsAfterDays: 14,
+    logsAfterDays: 30,
+  },
+};
+
+/**
+ * Fills a team default wherever the settings file has no key of its own. A key
+ * the user has set is left alone even when it matches the schema default, so an
+ * explicit choice always wins. Presence is read per top-level key: once a file
+ * carries any `storageCleanup`, the rest of that object is the user's to set.
+ * A key the user clears in the UI is refilled on the next start.
+ */
+export function applyTeamSettingsDefaults(
+  settings: ServerSettings,
+  fileSettings: unknown,
+): ServerSettings {
+  // A missing file is an empty one: a fresh install takes every team default.
+  const present =
+    fileSettings !== null && typeof fileSettings === "object" && !Array.isArray(fileSettings)
+      ? (fileSettings as Record<string, unknown>)
+      : {};
+  const defaults = TEAM_SERVER_SETTINGS_DEFAULTS;
+  return {
+    ...settings,
+    continueThreadsAfterServerUpdate: Object.hasOwn(present, "continueThreadsAfterServerUpdate")
+      ? settings.continueThreadsAfterServerUpdate
+      : defaults.continueThreadsAfterServerUpdate,
+    branchNamingMode: Object.hasOwn(present, "branchNamingMode")
+      ? settings.branchNamingMode
+      : defaults.branchNamingMode,
+    // Merge, so the cleanup keys the seed does not name keep the values the
+    // decode already gave them.
+    storageCleanup: Object.hasOwn(present, "storageCleanup")
+      ? settings.storageCleanup
+      : { ...settings.storageCleanup, ...defaults.storageCleanup },
+  };
+}
+
+/**
+ * The defaults a machine actually falls back to: the schema defaults with the
+ * team defaults folded in. Settings UI compares against this, not
+ * `DEFAULT_SERVER_SETTINGS`, or a seeded key looks "modified" and its Reset
+ * button undoes the team default. Because the write path strips against the
+ * same object, resetting a seeded key writes a value that is stripped again,
+ * so the key leaves the file and the team default keeps governing it.
+ */
+export const EFFECTIVE_SERVER_SETTINGS_DEFAULTS = applyTeamSettingsDefaults(
+  DEFAULT_SERVER_SETTINGS,
+  null,
+);
 
 /** @deprecated Read `resolveProjectSettings(...).settings.enableAgentBrowserAccess`. */
 export function resolveProjectAgentBrowserAccess(

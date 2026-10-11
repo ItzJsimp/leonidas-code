@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./threadIdentity": {
+      "types": "./src/threadIdentity.ts",
+      "import": "./src/threadIdentity.ts"
+    },
     "./subscriptionEstimate": {
       "types": "./src/subscriptionEstimate.ts",
       "import": "./src/subscriptionEstimate.ts"

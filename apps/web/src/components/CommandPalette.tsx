@@ -65,6 +65,7 @@ import {
   PaletteIcon,
   RotateCcwIcon,
   SettingsIcon,
+  SparklesIcon,
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
@@ -194,6 +195,7 @@ import { Checkbox } from "./ui/checkbox";
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProjectFilePicker } from "./files/ProjectFilePicker";
 import { openLinkPullRequestDialog } from "./pullRequest/LinkPullRequestDialog";
+import { openReleaseHistoryDialog } from "./desktop/ReleaseHistoryDialog";
 import { ProjectContentSearchDialog } from "./search/ProjectContentSearchDialog";
 import { toggleThemeEditorForTheme } from "./settings/themeEditorStore";
 import { searchSettings, SETTINGS_SECTION_LABELS } from "./settings/settingsSearch";
@@ -2287,6 +2289,18 @@ function OpenCommandPaletteDialog(props: {
     icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/settings" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:update-history",
+    searchTerms: ["update", "updates", "history", "changelog", "release", "notes", "version"],
+    title: "Update history",
+    description: "Browse release notes and what changed in each version",
+    icon: <SparklesIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      openReleaseHistoryDialog();
     },
   });
 

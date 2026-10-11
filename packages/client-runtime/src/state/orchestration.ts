@@ -11,6 +11,13 @@ import type { EnvironmentRegistry } from "../connection/registry.ts";
 export function createOrchestrationEnvironmentAtoms<R, E>(
   runtime: Atom.AtomRuntime<EnvironmentRegistry | R, E>,
 ) {
+  const threadContextBreakdown = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:orchestration-v2:thread-context-breakdown",
+    tag: ORCHESTRATION_V2_WS_METHODS.getThreadContextBreakdown,
+    staleTimeMs: 5_000,
+    idleTtlMs: 30_000,
+  });
+
   return {
     v2: {
       dispatchCommand: createEnvironmentRpcCommand(runtime, {
@@ -23,6 +30,7 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
         staleTimeMs: 0,
         idleTtlMs: 0,
       }),
+      threadContextBreakdown,
       shell: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
         label: "environment-data:orchestration-v2:shell",
         tag: ORCHESTRATION_V2_WS_METHODS.subscribeShell,
@@ -33,6 +41,7 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
         idleTtlMs: 0,
       }),
     },
+    threadContextBreakdown,
     turnDiff: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:orchestration:turn-diff",
       tag: ORCHESTRATION_V2_WS_METHODS.getTurnDiff,

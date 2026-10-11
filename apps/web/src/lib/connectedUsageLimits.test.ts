@@ -7,7 +7,7 @@ import {
   type ServerProvider,
 } from "@t3tools/contracts";
 import type { LimitPresentations } from "@t3tools/shared/usageLimits";
-import { collectConnectedUsageLimits } from "./connectedUsageLimits";
+import { activeAccountIds, collectConnectedUsageLimits } from "./connectedUsageLimits";
 
 const now = Date.parse("2026-10-10T10:00:00Z");
 const provider = (id: string, driver: string, email: string, used: number): ServerProvider => ({
@@ -113,5 +113,25 @@ describe("connected usage accounts", () => {
     expect(report.accounts[0]?.instanceId).toBe(p.instanceId);
     expect(report.accounts[0]?.limits.windows[0]?.usedPercent).toBe(95);
     expect(report.notices).toEqual(["Proxy: Refresh failed"]);
+  });
+
+  it("finds this thread's account by email, then credential, then instance", () => {
+    const a = provider("claude-a", "claude", "A@example.com", 20);
+    const b = provider("claude-b", "claude", "b@example.com", 30);
+    const { accounts } = collectConnectedUsageLimits(presentations([a, b]), now);
+    const byEmail = activeAccountIds(accounts, {
+      id: "env-0:claude-a",
+      driver: "claude",
+      email: "a@example.com ",
+    });
+    expect([...byEmail]).toEqual(["env-0:claude-a"]);
+    expect([...activeAccountIds(accounts, { id: "env-0:claude-b", driver: "claude" })]).toEqual([
+      "env-0:claude-b",
+    ]);
+    expect(
+      activeAccountIds(accounts, { id: "env-0:claude-a", driver: "codex", email: "a@example.com" })
+        .size,
+    ).toBe(0);
+    expect(activeAccountIds(accounts, null).size).toBe(0);
   });
 });

@@ -4,6 +4,36 @@ import type { LimitPresentations } from "@t3tools/shared/usageLimits";
 
 type Account = UsageLimitsReport["accounts"][number];
 
+/**
+ * The report rows that are this thread's own subscription: same driver, then the same
+ * signed-in email, else the same credential, else the same provider instance.
+ */
+export function activeAccountIds(
+  accounts: ReadonlyArray<Account>,
+  active: {
+    readonly id: string;
+    readonly driver: string;
+    readonly email?: string | undefined;
+    readonly credentialFingerprint?: string | undefined;
+  } | null,
+): ReadonlySet<string> {
+  if (!active) return new Set();
+  const email = active.email?.trim().toLowerCase();
+  return new Set(
+    accounts
+      .filter(
+        (account) =>
+          account.driver === active.driver &&
+          (email
+            ? account.email?.trim().toLowerCase() === email
+            : active.credentialFingerprint
+              ? account.limits.credentialFingerprint === active.credentialFingerprint
+              : account.id === active.id),
+      )
+      .map((account) => account.id),
+  );
+}
+
 /** One row per subscription, including authenticated accounts that cannot report quotas. */
 export function collectConnectedUsageLimits(
   presentations: LimitPresentations,

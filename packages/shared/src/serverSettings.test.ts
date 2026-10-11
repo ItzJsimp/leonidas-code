@@ -13,6 +13,8 @@ import { createModelSelection } from "./model.ts";
 import { resolveProjectScripts, projectScriptsInheritDefaults } from "./projectScripts.ts";
 import {
   applyServerSettingsPatch,
+  applyTeamSettingsDefaults,
+  TEAM_SERVER_SETTINGS_DEFAULTS,
   isModelSelectionProviderEnabled,
   parsePersistedServerObservabilitySettings,
   resolveSourceControlWriterModelSelection,
@@ -817,5 +819,71 @@ describe("worktreesDirectory", () => {
     expect(reset.previousWorktreesDirectories).toEqual(["/a", "/b"]);
     const back = applyServerSettingsPatch(reset, { worktreesDirectory: "/a" });
     expect(back.previousWorktreesDirectories).toEqual(["/b"]);
+  });
+});
+
+describe("team settings defaults", () => {
+  it("fills every default for a machine with no settings file yet", () => {
+    const seeded = applyTeamSettingsDefaults(DEFAULT_SERVER_SETTINGS, null);
+    expect(seeded.continueThreadsAfterServerUpdate).toBe(true);
+    expect(seeded.branchNamingMode).toBe("semantic");
+    expect(seeded.storageCleanup).toEqual({
+      worktreeAfterDays: 14,
+      worktreeOnMerge: false,
+      worktreeOnDelete: false,
+      worktreeUnchanged: false,
+      browserArtifactsAfterDays: 14,
+      logsAfterDays: 30,
+    });
+  });
+
+  it("leaves a key the file sets alone, including one set to the schema default", () => {
+    // The caller hands over the decoded file, so its keys already carry the
+    // file's values; `fileSettings` only says which keys the file mentioned.
+    const decoded = { ...DEFAULT_SERVER_SETTINGS, continueThreadsAfterServerUpdate: false };
+    const seeded = applyTeamSettingsDefaults(decoded, { continueThreadsAfterServerUpdate: false });
+    expect(seeded.continueThreadsAfterServerUpdate).toBe(false);
+    // Untouched keys still take the team default.
+    expect(seeded.branchNamingMode).toBe("semantic");
+    expect(seeded.storageCleanup.worktreeAfterDays).toBe(14);
+  });
+
+  it("leaves the whole cleanup object alone once the file carries one", () => {
+    const decoded = {
+      ...DEFAULT_SERVER_SETTINGS,
+      storageCleanup: { ...DEFAULT_SERVER_SETTINGS.storageCleanup, worktreeAfterDays: 3 },
+    };
+    const seeded = applyTeamSettingsDefaults(decoded, { storageCleanup: { worktreeAfterDays: 3 } });
+    expect(seeded.storageCleanup.worktreeAfterDays).toBe(3);
+    expect(seeded.storageCleanup.logsAfterDays).toBeNull();
+    expect(seeded.storageCleanup.worktreeOnMerge).toBe(false);
+  });
+
+  it("seeds nothing but the allowlisted keys", () => {
+    expect(Object.keys(TEAM_SERVER_SETTINGS_DEFAULTS).sort()).toEqual([
+      "branchNamingMode",
+      "continueThreadsAfterServerUpdate",
+      "storageCleanup",
+    ]);
+    const seeded = applyTeamSettingsDefaults(DEFAULT_SERVER_SETTINGS, null);
+    const changed = Object.keys(seeded).filter(
+      (key) =>
+        JSON.stringify(seeded[key as keyof typeof seeded]) !==
+        JSON.stringify(DEFAULT_SERVER_SETTINGS[key as keyof typeof DEFAULT_SERVER_SETTINGS]),
+    );
+    expect(changed.sort()).toEqual([
+      "branchNamingMode",
+      "continueThreadsAfterServerUpdate",
+      "storageCleanup",
+    ]);
+  });
+
+  it("tolerates a file whose top level is not an object", () => {
+    expect(applyTeamSettingsDefaults(DEFAULT_SERVER_SETTINGS, []).branchNamingMode).toBe(
+      "semantic",
+    );
+    expect(applyTeamSettingsDefaults(DEFAULT_SERVER_SETTINGS, "nope").branchNamingMode).toBe(
+      "semantic",
+    );
   });
 });

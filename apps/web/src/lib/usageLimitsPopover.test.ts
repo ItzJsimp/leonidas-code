@@ -2,13 +2,17 @@ import type { ServerProviderUsageWindow } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  accountTitle,
+  contextWindowFigures,
   contextWindowTokensForModel,
+  formatResetCountdown,
   formatResetLabel,
   formatTokenCount,
-  glanceWindows,
+  glanceLimitRows,
+  limitLabel,
   orderPlanWindows,
   parseContextWindowSize,
-  planWindowLabel,
+  percentText,
   shortPlanName,
   usageSeverity,
   withKnownContextWindow,
@@ -64,10 +68,15 @@ describe("usage limits popover helpers", () => {
       "model",
       "other",
     ]);
-    expect(planWindowLabel(windows[3]!)).toBe("Session limit");
-    expect(planWindowLabel(windows[2]!)).toBe("Weekly · all models");
-    expect(planWindowLabel(windows[0]!)).toBe("Weekly · Fable");
-    expect(planWindowLabel(windows[1]!)).toBe("Credits");
+    const session = { ...windows[3]!, windowDurationMins: 300 };
+    expect(limitLabel(windows[3]!, "panel")).toBe("Session");
+    expect(limitLabel(session, "panel")).toBe("5-hour session");
+    expect(limitLabel(session, "glance")).toBe("5-hour limit");
+    expect(limitLabel(windows[2]!, "panel")).toBe("Weekly, all models");
+    expect(limitLabel(windows[2]!, "glance")).toBe("Weekly limit");
+    expect(limitLabel(windows[0]!, "panel")).toBe("Weekly, Fable");
+    expect(limitLabel(windows[1]!, "panel")).toBe("Credits");
+    expect(limitLabel(window("m", "monthly", "Monthly"), "glance")).toBe("Monthly limit");
   });
 
   it("shortens plan names to the tier", () => {
@@ -130,17 +139,84 @@ describe("usage limits popover helpers", () => {
   });
 });
 
-describe("glanceWindows", () => {
-  const window = (id: string, kind: ServerProviderUsageWindow["kind"], label: string) =>
-    ({ id, kind, label, usedPercent: 10 }) satisfies ServerProviderUsageWindow;
+describe("glance and panel helpers", () => {
+  const window = (
+    id: string,
+    kind: ServerProviderUsageWindow["kind"],
+    label: string,
+    extra: Partial<ServerProviderUsageWindow> = {},
+  ) => ({ id, kind, label, usedPercent: 10, ...extra }) satisfies ServerProviderUsageWindow;
 
   it("keeps session then the plain weekly and drops per-model weeklies", () => {
+    const rows = glanceLimitRows([
+      window("w_fable", "weekly", "Weekly · Fable"),
+      window("w", "weekly", "Weekly"),
+      window("s", "session", "Session", { windowDurationMins: 300 }),
+    ]);
+    expect(rows.map((row) => [row.label, row.window?.id])).toEqual([
+      ["5-hour limit", "s"],
+      ["Weekly limit", "w"],
+    ]);
+  });
+
+  it("keeps a not-reported row instead of dropping a missing window", () => {
+    const rows = glanceLimitRows([window("w", "weekly", "Weekly")]);
+    expect(rows.map((row) => [row.label, row.window?.id ?? null])).toEqual([
+      ["5-hour limit", null],
+      ["Weekly limit", "w"],
+    ]);
+    expect(glanceLimitRows([])).toEqual([]);
+    expect(glanceLimitRows([window("m", "monthly", "Monthly")]).map((row) => row.label)).toEqual([
+      "Monthly limit",
+    ]);
+  });
+
+  it("says used or left explicitly", () => {
+    expect(percentText(38.4)).toBe("38% used");
+    expect(percentText(38.4, "left")).toBe("62% left");
+    expect(percentText(120, "left")).toBe("0% left");
+  });
+
+  it("counts reset time down in plain and compact form", () => {
+    const now = Date.parse("2026-10-09T12:00:00Z");
+    const at = (minutes: number) => new Date(now + minutes * 60_000).toISOString();
+    expect(formatResetCountdown(undefined, now)).toBeNull();
+    expect(formatResetCountdown("garbage", now)).toBeNull();
+    expect(formatResetCountdown(at(-1), now)).toBe("Resets now");
+    expect(formatResetCountdown(at(0.5), now)).toBe("Resets in 1 min");
+    expect(formatResetCountdown(at(90), now)).toBe("Resets in 1 hr 30 min");
+    expect(formatResetCountdown(at(120), now)).toBe("Resets in 2 hr");
+    expect(formatResetCountdown(at(60 * 24), now)).toBe("Resets in 1 day");
+    expect(formatResetCountdown(at(60 * 76 + 59), now)).toBe("Resets in 3 days 4 hr");
+    expect(formatResetCountdown(at(104), now, true)).toBe("1h 44m");
+    expect(formatResetCountdown(at(60 * 76), now, true)).toBe("3d 4h");
+    expect(formatResetCountdown(at(-5), now, true)).toBe("now");
+  });
+
+  it("names accounts by their Providers label first", () => {
+    expect(accountTitle({ displayName: " Work " }, "Claude")).toBe("Work");
+    expect(accountTitle({ displayName: "" }, "Claude")).toBe("Claude");
+    expect(accountTitle({ sourceLabel: "CLIProxy" }, "Codex")).toBe("Codex · CLIProxy");
+  });
+
+  it("never invents a zero before the first context report", () => {
+    expect(contextWindowFigures(null)).toEqual({ state: "missing" });
+    const pending = withKnownContextWindow(null, 250_000);
+    expect(contextWindowFigures(pending)).toEqual({ state: "pending", maxTokens: 250_000 });
+    const reported = {
+      ...pending!,
+      usedTokens: 76_400,
+      usedPercentage: 30.56,
+      updatedAt: "2026-10-09T12:00:00.000Z",
+    };
+    expect(contextWindowFigures(reported)).toEqual({
+      state: "reported",
+      usedTokens: 76_400,
+      maxTokens: 250_000,
+      usedPercent: 31,
+    });
     expect(
-      glanceWindows([
-        window("w_fable", "weekly", "Weekly · Fable"),
-        window("w", "weekly", "Weekly"),
-        window("s", "session", "Session"),
-      ]).map((entry) => entry.id),
-    ).toEqual(["s", "w"]);
+      contextWindowFigures({ ...reported, maxTokens: null, usedPercentage: null }),
+    ).toMatchObject({ state: "reported", maxTokens: null, usedPercent: null });
   });
 });

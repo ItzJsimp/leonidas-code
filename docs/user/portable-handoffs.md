@@ -24,7 +24,8 @@ When a Claude or Codex task stops at a usage limit, choose **Continue with Codex
 the alternate connection's visible default model and transfers conversation context through
 the same portable handoff. Hover over the action to see the selected model.
 
-The action appears for an enabled, ready Claude or Codex connection with a selectable model.
+The action appears on web, desktop and mobile for an enabled, ready Claude or Codex connection with a selectable model.
+If none is ready, the notice says so instead of showing a button.
 Connections sharing the limited provider's native account identity, or reporting exhausted quota,
 are excluded. Unreported quota is unknown, so the new provider may still refuse the request.
 Other provider types remain available through the model picker. Waiting until reset and snoozing

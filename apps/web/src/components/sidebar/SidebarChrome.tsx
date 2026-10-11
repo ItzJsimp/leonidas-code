@@ -4,6 +4,7 @@ import {
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   SettingsIcon,
+  SparklesIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
@@ -33,6 +34,7 @@ import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
+import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
@@ -206,6 +208,13 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/usage" });
   }, [isMobile, navigate, setOpenMobile]);
 
+  const handleUpdateHistoryClick = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    openReleaseHistoryDialog();
+  }, [isMobile, setOpenMobile]);
+
   const handleBackClick = useCallback(() => {
     closeMobileSidebar();
     void navigateToMainApp();
@@ -243,6 +252,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             icon={<ChartNoAxesColumnIcon />}
             label="Usage"
             onClick={handleUsageClick}
+          />
+          <SidebarUtilityItem
+            icon={<SparklesIcon />}
+            label="Updates"
+            onClick={handleUpdateHistoryClick}
           />
         </>
       )}

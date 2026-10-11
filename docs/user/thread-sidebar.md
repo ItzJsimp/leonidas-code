@@ -124,6 +124,17 @@ If dragging is unavailable for one environment, update the Leonidas Code server 
 environment. Pinned and active reordering require server support. Threads from older servers keep
 their default order until the server is updated.
 
+The title names the task and stays recognizable as work progresses. Topic emojis
+help distinguish chats; rename a chat with your own leading emoji to replace its
+automatic one. While a chat is active, a separate line shows its current plan step
+or running tool, with step progress when available. Approvals and questions take
+priority, and the live line clears when work finishes. Project logos and chosen
+icons are preserved; projects without either receive an automatic visual identity.
+
+The branch label records the chat's branch. Local chats share their project's
+checkout; on web and desktop, an amber warning identifies a checkout now on another
+branch. Choose **New worktree** when a task needs its own checkout.
+
 To generate a fresh title from the conversation, open a thread's menu and choose
 **Regenerate title**. The action is unavailable while title generation is in progress
 or when the connected environment needs a server update.

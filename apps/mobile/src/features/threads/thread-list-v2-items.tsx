@@ -40,6 +40,7 @@ import { useThreadPr } from "../../state/use-thread-pr";
 import { useSwipeRowDormant } from "../home/swipe-row-activation";
 import { ThreadSwipeable } from "../home/thread-swipe-actions";
 import { buildThreadTitleRegenerationMenuItems } from "./thread-title-regeneration-menu";
+import { threadTopicGlyph, threadActivityLine } from "@t3tools/shared/threadIdentity";
 import {
   THREAD_LIST_V2_SETTLED_PAGE_COUNT,
   resolveThreadListV2SnoozeGateExpiryMs,
@@ -627,6 +628,16 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
   const rowAppearance = getThreadListV2RowAppearance(theme, sidebarPane, selected);
 
   const status = resolveThreadListV2Status(thread);
+  const activityLine = threadActivityLine({ status, summary: thread.activitySummary });
+  const topicGlyph = threadTopicGlyph(thread.title);
+  const accessibleRowLabel = [
+    thread.title,
+    props.hasQueuedMessages ? "messages queued to send" : null,
+    activityLine?.text,
+    activityLine?.progress ? `step ${activityLine.progress}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
   // "Done" marks a completion the user has not opened yet — same emerald
   // label as the web sidebar, sourced from the server-side visited watermark
   // so checking a thread on any device clears it everywhere.
@@ -1046,8 +1057,37 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
         )}
         numberOfLines={2}
       >
+        {topicGlyph ? `${topicGlyph} ` : ""}
         {thread.title}
       </Text>
+      {activityLine ? (
+        <View className="mt-1 flex-row items-center gap-2" accessibilityLabel={activityLine.text}>
+          <Text
+            className={cn(
+              "min-w-0 flex-1 text-xs",
+              selected
+                ? selectedThreadRowColors.mutedForegroundClassName
+                : rowAppearance.mutedForegroundClassName,
+            )}
+            numberOfLines={1}
+          >
+            {activityLine.text}
+          </Text>
+          {activityLine.progress ? (
+            <Text
+              className={cn(
+                "text-xs tabular-nums",
+                selected
+                  ? selectedThreadRowColors.mutedForegroundClassName
+                  : rowAppearance.mutedForegroundClassName,
+              )}
+              accessibilityLabel={`Step ${activityLine.progress}`}
+            >
+              {activityLine.progress}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       {props.searchMatch ? (
         <View className="mt-1">
           <ThreadSearchMatchExcerpt
@@ -1081,6 +1121,17 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
              truncation), and the wrapper takes the slack so the trailers
              stay pinned right. */
           <View className="min-w-0 flex-1 flex-row items-center gap-1">
+            {thread.branch ? (
+              <SymbolView
+                name="arrow.triangle.branch"
+                size={11}
+                tintColorClassName={
+                  selected
+                    ? selectedThreadRowColors.mutedIconTintClassName
+                    : rowAppearance.mutedIconTintClassName
+                }
+              />
+            ) : null}
             <Text
               className={cn(
                 "shrink text-xs",
@@ -1089,6 +1140,11 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
                   : rowAppearance.mutedForegroundClassName,
               )}
               numberOfLines={1}
+              accessibilityLabel={
+                thread.branch
+                  ? `Chat branch ${thread.branch}; ${thread.worktreePath ? "isolated worktree" : "shared checkout"}${props.environmentLabel ? ` on ${props.environmentLabel}` : ""}`
+                  : (props.environmentLabel ?? undefined)
+              }
             >
               {thread.branch ? (
                 <Text
@@ -1197,9 +1253,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
         interactionOpacity={rowAppearance.interactionOpacity}
         className={rowAppearance.className}
         accessibilityHint={swipeAccessibilityHint}
-        accessibilityLabel={
-          props.hasQueuedMessages ? `${thread.title}, messages queued to send` : thread.title
-        }
+        accessibilityLabel={accessibleRowLabel}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         onPress={() => {
@@ -1229,9 +1283,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
         interactionClassName={rowAppearance.interactionClassName}
         interactionOpacity={rowAppearance.interactionOpacity}
         accessibilityHint={swipeAccessibilityHint}
-        accessibilityLabel={
-          props.hasQueuedMessages ? `${thread.title}, messages queued to send` : thread.title
-        }
+        accessibilityLabel={accessibleRowLabel}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         className={rowAppearance.className}
@@ -1270,6 +1322,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
               )}
               numberOfLines={1}
             >
+              {topicGlyph ? `${topicGlyph} ` : ""}
               {thread.title}
             </Text>
             {props.searchMatch ? (

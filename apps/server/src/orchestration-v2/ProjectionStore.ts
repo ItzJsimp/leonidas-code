@@ -1,4 +1,5 @@
 import { projectTurnItemForWire } from "./WireProjection.ts";
+import { summarizeThreadActivity } from "./threadActivitySummary.ts";
 import * as Stream from "effect/Stream";
 import { makeThreadFind, findProjectedThreadItems } from "./ThreadFind.ts";
 import type {
@@ -39,6 +40,7 @@ import type {
 } from "@t3tools/contracts";
 import {
   OrchestrationV2AppThreadJson as OrchestrationV2AppThreadJsonSchema,
+  OrchestrationV2ActivitySummary,
   OrchestrationV2CheckpointJson as OrchestrationV2CheckpointJsonSchema,
   OrchestrationV2CheckpointScopeJson as OrchestrationV2CheckpointScopeJsonSchema,
   OrchestrationV2ContextHandoffJson as OrchestrationV2ContextHandoffJsonSchema,
@@ -958,6 +960,7 @@ type ShellThreadRow = {
   readonly active_run_id: string | null;
   readonly activity_run_status: string | null;
   readonly activity_run_started_at: string | null;
+  readonly activity_summary_json: string | null;
   readonly last_error: string | null;
   readonly terminal_failure_payload_json: string | null;
   readonly blocking_run_id: string | null;
@@ -1056,6 +1059,9 @@ const encodeContextTransferPayload = Schema.encodeEffect(
   Schema.fromJsonString(OrchestrationV2ContextTransferJsonSchema),
 );
 
+const decodeActivitySummary = Schema.decodeUnknownEffect(
+  Schema.fromJsonString(OrchestrationV2ActivitySummary),
+);
 const decodeThreadPayload = Schema.decodeUnknownEffect(
   Schema.fromJsonString(OrchestrationV2AppThreadJsonSchema),
 );
@@ -1470,6 +1476,15 @@ export function threadShellFromProjection(
     latestRunCompletedAt: latestRun?.completedAt ?? null,
     activeRunId: activeRun?.id ?? null,
     activityRunStatus: activityRun?.status ?? null,
+    activitySummary:
+      activityRun === null
+        ? null
+        : summarizeThreadActivity({
+            runId: activityRun.id,
+            rootNodeId: activityRun.rootNodeId,
+            providerThreadId: activityRun.providerThreadId,
+            items: projection.turnItems,
+          }),
     activityRunStartedAt:
       activityRun === null ? null : orchestrationV2RunWorkStartedAt(activityRun),
     status: latestRun?.status ?? "idle",
@@ -1583,6 +1598,7 @@ type ShellThreadState = {
   readonly activeRunId: RunId | null;
   readonly activityRunStatus: ShellActivityRunStatus | null;
   readonly activityRunStartedAt: DateTime.Utc | null;
+  readonly activitySummary: OrchestrationV2ThreadShell["activitySummary"];
   readonly lastError: string | null;
   readonly lastErrorClass: OrchestrationV2ThreadShell["lastErrorClass"];
   readonly usageLimitResetAt: OrchestrationV2ThreadShell["usageLimitResetAt"];
@@ -1739,6 +1755,7 @@ function shellFromState(input: {
     latestRunCompletedAt: input.state.latestRunCompletedAt,
     activeRunId: input.state.activeRunId,
     activityRunStatus: input.state.activityRunStatus,
+    activitySummary: input.state.activitySummary,
     activityRunStartedAt: input.state.activityRunStartedAt,
     status: input.state.latestRunStatus,
     lastError: input.state.lastError,
@@ -5164,6 +5181,70 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
                 ORDER BY r.ordinal DESC, r.run_id DESC
                 LIMIT 1
               ) AS activity_run_started_at,
+              COALESCE((
+                -- Extract one root plan step, never the transcript or the full plan.
+                SELECT json_object(
+                  'text', substr(json_extract(step.value, '$.text'), 1, 160),
+                  'currentStep', CAST(step.key AS INTEGER) + 1,
+                  'totalSteps', json_array_length(item.payload_json, '$.steps'),
+                  'completedSteps', (SELECT COUNT(*) FROM json_each(item.payload_json, '$.steps') done
+                    WHERE json_extract(done.value, '$.status') = 'completed')
+                )
+                FROM orchestration_v2_projection_runs live
+                CROSS JOIN orchestration_v2_projection_turn_items item
+                  INDEXED BY orchestration_v2_projection_turn_items_thread_run_idx
+                CROSS JOIN json_each(item.payload_json, '$.steps') step
+                WHERE live.run_id = (
+                  SELECT r.run_id FROM orchestration_v2_projection_runs r
+                  WHERE r.thread_id = t.thread_id AND r.status IN ('preparing', 'starting', 'running', 'waiting')
+                  ORDER BY r.ordinal DESC, r.run_id DESC LIMIT 1
+                )
+                  AND item.thread_id = t.thread_id AND item.run_id = live.run_id
+                  AND (item.node_id IS json_extract(live.payload_json, '$.rootNodeId')
+                    OR (item.provider_thread_id IS NOT NULL AND item.provider_thread_id IS json_extract(live.payload_json, '$.providerThreadId')))
+                  AND item.type = 'todo_list'
+                  AND json_extract(step.value, '$.status') = 'running'
+                  AND item.turn_item_id = (
+                    SELECT latest.turn_item_id FROM orchestration_v2_projection_turn_items latest
+                    WHERE latest.thread_id = t.thread_id AND latest.run_id = live.run_id
+                      AND (latest.node_id IS json_extract(live.payload_json, '$.rootNodeId')
+                        OR (latest.provider_thread_id IS NOT NULL AND latest.provider_thread_id IS json_extract(live.payload_json, '$.providerThreadId')))
+                      AND latest.type = 'todo_list'
+                    ORDER BY latest.updated_at DESC, latest.ordinal DESC, latest.turn_item_id DESC LIMIT 1
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM orchestration_v2_projection_turn_items steer
+                    WHERE steer.thread_id = t.thread_id AND steer.run_id = live.run_id
+                      AND steer.node_id IS json_extract(live.payload_json, '$.rootNodeId') AND steer.type = 'user_message'
+                      AND json_extract(steer.payload_json, '$.inputIntent') IN ('steer', 'promoted_queued_to_steer')
+                      AND steer.updated_at >= item.updated_at
+                  )
+                ORDER BY CAST(step.key AS INTEGER) LIMIT 1
+              ), (
+                SELECT json_object('text', substr(COALESCE(NULLIF(json_extract(item.payload_json, '$.title'), ''), 'Using a tool'), 1, 160),
+                  'completedSteps', 0, 'totalSteps', 0, 'currentStep', NULL)
+                FROM orchestration_v2_projection_runs live
+                CROSS JOIN orchestration_v2_projection_turn_items item
+                  INDEXED BY orchestration_v2_projection_turn_items_thread_run_idx
+                WHERE live.run_id = (
+                  SELECT r.run_id FROM orchestration_v2_projection_runs r
+                  WHERE r.thread_id = t.thread_id AND r.status IN ('preparing', 'starting', 'running', 'waiting')
+                  ORDER BY r.ordinal DESC, r.run_id DESC LIMIT 1
+                )
+                  AND item.thread_id = t.thread_id AND item.run_id = live.run_id
+                  AND (item.node_id IS json_extract(live.payload_json, '$.rootNodeId')
+                    OR (item.provider_thread_id IS NOT NULL AND item.provider_thread_id IS json_extract(live.payload_json, '$.providerThreadId')))
+                  AND item.status = 'running'
+                  AND item.type IN ('dynamic_tool', 'command_execution', 'file_search', 'web_search', 'file_change')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM orchestration_v2_projection_turn_items steer
+                    WHERE steer.thread_id = t.thread_id AND steer.run_id = live.run_id
+                      AND steer.node_id IS json_extract(live.payload_json, '$.rootNodeId') AND steer.type = 'user_message'
+                      AND json_extract(steer.payload_json, '$.inputIntent') IN ('steer', 'promoted_queued_to_steer')
+                      AND steer.updated_at >= item.updated_at
+                  )
+                ORDER BY item.updated_at DESC, item.ordinal DESC, item.turn_item_id DESC LIMIT 1
+              )) AS activity_summary_json,
               (
                 SELECT json_extract(session.payload_json, '$.lastError')
                 FROM orchestration_v2_projection_provider_sessions session
@@ -5593,6 +5674,14 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
           pendingTurnItemsByThreadId,
         } = input;
         const thread = yield* decodeThreadPayload(row.payload_json);
+        const decodedActivity =
+          row.activity_summary_json === null
+            ? null
+            : yield* decodeActivitySummary(row.activity_summary_json);
+        const activitySummary =
+          decodedActivity === null
+            ? null
+            : { ...decodedActivity, text: decodedActivity.text.replace(/\s+/g, " ").trim() };
         const pendingRuntimeRequest =
           row.pending_request_payload_json !== null
             ? yield* decodeRuntimeRequestPayload(row.pending_request_payload_json)
@@ -5675,6 +5764,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
             row.activity_run_started_at === null
               ? null
               : DateTime.makeUnsafe(row.activity_run_started_at),
+          activitySummary,
           activityRunStatus:
             row.activity_run_status === "preparing" ||
             row.activity_run_status === "starting" ||

@@ -26,49 +26,59 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
   const { version, items, onRestartNow, onUpdateWhenSafe, onClose } = props;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogPopup className="max-w-md" bottomStickOnMobile={false}>
+      <DialogPopup className="max-w-lg" bottomStickOnMobile={false}>
         <DialogHeader>
           <DialogTitle>
             <span className="flex items-center gap-2">
-              <SparklesIcon aria-hidden className="size-5 text-accent" />
+              <SparklesIcon aria-hidden className="size-4 text-muted-foreground" />
               What's new{version ? ` in ${version}` : ""}
             </span>
           </DialogTitle>
           <DialogDescription>Here is what shipped in this update.</DialogDescription>
         </DialogHeader>
-        <DialogPanel>
-          <ul className="list-disc space-y-1.5 ps-5 text-sm leading-relaxed marker:text-accent">
+        <DialogPanel className="max-h-[55dvh] overflow-y-auto [scrollbar-width:thin]">
+          <ul className="space-y-3 text-sm leading-relaxed">
             {items.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item} className="relative break-words ps-4">
+                <span
+                  aria-hidden
+                  className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
+                />
+                {item}
+              </li>
             ))}
           </ul>
         </DialogPanel>
-        <DialogFooter>
-          <ReleaseHistoryButton />
-          <Button variant="ghost" onClick={onClose}>
-            {onRestartNow ? "Later" : "Close"}
-          </Button>
-          {onUpdateWhenSafe ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                onUpdateWhenSafe();
-                onClose();
-              }}
-            >
-              Update when safe
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center">
+            <ReleaseHistoryButton />
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              {onRestartNow ? "Later" : "Close"}
             </Button>
-          ) : null}
-          {onRestartNow ? (
-            <Button
-              onClick={() => {
-                onClose();
-                onRestartNow();
-              }}
-            >
-              Restart now
-            </Button>
-          ) : null}
+            {onUpdateWhenSafe ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onUpdateWhenSafe();
+                  onClose();
+                }}
+              >
+                Update when safe
+              </Button>
+            ) : null}
+            {onRestartNow ? (
+              <Button
+                onClick={() => {
+                  onClose();
+                  onRestartNow();
+                }}
+              >
+                Restart now
+              </Button>
+            ) : null}
+          </div>
         </DialogFooter>
       </DialogPopup>
     </Dialog>

@@ -82,11 +82,23 @@ export function orderPlanWindows(
     .map(({ window }) => window);
 }
 
-/** Row label in Claude's wording: `Session limit` and `Weekly · all models`. */
-export function planWindowLabel(window: ServerProviderUsageWindow): string {
+/**
+ * Row label in Claude's wording: the session window reads `Session limit`, and
+ * the account-wide weekly reads `Weekly · all models` when per-model weeklies
+ * sit beside it.
+ */
+export function planWindowLabel(
+  window: ServerProviderUsageWindow,
+  windows?: ReadonlyArray<ServerProviderUsageWindow>,
+): string {
   if (window.kind === "session" && window.label === "Session") return "Session limit";
-  // The plain weekly is account-wide; per-model weeklies are named `Weekly · <model>`.
-  if (window.kind === "weekly" && window.label === "Weekly") return "Weekly · all models";
+  if (
+    window.kind === "weekly" &&
+    window.label === "Weekly" &&
+    windows?.some((other) => other.kind === "weekly" && other.label.includes("·"))
+  ) {
+    return "Weekly · all models";
+  }
   return window.label;
 }
 
@@ -203,19 +215,142 @@ export function peakUsedPercent(
   return peak;
 }
 
-/** Account-wide windows for a glance: session first, then the plain weekly, never per-model weeklies. */
-export function glanceWindows(
-  windows: ReadonlyArray<ServerProviderUsageWindow>,
-): ServerProviderUsageWindow[] {
-  return orderPlanWindows(windows)
-    .filter(
-      (window) =>
-        window.kind === "session" || (window.kind === "weekly" && !window.label.includes("·")),
-    )
-    .slice(0, 2);
+/** `38% used` or `62% left`: the word is always spelled out so a newcomer never guesses. */
+export function percentText(usedPercent: number, mode: "used" | "left" = "used"): string {
+  const used = usedPercentLabel(usedPercent);
+  return mode === "used" ? `${used}% used` : `${100 - used}% left`;
 }
 
-/** `Session` or `Weekly`: the short row label beside a glance bar. */
-export function glanceWindowLabel(window: ServerProviderUsageWindow): string {
-  return window.kind === "session" ? "Session" : window.kind === "weekly" ? "Weekly" : window.label;
+/**
+ * Time until `resetsAt`: `Resets in 1 hr 30 min`, `Resets in 3 days 4 hr`, or in
+ * compact form `1h 30m`, `3d 4h`. Minutes round up, so it never reads 0 before the
+ * reset lands; days drop the minutes. Null when the provider sent no reset time.
+ */
+export function formatResetCountdown(
+  resetsAt: string | undefined,
+  now: number,
+  compact = false,
+): string | null {
+  if (resetsAt === undefined) return null;
+  const at = Date.parse(resetsAt);
+  if (!Number.isFinite(at)) return null;
+  const left = at - now;
+  if (left <= 0) return compact ? "now" : "Resets now";
+  const totalMinutes = Math.ceil(left / MINUTE);
+  const days = Math.floor(totalMinutes / (DAY / MINUTE));
+  const hours = Math.floor((totalMinutes % (DAY / MINUTE)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = compact
+    ? days > 0
+      ? [`${days}d`, hours > 0 ? `${hours}h` : null]
+      : [hours > 0 ? `${hours}h` : null, minutes > 0 ? `${minutes}m` : null]
+    : days > 0
+      ? [`${days} ${days === 1 ? "day" : "days"}`, hours > 0 ? `${hours} hr` : null]
+      : [hours > 0 ? `${hours} hr` : null, minutes > 0 ? `${minutes} min` : null];
+  const text = parts.filter((part) => part !== null).join(" ");
+  return compact ? text : `Resets in ${text}`;
+}
+
+function sessionHours(window: ServerProviderUsageWindow): number | null {
+  const mins = window.windowDurationMins;
+  return mins !== undefined && mins > 0 && mins < DAY / MINUTE && mins % 60 === 0
+    ? mins / 60
+    : null;
+}
+
+/**
+ * Plain window names. `glance` (hover card): `5-hour limit`, `Weekly limit`.
+ * `panel`: `5-hour session`, `Weekly, all models`, `Weekly, Opus`.
+ */
+export function limitLabel(window: ServerProviderUsageWindow, style: "glance" | "panel"): string {
+  if (window.kind === "session") {
+    const hours = sessionHours(window);
+    if (style === "glance") return hours ? `${hours}-hour limit` : "Session limit";
+    return hours ? `${hours}-hour session` : "Session";
+  }
+  if (window.kind === "weekly") {
+    const model = window.label.includes("·")
+      ? window.label.split("·").slice(1).join("·").trim()
+      : "";
+    if (style === "glance") return model ? `Weekly limit, ${model}` : "Weekly limit";
+    return model ? `Weekly, ${model}` : "Weekly, all models";
+  }
+  if (window.kind === "monthly" && style === "glance") return "Monthly limit";
+  return window.label;
+}
+
+export interface GlanceLimitRow {
+  readonly key: string;
+  readonly label: string;
+  /** Null when the provider reports other windows but not this one yet. */
+  readonly window: ServerProviderUsageWindow | null;
+}
+
+/**
+ * The hover card's two rows: the session and the account-wide weekly. A missing one
+ * stays as a "not reported" row so the card never shifts; a provider with neither
+ * (monthly-only) shows its own first two windows instead. Empty when nothing reports.
+ */
+export function glanceLimitRows(
+  windows: ReadonlyArray<ServerProviderUsageWindow>,
+): GlanceLimitRow[] {
+  if (windows.length === 0) return [];
+  const ordered = orderPlanWindows(windows);
+  const session = ordered.find((window) => window.kind === "session") ?? null;
+  const weekly =
+    ordered.find((window) => window.kind === "weekly" && !window.label.includes("·")) ?? null;
+  if (!session && !weekly) {
+    return ordered
+      .slice(0, 2)
+      .map((window) => ({ key: window.id, label: limitLabel(window, "glance"), window }));
+  }
+  return [
+    {
+      key: session?.id ?? "session",
+      label: session ? limitLabel(session, "glance") : "5-hour limit",
+      window: session,
+    },
+    { key: weekly?.id ?? "weekly", label: "Weekly limit", window: weekly },
+  ];
+}
+
+/**
+ * The account's name as the user set it in Providers; otherwise the provider's name,
+ * plus the usage source for hub accounts so two of them stay distinguishable.
+ */
+export function accountTitle(
+  account: { readonly displayName?: string | undefined; readonly sourceLabel?: string | undefined },
+  driverLabel: string,
+): string {
+  const custom = account.displayName?.trim();
+  if (custom) return custom;
+  return account.sourceLabel ? `${driverLabel} · ${account.sourceLabel}` : driverLabel;
+}
+
+export type ContextWindowFigures =
+  | { readonly state: "missing" }
+  | { readonly state: "pending"; readonly maxTokens: number }
+  | {
+      readonly state: "reported";
+      readonly usedTokens: number;
+      readonly maxTokens: number | null;
+      readonly usedPercent: number | null;
+    };
+
+/**
+ * What the context window can honestly show: nothing known, only the model's size
+ * (no report yet, so no zero is invented), or the reported figure.
+ */
+export function contextWindowFigures(snapshot: ContextWindowSnapshot | null): ContextWindowFigures {
+  if (!snapshot) return { state: "missing" };
+  const sized = snapshot.maxTokens != null && snapshot.maxTokens > 0 ? snapshot.maxTokens : null;
+  if (snapshot.updatedAt === new Date(0).toISOString()) {
+    return sized === null ? { state: "missing" } : { state: "pending", maxTokens: sized };
+  }
+  return {
+    state: "reported",
+    usedTokens: Math.max(0, snapshot.usedTokens),
+    maxTokens: sized,
+    usedPercent: snapshot.usedPercentage == null ? null : usedPercentLabel(snapshot.usedPercentage),
+  };
 }

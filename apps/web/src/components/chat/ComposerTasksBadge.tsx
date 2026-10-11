@@ -26,6 +26,7 @@ export interface ComposerTaskStep {
 }
 
 const MAX_TASK_SEGMENTS = 10;
+const MAX_FILE_CHIPS = 3;
 
 const taskStatusLabels = {
   pending: "Pending",
@@ -134,6 +135,7 @@ export const ComposerTasksBadge = memo(function ComposerTasksBadge({
   readonly steps: readonly ComposerTaskStep[];
 }) {
   if (progress.totalSteps <= 0 && !progress.activity) return null;
+  const chipFiles = progress.activity?.files.slice(-MAX_FILE_CHIPS) ?? [];
 
   const row = (
     <ComposerBanner.Row
@@ -150,19 +152,28 @@ export const ComposerTasksBadge = memo(function ComposerTasksBadge({
   const summary = (
     <div className="flex min-w-0 items-center">
       <div className="min-w-0 flex-1">{row}</div>
-      {progress.activity?.files.at(-1) ? (
-        <div className="w-28 min-w-0 max-w-[35%] shrink-0 pe-2">
-          <Button
-            className="w-full min-w-0 max-w-full"
-            size="xs"
-            variant="ghost"
-            title={progress.activity.files.at(-1)}
-            onClick={() => progress.activity?.onOpenFile(progress.activity.files.at(-1)!)}
-          >
-            <span className="min-w-0 flex-1 truncate">
-              {progress.activity.files.at(-1)!.split(/[/\\]/).at(-1)}
-            </span>
-          </Button>
+      {chipFiles.length > 0 ? (
+        <div className="flex min-w-0 max-w-[45%] shrink-0 items-center gap-0.5 pe-2">
+          {chipFiles.map((path, index) => (
+            <Button
+              key={path}
+              className={cn(
+                "min-w-0 max-w-28 shrink",
+                // Older chips drop out first as the composer narrows.
+                index < chipFiles.length - 2
+                  ? "hidden @min-[560px]:inline-flex"
+                  : index < chipFiles.length - 1
+                    ? "hidden @min-[420px]:inline-flex"
+                    : undefined,
+              )}
+              size="xs"
+              variant="ghost"
+              title={path}
+              onClick={() => progress.activity?.onOpenFile(path)}
+            >
+              <span className="min-w-0 flex-1 truncate">{path.split(/[/\\]/).at(-1)}</span>
+            </Button>
+          ))}
         </div>
       ) : null}
     </div>

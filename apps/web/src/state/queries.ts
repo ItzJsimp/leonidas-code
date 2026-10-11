@@ -400,3 +400,20 @@ export function useTurnItemDetail(
         }),
   );
 }
+
+/** Full context breakdown for a thread. */
+export function useThreadContextBreakdown(
+  target: {
+    readonly environmentId: EnvironmentId;
+    readonly threadId: ThreadId;
+  } | null,
+) {
+  return useEnvironmentQuery(
+    target === null
+      ? null
+      : orchestrationEnvironment.threadContextBreakdown({
+          environmentId: target.environmentId,
+          input: { threadId: target.threadId },
+        }),
+  );
+}

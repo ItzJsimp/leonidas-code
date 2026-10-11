@@ -123,6 +123,19 @@ describe("agent activity", () => {
     expect(activity.thought).toBe("Checking the app");
     expect(activity.project.map((file) => file.name)).toEqual(["app.ts"]);
   });
+  it("orders touched files by most recent use so a re-read file becomes the newest", () => {
+    const read = (id: string, path: string) =>
+      ({
+        ...base,
+        id: TurnItemId.make(id),
+        status: "completed",
+        type: "dynamic_tool",
+        toolName: "Read",
+        input: { file_path: path },
+      }) as OrchestrationV2TurnItem;
+    const activity = derive([read("a", "src/a.ts"), read("b", "src/b.ts"), read("c", "src/a.ts")]);
+    expect(activity.files).toEqual(["src/b.ts", "src/a.ts"]);
+  });
   it("does not report workspace preparation as the current tool", () => {
     const activity = derive([
       {

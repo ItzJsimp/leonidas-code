@@ -45,6 +45,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as PlatformError from "effect/PlatformError";
 import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
@@ -60,7 +61,9 @@ import { type DeepPartial, deepMerge } from "@t3tools/shared/Struct";
 import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
 import {
   applyServerSettingsPatch,
+  applyTeamSettingsDefaults,
   deriveLegacyProjectOverrides,
+  EFFECTIVE_SERVER_SETTINGS_DEFAULTS,
   isModelSelectionProviderEnabled,
 } from "@t3tools/shared/serverSettings";
 import * as ServerSecretStore from "./auth/ServerSecretStore.ts";
@@ -397,6 +400,12 @@ const LegacyProviderSettingsJson = fromLenientJson(
   }),
 );
 const decodeLegacyProviderSettingsJsonExit = Schema.decodeUnknownExit(LegacyProviderSettingsJson);
+/**
+ * The file's own keys, before defaults fill anything, so team defaults can tell
+ * a key the user chose from one they never set.
+ */
+const ServerSettingsFileJson = fromLenientJson(Schema.Unknown);
+const decodeServerSettingsFileExit = Schema.decodeUnknownExit(ServerSettingsFileJson);
 
 // Drivers that start disabled, so a session in the history means the user
 // turned them on before the instance kept an explicit flag.
@@ -677,7 +686,16 @@ const make = Effect.gen(function* () {
   const emitChange = (settings: ServerSettings) =>
     PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
 
-  const readConfigExists = fs.exists(settingsPath).pipe(
+  // `fs.exists` resolves through `access`, which on Windows reports a dangling
+  // symlink as existing. The read below follows the link, so it would fail with
+  // `NotFound` and fail startup. Stat follows the link too, so a link whose
+  // destination is not there yet reads as absent (defaults) until it appears.
+  const readConfigExists = fs.stat(settingsPath).pipe(
+    Effect.as(true),
+    Effect.catchIf(
+      (error: PlatformError.PlatformError) => error.reason._tag === "NotFound",
+      () => Effect.succeed(false),
+    ),
     Effect.mapError(
       (cause) =>
         new ServerSettingsError({
@@ -702,7 +720,7 @@ const make = Effect.gen(function* () {
   const writeSettingsAtomically = Effect.fnUntraced(
     function* (settings: ServerSettings) {
       const sparseSettingsJson = yield* encodeServerSettingsJson(
-        stripDefaultServerSettings(settings, DEFAULT_SERVER_SETTINGS) ?? {},
+        stripDefaultServerSettings(settings, EFFECTIVE_SERVER_SETTINGS_DEFAULTS) ?? {},
       );
 
       return yield* writeFileStringAtomically({
@@ -772,6 +790,8 @@ const make = Effect.gen(function* () {
   const loadSettingsFromDisk = Effect.gen(function* () {
     let settings = DEFAULT_SERVER_SETTINGS;
     let legacyProviders: Readonly<Record<string, unknown>> | undefined;
+    // The file's raw keys, so team defaults can fill only what it leaves unset.
+    let settingsFileKeys: unknown = null;
     // A file that failed to decode must stay on disk for the user to repair;
     // the fold below only writes when it started from the file's real contents.
     let settingsFileTrusted = true;
@@ -780,6 +800,10 @@ const make = Effect.gen(function* () {
       const raw = yield* readRawConfig;
       const decoded = decodeServerSettingsJsonExit(raw);
       const legacySettings = decodeLegacyProviderSettingsJsonExit(raw);
+      const rawKeys = decodeServerSettingsFileExit(raw);
+      if (rawKeys._tag === "Success") {
+        settingsFileKeys = rawKeys.value;
+      }
       if (legacySettings._tag === "Success") {
         legacyProviders = legacySettings.value.providers;
       }
@@ -862,7 +886,9 @@ const make = Effect.gen(function* () {
     if (migrated !== loaded || (settingsFileTrusted && legacyProviders !== undefined)) {
       yield* writeSettingsAtomically(migrated);
     }
-    return migrated;
+    // Applied after the write so the seed stays an overlay: it never lands in
+    // the file, and a value the user later changes there wins on the next load.
+    return settingsFileTrusted ? applyTeamSettingsDefaults(migrated, settingsFileKeys) : migrated;
   });
 
   // A failed read is not kept: the next read retries instead of replaying the failure.
