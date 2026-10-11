@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: write
+  actions: read
+  issues: write
 
 jobs:
   windows:
@@ -99,6 +101,8 @@ jobs:
   publish:
     name: Publish complete release
     needs: windows
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
     runs-on: ubuntu-latest
     # A newer push may cancel a build, but must never interrupt publication.
     concurrency:
@@ -116,6 +120,7 @@ jobs:
           name: windows-release
           path: artifacts
       - name: Publish if this is still the newest main commit
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.windows.outputs.version }}
@@ -123,8 +128,12 @@ jobs:
         run: |
           TIP=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           if [ "$TIP" != "$GITHUB_SHA" ]; then
-            echo "Superseded by a newer main commit; skipping publication."
-            exit 0
+            git fetch --no-tags --depth=1 origin main
+            if git diff --name-only "$GITHUB_SHA" FETCH_HEAD | grep -qvE '[.]md$'; then
+              echo "Superseded by newer app changes; skipping publication."
+              exit 0
+            fi
+            echo "Only documentation changed; publishing this verified app build."
           fi
           STAGE=$(jq -r '.stage' leonidas-release.json)
           FILTER='[.[] | select(.draft == false and .prerelease == false) | select(.tag_name | test("^v[0-9]+[.][0-9]+[.][0-9]+$"))][0].tag_name // ""'
@@ -148,3 +157,28 @@ jobs:
           fi
           find artifacts -type f \( -name '*.exe' -o -name '*.blockmap' -o -name 'latest.yml' \) -print0 | xargs -0 gh release upload "v$VERSION" --clobber
           gh release edit "v$VERSION" --draft=false --latest
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+  health:
+    name: Verify delivery and timings
+    needs: [windows, publish]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+      - name: Verify published assets and report slow or failed releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.windows.outputs.version }}
+          RELEASE_PUBLISHED: ${{ needs.publish.outputs.published }}
+        run: node scripts/leonidas-release-health.ts
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: release-health
+          path: release-health.json
+          retention-days: 90

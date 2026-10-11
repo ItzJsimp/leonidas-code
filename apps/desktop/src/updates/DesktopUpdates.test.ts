@@ -21,6 +21,37 @@ import * as DesktopUpdates from "./DesktopUpdates.ts";
 import { flushCallbacks, makeHarness } from "./updatesTestHarness.ts";
 
 describe("DesktopUpdates", () => {
+  it.effect("records local delivery milestones once per version without provider data", () => {
+    const harness = makeHarness();
+    return Effect.scoped(
+      Effect.gen(function* () {
+        const updates = yield* DesktopUpdates.DesktopUpdates;
+        yield* updates.configure;
+        harness.emit("update-available", { version: "0.2.2" });
+        yield* flushCallbacks;
+        harness.emit("update-available", { version: "0.2.2" });
+        yield* flushCallbacks;
+        harness.emit("update-downloaded", { version: "0.2.2" });
+        yield* flushCallbacks;
+        yield* updates.install;
+        const receipts = harness.deliveryReceipts.map(
+          (line) => JSON.parse(line) as { status: string; version: string; at: string },
+        );
+        assert.deepEqual(
+          receipts.map((receipt) => receipt.status),
+          ["started", "available", "downloaded", "installing"],
+        );
+        assert.equal(receipts[1]?.version, "0.2.2");
+        assert.isTrue(receipts.every((receipt) => Number.isFinite(Date.parse(receipt.at))));
+        assert.deepEqual(Object.keys(receipts[1]!).sort(), [
+          "at",
+          "currentVersion",
+          "status",
+          "version",
+        ]);
+      }),
+    ).pipe(Effect.provide(Layer.merge(TestClock.layer(), harness.layer)));
+  });
   it("preserves complete causes for update poller and event failures", () => {
     const cause = Cause.combine(
       Cause.fail(new Error("updater failed")),

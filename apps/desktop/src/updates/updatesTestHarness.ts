@@ -215,6 +215,7 @@ export function makeHarness(options: UpdatesHarnessOptions = {}) {
   // Tracks the restart markers installs leave, so installs stay free of real
   // disk I/O that would outrun the tests' settle loops.
   const updateRestartMarkers = new Set<string>();
+  const deliveryReceipts: string[] = [];
   const layerFileSystem = FileSystem.layerNoop({
     readFileString: (path) =>
       path.replaceAll("\\", "/") === "/missing/resources/package-type" &&
@@ -229,6 +230,11 @@ export function makeHarness(options: UpdatesHarnessOptions = {}) {
             }),
           ),
     makeDirectory: () => Effect.void,
+    writeFile: (path, bytes) =>
+      Effect.sync(() => {
+        if (path.endsWith("update-delivery.ndjson"))
+          deliveryReceipts.push(new TextDecoder().decode(bytes));
+      }),
     writeFileString: (path) =>
       Effect.sync(() => {
         updateRestartMarkers.add(path);
@@ -264,6 +270,7 @@ export function makeHarness(options: UpdatesHarnessOptions = {}) {
     quitAndInstalls: () => quitAndInstallCount,
     installSteps,
     updateRestartMarkers,
+    deliveryReceipts,
     downloadCount: () => downloadCount,
     feedUrls: (): ElectronUpdater.ElectronUpdaterFeedUrl[] => feedUrls,
     autoDownload: () => autoDownload,

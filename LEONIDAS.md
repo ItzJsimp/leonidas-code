@@ -62,6 +62,8 @@ The project's `tasks/` folder is a generated view: one symlink per task card who
 
 ## Status log (newest first, one line per session, who and what)
 
+- 2026-10-10 Jake's agent: updating team-release.yml to verify published assets, track release/job timings and alert on failures or >10-minute publication. Fixing docs-only pushes suppressing publication. Adding a checksum-verified legacy migration that waits for normal app exit, bounded local delivery receipts, and optional five-minute per-machine health monitoring. Mob: the old 1.0.16 updater rejects 0.x; run the latest installer once, then normal updates resume. See docs/operations/leonidas-release-health.md.
+
 - 2026-10-10 Jake's agent: added the AIOS task-view script and a session-start hook so `tasks/` in this project shows its cards from the owner's AIOS (symlinks, git-ignored, never committed). Mob: run the "AIOS task views" section above once.
 - 2026-10-10 Jake's agent: published 0.2.1 with the explicit Average turn throughput label and matching count/rate for interrupted turns. All 18 focused counter regression tests and web typecheck pass; installer, blockmap, manifest and installer SHA-512 verified. Warm-cache release completed in 5m31s and reused the cached Rust monitor. Isolated dev session closed at Jake's request.
 

@@ -53,9 +53,14 @@ Package-manager installs (winget, Homebrew, AUR) are not published for Leonidas 
 
 Development releases use `0.MINOR.PATCH`: new features advance MINOR, and fixes
 advance PATCH. Version `1.0.0` is reserved for the public launch. If you have a
-legacy `1.0.x` installation, run the `0.2.0` installer once to switch to development
+legacy `1.0.x` installation, run the latest `0.x` installer once to switch to development
 releases. Your projects and conversations stay in the same app data directory;
 subsequent `0.x` updates use the normal updater.
+
+From a repository checkout, `pwsh -File scripts/leonidas-update.ps1 -WaitForExit`
+verifies the latest installer and installs it after you close the app normally.
+It preserves your existing projects and conversations. Run it once on each machine;
+the legacy updater cannot accept the lower development version number.
 
 Open **Settings → General → About → Update history** to browse patch notes for
 current and older versions. In the desktop app, enable **Install updates when
