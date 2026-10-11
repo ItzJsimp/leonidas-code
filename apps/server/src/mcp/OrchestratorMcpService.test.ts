@@ -779,6 +779,10 @@ describe("OrchestratorMcpService provider resolution", () => {
     readonly driver: ProviderDriverKind;
     readonly model?: string;
     readonly enabled?: boolean;
+    readonly email?: string;
+    readonly credentialFingerprint?: string;
+    readonly usagePercent?: number;
+    readonly message?: string;
   }): ServerProvider => ({
     instanceId: input.instanceId,
     driver: input.driver,
@@ -786,14 +790,39 @@ describe("OrchestratorMcpService provider resolution", () => {
     installed: true,
     version: "test",
     status: "ready",
-    auth: { status: "authenticated" },
+    auth: {
+      status: "authenticated",
+      ...(input.email === undefined ? {} : { email: input.email }),
+    },
     checkedAt: "2026-09-13T00:00:00.000Z",
+    ...(input.message === undefined ? {} : { message: input.message }),
     models:
       input.model === undefined
         ? []
         : [{ slug: input.model, name: input.model, isCustom: false, capabilities: null }],
     slashCommands: [],
     skills: [],
+    ...(input.usagePercent === undefined && input.credentialFingerprint === undefined
+      ? {}
+      : {
+          usageLimits: {
+            checkedAt: "2026-09-13T00:00:00.000Z",
+            windows:
+              input.usagePercent === undefined
+                ? []
+                : [
+                    {
+                      id: "weekly",
+                      kind: "weekly" as const,
+                      label: "Weekly",
+                      usedPercent: input.usagePercent,
+                    },
+                  ],
+            ...(input.credentialFingerprint === undefined
+              ? {}
+              : { credentialFingerprint: input.credentialFingerprint }),
+          },
+        }),
   });
 
   /** A registry whose probes report the same snapshots it already holds. */
@@ -826,6 +855,10 @@ describe("OrchestratorMcpService provider resolution", () => {
       readonly model: string;
       readonly options?: ReadonlyArray<{ readonly id: string; readonly value: unknown }>;
     } = { instanceId: codexInstanceId, model: "gpt-5.4" },
+    history: {
+      readonly providerThreads?: OrchestrationV2ThreadProjection["providerThreads"];
+      readonly providerTurns?: OrchestrationV2ThreadProjection["providerTurns"];
+    } = {},
   ): OrchestrationV2ThreadProjection =>
     ({
       thread: {
@@ -850,6 +883,8 @@ describe("OrchestratorMcpService provider resolution", () => {
       ],
       contextTransfers: [],
       subagents,
+      providerThreads: history.providerThreads ?? [],
+      providerTurns: history.providerTurns ?? [],
     }) as unknown as OrchestrationV2ThreadProjection;
 
   const childProjection = {
@@ -1196,6 +1231,190 @@ describe("OrchestratorMcpService provider resolution", () => {
         assert.equal(request.modelSelection.model, "ant-model");
       }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
     }),
+  );
+
+  it.effect("routes implicit background delegation to a healthy same-model account", () =>
+    Effect.gen(function* () {
+      const codexTeamInstanceId = ProviderInstanceId.make("codex-team");
+      const sameLoginInstanceId = ProviderInstanceId.make("codex-same-login");
+      const sameCredentialInstanceId = ProviderInstanceId.make("codex-same-credential");
+      const limitedInstanceId = ProviderInstanceId.make("codex-limited");
+      const task = {
+        id: taskId,
+        threadId: parentThreadId,
+        runId: parentRunId,
+        parentNodeId,
+        origin: "app_owned",
+        createdBy: "agent",
+        driver: ProviderDriverKind.make("codex"),
+        providerInstanceId: codexTeamInstanceId,
+        providerThreadId: null,
+        childThreadId,
+        nativeTaskRef: null,
+        prompt: "Review the changes.",
+        title: null,
+        model: "gpt-5.4",
+        status: "running",
+        result: null,
+        startedAt: null,
+        completedAt: null,
+      };
+      const dispatched = yield* Ref.make<ReadonlyArray<unknown>>([]);
+      let delegated = false;
+      const layerDependencies = Layer.mergeAll(
+        NodeServices.layer,
+        Layer.mock(ThreadManagementService.ThreadManagementService)({
+          getThreadRecords: (threadId) =>
+            Effect.succeed(
+              threadId === parentThreadId
+                ? parentProjection(delegated ? [task] : [])
+                : childProjection,
+            ),
+          dispatch: (command) =>
+            Ref.update(dispatched, (commands) => [...commands, command]).pipe(
+              Effect.andThen(
+                Effect.sync(() => {
+                  delegated = true;
+                }),
+              ),
+              Effect.as({
+                sequence: 1,
+                storedEvents: [
+                  {
+                    sequence: 1,
+                    commandId: null,
+                    event: { type: "subagent.updated", payload: task },
+                  },
+                ],
+              } as never),
+            ),
+        }),
+        providerRegistryLayer([
+          providerSnapshot({
+            instanceId: codexInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+            email: "jake@example.com",
+            credentialFingerprint: "credential-jake",
+            usagePercent: 95,
+          }),
+          providerSnapshot({
+            instanceId: codexTeamInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+            email: "team@example.com",
+            usagePercent: 35,
+          }),
+          providerSnapshot({
+            instanceId: sameLoginInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+            email: "JAKE@example.com",
+            usagePercent: 5,
+          }),
+          providerSnapshot({
+            instanceId: sameCredentialInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+            email: "second@example.com",
+            credentialFingerprint: "CREDENTIAL-JAKE",
+            usagePercent: 2,
+          }),
+          providerSnapshot({
+            instanceId: limitedInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+            email: "limited@example.com",
+            usagePercent: 5,
+            message: "Rate limit reached until the account resets.",
+          }),
+        ]),
+        adapterRegistryLayer([
+          codexInstanceId,
+          codexTeamInstanceId,
+          sameLoginInstanceId,
+          sameCredentialInstanceId,
+          limitedInstanceId,
+        ]),
+        Layer.mock(ProjectService.ProjectService)({}),
+        Layer.mock(SecretRequests.SecretRequests)({}),
+        Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+      );
+
+      yield* Effect.gen(function* () {
+        const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+        const result = yield* service.delegateTask(scope, {
+          task: "Review the changes.",
+          mode: "async",
+          clientRequestId: "delegate-quota-pool-1",
+        });
+
+        assert.equal(result.status, "running");
+        assert.equal(result.providerInstanceId, codexTeamInstanceId);
+        const commands = yield* Ref.get(dispatched);
+        const request = commands[0] as {
+          readonly modelSelection: { readonly instanceId: string; readonly model: string };
+        };
+        assert.equal(commands.length, 1);
+        assert.equal(request.modelSelection.instanceId, codexTeamInstanceId);
+        assert.equal(request.modelSelection.model, "gpt-5.4");
+      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+    }),
+  );
+
+  it.effect(
+    "refuses a quota-exhausted background task when no distinct usable account exists",
+    () =>
+      Effect.gen(function* () {
+        const duplicateLoginInstanceId = ProviderInstanceId.make("codex-duplicate-login");
+        const dispatched = yield* Ref.make<ReadonlyArray<unknown>>([]);
+        const layerDependencies = Layer.mergeAll(
+          NodeServices.layer,
+          Layer.mock(ThreadManagementService.ThreadManagementService)({
+            getThreadRecords: () => Effect.succeed(parentProjection([])),
+            dispatch: (command) =>
+              Ref.update(dispatched, (commands) => [...commands, command]).pipe(
+                Effect.as({ sequence: 1, storedEvents: [] } as never),
+              ),
+          }),
+          providerRegistryLayer([
+            providerSnapshot({
+              instanceId: codexInstanceId,
+              driver: ProviderDriverKind.make("codex"),
+              model: "gpt-5.4",
+              email: "jake@example.com",
+              usagePercent: 100,
+            }),
+            providerSnapshot({
+              instanceId: duplicateLoginInstanceId,
+              driver: ProviderDriverKind.make("codex"),
+              model: "gpt-5.4",
+              email: "jake@example.com",
+              usagePercent: 10,
+            }),
+          ]),
+          adapterRegistryLayer([codexInstanceId, duplicateLoginInstanceId]),
+          Layer.mock(ProjectService.ProjectService)({}),
+          Layer.mock(SecretRequests.SecretRequests)({}),
+          Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+        );
+
+        yield* Effect.gen(function* () {
+          const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+          const error = yield* service
+            .delegateTask(scope, {
+              task: "Review the changes.",
+              mode: "async",
+              clientRequestId: "delegate-quota-exhausted-1",
+            })
+            .pipe(Effect.flip);
+
+          assert.equal(error.code, "provider_unavailable");
+          assert.equal((yield* Ref.get(dispatched)).length, 0);
+        }).pipe(
+          Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
+        );
+      }),
   );
 
   it.effect("rejects delegation to a provider without a registered adapter", () =>

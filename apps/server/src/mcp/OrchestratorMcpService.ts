@@ -58,6 +58,15 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
+import {
+  evaluatePredictiveQuota,
+  type PredictiveQuotaAccountCandidate,
+  type QuotaWindowSnapshot,
+} from "@t3tools/shared/predictiveQuotaHandoff";
+import {
+  selectOptimalSwarmAccount,
+  type SwarmAccountProfile,
+} from "@t3tools/shared/shadowSwarmMultiplexer";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -1063,6 +1072,164 @@ const make = Effect.gen(function* () {
     providerAdapters.list().pipe(Effect.map((instanceIds) => new Set(instanceIds)));
 
   /**
+   * Background child work may use another connected account only when the
+   * provider, exact model, and account identity are compatible. Interactive
+   * turns keep their selected account.
+   */
+  const resolveBackgroundTaskTarget = (input: {
+    readonly parent: Pick<
+      OrchestrationV2ThreadProjection,
+      "thread" | "providerThreads" | "providerTurns"
+    >;
+    readonly target: OrchestratorMcpTarget | undefined;
+    readonly providers: ReadonlyArray<ServerProvider>;
+  }) =>
+    Effect.gen(function* () {
+      const inherited = input.parent.thread.modelSelection;
+      if (
+        input.target?.providerInstanceId !== undefined ||
+        (input.target?.model !== undefined && input.target.model !== inherited.model)
+      ) {
+        return input.target;
+      }
+
+      const currentProvider = input.providers.find(
+        (provider) => provider.instanceId === inherited.instanceId,
+      );
+      if (currentProvider === undefined) return input.target;
+      const driverKind = currentProvider.driver;
+      if (input.target?.driverKind !== undefined && input.target.driverKind !== driverKind) {
+        return input.target;
+      }
+
+      const orchestrationCapableInstanceIds = yield* loadOrchestrationCapableInstanceIds();
+      const identityKeys = (provider: ServerProvider): readonly string[] =>
+        [provider.auth.email, provider.usageLimits?.credentialFingerprint]
+          .flatMap((value) => (value === undefined ? [] : [value.trim().toLowerCase()]))
+          .filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
+      const quotaWindows = (provider: ServerProvider): readonly QuotaWindowSnapshot[] =>
+        (provider.usageLimits?.windows ?? []).map((window) => ({
+          usedPercent: window.usedPercent,
+          ...(window.resetsAt === undefined ? {} : { resetsAt: window.resetsAt }),
+          ...(window.tokenEstimate === undefined
+            ? {}
+            : {
+                tokenEstimate: {
+                  status: window.tokenEstimate.status,
+                  ...(window.tokenEstimate.remainingTokens === undefined
+                    ? {}
+                    : { remainingTokens: window.tokenEstimate.remainingTokens }),
+                  ...(window.tokenEstimate.capacityTokens === undefined
+                    ? {}
+                    : { capacityTokens: window.tokenEstimate.capacityTokens }),
+                },
+              }),
+        }));
+      const isRateLimited = (provider: ServerProvider): boolean =>
+        /rate.?limit.{0,30}(?:reached|exceeded)|usage.{0,30}limit.{0,30}(?:reached|exceeded)|quota.{0,30}(?:exhausted|exceeded|reached)|limit.{0,30}(?:reached|exceeded)|out of usage/i.test(
+          provider.message ?? "",
+        );
+      const asCandidate = (provider: ServerProvider): PredictiveQuotaAccountCandidate => ({
+        providerInstanceId: provider.instanceId,
+        accountLabel: provider.auth.label ?? provider.displayName ?? provider.driver,
+        driverKind: provider.driver,
+        identityKeys: identityKeys(provider),
+        modelIds: provider.models.map((model) => model.slug),
+        windows: quotaWindows(provider),
+        isRateLimited: isRateLimited(provider),
+      });
+      const asProfile = (provider: ServerProvider): SwarmAccountProfile => ({
+        providerInstanceId: provider.instanceId,
+        driverKind: provider.driver,
+        identityKeys: identityKeys(provider),
+        modelIds: provider.models.map((model) => model.slug),
+        windows: quotaWindows(provider),
+        available:
+          orchestrationCapableInstanceIds.has(provider.instanceId) &&
+          providerConstraints(provider, true).length === 0 &&
+          provider.models.some((model) => model.slug === inherited.model),
+        isRateLimited: isRateLimited(provider),
+      });
+
+      const compatibleProviders = input.providers.filter(
+        (provider) =>
+          provider.driver === driverKind &&
+          provider.models.some((model) => model.slug === inherited.model) &&
+          invalidOptionSelections(
+            input.target?.options ?? inherited.options ?? [],
+            provider.models.find((model) => model.slug === inherited.model)?.capabilities
+              ?.optionDescriptors,
+          ).length === 0,
+      );
+      const current = asCandidate(currentProvider);
+      const availableAlternates = compatibleProviders.filter(
+        (provider) =>
+          provider.instanceId !== currentProvider.instanceId &&
+          orchestrationCapableInstanceIds.has(provider.instanceId) &&
+          providerConstraints(provider, true).length === 0,
+      );
+      const candidates = availableAlternates.map(asCandidate);
+      const rootProviderThreadIds = new Set(
+        input.parent.providerThreads
+          .filter(
+            (providerThread) =>
+              providerThread.providerInstanceId === currentProvider.instanceId &&
+              providerThread.ownerNodeId === null,
+          )
+          .map((providerThread) => providerThread.id),
+      );
+      const recentTurnTokenUsages = input.parent.providerTurns
+        .filter(
+          (turn) =>
+            rootProviderThreadIds.has(turn.providerThreadId) &&
+            turn.turnTokenUsage?.usageStatus === "complete",
+        )
+        .slice(-5)
+        .flatMap((turn) => {
+          const usage = turn.turnTokenUsage;
+          return usage?.usageStatus === "complete" ? [usage.inputTokens + usage.outputTokens] : [];
+        });
+      const nowMs = yield* Clock.currentTimeMillis;
+      const prediction = evaluatePredictiveQuota({
+        currentAccount: current,
+        candidateAccounts: candidates,
+        recentTurnTokenUsages,
+        nowMs,
+      });
+      const profiles = compatibleProviders.map(asProfile);
+      const multiplexed = selectOptimalSwarmAccount({
+        accounts: profiles,
+        currentInstanceId: currentProvider.instanceId,
+        driverKind,
+        modelId: inherited.model,
+        nowMs,
+      });
+      const selectedInstanceId =
+        prediction.recommendedAccount?.providerInstanceId ??
+        multiplexed?.selectedAccount.providerInstanceId;
+      if (selectedInstanceId !== undefined) {
+        const selectedProvider = input.providers.find(
+          (provider) => provider.instanceId === selectedInstanceId,
+        );
+        if (selectedProvider === undefined) return input.target;
+        return {
+          providerInstanceId: selectedProvider.instanceId,
+          model: inherited.model,
+          ...((input.target?.options ?? inherited.options) === undefined
+            ? {}
+            : { options: input.target?.options ?? inherited.options }),
+        } satisfies OrchestratorMcpTarget;
+      }
+      if (prediction.exhaustionRisk === "exhausted") {
+        return yield* failure(
+          "provider_unavailable",
+          "The current provider account is out of quota, and no other available account with the same model can run this delegated task.",
+        );
+      }
+      return input.target;
+    });
+
+  /**
    * Provider snapshots only re-probe while a client is in the foreground, so an
    * unattended agent can see a provider as unavailable after it was fixed.
    * Re-probe the requested instance once before refusing it.
@@ -1829,9 +1996,14 @@ const make = Effect.gen(function* () {
           );
         }
         const providers = yield* loadProviders;
-        const target = yield* resolveTargetRechecking({
+        const backgroundTarget = yield* resolveBackgroundTaskTarget({
           parent,
           target: input.target,
+          providers,
+        });
+        const target = yield* resolveTargetRechecking({
+          parent,
+          target: backgroundTarget,
           providers,
         });
         const runtimeMode = yield* resolveRuntimeMode(parent.thread.runtimeMode, input.runtimeMode);

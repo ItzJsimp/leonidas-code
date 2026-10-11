@@ -7,6 +7,18 @@
       "types": "./src/threadIdentity.ts",
       "import": "./src/threadIdentity.ts"
     },
+    "./predictiveQuotaHandoff": {
+      "types": "./src/predictiveQuotaHandoff.ts",
+      "import": "./src/predictiveQuotaHandoff.ts"
+    },
+    "./rosettaHandoffDistillation": {
+      "types": "./src/rosettaHandoffDistillation.ts",
+      "import": "./src/rosettaHandoffDistillation.ts"
+    },
+    "./shadowSwarmMultiplexer": {
+      "types": "./src/shadowSwarmMultiplexer.ts",
+      "import": "./src/shadowSwarmMultiplexer.ts"
+    },
     "./subscriptionEstimate": {
       "types": "./src/subscriptionEstimate.ts",
       "import": "./src/subscriptionEstimate.ts"

@@ -20,6 +20,14 @@ describe("T3 orchestration provider instructions", () => {
     );
   });
 
+  it("keeps parallel decision exploration read-only and closes the frontend verification loop", () => {
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "two independent, read-only");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "delegated children share the workspace");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "separate worktrees");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "preview_status");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "inspect it again");
+  });
+
   it("documents structured schedules instead of JSON strings", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "structured object, never as JSON text");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, '"everyMs":3600000');
