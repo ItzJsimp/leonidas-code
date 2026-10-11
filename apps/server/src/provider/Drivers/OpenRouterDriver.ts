@@ -280,7 +280,29 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
             haveSettingsChanged: haveProviderSnapshotSettingsChanged,
             initialSnapshot: (settings) =>
               modelCatalog.pipe(
-                Effect.flatMap((catalog) => makePendingClaudeProvider(settings.provider, catalog)),
+                Effect.map((catalog) => {
+                  const models = (catalog?.models ?? []).map((entry: any) => ({
+                    slug: entry.slug,
+                    name: entry.name,
+                    isCustom: false,
+                    ...(entry.status === "legacy" ? { isLegacy: true } : {}),
+                    ...( (catalog as any)?.defaultChatModel === entry.slug ? { isDefault: true } : {}),
+                    ...(entry.badge ? { badge: entry.badge } : {}),
+                    capabilities: null,
+                  }));
+                  return {
+                    displayName: "OpenRouter",
+                    enabled: effectiveConfig.enabled,
+                    installed: true,
+                    version: "openrouter",
+                    status: effectiveConfig.enabled ? (effectiveConfig.apiKey.trim().length > 0 ? "ready" as const : "needs_auth" as const) : "disabled" as const,
+                    auth: effectiveConfig.apiKey.trim().length > 0 ? { status: "authenticated" as const } : { status: "unauthenticated" as const },
+                    checkedAt: "2026-10-11T01:35:00Z",
+                    models,
+                    skills: [],
+                    slashCommands: [],
+                  } as any;
+                }),
                 Effect.map(stampIdentity),
               ),
             checkProvider,
