@@ -256,7 +256,6 @@ export function deriveVelocitySummary(
     }
   }
 
-  const latestSample = samples.length > 0 ? samples[samples.length - 1] : null;
   const latestTurn = turns[turns.length - 1];
   const isLive = latestTurn?.status === "running";
   const measuredTurn = isLive
@@ -281,9 +280,7 @@ export function deriveVelocitySummary(
     ? outputTokens !== null && liveDurationMs >= 50
       ? Math.round((outputTokens / liveDurationMs) * 1000 * 10) / 10
       : null
-    : latestSample
-      ? latestSample.tps
-      : null;
+    : calculateTurnVelocity(measuredTurn);
 
   const rolling5Tps = calculateRollingVelocity(samples, 5);
   const rolling10Tps = calculateRollingVelocity(samples, 10);

@@ -230,6 +230,32 @@ describe("AgentVelocityMeter.logic", () => {
         ).outputTokens,
       ).toBe(0);
     });
+    it("keeps the latest reported count and throughput on the same terminal turn", () => {
+      const completed = {
+        id: "completed",
+        status: "completed",
+        startedAt: "2026-10-10T12:00:00Z",
+        completedAt: "2026-10-10T12:00:02Z",
+        turnTokenUsage: {
+          usageStatus: "complete",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 100,
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      const interrupted = {
+        ...completed,
+        id: "interrupted",
+        status: "interrupted",
+        startedAt: "2026-10-10T12:00:03Z",
+        completedAt: "2026-10-10T12:00:06Z",
+        turnTokenUsage: { ...completed.turnTokenUsage!, usageStatus: "partial", outputTokens: 30 },
+      } as unknown as OrchestrationV2ProviderTurn;
+      const summary = deriveVelocitySummary([completed, interrupted], []);
+      expect(summary.outputTokens).toBe(30);
+      expect(summary.averageTurnTps).toBe(10);
+      expect(summary.rolling5Tps).toBe(50);
+    });
     it("does not present one response's context usage as a live turn total", () => {
       const turn = {
         status: "running",
