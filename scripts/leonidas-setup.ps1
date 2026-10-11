@@ -51,6 +51,10 @@ if ($AiosClaudeMd) {
   Write-Host "Identity: CLAUDE.local.md -> $import. Run 'claude' once in this folder and approve the import dialog."
 }
 
+# Shared default skills belong in the owner's AIOS as well as the Code project.
+$skillAiosRoot = if ($AiosClaudeMd) { Split-Path -Parent (Resolve-Path -LiteralPath $AiosClaudeMd).Path } else { $null }
+& (Join-Path $PSScriptRoot 'Install-NextAction.ps1') -AiosRoot $skillAiosRoot
+
 if ($SkipApp) { return }
 
 # 3. App
