@@ -268,15 +268,13 @@ export function deriveVelocitySummary(
       );
   const hasOutput =
     measuredTurn?.turnTokenUsage?.outputTokens !== undefined ||
-    measuredTurn?.tokenUsage?.outputTokens !== undefined;
+    (!isLive && measuredTurn?.tokenUsage?.outputTokens !== undefined);
   const outputTokens = hasOutput ? extractTurnOutputTokens(measuredTurn) : null;
-  const reasoningTokens =
-    measuredTurn?.turnTokenUsage?.reasoningTokens ??
-    measuredTurn?.tokenUsage?.reasoningOutputTokens ??
-    null;
+  const reasoningTokens = measuredTurn?.turnTokenUsage?.reasoningTokens ?? null;
   const reportMs = parseTimestamp(measuredTurn?.tokenUsage?.updatedAt);
   const startMs = parseTimestamp(measuredTurn?.startedAt);
   const liveDurationMs = reportMs !== null && startMs !== null ? reportMs - startMs : 0;
+  // Live context output may cover only one response, so only turn aggregates measure live pace.
   // Provider counts arrive in batches. This is turn-average pace, including tool waits,
   // not an invented measurement of the model's private thinking speed.
   const instantaneousTps = isLive

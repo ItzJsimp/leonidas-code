@@ -50,7 +50,7 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
           </dl>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {summary.outputTokens === null
-              ? "Waiting for the provider to report tokens. Some providers report only after a response or do not report output counts."
+              ? "Waiting for the provider to report turn totals. Some providers report only when the turn finishes or do not report output counts."
               : "Output includes thinking tokens when reported. Pace is output divided by elapsed turn time, including tools and waits; it is not raw model generation speed."}
           </p>
         </div>

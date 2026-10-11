@@ -189,10 +189,36 @@ describe("AgentVelocityMeter.logic", () => {
       expect(deriveVelocitySummary([turn], []).outputTokens).toBeNull();
       expect(
         deriveVelocitySummary(
-          [{ ...turn, tokenUsage: { ...turn.tokenUsage!, outputTokens: 0 } }],
+          [
+            {
+              ...turn,
+              turnTokenUsage: {
+                usageStatus: "partial",
+                usageScope: "main_agent",
+                hasSubagents: false,
+                outputTokens: 0,
+              },
+            },
+          ],
           [],
         ).outputTokens,
       ).toBe(0);
+    });
+    it("does not present one response's context usage as a live turn total", () => {
+      const turn = {
+        status: "running",
+        startedAt: "2026-10-10T12:00:00Z",
+        tokenUsage: {
+          usedTokens: 200,
+          outputTokens: 40,
+          reasoningOutputTokens: 0,
+          updatedAt: "2026-10-10T12:00:02Z",
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      const summary = deriveVelocitySummary([turn], []);
+      expect(summary.outputTokens).toBeNull();
+      expect(summary.instantaneousTps).toBeNull();
+      expect(summary.reasoningTokens).toBeNull();
     });
     it("returns null-safe empty summary when no turns exist", () => {
       const summary = deriveVelocitySummary([], []);
