@@ -93,7 +93,7 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
         </DialogHeader>
         <DialogPanel>
           <div
-            className="max-h-[58vh] space-y-6 overflow-y-auto pr-3 [scrollbar-gutter:stable] [scrollbar-width:thin]"
+            className="max-h-[58vh] space-y-7 overflow-y-auto pr-2 [scrollbar-gutter:stable] [scrollbar-width:thin]"
             aria-busy={loading}
           >
             {entries.map((entry) => {
@@ -102,29 +102,30 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
               const displayedNotes = isExpanded ? entry.notes : entry.notes.slice(0, BULLET_CAP);
 
               return (
-                <article key={entry.version} className="space-y-2">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-1.5">
-                    <h3 className="font-semibold text-foreground">
+                <article key={entry.version} className="space-y-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-2.5">
+                    <h3 className="text-sm font-semibold tracking-tight text-foreground">
                       {entry.version}
-                      {entry.version.startsWith("0.") ? " · Development" : ""}
+                      {entry.version.startsWith("0.") ? (
+                        <span className="ml-2 text-xs font-normal tracking-normal text-muted-foreground">
+                          Development
+                        </span>
+                      ) : null}
                     </h3>
                     {entry.publishedAt ? (
                       <Tooltip>
                         <TooltipTrigger
                           render={
                             <time
-                              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-default"
+                              className="rounded-sm text-xs tabular-nums text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground cursor-default"
+                              tabIndex={0}
                               dateTime={entry.publishedAt}
                             />
                           }
                         >
                           {formatFriendlyReleaseDate(entry.publishedAt)}
                         </TooltipTrigger>
-                        <TooltipPopup
-                          side="top"
-                          align="end"
-                          className="text-2xs flex flex-col gap-0.5 p-2"
-                        >
+                        <TooltipPopup side="top" align="end" className="flex flex-col">
                           <span className="font-medium text-foreground">
                             {formatExactReleaseDate(entry.publishedAt)}
                           </span>
@@ -145,16 +146,19 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
 
                   {entry.notes.length ? (
                     <div className="flex flex-col gap-1.5">
-                      <ul className="list-disc space-y-1 ps-5 text-sm leading-relaxed text-popover-foreground">
+                      <ul className="list-disc space-y-2 ps-4 text-sm leading-relaxed text-popover-foreground marker:text-muted-foreground/50">
                         {displayedNotes.map((note) => (
-                          <li key={note}>{note}</li>
+                          <li key={note} className="break-words ps-1">
+                            {note}
+                          </li>
                         ))}
                       </ul>
                       {hasMoreNotes ? (
                         <Button
                           size="xs"
-                          variant="ghost"
-                          className="h-6 self-start text-2xs text-muted-foreground hover:text-foreground -ms-2"
+                          variant="link"
+                          className="self-start -ms-2"
+                          aria-expanded={isExpanded}
                           onClick={() => toggleExpanded(entry.version)}
                         >
                           {isExpanded

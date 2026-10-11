@@ -30,20 +30,22 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
         <DialogHeader>
           <DialogTitle>
             <span className="flex items-center gap-2">
-              <SparklesIcon aria-hidden className="size-5 text-accent" />
+              <SparklesIcon aria-hidden className="size-4 text-muted-foreground" />
               What's new{version ? ` in ${version}` : ""}
             </span>
           </DialogTitle>
           <DialogDescription>Here is what shipped in this update.</DialogDescription>
         </DialogHeader>
-        <DialogPanel>
-          <ul className="list-disc space-y-1.5 ps-5 text-sm leading-relaxed marker:text-accent">
+        <DialogPanel className="max-h-[55dvh] overflow-y-auto [scrollbar-width:thin]">
+          <ul className="list-disc space-y-3 ps-4 text-sm leading-relaxed marker:text-muted-foreground/50">
             {items.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item} className="break-words ps-1">
+                {item}
+              </li>
             ))}
           </ul>
         </DialogPanel>
-        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center">
             <ReleaseHistoryButton />
           </div>

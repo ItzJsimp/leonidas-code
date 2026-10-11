@@ -50,12 +50,12 @@ export function ChatUsageHoverCard({
   const now = Date.now();
 
   return (
-    <div className="flex w-72 flex-col gap-3 p-1">
+    <div className="flex w-72 max-w-full flex-col gap-3.5 p-1">
       <div className="flex items-center gap-2.5">
         <UsageRing
           percent={reported ? percent : null}
           size={36}
-          strokeWidth={4}
+          strokeWidth={3}
           severity={percent === null ? "normal" : usageSeverity(percent)}
           className="text-2xs font-semibold tabular-nums"
         >
@@ -66,7 +66,7 @@ export function ChatUsageHoverCard({
           )}
         </UsageRing>
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-semibold">
+          <span className="truncate text-sm font-medium tracking-tight">
             {modelLabel || "No model selected"}
           </span>
           <span className="truncate text-xs text-muted-foreground tabular-nums">
@@ -81,7 +81,7 @@ export function ChatUsageHoverCard({
       </div>
 
       {shown.length > 0 ? (
-        <div className="flex flex-col gap-2.5 border-t pt-2.5">
+        <div className="flex flex-col gap-3.5 border-t border-border/60 pt-3">
           {shown.map((account) => {
             const rows = glanceLimitRows(account.limits.windows);
             const notice = limitsNotice(account.limits);
@@ -101,7 +101,9 @@ export function ChatUsageHoverCard({
                   <div className="flex items-center justify-between gap-1">
                     <span className="truncate text-xs font-medium">{title}</span>
                     {activeAccountIds.has(account.id) ? (
-                      <span className="text-2xs font-medium text-sky-500">Active</span>
+                      <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
+                        Active
+                      </span>
                     ) : null}
                   </div>
                   {notice || rows.length === 0 ? (
@@ -125,7 +127,7 @@ export function ChatUsageHoverCard({
                       const leftText = percentText(row.window.usedPercent, "left");
                       const used = usedPercentLabel(row.window.usedPercent);
                       return (
-                        <div key={row.key} className="flex flex-col gap-0.5">
+                        <div key={row.key} className="flex flex-col gap-1">
                           <div className="flex items-center justify-between text-2xs">
                             <span className="text-muted-foreground">{row.label}</span>
                             <span className="tabular-nums text-foreground">
@@ -149,7 +151,7 @@ export function ChatUsageHoverCard({
             <button
               type="button"
               onClick={onOpenFull}
-              className="text-left text-2xs font-medium text-sky-500 hover:underline cursor-pointer"
+              className="self-start rounded-sm text-left text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline cursor-pointer"
             >
               +{ordered.length - shown.length} more accounts
             </button>
@@ -157,7 +159,7 @@ export function ChatUsageHoverCard({
         </div>
       ) : null}
 
-      <div className="border-t pt-1.5">
+      <div className="border-t border-border/60 pt-2.5">
         <button
           type="button"
           onClick={onOpenFull}

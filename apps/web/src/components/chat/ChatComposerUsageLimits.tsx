@@ -8,8 +8,6 @@ import {
   ChevronRightIcon,
   GaugeIcon,
   LayersIcon,
-  SparklesIcon,
-  UsersIcon,
   XIcon,
 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
@@ -31,7 +29,6 @@ import {
 } from "../../lib/usageLimitsPopover";
 import { cn } from "../../lib/utils";
 import { environmentPresentations } from "../../state/presentation";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Popover, PopoverClose, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "../ui/preview-card";
@@ -209,7 +206,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
             />
           ) : null}
         </PreviewCardTrigger>
-        <PreviewCardPopup side="top" align="end" className="p-3">
+        <PreviewCardPopup side="top" align="end">
           <ChatUsageHoverCard
             modelLabel={modelLabel}
             effortLabel={effortLabel}
@@ -238,10 +235,10 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
           />
         ) : (
           <div className="flex max-h-[min(30rem,calc(100dvh-7.5rem))] min-w-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
+            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
                   <Icon aria-hidden className="size-4 text-muted-foreground" />
                   Context & Usage
                 </h3>
@@ -254,15 +251,15 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
 
               {/* SECTION 1: Context Window (FIRST!) */}
               <section
-                className="flex min-w-0 flex-col gap-2 rounded-xl border bg-card p-3"
+                className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border/60 bg-muted/15 p-3.5"
                 aria-label="Context window"
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-foreground">Context window</span>
                   {contextReported && contextPercent !== null ? (
-                    <Badge variant="secondary" size="sm" className="tabular-nums font-semibold">
+                    <span className="text-2xs tabular-nums text-muted-foreground">
                       {contextPercent}% used
-                    </Badge>
+                    </span>
                   ) : null}
                 </div>
 
@@ -290,7 +287,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                   <button
                     type="button"
                     onClick={() => setView("context-breakdown")}
-                    className="mt-1 flex items-center justify-between rounded-lg bg-muted/50 px-2.5 py-1.5 text-xs text-foreground transition-colors hover:bg-muted cursor-pointer"
+                    className="mt-1 flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
                   >
                     <span className="font-medium">Detailed breakdown</span>
                     <ChevronRightIcon className="size-3.5 text-muted-foreground" />
@@ -319,7 +316,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                     return (
                       <div
                         key={account.id}
-                        className="flex min-w-0 flex-col gap-2.5 rounded-xl border bg-card p-3"
+                        className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 p-3.5"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -333,9 +330,9 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                             </span>
                           </div>
                           {account.plan ? (
-                            <Badge variant="outline" size="sm">
+                            <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
                               {shortPlanName(account.plan)}
-                            </Badge>
+                            </span>
                           ) : null}
                         </div>
 
@@ -350,15 +347,18 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                             const used = usedPercentLabel(window.usedPercent);
                             return (
                               <div key={window.id} className="flex min-w-0 flex-col gap-1">
-                                <div className="flex items-baseline justify-between text-xs">
-                                  <span className="text-muted-foreground font-medium">{label}</span>
-                                  <span className="tabular-nums font-semibold text-foreground">
+                                <div className="flex min-w-0 items-baseline justify-between gap-3 text-xs">
+                                  <span className="min-w-0 break-words text-muted-foreground">
+                                    {label}
+                                  </span>
+                                  <span className="shrink-0 tabular-nums font-medium text-foreground">
                                     {used}%
                                   </span>
                                 </div>
                                 <UsageBar
                                   usedPercent={window.usedPercent}
                                   label={`${label}: ${used}% used`}
+                                  className="h-1"
                                 />
                                 {countdown ? (
                                   <span className="text-2xs text-muted-foreground">
@@ -401,7 +401,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                         return (
                           <div
                             key={account.id}
-                            className="flex min-w-0 flex-col gap-1.5 rounded-lg border bg-card/60 p-2 text-xs"
+                            className="flex min-w-0 flex-col gap-2 rounded-lg border border-border/50 p-2.5 text-xs"
                           >
                             <div className="flex items-center justify-between gap-1.5">
                               <div className="flex items-center gap-1.5 min-w-0">
@@ -415,24 +415,24 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                                 </span>
                               </div>
                               {account.plan ? (
-                                <Badge variant="outline" size="sm" className="text-2xs">
+                                <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-2xs text-muted-foreground">
                                   {shortPlanName(account.plan)}
-                                </Badge>
+                                </span>
                               ) : null}
                             </div>
                             {windows.length > 0 ? (
                               <div className="flex flex-col gap-1">
                                 {windows.slice(0, 2).map((window) => (
-                                  <div key={window.id} className="flex items-center gap-2">
-                                    <span className="w-16 truncate text-2xs text-muted-foreground">
+                                  <div key={window.id} className="flex min-w-0 items-center gap-2">
+                                    <span className="w-16 shrink-0 truncate text-2xs text-muted-foreground">
                                       {limitLabel(window, "glance")}
                                     </span>
                                     <UsageBar
                                       usedPercent={window.usedPercent}
                                       label={`${limitLabel(window, "glance")}: ${usedPercentLabel(window.usedPercent)}%`}
-                                      className="h-1"
+                                      className="h-1 min-w-0 flex-1"
                                     />
-                                    <span className="w-8 text-right text-2xs tabular-nums text-foreground">
+                                    <span className="w-8 shrink-0 text-right text-2xs tabular-nums text-foreground">
                                       {usedPercentLabel(window.usedPercent)}%
                                     </span>
                                   </div>
@@ -451,12 +451,12 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
 
               {/* Bottom Actions */}
               <div className="flex shrink-0 flex-col gap-2 pb-1">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {threadId ? (
                       <Button
                         size="sm"
-                        variant="secondary"
+                        variant="ghost"
                         onClick={() => setView("context-breakdown")}
                       >
                         Context breakdown
