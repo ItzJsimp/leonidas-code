@@ -1140,7 +1140,10 @@ import {
 import { searchProviderSkills } from "../../providerSkillSearch";
 import { useDelayedStatus } from "../../hooks/useDelayedStatus";
 import { useUpdateClientSettings } from "../../hooks/useSettings";
-import { buildComposerAutoRouteCandidates } from "./composerAutoRoute";
+import {
+  buildComposerAutoRouteCandidates,
+  composerAutoRouteThreadState,
+} from "./composerAutoRoute";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { usePanelAnimationSettings } from "../../panelAnimations";
 import { useAtomCommand } from "../../state/use-atom-command";
@@ -2419,6 +2422,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           getModelDisabledReason,
         }),
         current: activeThreadModelSelection,
+        thread: composerAutoRouteThreadState({
+          contextWindow: activeContextWindow,
+          currentInstanceId: activeThreadModelSelection?.instanceId,
+          entries: providerInstanceEntries,
+        }),
         attachmentCount: composerImagesRef.current.length + composerFilesRef.current.length,
         planMode: interactionMode === "plan",
         now: Date.now(),
@@ -2435,6 +2443,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       };
     },
     [
+      activeContextWindow,
       activeThreadModelSelection,
       autoRoutePreference,
       composerFilesRef,

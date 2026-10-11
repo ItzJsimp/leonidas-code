@@ -1,5 +1,7 @@
 import type { ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
-import type { AutoRouteCandidate } from "@t3tools/shared/autoRouter";
+import type { AutoRouteCandidate, AutoRouteThreadState } from "@t3tools/shared/autoRouter";
+
+import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 
 import type { AppModelOption } from "../../modelSelection";
 import { isProviderInstancePickerReady, type ProviderInstanceEntry } from "../../providerInstances";
@@ -43,4 +45,20 @@ export function buildComposerAutoRouteCandidates(input: {
       },
     ];
   });
+}
+
+/** The context the thread's provider last reported, which decides what a move would cost. */
+export function composerAutoRouteThreadState(input: {
+  readonly contextWindow: ContextWindowSnapshot | null;
+  readonly currentInstanceId: ProviderInstanceId | undefined;
+  readonly entries: ReadonlyArray<ProviderInstanceEntry>;
+}): AutoRouteThreadState | undefined {
+  const entry = input.entries.find((candidate) => candidate.instanceId === input.currentInstanceId);
+  if (!input.contextWindow || !entry) return undefined;
+  const lastActivityAt = Date.parse(input.contextWindow.updatedAt);
+  return {
+    contextTokens: input.contextWindow.usedTokens,
+    driverKind: entry.driverKind,
+    lastActivityAt: Number.isFinite(lastActivityAt) ? lastActivityAt : null,
+  };
 }
