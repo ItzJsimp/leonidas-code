@@ -11,7 +11,7 @@ import type {
   ThreadContextBreakdownToolCall,
   ThreadId,
 } from "@t3tools/contracts";
-import { ThreadContextBreakdownError } from "@t3tools/contracts";
+import { ProviderDriverKind, ThreadContextBreakdownError } from "@t3tools/contracts";
 import type { ProviderAdapterV2ContextReport } from "@t3tools/provider-core/server/ProviderAdapter";
 import type { ThreadManagementServiceShape } from "./ThreadManagementService.ts";
 import type { ProviderSessionManagerV2Shape } from "./ProviderSessionManager.ts";
@@ -610,14 +610,12 @@ export const queryThreadContextBreakdown = Effect.fn("orchestrationV2.queryThrea
 
     let driver = providerThread?.driver;
     if (!driver && input.providerRegistry) {
-      const providers = yield* input.providerRegistry.getProviders.pipe(
-        Effect.catchAll(() => Effect.succeed([])),
-      );
+      const providers = yield* input.providerRegistry.getProviders;
       const found = providers.find((p) => p.instanceId === projection.thread.providerInstanceId);
       if (found) driver = found.driver;
     }
     if (!driver) {
-      driver = "claudeAgent";
+      driver = ProviderDriverKind.make("claudeAgent");
     }
 
     const model =

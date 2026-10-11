@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "@effect/vitest";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { ThreadId, type OrchestrationV2TurnItem } from "@t3tools/contracts";
 import type { ProviderAdapterV2ContextReport } from "@t3tools/provider-core/server/ProviderAdapter";
+import type { ProjectionRecordField, ProjectionRecords } from "./ProjectionStore.ts";
 
 import {
   buildContextBreakdown,
@@ -272,73 +274,96 @@ describe("contextBreakdown", () => {
   });
 
   describe("queryThreadContextBreakdown", () => {
-    it("returns estimated breakdown when no live report is available", async () => {
-      const threadId = ThreadId.make("thread-test-1");
-      const fakeThread = {
-        id: threadId,
-        activeProviderThreadId: null,
-        deletedAt: null,
-        providerInstanceId: "claude-default",
-        modelSelection: { instanceId: "claude-default", model: "claude-sonnet-5-5" },
-      };
+    const emptyRecords = {
+      attempts: [],
+      nodes: [],
+      subagents: [],
+      runtimeRequests: [],
+      messages: [],
+      plans: [],
+      checkpointScopes: [],
+      checkpoints: [],
+      contextHandoffs: [],
+      contextTransfers: [],
+    };
+    it.effect.each([false, true])(
+      "returns estimated breakdown without a live report (registry enabled: %s)",
+      (useRegistry) =>
+        Effect.gen(function* () {
+          const threadId = ThreadId.make("thread-test-1");
+          const fakeThread = {
+            id: threadId,
+            activeProviderThreadId: null,
+            deletedAt: null,
+            providerInstanceId: "claude-default",
+            modelSelection: { instanceId: "claude-default", model: "claude-sonnet-5-5" },
+          };
 
-      const result = await Effect.runPromise(
-        queryThreadContextBreakdown({
-          threadId,
-          threadManagement: {
-            getThreadRecords: () =>
-              Effect.succeed({
-                thread: fakeThread as any,
-                runs: [],
-                turnItems: [
-                  {
-                    id: "item-1",
-                    ordinal: 1,
-                    type: "assistant_message",
-                    text: "Hello world!",
+          const result = yield* queryThreadContextBreakdown({
+            threadId,
+            threadManagement: {
+              getThreadRecords: () =>
+                Effect.succeed<ProjectionRecords<ProjectionRecordField>>({
+                  ...emptyRecords,
+                  thread: fakeThread as any,
+                  runs: [],
+                  turnItems: [
+                    {
+                      id: "item-1",
+                      ordinal: 1,
+                      type: "assistant_message",
+                      text: "Hello world!",
+                    } as any,
+                  ],
+                  providerTurns: [],
+                  providerThreads: [],
+                  providerSessions: [],
+                }),
+            },
+            providerSessions: {
+              get: () => Effect.succeed(Option.none()),
+            },
+            ...(useRegistry ? { providerRegistry: { getProviders: Effect.succeed([]) } } : {}),
+          });
+
+          expect(result.threadId).toBe(threadId);
+          expect(result.source).toBe("estimated");
+          expect(result.model).toBe("claude-sonnet-5-5");
+          expect(result.driver).toBe("claudeAgent");
+          expect(result.totalTokens).toBeGreaterThan(0);
+          expect(result.categories.some((c) => c.name === "Messages")).toBe(true);
+        }),
+    );
+
+    it.effect("fails with thread-not-found when thread is deleted or missing", () =>
+      Effect.gen(function* () {
+        const threadId = ThreadId.make("thread-deleted");
+        const exit = yield* Effect.exit(
+          queryThreadContextBreakdown({
+            threadId,
+            threadManagement: {
+              getThreadRecords: () =>
+                Effect.succeed<ProjectionRecords<ProjectionRecordField>>({
+                  ...emptyRecords,
+                  thread: {
+                    id: threadId,
+                    deletedAt: DateTime.makeUnsafe("2026-10-10T00:00:00Z"),
                   } as any,
-                ],
-                providerTurns: [],
-                providerThreads: [],
-                providerSessions: [],
-              }),
-          },
-          providerSessions: {
-            get: () => Effect.succeed(Option.none()),
-          },
-        }),
-      );
+                  runs: [],
+                  turnItems: [],
+                  providerTurns: [],
+                  providerThreads: [],
+                  providerSessions: [],
+                }),
+            },
+            providerSessions: {
+              get: () => Effect.succeed(Option.none()),
+            },
+          }),
+        );
 
-      expect(result.threadId).toBe(threadId);
-      expect(result.source).toBe("estimated");
-      expect(result.model).toBe("claude-sonnet-5-5");
-      expect(result.totalTokens).toBeGreaterThan(0);
-      expect(result.categories.some((c) => c.name === "Messages")).toBe(true);
-    });
-
-    it("fails with thread-not-found when thread is deleted or missing", async () => {
-      const threadId = ThreadId.make("thread-deleted");
-      const exit = await Effect.runPromiseExit(
-        queryThreadContextBreakdown({
-          threadId,
-          threadManagement: {
-            getThreadRecords: () =>
-              Effect.succeed({
-                thread: { id: threadId, deletedAt: new Date() } as any,
-                runs: [],
-                turnItems: [],
-                providerTurns: [],
-                providerThreads: [],
-                providerSessions: [],
-              }),
-          },
-          providerSessions: {
-            get: () => Effect.succeed(Option.none()),
-          },
-        }),
-      );
-
-      expect(exit._tag).toBe("Failure");
-    });
+        expect(exit._tag).toBe("Failure");
+      }),
+    );
   });
 });
