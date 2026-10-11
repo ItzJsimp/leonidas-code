@@ -21,7 +21,7 @@ export class TaskBoardService extends Context.Service<
   {
     readonly list: Effect.Effect<typeof TaskBoardSnapshot.Type, TaskBoardReadError>;
   }
->()("leonidas/taskBoard/TaskBoardService") {}
+>()("t3/taskBoard/TaskBoardService") {}
 
 const make = Effect.gen(function* () {
   const processes = yield* ProcessRunner.ProcessRunner;
