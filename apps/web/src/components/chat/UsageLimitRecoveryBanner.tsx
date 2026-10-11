@@ -18,6 +18,8 @@ type RecoveryProps = {
   onChange: (recovery: OrchestrationV2LimitRecoveryUpdate) => Promise<void>;
   failoverTargets: ReadonlyArray<ProviderFailoverTarget>;
   failoverDisabled: boolean;
+  /** The thread can switch providers but no other subscription is ready, so say why there is no button. */
+  failoverUnavailable: boolean;
   onFailover: (target: ProviderFailoverTarget) => Promise<void>;
 };
 
@@ -30,9 +32,13 @@ export function usageLimitRecoveryBannerItem(props: RecoveryProps): ComposerBann
     priority: "urgent",
     icon: <GaugeIcon />,
     title: "Usage limit reached",
-    description: resetAt
-      ? `Resets ${new Date(resetAt).toLocaleString()}`
-      : "Reset time unavailable; retry manually",
+    description:
+      (resetAt
+        ? `Resets ${new Date(resetAt).toLocaleString()}`
+        : "Reset time unavailable; retry manually") +
+      (props.failoverUnavailable
+        ? ". No other Claude or Codex subscription is ready to take over."
+        : ""),
     actions: <RecoveryActions key={`${runId}:${resetAt}`} {...props} canSchedule={canSchedule} />,
   };
 }
