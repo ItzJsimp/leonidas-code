@@ -1,4 +1,4 @@
-import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
+import { OrchestrationDispatchCommandError, TaskBoardReadError } from "@t3tools/contracts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
@@ -1825,6 +1825,22 @@ const layerWsRpc = (
         return result;
       });
 
+      const resolveTaskBoardProject = (projectId: ProjectId) =>
+        projectService.getById(projectId).pipe(
+          Effect.mapError(
+            (cause) => new TaskBoardReadError({ reason: "project_not_found", cause }),
+          ),
+          Effect.flatMap(
+            Option.match({
+              onNone: () =>
+                Effect.fail(
+                  new TaskBoardReadError({ reason: "project_not_found", cause: projectId }),
+                ),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+
       const handlers = ServerWsRpcGroup.of({
         [ORCHESTRATION_V2_WS_METHODS.dispatchCommand]: (command) =>
           Effect.annotateCurrentSpan({
@@ -2664,7 +2680,34 @@ const layerWsRpc = (
                 }),
             ),
           ),
-        [WS_METHODS.taskBoardList]: () => taskBoard.list,
+        [WS_METHODS.taskBoardList]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.list(project)),
+          ),
+        [WS_METHODS.taskBoardCreate]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.create(project, input)),
+          ),
+        [WS_METHODS.taskBoardClaim]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.claim(project, input)),
+          ),
+        [WS_METHODS.taskBoardRelease]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.release(project, input)),
+          ),
+        [WS_METHODS.taskBoardComplete]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.complete(project, input)),
+          ),
+        [WS_METHODS.taskBoardUpdate]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.update(project, input)),
+          ),
+        [WS_METHODS.taskBoardSync]: (input) =>
+          resolveTaskBoardProject(input.projectId).pipe(
+            Effect.flatMap((project) => taskBoard.sync(project, input)),
+          ),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsReadFile]: (input) =>

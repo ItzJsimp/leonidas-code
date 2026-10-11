@@ -28,6 +28,7 @@ import * as ManagedProjectFolders from "../../../project/ManagedProjectFolders.t
 import * as ThreadLaunchService from "../../../orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadSearch from "../../../orchestration-v2/ThreadSearch.ts";
 import * as PreviewManager from "../../../preview/Manager.ts";
+import * as TaskBoardService from "../../../taskBoard/TaskBoardService.ts";
 import * as SourceControlRepositoryService from "../../../sourceControl/SourceControlRepositoryService.ts";
 import * as GitVcsDriver from "../../../vcs/GitVcsDriver.ts";
 import * as McpHttpServer from "../../McpHttpServer.ts";
@@ -65,6 +66,7 @@ const layerStubServices = Layer.mergeAll(
   Layer.mock(SourceControlRepositoryService.SourceControlRepositoryService)({}),
   Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
   Layer.mock(ThreadSearch.ThreadSearch)({}),
+  Layer.mock(TaskBoardService.TaskBoardService)({}),
 );
 
 const ToolsListPayload = Schema.fromJsonString(
@@ -173,6 +175,13 @@ it.effect("production mcp layer lists worktree tools over http", () =>
       // than replacing them.
       expect(toolNames).toContain("preview_status");
       expect(toolNames).toContain("delegate_task");
+      expect(toolNames).toContain("t3_task_board_list");
+      expect(toolNames).toContain("t3_task_board_create");
+      expect(toolNames).toContain("t3_task_board_claim");
+      expect(toolNames).toContain("t3_task_board_progress");
+      expect(toolNames).toContain("t3_task_board_release");
+      expect(toolNames).toContain("t3_task_board_complete");
+      expect(toolNames).toContain("t3_task_board_sync");
 
       // The handoff tool mutates thread state, reaches the network (origin
       // fetch), and runs project setup scripts, so its MCP hints must not

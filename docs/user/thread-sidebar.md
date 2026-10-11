@@ -266,14 +266,23 @@ several selected threads together. Choose **Wake thread** to bring a thread back
 
 ## Shared tasks
 
-On web and desktop, open **Tasks** in the sidebar utility bar to read the open
-GitHub Issues in `ItzJsimp/leonidas-code`. Filter by title, number, label or
-assignee. Open an issue to edit it on GitHub, or choose **New task** to create one.
-Agents can add tasks with `gh issue create --repo ItzJsimp/leonidas-code`.
+On web and desktop, open **Tasks** in the sidebar utility bar and choose the local
+project. Jake and Mob see the same board when their project records point to the
+same GitHub repository. Use **New task** to add work, then claim, release, complete,
+or reopen it. Expand **Work history** to see who changed it, the agent model and
+provider, and the thread that recorded the work.
 
-The server needs GitHub CLI installed and authenticated with `gh auth login`,
-and a repository administrator must enable Issues. The board reads through your
-connected primary server, including remote connections. It refreshes about every
-10 seconds while you are active; hidden or idle windows pause polling and refresh
-when you return. Up to 200 open issues are shown; use GitHub for the full queue.
-If a refresh fails, the last successful list stays visible with an error.
+For task cards in an AIOS global `tasks/` folder, add a project label to each card's
+frontmatter, such as `project: leonidas-code`. The panel imports matching cards when
+you open a project and mirrors shared changes back to that folder. Use **Sync AIOS**
+after adding or editing cards. The server finds a sibling `tasks/` folder in the usual
+AIOS layout; if yours is elsewhere, set `LEONIDAS_AIOS_ROOT` on that server to the
+AIOS root directory.
+
+Each server needs GitHub CLI installed and authenticated with write access to the
+repository. Shared tasks work without GitHub Issues; enable Issues to include and
+link issue-tracker items. Agents running in a project thread can use the task-board
+MCP tools to list, claim, update, release, and complete work. Claims are shared, so
+another agent sees an existing owner before taking a task. The board refreshes about
+every 10 seconds while active; hidden or idle windows pause polling and refresh when
+you return.

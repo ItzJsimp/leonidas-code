@@ -55,6 +55,8 @@ import {
 import * as WorktreeHandlers from "./toolkits/worktree/handlers.ts";
 import { WorktreeToolkit } from "./toolkits/worktree/tools.ts";
 import * as WorktreeMcpService from "./WorktreeMcpService.ts";
+import * as TaskBoardHandlers from "./toolkits/taskBoard/handlers.ts";
+import { TaskBoardToolkit } from "./toolkits/taskBoard/tools.ts";
 import * as PullRequestsHandlers from "./toolkits/pullRequests/handlers.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
 import * as DeviceHandlers from "./toolkits/device/handlers.ts";
@@ -872,6 +874,8 @@ export const layerPullRequestsToolkit = toolkitRegistration(
   PullRequestsHandlers.layer,
 );
 
+export const layerTaskBoardToolkit = toolkitRegistration(TaskBoardToolkit, TaskBoardHandlers.layer);
+
 const layerDeviceStandardToolkitRegistration = toolkitRegistration(
   DeviceStandardToolkit,
   DeviceHandlers.layerStandard,
@@ -905,6 +909,7 @@ export const layer = Layer.mergeAll(
   layerPreviewControlsRegistration,
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
+  layerTaskBoardToolkit,
   layerDeviceToolkit,
   toolkitRegistration(LocalVmStandardToolkit, LocalVmHandlers.layerStandard),
   imageToolRegistration(registerLocalVmScreenshot(), LocalVmHandlers.layerScreenshot),

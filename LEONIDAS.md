@@ -17,6 +17,7 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - [x] Prove the update toast across both machines (sound, OS notification, and confirmation dialog for Mob to test on next update)
 - [x] Token counter: provider-reported output and thinking tokens, current-turn average t/s, and recent-turn averages; missing telemetry is visible rather than hiding the counter
 - [x] Synced task board panel in the web UI. Store: GitHub Issues on this repo (decided). Agents add tasks with `gh issue create`; the panel polls and shows the same list on both machines within about 10 seconds
+- [ ] Shared task coordination and history: scope a durable task database to each GitHub project, sync labeled cards with each user's AIOS tasks folder, and let agents claim, report progress, release, and complete tasks with provider/model/thread history visible across both environments.
 - [x] Prompt predictor: ghost text of the prompt the user is most likely to send next, built from the user's own Leonidas Scribe `history.jsonl` (filtered to agent apps), Tab accepts, nothing is typed until Tab. Port of Jake's Claude Code mod `voice-predict`
 - [x] Rebrand to Leonidas Code as a thin layer (name, icons, window title, installer, About). Keep the MIT notice. Internal ids stay (`@t3tools/*`, `T3CODE_*`, `~/.t3`, app id `com.t3tools.t3code`) so data survives and old installs upgrade in place
 - [x] Leonidas shell: Command Center views as a tab; Scribe stays a tray app with a localhost API

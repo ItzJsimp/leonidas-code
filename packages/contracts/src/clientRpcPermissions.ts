@@ -34,6 +34,13 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.vcsSwitchRef]: AuthSourceControlWriteScope,
   [WS_METHODS.vcsInit]: AuthSourceControlWriteScope,
 
+  [WS_METHODS.taskBoardCreate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.taskBoardClaim]: AuthOrchestrationOperateScope,
+  [WS_METHODS.taskBoardRelease]: AuthOrchestrationOperateScope,
+  [WS_METHODS.taskBoardComplete]: AuthOrchestrationOperateScope,
+  [WS_METHODS.taskBoardUpdate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.taskBoardSync]: AuthOrchestrationOperateScope,
+
   [WS_METHODS.localVmConnect]: AuthOrchestrationOperateScope,
   [WS_METHODS.localVmPause]: AuthOrchestrationOperateScope,
   [WS_METHODS.localVmRelease]: AuthOrchestrationOperateScope,
