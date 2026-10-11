@@ -369,7 +369,24 @@ import {
 import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
+export const ScribeStatusSnapshot = Schema.Struct({
+  service: Schema.Literal("leonidas-scribe"),
+  apiVersion: Schema.Literal(1),
+  state: Schema.Literals(["ready", "listening", "processing", "mic_error"]),
+  sampledAt: Schema.String,
+});
+
+export const ScribeStatusResult = Schema.Union([
+  Schema.Struct({ status: Schema.Literal("available"), snapshot: ScribeStatusSnapshot }),
+  Schema.Struct({
+    status: Schema.Literal("unavailable"),
+    reason: Schema.Literals(["offline", "timeout", "invalid_response", "stale", "http_error"]),
+  }),
+]);
+export type ScribeStatusResult = typeof ScribeStatusResult.Type;
+
 export const WS_METHODS = {
+  scribeGetStatus: "scribe.getStatus",
   // Project registry methods
   projectsList: "projects.list",
   projectsAdd: "projects.add",
@@ -1549,6 +1566,12 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
   stream: true,
 });
 
+const WsScribeGetStatusRpc = Rpc.make(WS_METHODS.scribeGetStatus, {
+  payload: Schema.Struct({}),
+  success: ScribeStatusResult,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsLocalVmListRpc = Rpc.make(WS_METHODS.localVmList, {
   payload: Schema.Struct({ inspect: Schema.optional(Schema.Boolean) }),
   success: LocalVmState,
@@ -1898,6 +1921,7 @@ export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthori
 ) {}
 
 export const WsRpcGroup = RpcGroup.make(
+  WsScribeGetStatusRpc,
   WsServerProbeRpc,
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,

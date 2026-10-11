@@ -1,6 +1,7 @@
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
+import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as Crypto from "effect/Crypto";
@@ -1231,6 +1232,7 @@ const layerWsRpc = (
       const pullRequests = yield* PullRequestService.PullRequestService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
       const localVmService = yield* LocalVmService.LocalVmService;
+      const scribeStatus = yield* ScribeStatus.ScribeStatus;
       const deviceService = yield* DeviceService.DeviceService;
       const deviceHostContext =
         yield* Effect.context<Effect.Services<ReturnType<typeof remoteSshDeviceHosts>>>();
@@ -2926,6 +2928,7 @@ const layerWsRpc = (
         [WS_METHODS.previewReportStatus]: (input) => previewManager.reportStatus(input),
         [WS_METHODS.subscribePreviewEvents]: (_input) => previewManager.events,
         [WS_METHODS.localVmList]: () => localVmService.list,
+        [WS_METHODS.scribeGetStatus]: () => scribeStatus.get,
         [WS_METHODS.localVmConnect]: (input) => localVmService.connect(input),
         [WS_METHODS.localVmPause]: (input) => localVmService.pause(input),
         [WS_METHODS.localVmRelease]: (input) => localVmService.release(input),

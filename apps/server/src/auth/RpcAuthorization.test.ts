@@ -1,4 +1,5 @@
 import {
+  type AuthEnvironmentScope,
   AuthEnvironmentMaintainScope,
   AuthDiagnosticsReadScope,
   AuthFilesystemReadScope,
@@ -39,6 +40,10 @@ describe("RPC authorization scopes", () => {
     );
   });
 
+
+  it("requires read scope for Scribe status", () => {
+    expect(requiredScopeForRpcMethod(WS_METHODS.scribeGetStatus)).toBe(AuthOrchestrationReadScope);
+  });
   it("declares exactly one scope for every RPC in the server group", () => {
     expect(new Set(Object.keys(RPC_REQUIRED_SCOPES))).toEqual(new Set(WsRpcGroup.requests.keys()));
   });
@@ -202,6 +207,49 @@ describe("RPC authorization scopes", () => {
     }
   });
 });
+
+it.effect.each([
+  { label: "none", scopes: [] as AuthEnvironmentScope[] },
+  { label: "settings", scopes: [AuthSettingsWriteScope] as AuthEnvironmentScope[] },
+  { label: "read", scopes: [AuthOrchestrationReadScope] as AuthEnvironmentScope[] },
+])("guards Scribe status with $label scope", ({ scopes }) =>
+  Effect.gen(function* () {
+    const group = WsRpcGroup.omit(
+      ...[...WsRpcGroup.requests.keys()].filter(
+        (
+          tag,
+        ): tag is Exclude<keyof typeof RPC_REQUIRED_SCOPES, typeof WS_METHODS.scribeGetStatus> =>
+          tag !== WS_METHODS.scribeGetStatus,
+      ),
+    );
+    let handled = 0;
+    const client = yield* RpcTest.makeClient(group).pipe(
+      Effect.provide(
+        Layer.mergeAll(
+          group.toLayerHandler(WS_METHODS.scribeGetStatus, () =>
+            Effect.sync(() => {
+              handled++;
+              return { status: "unavailable", reason: "offline" } as const;
+            }),
+          ),
+          RpcAuthorization.layer(scopes),
+        ),
+      ),
+    );
+    if (scopes.includes(AuthOrchestrationReadScope)) {
+      expect(yield* client[WS_METHODS.scribeGetStatus]({})).toEqual({
+        status: "unavailable",
+        reason: "offline",
+      });
+      expect(handled).toBe(1);
+    } else {
+      expect(yield* client[WS_METHODS.scribeGetStatus]({}).pipe(Effect.flip)).toMatchObject({
+        requiredPermission: AuthOrchestrationReadScope,
+      });
+      expect(handled).toBe(0);
+    }
+  }).pipe(Effect.scoped),
+);
 
 it("requires operate permission for host retry while preserving read-only listing", () => {
   expect(requiredScopeForDeviceList({})).toBe(AuthOrchestrationReadScope);
