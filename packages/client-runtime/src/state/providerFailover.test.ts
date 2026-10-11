@@ -1,7 +1,7 @@
 import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { selectProviderFailoverTargets } from "./providerFailover.ts";
+import { isProviderUsageWindowExhausted, selectProviderFailoverTargets } from "./providerFailover.ts";
 
 const current = { instanceId: ProviderInstanceId.make("claudeAgent"), model: "claude-sonnet" };
 const source = (overrides: Partial<ServerProvider> = {}) =>
@@ -25,8 +25,8 @@ function provider(id = "codex", overrides: Partial<ServerProvider> = {}): Server
     ...overrides,
   };
 }
-const targets = (providers: ServerProvider[], supportsHandoff = true) =>
-  selectProviderFailoverTargets({ providers: [source(), ...providers], current, supportsHandoff });
+const targets = (providers: ServerProvider[], supportsHandoff = true, nowMs?: number) =>
+  selectProviderFailoverTargets({ providers: [source(), ...providers], current, supportsHandoff, nowMs });
 
 describe("selectProviderFailoverTargets", () => {
   it("offers a ready alternate subscription with its default model", () => {
@@ -82,6 +82,35 @@ describe("selectProviderFailoverTargets", () => {
     });
   });
 
+  it("resumes Antigravity on Gemini 3.8 Flash Medium at medium effort", () => {
+    const [target] = targets([
+      provider("antigravity", {
+        driver: ProviderDriverKind.make("antigravity"),
+        models: [
+          {
+            slug: "gemini-2.5-flash",
+            name: "Flash 2.5",
+            isCustom: false,
+            isDefault: true,
+            capabilities: {},
+          },
+          {
+            slug: "gemini-3.8-flash-medium",
+            name: "Gemini 3.8 Flash Medium",
+            isCustom: false,
+            isDefault: false,
+            capabilities: {},
+          },
+        ],
+      }),
+    ]);
+    expect(target?.modelSelection).toEqual({
+      instanceId: "antigravity",
+      model: "gemini-3.8-flash-medium",
+      options: [{ id: "effort", value: "medium" }],
+    });
+  });
+
   it("skips the current, disabled, unavailable, uninstalled, unready and paid providers", () => {
     expect(
       targets([
@@ -96,8 +125,40 @@ describe("selectProviderFailoverTargets", () => {
     expect(targets([provider()], false)).toEqual([]);
   });
 
-  it("skips an instance sharing the limited account and a known exhausted quota", () => {
-    const quota = {
+  it("skips an instance sharing continuation group, email, or credentialFingerprint", () => {
+    expect(
+      selectProviderFailoverTargets({
+        providers: [
+          source({
+            continuation: { groupKey: "shared" },
+            auth: { status: "authenticated", email: "user@example.com" },
+            usageLimits: {
+              checkedAt: "2026-10-10T00:00:00.000Z",
+              credentialFingerprint: "fp-123",
+              windows: [],
+            },
+          }),
+          provider("same-continuation", { continuation: { groupKey: "shared" } }),
+          provider("same-email", {
+            driver: ProviderDriverKind.make("claudeAgent"),
+            auth: { status: "authenticated", email: "USER@EXAMPLE.COM" },
+          }),
+          provider("same-fingerprint", {
+            usageLimits: {
+              checkedAt: "2026-10-10T00:00:00.000Z",
+              credentialFingerprint: "fp-123",
+              windows: [],
+            },
+          }),
+        ],
+        current,
+        supportsHandoff: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it("skips an exhausted quota window unless its reset time has passed", () => {
+    const quotaFuture = {
       checkedAt: "2026-10-10T00:00:00.000Z",
       windows: [
         {
@@ -105,21 +166,32 @@ describe("selectProviderFailoverTargets", () => {
           kind: "session" as const,
           label: "Five hour",
           usedPercent: 100,
-          resetsAt: "2026-10-11T00:00:00.000Z",
+          resetsAt: "2026-10-11T12:00:00.000Z",
         },
       ],
     };
-    expect(
-      selectProviderFailoverTargets({
-        providers: [
-          source({ continuation: { groupKey: "shared" } }),
-          provider("same-account", { continuation: { groupKey: "shared" } }),
-          provider("exhausted", { usageLimits: quota }),
-        ],
-        current,
-        supportsHandoff: true,
-      }),
-    ).toEqual([]);
+    const quotaPast = {
+      checkedAt: "2026-10-10T00:00:00.000Z",
+      windows: [
+        {
+          id: "five_hour",
+          kind: "session" as const,
+          label: "Five hour",
+          usedPercent: 100,
+          resetsAt: "2026-10-11T08:00:00.000Z",
+        },
+      ],
+    };
+
+    const now = Date.parse("2026-10-11T10:00:00.000Z");
+
+    // quotaFuture reset is at 12:00 (in the future) -> exhausted -> skipped
+    expect(targets([provider("exhausted", { usageLimits: quotaFuture })], true, now)).toEqual([]);
+
+    // quotaPast reset was at 08:00 (in the past) -> reset has arrived -> offered
+    const offered = targets([provider("reset-available", { usageLimits: quotaPast })], true, now);
+    expect(offered.length).toBe(1);
+    expect(offered[0]?.modelSelection.instanceId).toBe("reset-available");
   });
 
   it("lists the other driver before another instance of the same driver", () => {

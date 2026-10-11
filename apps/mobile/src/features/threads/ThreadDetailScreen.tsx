@@ -1,6 +1,9 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useThreadReportedModelSelection } from "../../state/entities";
 import { UsageLimitRecoveryCard } from "./UsageLimitRecoveryCard";
+import { QuotaPreflightCard } from "./QuotaPreflightCard";
+import { UiVerificationCard } from "./UiVerificationCard";
+import { useSelectedThreadProjection } from "../../state/use-thread-detail";
 import { useNavigation } from "@react-navigation/native";
 import type { WorktreeSetupCardProps } from "./worktree-setup-card";
 import type { ComposerTextPaste } from "../../native/T3ComposerEditor.types";
@@ -321,6 +324,7 @@ const USER_INPUT_TOGGLE_TIMING = {
 };
 
 export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: ThreadDetailScreenProps) {
+  const selectedProjection = useSelectedThreadProjection();
   const usesNativeWorkspaceColumns = useNativeWorkspaceColumnsSupported();
   const navigation = useNavigation();
   const { session: voiceInputSession } = useGlobalVoiceInput();
@@ -1268,6 +1272,18 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                     thread={props.selectedThread}
                     environmentId={props.environmentId}
                     canSwitchProvider={props.canSwitchThreadProvider}
+                  />
+                  <QuotaPreflightCard
+                    thread={props.selectedThread}
+                    environmentId={props.environmentId}
+                    canSwitchProvider={props.canSwitchThreadProvider}
+                    onUpdateModelSelection={props.onUpdateThreadModelSelection}
+                  />
+                  <UiVerificationCard
+                    thread={props.selectedThread}
+                    turnItems={selectedProjection?.turnItems ?? []}
+                    draftMessage={props.draftMessage}
+                    onChangeDraftMessage={props.onChangeDraftMessage}
                   />
                   {props.feedbackSubmissions.map((submission) => (
                     <ComposerFeedback
