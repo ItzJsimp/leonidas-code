@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalFetch:off globalConsole:off - CI release-health check that runs before an Effect runtime exists, driving the `gh` CLI and verifying published installer assets over HTTPS, then printing the job summary.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
