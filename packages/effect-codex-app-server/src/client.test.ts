@@ -155,4 +155,28 @@ it.layer(NodeServices.layer)("effect-codex-app-server client", (it) => {
       assert.equal(initialized.userAgent, "mock-codex-app-server");
     }),
   );
+  it.effect("routes prototype-named methods through unknown handlers", () =>
+    Effect.gen(function* () {
+      for (const method of ["toString", "constructor", "__proto__"]) {
+        const handle = yield* makeHandle({ CODEX_APP_SERVER_TEST_SERVER_METHOD: method });
+        const scope = yield* Scope.make();
+        const context = yield* Layer.buildWithScope(CodexClient.layerChildProcess(handle), scope);
+        const notifications = yield* Ref.make<string[]>([]);
+        const requests = yield* Ref.make<string[]>([]);
+        yield* Effect.gen(function* () {
+          const client = yield* CodexClient.CodexAppServerClient;
+          yield* client.handleUnknownServerNotification((name) =>
+            Ref.update(notifications, (items) => [...items, name]),
+          );
+          yield* client.handleUnknownServerRequest((name) =>
+            Ref.update(requests, (items) => [...items, name]).pipe(Effect.as({})),
+          );
+          yield* client.notify("initialized", undefined);
+          yield* client.request("skills/list", { cwds: [] });
+          assert.deepEqual(yield* Ref.get(notifications), [method]);
+          assert.deepEqual(yield* Ref.get(requests), [method]);
+        }).pipe(Effect.provide(context), Effect.ensuring(Scope.close(scope, Exit.void)));
+      }
+    }),
+  );
 });

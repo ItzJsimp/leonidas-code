@@ -141,7 +141,7 @@ export function claudeRateLimitEventToUpdate(
   }
   const usedPercent = info.utilization * 100;
   const resetsAt = isoFromEpochSeconds(info.resetsAt);
-  if (type in WINDOWS) {
+  if (Object.hasOwn(WINDOWS, type)) {
     return { windows: [makeWindow(type, usedPercent, resetsAt)] };
   }
   if (type === OVERAGE_INCLUDED_EVENT_TYPE && names.overageIncluded) {

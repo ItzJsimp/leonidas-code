@@ -15,12 +15,13 @@ export function normalizeSearchQuery(
     return "";
   }
   return options?.trimLeadingPattern
-    ? trimmed.replace(options.trimLeadingPattern, "").toLowerCase()
+    ? trimmed.replace(options.trimLeadingPattern, "").trim().toLowerCase()
     : trimmed.toLowerCase();
 }
 
 export function scoreSubsequenceMatch(value: string, query: string): number | null {
   if (!query) return 0;
+  if (query.length > value.length) return null;
 
   let queryIndex = 0;
   let firstMatchIndex = -1;
@@ -28,6 +29,7 @@ export function scoreSubsequenceMatch(value: string, query: string): number | nu
   let gapPenalty = 0;
 
   for (let valueIndex = 0; valueIndex < value.length; valueIndex += 1) {
+    if (value.length - valueIndex < query.length - queryIndex) return null;
     if (value[valueIndex] !== query[queryIndex]) {
       continue;
     }
@@ -173,7 +175,7 @@ export function insertRankedSearchResult<T>(
   candidate: RankedSearchResult<T>,
   limit: number,
 ): void {
-  if (limit <= 0) {
+  if (!Number.isSafeInteger(limit) || limit <= 0) {
     return;
   }
 

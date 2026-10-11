@@ -139,6 +139,17 @@ describe("claudeUsageResponseToLimits", () => {
 });
 
 describe("claudeRateLimitEventToUpdate", () => {
+  it.each(["constructor", "toString", "__proto__"])(
+    "ignores unknown prototype window %s",
+    (type) => {
+      expect(
+        claudeRateLimitEventToUpdate(
+          { status: "allowed", rateLimitType: type as never, utilization: 0.5 },
+          noNames,
+        ),
+      ).toBeUndefined();
+    },
+  );
   it("scales the 0–1 utilization and epoch-second reset onto the probe's window id", () => {
     expect(
       claudeRateLimitEventToUpdate(

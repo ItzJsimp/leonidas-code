@@ -14,26 +14,33 @@ const DEFAULT_HTTP_READY_PROBE_TIMEOUT_MS = 1_000;
  * `cause`/`reason` chains.
  */
 export function describeReadinessCause(cause: unknown): unknown {
-  if (cause instanceof Error) {
-    const tag = (cause as { readonly _tag?: unknown })._tag;
-    const nested = (cause as { readonly cause?: unknown }).cause;
-    return {
-      ...(typeof tag === "string" ? { _tag: tag } : { name: cause.name }),
-      message: cause.message,
-      ...(nested === undefined ? {} : { cause: describeReadinessCause(nested) }),
-    };
-  }
-  if (typeof cause !== "object" || cause === null) {
-    return cause;
-  }
-
-  const record = cause as Readonly<Record<string, unknown>>;
-  return {
-    ...(typeof record._tag === "string" ? { _tag: record._tag } : {}),
-    ...(typeof record.message === "string" ? { message: record.message } : {}),
-    ...(record.reason === undefined ? {} : { reason: describeReadinessCause(record.reason) }),
-    ...(record.cause === undefined ? {} : { cause: describeReadinessCause(record.cause) }),
+  const ancestors = new WeakSet<object>();
+  let remaining = 64;
+  const describe = (value: unknown, depth: number): unknown => {
+    if (typeof value !== "object" || value === null) return value;
+    if (ancestors.has(value)) return "[Circular]";
+    if (depth >= 8 || remaining-- <= 0) return "[Truncated]";
+    ancestors.add(value);
+    try {
+      const record = value as Readonly<Record<string, unknown>>;
+      if (value instanceof Error) {
+        return {
+          ...(typeof record._tag === "string" ? { _tag: record._tag } : { name: value.name }),
+          message: value.message,
+          ...(value.cause === undefined ? {} : { cause: describe(value.cause, depth + 1) }),
+        };
+      }
+      return {
+        ...(typeof record._tag === "string" ? { _tag: record._tag } : {}),
+        ...(typeof record.message === "string" ? { message: record.message } : {}),
+        ...(record.reason === undefined ? {} : { reason: describe(record.reason, depth + 1) }),
+        ...(record.cause === undefined ? {} : { cause: describe(record.cause, depth + 1) }),
+      };
+    } finally {
+      ancestors.delete(value);
+    }
   };
+  return describe(cause, 0);
 }
 
 /**
@@ -99,6 +106,8 @@ export const waitForHttpReady = Effect.fn("shared.httpReadiness.waitForHttpReady
 
   const readinessClient = client.pipe(
     HttpClient.filterStatusOk,
+    // Drain the response inside the probe timeout: headers alone do not bound a stalled body.
+    HttpClient.tap((response) => response.text.pipe(Effect.ignore)),
     HttpClient.transform((effect) =>
       Effect.gen(function* () {
         attempt += 1;
@@ -123,7 +132,6 @@ export const waitForHttpReady = Effect.fn("shared.httpReadiness.waitForHttpReady
         ),
       ),
     ),
-    HttpClient.tap((response) => response.text.pipe(Effect.ignore)),
     HttpClient.retry(retryPolicy),
   );
 

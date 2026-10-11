@@ -60,7 +60,7 @@ const handleMethod = (message: Record<string, unknown>) => {
     }
     case "initialized": {
       writeMessage({
-        method: "item/agentMessage/delta",
+        method: process.env.CODEX_APP_SERVER_TEST_SERVER_METHOD ?? "item/agentMessage/delta",
         params: {
           delta: "Mock server is ready.",
           itemId: "item-1",
@@ -83,25 +83,28 @@ const handleMethod = (message: Record<string, unknown>) => {
     }
     case "skills/list": {
       pendingSkillsListRequestId = message.id as number | string;
-      pendingUserInputRequestId = sendRequest("item/tool/requestUserInput", {
-        isBlocking: true,
-        itemId: "item-approval-1",
-        threadId: "thread-1",
-        turnId: "turn-1",
-        questions: [
-          {
-            id: "approved",
-            header: "Approve",
-            question: "Continue with the mock skills request?",
-            options: [
-              {
-                label: "yes",
-                description: "Approve the request",
-              },
-            ],
-          },
-        ],
-      });
+      pendingUserInputRequestId = sendRequest(
+        process.env.CODEX_APP_SERVER_TEST_SERVER_METHOD ?? "item/tool/requestUserInput",
+        {
+          isBlocking: true,
+          itemId: "item-approval-1",
+          threadId: "thread-1",
+          turnId: "turn-1",
+          questions: [
+            {
+              id: "approved",
+              header: "Approve",
+              question: "Continue with the mock skills request?",
+              options: [
+                {
+                  label: "yes",
+                  description: "Approve the request",
+                },
+              ],
+            },
+          ],
+        },
+      );
       return;
     }
     default: {
