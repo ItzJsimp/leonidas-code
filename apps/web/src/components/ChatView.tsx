@@ -293,6 +293,7 @@ import { PullRequestDetailGhost } from "./pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "./pullRequest/PullRequestsUnavailableState";
 import { RightPanelTabs } from "./RightPanelTabs";
 import { LinkPullRequestDialogHost } from "./pullRequest/LinkPullRequestDialog";
+import { ReleaseHistoryDialogHost } from "./desktop/ReleaseHistoryDialog";
 import { ThreadPullRequestsPanel } from "./pullRequest/ThreadPullRequestsPanel";
 import { useDeviceState } from "~/state/device";
 import { DeviceSetup } from "./device/DeviceSetup";
@@ -11848,6 +11849,7 @@ export default function ChatView(props: ChatViewProps) {
                                 <ChatComposerUsageLimits
                                   key={routeThreadKey}
                                   environmentId={activeThread.environmentId}
+                                  threadId={activeThread.id}
                                   instanceId={activeProviderInstanceId}
                                   modelLabel={providerSubagentModelLabel}
                                   effortLabel={providerSubagentEffortLabel}
@@ -12276,6 +12278,7 @@ export default function ChatView(props: ChatViewProps) {
         </AlertDialogPopup>
       </AlertDialog>
       <LinkPullRequestDialogHost />
+      <ReleaseHistoryDialogHost />
       {expandedImage && (
         <ExpandedImageDialog
           key={expandedImageKey(expandedImage)}

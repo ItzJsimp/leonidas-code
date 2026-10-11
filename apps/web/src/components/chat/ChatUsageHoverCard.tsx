@@ -1,23 +1,26 @@
 import type { UsageLimitsReport } from "@t3tools/contracts";
 import { limitsNotice } from "@t3tools/shared/usageLimits";
-import { SparklesIcon } from "lucide-react";
+import { ChevronRightIcon, SparklesIcon } from "lucide-react";
 
 import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import {
+  accountTitle,
+  contextWindowFigures,
+  formatResetCountdown,
   formatTokenCount,
-  glanceWindowLabel,
-  glanceWindows,
+  glanceLimitRows,
+  percentText,
   usageSeverity,
   usedPercentLabel,
 } from "../../lib/usageLimitsPopover";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
 
-const MAX_GLANCE_ACCOUNTS = 3;
+const MAX_GLANCE_ACCOUNTS = 2;
 
 /**
- * The hover summary of the usage control: model, context gauge, and each account's
- * session and weekly bars, with this chat's account first. The click opens the panel.
+ * The hover summary of the usage control: model, context gauge, and active account's
+ * session and weekly bars, with this chat's account first. Cursor can move into the card.
  */
 export function ChatUsageHoverCard({
   modelLabel,
@@ -25,23 +28,29 @@ export function ChatUsageHoverCard({
   contextWindow,
   accounts,
   activeAccountIds,
+  onOpenFull,
 }: {
   readonly modelLabel: string;
   readonly effortLabel: string | null;
   readonly contextWindow: ContextWindowSnapshot | null;
   readonly accounts: UsageLimitsReport["accounts"];
   readonly activeAccountIds: ReadonlySet<string>;
+  readonly onOpenFull?: () => void;
 }) {
+  const figures = contextWindowFigures(contextWindow);
   const percent =
-    contextWindow?.usedPercentage == null ? null : usedPercentLabel(contextWindow.usedPercentage);
-  const reported = contextWindow !== null && contextWindow.updatedAt !== new Date(0).toISOString();
+    figures.state === "reported" && figures.usedPercent != null
+      ? usedPercentLabel(figures.usedPercent)
+      : null;
+  const reported = figures.state === "reported";
   const ordered = accounts.toSorted(
     (left, right) => Number(activeAccountIds.has(right.id)) - Number(activeAccountIds.has(left.id)),
   );
   const shown = ordered.slice(0, MAX_GLANCE_ACCOUNTS);
+  const now = Date.now();
 
   return (
-    <div className="flex w-64 flex-col gap-3 py-1">
+    <div className="flex w-72 flex-col gap-3 p-1">
       <div className="flex items-center gap-2.5">
         <UsageRing
           percent={reported ? percent : null}
@@ -62,59 +71,102 @@ export function ChatUsageHoverCard({
           </span>
           <span className="truncate text-xs text-muted-foreground tabular-nums">
             {effortLabel ? `${effortLabel} · ` : ""}
-            {contextWindow && reported && contextWindow.maxTokens
-              ? `${formatTokenCount(contextWindow.usedTokens)} / ${formatTokenCount(contextWindow.maxTokens)} context`
-              : "Context not reported yet"}
+            {figures.state === "reported"
+              ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"} context`
+              : figures.state === "pending"
+                ? `0 / ${formatTokenCount(figures.maxTokens)} context`
+                : "Context not reported yet"}
           </span>
         </div>
       </div>
+
       {shown.length > 0 ? (
         <div className="flex flex-col gap-2.5 border-t pt-2.5">
           {shown.map((account) => {
-            const windows = glanceWindows(account.limits.windows);
+            const rows = glanceLimitRows(account.limits.windows);
             const notice = limitsNotice(account.limits);
+            const title = accountTitle(
+              { displayName: account.displayName, sourceLabel: account.sourceLabel },
+              account.displayName ?? account.label,
+            );
             return (
               <div key={account.id} className="flex min-w-0 items-start gap-2">
                 <ProviderInstanceIcon
                   driverKind={account.driver}
-                  displayName={account.displayName ?? account.label}
+                  displayName={title}
                   className="mt-0.5"
                   iconClassName="size-3.5"
                 />
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="truncate text-xs font-medium">
-                    {account.displayName?.trim() || account.label}
-                  </span>
-                  {notice || windows.length === 0 ? (
-                    <span className="text-2xs text-muted-foreground">Limits pending</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="truncate text-xs font-medium">{title}</span>
+                    {activeAccountIds.has(account.id) ? (
+                      <span className="text-2xs font-medium text-sky-500">Active</span>
+                    ) : null}
+                  </div>
+                  {notice || rows.length === 0 ? (
+                    <span className="text-2xs text-muted-foreground">
+                      {notice ?? "Limits pending"}
+                    </span>
                   ) : (
-                    windows.map((window) => (
-                      <div key={window.id} className="flex items-center gap-2">
-                        <span className="w-11 shrink-0 text-2xs text-muted-foreground">
-                          {glanceWindowLabel(window)}
-                        </span>
-                        <UsageBar
-                          usedPercent={window.usedPercent}
-                          label={`${glanceWindowLabel(window)}: ${usedPercentLabel(window.usedPercent)}% used`}
-                        />
-                        <span className="w-8 shrink-0 text-right text-2xs tabular-nums">
-                          {usedPercentLabel(window.usedPercent)}%
-                        </span>
-                      </div>
-                    ))
+                    rows.map((row) => {
+                      if (!row.window) {
+                        return (
+                          <div
+                            key={row.key}
+                            className="flex items-center justify-between text-2xs text-muted-foreground"
+                          >
+                            <span>{row.label}</span>
+                            <span>Not reported</span>
+                          </div>
+                        );
+                      }
+                      const countdown = formatResetCountdown(row.window.resetsAt, now, true);
+                      const leftText = percentText(row.window.usedPercent, "left");
+                      const used = usedPercentLabel(row.window.usedPercent);
+                      return (
+                        <div key={row.key} className="flex flex-col gap-0.5">
+                          <div className="flex items-center justify-between text-2xs">
+                            <span className="text-muted-foreground">{row.label}</span>
+                            <span className="tabular-nums text-foreground">
+                              {countdown ? `${countdown} · ${leftText}` : leftText}
+                            </span>
+                          </div>
+                          <UsageBar
+                            usedPercent={row.window.usedPercent}
+                            label={`${row.label}: ${used}% used`}
+                            className="h-1"
+                          />
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
             );
           })}
           {ordered.length > shown.length ? (
-            <span className="text-2xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={onOpenFull}
+              className="text-left text-2xs font-medium text-sky-500 hover:underline cursor-pointer"
+            >
               +{ordered.length - shown.length} more accounts
-            </span>
+            </button>
           ) : null}
         </div>
       ) : null}
-      <span className="text-2xs text-muted-foreground">Click for the full breakdown</span>
+
+      <div className="border-t pt-1.5">
+        <button
+          type="button"
+          onClick={onOpenFull}
+          className="flex w-full items-center justify-between text-2xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+        >
+          <span>Click for full breakdown</span>
+          <ChevronRightIcon aria-hidden className="size-3" />
+        </button>
+      </div>
     </div>
   );
 }
