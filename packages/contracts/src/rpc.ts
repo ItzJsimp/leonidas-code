@@ -211,6 +211,7 @@ import {
   OrchestrationV2RpcSchemas,
   OrchestrationV2ThreadLaunchError,
 } from "./orchestrationV2.ts";
+import { ThreadContextBreakdownError } from "./contextBreakdown.ts";
 import {
   ProjectCreateNewInput,
   ProjectCreateNewResult,
@@ -1703,6 +1704,15 @@ const WsOrchestrationV2GetTurnItemRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.get
   error: Schema.Union([OrchestrationV2GetThreadProjectionError, EnvironmentAuthorizationError]),
 });
 
+const WsOrchestrationV2GetThreadContextBreakdownRpc = Rpc.make(
+  ORCHESTRATION_V2_WS_METHODS.getThreadContextBreakdown,
+  {
+    payload: OrchestrationV2RpcSchemas.getThreadContextBreakdown.input,
+    success: OrchestrationV2RpcSchemas.getThreadContextBreakdown.output,
+    error: Schema.Union([ThreadContextBreakdownError, EnvironmentAuthorizationError]),
+  },
+);
+
 const WsOrchestrationV2LaunchThreadRpc = Rpc.make(ORCHESTRATION_V2_WS_METHODS.launchThread, {
   payload: OrchestrationV2RpcSchemas.launchThread.input,
   success: OrchestrationV2RpcSchemas.launchThread.output,
@@ -2069,6 +2079,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsOrchestrationV2SearchThreadStreamRpc,
   WsOrchestrationV2GetArchivedShellSnapshotRpc,
   WsOrchestrationV2GetThreadProjectionRpc,
+  WsOrchestrationV2GetThreadContextBreakdownRpc,
   WsOrchestrationV2LaunchThreadRpc,
   WsOrchestrationV2SubscribeArchivedShellRpc,
   WsOrchestrationV2SubscribeShellRpc,
