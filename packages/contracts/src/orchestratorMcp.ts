@@ -23,7 +23,7 @@ import {
   ScheduledTaskUpsertSchedule,
 } from "./scheduledTask.ts";
 import { ProviderInteractionMode, RuntimeMode } from "./providerPolicy.ts";
-import { TaskBoardTaskPriority, TaskBoardTaskStatus } from "./taskBoard.ts";
+import { TaskBoardDueDate, TaskBoardTaskPriority, TaskBoardTaskStatus } from "./taskBoard.ts";
 import { ThreadLinkedPullRequest } from "./threadPullRequest.ts";
 import { ThreadTitleRegeneration } from "./threadTitle.ts";
 import {
@@ -744,6 +744,9 @@ export type OrchestratorMcpBoardTaskDetail = typeof OrchestratorMcpBoardTaskDeta
 
 export const OrchestratorMcpBoardTaskUpdateInput = Schema.Struct({
   taskId: BoardTaskId,
+  due: Schema.optional(Schema.NullOr(TaskBoardDueDate)).annotate({
+    description: "Due calendar date (YYYY-MM-DD), or null to remove it.",
+  }),
   status: Schema.optional(
     TaskBoardTaskStatus.annotate({
       description:
@@ -781,6 +784,7 @@ export const OrchestratorMcpBoardTaskUpdateInput = Schema.Struct({
 export type OrchestratorMcpBoardTaskUpdateInput = typeof OrchestratorMcpBoardTaskUpdateInput.Type;
 
 export const OrchestratorMcpBoardTaskCreateInput = Schema.Struct({
+  due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)).annotate({
     description: "Short imperative title.",
   }),

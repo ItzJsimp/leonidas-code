@@ -22,6 +22,7 @@ export interface AiosCardPatch {
   readonly status?: TaskBoardTaskStatus | undefined;
   readonly priority?: TaskBoardTaskPriority | undefined;
   readonly title?: string | undefined;
+  readonly due?: string | null | undefined;
   readonly projectSlug?: string | null | undefined;
   readonly claimedBy?: string | null | undefined;
   /** `true` publishes the card to the shared board; `false` or `null` withdraws it. */
@@ -471,7 +472,7 @@ export function cardToTask(input: {
   };
 }
 
-const keyFor = (path: string) => (process.platform === "win32" ? path.toLowerCase() : path);
+const keyFor = (path: string) => (NodePath.sep === "\\" ? path.toLowerCase() : path);
 
 /** Reads every task card under `<root>/tasks` and `<root>/projects/<slug>/tasks`. Never throws per card. */
 export function readAiosTasks(
@@ -685,6 +686,12 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     changed = true;
   }
 
+  if (patch.due !== undefined && (patch.due ?? "") !== field(fields, "due")) {
+    setKey("due", patch.due === null ? null : quote(patch.due));
+    other.push(patch.due === null ? "removed due date" : `due → ${patch.due}`);
+    changed = true;
+  }
+
   const title = patch.title === undefined ? undefined : oneLine(patch.title);
   if (title && title !== was.title) {
     setKey("name" in fields || !("title" in fields) ? "name" : "title", quote(title));
@@ -737,6 +744,8 @@ export function createCardFile(
   root: string,
   input: {
     title: string;
+    id?: string | undefined;
+    due?: string | null | undefined;
     description?: string | undefined;
     priority?: string | undefined;
     projectSlug?: string | null | undefined;
@@ -752,7 +761,7 @@ export function createCardFile(
   const projectSlug = normalizeProjectSlug(input.projectSlug ?? undefined);
   for (let attempt = 1; ; attempt++) {
     const slug = attempt === 1 ? base : `${base}-${attempt}`;
-    const id = `task-${slug}`;
+    const id = input.id ?? `task-${slug}`;
     const raw =
       [
         "---",
@@ -767,6 +776,7 @@ export function createCardFile(
         `created: ${date}`,
         `last_touched: ${date}`,
         ...(projectSlug ? [`project: ${quote(projectSlug)}`] : []),
+        ...(input.due ? [`due: ${quote(input.due)}`] : []),
         "---",
         `# ${title}`,
         "",

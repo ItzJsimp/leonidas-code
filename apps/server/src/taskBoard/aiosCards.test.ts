@@ -20,6 +20,23 @@ import {
 
 const NOW = new Date(2026, 9, 11, 14, 30).getTime();
 
+describe("editable due dates", () => {
+  it.each(["\n", "\r\n"])("sets and clears dates without damaging the card (%j)", (eol) => {
+    const raw = card('id: task-date\nname: "Café"\ncustom: keep', "# Café\n\nDetails.\n", eol);
+    const dated = applyCardPatch(raw, { actor: "Jake", due: "2026-10-12" }, NOW);
+    expect(cardToTask({ fileName: "date.md", raw: dated, mtimeMs: NOW, now: NOW })?.due).toBe(
+      "2026-10-12",
+    );
+    expect(dated).toContain(`custom: keep${eol}`);
+    expect(dated).toContain("# Café");
+    const cleared = applyCardPatch(dated, { actor: "Jake", due: null }, NOW);
+    expect(
+      cardToTask({ fileName: "date.md", raw: cleared, mtimeMs: NOW, now: NOW })?.due,
+    ).toBeNull();
+    expect(cleared).not.toMatch(/^due:/m);
+  });
+});
+
 const card = (header: string, body = "# Title\n\nSome words.\n", eol = "\n") =>
   `---\n${header}\n---\n${body}`.replace(/\n/g, eol);
 

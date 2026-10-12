@@ -8,6 +8,7 @@ import {
   Share2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAtomValue } from "@effect/atom-react";
 
 import { WorkspacePageContainer } from "~/components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
@@ -17,6 +18,7 @@ import { SidebarInset } from "~/components/ui/sidebar";
 import { Spinner } from "~/components/ui/spinner";
 import { ToggleGroup, Toggle } from "~/components/ui/toggle-group";
 import { isElectron } from "~/env";
+import { taskBoardCardCreate } from "~/state/taskBoard";
 
 import { TaskCreateDialog } from "./TaskCreateDialog";
 import { TaskDashboardView } from "./TaskDashboard";
@@ -25,6 +27,7 @@ import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskKanbanView } from "./TaskKanban";
 import { TaskListView } from "./TaskList";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
+import { TaskQuickAdd } from "./TaskQuickAdd";
 import type { TaskContext } from "./taskBoard.types";
 import type { TaskView } from "./taskBoard.logic";
 import {
@@ -32,6 +35,8 @@ import {
   TASKS_PREFS_KEY,
   parseTasksPrefs,
   sectionShareState,
+  tasksInFocus,
+  type TaskFocus,
   type TasksPrefs,
   type TasksView,
 } from "./tasksPage.logic";
@@ -64,6 +69,7 @@ export function TasksPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
   const board = useTaskBoard({ selectedSlug: prefs.section, prefs, query });
+  const canCreate = useAtomValue(taskBoardCardCreate.permissionAtom(board.environmentId));
   const { actions, shareSection, isSharingSection } = useTaskActions({
     environmentId: board.environmentId,
     member: board.member,
@@ -86,7 +92,15 @@ export function TasksPage() {
   }, []);
   const selectSection = useCallback(
     (slug: string | null) => {
-      patchPrefs({ section: slug });
+      patchPrefs({ section: slug, focus: "all" });
+      setSelectedId(null);
+    },
+    [patchPrefs],
+  );
+  const selectFocus = useCallback(
+    (focus: TaskFocus) => {
+      patchPrefs({ ...DEFAULT_TASKS_PREFS, focus, section: null, sort: "due", groupBy: "none" });
+      setQuery("");
       setSelectedId(null);
     },
     [patchPrefs],
@@ -112,6 +126,27 @@ export function TasksPage() {
     : null;
   const shareState = sectionShareState(railEntry, board.scopedTasks);
   const allOpen = board.rail.reduce((sum, entry) => sum + entry.open, 0);
+  const counts = useMemo(
+    () => ({
+      inbox: tasksInFocus(board.allTasks, "inbox", board.now).length,
+      today: tasksInFocus(board.allTasks, "today", board.now).length,
+      upcoming: tasksInFocus(board.allTasks, "upcoming", board.now).length,
+    }),
+    [board.allTasks, board.now],
+  );
+  const heading =
+    prefs.focus === "inbox"
+      ? "Inbox"
+      : prefs.focus === "today"
+        ? "Today"
+        : prefs.focus === "upcoming"
+          ? "Upcoming"
+          : (railEntry?.name ?? "All tasks");
+  const date = new Date(board.now);
+  const defaultDue =
+    prefs.focus === "today" || prefs.focus === "upcoming"
+      ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+      : "";
 
   const picker = (
     <div className="lg:hidden">
@@ -119,6 +154,8 @@ export function TasksPage() {
         entries={board.rail}
         selectedSlug={prefs.section}
         onSelect={selectSection}
+        focus={prefs.focus}
+        onFocus={selectFocus}
       />
     </div>
   );
@@ -140,18 +177,6 @@ export function TasksPage() {
         <Button variant="outline" onClick={board.refresh}>
           Try again
         </Button>
-      </Empty>
-    );
-  } else if (!board.aiosConnected) {
-    body = (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>No AIOS task folder found</EmptyTitle>
-          <EmptyDescription>
-            Leonidas Code reads your tasks from your AIOS. Point it at your AIOS folder by setting
-            LEONIDAS_AIOS_ROOT, or open a project that lives inside your AIOS, then reload.
-          </EmptyDescription>
-        </EmptyHeader>
       </Empty>
     );
   } else if (prefs.view === "dashboard") {
@@ -194,7 +219,7 @@ export function TasksPage() {
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
         <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        <h1 className="truncate text-sm font-medium">Tasks</h1>
+        <h1 className="hidden truncate text-sm font-medium sm:block">Tasks</h1>
         <ToggleGroup
           aria-label="View"
           value={[prefs.view]}
@@ -207,7 +232,7 @@ export function TasksPage() {
           {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
             <Toggle key={view} value={view} aria-label={label}>
               <Icon aria-hidden />
-              <span className="hidden sm:inline">{label}</span>
+              <span className="hidden lg:inline">{label}</span>
             </Toggle>
           ))}
         </ToggleGroup>
@@ -224,9 +249,14 @@ export function TasksPage() {
               className={board.isRefreshing ? "animate-spin" : undefined}
             />
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)} disabled={!board.aiosConnected}>
+          <Button
+            aria-label="New task"
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            disabled={!board.environmentId || !canCreate}
+          >
             <PlusIcon aria-hidden />
-            New task
+            <span className="hidden sm:inline">New task</span>
           </Button>
         </div>
       </WorkspacePageHeader>
@@ -238,6 +268,9 @@ export function TasksPage() {
             allOpen={allOpen}
             selectedSlug={prefs.section}
             onSelect={selectSection}
+            focus={prefs.focus}
+            counts={counts}
+            onFocus={selectFocus}
           />
         </aside>
 
@@ -248,7 +281,27 @@ export function TasksPage() {
               : "flex min-h-0 min-w-0 flex-1 flex-col"
           }
         >
-          {prefs.view !== "dashboard" && board.aiosConnected ? (
+          <div className="flex flex-col gap-1 px-4 pt-5 pb-4">
+            <h2 className="text-xl font-semibold">{heading}</h2>
+            <p className="text-sm text-muted-foreground">
+              {prefs.focus === "inbox"
+                ? "Capture first. Organize when you’re ready."
+                : prefs.focus === "today"
+                  ? "Today’s work, with overdue tasks first."
+                  : prefs.focus === "upcoming"
+                    ? "Plan what’s next, starting today."
+                    : "Your tasks and agent work in one place."}
+            </p>
+          </div>
+          <TaskQuickAdd
+            key={`${prefs.section}:${prefs.focus}`}
+            environmentId={board.environmentId}
+            member={board.member}
+            projectSlug={prefs.section === "general" ? null : prefs.section}
+            defaultDue={defaultDue}
+            onCreated={board.refresh}
+          />
+          {prefs.view !== "dashboard" ? (
             <div className="border-b border-border p-2">
               <TaskFilterBar
                 prefs={prefs}
@@ -260,9 +313,9 @@ export function TasksPage() {
                 leading={picker}
               />
             </div>
-          ) : board.aiosConnected ? (
+          ) : (
             <div className="flex border-b border-border p-2 lg:hidden">{picker}</div>
-          ) : null}
+          )}
 
           {shareState.kind !== "hidden" && railEntry?.projectId ? (
             <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">

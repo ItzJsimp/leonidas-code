@@ -393,6 +393,14 @@ describe("buildDashboard", () => {
 });
 
 describe("buildTaskPrompt", () => {
+  it("points agents at native storage even when an AIOS is also connected", () => {
+    const prompt = buildTaskPrompt(task("native", { sourceRoot: "D:/Leonidas Data/task-board" }), {
+      aiosRoot: "D:/AIOS",
+      member: "Jake",
+    });
+    expect(prompt).toContain("D:/Leonidas Data/task-board/tasks/native.md");
+    expect(prompt).not.toContain("D:/AIOS/tasks/native.md");
+  });
   const full = task("0042", {
     title: "Ship the board",
     priority: "high",

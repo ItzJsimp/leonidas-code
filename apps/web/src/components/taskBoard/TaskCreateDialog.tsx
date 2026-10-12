@@ -8,6 +8,7 @@ import type {
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 import { useId, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useAtomValue } from "@effect/atom-react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -35,14 +36,16 @@ import { useAtomCommand } from "~/state/use-atom-command";
 
 import { priorityLabel } from "./taskBoard.logic";
 import { failureText } from "./useTaskActions.logic";
+import { taskProjectSlug } from "./tasksPage.logic";
 
 const NO_PROJECT = "__no-project__";
+const NEW_PROJECT = "__new-project__";
 const PRIORITIES: ReadonlyArray<TaskBoardTaskPriority> = ["low", "medium", "high", "critical"];
 const PRIORITY_ITEMS = Object.fromEntries(
   PRIORITIES.map((priority) => [priority, priorityLabel(priority)]),
 );
 
-/** Creates a new AIOS task card. The form resets every time the dialog opens. */
+/** Captures a native task. The form resets every time the dialog opens. */
 export function TaskCreateDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -73,24 +76,34 @@ function TaskCreateForm(props: {
   const { environmentId, member, projects, onCreated, onOpenChange } = props;
   const id = useId();
   const runCreate = useAtomCommand(taskBoardCardCreate, { reportFailure: false });
+  const canCreate = useAtomValue(taskBoardCardCreate.permissionAtom(environmentId));
   const projectItems = useMemo(
     () => ({
-      [NO_PROJECT]: "No project",
+      [NO_PROJECT]: "Inbox",
       ...Object.fromEntries(
         projects.filter((project) => project.slug !== "general").map((p) => [p.slug, p.name]),
       ),
+      [NEW_PROJECT]: "New project…",
     }),
     [projects],
   );
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
+  const [due, setDue] = useState("");
   const [priority, setPriority] = useState<TaskBoardTaskPriority>("medium");
   const [projectSlug, setProjectSlug] = useState(
     props.defaultSlug && props.defaultSlug in projectItems ? props.defaultSlug : NO_PROJECT,
   );
   const [submitting, setSubmitting] = useState(false);
+  const [newProject, setNewProject] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const canSubmit = title.trim().length > 0 && environmentId !== null && !submitting;
+  const newSlug = taskProjectSlug(newProject);
+  const canSubmit =
+    title.trim().length > 0 &&
+    environmentId !== null &&
+    canCreate &&
+    !submitting &&
+    (projectSlug !== NEW_PROJECT || (newSlug.length > 0 && newSlug !== "general"));
 
   const submit = async () => {
     if (!canSubmit || environmentId === null) return;
@@ -102,7 +115,9 @@ function TaskCreateForm(props: {
         title: title.trim(),
         ...(details.trim() ? { description: details.trim() } : {}),
         priority,
-        projectSlug: projectSlug === NO_PROJECT ? null : projectSlug,
+        due: due || null,
+        projectSlug:
+          projectSlug === NO_PROJECT ? null : projectSlug === NEW_PROJECT ? newSlug : projectSlug,
         actor: member,
       },
     });
@@ -133,7 +148,7 @@ function TaskCreateForm(props: {
       <DialogHeader>
         <DialogTitle>New task</DialogTitle>
         <DialogDescription>
-          Saved as a task card in your AIOS folder. Press Ctrl+Enter to create it.
+          Capture work for yourself or your agents. Press Ctrl+Enter to create it.
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>
@@ -158,6 +173,15 @@ function TaskCreateForm(props: {
             />
           </Label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Label className="flex flex-col items-stretch" htmlFor={`${id}-due`}>
+              Due date
+              <Input
+                id={`${id}-due`}
+                type="date"
+                value={due}
+                onChange={(event) => setDue(event.target.value)}
+              />
+            </Label>
             <Label className="flex min-w-0 flex-col items-stretch" htmlFor={`${id}-priority`}>
               Priority
               <Select
@@ -203,6 +227,18 @@ function TaskCreateForm(props: {
               </Select>
             </Label>
           </div>
+          {projectSlug === NEW_PROJECT ? (
+            <Label className="flex flex-col items-stretch" htmlFor={`${id}-new-project`}>
+              Project name
+              <Input
+                id={`${id}-new-project`}
+                placeholder="Weekly planning"
+                maxLength={80}
+                value={newProject}
+                onChange={(event) => setNewProject(event.target.value)}
+              />
+            </Label>
+          ) : null}
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}

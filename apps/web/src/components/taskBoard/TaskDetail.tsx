@@ -20,6 +20,7 @@ import { lazy, memo, Suspense, useMemo, useState, type KeyboardEvent, type React
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { MiddleTruncate } from "~/components/ui/middle-truncate";
 import {
   Select,
@@ -425,14 +426,33 @@ function TaskDetailBody(props: {
             )}
           </Property>
           <Property label="Due">
-            {dueText ? (
-              <span className={dueText.startsWith("Overdue") ? "text-destructive-foreground" : ""}>
-                {dueText}
-                <span className="text-muted-foreground"> · {task.due}</span>
-              </span>
-            ) : (
-              <span className="text-muted-foreground">No due date</span>
-            )}
+            <div className="flex flex-col gap-1">
+              <Input
+                key={`${task.id}:${task.due ?? ""}`}
+                type="date"
+                aria-label="Due date"
+                defaultValue={task.due ?? ""}
+                disabled={busy || !actions.canEdit}
+                onBlur={(event) => {
+                  const due = event.target.value || null;
+                  if (event.target.validity.valid && due !== (task.due ?? null))
+                    actions.setDue(task, due);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+              />
+              {dueText ? (
+                <span
+                  className={dueText.startsWith("Overdue") ? "text-destructive-foreground" : ""}
+                >
+                  {dueText}
+                  <span className="text-muted-foreground"> · {task.due}</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">No due date</span>
+              )}
+            </div>
           </Property>
           <Property label="Effort">
             {task.effort ? task.effort : <span className="text-muted-foreground">Not set</span>}

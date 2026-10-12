@@ -11,9 +11,57 @@ import {
   sectionShareState,
   tasksInSection,
   toTaskFilters,
+  tasksInFocus,
+  taskProjectSlug,
 } from "./tasksPage.logic";
 
 const PROJECT_ID = "project-1" as ProjectId;
+
+describe("task-only projects", () => {
+  it("creates stable keys for names without filesystem paths", () => {
+    expect(taskProjectSlug(" Weekly Planning ")).toBe("weekly-planning");
+    expect(taskProjectSlug("Café / 家庭")).toBe("café-家庭");
+    expect(taskProjectSlug("../Work\\Team")).toBe("work-team");
+    expect(taskProjectSlug(" -- ")).toBe("");
+    expect(taskProjectSlug("General")).toBe("general-tasks");
+  });
+});
+
+describe("daily task views", () => {
+  const now = new Date(2026, 9, 12, 23, 30).getTime();
+  const tasks = mergeTasks(
+    [
+      task("inbox", { projectSlug: null }),
+      task("overdue", { due: "2026-10-11" }),
+      task("today", { due: "2026-10-12" }),
+      task("future", { due: "2026-10-13" }),
+      task("done", { due: "2026-10-12", status: "done" }),
+      task("parked", { due: "2026-10-12", status: "parked" }),
+      task("invalid", { due: "2026-02-30" }),
+    ],
+    [],
+  );
+  it("keeps unassigned tasks in Inbox and excludes closed work", () => {
+    expect(tasksInFocus(tasks, "inbox", now).map((item) => item.id)).toEqual(["inbox"]);
+  });
+  it("includes overdue and today's work in Today", () => {
+    expect(tasksInFocus(tasks, "today", now).map((item) => item.id)).toEqual(["overdue", "today"]);
+  });
+  it("includes today and future dates in Upcoming, excluding invalid dates", () => {
+    expect(tasksInFocus(tasks, "upcoming", now).map((item) => item.id)).toEqual([
+      "today",
+      "future",
+    ]);
+    expect(tasksInFocus([], "today", now)).toEqual([]);
+  });
+  it("can show completed daily tasks so they can be reopened", () => {
+    expect(tasksInFocus(tasks, "today", now, true).map((item) => item.id)).toEqual([
+      "overdue",
+      "today",
+      "done",
+    ]);
+  });
+});
 
 function task(id: string, overrides: Partial<TaskBoardTask> = {}): TaskBoardTask {
   return {

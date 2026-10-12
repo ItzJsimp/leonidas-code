@@ -20,6 +20,7 @@ import {
   buildRailEntries,
   placeSharedOnlyIn,
   tasksInSection,
+  tasksInFocus,
   toTaskFilters,
   type RailEntry,
   type TasksPrefs,
@@ -109,8 +110,14 @@ export function useTaskBoard(input: {
   const now = workspace.dataUpdatedAt || openedAt;
 
   const scopedTasks = useMemo(
-    () => tasksInSection(allTasks, selectedSlug),
-    [allTasks, selectedSlug],
+    () =>
+      tasksInFocus(
+        tasksInSection(allTasks, selectedSlug),
+        prefs.focus,
+        now,
+        prefs.includeClosed || prefs.view === "board",
+      ),
+    [allTasks, selectedSlug, prefs.focus, prefs.includeClosed, prefs.view, now],
   );
   const visibleTasks = useMemo(
     () => sortTasks(filterTasks(scopedTasks, toTaskFilters(prefs, query), member), prefs.sort),

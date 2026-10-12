@@ -11,9 +11,11 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 
-import type { RailEntry } from "./tasksPage.logic";
+import type { RailEntry, TaskFocus } from "./tasksPage.logic";
 
 const ALL = "__all__";
+const FOCUS_LABELS = { inbox: "Inbox", today: "Today", upcoming: "Upcoming" } as const;
+const DAILY_FOCUSES = ["inbox", "today", "upcoming"] as const;
 
 function RailRow(props: {
   readonly label: string;
@@ -51,22 +53,35 @@ export const TaskProjectRail = memo(function TaskProjectRail(props: {
   readonly allOpen: number;
   readonly selectedSlug: string | null;
   readonly onSelect: (slug: string | null) => void;
+  readonly focus: TaskFocus;
+  readonly counts: Record<(typeof DAILY_FOCUSES)[number], number>;
+  readonly onFocus: (focus: TaskFocus) => void;
 }) {
   const { onSelect } = props;
   return (
     <nav aria-label="Projects" className="flex flex-col gap-0.5">
+      {DAILY_FOCUSES.map((focus) => (
+        <RailRow
+          key={focus}
+          label={FOCUS_LABELS[focus]}
+          count={props.counts[focus]}
+          selected={props.focus === focus}
+          onSelect={() => props.onFocus(focus)}
+        />
+      ))}
       <RailRow
         label="All tasks"
         count={props.allOpen}
-        selected={props.selectedSlug === null}
+        selected={props.focus === "all" && props.selectedSlug === null}
         onSelect={() => onSelect(null)}
       />
+      <h2 className="px-2 pt-4 pb-1 text-xs font-medium text-muted-foreground">Projects</h2>
       {props.entries.map((entry) => (
         <RailRow
           key={entry.slug}
           label={entry.name}
           count={entry.open}
-          selected={props.selectedSlug === entry.slug}
+          selected={props.focus === "all" && props.selectedSlug === entry.slug}
           shareable={entry.repository !== null && entry.projectId !== null}
           onSelect={() => onSelect(entry.slug)}
         />
@@ -80,24 +95,29 @@ export const TaskProjectSelect = memo(function TaskProjectSelect(props: {
   readonly entries: ReadonlyArray<RailEntry>;
   readonly selectedSlug: string | null;
   readonly onSelect: (slug: string | null) => void;
+  readonly focus: TaskFocus;
+  readonly onFocus: (focus: TaskFocus) => void;
 }) {
   const { onSelect } = props;
   const items = useMemo(
     () => ({
       [ALL]: "All tasks",
+      ...Object.fromEntries(DAILY_FOCUSES.map((focus) => [`__${focus}__`, FOCUS_LABELS[focus]])),
       ...Object.fromEntries(props.entries.map((entry) => [entry.slug, entry.name])),
     }),
     [props.entries],
   );
   return (
     <Select
-      value={props.selectedSlug ?? ALL}
+      value={props.focus === "all" ? (props.selectedSlug ?? ALL) : `__${props.focus}__`}
       items={items}
       onValueChange={(value) => {
-        if (typeof value === "string") onSelect(value === ALL ? null : value);
+        const focus = DAILY_FOCUSES.find((item) => value === `__${item}__`);
+        if (focus) props.onFocus(focus);
+        else if (typeof value === "string") onSelect(value === ALL ? null : value);
       }}
     >
-      <SelectTrigger size="sm" aria-label="Project" className="min-w-0">
+      <SelectTrigger size="sm" aria-label="Task view or project" className="min-w-0">
         <LayersIcon aria-hidden />
         <SelectValue />
       </SelectTrigger>

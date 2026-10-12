@@ -9,6 +9,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as ProcessRunner from "../processRunner.ts";
 import * as TaskBoardService from "./TaskBoardService.ts";
+import { ServerConfig } from "../config.ts";
 
 const issue = {
   number: 12,
@@ -208,6 +209,128 @@ const cardFile = (id: string, name: string, extra = "") =>
   `---\ntype: task\nid: ${id}\nname: "${name}"\nstatus: "Not started"\npriority: "High"\nproject: "leonidas-code"\n${extra}---\n# ${name}\n`;
 
 const noGithub = boardRunner(() => {});
+
+it.effect("publishes native tasks through the existing shared project board", () => {
+  const writes: ReadonlyArray<string>[] = [];
+  return withAios({}, (root, project) => {
+    const stateDir = NodePath.join(root, "native-state");
+    return Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const task = yield* board.cardCreate(
+        {
+          title: "Native shared task",
+          actor: "Jake",
+          projectSlug: "leonidas-code",
+          due: "2026-10-13",
+        },
+        [project],
+      );
+      yield* board.share(project, {
+        projectId: project.id,
+        taskIds: [task.id],
+        shared: true,
+        actor: "Jake",
+      });
+      const content = writes
+        .find((args) => args.includes("PUT"))
+        ?.find((arg) => arg.startsWith("content="));
+      const published = JSON.parse(
+        Buffer.from(content!.slice("content=".length), "base64").toString("utf8"),
+      );
+      expect(published.tasks).toHaveLength(1);
+      expect(published.tasks[0]).toMatchObject({ id: task.id, shared: true, due: "2026-10-13" });
+      expect(published.tasks[0]).not.toHaveProperty("sourceRoot");
+      expect(
+        (yield* board.workspace([project])).tasks.find((item) => item.id === task.id)?.shared,
+      ).toBe(true);
+    }).pipe(
+      Effect.provide(
+        boardLayer(
+          boardRunner(
+            () => {},
+            output("[]"),
+            (args) => writes.push(args),
+          ),
+        ).pipe(Layer.provide(Layer.succeed(ServerConfig, { stateDir } as ServerConfig["Service"]))),
+      ),
+    );
+  });
+});
+
+it.effect("keeps imported cards editable while new tasks use native storage", () =>
+  withAios({ "plan.md": cardFile("task-plan-the-day", "Plan the day") }, (root, project) => {
+    const stateDir = NodePath.join(root, "native-state");
+    return Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const native = yield* board.cardCreate({ title: "Plan the day", actor: "Jake" }, [project]);
+      expect(native.id).not.toBe("task-plan-the-day");
+      const imported = yield* board.cardUpdate(
+        { taskId: "task-plan-the-day", actor: "Jake", due: "2026-10-13" },
+        [project],
+      );
+      expect(imported.due).toBe("2026-10-13");
+      const workspace = yield* board.workspace([project]);
+      expect(workspace.tasks).toHaveLength(2);
+      expect(workspace.tasks.find((item) => item.id === native.id)?.sourceRoot).toBe(
+        NodePath.join(stateDir, "task-board"),
+      );
+      expect(NodeFS.readdirSync(NodePath.join(root, "tasks"))).toEqual(["plan.md"]);
+      NodeFS.writeFileSync(
+        NodePath.join(root, "tasks", "copy.md"),
+        cardFile(native.id, "Imported copy"),
+      );
+      const deduped = yield* board.workspace([project]);
+      expect(deduped.tasks).toHaveLength(2);
+      expect(deduped.tasks.find((item) => item.id === native.id)?.title).toBe("Plan the day");
+    }).pipe(
+      Effect.provide(
+        boardLayer(noGithub).pipe(
+          Layer.provide(Layer.succeed(ServerConfig, { stateDir } as ServerConfig["Service"])),
+        ),
+      ),
+    );
+  }),
+);
+
+it.effect("owns native tasks without an AIOS and persists dates, completion and reopening", () =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "leonidas tasks café-"))),
+    (stateDir) =>
+      Effect.gen(function* () {
+        const board = yield* TaskBoardService.TaskBoardService;
+        const created = yield* board.cardCreate(
+          { title: "Plan the day", actor: "Jake", due: "2026-10-12", projectSlug: "personal-work" },
+          [],
+        );
+        expect(created.due).toBe("2026-10-12");
+        const listed = yield* board.workspace([]);
+        expect(listed.tasks.map((item) => item.id)).toContain(created.id);
+        expect(listed.aiosRoot).toBeNull();
+        expect(listed.projects).toContainEqual(
+          expect.objectContaining({ slug: "personal-work", projectId: null }),
+        );
+        const done = yield* board.cardUpdate(
+          { taskId: created.id, actor: "Jake", status: "done", due: null },
+          [],
+        );
+        expect(done.status).toBe("done");
+        expect(done.due).toBeNull();
+        const reopened = yield* board.cardUpdate(
+          { taskId: created.id, actor: "Jake", status: "todo" },
+          [],
+        );
+        expect(reopened.completedAt).toBeNull();
+        expect(NodeFS.readdirSync(NodePath.join(stateDir, "task-board", "tasks"))).toHaveLength(1);
+      }).pipe(
+        Effect.provide(
+          boardLayer(noGithub).pipe(
+            Layer.provide(Layer.succeed(ServerConfig, { stateDir } as ServerConfig["Service"])),
+          ),
+        ),
+      ),
+    (stateDir) => Effect.sync(() => NodeFS.rmSync(stateDir, { recursive: true, force: true })),
+  ),
+);
 
 it.effect("sections every AIOS card by project, read from disk without touching GitHub", () => {
   let githubCalls = 0;

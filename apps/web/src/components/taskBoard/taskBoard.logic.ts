@@ -207,12 +207,14 @@ export function filterTasks<T extends TaskView>(
 }
 
 /** Days from `now`'s local date to a `yyyy-mm-dd` due date, or null when absent or malformed. */
-function daysUntilDue(due: string | null | undefined, now: number): number | null {
+export function daysUntilDue(due: string | null | undefined, now: number): number | null {
   if (!due) return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(due);
   if (!match) return null;
   const today = new Date(now);
-  const dueDay = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const dueDay = new Date(`${match[0]}T00:00:00Z`).getTime();
+  if (!Number.isFinite(dueDay) || new Date(dueDay).toISOString().slice(0, 10) !== match[0])
+    return null;
   const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return Math.round((dueDay - todayDay) / DAY_MS);
 }
@@ -512,7 +514,7 @@ export function buildTaskPrompt(
     `Priority: ${task.priority}. Requested by: ${ctx.member}.`,
   ];
 
-  const path = cardPath(ctx.aiosRoot, task.sourceFile);
+  const path = cardPath(task.sourceRoot ?? ctx.aiosRoot, task.sourceFile);
   if (path) lines.push(`Task card: ${path}`);
   if (task.due) lines.push(`Due: ${task.due}`);
   if (task.checklist && task.checklist.total > 0) {
