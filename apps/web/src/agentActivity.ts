@@ -12,6 +12,7 @@ import {
   type ActivityKind,
   classifyAccessPath,
   classifyActivityItem,
+  commandShell,
   firstThought,
 } from "./agentActivityAccess";
 
@@ -54,6 +55,54 @@ function tally<T extends { access: AccessKind; count: number }>(
         }
       : create(),
   );
+}
+
+export type WaitingKind = "shell" | "subagent" | "app" | "web";
+
+/** One dependency the agent is blocked on. */
+export interface WaitingOn {
+  readonly id: string;
+  readonly kind: WaitingKind;
+  /** What it is: `PowerShell`, `Subagent`, an MCP server name, `Web`. */
+  readonly source: string;
+  /** The command, task or tool in question. */
+  readonly detail: string | null;
+  /** ISO time the wait began, for the live elapsed clock. */
+  readonly since: string | null;
+}
+
+/**
+ * The agent is waiting, not working, when every live item is a tool call or a
+ * subagent and nothing is thinking or writing. Short file reads and searches
+ * return at once, so they never count as a wait.
+ */
+export function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
+  const live = items.filter((item) => item.status === "running" || item.status === "pending");
+  if (live.some((item) => item.type === "reasoning" || item.type === "assistant_message")) {
+    return [];
+  }
+  const waiting: WaitingOn[] = [];
+  for (const item of live) {
+    const { event } = classifyActivityItem(item);
+    if (!event?.running) continue;
+    const since = item.startedAt ? DateTime.formatIso(item.startedAt) : null;
+    const entry = { id: item.id, detail: event.target, since };
+    if (item.type === "command_execution" && event.kind === "command") {
+      waiting.push({ ...entry, kind: "shell", source: commandShell(item.input) });
+    } else if (event.kind === "agent") {
+      waiting.push({ ...entry, kind: "subagent", source: "Subagent" });
+    } else if (event.kind === "web") {
+      waiting.push({ ...entry, kind: "web", source: "Web" });
+    } else if (event.kind === "tool") {
+      const server = item.type === "dynamic_tool" ? item.toolName?.split("__")[1] : null;
+      waiting.push({
+        ...entry,
+        kind: "app",
+        source: server ? server.replace(/[-_]+/g, " ") : "App",
+      });
+    }
+  }
+  return waiting;
 }
 
 /**
@@ -207,6 +256,7 @@ export function deriveAgentActivity(input: {
     files: [...new Set(paths.toReversed())].toReversed().slice(-MAX_FILES),
     explanation: plan?.explanation ?? null,
     notes,
+    waiting: deriveWaiting(items),
   };
 }
 

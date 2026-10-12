@@ -31,6 +31,16 @@ An explicit `--home-dir` wins. Existing development data is left in place; it is
 Never run a development server against the live `~/.t3/userdata`.
 See [test data](../../AGENTS.md#test-data) for copying a consistent database snapshot.
 
+On Windows, stop the dev server and run `pwsh -NoProfile -File scripts/dev-isolated.ps1 -Mode web -RefreshSnapshot`
+to refresh the checkout's dev copy from the installed app and launch it. Refresh is explicit;
+ordinary preview launches preserve dev changes. The refresh keeps the previous dev userdata
+in `.t3/backup-<id>` and builds the replacement before swapping it in. It copies up to 1,000
+recent projects and 100 stopped chats per project, server settings, desktop preferences,
+keybindings, themes, and attachments. Run `scripts/refresh-dev-snapshot.ps1` directly to adjust
+those limits. Active work, scheduled tasks, and pairing sessions are excluded. Provider CLI
+logins remain machine-local; dev signing keys stay independent. Browser-only preferences
+remain in their browser profile, so the web preview is not an exact desktop-profile clone.
+
 Read ports from the `[dev-runner]` output. Worktrees derive stable preferences from their paths,
 but occupied ports can shift them. `T3CODE_PORT_OFFSET` or `T3CODE_DEV_INSTANCE` can select a
 different preference when needed.

@@ -12,9 +12,9 @@ import * as Tool from "effect/ai/Tool";
 import * as Toolkit from "effect/ai/Toolkit";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
-import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as ProjectService from "../../../project/ProjectService.ts";
+import * as Orchestrator from "#server/orchestration-v2/Orchestrator.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
+import * as ProjectService from "#server/project/ProjectService.ts";
 
 const dependencies = [
   McpInvocationContext.McpInvocationContext,

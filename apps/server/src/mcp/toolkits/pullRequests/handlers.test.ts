@@ -16,12 +16,12 @@ import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
 import type { Tool } from "effect/ai";
 
-import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
+import * as Orchestrator from "#server/orchestration-v2/Orchestrator.ts";
 import {
   type PullRequestTestThread,
   v2PullRequestThread,
-} from "../../../orchestration-v2/testkit/pullRequestFixtures.ts";
-import * as ProjectService from "../../../project/ProjectService.ts";
+} from "#server/orchestration-v2/testkit/pullRequestFixtures.ts";
+import * as ProjectService from "#server/project/ProjectService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as McpToolAccessTestkit from "../../McpToolAccess.testkit.ts";

@@ -1239,6 +1239,11 @@ export interface DesktopBridge {
   downloadUpdate: () => Promise<DesktopUpdateActionResult>;
   installUpdate: () => Promise<DesktopUpdateActionResult>;
   onUpdateState: (listener: (state: DesktopUpdateState) => void) => () => void;
+  /** Settings → start with the computer. Optional: older desktop builds lack it. */
+  loginItem?: {
+    getState: () => Promise<{ supported: boolean; openAtLogin: boolean }>;
+    setOpenAtLogin: (enabled: boolean) => Promise<{ supported: boolean; openAtLogin: boolean }>;
+  };
   /** Settings → `t3` command. Optional: older desktop builds lack it. */
   cliCommand?: {
     getState: () => Promise<DesktopCliCommandState>;

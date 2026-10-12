@@ -8,10 +8,10 @@ import {
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
-import * as ServerEnvironment from "../../../environment/ServerEnvironment.ts";
-import * as ThreadCommandExecutor from "../../../orchestration-v2/ThreadCommandExecutor.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as Settings from "../../../serverSettings.ts";
+import * as ServerEnvironment from "#server/environment/ServerEnvironment.ts";
+import * as ThreadCommandExecutor from "#server/orchestration-v2/ThreadCommandExecutor.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
+import * as Settings from "#server/serverSettings.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 
 const PreferenceFields = {

@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect";
-import * as LocalVmService from "../../../localVm/LocalVmService.ts";
+import * as LocalVmService from "#server/localVm/LocalVmService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { LocalVmStandardToolkit, LocalVmScreenshotToolkit } from "./tools.ts";

@@ -187,4 +187,42 @@ describe("agent activity", () => {
     expect(activity.finishing).toBe(true);
     expect(activity.currentStep).toBe(1);
   });
+  it("reports a running PowerShell command, subagent and app tool as waiting", () => {
+    const shell: OrchestrationV2TurnItem = {
+      ...base,
+      id: TurnItemId.make("shell"),
+      type: "command_execution",
+      input: 'pwsh -NoProfile -Command "npm test"',
+    } as OrchestrationV2TurnItem;
+    const app: OrchestrationV2TurnItem = {
+      ...base,
+      id: TurnItemId.make("app"),
+      type: "dynamic_tool",
+      toolName: "mcp__t3-code__preview_open",
+      input: {},
+    } as OrchestrationV2TurnItem;
+    const waiting = derive([shell, app]).waiting;
+    expect(waiting.map(({ kind, source }) => [kind, source])).toEqual([
+      ["shell", "PowerShell"],
+      ["app", "t3 code"],
+    ]);
+    expect(waiting[0]?.detail).toBe("npm test");
+  });
+  it("is not waiting while the agent is thinking or nothing is running", () => {
+    const thinking: OrchestrationV2TurnItem = {
+      ...base,
+      id: TurnItemId.make("think"),
+      type: "reasoning",
+      text: "Planning",
+      streaming: true,
+    } as OrchestrationV2TurnItem;
+    const shell: OrchestrationV2TurnItem = {
+      ...base,
+      id: TurnItemId.make("shell"),
+      type: "command_execution",
+      input: "npm test",
+    } as OrchestrationV2TurnItem;
+    expect(derive([thinking, shell]).waiting).toEqual([]);
+    expect(derive([{ ...shell, status: "completed" }]).waiting).toEqual([]);
+  });
 });

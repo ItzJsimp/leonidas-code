@@ -5,6 +5,24 @@ import type { ComposerBannerStackItem } from "./ComposerBannerStack";
 import type { ProviderFailoverTarget } from "./providerFailover";
 import type { QuotaPreflightAdvice } from "./quotaPreflight";
 
+export function usageWarningBannerItem(input: {
+  readonly instanceId: string;
+  readonly label: string;
+  readonly usedPercent: number;
+  readonly onDismiss: () => void;
+}): ComposerBannerStackItem {
+  return {
+    id: `usage-warning:${input.instanceId}`,
+    variant: "warning",
+    priority: "notice",
+    icon: <GaugeIcon />,
+    title: `${input.label} is at ${Math.round(input.usedPercent)}% of its usage`,
+    description: "You can change or turn off this warning in Settings under General.",
+    dismissLabel: "Dismiss",
+    onDismiss: input.onDismiss,
+  };
+}
+
 export function quotaPreflightBannerItem(input: {
   readonly advice: QuotaPreflightAdvice;
   readonly currentInstanceId: string;

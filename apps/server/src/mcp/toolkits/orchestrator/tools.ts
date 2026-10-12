@@ -42,7 +42,7 @@ import {
 import { Tool, Toolkit } from "effect/ai";
 import * as Schema from "effect/Schema";
 
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
 import * as ThreadMetadataMcpService from "../../ThreadMetadataMcpService.ts";

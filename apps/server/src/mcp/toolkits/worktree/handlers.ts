@@ -1,7 +1,7 @@
 import { OrchestratorMcpFailure } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import * as GitWorkflow from "../../../git/GitWorkflowService.ts";
-import * as Project from "../../../project/ProjectService.ts";
+import * as GitWorkflow from "#server/git/GitWorkflowService.ts";
+import * as Project from "#server/project/ProjectService.ts";
 import { readThread, unavailable } from "../../threadAccess.ts";
 import * as Effect from "effect/Effect";
 

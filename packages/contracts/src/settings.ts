@@ -322,11 +322,37 @@ export type ModelPreferences = {
 export const AutoRoutePreference = Schema.Literals(["balanced", "cost", "quality", "speed"]);
 export type AutoRoutePreference = typeof AutoRoutePreference.Type;
 
+export const TimeOfDay = Schema.String.check(Schema.isPattern(/^([01]\d|2[0-3]):[0-5]\d$/));
+export type TimeOfDay = typeof TimeOfDay.Type;
+
+export const UsageWarningPercent = Schema.Int.check(Schema.isBetween({ minimum: 50, maximum: 99 }));
+
+export const NotificationVolume = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }));
+
 export const ClientSettingsSchema = Schema.Struct({
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
   ),
   inAppNotificationsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  // Quiet hours silence sounds and system alerts between two local times (24-hour "HH:MM").
+  // The window may cross midnight; in-app toasts are never silenced.
+  notificationQuietHoursEnabled: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(Effect.succeed(false)),
+  ),
+  notificationQuietHoursStart: TimeOfDay.pipe(Schema.withDecodingDefault(Effect.succeed("22:00"))),
+  notificationQuietHoursEnd: TimeOfDay.pipe(Schema.withDecodingDefault(Effect.succeed("07:00"))),
+  // Warn in the composer when the active account's busiest usage window reaches this percent.
+  // Null turns the warning off.
+  usageWarningPercent: Schema.NullOr(UsageWarningPercent).pipe(
+    Schema.withDecodingDefault(Effect.succeed(80)),
+  ),
+  // Reasoning effort a composer starts with when the user has not picked one. Null leaves each
+  // model on its own default. Applied only where the model offers that level.
+  defaultReasoningEffort: Schema.NullOr(Schema.Literals(["low", "medium", "high"])).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  // Notification sound volume, 0 to 100.
+  notificationVolume: NotificationVolume.pipe(Schema.withDecodingDefault(Effect.succeed(100))),
   diffColorScheme: DiffColorScheme.pipe(
     Schema.withDecodingDefault(Effect.succeed("red-green" as const)),
   ),

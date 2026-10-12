@@ -306,7 +306,8 @@ export const ChatHeader = memo(function ChatHeader({
       ref={breadcrumbContainerRef}
       className={cn(
         "flex min-w-0 flex-1 items-center gap-2 sm:gap-3",
-        rightPanelOpen ? "pr-10" : "pr-32",
+        // pr-44 clears the five-button layout cluster (split, usage, thread, terminal, panel).
+        rightPanelOpen ? "pr-10" : "pr-44",
       )}
       onContextMenu={handleHeaderContextMenu}
     >

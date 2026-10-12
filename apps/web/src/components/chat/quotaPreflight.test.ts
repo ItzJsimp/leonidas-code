@@ -6,7 +6,7 @@ import {
 import { describe, expect, it } from "vite-plus/test";
 
 import type { ProviderFailoverTarget } from "./providerFailover";
-import { getQuotaPreflightAdvice } from "./quotaPreflight";
+import { getQuotaPreflightAdvice, getUsageWarning } from "./quotaPreflight";
 
 const NOW = Date.parse("2026-10-11T12:00:00.000Z");
 const RESET = "2026-10-12T00:00:00.000Z";
@@ -116,5 +116,24 @@ describe("getQuotaPreflightAdvice", () => {
     });
 
     expect(advice?.target.label).toBe("Codex");
+  });
+});
+
+describe("getUsageWarning", () => {
+  const windows = [
+    { id: "session", kind: "session", label: "Session", usedPercent: 40 },
+    { id: "week", kind: "weekly", label: "Week", usedPercent: 86 },
+  ] as const;
+
+  it("warns on the busiest window at or past the threshold", () => {
+    expect(getUsageWarning({ windows, thresholdPercent: 80 })).toEqual({ usedPercent: 86 });
+  });
+
+  it("stays quiet when off, below the threshold, or exhausted", () => {
+    expect(getUsageWarning({ windows, thresholdPercent: null })).toBeNull();
+    expect(getUsageWarning({ windows, thresholdPercent: 90 })).toBeNull();
+    expect(
+      getUsageWarning({ windows: [{ ...windows[0], usedPercent: 100 }], thresholdPercent: 80 }),
+    ).toBeNull();
   });
 });

@@ -32,8 +32,8 @@ import { Tool, Toolkit } from "effect/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
-import * as ServerConfig from "../../../config.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
+import * as ServerConfig from "#server/config.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 
 const dependencies = [
   McpInvocationContext.McpInvocationContext,

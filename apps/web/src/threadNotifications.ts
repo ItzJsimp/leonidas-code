@@ -19,6 +19,27 @@ export function hasDesktopNotifications(mode: NotificationMode) {
   return mode === "notifications" || mode === "notifications-and-sound";
 }
 
+const minutesOf = (time: string) => {
+  const [hours = "0", minutes = "0"] = time.split(":");
+  return Number(hours) * 60 + Number(minutes);
+};
+
+/** True inside the quiet window. It may cross midnight; equal start and end never silences. */
+export function isInNotificationQuietHours(
+  settings: Pick<
+    ClientSettings,
+    "notificationQuietHoursEnabled" | "notificationQuietHoursStart" | "notificationQuietHoursEnd"
+  >,
+  now: Date = new Date(),
+) {
+  if (!settings.notificationQuietHoursEnabled) return false;
+  const start = minutesOf(settings.notificationQuietHoursStart);
+  const end = minutesOf(settings.notificationQuietHoursEnd);
+  if (start === end) return false;
+  const current = now.getHours() * 60 + now.getMinutes();
+  return start < end ? current >= start && current < end : current >= start || current < end;
+}
+
 let originalFavicon: HTMLLinkElement | undefined;
 let badgeFavicon: HTMLLinkElement | undefined;
 
@@ -76,6 +97,7 @@ export function unlockNotificationAudio() {
 export async function playNotificationSound(
   kind: "completion" | "input",
   shouldPlay: () => boolean,
+  volume = 100,
 ) {
   if (!audioContext || audioContext.state !== "running") return;
   const context = audioContext;
@@ -92,7 +114,9 @@ export async function playNotificationSound(
     if (!shouldPlay() || context.state !== "running") return;
     const source = context.createBufferSource();
     source.buffer = decoded;
-    source.connect(context.destination);
+    const gain = context.createGain();
+    gain.gain.value = Math.min(Math.max(volume, 0), 100) / 100;
+    source.connect(gain).connect(context.destination);
     source.start();
   } catch {
     buffers.delete(url);

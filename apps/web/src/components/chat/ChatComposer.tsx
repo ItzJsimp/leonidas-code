@@ -296,6 +296,8 @@ import {
 import {
   getComposerPromptInjectionState,
   getComposerProviderState,
+} from "../../composerProviderState";
+import {
   renderProviderTraitsMenuContent,
   renderProviderTraitsPicker,
 } from "./composerProviderState";

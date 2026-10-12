@@ -17,6 +17,7 @@ import { environmentShell } from "../state/shell";
 import {
   hasDesktopNotifications,
   hasNotificationSound,
+  isInNotificationQuietHours,
   playNotificationSound,
   setNotificationBadge,
   unlockNotificationAudio,
@@ -164,9 +165,14 @@ function EnvironmentNotifications({
               : status === "failed"
                 ? "Thread failed"
                 : "Input needed";
-      if (hasNotificationSound(mode)) {
-        void playNotificationSound(kind, () =>
-          hasNotificationSound(getClientSettings().notificationMode),
+      const quiet = isInNotificationQuietHours(getClientSettings());
+      if (hasNotificationSound(mode) && !quiet) {
+        void playNotificationSound(
+          kind,
+          () =>
+            hasNotificationSound(getClientSettings().notificationMode) &&
+            !isInNotificationQuietHours(getClientSettings()),
+          getClientSettings().notificationVolume,
         );
       }
       if (
@@ -207,6 +213,7 @@ function EnvironmentNotifications({
       }
       if (
         !hasDesktopNotifications(mode) ||
+        quiet ||
         (document.visibilityState === "visible" && document.hasFocus()) ||
         typeof Notification === "undefined" ||
         Notification.permission !== "granted"

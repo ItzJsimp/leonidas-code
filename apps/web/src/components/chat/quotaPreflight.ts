@@ -44,6 +44,19 @@ export function getQuotaPreflightAdvice(input: {
   return { target, usedPercent: evaluation.currentUsedPercent };
 }
 
+/**
+ * The busiest usage window at or above the user's warning threshold, or null.
+ * An exhausted account stays with the usage-limit banner, so 100% and above is left to it.
+ */
+export function getUsageWarning(input: {
+  readonly windows: ReadonlyArray<ServerProviderUsageWindow>;
+  readonly thresholdPercent: number | null;
+}): { readonly usedPercent: number } | null {
+  if (input.thresholdPercent === null) return null;
+  const busiest = Math.max(-1, ...input.windows.map((window) => window.usedPercent));
+  return busiest >= input.thresholdPercent && busiest < 100 ? { usedPercent: busiest } : null;
+}
+
 function toQuotaWindowSnapshot(window: ServerProviderUsageWindow): QuotaWindowSnapshot {
   return {
     usedPercent: window.usedPercent,

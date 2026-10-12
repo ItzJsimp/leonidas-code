@@ -7,7 +7,12 @@ import { ComposerBanner } from "./ComposerBanner";
 import { AgentElapsed } from "./AgentElapsed";
 import { Button } from "../ui/button";
 import type { AgentActivity } from "../../agentActivity";
-import { ActivityCounters, ActivityDetails, ActivityKindIcon } from "./ComposerActivityDetails";
+import {
+  ActivityCounters,
+  ActivityDetails,
+  ActivityKindIcon,
+  WaitingKindIcon,
+} from "./ComposerActivityDetails";
 
 export interface ComposerTasksProgress {
   readonly step: string;
@@ -80,27 +85,40 @@ function TaskSummary({
   readonly progress: ComposerTasksProgress;
   readonly steps: readonly ComposerTaskStep[];
 }) {
+  const waiting = progress.activity?.waiting[0];
+  const extraWaits = (progress.activity?.waiting.length ?? 0) - 1;
   return (
     <>
       <ComposerBanner.Icon>
-        {progress.activity ? (
+        {waiting ? (
+          <WaitingKindIcon kind={waiting.kind} className="text-warning" />
+        ) : progress.activity ? (
           <ActivityKindIcon kind={progress.activity.now.kind} />
         ) : (
           <ListTodoIcon />
         )}
       </ComposerBanner.Icon>
       <ComposerBanner.Content>
-        <span className="shrink-0 text-muted-foreground">Activity</span>
+        <span className={cn("shrink-0", waiting ? "text-warning" : "text-muted-foreground")}>
+          {waiting ? "Waiting on" : "Activity"}
+        </span>
         <span
           className="min-w-0 flex-1 truncate text-left font-medium text-foreground/80"
           data-composer-task-current="true"
         >
-          {progress.step}
+          {waiting
+            ? `${waiting.source}${waiting.detail ? `: ${waiting.detail}` : ""}${extraWaits > 0 ? ` +${extraWaits} more` : ""}`
+            : progress.step}
         </span>
       </ComposerBanner.Content>
       <ComposerBanner.Actions>
-        {progress.activity ? <ActivityCounters activity={progress.activity} /> : null}
-        {progress.activity?.startedAt ? (
+        {progress.activity && !waiting ? <ActivityCounters activity={progress.activity} /> : null}
+        {waiting?.since ? (
+          <AgentElapsed
+            compact
+            agent={{ status: "running", startedAt: waiting.since, completedAt: null }}
+          />
+        ) : progress.activity?.startedAt ? (
           <AgentElapsed
             compact
             agent={{ status: "running", startedAt: progress.activity.startedAt, completedAt: null }}

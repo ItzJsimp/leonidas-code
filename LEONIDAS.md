@@ -61,6 +61,10 @@ When work is finished, verified, committed, and zero queued tasks remain, replac
 
 Quick lookups, one-line answers, or fast mid-execution turns omit full dock: `⚡ Next: <step> | 👤 You: <step> | ❓ Input: None`.
 
+## Task-driven work (mandatory for every agent)
+
+Agents find or create a task before substantive work, keep it updated and close it with a verified note. Full procedure: @.agents/rules/task-driven-work.md. The plan to fold the AIOS Command Center Tasks tab into this page is in [task-system-unification](./docs/internals/task-system-unification.md).
+
 ## Roadmap (in order, tick when merged to main)
 
 - [x] Subscription token calibration: shipped in [v0.2.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.2.0); session/weekly estimates pair local Claude/Codex tokens with provider quota percentages. Google AI Pro needs a reliable quota source and token reader before calibration is available.

@@ -269,6 +269,11 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   checkForUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_CHECK_CHANNEL),
   downloadUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD_CHANNEL),
   installUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL_CHANNEL),
+  loginItem: {
+    getState: () => ipcRenderer.invoke(IpcChannels.LOGIN_ITEM_GET_STATE_CHANNEL),
+    setOpenAtLogin: (enabled: boolean) =>
+      ipcRenderer.invoke(IpcChannels.LOGIN_ITEM_SET_CHANNEL, enabled),
+  },
   cliCommand: {
     getState: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_GET_STATE_CHANNEL),
     install: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_INSTALL_CHANNEL),

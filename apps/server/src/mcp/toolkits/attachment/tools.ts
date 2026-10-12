@@ -13,9 +13,9 @@ import * as Crypto from "effect/Crypto";
 import * as FileSystem from "effect/FileSystem";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
-import * as ServerSecretStore from "../../../auth/ServerSecretStore.ts";
-import * as ServerConfig from "../../../config.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
+import * as ServerSecretStore from "#server/auth/ServerSecretStore.ts";
+import * as ServerConfig from "#server/config.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 
 const shared = {

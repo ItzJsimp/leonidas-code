@@ -1,11 +1,11 @@
 import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
-  LayoutDashboardIcon,
   ListChecksIcon,
   MicIcon,
+  RadarIcon,
+  ScrollTextIcon,
   SettingsIcon,
-  SparklesIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback, useState } from "react";
@@ -263,7 +263,12 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
       ) : (
         <>
           <SidebarUtilityItem
-            icon={<LayoutDashboardIcon />}
+            icon={<SettingsIcon />}
+            label="Settings"
+            onClick={handleSettingsClick}
+          />
+          <SidebarUtilityItem
+            icon={<RadarIcon />}
             label="Command Center"
             tourId="sidebar-command-center"
             onClick={handleCommandCenterClick}
@@ -279,11 +284,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Scribe Team Feed"
             onClick={handleScribeFeedClick}
           />
-          <SidebarUtilityItem
-            icon={<SettingsIcon />}
-            label="Settings"
-            onClick={handleSettingsClick}
-          />
           {pullRequestsSupported ? (
             <SidebarUtilityItem
               icon={<PullRequestGlyph.pullRequest />}
@@ -298,8 +298,8 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             onClick={handleUsageClick}
           />
           <SidebarUtilityItem
-            icon={<SparklesIcon />}
-            label="Updates"
+            icon={<ScrollTextIcon />}
+            label="Update history"
             tourId="sidebar-updates"
             onClick={handleUpdateHistoryClick}
           />

@@ -130,6 +130,15 @@ export function readableCommand(command: string): string {
     .trim();
 }
 
+/** The shell a command was launched through, for telling the user what they are waiting on. */
+export function commandShell(command: string): "PowerShell" | "Bash" | "Command Prompt" | "Shell" {
+  const launcher = SHELL_LAUNCHER.exec(command.trim())?.[0] ?? "";
+  if (/pwsh|powershell/i.test(launcher)) return "PowerShell";
+  if (/bash|zsh|(?:^|[\\/"])sh(?:\.exe)?"?\s/i.test(launcher)) return "Bash";
+  if (/cmd/i.test(launcher)) return "Command Prompt";
+  return "Shell";
+}
+
 function basename(path: string): string {
   return path.replaceAll("\\", "/").split("/").filter(Boolean).at(-1) ?? path;
 }

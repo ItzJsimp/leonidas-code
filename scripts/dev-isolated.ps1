@@ -4,6 +4,7 @@ param(
     [string]$Mode = 'desktop',
     [ValidateRange(1, 48000)]
     [int]$PortOffset = 10000,
+    [switch]$RefreshSnapshot,
     [switch]$Check,
     [switch]$DryRun
 )
@@ -52,6 +53,9 @@ try {
     }
     Push-Location -LiteralPath $repoRoot
     try {
+        if ($RefreshSnapshot -and -not $DryRun) {
+            & (Join-Path $PSScriptRoot 'refresh-dev-snapshot.ps1')
+        }
         $runnerArgs = @($runner, $runnerMode, '--home-dir', $devHome)
         if ($DryRun) { $runnerArgs += '--dry-run' }
         & $node @runnerArgs

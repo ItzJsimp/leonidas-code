@@ -5,6 +5,7 @@ import {
   EyeIcon,
   FileTextIcon,
   GlobeIcon,
+  HourglassIcon,
   LibraryIcon,
   ListTodoIcon,
   type LucideIcon,
@@ -16,7 +17,8 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-import type { AccessedFile, AgentActivity } from "../../agentActivity";
+import type { AccessedFile, AgentActivity, WaitingKind, WaitingOn } from "../../agentActivity";
+import { AgentElapsed } from "./AgentElapsed";
 import type { ActivityKind } from "../../agentActivityAccess";
 import { formatDuration } from "../../session-logic";
 import { cn } from "~/lib/utils";
@@ -61,6 +63,61 @@ export function ActivityKindIcon({
 }) {
   const Icon = KIND_ICON[kind];
   return <Icon aria-hidden className={cn(KIND_TINT[kind], className)} />;
+}
+
+const WAITING_ICON: Record<WaitingKind, LucideIcon> = {
+  shell: TerminalIcon,
+  subagent: BotIcon,
+  app: WrenchIcon,
+  web: GlobeIcon,
+};
+
+export function WaitingKindIcon({
+  kind,
+  className,
+}: {
+  readonly kind: WaitingKind;
+  readonly className?: string;
+}) {
+  const Icon = WAITING_ICON[kind];
+  return <Icon aria-hidden className={className} />;
+}
+
+/** Each dependency the agent is blocked on, with how long it has been waiting. */
+function WaitingSection({ waiting }: { readonly waiting: readonly WaitingOn[] }) {
+  if (waiting.length === 0) return null;
+  return (
+    <section aria-label="Waiting on" className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5 px-1.5 pb-1 text-2xs font-medium text-warning">
+        <HourglassIcon aria-hidden className="size-3" />
+        <span>Waiting on {waiting.length === 1 ? "1 thing" : `${waiting.length} things`}</span>
+      </div>
+      {waiting.map((entry) => (
+        <div
+          key={entry.id}
+          className="flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1"
+        >
+          <WaitingKindIcon kind={entry.kind} className="size-3.5 shrink-0 text-warning" />
+          <span className="min-w-0 flex-1 truncate">
+            <span className="font-medium text-foreground/90">{entry.source}</span>
+            {entry.detail ? <span className="text-muted-foreground"> · {entry.detail}</span> : null}
+          </span>
+          {entry.since ? (
+            <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">
+              <AgentElapsed
+                compact
+                agent={{ status: "running", startedAt: entry.since, completedAt: null }}
+              />
+            </span>
+          ) : null}
+        </div>
+      ))}
+      <p className="px-1.5 pt-1 text-muted-foreground">
+        The agent is paused and picks up again as soon as {waiting.length === 1 ? "this" : "these"}{" "}
+        finish.
+      </p>
+    </section>
+  );
 }
 
 /** Skills, AIOS files and project files used so far: glanceable counts for the collapsed bar. */
@@ -269,6 +326,7 @@ export function ActivityDetails({
   const feed = activity.events.toReversed().slice(0, 8);
   return (
     <div className="flex flex-col gap-4 px-3 pt-1 pb-3 text-xs">
+      <WaitingSection waiting={activity.waiting} />
       {activity.thought || activity.said ? (
         <div className="flex flex-col gap-1.5">
           {activity.thought ? (

@@ -6,8 +6,8 @@ import type { ThreadGoalControl } from "@t3tools/contracts";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
-import { quotaPreflightBannerItem } from "./chat/QuotaPreflightBanner";
-import { getQuotaPreflightAdvice } from "./chat/quotaPreflight";
+import { quotaPreflightBannerItem, usageWarningBannerItem } from "./chat/QuotaPreflightBanner";
+import { getQuotaPreflightAdvice, getUsageWarning } from "./chat/quotaPreflight";
 import { uiVerificationBannerItem } from "./chat/UiVerificationBanner";
 import { uiChangedPaths, uiVerificationPrompt } from "./chat/uiVerification";
 import { getProviderFailoverTargets } from "./chat/providerFailover";
@@ -361,7 +361,7 @@ import { resolveAppModelSelectionForInstance } from "../modelSelection";
 import {
   getComposerPromptInjectionState,
   getComposerProviderState,
-} from "./chat/composerProviderState";
+} from "../composerProviderState";
 import { confirmTerminalClose, isTerminalCloseConfirmPending } from "../lib/terminalCloseConfirm";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { getTerminalFocusOwner } from "../lib/terminalFocus";
@@ -7980,6 +7980,34 @@ export default function ChatView(props: ChatViewProps) {
     supportsProviderSwitchingViaHandoff,
     usageLimitSources,
   ]);
+  const [dismissedUsageWarningKey, setDismissedUsageWarningKey] = useState<string | null>(null);
+  const usageWarningBanner = useMemo(() => {
+    if (!activeThreadShell) return null;
+    const entry = providerInstanceEntries.find(
+      (candidate) => candidate.instanceId === activeThreadShell.modelSelection.instanceId,
+    );
+    const warning = entry
+      ? getUsageWarning({
+          windows: entry.snapshot.usageLimits?.windows ?? [],
+          thresholdPercent: loadBalancingSettings.usageWarningPercent,
+        })
+      : null;
+    if (!entry || warning === null) return null;
+    // Dismissal holds per account and threshold step, so a higher reading warns again.
+    const dismissKey = `${entry.instanceId}:${Math.floor(warning.usedPercent / 5)}`;
+    if (dismissKey === dismissedUsageWarningKey) return null;
+    return usageWarningBannerItem({
+      instanceId: entry.instanceId,
+      label: entry.displayName,
+      usedPercent: warning.usedPercent,
+      onDismiss: () => setDismissedUsageWarningKey(dismissKey),
+    });
+  }, [
+    activeThreadShell,
+    dismissedUsageWarningKey,
+    loadBalancingSettings.usageWarningPercent,
+    providerInstanceEntries,
+  ]);
   const [dismissedUiVerifyRunId, setDismissedUiVerifyRunId] = useState<string | null>(null);
   const uiVerificationBanner = useMemo(() => {
     const latestRun = activeThreadShell?.latestRun;
@@ -8147,7 +8175,7 @@ export default function ChatView(props: ChatViewProps) {
     const handoffItems = handoffBannerItem === null ? [] : [handoffBannerItem];
     // A stopped turn outranks a warning about the next one, so the pre-flight only fills an empty slot.
     const limitRecoveryItems = [
-      limitRecoveryBanner ?? quotaPreflightBanner ?? uiVerificationBanner,
+      limitRecoveryBanner ?? quotaPreflightBanner ?? usageWarningBanner ?? uiVerificationBanner,
     ].filter((item) => item !== null);
     const backgroundWorkItems = [
       childInputBannerItem,
@@ -8224,6 +8252,7 @@ export default function ChatView(props: ChatViewProps) {
     feedbackBannerItems,
     limitRecoveryBanner,
     quotaPreflightBanner,
+    usageWarningBanner,
     uiVerificationBanner,
     handleRestoreThreadBranch,
     isRestoringThreadBranch,
@@ -11743,7 +11772,7 @@ export default function ChatView(props: ChatViewProps) {
           {isElectron && rightPanelControlsAtRoot ? (
             <span
               aria-hidden
-              className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-36 [-webkit-app-region:no-drag]"
+              className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-44 [-webkit-app-region:no-drag]"
             />
           ) : null}
           {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
