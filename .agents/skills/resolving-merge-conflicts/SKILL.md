@@ -1,6 +1,7 @@
 ---
 name: resolving-merge-conflicts
 description: "Use when you need to resolve an in-progress git merge/rebase conflict."
+category: code
 scope: structural
 type: skill
 id: skill-resolving-merge-conflicts
