@@ -1838,6 +1838,15 @@ export const OrchestrationV2LatestVisibleMessageSummary = Schema.Struct({
 export type OrchestrationV2LatestVisibleMessageSummary =
   typeof OrchestrationV2LatestVisibleMessageSummary.Type;
 
+/** Bounded root-run plan progress; absent on older environments. */
+export const OrchestrationV2ActivitySummary = Schema.Struct({
+  text: Schema.String,
+  completedSteps: NonNegativeInt,
+  totalSteps: NonNegativeInt,
+  currentStep: Schema.NullOr(PositiveInt),
+});
+export type OrchestrationV2ActivitySummary = typeof OrchestrationV2ActivitySummary.Type;
+
 export const OrchestrationV2ThreadShell = Schema.Struct({
   ...OrchestrationV2CreationFields,
   id: ThreadId,
@@ -1871,6 +1880,7 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   activityRunStatus: Schema.optional(
     Schema.NullOr(Schema.Literals(["preparing", "starting", "running", "waiting"])),
   ),
+  activitySummary: Schema.optional(Schema.NullOr(OrchestrationV2ActivitySummary)),
   status: OrchestrationV2ShellThreadStatus,
   lastError: Schema.optional(Schema.NullOr(Schema.String)),
   lastErrorClass: Schema.optional(Schema.NullOr(OrchestrationV2ProviderFailureClass)),
