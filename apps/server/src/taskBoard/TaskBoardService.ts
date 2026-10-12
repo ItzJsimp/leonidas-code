@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off
+// @effect-diagnostics nodeBuiltinImport:off preferSchemaOverJson:off instanceOfSchema:off - Board files are parsed from external JSON and gh output with tolerant checks.
 import {
   TaskBoardIssue,
   TaskBoardOperationError,
