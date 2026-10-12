@@ -1,7 +1,10 @@
 import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { isProviderUsageWindowExhausted, selectProviderFailoverTargets } from "./providerFailover.ts";
+import {
+  isProviderUsageWindowExhausted,
+  selectProviderFailoverTargets,
+} from "./providerFailover.ts";
 
 const current = { instanceId: ProviderInstanceId.make("claudeAgent"), model: "claude-sonnet" };
 const source = (overrides: Partial<ServerProvider> = {}) =>
@@ -26,7 +29,12 @@ function provider(id = "codex", overrides: Partial<ServerProvider> = {}): Server
   };
 }
 const targets = (providers: ServerProvider[], supportsHandoff = true, nowMs?: number) =>
-  selectProviderFailoverTargets({ providers: [source(), ...providers], current, supportsHandoff, nowMs });
+  selectProviderFailoverTargets({
+    providers: [source(), ...providers],
+    current,
+    supportsHandoff,
+    ...(nowMs === undefined ? {} : { nowMs }),
+  });
 
 describe("selectProviderFailoverTargets", () => {
   it("offers a ready alternate subscription with its default model", () => {

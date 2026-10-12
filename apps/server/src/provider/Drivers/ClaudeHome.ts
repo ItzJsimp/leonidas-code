@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - Claude home resolution needs synchronous existence checks while building launch settings.
 import type { ClaudeSettings } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Path from "effect/Path";

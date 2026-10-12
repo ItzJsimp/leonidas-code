@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - Pure selector over client state; callers may inject nowMs, the default is wall-clock time.
 import type {
   ModelSelection,
   ProviderDriverKind,
@@ -42,8 +43,12 @@ function recommendedFailoverModel(entry: ServerProvider) {
   if (entry.driver === "claudeAgent") {
     return (
       entry.models.find((candidate) => candidate.slug === "claude-sonnet-5-5") ??
-      entry.models.find((candidate) => /sonnet.*5\.5/i.test(candidate.slug) || /sonnet.*5\.5/i.test(candidate.name)) ??
-      entry.models.find((candidate) => /sonnet/i.test(candidate.slug) || /sonnet/i.test(candidate.name)) ??
+      entry.models.find(
+        (candidate) => /sonnet.*5\.5/i.test(candidate.slug) || /sonnet.*5\.5/i.test(candidate.name),
+      ) ??
+      entry.models.find(
+        (candidate) => /sonnet/i.test(candidate.slug) || /sonnet/i.test(candidate.name),
+      ) ??
       entry.models.find((candidate) => candidate.isDefault) ??
       entry.models[0]
     );
@@ -53,10 +58,16 @@ function recommendedFailoverModel(entry: ServerProvider) {
       entry.models.find((candidate) => candidate.slug === "gemini-3.8-flash-medium") ??
       entry.models.find(
         (candidate) =>
-          /3\.8.*flash.*medium/i.test(candidate.slug) || /3\.8.*flash.*medium/i.test(candidate.name),
+          /3\.8.*flash.*medium/i.test(candidate.slug) ||
+          /3\.8.*flash.*medium/i.test(candidate.name),
       ) ??
-      entry.models.find((candidate) => /flash.*medium/i.test(candidate.slug) || /flash.*medium/i.test(candidate.name)) ??
-      entry.models.find((candidate) => /flash/i.test(candidate.slug) || /flash/i.test(candidate.name)) ??
+      entry.models.find(
+        (candidate) =>
+          /flash.*medium/i.test(candidate.slug) || /flash.*medium/i.test(candidate.name),
+      ) ??
+      entry.models.find(
+        (candidate) => /flash/i.test(candidate.slug) || /flash/i.test(candidate.name),
+      ) ??
       entry.models.find((candidate) => candidate.isDefault) ??
       entry.models[0]
     );
@@ -64,8 +75,12 @@ function recommendedFailoverModel(entry: ServerProvider) {
   if (entry.driver === "codex") {
     return (
       entry.models.find((candidate) => candidate.slug === "gpt-6.1-sol") ??
-      entry.models.find((candidate) => /6\.1.*sol/i.test(candidate.slug) || /6\.1.*sol/i.test(candidate.name)) ??
-      entry.models.find((candidate) => /sol/i.test(candidate.slug) || /sol/i.test(candidate.name)) ??
+      entry.models.find(
+        (candidate) => /6\.1.*sol/i.test(candidate.slug) || /6\.1.*sol/i.test(candidate.name),
+      ) ??
+      entry.models.find(
+        (candidate) => /sol/i.test(candidate.slug) || /sol/i.test(candidate.name),
+      ) ??
       entry.models.find((candidate) => candidate.isDefault) ??
       entry.models[0]
     );
@@ -130,7 +145,9 @@ export function selectProviderFailoverTargets(input: {
       }
 
       // Check if candidate is already rate-limited, taking window reset times into account
-      if (entry.usageLimits?.windows.some((window) => isProviderUsageWindowExhausted(window, nowMs))) {
+      if (
+        entry.usageLimits?.windows.some((window) => isProviderUsageWindowExhausted(window, nowMs))
+      ) {
         return [];
       }
 
@@ -138,9 +155,7 @@ export function selectProviderFailoverTargets(input: {
       if (!model) return [];
 
       const effort =
-        entry.driver === "claudeAgent" ||
-        entry.driver === "codex" ||
-        entry.driver === "antigravity"
+        entry.driver === "claudeAgent" || entry.driver === "codex" || entry.driver === "antigravity"
           ? "medium"
           : undefined;
 

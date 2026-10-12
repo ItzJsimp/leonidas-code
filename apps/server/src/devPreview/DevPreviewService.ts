@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off globalDateInEffect:off globalTimersInEffect:off globalFetch:off - Supervises a child dev process with plain timers and a localhost probe, outside the orchestration runtime.
 import { DevPreviewError, type DevPreviewState, type Project } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -43,7 +43,7 @@ export class DevPreviewService extends Context.Service<
     readonly start: (project: Project) => Effect.Effect<DevPreviewState, DevPreviewError>;
     readonly stop: (project: Project) => Effect.Effect<DevPreviewState>;
   }
->()("leonidas/devPreview/DevPreviewService") {}
+>()("t3/devPreview/DevPreviewService") {}
 
 const isSupported = (project: Project) =>
   NodeFS.existsSync(NodePath.join(project.workspaceRoot, SCRIPT));

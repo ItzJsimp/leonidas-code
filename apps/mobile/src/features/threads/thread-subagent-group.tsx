@@ -9,6 +9,7 @@ import { isActiveSubagentStatus } from "@t3tools/client-runtime/state/subagentRu
 import type {
   EnvironmentId,
   OrchestrationV2Subagent,
+  ServerProvider,
   OrchestrationV2TurnItem,
 } from "@t3tools/contracts";
 import { useEffect, useState } from "react";

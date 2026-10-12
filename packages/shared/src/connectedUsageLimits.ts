@@ -1,6 +1,7 @@
 import type { UsageLimitsReport } from "@t3tools/contracts";
 import { isProviderAvailable } from "@t3tools/contracts";
 import type { LimitPresentations } from "@t3tools/shared/usageLimits";
+import * as DateTime from "effect/DateTime";
 
 type Account = UsageLimitsReport["accounts"][number];
 
@@ -108,7 +109,7 @@ export function collectConnectedUsageLimits(
     }
   }
   return {
-    createdAt: new Date(now).toISOString(),
+    createdAt: DateTime.formatIso(DateTime.makeUnsafe(now)),
     accounts: [...accounts.values()],
     notices: [...notices],
   };

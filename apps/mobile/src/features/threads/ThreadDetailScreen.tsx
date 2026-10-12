@@ -1320,7 +1320,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                   />
                   <UiVerificationCard
                     thread={props.selectedThread}
-                    turnItems={selectedProjection?.turnItems ?? []}
+                    turnItems={selectedProjection?.projection.turnItems ?? []}
                     draftMessage={props.draftMessage}
                     onChangeDraftMessage={props.onChangeDraftMessage}
                   />

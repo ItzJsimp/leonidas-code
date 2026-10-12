@@ -249,7 +249,10 @@ export function makeAntigravityAcpAdapterFlavor(
           Effect.provide(NodeSqliteClient.layer({ filename: dbPath, readonly: true })),
           Effect.orElseSucceed(() => undefined),
         );
-      }),
+      }).pipe(
+        // Token usage is best-effort telemetry; an unreadable profile directory just reports none.
+        Effect.orElseSucceed(() => undefined),
+      ),
     supportsImagePrompts: true,
     supportsCompaction: true,
   };

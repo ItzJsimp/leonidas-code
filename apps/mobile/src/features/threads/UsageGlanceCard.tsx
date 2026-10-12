@@ -172,7 +172,12 @@ export function UsageGlanceCard(props: {
             ))}
             <Pressable
               accessibilityRole="button"
-              onPress={() => navigation.navigate("SettingsUsage")}
+              onPress={() =>
+                navigation.navigate("SettingsSheet", {
+                  screen: "SettingsContent",
+                  params: { screen: "SettingsUsage" },
+                })
+              }
               className="min-h-11 justify-center"
             >
               <Text className="text-xs text-foreground">
