@@ -143,12 +143,20 @@ const QUALITY_RANK: ReadonlyArray<{ readonly pattern: RegExp; readonly rank: num
   { pattern: /sol\b|-sol|codex-max/, rank: 96 },
   { pattern: /gemini.*pro/, rank: 94 },
   { pattern: /sonnet/, rank: 88 },
-  { pattern: /astra|terra/, rank: 84 },
+  { pattern: /astra/, rank: 84 },
+  { pattern: /terra/, rank: 84 },
   { pattern: /deepseek.*(r1|reasoner)/, rank: 76 },
-  { pattern: /gpt-4o|gpt-4\.1/, rank: 70 },
+  { pattern: /gpt-4o/, rank: 70 },
+  { pattern: /gpt-4\.1/, rank: 70 },
   { pattern: /flash/, rank: 64 },
-  { pattern: /deepseek|qwen|llama|mistral/, rank: 60 },
-  { pattern: /haiku|luna|mini|nano/, rank: 40 },
+  { pattern: /deepseek/, rank: 60 },
+  { pattern: /qwen/, rank: 60 },
+  { pattern: /llama/, rank: 60 },
+  { pattern: /mistral/, rank: 60 },
+  { pattern: /haiku/, rank: 40 },
+  { pattern: /luna/, rank: 40 },
+  { pattern: /mini/, rank: 40 },
+  { pattern: /nano/, rank: 40 },
 ];
 
 /** Position on the Quality list; larger is better. Unknown models sit mid-field. */
@@ -156,8 +164,10 @@ export function qualityRank(slug: string): number {
   const normalized = slug.toLowerCase();
   const family = QUALITY_RANK.find((entry) => entry.pattern.test(normalized));
   const version = /(\d+)(?:[-.](\d+))?/.exec(normalized.replace(/^.*?(?=\d)/, ""));
-  // Under 1 point so a newer version never jumps a family.
-  const versionBonus = version ? (Number(version[1]) + Number(version[2] ?? 0) / 10) * 0.1 : 0;
+  // Bound even date-like versions (2512, 2603) below 1 point so they cannot
+  // outrank a stronger family. The bonus still grows with the version.
+  const versionNumber = version ? Number(version[1]) + Number(version[2] ?? 0) / 10 : 0;
+  const versionBonus = versionNumber / (versionNumber + 1);
   return (family?.rank ?? 50) + versionBonus;
 }
 
@@ -463,7 +473,8 @@ export interface RankedRouteModel {
  * Every runnable model ordered best-first for one goal, for the picker's
  * ranked list. Scores a standard-size task (light for speed) so the goal decides the order;
  * accounts with an exhausted quota window are left out. Cost lists free models
- * first, since the user asks for what costs nothing right now.
+ * first, since the user asks for what costs nothing right now. Quality keeps
+ * one recommendation per family, preferring a subscription when models tie.
  */
 export function rankModelsForPreference(input: {
   readonly preference: AutoRoutePreference;
@@ -471,7 +482,8 @@ export function rankModelsForPreference(input: {
   readonly now: number;
   readonly limit?: number | undefined;
 }): ReadonlyArray<RankedRouteModel> {
-  const ranked: Array<RankedRouteModel & { readonly score: number }> = [];
+  const ranked: Array<RankedRouteModel & { readonly score: number; readonly metered: boolean }> =
+    [];
   for (const candidate of input.candidates) {
     const outlook = quotaOutlook(candidate.usageLimits, input.now, candidate.usageHistory);
     if (outlook === null) continue;
@@ -505,6 +517,7 @@ export function rankModelsForPreference(input: {
         name: model.name,
         profile,
         free,
+        metered: METERED_DRIVERS.has(candidate.driverKind),
         score:
           input.preference === "quality"
             ? qualityRank(model.slug) - (model.isLegacy === true ? 0.5 : 0)
@@ -512,8 +525,28 @@ export function rankModelsForPreference(input: {
       });
     }
   }
-  ranked.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  return ranked.slice(0, input.limit ?? 5).map(({ score: _score, ...entry }) => entry);
+  ranked.sort(
+    (a, b) =>
+      b.score - a.score ||
+      (input.preference === "quality" ? Number(a.metered) - Number(b.metered) : 0) ||
+      a.name.localeCompare(b.name),
+  );
+  const seenFamilies = new Set<string>();
+  const recommendations =
+    input.preference === "quality"
+      ? ranked.filter((entry) => {
+          const slug = entry.slug.toLowerCase();
+          const family = QUALITY_RANK.find((candidate) => candidate.pattern.test(slug));
+          // Unknown models keep separate slots; don't guess their family.
+          const key = family?.pattern.source ?? slug.replace(/^[^/]+\//, "").replace(/:batch$/, "");
+          if (seenFamilies.has(key)) return false;
+          seenFamilies.add(key);
+          return true;
+        })
+      : ranked;
+  return recommendations
+    .slice(0, input.limit ?? 5)
+    .map(({ score: _score, metered: _metered, ...entry }) => entry);
 }
 
 interface ScoredOption {

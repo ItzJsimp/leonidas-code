@@ -139,7 +139,7 @@ describe("rankModelsForPreference", () => {
     expect(quality.at(-1)?.profile.quality).toBeLessThan(5);
   });
 
-  it("puts Opus first on the Quality list, ahead of other top-tier models and older Opus", () => {
+  it("puts the latest Opus first and reserves the remaining Quality slots for other families", () => {
     const withOpus: AutoRouteCandidate = {
       ...claudeCandidate(),
       models: [
@@ -151,10 +151,76 @@ describe("rankModelsForPreference", () => {
     const ranked = rank("quality", [codexCandidate(), withOpus]);
     expect(ranked.slice(0, 4).map((entry) => entry.slug)).toEqual([
       "claude-opus-5-5",
-      "claude-opus-4-6",
       "claude-fable-5-1",
       "gpt-6.1-sol",
+      "claude-sonnet-5-5",
     ]);
+  });
+
+  it("keeps dated lower-quality models below Opus in the five Quality recommendations", () => {
+    const withOpus: AutoRouteCandidate = {
+      ...claudeCandidate(),
+      models: [{ slug: "claude-opus-5-5", name: "Opus 5.5" }],
+    };
+    const datedModels: AutoRouteCandidate = {
+      instanceId: openrouter,
+      driverKind: "openrouter",
+      label: "OpenRouter",
+      models: [
+        "mistralai/mistral-small-2603",
+        "mistralai/mistral-small-2603:batch",
+        "mistralai/devstral-2512",
+        "mistralai/mistral-large-2512",
+        "mistralai/mistral-large-2512:batch",
+        "qwen/qwen3.8-max-0902",
+      ].map((slug) => ({ slug, name: slug })),
+    };
+    const ranked = rankModelsForPreference({
+      preference: "quality",
+      candidates: [datedModels, codexCandidate(), withOpus],
+      now: NOW,
+      limit: 5,
+    });
+    expect(ranked[0]?.slug).toBe("claude-opus-5-5");
+    expect(ranked[1]?.slug).toBe("gpt-6.1-sol");
+  });
+
+  it("shows each Quality family once across accounts, API variants, and older versions", () => {
+    const personal: AutoRouteCandidate = {
+      ...claudeCandidate(),
+      models: [
+        { slug: "claude-opus-5-5", name: "Opus 5.5" },
+        { slug: "claude-opus-5", name: "Opus 5" },
+        ...claudeCandidate().models,
+      ],
+    };
+    const api: AutoRouteCandidate = {
+      instanceId: openrouter,
+      driverKind: "openrouter",
+      label: "OpenRouter",
+      models: [
+        "anthropic/claude-opus-5.5",
+        "anthropic/claude-opus-5.5:batch",
+        "anthropic/claude-fable-5.1",
+        "openai/gpt-6.1-sol",
+        "google/gemini-3.1-pro",
+        "google/gemini-2.5-pro",
+      ].map((slug) => ({ slug, name: slug })),
+    };
+    const ranked = rankModelsForPreference({
+      preference: "quality",
+      candidates: [api, personal, { ...personal, instanceId: claudeWork }, codexCandidate()],
+      now: NOW,
+      limit: 5,
+    });
+    expect(ranked.map((entry) => entry.slug)).toEqual([
+      "claude-opus-5-5",
+      "claude-fable-5-1",
+      "gpt-6.1-sol",
+      "google/gemini-3.1-pro",
+      "claude-sonnet-5-5",
+    ]);
+    expect(ranked[0]?.instanceId).toBe(claude);
   });
 
   it("lists free models first for cost", () => {
