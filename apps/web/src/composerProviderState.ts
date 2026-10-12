@@ -11,7 +11,6 @@ import {
   isClaudeUltrathinkPrompt,
   normalizeModelSlug,
 } from "@t3tools/shared/model";
-import { getClientSettings } from "./hooks/useSettings";
 import { getProviderModelCapabilities } from "./providerModels";
 
 export type ComposerProviderStateInput = {
@@ -89,6 +88,15 @@ export function withDefaultReasoningEffort(
   return [...(modelOptions ?? []), { id: descriptor.id, value: defaultEffort }];
 }
 
+// hooks/useSettings registers this at load. Importing it from here would make the settings
+// store, the environment catalog and the draft store a cycle, and the production bundle
+// would then evaluate the catalog before the connection runtime exists.
+let readDefaultReasoningEffort: () => string | null = () => null;
+
+export function setDefaultReasoningEffortReader(reader: () => string | null): void {
+  readDefaultReasoningEffort = reader;
+}
+
 export function resolveComposerOptionSelections(
   models: ReadonlyArray<ServerProviderModel>,
   model: string,
@@ -105,7 +113,7 @@ export function resolveComposerOptionSelections(
     selections: withDefaultReasoningEffort(
       caps,
       withImplicitFastModeDefault(caps, modelOptions),
-      getClientSettings().defaultReasoningEffort,
+      readDefaultReasoningEffort(),
     ),
   };
 }

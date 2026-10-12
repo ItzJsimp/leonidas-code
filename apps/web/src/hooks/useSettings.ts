@@ -39,6 +39,7 @@ import {
   splitSharedServerPatch,
   supportsSharedSettingsSync,
 } from "@t3tools/client-runtime/state/shared-settings";
+import { setDefaultReasoningEffortReader } from "~/composerProviderState";
 import { ensureLocalApi } from "~/localApi";
 import {
   getThemeDefinition,
@@ -279,6 +280,8 @@ function splitPatch(patch: UnifiedSettingsPatch): {
 export function getClientSettings(): ClientSettings {
   return getClientSettingsSnapshot();
 }
+
+setDefaultReasoningEffortReader(() => getClientSettingsSnapshot().defaultReasoningEffort);
 
 /**
  * Resolves after settings load or storage confirms no saved settings exist.

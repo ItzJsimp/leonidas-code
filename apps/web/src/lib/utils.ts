@@ -3,7 +3,9 @@ import { isMacPlatform } from "@t3tools/shared/keybindings";
 import { type CxOptions, cx } from "class-variance-authority";
 import * as Hex from "effect/encoding/Hex";
 import { extendTailwindMerge } from "tailwind-merge";
-import { DraftId } from "../composerDraftStore";
+// Type-only: a value import here makes utils.ts and composerDraftStore.ts a cycle, and the
+// production bundle then evaluates toast.tsx's top-level cn() before twMerge exists.
+import type { DraftId } from "../composerDraftStore";
 
 // The theme's extra font sizes (index.css). Unregistered, tailwind-merge reads
 // text-2xs as a colour and drops it next to text-muted-foreground.
@@ -45,6 +47,6 @@ export const newProjectId = (): ProjectId => ProjectId.make(randomUUID());
 
 export const newThreadId = (): ThreadId => ThreadId.make(randomUUID());
 
-export const newDraftId = (): DraftId => DraftId.make(randomUUID());
+export const newDraftId = (): DraftId => randomUUID() as DraftId;
 
 export const newMessageId = (): MessageId => MessageId.make(randomUUID());
