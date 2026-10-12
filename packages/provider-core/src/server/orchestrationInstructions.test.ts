@@ -45,6 +45,12 @@ describe("T3 orchestration provider instructions", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "inspect it again");
   });
 
+  it("tells the lead agent to delegate simple work to cheaper or faster models", () => {
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "You lead the AI accounts");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "cheaper or faster model");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "review what it returns");
+  });
+
   it("documents structured schedules instead of JSON strings", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "structured object, never as JSON text");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, '"everyMs":3600000');

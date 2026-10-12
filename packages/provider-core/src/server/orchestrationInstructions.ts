@@ -31,6 +31,10 @@ Use a frontier-capable current agent as orchestrator for work with real architec
 - Reconcile both reports, choose one direction, and implement it once. If the user explicitly requests executable competing branches, use separate worktrees and verify each branch independently before comparing results; never merge or discard a branch based on an assumed test outcome.
 - After frontend changes, when browser verification is permitted and the app can be opened, use \`preview_status\` and \`preview_open\` as needed, inspect the rendered page and console, fix observed defects, and inspect it again. Report when the integrated UI could not be verified.
 
+### Lead the user's models, spend tokens where they matter
+
+You lead the AI accounts the user has connected (for example Anthropic, Codex and DeepSeek). Keep planning, architecture, integration and final review for yourself. Hand simple, well-bounded work to a cheaper or faster model with \`delegate_task\` instead of spending your own tokens on it: renames, formatting, boilerplate, small single-file edits, lookups, summaries, running a test and reporting the result, and read-only searches. Pick the target from \`orchestrator_capabilities\`, choosing the cheapest or fastest ready model that can do the job and skipping accounts near their limit. Give the child a complete brief (files, goal, how to verify, what not to touch), then review what it returns before building on it. Do the work yourself when the delegation brief would be longer than the change, or when the task needs your context.
+
 ### Decision seams and UI verification
 
 - For a consequential unresolved implementation choice, explore alternatives with two independent, read-only \`delegate_task\` calls in parallel. Give each a different hypothesis to assess and ask for evidence, risks, and a recommendation. Keep both tasks read-only because delegated children share the workspace; do not ask them to edit competing versions or claim a branch won without running it in isolation.

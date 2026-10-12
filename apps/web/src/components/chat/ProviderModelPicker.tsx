@@ -6,7 +6,7 @@ import {
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
 import type { AutoRoutePreference } from "@t3tools/contracts/settings";
-import { AUTO_ROUTE_PREFERENCE_LABELS } from "@t3tools/shared/autoRouter";
+import { AUTO_ROUTE_PREFERENCE_LABELS, type AutoRouteCandidate } from "@t3tools/shared/autoRouter";
 import { RouteIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Badge } from "../ui/badge";
@@ -69,6 +69,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     /** The model the last routed message went to, e.g. "Sonnet 5.5 · Light task, balanced". */
     lastRouteLabel: string | null;
     onPreferenceChange: (preference: AutoRoutePreference | null) => void;
+    /** Runnable models the goal tabs rank, built from the same rules as routing. */
+    candidates: ReadonlyArray<AutoRouteCandidate>;
   };
 }) {
   const composerFloatingLayerProps = useComposerMenuProps();
@@ -321,11 +323,12 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         {props.autoRoute && props.selectedModels === undefined ? (
           <AutoRouterPickerSection
             preference={props.autoRoute.preference}
+            candidates={props.autoRoute.candidates}
             onPreferenceChange={(preference) => {
               if (props.disabled) return;
               props.autoRoute?.onPreferenceChange(preference);
-              if (preference !== null) setIsMenuOpen(false);
             }}
+            onPickModel={handleInstanceModelChange}
           />
         ) : null}
         <ModelPickerContent

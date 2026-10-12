@@ -134,6 +134,43 @@ const MODEL_FAMILIES: ReadonlyArray<{
   { pattern: /^openrouter\/free$/, profile: { quality: 3, speed: 3, economy: 5 } },
 ];
 
+// Finer quality order for the Quality list, where the 1 to 5 tiers tie (Opus,
+// Fable, Sol and Gemini Pro are all 5). First match wins; newer versions of a
+// family rank above older ones via `versionBonus`.
+const QUALITY_RANK: ReadonlyArray<{ readonly pattern: RegExp; readonly rank: number }> = [
+  { pattern: /opus/, rank: 100 },
+  { pattern: /fable/, rank: 98 },
+  { pattern: /sol\b|-sol|codex-max/, rank: 96 },
+  { pattern: /gemini.*pro/, rank: 94 },
+  { pattern: /sonnet/, rank: 88 },
+  { pattern: /astra/, rank: 84 },
+  { pattern: /terra/, rank: 84 },
+  { pattern: /deepseek.*(r1|reasoner)/, rank: 76 },
+  { pattern: /gpt-4o/, rank: 70 },
+  { pattern: /gpt-4\.1/, rank: 70 },
+  { pattern: /flash/, rank: 64 },
+  { pattern: /deepseek/, rank: 60 },
+  { pattern: /qwen/, rank: 60 },
+  { pattern: /llama/, rank: 60 },
+  { pattern: /mistral/, rank: 60 },
+  { pattern: /haiku/, rank: 40 },
+  { pattern: /luna/, rank: 40 },
+  { pattern: /mini/, rank: 40 },
+  { pattern: /nano/, rank: 40 },
+];
+
+/** Position on the Quality list; larger is better. Unknown models sit mid-field. */
+export function qualityRank(slug: string): number {
+  const normalized = slug.toLowerCase();
+  const family = QUALITY_RANK.find((entry) => entry.pattern.test(normalized));
+  const version = /(\d+)(?:[-.](\d+))?/.exec(normalized.replace(/^.*?(?=\d)/, ""));
+  // Bound even date-like versions (2512, 2603) below 1 point so they cannot
+  // outrank a stronger family. The bonus still grows with the version.
+  const versionNumber = version ? Number(version[1]) + Number(version[2] ?? 0) / 10 : 0;
+  const versionBonus = versionNumber / (versionNumber + 1);
+  return (family?.rank ?? 50) + versionBonus;
+}
+
 const UNKNOWN_PROFILE: ModelRouteProfile = { quality: 3, speed: 3, economy: 3, known: false };
 
 // Slugs that defer the choice to the provider's own default; nothing to rank.
@@ -420,6 +457,96 @@ function fitScore(input: {
   if (!input.profile.known) score -= 0.5;
   if (input.isLegacy) score -= 1;
   return score;
+}
+
+export interface RankedRouteModel {
+  readonly instanceId: ProviderInstanceId;
+  readonly providerLabel: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly profile: ModelRouteProfile;
+  /** Both token prices are zero, e.g. an OpenRouter free model. */
+  readonly free: boolean;
+}
+
+/**
+ * Every runnable model ordered best-first for one goal, for the picker's
+ * ranked list. Scores a standard-size task (light for speed) so the goal decides the order;
+ * accounts with an exhausted quota window are left out. Cost lists free models
+ * first, since the user asks for what costs nothing right now. Quality keeps
+ * one recommendation per family, preferring a subscription when models tie.
+ */
+export function rankModelsForPreference(input: {
+  readonly preference: AutoRoutePreference;
+  readonly candidates: ReadonlyArray<AutoRouteCandidate>;
+  readonly now: number;
+  readonly limit?: number | undefined;
+}): ReadonlyArray<RankedRouteModel> {
+  const ranked: Array<RankedRouteModel & { readonly score: number; readonly metered: boolean }> =
+    [];
+  for (const candidate of input.candidates) {
+    const outlook = quotaOutlook(candidate.usageLimits, input.now, candidate.usageHistory);
+    if (outlook === null) continue;
+    for (const model of candidate.models) {
+      if (PROVIDER_DEFAULT_SLUGS.has(model.slug) && candidate.models.length > 1) continue;
+      const profile = profileModel(model.slug);
+      const free = model.inputCostPerMillionTokens === 0 && model.outputCostPerMillionTokens === 0;
+      const base = fitScore({
+        model,
+        profile,
+        preference: input.preference,
+        // A speed list must not drop small fast models for missing a quality floor.
+        task: input.preference === "speed" ? "light" : "standard",
+        driverKind: candidate.driverKind,
+        outlook,
+        isLegacy: model.isLegacy === true,
+      });
+      // Break goal ties on the goal's own axis so the list reads as a ranking.
+      const axis =
+        input.preference === "speed"
+          ? profile.speed
+          : input.preference === "quality"
+            ? profile.quality
+            : input.preference === "cost"
+              ? profile.economy
+              : 0;
+      ranked.push({
+        instanceId: candidate.instanceId,
+        providerLabel: candidate.label,
+        slug: model.slug,
+        name: model.name,
+        profile,
+        free,
+        metered: METERED_DRIVERS.has(candidate.driverKind),
+        score:
+          input.preference === "quality"
+            ? qualityRank(model.slug) - (model.isLegacy === true ? 0.5 : 0)
+            : base + axis * 0.01 + (input.preference === "cost" && free ? 100 : 0),
+      });
+    }
+  }
+  ranked.sort(
+    (a, b) =>
+      b.score - a.score ||
+      (input.preference === "quality" ? Number(a.metered) - Number(b.metered) : 0) ||
+      a.name.localeCompare(b.name),
+  );
+  const seenFamilies = new Set<string>();
+  const recommendations =
+    input.preference === "quality"
+      ? ranked.filter((entry) => {
+          const slug = entry.slug.toLowerCase();
+          const family = QUALITY_RANK.find((candidate) => candidate.pattern.test(slug));
+          // Unknown models keep separate slots; don't guess their family.
+          const key = family?.pattern.source ?? slug.replace(/^[^/]+\//, "").replace(/:batch$/, "");
+          if (seenFamilies.has(key)) return false;
+          seenFamilies.add(key);
+          return true;
+        })
+      : ranked;
+  return recommendations
+    .slice(0, input.limit ?? 5)
+    .map(({ score: _score, metered: _metered, ...entry }) => entry);
 }
 
 interface ScoredOption {
