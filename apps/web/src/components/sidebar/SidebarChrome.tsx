@@ -3,13 +3,15 @@ import {
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
+  MicIcon,
   SettingsIcon,
   SparklesIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
+import { APP_VERSION_LABEL } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { usePullRequestsSupported } from "../../state/environments";
@@ -36,6 +38,7 @@ import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { ScribeTeamFeedDialog } from "../scribe/ScribeTeamFeedPanel";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
@@ -78,6 +81,19 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
             </Badge>
           </div>
         ) : null}
+        <button
+          type="button"
+          title="Version. Click to see what changed in each update."
+          onClick={openReleaseHistoryDialog}
+          className={cn(
+            "h-7 shrink-0 rounded-md px-1 text-xs tabular-nums outline-hidden ring-ring focus-visible:ring-2 focus-visible:ring-inset",
+            backdropVariant
+              ? "text-white/70 hover:text-white"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          v{APP_VERSION_LABEL}
+        </button>
       </div>
     </div>
   );
@@ -149,10 +165,13 @@ function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
 function SidebarUtilityItem({
   icon,
   label,
+  tourId,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  /** Feature tour anchor, see `features/tour/tourTargets.ts`. */
+  tourId?: string;
   onClick: () => void;
 }) {
   return (
@@ -160,7 +179,7 @@ function SidebarUtilityItem({
       <Tooltip>
         <TooltipTrigger
           render={
-            <SidebarMenuButton aria-label={label} onClick={onClick} size="icon">
+            <SidebarMenuButton aria-label={label} data-tour={tourId} onClick={onClick} size="icon">
               {icon}
             </SidebarMenuButton>
           }
@@ -179,6 +198,8 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
   const pullRequestsSupported = usePullRequestsSupported();
+  const [scribeFeedOpen, setScribeFeedOpen] = useState(false);
+
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -205,6 +226,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     closeMobileSidebar();
     void navigate({ to: "/tasks" });
   }, [closeMobileSidebar, navigate]);
+
+  const handleScribeFeedClick = useCallback(() => {
+    closeMobileSidebar();
+    setScribeFeedOpen(true);
+  }, [closeMobileSidebar]);
 
   const handleUsageClick = useCallback(() => {
     if (isMobile) {
@@ -239,9 +265,20 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<LayoutDashboardIcon />}
             label="Command Center"
+            tourId="sidebar-command-center"
             onClick={handleCommandCenterClick}
           />
-          <SidebarUtilityItem icon={<ListChecksIcon />} label="Tasks" onClick={handleTasksClick} />
+          <SidebarUtilityItem
+            icon={<ListChecksIcon />}
+            label="Tasks"
+            tourId="sidebar-tasks"
+            onClick={handleTasksClick}
+          />
+          <SidebarUtilityItem
+            icon={<MicIcon />}
+            label="Scribe Team Feed"
+            onClick={handleScribeFeedClick}
+          />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
@@ -257,16 +294,19 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<ChartNoAxesColumnIcon />}
             label="Usage"
+            tourId="sidebar-usage"
             onClick={handleUsageClick}
           />
           <SidebarUtilityItem
             icon={<SparklesIcon />}
             label="Updates"
+            tourId="sidebar-updates"
             onClick={handleUpdateHistoryClick}
           />
         </>
       )}
       <SidebarUpdatePill />
+      <ScribeTeamFeedDialog open={scribeFeedOpen} onOpenChange={setScribeFeedOpen} />
     </SidebarMenu>
   );
 });

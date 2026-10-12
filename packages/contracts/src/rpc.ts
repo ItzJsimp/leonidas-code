@@ -38,6 +38,7 @@ import {
   TaskBoardCardCreateInput,
   TaskBoardShareInput,
 } from "./taskBoard.ts";
+import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -419,6 +420,9 @@ export const WS_METHODS = {
   taskBoardCardUpdate: "taskBoard.cardUpdate",
   taskBoardCardCreate: "taskBoard.cardCreate",
   taskBoardShare: "taskBoard.share",
+  devPreviewStatus: "devPreview.status",
+  devPreviewStart: "devPreview.start",
+  devPreviewStop: "devPreview.stop",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
@@ -1278,6 +1282,24 @@ const WsTaskBoardWorkspaceRpc = Rpc.make(WS_METHODS.taskBoardWorkspace, {
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
+const WsDevPreviewStatusRpc = Rpc.make(WS_METHODS.devPreviewStatus, {
+  payload: DevPreviewInput,
+  success: DevPreviewState,
+  error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
+const WsDevPreviewStartRpc = Rpc.make(WS_METHODS.devPreviewStart, {
+  payload: DevPreviewInput,
+  success: DevPreviewState,
+  error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
+const WsDevPreviewStopRpc = Rpc.make(WS_METHODS.devPreviewStop, {
+  payload: DevPreviewInput,
+  success: DevPreviewState,
+  error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
   payload: TaskBoardCardUpdateInput,
   success: TaskBoardTask,
@@ -2130,6 +2152,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardCardUpdateRpc,
   WsTaskBoardCardCreateRpc,
   WsTaskBoardShareRpc,
+  WsDevPreviewStatusRpc,
+  WsDevPreviewStartRpc,
+  WsDevPreviewStopRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsCancelPromptPredictionRpc,
