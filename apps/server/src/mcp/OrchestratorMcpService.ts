@@ -108,6 +108,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "../serverSettings.ts";
+import { routeLightDelegatedTask } from "./lightTaskRouting.ts";
 import {
   clientRuntimeModeCeiling,
   type McpInvocationScope,
@@ -2335,9 +2336,37 @@ const make = Effect.gen(function* () {
           );
         }
         const providers = yield* loadProviders;
+        const routeLight = yield* serverSettings.getSettings.pipe(
+          Effect.map((settings) => settings.routeLightDelegatedTasks),
+          Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
+        );
+        const unnamedTarget =
+          input.target?.providerInstanceId === undefined &&
+          input.target?.driverKind === undefined &&
+          input.target?.model === undefined &&
+          input.target?.options === undefined;
+        let routedTarget: OrchestratorMcpTarget | undefined = input.target;
+        if (routeLight && unnamedTarget) {
+          const capable = yield* loadOrchestrationCapableInstanceIds();
+          const selection = routeLightDelegatedTask({
+            task: input.task,
+            providers,
+            isRunnable: (provider) =>
+              capable.has(provider.instanceId) && providerConstraints(provider, true).length === 0,
+            runtimeMode: parent.thread.runtimeMode,
+            now: yield* Clock.currentTimeMillis,
+          });
+          if (selection !== null) {
+            routedTarget = {
+              providerInstanceId: selection.instanceId,
+              model: selection.model,
+              ...(selection.options === undefined ? {} : { options: selection.options }),
+            };
+          }
+        }
         const backgroundTarget = yield* resolveBackgroundTaskTarget({
           parent,
-          target: input.target,
+          target: routedTarget,
           providers,
         });
         const target = yield* resolveTargetRechecking({

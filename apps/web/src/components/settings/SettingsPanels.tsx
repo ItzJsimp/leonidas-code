@@ -2512,6 +2512,22 @@ export function GeneralSettingsPanel() {
             />
           }
         />
+        <SettingsRow
+          serverScoped
+          {...searchableSetting("route-light-delegated-tasks")}
+          description="Run small delegated tasks that name no model on the cheapest ready model instead of the parent's, saving your main subscription."
+          settingKeys={["routeLightDelegatedTasks"]}
+          control={
+            <ScopedSwitch
+              settingKeys={["routeLightDelegatedTasks"]}
+              checked={settings.routeLightDelegatedTasks}
+              onCheckedChange={(checked) =>
+                updateSettings({ routeLightDelegatedTasks: Boolean(checked) })
+              }
+              aria-label="Route light delegated tasks"
+            />
+          }
+        />
 
         <SettingsRow
           {...searchableSetting("working-shelf")}

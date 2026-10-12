@@ -374,6 +374,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["usage quota rate limit reset recover continue"],
   },
   {
+    id: "route-light-delegated-tasks",
+    title: "Route light delegated tasks",
+    to: "/settings/general",
+    searchTerms: ["subagent delegate cheap model quota cost autorouter"],
+  },
+  {
     id: "working-shelf",
     title: "Working section (beta)",
     to: "/settings/general",
