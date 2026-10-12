@@ -1063,7 +1063,9 @@ export function PreviewView({
               </div>
             ) : null}
             <div
-              className="absolute inset-x-0 bottom-0"
+              // The wrapper stays mounted (and connected) under the empty state; without this it
+              // is an invisible layer above the empty state's rows and swallows their clicks.
+              className={cn("absolute inset-x-0 bottom-0", showEmptyState && "pointer-events-none")}
               style={{ top: viewport._tag !== "fill" ? BROWSER_DEVICE_TOOLBAR_HEIGHT : 0 }}
             >
               <ServerBrowserSurface

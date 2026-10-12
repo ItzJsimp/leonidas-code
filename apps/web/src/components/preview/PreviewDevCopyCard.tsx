@@ -2,6 +2,7 @@ import type { ScopedThreadRef } from "@t3tools/contracts";
 import { MousePointerClick, Square } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
+import { useComposerDraftStore } from "~/composerDraftStore";
 import { Spinner } from "~/components/ui/spinner";
 import { toastManager } from "~/components/ui/toast";
 import { useVisibleInterval } from "~/hooks/useVisibleInterval";
@@ -27,7 +28,9 @@ interface Props {
  */
 export function PreviewDevCopyCard({ threadRef, onOpenUrl }: Props) {
   const environmentId = threadRef.environmentId;
-  const projectId = useThreadShell(threadRef)?.projectId ?? null;
+  // A thread that has not been sent yet is only a draft, so its project lives in the draft store.
+  const draftThread = useComposerDraftStore((store) => store.getDraftThreadByRef(threadRef));
+  const projectId = useThreadShell(threadRef)?.projectId ?? draftThread?.projectId ?? null;
   const input = projectId === null ? null : { projectId };
   const status = useEnvironmentQuery(
     input === null ? null : devPreviewStatusQuery({ environmentId, input }),

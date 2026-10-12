@@ -10,6 +10,8 @@ import * as NodePath from "node:path";
 const SCRIPT = NodePath.join("scripts", "dev-isolated.ps1");
 const READY_POLL_MS = 1_000;
 const READY_TIMEOUT_MS = 120_000;
+// How long to wait for the sign-in link once the web server answers, before opening the plain address.
+const PAIRING_GRACE_MS = 30_000;
 const ANSI = /\u001b\[[0-9;]*m/g;
 
 /** The dev server logs a one-time sign-in link; that link is what the preview opens. */
@@ -27,6 +29,7 @@ interface Session {
   readonly child: NodeChildProcess.ChildProcess;
   state: DevPreviewState;
   webPort: number | null;
+  webUpAt: number | null;
   pairingUrl: string | null;
   poll: ReturnType<typeof setInterval> | null;
 }
@@ -76,7 +79,10 @@ export const make = Effect.gen(function* () {
   const status = (project: Project) =>
     Effect.sync(
       (): DevPreviewState =>
-        sessions.get(project.workspaceRoot)?.state ?? { ...STOPPED, supported: isSupported(project) },
+        sessions.get(project.workspaceRoot)?.state ?? {
+          ...STOPPED,
+          supported: isSupported(project),
+        },
     );
 
   const start = (project: Project) =>
@@ -97,8 +103,14 @@ export const make = Effect.gen(function* () {
           );
           const session: Session = {
             child,
-            state: { status: "starting", url: null, message: "Starting preview copy…", supported: true },
+            state: {
+              status: "starting",
+              url: null,
+              message: "Starting preview copy…",
+              supported: true,
+            },
             webPort: null,
+            webUpAt: null,
             pairingUrl: null,
             poll: null,
           };
@@ -109,9 +121,10 @@ export const make = Effect.gen(function* () {
             if (session.poll) clearInterval(session.poll);
             session.state = { status: "failed", url: null, message, supported: true };
           };
+          // Safe to call again: a late sign-in link replaces a plain address opened as the fallback.
           const markRunning = () => {
-            if (session.state.status === "running") return;
             if (session.poll) clearInterval(session.poll);
+            session.poll = null;
             const url =
               session.pairingUrl ??
               (session.webPort === null ? null : `http://localhost:${String(session.webPort)}`);
@@ -151,15 +164,23 @@ export const make = Effect.gen(function* () {
             }
           });
 
-          // If the pairing line never matches, fall back to the web port once it answers.
+          // The sign-in link is printed shortly after the web server answers. If it never shows,
+          // fall back to the plain address so the copy is still reachable.
           const startedAt = Date.now();
           session.poll = setInterval(() => {
-            if (Date.now() - startedAt > READY_TIMEOUT_MS) return fail("Preview copy took too long to start.");
+            if (Date.now() - startedAt > READY_TIMEOUT_MS)
+              return fail("Preview copy took too long to start.");
             if (session.webPort === null) return;
+            if (session.webUpAt !== null) {
+              if (Date.now() - session.webUpAt > PAIRING_GRACE_MS) markRunning();
+              return;
+            }
             fetch(`http://localhost:${String(session.webPort)}/`, {
               signal: AbortSignal.timeout(READY_POLL_MS),
             }).then(
-              () => markRunning(),
+              () => {
+                session.webUpAt ??= Date.now();
+              },
               () => undefined,
             );
           }, READY_POLL_MS);
