@@ -7,6 +7,7 @@ import {
   handoffContextLoss,
   profileModel,
   projectUsedPercentAtReset,
+  rankModelsForPreference,
   routeTurn,
   type AutoRouteCandidate,
   type AutoRouteInput,
@@ -121,6 +122,50 @@ describe("profileModel", () => {
     );
     expect(profileModel("gemini-3.8-flash-low").speed).toBe(5);
     expect(profileModel("some-new-model").known).toBe(false);
+  });
+});
+
+describe("rankModelsForPreference", () => {
+  const candidates = [claudeCandidate(), codexCandidate()];
+  const rank = (preference: AutoRoutePreference, list = candidates) =>
+    rankModelsForPreference({ preference, candidates: list, now: NOW, limit: 10 });
+
+  it("orders each goal by its own axis", () => {
+    const speed = rank("speed");
+    expect(speed[0]?.profile.speed).toBe(5);
+    expect(speed.at(-1)?.profile.speed).toBeLessThan(5);
+    const quality = rank("quality");
+    expect(quality[0]?.profile.quality).toBe(5);
+    expect(quality.at(-1)?.profile.quality).toBeLessThan(5);
+  });
+
+  it("lists free models first for cost", () => {
+    const free = {
+      instanceId: openrouter,
+      driverKind: "openrouter",
+      label: "OpenRouter",
+      models: [
+        {
+          slug: "meta-llama/free-one",
+          name: "Free One",
+          inputCostPerMillionTokens: 0,
+          outputCostPerMillionTokens: 0,
+        },
+      ],
+    } satisfies AutoRouteCandidate;
+    const ranked = rank("cost", [...candidates, free]);
+    expect(ranked[0]).toMatchObject({ slug: "meta-llama/free-one", free: true });
+  });
+
+  it("leaves out exhausted accounts and honours the limit", () => {
+    const ranked = rankModelsForPreference({
+      preference: "balanced",
+      candidates: [claudeCandidate(session(100)), codexCandidate()],
+      now: NOW,
+      limit: 2,
+    });
+    expect(ranked).toHaveLength(2);
+    expect(ranked.every((entry) => entry.instanceId === codex)).toBe(true);
   });
 });
 

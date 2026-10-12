@@ -2415,19 +2415,30 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const autoRoutePreference =
     multipleModelSelections === null ? settings.composerAutoRoutePreference : null;
   const [lastAutoRouteLabel, setLastAutoRouteLabel] = useState<string | null>(null);
+  const autoRouteCandidates = useMemo(
+    () =>
+      buildComposerAutoRouteCandidates({
+        entries: providerInstanceEntries,
+        modelOptionsByInstance,
+        lockedProvider,
+        lockedContinuationGroupKey: lockedContinuationGroupKey ?? null,
+        getModelDisabledReason,
+      }),
+    [
+      getModelDisabledReason,
+      lockedContinuationGroupKey,
+      lockedProvider,
+      modelOptionsByInstance,
+      providerInstanceEntries,
+    ],
+  );
   const routeAutoTurn = useCallback(
     (prompt: string) => {
       if (autoRoutePreference === null) return null;
       const decision = routeTurn({
         preference: autoRoutePreference,
         prompt,
-        candidates: buildComposerAutoRouteCandidates({
-          entries: providerInstanceEntries,
-          modelOptionsByInstance,
-          lockedProvider,
-          lockedContinuationGroupKey: lockedContinuationGroupKey ?? null,
-          getModelDisabledReason,
-        }),
+        candidates: autoRouteCandidates,
         current: activeThreadModelSelection,
         thread: composerAutoRouteThreadState({
           contextWindow: activeContextWindow,
@@ -2452,14 +2463,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     [
       activeContextWindow,
       activeThreadModelSelection,
+      autoRouteCandidates,
       autoRoutePreference,
       composerFilesRef,
       composerImagesRef,
-      getModelDisabledReason,
       interactionMode,
-      lockedContinuationGroupKey,
-      lockedProvider,
-      modelOptionsByInstance,
       providerInstanceEntries,
     ],
   );
@@ -5688,6 +5696,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         autoRoute={{
           preference: autoRoutePreference,
           lastRouteLabel: lastAutoRouteLabel,
+          candidates: autoRouteCandidates,
           onPreferenceChange: (preference) => {
             void updateClientSettings({ composerAutoRoutePreference: preference });
           },

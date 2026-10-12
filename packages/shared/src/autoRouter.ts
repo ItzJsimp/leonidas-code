@@ -422,6 +422,70 @@ function fitScore(input: {
   return score;
 }
 
+export interface RankedRouteModel {
+  readonly instanceId: ProviderInstanceId;
+  readonly providerLabel: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly profile: ModelRouteProfile;
+  /** Both token prices are zero, e.g. an OpenRouter free model. */
+  readonly free: boolean;
+}
+
+/**
+ * Every runnable model ordered best-first for one goal, for the picker's
+ * ranked list. Scores a standard-size task (light for speed) so the goal decides the order;
+ * accounts with an exhausted quota window are left out. Cost lists free models
+ * first, since the user asks for what costs nothing right now.
+ */
+export function rankModelsForPreference(input: {
+  readonly preference: AutoRoutePreference;
+  readonly candidates: ReadonlyArray<AutoRouteCandidate>;
+  readonly now: number;
+  readonly limit?: number | undefined;
+}): ReadonlyArray<RankedRouteModel> {
+  const ranked: Array<RankedRouteModel & { readonly score: number }> = [];
+  for (const candidate of input.candidates) {
+    const outlook = quotaOutlook(candidate.usageLimits, input.now, candidate.usageHistory);
+    if (outlook === null) continue;
+    for (const model of candidate.models) {
+      if (PROVIDER_DEFAULT_SLUGS.has(model.slug) && candidate.models.length > 1) continue;
+      const profile = profileModel(model.slug);
+      const free = model.inputCostPerMillionTokens === 0 && model.outputCostPerMillionTokens === 0;
+      const base = fitScore({
+        model,
+        profile,
+        preference: input.preference,
+        // A speed list must not drop small fast models for missing a quality floor.
+        task: input.preference === "speed" ? "light" : "standard",
+        driverKind: candidate.driverKind,
+        outlook,
+        isLegacy: model.isLegacy === true,
+      });
+      // Break goal ties on the goal's own axis so the list reads as a ranking.
+      const axis =
+        input.preference === "speed"
+          ? profile.speed
+          : input.preference === "quality"
+            ? profile.quality
+            : input.preference === "cost"
+              ? profile.economy
+              : 0;
+      ranked.push({
+        instanceId: candidate.instanceId,
+        providerLabel: candidate.label,
+        slug: model.slug,
+        name: model.name,
+        profile,
+        free,
+        score: base + axis * 0.01 + (input.preference === "cost" && free ? 100 : 0),
+      });
+    }
+  }
+  ranked.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  return ranked.slice(0, input.limit ?? 5).map(({ score: _score, ...entry }) => entry);
+}
+
 interface ScoredOption {
   readonly candidate: AutoRouteCandidate;
   readonly model: AutoRouteModel;
