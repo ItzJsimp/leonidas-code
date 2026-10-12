@@ -23,6 +23,7 @@ export interface AiosCardPatch {
   readonly priority?: TaskBoardTaskPriority | undefined;
   readonly title?: string | undefined;
   readonly due?: string | null | undefined;
+  readonly milestone?: string | null | undefined;
   readonly projectSlug?: string | null | undefined;
   readonly claimedBy?: string | null | undefined;
   /** `true` publishes the card to the shared board; `false` or `null` withdraws it. */
@@ -459,6 +460,9 @@ export function cardToTask(input: {
     effort: field(fields, "effort") || null,
     energy: field(fields, "energy_type") || null,
     due: due || null,
+    milestone: /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(field(fields, "milestone"))
+      ? field(fields, "milestone")
+      : null,
     verify: verify || null,
     startFiles: listField(fields, "start_files"),
     blockedBy: listField(fields, "blocked_by"),
@@ -692,6 +696,12 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     changed = true;
   }
 
+  if (patch.milestone !== undefined && (patch.milestone ?? "") !== field(fields, "milestone")) {
+    setKey("milestone", patch.milestone === null ? null : quote(patch.milestone));
+    other.push(patch.milestone === null ? "removed milestone" : `milestone → ${patch.milestone}`);
+    changed = true;
+  }
+
   const title = patch.title === undefined ? undefined : oneLine(patch.title);
   if (title && title !== was.title) {
     setKey("name" in fields || !("title" in fields) ? "name" : "title", quote(title));
@@ -746,6 +756,7 @@ export function createCardFile(
     title: string;
     id?: string | undefined;
     due?: string | null | undefined;
+    milestone?: string | null | undefined;
     description?: string | undefined;
     priority?: string | undefined;
     projectSlug?: string | null | undefined;
@@ -777,6 +788,7 @@ export function createCardFile(
         `last_touched: ${date}`,
         ...(projectSlug ? [`project: ${quote(projectSlug)}`] : []),
         ...(input.due ? [`due: ${quote(input.due)}`] : []),
+        ...(input.milestone ? [`milestone: ${quote(input.milestone)}`] : []),
         "---",
         `# ${title}`,
         "",

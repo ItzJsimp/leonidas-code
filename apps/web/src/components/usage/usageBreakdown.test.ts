@@ -1,11 +1,13 @@
-import type { ModelTotals } from "@t3tools/shared/usageMerge";
+import type { ModelTotals, ProviderTotals, SourceTotals } from "@t3tools/shared/usageMerge";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
   cacheHitRate,
   costPerMillionTokens,
+  displayModelName,
   freeModelKind,
   modelShare,
+  providerBreakdownRows,
   sortModelsByTokens,
   usageHighlights,
 } from "./usageBreakdown";
@@ -132,6 +134,66 @@ describe("usageHighlights", () => {
       sessions: 0,
     } as unknown as MergedUsage;
     expect(usageHighlights(empty, fmt, pct)).toEqual([]);
+  });
+});
+
+describe("displayModelName", () => {
+  it("labels placeholder and unmapped ids instead of showing the raw slug", () => {
+    expect(displayModelName("antigravity-unknown")).toBe("Unattributed");
+    expect(displayModelName("antigravity-model-1319")).toBe("Antigravity model 1319 (unmapped)");
+    expect(displayModelName("gemini-3-pro")).toBe("gemini-3-pro");
+  });
+});
+
+describe("providerBreakdownRows", () => {
+  const source = (sourcePath: string | undefined, totalTokens: number): SourceTotals => ({
+    sourcePath,
+    costUsd: 0,
+    totalTokens,
+    records: 1,
+    sessions: 1,
+  });
+  const provider = (
+    kind: ProviderTotals["provider"],
+    sources: readonly SourceTotals[],
+  ): ProviderTotals => ({
+    provider: kind,
+    costUsd: 0,
+    totalTokens: sources.reduce((sum, entry) => sum + entry.totalTokens, 0),
+    records: sources.length,
+    sessions: sources.length,
+    costShare: 0,
+    tokenShare: 0,
+    sources,
+  });
+
+  it("splits a provider with two homes into labelled accounts and leaves single-home providers whole", () => {
+    const rows = providerBreakdownRows([
+      provider("claude", [
+        source("C:\\Users\\Jake\\.claude", 90),
+        source("C:\\Users\\Jake\\.claude-simplygersi", 10),
+      ]),
+      provider("codex", [source("/home/jake/.codex", 5)]),
+    ]);
+
+    expect(rows[0]?.sources.map((entry) => [entry.label, entry.totals.totalTokens])).toEqual([
+      ["default", 90],
+      ["simplygersi", 10],
+    ]);
+    expect(rows[1]?.sources).toEqual([]);
+  });
+
+  it("falls back to the full path when two homes share a folder name, and labels missing paths", () => {
+    const rows = providerBreakdownRows([
+      provider("claude", [source("/mac/.claude", 2), source("/linux/.claude", 1)]),
+      provider("opencode", [source(undefined, 2), source("/home/jake/.local/share/opencode", 1)]),
+    ]);
+
+    expect(rows[0]?.sources.map((entry) => entry.label)).toEqual([
+      "/mac/.claude",
+      "/linux/.claude",
+    ]);
+    expect(rows[1]?.sources.map((entry) => entry.label)).toEqual(["Other", "default"]);
   });
 });
 

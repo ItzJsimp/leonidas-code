@@ -311,6 +311,7 @@ function boardTaskRow(task: TaskBoardTask): OrchestratorMcpBoardTaskRow {
     projectSlug: task.projectSlug ?? null,
     claimedBy: task.claimedBy,
     due: task.due ?? null,
+    milestone: task.milestone ?? null,
     checklist: task.checklist ?? null,
     updatedAt: isoTime(task.updatedAt),
   };
@@ -2010,6 +2011,7 @@ const make = Effect.gen(function* () {
               ...(status === undefined ? {} : { status }),
               ...(input.priority === undefined ? {} : { priority: input.priority }),
               ...(input.due === undefined ? {} : { due: input.due }),
+              ...(input.milestone === undefined ? {} : { milestone: input.milestone }),
               ...(input.projectSlug === undefined ? {} : { projectSlug: input.projectSlug }),
               ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
               ...(input.note === undefined ? {} : { note: input.note }),
@@ -2037,6 +2039,7 @@ const make = Effect.gen(function* () {
               actor: workspace.member,
               ...(input.description === undefined ? {} : { description: input.description }),
               ...(input.due === undefined ? {} : { due: input.due }),
+              ...(input.milestone === undefined ? {} : { milestone: input.milestone }),
               ...(input.priority === undefined ? {} : { priority: input.priority }),
               ...(slug === undefined ? {} : { projectSlug: slug }),
             },

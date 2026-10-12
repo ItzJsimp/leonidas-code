@@ -1,9 +1,11 @@
-import type { UsageTokenTotals } from "@t3tools/contracts";
+import type { UsageProviderKind, UsageTokenTotals } from "@t3tools/contracts";
 import {
   isModelCostUnknown,
   type CategoryCost,
   type MergedUsage,
   type ModelTotals,
+  type ProviderTotals,
+  type SourceTotals,
   type SpeedCost,
 } from "@t3tools/shared/usageMerge";
 
@@ -86,9 +88,14 @@ export function speedCostSegments(cost: SpeedCost): readonly ShareSegment[] {
   ];
 }
 
-/** Placeholder ids the readers emit when a record carried no usable model name. */
+/**
+ * Placeholder ids the readers emit when a record carried no usable model name,
+ * and Antigravity numeric ids the server could not name.
+ */
 export function displayModelName(model: string): string {
-  return model === "antigravity-unknown" || model === "<synthetic>" ? "Unattributed" : model;
+  if (model === "antigravity-unknown" || model === "<synthetic>") return "Unattributed";
+  const unmapped = /^antigravity-model-(\d+)$/.exec(model);
+  return unmapped ? `Antigravity model ${unmapped[1]} (unmapped)` : model;
 }
 
 export interface UsageHighlight {
@@ -151,4 +158,41 @@ export function freeModelKind(model: string): "free" | "local" | null {
   if (id.endsWith(":free")) return "free";
   if (/^(ollama|lmstudio|lm-studio|llamacpp|llama\.cpp|local)[/:]/.test(id)) return "local";
   return null;
+}
+
+/**
+ * Account label from a provider home directory: its basename without the
+ * leading dot and provider name, so `.claude` is "default" and
+ * `.claude-simplygersi` is "simplygersi".
+ */
+export function sourceLabel(provider: UsageProviderKind, sourcePath: string | undefined): string {
+  if (sourcePath === undefined) return "Other";
+  const base = sourcePath.split(/[\\/]+/).findLast((part) => part !== "") ?? sourcePath;
+  const stem = base.replace(/^\.+/, "").replace(new RegExp(`^${provider}[-_]?`, "i"), "");
+  return stem === "" ? "default" : stem;
+}
+
+export interface ProviderBreakdownRow {
+  readonly totals: ProviderTotals;
+  /** One row per provider home directory, only when the provider has two or more. */
+  readonly sources: readonly { readonly label: string; readonly totals: SourceTotals }[];
+}
+
+/** Provider rows in the given order, each with per-account children when it has several homes. */
+export function providerBreakdownRows(
+  providers: readonly ProviderTotals[],
+): readonly ProviderBreakdownRow[] {
+  return providers.map((totals) => {
+    if (totals.sources.length < 2) return { totals, sources: [] };
+    const labels = totals.sources.map((source) => sourceLabel(totals.provider, source.sourcePath));
+    return {
+      totals,
+      sources: totals.sources.map((source, index) => {
+        const label = labels[index] ?? "default";
+        // The same folder name on two machines: the full path tells them apart.
+        const ambiguous = labels.indexOf(label) !== labels.lastIndexOf(label);
+        return { label: ambiguous ? (source.sourcePath ?? label) : label, totals: source };
+      }),
+    };
+  });
 }

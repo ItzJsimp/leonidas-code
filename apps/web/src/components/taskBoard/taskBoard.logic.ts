@@ -517,6 +517,7 @@ export function buildTaskPrompt(
   const path = cardPath(task.sourceRoot ?? ctx.aiosRoot, task.sourceFile);
   if (path) lines.push(`Task card: ${path}`);
   if (task.due) lines.push(`Due: ${task.due}`);
+  if (task.milestone) lines.push(`Release milestone: V${task.milestone}.`);
   if (task.checklist && task.checklist.total > 0) {
     lines.push(`Checklist progress: ${task.checklist.done} of ${task.checklist.total} done.`);
   }

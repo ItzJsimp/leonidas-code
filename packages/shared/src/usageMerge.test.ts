@@ -730,6 +730,45 @@ describe("mergeUsage", () => {
     expect(merged.providers[0]?.sessions).toBe(1);
   });
 
+  it("breaks a provider down by source directory, largest first", () => {
+    const merged = mergeUsage(
+      [
+        environment(
+          "env-a",
+          summary(
+            [
+              bucket({ sourcePath: "/u/.claude", costUsd: 6 }),
+              bucket({ sourcePath: "/u/.claude", day: "2026-08-08" as UsageDay, costUsd: 2 }),
+              bucket({ sourcePath: "/u/.claude-simplygersi", costUsd: 4 }),
+            ],
+            [
+              {
+                provider: "claude",
+                hostId: "pc",
+                homePath: "/u/.claude-simplygersi",
+                distinctSessions: 2,
+              },
+              { provider: "claude", hostId: "pc", homePath: "/u/.claude", distinctSessions: 3 },
+            ],
+          ),
+        ),
+      ],
+      USAGE_CONTRACT_VERSION,
+    );
+
+    expect(
+      merged.providers[0]?.sources.map(({ sourcePath, costUsd, totalTokens, sessions }) => ({
+        sourcePath,
+        costUsd,
+        totalTokens,
+        sessions,
+      })),
+    ).toEqual([
+      { sourcePath: "/u/.claude", costUsd: 8, totalTokens: 2320, sessions: 3 },
+      { sourcePath: "/u/.claude-simplygersi", costUsd: 4, totalTokens: 1160, sessions: 2 },
+    ]);
+  });
+
   it("returns empty totals with no environments", () => {
     const merged = mergeUsage([], USAGE_CONTRACT_VERSION);
     expect(merged.costUsd).toBe(0);

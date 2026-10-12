@@ -23,7 +23,12 @@ import {
   ScheduledTaskUpsertSchedule,
 } from "./scheduledTask.ts";
 import { ProviderInteractionMode, RuntimeMode } from "./providerPolicy.ts";
-import { TaskBoardDueDate, TaskBoardTaskPriority, TaskBoardTaskStatus } from "./taskBoard.ts";
+import {
+  TaskBoardDueDate,
+  TaskBoardMilestoneVersion,
+  TaskBoardTaskPriority,
+  TaskBoardTaskStatus,
+} from "./taskBoard.ts";
 import { ThreadLinkedPullRequest } from "./threadPullRequest.ts";
 import { ThreadTitleRegeneration } from "./threadTitle.ts";
 import {
@@ -714,6 +719,7 @@ export const OrchestratorMcpBoardTaskRow = Schema.Struct({
   projectSlug: Schema.NullOr(Schema.String),
   claimedBy: Schema.NullOr(Schema.String),
   due: Schema.NullOr(Schema.String),
+  milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)),
   checklist: Schema.NullOr(Schema.Struct({ done: Schema.Number, total: Schema.Number })),
   updatedAt: Schema.String.annotate({ description: "ISO timestamp." }),
 });
@@ -756,6 +762,9 @@ export const OrchestratorMcpBoardTaskUpdateInput = Schema.Struct({
   due: Schema.optional(Schema.NullOr(TaskBoardDueDate)).annotate({
     description: "Due calendar date (YYYY-MM-DD), or null to remove it.",
   }),
+  milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)).annotate({
+    description: "Milestone version for this task, or null to remove it.",
+  }),
   status: Schema.optional(
     TaskBoardTaskStatus.annotate({
       description:
@@ -794,6 +803,7 @@ export type OrchestratorMcpBoardTaskUpdateInput = typeof OrchestratorMcpBoardTas
 
 export const OrchestratorMcpBoardTaskCreateInput = Schema.Struct({
   due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
+  milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)),
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)).annotate({
     description: "Short imperative title.",
   }),

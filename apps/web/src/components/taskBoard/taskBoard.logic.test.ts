@@ -393,6 +393,11 @@ describe("buildDashboard", () => {
 });
 
 describe("buildTaskPrompt", () => {
+  it("passes the release milestone to the delegated agent", () => {
+    expect(
+      buildTaskPrompt(task("release", { milestone: "0.22.0" }), { aiosRoot: null, member: "Jake" }),
+    ).toContain("Release milestone: V0.22.0.");
+  });
   it("points agents at native storage even when an AIOS is also connected", () => {
     const prompt = buildTaskPrompt(task("native", { sourceRoot: "D:/Leonidas Data/task-board" }), {
       aiosRoot: "D:/AIOS",

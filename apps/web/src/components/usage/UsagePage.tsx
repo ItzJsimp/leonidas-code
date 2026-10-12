@@ -9,7 +9,7 @@ import {
   type UsageProviderKind,
 } from "@t3tools/contracts";
 import { CircleAlertIcon, ChevronDownIcon, InfoIcon, SlidersHorizontalIcon } from "lucide-react";
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_LIMITS_REFRESH_COOLDOWN_MS,
   cursorKeychainAccessEnvironments,
@@ -85,6 +85,7 @@ import {
   freeModelKind,
   usageHighlights,
   modelShare,
+  providerBreakdownRows,
   sortModelsByTokens,
   speedCostSegments,
   tokenTypeSegments,
@@ -246,6 +247,10 @@ export function UsagePage() {
     [breakdown, merged.models, metric],
   );
   const providersWithData = useMemo(() => providersWithUsage(merged.providers), [merged.providers]);
+  const providerRows = useMemo(
+    () => providerBreakdownRows(merged.providers.toSorted((a, b) => b.totalTokens - a.totalTokens)),
+    [merged.providers],
+  );
   // A provider still refreshing keeps its row and line before its usage lands.
   const activeProviders = useMemo(
     () =>
@@ -936,15 +941,11 @@ export function UsagePage() {
                             </td>
                           </tr>
                         ) : (
-                          merged.providers
-                            .toSorted((a, b) => b.totalTokens - a.totalTokens)
-                            .map((entry) => {
-                              const rowFigures = figureClass(isProviderLoading(entry.provider));
-                              return (
-                                <tr
-                                  key={entry.provider}
-                                  className="border-b border-border/50 text-right whitespace-nowrap text-muted-foreground tabular-nums"
-                                >
+                          providerRows.map(({ totals: entry, sources }) => {
+                            const rowFigures = figureClass(isProviderLoading(entry.provider));
+                            return (
+                              <Fragment key={entry.provider}>
+                                <tr className="border-b border-border/50 text-right whitespace-nowrap text-muted-foreground tabular-nums">
                                   <td className="py-2.5 text-left text-foreground">
                                     <span className="flex items-center gap-2">
                                       <ProviderMark
@@ -971,8 +972,41 @@ export function UsagePage() {
                                     {formatTokens(entry.totalTokens)}
                                   </td>
                                 </tr>
-                              );
-                            })
+                                {sources.map(({ label, totals: source }) => {
+                                  const sourceTotal =
+                                    metric === "tokens" ? merged.totalTokens : merged.costUsd;
+                                  const sourceValue =
+                                    metric === "tokens" ? source.totalTokens : source.costUsd;
+                                  return (
+                                    <tr
+                                      key={`${entry.provider}:${source.sourcePath ?? ""}`}
+                                      className="border-b border-border/50 text-right text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+                                    >
+                                      <td className="py-2 pl-6 text-left" title={source.sourcePath}>
+                                        {label}
+                                      </td>
+                                      <td className={cn("py-2 pl-6", rowFigures)}>
+                                        {formatUsd(source.costUsd)}
+                                      </td>
+                                      <td
+                                        className={cn("hidden py-2 pl-6 sm:table-cell", rowFigures)}
+                                      >
+                                        {formatPercent(
+                                          sourceTotal === 0 ? 0 : sourceValue / sourceTotal,
+                                        )}
+                                      </td>
+                                      <td className={cn("py-2 pl-6", rowFigures)}>
+                                        {formatCount(source.sessions)}
+                                      </td>
+                                      <td className={cn("py-2 pl-6", rowFigures)}>
+                                        {formatTokens(source.totalTokens)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </Fragment>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>

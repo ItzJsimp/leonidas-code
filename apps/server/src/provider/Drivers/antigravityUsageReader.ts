@@ -2,6 +2,10 @@ import type { TurnTokenUsage } from "@t3tools/contracts";
 // @effect-diagnostics-next-line nodeBuiltinImport:off - Effect's File.Info has no ctime, which the cache fingerprint needs.
 import * as NodeFSP from "node:fs/promises";
 
+import {
+  antigravityModelNameFromLabel,
+  antigravityRegisteredModelName,
+} from "../antigravityModelNames.ts";
 import type { UsageRecord } from "@t3tools/provider-core/server/usage";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 import * as Effect from "effect/Effect";
@@ -103,29 +107,19 @@ const MODEL_IDS: Record<number, string> = {
   1047: "gemini-3-flash-preview",
 };
 
+const UNMAPPED_MODEL = /^antigravity-model-(\d+)$/;
+
 function modelName(name: string, id: number): string {
-  if (name) {
-    const normalized = name
-      .toLowerCase()
-      .replace(/\s*\([^)]*\)\s*$/, "")
-      .replaceAll(" ", "-");
-    if (normalized.startsWith("claude-")) {
-      return normalized
-        .replace(/^claude-(4(?:\.\d+)?)-(sonnet|opus|haiku)/, "claude-$2-$1")
-        .replaceAll(".", "-");
-    }
-    // Effort/variant tags (`-low`, `-medium`, `-n`...) are the same model, so
-    // they must not split one Gemini model across several usage rows.
-    return normalized.replace(
-      /^(gemini-[\d.]+-(?:pro|flash(?:-lite)?))-(?:minimal|low|medium|high|thinking|[a-z])$/,
-      "$1",
-    );
-  }
+  if (name) return antigravityModelNameFromLabel(name).model;
   return MODEL_IDS[id] ?? (id > 0 ? `antigravity-model-${id}` : "");
 }
 
 interface Metadata {
   model: string;
+  /** Raw numeric model id, 0 when absent. */
+  modelId: number;
+  /** Whether the model came from a text name rather than only an id. */
+  named: boolean;
   timestampMs: number | null;
   usages: Fields[];
 }
@@ -144,11 +138,12 @@ function metadata(bytes: Uint8Array, step: boolean): Metadata {
     const retryUsage = bytesAt(fields(retry), 2);
     if (retryUsage !== undefined) usages.push(fields(retryUsage));
   }
+  const label = textAt(model, step ? 12 : 19) || textAt(model, step ? 8 : 21);
+  const modelId = numberAt(model, step ? 1 : 3);
   return {
-    model: modelName(
-      textAt(model, step ? 12 : 19) || textAt(model, step ? 8 : 21),
-      numberAt(model, step ? 1 : 3),
-    ),
+    model: modelName(label, modelId),
+    modelId,
+    named: label !== "",
     timestampMs: step
       ? (timestamp(nested(data, 8)) ?? timestamp(nested(data, 1)))
       : timestamp(nested(nested(data, 9), 4)),
@@ -165,6 +160,8 @@ interface UsageCandidate {
   record: UsageRecord;
   keys: readonly string[];
   timestampQuality: number;
+  /** A numeric id this record's own text name identifies, for naming id-only records. */
+  learned?: { readonly id: number; readonly model: string };
 }
 
 /** A conversation database whose usage tables are missing or undecodable. */
@@ -292,6 +289,9 @@ function usageCandidates(
           record,
           keys,
           timestampQuality: entry.timestampMs !== null ? 2 : trajectoryTimestamp !== null ? 1 : 0,
+          ...(entry.named && entry.modelId > 0 && MODEL_IDS[entry.modelId] === undefined
+            ? { learned: { id: entry.modelId, model: entry.model } }
+            : {}),
         });
       }
     }
@@ -460,9 +460,18 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
   if (cache !== undefined) {
     for (const key of cache.keys()) if (!visited.has(key)) cache.delete(key);
   }
+  // Records that carry only a numeric model id take the name another record in
+  // this scan gave that id, then the name the language server reported for it.
+  const learned = new Map<number, string>();
+  for (const group of groups) if (group.learned) learned.set(group.learned.id, group.learned.model);
+  const named = (record: UsageRecord): UsageRecord => {
+    const id = Number(UNMAPPED_MODEL.exec(record.model)?.[1]);
+    const model = learned.get(id) ?? antigravityRegisteredModelName(id)?.model;
+    return model === undefined ? record : { ...record, model };
+  };
   for (const [index, group] of groups.entries()) {
     if (group.parent === index && group.record.timestampMs >= sinceMs) {
-      files[group.fileIndex]!.records.push(group.record);
+      files[group.fileIndex]!.records.push(named(group.record));
     }
   }
   return { files, errors };

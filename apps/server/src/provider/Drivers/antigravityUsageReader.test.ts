@@ -11,6 +11,7 @@ import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as SqlClient from "effect/sql/SqlClient";
 
+import { registerAntigravityModelNames } from "../antigravityModelNames.ts";
 import {
   makeAntigravityUsageCache,
   readAntigravityUsage,
@@ -166,6 +167,67 @@ describe("readAntigravityUsage", () => {
       assert.deepStrictEqual(
         records(result).map((record) => record.model),
         ["gemini-3-pro", "claude-opus-4-6"],
+      );
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  const idOnlyGeneration = (id: number, responseId: string, name?: string) =>
+    new Uint8Array(
+      protoBytes(1, [
+        ...protoNumber(3, id),
+        ...(name === undefined ? [] : protoText(19, name)),
+        ...protoBytes(4, [...protoNumber(2, 10), ...protoText(11, responseId)]),
+        ...protoBytes(9, protoBytes(4, protoNumber(1, 1780000000))),
+      ]),
+    );
+
+  it.effect("names id-only records from a named record of the same model in the scan", () =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const dir = yield* tempDir;
+      for (const [file, blob] of [
+        ["named.db", idOnlyGeneration(1319, "r-named", "Gemini 3.8 Flash (High)")],
+        ["id-only.db", idOnlyGeneration(1319, "r-id")],
+        ["other.db", idOnlyGeneration(1998, "r-other")],
+      ] as const) {
+        yield* seedDatabase(path.join(dir, file), (db) =>
+          Effect.gen(function* () {
+            yield* createTables(db);
+            yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [0, blob]);
+          }),
+        );
+      }
+      const result = yield* readAntigravityUsage(dir, 0);
+      assert.deepStrictEqual(result.errors, []);
+      assert.deepStrictEqual(
+        Object.fromEntries(records(result).map((record) => [record.sessionId, record.model])),
+        {
+          named: "gemini-3.8-flash",
+          "id-only": "gemini-3.8-flash",
+          other: "antigravity-model-1998",
+        },
+      );
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("names id-only records from the language server model registry", () =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const dir = yield* tempDir;
+      registerAntigravityModelNames(new Map([[1320, { model: "gemini-3.8-flash" }]]));
+      yield* seedDatabase(path.join(dir, "registry.db"), (db) =>
+        Effect.gen(function* () {
+          yield* createTables(db);
+          yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [
+            0,
+            idOnlyGeneration(1320, "r-registry"),
+          ]);
+        }),
+      );
+      const cache = makeAntigravityUsageCache();
+      assert.deepStrictEqual(
+        records(yield* readAntigravityUsage(dir, 0, cache)).map((record) => record.model),
+        ["gemini-3.8-flash"],
       );
     }).pipe(Effect.provide(NodeServices.layer)),
   );

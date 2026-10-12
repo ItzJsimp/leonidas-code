@@ -2611,6 +2611,9 @@ describe("OrchestratorMcpService board tasks", () => {
       assert.equal(input?.agent?.model, "gpt-5");
       assert.equal(input?.agent?.providerInstanceId, shell.providerInstanceId);
 
+      yield* mcp.boardTaskUpdate(threadScope, { taskId: "a", milestone: "1.0.0" });
+      assert.equal((yield* Ref.get(received))?.milestone, "1.0.0");
+
       yield* mcp.boardTaskUpdate(threadScope, { taskId: "a", release: true, note: "paused" });
       const released = yield* Ref.get(received);
       assert.isNull(released?.claimedBy);
@@ -2662,7 +2665,10 @@ describe("OrchestratorMcpService board tasks", () => {
           }),
         ),
       );
-      const row = yield* mcp.boardTaskCreate(threadScope, { title: "Follow up" });
+      const row = yield* mcp.boardTaskCreate(threadScope, {
+        title: "Follow up",
+        milestone: "0.22.0",
+      });
       assert.equal(row.title, "Follow up");
       yield* mcp.boardTaskCreate(threadScope, { title: "Elsewhere", projectSlug: "other" });
       yield* mcp.boardTaskCreate(clientScope, { title: "Loose" });
@@ -2672,6 +2678,7 @@ describe("OrchestratorMcpService board tasks", () => {
         ["leonidas-code", "other", undefined],
       );
       assert.equal(inputs[0]?.actor, "Jake");
+      assert.equal(inputs[0]?.milestone, "0.22.0");
     }),
   );
 });

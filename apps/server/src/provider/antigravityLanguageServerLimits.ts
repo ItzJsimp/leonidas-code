@@ -20,6 +20,12 @@ import {
   makeUnavailableUsageLimits,
   makeUsageLimits,
 } from "@t3tools/provider-core/server/usageLimits";
+import {
+  antigravityModelIdFromEnum,
+  antigravityModelNameFromLabel,
+  registerAntigravityModelNames,
+  type AntigravityModelName,
+} from "./antigravityModelNames.ts";
 import * as ChildProcess from "node:child_process";
 import * as FS from "node:fs";
 import * as Path from "node:path";
@@ -121,6 +127,23 @@ export function antigravityUserStatusToWindows(
   }
 
   return windows;
+}
+
+/**
+ * Names the account's models by numeric id. GetUserStatus lists each model as an
+ * enum such as `MODEL_PLACEHOLDER_M319` (id 1319) with its picker label, which is
+ * the only place the ids that usage records carry get a readable name.
+ */
+export function antigravityModelNamesFromConfigs(
+  configs: ReadonlyArray<AntigravityClientModelConfig> | null | undefined,
+): Map<number, AntigravityModelName> {
+  const names = new Map<number, AntigravityModelName>();
+  for (const config of configs ?? []) {
+    const id = antigravityModelIdFromEnum(config.modelOrAlias?.model ?? "");
+    const label = config.label?.trim();
+    if (id !== null && label) names.set(id, antigravityModelNameFromLabel(label));
+  }
+  return names;
 }
 
 export function antigravityUserStatusToLimits(input: {
@@ -535,6 +558,9 @@ export async function probeAntigravityUsageLimits(options?: {
   }
 
   const userStatus = statusResp.userStatus;
+  registerAntigravityModelNames(
+    antigravityModelNamesFromConfigs(userStatus.cascadeModelConfigData?.clientModelConfigs),
+  );
   const limits = antigravityUserStatusToLimits({ userStatus, checkedAt });
   const email = userStatus.email?.trim() || undefined;
   const plan = userStatus.planStatus?.planInfo?.planName?.trim() || undefined;

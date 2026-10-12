@@ -90,6 +90,7 @@ function TaskCreateForm(props: {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [due, setDue] = useState("");
+  const [milestone, setMilestone] = useState("");
   const [priority, setPriority] = useState<TaskBoardTaskPriority>("medium");
   const [projectSlug, setProjectSlug] = useState(
     props.defaultSlug && props.defaultSlug in projectItems ? props.defaultSlug : NO_PROJECT,
@@ -116,6 +117,7 @@ function TaskCreateForm(props: {
         ...(details.trim() ? { description: details.trim() } : {}),
         priority,
         due: due || null,
+        milestone: milestone || null,
         projectSlug:
           projectSlug === NO_PROJECT ? null : projectSlug === NEW_PROJECT ? newSlug : projectSlug,
         actor: member,
@@ -136,10 +138,10 @@ function TaskCreateForm(props: {
     event.preventDefault();
     void submit();
   };
-  const onKeyDown = (event: KeyboardEvent) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      void submit();
+      if (event.currentTarget.reportValidity()) void submit();
     }
   };
 
@@ -173,6 +175,17 @@ function TaskCreateForm(props: {
             />
           </Label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Label className="flex flex-col items-stretch" htmlFor={`${id}-milestone`}>
+              Version milestone
+              <Input
+                id={`${id}-milestone`}
+                placeholder="0.22.0"
+                value={milestone}
+                pattern="(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+                title="Use a version such as 0.22.0 or 1.0.0"
+                onChange={(event) => setMilestone(event.target.value)}
+              />
+            </Label>
             <Label className="flex flex-col items-stretch" htmlFor={`${id}-due`}>
               Due date
               <Input
