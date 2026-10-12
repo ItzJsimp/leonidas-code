@@ -200,12 +200,45 @@ describe("readAntigravityUsage", () => {
       const result = yield* readAntigravityUsage(dir, 0);
       assert.deepStrictEqual(result.errors, []);
       assert.deepStrictEqual(
-        Object.fromEntries(records(result).map((record) => [record.sessionId, record.model])),
+        Object.fromEntries(
+          records(result).map((record) => [record.sessionId, [record.model, record.rateModel]]),
+        ),
         {
-          named: "gemini-3.8-flash",
-          "id-only": "gemini-3.8-flash",
-          other: "antigravity-model-1998",
+          named: ["gemini-3.8-flash-high", "gemini-3.8-flash"],
+          "id-only": ["gemini-3.8-flash-high", "gemini-3.8-flash"],
+          other: ["antigravity-model-1998", undefined],
         },
+      );
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("keeps Gemini effort tiers as separate models that price as the base model", () =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const dir = yield* tempDir;
+      yield* seedDatabase(path.join(dir, "effort.db"), (db) =>
+        Effect.gen(function* () {
+          yield* createTables(db);
+          for (const [idx, name] of [
+            "Gemini 3.8 Flash (Low)",
+            "Gemini 3.8 Flash (High)",
+          ].entries()) {
+            yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [
+              idx,
+              idOnlyGeneration(0, `r-effort-${idx}`, name),
+            ]);
+          }
+        }),
+      );
+      assert.deepStrictEqual(
+        records(yield* readAntigravityUsage(dir, 0)).map((record) => [
+          record.model,
+          record.rateModel,
+        ]),
+        [
+          ["gemini-3.8-flash-low", "gemini-3.8-flash"],
+          ["gemini-3.8-flash-high", "gemini-3.8-flash"],
+        ],
       );
     }).pipe(Effect.provide(NodeServices.layer)),
   );
@@ -214,7 +247,9 @@ describe("readAntigravityUsage", () => {
     Effect.gen(function* () {
       const path = yield* Path.Path;
       const dir = yield* tempDir;
-      registerAntigravityModelNames(new Map([[1320, { model: "gemini-3.8-flash" }]]));
+      registerAntigravityModelNames(
+        new Map([[1320, { model: "gemini-3.8-flash-low", rateModel: "gemini-3.8-flash" }]]),
+      );
       yield* seedDatabase(path.join(dir, "registry.db"), (db) =>
         Effect.gen(function* () {
           yield* createTables(db);
@@ -226,8 +261,11 @@ describe("readAntigravityUsage", () => {
       );
       const cache = makeAntigravityUsageCache();
       assert.deepStrictEqual(
-        records(yield* readAntigravityUsage(dir, 0, cache)).map((record) => record.model),
-        ["gemini-3.8-flash"],
+        records(yield* readAntigravityUsage(dir, 0, cache)).map((record) => [
+          record.model,
+          record.rateModel,
+        ]),
+        [["gemini-3.8-flash-low", "gemini-3.8-flash"]],
       );
     }).pipe(Effect.provide(NodeServices.layer)),
   );

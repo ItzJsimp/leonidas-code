@@ -80,6 +80,7 @@ import { UsageProviderChart } from "./UsageProviderChart";
 import { SpeedPremium, UsageModelDialog } from "./UsageModelDialog";
 import { UsageShareBar } from "./UsageShareBar";
 import {
+  cacheHitRate,
   costTypeSegments,
   displayModelName,
   freeModelKind,
@@ -840,13 +841,15 @@ export function UsagePage() {
                           <th className="w-full py-2 text-left font-normal">Model</th>
                           <th className="py-2 pl-6 font-normal">Cost</th>
                           <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
+                          <th className="hidden py-2 pl-6 font-normal md:table-cell">Cache hit</th>
+                          <th className="hidden py-2 pl-6 font-normal md:table-cell">Thinking</th>
                           <th className="py-2 pl-6 font-normal">Tokens</th>
                         </tr>
                       </thead>
                       <tbody>
                         {breakdownModels.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                            <td colSpan={7} className="py-6 text-center text-muted-foreground">
                               No activity in this window.
                             </td>
                           </tr>
@@ -859,6 +862,7 @@ export function UsagePage() {
                               metric === "tokens" ? "tokens" : "cost",
                             );
                             const rowFigures = figureClass(isProviderLoading(model.provider));
+                            const cacheHit = cacheHitRate(model);
                             return (
                               <tr
                                 key={key}
@@ -912,6 +916,14 @@ export function UsagePage() {
                                 </td>
                                 <td className={cn("hidden py-2.5 pl-6 sm:table-cell", rowFigures)}>
                                   {share === null ? "" : formatPercent(share)}
+                                </td>
+                                <td className={cn("hidden py-2.5 pl-6 md:table-cell", rowFigures)}>
+                                  {cacheHit === null ? "-" : formatPercent(cacheHit)}
+                                </td>
+                                <td className={cn("hidden py-2.5 pl-6 md:table-cell", rowFigures)}>
+                                  {model.tokens.reasoningTokens > 0
+                                    ? formatTokens(model.tokens.reasoningTokens)
+                                    : "-"}
                                 </td>
                                 <td className={cn("py-2.5 pl-6", rowFigures)}>
                                   {formatTokens(model.totalTokens)}
