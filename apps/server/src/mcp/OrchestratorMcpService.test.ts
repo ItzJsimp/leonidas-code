@@ -1333,6 +1333,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           adapterRegistryLayer([codexInstanceId]),
           Layer.mock(ProjectService.ProjectService)({}),
           Layer.mock(TaskBoardService.TaskBoardService)({}),
+          ServerSettings.layerTest(),
           Layer.mock(SecretRequests.SecretRequests)({}),
           Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
         );
