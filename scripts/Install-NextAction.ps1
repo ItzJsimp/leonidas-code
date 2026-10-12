@@ -14,8 +14,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $source = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 if (-not $AiosRoot) {
+    # A clone at a drive root has no grandparent; Split-Path returns ''.
     $parent = Split-Path (Split-Path $source)
-    $AiosRoot = if ((Test-Path -LiteralPath (Join-Path $parent 'AGENTS.md')) -and
+    $AiosRoot = if ($parent -and (Test-Path -LiteralPath (Join-Path $parent 'AGENTS.md')) -and
         (Test-Path -LiteralPath (Join-Path $parent 'tasks')) -and
         (Test-Path -LiteralPath (Join-Path $parent 'projects'))) { $parent } else { $source }
 }

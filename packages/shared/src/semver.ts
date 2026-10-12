@@ -8,14 +8,11 @@ interface ParsedSemver {
 const SEMVER_NUMBER_SEGMENT = /^\d+$/;
 
 export function normalizeSemverVersion(version: string): string {
-  const [main, prerelease] = version.trim().split("-", 2);
-  const segments: string[] = [];
-  for (const segment of (main ?? "").split(".")) {
-    const trimmed = segment.trim();
-    if (trimmed.length > 0) {
-      segments.push(trimmed);
-    }
-  }
+  const trimmed = version.trim();
+  const suffixIndex = trimmed.search(/[-+]/);
+  const main = suffixIndex === -1 ? trimmed : trimmed.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? "" : trimmed.slice(suffixIndex);
+  const segments = main ? main.split(".").map((segment) => segment.trim()) : [];
 
   // Pad shorthand versions ("20" or "20.1") up to three segments so major-only
   // and minor-only inputs parse and compare numerically. This matches
@@ -26,12 +23,19 @@ export function normalizeSemverVersion(version: string): string {
     segments.push("0");
   }
 
-  return prerelease ? `${segments.join(".")}-${prerelease}` : segments.join(".");
+  return `${segments.join(".")}${suffix}`;
 }
 
 export function parseSemver(value: string): ParsedSemver | null {
   const normalized = normalizeSemverVersion(value).replace(/^v/, "");
-  const [main = "", prerelease] = normalized.split("-", 2);
+  const match =
+    /^(\d+\.\d+\.\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(
+      normalized,
+    );
+  if (!match) return null;
+  const main = match[1]!;
+  const prerelease = match[2]?.split(".") ?? [];
+  if (prerelease.some((segment) => /^0\d+$/.test(segment))) return null;
   const segments = main.split(".");
   if (segments.length !== 3) {
     return null;
@@ -52,7 +56,7 @@ export function parseSemver(value: string): ParsedSemver | null {
   const major = Number.parseInt(majorSegment, 10);
   const minor = Number.parseInt(minorSegment, 10);
   const patch = Number.parseInt(patchSegment, 10);
-  if (![major, minor, patch].every(Number.isInteger)) {
+  if (![major, minor, patch].every(Number.isSafeInteger)) {
     return null;
   }
 
@@ -60,22 +64,8 @@ export function parseSemver(value: string): ParsedSemver | null {
     major,
     minor,
     patch,
-    prerelease: parsePrereleaseSegments(prerelease),
+    prerelease,
   };
-}
-
-function parsePrereleaseSegments(prerelease: string | undefined): ReadonlyArray<string> {
-  if (prerelease === undefined) {
-    return [];
-  }
-  const segments: string[] = [];
-  for (const segment of prerelease.split(".")) {
-    const trimmed = segment.trim();
-    if (trimmed.length > 0) {
-      segments.push(trimmed);
-    }
-  }
-  return segments;
 }
 
 function comparePrereleaseIdentifier(left: string, right: string): number {
@@ -83,7 +73,7 @@ function comparePrereleaseIdentifier(left: string, right: string): number {
   const rightNumeric = SEMVER_NUMBER_SEGMENT.test(right);
 
   if (leftNumeric && rightNumeric) {
-    return Number.parseInt(left, 10) - Number.parseInt(right, 10);
+    return left.length - right.length || (left < right ? -1 : left > right ? 1 : 0);
   }
   if (leftNumeric) {
     return -1;
@@ -91,7 +81,7 @@ function comparePrereleaseIdentifier(left: string, right: string): number {
   if (rightNumeric) {
     return 1;
   }
-  return left.localeCompare(right);
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 export function compareSemverVersions(left: string, right: string): number {
@@ -154,7 +144,7 @@ export const satisfiesSemverRange: (rawVersion: string, range: string) => boolea
   function satisfiesSemverRange(rawVersion, range) {
     const normalizedVersion = String(rawVersion).trim().replace(/^v/, "");
     const versionMatch = normalizedVersion.match(
-      /^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-[0-9A-Za-z.-]+)?$/,
+      /^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
     );
     if (!versionMatch) {
       return false;

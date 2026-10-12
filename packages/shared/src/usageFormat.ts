@@ -18,11 +18,11 @@ const CURRENCY = new Intl.NumberFormat("en-US", {
 const INTEGER = new Intl.NumberFormat("en-US");
 
 export function formatUsd(value: number): string {
-  return CURRENCY.format(value);
+  return Number.isFinite(value) ? CURRENCY.format(value) : "Unavailable";
 }
 
 export function formatCount(value: number): string {
-  return INTEGER.format(Math.round(value));
+  return Number.isFinite(value) ? INTEGER.format(Math.round(value)) : "Unavailable";
 }
 
 /**
@@ -30,21 +30,25 @@ export function formatCount(value: number): string {
  * columns of numbers line up at a glance (`19.9B`, `76.7M`, `804K`).
  */
 export function formatTokens(value: number): string {
+  if (!Number.isFinite(value)) return "Unavailable";
   const abs = Math.abs(value);
-  if (abs >= 1e12) return `${trim(value / 1e12)}T`;
-  if (abs >= 1e9) return `${trim(value / 1e9)}B`;
-  if (abs >= 1e6) return `${trim(value / 1e6)}M`;
-  if (abs >= 1e3) return `${trim(value / 1e3)}K`;
+  // Promote at the rounding boundary rather than displaying 1000K or 1000M.
+  if (abs >= 999.5e9) return `${trim(value / 1e12)}T`;
+  if (abs >= 999.5e6) return `${trim(value / 1e9)}B`;
+  if (abs >= 999.5e3) return `${trim(value / 1e6)}M`;
+  if (abs >= 999.5) return `${trim(value / 1e3)}K`;
   return INTEGER.format(Math.round(value));
 }
 
 function trim(value: number): string {
   const abs = Math.abs(value);
   const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
-  return value.toFixed(digits).replace(/\.0+$/, "");
+  return value.toFixed(digits).replace(/(\.\d*?[1-9])0+$|\.0+$/, "$1");
 }
 
 export function formatPercent(share: number, digits = 1): string {
+  if (!Number.isFinite(share)) return "Unavailable";
+  digits = Number.isFinite(digits) ? Math.max(0, Math.min(6, Math.trunc(digits))) : 1;
   const percent = share * 100;
   const smallest = 10 ** -digits;
   if (percent > 0 && percent < smallest) return `<${smallest.toFixed(digits)}%`;
@@ -62,6 +66,7 @@ export function formatUsageContractMismatch(
 
 /** `2026-08-07` to `Aug 7`. */
 export function formatDayShort(day: string): string {
+  if (!validUsageDay(day)) return day;
   const [year, month, dayOfMonth] = day.split("-").map((part) => Number(part));
   if (year === undefined || month === undefined || dayOfMonth === undefined) return day;
   const MONTHS = [
@@ -81,12 +86,23 @@ export function formatDayShort(day: string): string {
   return `${MONTHS[month - 1] ?? ""} ${dayOfMonth}`;
 }
 
+function validUsageDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const timestamp = Date.parse(`${day}T00:00:00Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === day;
+}
+
+// Malformed restored windows must not allocate millions of chart buckets.
+const MAX_USAGE_BUCKETS = 10_000;
+
 /** Inclusive day list between two `YYYY-MM-DD` bounds. */
 export function enumerateDays(sinceDay: string, untilDay: string): readonly string[] {
   const days: string[] = [];
+  if (!validUsageDay(sinceDay) || !validUsageDay(untilDay)) return days;
   const start = Date.parse(`${sinceDay}T00:00:00Z`);
   const end = Date.parse(`${untilDay}T00:00:00Z`);
   if (Number.isNaN(start) || Number.isNaN(end) || end < start) return days;
+  if ((end - start) / 86_400_000 + 1 > MAX_USAGE_BUCKETS) return days;
 
   for (let cursor = start; cursor <= end; cursor += 86_400_000) {
     days.push(new Date(cursor).toISOString().slice(0, 10));
@@ -123,6 +139,7 @@ export function enumerateHourStarts(
   const start = Date.parse(sinceTime);
   const end = Date.parse(untilTime);
   if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return starts;
+  if (Math.ceil((end - start) / HOUR_MS) > MAX_USAGE_BUCKETS) return starts;
 
   for (let cursor = start; cursor < end; cursor += bucketMinutes * 60_000) {
     starts.push(new Date(cursor).toISOString());

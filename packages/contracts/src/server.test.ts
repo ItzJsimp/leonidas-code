@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
 import {
+  OtlpEndpointCheckInput,
   resolveEnvironmentMachineKind,
   ServerConfig,
   ServerObservability,
@@ -137,6 +138,27 @@ describe("ServerProvider", () => {
 
     expect(parsed.models[0]?.isLegacy).toBe(true);
   });
+
+  it("decodes optional per-token model pricing", () => {
+    const parsed = decodeServerProvider({
+      ...baseProviderSnapshot,
+      models: [
+        {
+          slug: "deepseek/deepseek-v4.1-flash",
+          name: "DeepSeek V4.1 Flash",
+          isCustom: false,
+          capabilities: null,
+          inputCostPerMillionTokens: 0.25,
+          outputCostPerMillionTokens: 1,
+        },
+      ],
+    });
+
+    expect(parsed.models[0]).toMatchObject({
+      inputCostPerMillionTokens: 0.25,
+      outputCostPerMillionTokens: 1,
+    });
+  });
 });
 
 describe("server config forward compatibility", () => {
@@ -264,5 +286,18 @@ describe("resolveEnvironmentMachineKind", () => {
     expect(
       resolveEnvironmentMachineKind({ environment: parsed, settings: decodeSettings({}) }),
     ).toBe("server");
+  });
+});
+
+describe("OtlpEndpointCheckInput", () => {
+  const decode = Schema.decodeUnknownSync(OtlpEndpointCheckInput);
+
+  it("accepts HTTP receivers only", () => {
+    expect(decode({ signal: "traces", url: "https://collector.example.com/v1/traces" }).url).toBe(
+      "https://collector.example.com/v1/traces",
+    );
+    for (const url of ["data:text/plain,ok", "file:///etc/hosts", "collector:4318/v1/traces"]) {
+      expect(() => decode({ signal: "traces", url })).toThrow();
+    }
   });
 });

@@ -156,6 +156,7 @@ export function PromptPredictionSettings() {
             }
             control={
               <ProviderModelPicker
+                environmentId={environment?.environmentId ?? null}
                 activeInstanceId={selection.instanceId}
                 model={selection.model}
                 lockedProvider={null}

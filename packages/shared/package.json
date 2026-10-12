@@ -343,6 +343,10 @@
       "types": "./src/nodeRuntime.ts",
       "import": "./src/nodeRuntime.ts"
     },
+    "./AgentScope": {
+      "types": "./src/AgentScope.ts",
+      "import": "./src/AgentScope.ts"
+    },
     "./HostProcess": {
       "types": "./src/HostProcess.ts",
       "import": "./src/HostProcess.ts"
@@ -374,6 +378,10 @@
     "./usageFormat": {
       "types": "./src/usageFormat.ts",
       "import": "./src/usageFormat.ts"
+    },
+    "./autoRouter": {
+      "types": "./src/autoRouter.ts",
+      "import": "./src/autoRouter.ts"
     },
     "./usageLimits": {
       "types": "./src/usageLimits.ts",
@@ -506,6 +514,10 @@
     "./PtyAdapter": {
       "types": "./src/PtyAdapter.ts",
       "import": "./src/PtyAdapter.ts"
+    },
+    "./usageForecast": {
+      "types": "./src/usageForecast.ts",
+      "import": "./src/usageForecast.ts"
     }
   },
   "scripts": {

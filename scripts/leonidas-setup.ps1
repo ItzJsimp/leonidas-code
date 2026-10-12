@@ -2,7 +2,7 @@
 .SYNOPSIS
   One-shot setup for a Leonidas Code builder machine (Jake or Mob). Safe to re-run.
 .DESCRIPTION
-  1. Git: pull.rebase + rebase.autoStash so `git pull` never makes merge noise; disables a copied
+  1. Git: fast-forward-only pulls preserve local history and unfinished work; disables a copied
      AIOS pre-commit hook that does not exist in this repo.
   2. Identity (optional): writes CLAUDE.local.md importing your own AIOS and keeps it out of git.
   3. App: installs the latest Leonidas Code release from GitHub (upgrades an old T3 Code install
@@ -22,8 +22,8 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
 
 # 1. Git
-git -C $repo config pull.rebase true
-git -C $repo config rebase.autoStash true
+git -C $repo config pull.rebase false
+git -C $repo config pull.ff only
 git -C $repo config fetch.prune true
 # .claude/skills is a symlink to .agents/skills; with core.symlinks off, Windows checks it out as a
 # text file and Claude finds no project skills. Needs Developer Mode.
@@ -37,8 +37,8 @@ if ((Test-Path -LiteralPath $hook) -and (Select-String -LiteralPath $hook -Patte
   Move-Item -LiteralPath $hook -Destination "$hook.aios-disabled" -Force
   Write-Host "Disabled copied AIOS pre-commit hook."
 }
-git -C $repo pull --rebase --autostash --quiet origin main
-Write-Host "Git: rebase pulls on, up to date with origin/main."
+& (Join-Path $PSScriptRoot 'Sync-LeonidasSource.ps1')
+Write-Host "Git: fast-forward-only pulls configured."
 
 # 2. Identity
 if ($AiosClaudeMd) {

@@ -47,3 +47,12 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).toContain("</leonidas_output_standard>");
   });
 });
+
+describe("user question instructions", () => {
+  it("teaches the grill-style structured question flow to every harness", () => {
+    const instructions = buildRuntimeInstructions({ harness: "Codex" });
+    expect(instructions).toContain("<asking_the_user>");
+    expect(instructions).toContain('end its label with " (Recommended)"');
+    expect(instructions).toContain("whole frontier in one call");
+  });
+});

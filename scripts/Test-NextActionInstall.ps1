@@ -51,7 +51,7 @@ Write-Host '[PASS] Core skills linked from the AIOS canon, discoverable to Claud
 
 # Test automatic parent detection with the exact projects/leonidas-code layout.
 New-Item -ItemType Directory -Path (Join-Path $project 'scripts'),(Join-Path $project '.agents/skills') -Force | Out-Null
-foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1')) {
+foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1','Sync-LeonidasSource.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script) -Destination (Join-Path $project 'scripts') -Force
 }
 & (Join-Path $project 'scripts/Install-NextAction.ps1')
@@ -64,7 +64,7 @@ Write-Host "Fixture: $fixture"
 $hookProject = Join-Path $fixture 'Code hook fixture'
 New-Item -ItemType Directory -Path (Join-Path $hookProject 'scripts/nested'),(Join-Path $hookProject '.agents/skills') -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $hookProject 'AGENTS.md') 'Hook fixture instructions'
-foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1')) {
+foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1','Sync-LeonidasSource.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script) -Destination (Join-Path $hookProject 'scripts')
 }
 Copy-Item -LiteralPath (Join-Path $source '.agents/skills/next-action') -Destination (Join-Path $hookProject '.agents/skills') -Recurse

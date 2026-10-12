@@ -21,6 +21,7 @@ export type T3McpToolSummaryAction =
   | "thread-send"
   | "thread-wait"
   | "thread-interrupt"
+  | "workflow-stop"
   | "thread-configuration"
   | "thread-configure"
   | "thread-fork"
@@ -146,6 +147,10 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_thread_read: tool(["Read", "Reading", "Read", "a Leonidas thread"], "thread-read"),
   t3_thread_send: tool(["Send", "Sending", "Sent", "to a Leonidas thread"], "thread-send"),
   t3_thread_wait: tool(["Wait", "Waiting", "Waited", "for a Leonidas thread"], "thread-wait"),
+  t3_workflow_stop: tool(
+    ["Stop", "Stopping", "Requested a stop for", "a workflow"],
+    "workflow-stop",
+  ),
   t3_thread_interrupt: tool(
     ["Interrupt", "Interrupting", "Requested an interrupt of", "a Leonidas thread"],
     "thread-interrupt",

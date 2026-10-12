@@ -1,14 +1,18 @@
 /**
  * OpenRouterDriver — `ProviderDriver` for the OpenRouter AI provider and router.
  *
- * Runs selected OpenRouter models through the Claude Agent SDK and OpenRouter
- * Anthropic-compatible endpoint. Model and provider compatibility varies;
- * non-Anthropic routes are not guaranteed. A native OpenAI-compatible adapter
- * is a separate incomplete path.
+ * Runs OpenRouter through the Claude Agent SDK runtime with OpenRouter API
+ * endpoints pre-configured (ANTHROPIC_BASE_URL=https://openrouter.ai/api).
+ * The picker catalog comes from OpenRouter's tool-capable text model list.
  *
  * @module provider/Drivers/OpenRouterDriver
  */
-import { OpenRouterSettings, ProviderDriverKind, type ClaudeSettings } from "@t3tools/contracts";
+import {
+  OpenRouterSettings,
+  ProviderDriverKind,
+  type ClaudeSettings,
+  type ModelCapabilities,
+} from "@t3tools/contracts";
 import * as Cache from "effect/Cache";
 import * as Duration from "effect/Duration";
 import * as Crypto from "effect/Crypto";
@@ -46,7 +50,9 @@ import {
 } from "../ClaudeProvider.ts";
 import { makeManagedServerProvider } from "@t3tools/provider-core/server/managedProvider";
 import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
+import { providerModelsFromSettings } from "@t3tools/provider-core/server/snapshotProbe";
 import { resolveClaudeModelCatalog } from "../ClaudeModelCatalog.ts";
+import { bundledOpenRouterModels, fetchOpenRouterModels } from "../openRouterModelCatalog.ts";
 import {
   defaultProviderContinuationIdentity,
   type ProviderDriver,
@@ -72,7 +78,9 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 const decodeOpenRouterSettings = Schema.decodeSync(OpenRouterSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("openrouter");
+const CLAUDE_DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
 const CAPABILITIES_PROBE_TTL = Duration.minutes(5);
+const OPENROUTER_MODEL_CAPABILITIES: ModelCapabilities = { optionDescriptors: [] };
 
 function isOpenRouterNativeCommandPath(commandPath: string): boolean {
   const normalized = normalizeCommandPath(commandPath);
@@ -153,9 +161,10 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
         const latestVersions = yield* ProviderLatestVersions.ProviderLatestVersions;
         const resetCreditCoordinator = yield* ResetCreditCoordinator.ResetCreditCoordinator;
         const catalogService = yield* ModelCatalog.ModelCatalog;
-        const modelCatalog = catalogService
-          .current(DRIVER_KIND)
-          .pipe(Effect.map((catalog) => catalog ?? { models: [], defaultChatModel: undefined }));
+        const claudeModelCatalog = catalogService
+          .current(CLAUDE_DRIVER_KIND)
+          .pipe(Effect.map(resolveClaudeModelCatalog));
+        const openRouterModelCatalog = catalogService.current(DRIVER_KIND);
 
         const effectiveBaseUrl = config.baseUrl.trim() || "https://openrouter.ai/api";
         const effectiveApiKey = config.apiKey.trim();
@@ -220,13 +229,8 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
             environment: openRouterEnvironment,
             enabled,
             config: claudeCompatibleConfig,
-            driver: DRIVER_KIND,
           },
-          {
-            scopedLimitNames,
-            onUsageLimits: (update) => snapshot.applyUsageLimits(update),
-            driver: DRIVER_KIND,
-          },
+          { scopedLimitNames, onUsageLimits: (update) => snapshot.applyUsageLimits(update) },
         ).pipe(
           Effect.mapError(
             (cause) =>
@@ -239,10 +243,54 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
           ),
         );
 
+        const modelDiscoveryCache = yield* Cache.make({
+          capacity: 1,
+          timeToLive: Duration.minutes(15),
+          lookup: (apiKey: string) =>
+            openRouterModelCatalog.pipe(
+              Effect.flatMap((catalog) => {
+                const bundled = bundledOpenRouterModels(catalog);
+                return fetchOpenRouterModels(apiKey, effectiveBaseUrl, catalog).pipe(
+                  Effect.map((models) => ({
+                    models,
+                    authStatus: "authenticated" as const,
+                    message: undefined,
+                  })),
+                  Effect.catchTags({
+                    OpenRouterModelCatalogError: (error) =>
+                      Effect.succeed({
+                        models: bundled,
+                        authStatus:
+                          error.status === 401 || error.status === 403
+                            ? ("unauthenticated" as const)
+                            : ("unknown" as const),
+                        message:
+                          error.status === 401 || error.status === 403
+                            ? "OpenRouter rejected this API key. Check it in Settings > Providers."
+                            : "OpenRouter's model list is unavailable; showing the bundled models.",
+                      }),
+                  }),
+                  Effect.catchCause(() =>
+                    Effect.logWarning(
+                      "OpenRouter model discovery failed; using its bundled model list.",
+                    ).pipe(
+                      Effect.as({
+                        models: bundled,
+                        authStatus: "unknown" as const,
+                        message:
+                          "Could not refresh OpenRouter's model list; showing the bundled models.",
+                      }),
+                    ),
+                  ),
+                );
+              }),
+            ),
+        });
+
         const textGeneration = yield* makeClaudeTextGeneration(
           claudeCompatibleConfig,
           processEnv,
-          modelCatalog as any,
+          claudeModelCatalog,
         );
 
         const capabilitiesProbeCache = yield* Cache.make({
@@ -261,33 +309,59 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
 
         const checkProvider = catalogService.refreshInBackground.pipe(
           Effect.andThen(
-            modelCatalog.pipe(
-              Effect.flatMap((catalog) =>
-                checkClaudeProviderStatus(
-                  claudeCompatibleConfig,
-                  () => Cache.get(capabilitiesProbeCache, capabilitiesCacheKey),
-                  processEnv,
-                  cwd,
-                  catalog as any,
-                  scopedLimitNames,
-                  () => Effect.succeed(undefined),
-                ),
-              ),
-              Effect.map(stampIdentity),
-              Effect.map((providerSnapshot) => ({
-                ...providerSnapshot,
-                auth: effectiveApiKey
-                  ? { status: "authenticated" as const }
-                  : { status: "unauthenticated" as const },
-                message: !effectiveApiKey
-                  ? "OpenRouter API Key not set. Open Settings > Providers to configure."
-                  : providerSnapshot.message,
-              })),
+            Effect.all({ claude: claudeModelCatalog, openRouter: openRouterModelCatalog }).pipe(
+              Effect.flatMap(({ claude, openRouter }) => {
+                const discoveredModels = effectiveApiKey
+                  ? Cache.get(modelDiscoveryCache, effectiveApiKey)
+                  : Effect.succeed({
+                      models: bundledOpenRouterModels(openRouter),
+                      authStatus: "unauthenticated" as const,
+                      message:
+                        "OpenRouter API key not set. Add one in Settings > Providers to enable routing.",
+                    });
+                return discoveredModels.pipe(
+                  Effect.flatMap((discovery) =>
+                    checkClaudeProviderStatus(
+                      claudeCompatibleConfig,
+                      () => Cache.get(capabilitiesProbeCache, capabilitiesCacheKey),
+                      processEnv,
+                      cwd,
+                      claude,
+                      scopedLimitNames,
+                      () => Effect.succeed(undefined),
+                    ).pipe(
+                      Effect.map(stampIdentity),
+                      Effect.map((providerSnapshot) => ({
+                        ...providerSnapshot,
+                        status:
+                          discovery.authStatus === "unauthenticated"
+                            ? effectiveApiKey
+                              ? ("error" as const)
+                              : ("warning" as const)
+                            : providerSnapshot.status,
+                        models: providerModelsFromSettings(
+                          discovery.models,
+                          claudeCompatibleConfig.customModels,
+                          OPENROUTER_MODEL_CAPABILITIES,
+                        ),
+                        updateRequiredModels: [],
+                        auth: { status: discovery.authStatus },
+                        ...(discovery.message
+                          ? { message: discovery.message }
+                          : providerSnapshot.message
+                            ? { message: providerSnapshot.message }
+                            : {}),
+                      })),
+                    ),
+                  ),
+                );
+              }),
             ),
           ),
           Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
           Effect.provideService(FileSystem.FileSystem, fileSystem),
           Effect.provideService(Path.Path, path),
+          Effect.provideService(HttpClient.HttpClient, httpClient),
         );
 
         const snapshotSettings = yield* makeProviderSnapshotSettingsSource(claudeCompatibleConfig);
@@ -298,39 +372,20 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
             streamSettings: snapshotSettings.streamSettings,
             haveSettingsChanged: haveProviderSnapshotSettingsChanged,
             initialSnapshot: (settings) =>
-              modelCatalog.pipe(
-                Effect.map((catalog) => {
-                  const models = (catalog?.models ?? []).map((entry: any) => ({
-                    slug: entry.slug,
-                    name: entry.name,
-                    isCustom: false,
-                    ...(entry.status === "legacy" ? { isLegacy: true } : {}),
-                    ...((catalog as any)?.defaultChatModel === entry.slug
-                      ? { isDefault: true }
-                      : {}),
-                    ...(entry.badge ? { badge: entry.badge } : {}),
-                    capabilities: null,
-                  }));
-                  return {
-                    displayName: "OpenRouter",
-                    enabled: effectiveConfig.enabled,
-                    installed: true,
-                    version: "openrouter",
-                    status: effectiveConfig.enabled
-                      ? effectiveConfig.apiKey.trim().length > 0
-                        ? ("ready" as const)
-                        : ("needs_auth" as const)
-                      : ("disabled" as const),
-                    auth:
-                      effectiveConfig.apiKey.trim().length > 0
-                        ? { status: "authenticated" as const }
-                        : { status: "unauthenticated" as const },
-                    checkedAt: "2026-10-11T01:35:00Z",
-                    models,
-                    skills: [],
-                    slashCommands: [],
-                  } as any;
-                }),
+              Effect.all({ claude: claudeModelCatalog, openRouter: openRouterModelCatalog }).pipe(
+                Effect.flatMap(({ claude, openRouter }) =>
+                  makePendingClaudeProvider(settings.provider, claude).pipe(
+                    Effect.map((providerSnapshot) => ({
+                      ...providerSnapshot,
+                      models: providerModelsFromSettings(
+                        bundledOpenRouterModels(openRouter),
+                        settings.provider.customModels,
+                        OPENROUTER_MODEL_CAPABILITIES,
+                      ),
+                      updateRequiredModels: [],
+                    })),
+                  ),
+                ),
                 Effect.map(stampIdentity),
               ),
             checkProvider,
@@ -372,7 +427,10 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
           accentColor,
           enabled,
           snapshot,
-          invalidateCaches: Cache.invalidateAll(capabilitiesProbeCache),
+          invalidateCaches: Effect.all(
+            [Cache.invalidateAll(capabilitiesProbeCache), Cache.invalidateAll(modelDiscoveryCache)],
+            { concurrency: "unbounded", discard: true },
+          ),
           snapshotForCwd: (workspaceCwd: string) =>
             snapshot.getSnapshot.pipe(
               Effect.flatMap((machineSnapshot) =>

@@ -39,6 +39,7 @@ export const ServerProviderUsageWindow = Schema.Struct({
   resetsAt: Schema.optional(IsoDateTime),
   windowDurationMins: Schema.optional(NonNegativeInt),
   tokenEstimate: Schema.optional(SubscriptionTokenEstimate),
+  projectedUsedPercentAtReset: Schema.optional(Schema.Number),
 });
 export type ServerProviderUsageWindow = typeof ServerProviderUsageWindow.Type;
 
@@ -107,6 +108,8 @@ export const UsageLimitSourceAccount = Schema.Struct({
   email: Schema.optional(TrimmedNonEmptyString),
   /** Plan as the matching provider would label it (`ChatGPT Pro 20x Subscription`). */
   plan: Schema.optional(TrimmedNonEmptyString),
+  /** The workspace the quota belongs to, when the source names one; see `ServerProviderAuth`. */
+  workspaceId: Schema.optional(TrimmedNonEmptyString),
   usageLimits: ServerProviderUsageLimits,
 });
 export type UsageLimitSourceAccount = typeof UsageLimitSourceAccount.Type;
