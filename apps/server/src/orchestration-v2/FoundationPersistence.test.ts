@@ -2434,6 +2434,47 @@ it.layer(layerTest)("orchestration V2 foundation persistence", (it) => {
     }).pipe(Effect.provide(Layer.fresh(layerEffectOutboxProvided))),
   );
 
+  it.effect("starts a successor turn while its predecessor checkpoint finalizes", () =>
+    Effect.gen(function* () {
+      const outbox = yield* EffectOutbox.EffectOutboxV2;
+      const workerId = "checkpoint-background-worker";
+      const threadId = ThreadId.make("thread:foundation-checkpoint-background");
+      yield* outbox.enqueue([
+        {
+          id: "effect:foundation-checkpoint-background:capture",
+          commandId: CommandId.make("command:foundation-checkpoint-background:capture"),
+          threadId,
+          request: {
+            type: "checkpoint.capture",
+            runId: RunId.make("run:foundation-checkpoint-background:previous"),
+            scopeId: CheckpointScopeId.make("scope:foundation-checkpoint-background"),
+          },
+        },
+        {
+          id: "effect:foundation-checkpoint-background:start",
+          commandId: CommandId.make("command:foundation-checkpoint-background:start"),
+          threadId,
+          request: {
+            type: "provider-turn.start",
+            runId: RunId.make("run:foundation-checkpoint-background:next"),
+          },
+        },
+      ]);
+
+      const capture = yield* outbox.claimNext({ workerId, leaseDurationMs: 30_000 });
+      assert.isTrue(Option.isSome(capture));
+      if (Option.isNone(capture)) return;
+      assert.equal(capture.value.request.type, "checkpoint.capture");
+
+      const start = yield* outbox.claimNext({
+        workerId: `${workerId}:start`,
+        leaseDurationMs: 30_000,
+      });
+      assert.isTrue(Option.isSome(start));
+      if (Option.isSome(start)) assert.equal(start.value.request.type, "provider-turn.start");
+    }).pipe(Effect.provide(Layer.fresh(layerEffectOutboxProvided))),
+  );
+
   it.effect("keeps later thread effects behind an earlier effect waiting to retry", () =>
     Effect.gen(function* () {
       const outbox = yield* EffectOutbox.EffectOutboxV2;

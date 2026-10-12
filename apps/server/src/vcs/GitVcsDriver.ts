@@ -425,13 +425,6 @@ const CHECKPOINT_RECOVERY_MAX_CANDIDATES = 64;
 const CHECKPOINT_RECOVERY_TIMEOUT = "5 seconds";
 const GIT_CHECK_IGNORE_MAX_STDIN_BYTES = 256 * 1024;
 const CHECKPOINT_DIFF_MAX_OUTPUT_BYTES = 10_000_000;
-const WORKSPACE_GIT_HARDENED_CONFIG_ARGS = [
-  "-c",
-  "core.fsmonitor=false",
-  "-c",
-  "core.untrackedCache=false",
-] as const;
-
 const nowFreshness = Effect.fn("GitVcsDriver.nowFreshness")(function* () {
   const now = yield* DateTime.now;
   return {
@@ -469,6 +462,22 @@ function chunkPathsForGitCheckIgnore(relativePaths: ReadonlyArray<string>): stri
   }
 
   return chunks;
+}
+
+function checkpointStatusPaths(stdout: string): string[] {
+  const paths = new Set<string>();
+  const records = stdout.split("\0");
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    if (record === undefined || record.length <= 3 || record[2] !== " ") continue;
+    paths.add(record.slice(3));
+    // Porcelain v1 -z emits a second, bare path for rename and copy records.
+    if (record[0] === "R" || record[0] === "C" || record[1] === "R" || record[1] === "C") {
+      const originalPath = records[++index];
+      if (originalPath !== undefined && originalPath.length > 0) paths.add(originalPath);
+    }
+  }
+  return [...paths];
 }
 
 function parseGitRemoteVerboseOutput(
@@ -608,14 +617,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
       vcsProcess,
       "GitVcsDriver.listWorkspaceFiles",
       cwd,
-      [
-        ...WORKSPACE_GIT_HARDENED_CONFIG_ARGS,
-        "ls-files",
-        "--cached",
-        "--others",
-        "--exclude-standard",
-        "-z",
-      ],
+      ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
       {
         allowNonZeroExit: true,
         timeoutMs: 20_000,
@@ -706,7 +708,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         vcsProcess,
         "GitVcsDriver.filterIgnoredPaths",
         cwd,
-        [...WORKSPACE_GIT_HARDENED_CONFIG_ARGS, "check-ignore", "--no-index", "-z", "--stdin"],
+        ["check-ignore", "--no-index", "-z", "--stdin"],
         {
           stdin: `${chunk.join("\0")}\0`,
           allowNonZeroExit: true,
@@ -810,12 +812,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
   const checkpoints: VcsDriver.VcsCheckpointOps = {
     captureCheckpoint: Effect.fn("GitVcsDriver.checkpoints.captureCheckpoint")(function* (input) {
       const operation = VcsProcess.CHECKPOINT_CAPTURE_OPERATION;
-      const indexConfig = [
-        "-c",
-        "core.fsmonitor=false",
-        "-c",
-        "sparse.expectFilesOutsideOfPatterns=false",
-      ];
+      const indexConfig = ["-c", "sparse.expectFilesOutsideOfPatterns=false"];
       const gitCommonDir = yield* resolveGitCommonDir(input.cwd);
       const indexId = yield* crypto.randomUUIDv4.pipe(Effect.orDie);
       const tempIndexPath = path.join(gitCommonDir, `t3-checkpoint-index-${indexId}`);
@@ -961,11 +958,31 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           }
         }
 
+        const changed = yield* execute({
+          operation,
+          cwd: input.cwd,
+          args: [
+            ...indexConfig,
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+            "--",
+            ".",
+          ],
+          env: commitEnv,
+          maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
+          outputMode: "truncate",
+        });
+        const changedPaths = changed.stdoutTruncated
+          ? ["."]
+          : checkpointStatusPaths(changed.stdout).map((entry) => `:(top,literal)${entry}`);
         const stageFiles = (exclusions: ReadonlyArray<string>) =>
           execute({
             operation,
             cwd: input.cwd,
-            // Preserve absent skipped entries, but capture present nonignored files outside the cone.
+            // Stage only status-selected paths. Falling back to `.` preserves
+            // correctness when the changed path list exceeds its bounded buffer.
             args: [
               ...indexConfig,
               ...durableWrite,
@@ -973,63 +990,65 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
               ...(sparseCheckout ? ["--sparse"] : []),
               "-A",
               "--",
-              ".",
+              ...changedPaths,
               ...exclusions,
             ],
             env: commitEnv,
           });
-        yield* stageFiles([]).pipe(
-          Effect.catchTags({
-            VcsProcessExitError: (error) =>
-              Effect.gen(function* () {
-                // Git cannot stage an embedded repository until it has a commit. Discover these
-                // only after staging fails so ordinary checkpoints do not need another file scan.
-                const untracked = yield* execute({
-                  operation,
-                  cwd: input.cwd,
-                  args: ["ls-files", "--others", "--exclude-standard", "-z", "--", "."],
-                  env: commitEnv,
-                  maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
-                });
-                if (untracked.stdoutTruncated) return yield* error;
-                const candidates = splitNullSeparatedGitStdoutPaths(untracked).filter((entry) =>
-                  entry.endsWith("/"),
-                );
-                // Refuse excessive recovery work before probing any nested repositories.
-                if (candidates.length > CHECKPOINT_RECOVERY_MAX_CANDIDATES) return yield* error;
-                // Discover each child's repository instead of inheriting the server's Git bindings.
-                const nestedRepoEnv: NodeJS.ProcessEnv = {
-                  ...process.env,
-                  GIT_DIR: undefined,
-                  GIT_WORK_TREE: undefined,
-                  GIT_COMMON_DIR: undefined,
-                  GIT_INDEX_FILE: undefined,
-                  GIT_OBJECT_DIRECTORY: undefined,
-                  GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
-                };
-                const exclusions: Array<string> = [];
-                for (const entry of candidates) {
-                  const nestedCwd = path.join(input.cwd, entry);
-                  if (
-                    (yield* fileSystem
-                      .exists(path.join(nestedCwd, ".git"))
-                      .pipe(Effect.mapError(() => error))) &&
-                    !(yield* hasHeadCommit(nestedCwd, nestedRepoEnv))
-                  ) {
-                    exclusions.push(`:(exclude,literal)${entry}`);
+        if (changedPaths.length > 0) {
+          yield* stageFiles([]).pipe(
+            Effect.catchTags({
+              VcsProcessExitError: (error) =>
+                Effect.gen(function* () {
+                  // Git cannot stage an embedded repository until it has a commit. Discover these
+                  // only after staging fails so ordinary checkpoints do not need another file scan.
+                  const untracked = yield* execute({
+                    operation,
+                    cwd: input.cwd,
+                    args: ["ls-files", "--others", "--exclude-standard", "-z", "--", "."],
+                    env: commitEnv,
+                    maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
+                  });
+                  if (untracked.stdoutTruncated) return yield* error;
+                  const candidates = splitNullSeparatedGitStdoutPaths(untracked).filter((entry) =>
+                    entry.endsWith("/"),
+                  );
+                  // Refuse excessive recovery work before probing any nested repositories.
+                  if (candidates.length > CHECKPOINT_RECOVERY_MAX_CANDIDATES) return yield* error;
+                  // Discover each child's repository instead of inheriting the server's Git bindings.
+                  const nestedRepoEnv: NodeJS.ProcessEnv = {
+                    ...process.env,
+                    GIT_DIR: undefined,
+                    GIT_WORK_TREE: undefined,
+                    GIT_COMMON_DIR: undefined,
+                    GIT_INDEX_FILE: undefined,
+                    GIT_OBJECT_DIRECTORY: undefined,
+                    GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
+                  };
+                  const exclusions: Array<string> = [];
+                  for (const entry of candidates) {
+                    const nestedCwd = path.join(input.cwd, entry);
+                    if (
+                      (yield* fileSystem
+                        .exists(path.join(nestedCwd, ".git"))
+                        .pipe(Effect.mapError(() => error))) &&
+                      !(yield* hasHeadCommit(nestedCwd, nestedRepoEnv))
+                    ) {
+                      exclusions.push(`:(exclude,literal)${entry}`);
+                    }
                   }
-                }
-                if (exclusions.length === 0) return yield* error;
-                return yield* stageFiles(exclusions);
-              }).pipe(
-                // One budget covers discovery, queued Git admission, probes, and the staging retry.
-                Effect.timeoutOrElse({
-                  duration: CHECKPOINT_RECOVERY_TIMEOUT,
-                  orElse: () => Effect.fail(error),
-                }),
-              ),
-          }),
-        );
+                  if (exclusions.length === 0) return yield* error;
+                  return yield* stageFiles(exclusions);
+                }).pipe(
+                  // One budget covers discovery, queued Git admission, probes, and the staging retry.
+                  Effect.timeoutOrElse({
+                    duration: CHECKPOINT_RECOVERY_TIMEOUT,
+                    orElse: () => Effect.fail(error),
+                  }),
+                ),
+            }),
+          );
+        }
 
         const writeTreeResult = yield* execute({
           operation,

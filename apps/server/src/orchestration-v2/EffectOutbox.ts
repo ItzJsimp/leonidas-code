@@ -316,8 +316,10 @@ export const layer: Layer.Layer<EffectOutboxV2, never, SqlClient.SqlClient> = La
       ).pipe(Effect.asVoid);
     // Each thread runs its effects one at a time, in enqueue (rowid) order. An earlier
     // effect waiting out a retry backoff still blocks later ones, so a turn
-    // cannot start while a failed rollback is about to restore files. A claim
-    // that skips restart continuations is not blocked by them either.
+    // cannot start while a failed rollback is about to restore files. Checkpoint
+    // finalization is the exception: it is a durable background snapshot, so a
+    // successor provider turn may begin while it finishes. A claim that skips
+    // restart continuations is not blocked by them either.
     // Title generation is correlated metadata work, so it has its own
     // per-thread lane and cannot delay provider lifecycle effects.
     const claimableCandidatePredicate = (
@@ -347,6 +349,10 @@ export const layer: Layer.Layer<EffectOutboxV2, never, SqlClient.SqlClient> = La
                 }
               )
             )
+            AND (
+              candidate.effect_type = 'provider-turn.start'
+              AND active.effect_type = 'checkpoint.capture'
+            ) = 0
             AND (
               (
                 candidate.effect_type = 'thread-title.generate'

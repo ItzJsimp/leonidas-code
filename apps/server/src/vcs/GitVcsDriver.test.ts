@@ -1138,11 +1138,17 @@ it.effect("GitVcsDriver flushes checkpoint objects and refs to disk before publi
       checkpointRef: CheckpointRef.make("refs/t3/checkpoints/thread/turn/1"),
     });
 
+    const status = observedArgs.find((args) => args.includes("status"));
+    assert.isDefined(status);
+    assert.include(status, "--porcelain=v1");
+    assert.notInclude(status, "core.fsmonitor=false");
+    assert.notInclude(status, "core.untrackedCache=false");
+
     const writeCommands = ["add", "write-tree", "commit-tree", "update-ref"];
     const writes = observedArgs.filter((args) =>
       writeCommands.some((command) => args.includes(command)),
     );
-    assert.strictEqual(writes.length, 4);
+    assert.strictEqual(writes.length, 3);
     for (const args of writes) {
       const command = args.findIndex((arg) => writeCommands.includes(arg));
       for (const setting of ["core.fsync=objects,reference", "core.fsyncMethod=fsync"]) {
