@@ -40,6 +40,20 @@ import {
 } from "./taskBoard.ts";
 import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
 import * as Schema from "effect/Schema";
+import {
+  SavedItem,
+  SavedItemError,
+  SavedItemCreateInput,
+  SavedItemGetInput,
+  SavedItemImportInput,
+  SavedItemLaunchInput,
+  SavedItemListInput,
+  SavedItemListResult,
+  SavedItemScheduleInput,
+  SavedItemTaskInput,
+  SavedItemTransitionInput,
+  SavedItemUpdateInput,
+} from "./savedItem.ts";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
 import * as RpcMiddleware from "effect/rpc/RpcMiddleware";
@@ -580,6 +594,15 @@ export const WS_METHODS = {
 
   // Scheduled tasks
   scheduledTasksList: "scheduledTasks.list",
+  savedItemsList: "savedItems.list",
+  savedItemsGet: "savedItems.get",
+  savedItemsCreate: "savedItems.create",
+  savedItemsUpdate: "savedItems.update",
+  savedItemsTransition: "savedItems.transition",
+  savedItemsImport: "savedItems.import",
+  savedItemsLaunch: "savedItems.launch",
+  savedItemsSchedule: "savedItems.schedule",
+  savedItemsSaveTask: "savedItems.saveTask",
   scheduledTasksSubscribe: "scheduledTasks.subscribe",
   scheduledTasksUpsert: "scheduledTasks.upsert",
   scheduledTasksSetEnabled: "scheduledTasks.setEnabled",
@@ -1997,6 +2020,53 @@ const WsScheduledTasksListRpc = Rpc.make(WS_METHODS.scheduledTasksList, {
   error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
 });
 
+const savedItemRpcError = Schema.Union([SavedItemError, EnvironmentAuthorizationError]);
+const WsSavedItemsListRpc = Rpc.make(WS_METHODS.savedItemsList, {
+  payload: SavedItemListInput,
+  success: SavedItemListResult,
+  error: savedItemRpcError,
+});
+const WsSavedItemsGetRpc = Rpc.make(WS_METHODS.savedItemsGet, {
+  payload: SavedItemGetInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsCreateRpc = Rpc.make(WS_METHODS.savedItemsCreate, {
+  payload: SavedItemCreateInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsUpdateRpc = Rpc.make(WS_METHODS.savedItemsUpdate, {
+  payload: SavedItemUpdateInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsTransitionRpc = Rpc.make(WS_METHODS.savedItemsTransition, {
+  payload: SavedItemTransitionInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsImportRpc = Rpc.make(WS_METHODS.savedItemsImport, {
+  payload: SavedItemImportInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsLaunchRpc = Rpc.make(WS_METHODS.savedItemsLaunch, {
+  payload: SavedItemLaunchInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsScheduleRpc = Rpc.make(WS_METHODS.savedItemsSchedule, {
+  payload: SavedItemScheduleInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+const WsSavedItemsSaveTaskRpc = Rpc.make(WS_METHODS.savedItemsSaveTask, {
+  payload: SavedItemTaskInput,
+  success: SavedItem,
+  error: savedItemRpcError,
+});
+
 /** Streams the full scheduled-task list: one snapshot on subscribe, then a fresh list after every change. */
 const WsScheduledTasksSubscribeRpc = Rpc.make(WS_METHODS.scheduledTasksSubscribe, {
   payload: ScheduledTaskListInput,
@@ -2093,6 +2163,15 @@ export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthori
 ) {}
 
 export const WsRpcGroup = RpcGroup.make(
+  WsSavedItemsListRpc,
+  WsSavedItemsGetRpc,
+  WsSavedItemsCreateRpc,
+  WsSavedItemsUpdateRpc,
+  WsSavedItemsTransitionRpc,
+  WsSavedItemsImportRpc,
+  WsSavedItemsLaunchRpc,
+  WsSavedItemsScheduleRpc,
+  WsSavedItemsSaveTaskRpc,
   WsScribeGetStatusRpc,
   WsServerProbeRpc,
   WsServerGetConfigRpc,

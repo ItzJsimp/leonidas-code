@@ -635,6 +635,13 @@ function summaryActionPriority(action: ToolGroupAction | T3McpToolSummaryAction)
     case "attachment-send":
     case "board-task-update":
     case "board-task-create":
+    case "saved-item-create":
+    case "saved-item-update":
+    case "saved-item-transition":
+    case "saved-item-import":
+    case "saved-item-launch":
+    case "saved-item-schedule":
+    case "saved-item-task":
       return 0;
     case "other":
     case "update":

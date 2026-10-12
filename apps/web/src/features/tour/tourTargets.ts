@@ -23,6 +23,18 @@ export interface TourTarget {
 }
 
 export const TOUR_TARGETS = {
+  "saved-items": {
+    name: "Saved prompts and notes",
+    steps: [
+      {
+        title: "Keep a prompt for later",
+        body: "Ask your agent to save a prompt or note. It can list saved items, turn them into tasks, launch a prompt, or schedule it to run once.",
+        route: "/",
+        tryPrompt:
+          "Save a note titled Saved items test with the text: Review my saved prompts before starting more work.",
+      },
+    ],
+  },
   roadmap: {
     name: "Release roadmap",
     steps: [

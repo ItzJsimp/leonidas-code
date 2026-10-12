@@ -1,3 +1,5 @@
+import * as SavedItems from "../../savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "../../savedItems/SavedItemExecution.ts";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
@@ -423,6 +425,82 @@ const clientScope = (
   capabilities: new Set(["orchestration", "worktree", "pull-requests"]),
 });
 
+it.effect(
+  "saved-item tools enforce read-only grants and execution ceilings before starting work",
+  () => {
+    let launches = 0;
+    const item = {
+      id: "saved",
+      kind: "prompt",
+      title: "Saved",
+      body: "Work",
+      tags: [],
+      projectId: null,
+      status: "launched",
+      launchedThreadId: "new-thread",
+      createdBy: "agent",
+      createdAt: "2026-10-12T00:00:00Z",
+      updatedAt: "2026-10-12T00:00:00Z",
+    };
+    return Effect.gen(function* () {
+      const server = yield* McpServer.McpServer;
+      const call = (access: McpInvocationContext.McpClientCaller["access"], runtimeMode: string) =>
+        server
+          .callTool({
+            name: "saved_item_launch",
+            arguments: {
+              commandId: "launch",
+              id: "saved",
+              modelSelection: { instanceId: "codex", model: "gpt-6.1-sol" },
+              runtimeMode,
+              interactionMode: "default",
+              workspaceStrategy: { type: "root" },
+            },
+          })
+          .pipe(
+            Effect.provideService(McpInvocationContext.McpInvocationContext, clientScope(access)),
+            Effect.provideService(McpSchema.McpServerClient, client),
+          );
+      expect(declaredFailure(yield* call("read-only", "approval-required"))).toMatchObject({
+        code: "capability_denied",
+      });
+      expect(declaredFailure(yield* call("approval-required", "full-access"))).toMatchObject({
+        code: "runtime_mode_escalation_denied",
+      });
+      expect(launches).toBe(0);
+      expect((yield* call("approval-required", "approval-required")).isError).toBe(false);
+      expect(launches).toBe(1);
+    }).pipe(
+      Effect.provide(
+        McpHttpServer.layerOrchestratorToolkit.pipe(
+          Layer.provideMerge(McpServer.McpServer.layer),
+          Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+          Layer.provide(
+            Layer.mock(SavedItemExecution.SavedItemExecution)({
+              launch: () =>
+                Effect.gen(function* () {
+                  const caller = yield* SavedItems.SavedItemCaller;
+                  expect(caller.actor).toBe("agent");
+                  launches++;
+                  return item as never;
+                }),
+            }),
+          ),
+          Layer.provide(NodeCrypto.layer),
+          Layer.provide(Layer.mock(ThreadManagement.ThreadManagementService)({})),
+          Layer.provide(ServerSettings.layerTest()),
+          Layer.provide(Layer.mock(ProviderRegistry.ProviderRegistry)({})),
+          Layer.provide(Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({})),
+          Layer.provide(Layer.mock(ScheduledTaskService.ScheduledTaskService)({})),
+          Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
+          Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
+          Layer.provide(Layer.mock(SecretRequests.SecretRequests)({})),
+        ),
+      ),
+    );
+  },
+);
+
 it.effect("a client caller targets any thread within its ceiling and cannot act as a thread", () =>
   Effect.gen(function* () {
     const server = yield* McpServer.McpServer;
@@ -580,6 +658,8 @@ it.effect("refuses act-as-caller tools to a client caller", () =>
   }).pipe(
     Effect.provide(
       McpHttpServer.layerOrchestratorToolkit.pipe(
+        Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+        Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
         Layer.provideMerge(McpServer.McpServer.layer),
         Layer.provide(NodeCrypto.layer),
         Layer.provide(Layer.mock(ThreadManagement.ThreadManagementService)({})),
@@ -620,6 +700,8 @@ it.effect("a caller cannot rewrite a scheduled task that runs above its own mode
   }).pipe(
     Effect.provide(
       McpHttpServer.layerOrchestratorToolkit.pipe(
+        Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+        Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
         Layer.provideMerge(McpServer.McpServer.layer),
         Layer.provide(NodeCrypto.layer),
         Layer.provide(Layer.mock(ThreadManagement.ThreadManagementService)({})),
@@ -696,6 +778,8 @@ it.effect.each(["t3_thread_interrupt", "t3_workflow_stop"])(
     }).pipe(
       Effect.provide(
         McpHttpServer.layerOrchestratorToolkit.pipe(
+          Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+          Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
           Layer.provideMerge(McpServer.McpServer.layer),
           Layer.provide(NodeCrypto.layer),
           Layer.provide(
@@ -801,6 +885,8 @@ it.effect("discovers workflow stop targets and requires orchestration capability
   }).pipe(
     Effect.provide(
       McpHttpServer.layerOrchestratorToolkit.pipe(
+        Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+        Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
         Layer.provideMerge(McpServer.McpServer.layer),
         Layer.provide(NodeCrypto.layer),
         Layer.provide(

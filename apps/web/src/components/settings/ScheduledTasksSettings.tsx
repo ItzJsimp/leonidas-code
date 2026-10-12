@@ -174,6 +174,7 @@ function splitModelKey(value: string): ModelSelection | null {
 
 export function scheduleLabel(schedule: ScheduledTaskSchedule): string {
   if (schedule.type === "webhook") return "On webhook";
+  if (schedule.type === "once") return `Once on ${new Date(schedule.runAt).toLocaleString()}`;
   if (schedule.type === "interval") {
     const minutes = schedule.everyMs / 60_000;
     return Number.isInteger(minutes)
@@ -1149,7 +1150,8 @@ function ScheduledTaskEditorDialog({
                 <Label>Schedule</Label>
                 <ToggleGroup
                   aria-label="Schedule type"
-                  value={[draft.scheduleMode]}
+                  disabled={draft.onceRunAt !== undefined}
+                  value={draft.onceRunAt !== undefined ? [] : [draft.scheduleMode]}
                   onValueChange={(values) => {
                     const mode = values[0] as ScheduleMode | undefined;
                     if (mode === "fixed" || mode === "interval" || mode === "webhook")
@@ -1169,7 +1171,11 @@ function ScheduledTaskEditorDialog({
                 </ToggleGroup>
               </div>
 
-              {draft.scheduleMode === "webhook" ? (
+              {draft.onceRunAt !== undefined ? (
+                <p className="text-sm text-muted-foreground">
+                  Runs once on {new Date(draft.onceRunAt).toLocaleString()}.
+                </p>
+              ) : draft.scheduleMode === "webhook" ? (
                 <div className="space-y-4">
                   <WebhookEndpointField environmentId={environmentId} task={liveTask} />
                   <p className="text-xs text-muted-foreground">

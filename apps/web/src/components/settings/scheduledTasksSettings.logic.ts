@@ -49,6 +49,7 @@ export type ScheduleMode = "fixed" | "interval" | "webhook";
 export type WorkspaceMode = "root" | "worktree" | "existing_worktree";
 
 export interface DraftState {
+  readonly onceRunAt?: string;
   readonly editingId: string | null;
   readonly title: string;
   readonly prompt: string;
@@ -92,6 +93,7 @@ export const WEBHOOK_SIGNATURE_DEFAULTS = {
 
 /** Null when the draft's webhook age limit is invalid; the caller reports it and does not save. */
 export function scheduleFromDraft(draft: DraftState): ScheduledTaskUpsertSchedule | null {
+  if (draft.onceRunAt !== undefined) return { type: "once", runAt: draft.onceRunAt };
   if (draft.scheduleMode === "webhook") {
     const maxDeliveryAgeMinutes = parseMaxDeliveryAge(draft.maxDeliveryAgeMinutes);
     if (maxDeliveryAgeMinutes === undefined) return null;
@@ -129,6 +131,7 @@ export function taskToDraft(task: ScheduledTask): DraftState {
       : new Set([0, 1, 2, 3, 4, 5, 6]);
   return {
     editingId: task.id,
+    ...(schedule.type === "once" ? { onceRunAt: schedule.runAt } : {}),
     title: task.title,
     prompt: task.prompt,
     enabled: task.enabled,

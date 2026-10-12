@@ -6,6 +6,15 @@ export interface T3McpToolPresentation {
 }
 
 export type T3McpToolSummaryAction =
+  | "saved-item-list"
+  | "saved-item-get"
+  | "saved-item-create"
+  | "saved-item-update"
+  | "saved-item-transition"
+  | "saved-item-import"
+  | "saved-item-launch"
+  | "saved-item-schedule"
+  | "saved-item-task"
   | "capabilities"
   | "delegate"
   | "task-status"
@@ -88,6 +97,30 @@ const T3_MCP_SERVER_ALIASES = new Set(["t3-code", "t3_code", "t3code"]);
 
 // Cards, activity rows, summaries, and provider identity recovery share this inventory.
 const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
+  saved_item_list: tool(
+    ["List", "Listing", "Listed", "saved prompts and notes"],
+    "saved-item-list",
+  ),
+  saved_item_get: tool(["Read", "Reading", "Read", "a saved item"], "saved-item-get"),
+  saved_item_create: tool(["Save", "Saving", "Saved", "a prompt or note"], "saved-item-create"),
+  saved_item_update: tool(["Edit", "Editing", "Edited", "a saved item"], "saved-item-update"),
+  saved_item_transition: tool(
+    ["Update", "Updating", "Updated", "saved-item status"],
+    "saved-item-transition",
+  ),
+  saved_item_import: tool(["Import", "Importing", "Imported", "a saved item"], "saved-item-import"),
+  saved_item_launch: tool(
+    ["Launch", "Launching", "Launched", "a saved prompt"],
+    "saved-item-launch",
+  ),
+  saved_item_schedule: tool(
+    ["Schedule", "Scheduling", "Scheduled", "a saved prompt"],
+    "saved-item-schedule",
+  ),
+  saved_item_save_task: tool(
+    ["Move", "Moving", "Moved", "a saved item to Tasks"],
+    "saved-item-task",
+  ),
   link_pull_request: tool(
     ["Link", "Linking", "Linked", "a pull request"],
     "link-pr",

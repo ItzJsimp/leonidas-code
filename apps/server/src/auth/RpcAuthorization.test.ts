@@ -18,6 +18,10 @@ import {
   AuthTerminalReadScope,
   AuthTerminalOperateScope,
   WS_METHODS,
+  clientRpcRequiredScopes,
+  SavedItemId,
+  CommandId,
+  ProjectId,
   WsRpcGroup,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
@@ -33,6 +37,22 @@ import {
 import * as RpcAuthorization from "./RpcAuthorization.ts";
 
 describe("RPC authorization scopes", () => {
+  it("guards saved-item mutations while allowing saved-item reads", () => {
+    for (const method of [
+      WS_METHODS.savedItemsCreate,
+      WS_METHODS.savedItemsUpdate,
+      WS_METHODS.savedItemsTransition,
+      WS_METHODS.savedItemsImport,
+      WS_METHODS.savedItemsLaunch,
+      WS_METHODS.savedItemsSchedule,
+      WS_METHODS.savedItemsSaveTask,
+    ]) {
+      expect(requiredScopeForRpcMethod(method)).toBe(AuthOrchestrationOperateScope);
+      expect(clientRpcRequiredScopes(method, undefined)).toEqual([AuthOrchestrationOperateScope]);
+    }
+    expect(requiredScopeForRpcMethod(WS_METHODS.savedItemsList)).toBe(AuthOrchestrationReadScope);
+    expect(requiredScopeForRpcMethod(WS_METHODS.savedItemsGet)).toBe(AuthOrchestrationReadScope);
+  });
   it("keeps shared tasks and thread context reports behind read scope", () => {
     expect(requiredScopeForRpcMethod(WS_METHODS.taskBoardList)).toBe(AuthOrchestrationReadScope);
     expect(requiredScopeForRpcMethod(ORCHESTRATION_V2_WS_METHODS.getThreadContextBreakdown)).toBe(
@@ -212,6 +232,61 @@ describe("RPC authorization scopes", () => {
     }
   });
 });
+
+it.effect.each([false, true])(
+  "saved-item launch authorizes before its handler (operate=$0)",
+  (operate) =>
+    Effect.gen(function* () {
+      const group = WsRpcGroup.omit(
+        ...[...WsRpcGroup.requests.keys()].filter(
+          (
+            tag,
+          ): tag is Exclude<keyof typeof RPC_REQUIRED_SCOPES, typeof WS_METHODS.savedItemsLaunch> =>
+            tag !== WS_METHODS.savedItemsLaunch,
+        ),
+      );
+      let calls = 0;
+      const client = yield* RpcTest.makeClient(group).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            group.toLayerHandler(WS_METHODS.savedItemsLaunch, () =>
+              Effect.sync(() => {
+                calls++;
+                return {
+                  id: SavedItemId.make("saved"),
+                  title: "Saved",
+                  kind: "prompt" as const,
+                  body: "text",
+                  tags: [],
+                  projectId: ProjectId.make("project"),
+                  status: "launched" as const,
+                  launchedThreadId: ThreadId.make("launched"),
+                  createdBy: "user" as const,
+                  createdAt: "2026-10-12T00:00:00Z",
+                  updatedAt: "2026-10-12T00:00:00Z",
+                };
+              }),
+            ),
+            RpcAuthorization.layer(
+              operate ? [AuthOrchestrationOperateScope] : [AuthOrchestrationReadScope],
+            ),
+          ),
+        ),
+      );
+      const result = yield* Effect.result(
+        client[WS_METHODS.savedItemsLaunch]({
+          commandId: CommandId.make("launch"),
+          id: SavedItemId.make("saved"),
+          modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6.1-sol" },
+          runtimeMode: "approval-required",
+          interactionMode: "default",
+          workspaceStrategy: { type: "root" },
+        }),
+      );
+      expect(result._tag).toBe(operate ? "Success" : "Failure");
+      expect(calls).toBe(operate ? 1 : 0);
+    }).pipe(Effect.scoped),
+);
 
 it.effect.each([
   { label: "none", scopes: [] as AuthEnvironmentScope[] },
