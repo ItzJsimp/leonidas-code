@@ -139,6 +139,24 @@ describe("rankModelsForPreference", () => {
     expect(quality.at(-1)?.profile.quality).toBeLessThan(5);
   });
 
+  it("puts Opus first on the Quality list, ahead of other top-tier models and older Opus", () => {
+    const withOpus: AutoRouteCandidate = {
+      ...claudeCandidate(),
+      models: [
+        { slug: "claude-opus-4-6", name: "Opus 4.6" },
+        { slug: "claude-opus-5-5", name: "Opus 5.5" },
+        ...claudeCandidate().models,
+      ],
+    };
+    const ranked = rank("quality", [codexCandidate(), withOpus]);
+    expect(ranked.slice(0, 4).map((entry) => entry.slug)).toEqual([
+      "claude-opus-5-5",
+      "claude-opus-4-6",
+      "claude-fable-5-1",
+      "gpt-6.1-sol",
+    ]);
+  });
+
   it("lists free models first for cost", () => {
     const free = {
       instanceId: openrouter,

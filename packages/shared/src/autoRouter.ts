@@ -134,6 +134,33 @@ const MODEL_FAMILIES: ReadonlyArray<{
   { pattern: /^openrouter\/free$/, profile: { quality: 3, speed: 3, economy: 5 } },
 ];
 
+// Finer quality order for the Quality list, where the 1 to 5 tiers tie (Opus,
+// Fable, Sol and Gemini Pro are all 5). First match wins; newer versions of a
+// family rank above older ones via `versionBonus`.
+const QUALITY_RANK: ReadonlyArray<{ readonly pattern: RegExp; readonly rank: number }> = [
+  { pattern: /opus/, rank: 100 },
+  { pattern: /fable/, rank: 98 },
+  { pattern: /sol\b|-sol|codex-max/, rank: 96 },
+  { pattern: /gemini.*pro/, rank: 94 },
+  { pattern: /sonnet/, rank: 88 },
+  { pattern: /astra|terra/, rank: 84 },
+  { pattern: /deepseek.*(r1|reasoner)/, rank: 76 },
+  { pattern: /gpt-4o|gpt-4\.1/, rank: 70 },
+  { pattern: /flash/, rank: 64 },
+  { pattern: /deepseek|qwen|llama|mistral/, rank: 60 },
+  { pattern: /haiku|luna|mini|nano/, rank: 40 },
+];
+
+/** Position on the Quality list; larger is better. Unknown models sit mid-field. */
+export function qualityRank(slug: string): number {
+  const normalized = slug.toLowerCase();
+  const family = QUALITY_RANK.find((entry) => entry.pattern.test(normalized));
+  const version = /(\d+)(?:[-.](\d+))?/.exec(normalized.replace(/^.*?(?=\d)/, ""));
+  // Under 1 point so a newer version never jumps a family.
+  const versionBonus = version ? (Number(version[1]) + Number(version[2] ?? 0) / 10) * 0.1 : 0;
+  return (family?.rank ?? 50) + versionBonus;
+}
+
 const UNKNOWN_PROFILE: ModelRouteProfile = { quality: 3, speed: 3, economy: 3, known: false };
 
 // Slugs that defer the choice to the provider's own default; nothing to rank.
@@ -478,7 +505,10 @@ export function rankModelsForPreference(input: {
         name: model.name,
         profile,
         free,
-        score: base + axis * 0.01 + (input.preference === "cost" && free ? 100 : 0),
+        score:
+          input.preference === "quality"
+            ? qualityRank(model.slug) - (model.isLegacy === true ? 0.5 : 0)
+            : base + axis * 0.01 + (input.preference === "cost" && free ? 100 : 0),
       });
     }
   }
