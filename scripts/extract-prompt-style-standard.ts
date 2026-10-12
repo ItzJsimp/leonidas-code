@@ -1,8 +1,8 @@
-// @effect-diagnostics nodeBuiltinImport:off globalConsole:off - An offline CLI that reads a local history file with Node built-ins only.
+// @effect-diagnostics nodeBuiltinImport:off globalConsole:off - Standalone operational CLI that rebuilds the prompt style standard from a history file outside any Effect runtime, where Node's synchronous read and one stdout summary line are the entire interface.
 // Rebuilds packages/shared/src/promptStyleStandard.json from a Scribe history.jsonl.
 // Usage: node scripts/extract-prompt-style-standard.ts <history.jsonl> [--out <file>]
 // Anonymization rules are in ANONYMIZATION below and must stay in step with the review notes.
-import * as FS from "node:fs";
+import * as NodeFS from "node:fs";
 
 const AGENT_APP = /^(?:claude|codex|antigravity|cursor|windsurf|leonidas code)(?:\.exe)?$/i;
 const TARGET = 150;
@@ -39,7 +39,7 @@ const out =
       );
 
 const prompts: string[] = [];
-for (const line of FS.readFileSync(input, "utf8").split("\n")) {
+for (const line of NodeFS.readFileSync(input, "utf8").split("\n")) {
   try {
     const row = JSON.parse(line) as Record<string, unknown>;
     if (!["hands-free", "ptt", "dictation"].includes(String(row.mode))) continue;
@@ -97,5 +97,8 @@ const picked = [
   .map((entry) => entry.text)
   .sort();
 
-FS.writeFileSync(out, `${JSON.stringify({ rules: ANONYMIZATION, prompts: picked }, null, 2)}\n`);
+NodeFS.writeFileSync(
+  out,
+  `${JSON.stringify({ rules: ANONYMIZATION, prompts: picked }, null, 2)}\n`,
+);
 console.log(`${picked.length} entries from ${prompts.length} prompts -> ${out}`);

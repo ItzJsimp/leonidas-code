@@ -45,6 +45,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as PlatformError from "effect/PlatformError";
 import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
@@ -763,7 +764,16 @@ const make = Effect.gen(function* () {
   const emitChange = (settings: ServerSettings) =>
     PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
 
-  const readConfigExists = fs.exists(settingsPath).pipe(
+  // `fs.exists` resolves through `access`, which on Windows reports a dangling
+  // symlink as existing. The read below follows the link, so it would fail with
+  // `NotFound` and fail startup. Stat follows the link too, so a link whose
+  // destination is not there yet reads as absent (defaults) until it appears.
+  const readConfigExists = fs.stat(settingsPath).pipe(
+    Effect.as(true),
+    Effect.catchIf(
+      (error: PlatformError.PlatformError) => error.reason._tag === "NotFound",
+      () => Effect.succeed(false),
+    ),
     Effect.mapError(
       (cause) =>
         new ServerSettingsError({

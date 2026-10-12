@@ -8,10 +8,15 @@ node scripts/harness-acceptance.mjs
 
 Optional arguments: `--baseline <git-commit>` selects the shared-helper baseline;
 `--output <new-directory>` selects the artifacts directory. The default baseline
-is `c32126c599`, immediately before the 44-improvement pass. The default output is
-a new timestamped directory under `.generated/harness-acceptance`. An existing
-output directory is rejected to prevent mixed results. No provider calls, live
-database writes, browser, installed-app restart or additional dependency is needed.
+is `339027a210`, the origin commit immediately before this branch's transplanted
+harness fixes. It is reachable on the pushed branch, unlike a source-only commit
+the branch never carried. Its `promptPrediction`, `searchRanking` and
+`promptStyleStandard` blobs are the same pre-fix helpers the earlier
+44-improvement pass compared against, so the paired benchmarks stay comparable.
+The default output is a new timestamped directory under
+`.generated/harness-acceptance`. An existing output directory is rejected to
+prevent mixed results. No provider calls, live database writes, browser,
+installed-app restart or additional dependency is needed.
 
 ## What the result means
 

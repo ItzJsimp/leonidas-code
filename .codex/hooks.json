@@ -1,12 +1,15 @@
 {
+  "description": "Install and verify the shared next-action skill when Code sessions start or resume.",
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "^(startup|resume|clear)$",
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Sync-LeonidasSource.ps1')\"",
-            "timeout": 60
+            "command": "pwsh -NoProfile -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Start-NextActionSession.ps1')\"",
+            "timeout": 60,
+            "statusMessage": "Installing and verifying next action"
           }
         ]
       }

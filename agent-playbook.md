@@ -59,6 +59,9 @@ verified: 2026-10-10
 - **A push to `main` ships a release to both machines:** the rebrand and any change stay local commits until Jake says push.
 
 - **Claude "no subscription limits" was a 429:** the SDK `get_usage` returns `rate_limits_available: true, rate_limits: null` when Anthropic's usage endpoint is rate limited; that must map to `probeFailed` (retryable), never `unsupported` (sticky, drops streamed `rate_limit_event`s). Antigravity has no reachable quota source: the harness credential gets 403 on `fetchAvailableModels` and `retrieveUserQuota`. Found 2026-10-10.
+- **Fresh worktrees need an install before any check:** `git worktree add` skips the T3 setup script. Run `pnpm install --frozen-lockfile` first (about 7.5 minutes); tests and typecheck fail until it finishes. Found 2026-10-11.
+- **A commit that hangs is usually the hook, not git:** the Vite pre-commit hook runs `vp fmt` on staged files and can stall on a shared temporary index. Commit from a clean worktree and let the hook finish; never bypass it. Found 2026-10-11.
+- **`shadcn/no-restyle` rejects `className` on `Button` and `MenuItem`:** use a `size` such as `icon-xs`, or a plain wrapper for layout. Use the `text-3xs` token, not `text-[10px]`. Found 2026-10-11.
 
 ## 6. Why it is this way
 

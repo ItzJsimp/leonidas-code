@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-09T23:31:10Z",
+  "updatedAt": "2026-10-11T00:00:00Z",
   "compatibility": [
     {
       "driver": "codex",
@@ -196,6 +196,7 @@
     "claudeAgent": ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
     "antigravity": ["gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low"],
     "openrouter": [
+      "openrouter/free",
       "anthropic/claude-3.7-sonnet",
       "anthropic/claude-3.5-sonnet",
       "openai/gpt-4.5-preview",
@@ -1041,8 +1042,17 @@
       ]
     },
     "openrouter": {
+      "defaults": {
+        "chat": "openrouter/free"
+      },
       "profiles": {},
       "models": [
+        {
+          "slug": "openrouter/free",
+          "name": "OpenRouter Free Model Router",
+          "shortName": "Free Router",
+          "status": "current"
+        },
         {
           "slug": "anthropic/claude-3.7-sonnet",
           "name": "Claude 3.7 Sonnet (OpenRouter)",

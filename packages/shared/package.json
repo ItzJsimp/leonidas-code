@@ -3,6 +3,22 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./threadIdentity": {
+      "types": "./src/threadIdentity.ts",
+      "import": "./src/threadIdentity.ts"
+    },
+    "./predictiveQuotaHandoff": {
+      "types": "./src/predictiveQuotaHandoff.ts",
+      "import": "./src/predictiveQuotaHandoff.ts"
+    },
+    "./rosettaHandoffDistillation": {
+      "types": "./src/rosettaHandoffDistillation.ts",
+      "import": "./src/rosettaHandoffDistillation.ts"
+    },
+    "./shadowSwarmMultiplexer": {
+      "types": "./src/shadowSwarmMultiplexer.ts",
+      "import": "./src/shadowSwarmMultiplexer.ts"
+    },
     "./subscriptionEstimate": {
       "types": "./src/subscriptionEstimate.ts",
       "import": "./src/subscriptionEstimate.ts"
@@ -359,6 +375,10 @@
       "types": "./src/usageFormat.ts",
       "import": "./src/usageFormat.ts"
     },
+    "./autoRouter": {
+      "types": "./src/autoRouter.ts",
+      "import": "./src/autoRouter.ts"
+    },
     "./usageLimits": {
       "types": "./src/usageLimits.ts",
       "import": "./src/usageLimits.ts"
@@ -490,6 +510,10 @@
     "./PtyAdapter": {
       "types": "./src/PtyAdapter.ts",
       "import": "./src/PtyAdapter.ts"
+    },
+    "./usageForecast": {
+      "types": "./src/usageForecast.ts",
+      "import": "./src/usageForecast.ts"
     }
   },
   "scripts": {

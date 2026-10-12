@@ -218,6 +218,8 @@ import {
   selectProjectGroupingSettings,
 } from "../logicalProject";
 import type { SidebarThreadSummary } from "../types";
+import { threadTopicGlyph, threadActivityLine } from "@t3tools/shared/threadIdentity";
+import { resolveSidebarThreadStatus } from "./Sidebar.logic";
 import {
   buildPhysicalToLogicalProjectKeyMap,
   buildSidebarProjectSnapshots,
@@ -486,6 +488,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     [canOperatePreview, discoveredPorts, navigateToThread, openPreview, threadRef],
   );
   const isThreadRunning = !threadRuntimeCanArchive(thread.runtime);
+  const activityLine = threadActivityLine({
+    status: resolveSidebarThreadStatus(thread),
+    summary: thread.activitySummary,
+  });
   const threadStatus = resolveThreadStatusPill({
     thread: {
       ...thread,
@@ -745,7 +751,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         data-size="sm"
         data-testid={`thread-row-${thread.id}`}
         className={cn(
-          "relative isolate flex h-8 w-full min-w-0 cursor-pointer select-none items-center gap-2 overflow-hidden rounded-md px-2 text-left text-xs outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring group-data-[collapsible=icon]:hidden [&>span:last-child]:truncate [&>svg:not([class*='size-'])]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-muted-foreground",
+          "relative isolate flex w-full min-w-0 cursor-pointer select-none items-center gap-2 overflow-hidden rounded-md px-2 text-left text-xs outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring group-data-[collapsible=icon]:hidden [&>span:last-child]:truncate [&>svg:not([class*='size-'])]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-muted-foreground",
+          activityLine ? "min-h-12 py-1" : "h-8",
           isActive
             ? "bg-sidebar-row-active font-medium text-sidebar-foreground hover:bg-sidebar-row-active"
             : isSelected
@@ -815,14 +822,37 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               <TooltipTrigger
                 render={
                   <span
-                    className="min-w-0 flex-1 truncate text-sm"
+                    className="min-w-0 flex-1 text-sm"
                     data-testid={`thread-title-${thread.id}`}
                   >
-                    {thread.title}
+                    <span className="block truncate">
+                      {threadTopicGlyph(thread.title) ? (
+                        <span aria-hidden className="mr-1">
+                          {threadTopicGlyph(thread.title)}
+                        </span>
+                      ) : null}
+                      {thread.title}
+                    </span>
+                    {activityLine ? (
+                      <span className="flex min-w-0 gap-1 text-xs text-muted-foreground">
+                        <span className="min-w-0 flex-1 truncate">{activityLine.text}</span>
+                        {activityLine.progress ? (
+                          <span className="shrink-0 tabular-nums">{activityLine.progress}</span>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </span>
                 }
               />
-              <TooltipPopup side="top">{thread.title}</TooltipPopup>
+              <TooltipPopup side="top">
+                {thread.title}
+                {activityLine ? (
+                  <div className="mt-1">
+                    {activityLine.text}
+                    {activityLine.progress ? ` · Step ${activityLine.progress}` : ""}
+                  </div>
+                ) : null}
+              </TooltipPopup>
             </Tooltip>
           )}
         </div>

@@ -8,6 +8,20 @@ export interface ProviderFailoverTarget {
 }
 
 /**
+ * The model a failover resumes on. Same choice as web's
+ * `resolveRecommendedFailoverModel`; the catalog default is Fable 5.1 on Claude,
+ * which a rate-limited chat should not silently move to.
+ */
+function recommendedFailoverModel(entry: ServerProvider) {
+  const preferredSlug = entry.driver === "claudeAgent" ? "claude-sonnet-5-5" : "gpt-6.1-sol";
+  return (
+    entry.models.find((candidate) => candidate.slug === preferredSlug) ??
+    entry.models.find((candidate) => candidate.isDefault) ??
+    entry.models[0]
+  );
+}
+
+/**
  * Subscription providers that can take over a chat stopped by a usage limit,
  * for clients that only hold the streamed provider list (mobile). Web applies
  * the same rules to its settings-aware entries in `providerFailover.ts`.
@@ -41,15 +55,18 @@ export function selectProviderFailoverTargets(input: {
         entry.usageLimits?.windows.some((window) => window.usedPercent >= 100)
       )
         return [];
-      const model = entry.models.find((candidate) => candidate.isDefault) ?? entry.models[0];
-      return model
-        ? [
-            {
-              label: resolveProviderInstanceDisplayName(entry),
-              modelSelection: { instanceId: entry.instanceId, model: model.slug },
-            },
-          ]
-        : [];
+      const model = recommendedFailoverModel(entry);
+      if (!model) return [];
+      return [
+        {
+          label: resolveProviderInstanceDisplayName(entry),
+          modelSelection: {
+            instanceId: entry.instanceId,
+            model: model.slug,
+            options: [{ id: "effort", value: "medium" }],
+          },
+        },
+      ];
     })
     .sort(
       (left, right) =>

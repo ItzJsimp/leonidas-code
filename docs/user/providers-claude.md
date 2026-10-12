@@ -78,29 +78,19 @@ tool, which refuses skills reserved for manual invocation.
 
 ## OpenRouter
 
-Create a Claude instance with its own config directory, such as
-`~/.claude_openrouter`, and keep **Binary path** set to `claude`. In that instance's
-**Environment variables**, use:
+Add an **OpenRouter** instance in **Settings > Providers**, create an API key at
+[openrouter.ai/keys](https://openrouter.ai/keys), and paste it into the API key field.
+OpenRouter runs through the Claude Code runtime, so Claude Code CLI must be installed
+on the machine running the Leonidas environment; an OpenRouter key is enough for model
+access, and no Claude subscription is required.
+Leonidas Code discovers OpenRouter's tool-capable text models and current token prices
+automatically. **OpenRouter Free Model Router** is the default and routes to an available
+free model; paid models are billed per token by OpenRouter. You can select any discovered
+model in the chat model picker or choose Leonidas Autorouter with the **Lowest cost** goal.
 
-| Variable               | Value                                     |
-| ---------------------- | ----------------------------------------- |
-| `ANTHROPIC_BASE_URL`   | `https://openrouter.ai/api`               |
-| `ANTHROPIC_AUTH_TOKEN` | Your OpenRouter API key, marked Sensitive |
-| `ANTHROPIC_API_KEY`    | An explicitly empty value                 |
-
-If that Claude config directory has a cached Anthropic login, run `/logout` in a
-Claude Code session using that directory before starting the router setup. Cached
-login credentials can conflict with the router token.
-
-Select the model you want in Leonidas Code. For an OpenRouter model outside the built-in
-list, open that Claude instance in **Settings > Providers** and add its full model
-ID with **Add custom model**. Then select it in the chat model picker.
-`ANTHROPIC_DEFAULT_*_MODEL` variables map Claude Code aliases such as `sonnet`; they
-do not replace the explicit model ID selected in Leonidas Code. Custom models may have
-fewer effort, thinking, or context controls than built-in models.
-
-Verify the model used in OpenRouter's activity dashboard. For current compatibility
-requirements, use the
+The model list refreshes periodically. Use **Add custom model** for a model that is not
+listed, and check OpenRouter's activity page to see the model and cost for each request.
+For compatibility details, see the
 [OpenRouter Claude Code guide](https://openrouter.ai/docs/cookbook/coding-agents/claude-code-integration).
 
 ## Other routers

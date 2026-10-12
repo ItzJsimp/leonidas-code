@@ -104,6 +104,44 @@ describe("server subscription tracking", () => {
       expect(events).toHaveLength(4);
     }).pipe(Effect.scoped),
   );
+  it.live("enriches windows with projectedUsedPercentAtReset from historical observations", () =>
+    Effect.gen(function* () {
+      const dir = yield* Effect.acquireRelease(
+        Effect.promise(() =>
+          NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "subscription forecast fixture ")),
+        ),
+        (dir) => Effect.promise(() => NodeFSP.rm(dir, { recursive: true, force: true })),
+      );
+      yield* Effect.gen(function* () {
+        const track = yield* makeSubscriptionTracker(dir);
+        // First observation at hour 3
+        yield* track(provider(70, 180));
+        // Second observation at hour 3.5 showing calm burn (70.5%)
+        yield* track(provider(70.5, 210));
+        // Third observation at hour 4 (71% with 1 hour left until reset)
+        const updated = yield* track(provider(71, 240));
+        const sessionWindow = updated.usageLimits?.windows[0];
+        expect(sessionWindow?.projectedUsedPercentAtReset).toBeDefined();
+        // With calm burn, projected is well under 100
+        expect(sessionWindow?.projectedUsedPercentAtReset).toBeLessThan(95);
+      }).pipe(
+        Effect.provide(NodeServices.layer),
+        Effect.provideService(
+          UsageService,
+          UsageService.of({
+            readSummary: () => Effect.die("unused"),
+            refreshRates: Effect.die("unused"),
+            readSubscriptionTokens: () =>
+              Effect.succeed({
+                sourceKey: "fixture source",
+                totals: { ...emptyTotals(), outputTokens: 5_000 },
+              }),
+          }),
+        ),
+      );
+    }).pipe(Effect.scoped),
+  );
+
   it.live("isolates account and plan changes and restarts on missing token coverage", () =>
     Effect.gen(function* () {
       const dir = yield* Effect.acquireRelease(

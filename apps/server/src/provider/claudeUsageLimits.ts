@@ -136,10 +136,14 @@ export function claudeRateLimitEventToUpdate(
   names: ClaudeScopedLimitNames,
 ): ProviderUsageLimitsUpdate | undefined {
   const type: string | undefined = info.rateLimitType;
-  if (!type || typeof info.utilization !== "number") {
+  if (!type) {
     return undefined;
   }
-  const usedPercent = info.utilization * 100;
+  const isRejected = info.status === "rejected";
+  if (typeof info.utilization !== "number" && !isRejected) {
+    return undefined;
+  }
+  const usedPercent = typeof info.utilization === "number" ? info.utilization * 100 : 100;
   const resetsAt = isoFromEpochSeconds(info.resetsAt);
   if (Object.hasOwn(WINDOWS, type)) {
     return { windows: [makeWindow(type, usedPercent, resetsAt)] };

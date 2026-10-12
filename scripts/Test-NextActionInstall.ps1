@@ -34,7 +34,7 @@ foreach ($workspace in @($fixture,$project,$other)) {
 }
 # Test automatic parent detection with the exact projects/leonidas-code layout.
 New-Item -ItemType Directory -Path (Join-Path $project 'scripts'),(Join-Path $project '.agents/skills') -Force | Out-Null
-foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1')) {
+foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1','Sync-LeonidasSource.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script) -Destination (Join-Path $project 'scripts') -Force
 }
 & (Join-Path $project 'scripts/Install-NextAction.ps1')
@@ -42,3 +42,35 @@ $cached = Get-Content -LiteralPath (Join-Path $fixture '.agents/next-action.json
 Assert ($cached.tasks_dir -eq 'tasks') 'Cached folder is not relative to the AIOS'
 Write-Host '[PASS] Mob layout, existing provider-copy migration, backups, discovery, cache reuse, repeated installs and WhatIf'
 Write-Host "Fixture: $fixture"
+
+# Exercise the exact Codex command from a nested directory in a path containing spaces.
+$hookProject = Join-Path $fixture 'Code hook fixture'
+New-Item -ItemType Directory -Path (Join-Path $hookProject 'scripts/nested'),(Join-Path $hookProject '.agents/skills') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $hookProject 'AGENTS.md') 'Hook fixture instructions'
+foreach ($script in @('Install-NextAction.ps1','Sync-DefaultSkills.ps1','Start-NextActionSession.ps1','Sync-LeonidasSource.ps1')) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script) -Destination (Join-Path $hookProject 'scripts')
+}
+Copy-Item -LiteralPath (Join-Path $source '.agents/skills/next-action') -Destination (Join-Path $hookProject '.agents/skills') -Recurse
+git -C $hookProject init --quiet
+Assert ($LASTEXITCODE -eq 0) 'Hook fixture git initialization failed'
+$hook = Get-Content -LiteralPath (Join-Path $source '.codex/hooks.json') -Raw | ConvertFrom-Json
+$group = $hook.hooks.SessionStart[0]
+foreach ($event in @('startup','resume','clear')) { Assert ($event -match $group.matcher) "Hook misses $event" }
+Assert ('compact' -notmatch $group.matcher) 'Installation reruns during compaction'
+Push-Location (Join-Path $hookProject 'scripts/nested')
+try {
+    $result = (& pwsh -NoProfile -Command $group.hooks[0].command | Out-String) | ConvertFrom-Json
+    Assert ($LASTEXITCODE -eq 0) 'Codex hook command failed from a nested directory'
+    Assert ($result.hookSpecificOutput.hookEventName -eq 'SessionStart') 'Wrong hook event in output'
+    Assert ($result.hookSpecificOutput.additionalContext -match '\[PASS\]') 'Hook output lost installation verification'
+} finally { Pop-Location }
+Assert (Test-Path -LiteralPath (Join-Path $hookProject '.claude/skills/next-action/SKILL.md')) 'Hook did not install provider discovery'
+Write-Host '[PASS] Codex startup/resume matcher and exact hook command from a nested path with spaces'
+Set-Content -LiteralPath (Join-Path $hookProject 'scripts/Install-NextAction.ps1') "throw 'Fixture installation failure'"
+Push-Location $hookProject
+try {
+    $failedOutput = & pwsh -NoProfile -Command $group.hooks[0].command 2>$null | Out-String
+    Assert ($LASTEXITCODE -ne 0) 'Hook masked an installation failure'
+    Assert ($failedOutput -notmatch 'hookSpecificOutput') 'Failed installation reported successful context'
+} finally { Pop-Location }
+Write-Host '[PASS] Codex hook preserves installation failures'

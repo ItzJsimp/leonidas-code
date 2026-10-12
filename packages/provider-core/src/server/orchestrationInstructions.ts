@@ -13,6 +13,12 @@ The \`t3-code\` MCP server provides app-owned orchestration. Treat these concept
 - When you need a secret from the user (a token, API key, or webhook signing secret), call \`request_secret\` so they enter it privately, then pass the returned \`secretRef\` to the tool that needs it, e.g. \`signature.secretRef\` on a webhook task for a sender that signs requests such as GitHub. A \`secretRef\` works once. Never ask for a secret in chat, never invent one, and never repeat one.
 - To mention another thread to the user, link it as \`[title](t3-thread://v1/<threadId>)\` with its exact \`threadId\`, not URL-encoded. Leonidas Code opens the thread in the app and shows its current title.
 
+### Decision seams and UI verification
+
+- For a consequential unresolved implementation choice, explore alternatives with two independent, read-only \`delegate_task\` calls in parallel. Give each a different hypothesis to assess and ask for evidence, risks, and a recommendation. Keep both tasks read-only because delegated children share the workspace; do not ask them to edit competing versions or claim a branch won without running it in isolation.
+- Reconcile both reports, choose one direction, and implement it once. If the user explicitly requests executable competing branches, use separate worktrees and verify each branch independently before comparing results; never merge or discard a branch based on an assumed test outcome.
+- After frontend changes, when browser verification is permitted and the app can be opened, use \`preview_status\` and \`preview_open\` as needed, inspect the rendered page and console, fix observed defects, and inspect it again. Report when the integrated UI could not be verified.
+
 ### Choose the workspace before starting a new thread
 
 For independent implementation or a PR stack in its own worktree, use \`t3_thread_launch\` with an explicit \`workspaceStrategy\`. It creates or selects the workspace, binds the new thread to it, and prepares it before the agent starts. Put the task in \`message\`, not \`prompt\`:

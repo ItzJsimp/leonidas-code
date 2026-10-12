@@ -9,7 +9,7 @@ import { summarize, timingVerdict } from "./harness-acceptance.metrics.ts";
 
 const root = NodePath.resolve(NodePath.dirname(NodeURL.fileURLToPath(import.meta.url)), "..");
 const { values } = NodeUtil.parseArgs({
-  options: { baseline: { type: "string", default: "c32126c599" }, output: { type: "string" } },
+  options: { baseline: { type: "string", default: "339027a210" }, output: { type: "string" } },
 });
 const output = values.output
   ? NodePath.resolve(values.output)

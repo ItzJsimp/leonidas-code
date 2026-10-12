@@ -22,6 +22,7 @@ import {
   selectHistory,
 } from "@t3tools/provider-core/server/handoffBudget";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
+import { distillRosettaHandoff } from "@t3tools/shared/rosettaHandoffDistillation";
 
 export class ContextHandoffPrepareError extends Schema.TaggedError<ContextHandoffPrepareError>()(
   "ContextHandoffPrepareError",
@@ -461,6 +462,14 @@ const makeContextHandoffService = Effect.fn("orchestrationV2.ContextHandoffServi
         coverage,
         budget: tokenCap,
       });
+      const summaryText =
+        input.strategy === "full_thread_summary"
+          ? distillRosettaHandoff({
+              coverage,
+              messages: selected.messages,
+              omittedItemIds: selected.omittedItemIds,
+            }).summaryText
+          : renderHistory(selected.messages, selected.context);
       return {
         id: handoffId,
         transferId: input.transferId,
@@ -472,7 +481,7 @@ const makeContextHandoffService = Effect.fn("orchestrationV2.ContextHandoffServi
         strategy: input.strategy,
         status: "ready",
         summaryMessageId: null,
-        summaryText: renderHistory(selected.messages, selected.context),
+        summaryText,
         history: {
           messages: selected.messages,
           coverage,
