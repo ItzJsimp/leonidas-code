@@ -1165,3 +1165,12 @@ describe("server model preferences", () => {
     });
   });
 });
+
+describe("ClientSettings usage overlay", () => {
+  it("is on for new and existing installations until the user hides it", () => {
+    expect(decodeClientSettings({}).usageOverlayEnabled).toBe(true);
+    expect(decodeClientSettingsPatch({ usageOverlayEnabled: false })).toEqual({
+      usageOverlayEnabled: false,
+    });
+  });
+});

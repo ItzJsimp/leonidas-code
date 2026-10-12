@@ -16,14 +16,8 @@ import { useClientSettings, useUpdateClientSettings } from "../../hooks/useSetti
 import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import { collectConnectedUsageLimits } from "../../lib/connectedUsageLimits";
 import {
-  accountTitle,
   contextWindowFigures,
-  formatResetCountdown,
   formatTokenCount,
-  limitLabel,
-  orderPlanWindows,
-  percentText,
-  shortPlanName,
   usageSeverity,
   usedPercentLabel,
 } from "../../lib/usageLimitsPopover";
@@ -36,7 +30,9 @@ import { Separator } from "../ui/separator";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ChatUsageHoverCard } from "./ChatUsageHoverCard";
 import { DetailedContextBreakdownView } from "./DetailedContextBreakdownView";
-import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { ActiveAccount, OtherAccount } from "./UsageOverlayCard";
+import { useConnectedUsageAccounts } from "../../hooks/useConnectedUsageAccounts";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
 
 const ICONS = [
@@ -98,32 +94,14 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
     [presentations, openedAt],
   );
 
-  const activeProvider = presentations
-    .get(environmentId)
-    ?.serverConfig?.providers.find((provider) => provider.instanceId === instanceId);
-  const activeEmail = activeProvider?.auth.email?.trim().toLowerCase();
-
-  const activeAccounts = report.accounts.filter(
-    (account) =>
-      account.driver === activeProvider?.driver &&
-      (activeEmail
-        ? account.email?.trim().toLowerCase() === activeEmail
-        : activeProvider?.usageLimits?.credentialFingerprint
-          ? account.limits.credentialFingerprint ===
-            activeProvider.usageLimits.credentialFingerprint
-          : account.id === `${environmentId}:${instanceId}`),
+  const { active: activeAccounts, others: otherAccounts } = useConnectedUsageAccounts(
+    environmentId,
+    instanceId,
   );
-
   const activeAccountIds = useMemo(
     () => new Set(activeAccounts.map((account) => account.id)),
     [activeAccounts],
   );
-
-  const otherAccounts = useMemo(
-    () => report.accounts.filter((account) => !activeAccountIds.has(account.id)),
-    [report.accounts, activeAccountIds],
-  );
-
   const percentages = activeAccounts.flatMap((account) =>
     account.limits.unavailable ? [] : account.limits.windows.map((window) => window.usedPercent),
   );
@@ -159,7 +137,8 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
     setOpenedAt(Date.now());
   };
 
-  const now = Date.now();
+  const minute = useNowMinute();
+  const now = Date.parse(`${minute}:00Z`);
 
   return (
     <Popover
@@ -225,7 +204,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
         align="end"
         sideOffset={0}
         padding="compact"
-        className="w-[min(26rem,calc(100vw-1.5rem))]"
+        className="w-[min(21rem,calc(100vw-1.5rem))]"
       >
         {view === "context-breakdown" && threadId ? (
           <DetailedContextBreakdownView
@@ -235,7 +214,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
           />
         ) : (
           <div className="flex max-h-[min(30rem,calc(100dvh-7.5rem))] min-w-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
+            <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
@@ -254,7 +233,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                 className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-muted/15"
                 aria-label="Context window"
               >
-                <div className="flex min-w-0 flex-col gap-2.5 p-3.5">
+                <div className="flex min-w-0 flex-col gap-2 p-2.5">
                   <div className="flex items-baseline justify-between gap-3 text-xs">
                     <span className="font-semibold text-foreground">Context window</span>
                     {contextReported && contextPercent !== null ? (
@@ -274,7 +253,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                       {figures.state === "reported"
                         ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"} tokens`
                         : figures.state === "pending"
-                          ? `0 / ${formatTokenCount(figures.maxTokens)} tokens`
+                          ? `Not reported / ${formatTokenCount(figures.maxTokens)} tokens`
                           : "Not reported yet"}
                     </span>
                     {figures.state === "reported" && figures.maxTokens ? (
@@ -289,7 +268,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                   <button
                     type="button"
                     onClick={() => setView("context-breakdown")}
-                    className="group flex cursor-pointer items-center justify-between gap-2 rounded-b-xl border-t border-border/50 px-3.5 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:bg-muted/40 focus-visible:text-foreground focus-visible:outline-none"
+                    className="group flex cursor-pointer items-center justify-between gap-2 rounded-b-xl border-t border-border/50 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:bg-muted/40 focus-visible:text-foreground focus-visible:outline-none"
                   >
                     <span>See what is using context</span>
                     <ChevronRightIcon
@@ -315,72 +294,9 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                 </div>
 
                 {activeAccounts.length > 0 ? (
-                  activeAccounts.map((account) => {
-                    const title = accountTitle(
-                      { displayName: account.displayName, sourceLabel: account.sourceLabel },
-                      account.displayName ?? account.label,
-                    );
-                    const windows = orderPlanWindows(account.limits.windows);
-                    return (
-                      <div
-                        key={account.id}
-                        className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 p-3.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <ProviderInstanceIcon
-                              driverKind={account.driver}
-                              displayName={title}
-                              iconClassName="size-4"
-                            />
-                            <span className="truncate text-xs font-semibold text-foreground">
-                              {title}
-                            </span>
-                          </div>
-                          {account.plan ? (
-                            <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-2xs leading-4 text-muted-foreground">
-                              {shortPlanName(account.plan)}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        {windows.length === 0 ? (
-                          <span className="text-2xs text-muted-foreground">
-                            {account.limits.unavailable?.message ??
-                              "Limits pending for this account."}
-                          </span>
-                        ) : (
-                          windows.map((window) => {
-                            const label = limitLabel(window, "panel");
-                            const countdown = formatResetCountdown(window.resetsAt, now);
-                            const used = usedPercentLabel(window.usedPercent);
-                            return (
-                              <div key={window.id} className="flex min-w-0 flex-col gap-1">
-                                <div className="flex min-w-0 items-baseline justify-between gap-3 text-xs">
-                                  <span className="min-w-0 break-words text-muted-foreground">
-                                    {label}
-                                  </span>
-                                  <span className="shrink-0 tabular-nums font-medium text-foreground">
-                                    {used}%
-                                  </span>
-                                </div>
-                                <UsageBar
-                                  usedPercent={window.usedPercent}
-                                  label={`${label}: ${used}% used`}
-                                  className="h-1"
-                                />
-                                {countdown ? (
-                                  <span className="text-2xs text-muted-foreground">
-                                    {countdown} · {percentText(window.usedPercent, "left")}
-                                  </span>
-                                ) : null}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    );
-                  })
+                  activeAccounts.map((account) => (
+                    <ActiveAccount key={account.id} account={account} now={now} />
+                  ))
                 ) : (
                   <div className="rounded-xl border bg-muted/20 p-3 text-xs text-muted-foreground">
                     No active subscription account linked to current model provider.
@@ -400,58 +316,20 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                       </span>
                     </div>
 
-                    <div className="flex max-h-36 min-w-0 flex-col gap-2 overflow-y-auto overscroll-contain pr-0.5 [scrollbar-width:thin]">
-                      {otherAccounts.map((account) => {
-                        const title = accountTitle(
-                          { displayName: account.displayName, sourceLabel: account.sourceLabel },
-                          account.displayName ?? account.label,
-                        );
-                        const windows = orderPlanWindows(account.limits.windows);
-                        return (
-                          <div
-                            key={account.id}
-                            className="flex min-w-0 flex-col gap-2 rounded-lg border border-border/50 p-2.5 text-xs"
-                          >
-                            <div className="flex items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <ProviderInstanceIcon
-                                  driverKind={account.driver}
-                                  displayName={title}
-                                  iconClassName="size-3.5"
-                                />
-                                <span className="truncate font-medium text-foreground">
-                                  {title}
-                                </span>
-                              </div>
-                              {account.plan ? (
-                                <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-2xs leading-4 text-muted-foreground">
-                                  {shortPlanName(account.plan)}
-                                </span>
-                              ) : null}
-                            </div>
-                            {windows.length > 0 ? (
-                              <div className="flex flex-col gap-1">
-                                {windows.slice(0, 2).map((window) => (
-                                  <div key={window.id} className="flex min-w-0 items-center gap-2">
-                                    <span className="w-16 shrink-0 truncate text-2xs text-muted-foreground">
-                                      {limitLabel(window, "glance")}
-                                    </span>
-                                    <UsageBar
-                                      usedPercent={window.usedPercent}
-                                      label={`${limitLabel(window, "glance")}: ${usedPercentLabel(window.usedPercent)}%`}
-                                      className="h-1 min-w-0 flex-1"
-                                    />
-                                    <span className="w-8 shrink-0 text-right text-2xs tabular-nums text-foreground">
-                                      {usedPercentLabel(window.usedPercent)}%
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
+                    <div className="flex justify-end gap-2 text-2xs text-muted-foreground">
+                      <span className="w-9 text-right">Session</span>
+                      <span className="w-9 text-right">Week</span>
                     </div>
+                    <ul className="flex flex-col gap-2">
+                      {otherAccounts.slice(0, 4).map((account) => (
+                        <OtherAccount key={account.id} account={account} />
+                      ))}
+                    </ul>
+                    {otherAccounts.length > 4 ? (
+                      <Button size="xs" variant="link" onClick={openDetails}>
+                        +{otherAccounts.length - 4} more accounts
+                      </Button>
+                    ) : null}
                   </section>
                 </>
               ) : null}

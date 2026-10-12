@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./connectedUsageLimits": {
+      "types": "./src/connectedUsageLimits.ts",
+      "import": "./src/connectedUsageLimits.ts"
+    },
     "./threadIdentity": {
       "types": "./src/threadIdentity.ts",
       "import": "./src/threadIdentity.ts"

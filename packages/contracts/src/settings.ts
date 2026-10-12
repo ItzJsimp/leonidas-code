@@ -452,6 +452,9 @@ export const ClientSettingsSchema = Schema.Struct({
   usageControlIcon: Schema.Literals(["chart", "gauge", "activity", "battery", "layers"]).pipe(
     Schema.withDecodingDefault(Effect.succeed("chart" as const)),
   ),
+  // Glance card (context, active account, other accounts) over the chat's top-left corner.
+  // On for every install; the title-bar toggle hides it.
+  usageOverlayEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   // Legacy context window meter. The composer hides it by default; users who
   // still want the old usage indicator can restore it from Settings.
   contextWindowMeterEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
@@ -1735,6 +1738,7 @@ export const ClientSettingsPatch = Schema.Struct({
   usageControlIcon: Schema.optionalKey(
     Schema.Literals(["chart", "gauge", "activity", "battery", "layers"]),
   ),
+  usageOverlayEnabled: Schema.optionalKey(Schema.Boolean),
   contextWindowMeterEnabled: Schema.optionalKey(Schema.Boolean),
   composerCollapseOnScroll: Schema.optionalKey(Schema.Boolean),
   composerPromptPredictionEnabled: Schema.optionalKey(Schema.Boolean),
