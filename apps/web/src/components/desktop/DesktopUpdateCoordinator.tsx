@@ -2,6 +2,8 @@ import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useTourStore } from "../../features/tour/tourStore";
+import { isTourTargetId, type TourTargetId } from "../../features/tour/tourTargets";
 import { ensureLocalApi } from "../../localApi";
 import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import { runningThreadCountAtom } from "../../state/threads";
@@ -27,6 +29,7 @@ const PENDING_FEATURE_WALKTHROUGH_KEY = "leonidas:pending-feature-walkthrough:v1
 interface PendingFeatureWalkthrough {
   readonly version: string;
   readonly prompt: string;
+  readonly tourId?: TourTargetId;
 }
 
 function readPendingFeatureWalkthrough(): PendingFeatureWalkthrough | null {
@@ -35,12 +38,22 @@ function readPendingFeatureWalkthrough(): PendingFeatureWalkthrough | null {
     if (!raw) return null;
     const value: unknown = JSON.parse(raw);
     if (typeof value !== "object" || value === null) return null;
-    const candidate = value as { readonly version?: unknown; readonly prompt?: unknown };
+    const candidate = value as {
+      readonly version?: unknown;
+      readonly prompt?: unknown;
+      readonly tourId?: unknown;
+    };
     return typeof candidate.version === "string" &&
       candidate.version.length <= 100 &&
       typeof candidate.prompt === "string" &&
       candidate.prompt.length <= 1200
-      ? { version: candidate.version, prompt: candidate.prompt }
+      ? {
+          version: candidate.version,
+          prompt: candidate.prompt,
+          ...(typeof candidate.tourId === "string" && isTourTargetId(candidate.tourId)
+            ? { tourId: candidate.tourId }
+            : {}),
+        }
       : null;
   } catch {
     return null;
@@ -107,19 +120,27 @@ export function DesktopUpdateCoordinator() {
   } | null>(null);
 
   const showMe = useCallback(
-    (item: string) => {
+    (item: string, tourId: TourTargetId | null) => {
       const prompt = createFeatureWalkthroughPrompt(item);
       const updateActions = whatsNew?.actions;
       if (
         updateActions &&
         whatsNew.version &&
-        savePendingFeatureWalkthrough({ version: whatsNew.version, prompt })
+        savePendingFeatureWalkthrough({
+          version: whatsNew.version,
+          prompt,
+          ...(tourId ? { tourId } : {}),
+        })
       ) {
         setWhatsNew(null);
         updateActions.onRestartNow();
         return;
       }
       setWhatsNew(null);
+      if (tourId) {
+        useTourStore.getState().start([tourId]);
+        return;
+      }
       void navigate({ to: "/", search: { guidePrompt: prompt } });
     },
     [navigate, whatsNew],
@@ -130,6 +151,10 @@ export function DesktopUpdateCoordinator() {
     const pending = readPendingFeatureWalkthrough();
     if (!pending || !sameReleaseVersion(pending.version, currentVersion)) return;
     clearPendingFeatureWalkthrough();
+    if (pending.tourId) {
+      useTourStore.getState().start([pending.tourId]);
+      return;
+    }
     void navigate({ to: "/", search: { guidePrompt: pending.prompt } });
   }, [currentVersion, navigate]);
 

@@ -4,6 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { appAtomRegistry } from "../../rpc/atomRegistry";
+import { useTourStore } from "../../features/tour/tourStore";
+import { splitTourMarker, type TourTargetId } from "../../features/tour/tourTargets";
 import { createFeatureWalkthroughPrompt } from "../desktopUpdate.logic";
 import { Button } from "../ui/button";
 import {
@@ -54,8 +56,12 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
     onClose?.();
   };
 
-  const openWalkthrough = (note: string) => {
+  const openWalkthrough = (note: string, tourId: TourTargetId | null) => {
     handleClose();
+    if (tourId) {
+      useTourStore.getState().start([tourId]);
+      return;
+    }
     void navigate({ to: "/", search: { guidePrompt: createFeatureWalkthroughPrompt(note) } });
   };
 
@@ -158,25 +164,28 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
                   {entry.notes.length ? (
                     <div className="flex flex-col gap-1.5">
                       <ul className="space-y-2 text-sm leading-relaxed text-popover-foreground">
-                        {displayedNotes.map((note) => (
-                          <li key={note} className="relative break-words ps-4">
-                            <span
-                              aria-hidden
-                              className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
-                            />
-                            <p>{note}</p>
-                            <div className="-ms-1 mt-1">
-                              <Button
-                                size="xs"
-                                variant="link"
-                                aria-label={`Walk me through: ${note}`}
-                                onClick={() => openWalkthrough(note)}
-                              >
-                                Walk me through it
-                              </Button>
-                            </div>
-                          </li>
-                        ))}
+                        {displayedNotes.map((rawNote) => {
+                          const { text: note, targetId } = splitTourMarker(rawNote);
+                          return (
+                            <li key={rawNote} className="relative break-words ps-4">
+                              <span
+                                aria-hidden
+                                className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
+                              />
+                              <p>{note}</p>
+                              <div className="-ms-1 mt-1">
+                                <Button
+                                  size="xs"
+                                  variant="link"
+                                  aria-label={`${targetId ? "Show me where" : "Walk me through"}: ${note}`}
+                                  onClick={() => openWalkthrough(note, targetId)}
+                                >
+                                  {targetId ? "Show me where" : "Walk me through it"}
+                                </Button>
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                       {hasMoreNotes ? (
                         <Button
