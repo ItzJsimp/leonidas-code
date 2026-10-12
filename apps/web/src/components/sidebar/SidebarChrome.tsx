@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
+import { APP_VERSION_LABEL } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { usePullRequestsSupported } from "../../state/environments";
@@ -79,6 +80,19 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
             </Badge>
           </div>
         ) : null}
+        <button
+          type="button"
+          title="Version. Click to see what changed in each update."
+          onClick={openReleaseHistoryDialog}
+          className={cn(
+            "h-7 shrink-0 rounded-md px-1 text-xs tabular-nums outline-hidden ring-ring focus-visible:ring-2 focus-visible:ring-inset",
+            backdropVariant
+              ? "text-white/70 hover:text-white"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          v{APP_VERSION_LABEL}
+        </button>
       </div>
     </div>
   );
