@@ -1259,6 +1259,111 @@ describe("OrchestratorMcpService provider resolution", () => {
       }),
   );
 
+  it.effect("passes workspaceStrategy and returns worktreePath and branch on speculative branching delegation", () =>
+    Effect.gen(function* () {
+      const dispatched = yield* Ref.make<ReadonlyArray<unknown>>([]);
+      const task = {
+        id: taskId,
+        threadId: parentThreadId,
+        runId: parentRunId,
+        parentNodeId,
+        origin: "app_owned",
+        createdBy: "agent",
+        driver: ProviderDriverKind.make("codex"),
+        providerInstanceId: codexInstanceId,
+        providerThreadId: null,
+        childThreadId,
+        nativeTaskRef: null,
+        prompt: "Run speculative branch",
+        title: null,
+        model: "gpt-5.4",
+        status: "running",
+        result: null,
+        startedAt: null,
+        completedAt: null,
+        workspaceStrategy: {
+          type: "worktree",
+          baseRef: "feature/base",
+          branch: "feature/speculative-1",
+        },
+        worktreePath: "/isolated/worktree/spec-1",
+        branch: "feature/speculative-1",
+      };
+      let delegated = false;
+      const layerDependencies = Layer.mergeAll(
+        NodeServices.layer,
+        Layer.mock(ThreadManagementService.ThreadManagementService)({
+          getThreadRecords: (threadId) =>
+            Effect.succeed(
+              threadId === parentThreadId
+                ? parentProjection(delegated ? [task] : [])
+                : childProjection,
+            ),
+          dispatch: (command) =>
+            Ref.update(dispatched, (commands) => [...commands, command]).pipe(
+              Effect.andThen(
+                Effect.sync(() => {
+                  delegated = true;
+                }),
+              ),
+              Effect.as({
+                sequence: 1,
+                storedEvents: [
+                  {
+                    sequence: 1,
+                    commandId: null,
+                    event: { type: "subagent.updated", payload: task },
+                  },
+                ],
+              } as never),
+            ),
+        }),
+        Layer.mock(ProviderRegistry.ProviderRegistry)({
+          getProviders: Effect.succeed([
+            providerSnapshot({
+              instanceId: codexInstanceId,
+              driver: ProviderDriverKind.make("codex"),
+              model: "gpt-5.4",
+            }),
+          ]),
+        }),
+        adapterRegistryLayer([codexInstanceId]),
+        Layer.mock(ProjectService.ProjectService)({}),
+        Layer.mock(SecretRequests.SecretRequests)({}),
+        Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+      );
+
+      yield* Effect.gen(function* () {
+        const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+        const result = yield* service.delegateTask(scope, {
+          task: "Run speculative branch",
+          workspaceStrategy: {
+            type: "worktree",
+            baseRef: "feature/base",
+            branch: "feature/speculative-1",
+          },
+          mode: "async",
+          clientRequestId: "delegate-speculative-1",
+        });
+        assert.equal(result.status, "running");
+        assert.equal(result.worktreePath, "/isolated/worktree/spec-1");
+        assert.equal(result.branch, "feature/speculative-1");
+        const commands = yield* Ref.get(dispatched);
+        assert.equal(commands.length, 1);
+        const request = commands[0] as {
+          type: string;
+          workspaceStrategy?: { type: string; baseRef: string; branch: string };
+          branch?: string;
+        };
+        assert.equal(request.type, "delegated_task.request");
+        assert.equal(request.workspaceStrategy?.type, "worktree");
+        assert.equal(request.branch, "feature/speculative-1");
+      }).pipe(
+        Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
+      );
+    }),
+  );
+
   it.effect("resolves a driverKind target to a capable Antigravity instance", () =>
     Effect.gen(function* () {
       const dispatched = yield* Ref.make<ReadonlyArray<unknown>>([]);

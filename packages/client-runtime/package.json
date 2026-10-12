@@ -402,6 +402,14 @@
     "./source-control-clients": {
       "types": "./src/sourceControlClients.ts",
       "default": "./src/sourceControlClients.ts"
+    },
+    "./state/quota-preflight": {
+      "types": "./src/state/quotaPreflight.ts",
+      "default": "./src/state/quotaPreflight.ts"
+    },
+    "./state/ui-verification": {
+      "types": "./src/state/uiVerification.ts",
+      "default": "./src/state/uiVerification.ts"
     }
   },
   "scripts": {

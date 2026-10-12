@@ -6779,6 +6779,21 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         ...(command.title === undefined ? {} : { title: command.title }),
         ordinal: parentProjection.subagents.length + 1,
       });
+      const isolatedWorktreePath =
+        command.worktreePath !== undefined
+          ? command.worktreePath
+          : command.workspaceStrategy?.type === "root"
+            ? null
+            : command.workspaceStrategy?.type === "existing_worktree"
+              ? command.workspaceStrategy.worktreePath
+              : undefined;
+      const isolatedBranch =
+        command.branch !== undefined
+          ? command.branch
+          : command.workspaceStrategy?.branch !== undefined
+            ? command.workspaceStrategy.branch
+            : undefined;
+
       const childThread: OrchestrationV2AppThread = {
         ...makeSubagentChildThread({
           parentThread: parentProjection.thread,
@@ -6794,6 +6809,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         }),
         runtimeMode: command.runtimeMode,
         interactionMode: command.interactionMode,
+        ...(isolatedWorktreePath !== undefined ? { worktreePath: isolatedWorktreePath } : {}),
+        ...(isolatedBranch !== undefined ? { branch: isolatedBranch } : {}),
       };
       const task: OrchestrationV2Subagent = {
         id: taskNodeId,
@@ -6811,6 +6828,11 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         title: command.title ?? null,
         model: command.modelSelection.model,
         ...(command.completionWake === undefined ? {} : { completionWake: command.completionWake }),
+        ...(command.workspaceStrategy !== undefined
+          ? { workspaceStrategy: command.workspaceStrategy }
+          : {}),
+        ...(isolatedWorktreePath !== undefined ? { worktreePath: isolatedWorktreePath } : {}),
+        ...(isolatedBranch !== undefined ? { branch: isolatedBranch } : {}),
         status: "running",
         result: null,
         startedAt: now,
@@ -6901,6 +6923,11 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         payload: taskTurnItem,
       });
 
+      const requiresWorkspacePreparation =
+        command.workspaceStrategy !== undefined &&
+        command.workspaceStrategy.type === "worktree" &&
+        command.worktreePath === undefined;
+
       const childMessageCommand = {
         type: "message.dispatch",
         createdBy: command.createdBy,
@@ -6912,7 +6939,12 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         text: command.task,
         attachments: [],
         modelSelection: command.modelSelection,
-        dispatchMode: { type: "start_immediately" },
+        dispatchMode: requiresWorkspacePreparation
+          ? {
+              type: "defer_start",
+              workspaceStrategy: command.workspaceStrategy,
+            }
+          : { type: "start_immediately" },
       } satisfies Extract<OrchestrationV2Command, { readonly type: "message.dispatch" }>;
       yield* dispatchMessage(childMessageCommand, events, effects);
 

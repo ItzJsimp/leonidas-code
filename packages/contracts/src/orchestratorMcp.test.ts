@@ -59,6 +59,48 @@ describe("orchestrator MCP contracts", () => {
     expect(result.summary).toBe("Workspace inspected.");
   });
 
+  it("decodes speculative branching workspaceStrategy on delegated tasks", () => {
+    const request = decodeDelegateTaskInput({
+      task: "Implement isolated speculative branch",
+      workspaceStrategy: {
+        type: "worktree",
+        baseRef: "feature/base",
+        branch: "feature/speculative-1",
+        startFromOrigin: false,
+      },
+      clientRequestId: "delegate-speculative-1",
+    });
+    const result = decodeDelegateTaskResult({
+      taskId: "node-task-spec-1",
+      childThreadId: "thread-child-spec-1",
+      childRunId: "run-child-spec-1",
+      childNodeId: "node-task-spec-1",
+      status: "running",
+      workState: "working",
+      hasPendingChildRuns: true,
+      providerInstanceId: "codex",
+      model: "gpt-5-codex",
+      summary: null,
+      resultContextTransferId: null,
+      latestTerminalRunId: null,
+      latestTerminalStatus: null,
+      latestTerminalSummary: null,
+      latestTerminalResultContextTransferId: null,
+      waitTimedOut: false,
+      worktreePath: "/isolated/worktree/spec-1",
+      branch: "feature/speculative-1",
+    });
+
+    expect(request.workspaceStrategy).toEqual({
+      type: "worktree",
+      baseRef: "feature/base",
+      branch: "feature/speculative-1",
+      startFromOrigin: false,
+    });
+    expect(result.worktreePath).toBe("/isolated/worktree/spec-1");
+    expect(result.branch).toBe("feature/speculative-1");
+  });
+
   it("decodes target model options in canonical and shorthand shapes", () => {
     const canonical = decodeDelegateTaskInput({
       task: "Say hello.",
