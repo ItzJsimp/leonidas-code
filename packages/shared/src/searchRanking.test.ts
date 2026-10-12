@@ -90,4 +90,47 @@ describe("insertRankedSearchResult", () => {
 
     expect(ranked.map((entry) => entry.item)).toEqual(["a", "b"]);
   });
+
+  it("keeps every candidate in ranked order when the limit is positive infinity", () => {
+    const ranked: {
+      item: string;
+      score: number;
+      tieBreaker: string;
+    }[] = [];
+
+    for (const [item, score] of [
+      ["c", 30],
+      ["a", 10],
+      ["d", 40],
+      ["b", 20],
+    ] as const) {
+      insertRankedSearchResult(ranked, { item, score, tieBreaker: item }, Number.POSITIVE_INFINITY);
+    }
+
+    expect(ranked.map((entry) => entry.item)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("still truncates when the limit is finite", () => {
+    const ranked: {
+      item: string;
+      score: number;
+      tieBreaker: string;
+    }[] = [
+      { item: "b", score: 20, tieBreaker: "b" },
+      { item: "d", score: 40, tieBreaker: "d" },
+    ];
+
+    insertRankedSearchResult(ranked, { item: "a", score: 10, tieBreaker: "a" }, 2);
+    insertRankedSearchResult(ranked, { item: "c", score: 30, tieBreaker: "c" }, 2);
+
+    expect(ranked.map((entry) => entry.item)).toEqual(["a", "b"]);
+  });
+
+  it("inserts nothing for invalid limits", () => {
+    for (const limit of [0, -1, Number.NaN, 1.5]) {
+      const ranked = [{ item: "a", score: 10, tieBreaker: "a" }];
+      insertRankedSearchResult(ranked, { item: "z", score: 1, tieBreaker: "z" }, limit);
+      expect(ranked.map((entry) => entry.item)).toEqual(["a"]);
+    }
+  });
 });
