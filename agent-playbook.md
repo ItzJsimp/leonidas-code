@@ -69,10 +69,15 @@ verified: 2026-10-11
 
 ## 6. Why it is this way
 
+- **Native tasks and release planning:** Leonidas owns new tasks; Todoist supplied public interaction references. Agent execution requires explicit delegation. Existing AIOS cards and GitHub sharing remain compatible. Release scope lives in [`project-roadmap.json`](./project-roadmap.json); V1.0 remains an explicitly approved public launch.
+- **Roadmap task identity:** Imported briefs carry a durable `Roadmap key:` in their descriptions. Renaming or moving a task must not reimport it. Use the shared `observeResize` helper for map connectors; raw ResizeObserver callbacks fail scoped lint.
+
 - **Reuse electron-updater over a git-pull updater:** installed apps cannot `git pull`; the existing GitHub Releases path needs only a CI workflow. Card: [`t3-code-push-to-update-release-pipeline`](../../tasks/t3-code-push-to-update-release-pipeline.md).
 - **Thin rebrand layer:** every branding touch makes `upstream/main` merges harder. Card: [`t3-code-rebrand`](../../tasks/t3-code-rebrand.md).
 
-## 7. Session notes (newest first, one line each, keep 3, older in the archive)
+## 7. Session notes (newest first, one line each, keep 10, older in the archive)
+
+- **2026-10-12 (native tasks and connected roadmap):** daily planning and the V0.21 to V1.0 map are committed in `036dd3214a` and `67707f3c95`. The map has ten release gates, twenty executable tasks and editable milestone assignments; 154 focused tests pass. Preview checks cover import, reload, reassignment, clear, complete/reopen, zoom and narrow layouts. Three unrelated web typecheck errors remain; no release was published.
 
 - **2026-10-12 (slowness diagnosis and perf audit):** agents were slow because D: is a 7200rpm HDD (queue 35 to 50) with no Defender exclusion, whole-tree git checkpoints with per-object fsync (66 to 112 s), and per-turn `npx` MCP spawns; nothing in source changed. 56 evidence-tagged changes in `handoff-docs/leonidas-code-perf-audit-20261012.md`; resume from `handoff-docs/2026-10-12-leonidas-code-performance-audit.md`. Open: Defender exclusions (admin), SSD move decision with Mob, real Codex turn-start failure cause (masked in `failure.ts`).
 
