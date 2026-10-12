@@ -58,7 +58,8 @@ const configuredVersionLabel = (() => {
       cwd: import.meta.dirname,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-      timeout: 5_000,
+      // A cold first start on Windows can take several seconds to read the repository.
+      timeout: 30_000,
     });
     return formatDevVersionLabel(describe) ?? "";
   } catch {
