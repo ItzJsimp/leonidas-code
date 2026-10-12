@@ -146,7 +146,9 @@ function SidebarUpdateControl() {
   });
   const updateWhenSafe = useUpdateWhenSafeStore((store) => store.updateWhenSafe);
   const setUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setUpdateWhenSafe);
-  const isWaitingToUpdate = updateWhenSafe && action === "install";
+  const autoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.autoUpdateWhenSafe);
+  const setAutoUpdateWhenSafe = useUpdateWhenSafeStore((store) => store.setAutoUpdateWhenSafe);
+  const isWaitingToUpdate = (updateWhenSafe || autoUpdateWhenSafe) && action === "install";
   const actionTooltip = isWaitingToUpdate
     ? `${UPDATE_WHEN_SAFE_WAITING_LABEL}. Click to cancel.`
     : showUpdateDetails
@@ -191,6 +193,7 @@ function SidebarUpdateControl() {
 
     if (isWaitingToUpdate) {
       setUpdateWhenSafe(false);
+      if (autoUpdateWhenSafe) setAutoUpdateWhenSafe(false);
       return;
     }
 
@@ -302,6 +305,8 @@ function SidebarUpdateControl() {
     action,
     isInteractionDisabled,
     isWaitingToUpdate,
+    autoUpdateWhenSafe,
+    setAutoUpdateWhenSafe,
     prefersReducedMotion,
     setUpdateWhenSafe,
     state,
