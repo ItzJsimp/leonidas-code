@@ -1,4 +1,5 @@
 import { deriveAgentActivity } from "../agentActivity";
+import { usePetActivityPublisher } from "../pet/usePetActivityPublisher";
 import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
 import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
@@ -2499,6 +2500,7 @@ export default function ChatView(props: ChatViewProps) {
       plan: plan?.kind === "todo_list" ? plan : null,
     });
   }, [activeActivityRun, activeRuntime, serverProjection]);
+  usePetActivityPublisher(activeComposerActivity, activeLatestRun?.status === "failed");
   const activeComposerTaskSteps = activeComposerActivity?.steps ?? null;
   const activeProjectRef = useMemo(
     () =>
