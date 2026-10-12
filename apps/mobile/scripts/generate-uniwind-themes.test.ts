@@ -27,6 +27,10 @@ describe("generate mobile Uniwind themes", () => {
 
   it("registers every custom palette for both appearances", () => {
     expect(customThemeNames).toEqual([
+      "leonidas-light",
+      "leonidas-dark",
+      "t3-original-light",
+      "t3-original-dark",
       "t3-chat-light",
       "t3-chat-dark",
       "grove-light",
@@ -50,10 +54,10 @@ describe("generate mobile Uniwind themes", () => {
 
     expect(variables.light).toEqual(readDefaultMobileThemeVariables("light"));
     expect(variables.dark).toEqual(readDefaultMobileThemeVariables("dark"));
-    expect(variables.light["--color-screen"]).toBe("#fcfcfc");
-    expect(variables.light["--color-drawer"]).toBe("#fafafa");
-    expect(variables.dark["--color-screen"]).toBe("#0a0a0a");
-    expect(variables.dark["--color-drawer"]).toBe("#000000");
+    expect(variables.light["--color-screen"]).toBe("#eee6d6");
+    expect(variables.light["--color-drawer"]).toBe("#e9e0cf");
+    expect(variables.dark["--color-screen"]).toBe("#07070a");
+    expect(variables.dark["--color-drawer"]).toBe("#111116");
     expect(Object.keys(variables.light)).toEqual(Object.keys(variables.dark));
   });
 
@@ -81,11 +85,11 @@ describe("generate mobile Uniwind themes", () => {
         ),
         name,
       ).toEqual({
-        "--color-clerk-page": isDark ? "#0a0a0a" : "#fcfcfc",
-        "--color-clerk-foreground": isDark ? "#f5f5f5" : "#27272a",
-        "--color-clerk-foreground-muted": isDark ? "#818181" : "#71717b",
-        "--color-clerk-border": isDark ? "#191919" : "#e4e4e7",
-        "--color-clerk-danger": isDark ? "#ff6467" : "#c10007",
+        "--color-clerk-page": isDark ? "#0e0e12" : "#eae1cf",
+        "--color-clerk-foreground": isDark ? "#f4f4f5" : "#1f1a14",
+        "--color-clerk-foreground-muted": isDark ? "#a1a1aa" : "#5f5647",
+        "--color-clerk-border": isDark ? "#2a2a35" : "#cfc2a8",
+        "--color-clerk-danger": isDark ? "#ff8097" : "#7d1030",
       });
     }
   });

@@ -3,8 +3,8 @@ import {
   BUILT_IN_THEME_IDS,
   BUILT_IN_THEMES,
   T3_CHAT_THEME,
-  T3_CODE_LIGHT_THEME_COLORS,
-  T3_CODE_DARK_THEME_COLORS,
+  LEONIDAS_LIGHT_THEME_COLORS,
+  LEONIDAS_DARK_THEME_COLORS,
   MOBILE_THEME_IDS,
   getThemeColorsForAppearance,
 } from "@t3tools/shared/themePalettes";
@@ -19,6 +19,7 @@ import {
   flattenThemeColor,
   getMobileThemePreviewColors,
   getMobileThemeVariables,
+  MOBILE_THEME_OPTIONS,
   normalizeMobileThemeId,
   normalizeMobileThemeMode,
   resolveMobileThemeIds,
@@ -70,6 +71,9 @@ describe("mobile themes", () => {
 
   it("shares all built-in desktop palettes", () => {
     expect(BUILT_IN_THEMES.map((theme) => theme.id)).toEqual(BUILT_IN_THEME_IDS);
+    expect(
+      MOBILE_THEME_OPTIONS.filter((theme) => theme.id === DEFAULT_MOBILE_THEME_ID),
+    ).toHaveLength(1);
     for (const themeId of BUILT_IN_THEME_IDS) {
       expect(getMobileThemeVariables(themeId, "light")["--color-screen"]).toMatch(/^#/);
       expect(getMobileThemeVariables(themeId, "dark")["--color-screen"]).toMatch(/^#/);
@@ -82,8 +86,8 @@ describe("mobile themes", () => {
       const colors = theme
         ? getThemeColorsForAppearance(theme, appearance)!
         : appearance === "dark"
-          ? T3_CODE_DARK_THEME_COLORS
-          : T3_CODE_LIGHT_THEME_COLORS;
+          ? LEONIDAS_DARK_THEME_COLORS
+          : LEONIDAS_LIGHT_THEME_COLORS;
       const variables =
         themeId === DEFAULT_MOBILE_THEME_ID
           ? readDefaultMobileThemeVariables(appearance)
@@ -170,21 +174,29 @@ describe("mobile themes", () => {
   it.each(["light", "dark"] as const)(
     "separates default settings groups from their %s background",
     (appearance) => {
-      const variables = getMobileThemeVariables("t3-code", appearance);
+      const variables = getMobileThemeVariables(DEFAULT_MOBILE_THEME_ID, appearance);
       expect(
         contrastRatio(variables["--color-grouped-card"], variables["--color-sheet-solid"]),
       ).toBeGreaterThanOrEqual(1.06);
       expect(variables["--color-grouped-card"]).not.toBe(variables["--color-card"]);
       for (const platform of ["ios", "android"]) {
-        const runtime = getMobileThemeRuntimeVariables("t3-code", appearance, platform);
+        const runtime = getMobileThemeRuntimeVariables(
+          DEFAULT_MOBILE_THEME_ID,
+          appearance,
+          platform,
+        );
         const sidebar = flattenThemeColor(runtime["--color-drawer"], runtime["--color-screen"]);
         const chrome = flattenThemeColor(
           runtime[platform === "android" ? "--color-header" : "--color-drawer"],
           runtime["--color-screen"],
         );
-        expect(relativeLuminance(sidebar)).toBeLessThan(
-          relativeLuminance(runtime["--color-thread-canvas"]),
-        );
+        // Leonidas dark lifts the rail one Obsidian tier above the canvas
+        // (standards/design-system.md), so only light keeps the rail recessed.
+        if (appearance === "light") {
+          expect(relativeLuminance(sidebar)).toBeLessThan(
+            relativeLuminance(runtime["--color-thread-canvas"]),
+          );
+        }
         expect(contrastRatio(chrome, runtime["--color-screen"])).toBeGreaterThanOrEqual(1.06);
         const foregroundRoles =
           platform === "android"
@@ -200,9 +212,9 @@ describe("mobile themes", () => {
   it.each(["light", "dark"] as const)(
     "slightly strengthens default %s messages and separates fallback materials",
     (appearance) => {
-      const variables = getMobileThemeVariables("t3-code", appearance);
+      const variables = getMobileThemeVariables(DEFAULT_MOBILE_THEME_ID, appearance);
       const desktop =
-        appearance === "dark" ? T3_CODE_DARK_THEME_COLORS : T3_CODE_LIGHT_THEME_COLORS;
+        appearance === "dark" ? LEONIDAS_DARK_THEME_COLORS : LEONIDAS_LIGHT_THEME_COLORS;
       const bubbleContrast = contrastRatio(
         variables["--color-user-bubble"],
         variables["--color-screen"],
@@ -225,9 +237,9 @@ describe("mobile themes", () => {
 
   it("uses the same preview roles and standard artwork as desktop", () => {
     expect(getMobileThemePreviewColors(DEFAULT_MOBILE_THEME_ID, "light")).toEqual({
-      canvas: "#fcfcfc",
-      accent: "#f4f4f5",
-      messageAction: "#4f46e5",
+      canvas: "#eee6d6",
+      accent: "#e6cfc0",
+      messageAction: "#a8221b",
     });
     const desktopOcean = BUILT_IN_THEMES.find((theme) => theme.id === "ocean")!;
     expect(getMobileThemePreviewColors("ocean", "light")).toEqual({
