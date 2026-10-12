@@ -1,5 +1,5 @@
 import type { ModelSelection, RuntimeMode, ServerProvider } from "@t3tools/contracts";
-import { classifyTask, routeTurn } from "@t3tools/shared/autoRouter";
+import { classifyTask, METERED_DRIVERS, routeTurn } from "@t3tools/shared/autoRouter";
 
 /**
  * Free models that matched Haiku on a read-only lookup probe (2026-10-12),
@@ -40,13 +40,17 @@ export function routeLightDelegatedTask(input: {
   const decision = routeTurn({
     preference: "cost",
     prompt: input.task,
-    candidates: runnable.map((provider) => ({
-      instanceId: provider.instanceId,
-      driverKind: provider.driver,
-      label: provider.auth.label ?? provider.displayName ?? provider.driver,
-      usageLimits: provider.usageLimits,
-      models: provider.models.filter((model) => !isFreeSlug(model.slug)),
-    })),
+    // Subscription models only: a pay-per-token key must never be billed for
+    // a task meant to save money, including as a free model's fallback.
+    candidates: runnable
+      .filter((provider) => !METERED_DRIVERS.has(provider.driver))
+      .map((provider) => ({
+        instanceId: provider.instanceId,
+        driverKind: provider.driver,
+        label: provider.auth.label ?? provider.displayName ?? provider.driver,
+        usageLimits: provider.usageLimits,
+        models: provider.models.filter((model) => !isFreeSlug(model.slug)),
+      })),
     now: input.now,
   });
   const paid = decision?.task === "light" ? decision.modelSelection : undefined;

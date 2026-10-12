@@ -129,6 +129,38 @@ describe("routeLightDelegatedTask", () => {
     expect(selection?.selection.model).toBe("claude-haiku-5-5");
   });
 
+  it("never falls back to a pay-per-token model, even when the subscription is scarce", () => {
+    const meteredAndFree = {
+      ...freeProvider(["cohere/north-mini-code:free"]),
+      models: [
+        ...freeProvider(["cohere/north-mini-code:free"]).models,
+        {
+          slug: "deepseek/deepseek-chat",
+          name: "deepseek/deepseek-chat",
+          isCustom: false,
+          capabilities: null,
+          inputCostPerMillionTokens: 0.2,
+          outputCostPerMillionTokens: 0.8,
+        },
+      ],
+    } as ServerProvider;
+    const selection = routeLightDelegatedTask({
+      ...base,
+      providers: [provider("codex", "codex", ["gpt-6-luna"]), meteredAndFree],
+      task: "Fix a typo in README.md",
+    });
+    expect(selection?.selection.model).toBe("cohere/north-mini-code:free");
+    expect(selection?.fallback?.instanceId).toBe("codex");
+
+    const onlyMetered = routeLightDelegatedTask({
+      ...base,
+      providers: [meteredAndFree],
+      task: "Fix a typo in README.md",
+    });
+    expect(onlyMetered?.selection.model).toBe("cohere/north-mini-code:free");
+    expect(onlyMetered?.fallback).toBeUndefined();
+  });
+
   it("keeps a larger task on the parent even when free models exist", () => {
     expect(
       routeLightDelegatedTask({

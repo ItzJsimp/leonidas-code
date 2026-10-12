@@ -1,4 +1,5 @@
 import { makeProviderTextDeltaCoalescer } from "./ProviderTextDeltaCoalescer.ts";
+import { claudeTurnEnvironment } from "./claudeFreeModelRetries.ts";
 import {
   dynamicToolTitle,
   formatReadToolLabel,
@@ -8394,7 +8395,10 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             cwd: turnInput.runtimePolicy.cwd,
             attachmentsDir,
             settings: adapterOptions.settings,
-            environment: adapterOptions.environment,
+            environment: claudeTurnEnvironment(adapterOptions.environment, {
+              model: turnInput.modelSelection.model,
+              appThread: turnInput.appThread,
+            }),
             tools: queryPolicy.tools ?? CLAUDE_CODE_PRESET_TOOLS,
             ...(mcpOverrides.allowedTools === undefined
               ? {}
