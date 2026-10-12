@@ -7,9 +7,9 @@ import {
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
-import * as LocalVmService from "../../../localVm/LocalVmService.ts";
+import * as LocalVmService from "#server/localVm/LocalVmService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 
 const dependencies = [
   LocalVmService.LocalVmService,

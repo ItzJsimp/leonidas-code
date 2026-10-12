@@ -1,8 +1,8 @@
 import { OrchestratorMcpFailure, type ServerSettings } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
-import * as Environment from "../../../environment/ServerEnvironment.ts";
-import * as ThreadCommandExecutor from "../../../orchestration-v2/ThreadCommandExecutor.ts";
-import * as Settings from "../../../serverSettings.ts";
+import * as Environment from "#server/environment/ServerEnvironment.ts";
+import * as ThreadCommandExecutor from "#server/orchestration-v2/ThreadCommandExecutor.ts";
+import * as Settings from "#server/serverSettings.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { readCaller, unavailable } from "../../threadAccess.ts";

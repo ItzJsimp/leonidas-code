@@ -11,12 +11,12 @@ import {
 import * as Schema from "effect/Schema";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import * as ServerConfig from "../../../config.ts";
+import * as ServerConfig from "#server/config.ts";
 import { Tool, Toolkit } from "effect/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
-import * as DeviceService from "../../../device/DeviceService.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
+import * as DeviceService from "#server/device/DeviceService.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 
 const dependencies = [
   McpInvocationContext.McpInvocationContext,

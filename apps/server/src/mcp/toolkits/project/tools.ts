@@ -18,16 +18,16 @@ import {
   SourceControlCloneRepositoryResult,
 } from "@t3tools/contracts";
 import * as FileSystem from "effect/FileSystem";
-import * as ServerConfig from "../../../config.ts";
-import * as ThreadLaunchService from "../../../orchestration-v2/ThreadLaunchService.ts";
+import * as ServerConfig from "#server/config.ts";
+import * as ThreadLaunchService from "#server/orchestration-v2/ThreadLaunchService.ts";
 import * as Crypto from "effect/Crypto";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
-import * as ProjectService from "../../../project/ProjectService.ts";
-import * as ManagedProjectFolders from "../../../project/ManagedProjectFolders.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
-import * as SourceControlRepositoryService from "../../../sourceControl/SourceControlRepositoryService.ts";
-import * as GitVcsDriver from "../../../vcs/GitVcsDriver.ts";
+import * as ProjectService from "#server/project/ProjectService.ts";
+import * as ManagedProjectFolders from "#server/project/ManagedProjectFolders.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
+import * as SourceControlRepositoryService from "#server/sourceControl/SourceControlRepositoryService.ts";
+import * as GitVcsDriver from "#server/vcs/GitVcsDriver.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 
 const shared = {

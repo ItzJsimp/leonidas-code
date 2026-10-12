@@ -9,8 +9,8 @@ import * as Path from "effect/Path";
 import {
   createPendingAttachmentId,
   parseThreadSegmentFromAttachmentId,
-} from "../../../attachmentStore.ts";
-import * as ServerConfig from "../../../config.ts";
+} from "#server/attachmentStore.ts";
+import * as ServerConfig from "#server/config.ts";
 import { claimPreviewRecording, normalizePreviewOpenInput } from "./handlers.ts";
 
 describe("normalizePreviewOpenInput", () => {

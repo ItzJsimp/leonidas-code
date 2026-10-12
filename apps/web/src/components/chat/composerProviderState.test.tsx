@@ -10,9 +10,11 @@ import { getProviderModelCapabilities } from "../../providerModels";
 import {
   getComposerPromptInjectionState,
   getComposerProviderState,
+  withImplicitFastModeDefault,
+} from "../../composerProviderState";
+import {
   renderProviderTraitsMenuContent,
   renderProviderTraitsPicker,
-  withImplicitFastModeDefault,
 } from "./composerProviderState";
 
 // Everything in composerProviderState is now data-driven by the model's

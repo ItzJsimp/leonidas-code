@@ -104,6 +104,27 @@ const SETTINGS_NAV_ITEMS: ReadonlyArray<{
     icon: SETTINGS_SECTION_ICONS[to],
   }));
 
+// Day-one pages first, rarely visited system pages last. Pages missing from every group
+// (Project) lead the list so they cannot disappear.
+const SETTINGS_NAV_GROUPS: ReadonlyArray<{ label: string; paths: ReadonlyArray<SettingsPath> }> = [
+  { label: "Project", paths: ["/settings/projects"] },
+  {
+    label: "Essentials",
+    paths: ["/settings/general", "/settings/appearance", "/settings/providers"],
+  },
+  {
+    label: "Workflow",
+    paths: [
+      "/settings/keybindings",
+      "/settings/snap-shot",
+      "/settings/integrations",
+      "/settings/source-control",
+      "/settings/scheduled-tasks",
+    ],
+  },
+  { label: "System", paths: ["/settings/connections", "/settings/storage", "/settings/archived"] },
+];
+
 function SettingsSectionIcon({ to }: { to: SettingsPath }) {
   const Icon = SETTINGS_SECTION_ICONS[to];
   return <Icon className="mt-0.5 size-3.5 shrink-0 text-sidebar-muted-foreground/60" />;
@@ -336,29 +357,42 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                 ))}
               </SidebarMenu>
             ) : (
-              <SidebarMenu>
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isGeneralDetailPage =
-                    item.to === "/settings/general" &&
-                    pathname === "/settings/open-source-licenses";
-                  const isActive =
-                    isGeneralDetailPage ||
-                    pathname === item.to ||
-                    pathname.startsWith(`${item.to}/`);
+              <>
+                {SETTINGS_NAV_GROUPS.map((group) => {
+                  const items = navItems.filter((item) => group.paths.includes(item.to));
+                  if (items.length === 0) return null;
                   return (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        onClick={() => handleSectionClick(item.to)}
-                      >
-                        <Icon />
-                        <span className="truncate">{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <div key={group.label} className="flex flex-col gap-0.5">
+                      <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground/70 uppercase">
+                        {group.label}
+                      </p>
+                      <SidebarMenu>
+                        {items.map((item) => {
+                          const Icon = item.icon;
+                          const isGeneralDetailPage =
+                            item.to === "/settings/general" &&
+                            pathname === "/settings/open-source-licenses";
+                          const isActive =
+                            isGeneralDetailPage ||
+                            pathname === item.to ||
+                            pathname.startsWith(`${item.to}/`);
+                          return (
+                            <SidebarMenuItem key={item.to}>
+                              <SidebarMenuButton
+                                isActive={isActive}
+                                onClick={() => handleSectionClick(item.to)}
+                              >
+                                <Icon />
+                                <span className="truncate">{item.label}</span>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          );
+                        })}
+                      </SidebarMenu>
+                    </div>
                   );
                 })}
-              </SidebarMenu>
+              </>
             )}
           </div>
         </SidebarGroup>

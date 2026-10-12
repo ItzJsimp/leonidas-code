@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect";
-import * as Preview from "../../../preview/Manager.ts";
+import * as Preview from "#server/preview/Manager.ts";
 import { requireThreadMcpCapability } from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { unavailable } from "../../threadAccess.ts";

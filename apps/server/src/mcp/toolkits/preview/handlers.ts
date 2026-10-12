@@ -25,9 +25,9 @@ import {
   parseAttachmentFileExtension,
   PENDING_ATTACHMENT_THREAD_SEGMENT,
   toSafeThreadAttachmentSegment,
-} from "../../../attachmentStore.ts";
-import { resolveAttachmentRelativePath } from "../../../attachmentPaths.ts";
-import * as ServerConfig from "../../../config.ts";
+} from "#server/attachmentStore.ts";
+import { resolveAttachmentRelativePath } from "#server/attachmentPaths.ts";
+import * as ServerConfig from "#server/config.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";

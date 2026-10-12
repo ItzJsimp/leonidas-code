@@ -18,9 +18,9 @@ import {
   readThread,
   unavailable,
 } from "../../threadAccess.ts";
-import * as ThreadSearch from "../../../orchestration-v2/ThreadSearch.ts";
-import * as ScheduledTasks from "../../../scheduledTasks/ScheduledTaskService.ts";
-import { queuedRunsInDeliveryOrder } from "../../../orchestration-v2/QueuedRunOrder.ts";
+import * as ThreadSearch from "#server/orchestration-v2/ThreadSearch.ts";
+import * as ScheduledTasks from "#server/scheduledTasks/ScheduledTaskService.ts";
+import { queuedRunsInDeliveryOrder } from "#server/orchestration-v2/QueuedRunOrder.ts";
 import { ThreadToolkit } from "./tools.ts";
 
 function queueEntry(

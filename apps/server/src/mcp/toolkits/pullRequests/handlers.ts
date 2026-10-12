@@ -23,8 +23,8 @@ import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
-import * as Orchestrator from "../../../orchestration-v2/Orchestrator.ts";
-import * as ProjectService from "../../../project/ProjectService.ts";
+import * as Orchestrator from "#server/orchestration-v2/Orchestrator.ts";
+import * as ProjectService from "#server/project/ProjectService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import {

@@ -13,9 +13,9 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 
-import * as ServerConfig from "../../../config.ts";
-import * as Preview from "../../../preview/Manager.ts";
-import * as ServerSettings from "../../../serverSettings.ts";
+import * as ServerConfig from "#server/config.ts";
+import * as Preview from "#server/preview/Manager.ts";
+import * as ServerSettings from "#server/serverSettings.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as McpToolAccessTestkit from "../../McpToolAccess.testkit.ts";

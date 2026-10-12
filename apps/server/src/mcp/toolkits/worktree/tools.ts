@@ -9,9 +9,9 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
-import * as GitWorkflowService from "../../../git/GitWorkflowService.ts";
-import * as ProjectService from "../../../project/ProjectService.ts";
-import * as ThreadManagementService from "../../../orchestration-v2/ThreadManagementService.ts";
+import * as GitWorkflowService from "#server/git/GitWorkflowService.ts";
+import * as ProjectService from "#server/project/ProjectService.ts";
+import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 import { Tool, Toolkit } from "effect/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
