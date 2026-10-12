@@ -36,6 +36,7 @@ import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLa
 import { NightlyMobileBetaNotice } from "../components/NightlyMobileBeta";
 import { LegacyThreadMigrationToast } from "../components/LegacyThreadMigrationToast";
 import { ThreadNotificationCoordinator } from "../components/ThreadNotificationCoordinator";
+import { PetOverlay } from "../pet/PetOverlay";
 import { ReopenClosedViewShortcut } from "../components/ReopenClosedViewShortcut";
 import { ProjectCloneToastCoordinator } from "../components/ProjectCloneToastCoordinator";
 import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToastCoordinator";
@@ -249,6 +250,7 @@ function RootRouteView() {
           <SshPasswordPromptDialog />
           <SnapShotCoordinator />
           <ThreadNotificationCoordinator />
+          <PetOverlay />
           <LeonidasMobNotificationNotice />
           <ReopenClosedViewShortcut />
           <ConfirmDialogHost />

@@ -334,6 +334,8 @@ export const ClientSettingsSchema = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
   ),
   inAppNotificationsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  // Shows the animated pet companion over the app. Off until the user opts in.
+  petEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   // Quiet hours silence sounds and system alerts between two local times (24-hour "HH:MM").
   // The window may cross midnight; in-app toasts are never silenced.
   notificationQuietHoursEnabled: Schema.Boolean.pipe(
@@ -1719,6 +1721,7 @@ export function requiredScopesForProjectMutation(
 export const ClientSettingsPatch = Schema.Struct({
   notificationMode: Schema.optionalKey(NotificationMode),
   inAppNotificationsEnabled: Schema.optionalKey(Schema.Boolean),
+  petEnabled: Schema.optionalKey(Schema.Boolean),
   diffColorScheme: Schema.optionalKey(DiffColorScheme),
   chatWidth: Schema.optionalKey(ChatWidth),
   loadBalancingEnabled: Schema.optionalKey(Schema.Boolean),

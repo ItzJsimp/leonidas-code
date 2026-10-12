@@ -850,6 +850,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
       notificationMode: DEFAULT_UNIFIED_SETTINGS.notificationMode,
       inAppNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.inAppNotificationsEnabled,
+      petEnabled: DEFAULT_UNIFIED_SETTINGS.petEnabled,
       wordWrap: DEFAULT_UNIFIED_SETTINGS.wordWrap,
       persistComposerContextStrip: DEFAULT_UNIFIED_SETTINGS.persistComposerContextStrip,
       diffFilesCollapsed: DEFAULT_UNIFIED_SETTINGS.diffFilesCollapsed,
@@ -3275,6 +3276,24 @@ export function GeneralSettingsPanel() {
               checked={settings.inAppNotificationsEnabled}
               onCheckedChange={(checked) => updateSettings({ inAppNotificationsEnabled: checked })}
               aria-label="In-app notifications"
+            />
+          }
+        />
+      </FoldedSettingsSection>
+
+      <FoldedSettingsSection
+        id="pet"
+        title="Pet"
+        control={<ResetSectionButton label="pet" keys={["petEnabled"]} />}
+      >
+        <SettingsRow
+          {...searchableSetting("pet-enabled")}
+          description="Show an animated pet that reflects what your agents are doing."
+          control={
+            <Switch
+              checked={settings.petEnabled}
+              onCheckedChange={(checked) => updateSettings({ petEnabled: checked })}
+              aria-label="Show pet"
             />
           }
         />
