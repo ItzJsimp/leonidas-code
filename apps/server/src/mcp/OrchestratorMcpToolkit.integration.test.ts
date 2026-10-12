@@ -1,3 +1,7 @@
+import * as SavedItems from "../savedItems/SavedItemService.ts";
+// @effect-diagnostics-next-line nodeBuiltinImport:off - Convert replay fixture URLs to native Windows paths.
+import * as NodeURL from "node:url";
+import * as SavedItemExecution from "../savedItems/SavedItemExecution.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
@@ -130,9 +134,7 @@ const delegatedTaskStatusTranscriptFile = new URL(
 const readDelegatedTaskStatusTranscript = Effect.fn("readDelegatedTaskStatusTranscript")(
   function* () {
     const fs = yield* FileSystem.FileSystem;
-    const text = yield* fs.readFileString(
-      decodeURIComponent(delegatedTaskStatusTranscriptFile.pathname),
-    );
+    const text = yield* fs.readFileString(NodeURL.fileURLToPath(delegatedTaskStatusTranscriptFile));
     return yield* decodeProviderReplayNdjson(text);
   },
   Effect.provide(NodeServices.layer),
@@ -675,7 +677,10 @@ describe("orchestrator MCP toolkit", () => {
             }),
           );
           const layerTest = Layer.merge(
-            McpHttpServer.layerOrchestratorToolkit,
+            McpHttpServer.layerOrchestratorToolkit.pipe(
+              Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+              Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
+            ),
             McpHttpServer.layerThreadToolkit,
           ).pipe(
             Layer.provideMerge(McpServer.McpServer.layer),
@@ -3842,6 +3847,8 @@ describe("orchestrator MCP toolkit", () => {
           }),
         ]);
         const layerTest = McpHttpServer.layerOrchestratorToolkit.pipe(
+          Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+          Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
           Layer.provideMerge(McpServer.McpServer.layer),
           Layer.provideMerge(layerOrchestration),
           Layer.provide(

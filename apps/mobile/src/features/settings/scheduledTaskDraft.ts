@@ -39,6 +39,7 @@ export function scheduledTaskDefaultModel(
 }
 
 export type ScheduleDraft = {
+  readonly onceRunAt?: string;
   readonly mode: "fixed_time" | "interval" | "webhook";
   readonly timeOfDay: string;
   readonly weekdays: ReadonlyArray<number>;
@@ -60,6 +61,8 @@ export const DEFAULT_SCHEDULE: ScheduleDraft = {
 
 export function scheduleDraftForTask(task: Pick<ScheduledTask, "schedule">): ScheduleDraft {
   switch (task.schedule.type) {
+    case "once":
+      return { ...DEFAULT_SCHEDULE, onceRunAt: task.schedule.runAt };
     case "fixed_time":
       return {
         ...DEFAULT_SCHEDULE,
@@ -88,6 +91,7 @@ export function scheduleDraftForTask(task: Pick<ScheduledTask, "schedule">): Sch
 }
 
 export function scheduleFromDraft(draft: ScheduleDraft): ScheduledTaskUpsertSchedule | null {
+  if (draft.onceRunAt !== undefined) return { type: "once", runAt: draft.onceRunAt };
   if (draft.mode === "webhook") {
     const maxDeliveryAgeMinutes = parseMaxDeliveryAge(draft.maxDeliveryAgeMinutes);
     if (maxDeliveryAgeMinutes === undefined) return null;

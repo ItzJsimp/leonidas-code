@@ -515,6 +515,10 @@
       "types": "./src/PtyAdapter.ts",
       "import": "./src/PtyAdapter.ts"
     },
+    "./savedItemMarkdown": {
+      "types": "./src/savedItemMarkdown.ts",
+      "import": "./src/savedItemMarkdown.ts"
+    },
     "./usageForecast": {
       "types": "./src/usageForecast.ts",
       "import": "./src/usageForecast.ts"

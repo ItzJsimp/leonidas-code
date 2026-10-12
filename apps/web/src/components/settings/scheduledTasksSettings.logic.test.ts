@@ -154,6 +154,10 @@ const legacyTask: ScheduledTask = {
 };
 
 describe("editing scheduled task branch settings", () => {
+  it("preserves a one-time trigger while editing other task fields", () => {
+    const schedule = { type: "once" as const, runAt: "2099-10-12T23:30:00.000Z" };
+    expect(scheduleFromDraft(taskToDraft({ ...legacyTask, schedule }))).toEqual(schedule);
+  });
   it("keeps an omitted origin flag on the local base branch", () => {
     const draft = taskToDraft(legacyTask);
     expect(draft.baseRef).toBe("release");

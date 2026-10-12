@@ -1,7 +1,18 @@
 import { MIN_SCHEDULED_TASK_INTERVAL_MS, type ScheduledTaskSchedule } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
+import * as Option from "effect/Option";
 
 const MINUTE_MS = 60_000;
+
+/** Reject calendar overflow instead of silently moving a one-time run to another day. */
+export function isValidOnceRunAt(value: string): boolean {
+  const parsed = DateTime.make(value);
+  return (
+    Option.isSome(parsed) &&
+    DateTime.formatIso(parsed.value) ===
+      (value.includes(".") ? value : value.replace(/Z$/, ".000Z"))
+  );
+}
 
 export function parseTimeOfDay(value: string): { hour: number; minute: number } | null {
   const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
@@ -14,6 +25,10 @@ export function nextScheduledRunAt(
   from: DateTime.DateTime,
 ): DateTime.DateTime | null {
   if (schedule.type === "webhook") return null;
+  if (schedule.type === "once") {
+    const at = DateTime.makeUnsafe(schedule.runAt);
+    return DateTime.toEpochMillis(at) > DateTime.toEpochMillis(from) ? at : null;
+  }
   if (schedule.type === "interval") {
     // Persisted rows created before the one-minute floor remain readable, but
     // they must not retain their old high-frequency execution rate.
@@ -53,6 +68,7 @@ function weekdayKey(weekdays: ReadonlyArray<number> | undefined): string {
 
 /** Semantic equality for schedules: true iff both fire at the same times. */
 export function isSameSchedule(a: ScheduledTaskSchedule, b: ScheduledTaskSchedule): boolean {
+  if (a.type === "once") return b.type === "once" && Date.parse(a.runAt) === Date.parse(b.runAt);
   if (a.type === "interval") {
     return b.type === "interval" && a.everyMs === b.everyMs;
   }
@@ -96,6 +112,7 @@ export function isMissedFixedTimeRun(
 }
 
 function describeSchedule(schedule: ScheduledTaskSchedule): string {
+  if (schedule.type === "once") return `Once at ${schedule.runAt}`;
   if (schedule.type === "webhook") return "On webhook";
   if (schedule.type === "interval") {
     const minutes = schedule.everyMs / MINUTE_MS;

@@ -38,6 +38,11 @@ const ScheduledTaskIntervalSchedule = Schema.Struct({
   description: "Run repeatedly after a fixed number of milliseconds.",
 });
 
+const ScheduledTaskOnceSchedule = Schema.Struct({
+  type: Schema.Literal("once"),
+  runAt: IsoDateTime.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/)),
+});
+
 const ScheduledTaskFixedTimeSchedule = Schema.Struct({
   type: Schema.Literal("fixed_time").annotate({
     description: "Select a fixed local wall-clock time.",
@@ -127,17 +132,19 @@ const ScheduledTaskUpsertWebhookSchedule = Schema.Struct({
  * users can list, disable, edit, or delete them after the write minimum changes.
  */
 export const ScheduledTaskSchedule = Schema.Union([
+  ScheduledTaskOnceSchedule,
   ScheduledTaskIntervalSchedule,
   ScheduledTaskFixedTimeSchedule,
   ScheduledTaskWebhookSchedule,
 ]).annotate({
   description:
-    "Structured trigger. Pass an object with type 'interval', 'fixed_time' or 'webhook'.",
+    "Structured trigger. Pass an object with type 'once', 'interval', 'fixed_time' or 'webhook'.",
 });
 export type ScheduledTaskSchedule = typeof ScheduledTaskSchedule.Type;
 
 /** Mutation model: newly created or updated interval schedules run at most once per minute. */
 export const ScheduledTaskUpsertSchedule = Schema.Union([
+  ScheduledTaskOnceSchedule,
   Schema.Struct({
     type: Schema.Literal("interval").annotate({
       description: "Select interval scheduling.",
@@ -153,7 +160,8 @@ export const ScheduledTaskUpsertSchedule = Schema.Union([
   ScheduledTaskFixedTimeSchedule,
   ScheduledTaskUpsertWebhookSchedule,
 ]).annotate({
-  description: "Writable trigger. Pass an object with type 'interval', 'fixed_time' or 'webhook'.",
+  description:
+    "Writable trigger. Pass an object with type 'once', 'interval', 'fixed_time' or 'webhook'.",
 });
 export type ScheduledTaskUpsertSchedule = typeof ScheduledTaskUpsertSchedule.Type;
 
@@ -171,6 +179,7 @@ export const ScheduledTaskWebhookEndpoint = Schema.Struct({
 export type ScheduledTaskWebhookEndpoint = typeof ScheduledTaskWebhookEndpoint.Type;
 
 export const ScheduledTask = Schema.Struct({
+  savedItemId: Schema.optionalKey(TrimmedNonEmptyString),
   id: ScheduledTaskId,
   title: TrimmedNonEmptyString,
   prompt: TrimmedNonEmptyString,

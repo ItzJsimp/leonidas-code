@@ -430,6 +430,33 @@ export function summarizeT3ToolCalls(
     case "board-task-create":
       label = phrase("Created", "create", quantity(selected.length, "board task"));
       break;
+    case "saved-item-list":
+      label = phrase("Listed", "list", "saved prompts and notes");
+      break;
+    case "saved-item-get":
+      label = phrase("Read", "read", quantity(selected.length, "saved item"));
+      break;
+    case "saved-item-create":
+      label = phrase("Saved", "save", quantity(selected.length, "prompt or note"));
+      break;
+    case "saved-item-update":
+      label = phrase("Edited", "edit", quantity(selected.length, "saved item"));
+      break;
+    case "saved-item-transition":
+      label = phrase("Updated", "update", "saved-item status");
+      break;
+    case "saved-item-import":
+      label = phrase("Imported", "import", quantity(selected.length, "saved item"));
+      break;
+    case "saved-item-launch":
+      label = phrase("Launched", "launch", quantity(selected.length, "saved prompt"));
+      break;
+    case "saved-item-schedule":
+      label = phrase("Scheduled", "schedule", quantity(selected.length, "saved prompt"));
+      break;
+    case "saved-item-task":
+      label = phrase("Moved", "move", "saved items to Tasks");
+      break;
   }
   return { label, failedCount };
 }

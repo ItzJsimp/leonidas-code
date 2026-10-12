@@ -1,4 +1,9 @@
 import * as Scheduler from "../scheduling/Scheduler.ts";
+import * as SavedItems from "../savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "../savedItems/SavedItemExecution.ts";
+import * as TaskBoard from "../taskBoard/TaskBoardService.ts";
+import * as EffectWorker from "./EffectWorker.ts";
+import { SavedItemId } from "@t3tools/contracts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
@@ -68,6 +73,81 @@ const modelSelection = {
   instanceId: ProviderInstanceId.make("codex"),
   model: "gpt-5.1-codex",
 } as const;
+
+it.effect(
+  "saved-item launch and one-time schedule persist real threads and drain their effects",
+  () => {
+    const harness = makeHarness();
+    const dependencies = Layer.mergeAll(
+      harness.layer,
+      NodeCrypto.layer,
+      Scheduler.layer,
+      Layer.mock(SecretRequests.SecretRequests)({}),
+      Layer.mock(TaskBoard.TaskBoardService)({}),
+    );
+    const domain = Layer.mergeAll(SavedItems.layer, ScheduledTasks.layer).pipe(
+      Layer.provideMerge(dependencies),
+    );
+    const layer = SavedItemExecution.layer.pipe(Layer.provideMerge(domain));
+    return Effect.gen(function* () {
+      const items = yield* SavedItems.SavedItemService;
+      const execution = yield* SavedItemExecution.SavedItemExecution;
+      const threads = yield* ThreadManagement.ThreadManagementService;
+      const schedules = yield* ScheduledTasks.ScheduledTaskService;
+      const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+      const saved = (id: string) => ({
+        commandId: CommandId.make(`create:${id}`),
+        id: SavedItemId.make(id),
+        kind: "prompt" as const,
+        title: "Saved work",
+        body: "Run saved work",
+        tags: [],
+        projectId,
+      });
+      const request = (id: string) => ({
+        commandId: CommandId.make(`execute:${id}`),
+        id: SavedItemId.make(id),
+        modelSelection,
+        runtimeMode: "approval-required" as const,
+        interactionMode: "default" as const,
+        workspaceStrategy: { type: "root" as const },
+      });
+      yield* items.create(saved("manual"));
+      const launched = yield* execution.launch(request("manual"));
+      assert.equal(launched.status, "launched");
+      assert.isNotNull(launched.launchedThreadId);
+      const projection = yield* threads.getThreadProjection(launched.launchedThreadId!);
+      assert.isTrue(projection.messages.some((message) => message.text === "Run saved work"));
+      yield* worker.drain();
+      yield* items.create(saved("once"));
+      const scheduled = yield* execution.schedule({
+        ...request("once"),
+        runAt: "2099-10-12T23:30:00Z",
+      });
+      const taskId = scheduled.scheduledTaskId!;
+      assert.equal(
+        (yield* schedules.list()).tasks.find((task) => task.id === taskId)?.savedItemId,
+        "once",
+      );
+      // Run now consumes the one-time occurrence, even before its planned date.
+      const result = yield* schedules.runNow({ id: taskId });
+      assert.equal(result.task.runCount, 1);
+      assert.equal(result.task.nextRunAt, null);
+      yield* worker.drain();
+      yield* execution.drain;
+      const item = yield* items.get(SavedItemId.make("once"));
+      assert.equal(item.status, "launched");
+      assert.isNotNull(item.launchedThreadId);
+      yield* items.rebuild;
+      assert.deepEqual(yield* items.get(item.id), item);
+      yield* schedules.setEnabled({ id: taskId, enabled: true });
+      assert.equal(
+        (yield* schedules.list()).tasks.find((task) => task.id === taskId)?.nextRunAt,
+        null,
+      );
+    }).pipe(Effect.provide(layer));
+  },
+);
 const project = {
   id: projectId,
   title: "Project",
@@ -231,6 +311,7 @@ function makeHarness(options: HarnessOptions = {}) {
   );
   return {
     layer: Layer.mergeAll(
+      layerOrchestrator,
       layerLaunch,
       layerThreadManagement,
       layerTitleRegeneration,

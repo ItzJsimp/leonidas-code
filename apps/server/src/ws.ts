@@ -135,6 +135,8 @@ import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts"
 import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as ScheduledTasks from "./scheduledTasks/ScheduledTaskService.ts";
+import * as SavedItems from "./savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "./savedItems/SavedItemExecution.ts";
 import * as SecretRequests from "./secrets/SecretRequests.ts";
 import {
   archivedShellStreamItemFromThreadShell,
@@ -1236,6 +1238,8 @@ const layerWsRpc = (
       const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
       const providerSessionManager = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const scheduledTasks = yield* ScheduledTasks.ScheduledTaskService;
+      const savedItems = yield* SavedItems.SavedItemService;
+      const savedItemExecution = yield* SavedItemExecution.SavedItemExecution;
       const secretRequests = yield* SecretRequests.SecretRequests;
       const pullRequests = yield* PullRequestService.PullRequestService;
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
@@ -2114,6 +2118,15 @@ const layerWsRpc = (
           ),
         [WS_METHODS.scheduledTasksList]: (_input) =>
           scheduledTasks.list().pipe(Effect.map(withVisibleWebhookUrls)),
+        [WS_METHODS.savedItemsList]: (input) => savedItems.list(input),
+        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id),
+        [WS_METHODS.savedItemsCreate]: (input) => savedItems.create(input),
+        [WS_METHODS.savedItemsUpdate]: (input) => savedItems.update(input),
+        [WS_METHODS.savedItemsTransition]: (input) => savedItems.transition(input),
+        [WS_METHODS.savedItemsImport]: (input) => savedItems.importMarkdown(input),
+        [WS_METHODS.savedItemsLaunch]: (input) => savedItemExecution.launch(input),
+        [WS_METHODS.savedItemsSchedule]: (input) => savedItemExecution.schedule(input),
+        [WS_METHODS.savedItemsSaveTask]: (input) => savedItemExecution.saveTask(input),
         [WS_METHODS.scheduledTasksSubscribe]: (_input) =>
           scheduledTasks.subscribeList().pipe(Stream.map(withVisibleWebhookUrls)),
         [WS_METHODS.scheduledTasksUpsert]: (input) => scheduledTasks.upsert(input),

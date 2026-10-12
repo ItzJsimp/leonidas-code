@@ -132,6 +132,7 @@ import {
 } from "../../promptStashStore";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
 import { ComposerStashBadge } from "./ComposerStashBadge";
+import { ComposerSavedItems } from "./ComposerSavedItems";
 import { ComposerStashMenu } from "./ComposerStashMenu";
 import { useComposerMenuState } from "./useComposerMenuState";
 import { useComposerTriggerState } from "./useComposerTriggerState";
@@ -1637,6 +1638,7 @@ export interface ChatComposerProps {
   terminalOpen: boolean;
   gitCwd: string | null;
   pullRequestProjectId: ProjectId | null;
+  savedItemsProjectId: ProjectId | null;
   pullRequestRepository: string | null;
   restingControlsHost: HTMLDivElement | null;
   restingControlsHaveLeadingContext: boolean;
@@ -1782,6 +1784,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     terminalOpen,
     gitCwd,
     pullRequestProjectId,
+    savedItemsProjectId,
     pullRequestRepository,
     restingControlsHost,
     restingControlsHaveLeadingContext,
@@ -7033,6 +7036,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             </ComposerBanner.Attachment>
           ) : null}
         </ComposerBanner.Column>
+        {!isComposerApprovalState && pendingUserInputs.length === 0 ? (
+          <ComposerSavedItems
+            environmentId={environmentId}
+            projectId={savedItemsProjectId}
+            target={composerDraftTarget}
+            modelSelection={selectedModelSelection}
+            runtimeMode={runtimeMode}
+            interactionMode={interactionMode}
+            canSave={canOperateThread}
+          />
+        ) : null}
         {!isComposerApprovalState ? (
           <ComposerStashBadge
             count={stashQueue.length}

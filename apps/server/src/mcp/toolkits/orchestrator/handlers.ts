@@ -1,4 +1,4 @@
-import { OrchestratorMcpFailure } from "@t3tools/contracts";
+import { OrchestratorMcpFailure, type SavedItemError } from "@t3tools/contracts";
 import { OrchestratorToolkit } from "./tools.ts";
 import * as Effect from "effect/Effect";
 
@@ -7,8 +7,74 @@ import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
 import * as ThreadMetadataMcpService from "../../ThreadMetadataMcpService.ts";
+import * as SavedItems from "../../../savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "../../../savedItems/SavedItemExecution.ts";
+
+const savedItemCall = <A, R>(effect: Effect.Effect<A, SavedItemError, R>) =>
+  Effect.gen(function* () {
+    const { scope } = yield* readCaller();
+    return yield* effect.pipe(
+      Effect.provideService(SavedItems.SavedItemCaller, {
+        actor: "agent",
+        threadId: scope.thread?.threadId ?? null,
+      }),
+      Effect.mapError(
+        (error) =>
+          new OrchestratorMcpFailure({
+            code:
+              error.reason === "agent_limit"
+                ? "capability_denied"
+                : error.reason === "storage" || error.reason === "execution"
+                  ? "orchestration_error"
+                  : "invalid_request",
+            message: error.message,
+          }),
+      ),
+    );
+  });
 
 const handlers = {
+  saved_item_list: McpToolAccess.reads((input) =>
+    savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.list(input))),
+  ),
+  saved_item_get: McpToolAccess.reads((input) =>
+    savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.get(input.id))),
+  ),
+  saved_item_create: McpToolAccess.writes((input) =>
+    savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.create(input))),
+  ),
+  saved_item_update: McpToolAccess.writes((input) =>
+    savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.update(input))),
+  ),
+  saved_item_transition: McpToolAccess.writes((input) =>
+    savedItemCall(
+      Effect.flatMap(SavedItems.SavedItemService, (service) => service.transition(input)),
+    ),
+  ),
+  saved_item_import: McpToolAccess.writes((input) =>
+    savedItemCall(
+      Effect.flatMap(SavedItems.SavedItemService, (service) => service.importMarkdown(input)),
+    ),
+  ),
+  saved_item_launch: McpToolAccess.startsThreads(
+    (input) => input,
+    (input) =>
+      savedItemCall(
+        Effect.flatMap(SavedItemExecution.SavedItemExecution, (service) => service.launch(input)),
+      ),
+  ),
+  saved_item_schedule: McpToolAccess.startsThreads(
+    (input) => input,
+    (input) =>
+      savedItemCall(
+        Effect.flatMap(SavedItemExecution.SavedItemExecution, (service) => service.schedule(input)),
+      ),
+  ),
+  saved_item_save_task: McpToolAccess.writes((input) =>
+    savedItemCall(
+      Effect.flatMap(SavedItemExecution.SavedItemExecution, (service) => service.saveTask(input)),
+    ),
+  ),
   orchestrator_capabilities: McpToolAccess.reads((input) =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.McpInvocationContext;

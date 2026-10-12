@@ -1,3 +1,5 @@
+import * as SavedItems from "../../../savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "../../../savedItems/SavedItemExecution.ts";
 import * as Orchestrator from "#server/orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "#server/orchestration-v2/ProjectionStore.ts";
 import * as LocalVmService from "#server/localVm/LocalVmService.ts";
@@ -37,6 +39,8 @@ import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
 import * as PreviewBrowser from "#server/preview/PreviewBrowser.ts";
 
 const layerStubServices = Layer.mergeAll(
+  Layer.mock(SavedItems.SavedItemService)({}),
+  Layer.mock(SavedItemExecution.SavedItemExecution)({}),
   Layer.mock(Orchestrator.OrchestratorV2)({}),
   Layer.mock(ProjectionStore.ProjectionStoreV2)({}),
   Layer.mock(DeviceService.DeviceService)({}),
