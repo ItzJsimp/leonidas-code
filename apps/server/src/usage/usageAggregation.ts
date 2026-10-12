@@ -94,8 +94,6 @@ export interface AggregateOptions {
   readonly resolution?: UsageResolution;
   readonly sinceTimeMs?: number;
   readonly untilTimeMs?: number;
-  /** Width of an hourly-resolution bucket. Defaults to one hour. */
-  readonly bucketMs?: number;
 }
 
 /**
@@ -204,10 +202,7 @@ export class UsageAggregator {
     const hourIndex =
       this.#hourlyWindow === null
         ? -1
-        : Math.floor(
-            (record.timestampMs - this.#hourlyWindow.sinceTimeMs) /
-              (this.#options.bucketMs ?? HOUR_MS),
-          );
+        : Math.floor((record.timestampMs - this.#hourlyWindow.sinceTimeMs) / HOUR_MS);
     const bucket = this.#bucketFor(day, hourIndex, record.provider, record.model, sourcePath ?? "");
 
     const priced = priceUsage(this.#options.rates, record, this.#options.priceOverrides);
@@ -280,11 +275,7 @@ export class UsageAggregator {
     }
     const window = this.#hourlyWindow;
     const hourStart =
-      window === null
-        ? ""
-        : new Date(
-            window.sinceTimeMs + hourIndex * (this.#options.bucketMs ?? HOUR_MS),
-          ).toISOString();
+      window === null ? "" : new Date(window.sinceTimeMs + hourIndex * HOUR_MS).toISOString();
     const key = `${day}\u0000${hourStart}\u0000${provider}\u0000${model}\u0000${source}`;
     let bucket = this.#buckets.get(key);
     if (bucket === undefined) {

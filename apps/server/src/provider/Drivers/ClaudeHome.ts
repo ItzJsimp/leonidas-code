@@ -2,7 +2,6 @@ import type { ClaudeSettings } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import * as FS from "node:fs";
 
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import * as HostProcess from "@t3tools/shared/HostProcess";
@@ -31,35 +30,7 @@ export const resolveClaudeHomePath = Effect.fn("resolveClaudeHomePath")(function
   if (inherited.length > 0) {
     return path.resolve(inherited);
   }
-  const defaultDir = path.resolve(path.join(home, ".claude"));
-  const personalCandidate = path.resolve(path.join(home, ".claude-personal"));
-  try {
-    const defaultJsonPath = path.join(defaultDir, ".claude.json");
-    const personalJsonPath = path.join(personalCandidate, ".claude.json");
-    const hasDefault = FS.existsSync(defaultJsonPath);
-    const hasPersonal = FS.existsSync(personalJsonPath);
-    if (hasPersonal) {
-      if (!hasDefault) {
-        return personalCandidate;
-      }
-      const defaultContent = FS.readFileSync(defaultJsonPath, "utf-8");
-      const defaultHasAuth =
-        (defaultContent.includes('"oauthAccount"') &&
-          !defaultContent.includes('"oauthAccount": null')) ||
-        defaultContent.includes('"claudeAiOauth"');
-      if (!defaultHasAuth) {
-        const personalContent = FS.readFileSync(personalJsonPath, "utf-8");
-        const personalHasAuth =
-          personalContent.includes('"oauthAccount"') || personalContent.includes('"claudeAiOauth"');
-        if (personalHasAuth) {
-          return personalCandidate;
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return defaultDir;
+  return path.resolve(path.join(home, ".claude"));
 });
 
 export const makeClaudeEnvironment = Effect.fn("makeClaudeEnvironment")(function* (

@@ -1,72 +1,43 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EnvironmentId } from "@t3tools/contracts";
 import {
   contextualPromptCandidates,
-  predictPrompt,
   withModelPrediction,
   type PromptCandidate,
   type PromptPredictionMessage,
 } from "@t3tools/shared/promptPrediction";
-import {
-  createEnvironmentRpcCommand,
-  createEnvironmentRpcQueryAtomFamily,
-} from "@t3tools/client-runtime/state/runtime";
+import { createEnvironmentRpcQueryAtomFamily } from "@t3tools/client-runtime/state/runtime";
 import { WS_METHODS } from "@t3tools/contracts";
 import { connectionAtomRuntime } from "../../connection/runtime";
-import { useAtomCommand } from "../../state/use-atom-command";
 import { useAtomQueryRunner } from "../../state/use-atom-query-runner";
-import { randomUUID } from "../../lib/utils";
 
 const EMPTY_CANDIDATES: readonly PromptCandidate[] = [];
+
 const query = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:prompt-prediction",
   tag: WS_METHODS.projectsPromptCandidates,
   staleTimeMs: 30_000,
   idleTtlMs: 60_000,
 });
+
 const predictQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:prompt-prediction-model",
   tag: WS_METHODS.projectsPredictPrompt,
   staleTimeMs: 0,
   idleTtlMs: 60_000,
 });
-const cancelPrediction = createEnvironmentRpcCommand(connectionAtomRuntime, {
-  label: "environment-data:prompt-prediction-cancel",
-  tag: WS_METHODS.projectsCancelPromptPrediction,
-});
 
-export function transcriptFor(messages: readonly PromptPredictionMessage[]) {
+const PREDICT_DEBOUNCE_MS = 600;
+
+/** Finished user and assistant turns only; the request is the whole chat state, not a draft. */
+function transcriptFor(messages: readonly PromptPredictionMessage[]) {
   return messages
     .filter(
       (message): message is PromptPredictionMessage & { role: "user" | "assistant" } =>
         message.role !== "system" && !message.streaming && message.text.trim().length > 0,
     )
-    .slice(-6)
-    .map((message) => ({
-      role: message.role,
-      text: message.role === "user" ? message.text.slice(0, 3_000) : message.text.slice(-3_000),
-    }));
-}
-
-export function personalExamplesFor(
-  history: readonly PromptCandidate[],
-  local: readonly PromptCandidate[],
-  draft: string,
-) {
-  const own = new Set(history.map((candidate) => candidate.text));
-  const terms = new Set(
-    (draft.toLowerCase().match(/[a-z0-9_]{3,}/g) ?? []).filter((word) => word.length > 3),
-  );
-  return local
-    .filter(
-      (candidate) =>
-        own.has(candidate.text) &&
-        !candidate.standard &&
-        (terms.size === 0 ||
-          [...terms].some((word) => candidate.text.toLowerCase().includes(word))),
-    )
-    .slice(0, 5)
-    .map((candidate) => candidate.text.slice(0, 300));
+    .slice(-12)
+    .map((message) => ({ role: message.role, text: message.text.slice(-6_000) }));
 }
 
 export function usePromptPrediction(
@@ -74,31 +45,19 @@ export function usePromptPrediction(
   cwd: string | null,
   messages: readonly PromptPredictionMessage[],
   running: boolean,
-  options: {
-    draft: string;
-    focused: boolean;
-    mode: "local" | "local-model" | "cloud";
-    settingsIdentity?: string;
-  },
 ) {
   const [result, setResult] = useState<{
     environmentId: EnvironmentId;
     cwd: string;
     candidates: readonly PromptCandidate[];
   } | null>(null);
-  const [visible, setVisible] = useState(() => !document.hidden);
-  useEffect(() => {
-    const onVisibility = () => setVisible(!document.hidden);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
   const run = useAtomQueryRunner(query, { reportFailure: false, refresh: true });
   useEffect(() => {
-    if (!cwd || !visible) return;
+    if (!cwd) return;
     let active = true;
     let pending = false;
     const refresh = async () => {
-      if (pending) return;
+      if (pending || document.hidden) return;
       pending = true;
       try {
         const value = await run({ environmentId, input: { cwd } });
@@ -122,98 +81,42 @@ export function usePromptPrediction(
       window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
     };
-  }, [cwd, environmentId, run, visible]);
-
+  }, [cwd, environmentId, run]);
+  const predict = useAtomQueryRunner(predictQuery, { reportFailure: false, refresh: true });
+  const [predicted, setPredicted] = useState<{ key: string; prompt: string | null } | null>(null);
+  const transcript = useMemo(() => transcriptFor(messages), [messages]);
+  const transcriptKey = useMemo(
+    () => `${environmentId}|${cwd}|${JSON.stringify(transcript)}`,
+    [environmentId, cwd, transcript],
+  );
+  useEffect(() => {
+    // Predict once per settled chat state: the last finished message must be the assistant's.
+    if (!cwd || running || transcript.at(-1)?.role !== "assistant") return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const value = await predict({ environmentId, input: { cwd, messages: transcript } });
+        if (active && value._tag === "Success")
+          setPredicted({ key: transcriptKey, prompt: value.value.prompt });
+      } catch {
+        // Prediction is optional; the recommendation and prefix completion still work.
+      }
+    }, PREDICT_DEBOUNCE_MS);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [cwd, environmentId, predict, running, transcript, transcriptKey]);
+  const modelPrompt = predicted?.key === transcriptKey ? predicted.prompt : null;
   const history =
     result?.environmentId === environmentId && result.cwd === cwd
       ? result.candidates
       : EMPTY_CANDIDATES;
-  const draft = options.draft.slice(0, 2_000);
-  const local = useMemo(
-    () => contextualPromptCandidates(history, messages, draft),
-    [history, messages, draft],
+  return useMemo(
+    () =>
+      cwd && !running
+        ? withModelPrediction(contextualPromptCandidates(history, messages), modelPrompt)
+        : EMPTY_CANDIDATES,
+    [cwd, running, history, messages, modelPrompt],
   );
-  const transcriptKey = JSON.stringify(running ? [] : transcriptFor(messages));
-  const transcript = useMemo(
-    () => JSON.parse(transcriptKey) as ReturnType<typeof transcriptFor>,
-    [transcriptKey],
-  );
-  const examplesKey = JSON.stringify(personalExamplesFor(history, local, draft));
-  const examples = useMemo(() => JSON.parse(examplesKey) as string[], [examplesKey]);
-  const key = JSON.stringify([
-    environmentId,
-    cwd,
-    transcriptKey,
-    draft,
-    options.mode,
-    options.settingsIdentity,
-    examplesKey,
-  ]);
-  const sessionBase = useRef(randomUUID());
-  const sequence = useRef(0);
-  const attempted = useRef(new Set<string>());
-  const lastCloudRequest = useRef(0);
-  const predict = useAtomQueryRunner(predictQuery, { reportFailure: false, refresh: true });
-  const cancel = useAtomCommand(cancelPrediction, { reportFailure: false, reportDefect: false });
-  const [predicted, setPredicted] = useState<{ key: string; prompt: string | null } | null>(null);
-  const eligible =
-    Boolean(cwd) &&
-    !running &&
-    options.focused &&
-    visible &&
-    options.mode !== "local" &&
-    transcript.at(-1)?.role === "assistant" &&
-    !predictPrompt(local, draft);
-
-  useEffect(() => {
-    if (!eligible || !cwd || attempted.current.has(key)) return;
-    let active = true;
-    let requestSessionId: string | null = null;
-    const cloudWait =
-      options.mode === "cloud" ? Math.max(0, lastCloudRequest.current + 5_000 - Date.now()) : 0;
-    const timer = window.setTimeout(
-      async () => {
-        if (!active) return;
-        attempted.current.add(key);
-        requestSessionId = `${sessionBase.current}:${++sequence.current}`;
-        if (options.mode === "cloud") lastCloudRequest.current = Date.now();
-        try {
-          const value = await predict({
-            environmentId,
-            input: {
-              cwd,
-              messages: transcript,
-              draft,
-              personalExamples: examples,
-              sessionId: requestSessionId,
-            },
-          });
-          if (active)
-            setPredicted({ key, prompt: value._tag === "Success" ? value.value.prompt : null });
-        } catch {
-          if (active) setPredicted({ key, prompt: null });
-        }
-      },
-      Math.max(400, cloudWait),
-    );
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-      if (requestSessionId) void cancel({ environmentId, input: { sessionId: requestSessionId } });
-    };
-  }, [
-    cancel,
-    cwd,
-    draft,
-    eligible,
-    environmentId,
-    examples,
-    key,
-    options.mode,
-    predict,
-    transcript,
-  ]);
-
-  const modelPrompt = eligible && predicted?.key === key ? predicted.prompt : null;
-  return cwd && !running ? withModelPrediction(local, modelPrompt) : EMPTY_CANDIDATES;
 }

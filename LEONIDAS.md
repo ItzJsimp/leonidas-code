@@ -9,58 +9,6 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - It replaces the Claude Code and Antigravity front ends for both of us, running on our own AI subscriptions, with extra built-in tools.
 - Credit stays: keep the original MIT notice in `LICENSE`. Say "T3 Code" only when talking about upstream (merges, credit, internal ids like `@t3tools/*`, `T3CODE_*`, `~/.t3` that stay for data safety). Everywhere a user sees the app, it is Leonidas Code.
 
-## Output standard (mandatory for every agent reply)
-
-Leonidas Code fixes the shape of every substantive reply across all providers (Claude, Codex, Antigravity, Cursor, Grok, OpenCode) and all users (Jake and Mob). Personal files add voice, names and banners inside these zones; they never replace them.
-
-### Top Slot: Opening Orientation HUD
-
-- Line 1: `**Active Mode:** Mode XX: [Name]` (e.g. `Mode 00: Build Architect`, or active AIOS mode if loaded).
-- Line 2: `🎯 **Focus:** `<project or topic>`· **Milestone:**`<active phase or step>``.
-- Line 3: Blank line, followed immediately by findings, diffs, code, or execution steps. Zero conversational filler or pleasantries.
-
-### Structural Body & Scanability Standards
-
-- **Landmark Cards:** Bold lead-ins (`- **<Area>:** <fact or action>`). Narrative paragraphs are at most 2 sentences, solely for causal logic.
-- **Delta Micro-Cards (`🔴 Was` -> `🟢 Now`):** High-contrast pairs for fixes, edits, and refactors.
-- **Verification Proof Receipts:** State exact proof (`- ✅ **Verified:** <test/check> · <result>`). Never claim a check you did not run.
-- **List Ceiling (5-Item Rule):** Cap visible lists to max 5 items per group, ranked by relevance.
-- **Dividers & Headings:** Separate themes with `---`. Technical depth goes under `###` headings with one leading semantic emoji (🔍 findings, 🛠️ build, ⚠️ warning, ✅ verification). Tables only for 2+ attributes across 3+ items.
-
-### Terminal Executive Dock (Literal Absolute Screen Bottom)
-
-Every substantive turn MUST terminate at the absolute screen bottom with this exact sequence and headings:
-
----
-
-### 🎯 TL;DR
-
-- <1-2 punchy bullets: tangible wins, working features, or settled decisions; never a repeat of the Body>
-
-### ⚡ Immediate Next Actions
-
-- [ ] 🤖 **Leonidas:** <specific command or file edit queued next>
-- [ ] 👤 **Jake / Mob:** <single step doable in <=2 minutes with exact link, command or phrase> _(unblocks: <milestone>)_
-
-### ❓ Input & Decisions Needed
-
-- **A)** <option and what it triggers> _(Wins when: <condition>)_
-- **B)** <option> _(Wins when: <condition>)_
-  ➡️ **Recommended: <letter>** · <reason>. **What flips it:** <condition>.
-  💬 Quick Replies: "<short phrase>" | "<short phrase>"
-
-### Session Completion Override
-
-When work is finished, verified, committed, and zero queued tasks remain, replace `### ⚡ Immediate Next Actions` with `### 🏁 Session Complete (Ready to Close)`:
-
-- ✅ **Objective Achieved:** <1-line summary>
-- 🧼 **Substrate Clean:** Committed (`<hash>`), 0 pending diffs, tests passing.
-- 🚀 **Next Best Action:** Close this chat. Open fresh chat for next objective to keep context lean.
-
-### Mid-Turn Execution Rules
-
-Quick lookups, one-line answers, or fast mid-execution turns omit full dock: `⚡ Next: <step> | 👤 You: <step> | ❓ Input: None`.
-
 ## Roadmap (in order, tick when merged to main)
 
 - [x] Subscription token calibration: shipped in [v0.2.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.2.0); session/weekly estimates pair local Claude/Codex tokens with provider quota percentages. Google AI Pro needs a reliable quota source and token reader before calibration is available.
@@ -80,7 +28,7 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 
 ## Working together (two people, one `main`)
 
-1. Every Claude session in this folder auto-runs `git pull --rebase --autostash origin main` (`.claude/settings.json`). Pull by hand before other tools. Push small commits often; do not sit on a big branch.
+1. Claude and Codex sessions run [guarded source sync](scripts/Sync-LeonidasSource.ps1) through their startup hooks. It updates only clean `main` checkouts that can fast-forward; unfinished work, active Git operations and divergent histories are left alone. Run the same helper before other tools. Integrate divergent history deliberately, preserving upstream merge commits. Push small commits often; do not sit on a big branch.
 2. **Every push to `main` ships to both of us.** The release workflow (`.github/workflows/team-release.yml`) builds and publishes, and the other machine gets a toast. Before pushing, run the scoped checks: `vp run typecheck` and `vp test run <files you touched>`. Do not push a broken build.\n3. Docs-only pushes (`*.md`) skip the release build.
 3. If the other person's agent is editing the same area, say so in this file's status log first.
 4. The repo is **public**. Never commit keys, tokens, `.env` files, personal paths or local launcher scripts (put those in `.git/info/exclude`).
@@ -109,7 +57,7 @@ That sets rebase pulls, links your AIOS identity, installs the latest Leonidas C
 
 ## Next action (existing AIOS installs)
 
-The [next action skill](./.agents/skills/next-action/SKILL.md) ships in this repository. Setup and the Claude and Codex session-start hooks install it in the parent AIOS and existing projects, with backups for changed files. They also link the core skill set (`standards/project-standard.md` section 11) from the AIOS canon into each project. A fresh conversation discovers the new skill; an already-running agent can retain its old skill catalog.
+The [next action skill](./.agents/skills/next-action/SKILL.md) ships in this repository. Setup and the Claude and Codex session-start hooks install it in the parent AIOS and existing projects, with backups for changed files. A fresh conversation discovers the new skill; an already-running agent can retain its old skill catalog.
 
 After pulling `main`, Codex loads [its project hook](./.codex/hooks.json) on startup and resume, including when started in a project subdirectory. With a current Codex CLI, trust this project and review the new hook once using `/hooks`; Codex skips untrusted hooks until reviewed. After that, installation runs automatically. The Codex hook installs from the checked-out source; it does not pull changes. Older Codex versions without lifecycle hooks need an update or the manual installer below. See [Codex hook setup](https://learn.chatgpt.com/docs/hooks).
 
@@ -125,7 +73,16 @@ The project's `tasks/` folder is a generated view: one symlink per task card who
 
 ## Status log (newest first, one line per session, who and what)
 
-- 2026-10-11 Jake's agent (Claude Code): core skills now reach every project. `session-handoff`, `chat-sync`, `chat-closeout`, `recap`, `daily-briefing`, `daily-closeout`, `find-skills`, `ask-leonidas` and `implement` link from the AIOS canon into each project's `.agents/skills` and `.claude/skills`, git-excluded so nothing personal enters the repo. `next-action` is unchanged. The installer test passes; the real run created 222 links across 15 workspaces. Committed locally, not pushed yet. Once pushed, Mob's next session start links the same names into your projects if your AIOS has them. Standard: `standards/project-standard.md` section 11.
+- 2026-10-11 Mob's agent (Codex, backend conflict resolution by DeepSeek V4.1 Flash): integrated origin/main with the local upstream catch-up and harness fixes while preserving both histories. Ten conflicts resolved; quota routing retains the routed provider's runtime-mode guard, chat retains child-input and quota/verification banners, sidebar retains PR/status styling and topic glyphs, and the Codex hook combines guarded sync with next-action installation as valid JSON. All 593 focused tests, six affected package typechecks, 11 source-sync scenarios and the next-action hook fixture pass; scoped lint reports warnings only. Unfinished usage work stays outside the merge commit. Local only; no release, browser verification or installed-app restart.
+
+- 2026-10-11 Mob's agent (Codex, implementation by DeepSeek V4.1 Flash): recovered the startup-triggered rebase without replaying the completed upstream merge; original tracked usage work and seven untracked files remain intact. Claude/Codex startup and setup now use guarded fast-forward-only source sync, with 11 temporary-repository regression scenarios and PowerShell syntax/JSON checks passing. Local only; divergent main history remains for deliberate integration, no release or installed app restart.
+
+- 2026-10-11 Mob's agent: caught the fork up to `upstream/main` (`8d199b4f7b`), 722 files and 17 conflicts across 19 hunks, in `b74fe5a322`. Resolution kept our user-visible "Leonidas Code" strings and fork features (OpenRouter driver, Scribe and task-board wiring, team settings defaults) and took upstream's Pi provider, `t3_workflow_stop`, partial-scan usage status, the `rateModel` cache field, and the desktop, mobile and CLI work. Repo typecheck passes, 475 focused tests across the nine hand-resolved test files pass, scoped lint and formatting are clean, no conflict markers remain. Three pre-existing red spots are unchanged from main, not merge regressions: 12 `build-desktop-artifact` tests fail on Windows (POSIX file modes and `tar` exit codes, failure set verified identical on main) and the MCP presentation test's stale "T3" display-name assertions, corrected here. The usage test harness now pins `HostProcess.HomeDirectory` so a developer's real `~/.claude_openrouter` transcripts cannot join a scan. Local commits only; push authorization pending.
+- 2026-10-11 Jake's agent (Claude Code): finished the frontier items on branch `feature/frontier-engines-20261011`. The chat warns before an account runs nearly out and offers a one-click switch for the next message. Handoff briefs now name the immediate next step. A completed turn that changed screens offers a verify-in-preview prompt, and it never overwrites a draft. Speculative branching is still guidance only: isolated worktrees for delegated children need a workspace on the `delegated_task.request` command, which is not built. Mobile has neither banner. Scoped tests, typechecks and lint pass; not seen in a live window.
+
+- 2026-10-11 Jake's agent (Claude Code): usage-limit "Continue with" now defaults to Sonnet 5.5, GPT-6.1 Sol and Gemini 3.8 Flash (all medium), offers a model picker, and skips accounts that are exhausted or share an identity. Five frontier additions (merged to main as `6a9094dbe9`): quota-aware routing and account pooling for delegated tasks, a distilled handoff brief, and orchestration-prompt guidance for read-only parallel analysis and UI verification. Scoped tests and typechecks only; not seen in a live window.
+
+- 2026-10-11 Mob's agent: shipped the dangling settings-link startup fix in [v0.12.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.12.0), source `ed01a24712`. Startup loads defaults until a linked settings file appears, then the existing watcher reloads it. All 60 settings tests, server typecheck, scoped lint/format checks and server build pass. The [release workflow](https://github.com/ItzJsimp/leonidas-code/actions/runs/38131519481) passed installer checksum, blockmap and update manifest verification with no problems; publication took 370 seconds. The separate Windows path-separator test failure remains outside this fix. No installed app restart or installer execution was performed.
 
 - 2026-10-11 Jake's agent: shipped next-action installation and verification in [v0.11.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.11.0), source `ae5fea9f6c`; the [release workflow](https://github.com/ItzJsimp/leonidas-code/actions/runs/38129520019) passed its installer and delivery checks. Setup and the Claude session-start hook install the skill in the parent AIOS and projects, with backups for stale provider copies. Eight discovery tests and the Mob-layout installation fixture pass; the actual Claude skill scanner reports next-action enabled in all three fixture workspaces. Mob's desktop is not remotely connected; a machine-local installer result and fresh-session recommendation remain unverified.
 

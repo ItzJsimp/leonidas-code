@@ -1,17 +1,19 @@
+import { OrchestratorMcpFailure } from "@t3tools/contracts";
 import { OrchestratorToolkit } from "./tools.ts";
 import * as Effect from "effect/Effect";
 
+import { readCaller } from "../../threadAccess.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
 import * as ThreadMetadataMcpService from "../../ThreadMetadataMcpService.ts";
 
 const handlers = {
-  orchestrator_capabilities: McpToolAccess.reads((input) =>
+  orchestrator_capabilities: McpToolAccess.reads(() =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.McpInvocationContext;
       const service = yield* OrchestratorMcpService.OrchestratorMcpService;
-      return yield* service.capabilities(scope, input);
+      return yield* service.capabilities(scope);
     }),
   ),
   delegate_task: McpToolAccess.actsAsCaller((input) =>
@@ -34,6 +36,26 @@ const handlers = {
       const service = yield* OrchestratorMcpService.OrchestratorMcpService;
       return yield* service.cancelTask(scope, input);
     }),
+  ),
+  t3_workflow_stop: McpToolAccess.writesThreads(
+    (input) => [input.threadId],
+    (input) =>
+      Effect.gen(function* () {
+        const { threads } = yield* readCaller();
+        return yield* threads.stopWorkflow(input).pipe(
+          Effect.as({}),
+          Effect.mapError(
+            (cause) =>
+              new OrchestratorMcpFailure({
+                code:
+                  cause.reason === "unavailable" || cause.reason === "stop-failed"
+                    ? "orchestration_error"
+                    : "invalid_request",
+                message: cause.message,
+              }),
+          ),
+        );
+      }),
   ),
   schedule_task: McpToolAccess.startsThreads(
     // A scheduled task runs with the caller's own modes.
@@ -64,34 +86,6 @@ const handlers = {
       const scope = yield* McpInvocationContext.McpInvocationContext;
       const service = yield* OrchestratorMcpService.OrchestratorMcpService;
       return yield* service.deleteScheduledTask(scope, input);
-    }),
-  ),
-  board_task_list: McpToolAccess.reads((input) =>
-    Effect.gen(function* () {
-      const scope = yield* McpInvocationContext.McpInvocationContext;
-      const service = yield* OrchestratorMcpService.OrchestratorMcpService;
-      return yield* service.boardTaskList(scope, input);
-    }),
-  ),
-  board_task_get: McpToolAccess.reads((input) =>
-    Effect.gen(function* () {
-      const scope = yield* McpInvocationContext.McpInvocationContext;
-      const service = yield* OrchestratorMcpService.OrchestratorMcpService;
-      return yield* service.boardTaskGet(scope, input);
-    }),
-  ),
-  board_task_update: McpToolAccess.writes((input) =>
-    Effect.gen(function* () {
-      const scope = yield* McpInvocationContext.McpInvocationContext;
-      const service = yield* OrchestratorMcpService.OrchestratorMcpService;
-      return yield* service.boardTaskUpdate(scope, input);
-    }),
-  ),
-  board_task_create: McpToolAccess.writes((input) =>
-    Effect.gen(function* () {
-      const scope = yield* McpInvocationContext.McpInvocationContext;
-      const service = yield* OrchestratorMcpService.OrchestratorMcpService;
-      return yield* service.boardTaskCreate(scope, input);
     }),
   ),
   request_secret: McpToolAccess.actsAsCaller((input) =>

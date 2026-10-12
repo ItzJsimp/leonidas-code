@@ -12,12 +12,13 @@ export function onWhatsNewPreviewRequested(listener: () => void): () => void {
   return () => window.removeEventListener(PREVIEW_EVENT, listener);
 }
 
-/** Every Markdown bullet in a release body, newest first (CI writes them oldest first). */
+/** Markdown bullet lines of a release body, newest first (CI writes them oldest first). */
 export function parseReleaseBullets(body: string): ReadonlyArray<string> {
   return body
     .split("\n")
     .filter((line) => /^\s*[-*]\s/.test(line))
     .map((line) => line.replace(/^\s*[-*]\s+/, "").trim())
+    .slice(-8)
     .toReversed();
 }
 

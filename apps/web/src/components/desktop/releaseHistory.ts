@@ -4,7 +4,6 @@ export interface ReleaseHistoryMeta {
   readonly commit?: string;
   readonly authors?: ReadonlyArray<string>;
   readonly coAuthors?: ReadonlyArray<string>;
-  readonly authorCommits?: Readonly<Record<string, number>>;
 }
 
 export interface ReleaseHistoryEntry {
@@ -34,25 +33,6 @@ export function formatExactReleaseDate(isoString: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
-}
-
-export function formatReleaseTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (!isoString || !Number.isFinite(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(date);
-}
-
-/** "Jake 70% · Mob 30%" when per-author commit counts exist, else the plain author list. */
-export function formatReleaseCredits(meta: ReleaseHistoryMeta | null | undefined): string {
-  const counts = Object.entries(meta?.authorCommits ?? {}).filter(([, n]) => n > 0);
-  const total = counts.reduce((sum, [, n]) => sum + n, 0);
-  if (counts.length > 1 && total > 0) {
-    return counts
-      .toSorted((a, b) => b[1] - a[1])
-      .map(([name, n]) => `${name} ${Math.round((n / total) * 100)}%`)
-      .join(" · ");
-  }
-  return (meta?.authors ?? []).join(", ");
 }
 
 export function parseReleaseHistory(value: unknown): ReleaseHistoryEntry[] {

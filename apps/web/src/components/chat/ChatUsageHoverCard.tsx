@@ -16,7 +16,7 @@ import {
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
 
-const MAX_GLANCE_ACCOUNTS = 6;
+const MAX_GLANCE_ACCOUNTS = 2;
 
 /**
  * The hover summary of the usage control: model, context gauge, and active account's
@@ -50,7 +50,7 @@ export function ChatUsageHoverCard({
   const now = Date.now();
 
   return (
-    <div className="flex w-80 max-w-full max-h-[85vh] overflow-y-auto flex-col gap-3.5 p-1 [scrollbar-width:thin]">
+    <div className="flex w-72 max-w-full flex-col gap-3.5 p-1">
       <div className="flex items-center gap-2.5">
         <UsageRing
           percent={reported ? percent : null}

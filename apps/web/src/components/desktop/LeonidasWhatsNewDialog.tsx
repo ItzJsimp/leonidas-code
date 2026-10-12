@@ -15,7 +15,6 @@ import {
 export interface WhatsNewDialogProps {
   readonly version: string | null;
   readonly items: ReadonlyArray<string>;
-  readonly onShowMe: (item: string) => void;
   /** Omit both actions for a preview: the footer is then just Close. */
   readonly onRestartNow?: (() => void) | undefined;
   readonly onUpdateWhenSafe?: (() => void) | undefined;
@@ -24,7 +23,7 @@ export interface WhatsNewDialogProps {
 
 /** Centered mini changelog shown when an update has downloaded: what shipped, then install or later. */
 export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
-  const { version, items, onShowMe, onRestartNow, onUpdateWhenSafe, onClose } = props;
+  const { version, items, onRestartNow, onUpdateWhenSafe, onClose } = props;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogPopup className="max-w-lg" bottomStickOnMobile={false}>
@@ -35,31 +34,17 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
               What's new{version ? ` in ${version}` : ""}
             </span>
           </DialogTitle>
-          <DialogDescription>
-            {onRestartNow
-              ? "Choose a change to restart and open a guided chat after it installs."
-              : "Choose a change to open a chat with a ready-to-send walkthrough."}
-          </DialogDescription>
+          <DialogDescription>Here is what shipped in this update.</DialogDescription>
         </DialogHeader>
         <DialogPanel className="max-h-[55dvh] overflow-y-auto [scrollbar-width:thin]">
           <ul className="space-y-3 text-sm leading-relaxed">
-            {items.map((item, index) => (
-              <li key={`${index}-${item}`} className="relative break-words ps-4">
+            {items.map((item) => (
+              <li key={item} className="relative break-words ps-4">
                 <span
                   aria-hidden
                   className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
                 />
-                <p>{item}</p>
-                <div className="-ms-1 mt-1">
-                  <Button
-                    size="xs"
-                    variant="link"
-                    aria-label={`Walk me through: ${item}`}
-                    onClick={() => onShowMe(item)}
-                  >
-                    {onRestartNow ? "Restart and try" : "Walk me through it"}
-                  </Button>
-                </div>
+                {item}
               </li>
             ))}
           </ul>

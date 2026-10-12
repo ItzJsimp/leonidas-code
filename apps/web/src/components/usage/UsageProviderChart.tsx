@@ -12,6 +12,7 @@ import {
 } from "@t3tools/shared/usageFormat";
 import { cn } from "~/lib/utils";
 import { PROVIDER_ORDER, PROVIDER_PRESENTATION } from "./usageProviders";
+import { observeResize } from "~/lib/observeResize";
 
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 260;
@@ -33,8 +34,6 @@ interface UsageProviderChartProps {
   readonly referenceTime: string | undefined;
   readonly resolution: "day" | "hour";
   readonly timeZone: string;
-  /** Labels include the minute when buckets are shorter than an hour. */
-  readonly withMinutes?: boolean | undefined;
 }
 
 /** One day's per-provider values, shared by the paths and the hover readout. */
@@ -253,7 +252,6 @@ export function UsageProviderChart({
   referenceTime,
   resolution,
   timeZone,
-  withMinutes = false,
 }: UsageProviderChartProps) {
   const periods = resolution === "hour" ? hours : days;
   const byPeriod = useMemo(
@@ -310,12 +308,9 @@ export function UsageProviderChart({
 
     const plot = plotRef.current;
     const tooltip = tooltipRef.current;
-    if (plot === null || tooltip === null || typeof ResizeObserver === "undefined") return;
+    if (plot === null || tooltip === null) return;
 
-    const observer = new ResizeObserver(positionTooltip);
-    observer.observe(plot);
-    observer.observe(tooltip);
-    return () => observer.disconnect();
+    return observeResize([plot, tooltip], positionTooltip);
   }, [hoverIndex, positionTooltip]);
 
   const handleMove = useCallback(
@@ -339,10 +334,10 @@ export function UsageProviderChart({
   const hoveredColumn = hoverIndex === null ? undefined : columns[hoverIndex];
   const partial = providers.some((provider) => loadingProviders.has(provider));
   const formatPeriod = (period: string) =>
-    resolution === "hour" ? formatHourShort(period, timeZone, withMinutes) : formatDayShort(period);
+    resolution === "hour" ? formatHourShort(period, timeZone) : formatDayShort(period);
   const formatTooltipPeriod = (period: string) =>
     resolution === "hour" && referenceTime !== undefined
-      ? formatRelativeHourShort(period, referenceTime, timeZone, withMinutes)
+      ? formatRelativeHourShort(period, referenceTime, timeZone)
       : formatPeriod(period);
 
   return (

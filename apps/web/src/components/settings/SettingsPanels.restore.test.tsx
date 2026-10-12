@@ -73,25 +73,6 @@ beforeEach(() => {
 });
 
 describe("restoring V2 settings", () => {
-  it("restores prediction costs and mode together", async () => {
-    state.settings = {
-      ...PRISTINE_SETTINGS,
-      promptPredictionMode: "cloud",
-      promptPredictionLocalModel: "local-model",
-      promptPredictionCloudRequestLimit: 10,
-      promptPredictionModelSelection: { ...DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection },
-    };
-    hooks.beginRender();
-    const restore = useSettingsRestore();
-    expect(restore.changedSettingLabels).toContain("Prediction source and budget");
-    await restore.restoreDefaults();
-    expect(state.update.mock.calls[0]?.[0]).toMatchObject({
-      promptPredictionMode: "local",
-      promptPredictionLocalModel: "",
-      promptPredictionModelSelection: null,
-      promptPredictionCloudRequestLimit: 30,
-    });
-  });
   it.each([
     ["persistComposerContextStrip", "Composer context"],
     ["autoResumeLimitedThreads", "Auto-resume limited threads"],

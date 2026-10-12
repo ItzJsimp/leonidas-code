@@ -29,7 +29,6 @@ export interface UsageChartWindow {
   readonly days: readonly string[];
   readonly hours: readonly string[];
   readonly resolution: "day" | "hour";
-  readonly withMinutes?: boolean | undefined;
   readonly timeZone: string;
   readonly referenceTime: string | undefined;
 }
@@ -118,7 +117,6 @@ export function UsageModelDialog({
               referenceTime={chartWindow.referenceTime}
               resolution={chartWindow.resolution}
               timeZone={chartWindow.timeZone}
-              withMinutes={chartWindow.withMinutes}
             />
 
             <div className="grid gap-x-10 gap-y-8 sm:grid-cols-2">

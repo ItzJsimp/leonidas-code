@@ -94,7 +94,6 @@ export const layerObserver = Layer.effect(
     const vcsStatus = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
     const projections = yield* ProjectionStore.ProjectionStoreV2;
     const pullRequests = yield* PullRequestService.PullRequestService;
-    const scope = yield* Effect.scope;
     return {
       refreshAfterTurn: pullRequests.refreshAfterTurn,
       refresh: ({ cwd, threadId, runId }) =>
@@ -107,8 +106,6 @@ export const layerObserver = Layer.effect(
           const thread = yield* projections.getThreadShell(threadId);
           if (!thread || thread.branch !== local.refName) return;
           if (thread.activeRunId !== null && thread.activeRunId !== runId) return;
-          // A PR lookup is a network call behind the remote write lock. Forking it keeps
-          // the thread lane free for the next prompt; failures are logged, not surfaced.
           yield* vcsStatus.refreshPullRequestStatus(cwd).pipe(
             Effect.catch((error) =>
               Effect.logWarning("failed to refresh pull request status after run completion", {
@@ -117,7 +114,6 @@ export const layerObserver = Layer.effect(
                 detail: error.message,
               }),
             ),
-            Effect.forkIn(scope),
           );
         }).pipe(Effect.mapError((cause) => new RunFinalizationRefreshError({ cwd, cause }))),
     };

@@ -192,26 +192,6 @@ function withFakeClaudeEnv<A, E, R>(
 }
 
 it.layer(layerClaudeTextGenerationTest)("ClaudeTextGeneration", (it) => {
-  it.effect("predicts from a temporary cwd without project instructions", () =>
-    withFakeClaudeEnv(
-      {
-        output: JSON.stringify({ structured_output: { prompt: "Review the latest diff." } }),
-        cwdMustNotBe: process.cwd(),
-      },
-      (textGeneration) =>
-        Effect.gen(function* () {
-          const result = yield* textGeneration.generatePromptSuggestion!({
-            cwd: process.cwd(),
-            messages: [{ role: "assistant", text: "Done." }],
-            modelSelection: {
-              instanceId: ProviderInstanceId.make("claudeAgent"),
-              model: SYNTHETIC_CLAUDE_STANDARD_MODEL,
-            },
-          });
-          expect(result.prompt).toBe("Review the latest diff.");
-        }),
-    ),
-  );
   it.effect("forwards Claude thinking settings without passing unsupported effort", () =>
     withFakeClaudeEnv(
       {

@@ -1,15 +1,20 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
   type ProviderInstanceId,
+  type EnvironmentId,
   type ProviderDriverKind,
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
+import type { AutoRoutePreference } from "@t3tools/contracts/settings";
+import { AUTO_ROUTE_PREFERENCE_LABELS } from "@t3tools/shared/autoRouter";
+import { RouteIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
+import { AutoRouterPickerSection } from "./AutoRouterPickerSection";
 import { ChatGptSharingControl } from "./ChatGptSharingControl";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import {
@@ -27,6 +32,7 @@ import { useComposerMenuProps } from "./composerEventScope";
 import { shortcutLabelForCommand } from "../../keybindings";
 
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
+  environmentId: EnvironmentId | null;
   /**
    * The instance currently selected in the composer. Drives the trigger
    * icon, label and the default-highlighted combobox row.
@@ -57,6 +63,13 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   onOpenProviderSetup?: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
   onInstanceModelChange: (instanceId: ProviderInstanceId, model: string) => void;
+  /** Composer-only: the Leonidas Autorouter goal, null when a model is picked by hand. */
+  autoRoute?: {
+    preference: AutoRoutePreference | null;
+    /** The model the last routed message went to, e.g. "Sonnet 5.5 · Light task, balanced". */
+    lastRouteLabel: string | null;
+    onPreferenceChange: (preference: AutoRoutePreference | null) => void;
+  };
 }) {
   const composerFloatingLayerProps = useComposerMenuProps();
   const [uncontrolledIsMenuOpen, setUncontrolledIsMenuOpen] = useState(false);
@@ -187,9 +200,19 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const allModelNames = selectedEntries
     ? selectedEntries.map((selection) => selection.label).join(", ") || "Choose models"
     : undefined;
+  const autoRoutePreference =
+    props.selectedModels === undefined ? (props.autoRoute?.preference ?? null) : null;
+  const autoRouteLabel =
+    autoRoutePreference === null
+      ? undefined
+      : `Auto · ${AUTO_ROUTE_PREFERENCE_LABELS[autoRoutePreference]}`;
+  const baseTooltipContent =
+    autoRouteLabel !== undefined
+      ? `Leonidas Autorouter · ${props.autoRoute?.lastRouteLabel ?? "picks a model when you send"}`
+      : (props.triggerLabel ?? allModelNames ?? triggerLabel);
   const triggerTooltipContent = shortcutLabel
-    ? `${props.triggerLabel ?? allModelNames ?? triggerLabel} · ${shortcutLabel}`
-    : (props.triggerLabel ?? allModelNames ?? triggerLabel);
+    ? `${baseTooltipContent} · ${shortcutLabel}`
+    : baseTooltipContent;
 
   return (
     <Popover
@@ -222,7 +245,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         <span
           className={cn("flex min-w-0 flex-1 items-center", size === "xs" ? "gap-1" : "gap-1.5")}
         >
-          {selectedEntries && props.triggerLabel === undefined ? (
+          {autoRouteLabel !== undefined ? (
+            <RouteIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          ) : selectedEntries && props.triggerLabel === undefined ? (
             <span className="flex shrink-0 items-center -space-x-1" aria-hidden="true">
               {selectedEntries
                 .slice(0, 3)
@@ -270,11 +295,14 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 />
               }
             >
-              {props.triggerLabel ?? multipleLabel ?? triggerTitle}
+              {autoRouteLabel ?? props.triggerLabel ?? multipleLabel ?? triggerTitle}
             </TooltipTrigger>
             <TooltipPopup side="top">{triggerTooltipContent}</TooltipPopup>
           </Tooltip>
-          {selectedModel?.isUnavailable && !selectedEntries && props.triggerLabel === undefined ? (
+          {selectedModel?.isUnavailable &&
+          !selectedEntries &&
+          props.triggerLabel === undefined &&
+          autoRouteLabel === undefined ? (
             <Badge variant="outline" size="sm">
               Unavailable
             </Badge>
@@ -290,7 +318,18 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         className="before:hidden"
         padding="none"
       >
+        {props.autoRoute && props.selectedModels === undefined ? (
+          <AutoRouterPickerSection
+            preference={props.autoRoute.preference}
+            onPreferenceChange={(preference) => {
+              if (props.disabled) return;
+              props.autoRoute?.onPreferenceChange(preference);
+              if (preference !== null) setIsMenuOpen(false);
+            }}
+          />
+        ) : null}
         <ModelPickerContent
+          environmentId={props.environmentId}
           activeInstanceId={activeInstanceId}
           model={props.model}
           {...(props.selectedModels !== undefined ? { selectedModels: props.selectedModels } : {})}

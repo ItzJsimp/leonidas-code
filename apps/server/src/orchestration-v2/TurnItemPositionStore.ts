@@ -34,35 +34,18 @@ export class TurnItemPositionStoreV2 extends Context.Service<
   TurnItemPositionStoreV2Shape
 >()("t3/orchestration-v2/TurnItemPositionStore/TurnItemPositionStoreV2") {}
 
-// Bounds the in-memory ordinal cache; an evicted item is read back from the table.
-const MAX_CACHED_POSITIONS = 4096;
-
 export const layer: Layer.Layer<TurnItemPositionStoreV2, never, SqlClient.SqlClient> = Layer.effect(
   TurnItemPositionStoreV2,
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
-    // An item's ordinal never changes once allocated (the insert is ON CONFLICT DO NOTHING),
-    // so repeat updates skip both statements. Map insertion order gives oldest-first eviction.
-    const cachedOrdinals = new Map<string, number>();
-    const cacheOrdinal = (key: string, ordinal: number) => {
-      cachedOrdinals.delete(key);
-      cachedOrdinals.set(key, ordinal);
-      if (cachedOrdinals.size > MAX_CACHED_POSITIONS) {
-        const oldest = cachedOrdinals.keys().next();
-        if (!oldest.done) cachedOrdinals.delete(oldest.value);
-      }
-    };
 
     const allocate: TurnItemPositionStoreV2Shape["allocate"] = ({
       threadId,
       turnItemId,
       runId,
       runOrdinal: suppliedRunOrdinal,
-    }) => {
-      const key = `${threadId}\n${turnItemId}`;
-      const cached = cachedOrdinals.get(key);
-      if (cached !== undefined) return Effect.succeed(cached);
-      return Effect.gen(function* () {
+    }) =>
+      Effect.gen(function* () {
         const runRows =
           runId === null
             ? []
@@ -101,7 +84,6 @@ export const layer: Layer.Layer<TurnItemPositionStoreV2, never, SqlClient.SqlCli
             cause: "Position allocation returned no row.",
           });
         }
-        cacheOrdinal(key, ordinal);
         return ordinal;
       }).pipe(
         Effect.mapError((cause) =>
@@ -110,7 +92,6 @@ export const layer: Layer.Layer<TurnItemPositionStoreV2, never, SqlClient.SqlCli
             : new TurnItemPositionStoreError({ threadId, turnItemId, cause }),
         ),
       );
-    };
 
     return TurnItemPositionStoreV2.of({
       allocate,

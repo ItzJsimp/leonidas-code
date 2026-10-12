@@ -82,27 +82,6 @@ describe("UsageAggregator", () => {
     ).toThrow("requires exact time bounds");
   });
 
-  it("buckets an hourly window at the requested width", () => {
-    const base = Date.parse("2026-08-07T04:00:00.000Z");
-    const aggregator = new UsageAggregator({
-      timeZone: "UTC",
-      sinceDay: "2026-08-07",
-      untilDay: "2026-08-07",
-      resolution: "hour",
-      sinceTimeMs: base,
-      untilTimeMs: base + 15 * 60_000,
-      bucketMs: 60_000,
-      rates,
-    });
-    aggregator.add(record({ timestampMs: base + 30_000, dedupeKey: "a" }));
-    aggregator.add(record({ timestampMs: base + 5 * 60_000 + 1_000, dedupeKey: "b" }));
-
-    expect(aggregator.finish().buckets.map((bucket) => bucket.hourStart)).toEqual([
-      "2026-08-07T04:00:00.000Z",
-      "2026-08-07T04:05:00.000Z",
-    ]);
-  });
-
   it("splits a bucket's cost by category and speed", () => {
     const [bucket] = aggregate([record(), record({ speed: "fast" })]).buckets;
 

@@ -43,7 +43,7 @@ describe("OpenRouterDriver", () => {
 
   it("registers OpenRouter in default model mappings and display names", () => {
     const kind = ProviderDriverKind.make("openrouter");
-    expect(DEFAULT_MODEL_BY_PROVIDER[kind]).toBe("anthropic/claude-3.7-sonnet");
+    expect(DEFAULT_MODEL_BY_PROVIDER[kind]).toBe("openrouter/free");
     expect(PROVIDER_DISPLAY_NAMES[kind]).toBe("OpenRouter");
   });
 });

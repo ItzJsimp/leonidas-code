@@ -84,6 +84,7 @@ vi.mock("../WorkspaceBreadcrumb", () => ({
   WorkspaceBreadcrumb: "div",
   WorkspaceBreadcrumbItem: "div",
   WorkspaceBreadcrumbSeparator: "span",
+  WorkspaceBreadcrumbText: "span",
 }));
 vi.mock("../WorkspacePageContainer", () => ({ WorkspacePageContainer: "main" }));
 vi.mock("../WorkspacePageHeader", () => ({ WorkspacePageHeader: "header" }));
@@ -152,7 +153,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it.each([0])(
+it.each([0, 1])(
   "refreshes the visible limits countdown with refresh button %i without switching tabs, even when quota is unchanged",
   async (buttonIndex) => {
     await act(() => {

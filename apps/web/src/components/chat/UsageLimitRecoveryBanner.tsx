@@ -42,9 +42,7 @@ export function usageLimitRecoveryBannerItem(props: RecoveryProps): ComposerBann
       (resetAt
         ? `Resets ${new Date(resetAt).toLocaleString()}`
         : "Reset time unavailable; retry manually") +
-      (props.failoverUnavailable
-        ? ". No other Claude or Codex subscription is ready to take over."
-        : ""),
+      (props.failoverUnavailable ? ". No other connected subscription is ready to take over." : ""),
     actions: <RecoveryActions key={`${runId}:${resetAt}`} {...props} canSchedule={canSchedule} />,
   };
 }
@@ -153,10 +151,9 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
                   <MenuTrigger
                     render={
                       <Button
-                        size="xs"
+                        size="icon-xs"
                         variant="ghost"
                         disabled={pending || failoverDisabled}
-                        className="px-1.5"
                         aria-label={`Choose model for ${target.label}`}
                         title={`Choose model for ${target.label}`}
                       />
@@ -165,21 +162,22 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
                     <ChevronDownIcon className="size-3" />
                   </MenuTrigger>
                   <MenuPopup align="start" className="min-w-44">
-                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="px-2 py-1 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Models for {target.label}
                     </div>
                     {target.availableModels.map((model) => (
                       <MenuItem
                         key={model.slug}
                         onClick={() => void continueWith(target, model.slug)}
-                        className="flex items-center justify-between gap-3 text-xs"
                       >
-                        <span className="truncate">{model.name}</span>
-                        {model.slug === target.modelSelection.model ? (
-                          <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
-                            Default
-                          </span>
-                        ) : null}
+                        <span className="flex w-full items-center justify-between gap-3">
+                          <span className="truncate">{model.name}</span>
+                          {model.slug === target.modelSelection.model ? (
+                            <span className="shrink-0 text-3xs font-medium text-muted-foreground">
+                              Default
+                            </span>
+                          ) : null}
+                        </span>
                       </MenuItem>
                     ))}
                   </MenuPopup>

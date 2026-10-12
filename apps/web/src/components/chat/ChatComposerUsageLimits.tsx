@@ -346,8 +346,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
 
                         {windows.length === 0 ? (
                           <span className="text-2xs text-muted-foreground">
-                            {account.limits.unavailable?.message ??
-                              "Limits pending for this account."}
+                            Limits pending for this account.
                           </span>
                         ) : (
                           windows.map((window) => {

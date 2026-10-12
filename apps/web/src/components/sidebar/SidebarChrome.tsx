@@ -1,8 +1,8 @@
+import { TaskBoardPanel } from "../taskBoard/TaskBoardPanel";
 import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
-  ListChecksIcon,
   SettingsIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -36,6 +36,7 @@ import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { observeResize } from "~/lib/observeResize";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
@@ -92,11 +93,9 @@ export function SidebarBrandWidthProbe({
 }) {
   const observeWidth = useCallback(
     (probe: HTMLDivElement) => {
-      const observer = new ResizeObserver(([entry]) => {
+      return observeResize(probe, ([entry]) => {
         if (entry) onWidthChange(entry.borderBoxSize[0]?.inlineSize ?? probe.offsetWidth);
       });
-      observer.observe(probe);
-      return () => observer.disconnect();
     },
     [onWidthChange],
   );
@@ -132,11 +131,12 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
 function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
   return (
     // Center the visible capitals, without the font's ascender/descender space.
+    // Padding keeps ascenders and round-letter overshoot inside the truncation clip.
     <span className="inline-flex min-w-0 items-baseline gap-1 text-sm font-medium tracking-tight">
       <span className="[text-box:trim-both_cap_alphabetic]">Leonidas</span>
       <span
         className={cn(
-          "truncate [text-box:trim-both_cap_alphabetic]",
+          "truncate [text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both_cap_alphabetic]:py-1",
           onBackdrop ? "text-white/70" : "text-muted-foreground",
         )}
       >
@@ -201,11 +201,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/command-center" });
   }, [closeMobileSidebar, navigate]);
 
-  const handleTasksClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/tasks" });
-  }, [closeMobileSidebar, navigate]);
-
   const handleUsageClick = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -226,7 +221,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   }, [closeMobileSidebar, navigateToMainApp]);
 
   return (
-    <SidebarMenu className="flex-row flex-wrap items-center">
+    <SidebarMenu className="flex-row items-center">
       {isOnUtilityPage ? (
         <SidebarMenuItem className="min-w-0 flex-1">
           <SidebarMenuButton onClick={handleBackClick}>
@@ -241,7 +236,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Command Center"
             onClick={handleCommandCenterClick}
           />
-          <SidebarUtilityItem icon={<ListChecksIcon />} label="Tasks" onClick={handleTasksClick} />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
@@ -266,6 +260,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           />
         </>
       )}
+      <TaskBoardPanel />
       <SidebarUpdatePill />
     </SidebarMenu>
   );

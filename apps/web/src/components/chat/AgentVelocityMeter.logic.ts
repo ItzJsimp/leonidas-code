@@ -13,14 +13,7 @@ export interface VelocitySummary {
   readonly outputTokens: number | null;
   readonly reasoningTokens: number | null;
   readonly isLive: boolean;
-  /** Output over the whole turn, tool waits included. */
   readonly averageTurnTps: number | null;
-  /** Output over the turn minus tool waits: the closest honest proxy for model stream speed. */
-  readonly modelStreamTps: number | null;
-  readonly turnDurationMs: number | null;
-  readonly toolWaitMs: number | null;
-  /** Turn start to the first thinking or text item; includes request and queue overhead. */
-  readonly firstOutputMs: number | null;
   readonly rolling5Tps: number | null;
   readonly rolling10Tps: number | null;
   readonly rolling20Tps: number | null;
@@ -208,46 +201,6 @@ export function analyzeToolCallCadence(
 }
 
 /**
- * Splits one turn window into tool wait and first-output delay. Overlapping tool calls count once,
- * a call with no end is clipped to the window end, and only this turn's items count. Stream
- * timestamps are item-level, so rates built on this are approximations, not token-level timings.
- */
-function measureTurnTiming(
-  turnId: string,
-  items: ReadonlyArray<OrchestrationV2TurnItem>,
-  startMs: number,
-  endMs: number,
-): { readonly toolWaitMs: number; readonly firstOutputMs: number | null } {
-  const spans: Array<[number, number]> = [];
-  let firstOutputAt: number | null = null;
-  for (const item of items) {
-    if (item.providerTurnId !== turnId) continue;
-    const itemStart = parseTimestamp(item.startedAt);
-    if (itemStart === null) continue;
-    if (item.type === "assistant_message" || item.type === "reasoning") {
-      firstOutputAt = firstOutputAt === null ? itemStart : Math.min(firstOutputAt, itemStart);
-      continue;
-    }
-    if (!isToolCallItem(item)) continue;
-    const from = Math.max(itemStart, startMs);
-    const to = Math.min(parseTimestamp(item.completedAt) ?? endMs, endMs);
-    if (to > from) spans.push([from, to]);
-  }
-  spans.sort((a, b) => a[0] - b[0]);
-  let toolWaitMs = 0;
-  let coveredUntil = startMs;
-  for (const [from, to] of spans) {
-    if (to <= coveredUntil) continue;
-    toolWaitMs += to - Math.max(from, coveredUntil);
-    coveredUntil = to;
-  }
-  return {
-    toolWaitMs,
-    firstOutputMs: firstOutputAt === null ? null : Math.max(0, firstOutputAt - startMs),
-  };
-}
-
-/**
  * Builds the complete multi-window VelocitySummary from live provider turns & turn items.
  */
 export function deriveVelocitySummary(
@@ -261,10 +214,6 @@ export function deriveVelocitySummary(
       reasoningTokens: null,
       isLive: false,
       averageTurnTps: null,
-      modelStreamTps: null,
-      turnDurationMs: null,
-      toolWaitMs: null,
-      firstOutputMs: null,
       rolling5Tps: null,
       rolling10Tps: null,
       rolling20Tps: null,
@@ -321,19 +270,6 @@ export function deriveVelocitySummary(
       ? Math.round((outputTokens / liveDurationMs) * 1000 * 10) / 10
       : null
     : calculateTurnVelocity(measuredTurn);
-  const windowEndMs = isLive ? reportMs : parseTimestamp(measuredTurn?.completedAt);
-  const timing =
-    measuredTurn && startMs !== null && windowEndMs !== null && windowEndMs - startMs >= 50
-      ? {
-          durationMs: windowEndMs - startMs,
-          ...measureTurnTiming(measuredTurn.id, turnItems ?? [], startMs, windowEndMs),
-        }
-      : null;
-  const activeMs = timing === null ? 0 : timing.durationMs - timing.toolWaitMs;
-  const modelStreamTps =
-    outputTokens !== null && outputTokens > 0 && activeMs >= 50
-      ? Math.round((outputTokens / activeMs) * 1000 * 10) / 10
-      : null;
 
   const rolling5Tps = calculateRollingVelocity(samples, 5);
   const rolling10Tps = calculateRollingVelocity(samples, 10);
@@ -348,10 +284,6 @@ export function deriveVelocitySummary(
     reasoningTokens,
     isLive,
     averageTurnTps,
-    modelStreamTps,
-    turnDurationMs: timing?.durationMs ?? null,
-    toolWaitMs: timing?.toolWaitMs ?? null,
-    firstOutputMs: timing?.firstOutputMs ?? null,
     rolling5Tps,
     rolling10Tps,
     rolling20Tps,
@@ -376,15 +308,6 @@ export function formatRollingLabel(
 ): string {
   if (tps !== null) return formatTpsLabel(tps);
   return `Needs ${windowSize} turns (${Math.min(turnsTracked, windowSize)} so far)`;
-}
-
-/** "12.4s (35% of turn)"; tool wait is only known once the turn window is. */
-export function formatToolWait(
-  summary: Pick<VelocitySummary, "toolWaitMs" | "turnDurationMs">,
-): string {
-  const { toolWaitMs, turnDurationMs } = summary;
-  if (toolWaitMs === null || turnDurationMs === null || turnDurationMs <= 0) return "--";
-  return `${formatToolDuration(toolWaitMs)} (${Math.round((toolWaitMs / turnDurationMs) * 100)}% of turn)`;
 }
 
 export function formatToolDuration(ms: number | null): string {

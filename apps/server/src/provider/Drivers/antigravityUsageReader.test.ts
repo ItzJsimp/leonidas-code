@@ -11,13 +11,7 @@ import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as SqlClient from "effect/sql/SqlClient";
 
-import {
-  makeAntigravityUsageCache,
-  readAntigravityUsage,
-  decodeAntigravityTurnTokenUsage,
-  readLatestAntigravityTurnTokenUsage,
-  analyzeAntigravitySessionTokenRoi,
-} from "./antigravityUsageReader.ts";
+import { makeAntigravityUsageCache, readAntigravityUsage } from "./antigravityUsageReader.ts";
 
 /** A writable connection that stays open until the enclosing scope closes. */
 const openDatabase = Effect.fn("openDatabase")(function* (filename: string) {
@@ -449,70 +443,6 @@ describe("readAntigravityUsage", () => {
       const result = yield* readAntigravityUsage(dir, 0);
       assert.deepStrictEqual(result.errors, []);
       assert.strictEqual(records(result)[0]?.totals.uncachedInputTokens, 10);
-    }).pipe(Effect.provide(NodeServices.layer)),
-  );
-  it.effect("reads the latest turn token usage from an active database", () =>
-    Effect.gen(function* () {
-      const path = yield* Path.Path;
-      const dir = yield* tempDir;
-      const dbFile = path.join(dir, "active-session.db");
-      yield* seedDatabase(dbFile, (db) =>
-        Effect.gen(function* () {
-          yield* db.exec("CREATE TABLE gen_metadata (idx INTEGER, data BLOB)");
-          const usage = [
-            ...protoNumber(1, 246),
-            ...protoNumber(2, 50), // uncached input
-            ...protoNumber(5, 200), // cached input
-            ...protoNumber(4, 10), // cache creation
-            ...protoNumber(3, 80), // output
-            ...protoNumber(9, 30), // reasoning
-          ];
-          const data = protoBytes(1, protoBytes(4, usage));
-          yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [1, new Uint8Array(data)]);
-        }),
-      );
-      const usage = yield* readLatestAntigravityTurnTokenUsage(dbFile).pipe(
-        Effect.provide(NodeSqliteClient.layer({ filename: dbFile, readonly: true })),
-      );
-      assert.isDefined(usage);
-      assert.strictEqual(usage?.usageStatus, "complete");
-      assert.strictEqual(usage?.inputTokens, 250);
-      assert.strictEqual(usage?.cachedInputTokens, 200);
-      assert.strictEqual(usage?.cacheCreationTokens, 10);
-      assert.strictEqual(usage?.outputTokens, 80);
-      assert.strictEqual(usage?.reasoningTokens, 30);
-    }).pipe(Effect.provide(NodeServices.layer)),
-  );
-  it.effect("analyzes session token ROI and cache savings across turns", () =>
-    Effect.gen(function* () {
-      const path = yield* Path.Path;
-      const dir = yield* tempDir;
-      const dbFile = path.join(dir, "roi-session.db");
-      yield* seedDatabase(dbFile, (db) =>
-        Effect.gen(function* () {
-          yield* db.exec("CREATE TABLE gen_metadata (idx INTEGER, data BLOB)");
-          const makeTurnData = (uncached: number, cached: number, output: number) => {
-            const usage = [
-              ...protoNumber(1, 246),
-              ...protoNumber(2, uncached),
-              ...protoNumber(5, cached),
-              ...protoNumber(3, output),
-            ];
-            return new Uint8Array(protoBytes(1, protoBytes(4, usage)));
-          };
-          yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [0, makeTurnData(100, 900, 50)]);
-          yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [1, makeTurnData(100, 900, 50)]);
-        }),
-      );
-      const roi = yield* analyzeAntigravitySessionTokenRoi(dbFile).pipe(
-        Effect.provide(NodeSqliteClient.layer({ filename: dbFile, readonly: true })),
-      );
-      assert.strictEqual(roi.totalTurns, 2);
-      assert.strictEqual(roi.cachedInputTokens, 1800);
-      assert.strictEqual(roi.uncachedInputTokens, 200);
-      assert.strictEqual(roi.totalInputTokens, 2000);
-      assert.strictEqual(roi.cacheSavingsPercent, 90);
-      assert.strictEqual(roi.outputTokens, 100);
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

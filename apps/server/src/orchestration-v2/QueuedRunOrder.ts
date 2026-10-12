@@ -5,7 +5,9 @@ export function isAutomaticCompletionRun(
   run: OrchestrationV2Run,
 ): boolean {
   return projection.messages.some(
-    (message) => message.id === run.userMessageId && message.delegatedCompletion !== undefined,
+    (message) =>
+      message.id === run.userMessageId &&
+      (message.delegatedCompletion !== undefined || message.notification !== undefined),
   );
 }
 
@@ -14,7 +16,10 @@ export function queuedRunsInDeliveryOrder(
 ): ReadonlyArray<OrchestrationV2Run> {
   const automaticCompletionMessageIds = new Set(
     projection.messages
-      .filter((message) => message.delegatedCompletion !== undefined)
+      .filter(
+        (message) =>
+          message.delegatedCompletion !== undefined || message.notification !== undefined,
+      )
       .map((message) => message.id),
   );
   return projection.runs

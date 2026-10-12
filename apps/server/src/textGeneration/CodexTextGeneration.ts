@@ -166,21 +166,6 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
     );
 
     const runCodexCommand = Effect.fn("runCodexJson.runCodexCommand")(function* () {
-      const workingDirectory =
-        operation === "generatePromptSuggestion"
-          ? yield* fileSystem
-              .makeTempDirectoryScoped({ prefix: "t3code-codex-prediction-" })
-              .pipe(
-                Effect.mapError((cause) =>
-                  normalizeCliError(
-                    "codex",
-                    operation,
-                    cause,
-                    "Failed to create prediction directory",
-                  ),
-                ),
-              )
-          : cwd;
       const resolved = resolveRuntime
         ? yield* resolveRuntime.pipe(
             Effect.mapError(
@@ -238,7 +223,7 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
               }
             : {}),
         },
-        cwd: workingDirectory,
+        cwd,
         shell: spawnCommand.shell,
         stdin: {
           stream: Stream.encodeText(Stream.make(prompt)),

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh scripts/session-start-sync.sh",
+            "command": "pwsh -NoProfile -File scripts/Sync-LeonidasSource.ps1 2>&1 | tail -n 3; pwsh -NoProfile -File scripts/Sync-ProjectTaskViews.ps1 -RepoPath ../.. -Project leonidas-code 2>&1 | tail -n 2; pwsh -NoProfile -File scripts/Install-NextAction.ps1 2>&1 | tail -n 3; exit 0",
             "timeout": 60
           }
         ]

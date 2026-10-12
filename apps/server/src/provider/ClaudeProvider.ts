@@ -143,13 +143,8 @@ function formatClaudeSubscriptionAuthLabel(subscriptionType: string): string {
 function claudeAuthMetadata(input: {
   readonly subscriptionType: string | undefined;
   readonly authMethod: string | undefined;
-  readonly apiKeySource: string | undefined;
 }): { readonly type: string; readonly label: string } | undefined {
-  const apiKeySource = input.apiKeySource?.trim().toLowerCase();
-  if (
-    normalizeClaudeAuthMethod(input.authMethod) === "apiKey" ||
-    Boolean(apiKeySource && apiKeySource !== "none")
-  ) {
+  if (normalizeClaudeAuthMethod(input.authMethod) === "apiKey") {
     return {
       type: "apiKey",
       label: "Claude API Key",
@@ -267,6 +262,11 @@ function nonEmptyProbeString(value: string): string | undefined {
 
 type ClaudeCapabilitiesProbe = {
   readonly email: string | undefined;
+  /**
+   * The organization UUID from the login's `.claude.json`. The driver reads it
+   * in the same cached probe, so it describes the same login as the rest.
+   */
+  readonly workspaceId?: string | undefined;
   readonly subscriptionType: string | undefined;
   readonly tokenSource: string | undefined;
   /** Where the CLI found an API key, when it authenticates with one. */
@@ -653,33 +653,15 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     claudeAuthMetadata({
       subscriptionType: capabilities.subscriptionType,
       authMethod: capabilities.tokenSource,
-      apiKeySource: capabilities.apiKeySource,
     }) ?? apiProviderAuthMetadata(capabilities.apiProvider);
-  const unsupportedUsageMessage =
-    authMetadata?.type === "apiKey"
-      ? "Claude's 5-hour and weekly subscription limits require Claude subscription sign-in. This environment is using an API key; run `claude auth login` with the subscription account."
-      : capabilities.apiProvider !== undefined && capabilities.apiProvider !== "firstParty"
-        ? `Claude subscription limits are not available for ${authMetadata?.label ?? "this backend"}.`
-        : undefined;
-  const usageLimits = unsupportedUsageMessage
-    ? makeUnavailableUsageLimits({
-        checkedAt,
-        reason: "unsupported",
-        message: unsupportedUsageMessage,
-      })
-    : !capabilities.usage
-      ? makeUnavailableUsageLimits({
+  const usageLimits = !capabilities.usage
+    ? makeUnavailableUsageLimits({ checkedAt, reason: "probeFailed" })
+    : scopedLimitNames
+      ? yield* recordClaudeUsageResponse(scopedLimitNames, {
+          response: capabilities.usage,
           checkedAt,
-          reason: "probeFailed",
-          message:
-            "Claude did not return subscription limits. Try Refresh, then check this environment's Claude subscription login.",
         })
-      : scopedLimitNames
-        ? yield* recordClaudeUsageResponse(scopedLimitNames, {
-            response: capabilities.usage,
-            checkedAt,
-          })
-        : claudeUsageResponseToLimits({ response: capabilities.usage, checkedAt }).limits;
+      : claudeUsageResponseToLimits({ response: capabilities.usage, checkedAt }).limits;
   const resetCredits =
     resolveResetCredits &&
     capabilities.subscriptionType &&
@@ -702,6 +684,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
       auth: {
         status: "authenticated",
         ...(capabilities.email ? { email: capabilities.email } : {}),
+        ...(capabilities.workspaceId ? { workspaceId: capabilities.workspaceId } : {}),
         ...(authMetadata ? authMetadata : {}),
       },
       ...(versionUpgradeMessage ? { message: versionUpgradeMessage } : {}),

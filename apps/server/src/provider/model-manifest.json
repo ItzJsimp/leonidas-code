@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-11T01:35:00Z",
+  "updatedAt": "2026-10-11T00:00:00Z",
   "compatibility": [
     {
       "driver": "codex",
@@ -196,8 +196,7 @@
     "claudeAgent": ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
     "antigravity": ["gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low"],
     "openrouter": [
-      "openrouter/auto",
-      "apodex/apodex-1.1-mini:free",
+      "openrouter/free",
       "anthropic/claude-3.7-sonnet",
       "anthropic/claude-3.5-sonnet",
       "openai/gpt-4.5-preview",
@@ -206,15 +205,7 @@
       "deepseek/deepseek-chat",
       "google/gemini-2.0-flash-001",
       "meta-llama/llama-3.3-70b-instruct",
-      "qwen/qwen-2.5-coder-32b-instruct",
-      "meta-llama/llama-3.1-8b-instruct:free",
-      "meta-llama/llama-3.1-70b-instruct:free",
-      "mistralai/mistral-7b-instruct:free",
-      "microsoft/phi-3-mini-128k-instruct:free",
-      "google/gemma-2-9b-it:free",
-      "nousresearch/hermes-3-llama-3.1-8b:free",
-      "gryphe/mythomax-l2-13b:free",
-      "cognitivecomputations/dolphin-2.9.2-llama3-8b:free"
+      "qwen/qwen-2.5-coder-32b-instruct"
     ]
   },
   "providers": {
@@ -280,7 +271,7 @@
     },
     "claudeAgent": {
       "defaults": {
-        "chat": "claude-sonnet-5-5"
+        "chat": "claude-fable-5-1"
       },
       "profiles": {
         "fable-5": {
@@ -1051,17 +1042,15 @@
       ]
     },
     "openrouter": {
+      "defaults": {
+        "chat": "openrouter/free"
+      },
       "profiles": {},
       "models": [
         {
-          "slug": "openrouter/auto",
-          "name": "OpenRouter Auto (Free Router)",
-          "status": "current",
-          "badge": "new"
-        },
-        {
-          "slug": "apodex/apodex-1.1-mini:free",
-          "name": "Apodex 1.1 Mini (Free, Experimental)",
+          "slug": "openrouter/free",
+          "name": "OpenRouter Free Model Router",
+          "shortName": "Free Router",
           "status": "current"
         },
         {
@@ -1107,46 +1096,6 @@
         {
           "slug": "qwen/qwen-2.5-coder-32b-instruct",
           "name": "Qwen 2.5 Coder 32B (OpenRouter)",
-          "status": "current"
-        },
-        {
-          "slug": "meta-llama/llama-3.1-8b-instruct:free",
-          "name": "Llama 3.1 8B (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "meta-llama/llama-3.1-70b-instruct:free",
-          "name": "Llama 3.1 70B (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "mistralai/mistral-7b-instruct:free",
-          "name": "Mistral 7B (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "microsoft/phi-3-mini-128k-instruct:free",
-          "name": "Phi-3 Mini 128K (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "google/gemma-2-9b-it:free",
-          "name": "Gemma 2 9B (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "nousresearch/hermes-3-llama-3.1-8b:free",
-          "name": "Hermes 3 Llama 3.1 8B (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "gryphe/mythomax-l2-13b:free",
-          "name": "MythoMax L2 13B (Free)",
-          "status": "current"
-        },
-        {
-          "slug": "cognitivecomputations/dolphin-2.9.2-llama3-8b:free",
-          "name": "Dolphin 2.9.2 Llama3 8B (Free)",
           "status": "current"
         }
       ]

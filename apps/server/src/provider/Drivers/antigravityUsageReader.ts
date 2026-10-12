@@ -1,4 +1,3 @@
-import type { TurnTokenUsage } from "@t3tools/contracts";
 // @effect-diagnostics-next-line nodeBuiltinImport:off - Effect's File.Info has no ctime, which the cache fingerprint needs.
 import * as NodeFSP from "node:fs/promises";
 
@@ -114,12 +113,7 @@ function modelName(name: string, id: number): string {
         .replace(/^claude-(4(?:\.\d+)?)-(sonnet|opus|haiku)/, "claude-$2-$1")
         .replaceAll(".", "-");
     }
-    // Effort/variant tags (`-low`, `-medium`, `-n`...) are the same model, so
-    // they must not split one Gemini model across several usage rows.
-    return normalized.replace(
-      /^(gemini-[\d.]+-(?:pro|flash(?:-lite)?))-(?:minimal|low|medium|high|thinking|[a-z])$/,
-      "$1",
-    );
+    return normalized;
   }
   return MODEL_IDS[id] ?? (id > 0 ? `antigravity-model-${id}` : "");
 }
@@ -467,104 +461,3 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
   }
   return { files, errors };
 });
-
-/**
- * Decodes the latest turn token usage from an Antigravity generation metadata protobuf blob.
- */
-export function decodeAntigravityTurnTokenUsage(dataBlob: unknown): TurnTokenUsage | undefined {
-  if (!(dataBlob instanceof Uint8Array)) return undefined;
-  try {
-    const meta = metadata(dataBlob, false);
-    if (meta.usages.length === 0) return undefined;
-    const usage = meta.usages[meta.usages.length - 1]!;
-    const outputTokens = Math.max(numberAt(usage, 3), numberAt(usage, 9) + numberAt(usage, 10));
-    const uncachedInput = numberAt(usage, 2);
-    const cachedInput = numberAt(usage, 5);
-    const cacheCreation = numberAt(usage, 4);
-    const reasoningTokens = Math.min(outputTokens, numberAt(usage, 9));
-    return {
-      usageStatus: "complete",
-      usageScope: "main_agent",
-      inputTokens: uncachedInput + cachedInput,
-      cachedInputTokens: cachedInput,
-      ...(cacheCreation > 0 ? { cacheCreationTokens: cacheCreation } : {}),
-      outputTokens,
-      reasoningTokens,
-      hasSubagents: false,
-    };
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Reads the latest turn token usage from an active Antigravity session database.
- */
-export const readLatestAntigravityTurnTokenUsage = Effect.fn("readLatestAntigravityTurnTokenUsage")(
-  function* (dbPath: string) {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql
-      .unsafe<{ readonly data: unknown }>("SELECT data FROM gen_metadata ORDER BY idx DESC LIMIT 1")
-      .pipe(Effect.orElseSucceed(() => []));
-    const first = rows[0];
-    if (!first || !first.data) return undefined;
-    return decodeAntigravityTurnTokenUsage(first.data);
-  },
-);
-
-export interface AntigravitySessionTokenRoi {
-  readonly totalTurns: number;
-  readonly totalInputTokens: number;
-  readonly cachedInputTokens: number;
-  readonly uncachedInputTokens: number;
-  readonly outputTokens: number;
-  readonly reasoningTokens: number;
-  readonly cacheSavingsPercent: number;
-  readonly averageTokensPerTurn: number;
-}
-
-/**
- * Aggregates all generation metadata records in a session database to compute Token ROI and cache performance.
- */
-export const analyzeAntigravitySessionTokenRoi = Effect.fn("analyzeAntigravitySessionTokenRoi")(
-  function* (dbPath: string) {
-    const sql = yield* SqlClient.SqlClient;
-    const rows = yield* sql
-      .unsafe<{ readonly data: unknown }>("SELECT data FROM gen_metadata ORDER BY idx ASC")
-      .pipe(Effect.orElseSucceed(() => []));
-
-    let totalTurns = 0;
-    let uncachedInputTokens = 0;
-    let cachedInputTokens = 0;
-    let outputTokens = 0;
-    let reasoningTokens = 0;
-
-    for (const row of rows) {
-      if (!row.data) continue;
-      const turn = decodeAntigravityTurnTokenUsage(row.data);
-      if (!turn) continue;
-      totalTurns++;
-      cachedInputTokens += turn.cachedInputTokens ?? 0;
-      uncachedInputTokens += Math.max(0, (turn.inputTokens ?? 0) - (turn.cachedInputTokens ?? 0));
-      outputTokens += turn.outputTokens ?? 0;
-      reasoningTokens += turn.reasoningTokens ?? 0;
-    }
-
-    const totalInputTokens = uncachedInputTokens + cachedInputTokens;
-    const cacheSavingsPercent =
-      totalInputTokens > 0 ? Math.round((cachedInputTokens / totalInputTokens) * 100) : 0;
-    const averageTokensPerTurn =
-      totalTurns > 0 ? Math.round((totalInputTokens + outputTokens) / totalTurns) : 0;
-
-    return {
-      totalTurns,
-      totalInputTokens,
-      cachedInputTokens,
-      uncachedInputTokens,
-      outputTokens,
-      reasoningTokens,
-      cacheSavingsPercent,
-      averageTokensPerTurn,
-    } satisfies AntigravitySessionTokenRoi;
-  },
-);
