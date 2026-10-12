@@ -4,9 +4,12 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   cacheHitRate,
   costPerMillionTokens,
+  freeModelKind,
   modelShare,
   sortModelsByTokens,
+  usageHighlights,
 } from "./usageBreakdown";
+import type { MergedUsage } from "@t3tools/shared/usageMerge";
 
 const model = (
   name: string,
@@ -88,5 +91,56 @@ describe("model rates", () => {
     expect(cacheHitRate(mixed)).toBe(0.25);
     expect(costPerMillionTokens(mixed)).toBe(2);
     expect(costPerMillionTokens({ ...mixed, unpricedRecords: 4 })).toBeNull();
+  });
+});
+
+describe("usageHighlights", () => {
+  const fmt = {
+    tokens: (n: number) => `${Math.round(n)}t`,
+    usd: (n: number) => `$${n.toFixed(2)}`,
+  };
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const merged = {
+    models: [model("small", 10, 0, { tokenShare: 0.1 }), model("big", 90, 0, { tokenShare: 0.9 })],
+    totalTokens: 100,
+    uncachedInputTokens: 20,
+    cachedInputTokens: 60,
+    cacheCreationTokens: 0,
+    outputTokens: 20,
+    sessions: 4,
+    costUsd: 8,
+    costQuality: { cacheSavingsUsd: 3 },
+  } as unknown as MergedUsage;
+
+  it("reports the top model, cache hit rate, per-session and output share", () => {
+    expect(usageHighlights(merged, fmt, pct)).toEqual([
+      { label: "Top model", value: "big", detail: "90% of tokens" },
+      { label: "Cache hit rate", value: "75%", detail: "$3.00 saved" },
+      { label: "Per session", value: "25t", detail: "$2.00 avg" },
+      { label: "Output share", value: "20%", detail: "20t generated" },
+    ]);
+  });
+
+  it("shows nothing for an empty window", () => {
+    const empty = {
+      ...merged,
+      models: [],
+      totalTokens: 0,
+      uncachedInputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+      sessions: 0,
+    } as unknown as MergedUsage;
+    expect(usageHighlights(empty, fmt, pct)).toEqual([]);
+  });
+});
+
+describe("freeModelKind", () => {
+  it("marks free OpenRouter routes and local models, and nothing else", () => {
+    expect(freeModelKind("apodex/apodex-1.1-mini:free")).toBe("free");
+    expect(freeModelKind("ollama/llama3")).toBe("local");
+    expect(freeModelKind("lmstudio:qwen")).toBe("local");
+    expect(freeModelKind("gpt-6-luna")).toBeNull();
+    expect(freeModelKind("antigravity-unknown")).toBeNull();
   });
 });

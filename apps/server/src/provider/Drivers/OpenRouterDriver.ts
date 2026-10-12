@@ -35,7 +35,11 @@ import {
 } from "../../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { claudeUsageFormat } from "./claudeUsage.ts";
-import { type ProviderUsageReader } from "@t3tools/provider-core/server/usage";
+import {
+  type ProviderUsageReader,
+  type TranscriptUsageFormat,
+  type UsageRecord,
+} from "@t3tools/provider-core/server/usage";
 import { makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
@@ -96,10 +100,21 @@ const UPDATE = makePackageManagedProviderMaintenanceResolver({
   },
 });
 
+const asOpenRouter = (records: readonly UsageRecord[]): readonly UsageRecord[] =>
+  records.map((record) => ({ ...record, provider: "openrouter" }));
+
+/** Claude-shaped transcripts, attributed to OpenRouter so they stay out of Claude totals. */
+const openRouterUsageFormat: TranscriptUsageFormat<void> = {
+  ...claudeUsageFormat,
+  parseLine: (line, state) => asOpenRouter(claudeUsageFormat.parseLine(line, state)),
+  parseProjected: (projected, state) =>
+    asOpenRouter(claudeUsageFormat.parseProjected(projected, state)),
+};
+
 export const openRouterUsageReader: ProviderUsageReader<OpenRouterSettings, Path.Path> = {
   kind: "transcripts",
-  provider: "claude",
-  format: claudeUsageFormat,
+  provider: "openrouter",
+  format: openRouterUsageFormat,
   directories: Effect.fn("openRouterUsageReader.directories")(function* ({ config, environment }) {
     if (config === undefined) return [];
     const path = yield* Path.Path;

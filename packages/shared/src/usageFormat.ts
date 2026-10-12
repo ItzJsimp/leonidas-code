@@ -130,14 +130,18 @@ function dateTimeFormatter(
 }
 
 /** Every fixed-duration bucket start in an hourly rolling window. */
-export function enumerateHourStarts(sinceTime: string, untilTime: string): readonly string[] {
+export function enumerateHourStarts(
+  sinceTime: string,
+  untilTime: string,
+  bucketMinutes = 60,
+): readonly string[] {
   const starts: string[] = [];
   const start = Date.parse(sinceTime);
   const end = Date.parse(untilTime);
   if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return starts;
   if (Math.ceil((end - start) / HOUR_MS) > MAX_USAGE_BUCKETS) return starts;
 
-  for (let cursor = start; cursor < end; cursor += HOUR_MS) {
+  for (let cursor = start; cursor < end; cursor += bucketMinutes * 60_000) {
     starts.push(new Date(cursor).toISOString());
   }
   return starts;
@@ -149,10 +153,20 @@ export function enumerateHourStarts(sinceTime: string, untilTime: string): reado
  * Repeated wall-clock hours during a fall-back transition include their short
  * zone name so the two distinct buckets remain distinguishable.
  */
-export function formatHourShort(hourStart: string, timeZone?: string): string {
+export function formatHourShort(
+  hourStart: string,
+  timeZone?: string,
+  /** Sub-hour buckets need the minute to tell neighbours apart. */
+  withMinutes = false,
+): string {
   const instant = new Date(hourStart);
   if (Number.isNaN(instant.getTime())) return hourStart;
   const options = timeZone === undefined ? {} : { timeZone };
+  if (withMinutes) {
+    return dateTimeFormatter("en-US", { ...options, hour: "numeric", minute: "2-digit" }).format(
+      instant,
+    );
+  }
   const hourFormat = dateTimeFormatter("en-US", {
     ...options,
     hour: "numeric",
@@ -179,7 +193,11 @@ export function formatHourShort(hourStart: string, timeZone?: string): string {
 }
 
 /** `2026-08-11T14:37:00Z` to `Aug 11, 2 PM` in the requested zone. */
-export function formatDateTimeShort(instant: string, timeZone?: string): string {
+export function formatDateTimeShort(
+  instant: string,
+  timeZone?: string,
+  withMinutes = false,
+): string {
   const date = new Date(instant);
   if (Number.isNaN(date.getTime())) return instant;
   return dateTimeFormatter("en-US", {
@@ -187,6 +205,7 @@ export function formatDateTimeShort(instant: string, timeZone?: string): string 
     month: "short",
     day: "numeric",
     hour: "numeric",
+    ...(withMinutes ? { minute: "2-digit" } : {}),
   }).format(date);
 }
 
@@ -195,11 +214,12 @@ export function formatRelativeHourShort(
   hourStart: string,
   relativeTo: string,
   timeZone?: string,
+  withMinutes = false,
 ): string {
   const instant = new Date(hourStart);
   const reference = new Date(relativeTo);
   if (Number.isNaN(instant.getTime()) || Number.isNaN(reference.getTime())) {
-    return formatDateTimeShort(hourStart, timeZone);
+    return formatDateTimeShort(hourStart, timeZone, withMinutes);
   }
 
   const dayFormat = dateTimeFormatter("en-CA", {
@@ -211,11 +231,11 @@ export function formatRelativeHourShort(
   const instantDay = Date.parse(`${dayFormat.format(instant)}T00:00:00Z`);
   const referenceDay = Date.parse(`${dayFormat.format(reference)}T00:00:00Z`);
   const calendarDaysAgo = Math.round((referenceDay - instantDay) / (24 * HOUR_MS));
-  const hour = formatHourShort(hourStart, timeZone);
+  const hour = formatHourShort(hourStart, timeZone, withMinutes);
 
   if (calendarDaysAgo === 0) return `${hour} today`;
   if (calendarDaysAgo === 1) return `${hour} yesterday`;
-  return formatDateTimeShort(hourStart, timeZone);
+  return formatDateTimeShort(hourStart, timeZone, withMinutes);
 }
 
 /**
@@ -226,6 +246,11 @@ export function makeWindow(
   days: number,
   now = new Date(),
   resolution: UsageResolution = "day",
+  /** Hourly resolution only: the rolling span and how finely to bucket it. */
+  hourly: { readonly minutes: number; readonly bucketMinutes: number } = {
+    minutes: 24 * 60,
+    bucketMinutes: 60,
+  },
 ): UsageSummaryInput {
   let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   let format: Intl.DateTimeFormat;
@@ -252,7 +277,7 @@ export function makeWindow(
     // exact rolling 24-hour duration. Fixed-duration buckets remain correct
     // across offset changes and daylight-saving transitions.
     const untilTimeMs = Math.floor(now.getTime() / 60_000) * 60_000;
-    const sinceTimeMs = untilTimeMs - 24 * HOUR_MS;
+    const sinceTimeMs = untilTimeMs - hourly.minutes * 60_000;
     const sinceTime = new Date(sinceTimeMs);
     const untilTime = new Date(untilTimeMs);
     return {
@@ -262,6 +287,7 @@ export function makeWindow(
       resolution,
       sinceTime: sinceTime.toISOString(),
       untilTime: untilTime.toISOString(),
+      ...(hourly.bucketMinutes === 60 ? {} : { bucketMinutes: hourly.bucketMinutes }),
     };
   }
   // Subtracting fixed milliseconds from `now` lands on the wrong calendar day

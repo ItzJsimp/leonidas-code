@@ -39,6 +39,7 @@ export const UsageProviderKind = Schema.Literals([
   "opencode",
   "antigravity",
   "pi",
+  "openrouter",
 ]);
 export type UsageProviderKind = typeof UsageProviderKind.Type;
 
@@ -224,6 +225,11 @@ export const UsageSummaryInput = Schema.Struct({
   sinceTime: Schema.optional(TrimmedNonEmptyString),
   /** Exclusive UTC instant for an hourly rolling window. */
   untilTime: Schema.optional(TrimmedNonEmptyString),
+  /**
+   * Width of an hourly-resolution bucket in minutes. Absent means 60. Older
+   * servers ignore it and answer in hours, which the client still renders.
+   */
+  bucketMinutes: Schema.optional(NonNegativeInt),
   /**
    * Wait for slow sources to finish refreshing instead of answering from their
    * cache. Clients send it as the follow-up to a summary with a `refreshing`
