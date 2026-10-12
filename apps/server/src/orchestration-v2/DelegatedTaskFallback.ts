@@ -48,7 +48,8 @@ export const rerunDelegatedTaskOnFallback = Effect.fn(
       },
       attachments: [],
       modelSelection: fallback,
-      dispatchMode: { type: "start_immediately" },
+      // Server notifications must queue; with the failed run settled, it starts at once.
+      dispatchMode: { type: "queue_after_active" },
       createdBy: "agent",
       creationSource: "server",
     });

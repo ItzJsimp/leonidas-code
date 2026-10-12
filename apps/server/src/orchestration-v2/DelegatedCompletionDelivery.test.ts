@@ -93,12 +93,26 @@ const providerInstance = {
   textGeneration: {} as ProviderInstance["textGeneration"],
 } satisfies ProviderInstance;
 
+/** A second provider so a delegated fallback rerun can switch instance. */
+const fallbackInstanceId = ProviderInstanceId.make("claude");
+const fallbackProviderInstance = {
+  ...providerInstance,
+  instanceId: fallbackInstanceId,
+  continuationIdentity: { driverKind: driver, continuationKey: "codex:fallback-test" },
+  displayName: "Fallback test",
+  orchestrationAdapter: { ...orchestrationAdapter, instanceId: fallbackInstanceId },
+} satisfies ProviderInstance;
+
 const layerTestProviderInstanceRegistry = Layer.succeed(
   ProviderInstanceRegistry.ProviderInstanceRegistry,
   {
     getInstance: (instanceId) =>
-      Effect.succeed(instanceId === providerInstance.instanceId ? providerInstance : undefined),
-    listInstances: Effect.succeed([providerInstance]),
+      Effect.succeed(
+        [providerInstance, fallbackProviderInstance].find(
+          (instance) => instance.instanceId === instanceId,
+        ),
+      ),
+    listInstances: Effect.succeed([providerInstance, fallbackProviderInstance]),
     listUnavailable: Effect.succeed([]),
     streamChanges: Stream.empty,
     subscribeChanges: Effect.never,
@@ -1717,12 +1731,15 @@ it.layer(layerTest)("delegated tasks across a server restart", (it) => {
   );
 
   const haikuFallback = {
-    instanceId: ProviderInstanceId.make("claude"),
+    instanceId: fallbackInstanceId,
     model: "claude-haiku-5-5",
   } satisfies ModelSelection;
 
   /** Seeds a running free-model child, then fails its run with a provider error. */
-  const failFallbackChild = (name: string, options?: { readonly changedFile?: boolean }) =>
+  const failFallbackChild = (
+    name: string,
+    options?: { readonly changedFile?: boolean; readonly brief?: string },
+  ) =>
     Effect.gen(function* () {
       const eventSink = yield* EventSink.EventSinkV2;
       const now = yield* DateTime.now;
@@ -1767,6 +1784,31 @@ it.layer(layerTest)("delegated tasks across a server restart", (it) => {
       yield* eventSink.write({
         commandId: CommandId.make(`command:${name}:failed`),
         events: [
+          ...(options?.brief === undefined
+            ? []
+            : [
+                {
+                  id: EventId.make(`event:${name}:brief`),
+                  type: "message.updated" as const,
+                  threadId: child.childThreadId,
+                  runId: child.childRunId,
+                  occurredAt: now,
+                  payload: {
+                    id: MessageId.make(`message:${child.childRunId}`),
+                    threadId: child.childThreadId,
+                    runId: child.childRunId,
+                    nodeId: null,
+                    role: "user" as const,
+                    text: options.brief,
+                    attachments: [],
+                    streaming: false,
+                    createdBy: "agent" as const,
+                    creationSource: "mcp" as const,
+                    createdAt: now,
+                    updatedAt: now,
+                  },
+                },
+              ]),
           ...(options?.changedFile
             ? [
                 {
@@ -1878,13 +1920,24 @@ it.layer(layerTest)("delegated tasks across a server restart", (it) => {
               updatedAt: child.now,
             },
           },
-          runEvent({
-            threadId: child.childThreadId,
-            runId: rerunId,
-            ordinal: 2,
-            status: "completed",
-            now: child.now,
-          }),
+          (() => {
+            const rerun = runEvent({
+              threadId: child.childThreadId,
+              runId: rerunId,
+              ordinal: 2,
+              status: "completed",
+              now: child.now,
+            });
+            return {
+              ...rerun,
+              providerInstanceId: fallbackInstanceId,
+              payload: {
+                ...rerun.payload,
+                providerInstanceId: fallbackInstanceId,
+                modelSelection: haikuFallback,
+              },
+            };
+          })(),
         ],
       });
       yield* awaitTaskUpdate(child.taskId, afterSequence);
@@ -1893,6 +1946,8 @@ it.layer(layerTest)("delegated tasks across a server restart", (it) => {
       );
       assert.equal(finished?.status, "completed");
       assert.equal(finished?.result, "Answered on the fallback.");
+      assert.equal(finished?.providerInstanceId, fallbackInstanceId);
+      assert.equal(finished?.model, "claude-haiku-5-5");
     }),
   );
 
@@ -1905,6 +1960,28 @@ it.layer(layerTest)("delegated tasks across a server restart", (it) => {
       );
       assert.equal(task?.status, "failed");
       assert.isFalse(yield* orchestrator.delegatedTaskResultPending(child.childThreadId));
+    }),
+  );
+
+  it.effect("reruns the brief on the fallback model in the same child thread", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+      const child = yield* failFallbackChild("fallback-rerun", { brief: "List the files." });
+      yield* worker.drain();
+      const childProjection = yield* orchestrator.getThreadProjection(child.childThreadId);
+      const rerun = childProjection.runs.find((run) => run.ordinal === 2);
+      assert.equal(rerun?.modelSelection.instanceId, fallbackInstanceId);
+      assert.equal(rerun?.modelSelection.model, "claude-haiku-5-5");
+      assert.equal(
+        childProjection.messages.find((message) => message.id === rerun?.userMessageId)?.text,
+        "List the files.",
+      );
+      // The rerun now owns the result; the failure is not published.
+      const task = (yield* orchestrator.getThreadProjection(child.threadId)).subagents.find(
+        (row) => row.id === child.taskId,
+      );
+      assert.equal(task?.status, "running");
     }),
   );
 

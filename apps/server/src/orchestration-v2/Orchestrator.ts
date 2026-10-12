@@ -10368,8 +10368,24 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       const parentTurnItem = parentProjection.turnItems.find(
         (candidate) => candidate.type === "subagent" && candidate.subagentId === task.id,
       );
+      // A fallback rerun answered, so the task reports that model, not the free one.
+      const answeredOnFallback =
+        task.fallbackModelSelection !== undefined &&
+        childRun.providerInstanceId !== task.providerInstanceId &&
+        childRun.providerInstanceId === task.fallbackModelSelection.instanceId;
       const updatedTask: OrchestrationV2Subagent = {
         ...task,
+        ...(answeredOnFallback
+          ? {
+              driver: yield* providerAdapters.get(childRun.providerInstanceId).pipe(
+                Effect.map((adapter) => adapter.driver),
+                Effect.orElseSucceed(() => task.driver),
+              ),
+              providerInstanceId: childRun.providerInstanceId,
+              model: childRun.modelSelection.model,
+              modelSelection: childRun.modelSelection,
+            }
+          : {}),
         providerThreadId: childRun.providerThreadId,
         status: terminalStatus,
         result: result.text,
