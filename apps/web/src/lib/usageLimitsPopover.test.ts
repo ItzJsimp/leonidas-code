@@ -10,6 +10,7 @@ import {
   formatTokenCount,
   glanceLimitRows,
   limitLabel,
+  limitsFreshness,
   orderPlanWindows,
   parseContextWindowSize,
   percentText,
@@ -218,5 +219,27 @@ describe("glance and panel helpers", () => {
     expect(
       contextWindowFigures({ ...reported, maxTokens: null, usedPercentage: null }),
     ).toMatchObject({ state: "reported", maxTokens: null, usedPercent: null });
+  });
+});
+
+describe("limitsFreshness", () => {
+  const now = Date.parse("2026-10-12T12:00:00Z");
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+
+  it("reports the oldest read and flags it once it passes ten minutes", () => {
+    expect(limitsFreshness([ago(20_000), ago(4 * 60_000)], now)).toEqual({
+      label: "Checked 4 min ago",
+      stale: false,
+    });
+    expect(limitsFreshness([ago(1000), ago(11 * 60_000)], now)).toEqual({
+      label: "Checked 11 min ago",
+      stale: true,
+    });
+    expect(limitsFreshness([ago(90 * 60_000)], now)?.label).toBe("Checked 1 hr ago");
+  });
+
+  it("says nothing without a usable read time", () => {
+    expect(limitsFreshness([], now)).toBeNull();
+    expect(limitsFreshness(["not a date"], now)).toBeNull();
   });
 });

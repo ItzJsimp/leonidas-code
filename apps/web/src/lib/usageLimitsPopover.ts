@@ -361,3 +361,28 @@ export function contextWindowFigures(snapshot: ContextWindowSnapshot | null): Co
     usedPercent: snapshot.usedPercentage == null ? null : usedPercentLabel(snapshot.usedPercentage),
   };
 }
+
+/** Limits older than this are drawn as stale: the source has not been read in a while. */
+export const LIMITS_STALE_AFTER_MS = 10 * MINUTE;
+
+/**
+ * How current the numbers on the card are: the oldest read among the accounts
+ * shown, so one stale account is never hidden behind a fresh one. Null when no
+ * account carries a read time.
+ */
+export function limitsFreshness(
+  checkedAt: ReadonlyArray<string>,
+  now: number,
+): { readonly label: string; readonly stale: boolean } | null {
+  const times = checkedAt.map((value) => Date.parse(value)).filter(Number.isFinite);
+  if (times.length === 0) return null;
+  const age = Math.max(0, now - Math.min(...times));
+  const minutes = Math.floor(age / MINUTE);
+  const label =
+    minutes < 1
+      ? "Checked just now"
+      : minutes < 60
+        ? `Checked ${minutes} min ago`
+        : `Checked ${Math.floor(minutes / 60)} hr ago`;
+  return { label, stale: age > LIMITS_STALE_AFTER_MS };
+}

@@ -19,11 +19,14 @@ import {
   formatResetCountdown,
   formatTokenCount,
   glanceLimitRows,
+  limitsFreshness,
   shortPlanName,
   usageSeverity,
   usedPercentLabel,
 } from "../../lib/usageLimitsPopover";
 import { cn } from "../../lib/utils";
+import { serverEnvironment } from "../../state/server";
+import { useAtomCommand } from "../../state/use-atom-command";
 import { useThreadContextBreakdown } from "../../state/queries";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -32,6 +35,9 @@ import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
 
 type Account = UsageLimitsReport["accounts"][number];
+
+/** How often the open card re-reads account limits; the server caches probes inside this. */
+const LIMITS_REFRESH_MS = 5 * 60_000;
 
 /** Other accounts shown before the rest fold into "+N more"; the card never scrolls. */
 const MAX_OTHER_ACCOUNTS = 4;
@@ -252,6 +258,19 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const [expanded, setExpanded] = useState(false);
   const minute = useNowMinute();
   const now = Date.parse(`${minute}:00Z`);
+  const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
+    reportFailure: false,
+  });
+  // Re-read every account's limits from their source while the card is open and
+  // the window is visible, so the numbers follow the provider without a click.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refreshProviders({ environmentId, input: {} });
+      }
+    }, LIMITS_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [environmentId, refreshProviders]);
 
   const figures = contextWindowFigures(contextWindow);
   const percent =
@@ -262,6 +281,11 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const primary = active[0] ?? null;
   const shownOthers = others.slice(0, MAX_OTHER_ACCOUNTS);
   const hiddenOthers = others.length - shownOthers.length;
+
+  const freshness = limitsFreshness(
+    [primary, ...shownOthers].flatMap((account) => (account ? [account.limits.checkedAt] : [])),
+    now,
+  );
 
   const contextLine =
     figures.state === "reported"
@@ -388,6 +412,17 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
               </button>
             ) : null}
           </div>
+        ) : null}
+
+        {freshness ? (
+          <span
+            className={cn(
+              "text-2xs",
+              freshness.stale ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {freshness.stale ? `${freshness.label} · may be out of date` : freshness.label}
+          </span>
         ) : null}
 
         <div className="flex items-center justify-between border-t border-border/50 pt-2 text-2xs">
