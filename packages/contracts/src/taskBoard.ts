@@ -18,6 +18,11 @@ export const TaskBoardDueDate = Schema.String.check(
   ),
 );
 
+/** Numeric semantic version without a prerelease or build suffix. */
+export const TaskBoardMilestoneVersion = Schema.String.check(
+  Schema.isPattern(/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/),
+);
+
 // "review" is a card's Awaiting Review, "parked" its Dormant, "retired" its Retired. Parked and
 // retired work stays readable but is hidden from the open queue.
 export const TaskBoardTaskStatus = Schema.Literals([
@@ -86,6 +91,7 @@ export const TaskBoardTask = Schema.Struct({
   effort: Schema.optional(Schema.NullOr(Schema.String)),
   energy: Schema.optional(Schema.NullOr(Schema.String)),
   due: Schema.optional(Schema.NullOr(Schema.String)),
+  milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)),
   verify: Schema.optional(Schema.NullOr(Schema.String)),
   startFiles: Schema.optional(Schema.Array(Schema.String)),
   blockedBy: Schema.optional(Schema.Array(Schema.String)),
@@ -188,6 +194,30 @@ export const TaskBoardUpdateInput = Schema.Struct({
 });
 export type TaskBoardUpdateInput = typeof TaskBoardUpdateInput.Type;
 
+export const TaskBoardRoadmap = Schema.Struct({
+  projectSlug: TrimmedNonEmptyString,
+  name: TrimmedNonEmptyString,
+  currentVersion: TaskBoardMilestoneVersion,
+  targetVersion: TaskBoardMilestoneVersion,
+  releaseDefinition: Schema.String,
+  milestones: Schema.Array(
+    Schema.Struct({
+      version: TaskBoardMilestoneVersion,
+      title: TrimmedNonEmptyString,
+      goal: Schema.String,
+      tasks: Schema.Array(
+        Schema.Struct({
+          key: TrimmedNonEmptyString,
+          title: TrimmedNonEmptyString,
+          description: Schema.String,
+          priority: Schema.optional(TaskBoardTaskPriority),
+        }),
+      ),
+    }),
+  ),
+});
+export type TaskBoardRoadmap = typeof TaskBoardRoadmap.Type;
+
 // One section of the workspace view: an AIOS project, optionally backed by a Leonidas project.
 export const TaskBoardWorkspaceProject = Schema.Struct({
   slug: TrimmedNonEmptyString,
@@ -208,6 +238,7 @@ export const TaskBoardWorkspaceSnapshot = Schema.Struct({
   checkedAt: Schema.Number,
   projects: Schema.Array(TaskBoardWorkspaceProject),
   tasks: Schema.Array(TaskBoardTask),
+  roadmaps: Schema.optional(Schema.Array(TaskBoardRoadmap)),
 });
 export type TaskBoardWorkspaceSnapshot = typeof TaskBoardWorkspaceSnapshot.Type;
 
@@ -223,6 +254,7 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
   agent: Schema.optional(TaskBoardAgent),
   title: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
   due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
+  milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)),
   status: Schema.optional(TaskBoardTaskStatus),
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -235,6 +267,7 @@ export type TaskBoardCardUpdateInput = typeof TaskBoardCardUpdateInput.Type;
 export const TaskBoardCardCreateInput = Schema.Struct({
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
   due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
+  milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)),
   description: Schema.optional(Schema.String.check(Schema.isMaxLength(20_000))),
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),

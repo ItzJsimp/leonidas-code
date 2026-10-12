@@ -425,6 +425,25 @@ function TaskDetailBody(props: {
               <span className="text-muted-foreground">Unassigned</span>
             )}
           </Property>
+          <Property label="Milestone">
+            <Input
+              key={`${task.id}:${task.milestone ?? ""}`}
+              aria-label="Version milestone"
+              placeholder="0.22.0 (empty to unassign)"
+              pattern="(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+              title="Use a version such as 0.22.0 or 1.0.0"
+              defaultValue={task.milestone ?? ""}
+              disabled={busy || !actions.canEdit}
+              onBlur={(event) => {
+                const milestone = event.target.value || null;
+                if (event.target.reportValidity() && milestone !== (task.milestone ?? null))
+                  actions.setMilestone(task, milestone);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+              }}
+            />
+          </Property>
           <Property label="Due">
             <div className="flex flex-col gap-1">
               <Input

@@ -4,6 +4,7 @@ import {
   TaskBoardOperationError,
   TaskBoardProjectDatabase,
   TaskBoardReadError,
+  TaskBoardRoadmap,
   type TaskBoardAgent,
   type TaskBoardClaimInput,
   type TaskBoardCompleteInput,
@@ -17,6 +18,7 @@ import {
   type TaskBoardTask,
   type TaskBoardTaskPriority,
   type TaskBoardTaskStatus,
+  type TaskBoardRoadmap as TaskBoardRoadmapType,
   type TaskBoardUpdateInput,
   type TaskBoardWorkspaceSnapshot,
   type Project,
@@ -204,6 +206,7 @@ function buildWorkspace(input: {
   readonly projects: ReadonlyArray<Project>;
   readonly discovered: ReadonlyArray<{ readonly slug: string; readonly name: string }>;
   readonly tasks: ReadonlyArray<TaskBoardTask>;
+  readonly roadmaps?: ReadonlyArray<TaskBoardRoadmapType>;
 }): TaskBoardWorkspaceSnapshot {
   const sections = new Map<string, { slug: string; name: string; project: Project | null }>();
   for (const found of input.discovered) {
@@ -257,7 +260,25 @@ function buildWorkspace(input: {
     checkedAt: input.checkedAt,
     projects,
     tasks,
+    ...(input.roadmaps === undefined ? {} : { roadmaps: input.roadmaps }),
   };
+}
+
+const decodeProjectRoadmap = Schema.decodeUnknownSync(Schema.fromJsonString(TaskBoardRoadmap));
+
+function readProjectRoadmaps(projects: ReadonlyArray<Project>): Array<TaskBoardRoadmapType> {
+  return projects.flatMap((project) => {
+    try {
+      const raw = NodeFS.readFileSync(
+        NodePath.join(project.workspaceRoot, "project-roadmap.json"),
+        "utf8",
+      );
+      const roadmap = decodeProjectRoadmap(raw);
+      return [{ ...roadmap, projectSlug: aiosSlugFor(project) }];
+    } catch {
+      return [];
+    }
+  });
 }
 
 /** A claim held by someone else may only be taken over or released by that person. */
@@ -297,6 +318,7 @@ function cardPatchFor(input: TaskBoardCardUpdateInput, card: TaskBoardTask): Aio
     priority: input.priority,
     title: input.title,
     due: input.due,
+    milestone: input.milestone,
     projectSlug: input.projectSlug,
     claimedBy: input.claimedBy,
     note: input.note,
@@ -960,6 +982,7 @@ const make = Effect.gen(function* () {
         projects,
         discovered: root ? discoverProjects(root) : [],
         tasks,
+        roadmaps: readProjectRoadmaps(projects),
       });
     });
 
@@ -1023,6 +1046,7 @@ const make = Effect.gen(function* () {
           ...existing,
           title: input.title ?? existing.title,
           due: input.due === undefined ? existing.due : input.due,
+          milestone: input.milestone === undefined ? existing.milestone : input.milestone,
           status,
           priority: input.priority ?? existing.priority,
           claimedBy: claimed ? input.claimedBy! : released ? null : existing.claimedBy,

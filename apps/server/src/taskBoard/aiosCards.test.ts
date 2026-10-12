@@ -37,6 +37,51 @@ describe("editable due dates", () => {
   });
 });
 
+describe("editable milestones", () => {
+  it("keeps legacy cards readable when their milestone is not a version", () => {
+    expect(
+      cardToTask({
+        fileName: "legacy.md",
+        raw: card("id: task-legacy\nname: Legacy\nmilestone: Alpha"),
+        mtimeMs: NOW,
+        now: NOW,
+      })?.milestone,
+    ).toBeNull();
+  });
+  it("creates, reads, updates and clears a milestone while preserving other card fields", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-milestone-"));
+    try {
+      const created = createCardFile(
+        root,
+        {
+          title: "Plan release",
+          actor: "Jake",
+          due: "2026-10-12",
+          milestone: "0.22.0",
+        },
+        NOW,
+      );
+      expect(
+        cardToTask({ fileName: created.fileName, raw: created.raw, mtimeMs: NOW, now: NOW }),
+      ).toMatchObject({
+        milestone: "0.22.0",
+        due: "2026-10-12",
+      });
+      const updated = applyCardPatch(created.raw, { actor: "Jake", milestone: "1.0.0" }, NOW);
+      expect(
+        cardToTask({ fileName: created.fileName, raw: updated, mtimeMs: NOW, now: NOW })?.milestone,
+      ).toBe("1.0.0");
+      const cleared = applyCardPatch(updated, { actor: "Jake", milestone: null }, NOW);
+      expect(
+        cardToTask({ fileName: created.fileName, raw: cleared, mtimeMs: NOW, now: NOW })?.milestone,
+      ).toBeNull();
+      expect(cleared).not.toMatch(/^milestone:/m);
+      expect(cleared).toContain('due: "2026-10-12"');
+    } finally {
+      NodeFS.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
 const card = (header: string, body = "# Title\n\nSome words.\n", eol = "\n") =>
   `---\n${header}\n---\n${body}`.replace(/\n/g, eol);
 

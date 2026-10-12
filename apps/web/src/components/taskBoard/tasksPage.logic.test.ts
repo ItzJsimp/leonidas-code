@@ -18,6 +18,12 @@ import {
 const PROJECT_ID = "project-1" as ProjectId;
 
 describe("task-only projects", () => {
+  it("restores the roadmap view after reloading", () => {
+    expect(
+      parseTasksPrefs(JSON.stringify({ view: "roadmap", section: "leonidas-code", focus: "all" }))
+        .view,
+    ).toBe("roadmap");
+  });
   it("creates stable keys for names without filesystem paths", () => {
     expect(taskProjectSlug(" Weekly Planning ")).toBe("weekly-planning");
     expect(taskProjectSlug("Café / 家庭")).toBe("café-家庭");

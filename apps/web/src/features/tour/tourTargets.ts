@@ -23,6 +23,17 @@ export interface TourTarget {
 }
 
 export const TOUR_TARGETS = {
+  roadmap: {
+    name: "Release roadmap",
+    steps: [
+      {
+        title: "Plan the path to a release",
+        body: "Open Roadmap to see each version milestone, its task briefs and release gate. Open a task to assign its version or explicitly send it to an agent.",
+        route: "/tasks",
+        anchor: "tasks-roadmap-tab",
+      },
+    ],
+  },
   "next-action": {
     name: "Next action",
     steps: [

@@ -1,0 +1,199 @@
+{
+  "projectSlug": "leonidas-code",
+  "name": "Leonidas Code",
+  "currentVersion": "0.21.0",
+  "targetVersion": "1.0.0",
+  "releaseDefinition": "A dependable people-and-agents workspace: capture and plan tasks, explicitly delegate work, coordinate shared projects, connect remotely, and recover data across supported desktop, web and mobile clients. V1.0 requires a verified release candidate and explicit approval from Jake and Mob. Leonidas Scribe and the broader Leonidas app are separate release scopes.",
+  "milestones": [
+    {
+      "version": "0.22.0",
+      "title": "Daily planning",
+      "goal": "A person can capture, schedule, complete and trace work to a release.",
+      "tasks": [
+        {
+          "key": "daily-task-parity",
+          "title": "Finish daily task workflows on all entry points",
+          "priority": "high",
+          "description": "## Goal\nExercise capture, due set/clear, Today/Upcoming, complete/reopen and project switching. Share derived date logic between clients; preserve imported cards.\n\n## Start files\napps/web/src/components/taskBoard; apps/mobile task navigation; packages/client-runtime\n\n## Dependencies\nV0.21 planning baseline.\n\n## Done when\n- [ ] Focused daily-task tests pass; desktop and narrow web verified; native mobile proof recorded.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused daily-task tests pass; desktop and narrow web verified; native mobile proof recorded.\n\nRoadmap key: daily-task-parity"
+        },
+        {
+          "key": "release-planning",
+          "title": "Make release planning editable and shareable",
+          "priority": "high",
+          "description": "## Goal\nPersist milestone assignments, expose them to agents, and support editing project-roadmap.json without losing existing task progress. Verify collaborators see the same assignments.\n\n## Start files\napps/web/src/components/taskBoard; apps/server/src/taskBoard; packages/contracts/src/taskBoard.ts\n\n## Dependencies\nV0.21 planning baseline.\n\n## Done when\n- [ ] Create, move, clear and reload a milestone task; shared records round trip; malformed plans leave tasks usable.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nCreate, move, clear and reload a milestone task; shared records round trip; malformed plans leave tasks usable.\n\nRoadmap key: release-planning"
+        }
+      ]
+    },
+    {
+      "version": "0.23.0",
+      "title": "Agent execution",
+      "goal": "Delegation is explicit, recoverable and returns truthful progress to tasks.",
+      "tasks": [
+        {
+          "key": "agent-task-lifecycle",
+          "title": "Persist the task-to-agent execution lifecycle",
+          "priority": "high",
+          "description": "## Goal\nConnect task IDs to thread and turn receipts. Keep progress, failure and completion summaries durable; a failed or cancelled turn must not mark its task done.\n\n## Start files\napps/web/src/components/taskBoard/useTaskActions.ts; apps/server/src/taskBoard; apps/server/src/orchestration-v2\n\n## Dependencies\nComplete the V0.22.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Focused success/failure/cancel/reconnect tests; one isolated explicit delegation demonstrated with no duplicate thread.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused success/failure/cancel/reconnect tests; one isolated explicit delegation demonstrated with no duplicate thread.\n\nRoadmap key: agent-task-lifecycle"
+        },
+        {
+          "key": "execution-controls",
+          "title": "Add cancellation and retry to delegated tasks",
+          "priority": "high",
+          "description": "## Goal\nExpose running work, stop and explicit retry using existing orchestration services. Retrying must retain history and prevent simultaneous duplicate work.\n\n## Start files\napps/web task detail; packages/client-runtime; apps/server/src/orchestration-v2\n\n## Dependencies\nComplete the V0.22.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Stop/retry and stale connection tests pass; all installed provider adapters have a documented supported or unsupported outcome.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nStop/retry and stale connection tests pass; all installed provider adapters have a documented supported or unsupported outcome.\n\nRoadmap key: execution-controls"
+        }
+      ]
+    },
+    {
+      "version": "0.24.0",
+      "title": "Team projects",
+      "goal": "Jake and Mob can coordinate ownership and shared work without overwrites.",
+      "tasks": [
+        {
+          "key": "shared-concurrency",
+          "title": "Prevent shared task edits from overwriting teammates",
+          "priority": "high",
+          "description": "## Goal\nUse the existing GitHub shared board and compare stored revisions before overwriting. Surface conflicts with reload/retry and preserve task history.\n\n## Start files\napps/server/src/taskBoard/TaskBoardService.ts; apps/server/src/taskBoard tests\n\n## Dependencies\nComplete the V0.23.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Two concurrent claim/edit scenarios tested; conflict produces recoverable feedback; remote changes remain intact.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTwo concurrent claim/edit scenarios tested; conflict produces recoverable feedback; remote changes remain intact.\n\nRoadmap key: shared-concurrency"
+        },
+        {
+          "key": "team-visibility",
+          "title": "Show team ownership and shared project activity",
+          "priority": "high",
+          "description": "## Goal\nAdd readable shared activity, ownership and pending publication states. Explain project sharing setup and permission failures in place.\n\n## Start files\napps/web/src/components/taskBoard; apps/mobile task views\n\n## Dependencies\nComplete the V0.23.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Two-member isolated fixture covers claim/release, publication failure and refresh; no false synced labels.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTwo-member isolated fixture covers claim/release, publication failure and refresh; no false synced labels.\n\nRoadmap key: team-visibility"
+        }
+      ]
+    },
+    {
+      "version": "0.25.0",
+      "title": "Remote continuity",
+      "goal": "The same workspace works through local, remote and tunnel connections.",
+      "tasks": [
+        {
+          "key": "remote-task-recovery",
+          "title": "Recover task state after disconnects",
+          "priority": "high",
+          "description": "## Goal\nRefresh authoritative tasks after reconnection, preserve unsaved capture text and avoid duplicate submissions. Keep destination permission checks in the existing command layer.\n\n## Start files\npackages/client-runtime connection and RPC; apps/web/src/components/taskBoard/useTaskBoard.ts\n\n## Dependencies\nComplete the V0.24.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Focused disconnect/reconnect and duplicate-submit tests across direct and relay transport fixtures.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused disconnect/reconnect and duplicate-submit tests across direct and relay transport fixtures.\n\nRoadmap key: remote-task-recovery"
+        },
+        {
+          "key": "pairing-preview",
+          "title": "Make development preview and remote pairing dependable",
+          "priority": "high",
+          "description": "## Goal\nShow healthy dev server URLs in Browser, recover expired pairing tokens and distinguish source version from installed release. Preserve isolated test state.\n\n## Start files\napps/web/src/components/preview; scripts/dev-runner.ts; apps/server/src/auth\n\n## Dependencies\nComplete the V0.24.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Start isolated dev app, open Browser, pair, reconnect and observe source changes; user can repeat from instructions.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nStart isolated dev app, open Browser, pair, reconnect and observe source changes; user can repeat from instructions.\n\nRoadmap key: pairing-preview"
+        }
+      ]
+    },
+    {
+      "version": "0.26.0",
+      "title": "Every surface",
+      "goal": "Core task and agent controls work on supported desktop, web and mobile clients.",
+      "tasks": [
+        {
+          "key": "mobile-task-workflow",
+          "title": "Ship native mobile task planning and delegation",
+          "priority": "high",
+          "description": "## Goal\nImplement Inbox/Today/Upcoming/projects, milestone display, detail edits and explicit delegation with shared contracts. Reuse permissions and reconnect behavior.\n\n## Start files\napps/mobile navigation/screens; packages/client-runtime\n\n## Dependencies\nComplete the V0.25.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] iOS and Android integrated task flows verified against isolated state; offline failures retain input.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\niOS and Android integrated task flows verified against isolated state; offline failures retain input.\n\nRoadmap key: mobile-task-workflow"
+        },
+        {
+          "key": "surface-parity",
+          "title": "Close desktop and web navigation gaps",
+          "priority": "high",
+          "description": "## Goal\nMake Tasks and Roadmap reachable through navigation and applicable command palette/keybindings. Verify desktop packaging and browser deep links.\n\n## Start files\napps/web command palette/settings/keybindings; apps/desktop shell\n\n## Dependencies\nComplete the V0.25.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Entry-point checks pass; Electron and remote web open the same project task and milestone without stale selection.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEntry-point checks pass; Electron and remote web open the same project task and milestone without stale selection.\n\nRoadmap key: surface-parity"
+        }
+      ]
+    },
+    {
+      "version": "0.27.0",
+      "title": "Data confidence",
+      "goal": "Task and conversation data survives crashes, upgrades and operator mistakes.",
+      "tasks": [
+        {
+          "key": "backup-restore",
+          "title": "Add verified task and workspace backup recovery",
+          "priority": "high",
+          "description": "## Goal\nImplement export and restore through services with read-only preview, explicit confirmation and preservation of current data. Include native and imported task provenance.\n\n## Start files\napps/server persistence services; taskBoard card storage; docs/user\n\n## Dependencies\nComplete the V0.26.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Round-trip isolated fixtures with Unicode paths and history; interruption leaves previous data readable; restore cannot escape its destination.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nRound-trip isolated fixtures with Unicode paths and history; interruption leaves previous data readable; restore cannot escape its destination.\n\nRoadmap key: backup-restore"
+        },
+        {
+          "key": "upgrade-migration",
+          "title": "Prove safe upgrades from existing Leonidas installs",
+          "priority": "high",
+          "description": "## Goal\nAdd versioned migration fixtures for current/legacy state, preserve app identity and test rollback/recovery on an isolated copy.\n\n## Start files\napps/desktop/src/updates; scripts/leonidas-release.ts; apps/server migrations\n\n## Dependencies\nComplete the V0.26.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Upgrade and failed-migration recovery evidence; no live userdata writes; installer and update metadata identify the same source commit.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nUpgrade and failed-migration recovery evidence; no live userdata writes; installer and update metadata identify the same source commit.\n\nRoadmap key: upgrade-migration"
+        }
+      ]
+    },
+    {
+      "version": "0.28.0",
+      "title": "First successful session",
+      "goal": "A new user can connect an agent and finish a real task without assistance.",
+      "tasks": [
+        {
+          "key": "onboarding-path",
+          "title": "Simplify setup into one successful task",
+          "priority": "high",
+          "description": "## Goal\nBuild a guided path: connect a supported account, add a workspace, capture a task and explicitly start it. Offer recovery for missing runtimes and unsupported permissions.\n\n## Start files\napps/web onboarding; provider connection settings; taskBoard\n\n## Dependencies\nComplete the V0.27.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Fresh-profile walkthrough reaches completed task; failed account/runtime setup has a working recovery path.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFresh-profile walkthrough reaches completed task; failed account/runtime setup has a working recovery path.\n\nRoadmap key: onboarding-path"
+        },
+        {
+          "key": "user-guides",
+          "title": "Document people, agents and project sharing workflows",
+          "priority": "high",
+          "description": "## Goal\nWrite concise guides for daily tasks, roadmap assignment, team sharing, remote access and recovery. Add contextual tours to actual controls.\n\n## Start files\ndocs/user; apps/web/features/tour\n\n## Dependencies\nComplete the V0.27.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Each guide followed in isolated app; links and tour targets work; no internal contributor commands in product guidance.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach guide followed in isolated app; links and tour targets work; no internal contributor commands in product guidance.\n\nRoadmap key: user-guides"
+        }
+      ]
+    },
+    {
+      "version": "0.29.0",
+      "title": "Quality floor",
+      "goal": "Busy workspaces stay responsive, accessible and truthful.",
+      "tasks": [
+        {
+          "key": "task-performance",
+          "title": "Measure and fix task views under realistic load",
+          "priority": "high",
+          "description": "## Goal\nProfile thousands of cards, shared refresh and large descriptions. Remove unnecessary renders/reads; use existing virtualization patterns where measurement warrants it.\n\n## Start files\napps/web/src/components/taskBoard; apps/server/taskBoard card reader\n\n## Dependencies\nComplete the V0.28.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Record before/after CPU, render and RPC measurements; no continuous repaint animation; large fixture remains interactive.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nRecord before/after CPU, render and RPC measurements; no continuous repaint animation; large fixture remains interactive.\n\nRoadmap key: task-performance"
+        },
+        {
+          "key": "accessibility-pass",
+          "title": "Complete keyboard and screen-reader task flows",
+          "priority": "high",
+          "description": "## Goal\nAudit focus order, dialog recovery, milestone semantics, contrast, labels and target sizes. Fix failures without duplicating generic UI styles.\n\n## Start files\napps/web taskBoard and UI components; apps/mobile task views\n\n## Dependencies\nComplete the V0.28.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Keyboard capture/edit/complete/roadmap flows and screen-reader announcements verified; WCAG 2.2 AA findings closed for scoped screens.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nKeyboard capture/edit/complete/roadmap flows and screen-reader announcements verified; WCAG 2.2 AA findings closed for scoped screens.\n\nRoadmap key: accessibility-pass"
+        }
+      ]
+    },
+    {
+      "version": "0.30.0",
+      "title": "Release candidate",
+      "goal": "The launch candidate passes an integrated acceptance matrix.",
+      "tasks": [
+        {
+          "key": "release-candidate",
+          "title": "Run the supported release acceptance matrix",
+          "priority": "high",
+          "description": "## Goal\nTest supported provider/account paths, daily tasks, delegation, sharing, direct/remote access and recovery on packaged builds. Record defects as tasks; fix release blockers.\n\n## Start files\napps/server provider adapters; apps/web; apps/desktop; apps/mobile; release tooling\n\n## Dependencies\nComplete the V0.29.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Evidence per supported surface/provider/connection mode; no unresolved blocker; limitations visible before launch.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEvidence per supported surface/provider/connection mode; no unresolved blocker; limitations visible before launch.\n\nRoadmap key: release-candidate"
+        },
+        {
+          "key": "distribution-readiness",
+          "title": "Prepare distributable builds and support recovery",
+          "priority": "high",
+          "description": "## Goal\nPrepare installer/update artifacts, licenses, user help, diagnostics export and recovery guidance. Coordinate workflow changes with maintainers; do not publish.\n\n## Start files\napps/desktop packaging; .github/workflows/team-release.yml; docs/user\n\n## Dependencies\nComplete the V0.29.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Artifacts locally validated, source provenance consistent, upgrade rehearsal successful, support guide follows observed behavior.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nArtifacts locally validated, source provenance consistent, upgrade rehearsal successful, support guide follows observed behavior.\n\nRoadmap key: distribution-readiness"
+        }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "title": "Public launch",
+      "goal": "Ship only after owners accept the release candidate and approve public launch.",
+      "tasks": [
+        {
+          "key": "launch-signoff",
+          "title": "Resolve launch acceptance and obtain owner sign-off",
+          "priority": "critical",
+          "description": "## Goal\nSummarize candidate evidence and remaining limitations for Jake and Mob. Require explicit approval for public launch; milestone completion alone cannot publish.\n\n## Start files\nproject-roadmap.json; release acceptance evidence; leonidas-release.json\n\n## Dependencies\nComplete the V0.30.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Owner approval recorded; every release-blocking task done; deferred scope and known limitations stated.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nOwner approval recorded; every release-blocking task done; deferred scope and known limitations stated.\n\nRoadmap key: launch-signoff"
+        },
+        {
+          "key": "publish-launch",
+          "title": "Publish V1.0 and verify delivery",
+          "priority": "critical",
+          "description": "## Goal\nAfter launch-signoff only, invoke the approved launch workflow. Verify installer, blockmap and latest.yml correspond to the same source commit; confirm clean install and update on isolated devices.\n\n## Start files\nscripts/leonidas-release.ts; .github/workflows/team-release.yml; apps/desktop/src/updates\n\n## Dependencies\nComplete the V0.30.0 release gate before accepting this milestone. Explicit owner launch approval and launch-signoff are required.\n\n## Done when\n- [ ] Approved V1.0 artifacts verified; installed app shows correct history; rollback/recovery instructions work.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nApproved V1.0 artifacts verified; installed app shows correct history; rollback/recovery instructions work.\n\nRoadmap key: publish-launch"
+        }
+      ]
+    }
+  ]
+}

@@ -15,7 +15,7 @@ import {
   type TaskView,
 } from "./taskBoard.logic";
 
-export type TasksView = "dashboard" | "board" | "list";
+export type TasksView = "dashboard" | "board" | "list" | "roadmap";
 export type TaskFocus = "all" | "inbox" | "today" | "upcoming";
 export type TaskListGroupBy = "project" | "status" | "none";
 
@@ -62,7 +62,7 @@ export const DEFAULT_TASKS_PREFS: TasksPrefs = {
   groupBy: "none",
 };
 
-const VIEWS: ReadonlyArray<TasksView> = ["dashboard", "board", "list"];
+const VIEWS: ReadonlyArray<TasksView> = ["dashboard", "board", "list", "roadmap"];
 const GROUP_BYS: ReadonlyArray<TaskListGroupBy> = ["project", "status", "none"];
 const SORTS: ReadonlyArray<TaskSort> = ["priority", "updated", "due", "title"];
 const STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [

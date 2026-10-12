@@ -279,6 +279,8 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
       canEdit,
       setStatus: (task, status) => void patchAction(task, { status }, "Could not change status"),
       setDue: (task, due) => void patchAction(task, { due }, "Could not change due date"),
+      setMilestone: (task, milestone) =>
+        void patchAction(task, { milestone }, "Could not change milestone"),
       setPriority: (task, priority) =>
         void patchAction(task, { priority }, "Could not change priority"),
       claim: (task) =>

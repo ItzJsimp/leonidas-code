@@ -6,6 +6,7 @@ import {
   PlusIcon,
   RefreshCwIcon,
   Share2Icon,
+  RouteIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAtomValue } from "@effect/atom-react";
@@ -28,6 +29,8 @@ import { TaskKanbanView } from "./TaskKanban";
 import { TaskListView } from "./TaskList";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
 import { TaskQuickAdd } from "./TaskQuickAdd";
+import { TaskRoadmapView } from "./TaskRoadmap";
+import leonidasRoadmap from "../../../../../project-roadmap.json";
 import type { TaskContext } from "./taskBoard.types";
 import type { TaskView } from "./taskBoard.logic";
 import {
@@ -51,6 +54,7 @@ const VIEW_OPTIONS: ReadonlyArray<{
   { view: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
   { view: "board", label: "Board", icon: ColumnsIcon },
   { view: "list", label: "List", icon: ListIcon },
+  { view: "roadmap", label: "Roadmap", icon: RouteIcon },
 ];
 
 function readSavedPrefs(): TasksPrefs {
@@ -124,6 +128,10 @@ export function TasksPage() {
   const railEntry = prefs.section
     ? (board.rail.find((entry) => entry.slug === prefs.section) ?? null)
     : null;
+  const roadmapSlug = prefs.section ?? "leonidas-code";
+  const roadmap =
+    board.roadmaps.find((plan) => plan.projectSlug === roadmapSlug) ??
+    (roadmapSlug === "leonidas-code" ? leonidasRoadmap : null);
   const shareState = sectionShareState(railEntry, board.scopedTasks);
   const allOpen = board.rail.reduce((sum, entry) => sum + entry.open, 0);
   const counts = useMemo(
@@ -135,13 +143,15 @@ export function TasksPage() {
     [board.allTasks, board.now],
   );
   const heading =
-    prefs.focus === "inbox"
-      ? "Inbox"
-      : prefs.focus === "today"
-        ? "Today"
-        : prefs.focus === "upcoming"
-          ? "Upcoming"
-          : (railEntry?.name ?? "All tasks");
+    prefs.view === "roadmap"
+      ? `${roadmap?.name ?? railEntry?.name ?? "Project"} roadmap`
+      : prefs.focus === "inbox"
+        ? "Inbox"
+        : prefs.focus === "today"
+          ? "Today"
+          : prefs.focus === "upcoming"
+            ? "Upcoming"
+            : (railEntry?.name ?? "All tasks");
   const date = new Date(board.now);
   const defaultDue =
     prefs.focus === "today" || prefs.focus === "upcoming"
@@ -177,6 +187,29 @@ export function TasksPage() {
         <Button variant="outline" onClick={board.refresh}>
           Try again
         </Button>
+      </Empty>
+    );
+  } else if (prefs.view === "roadmap") {
+    body = roadmap ? (
+      <TaskRoadmapView
+        key={`${board.environmentId}:${roadmap.projectSlug}`}
+        plan={roadmap}
+        tasks={board.allTasks}
+        environmentId={board.environmentId}
+        member={board.member}
+        actions={actions}
+        onSelect={selectTask}
+        onRefresh={board.refresh}
+      />
+    ) : (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>No release plan yet</EmptyTitle>
+          <EmptyDescription>
+            Ask your agent to define the current version, target release and intermediate milestones
+            in this project’s project-roadmap.json. Assign tasks to versions in their details.
+          </EmptyDescription>
+        </EmptyHeader>
       </Empty>
     );
   } else if (prefs.view === "dashboard") {
@@ -225,12 +258,24 @@ export function TasksPage() {
           value={[prefs.view]}
           onValueChange={(next) => {
             const view = VIEW_OPTIONS.find((option) => option.view === next[0])?.view;
-            if (view) patchPrefs({ view });
+            if (view) {
+              patchPrefs(
+                view === "roadmap"
+                  ? { view, focus: "all", section: prefs.section ?? "leonidas-code" }
+                  : { view },
+              );
+              setSelectedId(null);
+            }
           }}
           className="ml-2"
         >
           {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
-            <Toggle key={view} value={view} aria-label={label}>
+            <Toggle
+              key={view}
+              value={view}
+              aria-label={label}
+              data-tour={view === "roadmap" ? "tasks-roadmap-tab" : undefined}
+            >
               <Icon aria-hidden />
               <span className="hidden lg:inline">{label}</span>
             </Toggle>
@@ -284,24 +329,28 @@ export function TasksPage() {
           <div className="flex flex-col gap-1 px-4 pt-5 pb-4">
             <h2 className="text-xl font-semibold">{heading}</h2>
             <p className="text-sm text-muted-foreground">
-              {prefs.focus === "inbox"
-                ? "Capture first. Organize when you’re ready."
-                : prefs.focus === "today"
-                  ? "Today’s work, with overdue tasks first."
-                  : prefs.focus === "upcoming"
-                    ? "Plan what’s next, starting today."
-                    : "Your tasks and agent work in one place."}
+              {prefs.view === "roadmap"
+                ? "Map the next updates to a complete, executable release plan."
+                : prefs.focus === "inbox"
+                  ? "Capture first. Organize when you’re ready."
+                  : prefs.focus === "today"
+                    ? "Today’s work, with overdue tasks first."
+                    : prefs.focus === "upcoming"
+                      ? "Plan what’s next, starting today."
+                      : "Your tasks and agent work in one place."}
             </p>
           </div>
-          <TaskQuickAdd
-            key={`${prefs.section}:${prefs.focus}`}
-            environmentId={board.environmentId}
-            member={board.member}
-            projectSlug={prefs.section === "general" ? null : prefs.section}
-            defaultDue={defaultDue}
-            onCreated={board.refresh}
-          />
-          {prefs.view !== "dashboard" ? (
+          {prefs.view !== "roadmap" ? (
+            <TaskQuickAdd
+              key={`${prefs.section}:${prefs.focus}`}
+              environmentId={board.environmentId}
+              member={board.member}
+              projectSlug={prefs.section === "general" ? null : prefs.section}
+              defaultDue={defaultDue}
+              onCreated={board.refresh}
+            />
+          ) : null}
+          {prefs.view !== "dashboard" && prefs.view !== "roadmap" ? (
             <div className="border-b border-border p-2">
               <TaskFilterBar
                 prefs={prefs}

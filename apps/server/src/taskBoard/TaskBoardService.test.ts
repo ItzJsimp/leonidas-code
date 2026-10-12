@@ -332,6 +332,64 @@ it.effect("owns native tasks without an AIOS and persists dates, completion and 
   ),
 );
 
+it.effect("persists native card milestones through create, read, update and clear", () =>
+  withAios({}, (root, project) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const created = yield* board.cardCreate(
+        { title: "Plan release", actor: "Jake", due: "2026-10-12", milestone: "0.22.0" },
+        [project],
+      );
+      expect(created).toMatchObject({ milestone: "0.22.0", due: "2026-10-12" });
+      const changed = yield* board.cardUpdate(
+        { taskId: created.id, actor: "Jake", milestone: "1.0.0" },
+        [project],
+      );
+      expect(changed).toMatchObject({ milestone: "1.0.0", due: "2026-10-12" });
+      const cleared = yield* board.cardUpdate(
+        { taskId: created.id, actor: "Jake", milestone: null },
+        [project],
+      );
+      expect(cleared).toMatchObject({ milestone: null, due: "2026-10-12" });
+      expect(
+        NodeFS.readFileSync(NodePath.join(root, "tasks", "plan-release.md"), "utf8"),
+      ).not.toMatch(/^milestone:/m);
+    }),
+  ).pipe(Effect.provide(boardLayer(noGithub))),
+);
+
+it.effect("loads only valid project roadmaps and uses the workspace project slug", () =>
+  withAios({}, (root, project) => {
+    const projectRoot = NodePath.join(root, "projects", "leonidas-code");
+    const roadmapFile = NodePath.join(projectRoot, "project-roadmap.json");
+    const roadmap = {
+      projectSlug: "wrong-slug",
+      name: "Leonidas Code",
+      currentVersion: "0.22.0",
+      targetVersion: "1.0.0",
+      releaseDefinition: "Public launch",
+      milestones: [
+        {
+          version: "0.23.0",
+          title: "Roadmap",
+          goal: "Plan the release",
+          tasks: [{ key: "MILESTONE-1", title: "Add milestone", description: "Persist versions" }],
+        },
+      ],
+    };
+    NodeFS.writeFileSync(roadmapFile, JSON.stringify(roadmap));
+    return Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const loaded = yield* board.workspace([project]);
+      expect(loaded.roadmaps).toMatchObject([
+        { projectSlug: "leonidas-code", name: "Leonidas Code" },
+      ]);
+      NodeFS.writeFileSync(roadmapFile, "not json");
+      expect((yield* board.workspace([project])).roadmaps).toEqual([]);
+    }).pipe(Effect.provide(boardLayer(noGithub)));
+  }),
+);
+
 it.effect("sections every AIOS card by project, read from disk without touching GitHub", () => {
   let githubCalls = 0;
   return withAios(

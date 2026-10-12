@@ -5,6 +5,7 @@ import { useVisibleInterval } from "~/hooks/useVisibleInterval";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardQuery, taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import type { RoadmapPlan } from "./taskRoadmap.logic";
 
 import {
   buildDashboard,
@@ -40,6 +41,7 @@ export type TaskBoardState = {
   /** False once the server has answered and found no AIOS task folder. */
   readonly aiosConnected: boolean;
   readonly projects: ReadonlyArray<TaskBoardWorkspaceProject>;
+  readonly roadmaps: ReadonlyArray<RoadmapPlan>;
   /** Every task, merged with the selected project's shared board. */
   readonly allTasks: ReadonlyArray<TaskView>;
   /** The tasks in the selected section, before the toolbar filters. */
@@ -139,6 +141,7 @@ export function useTaskBoard(input: {
     aiosRoot: data?.aiosRoot ?? null,
     aiosConnected: data?.aiosConnected ?? true,
     projects,
+    roadmaps: data?.roadmaps ?? [],
     allTasks,
     scopedTasks,
     visibleTasks,

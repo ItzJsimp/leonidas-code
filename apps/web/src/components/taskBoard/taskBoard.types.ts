@@ -20,6 +20,7 @@ export type TaskActions = {
   readonly setStatus: (task: TaskView, status: TaskBoardTaskStatus) => void;
   readonly setPriority: (task: TaskView, priority: TaskBoardTaskPriority) => void;
   readonly setDue: (task: TaskView, due: string | null) => void;
+  readonly setMilestone: (task: TaskView, milestone: string | null) => void;
   /** Claims the task for the current member and moves it to in progress. */
   readonly claim: (task: TaskView) => void;
   readonly release: (task: TaskView) => void;
