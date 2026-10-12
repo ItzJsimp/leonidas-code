@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   cacheHitRate,
   costPerMillionTokens,
+  displayModelName,
   freeModelKind,
   modelShare,
   sortModelsByTokens,
@@ -132,6 +133,14 @@ describe("usageHighlights", () => {
       sessions: 0,
     } as unknown as MergedUsage;
     expect(usageHighlights(empty, fmt, pct)).toEqual([]);
+  });
+});
+
+describe("displayModelName", () => {
+  it("labels placeholder and unmapped ids instead of showing the raw slug", () => {
+    expect(displayModelName("antigravity-unknown")).toBe("Unattributed");
+    expect(displayModelName("antigravity-model-1319")).toBe("Antigravity model 1319 (unmapped)");
+    expect(displayModelName("gemini-3-pro")).toBe("gemini-3-pro");
   });
 });
 

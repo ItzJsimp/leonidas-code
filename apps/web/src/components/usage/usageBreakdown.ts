@@ -86,9 +86,14 @@ export function speedCostSegments(cost: SpeedCost): readonly ShareSegment[] {
   ];
 }
 
-/** Placeholder ids the readers emit when a record carried no usable model name. */
+/**
+ * Placeholder ids the readers emit when a record carried no usable model name,
+ * and Antigravity numeric ids the server could not name.
+ */
 export function displayModelName(model: string): string {
-  return model === "antigravity-unknown" || model === "<synthetic>" ? "Unattributed" : model;
+  if (model === "antigravity-unknown" || model === "<synthetic>") return "Unattributed";
+  const unmapped = /^antigravity-model-(\d+)$/.exec(model);
+  return unmapped ? `Antigravity model ${unmapped[1]} (unmapped)` : model;
 }
 
 export interface UsageHighlight {
