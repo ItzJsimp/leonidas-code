@@ -1,0 +1,404 @@
+import type {
+  EnvironmentId,
+  ProviderInstanceId,
+  ThreadId,
+  UsageLimitsReport,
+} from "@t3tools/contracts";
+import { limitsNotice } from "@t3tools/shared/usageLimits";
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
+import { memo, useEffect, useMemo, useState } from "react";
+
+import { useConnectedUsageAccounts } from "../../hooks/useConnectedUsageAccounts";
+import { useNowMinute } from "../../hooks/useNowMinute";
+import { useUpdateClientSettings } from "../../hooks/useSettings";
+import type { ContextWindowSnapshot } from "../../lib/contextWindow";
+import {
+  accountTitle,
+  contextWindowFigures,
+  formatResetCountdown,
+  formatTokenCount,
+  glanceLimitRows,
+  shortPlanName,
+  usageSeverity,
+  usedPercentLabel,
+} from "../../lib/usageLimitsPopover";
+import { cn } from "../../lib/utils";
+import { useThreadContextBreakdown } from "../../state/queries";
+import { Button } from "../ui/button";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { barSegments } from "./ContextBreakdown.logic";
+import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { UsageBar, UsageRing } from "./PlanUsageLimits";
+
+type Account = UsageLimitsReport["accounts"][number];
+
+/** Other accounts shown before the rest fold into "+N more"; the card never scrolls. */
+const MAX_OTHER_ACCOUNTS = 4;
+const MAX_CONTEXT_SEGMENTS = 3;
+
+function titleOf(account: Account): string {
+  return accountTitle(
+    { displayName: account.displayName, sourceLabel: account.sourceLabel },
+    account.displayName ?? account.label,
+  );
+}
+
+/** What fills the context window, fetched only while this card is on screen. */
+function ContextSegments({
+  environmentId,
+  threadId,
+  usedTokens,
+}: {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+  readonly usedTokens: number;
+}) {
+  const query = useThreadContextBreakdown({ environmentId, threadId });
+  const { refresh } = query;
+  // Re-read after each reported usage change so the split follows the conversation.
+  useEffect(() => {
+    refresh();
+  }, [usedTokens, refresh]);
+
+  const segments = useMemo(
+    () => (query.data ? barSegments(query.data.categories, query.data.maxTokens) : []),
+    [query.data],
+  );
+  const used = segments.filter((segment) => segment.kind === "used" && segment.tokens > 0);
+  if (used.length === 0) return null;
+  const top = used.slice(0, MAX_CONTEXT_SEGMENTS);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex h-1.5 w-full gap-px overflow-hidden rounded-full bg-muted/60">
+        {segments
+          .filter((segment) => segment.width > 0)
+          .map((segment) => (
+            <div
+              key={segment.name}
+              className={cn(segment.fill, "min-w-0.5 opacity-80")}
+              style={{ width: `${segment.width}%` }}
+            />
+          ))}
+      </div>
+      <ul className="flex flex-col gap-0.5 text-2xs text-muted-foreground">
+        {top.map((segment) => (
+          <li key={segment.name} className="flex min-w-0 items-center gap-1.5">
+            <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", segment.fill)} />
+            <span className="min-w-0 flex-1 truncate">{segment.name}</span>
+            <span className="tabular-nums text-foreground">{formatTokenCount(segment.tokens)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ActiveAccount({
+  account,
+  now,
+}: {
+  readonly account: Account;
+  readonly now: number;
+}) {
+  const title = titleOf(account);
+  const rows = glanceLimitRows(account.limits.windows);
+  const notice = limitsNotice(account.limits);
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+      <div className="flex min-w-0 items-center gap-2">
+        <ProviderInstanceIcon
+          driverKind={account.driver}
+          displayName={title}
+          iconClassName="size-5"
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-semibold leading-tight">{title}</span>
+          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
+            <span aria-hidden className="size-1.5 rounded-full bg-success" />
+            Active in this chat
+          </span>
+        </div>
+        {account.plan ? (
+          <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-2xs leading-4 text-muted-foreground">
+            {shortPlanName(account.plan)}
+          </span>
+        ) : null}
+      </div>
+      {notice || rows.length === 0 ? (
+        <span className="text-2xs text-muted-foreground">{notice ?? "Limits pending"}</span>
+      ) : (
+        rows.map((row) => {
+          if (!row.window) {
+            return (
+              <div
+                key={row.key}
+                className="flex items-center justify-between text-2xs text-muted-foreground"
+              >
+                <span>{row.label}</span>
+                <span>Not reported</span>
+              </div>
+            );
+          }
+          const used = usedPercentLabel(row.window.usedPercent);
+          const reset = formatResetCountdown(row.window.resetsAt, now, true);
+          return (
+            <div key={row.key} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-2 text-2xs">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="tabular-nums text-foreground">
+                  <span className="font-semibold">{100 - used}% left</span>
+                  {reset ? <span className="text-muted-foreground"> · {reset}</span> : null}
+                </span>
+              </div>
+              <UsageBar
+                usedPercent={row.window.usedPercent}
+                label={`${row.label}: ${used}% used`}
+                className="h-1"
+              />
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+export function OtherAccount({ account }: { readonly account: Account }) {
+  const title = titleOf(account);
+  const rows = glanceLimitRows(account.limits.windows);
+  const notice = limitsNotice(account.limits);
+  return (
+    <li className="flex min-w-0 items-center gap-2">
+      <ProviderInstanceIcon
+        driverKind={account.driver}
+        displayName={title}
+        iconClassName="size-3.5"
+      />
+      <span className="min-w-0 flex-1 truncate text-xs">{title}</span>
+      {notice || rows.length === 0 ? (
+        <span className="shrink-0 text-2xs text-muted-foreground">{notice ? "n/a" : "…"}</span>
+      ) : (
+        <div className="flex shrink-0 items-center gap-2">
+          {rows.map((row) => {
+            const used = row.window ? usedPercentLabel(row.window.usedPercent) : null;
+            return (
+              <Tooltip key={row.key}>
+                <TooltipTrigger
+                  render={
+                    <span
+                      className={cn(
+                        "w-9 text-right text-2xs tabular-nums",
+                        used === null
+                          ? "text-muted-foreground"
+                          : usageSeverity(used) === "critical"
+                            ? "font-medium text-destructive"
+                            : usageSeverity(used) === "warning"
+                              ? "font-medium text-warning"
+                              : "text-foreground",
+                      )}
+                    />
+                  }
+                >
+                  {used === null ? "—" : `${used}%`}
+                </TooltipTrigger>
+                <TooltipPopup side="bottom">
+                  {row.label}: {used === null ? "not reported" : `${used}% used`}
+                </TooltipPopup>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Always-on glance card over the chat's top-left corner: the context window and what fills
+ * it, this chat's account in full, and every other connected account in one line each.
+ * Wide chat columns show the whole card; narrow ones show a one-line pill that expands over
+ * the chat on click, so the card never covers the conversation text by default.
+ */
+export const UsageOverlayCard = memo(function UsageOverlayCard({
+  environmentId,
+  threadId,
+  instanceId,
+  modelLabel,
+  effortLabel,
+  contextWindow,
+}: {
+  readonly environmentId: EnvironmentId;
+  /** Null for drafts, which have no server-side context to break down yet. */
+  readonly threadId: ThreadId | null;
+  readonly instanceId: ProviderInstanceId | null;
+  readonly modelLabel: string;
+  readonly effortLabel: string | null;
+  readonly contextWindow: ContextWindowSnapshot | null;
+}) {
+  const navigate = useNavigate();
+  const updateSettings = useUpdateClientSettings();
+  const { active, others } = useConnectedUsageAccounts(environmentId, instanceId);
+  const [expanded, setExpanded] = useState(false);
+  const minute = useNowMinute();
+  const now = Date.parse(`${minute}:00Z`);
+
+  const figures = contextWindowFigures(contextWindow);
+  const percent =
+    figures.state === "reported" && figures.usedPercent != null
+      ? usedPercentLabel(figures.usedPercent)
+      : null;
+  const severity = percent === null ? "normal" : usageSeverity(percent);
+  const primary = active[0] ?? null;
+  const shownOthers = others.slice(0, MAX_OTHER_ACCOUNTS);
+  const hiddenOthers = others.length - shownOthers.length;
+
+  const contextLine =
+    figures.state === "reported"
+      ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"}`
+      : figures.state === "pending"
+        ? `Not reported / ${formatTokenCount(figures.maxTokens)}`
+        : "Not reported yet";
+  const leftLine =
+    figures.state === "reported" && figures.maxTokens
+      ? `${formatTokenCount(Math.max(0, figures.maxTokens - figures.usedTokens))} left`
+      : null;
+
+  return (
+    <div
+      data-usage-overlay
+      className="pointer-events-none absolute top-2 left-3 z-30 max-w-[calc(100%-1.5rem)]"
+    >
+      {/* Narrow column: one line, expands in place. */}
+      {!expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-label="Show context and accounts"
+          className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-background/90 py-1 pr-3 pl-1.5 text-xs shadow-sm backdrop-blur transition-colors hover:bg-muted/60 @7xl:hidden"
+        >
+          <UsageRing percent={percent} size={20} strokeWidth={2.5} severity={severity} />
+          <span className="tabular-nums font-medium">
+            {percent === null ? "Context" : `${percent}%`}
+          </span>
+          {primary ? (
+            <ProviderInstanceIcon
+              driverKind={primary.driver}
+              displayName={titleOf(primary)}
+              iconClassName="size-3.5"
+            />
+          ) : null}
+          <ChevronDownIcon aria-hidden className="size-3 text-muted-foreground" />
+        </button>
+      ) : null}
+
+      <section
+        aria-label="Context and accounts"
+        className={cn(
+          "pointer-events-auto w-64 max-w-full max-h-[calc(100dvh-10rem)] overflow-y-auto flex-col gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-md backdrop-blur",
+          expanded ? "flex" : "hidden @7xl:flex",
+        )}
+      >
+        {/* Context */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2.5">
+            <UsageRing
+              percent={percent}
+              size={34}
+              strokeWidth={3}
+              severity={severity}
+              className="text-2xs font-semibold tabular-nums"
+            >
+              {percent === null ? "–" : `${percent}%`}
+            </UsageRing>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-semibold leading-tight">
+                {modelLabel || "No model selected"}
+              </span>
+              <span className="truncate text-2xs text-muted-foreground">
+                {effortLabel ? `${effortLabel} · ` : ""}
+                Context window
+              </span>
+            </div>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Hide card"
+              className={cn("@7xl:hidden", expanded ? "" : "hidden")}
+              onClick={() => setExpanded(false)}
+            >
+              <ChevronUpIcon aria-hidden />
+            </Button>
+          </div>
+          <UsageBar usedPercent={percent ?? 0} label={`Context: ${percent ?? 0}% used`} />
+          <div className="flex items-center justify-between text-2xs tabular-nums text-muted-foreground">
+            <span>{contextLine} tokens</span>
+            {leftLine ? <span>{leftLine}</span> : null}
+          </div>
+          {threadId && figures.state === "reported" ? (
+            <ContextSegments
+              environmentId={environmentId}
+              threadId={threadId}
+              usedTokens={figures.usedTokens}
+            />
+          ) : null}
+        </div>
+
+        {/* This chat's account */}
+        {primary ? (
+          <ActiveAccount account={primary} now={now} />
+        ) : (
+          <p className="rounded-lg border border-dashed border-border/60 p-2.5 text-2xs text-muted-foreground">
+            No subscription account is linked to this chat's provider.
+          </p>
+        )}
+
+        {/* Everyone else */}
+        {shownOthers.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-2xs text-muted-foreground">
+              <span>Other accounts</span>
+              <span className="flex gap-2 pr-0.5 tabular-nums">
+                <span className="w-9 text-right">Session</span>
+                <span className="w-9 text-right">Week</span>
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {shownOthers.map((account) => (
+                <OtherAccount key={account.id} account={account} />
+              ))}
+            </ul>
+            {hiddenOthers > 0 ? (
+              <button
+                type="button"
+                onClick={() => void navigate({ to: "/usage" })}
+                className="cursor-pointer self-start text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                +{hiddenOthers} more accounts
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between border-t border-border/50 pt-2 text-2xs">
+          <button
+            type="button"
+            onClick={() => void navigate({ to: "/usage" })}
+            className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Full usage overview
+          </button>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label="Turn off glance card"
+            onClick={() => void updateSettings({ usageOverlayEnabled: false })}
+          >
+            <XIcon aria-hidden />
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+});

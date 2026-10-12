@@ -120,6 +120,7 @@ import type {
 import { PendingApprovalCard } from "./PendingApprovalCard";
 import { ComposerErrorNotice } from "./ComposerErrorNotice";
 import { ComposerFeedback } from "./ComposerFeedback";
+import { UsageGlanceCard } from "./UsageGlanceCard";
 import { ComposerUsageLimits } from "./ComposerUsageLimits";
 import { PendingUserInputCard } from "./PendingUserInputCard";
 import { ProviderSubagentBar } from "./ProviderSubagentBar";
@@ -1179,6 +1180,16 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
           loaded={browserTabs.loaded}
           top={navigationHeaderHeight + 8}
           onOpen={openBrowserPreview}
+        />
+      ) : null}
+
+      {showContent ? (
+        <UsageGlanceCard
+          key={selectedThreadKey}
+          environmentId={props.environmentId}
+          instanceId={props.selectedThread.modelSelection.instanceId}
+          threadId={props.selectedThread.id}
+          top={navigationHeaderHeight + 8}
         />
       ) : null}
 

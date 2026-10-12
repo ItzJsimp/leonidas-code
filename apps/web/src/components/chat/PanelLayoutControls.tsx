@@ -1,4 +1,9 @@
-import { PanelBottomIcon, PanelRightIcon, SquareMenuIcon } from "lucide-react";
+import {
+  ChartNoAxesColumnIncreasingIcon,
+  PanelBottomIcon,
+  PanelRightIcon,
+  SquareMenuIcon,
+} from "lucide-react";
 import { Maximize2, Minimize2 } from "lucide";
 import { MorphIcon } from "~/components/MorphIcon";
 import { memo, type ReactElement } from "react";
@@ -23,6 +28,9 @@ export interface PanelLayoutControlsProps {
   rightPanelOpen: boolean;
   rightPanelShortcutLabel: string | null;
   rightPanelUnavailableLabel?: string;
+  /** Leonidas glance card toggle; the control only appears where a handler is given. */
+  usageOverlayOpen?: boolean;
+  onToggleUsageOverlay?: () => void;
   onToggleTerminal: () => void;
   onToggleThreadPanel: () => void;
   onToggleRightPanel: () => void;
@@ -43,6 +51,8 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
   rightPanelOpen,
   rightPanelShortcutLabel,
   rightPanelUnavailableLabel = "Right panel is unavailable",
+  usageOverlayOpen = false,
+  onToggleUsageOverlay,
   onToggleTerminal,
   onToggleThreadPanel,
   onToggleRightPanel,
@@ -76,6 +86,25 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
       className="flex h-full shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
       data-panel-layout-controls
     >
+      {onToggleUsageOverlay ? (
+        <Tooltip>
+          <TooltipTrigger render={<span className="flex shrink-0" />}>
+            <Toggle
+              className="shrink-0 [-webkit-app-region:no-drag]"
+              pressed={usageOverlayOpen}
+              onPressedChange={onToggleUsageOverlay}
+              aria-label="Toggle context and accounts card"
+              variant="ghost"
+              size="sm"
+            >
+              <ChartNoAxesColumnIncreasingIcon className="size-4" />
+            </Toggle>
+          </TooltipTrigger>
+          <TooltipPopup side="bottom">
+            {usageOverlayOpen ? "Hide context and accounts" : "Show context and accounts"}
+          </TooltipPopup>
+        </Tooltip>
+      ) : null}
       {showThreadPanelControl
         ? threadPanelPresentation === "popover"
           ? threadPanelTooltip(

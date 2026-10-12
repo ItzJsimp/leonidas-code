@@ -343,6 +343,7 @@ import {
   useClientSettings,
   useClientSettingsHydrated,
   useEnvironmentSettings,
+  useUpdateClientSettings,
 } from "../hooks/useSettings";
 import { useNowMinute } from "../hooks/useNowMinute";
 import { usePanelAnimationSettings, usePanelPresence } from "../panelAnimations";
@@ -440,6 +441,7 @@ import {
 } from "../state/entities";
 import { environmentShell } from "../state/shell";
 import { ChatComposerUsageLimits } from "./chat/ChatComposerUsageLimits";
+import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { createPageScrollController, type PageScrollKey } from "./chat/pageScrollController";
 import { isTimelineScrollTarget } from "./chat/timelineScrollTarget";
@@ -6118,6 +6120,12 @@ export default function ChatView(props: ChatViewProps) {
     },
     [activeThreadRef, diffOpen, onDiffPanelOpen],
   );
+  const usageOverlayEnabled = useClientSettings((settings) => settings.usageOverlayEnabled);
+  const updateClientSettings = useUpdateClientSettings();
+  const toggleUsageOverlay = useCallback(
+    () => void updateClientSettings({ usageOverlayEnabled: !usageOverlayEnabled }),
+    [updateClientSettings, usageOverlayEnabled],
+  );
   const toggleRightPanel = useCallback(() => {
     if (!activeThreadRef) return;
     if (rightPanelOpen) {
@@ -11432,6 +11440,8 @@ export default function ChatView(props: ChatViewProps) {
     rightPanelAvailable: activeProject !== null,
     rightPanelOpen,
     rightPanelShortcutLabel: shortcutLabelForCommand(keybindings, "rightPanel.toggle"),
+    usageOverlayOpen: usageOverlayEnabled,
+    onToggleUsageOverlay: toggleUsageOverlay,
     onToggleTerminal: toggleTerminalVisibility,
     onToggleThreadPanel: toggleThreadPanel,
     onToggleRightPanel: toggleRightPanel,
@@ -11550,7 +11560,7 @@ export default function ChatView(props: ChatViewProps) {
           {isElectron && rightPanelControlsAtRoot ? (
             <span
               aria-hidden
-              className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
+              className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-36 [-webkit-app-region:no-drag]"
             />
           ) : null}
           {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
@@ -11586,7 +11596,18 @@ export default function ChatView(props: ChatViewProps) {
         </header>
 
         {/* Main content area with optional plan sidebar */}
-        <div className="relative flex min-h-0 min-w-0 flex-1">
+        <div className="@container relative flex min-h-0 min-w-0 flex-1">
+          {usageOverlayEnabled ? (
+            <UsageOverlayCard
+              key={routeThreadKey}
+              environmentId={activeThread.environmentId}
+              threadId={isServerThread ? activeThread.id : null}
+              instanceId={activeProviderInstanceId}
+              modelLabel={providerSubagentModelLabel}
+              effortLabel={providerSubagentEffortLabel}
+              contextWindow={headerContextWindow}
+            />
+          ) : null}
           {/* Chat column */}
           <ThreadFindCanvas
             findOptions={{
