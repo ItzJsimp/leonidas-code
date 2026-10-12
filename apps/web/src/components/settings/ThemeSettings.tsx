@@ -23,6 +23,7 @@ import {
   type ThemeDefinition,
   type ThemeHalves,
   T3_CHAT_THEME,
+  T3_ORIGINAL_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -55,6 +56,7 @@ import {
 import { ThemeWireframe } from "./ThemeWireframe";
 
 const MAINTAINER_THEMES: ReadonlyArray<ThemeDefinition> = [
+  T3_ORIGINAL_THEME,
   T3_CHAT_THEME,
   GROVE_THEME,
   OCEAN_THEME,
@@ -627,7 +629,7 @@ export function ThemeLibrary({
   // ----- Automatic-mode mixing -------------------------------------------
   // The pair model: one theme owns light, one owns dark, and the global
   // appearance mode (light / dark / auto) decides which is showing.
-  const baseCardId = getThemeDefinition(theme)?.id ?? null;
+  const baseCardId = theme === "leonidas" ? null : (getThemeDefinition(theme)?.id ?? null);
   const lightOwner = themeHalves?.light ?? baseCardId;
   const darkOwner = themeHalves?.dark ?? baseCardId;
 

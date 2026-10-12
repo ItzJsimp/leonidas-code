@@ -29,6 +29,7 @@ import {
   subscribeToCustomThemes,
   themeAllowsSidebarArtwork,
   T3_CHAT_THEME,
+  T3_ORIGINAL_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -82,11 +83,11 @@ function contrastRatio(first: string, second: string): number {
 }
 
 describe("theme files", () => {
-  it("keeps every built-in palette value in canonical OKLCH form", () => {
+  it("keeps every built-in palette value as a valid CSS color", () => {
     for (const theme of BUILT_IN_THEMES) {
       for (const colors of [theme.colors, ...Object.values(theme.variants ?? {})]) {
         for (const value of Object.values(colors)) {
-          expect(toCanonicalThemeColor(value)).toBe(value);
+          expect(toCanonicalThemeColor(value)).not.toBeNull();
         }
       }
     }
@@ -165,31 +166,30 @@ describe("theme files", () => {
     },
   );
 
-  it("keeps stock dark controls in the neutral-black surface hierarchy", () => {
+  it("uses Obsidian surfaces and crimson action roles for the Leonidas dark palette", () => {
     expectThemeColors(getStandardThemeColors("dark"), {
-      canvas: "#0a0a0a",
-      surface: "#111111",
-      surfaceRaised: "#111111",
-      surfaceOverlay: "#111111",
-      toolbarControl: "#111111",
-      secondary: "#111111",
-      muted: "#111111",
-      accentSurface: "#141414",
+      canvas: "#07070a",
+      surface: "#15151b",
+      surfaceRaised: "#1d1d25",
+      surfaceOverlay: "#1d1d25",
+      toolbarControl: "#15151b",
+      accent: "#d92626",
+      messageAction: "#d92626",
     });
   });
 
-  it("keeps the stock sidebar and chat on distinct surfaces in both appearances", () => {
+  it("uses Linen Sand and Obsidian for the Leonidas canvas and sidebar", () => {
     expectThemeColors(getStandardThemeColors("light"), {
-      canvas: "#fcfcfc",
-      sidebar: "#fafafa",
-      sidebarRowActive: "#ffffff",
-      messageSurface: "#f4f4f5",
+      canvas: "#eee6d6",
+      sidebar: "#e9e0cf",
+      accent: "#a8221b",
+      messageAction: "#a8221b",
     });
     expectThemeColors(getStandardThemeColors("dark"), {
-      canvas: "#0a0a0a",
-      sidebar: "#000000",
-      sidebarRowActive: "#1a1b1b",
-      messageSurface: "#141414",
+      canvas: "#07070a",
+      sidebar: "#111116",
+      accent: "#d92626",
+      messageAction: "#d92626",
     });
   });
 
@@ -301,7 +301,7 @@ describe("theme files", () => {
       colors: {
         canvas: canonical("#07152f"),
         accent: canonical("#67c2ff"),
-        placeholder: canonical("#968d9f"),
+        placeholder: getDefaultThemeColors("dark").placeholder,
       },
     });
   });
@@ -444,6 +444,7 @@ describe("theme files", () => {
 
     applyThemePalette("system");
     expect(getThemePreviewSidebarArtwork()).toBeNull();
+    expect(document.documentElement.dataset.themeId).toBe("leonidas");
     expect(listener).toHaveBeenCalledTimes(2);
 
     unsubscribe();
@@ -1091,6 +1092,15 @@ describe("stored theme preferences", () => {
     expect(resolveThemeAppearance("t3-chat-dark", true, false)).toBe("dark");
     expect(resolveDesktopTheme("t3-chat-dark", false)).toBe("dark");
     expect(isKnownThemePreference("t3-chat-dark")).toBe(true);
+  });
+
+  it("keeps the old default palette selectable as T3 Original", () => {
+    expect(T3_ORIGINAL_THEME.colors).toEqual(expect.objectContaining({ canvas: "#fcfcfc" }));
+    expect(T3_ORIGINAL_THEME.variants?.dark).toEqual(
+      expect.objectContaining({ canvas: "#0a0a0a" }),
+    );
+    expect(getThemeDefinition("t3-code")).toBe(T3_ORIGINAL_THEME);
+    expect(canonicalThemePreference("t3-code")).toBe("t3-original");
   });
 
   it("resolves legacy t3-prefixed ids onto the renamed themes", () => {

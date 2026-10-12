@@ -1,13 +1,11 @@
 import { MoonIcon, SunIcon } from "lucide-react";
 import type { CSSProperties } from "react";
-import {
-  STANDARD_THEME_PREVIEW_COLORS as SHARED_STANDARD_THEME_PREVIEW_COLORS,
-  THEME_PREVIEW_RENDER_SPECS,
-} from "@t3tools/shared/themePreview";
+import { THEME_PREVIEW_RENDER_SPECS } from "@t3tools/shared/themePreview";
 import { cn } from "../../lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   getThemeColorsForMode,
+  getStandardThemeColors,
   getThemeModes,
   type ThemeAppearance,
   type ThemeDefinition,
@@ -40,18 +38,22 @@ const STANDARD_THEME_PREVIEW_COLORS: Record<
   Readonly<Record<ThemePreviewRole, string>>
 > = {
   light: {
-    sidebar: "#fafafa",
-    surface: "#ffffff",
-    accentSurface: "#f4f4f5",
-    messageSurface: "#e4e4e7",
-    ...SHARED_STANDARD_THEME_PREVIEW_COLORS.light,
+    sidebar: getStandardThemeColors("light").sidebar,
+    surface: getStandardThemeColors("light").surface,
+    accentSurface: getStandardThemeColors("light").accentSurface,
+    messageSurface: getStandardThemeColors("light").messageSurface,
+    canvas: getStandardThemeColors("light").canvas,
+    accent: getStandardThemeColors("light").accent,
+    messageAction: getStandardThemeColors("light").messageAction,
   },
   dark: {
-    sidebar: "#0f0f10",
-    surface: "#121212",
-    accentSurface: "#27272a",
-    messageSurface: "#27272a",
-    ...SHARED_STANDARD_THEME_PREVIEW_COLORS.dark,
+    sidebar: getStandardThemeColors("dark").sidebar,
+    surface: getStandardThemeColors("dark").surface,
+    accentSurface: getStandardThemeColors("dark").accentSurface,
+    messageSurface: getStandardThemeColors("dark").messageSurface,
+    canvas: getStandardThemeColors("dark").canvas,
+    accent: getStandardThemeColors("dark").accent,
+    messageAction: getStandardThemeColors("dark").messageAction,
   },
 };
 

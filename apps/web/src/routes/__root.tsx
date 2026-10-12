@@ -63,7 +63,13 @@ import {
   selectProjectGroupingSettings,
 } from "../logicalProject";
 import { useUiStateStore } from "../uiStateStore";
-import { syncBrowserChromeTheme } from "../hooks/useTheme";
+import { readThemeHalvesRaw, syncBrowserChromeTheme, useTheme } from "../hooks/useTheme";
+import { useLeonidasAtmosphere } from "../leonidasAtmosphere";
+import {
+  LEONIDAS_THEME_NOTICE_STORAGE_KEY,
+  shouldShowLeonidasThemeNotice,
+  THEME_PREFERENCE_STORAGE_KEY,
+} from "../leonidasThemeNotice";
 import { configureClientTracing } from "../observability/clientTracing";
 import { resolveInitialServerAuthGateState } from "../environments/primary";
 import { hasHostedPairingRequest, isHostedStaticApp } from "../hostedPairing";
@@ -181,6 +187,7 @@ function RootRouteView() {
           <EnvironmentThemeSync />
           <GlassAppearanceSync />
           <FontAppearanceSync />
+          <LeonidasAtmosphereSync />
           <ProviderAuthCallbackCoordinator />
           <CustomSnoozeDialogHost />
           <CommandPalette>
@@ -222,6 +229,7 @@ function RootRouteView() {
         <EnvironmentThemeSync />
         <GlassAppearanceSync />
         <FontAppearanceSync />
+        <LeonidasAtmosphereSync />
         <ProviderAuthCallbackCoordinator />
         <ChatGptWelcomeCoordinator />
         <FirstRunGate
@@ -244,6 +252,7 @@ function RootRouteView() {
           <SlowRpcRequestToastCoordinator />
           <PermissionUpdateNotice />
           {primaryEnvironmentAuthenticated ? <LegacyThreadMigrationToast /> : null}
+          {primaryEnvironmentAuthenticated ? <LeonidasThemeAdoptionNotice /> : null}
           <ProjectCloneToastCoordinator />
           <HostedStaticEnvironmentBootstrap />
           {primaryEnvironmentAuthenticated ? (
@@ -260,6 +269,50 @@ function RootRouteView() {
       </AnchoredToastProvider>
     </ToastProvider>
   );
+}
+
+function LeonidasAtmosphereSync() {
+  useLeonidasAtmosphere();
+  return null;
+}
+
+function LeonidasThemeAdoptionNotice() {
+  const { setTheme } = useTheme();
+
+  useEffect(() => {
+    try {
+      const alreadySeen = window.localStorage.getItem(LEONIDAS_THEME_NOTICE_STORAGE_KEY) !== null;
+      if (alreadySeen) return;
+
+      const storedTheme = window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY);
+      const halves = readThemeHalvesRaw();
+      const shouldShow = shouldShowLeonidasThemeNotice({
+        alreadySeen,
+        storedTheme,
+        hasThemeHalves: halves.light !== undefined || halves.dark !== undefined,
+      });
+      window.localStorage.setItem(LEONIDAS_THEME_NOTICE_STORAGE_KEY, "seen");
+      if (!shouldShow) return;
+
+      let toastId: ReturnType<typeof toastManager.add>;
+      toastId = toastManager.add({
+        type: "info",
+        title: "A new Leonidas look",
+        description: "Leonidas Code now has its own theme.",
+        timeout: 15_000,
+        actionProps: {
+          children: "Switch back",
+          onClick: () => {
+            if (setTheme("t3-original")) toastManager.close(toastId);
+          },
+        },
+      });
+    } catch {
+      // A blocked local store should not prevent the workspace from opening.
+    }
+  }, [setTheme]);
+
+  return null;
 }
 
 /** Follows the palette the primary environment's machine publishes, if any. */
