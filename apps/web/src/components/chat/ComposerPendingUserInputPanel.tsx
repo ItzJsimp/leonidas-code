@@ -3,6 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { type PendingUserInput } from "../../session-logic";
 import {
   derivePendingUserInputProgress,
+  parseRecommendedLabel,
   type PendingUserInputDraftAnswer,
 } from "../../pendingUserInput";
 import { CheckIcon } from "lucide-react";
@@ -206,7 +207,9 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
             <span className="min-w-0 flex-1 truncate text-secondary-label">
               {activeQuestion.question}
             </span>
-          ) : null}
+          ) : (
+            <span className="text-3xs text-primary">Waiting on your answer</span>
+          )}
         </ComposerBanner.Content>
         <ComposerBanner.Actions>
           {prompt.questions.length > 1 ? (
@@ -256,6 +259,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   isOptimisticallySelected ||
                   (!customAnswerActive && progress.selectedOptionValues.includes(optionValue));
                 const shortcutKey = index < 9 ? index + 1 : null;
+                const { label: optionLabel, recommended } = parseRecommendedLabel(option.label);
                 const className = cn(
                   "group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
                   isSelected
@@ -267,7 +271,17 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                 const content = (
                   <>
                     <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                      <span className="text-sm font-medium">{option.label}</span>
+                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                        {optionLabel}
+                        {recommended ? (
+                          <span
+                            data-recommended-option
+                            className="rounded-full bg-primary/10 px-1.5 py-px text-3xs font-medium text-primary"
+                          >
+                            Recommended
+                          </span>
+                        ) : null}
+                      </span>
                       {option.description && option.description !== option.label ? (
                         <span className="text-secondary-label text-2xs">{option.description}</span>
                       ) : null}
