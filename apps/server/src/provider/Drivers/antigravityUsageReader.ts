@@ -3,6 +3,7 @@ import type { TurnTokenUsage } from "@t3tools/contracts";
 import * as NodeFSP from "node:fs/promises";
 
 import {
+  type AntigravityModelName,
   antigravityModelNameFromLabel,
   antigravityRegisteredModelName,
 } from "../antigravityModelNames.ts";
@@ -109,13 +110,14 @@ const MODEL_IDS: Record<number, string> = {
 
 const UNMAPPED_MODEL = /^antigravity-model-(\d+)$/;
 
-function modelName(name: string, id: number): string {
-  if (name) return antigravityModelNameFromLabel(name).model;
-  return MODEL_IDS[id] ?? (id > 0 ? `antigravity-model-${id}` : "");
+function modelName(name: string, id: number): AntigravityModelName {
+  if (name) return antigravityModelNameFromLabel(name);
+  return { model: MODEL_IDS[id] ?? (id > 0 ? `antigravity-model-${id}` : "") };
 }
 
 interface Metadata {
   model: string;
+  rateModel?: string;
   /** Raw numeric model id, 0 when absent. */
   modelId: number;
   /** Whether the model came from a text name rather than only an id. */
@@ -140,8 +142,10 @@ function metadata(bytes: Uint8Array, step: boolean): Metadata {
   }
   const label = textAt(model, step ? 12 : 19) || textAt(model, step ? 8 : 21);
   const modelId = numberAt(model, step ? 1 : 3);
+  const resolved = modelName(label, modelId);
   return {
-    model: modelName(label, modelId),
+    model: resolved.model,
+    ...(resolved.rateModel === undefined ? {} : { rateModel: resolved.rateModel }),
     modelId,
     named: label !== "",
     timestampMs: step
@@ -150,6 +154,11 @@ function metadata(bytes: Uint8Array, step: boolean): Metadata {
     usages,
   };
 }
+
+const entryModel = (entry: Metadata): AntigravityModelName => ({
+  model: entry.model,
+  ...(entry.rateModel === undefined ? {} : { rateModel: entry.rateModel }),
+});
 
 function blob(value: unknown): Uint8Array {
   if (!(value instanceof Uint8Array)) throw new Error("Invalid Antigravity metadata blob");
@@ -161,7 +170,7 @@ interface UsageCandidate {
   keys: readonly string[];
   timestampQuality: number;
   /** A numeric id this record's own text name identifies, for naming id-only records. */
-  learned?: { readonly id: number; readonly model: string };
+  learned?: { readonly id: number } & AntigravityModelName;
 }
 
 /** A conversation database whose usage tables are missing or undecodable. */
@@ -243,7 +252,7 @@ function usageCandidates(
   fallbackTimestamp: number,
 ): UsageCandidate[] {
   const records: UsageCandidate[] = [];
-  const generationModels = new Map(generations.map(({ idx, entry }) => [idx, entry.model]));
+  const generationModels = new Map(generations.map(({ idx, entry }) => [idx, entry]));
   for (const [source, entries] of [
     ["step", steps],
     ["generation", generations],
@@ -270,16 +279,21 @@ function usageCandidates(
           const id = textAt(usage, key);
           return id ? [`antigravity:${key}:${id}`] : [];
         });
+        const mapped = MODEL_IDS[numberAt(usage, 1)];
+        const generation = source === "step" ? generationModels.get(idx) : undefined;
+        const recordModel: AntigravityModelName =
+          mapped !== undefined
+            ? { model: mapped }
+            : entry.model !== ""
+              ? entryModel(entry)
+              : generation?.model
+                ? entryModel(generation)
+                : { model: modelName("", numberAt(usage, 1)).model || "antigravity-unknown" };
         const record: UsageRecord = {
           provider: "antigravity",
           sessionId,
           timestampMs: entry.timestampMs ?? trajectoryTimestamp ?? fallbackTimestamp,
-          model:
-            MODEL_IDS[numberAt(usage, 1)] ||
-            entry.model ||
-            (source === "step" ? generationModels.get(idx) : "") ||
-            modelName("", numberAt(usage, 1)) ||
-            "antigravity-unknown",
+          ...recordModel,
           totals,
           reportedCostUsd: null,
           speed: "standard",
@@ -290,7 +304,7 @@ function usageCandidates(
           keys,
           timestampQuality: entry.timestampMs !== null ? 2 : trajectoryTimestamp !== null ? 1 : 0,
           ...(entry.named && entry.modelId > 0 && MODEL_IDS[entry.modelId] === undefined
-            ? { learned: { id: entry.modelId, model: entry.model } }
+            ? { learned: { id: entry.modelId, ...entryModel(entry) } }
             : {}),
         });
       }
@@ -360,14 +374,17 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
         : target;
     const x = target.record.totals;
     const y = source.record.totals;
+    const named =
+      first.record.model === "antigravity-unknown"
+        ? first === target
+          ? source.record
+          : target.record
+        : first.record;
+    const { rateModel: _firstRateModel, ...firstRecord } = first.record;
     target.record = {
-      ...first.record,
-      model:
-        first.record.model === "antigravity-unknown"
-          ? first === target
-            ? source.record.model
-            : target.record.model
-          : first.record.model,
+      ...firstRecord,
+      model: named.model,
+      ...(named.rateModel === undefined ? {} : { rateModel: named.rateModel }),
       timestampMs: bestTime.record.timestampMs,
       totals: {
         uncachedInputTokens: Math.max(x.uncachedInputTokens, y.uncachedInputTokens),
@@ -462,12 +479,18 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
   }
   // Records that carry only a numeric model id take the name another record in
   // this scan gave that id, then the name the language server reported for it.
-  const learned = new Map<number, string>();
-  for (const group of groups) if (group.learned) learned.set(group.learned.id, group.learned.model);
+  const learned = new Map<number, AntigravityModelName>();
+  for (const group of groups) if (group.learned) learned.set(group.learned.id, group.learned);
   const named = (record: UsageRecord): UsageRecord => {
     const id = Number(UNMAPPED_MODEL.exec(record.model)?.[1]);
-    const model = learned.get(id) ?? antigravityRegisteredModelName(id)?.model;
-    return model === undefined ? record : { ...record, model };
+    const name = learned.get(id) ?? antigravityRegisteredModelName(id);
+    if (name === undefined) return record;
+    const { rateModel: _unnamedRateModel, ...rest } = record;
+    return {
+      ...rest,
+      model: name.model,
+      ...(name.rateModel === undefined ? {} : { rateModel: name.rateModel }),
+    };
   };
   for (const [index, group] of groups.entries()) {
     if (group.parent === index && group.record.timestampMs >= sinceMs) {

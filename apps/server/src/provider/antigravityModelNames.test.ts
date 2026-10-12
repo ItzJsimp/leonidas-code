@@ -7,10 +7,18 @@ import {
 } from "./antigravityModelNames.ts";
 
 describe("antigravityModelNameFromLabel", () => {
-  it("folds variant tags into the base model", () => {
+  it("keeps the effort tier in the name and prices the untiered model", () => {
     expect(antigravityModelNameFromLabel("Gemini 3.8 Flash (High)")).toEqual({
-      model: "gemini-3.8-flash",
+      model: "gemini-3.8-flash-high",
+      rateModel: "gemini-3.8-flash",
     });
+    expect(antigravityModelNameFromLabel("gemini-3.1-pro-low")).toEqual({
+      model: "gemini-3.1-pro-low",
+      rateModel: "gemini-3.1-pro",
+    });
+  });
+
+  it("folds variant tags that are not effort tiers into the base model", () => {
     expect(antigravityModelNameFromLabel("Gemini 2.5 Flash Thinking")).toEqual({
       model: "gemini-2.5-flash",
     });
@@ -36,7 +44,7 @@ describe("antigravityModelNamesFromConfigs", () => {
       { label: "No model" },
     ]);
     expect([...names]).toEqual([
-      [1319, { model: "gemini-3.8-flash" }],
+      [1319, { model: "gemini-3.8-flash-high", rateModel: "gemini-3.8-flash" }],
       [1035, { model: "claude-sonnet-4-6" }],
     ]);
   });

@@ -6,6 +6,7 @@ import {
   costPerMillionTokens,
   displayModelName,
   freeModelKind,
+  freshTokens,
   modelShare,
   providerBreakdownRows,
   sortModelsByTokens,
@@ -134,6 +135,19 @@ describe("usageHighlights", () => {
       sessions: 0,
     } as unknown as MergedUsage;
     expect(usageHighlights(empty, fmt, pct)).toEqual([]);
+  });
+});
+
+describe("freshTokens", () => {
+  it("counts uncached input, cache writes and output but not cache reads", () => {
+    const tokens = {
+      uncachedInputTokens: 32,
+      cachedInputTokens: 1_000,
+      cacheCreationTokens: 8,
+      outputTokens: 4,
+      reasoningTokens: 3,
+    };
+    expect(freshTokens(tokens)).toBe(44);
   });
 });
 
