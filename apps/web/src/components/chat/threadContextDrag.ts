@@ -42,6 +42,41 @@ export function useThreadContextDragGhost(): ThreadContextDragGhost | null {
 
 let overTarget: HTMLElement | null = null;
 
+/**
+ * Anything other than a composer can also take a dropped thread (the split
+ * workspace snaps it into a pane). Listeners see the pointer while the drag is
+ * outside the sidebar list; the drop handler runs only when no composer took it.
+ */
+export interface ThreadDragPoint {
+  readonly x: number;
+  readonly y: number;
+  readonly overComposer: boolean;
+}
+type ThreadDragListener = (point: ThreadDragPoint | null) => void;
+type ThreadDropHandler = (
+  point: { x: number; y: number },
+  threads: ReadonlyArray<ScopedThreadRef>,
+) => boolean;
+
+const dragListeners = new Set<ThreadDragListener>();
+let dropHandler: ThreadDropHandler | null = null;
+
+export function subscribeThreadDrag(listener: ThreadDragListener): () => void {
+  dragListeners.add(listener);
+  return () => dragListeners.delete(listener);
+}
+
+export function setThreadDropHandler(handler: ThreadDropHandler): () => void {
+  dropHandler = handler;
+  return () => {
+    if (dropHandler === handler) dropHandler = null;
+  };
+}
+
+function notifyDrag(point: ThreadDragPoint | null) {
+  for (const listener of dragListeners) listener(point);
+}
+
 function findDropTarget(point: { x: number; y: number }): HTMLElement | null {
   return (
     document
@@ -62,12 +97,14 @@ export function moveThreadContextDrag(
     overTarget = target;
   }
   setGhost({ x: point.x, y: point.y, ...label });
+  notifyDrag({ x: point.x, y: point.y, overComposer: target !== null });
 }
 
 export function endThreadContextDrag() {
   overTarget?.removeAttribute(DROP_OVER_ATTRIBUTE);
   overTarget = null;
   setGhost(null);
+  notifyDrag(null);
 }
 
 /** True when a composer accepted the drop. */
@@ -75,8 +112,9 @@ export function dropThreadContext(
   point: { x: number; y: number },
   threads: ReadonlyArray<ScopedThreadRef>,
 ): boolean {
+  if (threads.length === 0) return false;
   const target = findDropTarget(point);
-  if (!target || threads.length === 0) return false;
+  if (!target) return dropHandler?.(point, threads) ?? false;
   target.dispatchEvent(new CustomEvent(THREAD_CONTEXT_DROP_EVENT, { detail: threads }));
   return true;
 }

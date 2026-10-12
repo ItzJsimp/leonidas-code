@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import ChatView from "./ChatView";
 import { resolveDraftPromotionNavigationTarget, threadHasStarted } from "./ChatView.logic";
 import { waitForDraftHeroTransition } from "./chat/draftHeroTransition";
+import { SplitDropOverlay, SINGLE_PANE_ID } from "./split/SplitDropOverlay";
+import { SplitWorkspace } from "./split/SplitWorkspace";
 import { SidebarInset } from "./ui/sidebar";
 import {
   finalizePromotedDraftThreadByRef,
@@ -14,6 +16,7 @@ import {
   useComposerDraftStore,
 } from "../composerDraftStore";
 import { useSidebarPendingFileDropStore } from "../sidebarPendingFileDropStore";
+import { selectPaneCount, useSplitLayoutStore } from "../splitLayoutStore";
 import { useEnvironmentThreadRefs, useThreadRefs, useThreadShell } from "../state/entities";
 import { useEnvironmentQuery } from "../state/query";
 import { environmentShell } from "../state/shell";
@@ -190,9 +193,19 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
     );
   }
 
+  // Two or more panes switch to the tiled workspace; one pane is the ordinary
+  // view, kept exactly as it was so split view costs nothing until it is used.
+  const splitActive = useSplitLayoutStore((state) => selectPaneCount(state) > 1);
   return (
     <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none md:h-dvh">
-      {view}
+      {splitActive ? (
+        <SplitWorkspace routeTarget={target} />
+      ) : (
+        <div data-split-leaf={SINGLE_PANE_ID} className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {view}
+        </div>
+      )}
+      <SplitDropOverlay />
     </SidebarInset>
   );
 }
