@@ -24,6 +24,27 @@ const RANK_HEADINGS: Record<AutoRoutePreference, string> = {
   speed: "Fastest right now",
 };
 
+/** Quality, speed and cost scores for every goal, with the goal's own score first. */
+function formatProfileScores(
+  preference: AutoRoutePreference,
+  profile: { quality: number; speed: number; economy: number },
+): string {
+  const scores = {
+    quality: `Q${profile.quality}`,
+    speed: `S${profile.speed}`,
+    cost: `C${profile.economy}`,
+  };
+  const order: ReadonlyArray<keyof typeof scores> =
+    preference === "quality"
+      ? ["quality", "speed", "cost"]
+      : preference === "speed"
+        ? ["speed", "quality", "cost"]
+        : preference === "cost"
+          ? ["cost", "quality", "speed"]
+          : ["quality", "speed", "cost"];
+  return order.map((key) => scores[key]).join(" ");
+}
+
 /**
  * Top of the model picker. Choosing a goal lets the composer pick a model per
  * message from the connected providers, and lists the top models for that goal
@@ -85,15 +106,8 @@ export function AutoRouterPickerSection(props: {
                 <span className="text-muted-foreground"> · {entry.providerLabel}</span>
               </span>
               <span className="shrink-0 text-muted-foreground">
-                {entry.free
-                  ? "Free"
-                  : preference === "speed"
-                    ? `Speed ${entry.profile.speed}/5`
-                    : preference === "quality"
-                      ? `Quality ${entry.profile.quality}/5`
-                      : preference === "cost"
-                        ? `Cost ${entry.profile.economy}/5`
-                        : `Q${entry.profile.quality} S${entry.profile.speed} C${entry.profile.economy}`}
+                {entry.free ? "Free · " : ""}
+                {formatProfileScores(preference, entry.profile)}
               </span>
             </button>
           ))}
