@@ -81,6 +81,9 @@ jobs:
       - name: Build JS bundle
         run: vp run build:desktop
 
+      - name: Check the web bundle boots
+        run: node scripts/check-web-boot.mjs
+
       - name: Build Windows installer
         env:
           T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: ${{ steps.monitor.outputs.cache-hit == 'true' && 'true' || 'false' }}
