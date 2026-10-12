@@ -1,30 +1,30 @@
 import { describe, expect, it } from "vite-plus/test";
 import { BUILT_IN_THEMES, getThemeColorsForAppearance } from "@t3tools/shared/themePalettes";
 
-import { themeColorToNativeColor } from "../../lib/mobileTheme";
+import { DEFAULT_MOBILE_THEME_ID, themeColorToNativeColor } from "../../lib/mobileTheme";
 
 import { buildGhosttyThemeConfig, getMobileTerminalTheme } from "./terminalTheme";
 
 describe("getMobileTerminalTheme", () => {
   it("uses the shared default light terminal colors", () => {
-    expect(getMobileTerminalTheme("t3-code", "light")).toMatchObject({
-      background: "#fcfcfc",
-      foreground: "#27272a",
-      cursorForeground: "#26384e",
-      cursorBackground: "#fcfcfc",
+    expect(getMobileTerminalTheme(DEFAULT_MOBILE_THEME_ID, "light")).toMatchObject({
+      background: "#eee6d6",
+      foreground: "#1f1a14",
+      cursorForeground: "#a8221b",
+      cursorBackground: "#eee6d6",
     });
   });
 
   it("uses the shared default dark terminal colors", () => {
-    expect(getMobileTerminalTheme("t3-code", "dark")).toMatchObject({
-      background: "#0a0a0a",
-      foreground: "#f5f5f5",
-      cursorForeground: "#b4cbff",
-      cursorBackground: "#0a0a0a",
+    expect(getMobileTerminalTheme(DEFAULT_MOBILE_THEME_ID, "dark")).toMatchObject({
+      background: "#07070a",
+      foreground: "#f4f4f5",
+      cursorForeground: "#00e5ff",
+      cursorBackground: "#07070a",
     });
   });
   it("applies the selected palette without replacing ANSI status colors", () => {
-    const standard = getMobileTerminalTheme("t3-code", "dark");
+    const standard = getMobileTerminalTheme(DEFAULT_MOBILE_THEME_ID, "dark");
     const ocean = getMobileTerminalTheme("ocean", "dark");
 
     expect(ocean.background).not.toBe(standard.background);
@@ -45,11 +45,11 @@ describe("getMobileTerminalTheme", () => {
 
 describe("buildGhosttyThemeConfig", () => {
   it("serializes theme colors into a ghostty config file", () => {
-    const config = buildGhosttyThemeConfig(getMobileTerminalTheme("t3-code", "dark"));
+    const config = buildGhosttyThemeConfig(getMobileTerminalTheme(DEFAULT_MOBILE_THEME_ID, "dark"));
 
-    expect(config).toContain("background = #0a0a0a");
-    expect(config).toContain("foreground = #f5f5f5");
-    expect(config).toContain("cursor-color = #b4cbff");
+    expect(config).toContain("background = #07070a");
+    expect(config).toContain("foreground = #f4f4f5");
+    expect(config).toContain("cursor-color = #00e5ff");
     expect(config).toContain("palette = 0=#141415");
     expect(config).toContain("palette = 15=#c6c6c8");
     expect(config.endsWith("\n")).toBe(true);

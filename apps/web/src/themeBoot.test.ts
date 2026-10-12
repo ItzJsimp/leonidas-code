@@ -9,6 +9,8 @@ import {
   isKnownThemePreference,
   resolveThemeAppearance,
   T3_CHAT_THEME,
+  LEONIDAS_THEME,
+  T3_ORIGINAL_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
@@ -342,7 +344,15 @@ describe("index.html boot script", () => {
   // boot script's hand-maintained copy into a CI-enforced contract: any
   // palette change breaks this test until the copy in index.html is updated.
   it("keeps every built-in boot splash in sync with the real palettes", () => {
-    for (const theme of [T3_CHAT_THEME, GROVE_THEME, OCEAN_THEME, EMBER_THEME, IRIS_THEME]) {
+    for (const theme of [
+      LEONIDAS_THEME,
+      T3_ORIGINAL_THEME,
+      T3_CHAT_THEME,
+      GROVE_THEME,
+      OCEAN_THEME,
+      EMBER_THEME,
+      IRIS_THEME,
+    ]) {
       // The boot script resolves every built-in from a light base appearance.
       expect(theme.appearance).toBe("light");
       for (const mode of ["light", "dark"] as const) {
@@ -364,6 +374,22 @@ describe("index.html boot script", () => {
         expect(boot.metaContent).toBe(colors!.chrome);
       }
     }
+  });
+
+  it.each([false, true])("uses Leonidas colors for the unselected default (dark=%s)", (dark) => {
+    const boot = runBootScript({ storage: {}, prefersDark: dark });
+    expect(boot.isDark).toBe(dark);
+    expect(boot.backgroundColor).toBe(dark ? "#07070a" : "#eee6d6");
+    expect(boot.metaContent).toBe(dark ? "#07070a" : "#eee6d6");
+  });
+
+  it("keeps the legacy t3-code preference mapped to T3 Original at boot", () => {
+    const boot = runBootScript({
+      storage: { [THEME_STORAGE_KEY]: "t3-code" },
+      prefersDark: true,
+    });
+    expect(boot.themeId).toBe("t3-original");
+    expect(boot.bootVariables["--boot-background"]).toBe("#0a0a0a");
   });
 
   it("applies the matching half of an automatic mix to the splash", () => {
@@ -493,8 +519,8 @@ describe("index.html boot script", () => {
 
     expect(boot.themeId).toBeUndefined();
     expect(boot.themeSelected).toBeUndefined();
-    expect(boot.backgroundColor).toBe("#ffffff");
-    expect(boot.metaContent).toBe("#ffffff");
+    expect(boot.backgroundColor).toBe("#eee6d6");
+    expect(boot.metaContent).toBe("#eee6d6");
   });
 
   it("leaves unknown preferences unthemed so the runtime default applies", () => {

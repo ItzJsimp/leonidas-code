@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { MOBILE_THEME_IDS } from "@t3tools/shared/themePalettes";
 
-import { getMobileThemeVariables } from "./mobileTheme";
+import { DEFAULT_MOBILE_THEME_ID, getMobileThemeVariables } from "./mobileTheme";
 import { createNativeComposerTheme } from "./nativeComposerTheme";
 
 describe("native composer colors", () => {
@@ -17,7 +17,7 @@ describe("native composer colors", () => {
 
   it("flattens Material You alpha colors over the composer rather than falling back to defaults", () => {
     const theme = createNativeComposerTheme({
-      ...getMobileThemeVariables("t3-code", "light"),
+      ...getMobileThemeVariables(DEFAULT_MOBILE_THEME_ID, "light"),
       "--color-screen": "#ffffffff",
       "--color-composer-surface": "#ffffffff",
       "--color-subtle": "#0000000d",

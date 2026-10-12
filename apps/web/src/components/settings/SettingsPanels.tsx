@@ -82,6 +82,7 @@ import {
   readThemePreference,
   useTheme,
 } from "../../hooks/useTheme";
+import { DEFAULT_LEONIDAS_GLOW_STRENGTH, useLeonidasAtmosphere } from "../../leonidasAtmosphere";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import {
   useScopedSettings,
@@ -1211,6 +1212,7 @@ export function AppearanceSettingsPanel() {
     theme,
     themeHalves,
   } = useTheme();
+  const { glowStrength, setGlowStrength, setShowGrid, showGrid } = useLeonidasAtmosphere();
   const customThemes = useCustomThemes();
   const [isImportThemeOpen, setIsImportThemeOpen] = useState(false);
   const settings = useScopedSettings();
@@ -1218,6 +1220,9 @@ export function AppearanceSettingsPanel() {
   const environmentStageLabel = useEnvironmentStageLabel();
   const showEnvironmentIdentification =
     resolveEnvironmentIdentificationPillLabel(environmentStageLabel) !== null;
+  const isLeonidasTheme =
+    (theme === "system" || theme === "light" || theme === "dark" || theme === "leonidas") &&
+    themeHalves === null;
   const glassOpacityRatio =
     (settings.glassOpacity - MIN_GLASS_OPACITY) / (MAX_GLASS_OPACITY - MIN_GLASS_OPACITY);
   const glassOpacitySliderStyle = {
@@ -1351,6 +1356,81 @@ export function AppearanceSettingsPanel() {
                 value={settings.glassOpacity}
               />
             </div>
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("setting-leonidas-grid")}
+          aria-disabled={!isLeonidasTheme}
+          description="Show the drafting grid behind the workspace on the Leonidas Code theme."
+          control={
+            <Switch
+              aria-label="Show Leonidas grid"
+              checked={showGrid}
+              disabled={!isLeonidasTheme}
+              onCheckedChange={(checked) => setShowGrid(Boolean(checked))}
+            />
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("setting-leonidas-glow")}
+          aria-disabled={!isLeonidasTheme}
+          description="Adjust the static crimson ambient light on the Leonidas Code theme."
+          resetAction={
+            glowStrength !== DEFAULT_LEONIDAS_GLOW_STRENGTH ? (
+              <SettingResetButton
+                label="crimson glow"
+                disabled={!isLeonidasTheme}
+                onClick={() => setGlowStrength(DEFAULT_LEONIDAS_GLOW_STRENGTH)}
+              />
+            ) : null
+          }
+          control={
+            <div className="flex w-full items-center gap-3 sm:w-52">
+              <output
+                className="min-w-12 rounded-md bg-muted px-2 py-1 text-center font-mono text-xs font-medium tabular-nums text-foreground"
+                htmlFor="leonidas-glow"
+              >
+                {glowStrength}%
+              </output>
+              <input
+                aria-label="Crimson glow"
+                className="settings-slider min-w-0 flex-1"
+                disabled={!isLeonidasTheme}
+                id="leonidas-glow"
+                max={100}
+                min={0}
+                onChange={(event) => setGlowStrength(Number(event.currentTarget.value))}
+                step={5}
+                style={
+                  {
+                    "--settings-slider-progress": `${glowStrength}%`,
+                    "--settings-slider-fill-offset": `${0.5 - glowStrength / 100}rem`,
+                  } as CSSProperties
+                }
+                type="range"
+                value={glowStrength}
+              />
+            </div>
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("setting-leonidas-reset")}
+          description="Return to the Leonidas Code theme with the grid on and the crimson glow at its default. Light or dark mode stays as it is."
+          control={
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => {
+                setTheme("leonidas");
+                setShowGrid(true);
+                setGlowStrength(DEFAULT_LEONIDAS_GLOW_STRENGTH);
+              }}
+            >
+              Reset to Leonidas
+            </Button>
           }
         />
 

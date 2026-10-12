@@ -6,28 +6,28 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#07070a" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <script>
       (() => {
-        const LIGHT_BACKGROUND = "#ffffff";
-        const DARK_BACKGROUND = "#0a0a0a";
+        const LIGHT_BACKGROUND = "#eee6d6";
+        const DARK_BACKGROUND = "#07070a";
         const CUSTOM_THEMES_STORAGE_KEY = "t3code:themes:v1";
         const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "t3code:theme-follow-system";
         const THEME_APPEARANCE_MODE_STORAGE_KEY = "t3code:theme-appearance-mode";
         const THEME_HALVES_STORAGE_KEY = "t3code:theme-halves:v1";
         const SPLASH_COLORS = {
           light: {
-            background: "#ffffff",
-            foreground: "#262626",
-            accent: "#4f46e5",
+            background: "#eee6d6",
+            foreground: "#1f1a14",
+            accent: "#a8221b",
           },
           dark: {
-            background: "#0a0a0a",
-            foreground: "#f5f5f5",
-            accent: "#818cf8",
+            background: "#07070a",
+            foreground: "#f4f4f5",
+            accent: "#d92626",
           },
         };
         // These are the runtime defaults used to complete a custom palette
@@ -36,21 +36,49 @@
         // app colors before React mounts.
         const DEFAULT_THEME_PALETTES = {
           light: {
-            background: "oklch(0.982446 0.010114 325.653)",
-            foreground: "oklch(0.325698 0.116116 325.037)",
-            accent: "oklch(0.591646 0.217985 0.584)",
-            chrome: "oklch(0.982446 0.010114 325.653)",
+            background: "oklch(0.926917 0.023017 84.593)",
+            foreground: "oklch(0.221543 0.013725 72.091)",
+            accent: "oklch(0.477425 0.170948 28.612)",
+            chrome: "oklch(0.912037 0.02596 84.593)",
           },
           dark: {
-            background: "oklch(0.22813 0.020366 307.469)",
-            foreground: "oklch(0.980735 0.004092 301.426)",
-            accent: "oklch(0.460685 0.185347 4.099)",
-            chrome: "oklch(0.22813 0.020366 307.469)",
+            background: "oklch(0.130254 0.007338 285.337)",
+            foreground: "oklch(0.967434 0.001326 286.375)",
+            accent: "oklch(0.571638 0.212497 27.274)",
+            chrome: "oklch(0.165663 0.008323 285.456)",
           },
         };
         // Keep this small boot-time copy in sync with the built-in palettes so
         // the selected theme is visible before the app has mounted.
         const BUILT_IN_THEME_PALETTES = {
+          leonidas: {
+            light: {
+              background: "#eee6d6",
+              foreground: "#1f1a14",
+              accent: "#a8221b",
+              chrome: "#eae1cf",
+            },
+            dark: {
+              background: "#07070a",
+              foreground: "#f4f4f5",
+              accent: "#d92626",
+              chrome: "#0e0e12",
+            },
+          },
+          "t3-original": {
+            light: {
+              background: "#fcfcfc",
+              foreground: "#27272a",
+              accent: "#1b4ed8",
+              chrome: "#fcfcfc",
+            },
+            dark: {
+              background: "#0a0a0a",
+              foreground: "#f5f5f5",
+              accent: "#346bf1",
+              chrome: "#0a0a0a",
+            },
+          },
           "t3-chat": {
             light: {
               background: "oklch(0.982446 0.010114 325.653)",
@@ -122,8 +150,8 @@
             },
           },
         };
-        // Keep the built-in mode list in sync with the runtime so the selected
-        // T3 Chat palette is visible before React has mounted.
+        // Keep the built-in mode list in sync with the runtime so selected
+        // palettes are visible before React has mounted.
         const BUILT_IN_THEME_MODES = Object.fromEntries(
           Object.entries(BUILT_IN_THEME_PALETTES).map(([id, palettes]) => [
             id,
@@ -134,11 +162,14 @@
           "system",
           "light",
           "dark",
+          "leonidas",
+          "t3-original",
           "t3-chat",
           "grove",
           "ocean",
           "ember",
           "iris",
+          "t3-code",
           "t3-chat-dark",
           "t3-grove",
           "t3-ocean",
@@ -223,6 +254,7 @@
           // and every maintainer theme under a t3- prefix; keep those
           // preferences readable. Mirrors the runtime's legacy alias table.
           const LEGACY_THEME_IDS = {
+            "t3-code": "t3-original",
             "t3-chat-dark": "t3-chat",
             "t3-grove": "grove",
             "t3-ocean": "ocean",
@@ -250,7 +282,12 @@
             themeModes !== null;
           const theme = isKnownTheme && storedTheme ? storedTheme : "system";
           const isThemed = isKnownTheme && themeModes !== null;
-          const baseAppearance = customTheme ? customTheme.appearance : "light";
+          // The legacy stock id followed the OS, so it keeps following it.
+          const baseAppearance = customTheme
+            ? customTheme.appearance
+            : storedTheme === "t3-code"
+              ? "system"
+              : "light";
           const systemMode = prefersDark ? "dark" : "light";
           const storedAppearanceMode = window.localStorage.getItem(
             THEME_APPEARANCE_MODE_STORAGE_KEY,
@@ -411,14 +448,20 @@
       }
 
       body {
-        background: #ffffff;
-        color: #262626;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        background: #eee6d6;
+        color: #1f1a14;
+        font-family:
+          "Geist",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          system-ui,
+          sans-serif;
       }
 
       html.dark body {
-        background: #0a0a0a;
-        color: #f5f5f5;
+        background: #07070a;
+        color: #f4f4f5;
       }
 
       #boot-shell {

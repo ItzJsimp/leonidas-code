@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { mobileHtmlRenderTheme } from "./htmlRenderTheme";
-import { getMobileThemeVariables } from "./mobileTheme";
+import { DEFAULT_MOBILE_THEME_ID, getMobileThemeVariables } from "./mobileTheme";
 
 describe("mobileHtmlRenderTheme", () => {
   it("paints the page with the feed's own canvas", () => {
@@ -23,7 +23,7 @@ describe("mobileHtmlRenderTheme", () => {
 
   it("takes Material You's system roles over the default palette", () => {
     const variables = {
-      ...getMobileThemeVariables("t3-code", "light"),
+      ...getMobileThemeVariables(DEFAULT_MOBILE_THEME_ID, "light"),
       "--color-primary": "#6750A4FF",
       "--color-foreground": "#1D1B20FF",
     };

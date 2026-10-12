@@ -265,6 +265,24 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["transparent transparency solid menus dialogs composer"],
   },
   {
+    id: "setting-leonidas-grid",
+    title: "Leonidas grid",
+    to: "/settings/appearance",
+    searchTerms: ["drafting background lines theme"],
+  },
+  {
+    id: "setting-leonidas-glow",
+    title: "Crimson glow",
+    to: "/settings/appearance",
+    searchTerms: ["ambient red light strength theme"],
+  },
+  {
+    id: "setting-leonidas-reset",
+    title: "Reset to Leonidas",
+    to: "/settings/appearance",
+    searchTerms: ["default theme restore grid glow"],
+  },
+  {
     id: "diff-color-scheme",
     title: "Diff colors",
     to: "/settings/appearance",

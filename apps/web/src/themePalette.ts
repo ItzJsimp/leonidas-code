@@ -4,13 +4,15 @@ import "culori/css";
 import { converter, parse } from "culori/fn";
 import {
   BUILT_IN_THEMES,
+  LEONIDAS_DARK_THEME_COLORS,
+  LEONIDAS_LIGHT_THEME_COLORS,
+  LEONIDAS_THEME,
   EMBER_THEME,
   GROVE_THEME,
   IRIS_THEME,
   OCEAN_THEME,
   T3_CHAT_THEME,
-  T3_CODE_LIGHT_THEME_COLORS,
-  T3_CODE_DARK_THEME_COLORS,
+  T3_ORIGINAL_THEME,
   RESERVED_THEME_IDS,
   THEME_COLOR_ROLES,
   type ThemeAppearance,
@@ -20,7 +22,16 @@ import {
   type ThemeVariants,
 } from "@t3tools/shared/themePalettes";
 
-export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, T3_CHAT_THEME, THEME_COLOR_ROLES };
+export {
+  EMBER_THEME,
+  GROVE_THEME,
+  IRIS_THEME,
+  LEONIDAS_THEME,
+  OCEAN_THEME,
+  T3_CHAT_THEME,
+  T3_ORIGINAL_THEME,
+  THEME_COLOR_ROLES,
+};
 export type { ThemeAppearance, ThemeColorRole, ThemeColors, ThemeDefinition, ThemeVariants };
 
 export const T3_CHAT_THEME_ID = "t3-chat" as const;
@@ -35,6 +46,8 @@ export const THEME_APPEARANCE_MODE_STORAGE_KEY = "t3code:theme-appearance-mode";
 export const THEME_HALVES_STORAGE_KEY = "t3code:theme-halves:v1";
 
 const LEGACY_T3_CHAT_DARK_THEME_ID = "t3-chat-dark";
+// The stock look was stored as "t3-code" and followed the OS; keep that meaning.
+const LEGACY_T3_CODE_THEME_ID = "t3-code";
 
 export const ThemePreference = Schema.String;
 export type ThemePreference = typeof ThemePreference.Type;
@@ -299,6 +312,7 @@ export function subscribeToCustomThemes(listener: () => void): () => void {
 // old ids stay readable through this alias table.
 const LEGACY_THEME_ID_ALIASES: Readonly<Record<string, string>> = {
   [LEGACY_T3_CHAT_DARK_THEME_ID]: T3_CHAT_THEME_ID,
+  "t3-code": "t3-original",
   "t3-grove": GROVE_THEME_ID,
   "t3-ocean": OCEAN_THEME_ID,
   "t3-ember": EMBER_THEME_ID,
@@ -329,16 +343,14 @@ function legacyThemeMode(theme: ThemePreference): ThemeAppearance | null {
 }
 
 /**
- * The standard Leonidas Code look as a theme palette, for seeding a new theme when
- * no theme is installed. Distinct from {@link getDefaultThemeColors}, which
- * carries the flagship T3 Chat palette used to fill roles omitted by theme
- * files.
+ * The standard Leonidas Code palette, also used to seed new theme files and
+ * fill roles omitted by older theme files.
  */
 export function getStandardThemeColors(appearance: ThemeAppearance): ThemeColors {
   if (appearance === "dark") {
-    return (standardDarkThemeColors ??= decodeThemeColors(T3_CODE_DARK_THEME_COLORS));
+    return (standardDarkThemeColors ??= decodeThemeColors(LEONIDAS_DARK_THEME_COLORS));
   }
-  return (standardLightThemeColors ??= decodeThemeColors(T3_CODE_LIGHT_THEME_COLORS));
+  return (standardLightThemeColors ??= decodeThemeColors(LEONIDAS_LIGHT_THEME_COLORS));
 }
 
 type ThemeRgbColor = {
@@ -880,7 +892,7 @@ function standardMutedThemeText(
 
 /** Theme-file defaults follow the flagship palette for the requested mode. */
 export function getDefaultThemeColors(appearance: ThemeAppearance): ThemeColors {
-  return appearance === "dark" ? T3_CHAT_THEME.variants!.dark! : T3_CHAT_THEME.colors;
+  return getStandardThemeColors(appearance);
 }
 
 /**
@@ -1134,7 +1146,7 @@ export function getThemeModes(theme: ThemeDefinition): ReadonlyArray<ThemeAppear
 }
 
 export function getThemePreferenceMode(theme: ThemePreference): ThemeAppearance | null {
-  if (theme === "system") return null;
+  if (theme === "system" || theme === LEGACY_T3_CODE_THEME_ID) return null;
   if (theme === "light" || theme === "dark") return theme;
   const legacyMode = legacyThemeMode(theme);
   if (legacyMode) return legacyMode;
@@ -1550,6 +1562,16 @@ export function applyThemePalette(theme: ThemePreference, appearance?: ThemeAppe
     root.dataset.themeId = palette.id;
     const mode = appearance ?? legacyThemeMode(theme) ?? palette.appearance;
     const colors = getThemeColorsForMode(palette, mode) ?? palette.colors;
+    for (const [role, value] of Object.entries(colors) as Array<[ThemeColorRole, string]>) {
+      root.style.setProperty(APP_THEME_VARIABLES[role], value);
+    }
+    return;
+  }
+
+  if (theme === "system" || theme === "light" || theme === "dark") {
+    root.dataset.themeId = "leonidas";
+    const mode = appearance ?? (theme === "dark" ? "dark" : "light");
+    const colors = getStandardThemeColors(mode);
     for (const [role, value] of Object.entries(colors) as Array<[ThemeColorRole, string]>) {
       root.style.setProperty(APP_THEME_VARIABLES[role], value);
     }

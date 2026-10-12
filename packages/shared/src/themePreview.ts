@@ -10,14 +10,14 @@ export type ThemePreviewColors = Readonly<{
 export const STANDARD_THEME_PREVIEW_COLORS: Readonly<Record<ThemeAppearance, ThemePreviewColors>> =
   {
     light: {
-      canvas: "#fcfcfc",
-      accent: "#f4f4f5",
-      messageAction: "#4f46e5",
+      canvas: "#eee6d6",
+      accent: "#e6cfc0",
+      messageAction: "#a8221b",
     },
     dark: {
-      canvas: "#0a0a0a",
-      accent: "#1c1c1f",
-      messageAction: "#8b9cff",
+      canvas: "#07070a",
+      accent: "#200b0d",
+      messageAction: "#d92626",
     },
   };
 
@@ -60,7 +60,7 @@ export const THEME_PREVIEW_RENDER_SPECS: Readonly<Record<ThemeAppearance, ThemeP
       blurAt56Px: 3,
     },
     dark: {
-      baseTarget: "#09090b",
+      baseTarget: "#07070a",
       baseWeight: 0.8,
       accent: {
         center: [0.28, 0.78],

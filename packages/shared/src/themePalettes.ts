@@ -1,14 +1,25 @@
-export const BUILT_IN_THEME_IDS = ["t3-chat", "grove", "ocean", "ember", "iris"] as const;
+export const BUILT_IN_THEME_IDS = [
+  "leonidas",
+  "t3-original",
+  "t3-chat",
+  "grove",
+  "ocean",
+  "ember",
+  "iris",
+] as const;
 
-/** The standard Leonidas Code palette, kept separate from the optional built-in theme library. */
-export const MOBILE_DEFAULT_THEME_ID = "t3-code";
+/** The standard Leonidas Code palette is also available to native clients. */
+export const MOBILE_DEFAULT_THEME_ID = "leonidas";
 
 /**
  * Every palette the mobile app can render. Declared here so host-side tooling
  * (the app-store screenshot harness) can validate a requested theme without
  * importing React Native application code.
  */
-export const MOBILE_THEME_IDS = [MOBILE_DEFAULT_THEME_ID, ...BUILT_IN_THEME_IDS] as const;
+export const MOBILE_THEME_IDS = [
+  MOBILE_DEFAULT_THEME_ID,
+  ...BUILT_IN_THEME_IDS.filter((id) => id !== MOBILE_DEFAULT_THEME_ID),
+] as const;
 
 /**
  * Ids a theme may not take: the appearance keywords a stored preference uses,
@@ -21,6 +32,7 @@ export const RESERVED_THEME_IDS: ReadonlySet<string> = new Set([
   "light",
   "dark",
   ...BUILT_IN_THEME_IDS,
+  "t3-code",
   "t3-chat-dark",
   "t3-grove",
   "t3-ocean",
@@ -28,16 +40,8 @@ export const RESERVED_THEME_IDS: ReadonlySet<string> = new Set([
   "t3-iris",
 ]);
 
-/**
- * Additionally closed to a machine publishing a theme: the mobile default is
- * not a web or desktop built-in, so a saved theme may legitimately carry that
- * id, but no client that follows published themes can resolve it -- publishing
- * it would report success and change nothing.
- */
-export const UNPUBLISHABLE_THEME_IDS: ReadonlySet<string> = new Set([
-  ...RESERVED_THEME_IDS,
-  MOBILE_DEFAULT_THEME_ID,
-]);
+/** Theme ids that a publisher cannot create, including every reserved built-in. */
+export const UNPUBLISHABLE_THEME_IDS: ReadonlySet<string> = new Set(RESERVED_THEME_IDS);
 
 export type BuiltInThemeId = (typeof BUILT_IN_THEME_IDS)[number];
 export type MobileThemeId = (typeof MOBILE_THEME_IDS)[number];
@@ -126,9 +130,8 @@ export type ThemeDefinition = Readonly<{
 }>;
 
 /**
- * The palette Leonidas Code wears with no theme installed, captured from the app's
- * stock tokens (index.css) so a draft seeded from the default look paints the
- * pixels the user is already seeing. Alpha-bearing tokens are flattened over
+ * The original T3 Code palette retained for the selectable T3 Original theme.
+ * Alpha-bearing tokens are flattened over
  * their real backdrops (canvas, or the sidebar for its rows) because theme
  * colors are stored as opaque OKLCH tokens.
  * Search uses amber across built-ins to separate matches from accent-tinted
@@ -262,9 +265,157 @@ export const T3_CODE_DARK_THEME_COLORS: ThemeColors = {
   terminalScrollbarHover: "#363636",
 };
 
+/** Leonidas Code on Linen Sand paper: Dispatch paper and its darker accent twins, so every role clears its contrast floor. */
+export const LEONIDAS_LIGHT_THEME_COLORS: ThemeColors = {
+  ...T3_CODE_LIGHT_THEME_COLORS,
+  searchMatchBackground: "#f2c75c",
+  searchMatchForeground: "#2d210d",
+  searchMatchActiveBackground: "#8f4f0a",
+  searchMatchActiveForeground: "#fff8e9",
+  canvas: "#eee6d6",
+  chrome: "#eae1cf",
+  toolbar: "#eae1cf",
+  toolbarForeground: "#1f1a14",
+  toolbarBorder: "#cfc2a8",
+  toolbarControl: "#f8f4ec",
+  toolbarControlForeground: "#1f1a14",
+  toolbarControlHover: "#e4d9c3",
+  surface: "#f8f4ec",
+  surfaceRaised: "#e4d9c3",
+  surfaceOverlay: "#f8f4ec",
+  text: "#1f1a14",
+  textMuted: "#4a4236",
+  border: "#cfc2a8",
+  input: "#8f8270",
+  focus: "#0a6474",
+  accent: "#a8221b",
+  accentForeground: "#ffffff",
+  secondary: "#e4d9c3",
+  secondaryForeground: "#1f1a14",
+  muted: "#e9e0cf",
+  mutedForeground: "#5f5647",
+  placeholder: "#5f5647",
+  secondaryLabel: "#4a4236",
+  iconMuted: "#5f5647",
+  error: "#a3173f",
+  errorForeground: "#7d1030",
+  errorSurface: "#e6cdc4",
+  warning: "#735a1f",
+  warningForeground: "#5a4516",
+  warningSurface: "#e0d5c0",
+  update: "#0a6474",
+  updateForeground: "#0a6474",
+  updateSurface: "#d3d6ca",
+  accentSurface: "#e6cfc0",
+  accentSurfaceForeground: "#5e1510",
+  messageSurface: "#e9e0cf",
+  messageForeground: "#1f1a14",
+  messageAction: "#a8221b",
+  messageActionForeground: "#ffffff",
+  messageActionHover: "#8a1a15",
+  codeBackground: "#e9e0cf",
+  codeForeground: "#1f1a14",
+  sidebar: "#e9e0cf",
+  sidebarForeground: "#1f1a14",
+  sidebarMutedForeground: "#4a4236",
+  sidebarControlSurface: "#ddd1ba",
+  sidebarRowHover: "#ebe3d3",
+  sidebarRowActive: "#f8f4ec",
+  sidebarRowSelected: "#f0e9da",
+  sidebarBorder: "#cfc2a8",
+  terminalBackground: "#eee6d6",
+  terminalForeground: "#1f1a14",
+  terminalCursor: "#a8221b",
+  terminalSelection: "#e0c9c0",
+  terminalScrollbar: "#8f8270",
+  terminalScrollbarHover: "#5f5647",
+};
+
+/** Leonidas Code on Obsidian: the Command register's tiers with the approved P1 crimson and cyan. */
+export const LEONIDAS_DARK_THEME_COLORS: ThemeColors = {
+  ...T3_CODE_DARK_THEME_COLORS,
+  searchMatchBackground: "#79601e",
+  searchMatchForeground: "#fff8e9",
+  searchMatchActiveBackground: "#e7ad39",
+  searchMatchActiveForeground: "#21180a",
+  canvas: "#07070a",
+  chrome: "#0e0e12",
+  toolbar: "#0e0e12",
+  toolbarForeground: "#f4f4f5",
+  toolbarBorder: "#2a2a35",
+  toolbarControl: "#15151b",
+  toolbarControlForeground: "#f4f4f5",
+  toolbarControlHover: "#1d1d25",
+  surface: "#15151b",
+  surfaceRaised: "#1d1d25",
+  surfaceOverlay: "#1d1d25",
+  text: "#f4f4f5",
+  textMuted: "#a1a1aa",
+  border: "#2a2a35",
+  input: "#3a3a48",
+  focus: "#00e5ff",
+  accent: "#d92626",
+  accentForeground: "#ffffff",
+  secondary: "#1d1d25",
+  secondaryForeground: "#f4f4f5",
+  muted: "#15151b",
+  mutedForeground: "#a1a1aa",
+  placeholder: "#84848e",
+  secondaryLabel: "#a1a1aa",
+  iconMuted: "#84848e",
+  error: "#ff4d6d",
+  errorForeground: "#ff8097",
+  errorSurface: "#2b0f16",
+  warning: "#f59e0b",
+  warningForeground: "#fbbf24",
+  warningSurface: "#23190a",
+  update: "#00e5ff",
+  updateForeground: "#00e5ff",
+  updateSurface: "#07222a",
+  accentSurface: "#200b0d",
+  accentSurfaceForeground: "#f05252",
+  messageSurface: "#15151b",
+  messageForeground: "#f4f4f5",
+  messageAction: "#d92626",
+  messageActionForeground: "#ffffff",
+  messageActionHover: "#e53939",
+  codeBackground: "#0e0e12",
+  codeForeground: "#e4e4e7",
+  sidebar: "#111116",
+  sidebarForeground: "#f4f4f5",
+  sidebarMutedForeground: "#a1a1aa",
+  sidebarControlSurface: "#15151b",
+  sidebarRowHover: "#15151b",
+  sidebarRowActive: "#1d1d25",
+  sidebarRowSelected: "#1d1d25",
+  sidebarBorder: "#2a2a35",
+  terminalBackground: "#07070a",
+  terminalForeground: "#f4f4f5",
+  terminalCursor: "#00e5ff",
+  terminalSelection: "#16303a",
+  terminalScrollbar: "#2a2a35",
+  terminalScrollbarHover: "#3a3a48",
+};
+
+export const LEONIDAS_THEME: ThemeDefinition = {
+  id: "leonidas",
+  label: "Leonidas Code",
+  appearance: "light",
+  colors: LEONIDAS_LIGHT_THEME_COLORS,
+  variants: { dark: LEONIDAS_DARK_THEME_COLORS },
+};
+
+export const T3_ORIGINAL_THEME: ThemeDefinition = {
+  id: "t3-original",
+  label: "T3 Original",
+  appearance: "light",
+  colors: T3_CODE_LIGHT_THEME_COLORS,
+  variants: { dark: T3_CODE_DARK_THEME_COLORS },
+};
+
 export const T3_CHAT_THEME: ThemeDefinition = {
   id: "t3-chat",
-  label: "T3 Chat",
+  label: "Orchid",
   appearance: "light",
   colors: {
     canvas: "oklch(0.982446 0.010114 325.653)",
@@ -938,6 +1089,8 @@ export const IRIS_THEME: ThemeDefinition = {
 };
 
 export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [
+  LEONIDAS_THEME,
+  T3_ORIGINAL_THEME,
   T3_CHAT_THEME,
   GROVE_THEME,
   OCEAN_THEME,
