@@ -1,4 +1,5 @@
-import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
+import { DevPreviewError, OrchestrationDispatchCommandError } from "@t3tools/contracts";
+import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
@@ -95,6 +96,7 @@ import {
   PersistChatAttachmentsError,
   RpcClientId,
   EnvironmentAuthorizationError,
+  type Project,
   type ProjectId,
   type ProviderDriverKind,
   type ProviderInstanceId,
@@ -1295,6 +1297,24 @@ const layerWsRpc = (
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
+      const devPreview = yield* DevPreviewService.DevPreviewService;
+      const withDevPreviewProject = <A, E, R>(
+        projectId: ProjectId,
+        use: (project: Project) => Effect.Effect<A, E, R>,
+      ) =>
+        Effect.gen(function* () {
+          const project = yield* projectService
+            .getById(projectId)
+            .pipe(
+              Effect.mapError(
+                (cause) => new DevPreviewError({ reason: "project_not_found", cause }),
+              ),
+            );
+          if (Option.isNone(project)) {
+            return yield* new DevPreviewError({ reason: "project_not_found", cause: projectId });
+          }
+          return yield* use(project.value);
+        });
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
       const promptSuggestion = PromptSuggestion.make(
         yield* TextGeneration.TextGeneration,
@@ -2674,6 +2694,12 @@ const layerWsRpc = (
             ),
           ),
         [WS_METHODS.taskBoardList]: () => taskBoard.list,
+        [WS_METHODS.devPreviewStatus]: (input) =>
+          withDevPreviewProject(input.projectId, devPreview.status),
+        [WS_METHODS.devPreviewStart]: (input) =>
+          withDevPreviewProject(input.projectId, devPreview.start),
+        [WS_METHODS.devPreviewStop]: (input) =>
+          withDevPreviewProject(input.projectId, devPreview.stop),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsReadFile]: (input) =>

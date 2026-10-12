@@ -22,6 +22,7 @@ import {
   ChatGptHandoffState,
 } from "./providerSetup.ts";
 import { TaskBoardSnapshot, TaskBoardReadError } from "./taskBoard.ts";
+import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -405,6 +406,9 @@ export const WS_METHODS = {
   projectsListEntries: "projects.listEntries",
   projectsReadFile: "projects.readFile",
   taskBoardList: "taskBoard.list",
+  devPreviewStatus: "devPreview.status",
+  devPreviewStart: "devPreview.start",
+  devPreviewStop: "devPreview.stop",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsSearchContents: "projects.searchContents",
@@ -1256,6 +1260,24 @@ const WsTaskBoardListRpc = Rpc.make(WS_METHODS.taskBoardList, {
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
+const WsDevPreviewStatusRpc = Rpc.make(WS_METHODS.devPreviewStatus, {
+  payload: DevPreviewInput,
+  success: DevPreviewState,
+  error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
+const WsDevPreviewStartRpc = Rpc.make(WS_METHODS.devPreviewStart, {
+  payload: DevPreviewInput,
+  success: DevPreviewState,
+  error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
+const WsDevPreviewStopRpc = Rpc.make(WS_METHODS.devPreviewStop, {
+  payload: DevPreviewInput,
+  success: DevPreviewState,
+  error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
 const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidates, {
   payload: Schema.Struct({ cwd: Schema.String }),
   success: Schema.Array(
@@ -2079,6 +2101,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsListEntriesRpc,
   WsProjectsReadFileRpc,
   WsTaskBoardListRpc,
+  WsDevPreviewStatusRpc,
+  WsDevPreviewStartRpc,
+  WsDevPreviewStopRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsSearchContentsRpc,
