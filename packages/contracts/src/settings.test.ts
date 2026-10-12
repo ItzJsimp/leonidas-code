@@ -303,6 +303,20 @@ describe("ClientSettings notifications", () => {
     expect(decodeClientSettingsPatch({})).not.toHaveProperty("notificationMode");
   });
 
+  it("patches quiet hours, usage warning, volume and default reasoning effort", () => {
+    const patch = {
+      notificationQuietHoursEnabled: true,
+      notificationQuietHoursStart: "23:30",
+      notificationQuietHoursEnd: "06:15",
+      usageWarningPercent: null,
+      notificationVolume: 40,
+      defaultReasoningEffort: "high",
+    };
+    expect(decodeClientSettingsPatch(patch)).toEqual(patch);
+    expect(() => decodeClientSettingsPatch({ notificationVolume: 101 })).toThrow();
+    expect(() => decodeClientSettingsPatch({ notificationQuietHoursStart: "7pm" })).toThrow();
+  });
+
   it.each([true, false])(
     "round-trips in-app notifications set to %s",
     (inAppNotificationsEnabled) => {

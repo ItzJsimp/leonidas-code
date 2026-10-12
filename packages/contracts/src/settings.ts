@@ -1726,6 +1726,14 @@ export function requiredScopesForProjectMutation(
 export const ClientSettingsPatch = Schema.Struct({
   notificationMode: Schema.optionalKey(NotificationMode),
   inAppNotificationsEnabled: Schema.optionalKey(Schema.Boolean),
+  notificationQuietHoursEnabled: Schema.optionalKey(Schema.Boolean),
+  notificationQuietHoursStart: Schema.optionalKey(TimeOfDay),
+  notificationQuietHoursEnd: Schema.optionalKey(TimeOfDay),
+  usageWarningPercent: Schema.optionalKey(Schema.NullOr(UsageWarningPercent)),
+  defaultReasoningEffort: Schema.optionalKey(
+    Schema.NullOr(Schema.Literals(["low", "medium", "high"])),
+  ),
+  notificationVolume: Schema.optionalKey(NotificationVolume),
   diffColorScheme: Schema.optionalKey(DiffColorScheme),
   chatWidth: Schema.optionalKey(ChatWidth),
   loadBalancingEnabled: Schema.optionalKey(Schema.Boolean),
