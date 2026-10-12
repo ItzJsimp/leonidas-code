@@ -114,7 +114,12 @@ function modelName(name: string, id: number): string {
         .replace(/^claude-(4(?:\.\d+)?)-(sonnet|opus|haiku)/, "claude-$2-$1")
         .replaceAll(".", "-");
     }
-    return normalized;
+    // Effort/variant tags (`-low`, `-medium`, `-n`...) are the same model, so
+    // they must not split one Gemini model across several usage rows.
+    return normalized.replace(
+      /^(gemini-[\d.]+-(?:pro|flash(?:-lite)?))-(?:minimal|low|medium|high|thinking|[a-z])$/,
+      "$1",
+    );
   }
   return MODEL_IDS[id] ?? (id > 0 ? `antigravity-model-${id}` : "");
 }

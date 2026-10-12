@@ -771,6 +771,7 @@ export const make = Effect.gen(function* () {
       untilDay: input.untilDay,
       resolution: input.resolution ?? "day",
       ...hourlyWindow,
+      ...(input.bucketMinutes ? { bucketMs: input.bucketMinutes * 60_000 } : {}),
       rates,
       priceOverrides: createOverrideRateTable(settings.usagePriceOverrides),
       modelAliases: resolveModelAliases(settings.usageModelAliases),
@@ -896,6 +897,7 @@ export const make = Effect.gen(function* () {
       input.resolution ?? "day",
       input.sinceTime ?? null,
       input.untilTime ?? null,
+      input.bucketMinutes ?? null,
       settings,
       // A waiting read must never share a scan that answers with `refreshing`.
       input.awaitRefresh === true,

@@ -11,6 +11,7 @@ import {
 import { CircleAlertIcon, ChevronDownIcon, InfoIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
+  DEFAULT_LIMITS_REFRESH_COOLDOWN_MS,
   cursorKeychainAccessEnvironments,
   refreshUsageLimits,
 } from "@t3tools/client-runtime/state/usage";
@@ -48,7 +49,6 @@ import {
   formatTokens,
   formatUsageContractMismatch,
   formatUsd,
-  makeWindow,
 } from "@t3tools/shared/usageFormat";
 import { Button, InlineButton } from "../ui/button";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
@@ -61,7 +61,6 @@ import {
   MenuTrigger,
 } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { SidebarInset } from "../ui/sidebar";
 import { Skeleton } from "../ui/skeleton";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
@@ -81,18 +80,24 @@ import { SpeedPremium, UsageModelDialog } from "./UsageModelDialog";
 import { UsageShareBar } from "./UsageShareBar";
 import {
   costTypeSegments,
+  displayModelName,
+  freeModelKind,
+  usageHighlights,
   modelShare,
   sortModelsByTokens,
   speedCostSegments,
   tokenTypeSegments,
 } from "./usageBreakdown";
+import { METRIC_OPTIONS, resolveUsageShortcut, type UsageMetric } from "./usageShortcuts";
 import {
-  METRIC_OPTIONS,
-  WINDOW_OPTIONS,
-  resolveUsageShortcut,
-  type UsageMetric,
-} from "./usageShortcuts";
+  USAGE_RANGES,
+  makeRangeWindow,
+  rangeById,
+  rangeIdForDays,
+  type UsageRangeId,
+} from "./usageRanges";
 import { useEscapeToGoBack } from "../../hooks/useNavigateBack";
+import { useVisibleInterval } from "../../hooks/useVisibleInterval";
 import { PROVIDER_ORDER, PROVIDER_PRESENTATION, providersWithUsage } from "./usageProviders";
 import {
   readUsagePagePreferences,
@@ -104,8 +109,8 @@ function isUsageMetric(value: string | null | undefined): value is UsageMetric {
   return METRIC_OPTIONS.some((option) => option.value === value);
 }
 
-function isUsageWindowDays(value: number): value is UsagePagePreferences["windowDays"] {
-  return WINDOW_OPTIONS.some((option) => option.days === value);
+function isUsageRangeId(value: string): value is UsageRangeId {
+  return USAGE_RANGES.some((range) => range.id === value);
 }
 
 const providerLabel = (provider: UsageProviderKind) => PROVIDER_PRESENTATION[provider].label;
@@ -115,27 +120,31 @@ export function UsagePage() {
   useEscapeToGoBack();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const shortcutTitle = (
-    option: (typeof METRIC_OPTIONS)[number] | (typeof WINDOW_OPTIONS)[number],
+    option: { readonly label: string } & {
+      readonly command?:
+        | (typeof METRIC_OPTIONS)[number]["command"]
+        | "usage.period.day"
+        | "usage.period.week"
+        | "usage.period.month"
+        | "usage.period.quarter";
+    },
   ) => {
+    if (option.command === undefined) return option.label;
     const shortcut = shortcutLabelForCommand(keybindings, option.command, {
       context: { usagePageOpen: true },
     });
     return shortcut ? `${option.label} (${shortcut})` : option.label;
   };
-  const [windowSelection, setWindowSelection] = useState(() => ({
-    days: preferences.windowDays,
-    window: makeWindow(
-      preferences.windowDays,
-      undefined,
-      preferences.windowDays === 1 ? "hour" : "day",
-    ),
-  }));
+  const [windowSelection, setWindowSelection] = useState(() => {
+    const rangeId = preferences.range ?? rangeIdForDays(preferences.windowDays);
+    return { rangeId, window: makeRangeWindow(rangeId) };
+  });
   const metric = preferences.metric;
   const showingLimits = metric === "limits";
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [limitsNow, setLimitsNow] = useState(() => Date.now());
   const refreshingRef = useRef(false);
-  const [breakdown, setBreakdown] = useState<"model" | "time">("model");
+  const [breakdown, setBreakdown] = useState<"model" | "provider" | "time">("model");
   const [priceDialog, setPriceDialog] = useState<{ readonly model?: string } | null>(null);
   const [selectedModelKey, setSelectedModelKey] = useState<string | null>(null);
   const [selectedEnvironmentIds, setSelectedEnvironmentIds] =
@@ -144,8 +153,7 @@ export function UsagePage() {
     () => new Set(preferences.hiddenProviders),
     [preferences.hiddenProviders],
   );
-  const { days: windowDays, window } = windowSelection;
-  const isPast24Hours = windowDays === 1;
+  const { rangeId, window } = windowSelection;
   const {
     merged: answeredUsage,
     environments,
@@ -158,6 +166,9 @@ export function UsagePage() {
   const merged = shown?.merged ?? answeredUsage;
   const shownWindow = shown?.window ?? window;
   const shownHourly = shownWindow.resolution === "hour";
+  const shownBucketMinutes = shownWindow.bucketMinutes ?? 60;
+  // Short windows are read minute by minute, so labels need the minute.
+  const shownMinutes = shownHourly && shownBucketMinutes < 60;
   const refreshingUsage = isRefreshing && !showingLimits;
   // Usage kept from another window is all old, so every figure stays muted.
   const showingKept = shown !== null && shown.window !== window;
@@ -213,8 +224,12 @@ export function UsagePage() {
     () =>
       shownWindow.sinceTime === undefined || shownWindow.untilTime === undefined
         ? []
-        : enumerateHourStarts(shownWindow.sinceTime, shownWindow.untilTime),
-    [shownWindow.sinceTime, shownWindow.untilTime],
+        : enumerateHourStarts(
+            shownWindow.sinceTime,
+            shownWindow.untilTime,
+            shownWindow.bucketMinutes ?? 60,
+          ),
+    [shownWindow.sinceTime, shownWindow.untilTime, shownWindow.bucketMinutes],
   );
   // Newest first: the window can run 90 periods, so the interesting end
   // belongs at the top of the table.
@@ -251,6 +266,10 @@ export function UsagePage() {
     selectedModelKey === null
       ? undefined
       : merged.models.find((model) => `${model.provider}:${model.model}` === selectedModelKey);
+  const highlights = useMemo(
+    () => usageHighlights(merged, { tokens: formatTokens, usd: formatUsd }, formatPercent),
+    [merged],
+  );
   const breakdownPeak = breakdownModels.reduce(
     (peak, model) => Math.max(peak, metric === "tokens" ? model.totalTokens : model.costUsd),
     0,
@@ -273,13 +292,13 @@ export function UsagePage() {
     setPreferences(nextPreferences);
     saveUsagePagePreferences(nextPreferences);
   };
-  const selectWindow = (days: number) => {
-    if (!isUsageWindowDays(days)) return;
-    updatePreferences({ windowDays: days });
-    setWindowSelection({
-      days,
-      window: makeWindow(days, undefined, days === 1 ? "hour" : "day"),
+  const selectWindow = (next: UsageRangeId) => {
+    const nextRange = rangeById(next);
+    updatePreferences({
+      range: next,
+      windowDays: "days" in nextRange ? nextRange.days : 1,
     });
+    setWindowSelection({ rangeId: next, window: makeRangeWindow(next) });
   };
   const selectMetric = (nextMetric: UsageMetric) => {
     if (nextMetric === "limits") setLimitsNow(Date.now());
@@ -316,13 +335,15 @@ export function UsagePage() {
 
     const command = resolveUsageShortcut(event, keybindings);
     const metricOption = METRIC_OPTIONS.find((option) => option.command === command);
-    const periodOption = WINDOW_OPTIONS.find((option) => option.command === command);
+    const periodOption = USAGE_RANGES.find(
+      (option) => "command" in option && option.command === command,
+    );
     if (!metricOption && !periodOption) return;
 
     event.preventDefault();
     event.stopPropagation();
     if (metricOption) selectMetric(metricOption.value);
-    if (periodOption && !showingLimits) selectWindow(periodOption.days);
+    if (periodOption && !showingLimits) selectWindow(periodOption.id);
   });
 
   useEffect(() => {
@@ -342,14 +363,14 @@ export function UsagePage() {
       });
       return;
     }
-    const nextWindow = makeWindow(windowDays, undefined, isPast24Hours ? "hour" : "day");
+    const nextWindow = makeRangeWindow(rangeId);
     if (
       nextWindow.sinceDay !== window.sinceDay ||
       nextWindow.untilDay !== window.untilDay ||
       nextWindow.sinceTime !== window.sinceTime ||
       nextWindow.untilTime !== window.untilTime
     ) {
-      setWindowSelection({ days: windowDays, window: nextWindow });
+      setWindowSelection({ rangeId, window: nextWindow });
     }
     refreshingRef.current = true;
     setIsRefreshing(true);
@@ -372,13 +393,21 @@ export function UsagePage() {
     void refreshLimits(true);
   });
   useEffect(() => {
-    if (showingLimits && connectedLimitsEnvironments) autoRefreshLimits();
+    if (!showingLimits || !connectedLimitsEnvironments) return;
+    autoRefreshLimits();
   }, [showingLimits, connectedLimitsEnvironments]);
+  // Claude's quota probe is cached for five minutes. In-turn rate-limit events update these rows
+  // live, so this poll only catches other devices, and a hidden window has no one to show it to.
+  useVisibleInterval(
+    autoRefreshLimits,
+    DEFAULT_LIMITS_REFRESH_COOLDOWN_MS + 5_000,
+    showingLimits && Boolean(connectedLimitsEnvironments),
+  );
 
   // Names the period on screen, which is the previous one until the new one answers.
   const windowLabel =
     shownHourly && shownWindow.sinceTime !== undefined && shownWindow.untilTime !== undefined
-      ? `${formatDateTimeShort(shownWindow.sinceTime, shownWindow.timeZone)} to ${formatDateTimeShort(shownWindow.untilTime, shownWindow.timeZone)}`
+      ? `${formatDateTimeShort(shownWindow.sinceTime, shownWindow.timeZone, shownMinutes)} to ${formatDateTimeShort(shownWindow.untilTime, shownWindow.timeZone, shownMinutes)}`
       : `${formatDayShort(shownWindow.sinceDay)} to ${formatDayShort(shownWindow.untilDay)}`;
   const topbarContent = (
     <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2 xl:flex">
@@ -409,119 +438,69 @@ export function UsagePage() {
           />
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
-      {!showingLimits ? (
-        <span className="hidden min-w-0 truncate text-xs text-muted-foreground 2xl:block">
-          {windowLabel}
-        </span>
-      ) : null}
-      <div className="ms-auto hidden min-w-0 items-center justify-end gap-2 xl:flex">
-        <ToggleGroup
-          aria-label="Usage metric"
-          variant="segmented"
-          value={[metric]}
-          onValueChange={(next) => {
-            const value = next[0];
-            if (isUsageMetric(value)) selectMetric(value);
-          }}
-        >
-          {METRIC_OPTIONS.map((option) => (
-            <Toggle key={option.value} value={option.value} title={shortcutTitle(option)}>
-              {option.label}
-            </Toggle>
-          ))}
-        </ToggleGroup>
-        {/* The period does not apply to Limits, so it stays in place but
-            disabled; unmounting it shifted the metric toggle ~300px. */}
+      <Button
+        className="ms-auto"
+        onClick={refreshWindow}
+        aria-label={showingLimits ? "Refresh limits" : "Refresh usage"}
+        aria-busy={isRefreshing}
+        disabled={isRefreshing || (!showingLimits && !canReadDiagnostics)}
+        size="icon-sm"
+        variant="ghost"
+      >
+        <RefreshIcon size="sm" refreshing={isRefreshing} />
+      </Button>
+    </div>
+  );
+
+  // Always on screen and wrapping, never collapsed into menus: the metric tabs
+  // and the range presets are how the whole page is driven.
+  const toolbar = (
+    <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-x-3 gap-y-2 bg-background/95 px-1 py-2 backdrop-blur">
+      <ToggleGroup
+        aria-label="Usage metric"
+        variant="segmented"
+        value={[metric]}
+        onValueChange={(next) => {
+          const value = next[0];
+          if (isUsageMetric(value)) selectMetric(value);
+        }}
+      >
+        {METRIC_OPTIONS.map((option) => (
+          <Toggle key={option.value} value={option.value} title={shortcutTitle(option)}>
+            {option.label}
+          </Toggle>
+        ))}
+      </ToggleGroup>
+      {/* Limits has no period, so the presets stay in place but disabled;
+          unmounting them would shift the metric tabs. */}
+      <div className="min-w-0 max-w-full overflow-x-auto">
         <ToggleGroup
           aria-label="Usage period"
           variant="segmented"
-          value={[String(windowDays)]}
+          value={[rangeId]}
           disabled={showingLimits}
           onValueChange={(next) => {
             const value = next[0];
-            if (value) selectWindow(Number(value));
+            if (value && isUsageRangeId(value)) selectWindow(value);
           }}
         >
-          {WINDOW_OPTIONS.map((option) => (
-            <Toggle key={option.days} value={String(option.days)} title={shortcutTitle(option)}>
+          {USAGE_RANGES.map((option) => (
+            <Toggle
+              key={option.id}
+              value={option.id}
+              title={shortcutTitle({
+                label: option.long,
+                ...("command" in option ? { command: option.command } : {}),
+              })}
+            >
               {option.label}
             </Toggle>
           ))}
         </ToggleGroup>
-        <Button
-          onClick={refreshWindow}
-          aria-label={showingLimits ? "Refresh limits" : "Refresh usage"}
-          aria-busy={isRefreshing}
-          disabled={isRefreshing || (!showingLimits && !canReadDiagnostics)}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <RefreshIcon size="sm" refreshing={isRefreshing} />
-        </Button>
       </div>
-      <div className="ms-auto flex min-w-0 items-center justify-end gap-1 xl:hidden">
-        <Select
-          value={metric}
-          onValueChange={(value) => {
-            if (isUsageMetric(value)) selectMetric(value);
-          }}
-        >
-          <SelectTrigger
-            aria-label="Usage metric"
-            size="compact"
-            variant="ghost"
-            className="w-auto min-w-0"
-          >
-            <SelectValue>
-              {METRIC_OPTIONS.find((option) => option.value === metric)?.label}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPopup align="end" alignItemWithTrigger={false}>
-            {METRIC_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} title={shortcutTitle(option)}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-        <Select
-          value={String(windowDays)}
-          disabled={showingLimits}
-          onValueChange={(value) => selectWindow(Number(value))}
-        >
-          <SelectTrigger
-            aria-label="Usage period"
-            size="compact"
-            variant="ghost"
-            className="w-auto min-w-0"
-          >
-            <SelectValue>
-              {WINDOW_OPTIONS.find((option) => option.days === windowDays)?.label}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPopup align="end" alignItemWithTrigger={false}>
-            {WINDOW_OPTIONS.map((option) => (
-              <SelectItem
-                key={option.days}
-                value={String(option.days)}
-                title={shortcutTitle(option)}
-              >
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-        <Button
-          onClick={refreshWindow}
-          aria-label={showingLimits ? "Refresh limits" : "Refresh usage"}
-          aria-busy={isRefreshing}
-          disabled={isRefreshing || (!showingLimits && !canReadDiagnostics)}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <RefreshIcon size="sm" refreshing={isRefreshing} />
-        </Button>
-      </div>
+      {!showingLimits ? (
+        <span className="min-w-0 truncate text-xs text-muted-foreground">{windowLabel}</span>
+      ) : null}
     </div>
   );
 
@@ -532,6 +511,7 @@ export function UsagePage() {
 
         <ScrollArea className="min-h-0 flex-1">
           <WorkspacePageContainer width="wide">
+            {toolbar}
             {selectedEnvironments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {environments.length === 0
@@ -713,7 +693,7 @@ export function UsagePage() {
 
                   <div className="flex min-w-0 flex-col gap-3">
                     <h2 className="text-sm font-medium text-foreground">
-                      {shownHourly ? "Hourly" : "Daily"}{" "}
+                      {shownHourly ? (shownMinutes ? "Per-minute" : "Hourly") : "Daily"}{" "}
                       {metric === "tokens" ? "processed tokens" : "cost"}
                     </h2>
                     <UsageProviderChart
@@ -723,6 +703,7 @@ export function UsagePage() {
                       daily={merged.daily}
                       hours={hours}
                       hourly={merged.hourly}
+                      withMinutes={shownMinutes}
                       metric={metric}
                       referenceTime={shownWindow.untilTime}
                       resolution={shownHourly ? "hour" : "day"}
@@ -761,6 +742,32 @@ export function UsagePage() {
                     />
                   </div>
                 </section>
+
+                {highlights.length > 0 ? (
+                  <section className="flex flex-col gap-2">
+                    <h2 className="text-sm font-medium text-foreground">Highlights</h2>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-4">
+                      {highlights.map((item) => (
+                        <div key={item.label} className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-xs text-muted-foreground">{item.label}</span>
+                          <span
+                            className={cn(
+                              "truncate text-sm font-medium text-foreground tabular-nums",
+                              figureClass(loading.partial),
+                            )}
+                          >
+                            {item.value}
+                          </span>
+                          {item.detail ? (
+                            <span className="truncate text-xs text-muted-foreground">
+                              {item.detail}
+                            </span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
 
                 {merged.totalTokens > 0 ? (
                   <section
@@ -804,13 +811,18 @@ export function UsagePage() {
                       value={[breakdown]}
                       onValueChange={(next) => {
                         const value = next[0];
-                        if (value === "model" || value === "time") setBreakdown(value);
+                        if (value === "model" || value === "provider" || value === "time")
+                          setBreakdown(value);
                       }}
                     >
                       {(
                         [
                           { value: "model", label: "Model" },
-                          { value: "time", label: shownHourly ? "Hour" : "Day" },
+                          { value: "provider", label: "Provider" },
+                          {
+                            value: "time",
+                            label: shownHourly ? (shownMinutes ? "Time" : "Hour") : "Day",
+                          },
                         ] as const
                       ).map((option) => (
                         <Toggle key={option.value} value={option.value}>
@@ -862,7 +874,7 @@ export function UsagePage() {
                                     className="flex items-center gap-2 text-left text-foreground outline-none after:absolute after:inset-0"
                                   >
                                     <ProviderMark provider={model.provider} className="size-3.5" />
-                                    {model.model}
+                                    {displayModelName(model.model)}
                                   </button>
                                   <div
                                     aria-hidden
@@ -883,7 +895,16 @@ export function UsagePage() {
                                   </div>
                                 </td>
                                 <td className={cn("py-2.5 pl-6 text-foreground", rowFigures)}>
-                                  {isModelCostUnknown(model) ? (
+                                  {freeModelKind(model.model) !== null ? (
+                                    <span title="No cost: this model is free or runs on this machine">
+                                      $0 ·{" "}
+                                      <span className="text-muted-foreground">
+                                        {freeModelKind(model.model) === "local"
+                                          ? "Free · local"
+                                          : "Free"}
+                                      </span>
+                                    </span>
+                                  ) : isModelCostUnknown(model) ? (
                                     <span className="text-muted-foreground">Unpriced</span>
                                   ) : (
                                     formatUsd(model.costUsd)
@@ -901,6 +922,65 @@ export function UsagePage() {
                         )}
                       </tbody>
                     </table>
+                  ) : breakdown === "provider" ? (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-right text-xs text-muted-foreground">
+                          <th className="w-full py-2 text-left font-normal">Provider</th>
+                          <th className="py-2 pl-6 font-normal">Cost</th>
+                          <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
+                          <th className="py-2 pl-6 font-normal">Sessions</th>
+                          <th className="py-2 pl-6 font-normal">Tokens</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {merged.providers.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                              No activity in this window.
+                            </td>
+                          </tr>
+                        ) : (
+                          merged.providers
+                            .toSorted((a, b) => b.totalTokens - a.totalTokens)
+                            .map((entry) => {
+                              const rowFigures = figureClass(isProviderLoading(entry.provider));
+                              return (
+                                <tr
+                                  key={entry.provider}
+                                  className="border-b border-border/50 text-right whitespace-nowrap text-muted-foreground tabular-nums"
+                                >
+                                  <td className="py-2.5 text-left text-foreground">
+                                    <span className="flex items-center gap-2">
+                                      <ProviderMark
+                                        provider={entry.provider}
+                                        className="size-3.5"
+                                      />
+                                      {providerLabel(entry.provider)}
+                                    </span>
+                                  </td>
+                                  <td className={cn("py-2.5 pl-6 text-foreground", rowFigures)}>
+                                    {formatUsd(entry.costUsd)}
+                                  </td>
+                                  <td
+                                    className={cn("hidden py-2.5 pl-6 sm:table-cell", rowFigures)}
+                                  >
+                                    {formatPercent(
+                                      metric === "tokens" ? entry.tokenShare : entry.costShare,
+                                    )}
+                                  </td>
+                                  <td className={cn("py-2.5 pl-6", rowFigures)}>
+                                    {formatCount(entry.sessions)}
+                                  </td>
+                                  <td className={cn("py-2.5 pl-6", rowFigures)}>
+                                    {formatTokens(entry.totalTokens)}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                        )}
+                      </tbody>
+                    </table>
                   ) : (
                     <table className="w-full table-fixed text-sm">
                       <colgroup>
@@ -913,7 +993,9 @@ export function UsagePage() {
                       </colgroup>
                       <thead>
                         <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                          <th className="py-2 font-normal">{shownHourly ? "Hour" : "Day"}</th>
+                          <th className="py-2 font-normal">
+                            {shownHourly ? (shownMinutes ? "Time" : "Hour") : "Day"}
+                          </th>
                           {activeProviders.map((provider) => (
                             <th key={provider} className="py-2 text-right font-normal">
                               {PROVIDER_PRESENTATION[provider].label}
@@ -941,7 +1023,11 @@ export function UsagePage() {
                             >
                               <td className="py-2 text-foreground">
                                 {"hourStart" in period
-                                  ? formatHourShort(period.hourStart, shownWindow.timeZone)
+                                  ? formatHourShort(
+                                      period.hourStart,
+                                      shownWindow.timeZone,
+                                      shownMinutes,
+                                    )
                                   : formatDayShort(period.day)}
                               </td>
                               {activeProviders.map((provider) => (
@@ -991,6 +1077,7 @@ export function UsagePage() {
           chartWindow={{
             days,
             hours,
+            withMinutes: shownMinutes,
             resolution: shownHourly ? "hour" : "day",
             timeZone: shownWindow.timeZone,
             referenceTime: shownWindow.untilTime,

@@ -1,10 +1,10 @@
 /**
  * OpenRouterDriver — `ProviderDriver` for the OpenRouter AI provider and router.
  *
- * Runs OpenRouter through the Claude Agent SDK runtime with OpenRouter API
- * endpoints pre-configured (ANTHROPIC_BASE_URL=https://openrouter.ai/api),
- * providing access to any OpenRouter model (Claude 3.7 Sonnet, DeepSeek R1,
- * GPT-4o, Gemini 2.0 Flash, Llama 3.3, Qwen, etc.).
+ * Runs selected OpenRouter models through the Claude Agent SDK and OpenRouter
+ * Anthropic-compatible endpoint. Model and provider compatibility varies;
+ * non-Anthropic routes are not guaranteed. A native OpenAI-compatible adapter
+ * is a separate incomplete path.
  *
  * @module provider/Drivers/OpenRouterDriver
  */
@@ -31,7 +31,11 @@ import {
 } from "../../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { claudeUsageFormat } from "./claudeUsage.ts";
-import { type ProviderUsageReader } from "@t3tools/provider-core/server/usage";
+import {
+  type ProviderUsageReader,
+  type TranscriptUsageFormat,
+  type UsageRecord,
+} from "@t3tools/provider-core/server/usage";
 import { makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
@@ -88,10 +92,21 @@ const UPDATE = makePackageManagedProviderMaintenanceResolver({
   },
 });
 
+const asOpenRouter = (records: readonly UsageRecord[]): readonly UsageRecord[] =>
+  records.map((record) => ({ ...record, provider: "openrouter" }));
+
+/** Claude-shaped transcripts, attributed to OpenRouter so they stay out of Claude totals. */
+const openRouterUsageFormat: TranscriptUsageFormat<void> = {
+  ...claudeUsageFormat,
+  parseLine: (line, state) => asOpenRouter(claudeUsageFormat.parseLine(line, state)),
+  parseProjected: (projected, state) =>
+    asOpenRouter(claudeUsageFormat.parseProjected(projected, state)),
+};
+
 export const openRouterUsageReader: ProviderUsageReader<OpenRouterSettings, Path.Path> = {
   kind: "transcripts",
-  provider: "claude",
-  format: claudeUsageFormat,
+  provider: "openrouter",
+  format: openRouterUsageFormat,
   directories: Effect.fn("openRouterUsageReader.directories")(function* ({ config, environment }) {
     if (config === undefined) return [];
     const path = yield* Path.Path;
@@ -205,8 +220,13 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
             environment: openRouterEnvironment,
             enabled,
             config: claudeCompatibleConfig,
+            driver: DRIVER_KIND,
           },
-          { scopedLimitNames, onUsageLimits: (update) => snapshot.applyUsageLimits(update) },
+          {
+            scopedLimitNames,
+            onUsageLimits: (update) => snapshot.applyUsageLimits(update),
+            driver: DRIVER_KIND,
+          },
         ).pipe(
           Effect.mapError(
             (cause) =>
@@ -285,7 +305,9 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
                     name: entry.name,
                     isCustom: false,
                     ...(entry.status === "legacy" ? { isLegacy: true } : {}),
-                    ...( (catalog as any)?.defaultChatModel === entry.slug ? { isDefault: true } : {}),
+                    ...((catalog as any)?.defaultChatModel === entry.slug
+                      ? { isDefault: true }
+                      : {}),
                     ...(entry.badge ? { badge: entry.badge } : {}),
                     capabilities: null,
                   }));
@@ -294,8 +316,15 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
                     enabled: effectiveConfig.enabled,
                     installed: true,
                     version: "openrouter",
-                    status: effectiveConfig.enabled ? (effectiveConfig.apiKey.trim().length > 0 ? "ready" as const : "needs_auth" as const) : "disabled" as const,
-                    auth: effectiveConfig.apiKey.trim().length > 0 ? { status: "authenticated" as const } : { status: "unauthenticated" as const },
+                    status: effectiveConfig.enabled
+                      ? effectiveConfig.apiKey.trim().length > 0
+                        ? ("ready" as const)
+                        : ("needs_auth" as const)
+                      : ("disabled" as const),
+                    auth:
+                      effectiveConfig.apiKey.trim().length > 0
+                        ? { status: "authenticated" as const }
+                        : { status: "unauthenticated" as const },
                     checkedAt: "2026-10-11T01:35:00Z",
                     models,
                     skills: [],
