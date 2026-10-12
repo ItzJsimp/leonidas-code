@@ -23,6 +23,7 @@
  */
 import { CodexSettings, ProviderDriverKind } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
+import * as Cache from "effect/Cache";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -44,6 +45,7 @@ import { ProviderDriverError } from "../Errors.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
   checkCodexProviderStatus,
+  makeCodexSkillsProbeCache,
   makePendingCodexProvider,
   probeCodexSkillsForCwd,
   withCodexAppServerClient,
@@ -276,23 +278,23 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv, Path.Pat
         processEnv,
         snapshot.getSnapshot.pipe(Effect.map((value) => value.models)),
       );
+      const skillsProbeCache = yield* makeCodexSkillsProbeCache((cwd) =>
+        probeCodexSkillsForCwd({
+          binaryPath: effectiveConfig.binaryPath,
+          homePath: effectiveConfig.homePath,
+          launchArgs: resolveCodexLaunchArgs(effectiveConfig.launchArgs, processEnv),
+          cwd,
+          environment: processEnv,
+        }).pipe(
+          Effect.scoped,
+          Effect.timeout("20 seconds"),
+          Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+        ),
+      );
       const snapshotForCwd = (cwd: string) =>
         !effectiveConfig.enabled
           ? snapshot.getSnapshot
-          : Effect.all([
-              snapshot.getSnapshot,
-              probeCodexSkillsForCwd({
-                binaryPath: effectiveConfig.binaryPath,
-                homePath: effectiveConfig.homePath,
-                launchArgs: resolveCodexLaunchArgs(effectiveConfig.launchArgs, processEnv),
-                cwd,
-                environment: processEnv,
-              }).pipe(
-                Effect.scoped,
-                Effect.timeout("20 seconds"),
-                Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
-              ),
-            ]).pipe(
+          : Effect.all([snapshot.getSnapshot, Cache.get(skillsProbeCache, cwd)]).pipe(
               Effect.map(([machineSnapshot, skills]) => ({ ...machineSnapshot, skills })),
               Effect.mapError(
                 (cause) =>

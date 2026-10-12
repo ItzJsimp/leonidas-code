@@ -699,17 +699,18 @@ export const layerQueryRunner: Layer.Layer<
         // SDK keeps its own stderr capture and exit reporting. The SDK runs a
         // script entry through node instead, so those launch unwrapped.
         const binaryPath = queryOptions.pathToClaudeCodeExecutable;
-        const launch =
+        const launch = yield* (
           binaryPath === undefined ||
           CLAUDE_SCRIPT_EXTENSIONS.some((ext) => binaryPath.endsWith(ext))
-            ? undefined
-            : yield* agentScope.wrap({
+            ? Effect.succeed(undefined)
+            : agentScope.wrap({
                 command: binaryPath,
                 args: [],
                 name: "claude",
                 threadId: input.threadId,
                 env: queryOptions.env,
-              });
+              })
+        ).pipe(Effect.withSpan("ClaudeAgentSdkQueryRunner.open.spawn"));
         const options =
           launch === undefined || launch.args.length === 0
             ? queryOptions
@@ -725,6 +726,7 @@ export const layerQueryRunner: Layer.Layer<
             try: () => query({ prompt, options }),
             catch: (cause) => queryRunnerError(cause, "query"),
           }).pipe(
+            Effect.withSpan("ClaudeAgentSdkQueryRunner.open.query"),
             Effect.tap((queryRuntime) =>
               restore(
                 Effect.gen(function* () {
@@ -748,6 +750,7 @@ export const layerQueryRunner: Layer.Layer<
                             ),
                           ),
                       }),
+                      Effect.withSpan("ClaudeAgentSdkQueryRunner.open.mcpInit"),
                     );
                     if (failed.length > 0) {
                       yield* Effect.logWarning("orchestration-v2.claude-mcp-servers-unavailable", {

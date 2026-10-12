@@ -157,6 +157,8 @@ export interface TraceSink {
 export interface LocalFileTracerOptions extends TraceSinkOptions {
   readonly delegate?: Tracer.Tracer;
   readonly sink?: TraceSink;
+  /** Span names excluded from the local trace file while still reaching an OTLP delegate. */
+  readonly dropSpanNames?: ReadonlySet<string> | undefined;
 }
 
 type OtlpSpan = OtlpTracer.ScopeSpan["spans"][number];
@@ -172,6 +174,7 @@ interface SerializableSpan {
   readonly status: Tracer.SpanStatus;
   readonly sampled: boolean;
   readonly kind: Tracer.SpanKind;
+  readonly writeToLocalFile: boolean;
   readonly attributes: ReadonlyMap<string, unknown>;
   readonly links: ReadonlyArray<Tracer.SpanLink>;
   readonly events: ReadonlyArray<
@@ -497,6 +500,7 @@ class LocalFileSpan implements Tracer.Span {
   readonly links: Array<Tracer.SpanLink>;
   readonly sampled: boolean;
   readonly kind: Tracer.SpanKind;
+  readonly writeToLocalFile: boolean;
 
   status: Tracer.SpanStatus;
   attributes: Map<string, unknown>;
@@ -508,6 +512,7 @@ class LocalFileSpan implements Tracer.Span {
     options: Parameters<Tracer.Tracer["span"]>[0],
     delegate: Tracer.Span,
     push: (record: EffectTraceRecord) => void,
+    writeToLocalFile: boolean,
   ) {
     this.delegate = delegate;
     this.push = push;
@@ -519,6 +524,7 @@ class LocalFileSpan implements Tracer.Span {
     this.links = [...options.links];
     this.sampled = delegate.sampled;
     this.kind = delegate.kind;
+    this.writeToLocalFile = writeToLocalFile;
     this.status = {
       _tag: "Started",
       startTime: options.startTime,
@@ -538,7 +544,7 @@ class LocalFileSpan implements Tracer.Span {
     };
     this.delegate.end(endTime, traceExit);
 
-    if (this.sampled) {
+    if (this.sampled && this.writeToLocalFile) {
       this.push(spanToTraceRecord(this));
     }
   }
@@ -581,7 +587,12 @@ export const makeLocalFileTracer = Effect.fn("makeLocalFileTracer")(function* (
 
   return Tracer.make({
     span(spanOptions) {
-      return new LocalFileSpan(spanOptions, delegate.span(spanOptions), sink.push);
+      return new LocalFileSpan(
+        spanOptions,
+        delegate.span(spanOptions),
+        sink.push,
+        !options.dropSpanNames?.has(spanOptions.name),
+      );
     },
     ...(delegate.context ? { context: delegate.context } : {}),
   });

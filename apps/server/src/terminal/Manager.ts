@@ -2471,68 +2471,67 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
 
     const { inspector: subprocessInspector, snapshotSucceeded } = inspectorOption.value;
 
-    const checkSubprocessActivity = Effect.fn("terminal.checkSubprocessActivity")(function* (
-      session: TerminalSessionState & { pid: number },
-    ) {
-      const terminalPid = session.pid;
-      const inspectResult = yield* subprocessInspector(terminalPid).pipe(
-        Effect.asSome,
-        Effect.catch((reason) =>
-          Effect.logWarning("failed to check terminal subprocess activity", {
-            threadId: session.threadId,
-            terminalId: session.terminalId,
-            terminalPid,
-            reason,
-          }).pipe(Effect.as(Option.none<TerminalSubprocessInspectResult>())),
-        ),
-      );
-
-      if (Option.isNone(inspectResult)) {
-        return;
-      }
-
-      const next = inspectResult.value;
-      yield* registerTerminalProcesses({
-        threadId: session.threadId,
-        terminalId: session.terminalId,
-        processIds: next.processIds,
-      });
-      const nextChildLabel = next.hasRunningSubprocess ? next.childCommand : null;
-      const event = yield* modifyManagerState((state) => {
-        const liveSession: Option.Option<TerminalSessionState> = Option.fromNullishOr(
-          state.sessions.get(toSessionKey(session.threadId, session.terminalId)),
+    const checkSubprocessActivity = (session: TerminalSessionState & { pid: number }) =>
+      Effect.gen(function* () {
+        const terminalPid = session.pid;
+        const inspectResult = yield* subprocessInspector(terminalPid).pipe(
+          Effect.asSome,
+          Effect.catch((reason) =>
+            Effect.logWarning("failed to check terminal subprocess activity", {
+              threadId: session.threadId,
+              terminalId: session.terminalId,
+              terminalPid,
+              reason,
+            }).pipe(Effect.as(Option.none<TerminalSubprocessInspectResult>())),
+          ),
         );
-        if (
-          Option.isNone(liveSession) ||
-          liveSession.value.status !== "running" ||
-          liveSession.value.pid !== terminalPid ||
-          (liveSession.value.hasRunningSubprocess === next.hasRunningSubprocess &&
-            liveSession.value.childCommandLabel === nextChildLabel)
-        ) {
-          return [Option.none(), state] as const;
+
+        if (Option.isNone(inspectResult)) {
+          return;
         }
 
-        liveSession.value.hasRunningSubprocess = next.hasRunningSubprocess;
-        liveSession.value.childCommandLabel = nextChildLabel;
-        const eventStamp = advanceEventSequence(liveSession.value);
+        const next = inspectResult.value;
+        yield* registerTerminalProcesses({
+          threadId: session.threadId,
+          terminalId: session.terminalId,
+          processIds: next.processIds,
+        });
+        const nextChildLabel = next.hasRunningSubprocess ? next.childCommand : null;
+        const event = yield* modifyManagerState((state) => {
+          const liveSession: Option.Option<TerminalSessionState> = Option.fromNullishOr(
+            state.sessions.get(toSessionKey(session.threadId, session.terminalId)),
+          );
+          if (
+            Option.isNone(liveSession) ||
+            liveSession.value.status !== "running" ||
+            liveSession.value.pid !== terminalPid ||
+            (liveSession.value.hasRunningSubprocess === next.hasRunningSubprocess &&
+              liveSession.value.childCommandLabel === nextChildLabel)
+          ) {
+            return [Option.none(), state] as const;
+          }
 
-        return [
-          Option.some({
-            type: "activity" as const,
-            threadId: liveSession.value.threadId,
-            terminalId: liveSession.value.terminalId,
-            sequence: eventStamp.sequence,
-            hasRunningSubprocess: next.hasRunningSubprocess,
-            label: terminalWireLabel(liveSession.value),
-          }),
-          state,
-        ] as const;
-      });
+          liveSession.value.hasRunningSubprocess = next.hasRunningSubprocess;
+          liveSession.value.childCommandLabel = nextChildLabel;
+          const eventStamp = advanceEventSequence(liveSession.value);
 
-      if (Option.isSome(event)) {
-        yield* publishEvent(event.value);
-      }
-    });
+          return [
+            Option.some({
+              type: "activity" as const,
+              threadId: liveSession.value.threadId,
+              terminalId: liveSession.value.terminalId,
+              sequence: eventStamp.sequence,
+              hasRunningSubprocess: next.hasRunningSubprocess,
+              label: terminalWireLabel(liveSession.value),
+            }),
+            state,
+          ] as const;
+        });
+
+        if (Option.isSome(event)) {
+          yield* publishEvent(event.value);
+        }
+      }).pipe(Effect.withTracerEnabled(false));
 
     yield* Effect.forEach(runningSessions, checkSubprocessActivity, {
       concurrency: "unbounded",

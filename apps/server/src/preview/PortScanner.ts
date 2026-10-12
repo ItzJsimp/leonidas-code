@@ -766,8 +766,10 @@ export const make = Effect.gen(function* PortDiscoveryMake() {
       ),
   );
 
-  const registerTerminalProcesses: PortDiscovery["Service"]["registerTerminalProcesses"] =
-    Effect.fn("PortDiscovery.registerTerminalProcesses")(function* (input) {
+  const registerTerminalProcesses: PortDiscovery["Service"]["registerTerminalProcesses"] = (
+    input,
+  ) =>
+    Effect.gen(function* () {
       const owner = {
         threadId: ThreadId.make(input.threadId),
         terminalId: input.terminalId,
@@ -785,7 +787,7 @@ export const make = Effect.gen(function* PortDiscoveryMake() {
         }
         return { ...state, terminalProcesses };
       });
-    });
+    }).pipe(Effect.withTracerEnabled(false));
 
   const unregisterTerminal: PortDiscovery["Service"]["unregisterTerminal"] = Effect.fn(
     "PortDiscovery.unregisterTerminal",

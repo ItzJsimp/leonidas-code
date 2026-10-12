@@ -1,5 +1,6 @@
 import { ProviderDriverKind, TextGenerationError, type CodexSettings } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Cache from "effect/Cache";
 import * as Stream from "effect/Stream";
 import * as Option from "effect/Option";
 import { ChildProcessSpawner } from "effect/process";
@@ -11,6 +12,7 @@ import { ProviderDriverError } from "../Errors.ts";
 import { createCodexAdapterV2 } from "../../orchestration-v2/Adapters/CodexAdapterV2.ts";
 import {
   checkCodexProviderStatus,
+  makeCodexSkillsProbeCache,
   makePendingCodexProvider,
   probeCodexSkillsForCwd,
 } from "../CodexProvider.ts";
@@ -261,6 +263,21 @@ export const makeManagedCodexProvider = Effect.fn("makeManagedCodexProvider")(fu
     generateThreadTitle: (value) =>
       protect("generateThreadTitle", nativeGeneration.generateThreadTitle(value)),
   };
+  const skillsProbeCache = yield* makeCodexSkillsProbeCache((cwd) =>
+    resolveRuntime.pipe(
+      Effect.flatMap((effective) =>
+        probeCodexSkillsForCwd({
+          binaryPath: effective.config.binaryPath,
+          homePath: effective.config.homePath,
+          launchArgs: effective.config.launchArgs,
+          cwd,
+          environment: effective.environment,
+        }),
+      ),
+      Effect.scoped,
+      Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+    ),
+  );
   return {
     instanceId,
     driverKind: DRIVER,
@@ -274,21 +291,10 @@ export const makeManagedCodexProvider = Effect.fn("makeManagedCodexProvider")(fu
     auth: runtime.auth.controller,
     snapshotForCwd: (cwd: string) =>
       enabled
-        ? resolveRuntime.pipe(
-            Effect.flatMap((effective) =>
-              probeCodexSkillsForCwd({
-                binaryPath: effective.config.binaryPath,
-                homePath: effective.config.homePath,
-                launchArgs: effective.config.launchArgs,
-                cwd,
-                environment: effective.environment,
-              }),
-            ),
+        ? Cache.get(skillsProbeCache, cwd).pipe(
             Effect.flatMap((skills) =>
               snapshot.getSnapshot.pipe(Effect.map((draft) => ({ ...draft, skills }))),
             ),
-            Effect.scoped,
-            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
             Effect.catch(() => snapshot.getSnapshot),
           )
         : snapshot.getSnapshot,

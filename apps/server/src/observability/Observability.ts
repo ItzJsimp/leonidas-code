@@ -65,6 +65,7 @@ export const layer = Layer.unwrap(
           maxFiles: config.traceMaxFiles,
           batchWindowMs: config.traceBatchWindowMs,
           sink,
+          dropSpanNames: new Set(["sqlite"]),
           ...(delegate ? { delegate } : {}),
         });
 

@@ -1,4 +1,5 @@
 import * as DateTime from "effect/DateTime";
+import * as Cache from "effect/Cache";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -66,6 +67,7 @@ type CodexRateLimitsProbe =
   | { readonly failure: string };
 
 const CODEX_APP_SERVER_PROBE_FORCE_KILL_AFTER = "2 seconds" as const;
+export const CODEX_SKILLS_PROBE_TTL = Duration.minutes(5);
 
 const CODEX_PRESENTATION = {
   displayName: "Codex",
@@ -498,6 +500,16 @@ export const probeCodexSkillsForCwd = Effect.fn("probeCodexSkillsForCwd")(functi
   const skillsResponse = yield* client.request("skills/list", { cwds: [input.cwd] });
   return parseCodexSkillsListResponse(skillsResponse, input.cwd);
 });
+
+/** Workspace scans are expensive app-server launches, so each provider instance reuses them briefly. */
+export const makeCodexSkillsProbeCache = <E, R>(
+  lookup: (cwd: string) => Effect.Effect<ReadonlyArray<ServerProviderSkill>, E, R>,
+) =>
+  Cache.make({
+    capacity: 32,
+    timeToLive: CODEX_SKILLS_PROBE_TTL,
+    lookup,
+  });
 
 const emptyCodexModelsFromSettings = (codexSettings: CodexSettings): ServerProvider["models"] =>
   appendCustomCodexModels([], codexSettings.customModels);
