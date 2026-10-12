@@ -7,6 +7,10 @@ const STORAGE_KEY = "t3code:usage-page-preferences:v1";
 const UsagePagePreferencesSchema = Schema.Struct({
   metric: Schema.Literals(["cost", "tokens", "limits"]),
   windowDays: Schema.Literals([1, 7, 30, 90]),
+  /** The chosen preset. Absent in older saves, which fall back to `windowDays`. */
+  range: Schema.optional(
+    Schema.Literals(["15m", "30m", "1h", "3h", "6h", "12h", "24h", "7d", "30d", "90d"]),
+  ),
   /** Providers filtered out of the page. Stored as hidden so new providers show by default. */
   hiddenProviders: Schema.optional(Schema.Array(UsageProviderKind)),
 });

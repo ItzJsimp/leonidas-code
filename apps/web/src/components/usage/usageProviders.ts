@@ -46,6 +46,11 @@ export const PROVIDER_PRESENTATION = {
     color: "#4d9f8a",
     driverKind: ProviderDriverKind.make("pi"),
   },
+  openrouter: {
+    label: "OpenRouter",
+    color: "#6366f1",
+    driverKind: ProviderDriverKind.make("openrouter"),
+  },
 } satisfies Record<UsageProviderKind, UsageProviderPresentation>;
 
 /** Stable provider reading order across charts, summaries, tables, and hover rows. */

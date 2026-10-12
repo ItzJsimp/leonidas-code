@@ -50,11 +50,14 @@ export function cursorKeychainAccessEnvironments<
 const limitsRefreshAfter = new Map<EnvironmentId, number>();
 const limitsRefreshes = new Map<EnvironmentId, Promise<unknown>>();
 
+export const DEFAULT_LIMITS_REFRESH_COOLDOWN_MS = 5 * 60_000;
+
 export async function refreshUsageLimits<A>(
   environmentId: EnvironmentId,
   refresh: () => Promise<A>,
   automatic = false,
   afterPending = false,
+  cooldownMs = DEFAULT_LIMITS_REFRESH_COOLDOWN_MS,
 ): Promise<A | undefined> {
   const pending = limitsRefreshes.get(environmentId);
   if (pending !== undefined) {
@@ -64,7 +67,7 @@ export async function refreshUsageLimits<A>(
       } catch {
         // The new check still needs to run if the earlier one failed.
       }
-      return refreshUsageLimits(environmentId, refresh, false, true);
+      return refreshUsageLimits(environmentId, refresh, false, true, cooldownMs);
     }
     // Manual refresh waits for the current check; automatic refresh does not repeat it.
     return automatic ? undefined : ((await pending) as A);
@@ -77,7 +80,7 @@ export async function refreshUsageLimits<A>(
     .finally(() => {
       limitsRefreshes.delete(environmentId);
       // @effect-diagnostics-next-line globalDate:off
-      limitsRefreshAfter.set(environmentId, Date.now() + 5 * 60_000);
+      limitsRefreshAfter.set(environmentId, Date.now() + cooldownMs);
     });
   limitsRefreshes.set(environmentId, current);
   return await current;

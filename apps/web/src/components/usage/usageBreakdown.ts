@@ -2,6 +2,7 @@ import type { UsageTokenTotals } from "@t3tools/contracts";
 import {
   isModelCostUnknown,
   type CategoryCost,
+  type MergedUsage,
   type ModelTotals,
   type SpeedCost,
 } from "@t3tools/shared/usageMerge";
@@ -83,4 +84,71 @@ export function speedCostSegments(cost: SpeedCost): readonly ShareSegment[] {
     { label: "Fast", value: cost.fast, color: ink(66) },
     { label: "Ultrafast", value: cost.ultrafast, color: ink(100) },
   ];
+}
+
+/** Placeholder ids the readers emit when a record carried no usable model name. */
+export function displayModelName(model: string): string {
+  return model === "antigravity-unknown" || model === "<synthetic>" ? "Unattributed" : model;
+}
+
+export interface UsageHighlight {
+  readonly label: string;
+  readonly value: string;
+  readonly detail?: string | undefined;
+}
+
+/**
+ * The few figures people open this page to find: where the tokens went, how
+ * well the cache worked, and what a session costs. Pure so it can be tested.
+ */
+export function usageHighlights(
+  merged: MergedUsage,
+  format: { readonly tokens: (n: number) => string; readonly usd: (n: number) => string },
+  percent: (n: number) => string,
+): readonly UsageHighlight[] {
+  const highlights: UsageHighlight[] = [];
+  const top = sortModelsByTokens(merged.models)[0];
+  if (top && merged.totalTokens > 0) {
+    highlights.push({
+      label: "Top model",
+      value: displayModelName(top.model),
+      detail: `${percent(top.tokenShare)} of tokens`,
+    });
+  }
+  const input = merged.uncachedInputTokens + merged.cachedInputTokens + merged.cacheCreationTokens;
+  if (input > 0) {
+    highlights.push({
+      label: "Cache hit rate",
+      value: percent(merged.cachedInputTokens / input),
+      detail: `${format.usd(merged.costQuality.cacheSavingsUsd)} saved`,
+    });
+  }
+  if (merged.sessions > 0 && merged.totalTokens > 0) {
+    highlights.push({
+      label: "Per session",
+      value: format.tokens(merged.totalTokens / merged.sessions),
+      detail:
+        merged.costUsd > 0 ? `${format.usd(merged.costUsd / merged.sessions)} avg` : undefined,
+    });
+  }
+  if (merged.outputTokens > 0 && input > 0) {
+    highlights.push({
+      label: "Output share",
+      value: percent(merged.outputTokens / merged.totalTokens),
+      detail: `${format.tokens(merged.outputTokens)} generated`,
+    });
+  }
+  return highlights;
+}
+
+/**
+ * Models that cost nothing by design: OpenRouter `:free` routes, and models
+ * served from this machine (Ollama, LM Studio, llama.cpp style ids). Shown as
+ * an explicit $0 instead of "Unpriced", which reads as "we don't know".
+ */
+export function freeModelKind(model: string): "free" | "local" | null {
+  const id = model.toLowerCase();
+  if (id.endsWith(":free")) return "free";
+  if (/^(ollama|lmstudio|lm-studio|llamacpp|llama\.cpp|local)[/:]/.test(id)) return "local";
+  return null;
 }
