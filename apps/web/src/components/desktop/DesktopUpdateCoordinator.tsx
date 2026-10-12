@@ -1,6 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useTourStore } from "../../features/tour/tourStore";
+import { isTourTargetId, type TourTargetId } from "../../features/tour/tourTargets";
 import { ensureLocalApi } from "../../localApi";
 import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import { runningThreadCountAtom } from "../../state/threads";
@@ -19,6 +21,63 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { playTestSound } from "./LeonidasMobNotificationNotice";
 import { LeonidasWhatsNewDialog } from "./LeonidasWhatsNewDialog";
 import { fetchLatestReleaseWhatsNew, onWhatsNewPreviewRequested } from "./whatsNewPreview";
+
+const PENDING_FEATURE_WALKTHROUGH_KEY = "leonidas:pending-feature-walkthrough:v1";
+
+interface PendingFeatureWalkthrough {
+  readonly version: string;
+  readonly prompt: string;
+  readonly tourId?: TourTargetId;
+}
+
+function readPendingFeatureWalkthrough(): PendingFeatureWalkthrough | null {
+  try {
+    const raw = window.localStorage.getItem(PENDING_FEATURE_WALKTHROUGH_KEY);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null) return null;
+    const candidate = value as {
+      readonly version?: unknown;
+      readonly prompt?: unknown;
+      readonly tourId?: unknown;
+    };
+    return typeof candidate.version === "string" &&
+      candidate.version.length <= 100 &&
+      typeof candidate.prompt === "string" &&
+      candidate.prompt.length <= 1200
+      ? {
+          version: candidate.version,
+          prompt: candidate.prompt,
+          ...(typeof candidate.tourId === "string" && isTourTargetId(candidate.tourId)
+            ? { tourId: candidate.tourId }
+            : {}),
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePendingFeatureWalkthrough(value: PendingFeatureWalkthrough): boolean {
+  try {
+    window.localStorage.setItem(PENDING_FEATURE_WALKTHROUGH_KEY, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearPendingFeatureWalkthrough(): void {
+  try {
+    window.localStorage.removeItem(PENDING_FEATURE_WALKTHROUGH_KEY);
+  } catch {
+    // The guide stays available in update history if local storage is unavailable.
+  }
+}
+
+function sameReleaseVersion(left: string, right: string): boolean {
+  return left.trim().replace(/^v/i, "") === right.trim().replace(/^v/i, "");
+}
 
 function toastInstallError(description: string) {
   toastManager.add(
@@ -55,6 +114,45 @@ export function DesktopUpdateCoordinator() {
     readonly items: ReadonlyArray<string>;
     readonly actions?: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void };
   } | null>(null);
+
+  const showMe = useCallback(
+    (item: string, tourId: TourTargetId | null) => {
+      const prompt = createFeatureWalkthroughPrompt(item);
+      const updateActions = whatsNew?.actions;
+      if (
+        updateActions &&
+        whatsNew.version &&
+        savePendingFeatureWalkthrough({
+          version: whatsNew.version,
+          prompt,
+          ...(tourId ? { tourId } : {}),
+        })
+      ) {
+        setWhatsNew(null);
+        updateActions.onRestartNow();
+        return;
+      }
+      setWhatsNew(null);
+      if (tourId) {
+        useTourStore.getState().start([tourId]);
+        return;
+      }
+      void navigate({ to: "/", search: { guidePrompt: prompt } });
+    },
+    [navigate, whatsNew],
+  );
+
+  useEffect(() => {
+    if (!currentVersion) return;
+    const pending = readPendingFeatureWalkthrough();
+    if (!pending || !sameReleaseVersion(pending.version, currentVersion)) return;
+    clearPendingFeatureWalkthrough();
+    if (pending.tourId) {
+      useTourStore.getState().start([pending.tourId]);
+      return;
+    }
+    void navigate({ to: "/", search: { guidePrompt: pending.prompt } });
+  }, [currentVersion, navigate]);
 
   // Settings > About "Preview": same popup, real latest-release bullets, no install buttons.
   useEffect(
