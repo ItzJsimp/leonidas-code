@@ -80,10 +80,13 @@ import { UsageProviderChart } from "./UsageProviderChart";
 import { SpeedPremium, UsageModelDialog } from "./UsageModelDialog";
 import { UsageShareBar } from "./UsageShareBar";
 import {
+  API_COST_NOTE,
+  CACHE_READ_NOTE,
   cacheHitRate,
   costTypeSegments,
   displayModelName,
   freeModelKind,
+  freshTokens,
   usageHighlights,
   modelShare,
   providerBreakdownRows,
@@ -573,12 +576,20 @@ export function UsagePage() {
                           ? formatUsd(merged.costUsd)
                           : formatTokens(merged.totalTokens)}
                       </span>
+                      <span
+                        className="text-xs text-foreground"
+                        title={metric === "cost" ? API_COST_NOTE : CACHE_READ_NOTE}
+                      >
+                        {metric === "cost"
+                          ? "API-equivalent cost"
+                          : "Processed tokens (incl. cache reads)"}
+                      </span>
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <span>
-                          <span className={figureClass(loading.partial)}>
-                            {formatCount(merged.sessions)} sessions
-                          </span>
-                          {metric === "cost" && " · API estimate"}
+                        <span className={figureClass(loading.partial)}>
+                          {formatCount(merged.sessions)} sessions
+                          {metric === "tokens" && merged.totalTokens > 0
+                            ? ` · ${formatTokens(freshTokens(merged))} fresh`
+                            : null}
                         </span>
                         {metric === "cost" && merged.costQuality.unpricedShare > 0 && (
                           <Popover>
@@ -695,7 +706,7 @@ export function UsagePage() {
                   <div className="flex min-w-0 flex-col gap-3">
                     <h2 className="text-sm font-medium text-foreground">
                       {shownHourly ? (shownMinutes ? "Per-minute" : "Hourly") : "Daily"}{" "}
-                      {metric === "tokens" ? "processed tokens" : "cost"}
+                      {metric === "tokens" ? "processed tokens" : "API-equivalent cost"}
                     </h2>
                     <UsageProviderChart
                       providers={activeProviders}
@@ -715,11 +726,18 @@ export function UsagePage() {
 
                 <section className="flex flex-col gap-2">
                   <h2 className="text-sm font-medium text-foreground">Totals</h2>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-4">
                     <Metric
                       loading={loading.partial}
-                      label="Processed tokens"
+                      label="Processed tokens (incl. cache reads)"
+                      title={CACHE_READ_NOTE}
                       value={formatTokens(merged.totalTokens)}
+                    />
+                    <Metric
+                      loading={loading.partial}
+                      label="Fresh tokens"
+                      title="Uncached input + cache writes + output. Tracks real work and quota use better than processed tokens."
+                      value={formatTokens(freshTokens(merged))}
                     />
                     <Metric
                       loading={loading.partial}
@@ -738,7 +756,14 @@ export function UsagePage() {
                     />
                     <Metric
                       loading={loading.partial}
-                      label="Cache savings"
+                      label="Thinking"
+                      title="Reasoning tokens, already counted inside output."
+                      value={formatTokens(merged.reasoningTokens)}
+                    />
+                    <Metric
+                      loading={loading.partial}
+                      label="Cache savings (API-equivalent)"
+                      title={API_COST_NOTE}
                       value={formatUsd(merged.costQuality.cacheSavingsUsd)}
                     />
                   </div>
@@ -839,7 +864,9 @@ export function UsagePage() {
                         <tr className="border-b border-border text-right text-xs text-muted-foreground">
                           <th className="py-2 pr-3 text-left font-normal">#</th>
                           <th className="w-full py-2 text-left font-normal">Model</th>
-                          <th className="py-2 pl-6 font-normal">Cost</th>
+                          <th className="py-2 pl-6 font-normal" title={API_COST_NOTE}>
+                            Cost
+                          </th>
                           <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
                           <th className="hidden py-2 pl-6 font-normal md:table-cell">Cache hit</th>
                           <th className="hidden py-2 pl-6 font-normal md:table-cell">Thinking</th>
@@ -939,7 +966,9 @@ export function UsagePage() {
                       <thead>
                         <tr className="border-b border-border text-right text-xs text-muted-foreground">
                           <th className="w-full py-2 text-left font-normal">Provider</th>
-                          <th className="py-2 pl-6 font-normal">Cost</th>
+                          <th className="py-2 pl-6 font-normal" title={API_COST_NOTE}>
+                            Cost
+                          </th>
                           <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
                           <th className="py-2 pl-6 font-normal">Sessions</th>
                           <th className="py-2 pl-6 font-normal">Tokens</th>
@@ -1302,13 +1331,15 @@ function Metric({
   label,
   value,
   loading,
+  title,
 }: {
   readonly label: string;
   readonly value: string;
   readonly loading: boolean;
+  readonly title?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-0.5" title={title}>
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
         className={cn("text-base font-medium text-foreground tabular-nums", figureClass(loading))}
@@ -1604,7 +1635,15 @@ function UsageSkeleton() {
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-foreground">Totals</h2>
         <MetricSkeletons
-          labels={["Processed tokens", "Cached input", "Uncached input", "Output", "Cache savings"]}
+          labels={[
+            "Processed tokens (incl. cache reads)",
+            "Fresh tokens",
+            "Cached input",
+            "Uncached input",
+            "Output",
+            "Thinking",
+            "Cache savings (API-equivalent)",
+          ]}
         />
       </section>
 
@@ -1629,7 +1668,7 @@ function UsageSkeleton() {
 
 function MetricSkeletons({ labels }: { readonly labels: readonly string[] }) {
   return (
-    <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-4">
       {labels.map((label) => (
         <div key={label} className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">{label}</span>

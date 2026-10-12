@@ -35,6 +35,24 @@ export function cacheHitRate({ tokens }: ModelTotals): number | null {
   return input === 0 ? null : tokens.cachedInputTokens / input;
 }
 
+/**
+ * Tokens that were actually worked on: uncached input, cache writes and output.
+ * Cache reads are the same context re-read each turn, so they inflate processed
+ * totals without tracking real work or subscription quota.
+ */
+export function freshTokens(
+  tokens: Pick<UsageTokenTotals, "uncachedInputTokens" | "cacheCreationTokens" | "outputTokens">,
+): number {
+  return tokens.uncachedInputTokens + tokens.cacheCreationTokens + tokens.outputTokens;
+}
+
+export const CACHE_READ_NOTE =
+  "Includes cache reads: the same context re-read every turn. Fresh tokens are closer to real work and quota use.";
+
+/** Cost figures are list-price estimates, not what a plan bills. */
+export const API_COST_NOTE =
+  "What these tokens would cost at public API rates. Subscription plans are billed separately.";
+
 /** Effective USD per million priced tokens, or `null` when none were priced. */
 export function costPerMillionTokens(model: ModelTotals): number | null {
   const pricedTokens = model.totalTokens - model.unpricedTokens;
