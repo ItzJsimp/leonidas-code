@@ -153,7 +153,7 @@ function Invoke-Sync {
   }
 
   # Strictly behind: fast-forward only. `--ff-only` refuses any non-fast-forward case.
-  $mergeOutput = (& git -C $root -c merge.autoStash=false merge --ff-only "$remoteRef" 2>&1)
+  $mergeOutput = (& git -C $root -c merge.autoStash=false merge --ff-only --no-overwrite-ignore "$remoteRef" 2>&1)
   if ($LASTEXITCODE -ne 0) {
     Set-Result 'diverged' "Fast-forward of $remoteRef was refused; nothing was merged. $(($mergeOutput | Out-String).Trim())" -Error (($mergeOutput | Out-String).Trim()) -Before $before -After $before
     return

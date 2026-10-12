@@ -171,6 +171,26 @@ try {
   Assert-Equal (Get-Sha $fx.Work) $before 'fetch failure unchanged'
   Write-Host 'PASS a failed fetch is reported and changes nothing'
 
+  # 12. Ignored local file the incoming commit also adds: refused, never overwritten.
+  $fx = Initialize-Repo 'ignored-overwrite'
+  $before = Get-Sha $fx.Work
+  Add-Content -LiteralPath (Join-Path $fx.Work '.git/info/exclude') -Value 'ignored.txt'
+  Set-Content -LiteralPath (Join-Path $fx.Work 'ignored.txt') -Value 'local keep'
+  $other = Join-Path (Split-Path -Parent $fx.Origin) ("other-" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+  & git clone -q $fx.Origin $other 2>$null | Out-Null
+  & git -C $other config user.email 'other@example.com' | Out-Null
+  & git -C $other config user.name 'Other' | Out-Null
+  & git -C $other config commit.gpgsign false | Out-Null
+  & git -C $other config core.autocrlf false | Out-Null
+  Add-Commit $other 'ignored.txt' 'remote overwrite' 'remote adds ignored'
+  & git -C $other push -q origin main | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'fixture remote push failed' }
+  $r = & $Script -RepoPath $fx.Work -PassThru
+  Assert-Equal $r.Status 'diverged' 'ignored overwrite is refused'
+  Assert-Equal ((Get-Content -LiteralPath (Join-Path $fx.Work 'ignored.txt') -Raw).Trim()) 'local keep' 'ignored file unchanged'
+  Assert-Equal (Get-Sha $fx.Work) $before 'ignored overwrite left HEAD unchanged'
+  Write-Host 'PASS an ignored file the incoming commit touches is refused, not overwritten'
+
   Write-Host 'All Leonidas source sync checks passed.'
 } finally {
   # Only ever remove our own generated fixture: the leaf carries our prefix and the parent is TEMP.
