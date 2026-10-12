@@ -72,6 +72,17 @@ describe("AntigravityAdapterV2 flavor", () => {
     assert.isTrue(flavor.subagentsIdleOnTurnCompletion);
   });
 
+  it("recognises the agent's own lost-connection message and nothing else", () => {
+    const pattern = flavor.connectionLostText;
+    assert.isDefined(pattern);
+    assert.isTrue(
+      pattern?.test(
+        "Agent connection was lost and could not be re-established: Failed to rebuild agent: received 1000 (OK); then sent 1000 (OK)",
+      ),
+    );
+    assert.isFalse(pattern?.test("The connection pool re-established itself."));
+  });
+
   it("maps runtime modes to the agent's native permission modes", () => {
     const mode = (runtimeMode: "approval-required" | "auto-accept-edits" | "full-access") =>
       flavor.sessionModeForPolicy?.(
