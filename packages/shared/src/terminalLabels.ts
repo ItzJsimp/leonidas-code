@@ -39,7 +39,9 @@ export function nextTerminalId(
   existingTerminalIds: ReadonlyArray<string>,
   uniqueSuffix?: string,
 ): string {
-  const usedNumbers = new Set(existingTerminalIds.map(terminalNumber));
+  const usedNumbers = new Set(
+    existingTerminalIds.map((id) => terminalNumber(id)?.replace(/^0+(?=\d)/, "")),
+  );
   let nextIndex = 1;
   while (usedNumbers.has(String(nextIndex))) {
     nextIndex += 1;

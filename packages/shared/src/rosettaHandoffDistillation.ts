@@ -55,6 +55,16 @@ function uniqueLatest(
   return reverseCopy(selected);
 }
 
+/** An unanswered user request is the next step; otherwise the receiver continues the assistant's last state. */
+function immediateNextStep(messages: readonly OrchestrationV2HistoricalMessage[]): string {
+  const last = messages.at(-1);
+  if (last === undefined) return "- None selected.";
+  if (last.role === "user") {
+    return `- Answer the latest user request [item:${last.itemId}]: ${compactText(last.text, 900)}`;
+  }
+  return "- Continue from the latest assistant state above, re-checking the failures before repeating an action.";
+}
+
 function failedCommand(message: OrchestrationV2HistoricalMessage): boolean {
   const exitCode = /(?:^|\n)Exit code: (-?\d+)/.exec(message.text)?.[1];
   return message.kind === "error" || (exitCode !== undefined && exitCode !== "0");
@@ -86,6 +96,8 @@ export function distillRosettaHandoff(input: RosettaHandoffInput): RosettaHandof
     latestAssistant === undefined
       ? "Not present in the selected history."
       : itemLine(latestAssistant, 2_400),
+    "## Immediate next step",
+    immediateNextStep(messages),
     "## Working set",
     workingSet.length === 0
       ? "- No file changes were selected."

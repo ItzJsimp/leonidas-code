@@ -3,6 +3,7 @@ import * as NodeCrypto from "node:crypto";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { extractFile } from "@electron/asar";
 import { assert, it } from "@effect/vitest";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as FileSystem from "effect/FileSystem";
@@ -197,7 +198,7 @@ const makeWindowsPayloadFixture = Effect.fn("test.makeWindowsPayloadFixture")(fu
   yield* fs.makeDirectory(path.dirname(serverEntryPath), { recursive: true });
   yield* fs.makeDirectory(path.dirname(nativePath), { recursive: true });
   yield* fs.writeFileString(serverEntryPath, input.serverEntrySource ?? "console.log('server');\n");
-  yield* fs.writeFileString(nativePath, "native-binary");
+  yield* fs.writeFileString(nativePath, "MZ native-binary");
 
   const generatedAsarPath = path.join(tempDir, WINDOWS_SERVER_ASAR_RESOURCE);
   yield* packWindowsServerAsar({ sourceDir, asarPath: generatedAsarPath, arch: "x64" });
@@ -272,7 +273,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
     assert.equal(resolveDesktopProductName("0.0.17"), "Leonidas Code");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "Leonidas Code (Nightly)");
+    assert.equal(
+      resolveDesktopProductName("0.0.17-nightly.20260413.42"),
+      "Leonidas Code (Nightly)",
+    );
   });
 
   it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
@@ -708,6 +712,21 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual((linux.linux as Record<string, unknown>).protocols, [
         { name: "Leonidas Code", schemes: ["t3code", "t3code-dev"] },
       ]);
+      // macOS also offers itself as a web browser, so it can be chosen as the default.
+      assert.deepStrictEqual((mac.mac as Record<string, unknown>).protocols, [
+        { name: "Leonidas Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "Web site URL", schemes: ["http", "https"], role: "Viewer" },
+      ]);
+      // macOS lists a default browser only when it also opens web pages as documents.
+      const macInfo = (mac.mac as { extendInfo: Record<string, unknown> }).extendInfo;
+      assert.deepStrictEqual(macInfo.CFBundleDocumentTypes, [
+        {
+          CFBundleTypeName: "Web page",
+          CFBundleTypeRole: "Viewer",
+          LSHandlerRank: "Alternate",
+          LSItemContentTypes: ["public.html", "public.xhtml"],
+        },
+      ]);
       assert.deepStrictEqual(linux.toolsets, { appimage: "1.0.3" });
       assert.notProperty(mac, "toolsets");
       assert.notProperty(win, "toolsets");
@@ -716,6 +735,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(win.files, DESKTOP_FILE_EXCLUSIONS);
       assert.deepStrictEqual(winWithoutWslRuntime.files, win.files);
       assert.notProperty(mac.mac as Record<string, unknown>, "sign");
+      assert.propertyVal(
+        (mac.mac as Record<string, unknown>).extendInfo as Record<string, unknown>,
+        "NSLocalNetworkUsageDescription",
+        "Leonidas Code connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
+      );
       for (const config of [linux, win]) {
         assert.deepStrictEqual(config.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
       }
@@ -878,7 +902,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ]);
   });
 
-  it.effect("keeps target native files while excluding the other Windows architecture", () =>
+  it.effect("unpacks target Windows natives while excluding the other architecture", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
@@ -892,12 +916,14 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           "node_modules/node-pty/prebuilds/win32-arm64/conpty/OpenConsole.exe",
           "node_modules/node-pty/third_party/conpty/1.0.0/win10-x64/OpenConsole.exe",
           "node_modules/node-pty/third_party/conpty/1.0.0/win10-arm64/OpenConsole.exe",
+          "node_modules/node-pty/prebuilds/win32-x64/pty.node",
+          "node_modules/node-pty/prebuilds/linux-x64/pty.node",
         ];
 
         for (const nativeFile of nativeFiles) {
           const nativePath = path.join(sourceDir, nativeFile);
           yield* fs.makeDirectory(path.dirname(nativePath), { recursive: true });
-          yield* fs.writeFileString(nativePath, "native");
+          yield* fs.writeFileString(nativePath, nativeFile.includes("linux") ? "\x7fELF" : "MZ");
         }
 
         const asarPath = path.join(tempDir, "server.asar");
@@ -911,6 +937,22 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
               "node_modules/node-pty/prebuilds/win32-x64/conpty/OpenConsole.exe",
             ),
           ),
+        );
+        assert.isTrue(
+          yield* fs.exists(
+            path.join(unpackedRoot, "node_modules/node-pty/prebuilds/win32-x64/pty.node"),
+          ),
+        );
+        // Signed builds sign every unpacked .node, so the ELF prebuild stays packed.
+        assert.isFalse(
+          yield* fs.exists(path.join(unpackedRoot, "node_modules/node-pty/prebuilds/linux-x64")),
+        );
+        assert.equal(
+          extractFile(
+            asarPath,
+            path.join("node_modules", "node-pty", "prebuilds", "linux-x64", "pty.node"),
+          ).toString(),
+          "\x7fELF",
         );
         assert.isFalse(
           yield* fs.exists(path.join(unpackedRoot, "node_modules/node-pty/prebuilds/win32-arm64")),
@@ -1498,7 +1540,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           primaryProbe.args[4],
           path.join(
             fixture.packagedAppDir,
-            "resources/server.asar/node_modules/@ff-labs/fff-node/dist/src/index.js",
+            "resources/server.asar/node_modules/@ff-labs/fff-node/dist/index.js",
           ),
         );
         assert.equal(primaryProbe.options.cwd, fixture.packagedAppDir);
@@ -2092,6 +2134,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.match(String(mac.sign), /[\\/]scripts[\\/]sign-macos\.ts$/);
       assert.deepStrictEqual(mac.protocols, [
         { name: "Leonidas Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "Web site URL", schemes: ["http", "https"], role: "Viewer" },
       ]);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
@@ -2115,7 +2158,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
-  it.effect("keeps executable resource editing enabled for unsigned Windows builds", () =>
+  it.effect("configures Windows executable metadata and native signing extensions", () =>
     Effect.gen(function* () {
       const config = yield* createBuildConfig(
         "win",
@@ -2129,6 +2172,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
       const win = config.win as Record<string, unknown>;
       assert.equal(win.icon, "icon.ico");
+      assert.deepStrictEqual(win.signExts, [".node", ".dll"]);
       assert.equal(win.signAndEditExecutable, true);
       assert.notProperty(win, "azureSignOptions");
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),

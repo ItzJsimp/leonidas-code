@@ -1,4 +1,4 @@
-import { computeMaxUsedPercent, type QuotaWindowSnapshot } from "./predictiveQuotaHandoff.js";
+import { computeMaxUsedPercent, type QuotaWindowSnapshot } from "./predictiveQuotaHandoff.ts";
 
 export interface SwarmAccountProfile {
   readonly providerInstanceId: string;

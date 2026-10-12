@@ -93,6 +93,20 @@ const projection: OrchestrationV2ThreadProjection = {
 };
 
 describe("pending v2 questions", () => {
+  it("selects the newest request item even after older history is appended", () => {
+    const original = projection.turnItems[0]!;
+    if (original.type !== "user_input_request") throw new Error("Expected question fixture");
+    const latest = {
+      ...original,
+      id: TurnItemId.make("latest-question"),
+      ordinal: 5,
+      questions: [{ ...original.questions[0]!, question: "Latest question" }],
+    };
+    expect(
+      derivePendingThreadRequests({ ...projection, turnItems: [latest, original] }).userInputs[0]
+        ?.questions[0]?.question,
+    ).toBe("Latest question");
+  });
   it("keeps message responses available after the originating runtime exits", () => {
     expect(projection.providerSessions).toEqual([]);
     expect(derivePendingThreadRequests(projection).userInputs).toEqual([

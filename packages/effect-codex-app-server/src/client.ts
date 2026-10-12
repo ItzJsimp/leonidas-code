@@ -153,12 +153,11 @@ export const make = Effect.fn("effect-codex-app-server/CodexAppServerClient.make
   const dispatchNotification = (
     notification: CodexProtocol.CodexAppServerIncomingNotification,
   ): Effect.Effect<void, never> => {
-    const schema =
-      notification.method in CodexRpc.SERVER_NOTIFICATION_PARAMS
-        ? CodexRpc.SERVER_NOTIFICATION_PARAMS[
-            notification.method as CodexRpc.ServerNotificationMethod
-          ]
-        : undefined;
+    const schema = Object.hasOwn(CodexRpc.SERVER_NOTIFICATION_PARAMS, notification.method)
+      ? CodexRpc.SERVER_NOTIFICATION_PARAMS[
+          notification.method as CodexRpc.ServerNotificationMethod
+        ]
+      : undefined;
     const handlers = notificationHandlers.get(notification.method) ?? [];
 
     if (schema) {
@@ -178,7 +177,7 @@ export const make = Effect.fn("effect-codex-app-server/CodexAppServerClient.make
   const dispatchRequest = (
     request: CodexProtocol.CodexAppServerIncomingRequest,
   ): Effect.Effect<unknown, CodexError.CodexAppServerError> => {
-    if (request.method in CodexRpc.SERVER_REQUEST_PARAMS) {
+    if (Object.hasOwn(CodexRpc.SERVER_REQUEST_PARAMS, request.method)) {
       const method = request.method as CodexRpc.ServerRequestMethod;
       const payloadSchema = getServerRequestParamSchema(method);
       const responseSchema = getServerRequestResponseSchema(method);

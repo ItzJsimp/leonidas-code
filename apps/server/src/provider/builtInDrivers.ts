@@ -81,7 +81,8 @@ export type BuiltInUsageReadersEnv =
   | ProviderUsageReaderEnv<typeof GrokDriver>
   | ProviderUsageReaderEnv<typeof OpenCodeDriver>
   | ProviderUsageReaderEnv<typeof AntigravityDriver>
-  | ProviderUsageReaderEnv<typeof CursorDriver>;
+  | ProviderUsageReaderEnv<typeof CursorDriver>
+  | ProviderUsageReaderEnv<typeof PiDriver>;
 
 /**
  * The drivers that keep usage history, in the order the usage page reads
@@ -95,6 +96,7 @@ export const BUILT_IN_USAGE_DRIVERS: ReadonlyArray<
   OpenRouterDriver,
   CodexDriver,
   GrokDriver,
+  PiDriver,
   OpenCodeDriver,
   AntigravityDriver,
   CursorDriver,
