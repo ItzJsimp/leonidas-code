@@ -59,6 +59,30 @@ const setup = Effect.gen(function* () {
 });
 
 describe("command permissions", () => {
+  it.effect("guards every saved-item mutation at its destination environment", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const registry = yield* setup;
+        registry.set(sessions(env), AsyncResult.success(grant(true)));
+        registry.set(sessions(other), AsyncResult.success(grant(false)));
+        for (const tag of [
+          WS_METHODS.savedItemsCreate,
+          WS_METHODS.savedItemsUpdate,
+          WS_METHODS.savedItemsTransition,
+          WS_METHODS.savedItemsImport,
+          WS_METHODS.savedItemsLaunch,
+          WS_METHODS.savedItemsSchedule,
+          WS_METHODS.savedItemsSaveTask,
+        ]) {
+          const permissions = createCommandPermissions(runtime, tag);
+          yield* permissions.authorize(registry, env);
+          expect((yield* permissions.authorize(registry, other).pipe(Effect.flip))._tag).toBe(
+            "EnvironmentAuthorizationError",
+          );
+        }
+      }),
+    ),
+  );
   it.effect("requires the destination settings grant to run storage cleanup", () =>
     Effect.scoped(
       Effect.gen(function* () {

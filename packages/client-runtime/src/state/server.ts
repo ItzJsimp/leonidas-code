@@ -1151,6 +1151,41 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:process-resource-history",
       tag: WS_METHODS.serverGetProcessResourceHistory,
     }),
+    savedItems: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:saved-items",
+      tag: WS_METHODS.savedItemsList,
+      staleTimeMs: 0,
+      idleTtlMs: 0,
+      refreshIntervalMs: 5_000,
+    }),
+    createSavedItem: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:create",
+      tag: WS_METHODS.savedItemsCreate,
+    }),
+    updateSavedItem: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:update",
+      tag: WS_METHODS.savedItemsUpdate,
+    }),
+    transitionSavedItem: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:transition",
+      tag: WS_METHODS.savedItemsTransition,
+    }),
+    importSavedItem: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:import",
+      tag: WS_METHODS.savedItemsImport,
+    }),
+    launchSavedItem: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:launch",
+      tag: WS_METHODS.savedItemsLaunch,
+    }),
+    scheduleSavedItem: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:schedule",
+      tag: WS_METHODS.savedItemsSchedule,
+    }),
+    saveSavedItemAsTask: createEnvironmentRpcCommand(runtime, {
+      label: "saved-items:task",
+      tag: WS_METHODS.savedItemsSaveTask,
+    }),
     scheduledTaskWebhookDeliveries: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:scheduled-task:webhook-deliveries",
       tag: WS_METHODS.scheduledTasksListWebhookDeliveries,

@@ -28,8 +28,9 @@ export const TOUR_TARGETS = {
     steps: [
       {
         title: "Keep a prompt for later",
-        body: "Ask your agent to save a prompt or note. It can list saved items, turn them into tasks, launch a prompt, or schedule it to run once.",
+        body: "Use Save beside the composer to queue an unsent prompt. The arrow also saves notes or tasks. Open Saved to import Markdown, launch prompts, or schedule a one-time run.",
         route: "/",
+        anchor: "saved-items",
         tryPrompt:
           "Save a note titled Saved items test with the text: Review my saved prompts before starting more work.",
       },
