@@ -2346,9 +2346,10 @@ const make = Effect.gen(function* () {
           input.target?.model === undefined &&
           input.target?.options === undefined;
         let routedTarget: OrchestratorMcpTarget | undefined = input.target;
+        let fallbackModelSelection: ModelSelection | undefined;
         if (routeLight && unnamedTarget) {
           const capable = yield* loadOrchestrationCapableInstanceIds();
-          const selection = routeLightDelegatedTask({
+          const routed = routeLightDelegatedTask({
             task: input.task,
             providers,
             isRunnable: (provider) =>
@@ -2356,12 +2357,14 @@ const make = Effect.gen(function* () {
             runtimeMode: parent.thread.runtimeMode,
             now: yield* Clock.currentTimeMillis,
           });
-          if (selection !== null) {
+          if (routed !== null) {
+            const { selection } = routed;
             routedTarget = {
               providerInstanceId: selection.instanceId,
               model: selection.model,
               ...(selection.options === undefined ? {} : { options: selection.options }),
             };
+            fallbackModelSelection = routed.fallback;
           }
         }
         const backgroundTarget = yield* resolveBackgroundTaskTarget({
@@ -2401,6 +2404,11 @@ const make = Effect.gen(function* () {
             task: taskPrompt(input),
             ...(input.title === undefined ? {} : { title: input.title }),
             modelSelection: target.modelSelection,
+            // Only while the routed free model is what actually runs.
+            ...(fallbackModelSelection !== undefined &&
+            target.modelSelection.model === routedTarget?.model
+              ? { fallbackModelSelection }
+              : {}),
             runtimeMode,
             interactionMode,
             // Async delegations wake the parent on every child terminal; wait

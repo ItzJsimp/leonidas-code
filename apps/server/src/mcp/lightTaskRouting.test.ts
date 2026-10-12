@@ -47,7 +47,7 @@ const base = {
 describe("routeLightDelegatedTask", () => {
   it("sends a small task to the cheapest model", () => {
     const selection = routeLightDelegatedTask({ ...base, task: "Fix a typo in README.md" });
-    expect(selection?.model).toBe("claude-haiku-5-5");
+    expect(selection?.selection.model).toBe("claude-haiku-5-5");
   });
 
   it("leaves a larger task on the parent's model", () => {
@@ -65,7 +65,7 @@ describe("routeLightDelegatedTask", () => {
       task: "Fix a typo in README.md",
       isRunnable: (candidate) => candidate.instanceId !== "claude",
     });
-    expect(selection?.instanceId).toBe("codex");
+    expect(selection?.selection.instanceId).toBe("codex");
 
     expect(
       routeLightDelegatedTask({
@@ -93,7 +93,16 @@ describe("routeLightDelegatedTask", () => {
       providers: [...providers, openrouter],
       task: "Fix a typo in README.md",
     });
-    expect(selection).toEqual({ instanceId: "openrouter", model: "cohere/north-mini-code:free" });
+    expect(selection?.selection).toEqual({
+      instanceId: "openrouter",
+      model: "cohere/north-mini-code:free",
+    });
+    expect(selection?.fallback?.model).toBe("claude-haiku-5-5");
+  });
+
+  it("runs a subscription pick directly, with no fallback", () => {
+    const selection = routeLightDelegatedTask({ ...base, task: "Fix a typo in README.md" });
+    expect(selection?.fallback).toBeUndefined();
   });
 
   it("never picks an untested free model, falling back to Haiku", () => {
@@ -107,7 +116,7 @@ describe("routeLightDelegatedTask", () => {
       providers: [...providers, untested],
       task: "Fix a typo in README.md",
     });
-    expect(selection?.model).toBe("claude-haiku-5-5");
+    expect(selection?.selection.model).toBe("claude-haiku-5-5");
   });
 
   it("falls back to Haiku when the free provider cannot run", () => {
@@ -117,7 +126,7 @@ describe("routeLightDelegatedTask", () => {
       isRunnable: (candidate) => candidate.instanceId !== "openrouter",
       task: "Fix a typo in README.md",
     });
-    expect(selection?.model).toBe("claude-haiku-5-5");
+    expect(selection?.selection.model).toBe("claude-haiku-5-5");
   });
 
   it("keeps a larger task on the parent even when free models exist", () => {
