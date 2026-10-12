@@ -101,6 +101,18 @@ it("preserves actionable handoff errors wrapped by turn startup", () => {
   );
 });
 
+it("surfaces cause details on ProviderAdapterTurnStartError when available", () => {
+  const cause = new ProviderAdapter.ProviderAdapterTurnStartError({
+    driver: ProviderDriverKind.make("codex"),
+    threadId: ThreadId.make("thread:start-detail"),
+    providerThreadId: ProviderThreadId.make("provider-thread:start-detail"),
+    runId: RunId.make("run:start-detail"),
+    cause: new Error("Model capacity exceeded"),
+  });
+  const failure = makeProviderFailure({ cause });
+  assert.include(failure.message, "The provider could not start this turn: Model capacity exceeded.");
+});
+
 it("does not expose defect text nested inside a known error category", () => {
   const failure = makeProviderFailure({
     cause: {

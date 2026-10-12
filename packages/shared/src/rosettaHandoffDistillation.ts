@@ -55,6 +55,31 @@ function uniqueLatest(
   return reverseCopy(selected);
 }
 
+function extractReferencedPaths(messages: readonly OrchestrationV2HistoricalMessage[]): readonly string[] {
+  const seen = new Set<string>();
+  const paths: string[] = [];
+  const pathRegex = /(?:[A-Za-z]:[/\\]|(?:\/|\.{1,2}\/))[\w.-]+(?:[/\\][\w.-]+)*\.[A-Za-z0-9_-]+|`([^`]+\.[A-Za-z0-9_-]+)`/g;
+  for (const message of messages) {
+    let match: RegExpExecArray | null;
+    while ((match = pathRegex.exec(message.text)) !== null) {
+      const raw = (match[1] ?? match[0]).trim();
+      const cleaned = raw.replace(/^['"]|['"]$/g, "");
+      if (
+        cleaned.length > 3 &&
+        !seen.has(cleaned) &&
+        !cleaned.startsWith("http://") &&
+        !cleaned.startsWith("https://")
+      ) {
+        seen.add(cleaned);
+        paths.push(cleaned);
+        if (paths.length >= 8) break;
+      }
+    }
+    if (paths.length >= 8) break;
+  }
+  return paths;
+}
+
 /** An unanswered user request is the next step; otherwise the receiver continues the assistant's last state. */
 function immediateNextStep(messages: readonly OrchestrationV2HistoricalMessage[]): string {
   const last = messages.at(-1);
@@ -99,9 +124,14 @@ export function distillRosettaHandoff(input: RosettaHandoffInput): RosettaHandof
     "## Immediate next step",
     immediateNextStep(messages),
     "## Working set",
-    workingSet.length === 0
-      ? "- No file changes were selected."
-      : workingSet.map((message) => itemLine(message, 300)).join("\n"),
+    workingSet.length > 0
+      ? workingSet.map((message) => itemLine(message, 300)).join("\n")
+      : (() => {
+          const referenced = extractReferencedPaths(messages);
+          return referenced.length > 0
+            ? referenced.map((p) => `- Referenced path: ${p}`).join("\n")
+            : "- No file changes were selected.";
+        })(),
     "## Recent commands",
     commands.length === 0
       ? "- None selected."

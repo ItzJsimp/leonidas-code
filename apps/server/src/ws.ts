@@ -1,4 +1,9 @@
-import { OrchestrationDispatchCommandError, TaskBoardReadError } from "@t3tools/contracts";
+import {
+  DevPreviewError,
+  OrchestrationDispatchCommandError,
+  TaskBoardReadError,
+} from "@t3tools/contracts";
+import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
@@ -1317,6 +1322,24 @@ const layerWsRpc = (
         Effect.map((snapshot) => snapshot.projects),
         Effect.mapError((cause) => new TaskBoardReadError({ reason: "project_not_found", cause })),
       );
+      const devPreview = yield* DevPreviewService.DevPreviewService;
+      const withDevPreviewProject = <A, E, R>(
+        projectId: ProjectId,
+        use: (project: Project) => Effect.Effect<A, E, R>,
+      ) =>
+        Effect.gen(function* () {
+          const project = yield* projectService
+            .getById(projectId)
+            .pipe(
+              Effect.mapError(
+                (cause) => new DevPreviewError({ reason: "project_not_found", cause }),
+              ),
+            );
+          if (Option.isNone(project)) {
+            return yield* new DevPreviewError({ reason: "project_not_found", cause: projectId });
+          }
+          return yield* use(project.value);
+        });
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
       const promptSuggestion = PromptSuggestion.make(
         yield* TextGeneration.TextGeneration,
@@ -2707,6 +2730,12 @@ const layerWsRpc = (
           withTaskBoardProject(input.projectId, (project) => taskBoard.complete(project, input)),
         [WS_METHODS.taskBoardUpdate]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.update(project, input)),
+        [WS_METHODS.devPreviewStatus]: (input) =>
+          withDevPreviewProject(input.projectId, devPreview.status),
+        [WS_METHODS.devPreviewStart]: (input) =>
+          withDevPreviewProject(input.projectId, devPreview.start),
+        [WS_METHODS.devPreviewStop]: (input) =>
+          withDevPreviewProject(input.projectId, devPreview.stop),
         [WS_METHODS.taskBoardWorkspace]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),
         [WS_METHODS.taskBoardCardUpdate]: (input) =>

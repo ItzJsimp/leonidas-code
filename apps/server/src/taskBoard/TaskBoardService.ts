@@ -30,6 +30,8 @@ import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
+import { ServerConfig } from "../config.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import {
   applyCardPatch,
@@ -294,6 +296,7 @@ function cardPatchFor(input: TaskBoardCardUpdateInput, card: TaskBoardTask): Aio
     status,
     priority: input.priority,
     title: input.title,
+    due: input.due,
     projectSlug: input.projectSlug,
     claimedBy: input.claimedBy,
     note: input.note,
@@ -358,6 +361,13 @@ export class TaskBoardService extends Context.Service<
 
 const make = Effect.gen(function* () {
   const processes = yield* ProcessRunner.ProcessRunner;
+  const config = yield* Effect.serviceOption(ServerConfig);
+  const nativeRoot = Option.isSome(config)
+    ? NodePath.join(config.value.stateDir, "task-board")
+    : null;
+  const rootsFor = (projects: ReadonlyArray<Project>) => [
+    ...new Set([nativeRoot, aiosRootFor(projects)].filter((root): root is string => root !== null)),
+  ];
 
   const runGh = (args: ReadonlyArray<string>, allowNotFound = false) =>
     processes
@@ -907,7 +917,7 @@ const make = Effect.gen(function* () {
   const cardCache: AiosCardCache = new Map();
 
   const rootOrFail = (projects: ReadonlyArray<Project>) => {
-    const root = aiosRootFor(projects);
+    const root = nativeRoot ?? aiosRootFor(projects);
     return root === null
       ? Effect.fail(
           new TaskBoardReadError({ reason: "aios_not_found", cause: "No AIOS tasks folder" }),
@@ -917,15 +927,32 @@ const make = Effect.gen(function* () {
 
   const readCards = (root: string, now: number) =>
     Effect.try({
-      try: () => readAiosTasks(root, { now, cache: cardCache }),
+      try: () =>
+        readAiosTasks(root, { now, cache: cardCache }).map((task) => ({
+          ...task,
+          sourceRoot: root,
+        })),
       catch: (cause) => new TaskBoardReadError({ reason: "request_failed", cause }),
     });
+
+  const readLocalCards = (projects: ReadonlyArray<Project>, now: number) =>
+    Effect.forEach(rootsFor(projects), (root) => readCards(root, now)).pipe(
+      // Native storage wins when an imported copy has the same id.
+      Effect.map((collections) => [
+        ...new Map(
+          collections
+            .flat()
+            .toReversed()
+            .map((task) => [task.id, task]),
+        ).values(),
+      ]),
+    );
 
   const workspace = (projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
       const root = aiosRootFor(projects);
-      const tasks = root ? yield* readCards(root, now) : [];
+      const tasks = yield* readLocalCards(projects, now);
       return buildWorkspace({
         root,
         member: resolveMember(),
@@ -958,7 +985,12 @@ const make = Effect.gen(function* () {
       Effect.flatMap((boardProject) =>
         persist(boardProject, (tasks) => {
           if (!tasks.some((task) => task.id === card.id)) return { tasks, result: undefined };
-          const mirrored: TaskBoardTask = { ...card, project: boardProject.name, shared: true };
+          const mirrored: TaskBoardTask = {
+            ...card,
+            sourceRoot: undefined,
+            project: boardProject.name,
+            shared: true,
+          };
           return {
             tasks: tasks.map((task) => (task.id === card.id ? mirrored : task)),
             result: undefined,
@@ -990,6 +1022,7 @@ const make = Effect.gen(function* () {
         const updated: TaskBoardTask = {
           ...existing,
           title: input.title ?? existing.title,
+          due: input.due === undefined ? existing.due : input.due,
           status,
           priority: input.priority ?? existing.priority,
           claimedBy: claimed ? input.claimedBy! : released ? null : existing.claimedBy,
@@ -1025,10 +1058,10 @@ const make = Effect.gen(function* () {
   const cardUpdate = (input: TaskBoardCardUpdateInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
-      const root = aiosRootFor(projects);
-      const card = root
-        ? (yield* readCards(root, now)).find((candidate) => candidate.id === input.taskId)
-        : undefined;
+      const card = (yield* readLocalCards(projects, now)).find(
+        (candidate) => candidate.id === input.taskId,
+      );
+      const root = card?.sourceRoot;
       if (!root || !card) {
         const project = input.projectId
           ? projects.find((candidate) => candidate.id === input.projectId)
@@ -1056,9 +1089,10 @@ const make = Effect.gen(function* () {
             file,
             applyCardPatch(NodeFS.readFileSync(file, "utf8"), cardPatchFor(input, card), now),
           );
-          return readAiosTasks(root, { now, cache: cardCache }).find(
+          const updated = readAiosTasks(root, { now, cache: cardCache }).find(
             (candidate) => candidate.id === card.id,
           );
+          return updated ? { ...updated, sourceRoot: root } : undefined;
         },
         catch: cardWriteFailure,
       });
@@ -1078,7 +1112,14 @@ const make = Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
       return yield* Effect.try({
         try: () => {
-          const created = createCardFile(root, input, now);
+          const created = createCardFile(
+            root,
+            {
+              ...input,
+              ...(root === nativeRoot ? { id: `task-${NodeCrypto.randomUUID()}` } : {}),
+            },
+            now,
+          );
           const task = cardToTask({
             fileName: created.fileName,
             raw: created.raw,
@@ -1091,7 +1132,7 @@ const make = Effect.gen(function* () {
               message: "The new card could not be read back.",
             });
           }
-          return task;
+          return { ...task, sourceRoot: root };
         },
         catch: cardWriteFailure,
       });
@@ -1100,11 +1141,10 @@ const make = Effect.gen(function* () {
   const share = (projectInput: Project, input: TaskBoardShareInput) =>
     Effect.gen(function* () {
       const project = yield* projectContext(projectInput);
-      const root = yield* rootOrFail([projectInput]);
       const now = yield* Clock.currentTimeMillis;
       const slug = aiosSlugFor(projectInput);
       const wanted = input.taskIds ? new Set(input.taskIds) : null;
-      const cards = (yield* readCards(root, now)).filter(
+      const cards = (yield* readLocalCards([projectInput], now)).filter(
         (card) =>
           card.projectSlug?.toLowerCase() === slug &&
           (wanted ? wanted.has(card.id) : input.shared ? isOpen(card) : card.shared === true),
@@ -1116,6 +1156,7 @@ const make = Effect.gen(function* () {
           const published = input.shared
             ? cards.map((card): TaskBoardTask => ({
                 ...card,
+                sourceRoot: undefined,
                 project: project.name,
                 shared: true,
                 sharedBy: input.actor,
@@ -1126,7 +1167,10 @@ const make = Effect.gen(function* () {
         yield* Effect.try({
           try: () => {
             for (const card of cards) {
-              const file = card.sourceFile ? findCardFile(root, card.sourceFile) : null;
+              const file =
+                card.sourceFile && card.sourceRoot
+                  ? findCardFile(card.sourceRoot, card.sourceFile)
+                  : null;
               if (!file) continue;
               const raw = NodeFS.readFileSync(file, "utf8");
               const next = applyCardPatch(

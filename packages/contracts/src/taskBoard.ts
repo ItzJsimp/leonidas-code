@@ -4,6 +4,20 @@ import { ProviderOptionSelections } from "./model.ts";
 
 export const TASK_BOARD_REPOSITORY = "ItzJsimp/leonidas-code";
 
+/** A calendar day, without a timezone or time of day. */
+export const TaskBoardDueDate = Schema.String.check(
+  Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
+  Schema.makeFilter(
+    (value) => {
+      const [year = 0, month = 0, day = 0] = value.split("-").map(Number);
+      const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+      const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      return year > 0 && day >= 1 && day <= (days[month - 1] ?? 0);
+    },
+    { expected: "a valid calendar date (YYYY-MM-DD)" },
+  ),
+);
+
 // "review" is a card's Awaiting Review, "parked" its Dormant, "retired" its Retired. Parked and
 // retired work stays readable but is hidden from the open queue.
 export const TaskBoardTaskStatus = Schema.Literals([
@@ -81,6 +95,7 @@ export const TaskBoardTask = Schema.Struct({
   sharedBy: Schema.optional(Schema.NullOr(Schema.String)),
   sourceId: Schema.NullOr(TrimmedNonEmptyString),
   sourceFile: Schema.NullOr(TrimmedNonEmptyString),
+  sourceRoot: Schema.optional(TrimmedNonEmptyString),
   issueUrl: Schema.NullOr(TrimmedNonEmptyString),
   history: Schema.Array(TaskBoardHistoryEntry),
 });
@@ -207,6 +222,7 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
   actor: TrimmedNonEmptyString.check(Schema.isMaxLength(100)),
   agent: Schema.optional(TaskBoardAgent),
   title: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
+  due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
   status: Schema.optional(TaskBoardTaskStatus),
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -218,6 +234,7 @@ export type TaskBoardCardUpdateInput = typeof TaskBoardCardUpdateInput.Type;
 
 export const TaskBoardCardCreateInput = Schema.Struct({
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
+  due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
   description: Schema.optional(Schema.String.check(Schema.isMaxLength(20_000))),
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),

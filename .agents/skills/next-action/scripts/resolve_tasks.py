@@ -3,7 +3,6 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -80,23 +79,10 @@ def detect_project_context(workspace, store_root=None):
 
 
 def detect_user(explicit_user=None):
-    """Detect whether operator is Mob (Seth Moncada) or Jake (Jacob) or generic user."""
-    if explicit_user:
-        return explicit_user.lower().strip()
-    env_user = (os.environ.get("USERNAME") or os.environ.get("USER") or "").lower()
-    if any(m in env_user for m in ["mob", "seth", "moncada"]):
-        return "mob"
-    if any(j in env_user for j in ["jacob", "jake", "itzjsimp"]):
-        return "jake"
-    try:
-        git_name = subprocess.check_output(["git", "config", "user.name"], text=True, stderr=subprocess.DEVNULL).strip().lower()
-        if any(m in git_name for m in ["mob", "seth", "moncada"]):
-            return "mob"
-        if any(j in git_name for j in ["jacob", "jake", "itzjsimp"]):
-            return "jake"
-    except Exception:
-        pass
-    return "mob" if "mob" in env_user else ("jake" if "jacob" in env_user else "user")
+    """Explicit canon identity wins; account names are only fallback hints."""
+    value = (explicit_user or os.environ.get("USERNAME") or os.environ.get("USER") or "user").lower().strip()
+    aliases = {"jacob": "jake", "itzjsimp": "jake", "seth": "mob", "seth moncada": "mob"}
+    return aliases.get(value, value)
 
 
 def parse_task_card(file_path):
@@ -123,7 +109,7 @@ def parse_task_card(file_path):
     return {
         "id": meta.get("id", file_path.stem),
         "name": meta.get("name", file_path.stem),
-        "status": meta.get("status", "Not started"),
+        "status": meta.get("status", "Unknown"),
         "priority": meta.get("priority", "Medium"),
         "energy_type": meta.get("energy_type", "Strategic"),
         "effort": meta.get("effort", "Medium"),
@@ -202,10 +188,10 @@ def find_task_files(folder, workspace, project_filter=None):
         for c in cards:
             proj = c["project"].lower().replace("projects/", "").strip()
             fname = c["filename"].lower()
-            if proj == p_clean or p_clean in fname or (p_clean == "leonidas-code" and "t3-code" in fname):
+            local_store = folder.parent in (workspace, *workspace.parents) and not (folder.parent / "projects").is_dir()
+            if proj == p_clean or (not proj and (local_store or p_clean in fname or (p_clean == "leonidas-code" and "t3-code" in fname))):
                 filtered.append(c)
-        if filtered:
-            return filtered
+        return filtered
 
     return cards
 
@@ -213,7 +199,7 @@ def find_task_files(folder, workspace, project_filter=None):
 def score_task(task, user="user", energy="all", focus="all"):
     """Score a task based on status, operator affinity, priority, energy, and focus."""
     status = task["status"].lower()
-    if any(s in status for s in ["done", "retired", "dormant", "completed"]):
+    if status not in {"ready", "not started", "in progress", "in-progress"}:
         return -9999
     score = 0
     if "blocked" in status:
@@ -226,18 +212,21 @@ def score_task(task, user="user", energy="all", focus="all"):
     owner = task["owner"].lower()
     text = (task["name"] + " " + task["why"]).lower()
 
+    if lane in {"jake", "mob"} and lane != user:
+        return -9999
+    if lane == user or owner == user:
+        score += 60
+
     if user == "mob":
         if lane == "jake":
-            score -= 80
+            return -9999
         if lane == "mob" or owner == "mob":
             score += 60
-        if "mob" in text or "seth" in text:
-            score += 40
         if lane in ["leonidas", "agent", "draft"]:
             score += 15
     elif user == "jake":
         if lane == "mob" or owner == "mob":
-            score -= 50
+            return -9999
         if lane == "jake" or owner == "leonidas":
             score += 50
         if lane in ["grill", "leonidas"]:
@@ -297,12 +286,12 @@ def assign_execution_route(task):
     is_auto = task["autonomous"]
     title = task["name"].lower()
 
-    if is_auto or any(w in title for w in ["test", "verify", "benchmark", "audit", "parity"]):
+    if is_auto and task.get("start_here") and task.get("done_when") and task.get("lane", "").lower() not in {"jake", "mob", "grill"}:
         return {
             "route": "subagent",
             "badge": "🟣 Subagent-Ready",
             "action": "Delegate to Subagent",
-            "reason": "Bounded verification or modular slice suited for background parallel execution.",
+            "reason": "Candidate only: inspect boundaries and dependencies before offering delegation.",
         }
     if effort == "low" or "quick win" in e_type:
         return {
@@ -319,7 +308,7 @@ def assign_execution_route(task):
     }
 
 
-def draft_prompt_composer(task, project="leonidas-code"):
+def draft_prompt_composer(task, project="current project"):
     """Draft a production-ready agent prompt according to the prompt-composer standard."""
     title = task.get("name", "Task")
     why = task.get("why", "")
@@ -339,8 +328,8 @@ def draft_prompt_composer(task, project="leonidas-code"):
 </context>
 
 <rules>
-- Maintain code integrity and execute test-first slices.
-- Verify changes against project standards and ensure clean git status.
+- Read the exact task card and workspace instructions; confirm current status and acceptance gates.
+- Preserve concurrent edits; run the smallest checks that prove this task.
 - DO NOT edit unrelated files outside this task scope.
 </rules>
 
@@ -360,7 +349,7 @@ def rank_tasks(folder, workspace, project=None, user=None, energy="all", focus="
             c["score"] = s
             c["route"] = route
             scored.append((s, c))
-    scored.sort(key=lambda x: x[0], reverse=True)
+    scored.sort(key=lambda x: (-x[0], x[1]["id"]))
     top = [c for _, c in scored[:limit]]
     return top, len(scored)
 

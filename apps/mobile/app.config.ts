@@ -37,12 +37,12 @@ const DEVELOPMENT_ASSETS = {
   iosIcon: fromRepoRoot(BRAND_ASSET_PATHS.developmentIconComposerProject),
   splashIcon: fromRepoRoot(BRAND_ASSET_PATHS.developmentIosIconPng),
   androidAdaptiveForeground,
-  androidAdaptiveBackgroundColor: "#347FF8",
+  androidAdaptiveBackgroundColor: "#E65100",
   androidAdaptiveBackgroundImage: "./assets/android-icon-background-dev.png",
   androidSplashIcon: "./assets/android-splash-icon-dev.png",
   androidMonochromeIcon: "./assets/android-icon-mark.png",
   androidNotificationIcon: "./assets/android-notification-icon.png",
-  androidNotificationColor: "#00639B",
+  androidNotificationColor: "#E65100",
 } as const;
 
 const PREVIEW_ASSETS = {
@@ -500,3 +500,4 @@ const config: ExpoConfig = {
 };
 
 export default config;
+

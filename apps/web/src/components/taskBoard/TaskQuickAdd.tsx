@@ -1,0 +1,103 @@
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId } from "@t3tools/contracts";
+import { useAtomValue } from "@effect/atom-react";
+import { PlusIcon } from "lucide-react";
+import { useState, type FormEvent } from "react";
+
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Spinner } from "~/components/ui/spinner";
+import { taskBoardCardCreate } from "~/state/taskBoard";
+import { useAtomCommand } from "~/state/use-atom-command";
+import { failureText } from "./useTaskActions.logic";
+
+/** Enter captures a task in the current project; execution remains an explicit action. */
+export function TaskQuickAdd(props: {
+  readonly environmentId: EnvironmentId | null;
+  readonly member: string;
+  readonly projectSlug: string | null;
+  readonly defaultDue: string;
+  readonly onCreated: () => void;
+}) {
+  const runCreate = useAtomCommand(taskBoardCardCreate, { reportFailure: false });
+  const canCreate = useAtomValue(taskBoardCardCreate.permissionAtom(props.environmentId));
+  const [title, setTitle] = useState("");
+  const [due, setDue] = useState(props.defaultDue);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState("");
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!title.trim() || !props.environmentId || !canCreate || busy) return;
+    setBusy(true);
+    setError(null);
+    setReceipt("");
+    const result = await runCreate({
+      environmentId: props.environmentId,
+      input: {
+        title: title.trim(),
+        due: due || null,
+        projectSlug: props.projectSlug,
+        actor: props.member,
+      },
+    });
+    setBusy(false);
+    if (result._tag === "Success") {
+      setReceipt(`Added ${title.trim()}`);
+      setTitle("");
+      props.onCreated();
+    } else if (!isAtomCommandInterrupted(result)) {
+      setError(failureText(squashAtomCommandFailure(result), "Could not add the task."));
+    }
+  };
+
+  return (
+    <form
+      data-tour="tasks-quick-add"
+      onSubmit={(event) => void submit(event)}
+      className="flex flex-col gap-2 border-b border-border px-3 py-3"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-40 flex-1">
+          <Input
+            aria-label="Quick add task"
+            placeholder="Add a task, then press Enter"
+            maxLength={256}
+            value={title}
+            disabled={busy}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </div>
+        <div className="w-36">
+          <Input
+            aria-label="Quick add due date"
+            type="date"
+            value={due}
+            disabled={busy}
+            onChange={(event) => setDue(event.target.value)}
+          />
+        </div>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={busy || !title.trim() || !props.environmentId || !canCreate}
+        >
+          {busy ? <Spinner /> : <PlusIcon />}
+          Add task
+        </Button>
+      </div>
+      {error ? (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <span role="status" className="sr-only">
+        {receipt}
+      </span>
+    </form>
+  );
+}

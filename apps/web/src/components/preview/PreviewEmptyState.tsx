@@ -5,6 +5,7 @@ import type { BrowserHistoryEntry } from "~/browserHistoryStore";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "~/components/ui/empty";
 import { DiscoveryList } from "../ui/discovery-list";
 
+import { PreviewDevCopyCard } from "./PreviewDevCopyCard";
 import { PreviewLocalServerCard } from "./PreviewLocalServerCard";
 import { PreviewRecentUrlCard } from "./PreviewRecentUrlCard";
 import { useDiscoveredLocalServers } from "./useDiscoveredLocalServers";
@@ -34,22 +35,30 @@ export function PreviewEmptyState({
 
   if (servers.length === 0 && recents.length === 0) {
     return (
-      <Empty>
-        <EmptyMedia variant="icon">
-          <Globe className="size-4.5 text-muted-foreground" />
-        </EmptyMedia>
-        <EmptyTitle>No preview yet</EmptyTitle>
-        <EmptyDescription>
-          Type a URL above, or run a dev script. Browser-ready localhost servers will show up here
-          automatically.
-        </EmptyDescription>
-      </Empty>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="px-5 pt-8 empty:hidden">
+          <div className="mx-auto w-full max-w-xl">
+            <PreviewDevCopyCard threadRef={threadRef} onOpenUrl={onOpenUrl} />
+          </div>
+        </div>
+        <Empty>
+          <EmptyMedia variant="icon">
+            <Globe className="size-4.5 text-muted-foreground" />
+          </EmptyMedia>
+          <EmptyTitle>No preview yet</EmptyTitle>
+          <EmptyDescription>
+            Type a URL above, or run a dev script. Browser-ready localhost servers will show up here
+            automatically.
+          </EmptyDescription>
+        </Empty>
+      </div>
     );
   }
 
   return (
     <div className="scrollbar-gutter-both flex h-full min-h-0 overflow-y-auto px-5 py-8">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
+        <PreviewDevCopyCard threadRef={threadRef} onOpenUrl={onOpenUrl} />
         {recents.length > 0 ? (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -1,4 +1,11 @@
-import { BotIcon, ChevronDownIcon, EllipsisIcon, ListIcon } from "lucide-react";
+import {
+  BotIcon,
+  CheckIcon,
+  CircleIcon,
+  ChevronDownIcon,
+  EllipsisIcon,
+  ListIcon,
+} from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -70,11 +77,20 @@ const TaskRow = memo(function TaskRow({
     <li
       aria-busy={busy}
       className={cn(
-        "group/row flex items-center gap-1 border-b pr-2 pl-3 hover:bg-accent/40",
+        "@container group/row flex items-center gap-1 border-b pr-2 pl-3 hover:bg-accent/40",
         selected && "bg-accent/70 hover:bg-accent/70",
         busy && "opacity-60",
       )}
     >
+      <Button
+        variant="ghost-muted"
+        size="icon-sm"
+        disabled={busy}
+        aria-label={`${done ? "Reopen" : "Complete"} ${task.title}`}
+        onClick={() => onAction(task, done ? "reopen" : "complete")}
+      >
+        {done ? <CheckIcon /> : <CircleIcon />}
+      </Button>
       <button
         aria-current={selected ? "true" : undefined}
         className="flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-3 py-1.5 text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
@@ -88,23 +104,28 @@ const TaskRow = memo(function TaskRow({
           className={cn("size-2 shrink-0 rounded-full", statusDotClass(task.status))}
           role="img"
         />
-        <span className={cn("min-w-0 flex-1 truncate text-sm", done && "text-muted-foreground")}>
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm",
+            done && "text-muted-foreground line-through",
+          )}
+        >
           {task.title}
         </span>
-        <span className="hidden shrink-0 items-center gap-1.5 md:flex">
+        <span className="hidden shrink-0 items-center gap-1.5 @min-[36rem]:flex">
           {showStatusBadge ? <StatusBadge status={task.status} /> : null}
           <ProjectChip name={projectName} />
           <PriorityBadge priority={task.priority} />
           {done ? null : <DueChip due={task.due} now={now} />}
           <SharedBadge task={task} />
         </span>
-        <span className="hidden shrink-0 items-center lg:flex">
+        <span className="hidden shrink-0 items-center @min-[52rem]:flex">
           <ChecklistBar checklist={task.checklist} />
         </span>
-        <span className="hidden w-32 shrink-0 lg:flex">
+        <span className="hidden w-32 shrink-0 @min-[52rem]:flex">
           <ClaimedBy agent={task.claimedAgent} name={task.claimedBy} />
         </span>
-        <span className="hidden w-16 shrink-0 text-right text-muted-foreground text-xs tabular-nums sm:block">
+        <span className="hidden w-16 shrink-0 text-right text-muted-foreground text-xs tabular-nums @min-[36rem]:block">
           {relativeTime(task.updatedAt, now)}
         </span>
       </button>
@@ -253,7 +274,7 @@ export function TaskListView(props: {
           </EmptyMedia>
           <EmptyTitle>No tasks to show</EmptyTitle>
           <EmptyDescription>
-            Tasks from your AIOS task cards appear here as soon as one matches the filters.
+            Add a task above, choose another view, or clear your filters.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

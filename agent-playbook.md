@@ -74,10 +74,10 @@ verified: 2026-10-11
 
 ## 7. Session notes (newest first, one line each, keep 3, older in the archive)
 
+- **2026-10-12 (slowness diagnosis and perf audit):** agents were slow because D: is a 7200rpm HDD (queue 35 to 50) with no Defender exclusion, whole-tree git checkpoints with per-object fsync (66 to 112 s), and per-turn `npx` MCP spawns; nothing in source changed. 56 evidence-tagged changes in `handoff-docs/leonidas-code-perf-audit-20261012.md`; resume from `handoff-docs/2026-10-12-leonidas-code-performance-audit.md`. Open: Defender exclusions (admin), SSD move decision with Mob, real Codex turn-start failure cause (masked in `failure.ts`).
+
 - **2026-10-11 (Apodex smoke check continuation):** ran the isolated desktop launcher (ports 23773/15733, `.t3` home); live capabilities now advertise exact `apodex/apodex-1.1-mini:free` on OpenRouter. One sanitized delegated file-tool task passed in a detached worktree at `54340e9754`: Read/Write/read-back changed the fixture to `status=passed`, independently verified. Recorded task ID and limits in the private AIOS `tests/personal-suite/run-ledger.md`; no fallback, no installer application, no benchmark tasks run. Earlier blocked result is superseded for the smoke gate only.
 
 - **2026-10-11 (desktop build preflight):** installed the Spectre libraries through the VS Installer; the preflight still fails on the stale `KitsRoot10` value, and the probe's slash fix is uncommitted in `scripts/build-desktop-artifact.ts`. Open: approve the registry fix (machine-wide, admin) or a probe fallback to `Program Files (x86)`.
-
-- **2026-10-11 (tiered orchestration and benchmark follow-up):** replaced static worker IDs with live capability discovery and review-overhead guidance; added the exact Apodex 1.1 Mini free model to the source catalog as experimental; prepared the private AIOS 15-task F/C/H comparison. Open: rebuild the app, smoke-test tool use, and run the suite. No benchmark requests or tests were run.
 
 - Older session notes: [project/session-notes-archive.md](./project/session-notes-archive.md).

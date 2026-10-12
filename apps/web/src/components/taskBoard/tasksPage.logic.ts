@@ -7,6 +7,8 @@ import type {
 
 import {
   groupBySection,
+  isOpen,
+  daysUntilDue,
   shareableOpenCount,
   type TaskFilters,
   type TaskSort,
@@ -14,6 +16,7 @@ import {
 } from "./taskBoard.logic";
 
 export type TasksView = "dashboard" | "board" | "list";
+export type TaskFocus = "all" | "inbox" | "today" | "upcoming";
 export type TaskListGroupBy = "project" | "status" | "none";
 
 /** What the Tasks page remembers between visits. The search text is deliberately not kept. */
@@ -21,6 +24,7 @@ export type TasksPrefs = {
   view: TasksView;
   /** The selected project section's slug, or null for all tasks. */
   section: string | null;
+  focus: TaskFocus;
   statuses: TaskBoardTaskStatus[] | null;
   priorities: TaskBoardTaskPriority[] | null;
   mine: boolean;
@@ -32,16 +36,30 @@ export type TasksPrefs = {
 
 export const TASKS_PREFS_KEY = "leonidas-tasks:prefs";
 
+/** Task-only projects need a stable key without requiring a repository or folder. */
+export function taskProjectSlug(name: string): string {
+  const slug = name
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
+  return slug === "general" ? "general-tasks" : slug;
+}
+
 export const DEFAULT_TASKS_PREFS: TasksPrefs = {
-  view: "dashboard",
+  view: "list",
   section: null,
+  focus: "inbox",
   statuses: null,
   priorities: null,
   mine: false,
   sharedOnly: false,
   includeClosed: false,
   sort: "priority",
-  groupBy: "project",
+  groupBy: "none",
 };
 
 const VIEWS: ReadonlyArray<TasksView> = ["dashboard", "board", "list"];
@@ -88,6 +106,7 @@ export function parseTasksPrefs(raw: string | null): TasksPrefs {
     view: pick(VIEWS, record.view, DEFAULT_TASKS_PREFS.view),
     section:
       typeof record.section === "string" && record.section.length > 0 ? record.section : null,
+    focus: pick(["all", "inbox", "today", "upcoming"] as const, record.focus, "all"),
     statuses: pickList(STATUSES, record.statuses),
     priorities: pickList(PRIORITIES, record.priorities),
     mine: record.mine === true,
@@ -171,8 +190,7 @@ export function sectionShareState(
   if (entry.projectId === null) {
     return {
       kind: "unavailable",
-      reason:
-        "Sharing is unavailable: this project is not set up in Leonidas Code on this machine.",
+      reason: "Share tasks by linking them to a project connected to GitHub.",
     };
   }
   if (!entry.repository) {
@@ -190,6 +208,22 @@ export function sectionShareState(
 /** Tasks that belong to one section, or all of them when `slug` is null. */
 export function tasksInSection(tasks: ReadonlyArray<TaskView>, slug: string | null): TaskView[] {
   return slug === null ? [...tasks] : tasks.filter((task) => task.section === slug);
+}
+
+/** Daily views use calendar days in the viewer's timezone; Today includes overdue work. */
+export function tasksInFocus(
+  tasks: ReadonlyArray<TaskView>,
+  focus: TaskFocus,
+  now: number,
+  includeClosed = false,
+): TaskView[] {
+  if (focus === "all") return [...tasks];
+  return tasks.filter((task) => {
+    if (!isOpen(task) && !(includeClosed && task.status === "done")) return false;
+    if (focus === "inbox") return task.section === "general";
+    const days = daysUntilDue(task.due, now);
+    return days !== null && (focus === "today" ? days <= 0 : days >= 0);
+  });
 }
 
 /**

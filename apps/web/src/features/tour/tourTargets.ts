@@ -49,9 +49,15 @@ export const TOUR_TARGETS = {
     name: "Tasks",
     steps: [
       {
-        title: "Tasks board",
-        body: "Your shared task list from GitHub Issues. It refreshes by itself every few seconds.",
+        title: "Tasks for you and your agents",
+        body: "Capture work in Inbox, plan Today and Upcoming, and organize tasks into projects. Open a task to set its date, complete it, or explicitly send it to an agent.",
         anchor: "sidebar-tasks",
+      },
+      {
+        title: "Capture a task",
+        body: "Type a task and press Enter. Add a due date to include it in your daily plan. Choose New task for details, priority, or a new project.",
+        route: "/tasks",
+        anchor: "tasks-quick-add",
       },
     ],
   },

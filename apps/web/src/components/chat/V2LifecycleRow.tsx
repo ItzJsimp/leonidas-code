@@ -125,12 +125,22 @@ export function V2LifecycleRow(props: {
   }
   if (item.type === "handoff") {
     const { from: fromEndpoints, to } = resolveHandoffEndpoints(item, props.runs);
+    const previewCard = item.summary ? (
+      <HandoffPreviewCard
+        item={item}
+        fromEndpoints={fromEndpoints}
+        toModel={to.model}
+        providerStatuses={props.providerStatuses}
+      />
+    ) : null;
     return (
       <TimelineSystemDivider
         label="Context handoff"
         icon={ArrowRightLeftIcon}
         showDetailSeparator={false}
         tone={item.status === "failed" ? "danger" : "neutral"}
+        actionLabel={item.summary ? "Inspect context handoff brief" : undefined}
+        previewCard={previewCard}
         detail={
           <span className="inline-flex min-w-0 flex-wrap items-center justify-center gap-1.5">
             {fromEndpoints.map((endpoint, index) => (
@@ -595,6 +605,90 @@ function SubagentTimelineTooltip(
       parentProject={parentProject ?? undefined}
       childProject={childProject ?? undefined}
     />
+  );
+}
+
+function HandoffPreviewCard(props: {
+  readonly item: Extract<OrchestrationV2TurnItem, { type: "handoff" }>;
+  readonly fromEndpoints: ReadonlyArray<{
+    readonly instanceId: ProviderInstanceId;
+    readonly model?: string | undefined;
+  }>;
+  readonly toModel?: string | undefined;
+  readonly providerStatuses: ReadonlyArray<ServerProvider>;
+}) {
+  const { item, fromEndpoints, toModel, providerStatuses } = props;
+  return (
+    <div className="flex max-w-full flex-col gap-2.5 text-left text-xs text-foreground">
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+        <div className="flex items-center gap-1.5 font-semibold text-foreground">
+          <ArrowRightLeftIcon className="size-3.5 text-accent" />
+          <span>Context handoff</span>
+          {item.strategy ? (
+            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-2xs text-muted-foreground">
+              {item.strategy}
+            </span>
+          ) : null}
+        </div>
+        {item.status ? (
+          <span
+            className={cn(
+              "rounded px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider",
+              item.status === "failed"
+                ? "bg-destructive/15 text-destructive"
+                : "bg-success/15 text-success",
+            )}
+          >
+            {item.status}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground">
+        <span className="font-medium text-foreground">Transfer:</span>
+        {fromEndpoints.map((endpoint, index) => (
+          <Fragment key={`${endpoint.instanceId}:${endpoint.model ?? ""}`}>
+            {index > 0 ? (
+              <span aria-hidden="true" className="-ml-1">
+                ,
+              </span>
+            ) : null}
+            <HandoffEndpoint
+              providers={providerStatuses}
+              instanceId={endpoint.instanceId}
+              model={endpoint.model}
+            />
+          </Fragment>
+        ))}
+        {fromEndpoints.length > 0 ? (
+          <ArrowRightIcon aria-hidden="true" className="size-3 shrink-0" />
+        ) : null}
+        <HandoffEndpoint
+          providers={providerStatuses}
+          instanceId={item.toProviderInstanceId}
+          model={toModel}
+        />
+      </div>
+
+      {item.summary ? (
+        <div className="space-y-1">
+          <div className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
+            Transferred Context Brief
+          </div>
+          <div className="max-h-80 select-text overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/60 bg-muted/40 p-2.5 font-mono text-2xs leading-relaxed text-muted-foreground">
+            {item.summary}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="border-t border-border/40 pt-1.5 text-2xs leading-tight text-muted-foreground/80">
+        Foreign provider reasoning and tool calls are omitted. Omitted history can be retrieved with{" "}
+        <code className="rounded bg-muted/80 px-1 py-0.5 font-mono text-2xs text-foreground">
+          t3_thread_read
+        </code>
+        .
+      </div>
+    </div>
   );
 }
 

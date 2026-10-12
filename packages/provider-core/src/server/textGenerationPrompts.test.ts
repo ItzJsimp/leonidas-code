@@ -37,6 +37,9 @@ describe("prompt suggestion", () => {
     expect(
       sanitizePromptSuggestion("Please **keep** I have verified the fix.", "Please **keep** "),
     ).toBeNull();
+    expect(
+      sanitizePromptSuggestion("Please **keep**  I have verified the fix.", "Please **keep** "),
+    ).toBeNull();
   });
 });
 

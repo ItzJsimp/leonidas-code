@@ -14,6 +14,7 @@ import {
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useAtomValue } from "@effect/atom-react";
 
 import { newMessageId, newThreadId } from "~/lib/utils";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
@@ -62,6 +63,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
   const navigate = useNavigate();
   const environmentProjects = useProjects();
   const runCardUpdate = useAtomCommand(taskBoardCardUpdate, { reportFailure: false });
+  const canEdit = useAtomValue(taskBoardCardUpdate.permissionAtom(environmentId));
   const runShare = useAtomCommand(taskBoardShare, { reportFailure: false });
   const startThreadTurn = useOrchestrationCommand(threadEnvironment.startTurn, {
     reportFailure: false,
@@ -274,7 +276,9 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
 
   const actions = useMemo<TaskActions>(
     () => ({
+      canEdit,
       setStatus: (task, status) => void patchAction(task, { status }, "Could not change status"),
+      setDue: (task, due) => void patchAction(task, { due }, "Could not change due date"),
       setPriority: (task, priority) =>
         void patchAction(task, { priority }, "Could not change priority"),
       claim: (task) =>
@@ -296,7 +300,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
       },
       canSendToAgent: () => hasLaunchProject,
     }),
-    [busy, hasLaunchProject, patchAction, sections, sendToAgent, setShared],
+    [busy, canEdit, hasLaunchProject, patchAction, sections, sendToAgent, setShared],
   );
 
   return { actions, shareSection, isSharingSection };
