@@ -84,6 +84,9 @@ import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectLis
 import { presentSavedCloudEnvironmentConnection } from "../cloud/cloudEnvironmentConnectionPresentation";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
+import { LeonidasAiosStep } from "./LeonidasAiosStep";
+import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
+import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CommandBlock } from "../CommandBlock";
@@ -108,11 +111,19 @@ import { formatRelativeTime } from "../../timestampFormat";
  * re-runnable by clearing the flag.
  */
 
-type WizardStep = "connection" | "agents" | "import";
+type WizardStep = "welcome" | "connection" | "agents" | "aios" | "skills" | "import";
+const STEP_ORDER: readonly WizardStep[] = [
+  "welcome",
+  "connection",
+  "agents",
+  "aios",
+  "skills",
+  "import",
+];
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const ONBOARDING_STAGES = ["Connect", "Agents", "Projects"] as const;
+const ONBOARDING_STAGES = ["Welcome", "Connect", "Agents", "AIOS", "Skills", "Projects"] as const;
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 export function WelcomeWizard({
@@ -126,7 +137,7 @@ export function WelcomeWizard({
   readonly onDone: (projectRef?: ScopedProjectRef) => void | Promise<void>;
 }) {
   const completeOnboarding = useCompleteOnboarding();
-  const [step, setStep] = useState<WizardStep>(resumeEnvironmentId ? "agents" : "connection");
+  const [step, setStep] = useState<WizardStep>(resumeEnvironmentId ? "agents" : "welcome");
   const { environments } = useEnvironments();
   const [selection, setSelection] = useState<ReadonlySet<EnvironmentId> | null>(null);
   const autoSelectedComputers = useRef(new Set<EnvironmentId>());
@@ -168,7 +179,7 @@ export function WelcomeWizard({
     setSetupIds(ids);
     setStep("agents");
   };
-  const stageIndex = step === "agents" ? 1 : step === "import" ? 2 : 0;
+  const stageIndex = STEP_ORDER.indexOf(step);
   const finish = useCallback(
     (projectRef?: ScopedProjectRef, importWarning?: string, importedThreadCount = 0) => {
       if (finishingPromiseRef.current !== null) return finishingPromiseRef.current;
@@ -248,13 +259,15 @@ export function WelcomeWizard({
             isStepDisabled={(index) => isImporting || index >= stageIndex}
             onStepChange={(index) => {
               if (isImporting || index > stageIndex) return;
-              setStep(index === 0 ? "connection" : "agents");
+              setStep(STEP_ORDER[index] ?? "connection");
             }}
           />
         </WizardHeader>
 
         <WizardPanel holdHeight={isLoadingProjects}>
-          {step === "connection" ? (
+          {step === "welcome" ? (
+            <LeonidasGoalsStep onContinue={() => setStep("connection")} />
+          ) : step === "connection" ? (
             <ConnectionStep
               expandPairingInitially={!localAvailable && !hasCloudPublicConfig()}
               selectedIds={selectedIds}
@@ -276,7 +289,19 @@ export function WelcomeWizard({
               }}
             />
           ) : step === "agents" ? (
-            <AgentsStep environmentIds={setupIds} onContinue={() => setStep("import")} />
+            <AgentsStep environmentIds={setupIds} onContinue={() => setStep("aios")} />
+          ) : step === "aios" ? (
+            <LeonidasAiosStep
+              environmentId={setupIds[0]}
+              onContinue={() => setStep("skills")}
+              onLeave={() => finish()}
+            />
+          ) : step === "skills" ? (
+            <LeonidasSkillsStep
+              environmentId={setupIds[0]}
+              onContinue={() => setStep("import")}
+              onLeave={() => finish()}
+            />
           ) : (
             <ImportStep
               scans={scans}
@@ -428,8 +453,8 @@ function ConnectionStep({
       ) : null}
       <div className="mt-6 flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
-          Leonidas Code collects anonymous usage data to help us improve it. To read more about how your
-          data is used and how to opt out, see our{" "}
+          Leonidas Code collects anonymous usage data to help us improve it. To read more about how
+          your data is used and how to opt out, see our{" "}
           <a
             className="underline underline-offset-2 hover:text-foreground"
             href={PRIVACY_POLICY_URL}

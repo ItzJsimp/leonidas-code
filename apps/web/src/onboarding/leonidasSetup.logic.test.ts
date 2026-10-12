@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vite-plus/test";
+
+import {
+  AIOS_PRESET,
+  buildAiosSetupPrompt,
+  LEONIDAS_GOALS,
+  normalizeGoalIds,
+  toggleGoal,
+} from "./leonidasSetup.logic";
+
+describe("leonidasSetup.logic", () => {
+  it("offers ten goals", () => {
+    expect(LEONIDAS_GOALS).toHaveLength(10);
+  });
+
+  it("drops stored goals that no longer exist", () => {
+    expect(normalizeGoalIds(["web-apps", "retired"])).toEqual(["web-apps"]);
+  });
+
+  it("toggles a goal on and off", () => {
+    expect(toggleGoal([], "games")).toEqual(["games"]);
+    expect(toggleGoal(["games"], "games")).toEqual([]);
+  });
+
+  it("names the picked goals and every preset path in the prompt", () => {
+    const prompt = buildAiosSetupPrompt(["games", "data"]);
+    expect(prompt).toContain("Games, Data and analysis");
+    for (const entry of AIOS_PRESET) expect(prompt).toContain(entry.path);
+  });
+
+  it("stays general when no goal is picked", () => {
+    expect(buildAiosSetupPrompt([])).toContain("keep the setup general");
+  });
+});
