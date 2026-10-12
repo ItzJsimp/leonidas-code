@@ -208,6 +208,8 @@ import {
   resolveSidebarRowAccessibility,
   type SidebarDropVerb,
   resolveSidebarThreadStatus,
+  floatThreadsNeedingUser,
+  sidebarThreadNeedsUser,
   resolveThreadLastVisitedAt,
   searchSidebarThreads,
   shouldCreateNewThreadInCurrentProject,
@@ -1360,7 +1362,22 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                         icon: "done" as const,
                         className: "text-success",
                       }
-                    : null;
+                    : // Seen completions keep a quiet Done, so a finished chat
+                      // never reads like one that has not started.
+                      thread.latestRun?.completedAt
+                      ? {
+                          label: "Done",
+                          icon: "done" as const,
+                          className: "text-muted-foreground",
+                        }
+                      : null;
+  const needsUserRailClassName = !sidebarThreadNeedsUser(status)
+    ? null
+    : status === "failed"
+      ? "before:bg-error"
+      : status === "input"
+        ? "before:bg-indigo-500"
+        : "before:bg-warning";
   const isWokeStatus = topStatus?.icon === "woke";
 
   const branchMismatch = resolveLocalCheckoutBranchMismatch({
@@ -1612,6 +1629,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     shouldRecede &&
       status === "working" &&
       "opacity-70 transition-opacity hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none",
+    // A colored edge marks rows waiting on the user, in their status hue.
+    needsUserRailClassName &&
+      cn(
+        "before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full",
+        needsUserRailClassName,
+      ),
     isFileDragOver && "ring-1 ring-inset ring-primary/70",
     isFileDragOver && !props.isActive && !isSelected && "bg-sidebar-row-hover",
     // The lifted row is an opaque card so the rows beneath it never show
@@ -2182,8 +2205,16 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   release click still fires and is consumed. */}
               {props.sweepAction !== null ? dragDestination : null}
             </div>
-            <div className="mt-1 flex min-w-0">
+            <div className="mt-1 flex min-w-0 items-baseline">
               {title}
+              {/* A status label takes the time's slot in the header, so the
+                  time drops beneath it instead of disappearing. Working rows
+                  already carry their own ticking duration. */}
+              {topStatus && status !== "working" ? (
+                <span className="ml-2 shrink-0 text-3xs tabular-nums text-muted-foreground">
+                  {threadTimeLabel(thread)}
+                </span>
+              ) : null}
               {isRegeneratingTitle ? (
                 <span role="status" className="sr-only">
                   Regenerating title
@@ -2954,9 +2985,13 @@ export default function Sidebar() {
     // sort, or mixed-version fleets would render different pinned orders on
     // web and mobile from the same data.
     const sortedPinned = sortPinnedThreadsForSidebar(pinned);
-    const sortedActive = workingShelfEnabled
-      ? sortInboxThreadsByReturn(active, inboxReturns.returnedAt)
-      : sortThreadsForSidebar(active);
+    // Threads that stall until the user acts lead the inbox, so a newcomer
+    // finds what needs them without scanning every row.
+    const sortedActive = floatThreadsNeedingUser(
+      workingShelfEnabled
+        ? sortInboxThreadsByReturn(active, inboxReturns.returnedAt)
+        : sortThreadsForSidebar(active),
+    );
     return {
       pinnedThreads:
         optimisticDrop?.section !== "pinned" || optimisticDrop.order === null

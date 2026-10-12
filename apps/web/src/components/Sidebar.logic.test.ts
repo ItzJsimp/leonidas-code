@@ -15,6 +15,7 @@ import {
   deleteSelectedThreadEntries,
   filterSidebarProjectScopeItems,
   filterSidebarV2VisibleThreads,
+  floatThreadsNeedingUser,
   formatWorkingDurationLabel,
   getFallbackThreadIdAfterDelete,
   getProjectSortTimestamp,
@@ -885,6 +886,43 @@ describe("isContextMenuPointerDown", () => {
         isMac: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe("floatThreadsNeedingUser", () => {
+  const idle = { hasPendingApprovals: false, hasPendingUserInput: false, runtime: null };
+  const failedRuntime = {
+    status: "failed" as const,
+    activeRunId: null,
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    providerName: "Codex",
+    lastError: null,
+    updatedAt: "2026-03-09T10:00:00.000Z",
+  };
+
+  it("lifts approval, input and failed threads above the rest in their own order", () => {
+    const threads = [
+      { ...idle, id: "done" },
+      { ...idle, id: "input", hasPendingUserInput: true },
+      { ...idle, id: "done-2" },
+      { ...idle, id: "failed", runtime: failedRuntime },
+      { ...idle, id: "approval", hasPendingApprovals: true },
+    ];
+    expect(floatThreadsNeedingUser(threads).map((thread) => thread.id)).toEqual([
+      "input",
+      "failed",
+      "approval",
+      "done",
+      "done-2",
+    ]);
+  });
+
+  it("keeps the order when nothing needs the user", () => {
+    const threads = [
+      { ...idle, id: "a" },
+      { ...idle, id: "b" },
+    ];
+    expect(floatThreadsNeedingUser(threads).map((thread) => thread.id)).toEqual(["a", "b"]);
   });
 });
 
