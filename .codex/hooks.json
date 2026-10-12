@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git pull --rebase --autostash --quiet origin main 2>&1 | tail -n 3; exit 0",
+            "command": "pwsh -NoProfile -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Sync-LeonidasSource.ps1')\"",
             "timeout": 60
           }
         ]
