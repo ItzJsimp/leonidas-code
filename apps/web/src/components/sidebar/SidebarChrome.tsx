@@ -163,10 +163,13 @@ function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
 function SidebarUtilityItem({
   icon,
   label,
+  tourId,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  /** Feature tour anchor, see `features/tour/tourTargets.ts`. */
+  tourId?: string;
   onClick: () => void;
 }) {
   return (
@@ -174,7 +177,7 @@ function SidebarUtilityItem({
       <Tooltip>
         <TooltipTrigger
           render={
-            <SidebarMenuButton aria-label={label} onClick={onClick} size="icon">
+            <SidebarMenuButton aria-label={label} data-tour={tourId} onClick={onClick} size="icon">
               {icon}
             </SidebarMenuButton>
           }
@@ -248,6 +251,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<LayoutDashboardIcon />}
             label="Command Center"
+            tourId="sidebar-command-center"
             onClick={handleCommandCenterClick}
           />
           <SidebarUtilityItem
@@ -265,11 +269,13 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<ChartNoAxesColumnIcon />}
             label="Usage"
+            tourId="sidebar-usage"
             onClick={handleUsageClick}
           />
           <SidebarUtilityItem
             icon={<SparklesIcon />}
             label="Updates"
+            tourId="sidebar-updates"
             onClick={handleUpdateHistoryClick}
           />
         </>

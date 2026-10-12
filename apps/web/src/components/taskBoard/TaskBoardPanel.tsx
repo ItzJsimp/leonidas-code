@@ -29,7 +29,12 @@ export function TaskBoardPanel() {
         <Tooltip>
           <TooltipTrigger
             render={
-              <SidebarMenuButton size="icon" aria-label="Tasks" onClick={() => setOpen(true)}>
+              <SidebarMenuButton
+                size="icon"
+                aria-label="Tasks"
+                data-tour="sidebar-tasks"
+                onClick={() => setOpen(true)}
+              >
                 <ListChecksIcon />
               </SidebarMenuButton>
             }
