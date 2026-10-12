@@ -195,7 +195,8 @@ export function codexProviderTurnTokenUsage(
   };
 }
 const DEFAULT_CODEX_SETTINGS = Schema.decodeSync(CodexSettings)({});
-const CODEX_ASSISTANT_DELTA_FLUSH_INTERVAL_MS = 50;
+// assistantStreaming drops emissions within 400 ms of the previous one, so faster flushes are wasted.
+const CODEX_ASSISTANT_DELTA_FLUSH_INTERVAL_MS = 200;
 const CodexBackgroundTerminalTerminateResponse = Schema.Struct({
   terminated: Schema.Boolean,
 });
@@ -2495,6 +2496,7 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                 providerInstanceId: task.providerInstanceId,
                 childThreadId: task.childThreadId,
                 prompt: task.prompt,
+                model: task.model,
                 result: task.result,
               },
             });

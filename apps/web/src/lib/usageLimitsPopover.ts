@@ -137,7 +137,14 @@ export function contextWindowTokensForModel(
     : undefined;
   const value = getProviderOptionCurrentValue(descriptor, selection);
   const selected = typeof value === "string" ? parseContextWindowSize(value) : null;
-  return selected ?? model.contextWindowTokens ?? null;
+  if (selected) return selected;
+  if (model.contextWindowTokens) return model.contextWindowTokens;
+  if (!selection?.model) return null;
+  const slug = selection.model.toLowerCase();
+  if (slug.includes("1m") || slug.includes("gemini")) return 1_000_000;
+  if (slug.includes("claude")) return 200_000;
+  if (slug.includes("codex") || slug.includes("sol") || slug.includes("gpt")) return 128_000;
+  return null;
 }
 
 /**

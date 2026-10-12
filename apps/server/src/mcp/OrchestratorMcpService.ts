@@ -12,6 +12,14 @@ import {
   type OrchestrationV2ThreadShell,
   type OrchestrationV2TurnItem,
   OrchestratorMcpFailure,
+  type OrchestratorMcpBoardTaskCreateInput,
+  type OrchestratorMcpBoardTaskDetail,
+  type OrchestratorMcpBoardTaskGetInput,
+  type OrchestratorMcpBoardTaskListInput,
+  type OrchestratorMcpBoardTaskListResult,
+  type OrchestratorMcpBoardTaskRow,
+  type OrchestratorMcpBoardTaskUpdateInput,
+  type OrchestratorMcpCapabilitiesInput,
   type OrchestratorMcpCapabilitiesResult,
   type OrchestratorMcpCreateThreadsInput,
   type OrchestratorMcpCreateThreadsResult,
@@ -55,9 +63,23 @@ import {
   type ScheduledTask,
   type ScheduledTaskUpsertInput,
   type ServerProvider,
+  type TaskBoardOperationError,
+  type TaskBoardReadError,
+  type TaskBoardTask,
+  type TaskBoardTaskStatus,
+  type TaskBoardWorkspaceSnapshot,
   ThreadId,
 } from "@t3tools/contracts";
 import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
+import {
+  evaluatePredictiveQuota,
+  type PredictiveQuotaAccountCandidate,
+  type QuotaWindowSnapshot,
+} from "@t3tools/shared/predictiveQuotaHandoff";
+import {
+  selectOptimalSwarmAccount,
+  type SwarmAccountProfile,
+} from "@t3tools/shared/shadowSwarmMultiplexer";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -93,6 +115,7 @@ import {
 } from "./McpInvocationContext.ts";
 import * as Metrics from "../observability/Metrics.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
+import * as TaskBoardService from "../taskBoard/TaskBoardService.ts";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 10 * 60 * 1_000;
 const MAX_WAIT_TIMEOUT_MS = 60 * 60 * 1_000;
@@ -108,6 +131,11 @@ const TASK_WAKE_EVENTS = [
 const SECRET_REQUEST_POLL_INTERVAL_MS = 500;
 const DEFAULT_THREAD_LIST_LIMIT = 50;
 const DEFAULT_THREAD_READ_LIMIT = 50;
+/** Activity items carry tool summaries, so a page is far larger than a page of messages. */
+const DEFAULT_THREAD_ACTIVITY_READ_LIMIT = 25;
+
+export const threadReadDefaultLimit = (view: "messages" | "activity" | undefined): number =>
+  view === "activity" ? DEFAULT_THREAD_ACTIVITY_READ_LIMIT : DEFAULT_THREAD_READ_LIMIT;
 const DEFAULT_THREAD_RUN_LIMIT = 10;
 const DEFAULT_THREAD_ITEM_MAX_CHARS = 20_000;
 
@@ -123,6 +151,7 @@ type TerminalTaskStatus = Extract<
 export interface OrchestratorMcpServiceShape {
   readonly capabilities: (
     scope: McpInvocationScope,
+    input?: OrchestratorMcpCapabilitiesInput,
   ) => Effect.Effect<OrchestratorMcpCapabilitiesResult, OrchestratorMcpFailure>;
   readonly delegateTask: (
     scope: McpInvocationScope,
@@ -148,6 +177,22 @@ export interface OrchestratorMcpServiceShape {
     scope: McpInvocationScope,
     input: OrchestratorMcpListScheduledTasksInput,
   ) => Effect.Effect<OrchestratorMcpListScheduledTasksResult, OrchestratorMcpFailure>;
+  readonly boardTaskList: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpBoardTaskListInput,
+  ) => Effect.Effect<OrchestratorMcpBoardTaskListResult, OrchestratorMcpFailure>;
+  readonly boardTaskGet: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpBoardTaskGetInput,
+  ) => Effect.Effect<OrchestratorMcpBoardTaskDetail, OrchestratorMcpFailure>;
+  readonly boardTaskUpdate: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpBoardTaskUpdateInput,
+  ) => Effect.Effect<OrchestratorMcpBoardTaskRow, OrchestratorMcpFailure>;
+  readonly boardTaskCreate: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpBoardTaskCreateInput,
+  ) => Effect.Effect<OrchestratorMcpBoardTaskRow, OrchestratorMcpFailure>;
   readonly updateScheduledTask: (
     scope: McpInvocationScope,
     input: OrchestratorMcpUpdateScheduledTaskInput,
@@ -214,6 +259,85 @@ function threadManagementFailure(error: unknown): OrchestratorMcpFailure {
     case "ThreadManagementDurableRunProjectionError":
       return failure("orchestration_error", error.message);
   }
+}
+
+/** A task card problem the caller can fix is an invalid request; storage trouble is not. */
+function boardTaskFailure(
+  error: TaskBoardReadError | TaskBoardOperationError,
+): OrchestratorMcpFailure {
+  if (error._tag === "TaskBoardOperationError") {
+    switch (error.reason) {
+      case "task_not_found":
+      case "invalid_data":
+      case "invalid_card":
+        return failure("invalid_request", error.message);
+      default:
+        return failure("orchestration_error", error.message);
+    }
+  }
+  return failure("orchestration_error", error.message);
+}
+
+const BOARD_OPEN_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
+  "todo",
+  "in_progress",
+  "review",
+  "blocked",
+];
+const BOARD_DEFAULT_LIMIT = 25;
+const BOARD_HISTORY_LIMIT = 15;
+const BOARD_PRIORITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 } as const;
+
+/** The AIOS project slug of the caller's own Leonidas project, when the board knows it. */
+function callerBoardSlug(
+  workspace: TaskBoardWorkspaceSnapshot,
+  projectId: ProjectId | undefined,
+): string | undefined {
+  return projectId === undefined
+    ? undefined
+    : workspace.projects.find((project) => project.projectId === projectId)?.slug;
+}
+
+const isoTime = (epochMs: number): string => DateTime.formatIso(DateTime.makeUnsafe(epochMs));
+
+function boardTaskRow(task: TaskBoardTask): OrchestratorMcpBoardTaskRow {
+  return {
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+    projectSlug: task.projectSlug ?? null,
+    claimedBy: task.claimedBy,
+    due: task.due ?? null,
+    checklist: task.checklist ?? null,
+    updatedAt: isoTime(task.updatedAt),
+  };
+}
+
+function boardTaskDetail(task: TaskBoardTask): OrchestratorMcpBoardTaskDetail {
+  return {
+    ...boardTaskRow(task),
+    description: task.description,
+    verify: task.verify ?? null,
+    startFiles: task.startFiles ?? [],
+    blockedBy: task.blockedBy ?? [],
+    labels: task.labels,
+    history: task.history.slice(-BOARD_HISTORY_LIMIT).map((entry) => ({
+      at: isoTime(entry.timestamp),
+      action: entry.action,
+      actor: entry.actor,
+      note: entry.note ?? null,
+    })),
+  };
+}
+
+/** Priority first, then work already under way, then whatever has waited longest. */
+function compareBoardTasks(a: TaskBoardTask, b: TaskBoardTask): number {
+  return (
+    BOARD_PRIORITY_RANK[a.priority] - BOARD_PRIORITY_RANK[b.priority] ||
+    Number(b.status === "in_progress") - Number(a.status === "in_progress") ||
+    a.updatedAt - b.updatedAt
+  );
 }
 
 function errorMessage(error: unknown): string {
@@ -835,6 +959,18 @@ const make = Effect.gen(function* () {
   const providerAdapters = yield* ProviderAdapterRegistry.ProviderAdapterRegistryV2;
   const scheduledTasks = yield* ScheduledTaskService.ScheduledTaskService;
   const projects = yield* ProjectService.ProjectService;
+  const taskBoard = yield* TaskBoardService.TaskBoardService;
+
+  /** The user's task cards plus the board's view of which Leonidas project each section belongs to. */
+  const boardProjects = projects.snapshot.pipe(
+    Effect.map((snapshot) => snapshot.projects),
+    Effect.mapError((error) =>
+      failure("orchestration_error", `Unable to read projects: ${error.message}`),
+    ),
+  );
+  const boardWorkspaceOf = (list: Effect.Success<typeof boardProjects>) =>
+    taskBoard.workspace(list).pipe(Effect.mapError(boardTaskFailure));
+  const boardWorkspace = Effect.flatMap(boardProjects, boardWorkspaceOf);
 
   /** A caller-named project, which must exist before anything is recorded against it. */
   const requireProject = (projectId: ProjectId) =>
@@ -1061,6 +1197,164 @@ const make = Effect.gen(function* () {
    */
   const loadOrchestrationCapableInstanceIds = () =>
     providerAdapters.list().pipe(Effect.map((instanceIds) => new Set(instanceIds)));
+
+  /**
+   * Background child work may use another connected account only when the
+   * provider, exact model, and account identity are compatible. Interactive
+   * turns keep their selected account.
+   */
+  const resolveBackgroundTaskTarget = (input: {
+    readonly parent: Pick<
+      OrchestrationV2ThreadProjection,
+      "thread" | "providerThreads" | "providerTurns"
+    >;
+    readonly target: OrchestratorMcpTarget | undefined;
+    readonly providers: ReadonlyArray<ServerProvider>;
+  }) =>
+    Effect.gen(function* () {
+      const inherited = input.parent.thread.modelSelection;
+      if (
+        input.target?.providerInstanceId !== undefined ||
+        (input.target?.model !== undefined && input.target.model !== inherited.model)
+      ) {
+        return input.target;
+      }
+
+      const currentProvider = input.providers.find(
+        (provider) => provider.instanceId === inherited.instanceId,
+      );
+      if (currentProvider === undefined) return input.target;
+      const driverKind = currentProvider.driver;
+      if (input.target?.driverKind !== undefined && input.target.driverKind !== driverKind) {
+        return input.target;
+      }
+
+      const orchestrationCapableInstanceIds = yield* loadOrchestrationCapableInstanceIds();
+      const identityKeys = (provider: ServerProvider): readonly string[] =>
+        [provider.auth.email, provider.usageLimits?.credentialFingerprint]
+          .flatMap((value) => (value === undefined ? [] : [value.trim().toLowerCase()]))
+          .filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
+      const quotaWindows = (provider: ServerProvider): readonly QuotaWindowSnapshot[] =>
+        (provider.usageLimits?.windows ?? []).map((window) => ({
+          usedPercent: window.usedPercent,
+          ...(window.resetsAt === undefined ? {} : { resetsAt: window.resetsAt }),
+          ...(window.tokenEstimate === undefined
+            ? {}
+            : {
+                tokenEstimate: {
+                  status: window.tokenEstimate.status,
+                  ...(window.tokenEstimate.remainingTokens === undefined
+                    ? {}
+                    : { remainingTokens: window.tokenEstimate.remainingTokens }),
+                  ...(window.tokenEstimate.capacityTokens === undefined
+                    ? {}
+                    : { capacityTokens: window.tokenEstimate.capacityTokens }),
+                },
+              }),
+        }));
+      const isRateLimited = (provider: ServerProvider): boolean =>
+        /rate.?limit.{0,30}(?:reached|exceeded)|usage.{0,30}limit.{0,30}(?:reached|exceeded)|quota.{0,30}(?:exhausted|exceeded|reached)|limit.{0,30}(?:reached|exceeded)|out of usage/i.test(
+          provider.message ?? "",
+        );
+      const asCandidate = (provider: ServerProvider): PredictiveQuotaAccountCandidate => ({
+        providerInstanceId: provider.instanceId,
+        accountLabel: provider.auth.label ?? provider.displayName ?? provider.driver,
+        driverKind: provider.driver,
+        identityKeys: identityKeys(provider),
+        modelIds: provider.models.map((model) => model.slug),
+        windows: quotaWindows(provider),
+        isRateLimited: isRateLimited(provider),
+      });
+      const asProfile = (provider: ServerProvider): SwarmAccountProfile => ({
+        providerInstanceId: provider.instanceId,
+        driverKind: provider.driver,
+        identityKeys: identityKeys(provider),
+        modelIds: provider.models.map((model) => model.slug),
+        windows: quotaWindows(provider),
+        available:
+          orchestrationCapableInstanceIds.has(provider.instanceId) &&
+          providerConstraints(provider, true).length === 0 &&
+          provider.models.some((model) => model.slug === inherited.model),
+        isRateLimited: isRateLimited(provider),
+      });
+
+      const compatibleProviders = input.providers.filter(
+        (provider) =>
+          provider.driver === driverKind &&
+          provider.models.some((model) => model.slug === inherited.model) &&
+          invalidOptionSelections(
+            input.target?.options ?? inherited.options ?? [],
+            provider.models.find((model) => model.slug === inherited.model)?.capabilities
+              ?.optionDescriptors,
+          ).length === 0,
+      );
+      const current = asCandidate(currentProvider);
+      const availableAlternates = compatibleProviders.filter(
+        (provider) =>
+          provider.instanceId !== currentProvider.instanceId &&
+          orchestrationCapableInstanceIds.has(provider.instanceId) &&
+          providerConstraints(provider, true).length === 0,
+      );
+      const candidates = availableAlternates.map(asCandidate);
+      const rootProviderThreadIds = new Set(
+        input.parent.providerThreads
+          .filter(
+            (providerThread) =>
+              providerThread.providerInstanceId === currentProvider.instanceId &&
+              providerThread.ownerNodeId === null,
+          )
+          .map((providerThread) => providerThread.id),
+      );
+      const recentTurnTokenUsages = input.parent.providerTurns
+        .filter(
+          (turn) =>
+            rootProviderThreadIds.has(turn.providerThreadId) &&
+            turn.turnTokenUsage?.usageStatus === "complete",
+        )
+        .slice(-5)
+        .flatMap((turn) => {
+          const usage = turn.turnTokenUsage;
+          return usage?.usageStatus === "complete" ? [usage.inputTokens + usage.outputTokens] : [];
+        });
+      const nowMs = yield* Clock.currentTimeMillis;
+      const prediction = evaluatePredictiveQuota({
+        currentAccount: current,
+        candidateAccounts: candidates,
+        recentTurnTokenUsages,
+        nowMs,
+      });
+      const profiles = compatibleProviders.map(asProfile);
+      const multiplexed = selectOptimalSwarmAccount({
+        accounts: profiles,
+        currentInstanceId: currentProvider.instanceId,
+        driverKind,
+        modelId: inherited.model,
+        nowMs,
+      });
+      const selectedInstanceId =
+        prediction.recommendedAccount?.providerInstanceId ??
+        multiplexed?.selectedAccount.providerInstanceId;
+      if (selectedInstanceId !== undefined) {
+        const selectedProvider = input.providers.find(
+          (provider) => provider.instanceId === selectedInstanceId,
+        );
+        if (selectedProvider === undefined) return input.target;
+        return {
+          providerInstanceId: selectedProvider.instanceId,
+          model: inherited.model,
+          ...((input.target?.options ?? inherited.options) === undefined
+            ? {}
+            : { options: input.target?.options ?? inherited.options }),
+        } satisfies OrchestratorMcpTarget;
+      }
+      if (prediction.exhaustionRisk === "exhausted") {
+        return yield* failure(
+          "provider_unavailable",
+          "The current provider account is out of quota, and no other available account with the same model can run this delegated task.",
+        );
+      }
+      return input.target;
+    });
 
   /**
    * Provider snapshots only re-probe while a client is in the foreground, so an
@@ -1566,6 +1860,106 @@ const make = Effect.gen(function* () {
           ),
         };
       }),
+    boardTaskList: (scope, input) =>
+      Effect.gen(function* () {
+        const { parent } = yield* loadCaller(scope);
+        const workspace = yield* boardWorkspace;
+        const slug = input.projectSlug ?? callerBoardSlug(workspace, parent?.thread.projectId);
+        const statuses =
+          input.status === undefined || input.status.length === 0
+            ? BOARD_OPEN_STATUSES
+            : input.status;
+        const query = input.query?.toLowerCase();
+        const matching = workspace.tasks
+          .filter(
+            (task) =>
+              statuses.includes(task.status) &&
+              (slug === undefined || task.projectSlug === slug) &&
+              (input.mine !== true || task.claimedBy === workspace.member) &&
+              (query === undefined ||
+                task.title.toLowerCase().includes(query) ||
+                task.id.toLowerCase().includes(query)),
+          )
+          .toSorted(compareBoardTasks);
+        return {
+          member: workspace.member,
+          total: matching.length,
+          tasks: matching.slice(0, input.limit ?? BOARD_DEFAULT_LIMIT).map(boardTaskRow),
+        };
+      }),
+    boardTaskGet: (scope, input) =>
+      Effect.gen(function* () {
+        yield* loadCaller(scope);
+        const workspace = yield* boardWorkspace;
+        const task = workspace.tasks.find((candidate) => candidate.id === input.taskId);
+        if (task === undefined) {
+          return yield* failure("task_not_found", `No task card ${input.taskId} was found.`);
+        }
+        return boardTaskDetail(task);
+      }),
+    boardTaskUpdate: (scope, input) =>
+      Effect.gen(function* () {
+        const { parent } = yield* loadCaller(scope);
+        if (input.claim === true && input.release === true) {
+          return yield* failure("invalid_request", "claim and release cannot both be true.");
+        }
+        const projectList = yield* boardProjects;
+        const workspace = yield* boardWorkspaceOf(projectList);
+        const existing = workspace.tasks.find((candidate) => candidate.id === input.taskId);
+        const status =
+          input.status ??
+          (input.claim === true && existing?.status === "todo" ? "in_progress" : undefined);
+        const agent = {
+          ...(scope.thread === undefined
+            ? {}
+            : {
+                providerInstanceId: scope.thread.providerInstanceId,
+                threadId: scope.thread.threadId,
+              }),
+          ...(parent === undefined ? {} : { model: parent.thread.modelSelection.model }),
+        };
+        const updated = yield* taskBoard
+          .cardUpdate(
+            {
+              taskId: input.taskId,
+              actor: workspace.member,
+              ...(Object.keys(agent).length === 0 ? {} : { agent }),
+              ...(status === undefined ? {} : { status }),
+              ...(input.priority === undefined ? {} : { priority: input.priority }),
+              ...(input.projectSlug === undefined ? {} : { projectSlug: input.projectSlug }),
+              ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+              ...(input.note === undefined ? {} : { note: input.note }),
+              ...(input.claim === true
+                ? { claimedBy: workspace.member }
+                : input.release === true
+                  ? { claimedBy: null }
+                  : {}),
+            },
+            projectList,
+          )
+          .pipe(Effect.mapError(boardTaskFailure));
+        return boardTaskRow(updated);
+      }),
+    boardTaskCreate: (scope, input) =>
+      Effect.gen(function* () {
+        const { parent } = yield* loadCaller(scope);
+        const projectList = yield* boardProjects;
+        const workspace = yield* boardWorkspaceOf(projectList);
+        const slug = input.projectSlug ?? callerBoardSlug(workspace, parent?.thread.projectId);
+        const created = yield* taskBoard
+          .cardCreate(
+            {
+              title: input.title,
+              actor: workspace.member,
+              ...(input.description === undefined ? {} : { description: input.description }),
+              ...(input.priority === undefined ? {} : { priority: input.priority }),
+              ...(slug === undefined ? {} : { projectSlug: slug }),
+            },
+            projectList,
+          )
+          .pipe(Effect.mapError(boardTaskFailure));
+        return boardTaskRow(created);
+      }),
     updateScheduledTask: (scope, input) =>
       Effect.gen(function* () {
         const { parent, limits } = yield* loadCaller(scope);
@@ -1767,10 +2161,18 @@ const make = Effect.gen(function* () {
         return { status, secretRef: secretRef.value };
       }).pipe(Effect.withSpan("OrchestratorMcpService.requestSecret")),
 
-    capabilities: (scope) =>
+    capabilities: (scope, input) =>
       Effect.gen(function* () {
         const { parent, limits } = yield* loadCaller(scope);
-        const providers = yield* loadProviders;
+        const allProviders = yield* loadProviders;
+        // Option descriptors repeat per model and made up about 80% of this result, so they
+        // come back only once the caller has narrowed to the provider it will target.
+        const onlyInstanceId = input?.providerInstanceId;
+        const providers =
+          onlyInstanceId === undefined
+            ? allProviders
+            : allProviders.filter((provider) => provider.instanceId === onlyInstanceId);
+        const includeOptions = onlyInstanceId !== undefined;
         const orchestrationCapableInstanceIds = yield* loadOrchestrationCapableInstanceIds();
         return {
           parentThreadId: parent?.thread.id ?? null,
@@ -1791,7 +2193,7 @@ const make = Effect.gen(function* () {
                 provider?.models.map((model) => ({
                   id: model.slug,
                   label: model.name ?? null,
-                  ...(model.capabilities?.optionDescriptors === undefined
+                  ...(!includeOptions || model.capabilities?.optionDescriptors === undefined
                     ? {}
                     : { options: model.capabilities.optionDescriptors }),
                 })) ?? [],
@@ -1800,6 +2202,7 @@ const make = Effect.gen(function* () {
               constraints: [...constraints],
             };
           }),
+          ...(includeOptions ? {} : { modelOptionsOmitted: true as const }),
           features: {
             appOwnedSubagents: true,
             asyncPolling: true,
@@ -1829,9 +2232,14 @@ const make = Effect.gen(function* () {
           );
         }
         const providers = yield* loadProviders;
-        const target = yield* resolveTargetRechecking({
+        const backgroundTarget = yield* resolveBackgroundTaskTarget({
           parent,
           target: input.target,
+          providers,
+        });
+        const target = yield* resolveTargetRechecking({
+          parent,
+          target: backgroundTarget,
           providers,
         });
         const runtimeMode = yield* resolveRuntimeMode(parent.thread.runtimeMode, input.runtimeMode);
@@ -2287,7 +2695,7 @@ const make = Effect.gen(function* () {
         const { parent, target, shell } = yield* loadReadableThread(scope, input.threadId);
         const view = input.view ?? "messages";
         const afterPosition = input.afterPosition ?? -1;
-        const limit = input.limit ?? DEFAULT_THREAD_READ_LIMIT;
+        const limit = input.limit ?? threadReadDefaultLimit(view);
         const maxChars = input.maxCharsPerItem ?? DEFAULT_THREAD_ITEM_MAX_CHARS;
         const timeline = yield* threadManagement
           .getTimelinePage(input.threadId, {
@@ -2500,4 +2908,5 @@ export const layer: Layer.Layer<
   | ScheduledTaskService.ScheduledTaskService
   | ProjectService.ProjectService
   | SecretRequests.SecretRequests
+  | TaskBoardService.TaskBoardService
 > = Layer.effect(OrchestratorMcpService, make);

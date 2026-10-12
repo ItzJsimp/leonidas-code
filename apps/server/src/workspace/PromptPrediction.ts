@@ -69,14 +69,22 @@ const make = Effect.gen(function* () {
     candidates: Effect.fn("PromptPrediction.candidates")(function* (cwd: string) {
       const now = yield* Clock.currentTimeMillis;
       return yield* Effect.promise(async () => {
-        const files = env.LEONIDAS_SCRIBE_HISTORY
-          ? [env.LEONIDAS_SCRIBE_HISTORY]
-          : [
-              path.join(path.dirname(cwd), "LeonidasAI", "history.jsonl"),
-              path.join(path.dirname(cwd), "leonidas-scribe", "history.jsonl"),
-              path.join(home, "leonidas-scribe", "history.jsonl"),
-            ];
-        for (const file of files) {
+        const files: string[] = [];
+        if (env.LEONIDAS_SCRIBE_HISTORY) files.push(env.LEONIDAS_SCRIBE_HISTORY);
+        else {
+          let ancestor = cwd;
+          for (let depth = 0; depth < 7; depth++) {
+            files.push(
+              path.join(ancestor, "LeonidasAI", "history.jsonl"),
+              path.join(ancestor, "leonidas-scribe", "history.jsonl"),
+            );
+            const parent = path.dirname(ancestor);
+            if (parent === ancestor) break;
+            ancestor = parent;
+          }
+          files.push(path.join(home, "leonidas-scribe", "history.jsonl"));
+        }
+        for (const file of [...new Set(files)]) {
           const candidates = await loadShared(file, now);
           if (candidates.length > 0) return candidates;
         }

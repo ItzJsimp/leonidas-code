@@ -104,7 +104,7 @@ describe("Leonidas release policy", () => {
     );
     const lines = notes.trimEnd().split("\n");
     expect(lines.at(-1)).toBe(
-      `<!-- leonidas-release {"commit":"${sha}","authors":["Jake","Mob","Someone Else"],"coAuthors":["Claude","Pat Lee"]} -->`,
+      `<!-- leonidas-release {"commit":"${sha}","authors":["Jake","Mob","Someone Else"],"coAuthors":["Claude","Pat Lee"],"authorCommits":{"Jake":2,"Mob":1,"Someone Else":1}} -->`,
     );
     expect(lines.at(-2)).toBe("");
   });

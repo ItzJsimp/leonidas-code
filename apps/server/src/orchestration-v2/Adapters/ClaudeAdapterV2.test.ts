@@ -7,6 +7,7 @@ import type {
   SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AskUserQuestionInput } from "@anthropic-ai/claude-agent-sdk/sdk-tools";
+import { makeAssistantStreamingFilter } from "../assistantStreaming.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   ChatAttachmentId,
@@ -20,6 +21,7 @@ import {
   type OrchestrationV2AppThread,
   type OrchestrationV2ProviderThread,
   ProjectId,
+  ProviderDriverKind,
   ProviderInstanceId,
   type ProviderApprovalDecision,
   ProviderSessionId,
@@ -714,7 +716,7 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
     };
     assert.equal(systemPrompt.type, "preset");
     assert.equal(systemPrompt.preset, "claude_code");
-    assert.include(systemPrompt.append ?? "", "Use `delegate_task`");
+    assert.include(systemPrompt.append ?? "", "otherwise use `delegate_task`");
     const logged = ClaudeAdapterV2.loggedClaudeQueryOptions(options);
     assert.equal(logged.hasMcpServers, true);
     assert.notInclude(JSON.stringify(logged), "secret-claude-token");
@@ -2566,6 +2568,116 @@ describe("ClaudeAdapterV2 background wake turns", () => {
           ),
         );
         for (const item of latest.values()) assert.notInclude(item.text, "secret-signature");
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(
+          Layer.mergeAll(IdAllocator.layer, McpProviderSessions.layer, NodeServices.layer),
+        ),
+      ),
+  );
+
+  it.effect.each(["completed", "interrupted"] as const)(
+    "projects Claude assistant text stream and final result when %s",
+    (status) =>
+      Effect.gen(function* () {
+        const harness = yield* makeWakeHarnessWithOptions({
+          environment: { CLAUDE_STREAM_ASSISTANT_TEXT: "1" },
+        });
+        yield* harness.runtime.startTurn(
+          makeClaudeTestTurnInput({
+            threadId: harness.threadId,
+            providerThread: harness.providerThread,
+            now: yield* DateTime.now,
+            attemptId: RunAttemptId.make("assistant-stream-attempt"),
+            text: "Hello",
+            attachments: [],
+          }),
+        );
+        const stream = (event: unknown, parent: string | null = null) =>
+          claudeSdkFrame({
+            type: "stream_event",
+            event,
+            parent_tool_use_id: parent,
+            session_id: WAKE_NATIVE_SESSION,
+            uuid: "stream-frame",
+          });
+        const snapshot = (id: string, uuid: string, text: string) =>
+          claudeSdkFrame({
+            type: "assistant",
+            uuid,
+            session_id: WAKE_NATIVE_SESSION,
+            parent_tool_use_id: null,
+            message: {
+              id,
+              model: "claude-sonnet-4-6",
+              content: [{ type: "text", text }],
+            },
+          });
+        const frames = [
+          stream({ type: "message_start", message: { id: "assistant-msg" } }),
+          stream({
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "Hello " },
+          }),
+          stream({
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "streaming " },
+          }),
+          stream({
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "world!" },
+          }),
+          stream({ type: "content_block_stop", index: 0 }),
+          ...(status === "completed"
+            ? [
+                snapshot("assistant-msg", "snap-1", "Hello streaming world!"),
+                makeResultFrame({
+                  uuid: "result-stream",
+                  result: "",
+                }),
+              ]
+            : [
+                makeResultFrame({
+                  uuid: "result-stream",
+                  result: "",
+                  terminalReason: "aborted_streaming" as const,
+                }),
+              ]),
+        ];
+        for (const frame of frames) yield* Queue.offer(harness.sdkMessages, frame);
+        const terminal = yield* Queue.take(harness.terminalReceipts);
+        assert.equal(terminal.status, status);
+
+        const assistantItems = harness.events.flatMap((event) =>
+          event.type === "turn_item.updated" && event.turnItem.type === "assistant_message"
+            ? [event.turnItem]
+            : [],
+        );
+        assert.isAbove(assistantItems.length, 0);
+        const finalItem = assistantItems[assistantItems.length - 1]!;
+        assert.equal(finalItem.text, "Hello streaming world!");
+        assert.equal(finalItem.streaming, false);
+        assert.isNotNull(finalItem.completedAt);
+        const messages = harness.events.flatMap((event) =>
+          event.type === "message.updated" && event.message.role === "assistant"
+            ? [event.message]
+            : [],
+        );
+        assert.lengthOf(messages, 1);
+        assert.equal(messages[0]?.text, "Hello streaming world!");
+
+        const paragraphFilter = makeAssistantStreamingFilter("paragraph");
+        const filtered = assistantItems.flatMap((item) =>
+          paragraphFilter({
+            type: "turn_item.updated",
+            driver: ProviderDriverKind.make("claude"),
+            turnItem: item,
+          }),
+        );
+        assert.isDefined(filtered);
       }).pipe(
         Effect.scoped,
         Effect.provide(

@@ -161,9 +161,13 @@ export function fromRunner(name: string, run: Runner): ProviderTextGeneration {
         operation: "generatePromptSuggestion",
         cwd: input.cwd,
         modelSelection: input.modelSelection,
-        ...buildPromptSuggestionPrompt({ messages: input.messages }),
+        ...buildPromptSuggestionPrompt({
+          messages: input.messages,
+          draft: input.draft,
+          personalExamples: input.personalExamples,
+        }),
       });
-      return { prompt: sanitizePromptSuggestion(generated.prompt) };
+      return { prompt: sanitizePromptSuggestion(generated.prompt, input.draft ?? "") };
     });
 
   return {

@@ -1,4 +1,5 @@
 import {
+  type ProviderUsageLimitsUpdate,
   ANTIGRAVITY_DEFAULT_MODEL,
   ProviderDriverKind,
   type AntigravitySettings,
@@ -21,6 +22,7 @@ import type * as EffectAcpSchema from "effect-acp/compat";
 
 import type * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
 import { makeManagedServerProvider } from "@t3tools/provider-core/server/managedProvider";
+import { applyUsageLimitsUpdate } from "@t3tools/provider-core/server/usageLimits";
 import {
   makeManualOnlyProviderMaintenanceCapabilities,
   type ProviderMaintenanceCapabilities,
@@ -65,6 +67,8 @@ export function buildAntigravityModelsFromSession(
   return entries.flatMap((entry): ServerProviderModel[] => {
     if (!entry.value.trim() || seen.has(entry.value)) return [];
     seen.add(entry.value);
+    const isClaude = /claude/i.test(entry.value) || /claude/i.test(entry.name);
+    const contextWindowTokens = isClaude ? 200_000 : 1_000_000;
     return [
       {
         slug: entry.value,
@@ -74,6 +78,7 @@ export function buildAntigravityModelsFromSession(
           ? { isDefault: true, aliases: [ANTIGRAVITY_DEFAULT_MODEL] }
           : {}),
         capabilities: EMPTY_MODEL_CAPABILITIES,
+        contextWindowTokens,
       },
     ];
   });
@@ -208,7 +213,10 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
     const next = yield* SubscriptionRef.updateAndGet(metadata, (state) => {
       if (state.authRevision !== before.authRevision) return state;
       const { message: _previousMessage, ...draft } = state.draft;
-      const authenticated = draft.auth.status === "authenticated" || probedLimits !== undefined;
+      const authenticated =
+        draft.auth.status === "authenticated" ||
+        probedLimits !== undefined ||
+        Boolean(probedLimits?.email);
       const usageLimits = probedLimits?.usageLimits ?? draft.usageLimits;
       const email = probedLimits?.email ?? draft.auth.email;
       const planLabel = probedLimits?.plan
@@ -444,8 +452,29 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
       : { ...snapshot, skills: resolvedSkills };
   });
 
+  const applyUsageLimits = (update: ProviderUsageLimitsUpdate) =>
+    Effect.gen(function* () {
+      const now = yield* DateTime.now;
+      const checkedAt = DateTime.formatIso(now);
+      yield* SubscriptionRef.update(metadata, (state) => {
+        const usageLimits = applyUsageLimitsUpdate({
+          previous: state.draft.usageLimits,
+          checkedAt,
+          update,
+        });
+        if (usageLimits === state.draft.usageLimits) return state;
+        return {
+          ...state,
+          draft: {
+            ...state.draft,
+            usageLimits,
+          },
+        };
+      });
+    });
+
   return {
-    snapshot: { ...managed, getSnapshot },
+    snapshot: { ...managed, getSnapshot, applyUsageLimits },
     onSessionStarted,
     onConfigOptionsUpdated,
     onAvailableCommands,

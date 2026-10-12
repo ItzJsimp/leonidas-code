@@ -5,6 +5,7 @@ import {
   ThreadId,
   type OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
@@ -84,48 +85,105 @@ it.effect.each(
     ] as const
   ).map((scenario) => [scenario.label, scenario] as const),
 )("%s", ([, scenario]) => {
-  const refreshed: string[] = [];
   const threadId = ThreadId.make("thread-pr-refresh");
   const runId = RunId.make("completed-run");
-  const layer = RunFinalization.layerObserver.pipe(
-    Layer.provide(
-      Layer.mergeAll(
-        Layer.mock(WorkspaceEntries.WorkspaceEntries)({ refresh: () => Effect.void }),
-        Layer.mock(PullRequestService.PullRequestService)({
-          refreshAfterTurn: () => Effect.void,
-        }),
-        Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({
-          refreshLocalStatus: () =>
-            Effect.succeed({
-              isRepo: true,
-              hasPrimaryRemote: true,
-              isDefaultRef: scenario.checkedOut === "main",
-              refName: scenario.checkedOut,
-              hasWorkingTreeChanges: false,
-              workingTree: { files: [], insertions: 0, deletions: 0 },
-            }),
-          refreshStatus: () =>
-            Effect.die("turn completion must preserve known PRs and lookup backoff"),
-          refreshPullRequestStatus: (cwd) =>
-            Effect.sync(() => {
-              refreshed.push(cwd);
-              return null;
-            }),
-        }),
-        Layer.mock(ProjectionStore.ProjectionStoreV2)({
-          getThreadShell: () =>
-            Effect.succeed({
-              id: threadId,
-              branch: scenario.branch,
-              activeRunId: scenario.activeRun === null ? null : RunId.make(scenario.activeRun),
-            } as OrchestrationV2ThreadShell),
-        }),
-      ),
-    ),
-  );
   return Effect.gen(function* () {
-    const observer = yield* RunFinalization.RunFinalizationObserver;
-    yield* observer.refresh({ cwd: "/repo", threadId, runId });
-    assert.deepEqual(refreshed, [...scenario.expected]);
-  }).pipe(Effect.provide(layer));
+    const refreshed = yield* Deferred.make<string>();
+    const layer = RunFinalization.layerObserver.pipe(
+      Layer.provide(
+        Layer.mergeAll(
+          Layer.mock(WorkspaceEntries.WorkspaceEntries)({ refresh: () => Effect.void }),
+          Layer.mock(PullRequestService.PullRequestService)({
+            refreshAfterTurn: () => Effect.void,
+          }),
+          Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({
+            refreshLocalStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: scenario.checkedOut === "main",
+                refName: scenario.checkedOut,
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+              }),
+            refreshStatus: () =>
+              Effect.die("turn completion must preserve known PRs and lookup backoff"),
+            refreshPullRequestStatus: (cwd) =>
+              Deferred.succeed(refreshed, cwd).pipe(Effect.as(null)),
+          }),
+          Layer.mock(ProjectionStore.ProjectionStoreV2)({
+            getThreadShell: () =>
+              Effect.succeed({
+                id: threadId,
+                branch: scenario.branch,
+                activeRunId: scenario.activeRun === null ? null : RunId.make(scenario.activeRun),
+              } as OrchestrationV2ThreadShell),
+          }),
+        ),
+      ),
+    );
+    yield* Effect.gen(function* () {
+      const observer = yield* RunFinalization.RunFinalizationObserver;
+      yield* observer.refresh({ cwd: "/repo", threadId, runId });
+      if (scenario.expected.length === 0) {
+        assert.equal(yield* Deferred.isDone(refreshed), false);
+      } else {
+        assert.deepEqual([yield* Deferred.await(refreshed)], [...scenario.expected]);
+      }
+    }).pipe(Effect.provide(layer));
+  });
+});
+
+it.effect("returns from the observer without waiting for a slow PR refresh", () => {
+  const threadId = ThreadId.make("thread-slow-pr");
+  const runId = RunId.make("completed-run-slow-pr");
+  return Effect.gen(function* () {
+    const started = yield* Deferred.make<void>();
+    const release = yield* Deferred.make<void>();
+    const finished = yield* Deferred.make<void>();
+    const layer = RunFinalization.layerObserver.pipe(
+      Layer.provide(
+        Layer.mergeAll(
+          Layer.mock(WorkspaceEntries.WorkspaceEntries)({ refresh: () => Effect.void }),
+          Layer.mock(PullRequestService.PullRequestService)({
+            refreshAfterTurn: () => Effect.void,
+          }),
+          Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({
+            refreshLocalStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "feature",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+              }),
+            refreshPullRequestStatus: () =>
+              Deferred.succeed(started, undefined).pipe(
+                Effect.andThen(Deferred.await(release)),
+                Effect.andThen(Deferred.succeed(finished, undefined)),
+                Effect.as(null),
+              ),
+          }),
+          Layer.mock(ProjectionStore.ProjectionStoreV2)({
+            getThreadShell: () =>
+              Effect.succeed({
+                id: threadId,
+                branch: "feature",
+                activeRunId: null,
+              } as OrchestrationV2ThreadShell),
+          }),
+        ),
+      ),
+    );
+    yield* Effect.gen(function* () {
+      const observer = yield* RunFinalization.RunFinalizationObserver;
+      // The PR lookup is still blocked on `release`; reaching the next line proves the
+      // observer returned without waiting for it.
+      yield* observer.refresh({ cwd: "/repo", threadId, runId });
+      yield* Deferred.await(started);
+      yield* Deferred.succeed(release, undefined);
+      yield* Deferred.await(finished);
+    }).pipe(Effect.provide(layer));
+  });
 });

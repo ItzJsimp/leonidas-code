@@ -1190,7 +1190,11 @@ const ConversationTimeline = memo(function ConversationTimeline({
         rememberTimelinePosition(listIdentityKey, {
           ...position,
           // DOM geometry includes the header and the virtualizer's layout adjustment.
-          offsetWithinRow: element.getBoundingClientRect().top - row.getBoundingClientRect().top,
+          // Restore reads the offset only for positions not at the end, and this runs
+          // on every streamed delta, so pinned views skip the forced layout reads.
+          offsetWithinRow: isAtEnd
+            ? 0
+            : element.getBoundingClientRect().top - row.getBoundingClientRect().top,
           scrollOffset: element.scrollTop,
           atEnd: isAtEnd,
           disclosures: {
@@ -3334,6 +3338,7 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
     const live = liveAgents?.find((agent) => agent.id === item.subagentId);
     return {
       item,
+      live,
       status: live?.status ?? item.status,
       startedAt: live?.startedAt ?? item.startedAt,
       completedAt: live?.completedAt ?? item.completedAt,
@@ -3362,13 +3367,17 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
           )}
         >
           <span className="flex shrink-0 items-center -space-x-1.5" aria-hidden>
-            {agents.slice(0, 3).map(({ item, status }) => (
+            {agents.slice(0, 3).map(({ item, live, status }) => (
               <SubagentAvatar
                 key={item.id}
-                driver={item.driver}
+                driver={live?.driver ?? item.driver}
                 provider={ctx.providerStatuses.find(
-                  (provider) => provider.instanceId === item.providerInstanceId,
+                  (provider) =>
+                    provider.instanceId === (live?.providerInstanceId ?? item.providerInstanceId),
                 )}
+                model={live?.model ?? item.model}
+                providerInstanceId={live?.providerInstanceId ?? item.providerInstanceId}
+                providers={ctx.providerStatuses}
                 status={agents.length === 1 ? status : undefined}
               />
             ))}

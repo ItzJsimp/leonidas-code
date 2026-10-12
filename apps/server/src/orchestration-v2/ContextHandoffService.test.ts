@@ -67,7 +67,46 @@ function importedItem(
       };
 }
 
-it.layer(layerTest)("ContextHandoffService legacy import", (it) => {
+it.layer(layerTest)("ContextHandoffService", (it) => {
+  it.effect("distills full provider handoffs while keeping exact selected history", () =>
+    Effect.gen(function* () {
+      const service = yield* ContextHandoffService.ContextHandoffServiceV2;
+      const handoff = yield* service.prepareProviderHandoff({
+        threadId: ThreadId.make("thread:legacy-context"),
+        targetRunId: RunId.make("run:cross-provider"),
+        transferId: null,
+        fromProviderThreadIds: [ProviderThreadId.make("provider-thread:source")],
+        toProviderThreadId: ProviderThreadId.make("provider-thread:target"),
+        fromProviderInstanceId: ProviderInstanceId.make("claude"),
+        toProviderInstanceId: ProviderInstanceId.make("codex"),
+        coveredRunOrdinals: { from: 1, to: 2 },
+        strategy: "full_thread_summary",
+        items: [
+          importedItem({
+            role: "user",
+            id: "handoff-request",
+            text: "Fix the quota-aware account handoff.",
+            ordinal: 1,
+          }),
+          importedItem({
+            role: "assistant",
+            id: "handoff-state",
+            text: "The server now selects a healthy account with the same model.",
+            ordinal: 2,
+          }),
+        ],
+        createdAt: DateTime.makeUnsafe("2026-01-02T00:00:00.000Z"),
+      });
+
+      assert.include(handoff.summaryText, "Cross-provider context brief");
+      assert.include(handoff.summaryText, "Fix the quota-aware account handoff.");
+      assert.include(handoff.summaryText, "The server now selects a healthy account");
+      assert.include(handoff.summaryText, "turn-item:handoff-request");
+      assert.equal(handoff.history?.messages.length, 2);
+      assert.include(handoff.history?.messages[0]?.text ?? "", "Fix the quota-aware");
+    }),
+  );
+
   it.effect("prepares imported history for the first native v2 turn", () =>
     Effect.gen(function* () {
       const service = yield* ContextHandoffService.ContextHandoffServiceV2;

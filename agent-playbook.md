@@ -5,7 +5,7 @@ title: "Leonidas Code: agent playbook"
 description: "Read before changing Leonidas Code (the fork of T3 Code). Where the updater and settings live, upstream traps, the cheap verify loop, gotchas already paid for, and one line per past session."
 scope: structural
 owner: leonidas
-verified: 2026-10-10
+verified: 2026-10-11
 ---
 
 # Leonidas Code agent playbook
@@ -18,14 +18,14 @@ verified: 2026-10-10
 
 ## 2. Module map
 
-| Area                                                   | Files                                                                                                                                                             | Self-test                                |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Desktop auto-update (poll, download, install, restart) | `apps/desktop/src/updates/DesktopUpdates.ts`, `apps/desktop/src/electron/ElectronUpdater.ts`                                                                      | `DesktopRemoteUpdates.test.ts`           |
-| Update toast and sidebar pill                          | `apps/web/src/components/desktopUpdate.toast.tsx`, `sidebar/SidebarUpdatePill.tsx`                                                                                | `desktopUpdate.toast.test.tsx`           |
-| What's new popup (shown when an update downloads)      | `apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx`, wired in `DesktopUpdateCoordinator.tsx`; bullets via `getWhatsNewItems` in `desktopUpdate.logic.ts` | `desktopUpdate.logic.test.ts`            |
-| Release feed target                                    | `scripts/build-desktop-artifact.ts` `resolveGitHubPublishConfig`                                                                                                  | `scripts/build-desktop-artifact.test.ts` |
-| Settings UI                                            | `apps/web/src/components/settings/`                                                                                                                               | n/a                                      |
-| Local mock update server                               | `pnpm start:mock-update-server` (`scripts/mock-update-server.ts`)                                                                                                 | n/a                                      |
+| Area | Files | Self-test |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |\
+| Desktop auto-update (poll, download, install, restart) | `apps/desktop/src/updates/DesktopUpdates.ts`, `apps/desktop/src/electron/ElectronUpdater.ts` | `DesktopRemoteUpdates.test.ts` |\
+| Update toast and sidebar pill | `apps/web/src/components/desktopUpdate.toast.tsx`, `sidebar/SidebarUpdatePill.tsx` | `desktopUpdate.toast.test.tsx` |\
+| What's new popup (shown when an update downloads) | `apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx`, wired in `DesktopUpdateCoordinator.tsx`; bullets via `getWhatsNewItems` in `desktopUpdate.logic.ts` | `desktopUpdate.logic.test.ts` |\
+| Release feed target | `scripts/build-desktop-artifact.ts` `resolveGitHubPublishConfig` | `scripts/build-desktop-artifact.test.ts` |\
+| Settings UI | `apps/web/src/components/settings/` | n/a |\
+| Local mock update server | `pnpm start:mock-update-server` (`scripts/mock-update-server.ts`) | n/a |\
 
 ## 3. Data sources: shape, cost, traps
 
@@ -62,27 +62,19 @@ verified: 2026-10-10
 
 - **Windows desktop preflight is not a dry run:** `node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64` runs the full build unless its prerequisite probe fails first. The probe reads `KitsRoot10` under `HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots`; on this machine it points at `C:\Program Files\Windows Kits\10\` (no `Lib`) while the SDK sits under `Program Files (x86)`. Spectre libraries live at `VC\Tools\MSVC\<ver>\lib\spectre\x64`. Found 2026-10-11.
 - **Node-spawned PowerShell drops backslashes:** a `-Command` probe with `\` paths exits 1 with no stderr. `windowsVswherePrerequisiteScript` in `scripts/build-desktop-artifact.ts` uses forward slashes; that fix was uncommitted when written. Debug a probe by printing each step, not by re-running the whole string.
+- **Isolated dev desktop and model catalog propagation:** launching `scripts/dev-isolated.ps1 -Mode desktop` does not prove that the caller MCP is connected to that dev instance. Check `orchestrator_capabilities` each time and require the exact model ID before delegation. Earlier checks omitted Apodex; the 2026-10-11 continuation advertised `apodex/apodex-1.1-mini:free` on `openrouter` and one synthetic Read/Write/read-back task passed, independently verified on disk. Never substitute `openrouter/auto`. The installer at `release/Leonidas-Code-0.0.45-x64.exe` (supplied build commit `54340e9754`) was not installed during this check; catalog visibility is not installer acceptance proof.
 
 ## 6. Why it is this way
 
 - **Reuse electron-updater over a git-pull updater:** installed apps cannot `git pull`; the existing GitHub Releases path needs only a CI workflow. Card: [`t3-code-push-to-update-release-pipeline`](../../tasks/t3-code-push-to-update-release-pipeline.md).
 - **Thin rebrand layer:** every branding touch makes `upstream/main` merges harder. Card: [`t3-code-rebrand`](../../tasks/t3-code-rebrand.md).
 
-## 7. Session notes (newest first, one line each, keep 10)
+## 7. Session notes (newest first, one line each, keep 3, older in the archive)
+
+- **2026-10-11 (Apodex smoke check continuation):** ran the isolated desktop launcher (ports 23773/15733, `.t3` home); live capabilities now advertise exact `apodex/apodex-1.1-mini:free` on OpenRouter. One sanitized delegated file-tool task passed in a detached worktree at `54340e9754`: Read/Write/read-back changed the fixture to `status=passed`, independently verified. Recorded task ID and limits in the private AIOS `tests/personal-suite/run-ledger.md`; no fallback, no installer application, no benchmark tasks run. Earlier blocked result is superseded for the smoke gate only.
 
 - **2026-10-11 (desktop build preflight):** installed the Spectre libraries through the VS Installer; the preflight still fails on the stale `KitsRoot10` value, and the probe's slash fix is uncommitted in `scripts/build-desktop-artifact.ts`. Open: approve the registry fix (machine-wide, admin) or a probe fallback to `Program Files (x86)`.
 
-- **2026-10-10 (usage/update visual polish):** refined metadata, context legend, file/tool rows and update lists in the [context breakdown](./apps/web/src/components/chat/DetailedContextBreakdownView.tsx), [usage panel](./apps/web/src/components/chat/ChatComposerUsageLimits.tsx), [hover summary](./apps/web/src/components/chat/ChatUsageHoverCard.tsx), [release history](./apps/web/src/components/desktop/ReleaseHistoryDialog.tsx) and [update dialog](./apps/web/src/components/desktop/LeonidasWhatsNewDialog.tsx). Requested 28 tests and web typecheck pass. Local only; integrated browser review remains with the primary agent.
+- **2026-10-11 (tiered orchestration and benchmark follow-up):** replaced static worker IDs with live capability discovery and review-overhead guidance; added the exact Apodex 1.1 Mini free model to the source catalog as experimental; prepared the private AIOS 15-task F/C/H comparison. Open: rebuild the app, smoke-test tool use, and run the suite. No benchmark requests or tests were run.
 
-- **2026-10-10 (activity filename overflow):** bounded the last-file chip and its button in [`ComposerTasksBadge.tsx`](./apps/web/src/components/chat/ComposerTasksBadge.tsx), with a shrinking ellipsis label and full-path hover/click preserved. Actual component browser checks at 692, 420, 320 and 240 pixels fit; removing width bounds reproduces overflow. Scoped lint/typecheck pass; full web typecheck is blocked by a concurrent test importing unavailable vitest.
-
-- **2026-10-10 (subscription calibration):** [`SubscriptionTracker.ts`](./apps/server/src/usage/SubscriptionTracker.ts) correlates exact local Claude/Codex transcript intervals with provider percentage-point deltas and persists a ledger plus observations beside the provider cache. Composer and web/mobile account details show approximate capacity after 5 points; account, plan, home and reset changes rebaseline. 86 focused tests and server/web/mobile typechecks pass; 18 ProviderRegistry failures reproduced against HEAD. Shipped in v0.2.0; installer SHA-512, packaged server startup, account-separated persisted quota baselines and Usage popup collecting state verified in an isolated profile. Live 1.0.16 predates the feature and was left running. One-time migration to 0.x is required; remote account acceptance is still machine-specific.
-
-- **2026-10-10 (What's new popup):** centered dialog on update download lists the release bullets (Restart now / Update when safe / Later); CI now writes release notes from commits. 45 tests and tsc green; not seen in a live window, CI step not yet run, committed locally (`d622e654be`) not pushed. Open: repoint the "Read more" links to our repo.
-
-- **2026-10-10 (usage panel redesign):** composer usage control now has a context ring and hover summary, a top-right panel with separate This chat and Connected accounts sections, a crisp email mask instead of blur, and the Claude Pro null-limits fix; pushed to main. Not verified in a live client. Open: Antigravity quota via the local language server (card `leonidas-code-antigravity-usage-limits-via-local-language-server`), stale `T3` assertions in `MessagesTimeline` tests.
-- **2026-10-10 (folder move, ADR-0072):** repo moved from `D:\t3code` to `projects/leonidas-code/` inside the AIOS (own git repo, AIOS-gitignored); project docs now live in the repo (`project.md`, this file, `project/`). The `../../tasks/` and `../../standards/` links resolve only inside an AIOS checkout. Moving a repo re-requires the one-time `claude` import approval and `vp install` (pnpm junctions are absolute).
-- **2026-10-10 (Leonidas Code v1.0.2 shipped):** rebrand pushed `ded8ae8d08`, release v1.0.2 installed over T3 0.0.45 in place (app id kept `com.t3tools.t3code` on purpose so NSIS upgrades instead of side-by-side), auto-pull SessionStart hook and `scripts/leonidas-setup.ps1` for Mob. Windows 11 blocks scripted taskbar pins; Jake pins by hand. Open: Mob runs setup, toast proof across machines, optional repo rename.
-- **2026-10-10 (Name set, settings mapped):** Jake named it Leonidas Code and approved the predictor build; rebrand running as a Sonnet executor (local commit, no push), settings inventory written with 21 proposed values awaiting approval. Open: land rebrand, predictor port (copy `ThreadTitleRegenerationService.ts` for the one-shot call), settings seed.
-- **2026-10-09 (Shared repo live):** Mob's `mob-base` fast-forwarded into `main`, `team-release.yml` builds `v1.0.N` releases, upstream workflows disabled, `LEONIDAS.md` added to the fork as the cross-machine brief. Open: prove the toast on both machines, then task board, prompt predictor (`t3-code-prompt-predictor-from-scribe-transcripts`), rebrand.
-- **2026-10-09:** Scaffolded project, 4 task cards, name research (Leonidas Code low risk), settings walkthrough in progress; open: repo home (A/B/C) and task board store (GitHub Issues vs Supabase), Mob's source state.
+- Older session notes: [project/session-notes-archive.md](./project/session-notes-archive.md).

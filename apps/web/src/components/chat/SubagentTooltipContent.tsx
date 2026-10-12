@@ -10,6 +10,7 @@ import type {
 import {
   resolveSubagentMetadata,
   subagentDetailPreview,
+  resolveSubagentDriverKind,
 } from "@t3tools/client-runtime/state/subagent-display";
 import { getModelSelectionStringOptionValue, resolveSelectableModel } from "@t3tools/shared/model";
 import { getTraitsSpeedDisplay, TraitsSpeedIcon } from "./TraitsSpeed";
@@ -106,7 +107,13 @@ export function SubagentTooltipContent(props: {
         })
         .find(Boolean)
     : undefined;
-  const driver = props.provider?.driver ?? props.driver;
+  const driver = resolveSubagentDriverKind({
+    driver: props.driver,
+    provider: props.provider,
+    model: props.model,
+    providerInstanceId: props.providerInstanceId,
+    providers: props.providers,
+  });
   const entries = deriveProviderInstanceEntries(props.providers ?? []);
   const entry = entries.find((candidate) => candidate.instanceId === props.provider?.instanceId);
   const showInstanceBadge = entry !== undefined && shouldShowInstanceBadge(entry, entries);

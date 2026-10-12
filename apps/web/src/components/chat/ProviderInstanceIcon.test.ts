@@ -1,7 +1,10 @@
 import { ProviderDriverKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { resolveProviderInstanceAcpRegistryIconUrl } from "./ProviderInstanceIcon";
+import {
+  providerTextColor,
+  resolveProviderInstanceAcpRegistryIconUrl,
+} from "./ProviderInstanceIcon";
 
 describe("resolveProviderInstanceAcpRegistryIconUrl", () => {
   it("uses allowlisted catalog metadata and rejects untrusted overrides", () => {
@@ -28,5 +31,12 @@ describe("resolveProviderInstanceAcpRegistryIconUrl", () => {
         agentId: "kilo",
       }),
     ).toBeNull();
+  });
+});
+
+describe("providerTextColor", () => {
+  it("resolves OpenRouter brand color", () => {
+    const color = providerTextColor(ProviderDriverKind.make("openrouter"));
+    expect(color.className).toBeDefined();
   });
 });

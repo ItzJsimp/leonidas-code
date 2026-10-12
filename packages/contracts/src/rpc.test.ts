@@ -3,7 +3,33 @@ import * as Exit from "effect/Exit";
 import * as Schema from "effect/Schema";
 
 import { ORCHESTRATION_V2_WS_METHODS } from "./orchestrationV2.ts";
-import { WsRpcGroup, WsSubscribeServerConfigRpc } from "./rpc.ts";
+import { WS_METHODS, WsRpcGroup, WsSubscribeServerConfigRpc } from "./rpc.ts";
+
+describe("prompt prediction request budgets", () => {
+  const rpc = WsRpcGroup.requests.get(WS_METHODS.projectsPredictPrompt)!;
+  const decode = Schema.decodeUnknownSync(rpc.payloadSchema);
+  const base = { cwd: "D:/Workspace with spaces", messages: [] };
+
+  it("carries the exact draft and bounded personal examples", () => {
+    const input = {
+      ...base,
+      draft: "  Explain this",
+      personalExamples: ["Explain the fix"],
+      sessionId: "composer-1",
+    };
+    expect(decode(input)).toEqual(input);
+  });
+
+  it.each([
+    { draft: "x".repeat(2001) },
+    { personalExamples: ["x".repeat(301)] },
+    { personalExamples: Array(6).fill("Example") },
+    { messages: Array(7).fill({ role: "assistant", text: "Finished" }) },
+    { messages: [{ role: "user", text: "x".repeat(3001) }] },
+  ])("rejects oversized prediction input", (extra) => {
+    expect(() => decode({ ...base, ...extra })).toThrow();
+  });
+});
 
 /**
  * The client always sends `environmentThemes`, including to servers built

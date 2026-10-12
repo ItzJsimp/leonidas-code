@@ -23,6 +23,7 @@ import {
   ScheduledTaskUpsertSchedule,
 } from "./scheduledTask.ts";
 import { ProviderInteractionMode, RuntimeMode } from "./providerPolicy.ts";
+import { TaskBoardTaskPriority, TaskBoardTaskStatus } from "./taskBoard.ts";
 import { ThreadLinkedPullRequest } from "./threadPullRequest.ts";
 import { ThreadTitleRegeneration } from "./threadTitle.ts";
 import {
@@ -491,6 +492,16 @@ export const OrchestratorMcpProviderCapability = Schema.Struct({
 });
 export type OrchestratorMcpProviderCapability = typeof OrchestratorMcpProviderCapability.Type;
 
+export const OrchestratorMcpCapabilitiesInput = Schema.Struct({
+  providerInstanceId: Schema.optional(
+    ProviderInstanceId.annotate({
+      description:
+        "List only this provider instance, with each model's selectable options. Omit to list every provider without per-model options, which keeps the result small.",
+    }),
+  ),
+});
+export type OrchestratorMcpCapabilitiesInput = typeof OrchestratorMcpCapabilitiesInput.Type;
+
 export const OrchestratorMcpCapabilitiesResult = Schema.Struct({
   /** The calling thread, or null when the caller is not a T3 thread. */
   parentThreadId: Schema.NullOr(ThreadId),
@@ -500,6 +511,8 @@ export const OrchestratorMcpCapabilitiesResult = Schema.Struct({
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
   providers: Schema.Array(OrchestratorMcpProviderCapability),
+  /** True when models were listed without `options`; pass providerInstanceId to get them. */
+  modelOptionsOmitted: Schema.optional(Schema.Literal(true)),
   features: Schema.Struct({
     appOwnedSubagents: Schema.Boolean,
     asyncPolling: Schema.Boolean,
@@ -641,6 +654,144 @@ export const OrchestratorMcpDeleteScheduledTaskResult = Schema.Struct({
 });
 export type OrchestratorMcpDeleteScheduledTaskResult =
   typeof OrchestratorMcpDeleteScheduledTaskResult.Type;
+
+const BoardTaskId = TrimmedNonEmptyString.annotate({
+  description: "Task id as returned by board_task_list.",
+});
+const BoardProjectSlug = TrimmedNonEmptyString.annotate({
+  description: "AIOS project slug, e.g. 'leonidas-code'.",
+});
+
+export const OrchestratorMcpBoardTaskListInput = Schema.Struct({
+  projectSlug: Schema.optional(
+    BoardProjectSlug.annotate({
+      description:
+        "Only list this AIOS project's tasks. Omit for the calling thread's project, or for every project when the caller is not in a project thread.",
+    }),
+  ),
+  status: Schema.optional(
+    Schema.Array(TaskBoardTaskStatus).annotate({
+      description:
+        "Statuses to include. Defaults to open work: todo, in_progress, review, blocked.",
+    }),
+  ),
+  mine: Schema.optional(
+    Schema.Boolean.annotate({ description: "True lists only tasks claimed by the current user." }),
+  ),
+  query: Schema.optional(
+    TrimmedNonEmptyString.annotate({
+      description: "Only tasks whose title or id contains this text (case-insensitive).",
+    }),
+  ),
+  limit: Schema.optional(
+    Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).annotate({
+      description: "Maximum rows to return. Default 25, max 100.",
+    }),
+  ),
+});
+export type OrchestratorMcpBoardTaskListInput = typeof OrchestratorMcpBoardTaskListInput.Type;
+
+/** One task as a compact list row. */
+export const OrchestratorMcpBoardTaskRow = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  status: TaskBoardTaskStatus,
+  priority: TaskBoardTaskPriority,
+  projectSlug: Schema.NullOr(Schema.String),
+  claimedBy: Schema.NullOr(Schema.String),
+  due: Schema.NullOr(Schema.String),
+  checklist: Schema.NullOr(Schema.Struct({ done: Schema.Number, total: Schema.Number })),
+  updatedAt: Schema.String.annotate({ description: "ISO timestamp." }),
+});
+export type OrchestratorMcpBoardTaskRow = typeof OrchestratorMcpBoardTaskRow.Type;
+
+export const OrchestratorMcpBoardTaskListResult = Schema.Struct({
+  member: Schema.String.annotate({ description: "The current user's name on the board." }),
+  total: Schema.Number.annotate({
+    description: "How many tasks match; tasks holds at most limit of them.",
+  }),
+  tasks: Schema.Array(OrchestratorMcpBoardTaskRow),
+});
+export type OrchestratorMcpBoardTaskListResult = typeof OrchestratorMcpBoardTaskListResult.Type;
+
+export const OrchestratorMcpBoardTaskGetInput = Schema.Struct({ taskId: BoardTaskId });
+export type OrchestratorMcpBoardTaskGetInput = typeof OrchestratorMcpBoardTaskGetInput.Type;
+
+export const OrchestratorMcpBoardTaskDetail = Schema.Struct({
+  ...OrchestratorMcpBoardTaskRow.fields,
+  description: Schema.String,
+  verify: Schema.NullOr(Schema.String).annotate({
+    description: "How to confirm the task is done.",
+  }),
+  startFiles: Schema.Array(Schema.String),
+  blockedBy: Schema.Array(Schema.String),
+  labels: Schema.Array(Schema.String),
+  history: Schema.Array(
+    Schema.Struct({
+      at: Schema.String,
+      action: Schema.String,
+      actor: Schema.String,
+      note: Schema.NullOr(Schema.String),
+    }),
+  ).annotate({ description: "The most recent 15 activity entries, oldest first." }),
+});
+export type OrchestratorMcpBoardTaskDetail = typeof OrchestratorMcpBoardTaskDetail.Type;
+
+export const OrchestratorMcpBoardTaskUpdateInput = Schema.Struct({
+  taskId: BoardTaskId,
+  status: Schema.optional(
+    TaskBoardTaskStatus.annotate({
+      description:
+        "New status. Use in_progress when starting, review when it needs a human check, done when finished and verified.",
+    }),
+  ),
+  note: Schema.optional(
+    Schema.String.check(Schema.isMaxLength(4_000)).annotate({
+      description:
+        "Progress or completion note added to the task's activity log. For review or done, include what you verified and the result.",
+    }),
+  ),
+  priority: Schema.optional(TaskBoardTaskPriority),
+  claim: Schema.optional(
+    Schema.Boolean.annotate({
+      description:
+        "True claims the task for the current user, and moves a todo task to in_progress.",
+    }),
+  ),
+  release: Schema.optional(
+    Schema.Boolean.annotate({ description: "True clears the task's claim." }),
+  ),
+  projectSlug: Schema.optional(
+    Schema.NullOr(TrimmedNonEmptyString).annotate({
+      description: "Move the task to this AIOS project, or null to unlink it from its project.",
+    }),
+  ),
+  projectId: Schema.optional(
+    ProjectId.annotate({
+      description:
+        "Only for a task that exists on a project's shared board but not in the local task folders.",
+    }),
+  ),
+});
+export type OrchestratorMcpBoardTaskUpdateInput = typeof OrchestratorMcpBoardTaskUpdateInput.Type;
+
+export const OrchestratorMcpBoardTaskCreateInput = Schema.Struct({
+  title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)).annotate({
+    description: "Short imperative title.",
+  }),
+  description: Schema.optional(
+    Schema.String.check(Schema.isMaxLength(20_000)).annotate({
+      description: "What needs doing and how to tell it is done.",
+    }),
+  ),
+  priority: Schema.optional(TaskBoardTaskPriority),
+  projectSlug: Schema.optional(
+    BoardProjectSlug.annotate({
+      description: "AIOS project to file the task under. Omit for the calling thread's project.",
+    }),
+  ),
+});
+export type OrchestratorMcpBoardTaskCreateInput = typeof OrchestratorMcpBoardTaskCreateInput.Type;
 
 export class OrchestratorMcpFailure extends Schema.TaggedError<OrchestratorMcpFailure>()(
   "OrchestratorMcpFailure",

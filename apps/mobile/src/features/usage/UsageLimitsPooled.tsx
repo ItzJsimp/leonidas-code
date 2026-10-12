@@ -175,7 +175,7 @@ function PoolWindowCard({
                 {accountName(account)}
               </Text>
               <Text className="text-sm font-t3-medium tabular-nums text-foreground">
-                {remainingPercent(window)}%
+                {remainingPercent(window)}% left
               </Text>
               <View className="flex-row items-center gap-1">
                 {resetsIn ? (

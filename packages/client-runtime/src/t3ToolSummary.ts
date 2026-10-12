@@ -407,6 +407,22 @@ export function summarizeT3ToolCalls(
     case "capabilities":
       label = phrase("Checked", "check", `orchestration capabilities ${times}`);
       break;
+    case "board-task-list":
+      label = phrase("Listed", "list", `board tasks ${times}`);
+      break;
+    case "board-task-get":
+      label = phrase("Read", "read", quantity(countEntities(entityIds("taskId")), "board task"));
+      break;
+    case "board-task-update":
+      label = phrase(
+        "Updated",
+        "update",
+        quantity(countEntities(entityIds("taskId")), "board task"),
+      );
+      break;
+    case "board-task-create":
+      label = phrase("Created", "create", quantity(selected.length, "board task"));
+      break;
   }
   return { label, failedCount };
 }

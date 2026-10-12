@@ -31,6 +31,7 @@ import { runCachePersistence } from "./cachePersistence.ts";
 import * as ManagedRelay from "../relay/managedRelay.ts";
 import { subscribeDynamic } from "../rpc/client.ts";
 import { parseThreadKey, threadKey } from "./entities.ts";
+import { batchStreamByFrame } from "./frameBatch.ts";
 import { applyOrchestrationV2ProjectionEvent } from "./orchestrationV2Projection.ts";
 import { THREAD_SNAPSHOT_IDLE_TTL_MS } from "./threadRetention.ts";
 import { followStreamInEnvironment } from "./runtime.ts";
@@ -904,15 +905,34 @@ export const makeEnvironmentThreadState = Effect.fn("EnvironmentThreadState.make
   return state;
 });
 
+// Transitions the UI must show without waiting a frame: connection phase, errors,
+// deletion or first data, and history loading. Everything else is batched.
+function isThreadStateFrameBoundary(
+  previous: EnvironmentThreadState,
+  next: EnvironmentThreadState,
+): boolean {
+  return (
+    previous.status !== next.status ||
+    Option.getOrNull(previous.error) !== Option.getOrNull(next.error) ||
+    Option.isSome(previous.data) !== Option.isSome(next.data) ||
+    previous.history.loading !== next.history.loading
+  );
+}
+
 function threadStateChanges(
   environmentId: EnvironmentIdType,
   threadId: ThreadIdType,
   resumeCache?: ThreadResumeCache,
 ) {
+  // Each socket chunk still applies to the state synchronously. Batching only the
+  // emissions keeps streaming from forcing one React commit per chunk.
   return followStreamInEnvironment(
     environmentId,
-    Stream.unwrap(
-      makeEnvironmentThreadState(threadId, resumeCache).pipe(Effect.map(SubscriptionRef.changes)),
+    batchStreamByFrame(
+      Stream.unwrap(
+        makeEnvironmentThreadState(threadId, resumeCache).pipe(Effect.map(SubscriptionRef.changes)),
+      ),
+      isThreadStateFrameBoundary,
     ),
   );
 }

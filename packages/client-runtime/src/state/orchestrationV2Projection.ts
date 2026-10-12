@@ -105,7 +105,17 @@ function shouldDropMissingPartialTurnItem(
   return oldest !== null && item.ordinal < oldest;
 }
 
-function upsertVisibleTurnItem(
+// Local rows stay sorted by (ordinal, id). A same-ordinal update keeps its sort key,
+// so it keeps its slot and needs no insertion scan.
+function sortsAfter(candidate: OrchestrationV2TurnItem, item: OrchestrationV2TurnItem): boolean {
+  return (
+    candidate.ordinal > item.ordinal ||
+    (candidate.ordinal === item.ordinal && String(candidate.id).localeCompare(String(item.id)) > 0)
+  );
+}
+
+// Exported for the old-vs-new equivalence test only.
+export function upsertVisibleTurnItem(
   projection: OrchestrationV2ThreadProjection,
   item: OrchestrationV2TurnItem,
   partialTimeline: boolean,
@@ -113,22 +123,30 @@ function upsertVisibleTurnItem(
 ): OrchestrationV2ThreadProjection["visibleTurnItems"] {
   const rows = projection.visibleTurnItems;
   const index = rows.findIndex((row) => row.sourceItemId === item.id);
-  const next = {
-    position: 0,
-    visibility: "local" as const,
-    sourceThreadId: item.threadId,
-    sourceItemId: item.id,
-    item,
-  };
   const previous = index === -1 ? undefined : rows[index]!;
-  if (
-    previous !== undefined &&
-    previous.visibility === next.visibility &&
-    previous.sourceThreadId === next.sourceThreadId &&
-    previous.sourceItemId === next.sourceItemId &&
-    previous.item === item
-  ) {
+  const previousLocal =
+    previous?.visibility === "local" && previous.sourceThreadId === item.threadId
+      ? previous
+      : undefined;
+  if (previousLocal !== undefined && previousLocal.item === item) {
     return rows;
+  }
+  // Streaming text updates keep the row's place. Replace that one row and keep
+  // every other row object as it is.
+  if (
+    previousLocal !== undefined &&
+    previousLocal.position === index &&
+    previousLocal.item.ordinal === item.ordinal
+  ) {
+    const replaced = rows.slice();
+    replaced[index] = {
+      position: index,
+      visibility: "local",
+      sourceThreadId: item.threadId,
+      sourceItemId: item.id,
+      item,
+    };
+    return replaced;
   }
   if (
     index === -1 &&
@@ -137,13 +155,16 @@ function upsertVisibleTurnItem(
   ) {
     return rows;
   }
+  const next = {
+    position: 0,
+    visibility: "local" as const,
+    sourceThreadId: item.threadId,
+    sourceItemId: item.id,
+    item,
+  };
   const updated = index === -1 ? [...rows] : [...rows.slice(0, index), ...rows.slice(index + 1)];
   const insertionIndex = updated.findIndex(
-    (row) =>
-      row.visibility === "local" &&
-      (row.item.ordinal > item.ordinal ||
-        (row.item.ordinal === item.ordinal &&
-          String(row.item.id).localeCompare(String(item.id)) > 0)),
+    (row) => row.visibility === "local" && sortsAfter(row.item, item),
   );
   updated.splice(insertionIndex === -1 ? updated.length : insertionIndex, 0, next);
   return renumberVisibleItems(updated);

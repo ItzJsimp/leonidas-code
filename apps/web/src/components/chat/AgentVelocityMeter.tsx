@@ -3,14 +3,21 @@ import { Button } from "../ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import {
   formatRollingLabel,
+  formatToolDuration,
+  formatToolWait,
   formatTpsLabel,
   type VelocitySummary,
 } from "./AgentVelocityMeter.logic";
 import { composerFloatingLayerProps } from "./composerEventScope";
 
-/** Provider-reported output (including reasoning) and average pace for the current turn. */
+/**
+ * Provider-reported output (including reasoning) and pace for the current turn. The headline is the
+ * model-stream pace (turn minus tool waits) when a turn has tool waits to remove, because the
+ * whole-turn average mixes model speed with shell and file latency; the popover shows both.
+ */
 export function TokenCounter({ summary }: { summary: VelocitySummary }) {
   const count = summary.outputTokens?.toLocaleString() ?? "—";
+  const headlineTps = summary.modelStreamTps ?? summary.averageTurnTps;
   return (
     <Popover>
       <PopoverTrigger
@@ -22,12 +29,12 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
             size="compact"
             variant="ghost-muted"
             className="shrink-0 whitespace-nowrap"
-            aria-label={`Token counter: ${count} tokens, average turn throughput ${formatTpsLabel(summary.averageTurnTps)}`}
+            aria-label={`Token counter: ${count} tokens, model stream pace ${formatTpsLabel(headlineTps)}, whole-turn average ${formatTpsLabel(summary.averageTurnTps)}`}
           >
             <ZapIcon aria-hidden />
             <span className="tabular-nums">
               <span className="hidden sm:inline">{count} tokens · </span>
-              {formatTpsLabel(summary.averageTurnTps)}
+              {formatTpsLabel(headlineTps)}
             </span>
           </Button>
         }
@@ -47,8 +54,14 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
             <dd className="text-right">
               {summary.reasoningTokens?.toLocaleString() ?? "Not reported"}
             </dd>
-            <dt className="text-muted-foreground">Average turn throughput</dt>
+            <dt className="text-muted-foreground">Model stream (approx.)</dt>
+            <dd className="text-right">{formatTpsLabel(summary.modelStreamTps)}</dd>
+            <dt className="text-muted-foreground">Whole-turn average</dt>
             <dd className="text-right">{formatTpsLabel(summary.averageTurnTps)}</dd>
+            <dt className="text-muted-foreground">Tool wait</dt>
+            <dd className="text-right">{formatToolWait(summary)}</dd>
+            <dt className="text-muted-foreground">First output</dt>
+            <dd className="text-right">{formatToolDuration(summary.firstOutputMs)}</dd>
             <dt className="text-muted-foreground">Last 5 turns</dt>
             <dd className="text-right">
               {formatRollingLabel(summary.rolling5Tps, 5, summary.totalTurnsTracked)}
@@ -65,7 +78,7 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
           <p className="text-xs leading-relaxed text-muted-foreground">
             {summary.outputTokens === null
               ? "Waiting for the provider to report turn totals. Some providers report only when the turn finishes or do not report output counts."
-              : "Output includes thinking tokens when reported. Average turn throughput is output divided by elapsed turn time, including tools and waits; it is not raw model generation speed."}
+              : "Output includes thinking tokens when reported. Model stream is output over turn time minus tool waits; the whole-turn average also counts tools and waits. Both are approximations from item timestamps, not token-level timing. Last 5, 10 and 20 turns use the whole-turn average."}
           </p>
         </div>
       </PopoverPopup>

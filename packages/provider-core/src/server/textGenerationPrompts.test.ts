@@ -4,14 +4,41 @@ import {
   buildBranchNamePrompt,
   buildCommitMessagePrompt,
   buildPrContentPrompt,
+  buildPromptSuggestionPrompt,
   buildThreadTitlePrompt,
 } from "./textGenerationPrompts.ts";
 import {
   normalizeCliError,
+  sanitizePromptSuggestion,
   sanitizeThreadTitle,
   toJsonSchemaObject,
 } from "./textGenerationUtils.ts";
 import { TextGenerationError } from "@t3tools/contracts";
+
+describe("prompt suggestion", () => {
+  it("includes the exact draft and personal examples in a compact prompt", () => {
+    const result = buildPromptSuggestionPrompt({
+      messages: Array.from({ length: 8 }, (_, index) => ({
+        role: "user" as const,
+        text: "message " + index,
+      })),
+      draft: "Please **keep** ",
+      personalExamples: ["Check the latest diff."],
+    });
+    expect(result.prompt).toContain('Exact draft: "Please **keep** "');
+    expect(result.prompt).toContain("Check the latest diff.");
+    expect(result.prompt).not.toContain("message 0");
+  });
+  it("preserves the user's prefix and sanitizes only the suffix", () => {
+    expect(sanitizePromptSuggestion("Please **keep** checking", "Please **keep** ")).toBe(
+      "Please **keep** checking",
+    );
+    expect(sanitizePromptSuggestion("Please keep checking", "Please **keep** ")).toBeNull();
+    expect(
+      sanitizePromptSuggestion("Please **keep** I have verified the fix.", "Please **keep** "),
+    ).toBeNull();
+  });
+});
 
 describe("buildCommitMessagePrompt", () => {
   it("includes staged patch and summary in the prompt", () => {

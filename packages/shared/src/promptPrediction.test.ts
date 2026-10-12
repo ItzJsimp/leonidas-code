@@ -48,7 +48,7 @@ describe("prompt prediction", () => {
     ]);
     expect(predictPrompt(candidates, "")).toBeNull();
     expect(predictPrompt(candidates, "Fix")).toBe("Fix the predictor ranking");
-    expect(predictPrompt(candidates, "Build")).toBe("Build the Roblox tower");
+    expect(predictPrompt(candidates, "Build")).toBeNull();
   });
   it("offers no unrelated empty-draft fallback and never suggests yes", () => {
     const candidates = contextualPromptCandidates(
@@ -71,7 +71,7 @@ describe("prompt prediction", () => {
     );
     expect(predictPrompt(candidates, "")).toBeNull();
     expect(predictPrompt(candidates, "Check")).toBe("Check the ranking tests");
-    expect(STYLE_STANDARD).toContain(predictPrompt(candidates, "Fix"));
+    expect(predictPrompt(candidates, "Fix")).toBeNull();
   });
   it("uses the recommended option rather than blindly picking the first quick reply", () => {
     const candidates = contextualPromptCandidates(
@@ -165,6 +165,27 @@ describe("prompt prediction", () => {
     expect(predictPrompt(candidates, "/run")).toBeNull();
     expect(predictPrompt(candidates, "Run\n")).toBeNull();
   });
+  it("normalizes whitespace for matching while preserving the exact draft", () => {
+    const candidates = buildPromptCandidates(row("  Fix   the login bug"));
+    expect(predictPrompt(candidates, " fix  ")).toBe(" fix  the login bug");
+  });
+  it("filters contextual candidates before the pool limit", () => {
+    const history = Array.from({ length: 300 }, (_, index) => ({
+      text: index === 299 ? "Fix auth refresh" : `Common unrelated prompt ${index}`,
+      count: 1,
+      lastSeen: index,
+    }));
+    const candidates = contextualPromptCandidates(history, [], "Fix a");
+    expect(candidates.some((candidate) => candidate.text === "Fix auth refresh")).toBe(true);
+  });
+  it("uses substantive context to suppress unrelated generic-prefix matches", () => {
+    const history = buildPromptCandidates(row("Build the Roblox tower"));
+    const candidates = contextualPromptCandidates(history, [
+      { role: "user", text: "Help debug OAuth authentication" },
+      { role: "assistant", text: "The token refresh fails." },
+    ]);
+    expect(predictPrompt(candidates, "Build")).toBeNull();
+  });
   it("bounds candidates and drops oversized prompts", () => {
     const history = Array.from({ length: 300 }, (_, i) => row(`Prompt ${i}`))
       .concat(row("x".repeat(2001)))
@@ -179,10 +200,27 @@ describe("prompt prediction", () => {
       expect(countSentences(sentences(9))).toBe(9);
       const capped = capSentences(sentences(9));
       expect(countSentences(capped)).toBe(MAX_SUGGESTION_SENTENCES);
-      expect(capped.endsWith("Check step f.")).toBe(true);
-      expect(capSentences(sentences(3))).toBe(sentences(3));
+      expect(capped.endsWith("Check step b.")).toBe(true);
+      expect(capSentences(sentences(2))).toBe(sentences(2));
       const [candidate] = buildPromptCandidates(row(sentences(9)));
       expect(countSentences(candidate!.text)).toBe(MAX_SUGGESTION_SENTENCES);
+    });
+    it("keeps bounded useful phrases from long and multiline dictations", () => {
+      const long = `Review auth token refresh ${"with extra detail ".repeat(120)}`;
+      const candidates = buildPromptCandidates(
+        [row(long), row("Check the auth flow\nand refresh token")].join("\n"),
+      );
+      expect(
+        candidates.some((candidate) => candidate.text.startsWith("Review auth token refresh")),
+      ).toBe(true);
+      expect(candidates.some((candidate) => candidate.text.startsWith("Check the auth flow"))).toBe(
+        true,
+      );
+      expect(
+        candidates.every(
+          (candidate) => candidate.text.length <= 500 && !/[\r\n]/.test(candidate.text),
+        ),
+      ).toBe(true);
     });
     it("prefers shorter candidates when relevance is equal", () => {
       const history = buildPromptCandidates(
@@ -204,7 +242,7 @@ describe("prompt prediction", () => {
       expect(predictPrompt(candidates, "")).toBeNull();
       expect(predictPrompt(candidates, "Can you")).not.toBeNull();
     });
-    it("interleaves own history and the standard about 50/50", () => {
+    it("puts personal history ahead of generic standard phrases", () => {
       const own = Array.from({ length: 20 }, (_, index) => `Own history prompt number ${index}`);
       const candidates = contextualPromptCandidates(
         buildPromptCandidates(own.map((text) => row(text)).join("\n")),
@@ -212,9 +250,7 @@ describe("prompt prediction", () => {
       );
       const head = candidates.slice(0, 20);
       const fromOwn = head.filter((candidate) => own.includes(candidate.text)).length;
-      expect(fromOwn).toBeGreaterThanOrEqual(9);
-      expect(fromOwn).toBeLessThanOrEqual(11);
-      expect(head.length - fromOwn).toBe(20 - fromOwn);
+      expect(fromOwn).toBe(20);
     });
     it("ships a small data set of short, digit-free sentences", () => {
       expect(STYLE_STANDARD.length).toBeGreaterThanOrEqual(100);
@@ -236,7 +272,7 @@ describe("prompt prediction", () => {
     expect(predictPrompt(candidates, "Add a reg")).toBe(
       "Add a regression test for the token refresh.",
     );
-    expect(predictPrompt(candidates, "Run")).toBe("Run the old tests");
+    expect(predictPrompt(candidates, "Run")).toBeNull();
   });
   it("keeps the assistant's explicit recommendation ahead of the model prediction", () => {
     const base = contextualPromptCandidates(

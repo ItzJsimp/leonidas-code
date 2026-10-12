@@ -21,6 +21,37 @@ const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
 const encodeServerSettings = Schema.encodeSync(ServerSettings);
 const decodeClaudeSettings = Schema.decodeUnknownSync(ClaudeSettings);
 
+describe("ServerSettings prompt prediction costs", () => {
+  it("defaults to history-only prediction without a cloud model", () => {
+    const settings = decodeServerSettings({});
+    expect(settings).toMatchObject({
+      promptPredictionMode: "local",
+      promptPredictionLocalModel: "",
+      promptPredictionModelSelection: null,
+      promptPredictionCloudRequestLimit: 30,
+    });
+  });
+
+  it("round-trips an explicit local model and cloud budget", () => {
+    const input = {
+      promptPredictionMode: "local-model",
+      promptPredictionLocalModel: "small-local-model",
+      promptPredictionModelSelection: { instanceId: "codex", model: "gpt-6-luna" },
+      promptPredictionCloudRequestLimit: 0,
+    };
+    expect(encodeServerSettings(decodeServerSettings(input))).toMatchObject(input);
+    expect(decodeServerSettingsPatch(input)).toEqual(input);
+  });
+
+  it.each([-1, 121, 1.5])("rejects an invalid cloud request limit %s", (limit) => {
+    expect(() => decodeServerSettingsPatch({ promptPredictionCloudRequestLimit: limit })).toThrow();
+  });
+
+  it("rejects unknown generation modes", () => {
+    expect(() => decodeServerSettingsPatch({ promptPredictionMode: "automatic-paid" })).toThrow();
+  });
+});
+
 describe("ServerSettings response streaming", () => {
   it("defaults to paragraph buffering", () => {
     expect(decodeServerSettings({}).responseStreamingMode).toBe("paragraph");

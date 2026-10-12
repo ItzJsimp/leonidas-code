@@ -16,15 +16,31 @@ function suggestionFor(
   if (
     !enabled ||
     !selection.empty ||
-    doc.childCount !== 1 ||
-    doc.firstChild?.type.name !== "paragraph" ||
     selection.from !== doc.content.size - 1 ||
-    doc.firstChild.childCount > 1 ||
-    (doc.firstChild.firstChild &&
-      (!doc.firstChild.firstChild.isText || doc.firstChild.firstChild.marks.length > 0))
+    [...Array(doc.childCount)].some((_, index) => {
+      const paragraph = doc.child(index);
+      return (
+        paragraph.type.name !== "paragraph" ||
+        paragraph.childCount > 1 ||
+        (paragraph.firstChild &&
+          (!paragraph.firstChild.isText || paragraph.firstChild.marks.length > 0))
+      );
+    })
   )
     return null;
-  return predictPrompt(candidates, doc.textContent)?.slice(doc.textContent.length) ?? null;
+  const paragraphs = [...Array(doc.childCount)].map((_, index) => doc.child(index).textContent);
+  const fullDraft = paragraphs.join("\n");
+  const lastParagraph = paragraphs.at(-1) ?? "";
+  if (/^[\s]*[/$@]/.test(lastParagraph)) return null;
+  const fullMatch =
+    paragraphs.length > 1
+      ? candidates.find(
+          (candidate) =>
+            candidate.text.startsWith(fullDraft) && candidate.text.length > fullDraft.length,
+        )
+      : null;
+  if (fullMatch) return fullMatch.text.slice(fullDraft.length);
+  return predictPrompt(candidates, lastParagraph)?.slice(lastParagraph.length) ?? null;
 }
 
 export function createPromptPredictionPlugin(options: {

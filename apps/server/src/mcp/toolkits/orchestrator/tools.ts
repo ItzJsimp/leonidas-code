@@ -1,4 +1,12 @@
 import {
+  OrchestratorMcpBoardTaskCreateInput,
+  OrchestratorMcpBoardTaskDetail,
+  OrchestratorMcpBoardTaskGetInput,
+  OrchestratorMcpBoardTaskListInput,
+  OrchestratorMcpBoardTaskListResult,
+  OrchestratorMcpBoardTaskRow,
+  OrchestratorMcpBoardTaskUpdateInput,
+  OrchestratorMcpCapabilitiesInput,
   OrchestratorMcpCapabilitiesResult,
   OrchestratorMcpCreateThreadsInput,
   OrchestratorMcpCreateThreadsResult,
@@ -50,7 +58,8 @@ const threadMetadataDependencies = [
 
 const OrchestratorCapabilitiesTool = Tool.make("orchestrator_capabilities", {
   description:
-    "List the V2 provider instances and their current models from the same live catalog as the composer, including configured custom models, inherited runtime settings, and app-owned orchestration features available to this caller. For a separate top-level thread in a new or existing worktree, use t3_thread_launch with workspaceStrategy.",
+    "List the V2 provider instances and their current models from the same live catalog as the composer, including configured custom models, inherited runtime settings, and app-owned orchestration features available to this caller. Models carry no selectable options (such as reasoning effort) unless you pass providerInstanceId, which lists just that provider with options; do that once you have chosen a provider. For a separate top-level thread in a new or existing worktree, use t3_thread_launch with workspaceStrategy.",
+  parameters: OrchestratorMcpCapabilitiesInput,
   success: OrchestratorMcpCapabilitiesResult,
   failure: OrchestratorMcpFailure,
   failureMode: "return",
@@ -151,6 +160,60 @@ const DeleteScheduledTaskTool = Tool.make("delete_scheduled_task", {
   .annotate(Tool.Title, "Delete a scheduled task")
   .annotate(Tool.Destructive, true);
 
+const BoardTaskListTool = Tool.make("board_task_list", {
+  description:
+    "List the user's task cards, open work by default, in this thread's project unless you pass projectSlug. Rows are sorted by priority, then in-progress first, and carry the id to use with board_task_get and board_task_update. Pass mine=true for tasks claimed by the current user.",
+  parameters: OrchestratorMcpBoardTaskListInput,
+  success: OrchestratorMcpBoardTaskListResult,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "List board tasks")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true);
+
+const BoardTaskGetTool = Tool.make("board_task_get", {
+  description:
+    "Read one task card in full: description, how to verify it, files to start from, blockers, checklist progress and the latest activity. Use the id from board_task_list.",
+  parameters: OrchestratorMcpBoardTaskGetInput,
+  success: OrchestratorMcpBoardTaskDetail,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Get a board task")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true);
+
+const BoardTaskUpdateTool = Tool.make("board_task_update", {
+  description:
+    "Update a task card the user can see in the Tasks view. Set in_progress when you start, add a note on meaningful progress, and finish with review (needs a human check) or done, putting the verification result in note. Only the fields you pass change; claim=true takes the task for the current user.",
+  parameters: OrchestratorMcpBoardTaskUpdateInput,
+  success: OrchestratorMcpBoardTaskRow,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Update a board task")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false);
+
+const BoardTaskCreateTool = Tool.make("board_task_create", {
+  description:
+    "Create a new task card for the user, in this thread's project unless you pass projectSlug. Use it for follow-up work you find but should not do now, not for work you are about to finish.",
+  parameters: OrchestratorMcpBoardTaskCreateInput,
+  success: OrchestratorMcpBoardTaskRow,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Create a board task")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false);
+
 const RequestSecretTool = Tool.make("request_secret", {
   description:
     "Ask the user for a secret (a token, API key, signing secret, password) through a private card in this thread, and wait for them to answer. The value is kept by the app and NEVER returned to you or shown in the transcript. When saved, the result carries a secretRef: pass it to a tool that accepts one (e.g. schedule_task's signature.secretRef). It works once. Never ask for secrets in chat, and never invent one.",
@@ -192,7 +255,7 @@ const ThreadListTool = Tool.make("t3_thread_list", {
 
 const ThreadReadTool = Tool.make("t3_thread_read", {
   description:
-    "Read durable state and a paginated timeline from any T3 thread in this environment. The default messages view returns user messages, assistant messages, and proposed plans; activity returns all summarized timeline items. Reading an untruncated terminal assistant result from this parent thread's direct app-owned child acknowledges that child's automatic completion delivery. Continue with afterPosition=nextPosition. Recover long item text with itemId and textOffset=nextTextOffset until nextTextOffset is null; offsets count UTF-16 code units. The thread also reports its snooze state. To link a thread for the user, write `[title](t3-thread://v1/<threadId>)` with the threadId exactly as returned, not URL-encoded; Leonidas Code shows the thread's current title.",
+    "Read durable state and a paginated timeline from any T3 thread in this environment. The default messages view returns user messages, assistant messages, and proposed plans; activity returns all summarized timeline items, 25 per page by default (50 for messages; set limit up to 100). Reading an untruncated terminal assistant result from this parent thread's direct app-owned child acknowledges that child's automatic completion delivery. Continue with afterPosition=nextPosition. Recover long item text with itemId and textOffset=nextTextOffset until nextTextOffset is null; offsets count UTF-16 code units. The thread also reports its snooze state. To link a thread for the user, write `[title](t3-thread://v1/<threadId>)` with the threadId exactly as returned, not URL-encoded; Leonidas Code shows the thread's current title.",
   parameters: OrchestratorMcpThreadReadInput,
   success: OrchestratorMcpThreadReadResult,
   failure: OrchestratorMcpFailure,
@@ -265,6 +328,10 @@ export const OrchestratorToolkit = Toolkit.make(
   ListScheduledTasksTool,
   UpdateScheduledTaskTool,
   DeleteScheduledTaskTool,
+  BoardTaskListTool,
+  BoardTaskGetTool,
+  BoardTaskUpdateTool,
+  BoardTaskCreateTool,
   RequestSecretTool,
   CreateThreadsTool,
   ThreadListTool,

@@ -71,6 +71,7 @@ import * as ProviderRegistryMock from "../provider/testUtils/providerRegistryMoc
 import * as ProjectService from "../project/ProjectService.ts";
 import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
+import * as TaskBoardService from "../taskBoard/TaskBoardService.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
@@ -682,6 +683,7 @@ describe("orchestrator MCP toolkit", () => {
             Layer.provide(layerProviderRegistry),
             Layer.provide(layerScheduledTaskStub),
             Layer.provide(Layer.mock(ThreadSearch.ThreadSearch)({})),
+            Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
             Layer.provide(
               Layer.mock(ProjectService.ProjectService)({
                 getById: (id) =>
@@ -1471,19 +1473,40 @@ describe("orchestrator MCP toolkit", () => {
                   providerInstanceId: "opencode",
                   canRunChildTask: false,
                 }),
-                // Models advertise their option descriptors so agents can
-                // discover valid target.options ids and values.
-                expect.objectContaining({
+              ]),
+              // The unfiltered overview stays small: models carry no option descriptors.
+              modelOptionsOmitted: true,
+            });
+            const overviewCodex = (
+              capabilities.structuredContent as {
+                providers: ReadonlyArray<{
+                  providerInstanceId: string;
+                  models: ReadonlyArray<object>;
+                }>;
+              }
+            ).providers.find((provider) => provider.providerInstanceId === codexInstanceId);
+            expect(overviewCodex?.models[0]).not.toHaveProperty("options");
+
+            // Narrowing to one provider returns its option descriptors so agents can
+            // discover valid target.options ids and values.
+            const codexCapabilities = yield* invoke("orchestrator_capabilities", {
+              providerInstanceId: codexInstanceId,
+            });
+            expect(codexCapabilities.isError).toBe(false);
+            expect(codexCapabilities.structuredContent).toMatchObject({
+              providers: [
+                {
                   providerInstanceId: codexInstanceId,
                   models: [
-                    expect.objectContaining({
+                    {
                       id: codexModel,
                       options: [expect.objectContaining({ id: "reasoning", type: "select" })],
-                    }),
+                    },
                   ],
-                }),
-              ]),
+                },
+              ],
             });
+            expect(codexCapabilities.structuredContent).not.toHaveProperty("modelOptionsOmitted");
 
             const scheduleTool = server.tools.find(({ tool }) => tool.name === "schedule_task");
             expect(scheduleTool?.tool.annotations?.destructiveHint).toBe(true);
@@ -3820,6 +3843,7 @@ describe("orchestrator MCP toolkit", () => {
           Layer.provide(layerProviderRegistry),
           Layer.provide(layerUnusedScheduledTaskStub),
           Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
+          Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
           Layer.provideMerge(
             SecretRequests.layer.pipe(
               Layer.provide(layerMemorySecretStore),

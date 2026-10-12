@@ -84,6 +84,9 @@ export interface PromptSuggestionInput {
   cwd: string;
   /** Recent finished chat messages, oldest first. */
   messages: ReadonlyArray<PromptSuggestionMessage>;
+  /** Exact composer text already typed by the user. */
+  draft?: string;
+  personalExamples?: readonly string[];
   /** What model and provider to use for generation. */
   modelSelection: ModelSelection;
 }

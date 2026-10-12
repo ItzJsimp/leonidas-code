@@ -91,6 +91,7 @@ import {
 import { useScopedModelDisabledReason } from "./useScopedModelAvailability";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
+import { PromptPredictionSettings } from "./PromptPredictionSettings";
 import { useThreadActions } from "../../hooks/useThreadActions";
 import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import {
@@ -454,8 +455,8 @@ function AboutVersionSection() {
         }
       />
       <SettingsRow
-        title="What's new popup"
-        description="Preview the patch notes popup using the latest published release."
+        title="What's new"
+        description="Preview the latest release notes and open a guided chat for any change."
         control={
           <Button size="sm" variant="outline" onClick={requestWhatsNewPreview}>
             Preview
@@ -560,6 +561,15 @@ export function useSettingsRestore(onRestored?: () => void) {
     DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection ?? null,
   );
   const isBackgroundActivityDirty = hasChangedBackgroundActivitySettings(settings);
+  const isPromptPredictionDirty =
+    settings.promptPredictionMode !== DEFAULT_UNIFIED_SETTINGS.promptPredictionMode ||
+    settings.promptPredictionLocalModel !== DEFAULT_UNIFIED_SETTINGS.promptPredictionLocalModel ||
+    settings.promptPredictionCloudRequestLimit !==
+      DEFAULT_UNIFIED_SETTINGS.promptPredictionCloudRequestLimit ||
+    !Equal.equals(
+      settings.promptPredictionModelSelection,
+      DEFAULT_UNIFIED_SETTINGS.promptPredictionModelSelection,
+    );
 
   const changedSettingLabels = useMemo(
     () => [
@@ -686,6 +696,7 @@ export function useSettingsRestore(onRestored?: () => void) {
         : []),
       ...(settings.confirmQuit !== DEFAULT_UNIFIED_SETTINGS.confirmQuit ? ["Quit shortcut"] : []),
       ...(isTextGenerationModelDirty ? ["Text generation model"] : []),
+      ...(isPromptPredictionDirty ? ["Prediction source and budget"] : []),
       ...getChangedBrowserSettingLabels(settings),
       ...(settings.enableAgentBrowserAccess !== DEFAULT_UNIFIED_SETTINGS.enableAgentBrowserAccess
         ? ["Agent browser access"]
@@ -693,6 +704,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     ],
     [
       isTextGenerationModelDirty,
+      isPromptPredictionDirty,
       isBackgroundActivityDirty,
       settings.browserDefaultViewport,
       settings.browserDefaultZoomFactor,
@@ -866,6 +878,10 @@ export function useSettingsRestore(onRestored?: () => void) {
       confirmThreadUnpin: DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin,
       confirmQuit: DEFAULT_UNIFIED_SETTINGS.confirmQuit,
       textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
+      promptPredictionMode: DEFAULT_UNIFIED_SETTINGS.promptPredictionMode,
+      promptPredictionLocalModel: DEFAULT_UNIFIED_SETTINGS.promptPredictionLocalModel,
+      promptPredictionModelSelection: DEFAULT_UNIFIED_SETTINGS.promptPredictionModelSelection,
+      promptPredictionCloudRequestLimit: DEFAULT_UNIFIED_SETTINGS.promptPredictionCloudRequestLimit,
       fontFamilySans: DEFAULT_UNIFIED_SETTINGS.fontFamilySans,
       fontFamilyComposer: DEFAULT_UNIFIED_SETTINGS.fontFamilyComposer,
       fontFamilyCode: DEFAULT_UNIFIED_SETTINGS.fontFamilyCode,
@@ -2773,7 +2789,7 @@ export function GeneralSettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("prompt-prediction")}
-          description="Suggest the next reply from this conversation and relevant past prompts. Tab accepts; Escape dismisses."
+          description="Complete your draft using this conversation and relevant past prompts. Tab accepts; Escape dismisses."
           control={
             <Switch
               checked={settings.composerPromptPredictionEnabled}
@@ -2784,6 +2800,8 @@ export function GeneralSettingsPanel() {
             />
           }
         />
+
+        <PromptPredictionSettings />
 
         <SettingsRow
           {...searchableSetting("composer-rich-text")}

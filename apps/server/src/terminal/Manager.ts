@@ -98,7 +98,9 @@ const DEFAULT_HISTORY_LINE_LIMIT = 5_000;
 const DEFAULT_HISTORY_BYTE_LIMIT = 8 * 1024 * 1024;
 const MAX_HISTORY_CHUNK_LENGTH = 16 * 1024;
 const DEFAULT_PERSIST_DEBOUNCE_MS = 40;
-const DEFAULT_SUBPROCESS_POLL_INTERVAL_MS = 1_000;
+// Windows snapshots the process table through a fresh powershell.exe (about 1 s of CPU each), so
+// polling at the POSIX cadence keeps a core busy for as long as any terminal is open.
+const DEFAULT_SUBPROCESS_POLL_INTERVAL_MS = process.platform === "win32" ? 5_000 : 1_000;
 const MAX_SUBPROCESS_POLL_INTERVAL_MS = 60_000;
 const DEFAULT_PROCESS_KILL_GRACE_MS = 1_000;
 const DEFAULT_MAX_RETAINED_INACTIVE_SESSIONS = 128;

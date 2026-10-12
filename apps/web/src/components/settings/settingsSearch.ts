@@ -401,6 +401,30 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["scribe history ghost text autocomplete tab suggestions"],
   },
   {
+    id: "prompt-prediction-source",
+    title: "Prediction source",
+    to: "/settings/general",
+    searchTerms: ["prompt autocomplete free local cloud billing quota ollama"],
+  },
+  {
+    id: "prompt-prediction-local-model",
+    title: "Local prediction model",
+    to: "/settings/general",
+    searchTerms: ["prompt autocomplete ollama offline"],
+  },
+  {
+    id: "prompt-prediction-cloud-model",
+    title: "Cloud prediction model",
+    to: "/settings/general",
+    searchTerms: ["prompt autocomplete cost provider subscription"],
+  },
+  {
+    id: "prompt-prediction-cloud-limit",
+    title: "Cloud prediction limit",
+    to: "/settings/general",
+    searchTerms: ["prompt autocomplete budget requests usage hourly"],
+  },
+  {
     id: "composer-rich-text",
     title: "Rich text composer",
     to: "/settings/general",

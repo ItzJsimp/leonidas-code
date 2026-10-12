@@ -40,6 +40,7 @@ interface FakeCodexInput {
   forbidArg?: string;
   stdinMustContain?: string;
   stdinMustNotContain?: string;
+  cwdMustNotBe?: string;
 }
 
 // The stub walks argv the way the shell script it replaced did: `--image`,
@@ -56,6 +57,7 @@ function makeFakeCodexBinary(dir: string, input: FakeCodexInput) {
     forbidArg: input.forbidArg ?? null,
     stdinMustContain: input.stdinMustContain ?? null,
     stdinMustNotContain: input.stdinMustNotContain ?? null,
+    cwdMustNotBe: input.cwdMustNotBe ?? null,
     stderr: input.stderr ?? null,
     output: input.output,
     exitCode: input.exitCode ?? 0,
@@ -89,6 +91,7 @@ function makeFakeCodexBinary(dir: string, input: FakeCodexInput) {
         "  }",
         "}",
         "const chunks = [];",
+        'if (check.cwdMustNotBe !== null && process.cwd() === check.cwdMustNotBe) { process.stderr.write("unsafe cwd\\n"); process.exit(10); }',
         "for await (const chunk of process.stdin) chunks.push(chunk);",
         'const stdinContent = Buffer.concat(chunks).toString("utf8");',
         "function fail(message, code) {",
@@ -170,6 +173,23 @@ function withFakeCodexEnv<A, E, R>(
 }
 
 it.layer(layerCodexTextGenerationTest)("CodexTextGeneration", (it) => {
+  it.effect("predicts from a temporary cwd without project instructions", () =>
+    withFakeCodexEnv(
+      {
+        output: JSON.stringify({ prompt: "Review the latest diff." }),
+        cwdMustNotBe: process.cwd(),
+      },
+      (textGeneration) =>
+        Effect.gen(function* () {
+          const result = yield* textGeneration.generatePromptSuggestion!({
+            cwd: process.cwd(),
+            messages: [{ role: "assistant", text: "Done." }],
+            modelSelection: DEFAULT_TEST_MODEL_SELECTION,
+          });
+          expect(result.prompt).toBe("Review the latest diff.");
+        }),
+    ),
+  );
   it.effect.each(["gpt-5.6-luna", "openai.gpt-5.6-luna"])(
     "dispatches the qualified live model for %s",
     (selectedModel) =>

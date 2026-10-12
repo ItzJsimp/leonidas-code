@@ -1,8 +1,10 @@
-import type {
-  OrchestrationV2TurnItemStatus,
-  OrchestrationV2ThreadShell,
-  OrchestrationProjectShell,
-  ServerProvider,
+import {
+  ProviderDriverKind,
+  type ProviderInstanceId,
+  type OrchestrationV2TurnItemStatus,
+  type OrchestrationV2ThreadShell,
+  type OrchestrationProjectShell,
+  type ServerProvider,
 } from "@t3tools/contracts";
 import { formatModelSlugName, resolveSelectableModel } from "@t3tools/shared/model";
 import { fileBasename } from "@t3tools/shared/path";
@@ -129,4 +131,114 @@ export function subagentDetailPreview(input: {
     (isTerminalSubagentStatus(input.status) ? result || progress : progress || result) || "";
   const compact = detail.replace(/\s+/gu, " ");
   return compact.length > 280 ? `${compact.slice(0, 280).trimEnd()}…` : compact || null;
+}
+
+/**
+ * Resolves the appropriate provider driver kind for a subagent so that the UI
+ * can render the correct provider / brand icon (e.g. OpenRouter, ChatGPT/Codex,
+ * Claude, Antigravity/Gemini).
+ */
+export function resolveSubagentDriverKind(input: {
+  readonly driver?: ProviderDriverKind | undefined;
+  readonly providerInstanceId?: ProviderInstanceId | undefined;
+  readonly model?: string | null | undefined;
+  readonly provider?: ServerProvider | undefined;
+  readonly providers?: ReadonlyArray<ServerProvider> | undefined;
+}): ProviderDriverKind | undefined {
+  const provider =
+    input.provider ??
+    (input.providerInstanceId && input.providers
+      ? input.providers.find((p) => p.instanceId === input.providerInstanceId)
+      : undefined);
+
+  // 1. If provider is explicitly OpenRouter, or instance/model indicates OpenRouter
+  if (provider?.driver === "openrouter") {
+    return ProviderDriverKind.make("openrouter");
+  }
+  const instanceIdLower = (input.providerInstanceId ?? provider?.instanceId)?.toLowerCase();
+  if (instanceIdLower && instanceIdLower.includes("openrouter")) {
+    return ProviderDriverKind.make("openrouter");
+  }
+
+  const modelTrimmed = input.model?.trim().toLowerCase();
+  if (modelTrimmed) {
+    if (modelTrimmed.startsWith("openrouter/") || modelTrimmed.includes("openrouter")) {
+      return ProviderDriverKind.make("openrouter");
+    }
+
+    // ChatGPT / OpenAI model family
+    if (
+      modelTrimmed.startsWith("gpt-") ||
+      modelTrimmed.startsWith("chatgpt") ||
+      modelTrimmed.startsWith("o1") ||
+      modelTrimmed.startsWith("o3") ||
+      modelTrimmed.startsWith("o4") ||
+      modelTrimmed.startsWith("openai/")
+    ) {
+      return ProviderDriverKind.make("codex");
+    }
+
+    // Claude model family
+    if (modelTrimmed.startsWith("claude-") || modelTrimmed.startsWith("anthropic/")) {
+      return ProviderDriverKind.make("claudeAgent");
+    }
+
+    // Gemini / Google model family
+    if (modelTrimmed.startsWith("gemini-") || modelTrimmed.startsWith("google/")) {
+      return ProviderDriverKind.make("antigravity");
+    }
+
+    // Grok / xAI model family
+    if (modelTrimmed.startsWith("grok-") || modelTrimmed.startsWith("xai/")) {
+      return ProviderDriverKind.make("grok");
+    }
+
+    // Cursor
+    if (modelTrimmed.startsWith("cursor")) {
+      return ProviderDriverKind.make("cursor");
+    }
+
+    // OpenCode
+    if (modelTrimmed.startsWith("opencode")) {
+      return ProviderDriverKind.make("openCode");
+    }
+  }
+
+  // 2. Check providerInstanceId patterns if not resolved yet
+  if (instanceIdLower) {
+    if (
+      instanceIdLower.includes("codex") ||
+      instanceIdLower.includes("openai") ||
+      instanceIdLower.includes("chatgpt")
+    ) {
+      return ProviderDriverKind.make("codex");
+    }
+    if (instanceIdLower.includes("antigravity") || instanceIdLower.includes("gemini")) {
+      return ProviderDriverKind.make("antigravity");
+    }
+    if (instanceIdLower.includes("claude")) {
+      return ProviderDriverKind.make("claudeAgent");
+    }
+    if (instanceIdLower.includes("grok")) {
+      return ProviderDriverKind.make("grok");
+    }
+  }
+
+  // 3. Check if any configured provider in providers has this model
+  if (modelTrimmed && input.providers) {
+    const matchedProvider = input.providers.find((p) =>
+      p.models.some((m) => m.slug.toLowerCase() === modelTrimmed),
+    );
+    if (matchedProvider) {
+      return matchedProvider.driver;
+    }
+  }
+
+  // 4. Fallback to matched provider's driver
+  if (provider?.driver) {
+    return provider.driver;
+  }
+
+  // 5. Fallback to supplied driver
+  return input.driver;
 }

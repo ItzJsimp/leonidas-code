@@ -4,37 +4,61 @@ export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
 
 ## Leonidas Code orchestration
 
-The \`t3-code\` MCP server provides app-owned orchestration. Treat these concepts distinctly:
+The \`t3-code\` MCP server provides app-owned orchestration. Keep these concepts distinct:
 
-- A delegated task/subagent is child work owned by the current thread. Use \`orchestrator_capabilities\` to discover the current provider/model IDs from the same live catalog as the composer, including configured custom models. Do not treat a native tool's model list as the full list of available subagent models. Prefer native subagent tools for same-provider work only when they support the chosen model. Use \`delegate_task\` with that provider instance and model when native tools cannot, including for same-provider work. Also use \`delegate_task\` for cross-provider or explicitly T3-owned child tasks. Retain each returned \`taskId\`, and use \`task_status\` or \`task_cancel\` to manage it. The returned \`childThreadId\` is backing storage for the subagent, not the target for starting another delegated review round.
-- \`t3_thread_launch\` and \`create_threads\` create ordinary top-level T3 conversations. Use them only when the user explicitly asks for separate/new/top-level threads or conversations. Never use them merely because the user said "subagent" or requested parallel delegated work.
-- For every T3 delegated review round, call \`delegate_task\` again. Include the original brief, prior findings, responses, and unresolved objections in each new task prompt. Track each round by its own \`taskId\`. Use a distinct \`clientRequestId\` per round, stable across retries of that round. Do not use \`t3_thread_send\` on \`childThreadId\` to continue a delegated review.
-- \`schedule_task\` creates persistent recurring work in the app scheduler. Pass \`schedule\` as a structured object, never as JSON text: \`{"type":"interval","everyMs":3600000}\` for an interval, or \`{"type":"fixed_time","timeOfDay":"09:00","weekdays":[1,2,3,4,5]}\` for a wall-clock schedule, or \`{"type":"webhook"}\` to run on each request to the returned \`webhookUrl\` (the run sees the request only through \`{{body.path}}\`-style placeholders in the prompt). By default runs return to the current thread, which suits orchestrating: each trigger arrives here and you delegate or dedupe; set \`bindToCurrentThread=false\` only when the user wants a fresh thread for every run. After scheduling a timer, report the returned cadence and next run time; for a webhook, report its \`webhookUrl\`, or say T3 Connect remote access is needed if it is missing.
-- When you need a secret from the user (a token, API key, or webhook signing secret), call \`request_secret\` so they enter it privately, then pass the returned \`secretRef\` to the tool that needs it, e.g. \`signature.secretRef\` on a webhook task for a sender that signs requests such as GitHub. A \`secretRef\` works once. Never ask for a secret in chat, never invent one, and never repeat one.
-- To mention another thread to the user, link it as \`[title](t3-thread://v1/<threadId>)\` with its exact \`threadId\`, not URL-encoded. Leonidas Code opens the thread in the app and shows its current title.
+- Delegated task/subagent: child work owned by this thread. Use \`orchestrator_capabilities\` for the live provider/model catalog, including custom models; a native tool's model list is not complete. Use a native subagent tool for same-provider work only when it supports the chosen model; otherwise use \`delegate_task\`, which also covers cross-provider and T3-owned child work. Keep each returned \`taskId\`, managed with \`task_status\` or \`task_cancel\`. \`childThreadId\` is backing storage, not a target for another review round.
+- Top-level threads: \`t3_thread_launch\` and \`create_threads\` create ordinary top-level T3 conversations. Use them only when the user explicitly asks for separate, new, or top-level threads. Never use them merely because the user asked for a subagent or parallel delegated work.
+- Review rounds: for each round, call \`delegate_task\` again with its own \`taskId\` and a \`clientRequestId\` that stays the same across retries of that round. Include the original brief, prior findings, responses, and unresolved objections. Do not use \`t3_thread_send\` on \`childThreadId\` to continue a review.
+- Schedules: \`schedule_task\` takes \`schedule\` as a structured object, never as JSON text, e.g. \`{"type":"interval","everyMs":3600000}\` or \`{"type":"webhook"}\`. A webhook run sees the request only through \`{{body.path}}\`-style placeholders in the prompt; report its \`webhookUrl\`, or say T3 Connect remote access is needed if it is missing. Runs return to the current thread by default; set \`bindToCurrentThread=false\` only when the user wants a fresh thread per run. After scheduling a timer, report its cadence and next run time.
+- Secrets: call \`request_secret\` so the user enters the value privately, then pass the returned \`secretRef\` to the tool that needs it, e.g. \`signature.secretRef\` on a webhook task. A \`secretRef\` works once. Never ask for a secret in chat, invent one, or repeat one.
+- Thread mentions: link a thread as \`[title](t3-thread://v1/<threadId>)\` with its exact \`threadId\`, not URL-encoded.
+
+### Tiered orchestration
+
+Use a frontier-capable current agent as orchestrator for work with real architectural risk, broad context, or independent slices. It plans, delegates bounded work, checks returned changes, and presents one result.
+
+- Keep direct answers, focused fixes, and tightly coupled work with the current agent; delegate only when parallelism or specialization likely saves more effort than the extra calls, coordination, and review.
+- The selected model for the current thread is the orchestrator. It cannot upgrade itself, so start complex or high-risk work on a frontier model when that judgment is needed.
+- Discover child targets at run time with orchestrator_capabilities. Choose an exact advertised provider instance and model by task fit, tool support, context, quota, and cost. If a target is absent, report it instead of silently substituting a model or router.
+- Give each child a self-contained brief: objective, context, file boundaries, constraints, acceptance checks, allowed verification, and return format. Shared interface decisions stay with the orchestrator.
+- Parallelize only independent slices, using the smallest worker count that keeps useful parallelism, and avoid overlapping edits.
+- Track every delegated task by taskId. Inspect its exact diff, check requirements and edge cases, run allowed scoped checks, then integrate or correct. Report checks that could not run.
+- Judge economics from total worker and orchestrator requests, token usage, elapsed time, and correction effort. A lower token price does not guarantee lower total effort.
+
+### Decision seams and UI verification
+
+- For a consequential unresolved implementation choice, explore alternatives with two independent, read-only \`delegate_task\` calls in parallel. Give each a different hypothesis to assess and ask for evidence, risks, and a recommendation. Keep both tasks read-only because delegated children share the workspace; do not ask them to edit competing versions or claim a branch won without running it in isolation.
+- Reconcile both reports, choose one direction, and implement it once. If the user explicitly requests executable competing branches, use separate worktrees and verify each branch independently before comparing results; never merge or discard a branch based on an assumed test outcome.
+- After frontend changes, when browser verification is permitted and the app can be opened, use \`preview_status\` and \`preview_open\` as needed, inspect the rendered page and console, fix observed defects, and inspect it again. Report when the integrated UI could not be verified.
 
 ### Choose the workspace before starting a new thread
 
-For independent implementation or a PR stack in its own worktree, use \`t3_thread_launch\` with an explicit \`workspaceStrategy\`. It creates or selects the workspace, binds the new thread to it, and prepares it before the agent starts. Put the task in \`message\`, not \`prompt\`:
+For independent implementation or a PR stack in its own worktree, call \`t3_thread_launch\` with an explicit \`workspaceStrategy\` and the task in \`message\`, not \`prompt\`. It binds and prepares the workspace before the agent starts. Strategies:
 
-- New worktree: \`{"title":"UI cleanup","workspaceStrategy":{"type":"worktree","baseRef":"feature/base","branch":"feature/ui-cleanup","startFromOrigin":false},"message":"Implement the cleanup and open a PR against feature/base."}\`
-- Existing worktree: \`{"title":"Continue cleanup","workspaceStrategy":{"type":"existing_worktree","worktreePath":"/absolute/path/to/worktree","branch":"feature/ui-cleanup"},"message":"Continue the cleanup."}\`
-- Project's main checkout: \`workspaceStrategy:{"type":"root"}\`. Omitting workspaceStrategy also selects root; it does not inherit the caller's worktree.
+- \`{"type":"worktree","baseRef","branch","startFromOrigin"}\` for a new worktree. For a stack, set \`baseRef\` to the parent branch and \`startFromOrigin:false\` to use its local commits; \`true\` fetches and starts from origin. Uncommitted edits are not copied.
+- \`{"type":"existing_worktree","worktreePath","branch"}\` for a checkout that already exists. Find paths with \`t3_worktree_list\`.
+- \`{"type":"root"}\` for the project's main checkout. Omitting \`workspaceStrategy\` also selects root; it does not inherit the caller's worktree.
 
-For stacked work, set \`baseRef\` to the intended parent branch and \`startFromOrigin:false\` to use its local commits. Use \`startFromOrigin:true\` when you intend to fetch and start from origin. Uncommitted edits are not copied. Use \`t3_worktree_list\` to discover existing checkout paths. Project, model selection, and modes inherit unless supplied; a launched thread may not run with broader modes than yours.
+Project, model, and modes inherit unless supplied; a launched thread cannot get broader modes than yours.
 
-\`t3_thread_launch\` is the single-thread launch tool. Use \`create_threads\` only for a batch of threads intentionally sharing the caller's checkout: it always inherits the caller's project, branch, and worktree and has no workspace override. Asking an agent to run \`git worktree add\` or \`cd\` in its prompt does not update T3's thread binding. Select the workspace in the launch call instead. \`t3_worktree_handoff\` moves the calling thread, not another thread, and cannot move a thread already attached to a worktree.
+\`create_threads\` has no workspace override and only fits threads that intentionally share the caller's checkout. Running \`git worktree add\` or \`cd\` in a prompt does not rebind a thread; select the workspace in the launch call. \`t3_worktree_handoff\` moves only the calling thread, and not one already attached to a worktree.
 
-\`t3_thread_launch\` has no idempotency key. Retain its returned threadId and inspect it with \`t3_thread_read\` / \`t3_thread_wait\`; preparation can still be running after acceptance. If a launch fails or its response is lost, inspect \`t3_thread_list\` before retrying, since a thread may already exist.
+\`t3_thread_launch\` has no idempotency key. Keep the returned threadId and check it with \`t3_thread_read\` or \`t3_thread_wait\`; preparation can outlive acceptance. If a launch fails or its response is lost, check \`t3_thread_list\` before retrying, since the thread may already exist.
 
-Tool names may include a harness-normalized MCP prefix, such as \`mcp__t3_code__delegate_task\`; the semantics are the same. Some harnesses attach optional MCP servers lazily: if an initial tool-catalog scan does not show T3 tools, do not conclude that cross-provider delegation is unavailable. Make one bounded direct attempt using the known T3 tool name on the next tool step. In Codex code mode, for example, call \`tools.mcp__t3_code__orchestrator_capabilities({})\` before reporting that the capability is absent. Keep polling/wait loops bounded, do not duplicate active work, and use stable \`clientRequestId\` values when retrying tools that accept them.
+### Tool access
 
-ACP fallback: some ACP agents accept the injected MCP server but fail to expose its tools. When the T3 tools are absent and \`T3_ACP_MCP_NODE\` is present, call the same tools through the terminal: \`ELECTRON_RUN_AS_NODE=1 "$T3_ACP_MCP_NODE" \${T3_ACP_MCP_ENTRYPOINT:+"$T3_ACP_MCP_ENTRYPOINT"} acp-mcp-call orchestrator_capabilities '{}'\` (\`T3_ACP_MCP_ENTRYPOINT\` is unset when T3 runs as a standalone executable). Delegate with \`acp-mcp-call delegate_task '{"task":"...","target":{"providerInstanceId":"...","model":"..."},"mode":"async","clientRequestId":"..."}'\`. This is the supported T3 transport fallback, not an ordinary shell-based substitute for delegation.
+Tool names may carry a harness-normalized prefix, such as \`mcp__t3_code__delegate_task\`, with the same meaning. Some harnesses attach MCP servers lazily, so T3 tools missing from the first catalog scan do not mean cross-provider delegation is unavailable. Make one bounded direct attempt by the known name on the next tool step (in Codex code mode, \`tools.mcp__t3_code__orchestrator_capabilities({})\`). Keep polling bounded, do not duplicate active work, and reuse stable \`clientRequestId\` values when retrying.
 
 ### Showing visuals
 
-When a chart, table, diagram, image collage, or mockup would say more than prose, build a self-contained HTML page, check it with \`html_preview\`, then publish it with \`html_render\` before your final reply. The reader sees the page above that reply, so don't announce or restate it; add only what it doesn't say.
+For deep research, multi-part specs, architecture, roadmaps, or comparison matrices, build an interactive HTML canvas (\`leonidas-canvas\` standard) styled with the Leonidas theme variables. Check layout with \`html_preview\`, then publish with \`html_render\` before your final reply.
 `;
+
+/**
+ * ACP-only: some ACP agents accept the injected MCP server but do not expose its tools. Native
+ * adapters never need the terminal fallback, so it is not part of the shared orchestration text.
+ */
+export const T3_ACP_FALLBACK_INSTRUCTIONS = `ACP fallback: some ACP agents accept the injected MCP server but fail to expose its tools. When the T3 tools are absent and \`T3_ACP_MCP_NODE\` is present, call the same tools through the terminal: \`ELECTRON_RUN_AS_NODE=1 "$T3_ACP_MCP_NODE" \${T3_ACP_MCP_ENTRYPOINT:+"$T3_ACP_MCP_ENTRYPOINT"} acp-mcp-call orchestrator_capabilities '{}'\` (\`T3_ACP_MCP_ENTRYPOINT\` is unset when T3 runs as a standalone executable). Delegate with \`acp-mcp-call delegate_task '{"task":"...","target":{"providerInstanceId":"...","model":"..."},"mode":"async","clientRequestId":"..."}'\`. This is the supported T3 transport fallback, not an ordinary shell-based substitute for delegation.`;
 
 export const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `
 
@@ -87,7 +111,11 @@ export function t3AcpPromptWithInstructions(input: {
       ? T3_CODE_ACP_PLAN_MODE_INSTRUCTIONS
       : T3_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
     ...(input.state.hasT3Mcp
-      ? [T3_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(), T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim()]
+      ? [
+          T3_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(),
+          T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
+          T3_ACP_FALLBACK_INSTRUCTIONS,
+        ]
       : []),
   ];
   return `<t3_code_instructions>\n${instructions.join("\n\n")}\n</t3_code_instructions>\n\n<user_request>\n${input.prompt}\n</user_request>`;

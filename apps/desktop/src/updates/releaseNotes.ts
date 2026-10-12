@@ -17,7 +17,7 @@ function isElectronReleaseNoteInfo(value: unknown): value is ElectronReleaseNote
 }
 
 const MAX_RELEASE_NOTE_GROUPS = 6;
-const MAX_RELEASE_NOTE_ITEMS_PER_GROUP = 8;
+const MAX_RELEASE_NOTE_ITEMS_PER_GROUP = 30;
 const MAX_RELEASE_NOTE_ITEM_LENGTH = 220;
 
 const HTML_ENTITY_REPLACEMENTS: Readonly<Record<string, string>> = {
@@ -109,12 +109,7 @@ function extractReleaseNoteItems(note: string | null | undefined): ExtractedRele
       .replace(/^\d+[.)]\s+/, "")
       .replace(/\s+/g, " ");
     const normalized = normalizeReleaseNoteLine(item);
-    if (
-      normalized === "new contributors" ||
-      normalized === "full changelog" ||
-      normalized === "details"
-    )
-      break;
+    if (normalized === "new contributors" || normalized === "full changelog") break;
     if (/^#{1,6}\s+/.test(item)) continue;
     if (isIgnoredReleaseNoteLine(item)) continue;
     totalItems += 1;

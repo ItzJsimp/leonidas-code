@@ -21,7 +21,23 @@ import {
   ChatGptHandoffInput,
   ChatGptHandoffState,
 } from "./providerSetup.ts";
-import { TaskBoardSnapshot, TaskBoardReadError } from "./taskBoard.ts";
+import {
+  TaskBoardSnapshot,
+  TaskBoardReadError,
+  TaskBoardTask,
+  TaskBoardListInput,
+  TaskBoardCreateInput,
+  TaskBoardClaimInput,
+  TaskBoardReleaseInput,
+  TaskBoardCompleteInput,
+  TaskBoardUpdateInput,
+  TaskBoardOperationError,
+  TaskBoardWorkspaceInput,
+  TaskBoardWorkspaceSnapshot,
+  TaskBoardCardUpdateInput,
+  TaskBoardCardCreateInput,
+  TaskBoardShareInput,
+} from "./taskBoard.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
@@ -394,8 +410,18 @@ export const WS_METHODS = {
   projectsListEntries: "projects.listEntries",
   projectsReadFile: "projects.readFile",
   taskBoardList: "taskBoard.list",
+  taskBoardCreate: "taskBoard.create",
+  taskBoardClaim: "taskBoard.claim",
+  taskBoardRelease: "taskBoard.release",
+  taskBoardComplete: "taskBoard.complete",
+  taskBoardUpdate: "taskBoard.update",
+  taskBoardWorkspace: "taskBoard.workspace",
+  taskBoardCardUpdate: "taskBoard.cardUpdate",
+  taskBoardCardCreate: "taskBoard.cardCreate",
+  taskBoardShare: "taskBoard.share",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
+  projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
   projectsSearchContents: "projects.searchContents",
   projectsSearchEntries: "projects.searchEntries",
   projectsWriteFile: "projects.writeFile",
@@ -1211,9 +1237,63 @@ const WsProjectsListEntriesRpc = Rpc.make(WS_METHODS.projectsListEntries, {
 });
 
 const WsTaskBoardListRpc = Rpc.make(WS_METHODS.taskBoardList, {
-  payload: Schema.Struct({}),
+  payload: TaskBoardListInput,
   success: TaskBoardSnapshot,
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardCreateRpc = Rpc.make(WS_METHODS.taskBoardCreate, {
+  payload: TaskBoardCreateInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardClaimRpc = Rpc.make(WS_METHODS.taskBoardClaim, {
+  payload: TaskBoardClaimInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardReleaseRpc = Rpc.make(WS_METHODS.taskBoardRelease, {
+  payload: TaskBoardReleaseInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardCompleteRpc = Rpc.make(WS_METHODS.taskBoardComplete, {
+  payload: TaskBoardCompleteInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardUpdateRpc = Rpc.make(WS_METHODS.taskBoardUpdate, {
+  payload: TaskBoardUpdateInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardWorkspaceRpc = Rpc.make(WS_METHODS.taskBoardWorkspace, {
+  payload: TaskBoardWorkspaceInput,
+  success: TaskBoardWorkspaceSnapshot,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
+  payload: TaskBoardCardUpdateInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardCardCreateRpc = Rpc.make(WS_METHODS.taskBoardCardCreate, {
+  payload: TaskBoardCardCreateInput,
+  success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
+  payload: TaskBoardShareInput,
+  success: TaskBoardSnapshot,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
 const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidates, {
@@ -1228,10 +1308,28 @@ const WsProjectsPredictPromptRpc = Rpc.make(WS_METHODS.projectsPredictPrompt, {
   payload: Schema.Struct({
     cwd: Schema.String,
     messages: Schema.Array(
-      Schema.Struct({ role: Schema.Literals(["user", "assistant"]), text: Schema.String }),
+      Schema.Struct({
+        role: Schema.Literals(["user", "assistant"]),
+        text: Schema.String.check(Schema.isMaxLength(3000)),
+      }),
+    ).check(Schema.isMaxLength(6)),
+    draft: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(2000))),
+    personalExamples: Schema.optionalKey(
+      Schema.Array(Schema.String.check(Schema.isMaxLength(300))).check(Schema.isMaxLength(5)),
+    ),
+    sessionId: Schema.optionalKey(
+      Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
     ),
   }),
   success: Schema.Struct({ prompt: Schema.NullOr(Schema.String) }),
+  error: EnvironmentAuthorizationError,
+});
+
+const WsProjectsCancelPromptPredictionRpc = Rpc.make(WS_METHODS.projectsCancelPromptPrediction, {
+  payload: Schema.Struct({
+    sessionId: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
+  }),
+  success: Schema.Void,
   error: EnvironmentAuthorizationError,
 });
 
@@ -2023,8 +2121,18 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsListEntriesRpc,
   WsProjectsReadFileRpc,
   WsTaskBoardListRpc,
+  WsTaskBoardCreateRpc,
+  WsTaskBoardClaimRpc,
+  WsTaskBoardReleaseRpc,
+  WsTaskBoardCompleteRpc,
+  WsTaskBoardUpdateRpc,
+  WsTaskBoardWorkspaceRpc,
+  WsTaskBoardCardUpdateRpc,
+  WsTaskBoardCardCreateRpc,
+  WsTaskBoardShareRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
+  WsProjectsCancelPromptPredictionRpc,
   WsProjectsSearchContentsRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsEnsureScratchRpc,

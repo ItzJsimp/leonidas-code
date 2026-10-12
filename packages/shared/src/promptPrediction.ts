@@ -1,8 +1,8 @@
 import styleStandard from "./promptStyleStandard.json" with { type: "json" };
 
 /** Hard ceiling: longer candidates are trimmed at a sentence boundary. Soft target: 1 to 3. */
-export const MAX_SUGGESTION_SENTENCES = 6;
-export const SOFT_SUGGESTION_SENTENCES = 3;
+export const MAX_SUGGESTION_SENTENCES = 2;
+export const SOFT_SUGGESTION_SENTENCES = 2;
 /** Ranking points lost per sentence beyond the soft target, against one point per shared word. */
 const LENGTH_PENALTY = 0.5;
 
@@ -105,6 +105,7 @@ function recommendedReply(text: string): string | null {
 export function contextualPromptCandidates(
   history: readonly PromptCandidate[],
   messages: readonly PromptPredictionMessage[],
+  prefix = "",
 ): PromptCandidate[] {
   const recent = messages.filter((message) => message.role !== "system").slice(-12);
   const latest = recent.at(-1);
@@ -127,6 +128,7 @@ export function contextualPromptCandidates(
       .filter((message) => message.role === "user")
       .map((message, index) => ({ text: message.text.trim(), count: 1, lastSeen: index })),
   ];
+  const normalizedPrefix = prefix.trim().toLocaleLowerCase().replace(/\s+/g, " ");
   const rank = (source: readonly PromptCandidate[]) => {
     const relevance = (candidate: PromptCandidate) =>
       [...words(candidate.text)].filter((word) => context.has(word)).length -
@@ -139,16 +141,27 @@ export function contextualPromptCandidates(
           candidate.text.length >= 3 &&
           candidate.text.length <= 2000 &&
           candidate.text.toLowerCase() !== lastUser &&
+          (!normalizedPrefix ||
+            candidate.text.toLocaleLowerCase().replace(/\s+/g, " ").startsWith(normalizedPrefix)) &&
           !/[\r\n]/.test(candidate.text),
       )
       .sort((a, b) => relevance(b) - relevance(a) || b.count - a.count || b.lastSeen - a.lastSeen);
   };
-  // About half from the user's own history and thread, half from the shipped style standard;
-  // without Scribe history the standard half carries every prediction.
-  const own = rank(pool);
+  // Own prompts come first; generic style phrases are a fallback when history has no match.
+  const own = rank(pool).filter((candidate) => {
+    const candidateWords = words(candidate.text);
+    return (
+      context.size === 0 ||
+      candidateWords.size === 0 ||
+      [...candidateWords].some((word) => context.has(word))
+    );
+  });
   const standard = rank(
     STYLE_STANDARD.map((text) => ({ text, count: 0, lastSeen: 0, standard: true })),
-  );
+  ).filter((candidate) => {
+    const candidateWords = words(candidate.text);
+    return context.size === 0 || [...candidateWords].some((word) => context.has(word));
+  });
   const unique = new Map<string, PromptCandidate>();
   if (recommendation)
     unique.set(recommendation.toLowerCase(), {
@@ -162,10 +175,8 @@ export function contextualPromptCandidates(
     if (candidate && !unique.has(candidate.text.toLowerCase()))
       unique.set(candidate.text.toLowerCase(), { ...candidate, prefixOnly: true });
   };
-  for (let index = 0; index < Math.max(own.length, standard.length); index++) {
-    add(own[index]);
-    add(standard[index]);
-  }
+  for (const candidate of own) add(candidate);
+  if (own.length === 0) for (const candidate of standard) add(candidate);
   return [...unique.values()].slice(0, 256);
 }
 
@@ -208,11 +219,21 @@ export function buildPromptCandidates(history: string): PromptCandidate[] {
       if (!AGENT_APPS.test(record.app) && !(TERMINALS.test(record.app) && record.lens === "agent"))
         continue;
       if (typeof record.cleaned_text !== "string") continue;
-      const text = record.cleaned_text.trim();
-      if (text.length < 3 || text.length > 2000 || /[\r\n]/.test(text)) continue;
-      const key = text.toLocaleLowerCase();
+      const text = record.cleaned_text
+        .replace(/[\r\n]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text.length < 3) continue;
+      const bounded =
+        text.length > 500
+          ? text
+              .slice(0, 500)
+              .replace(/\s+\S*$/, "")
+              .trim()
+          : text;
+      const key = bounded.toLocaleLowerCase();
       prompts.set(key, {
-        text: capSentences(text),
+        text: capSentences(bounded),
         count: (prompts.get(key)?.count ?? 0) + 1,
         lastSeen,
       });
@@ -230,15 +251,17 @@ export function predictPrompt(
   prefix: string,
 ): string | null {
   if (/[\r\n]/.test(prefix) || /^[\s]*[/$@]/.test(prefix)) return null;
-  const normalized = prefix.toLocaleLowerCase();
+  const normalized = prefix.toLocaleLowerCase().replace(/\s+/g, " ").trim();
   const matches = candidates.filter(
     (candidate) =>
       !ACKNOWLEDGEMENT.test(candidate.text) &&
       (prefix.trim().length > 0 || !candidate.prefixOnly) &&
       candidate.text.length > prefix.length &&
-      candidate.text.toLocaleLowerCase().startsWith(normalized),
+      candidate.text.toLocaleLowerCase().replace(/\s+/g, " ").startsWith(normalized),
   );
   const match =
     prefix.trim().length > 0 ? (matches.find((c) => !c.standard) ?? matches[0]) : matches[0];
-  return match ? prefix + match.text.slice(prefix.length) : null;
+  if (!match) return null;
+  const suffix = match.text.replace(/\s+/g, " ").trim().slice(normalized.length);
+  return prefix + (prefix.endsWith(" ") ? suffix.trimStart() : suffix);
 }

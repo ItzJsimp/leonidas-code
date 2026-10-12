@@ -509,7 +509,7 @@ describe("CodexAdapterV2 runtime policy", () => {
       assert.equal(params.collaborationMode?.mode, "default");
       assert.include(
         params.additionalContext?.t3_code_orchestration?.value ?? "",
-        "Use `delegate_task`",
+        "otherwise use `delegate_task`",
       );
       assert.include(
         params.additionalContext?.t3_code_orchestration?.value ?? "",
@@ -3787,7 +3787,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     Effect.scoped(
       Effect.gen(function* () {
         const transcript = finalAnswerTranscript("codex-streamed-message-once", [
-          { id: "answer", text: "CODEX_RECOVERY_OK", streamed: true, completionDelayMs: 100 },
+          { id: "answer", text: "CODEX_RECOVERY_OK", streamed: true, completionDelayMs: 300 },
         ]);
         const harness = yield* makeCodexReplayHarness(transcript);
         const now = yield* DateTime.now;
@@ -3802,7 +3802,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           }),
         );
         yield* Effect.yieldNow;
-        yield* TestClock.adjust("50 millis");
+        yield* TestClock.adjust("200 millis");
         yield* awaitUntil(
           () => assistantTurnItems(harness.events).length === 1,
           "streamed turn item",
@@ -3813,7 +3813,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         );
         assert.deepEqual(assistantMessages(harness.events), []);
 
-        yield* TestClock.adjust("50 millis");
+        yield* TestClock.adjust("100 millis");
         yield* awaitUntil(() => harness.terminalEvents().length === 1, "root turn terminal");
         assert.deepEqual(
           assistantMessages(harness.events).map(({ message }) => ({
@@ -3856,7 +3856,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
         );
         yield* awaitUntil(() => assistantMessages(harness.events).length === 1, "original answer");
         yield* Effect.yieldNow;
-        yield* TestClock.adjust("50 millis");
+        yield* TestClock.adjust("200 millis");
         yield* Effect.yieldNow;
 
         assert.deepEqual(
@@ -3982,7 +3982,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           }),
         );
         yield* Effect.yieldNow;
-        yield* TestClock.adjust("50 millis");
+        yield* TestClock.adjust("200 millis");
         yield* Effect.yieldNow;
 
         assert.equal(new Set(assistantTurnItems(harness.events).map((item) => item.id)).size, 1);

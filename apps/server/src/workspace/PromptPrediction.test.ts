@@ -59,4 +59,35 @@ it.layer(testLayer)("PromptPrediction", (it) => {
       ]);
     }),
   );
+  it.effect("finds Scribe history from a nested git worktree and project path", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const service = yield* PromptPrediction.PromptPrediction;
+      const root = yield* fs.makeTempDirectoryScoped();
+      const historyDir = path.join(root, "LeonidasAI");
+      const nested = path.join(
+        root,
+        "projects",
+        "leonidas-code",
+        ".worktrees",
+        "feature",
+        "apps",
+        "server",
+      );
+      yield* fs.makeDirectory(historyDir, { recursive: true });
+      yield* fs.makeDirectory(nested, { recursive: true });
+      yield* fs.writeFileString(
+        path.join(historyDir, "history.jsonl"),
+        JSON.stringify({
+          app: "codex.exe",
+          mode: "dictation",
+          cleaned_text: "Review the auth refresh",
+        }),
+      );
+      expect((yield* service.candidates(nested)).map((candidate) => candidate.text)).toEqual([
+        "Review the auth refresh",
+      ]);
+    }),
+  );
 });

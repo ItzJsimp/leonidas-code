@@ -61,7 +61,11 @@ export type T3McpToolSummaryAction =
   | "browser"
   | "device"
   | "html-preview"
-  | "html-render";
+  | "html-render"
+  | "board-task-list"
+  | "board-task-get"
+  | "board-task-update"
+  | "board-task-create";
 
 export interface T3McpToolDefinition {
   readonly displayName: string;
@@ -131,6 +135,10 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     ["Delete", "Deleting", "Requested deletion of", "a scheduled task"],
     "schedule-delete",
   ),
+  board_task_list: tool(["List", "Listing", "Listed", "board tasks"], "board-task-list"),
+  board_task_get: tool(["Read", "Reading", "Read", "a board task"], "board-task-get"),
+  board_task_update: tool(["Update", "Updating", "Updated", "a board task"], "board-task-update"),
+  board_task_create: tool(["Create", "Creating", "Created", "a board task"], "board-task-create"),
   request_secret: tool(["Ask for", "Asking for", "Asked for", "a secret"], "secret-request"),
   create_threads: tool(["Create", "Creating", "Created", "Leonidas threads"], "thread-create"),
   t3_thread_start: tool(["Start", "Starting", "Started", "a Leonidas thread"], "thread-create"),
@@ -285,7 +293,10 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_thread_search: tool(["Search", "Searching", "Searched", "thread content"], "thread-search"),
   t3_thread_transfers: tool(["Read", "Reading", "Read", "thread transfers"], "thread-transfers"),
   t3_thread_organize: tool(["Organize", "Organizing", "Organized", "a thread"], "thread-organize"),
-  t3_thread_update: tool(["Update", "Updating", "Updated", "Leonidas thread metadata"], "thread-update"),
+  t3_thread_update: tool(
+    ["Update", "Updating", "Updated", "Leonidas thread metadata"],
+    "thread-update",
+  ),
   t3_worktree_list: tool(["List", "Listing", "Listed", "workspace branches"], "worktree-list"),
   t3_preview_list: tool(["List", "Listing", "Listed", "preview tabs"], "browser", "browser"),
   t3_preview_close: tool(["Close", "Closing", "Closed", "a preview tab"], "browser", "browser"),

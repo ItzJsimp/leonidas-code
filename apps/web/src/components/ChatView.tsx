@@ -1,5 +1,4 @@
 import { deriveAgentActivity } from "../agentActivity";
-import { LeonidasVaultPanel } from "./vault/LeonidasVaultPanel";
 import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
 import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
@@ -304,13 +303,13 @@ import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
 import { isEditableFocused } from "../lib/editableFocus";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { resolveChatShortcutCommand, shortcutLabelForCommand } from "../keybindings";
-import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
 import {
   AlarmClockIcon,
   CheckCircle2Icon,
   PaperclipIcon,
   ChevronDownIcon,
   DownloadIcon,
+  ArrowRightLeftIcon,
   GitBranchIcon,
   TargetIcon,
   WifiOffIcon,
@@ -715,6 +714,10 @@ const DevicePanel = lazy(() =>
   import("./device/DevicePanel").then((module) => ({ default: module.DevicePanel })),
 );
 const FilePreviewPanel = lazy(() => import("./files/FilePreviewPanel"));
+const ThreadTerminalDrawer = lazy(() => import("./ThreadTerminalDrawer"));
+const LeonidasVaultPanel = lazy(() =>
+  import("./vault/LeonidasVaultPanel").then((module) => ({ default: module.LeonidasVaultPanel })),
+);
 const EMPTY_PENDING_FILE_SURFACE_IDS: ReadonlySet<string> = new Set();
 const TYPE_TO_FOCUS_EDITABLE_SELECTOR = [
   "input",
@@ -1336,35 +1339,39 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
       )}
     >
       <div className="min-h-0 overflow-clip">
-        <ThreadTerminalDrawer
-          threadRef={threadRef}
-          threadId={threadId}
-          cwd={cwd}
-          worktreePath={effectiveWorktreePath}
-          runtimeEnv={runtimeEnv}
-          visible={visible}
-          height={terminalUiState.terminalHeight}
-          // Known-session order is MRU and changes on focus; persisted store order keeps sidebar labels stable.
-          terminalIds={canOperateTerminal ? terminalUiState.terminalIds : serverOrderedTerminalIds}
-          activeTerminalId={terminalUiState.activeTerminalId}
-          terminalGroups={terminalUiState.terminalGroups}
-          activeTerminalGroupId={terminalUiState.activeTerminalGroupId}
-          focusRequestId={focusRequestId + localFocusRequestId + (visible ? 1 : 0)}
-          onSplitTerminal={splitTerminal}
-          onSplitTerminalVertical={splitTerminalVertical}
-          onNewTerminal={createNewTerminal}
-          splitShortcutLabel={visible ? splitShortcutLabel : undefined}
-          splitVerticalShortcutLabel={visible ? splitVerticalShortcutLabel : undefined}
-          newShortcutLabel={visible ? newShortcutLabel : undefined}
-          closeShortcutLabel={visible ? closeShortcutLabel : undefined}
-          keybindings={keybindings}
-          onActiveTerminalChange={activateTerminal}
-          onCloseTerminal={closeTerminal}
-          onHeightChange={setTerminalHeight}
-          onAddTerminalContext={handleAddTerminalContext}
-          terminalLabelsById={terminalLabelsById}
-          terminalLaunchLocationsById={terminalLaunchLocationsById}
-        />
+        <Suspense fallback={<div style={{ height: terminalUiState.terminalHeight }} />}>
+          <ThreadTerminalDrawer
+            threadRef={threadRef}
+            threadId={threadId}
+            cwd={cwd}
+            worktreePath={effectiveWorktreePath}
+            runtimeEnv={runtimeEnv}
+            visible={visible}
+            height={terminalUiState.terminalHeight}
+            // Known-session order is MRU and changes on focus; persisted store order keeps sidebar labels stable.
+            terminalIds={
+              canOperateTerminal ? terminalUiState.terminalIds : serverOrderedTerminalIds
+            }
+            activeTerminalId={terminalUiState.activeTerminalId}
+            terminalGroups={terminalUiState.terminalGroups}
+            activeTerminalGroupId={terminalUiState.activeTerminalGroupId}
+            focusRequestId={focusRequestId + localFocusRequestId + (visible ? 1 : 0)}
+            onSplitTerminal={splitTerminal}
+            onSplitTerminalVertical={splitTerminalVertical}
+            onNewTerminal={createNewTerminal}
+            splitShortcutLabel={visible ? splitShortcutLabel : undefined}
+            splitVerticalShortcutLabel={visible ? splitVerticalShortcutLabel : undefined}
+            newShortcutLabel={visible ? newShortcutLabel : undefined}
+            closeShortcutLabel={visible ? closeShortcutLabel : undefined}
+            keybindings={keybindings}
+            onActiveTerminalChange={activateTerminal}
+            onCloseTerminal={closeTerminal}
+            onHeightChange={setTerminalHeight}
+            onAddTerminalContext={handleAddTerminalContext}
+            terminalLabelsById={terminalLabelsById}
+            terminalLaunchLocationsById={terminalLaunchLocationsById}
+          />
+        </Suspense>
       </div>
     </div>
   );
@@ -1504,41 +1511,45 @@ const PersistentThreadTerminalPanel = memo(function PersistentThreadTerminalPane
   if (!project || !cwd) return null;
 
   return (
-    <ThreadTerminalDrawer
-      mode="panel"
-      visible={visible}
-      threadRef={threadRef}
-      threadId={threadRef.threadId}
-      cwd={cwd}
-      worktreePath={worktreePath}
-      runtimeEnv={runtimeEnv}
-      height={0}
-      terminalIds={surface.terminalIds}
-      activeTerminalId={surface.activeTerminalId}
-      terminalGroups={[
-        {
-          id: surface.id,
-          terminalIds: surface.terminalIds,
-          ...(surface.splitDirection === "vertical" ? { splitDirection: "vertical" as const } : {}),
-        },
-      ]}
-      activeTerminalGroupId={surface.id}
-      focusRequestId={focusRequestId}
-      onSplitTerminal={onSplitTerminal}
-      onSplitTerminalVertical={onSplitTerminalVertical}
-      onNewTerminal={onNewTerminal}
-      splitShortcutLabel={splitShortcutLabel}
-      splitVerticalShortcutLabel={splitVerticalShortcutLabel}
-      newShortcutLabel={newShortcutLabel}
-      closeShortcutLabel={closeShortcutLabel}
-      onActiveTerminalChange={onActiveTerminalChange}
-      onCloseTerminal={onCloseTerminal}
-      onHeightChange={() => undefined}
-      onAddTerminalContext={onAddTerminalContext}
-      terminalLabelsById={terminalLabelsById}
-      terminalLaunchLocationsById={terminalLaunchLocationsById}
-      keybindings={keybindings}
-    />
+    <Suspense fallback={null}>
+      <ThreadTerminalDrawer
+        mode="panel"
+        visible={visible}
+        threadRef={threadRef}
+        threadId={threadRef.threadId}
+        cwd={cwd}
+        worktreePath={worktreePath}
+        runtimeEnv={runtimeEnv}
+        height={0}
+        terminalIds={surface.terminalIds}
+        activeTerminalId={surface.activeTerminalId}
+        terminalGroups={[
+          {
+            id: surface.id,
+            terminalIds: surface.terminalIds,
+            ...(surface.splitDirection === "vertical"
+              ? { splitDirection: "vertical" as const }
+              : {}),
+          },
+        ]}
+        activeTerminalGroupId={surface.id}
+        focusRequestId={focusRequestId}
+        onSplitTerminal={onSplitTerminal}
+        onSplitTerminalVertical={onSplitTerminalVertical}
+        onNewTerminal={onNewTerminal}
+        splitShortcutLabel={splitShortcutLabel}
+        splitVerticalShortcutLabel={splitVerticalShortcutLabel}
+        newShortcutLabel={newShortcutLabel}
+        closeShortcutLabel={closeShortcutLabel}
+        onActiveTerminalChange={onActiveTerminalChange}
+        onCloseTerminal={onCloseTerminal}
+        onHeightChange={() => undefined}
+        onAddTerminalContext={onAddTerminalContext}
+        terminalLabelsById={terminalLabelsById}
+        terminalLaunchLocationsById={terminalLaunchLocationsById}
+        keybindings={keybindings}
+      />
+    </Suspense>
   );
 });
 
@@ -1731,8 +1742,23 @@ export default function ChatView(props: ChatViewProps) {
     const turns = serverProjection?.providerTurns;
     if (!turns || turns.length === 0) return null;
     for (let index = turns.length - 1; index >= 0; index -= 1) {
-      const usage = turns[index]?.tokenUsage;
-      if (usage !== undefined) return usage;
+      const turn = turns[index];
+      if (!turn) continue;
+      if (turn.tokenUsage !== undefined) return turn.tokenUsage;
+      if (turn.turnTokenUsage !== undefined) {
+        const t = turn.turnTokenUsage;
+        const inputTokens = t.inputTokens ?? 0;
+        const outputTokens = t.outputTokens ?? 0;
+        return {
+          usedTokens: inputTokens + outputTokens,
+          maxTokens: 1_000_000,
+          inputTokens,
+          cachedInputTokens: t.cachedInputTokens ?? 0,
+          outputTokens,
+          reasoningOutputTokens: t.reasoningTokens ?? 0,
+          updatedAt: new Date().toISOString(),
+        };
+      }
     }
     return null;
   }, [serverProjection?.providerTurns]);
@@ -7788,25 +7814,8 @@ export default function ChatView(props: ChatViewProps) {
           ? "Compaction is unavailable for this provider"
           : "Compacting is unavailable right now"
     : null;
-  // Tokens a stale Claude session would re-read on its next turn. While set,
-  // the composer shows a Compact chip and Enter compacts first; turning the
-  // chip off sends the next message with full history. Held queues and
-  // multi-model sends never compact first, so the offer hides for them.
-  const resumeCompactionTokens =
-    activeContextWindow &&
-    !resumeCompactionPermanentlyDismissed &&
-    !nativeResumeCompactionDismissed &&
-    !compactDisabled &&
-    !hasHeldQueuedRuns &&
-    multipleModelSelections === null &&
-    shouldOfferResumeCompaction({
-      provider: selectedProvider,
-      usedTokens: activeContextWindow.usedTokens,
-      updatedAt: activeContextWindow.updatedAt,
-      now: `${nowMinute}:00.000Z`,
-    })
-      ? activeContextWindow.usedTokens
-      : null;
+  // The Compact chip next to Send is retired: long chats get the handoff banner instead.
+  const resumeCompactionTokens: number | null = null;
   // Threads whose Compact chip is turned off. A send that starts its turn
   // clears its thread's entry; a failed send keeps it for the retry.
   const [fullHistoryThreadKeys, setFullHistoryThreadKeys] = useState<ReadonlySet<string>>(
@@ -7874,8 +7883,22 @@ export default function ChatView(props: ChatViewProps) {
           stoppedAt: activeThreadShell.latestRun.completedAt ?? activeThreadShell.updatedAt,
           recovery: activeThreadShell.limitRecovery ?? null,
           snoozedUntil: activeThreadShell.snoozedUntil,
-          failoverTargets,
-          failoverUnavailable: supportsProviderSwitchingViaHandoff && failoverTargets.length === 0,
+          failoverTargets: getProviderFailoverTargets({
+            entries: providerInstanceEntries,
+            settings,
+            current: activeThreadShell.modelSelection,
+            supportsHandoff: supportsProviderSwitchingViaHandoff,
+            usageLimitSources,
+          }),
+          failoverUnavailable:
+            supportsProviderSwitchingViaHandoff &&
+            getProviderFailoverTargets({
+              entries: providerInstanceEntries,
+              settings,
+              current: activeThreadShell.modelSelection,
+              supportsHandoff: supportsProviderSwitchingViaHandoff,
+              usageLimitSources,
+            }).length === 0,
           failoverDisabled:
             !canOperateThread ||
             isSendBusy ||
@@ -7927,7 +7950,49 @@ export default function ChatView(props: ChatViewProps) {
           },
         })
       : null;
+  // Offered from 45% of the model's own context window (1M for Claude, less for others), so
+  // the nudge arrives before quality drops. Optional: dismiss it per chat and keep going.
+  const [handoffDismissedKeys, setHandoffDismissedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const handoffPercent = activeContextWindow?.usedPercentage ?? null;
+  const handoffBannerItem: ComposerBannerStackItem | null =
+    handoffPercent !== null &&
+    handoffPercent >= 45 &&
+    phase !== "running" &&
+    !compactDisabled &&
+    !handoffDismissedKeys.has(routeThreadKey)
+      ? {
+          id: `session-handoff:${routeThreadKey}`,
+          variant: "info",
+          icon: <ArrowRightLeftIcon />,
+          title: (
+            <span className="font-normal text-muted-foreground">
+              This chat is {Math.round(handoffPercent)}% full. A handoff keeps your place in a fresh
+              session.
+            </span>
+          ),
+          actions: (
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() =>
+                void sendStandaloneCommand(
+                  "Use the session-handoff skill to write a handoff for this chat so I can continue in a fresh session.",
+                  "Failed to start the handoff.",
+                )
+              }
+            >
+              Hand off
+            </Button>
+          ),
+          dismissLabel: "Dismiss handoff suggestion",
+          onDismiss: () =>
+            setHandoffDismissedKeys((current) => new Set(current).add(routeThreadKey)),
+        }
+      : null;
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
+    const handoffItems = handoffBannerItem === null ? [] : [handoffBannerItem];
     const limitRecoveryItems = limitRecoveryBanner === null ? [] : [limitRecoveryBanner];
     const backgroundWorkItems = [goalBannerItem, backgroundWorkBannerItem].filter(
       (item) => item !== null,
@@ -7942,6 +8007,7 @@ export default function ChatView(props: ChatViewProps) {
         ...usageLimitsItems,
         ...projectCloneItems,
         ...systemComposerBannerItems,
+        ...handoffItems,
         ...backgroundWorkItems,
       ];
     }
@@ -7951,6 +8017,7 @@ export default function ChatView(props: ChatViewProps) {
       ...usageLimitsItems,
       ...projectCloneItems,
       ...systemComposerBannerItems,
+      ...handoffItems,
       ...backgroundWorkItems,
       {
         id: `branch-mismatch:${activeBranchMismatchKey}`,
@@ -8002,6 +8069,7 @@ export default function ChatView(props: ChatViewProps) {
     isRestoringThreadBranch,
     backgroundWorkBannerItem,
     goalBannerItem,
+    handoffBannerItem,
     localCheckoutBranchMismatch,
     projectCloneBannerItem,
     showBranchMismatchBanner,
@@ -11295,9 +11363,13 @@ export default function ChatView(props: ChatViewProps) {
         />
       </Suspense>
     ) : renderedRightPanelSurface?.kind === "vault" ? (
-      <LeonidasVaultPanel initialView="vault" />
+      <Suspense fallback={null}>
+        <LeonidasVaultPanel initialView="vault" />
+      </Suspense>
     ) : renderedRightPanelSurface?.kind === "graph" ? (
-      <LeonidasVaultPanel initialView="graph" />
+      <Suspense fallback={null}>
+        <LeonidasVaultPanel initialView="graph" />
+      </Suspense>
     ) : null
   ) : null;
   const threadDetailsPanelProps: ThreadDetailsPanelProps = {

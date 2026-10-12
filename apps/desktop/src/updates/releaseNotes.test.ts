@@ -80,7 +80,7 @@ describe("normalizeDesktopUpdateReleaseNotes", () => {
     ]);
   });
 
-  it("shows Leonidas highlights only, not the Details list or metadata comment", () => {
+  it("shows highlights and Details bullets, but not the metadata comment", () => {
     const note = [
       "- Added a faster update popup",
       "- Fixed the Read more link",
@@ -91,10 +91,11 @@ describe("normalizeDesktopUpdateReleaseNotes", () => {
       '<!-- leonidas-release {"commit":"abc","authors":["ItzJsimp"],"coAuthors":[]} -->',
     ].join("\n");
     const result = normalizeDesktopUpdateReleaseNotes(note, "0.7.0", "latest");
-    expect(result.releaseNotes[0]?.totalItems).toBe(2);
+    expect(result.releaseNotes[0]?.totalItems).toBe(3);
     expect(result.releaseNotes[0]?.items.toSorted()).toEqual([
       "Added a faster update popup",
       "Fixed the Read more link",
+      "Internal overflow item",
     ]);
   });
 

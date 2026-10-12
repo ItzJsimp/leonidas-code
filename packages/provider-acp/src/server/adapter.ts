@@ -6689,6 +6689,21 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
               .pipe(Effect.orElseSucceed(() => undefined));
             if (resolvedUsage) {
               context.turnTokenUsage = resolvedUsage;
+              const inputTokens = resolvedUsage.inputTokens ?? 0;
+              const outputTokens = resolvedUsage.outputTokens ?? 0;
+              const cachedInputTokens = resolvedUsage.cachedInputTokens ?? 0;
+              const reasoningTokens = resolvedUsage.reasoningTokens ?? 0;
+              const usedTokens = inputTokens + outputTokens;
+              const maxTokens = context.tokenUsage?.maxTokens ?? 1_000_000;
+              context.tokenUsage = {
+                usedTokens,
+                maxTokens,
+                inputTokens,
+                cachedInputTokens,
+                outputTokens,
+                reasoningOutputTokens: reasoningTokens,
+                updatedAt: DateTime.formatIso(now),
+              };
             }
           }
           const turn = providerTurnPayload(context, settledStatus, now);

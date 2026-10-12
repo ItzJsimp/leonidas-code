@@ -31,6 +31,7 @@ import {
   useState,
 } from "react";
 import { flushSync } from "react-dom";
+import { useVisibleInterval } from "~/hooks/useVisibleInterval";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -400,17 +401,7 @@ function GitActionElapsedTime({
   className?: string;
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (startedAtMs === null) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setNowMs(Date.now());
-    }, 1_000);
-    return () => window.clearInterval(intervalId);
-  }, [startedAtMs]);
+  useVisibleInterval(() => setNowMs(Date.now()), 1_000, startedAtMs !== null);
 
   const elapsed = formatGitActionElapsed(startedAtMs, nowMs);
   if (!elapsed) {

@@ -19,6 +19,11 @@ const layerSetup = Layer.effectDiscard(
     yield* sql`PRAGMA busy_timeout = 5000;`;
     yield* sql`PRAGMA foreign_keys = ON;`;
     yield* sql`PRAGMA journal_mode = WAL;`;
+    // In WAL mode NORMAL syncs at checkpoints instead of every commit. A crash or power loss can drop
+    // the last few commits but cannot corrupt the file, and streaming writes one commit per update.
+    yield* sql`PRAGMA synchronous = NORMAL;`;
+    // 32 MB page cache (default is 2 MB) so projection reads stop re-reading pages from disk.
+    yield* sql`PRAGMA cache_size = -32768;`;
     // PASSIVE checkpoints never shrink the -wal file, so it otherwise keeps its
     // largest size until the last connection closes.
     yield* sql.unsafe(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES};`);

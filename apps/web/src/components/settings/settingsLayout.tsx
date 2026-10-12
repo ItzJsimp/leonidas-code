@@ -1,4 +1,5 @@
 import { SettingsGroup } from "./SettingsGroup";
+import { useVisibleInterval } from "../../hooks/useVisibleInterval";
 import { AuthSettingsWriteScope } from "@t3tools/contracts";
 import { usePrimaryEnvironmentId, usePrimaryEnvironment } from "../../state/environments";
 import { useEnvironmentScope, useEnvironmentsWithScope } from "../../state/session";
@@ -12,7 +13,6 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -164,10 +164,7 @@ export function PolicyTooltip({ children }: { readonly children: string }) {
 /** Re-render every `intervalMs`; return a stable timestamp snapshot for render-time relative labels. */
 export function useRelativeTimeTick(intervalMs = 1_000) {
   const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
+  useVisibleInterval(() => setNowMs(Date.now()), intervalMs);
   return nowMs;
 }
 

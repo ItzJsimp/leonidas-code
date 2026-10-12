@@ -289,8 +289,8 @@ export function collectLimitAccounts(presentations: LimitPresentations): readonl
 /**
  * What the pooled views cannot draw as a bar: a hub that failed to read, a
  * provider whose probe failed. Accounts that can never report (API keys)
- * are left out; there is nothing for the user to act on. The environment
- * is named only when more than one is connected.
+ * are left out unless the provider supplies an actionable explanation. The
+ * environment is named only when more than one is connected.
  */
 export function collectLimitNotices(presentations: LimitPresentations): readonly string[] {
   const label = (environmentLabel: string, subject: string) =>
@@ -299,9 +299,9 @@ export function collectLimitNotices(presentations: LimitPresentations): readonly
   for (const presentation of presentations.values()) {
     const environmentLabel = presentation.entry.target.label;
     for (const provider of providersWithLimits(presentation.serverConfig?.providers ?? [])) {
-      // An account that can never report (API key) is left out; one that
-      // failed, or reported nothing at all, is worth a line.
-      if (provider.usageLimits?.unavailable?.reason === "unsupported") continue;
+      // Suppress unsupported accounts unless the provider has a useful next step.
+      const unavailable = provider.usageLimits?.unavailable;
+      if (unavailable?.reason === "unsupported" && !unavailable.message) continue;
       const notice = provider.usageLimits ? limitsNotice(provider.usageLimits) : null;
       const name = provider.displayName?.trim() || String(provider.driver);
       if (notice) notices.push(`${label(environmentLabel, name)}: ${notice}`);

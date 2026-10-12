@@ -139,7 +139,14 @@ const SUGGESTION_RESULT_REPORT =
   /(?:^|[.!?]\s+)(?:i(?:['\u2019]ve| have)?\s+(?:clicked|pressed|ran|run|tested|verified|checked|got|saw|observed|confirmed|tried|accepted|undid)\b|(?:all\s+|the\s+)?tests?\s+(?:passed|failed|pass|fail)\b|(?:tab|ctrl\+z|undo)\s+(?:inserted|accepted|removed|worked|failed)\b|it\s+(?:worked|passed|failed)\b)/i;
 
 /** Normalise a predicted user message to one plain line, or null when it is not worth offering. */
-export function sanitizePromptSuggestion(raw: string): string | null {
+export function sanitizePromptSuggestion(raw: string, draft = ""): string | null {
+  if (draft) {
+    if (!raw.startsWith(draft)) return null;
+    const suffix = raw.slice(draft.length);
+    if (SUGGESTION_PLACEHOLDER.test(suffix) || SUGGESTION_RESULT_REPORT.test(suffix)) return null;
+    const clean = suffix.replace(/\s+/g, " ");
+    return clean.length > 0 && clean.length <= MAX_PROMPT_SUGGESTION_CHARS ? draft + clean : null;
+  }
   if (SUGGESTION_PLACEHOLDER.test(raw)) return null;
   const text = raw
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")

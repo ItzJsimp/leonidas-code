@@ -92,11 +92,18 @@ export function LeonidasKnowledgeGraph3D({
     return ids;
   }, [activeNodeId, graphData.links]);
 
-  // Main 60fps Render & Physics Loop
+  // Render & physics loop, capped at about 30fps: a full-canvas repaint every vsync is wasted on
+  // a graph that orbits slowly, and the cap holds on 120Hz+ displays too.
   useEffect(() => {
     let animId: number;
+    let lastFrame = 0;
 
-    const render = () => {
+    const render = (now: number) => {
+      if (now - lastFrame < 30) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
+      lastFrame = now;
       const canvas = canvasRef.current;
       if (!canvas) {
         animId = requestAnimationFrame(render);

@@ -50,6 +50,7 @@ import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
+  ListChecksIcon,
   CheckIcon,
   ChevronRightIcon,
   CornerLeftUpIcon,
@@ -2266,6 +2267,17 @@ function OpenCommandPaletteDialog(props: {
     icon: <LayoutDashboardIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/command-center" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:tasks",
+    searchTerms: ["tasks", "task board", "todo", "to do", "kanban", "backlog", "cards", "aios"],
+    title: "Open tasks",
+    icon: <ListChecksIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/tasks" });
     },
   });
 

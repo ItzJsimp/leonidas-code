@@ -234,10 +234,10 @@ const make = Effect.gen(function* () {
         }).pipe(
           Effect.timeout("60 seconds"),
           Effect.retry({
-            times: 2,
+            times: 1,
             schedule: Schedule.exponential("1 second"),
             while: (error) =>
-              !/auth|login|credential|quota|credit|limit|unsupported|does not support/i.test(
+              !/timeout|auth|login|credential|quota|credit|limit|unsupported|does not support/i.test(
                 String(error),
               ),
           }),

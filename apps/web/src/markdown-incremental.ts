@@ -30,9 +30,50 @@ function shiftPositions(node: Root | RootContent, offset: number, lines: number)
   }
 }
 
-/** Keep the full document pipeline while avoiding parsing a completed code-heavy
- * prefix on every token. A closed top-level fence followed by a blank line is a
- * parsing boundary. Definitions are document-wide, so they require a full parse.
+const FENCE_OPENING = /^ {0,3}(?:`{3,}|~{3,})/;
+// After a blank line, these starts cannot continue a list: a marker would extend
+// it, digits could become a marker, and indentation would extend an item.
+const LIST_ENDING_START = /^[A-Za-z#`~<>|]$/;
+const NON_SPACE = /^\S$/;
+
+/** Whether the block before a blank-line gap is final once text at `offset` is
+ * known. Indented code, HTML, and definitions can absorb or re-read later lines,
+ * so they never end a cached prefix.
+ */
+function isSafeCut(previous: RootContent, source: string, offset: number): boolean {
+  const next = source.charAt(offset);
+  switch (previous.type) {
+    case "paragraph":
+    case "heading":
+    case "thematicBreak":
+    case "table":
+    case "blockquote":
+      return NON_SPACE.test(next);
+    case "list":
+      return LIST_ENDING_START.test(next);
+    case "code": {
+      const start = previous.position?.start.offset;
+      return (
+        start !== undefined &&
+        FENCE_OPENING.test(source.slice(start, start + 8)) &&
+        NON_SPACE.test(next)
+      );
+    }
+    default:
+      return false;
+  }
+}
+
+function canResume(prefix: ParsedPrefix, source: string): boolean {
+  if (source.length === prefix.offset) return true;
+  const last = prefix.children.at(-1);
+  return last !== undefined && isSafeCut(last, source, prefix.offset);
+}
+
+/** Keep the full document pipeline while avoiding re-parsing completed top-level
+ * blocks on every token. A cut is a blank-line gap before a block that starts at
+ * column one, following a block that text after the gap cannot reopen. Definitions
+ * and footnotes are document-wide, so they require a full parse.
  */
 function createIncrementalMarkdownParser(parse: Parser): Parser {
   let cached: ParsedPrefix | undefined;
@@ -42,7 +83,8 @@ function createIncrementalMarkdownParser(parse: Parser): Parser {
     // would be stripped by a new parser although it is inside the full document.
     if (source.includes("\r") || source.includes("\uFEFF")) return parse(source, file);
 
-    const prefix = cached && source.startsWith(cached.source) ? cached : undefined;
+    const prefix =
+      cached && source.startsWith(cached.source) && canResume(cached, source) ? cached : undefined;
     let root: Root;
     if (prefix) {
       root = parse(source.slice(prefix.offset), file);
@@ -57,26 +99,24 @@ function createIncrementalMarkdownParser(parse: Parser): Parser {
       if (hasDefinitions(root)) return root;
     }
 
-    for (let index = root.children.length - 1; index >= 0; index--) {
-      const node = root.children[index];
-      if (node?.type !== "code") continue;
-      const start = node.position?.start.offset;
-      const end = node.position?.end.offset;
-      if (start === undefined || end === undefined) continue;
-      if (prefix && end < prefix.offset) break;
-      const value = source.slice(start, end);
-      const opening = /^ {0,3}(`{3,}|~{3,})[^\n]*\n/.exec(value)?.[1];
-      if (!opening) continue;
-      const lastLine = value.slice(value.lastIndexOf("\n") + 1);
-      const closing = new RegExp(`^ {0,3}${opening[0]}{${opening.length},}[ \\t]*$`);
-      const separator = /^\n[ \t]*\n/.exec(source.slice(end))?.[0];
-      if (!closing.test(lastLine) || !separator) continue;
-      const offset = end + separator.length;
+    const cachedCount = prefix?.children.length ?? 0;
+    for (let index = root.children.length - 2; index >= cachedCount; index--) {
+      const previous = root.children[index]!;
+      const next = root.children[index + 1]!;
+      const end = previous.position?.end.offset;
+      const offset = next.position?.start.offset;
+      if (end === undefined || offset === undefined || next.position?.start.column !== 1) continue;
+      if (!/^\n\n+$/.test(source.slice(end, offset))) continue;
+      if (!isSafeCut(previous, source, offset)) continue;
       cached = {
         source: source.slice(0, offset),
         offset,
-        line: node.position!.end.line + 2,
-        children: structuredClone(root.children.slice(0, index + 1)),
+        line: next.position!.start.line,
+        // Cached nodes stay pristine: only the newly parsed blocks are copied here.
+        children: [
+          ...(prefix?.children ?? []),
+          ...structuredClone(root.children.slice(cachedCount, index + 1)),
+        ],
       };
       break;
     }

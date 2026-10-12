@@ -1,7 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
 import { StackActions, useIsFocused, useNavigation } from "@react-navigation/native";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { summarizeSubagentStatuses } from "@t3tools/client-runtime/state/subagent-display";
+import {
+  summarizeSubagentStatuses,
+  resolveSubagentDriverKind,
+} from "@t3tools/client-runtime/state/subagent-display";
 import { isActiveSubagentStatus } from "@t3tools/client-runtime/state/subagentRuntime";
 import type {
   EnvironmentId,
@@ -49,14 +52,23 @@ function SubagentElapsed({ agents }: { readonly agents: ReadonlyArray<AgentTimin
 
 function SubagentAvatar(props: {
   readonly item: SubagentItem;
+  readonly model?: string | null | undefined;
+  readonly provider?: ServerProvider | undefined;
   readonly iconUrl?: string | null | undefined;
 }) {
+  const driver =
+    resolveSubagentDriverKind({
+      driver: props.item.driver,
+      provider: props.provider,
+      model: props.model ?? props.item.model,
+      providerInstanceId: props.item.providerInstanceId,
+    }) ?? props.item.driver;
   return (
     <View
       accessible={false}
       className="h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-card"
     >
-      <ProviderIcon provider={props.item.driver} iconUrl={props.iconUrl} size={15} />
+      <ProviderIcon provider={driver} iconUrl={props.iconUrl} size={15} />
     </View>
   );
 }
@@ -110,7 +122,14 @@ export function ThreadSubagentGroup(props: {
           <View className="flex-row items-center">
             {agents.slice(0, 3).map((agent, index) => (
               <View key={agent.item.id} style={{ marginLeft: index === 0 ? 0 : -7 }}>
-                <SubagentAvatar item={agent.item} iconUrl={iconUrl(agent.item)} />
+                <SubagentAvatar
+                  item={agent.item}
+                  model={agent.model}
+                  provider={config?.providers.find(
+                    (p) => p.instanceId === agent.item.providerInstanceId,
+                  )}
+                  iconUrl={iconUrl(agent.item)}
+                />
               </View>
             ))}
             {agents.length > 3 ? (

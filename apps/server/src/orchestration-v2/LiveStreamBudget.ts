@@ -31,7 +31,20 @@ function serializedSize(value: object): number {
   if (cached !== undefined) {
     return cached;
   }
-  const bytes = Buffer.byteLength(JSON.stringify(value));
+  const record = value as {
+    turnItem?: { text?: unknown };
+    message?: { text?: unknown };
+  };
+  const text =
+    typeof record.turnItem?.text === "string"
+      ? record.turnItem.text
+      : typeof record.message?.text === "string"
+        ? record.message.text
+        : null;
+  const bytes =
+    text !== null && text.length > 128
+      ? text.length + 384
+      : Buffer.byteLength(JSON.stringify(value));
   serializedSizes.set(value, bytes);
   return bytes;
 }

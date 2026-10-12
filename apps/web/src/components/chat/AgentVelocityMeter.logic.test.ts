@@ -7,6 +7,7 @@ import {
   extractTurnOutputTokens,
   formatRollingLabel,
   formatToolDuration,
+  formatToolWait,
   formatTpsLabel,
   type TurnSpeedSample,
 } from "./AgentVelocityMeter.logic";
@@ -294,6 +295,87 @@ describe("AgentVelocityMeter.logic", () => {
       expect(summary.averageTurnTps).toBeNull();
       expect(summary.reasoningTokens).toBeNull();
     });
+    describe("model stream timing", () => {
+      const turn = {
+        id: "t",
+        status: "completed",
+        startedAt: "2026-10-10T12:00:00Z",
+        completedAt: "2026-10-10T12:00:10Z",
+        turnTokenUsage: {
+          usageStatus: "complete",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 500,
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      const item = (
+        type: string,
+        providerTurnId: string,
+        startedAt: string,
+        completedAt: string | null,
+        status = "completed",
+      ) =>
+        ({
+          id: `${type}-${startedAt}`,
+          type,
+          providerTurnId,
+          startedAt,
+          completedAt,
+          status,
+          input: "pnpm test",
+          toolName: "Bash",
+        }) as unknown as OrchestrationV2TurnItem;
+
+      it("separates model-stream pace from whole-turn pace by removing merged tool waits", () => {
+        const summary = deriveVelocitySummary(
+          [turn],
+          [
+            item("reasoning", "t", "2026-10-10T12:00:01Z", "2026-10-10T12:00:02Z"),
+            item("command_execution", "t", "2026-10-10T12:00:02Z", "2026-10-10T12:00:06Z"),
+            // Overlaps the first tool call, so only 12:00:06 to 12:00:07 adds wait.
+            item("dynamic_tool", "t", "2026-10-10T12:00:04Z", "2026-10-10T12:00:07Z"),
+            // Another turn's tool call never counts against this turn.
+            item("command_execution", "other", "2026-10-10T12:00:07Z", "2026-10-10T12:00:09Z"),
+          ],
+        );
+        expect(summary.averageTurnTps).toBe(50);
+        expect(summary.turnDurationMs).toBe(10_000);
+        expect(summary.toolWaitMs).toBe(5_000);
+        expect(summary.modelStreamTps).toBe(100);
+        expect(summary.firstOutputMs).toBe(1_000);
+      });
+
+      it("counts a still-running tool call up to the latest provider report", () => {
+        const live = {
+          ...turn,
+          status: "running",
+          completedAt: null,
+          tokenUsage: { usedTokens: 900, updatedAt: "2026-10-10T12:00:10Z" },
+        } as unknown as OrchestrationV2ProviderTurn;
+        const summary = deriveVelocitySummary(
+          [live],
+          [item("command_execution", "t", "2026-10-10T12:00:06Z", null, "running")],
+        );
+        expect(summary.toolWaitMs).toBe(4_000);
+        expect(summary.modelStreamTps).toBeCloseTo(83.3, 1);
+      });
+
+      it("reports no model-stream pace when tools account for the whole turn", () => {
+        const summary = deriveVelocitySummary(
+          [turn],
+          [item("command_execution", "t", "2026-10-10T12:00:00Z", "2026-10-10T12:00:10Z")],
+        );
+        expect(summary.toolWaitMs).toBe(10_000);
+        expect(summary.modelStreamTps).toBeNull();
+      });
+
+      it("matches whole-turn pace when the turn used no tools", () => {
+        const summary = deriveVelocitySummary([turn], []);
+        expect(summary.toolWaitMs).toBe(0);
+        expect(summary.modelStreamTps).toBe(50);
+        expect(summary.firstOutputMs).toBeNull();
+      });
+    });
     it("returns null-safe empty summary when no turns exist", () => {
       const summary = deriveVelocitySummary([], []);
       expect(summary.averageTurnTps).toBeNull();
@@ -314,6 +396,14 @@ describe("AgentVelocityMeter.logic", () => {
       expect(formatTpsLabel(null)).toBe("--");
       expect(formatTpsLabel(64.2)).toBe("64.2 t/s");
       expect(formatTpsLabel(64.0)).toBe("64 t/s");
+    });
+
+    it("states tool wait as time and share of the turn", () => {
+      expect(formatToolWait({ toolWaitMs: 12_400, turnDurationMs: 40_000 })).toBe(
+        "12.4s (31% of turn)",
+      );
+      expect(formatToolWait({ toolWaitMs: null, turnDurationMs: 40_000 })).toBe("--");
+      expect(formatToolWait({ toolWaitMs: 0, turnDurationMs: 0 })).toBe("--");
     });
 
     it("formats tool durations appropriately", () => {

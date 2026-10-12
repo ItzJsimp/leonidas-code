@@ -60,6 +60,8 @@ export interface ReleaseMeta {
   commit: string;
   authors: string[];
   coAuthors: string[];
+  /** Commits per author in this release, for the "who built it" share in the update dialog. */
+  authorCommits?: Record<string, number>;
 }
 
 const INTERNAL_SUBJECT = /^(?:docs|test|style|sync|ci|chore|refactor)(?:\([^)]*\))?!?:/i;
@@ -87,6 +89,7 @@ export function releaseMetaComment(meta: ReleaseMeta): string {
     commit: meta.commit,
     authors: meta.authors,
     coAuthors: meta.coAuthors,
+    ...(meta.authorCommits ? { authorCommits: meta.authorCommits } : {}),
   })
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e");
@@ -151,12 +154,17 @@ export function releaseNotes(
   const coAuthors = distinct(commits.flatMap(({ body }) => coAuthorNames(body))).filter(
     (name) => !authors.includes(name),
   );
+  const authorCommits: Record<string, number> = {};
+  for (const { author } of commits) {
+    const name = author ? aliasName(author.trim()) : "";
+    if (name) authorCommits[name] = (authorCommits[name] ?? 0) + 1;
+  }
   const bullets = (items: ReadonlyArray<string>) => items.map((item) => `- ${item}`).join("\n");
   return (
     `# ${version}${development ? " · Development" : ""}\n\n` +
     `${bullets(highlights.length ? highlights : ["Behind-the-scenes reliability improvements"])}\n` +
     (extra.length ? `\n## Details\n${bullets(extra)}\n` : "") +
-    `\n${releaseMetaComment({ commit, authors, coAuthors })}\n`
+    `\n${releaseMetaComment({ commit, authors, coAuthors, authorCommits })}\n`
   );
 }
 

@@ -1004,6 +1004,12 @@ export type BackgroundActivitySettings = typeof BackgroundActivitySettings.Type;
 export const ResponseStreamingMode = Schema.Literals(["turn", "paragraph"]);
 export type ResponseStreamingMode = typeof ResponseStreamingMode.Type;
 
+export const PromptPredictionMode = Schema.Literals(["local", "local-model", "cloud"]);
+export type PromptPredictionMode = typeof PromptPredictionMode.Type;
+export const PromptPredictionCloudRequestLimit = Schema.Int.check(
+  Schema.isBetween({ minimum: 0, maximum: 120 }),
+);
+
 /**
  * Server settings a project may override. Every other server setting is
  * environment-wide: providers, keybindings, observability, device hosts,
@@ -1270,6 +1276,18 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
   addProjectBaseDirectory: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  promptPredictionMode: PromptPredictionMode.pipe(
+    Schema.withDecodingDefault(Effect.succeed("local" as const)),
+  ),
+  promptPredictionLocalModel: TrimmedString.check(Schema.isMaxLength(200)).pipe(
+    Schema.withDecodingDefault(Effect.succeed("")),
+  ),
+  promptPredictionModelSelection: Schema.NullOr(ModelSelection).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  promptPredictionCloudRequestLimit: PromptPredictionCloudRequestLimit.pipe(
+    Schema.withDecodingDefault(Effect.succeed(30)),
+  ),
   textGenerationModelSelection: ModelSelection.pipe(
     Schema.withDecodingDefault(
       Effect.succeed({
@@ -1536,6 +1554,10 @@ export const ServerSettingsPatch = Schema.Struct({
   newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
   worktreeSubmodules: Schema.optionalKey(Schema.NullOr(WorktreeSubmodules)),
   addProjectBaseDirectory: Schema.optionalKey(TrimmedString),
+  promptPredictionMode: Schema.optionalKey(PromptPredictionMode),
+  promptPredictionLocalModel: Schema.optionalKey(TrimmedString.check(Schema.isMaxLength(200))),
+  promptPredictionModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  promptPredictionCloudRequestLimit: Schema.optionalKey(PromptPredictionCloudRequestLimit),
   textGenerationModelSelection: Schema.optionalKey(ModelSelectionPatch),
   branchNamingMode: Schema.optionalKey(BranchNamingMode),
   branchNamePrefix: Schema.optionalKey(TrimmedString),

@@ -12,7 +12,10 @@ import * as DateTime from "effect/DateTime";
 import { WorkLogRow } from "./WorkLog";
 import { resolveHandoffEndpoints, type HandoffTimelineRun } from "@t3tools/client-runtime/handoff";
 import { Fragment } from "react";
-import { formatSubagentDisplayTitle } from "@t3tools/client-runtime/state/subagent-display";
+import {
+  formatSubagentDisplayTitle,
+  resolveSubagentDriverKind,
+} from "@t3tools/client-runtime/state/subagent-display";
 import {
   ProviderDriverKind,
   type OrchestrationV2Notification,
@@ -217,6 +220,7 @@ export function V2LifecycleRow(props: {
         origin={item.origin}
         status={item.status}
         driver={item.driver}
+        model={item.model}
         provider={props.providerStatuses.find(
           (provider) => provider.instanceId === item.providerInstanceId,
         )}
@@ -291,15 +295,34 @@ export function SubagentElapsed({ agent }: { agent: Parameters<typeof AgentElaps
 export function SubagentAvatar({
   driver,
   provider,
+  model,
+  providerInstanceId,
+  providers,
   status,
   className,
 }: {
   driver?: ProviderDriverKind | undefined;
   provider?: ServerProvider | undefined;
+  model?: string | null | undefined;
+  providerInstanceId?: ProviderInstanceId | undefined;
+  providers?: ReadonlyArray<ServerProvider> | undefined;
   /** Omitted inside an overlapped stack, where a covered dot would only add noise. */
   status?: OrchestrationV2TurnItem["status"] | undefined;
   className?: string;
 }) {
+  const resolvedDriver = resolveSubagentDriverKind({
+    driver,
+    provider,
+    model,
+    providerInstanceId,
+    providers,
+  });
+  const resolvedProvider =
+    provider ??
+    (providerInstanceId && providers
+      ? providers.find((p) => p.instanceId === providerInstanceId)
+      : undefined);
+
   return (
     <span
       aria-hidden
@@ -308,11 +331,11 @@ export function SubagentAvatar({
         className,
       )}
     >
-      {driver ? (
+      {resolvedDriver ? (
         <ProviderInstanceIcon
-          driverKind={driver}
-          displayName={provider?.displayName ?? driver}
-          acpRegistryIconUrl={provider?.iconUrl}
+          driverKind={resolvedDriver}
+          displayName={resolvedProvider?.displayName ?? resolvedDriver}
+          acpRegistryIconUrl={resolvedProvider?.iconUrl}
           className="z-auto"
           iconClassName="size-3.5"
         />
@@ -377,6 +400,7 @@ export function SubagentNotificationLink(props: {
       origin={agent.origin}
       status={agent.status}
       driver={agent.driver}
+      model={agent.model}
       provider={props.providerStatuses.find(
         (provider) => provider.instanceId === agent.providerInstanceId,
       )}
@@ -413,6 +437,7 @@ function SubagentTimelineLink(props: {
   readonly completedAt: DateTime.Utc | null;
   readonly threadId: ThreadId | null;
   readonly onOpenThread: (threadId: ThreadId) => void;
+  readonly model?: string | null | undefined;
   /** Draws a past event about the subagent: its status then, and when it happened instead of elapsed time. */
   readonly event?: {
     readonly status: OrchestrationV2TurnItem["status"] | null;
@@ -443,8 +468,11 @@ function SubagentTimelineLink(props: {
   const content = (
     <>
       <SubagentAvatar
-        driver={props.driver}
+        driver={agent?.driver ?? props.driver}
         provider={props.provider}
+        model={agent?.model ?? props.model}
+        providerInstanceId={agent?.providerInstanceId ?? props.providerInstanceId}
+        providers={props.providers}
         status={status ?? undefined}
       />
       <span className="min-w-0 flex-1">

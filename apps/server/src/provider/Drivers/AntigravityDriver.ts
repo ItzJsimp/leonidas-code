@@ -386,7 +386,7 @@ export const AntigravityDriver: ProviderDriver<
       });
 
       const probeUsageLimits = Effect.tryPromise({
-        try: () => probeAntigravityUsageLimits({ executablePath: settings.binaryPath }),
+        try: () => probeAntigravityUsageLimits({ timeoutMs: 6000 }),
         catch: () => null,
       }).pipe(
         Effect.map((res) =>

@@ -6804,6 +6804,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         providerInstanceId: command.modelSelection.instanceId,
         childThreadId,
         prompt: command.task,
+        model: command.modelSelection.model,
         result: null,
       };
       const emitEvent = emit(events, command);

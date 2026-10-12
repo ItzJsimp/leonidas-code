@@ -1,4 +1,5 @@
-import type { ProviderDriverKind, ServerProvider } from "@t3tools/contracts";
+import { resolveSubagentDriverKind } from "@t3tools/client-runtime/state/subagent-display";
+import type { ProviderDriverKind, ProviderInstanceId, ServerProvider } from "@t3tools/contracts";
 import { BotIcon, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -46,22 +47,40 @@ export function threadRelationshipStatusLabel(status: string | null): string {
 export function ThreadRelationshipIcon({
   driver,
   provider,
+  model,
+  providerInstanceId,
+  providers,
   status,
   fallbackIcon: FallbackIcon = BotIcon,
 }: {
   driver?: ProviderDriverKind | undefined;
   provider?: ServerProvider | undefined;
+  model?: string | null | undefined;
+  providerInstanceId?: ProviderInstanceId | undefined;
+  providers?: ReadonlyArray<ServerProvider> | undefined;
   status: string | null;
   fallbackIcon?: LucideIcon;
 }) {
+  const resolvedDriver = resolveSubagentDriverKind({
+    driver,
+    provider,
+    model,
+    providerInstanceId,
+    providers,
+  });
+  const resolvedProvider =
+    provider ??
+    (providerInstanceId && providers
+      ? providers.find((p) => p.instanceId === providerInstanceId)
+      : undefined);
   const iconClassName = "size-4 shrink-0 text-muted-foreground";
   return (
     <span className="relative inline-flex size-4 shrink-0 items-center justify-center">
-      {driver ? (
+      {resolvedDriver ? (
         <ProviderInstanceIcon
-          driverKind={driver}
-          displayName={provider?.displayName ?? driver}
-          acpRegistryIconUrl={provider?.iconUrl}
+          driverKind={resolvedDriver}
+          displayName={resolvedProvider?.displayName ?? resolvedDriver}
+          acpRegistryIconUrl={resolvedProvider?.iconUrl}
           iconClassName={iconClassName}
           className="z-auto"
         />

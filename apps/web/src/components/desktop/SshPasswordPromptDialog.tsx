@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { useVisibleInterval } from "../../hooks/useVisibleInterval";
 
 function describeSshTarget(request: DesktopSshPasswordPromptRequest): string {
   return request.username ? `${request.username}@${request.destination}` : request.destination;
@@ -85,14 +86,7 @@ function ActiveSshPasswordPrompt({
     };
   }, []);
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setNow(Date.now());
-    }, 1_000);
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, []);
+  useVisibleInterval(() => setNow(Date.now()), 1_000);
 
   const expiresAtMs = Date.parse(request.expiresAt);
   const remainingMs = Number.isFinite(expiresAtMs) ? Math.max(0, expiresAtMs - now) : null;
@@ -160,8 +154,9 @@ function ActiveSshPasswordPrompt({
         <DialogHeader>
           <DialogTitle>SSH Password Required</DialogTitle>
           <DialogDescription>
-            Leonidas needs your SSH password to connect to <code>{target}</code>. The password is passed
-            to the local SSH process for this connection attempt and is not saved by Leonidas Code.
+            Leonidas needs your SSH password to connect to <code>{target}</code>. The password is
+            passed to the local SSH process for this connection attempt and is not saved by Leonidas
+            Code.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel scrollFade={false}>

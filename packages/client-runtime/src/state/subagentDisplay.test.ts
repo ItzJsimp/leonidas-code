@@ -5,6 +5,7 @@ import {
   subagentGroupSummary,
   resolveSubagentMetadata,
   subagentDetailPreview,
+  resolveSubagentDriverKind,
 } from "./subagentDisplay.js";
 
 describe("subagentGroupSummary", () => {
@@ -162,5 +163,98 @@ describe("subagentDetailPreview", () => {
       subagentDetailPreview({ status: "failed", progress: "Last progress", result: " " }),
     ).toBe("Last progress");
     expect(subagentDetailPreview({ status: "pending" })).toBeNull();
+  });
+});
+
+describe("resolveSubagentDriverKind", () => {
+  it("resolves OpenRouter when provider driver is openrouter", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        provider: {
+          instanceId: "openrouter_default" as any,
+          driver: ProviderDriverKind.make("openrouter"),
+          displayName: "OpenRouter",
+          enabled: true,
+          models: [],
+        } as any,
+      }),
+    ).toBe(ProviderDriverKind.make("openrouter"));
+  });
+
+  it("resolves OpenRouter when model routes through OpenRouter", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "openrouter/opendex-1.1-mini-free",
+      }),
+    ).toBe(ProviderDriverKind.make("openrouter"));
+  });
+
+  it("resolves OpenRouter when subagent routes via OpenRouter provider even with custom model name", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        providerInstanceId: "openrouter" as any,
+        model: "opendex-1.1-mini-free",
+      }),
+    ).toBe(ProviderDriverKind.make("openrouter"));
+  });
+
+  it("resolves codex (ChatGPT) when model is from the ChatGPT/OpenAI family", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "gpt-4o",
+      }),
+    ).toBe(ProviderDriverKind.make("codex"));
+
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "chatgpt-4o-latest",
+      }),
+    ).toBe(ProviderDriverKind.make("codex"));
+
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "o1-mini",
+      }),
+    ).toBe(ProviderDriverKind.make("codex"));
+
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "o3-mini",
+      }),
+    ).toBe(ProviderDriverKind.make("codex"));
+  });
+
+  it("resolves claudeAgent when model is a Claude model", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "claude-sonnet-4-6",
+      }),
+    ).toBe(ProviderDriverKind.make("claudeAgent"));
+  });
+
+  it("resolves antigravity when model is a Gemini model", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: "gemini-2.5-flash",
+      }),
+    ).toBe(ProviderDriverKind.make("antigravity"));
+  });
+
+  it("falls back to supplied driver if no override matches", () => {
+    expect(
+      resolveSubagentDriverKind({
+        driver: ProviderDriverKind.make("claudeAgent"),
+        model: null,
+      }),
+    ).toBe(ProviderDriverKind.make("claudeAgent"));
   });
 });

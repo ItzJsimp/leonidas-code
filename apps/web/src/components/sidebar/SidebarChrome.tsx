@@ -1,8 +1,8 @@
-import { TaskBoardPanel } from "../taskBoard/TaskBoardPanel";
 import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
+  ListChecksIcon,
   SettingsIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -201,6 +201,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/command-center" });
   }, [closeMobileSidebar, navigate]);
 
+  const handleTasksClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/tasks" });
+  }, [closeMobileSidebar, navigate]);
+
   const handleUsageClick = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -221,7 +226,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   }, [closeMobileSidebar, navigateToMainApp]);
 
   return (
-    <SidebarMenu className="flex-row items-center">
+    <SidebarMenu className="flex-row flex-wrap items-center">
       {isOnUtilityPage ? (
         <SidebarMenuItem className="min-w-0 flex-1">
           <SidebarMenuButton onClick={handleBackClick}>
@@ -236,6 +241,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Command Center"
             onClick={handleCommandCenterClick}
           />
+          <SidebarUtilityItem icon={<ListChecksIcon />} label="Tasks" onClick={handleTasksClick} />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
@@ -260,7 +266,6 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           />
         </>
       )}
-      <TaskBoardPanel />
       <SidebarUpdatePill />
     </SidebarMenu>
   );

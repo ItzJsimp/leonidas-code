@@ -16,7 +16,10 @@ import {
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 
-import { applyOrchestrationV2ProjectionEvent } from "./orchestrationV2Projection.ts";
+import {
+  applyOrchestrationV2ProjectionEvent,
+  upsertVisibleTurnItem,
+} from "./orchestrationV2Projection.ts";
 
 const now = DateTime.makeUnsafe("2026-06-20T00:00:00.000Z");
 const threadId = ThreadId.make("thread-reducer");
@@ -356,4 +359,144 @@ it("does not scan every row against every run for a streaming item update", () =
   expect(next?.visibleTurnItems.at(-1)?.item).toBe(payload);
   expect(next?.visibleTurnItems[0]).toBe(projection.visibleTurnItems[0]);
   expect(runReads).toBeLessThanOrEqual(100);
+});
+
+type VisibleRows = OrchestrationV2ThreadProjection["visibleTurnItems"];
+
+function visibleRowsProjection(rows: VisibleRows) {
+  return { visibleTurnItems: rows } as OrchestrationV2ThreadProjection;
+}
+
+// The insert/replace path before the in-place fast path, kept as the reference.
+function referenceUpsertVisibleTurnItem(
+  rows: VisibleRows,
+  item: OrchestrationV2TurnItem,
+  partialTimeline: boolean,
+  latestLocalTurnOrdinal: number | null,
+): VisibleRows {
+  const index = rows.findIndex((row) => row.sourceItemId === item.id);
+  const next = {
+    position: 0,
+    visibility: "local" as const,
+    sourceThreadId: item.threadId,
+    sourceItemId: item.id,
+    item,
+  };
+  const previous = index === -1 ? undefined : rows[index]!;
+  if (
+    previous !== undefined &&
+    previous.visibility === next.visibility &&
+    previous.sourceThreadId === next.sourceThreadId &&
+    previous.sourceItemId === next.sourceItemId &&
+    previous.item === item
+  ) {
+    return rows;
+  }
+  if (index === -1 && partialTimeline) {
+    const localOrdinals = rows
+      .filter((row) => row.visibility === "local")
+      .map((row) => row.item.ordinal);
+    const oldest = localOrdinals.length === 0 ? null : Math.min(...localOrdinals);
+    if (
+      (latestLocalTurnOrdinal !== null && item.ordinal <= latestLocalTurnOrdinal) ||
+      (oldest !== null && item.ordinal < oldest)
+    ) {
+      return rows;
+    }
+  }
+  const updated = index === -1 ? [...rows] : [...rows.slice(0, index), ...rows.slice(index + 1)];
+  const insertionIndex = updated.findIndex(
+    (row) =>
+      row.visibility === "local" &&
+      (row.item.ordinal > item.ordinal ||
+        (row.item.ordinal === item.ordinal &&
+          String(row.item.id).localeCompare(String(item.id)) > 0)),
+  );
+  updated.splice(insertionIndex === -1 ? updated.length : insertionIndex, 0, next);
+  return updated.map((row, position) => (row.position === position ? row : { ...row, position }));
+}
+
+function mulberry32(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+describe("upsertVisibleTurnItem", () => {
+  it("matches the reference insert, reorder and replace path over randomized upserts", () => {
+    const inheritedRow = (sourceItemId: string, ordinal: number, position: number) =>
+      ({
+        position,
+        visibility: "inherited" as const,
+        sourceThreadId: ThreadId.make("thread-parent"),
+        sourceItemId: TurnItemId.make(sourceItemId),
+        item: {
+          ...commandItem(sourceItemId, "inherited", ordinal),
+          threadId: ThreadId.make("thread-parent"),
+        },
+      }) satisfies VisibleRows[number];
+    const ids = ["item-0", "item-1", "item-2", "item-3", "item-4", "inherited-0"];
+
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const random = mulberry32(seed);
+      const initial: VisibleRows = [
+        inheritedRow("inherited-1", 2, 0),
+        inheritedRow("inherited-2", 3, 1),
+      ];
+      const latestItems = new Map<string, OrchestrationV2TurnItem>();
+      let expected = initial;
+      let actual = initial;
+
+      for (let step = 0; step < 40; step += 1) {
+        const id = ids[Math.floor(random() * ids.length)]!;
+        const ordinal = 1 + Math.floor(random() * 4);
+        const previous = latestItems.get(id);
+        const item =
+          previous !== undefined && previous.ordinal === ordinal && random() < 0.5
+            ? previous
+            : commandItem(id, `output-${seed}-${step}`, ordinal);
+        latestItems.set(id, item);
+        const partialTimeline = random() < 0.3;
+        const latestLocalTurnOrdinal = random() < 0.5 ? null : Math.floor(random() * 4);
+
+        expected = referenceUpsertVisibleTurnItem(
+          expected,
+          item,
+          partialTimeline,
+          latestLocalTurnOrdinal,
+        );
+        actual = upsertVisibleTurnItem(
+          visibleRowsProjection(actual),
+          item,
+          partialTimeline,
+          latestLocalTurnOrdinal,
+        );
+        expect(actual).toEqual(expected);
+      }
+    }
+  });
+
+  it("replaces an in-place row without copying the other row objects", () => {
+    const rows = [
+      commandItem("item-a", "one", 1),
+      commandItem("item-b", "two", 2),
+      commandItem("item-c", "three", 3),
+    ].reduce<VisibleRows>(
+      (current, item) => upsertVisibleTurnItem(visibleRowsProjection(current), item, false, null),
+      [],
+    );
+    const updated = commandItem("item-b", "two, streamed", 2);
+
+    const next = upsertVisibleTurnItem(visibleRowsProjection(rows), updated, false, null);
+
+    expect(next).not.toBe(rows);
+    expect(next[0]).toBe(rows[0]);
+    expect(next[2]).toBe(rows[2]);
+    expect(next[1]?.item).toBe(updated);
+    expect(next[1]?.position).toBe(1);
+  });
 });

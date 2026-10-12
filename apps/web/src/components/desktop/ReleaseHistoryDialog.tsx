@@ -1,8 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { appAtomRegistry } from "../../rpc/atomRegistry";
+import { createFeatureWalkthroughPrompt } from "../desktopUpdate.logic";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -16,7 +18,8 @@ import {
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   fetchReleaseHistory,
-  formatExactReleaseDate,
+  formatReleaseCredits,
+  formatReleaseTime,
   formatFriendlyReleaseDate,
   type ReleaseHistoryEntry,
 } from "./releaseHistory";
@@ -38,6 +41,7 @@ const BULLET_CAP = 6;
 
 /** Load notes only when opened, with bounded pages and a retry for network failures. */
 export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<ReleaseHistoryEntry[]>([]);
   const [request, setRequest] = useState({ page: 1, attempt: 0 });
   const [loading, setLoading] = useState(true);
@@ -48,6 +52,11 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
   const handleClose = () => {
     closeReleaseHistoryDialog();
     onClose?.();
+  };
+
+  const openWalkthrough = (note: string) => {
+    handleClose();
+    void navigate({ to: "/", search: { guidePrompt: createFeatureWalkthroughPrompt(note) } });
   };
 
   const toggleExpanded = (version: string) => {
@@ -88,7 +97,8 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
         <DialogHeader>
           <DialogTitle>Update history</DialogTitle>
           <DialogDescription>
-            What changed in each Leonidas Code version. Versions below 1.0 are development releases.
+            What changed in each Leonidas Code version. Choose a change to open a guided chat.
+            Versions below 1.0 are development releases.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -115,6 +125,7 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
                     {entry.publishedAt ? (
                       <Tooltip>
                         <TooltipTrigger
+                          delay={200}
                           render={
                             <time
                               className="rounded-sm text-xs tabular-nums text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground cursor-default"
@@ -127,16 +138,16 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
                         </TooltipTrigger>
                         <TooltipPopup side="top" align="end" className="flex flex-col">
                           <span className="font-medium text-foreground">
-                            {formatExactReleaseDate(entry.publishedAt)}
+                            {formatReleaseTime(entry.publishedAt)}
                           </span>
-                          {entry.meta?.authors && entry.meta.authors.length > 0 ? (
+                          {formatReleaseCredits(entry.meta) ? (
                             <span className="text-muted-foreground">
-                              Pushed by {entry.meta.authors.join(", ")}
+                              Built by {formatReleaseCredits(entry.meta)}
                             </span>
                           ) : null}
                           {entry.meta?.commit ? (
                             <span className="font-mono text-muted-foreground">
-                              commit {entry.meta.commit.slice(0, 7)}
+                              Build {entry.meta.commit.slice(0, 7)}
                             </span>
                           ) : null}
                         </TooltipPopup>
@@ -153,7 +164,17 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
                               aria-hidden
                               className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
                             />
-                            {note}
+                            <p>{note}</p>
+                            <div className="-ms-1 mt-1">
+                              <Button
+                                size="xs"
+                                variant="link"
+                                aria-label={`Walk me through: ${note}`}
+                                onClick={() => openWalkthrough(note)}
+                              >
+                                Walk me through it
+                              </Button>
+                            </div>
                           </li>
                         ))}
                       </ul>

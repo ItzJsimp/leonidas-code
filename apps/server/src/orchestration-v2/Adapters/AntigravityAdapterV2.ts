@@ -17,6 +17,7 @@ import * as EffectAcpErrors from "effect-acp/errors";
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 import { readLatestAntigravityTurnTokenUsage } from "../../provider/Drivers/antigravityUsageReader.ts";
+import { resolveAntigravityInstanceDirectories } from "../../provider/antigravityAuthSupport.ts";
 import type { AntigravityAuth } from "../../provider/AntigravityAuth.ts";
 import type * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
 import {
@@ -226,11 +227,15 @@ export function makeAntigravityAcpAdapterFlavor(
     resolveTurnTokenUsage: (input) =>
       Effect.gen(function* () {
         if (!input.sessionId) return undefined;
-        const dbPath = options.path.join(
+        const directories = yield* resolveAntigravityInstanceDirectories(
           options.host.paths.stateDir,
-          "providers",
-          "antigravity",
-          String(options.instanceId),
+          options.instanceId,
+        ).pipe(
+          Effect.provideService(Crypto.Crypto, options.crypto),
+          Effect.provideService(Path.Path, options.path),
+        );
+        const dbPath = options.path.join(
+          directories.profile,
           "antigravity-acp",
           "conversations",
           `${input.sessionId}.db`,

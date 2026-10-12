@@ -6,8 +6,8 @@ describe("buildRuntimeInstructions", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex" });
     expect(instructions).toContain("When the t3-code MCP server exposes link_pull_request");
     expect(instructions).toContain("with the full PR URL immediately after creating a PR");
-    expect(instructions).toContain("For a stack, call it for every layer");
-    expect(instructions).toContain("call list_thread_pull_requests and link any PR");
+    expect(instructions).toContain("for every layer of a stack");
+    expect(instructions).toContain("call list_thread_pull_requests and link any missing PR");
   });
 
   it("keeps known model and effort metadata on one line", () => {
@@ -33,5 +33,17 @@ describe("buildRuntimeInstructions", () => {
     const instructions = buildRuntimeInstructions({ harness: "Cursor", model });
     expect(instructions).toContain("through the Cursor harness.");
     expect(instructions).not.toContain("reasoning effort");
+  });
+
+  it("appends the Leonidas output standard with canvas instructions", () => {
+    const instructions = buildRuntimeInstructions({ harness: "Codex" });
+    expect(instructions).toContain("<leonidas_output_standard>");
+    expect(instructions).toContain("🎯 **Focus:** <project or topic>");
+    expect(instructions).toContain("leonidas-canvas");
+    expect(instructions).toContain("html_render");
+    expect(instructions).toContain("### 🎯 TL;DR");
+    expect(instructions).toContain("### ⚡ Immediate Next Actions");
+    expect(instructions).toContain("### ❓ Input & Decisions Needed");
+    expect(instructions).toContain("</leonidas_output_standard>");
   });
 });

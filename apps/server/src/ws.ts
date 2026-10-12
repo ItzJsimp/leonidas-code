@@ -1,4 +1,4 @@
-import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
+import { OrchestrationDispatchCommandError, TaskBoardReadError } from "@t3tools/contracts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
@@ -95,6 +95,7 @@ import {
   PersistChatAttachmentsError,
   RpcClientId,
   EnvironmentAuthorizationError,
+  type Project,
   type ProjectId,
   type ProviderDriverKind,
   type ProviderInstanceId,
@@ -1292,6 +1293,27 @@ const layerWsRpc = (
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
+      const withTaskBoardProject = <A, E, R>(
+        projectId: ProjectId,
+        use: (project: Project) => Effect.Effect<A, E, R>,
+      ) =>
+        Effect.gen(function* () {
+          const project = yield* projectService
+            .getById(projectId)
+            .pipe(
+              Effect.mapError(
+                (cause) => new TaskBoardReadError({ reason: "project_not_found", cause }),
+              ),
+            );
+          if (Option.isNone(project)) {
+            return yield* new TaskBoardReadError({ reason: "project_not_found", cause: projectId });
+          }
+          return yield* use(project.value);
+        });
+      const allTaskBoardProjects = projectService.snapshot.pipe(
+        Effect.map((snapshot) => snapshot.projects),
+        Effect.mapError((cause) => new TaskBoardReadError({ reason: "project_not_found", cause })),
+      );
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
       const promptSuggestion = PromptSuggestion.make(
         yield* TextGeneration.TextGeneration,
@@ -2664,9 +2686,34 @@ const layerWsRpc = (
                 }),
             ),
           ),
-        [WS_METHODS.taskBoardList]: () => taskBoard.list,
+        [WS_METHODS.taskBoardList]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.list(project)),
+        [WS_METHODS.taskBoardCreate]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.create(project, input)),
+        [WS_METHODS.taskBoardClaim]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.claim(project, input)),
+        [WS_METHODS.taskBoardRelease]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.release(project, input)),
+        [WS_METHODS.taskBoardComplete]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.complete(project, input)),
+        [WS_METHODS.taskBoardUpdate]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.update(project, input)),
+        [WS_METHODS.taskBoardWorkspace]: () =>
+          allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),
+        [WS_METHODS.taskBoardCardUpdate]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.cardUpdate(input, projects)),
+          ),
+        [WS_METHODS.taskBoardCardCreate]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.cardCreate(input, projects)),
+          ),
+        [WS_METHODS.taskBoardShare]: (input) =>
+          withTaskBoardProject(input.projectId, (project) => taskBoard.share(project, input)),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
+        [WS_METHODS.projectsCancelPromptPrediction]: (input) =>
+          promptSuggestion.cancel(input.sessionId),
         [WS_METHODS.projectsReadFile]: (input) =>
           workspaceFileSystem.readFile(input).pipe(
             Effect.mapError(

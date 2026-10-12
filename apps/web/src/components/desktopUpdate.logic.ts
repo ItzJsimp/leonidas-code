@@ -137,7 +137,34 @@ export function canCheckForUpdate(state: DesktopUpdateState | null): boolean {
 
 const WHATS_NEW_MAX_ITEMS = 8;
 
-/** Flat bullet list for the "What's new" popup: every release note group, newest first, capped. */
-export function getWhatsNewItems(state: DesktopUpdateState): ReadonlyArray<string> {
+/** Ask the project agent to show where a release-note feature lives and how to try it. */
+export function createFeatureWalkthroughPrompt(item: string): string {
+  if (/\bnext action\b/i.test(item)) {
+    return [
+      "Try the Next Action skill now: recommend one concrete next task for this project.",
+      "Explain how you chose it, how I can ask for it again, and that it is an agent skill rather than a toolbar button.",
+    ].join(" ");
+  }
+  const feature = item.trim().slice(0, 400);
+  return [
+    "Show me where to find and how to use this Leonidas Code update:",
+    `“${feature}”.`,
+    "Give me a short step-by-step walkthrough and point me to the exact in-app location.",
+    "Ask before making changes.",
+  ].join(" ");
+}
+
+/** Show every note for this build; keep the old bounded fallback for multi-release feeds. */
+export function getWhatsNewItems(
+  state: DesktopUpdateState,
+  version?: string | null,
+): ReadonlyArray<string> {
+  if (version) {
+    const requestedVersion = version.trim().replace(/^v/i, "");
+    const exactRelease = state.releaseNotes.find(
+      (note) => note.version.trim().replace(/^v/i, "") === requestedVersion,
+    );
+    return exactRelease?.items ?? state.releaseNotes[0]?.items ?? [];
+  }
   return state.releaseNotes.flatMap((note) => note.items).slice(0, WHATS_NEW_MAX_ITEMS);
 }

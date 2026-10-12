@@ -2481,6 +2481,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     settings.composerPromptPredictionEnabled ? gitCwd : null,
     promptHistoryMessages,
     canInterrupt,
+    {
+      draft: prompt,
+      focused: isComposerFocused,
+      mode: settings.promptPredictionMode,
+      settingsIdentity: JSON.stringify([
+        settings.promptPredictionLocalModel,
+        settings.promptPredictionModelSelection,
+        settings.promptPredictionCloudRequestLimit,
+      ]),
+    },
   );
   const composerEditorRef = useRef<ComposerPromptEditorHandle>(null);
   const pasteAsTextShortcutUntilRef = useRef(0);

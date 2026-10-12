@@ -15,9 +15,13 @@ function setup(text = "Run", enabled = true, source: readonly PromptCandidate[] 
     candidates: () => source,
     enabled: () => enabled,
   });
-  const doc = schema.node("doc", null, [
-    schema.node("paragraph", null, text ? schema.text(text) : undefined),
-  ]);
+  const doc = schema.node(
+    "doc",
+    null,
+    text
+      .split("\n")
+      .map((line) => schema.node("paragraph", null, line ? schema.text(line) : undefined)),
+  );
   let state = EditorState.create({
     schema,
     doc,
@@ -87,5 +91,18 @@ describe("prompt prediction editor", () => {
     const { view } = setup();
     view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)));
     expect(promptPredictionKey.getState(view.state)?.suggestion).toBeNull();
+  });
+  it("completes only the final plain paragraph of a multiline draft", () => {
+    const { view, key } = setup("First line\nRun");
+    expect(promptPredictionKey.getState(view.state)?.suggestion).toBe(" the tests");
+    expect(key("Tab")).toBe(true);
+    expect(view.state.doc.child(0).textContent).toBe("First line");
+    expect(view.state.doc.child(1).textContent).toBe("Run the tests");
+    undo(view.state, view.dispatch);
+    expect(view.state.doc.child(1).textContent).toBe("Run");
+  });
+  it("does not complete a command in the last paragraph", () => {
+    const command = setup("First line\n/run");
+    expect(promptPredictionKey.getState(command.view.state)?.suggestion).toBeNull();
   });
 });

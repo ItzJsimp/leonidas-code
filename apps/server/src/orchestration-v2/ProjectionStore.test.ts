@@ -1051,6 +1051,58 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
       }),
   );
 
+  it.effect("stores a turn item's updatedAt column and payload unchanged for large text", () =>
+    Effect.gen(function* () {
+      const store = yield* ProjectionStore.ProjectionStoreV2;
+      const sql = yield* SqlClient.SqlClient;
+      const threadId = yield* addRolledBackRecoveryCandidate("turn-item-large-text");
+      const now = yield* DateTime.now;
+      const text = "large response ".repeat(20_000);
+      const itemId = TurnItemId.make("item:turn-item-large-text");
+      yield* store.apply({
+        id: EventId.make("event:turn-item-large-text"),
+        type: "turn-item.updated",
+        threadId,
+        occurredAt: now,
+        payload: {
+          id: itemId,
+          threadId,
+          runId: null,
+          nodeId: null,
+          providerThreadId: null,
+          providerTurnId: null,
+          nativeItemRef: null,
+          parentItemId: null,
+          ordinal: 2,
+          status: "completed",
+          title: null,
+          startedAt: now,
+          completedAt: now,
+          updatedAt: now,
+          type: "assistant_message",
+          messageId: MessageId.make("message:turn-item-large-text"),
+          text,
+          streaming: false,
+        },
+      });
+      const [row] = yield* sql<{
+        readonly updated_at: string;
+        readonly payload_json: string;
+      }>`
+        SELECT updated_at, payload_json
+        FROM orchestration_v2_projection_turn_items
+        WHERE turn_item_id = ${itemId}
+      `;
+      const stored = JSON.parse(row!.payload_json) as {
+        readonly updatedAt: string;
+        readonly text: string;
+      };
+      assert.equal(row!.updated_at, DateTime.formatIso(now));
+      assert.equal(stored.updatedAt, DateTime.formatIso(now));
+      assert.equal(stored.text, text);
+    }),
+  );
+
   it.effect("reads a fixed SQL turn-item window for long histories and repeated clients", () =>
     Effect.gen(function* () {
       const projectionStore = yield* ProjectionStore.ProjectionStoreV2;

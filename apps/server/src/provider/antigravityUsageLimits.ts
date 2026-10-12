@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off globalFetch:off globalTimers:off globalDate:off
+// @effect-diagnostics nodeBuiltinImport:off globalFetch:off globalTimers:off globalDate:off cryptoRandomUUID:off globalRandom:off
 /**
  * Antigravity subscription usage and quota reader.
  *
@@ -46,6 +46,8 @@ export interface AntigravityUserStatus {
       readonly planName?: string | null;
       readonly teamsTier?: string | null;
     } | null;
+    readonly availablePromptCredits?: number | null;
+    readonly availableFlowCredits?: number | null;
   } | null;
   readonly cascadeModelConfigData?: {
     readonly clientModelConfigs?: ReadonlyArray<AntigravityClientModelConfig> | null;
@@ -61,6 +63,10 @@ export interface AntigravityUsageLimitsProbeResult {
   readonly email?: string | undefined;
   readonly plan?: string | undefined;
 }
+
+let cachedProbeResult: { result: AntigravityUsageLimitsProbeResult; timestamp: number } | null =
+  null;
+const CACHE_TTL_MS = 60_000;
 
 /**
  * Extracts session (5-hour) and weekly quota windows from GetUserStatus.
@@ -164,7 +170,23 @@ export function resolveLanguageServerCandidates(): string[] {
     const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
     candidates.push(
       Path.join(programFiles, "Antigravity", "resources", "bin", "language_server.exe"),
+      Path.join(programFiles, "Programs", "antigravity", "resources", "bin", "language_server.exe"),
     );
+    const userProfile = process.env.USERPROFILE ?? "";
+    if (userProfile) {
+      candidates.push(
+        Path.join(
+          userProfile,
+          "AppData",
+          "Local",
+          "Programs",
+          "antigravity",
+          "resources",
+          "bin",
+          "language_server.exe",
+        ),
+      );
+    }
   } else if (process.platform === "darwin") {
     candidates.push(
       "/Applications/Antigravity.app/Contents/Resources/bin/language_server",
@@ -197,40 +219,110 @@ export function resolveLanguageServerCandidates(): string[] {
 }
 
 /**
- * Discovers the language_server.log path where active server port may be logged.
+ * Discovers the language_server.log or cli-*.log path where active server port may be logged.
  */
 export function resolveLanguageServerLogPath(): string | null {
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  // Check ~/.gemini/antigravity/log/ for newest cli-*.log
+  if (home) {
+    const geminiLogDir = Path.join(home, ".gemini", "antigravity", "log");
+    try {
+      if (FS.existsSync(geminiLogDir)) {
+        const files = FS.readdirSync(geminiLogDir)
+          .filter((f) => f.startsWith("cli-") && f.endsWith(".log"))
+          .map((f) => ({
+            path: Path.join(geminiLogDir, f),
+            mtime: FS.statSync(Path.join(geminiLogDir, f)).mtimeMs,
+          }))
+          .sort((a, b) => b.mtime - a.mtime);
+        if (files.length > 0 && files[0]) {
+          return files[0].path;
+        }
+      }
+    } catch {
+      // Ignore directory read failure
+    }
+  }
   if (process.platform === "win32") {
     const appData = process.env.APPDATA;
-    return appData ? Path.join(appData, "Antigravity", "logs", "language_server.log") : null;
+    if (appData) {
+      const p = Path.join(appData, "Antigravity", "logs", "language_server.log");
+      if (FS.existsSync(p)) return p;
+    }
+    const localAppData = process.env.LOCALAPPDATA;
+    if (localAppData) {
+      const p = Path.join(localAppData, "Antigravity", "logs", "language_server.log");
+      if (FS.existsSync(p)) return p;
+    }
+    return null;
   }
   if (process.platform === "darwin") {
-    const home = process.env.HOME;
-    return home
-      ? Path.join(
-          home,
-          "Library",
-          "Application Support",
-          "Antigravity",
-          "logs",
-          "language_server.log",
-        )
-      : null;
+    if (home) {
+      return Path.join(
+        home,
+        "Library",
+        "Application Support",
+        "Antigravity",
+        "logs",
+        "language_server.log",
+      );
+    }
+    return null;
   }
-  const home = process.env.HOME;
   return home ? Path.join(home, ".config", "Antigravity", "logs", "language_server.log") : null;
 }
 
-async function queryLanguageServerPort(
+/**
+ * Discovers the CSRF token of a currently running Antigravity language_server process.
+ */
+export function discoverRunningCsrfToken(): string | null {
+  try {
+    if (process.platform === "win32") {
+      try {
+        const out = ChildProcess.execSync(
+          "wmic process where \"name like '%language_server%'\" get commandline",
+          { timeout: 1500, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+        );
+        const match = out.match(/--csrf_token\s+([^\s]+)/);
+        if (match && match[1]) return match[1].trim();
+      } catch {
+        const out = ChildProcess.execSync(
+          "powershell -NoProfile -NonInteractive -Command \"Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*language_server*' } | Select-Object -ExpandProperty CommandLine\"",
+          { timeout: 2500, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+        );
+        const match = out.match(/--csrf_token\s+([^\s]+)/);
+        if (match && match[1]) return match[1].trim();
+      }
+    } else {
+      const out = ChildProcess.execSync("ps -eo command", {
+        timeout: 1500,
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+      const match = out.match(/language_server.*--csrf_token\s+([^\\s]+)/);
+      if (match && match[1]) return match[1].trim();
+    }
+  } catch {
+    // Process inspection unavailable
+  }
+  return null;
+}
+
+export async function queryLanguageServerPort(
   port: number,
+  csrfToken?: string,
   timeoutMs = 1500,
 ): Promise<AntigravityGetUserStatusResponse | null> {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (csrfToken) {
+      headers["x-codeium-csrf-token"] = csrfToken;
+    }
     const res = await fetch(
       `http://127.0.0.1:${port}/exa.language_server_pb.LanguageServerService/GetUserStatus`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: "{}",
         signal: AbortSignal.timeout(timeoutMs),
       },
@@ -245,13 +337,13 @@ async function queryLanguageServerPort(
 /**
  * Checks if a language server is currently running and listening on a logged port.
  */
-async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusResponse | null> {
+export async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusResponse | null> {
   const logPath = resolveLanguageServerLogPath();
   if (!logPath || !FS.existsSync(logPath)) return null;
 
   try {
     const content = await FS.promises.readFile(logPath, "utf-8");
-    const lines = content.split("\n").slice(-30);
+    const lines = content.split("\n").slice(-100);
     let lastPort: number | null = null;
     for (const line of lines) {
       const match = line.match(/listening on random port at (\d+) for HTTP\b/);
@@ -260,7 +352,8 @@ async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusRes
       }
     }
     if (lastPort && lastPort > 0) {
-      return await queryLanguageServerPort(lastPort, 1200);
+      const csrfToken = discoverRunningCsrfToken() ?? undefined;
+      return await queryLanguageServerPort(lastPort, csrfToken, 2000);
     }
   } catch {
     // Log unreadable or missing
@@ -272,12 +365,25 @@ async function probeRunningLanguageServer(): Promise<AntigravityGetUserStatusRes
  * Spawns a standalone language server instance, captures its port, queries GetUserStatus,
  * and shuts it down.
  */
-async function probeStandaloneLanguageServer(
+export async function probeStandaloneLanguageServer(
   executablePath?: string,
   timeoutMs = 6000,
 ): Promise<AntigravityGetUserStatusResponse | null> {
-  const exe = executablePath ?? resolveLanguageServerCandidates().find((p) => FS.existsSync(p));
+  const isLanguageServer = (p?: string) =>
+    typeof p === "string" &&
+    p.length > 0 &&
+    (Path.basename(p).toLowerCase().startsWith("language_server") ||
+      Path.basename(p).toLowerCase().startsWith("language-server"));
+  const exe =
+    isLanguageServer(executablePath) && FS.existsSync(executablePath!)
+      ? executablePath!
+      : resolveLanguageServerCandidates().find((p) => FS.existsSync(p));
   if (!exe || !FS.existsSync(exe)) return null;
+
+  const csrfToken =
+    typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `t3-antigravity-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   return new Promise<AntigravityGetUserStatusResponse | null>((resolve) => {
     let proc: ChildProcess.ChildProcess | null = null;
@@ -316,6 +422,8 @@ async function probeStandaloneLanguageServer(
           "antigravity",
           "--http_server_port",
           "0",
+          "--csrf_token",
+          csrfToken,
           "--app_data_dir",
           "antigravity",
           "--api_server_url",
@@ -337,7 +445,7 @@ async function probeStandaloneLanguageServer(
         }
         if (text.includes("initialized server successfully") && port && !finished) {
           try {
-            const result = await queryLanguageServerPort(port, 2500);
+            const result = await queryLanguageServerPort(port, csrfToken, 2500);
             clearTimeout(timer);
             cleanup();
             resolve(result);
@@ -368,6 +476,24 @@ async function probeStandaloneLanguageServer(
   });
 }
 
+export function readFallbackGoogleAccount(): { email?: string; plan?: string } {
+  try {
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    if (home) {
+      const googleAccountsPath = Path.join(home, ".gemini", "google_accounts.json");
+      if (FS.existsSync(googleAccountsPath)) {
+        const data = JSON.parse(FS.readFileSync(googleAccountsPath, "utf-8"));
+        if (typeof data.active === "string" && data.active.trim()) {
+          return { email: data.active.trim(), plan: "Google account" };
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
 /**
  * Probes the local Antigravity language server to obtain active account quota and plan status.
  */
@@ -376,6 +502,11 @@ export async function probeAntigravityUsageLimits(options?: {
   readonly checkedAt?: string;
   readonly timeoutMs?: number;
 }): Promise<AntigravityUsageLimitsProbeResult | null> {
+  const now = Date.now();
+  if (cachedProbeResult && now - cachedProbeResult.timestamp < CACHE_TTL_MS) {
+    return cachedProbeResult.result;
+  }
+
   const checkedAt = options?.checkedAt ?? new Date().toISOString();
 
   // 1. Try running instance first (fastest)
@@ -386,78 +517,33 @@ export async function probeAntigravityUsageLimits(options?: {
     statusResp = await probeStandaloneLanguageServer(options?.executablePath, options?.timeoutMs);
   }
 
-  if (!statusResp?.userStatus) return null;
+  if (!statusResp?.userStatus) {
+    const fallback = readFallbackGoogleAccount();
+    if (fallback.email) {
+      const result: AntigravityUsageLimitsProbeResult = {
+        limits: makeUsageLimits({
+          checkedAt,
+          windows: [],
+        }),
+        email: fallback.email,
+        plan: fallback.plan ?? "Google account",
+      };
+      cachedProbeResult = { result, timestamp: now };
+      return result;
+    }
+    return null;
+  }
 
   const userStatus = statusResp.userStatus;
   const limits = antigravityUserStatusToLimits({ userStatus, checkedAt });
   const email = userStatus.email?.trim() || undefined;
   const plan = userStatus.planStatus?.planInfo?.planName?.trim() || undefined;
 
-  return {
+  const result: AntigravityUsageLimitsProbeResult = {
     limits,
     ...(email !== undefined ? { email } : {}),
     ...(plan !== undefined ? { plan } : {}),
   };
-}
-
-export interface AntigravityQuotaArbitrage {
-  readonly windowId: string;
-  readonly minutesUntilReset: number | null;
-  readonly usedPercent: number;
-  readonly remainingPercent: number;
-  readonly burnPace: "surplus" | "balanced" | "deficit";
-  readonly opportunisticDispatchEligible: boolean;
-  readonly recommendation: "opportunistic_surplus" | "conserve_quota" | "nominal";
-}
-
-/**
- * Calculates quota velocity, consumption pace, and opportunistic capacity for an Antigravity window.
- */
-export function evaluateAntigravityQuotaArbitrage(
-  window: ServerProviderUsageWindow,
-  nowMs = Date.now(),
-): AntigravityQuotaArbitrage {
-  let minutesUntilReset: number | null = null;
-  if (window.resetsAt) {
-    const resetTime = Date.parse(window.resetsAt);
-    if (Number.isFinite(resetTime) && resetTime > nowMs) {
-      minutesUntilReset = Math.round((resetTime - nowMs) / 60000);
-    }
-  }
-  const usedPercent = Math.max(0, Math.min(100, Math.round(window.usedPercent)));
-  const remainingPercent = 100 - usedPercent;
-
-  const windowDuration = window.windowDurationMins ?? 300;
-  const elapsedMinutes =
-    minutesUntilReset !== null ? Math.max(0, windowDuration - minutesUntilReset) : null;
-  const elapsedFraction = elapsedMinutes !== null ? elapsedMinutes / windowDuration : 0.5;
-  const expectedUsedPercent = Math.round(elapsedFraction * 100);
-
-  let burnPace: "surplus" | "balanced" | "deficit" = "balanced";
-  if (usedPercent >= 90 || usedPercent > expectedUsedPercent + 15) {
-    burnPace = "deficit";
-  } else if (usedPercent < expectedUsedPercent - 15) {
-    burnPace = "surplus";
-  }
-
-  const opportunisticDispatchEligible =
-    (minutesUntilReset !== null && minutesUntilReset < 90 && usedPercent < 70) ||
-    (burnPace === "surplus" && usedPercent < 60);
-
-  const recommendation =
-    usedPercent >= 85
-      ? "conserve_quota"
-      : opportunisticDispatchEligible
-        ? "opportunistic_surplus"
-        : "nominal";
-
-  return {
-    windowId: window.id,
-    minutesUntilReset,
-    usedPercent,
-    remainingPercent,
-    burnPace,
-    opportunisticDispatchEligible,
-    recommendation,
-  };
+  cachedProbeResult = { result, timestamp: now };
+  return result;
 }
