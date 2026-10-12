@@ -65,6 +65,10 @@ Quick lookups, one-line answers, or fast mid-execution turns omit full dock: `âš
 
 Agents find or create a task before substantive work, keep it updated and close it with a verified note. Full procedure: @.agents/rules/task-driven-work.md. The plan to fold the AIOS Command Center Tasks tab into this page is in [task-system-unification](./docs/internals/task-system-unification.md).
 
+## Tiered models (mandatory when delegating)
+
+Match the model to the work: frontier plans and reviews, mid edits, light scans, Codex researches. Full rule: @.agents/rules/tiered-models.md.
+
 ## Roadmap (in order, tick when merged to main)
 
 - [x] Subscription token calibration: shipped in [v0.2.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.2.0); session/weekly estimates pair local Claude/Codex tokens with provider quota percentages. Google AI Pro needs a reliable quota source and token reader before calibration is available.
