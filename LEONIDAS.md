@@ -9,6 +9,58 @@ Read this first if you are an agent working in this repo. It is the shared brief
 - It replaces the Claude Code and Antigravity front ends for both of us, running on our own AI subscriptions, with extra built-in tools.
 - Credit stays: keep the original MIT notice in `LICENSE`. Say "T3 Code" only when talking about upstream (merges, credit, internal ids like `@t3tools/*`, `T3CODE_*`, `~/.t3` that stay for data safety). Everywhere a user sees the app, it is Leonidas Code.
 
+## Output standard (mandatory for every agent reply)
+
+Leonidas Code fixes the shape of every substantive reply across all providers (Claude, Codex, Antigravity, Cursor, Grok, OpenCode) and all users (Jake and Mob). Personal files add voice, names and banners inside these zones; they never replace them.
+
+### Top Slot: Opening Orientation HUD
+
+- Line 1: `**Active Mode:** Mode XX: [Name]` (e.g. `Mode 00: Build Architect`, or active AIOS mode if loaded).
+- Line 2: `🎯 **Focus:** `<project or topic>`· **Milestone:**`<active phase or step>``.
+- Line 3: Blank line, followed immediately by findings, diffs, code, or execution steps. Zero conversational filler or pleasantries.
+
+### Structural Body & Scanability Standards
+
+- **Landmark Cards:** Bold lead-ins (`- **<Area>:** <fact or action>`). Narrative paragraphs are at most 2 sentences, solely for causal logic.
+- **Delta Micro-Cards (`🔴 Was` -> `🟢 Now`):** High-contrast pairs for fixes, edits, and refactors.
+- **Verification Proof Receipts:** State exact proof (`- ✅ **Verified:** <test/check> · <result>`). Never claim a check you did not run.
+- **List Ceiling (5-Item Rule):** Cap visible lists to max 5 items per group, ranked by relevance.
+- **Dividers & Headings:** Separate themes with `---`. Technical depth goes under `###` headings with one leading semantic emoji (🔍 findings, 🛠️ build, ⚠️ warning, ✅ verification). Tables only for 2+ attributes across 3+ items.
+
+### Terminal Executive Dock (Literal Absolute Screen Bottom)
+
+Every substantive turn MUST terminate at the absolute screen bottom with this exact sequence and headings:
+
+---
+
+### 🎯 TL;DR
+
+- <1-2 punchy bullets: tangible wins, working features, or settled decisions; never a repeat of the Body>
+
+### ⚡ Immediate Next Actions
+
+- [ ] 🤖 **Leonidas:** <specific command or file edit queued next>
+- [ ] 👤 **Jake / Mob:** <single step doable in <=2 minutes with exact link, command or phrase> _(unblocks: <milestone>)_
+
+### ❓ Input & Decisions Needed
+
+- **A)** <option and what it triggers> _(Wins when: <condition>)_
+- **B)** <option> _(Wins when: <condition>)_
+  ➡️ **Recommended: <letter>** · <reason>. **What flips it:** <condition>.
+  💬 Quick Replies: "<short phrase>" | "<short phrase>"
+
+### Session Completion Override
+
+When work is finished, verified, committed, and zero queued tasks remain, replace `### ⚡ Immediate Next Actions` with `### 🏁 Session Complete (Ready to Close)`:
+
+- ✅ **Objective Achieved:** <1-line summary>
+- 🧼 **Substrate Clean:** Committed (`<hash>`), 0 pending diffs, tests passing.
+- 🚀 **Next Best Action:** Close this chat. Open fresh chat for next objective to keep context lean.
+
+### Mid-Turn Execution Rules
+
+Quick lookups, one-line answers, or fast mid-execution turns omit full dock: `⚡ Next: <step> | 👤 You: <step> | ❓ Input: None`.
+
 ## Roadmap (in order, tick when merged to main)
 
 - [x] Subscription token calibration: shipped in [v0.2.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.2.0); session/weekly estimates pair local Claude/Codex tokens with provider quota percentages. Google AI Pro needs a reliable quota source and token reader before calibration is available.
@@ -29,6 +81,7 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 ## Working together (two people, one `main`)
 
 1. Claude and Codex sessions run [guarded source sync](scripts/Sync-LeonidasSource.ps1) through their startup hooks. It updates only clean `main` checkouts that can fast-forward; unfinished work, active Git operations and divergent histories are left alone. Run the same helper before other tools. Integrate divergent history deliberately, preserving upstream merge commits. Push small commits often; do not sit on a big branch.
+1a. **Branch status:** the session-start hook runs [`scripts/Write-BranchStatus.ps1`](scripts/Write-BranchStatus.ps1) in the background. It writes `<repo>/.git/leonidas/branch-status.md` (shared by every worktree, never committed): each in-progress branch with its owner, folder, distance from `origin/main` and a plain-English state (uncommitted, behind, stale, new, ready, merged). Before starting work, read it, tell Jake in plain words which branch you are on and whether it is behind `main`, and never delete or switch a branch it marks uncommitted. Run the script yourself if the file is missing or older than your session. It takes about 30 seconds on a large repo because it checks every worktree for unsaved changes.
 2. **Every push to `main` ships to both of us.** The release workflow (`.github/workflows/team-release.yml`) builds and publishes, and the other machine gets a toast. Before pushing, run the scoped checks: `vp run typecheck` and `vp test run <files you touched>`. Do not push a broken build.\n3. Docs-only pushes (`*.md`) skip the release build.
 3. If the other person's agent is editing the same area, say so in this file's status log first.
 4. The repo is **public**. Never commit keys, tokens, `.env` files, personal paths or local launcher scripts (put those in `.git/info/exclude`).
