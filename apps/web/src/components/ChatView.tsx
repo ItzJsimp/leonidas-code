@@ -2626,6 +2626,20 @@ export default function ChatView(props: ChatViewProps) {
   const handleNewThreadInActiveProject = useCallback(() => {
     startNewThreadForProject(activeProjectRef, handleNewThread);
   }, [activeProjectRef, handleNewThread]);
+  // The Benchmarks tab starts a chat preset to the model and effort picked there.
+  const handleNewThreadWithModel = useCallback(
+    (modelSelection: ModelSelection) => {
+      if (activeProjectRef === null) return;
+      void handleNewThread(activeProjectRef).then((target) => {
+        if (!target) return;
+        useComposerDraftStore.getState().setModelSelection(target.draftId, modelSelection, {
+          explicit: true,
+          replaceOptions: true,
+        });
+      });
+    },
+    [activeProjectRef, handleNewThread],
+  );
   const projectGroupingSettings = selectProjectGroupingSettings(settings);
   const activeDraftLogicalProjectKey =
     !isServerThread && activeProject
@@ -12172,6 +12186,10 @@ export default function ChatView(props: ChatViewProps) {
                                   modelLabel={providerSubagentModelLabel}
                                   effortLabel={providerSubagentEffortLabel}
                                   contextWindow={headerContextWindow}
+                                  providerEntries={providerInstanceEntries}
+                                  onStartChat={
+                                    activeProjectRef === null ? null : handleNewThreadWithModel
+                                  }
                                 />
                               }
                               bannerItems={composerBannerItems}

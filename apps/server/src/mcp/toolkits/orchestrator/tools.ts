@@ -36,6 +36,8 @@ import {
   OrchestratorMcpThreadSendResult,
   OrchestratorMcpThreadWaitInput,
   OrchestratorMcpThreadWaitResult,
+  ModelBenchmarkReport,
+  ModelBenchmarkReportInput,
   ThreadMetadataMcpUpdateInput,
   ThreadMetadataMcpUpdateResult,
 } from "@t3tools/contracts";
@@ -57,6 +59,7 @@ import {
 import * as SavedItems from "../../../savedItems/SavedItemService.ts";
 import * as SavedItemExecution from "../../../savedItems/SavedItemExecution.ts";
 
+import * as ModelBenchmarks from "../../../benchmarks/ModelBenchmarks.ts";
 import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
@@ -348,6 +351,21 @@ const ThreadInterruptTool = Tool.make("t3_thread_interrupt", {
   .annotate(Tool.Title, "Interrupt a T3 thread")
   .annotate(Tool.Destructive, true);
 
+const ModelBenchmarksTool = Tool.make("model_benchmarks", {
+  description:
+    "Rank models against public BenchLM benchmarks: overall and category scores, per-benchmark results, price per million tokens and output speed. Pass the models to compare as they appear in orchestrator_capabilities (modelId, optional effort). effortMeasured=false means BenchLM never scored that effort and the numbers are the model's default run; a row without matches is unknown to BenchLM. Each source keeps its own scale, so do not add scores across sources. Credit BenchLM.ai when you show these numbers.",
+  parameters: ModelBenchmarkReportInput,
+  success: ModelBenchmarkReport,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies: [McpInvocationContext.McpInvocationContext, ModelBenchmarks.ModelBenchmarks],
+})
+  .annotate(Tool.Title, "Model benchmarks")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, true);
+
 export const OrchestratorToolkit = Toolkit.make(
   Tool.make("saved_item_list", {
     description:
@@ -462,4 +480,5 @@ export const OrchestratorToolkit = Toolkit.make(
   ThreadSendTool,
   ThreadWaitTool,
   ThreadInterruptTool,
+  ModelBenchmarksTool,
 );

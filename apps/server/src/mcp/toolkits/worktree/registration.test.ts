@@ -24,6 +24,7 @@ import * as ProviderRegistry from "#server/provider/ProviderRegistry.ts";
 import * as ScheduledTaskService from "#server/scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "#server/secrets/SecretRequests.ts";
 import * as TaskBoardService from "#server/taskBoard/TaskBoardService.ts";
+import * as ModelBenchmarks from "#server/benchmarks/ModelBenchmarks.ts";
 import * as ServerSettings from "#server/serverSettings.ts";
 import * as VcsStatusBroadcaster from "#server/vcs/VcsStatusBroadcaster.ts";
 import * as ServerSecretStore from "#server/auth/ServerSecretStore.ts";
@@ -60,6 +61,7 @@ const layerStubServices = Layer.mergeAll(
   Layer.mock(SecretRequests.SecretRequests)({}),
   Layer.mock(ProjectService.ProjectService)({}),
   Layer.mock(TaskBoardService.TaskBoardService)({}),
+  Layer.mock(ModelBenchmarks.ModelBenchmarks)({}),
   ServerSettings.layerTest({}),
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),

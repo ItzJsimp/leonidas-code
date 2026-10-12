@@ -366,6 +366,7 @@ import {
   ProviderConsumeResetCreditResult,
 } from "./providerUsageLimits.ts";
 import { UsagePricing, UsageReadError, UsageSummary, UsageSummaryInput } from "./usage.ts";
+import { ModelBenchmarkReport, ModelBenchmarkReportInput } from "./modelBenchmarks.ts";
 import {
   StorageCleanupReport,
   ServerSettings,
@@ -591,6 +592,7 @@ export const WS_METHODS = {
   serverGetBackgroundPolicy: "server.getBackgroundPolicy",
   serverGetUsageSummary: "server.getUsageSummary",
   serverRefreshUsageRates: "server.refreshUsageRates",
+  serverGetModelBenchmarks: "server.getModelBenchmarks",
 
   // Scheduled tasks
   scheduledTasksList: "scheduledTasks.list",
@@ -997,6 +999,16 @@ const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSummary, {
  * Refetches the model rate table ahead of its daily TTL, so a model released
  * since the last fetch gets priced. The next usage summary uses the new table.
  */
+/**
+ * Public benchmark results for the models the client can run. The server
+ * fetches and caches them, so remote clients never call the publisher.
+ */
+const WsServerGetModelBenchmarksRpc = Rpc.make(WS_METHODS.serverGetModelBenchmarks, {
+  payload: ModelBenchmarkReportInput,
+  success: ModelBenchmarkReport,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsServerRefreshUsageRatesRpc = Rpc.make(WS_METHODS.serverRefreshUsageRates, {
   payload: Schema.Struct({}),
   success: UsagePricing,
@@ -2222,6 +2234,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerCheckOtlpEndpointRpc,
   WsServerGetUsageSummaryRpc,
   WsServerRefreshUsageRatesRpc,
+  WsServerGetModelBenchmarksRpc,
   WsServerSignalProcessRpc,
   WsScheduledTasksListRpc,
   WsScheduledTasksSubscribeRpc,

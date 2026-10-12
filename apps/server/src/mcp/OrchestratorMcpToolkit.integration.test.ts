@@ -76,6 +76,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
+import * as ModelBenchmarks from "../benchmarks/ModelBenchmarks.ts";
 import * as TaskBoardService from "../taskBoard/TaskBoardService.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
@@ -691,6 +692,7 @@ describe("orchestrator MCP toolkit", () => {
             Layer.provide(layerScheduledTaskStub),
             Layer.provide(Layer.mock(ThreadSearch.ThreadSearch)({})),
             Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
+            Layer.provide(Layer.mock(ModelBenchmarks.ModelBenchmarks)({})),
             Layer.provide(
               Layer.mock(ProjectService.ProjectService)({
                 getById: (id) =>
@@ -3861,6 +3863,7 @@ describe("orchestrator MCP toolkit", () => {
           Layer.provide(layerUnusedScheduledTaskStub),
           Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
           Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
+          Layer.provide(Layer.mock(ModelBenchmarks.ModelBenchmarks)({})),
           Layer.provideMerge(
             SecretRequests.layer.pipe(
               Layer.provide(layerMemorySecretStore),

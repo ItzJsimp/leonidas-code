@@ -7,11 +7,11 @@ import { IsoDateTime, TrimmedNonEmptyString } from "./baseSchemas.ts";
  * from Artificial Analysis, Vals, LiveBench, Arena and others with credit.
  * Each source keeps its own scale: scores are never blended into one number.
  */
-export const ModelBenchmarkSourceId = Schema.Literals(["benchLm"]);
+const ModelBenchmarkSourceId = Schema.Literals(["benchLm"]);
 export type ModelBenchmarkSourceId = typeof ModelBenchmarkSourceId.Type;
 
 /** `unavailable` means the last fetch failed and no earlier copy exists. */
-export const ModelBenchmarkSourceStatus = Schema.Struct({
+const ModelBenchmarkSourceStatus = Schema.Struct({
   source: ModelBenchmarkSourceId,
   state: Schema.Literals(["ready", "unavailable"]),
   fetchedAt: Schema.optional(IsoDateTime),
@@ -25,7 +25,7 @@ export type ModelBenchmarkSourceStatus = typeof ModelBenchmarkSourceStatus.Type;
  * One number a source publishes per model. `kind` picks the chart chip (Score,
  * Cost, Speed); `higherIsBetter` decides the ranking direction.
  */
-export const ModelBenchmarkMetric = Schema.Struct({
+const ModelBenchmarkMetric = Schema.Struct({
   key: TrimmedNonEmptyString,
   source: ModelBenchmarkSourceId,
   label: TrimmedNonEmptyString,
@@ -38,7 +38,7 @@ export const ModelBenchmarkMetric = Schema.Struct({
 export type ModelBenchmarkMetric = typeof ModelBenchmarkMetric.Type;
 
 /** A source's record for one model (and effort, when the source splits by it). */
-export const ModelBenchmarkEntry = Schema.Struct({
+const ModelBenchmarkEntry = Schema.Struct({
   source: ModelBenchmarkSourceId,
   sourceModelKey: TrimmedNonEmptyString,
   name: TrimmedNonEmptyString,
@@ -51,14 +51,14 @@ export const ModelBenchmarkEntry = Schema.Struct({
 export type ModelBenchmarkEntry = typeof ModelBenchmarkEntry.Type;
 
 /** A model the user can run, as the provider names it. */
-export const ModelBenchmarkQuery = Schema.Struct({
+const ModelBenchmarkQuery = Schema.Struct({
   modelId: TrimmedNonEmptyString,
   displayName: Schema.optional(TrimmedNonEmptyString),
   effort: Schema.optional(TrimmedNonEmptyString),
 });
 export type ModelBenchmarkQuery = typeof ModelBenchmarkQuery.Type;
 
-export const ModelBenchmarkMatch = Schema.Struct({
+const ModelBenchmarkMatch = Schema.Struct({
   entry: ModelBenchmarkEntry,
   /**
    * False when the query asked for an effort the source never measured and
@@ -69,7 +69,7 @@ export const ModelBenchmarkMatch = Schema.Struct({
 export type ModelBenchmarkMatch = typeof ModelBenchmarkMatch.Type;
 
 /** At most one match per source; no matches means the model is unknown to every source. */
-export const ModelBenchmarkRow = Schema.Struct({
+const ModelBenchmarkRow = Schema.Struct({
   query: ModelBenchmarkQuery,
   matches: Schema.Array(ModelBenchmarkMatch),
 });
@@ -82,3 +82,9 @@ export const ModelBenchmarkReport = Schema.Struct({
   rows: Schema.Array(ModelBenchmarkRow),
 });
 export type ModelBenchmarkReport = typeof ModelBenchmarkReport.Type;
+
+/** The models to rank; the RPC and the `model_benchmarks` MCP tool share it. */
+export const ModelBenchmarkReportInput = Schema.Struct({
+  models: Schema.Array(ModelBenchmarkQuery).check(Schema.isMaxLength(200)),
+});
+export type ModelBenchmarkReportInput = typeof ModelBenchmarkReportInput.Type;

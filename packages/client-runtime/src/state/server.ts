@@ -1234,6 +1234,13 @@ export function createServerEnvironmentAtoms<R, E>(
       tag: WS_METHODS.subscribeResourceTelemetry,
       idleTtlMs: 0,
     }),
+    // The server caches the publisher for an hour; reopening the panel within
+    // ten minutes reuses the last answer instead of asking again.
+    modelBenchmarks: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:model-benchmarks",
+      tag: WS_METHODS.serverGetModelBenchmarks,
+      staleTimeMs: 10 * 60_000,
+    }),
     resourceTelemetryHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:resource-telemetry-history",
       tag: WS_METHODS.serverGetResourceTelemetryHistory,

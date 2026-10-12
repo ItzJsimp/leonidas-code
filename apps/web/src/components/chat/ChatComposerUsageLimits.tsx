@@ -1,4 +1,9 @@
-import type { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ModelSelection,
+  ProviderInstanceId,
+  ThreadId,
+} from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -15,6 +20,7 @@ import { memo, useMemo, useState } from "react";
 import { useClientSettings, useUpdateClientSettings } from "../../hooks/useSettings";
 import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import { collectConnectedUsageLimits } from "../../lib/connectedUsageLimits";
+import { connectedBenchmarkCandidates } from "../../lib/modelBenchmarks";
 import {
   contextWindowFigures,
   formatTokenCount,
@@ -22,14 +28,17 @@ import {
   usedPercentLabel,
 } from "../../lib/usageLimitsPopover";
 import { cn } from "../../lib/utils";
+import type { ProviderInstanceEntry } from "../../providerInstances";
 import { environmentPresentations } from "../../state/presentation";
 import { Button } from "../ui/button";
 import { Popover, PopoverClose, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "../ui/preview-card";
 import { Separator } from "../ui/separator";
+import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ChatUsageHoverCard } from "./ChatUsageHoverCard";
 import { DetailedContextBreakdownView } from "./DetailedContextBreakdownView";
+import { ModelBenchmarksPanel } from "./ModelBenchmarksPanel";
 import { ActiveAccount, OtherAccount } from "./UsageOverlayCard";
 import { useConnectedUsageAccounts } from "../../hooks/useConnectedUsageAccounts";
 import { useNowMinute } from "../../hooks/useNowMinute";
@@ -62,6 +71,8 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
   modelLabel,
   effortLabel,
   contextWindow,
+  providerEntries,
+  onStartChat,
 }: {
   readonly environmentId: EnvironmentId;
   readonly threadId?: ThreadId | null;
@@ -69,6 +80,10 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
   readonly modelLabel: string;
   readonly effortLabel: string | null;
   readonly contextWindow: ContextWindowSnapshot | null;
+  /** The environment's provider instances; their ready models fill the Benchmarks tab. */
+  readonly providerEntries: ReadonlyArray<ProviderInstanceEntry>;
+  /** Opens a new chat in the current project with this model; null when there is no project. */
+  readonly onStartChat: ((selection: ModelSelection) => void) | null;
 }) {
   const navigate = useNavigate();
   const presentations = useAtomValue(environmentPresentations.presentationsAtom);
@@ -78,6 +93,11 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
   const [hoverOpen, setHoverOpen] = useState(false);
   const [view, setView] = useState<"summary" | "context-breakdown">("summary");
   const [chooseIcon, setChooseIcon] = useState(false);
+  const [tab, setTab] = useState<"usage" | "benchmarks">("usage");
+  const benchmarkCandidates = useMemo(
+    () => connectedBenchmarkCandidates(providerEntries),
+    [providerEntries],
+  );
 
   const report = useMemo(
     () =>
@@ -148,6 +168,7 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
         if (!open) {
           setChooseIcon(false);
           setView("summary");
+          setTab("usage");
         }
       }}
     >
@@ -204,7 +225,11 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
         align="end"
         sideOffset={0}
         padding="compact"
-        className="w-[min(21rem,calc(100vw-1.5rem))]"
+        className={
+          tab === "benchmarks"
+            ? "w-[min(40rem,calc(100vw-1.5rem))]"
+            : "w-[min(21rem,calc(100vw-1.5rem))]"
+        }
       >
         {view === "context-breakdown" && threadId ? (
           <DetailedContextBreakdownView
@@ -213,7 +238,14 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
             onBack={() => setView("summary")}
           />
         ) : (
-          <div className="flex max-h-[min(30rem,calc(100dvh-7.5rem))] min-w-0 flex-1 flex-col">
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 flex-col",
+              tab === "benchmarks"
+                ? "max-h-[min(40rem,calc(100dvh-7.5rem))]"
+                : "max-h-[min(30rem,calc(100dvh-7.5rem))]",
+            )}
+          >
             <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
@@ -228,162 +260,198 @@ export const ChatComposerUsageLimits = memo(function ChatComposerUsageLimits({
                 </PopoverClose>
               </div>
 
-              {/* SECTION 1: Context Window (FIRST!) */}
-              <section
-                className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-muted/15"
-                aria-label="Context window"
+              <ToggleGroup
+                aria-label="Panel view"
+                className="w-full *:flex-1"
+                value={[tab]}
+                onValueChange={(next) => {
+                  if (next[0] === "usage" || next[0] === "benchmarks") setTab(next[0]);
+                }}
               >
-                <div className="flex min-w-0 flex-col gap-2 p-2.5">
-                  <div className="flex items-baseline justify-between gap-3 text-xs">
-                    <span className="font-semibold text-foreground">Context window</span>
-                    {contextReported && contextPercent !== null ? (
-                      <span className="tabular-nums font-medium text-foreground">
-                        {contextPercent}%
-                      </span>
-                    ) : null}
-                  </div>
+                <Toggle value="usage">Usage</Toggle>
+                <Toggle value="benchmarks">Benchmarks</Toggle>
+              </ToggleGroup>
 
-                  <UsageBar
-                    usedPercent={contextPercent ?? 0}
-                    label={`Context: ${contextPercent ?? 0}% used`}
-                  />
-
-                  <div className="flex items-center justify-between gap-3 text-2xs tabular-nums text-muted-foreground">
-                    <span>
-                      {figures.state === "reported"
-                        ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"} tokens`
-                        : figures.state === "pending"
-                          ? `Not reported / ${formatTokenCount(figures.maxTokens)} tokens`
-                          : "Not reported yet"}
-                    </span>
-                    {figures.state === "reported" && figures.maxTokens ? (
-                      <span>
-                        {formatTokenCount(Math.max(0, figures.maxTokens - figures.usedTokens))} left
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                {threadId ? (
-                  <button
-                    type="button"
-                    onClick={() => setView("context-breakdown")}
-                    className="group flex cursor-pointer items-center justify-between gap-2 rounded-b-xl border-t border-border/50 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:bg-muted/40 focus-visible:text-foreground focus-visible:outline-none"
-                  >
-                    <span>See what is using context</span>
-                    <ChevronRightIcon
-                      aria-hidden
-                      className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5"
-                    />
-                  </button>
-                ) : null}
-              </section>
-
-              <Separator />
-
-              {/* SECTION 2: Active Account Limits */}
-              <section className="flex min-w-0 flex-col gap-2.5" aria-label="Active account">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <span aria-hidden className="size-1.5 rounded-full bg-success" />
-                    Active account
-                  </span>
-                  {modelLabel ? (
-                    <span className="truncate text-2xs text-muted-foreground">{modelLabel}</span>
-                  ) : null}
-                </div>
-
-                {activeAccounts.length > 0 ? (
-                  activeAccounts.map((account) => (
-                    <ActiveAccount key={account.id} account={account} now={now} />
-                  ))
-                ) : (
-                  <div className="rounded-xl border bg-muted/20 p-3 text-xs text-muted-foreground">
-                    No active subscription account linked to current model provider.
-                  </div>
-                )}
-              </section>
-
-              {/* SECTION 3: Compact Other Accounts (2-3 visible at once) */}
-              {otherAccounts.length > 0 ? (
+              {tab === "benchmarks" ? (
+                <ModelBenchmarksPanel
+                  environmentId={environmentId}
+                  candidates={benchmarkCandidates}
+                  onStartChat={
+                    onStartChat
+                      ? (selection) => {
+                          setOpenedAt(null);
+                          onStartChat(selection);
+                        }
+                      : null
+                  }
+                />
+              ) : (
                 <>
-                  <Separator />
-                  <section className="flex min-w-0 flex-col gap-2" aria-label="Other accounts">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-foreground">Other accounts</span>
-                      <span className="text-2xs text-muted-foreground tabular-nums">
-                        {otherAccounts.length}
-                      </span>
+                  {/* SECTION 1: Context Window (FIRST!) */}
+                  <section
+                    className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-muted/15"
+                    aria-label="Context window"
+                  >
+                    <div className="flex min-w-0 flex-col gap-2 p-2.5">
+                      <div className="flex items-baseline justify-between gap-3 text-xs">
+                        <span className="font-semibold text-foreground">Context window</span>
+                        {contextReported && contextPercent !== null ? (
+                          <span className="tabular-nums font-medium text-foreground">
+                            {contextPercent}%
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <UsageBar
+                        usedPercent={contextPercent ?? 0}
+                        label={`Context: ${contextPercent ?? 0}% used`}
+                      />
+
+                      <div className="flex items-center justify-between gap-3 text-2xs tabular-nums text-muted-foreground">
+                        <span>
+                          {figures.state === "reported"
+                            ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"} tokens`
+                            : figures.state === "pending"
+                              ? `Not reported / ${formatTokenCount(figures.maxTokens)} tokens`
+                              : "Not reported yet"}
+                        </span>
+                        {figures.state === "reported" && figures.maxTokens ? (
+                          <span>
+                            {formatTokenCount(Math.max(0, figures.maxTokens - figures.usedTokens))}{" "}
+                            left
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 text-2xs text-muted-foreground">
-                      <span className="w-9 text-right">Session</span>
-                      <span className="w-9 text-right">Week</span>
-                    </div>
-                    <ul className="flex flex-col gap-2">
-                      {otherAccounts.slice(0, 4).map((account) => (
-                        <OtherAccount key={account.id} account={account} />
-                      ))}
-                    </ul>
-                    {otherAccounts.length > 4 ? (
-                      <Button size="xs" variant="link" onClick={openDetails}>
-                        +{otherAccounts.length - 4} more accounts
-                      </Button>
+                    {threadId ? (
+                      <button
+                        type="button"
+                        onClick={() => setView("context-breakdown")}
+                        className="group flex cursor-pointer items-center justify-between gap-2 rounded-b-xl border-t border-border/50 px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:bg-muted/40 focus-visible:text-foreground focus-visible:outline-none"
+                      >
+                        <span>See what is using context</span>
+                        <ChevronRightIcon
+                          aria-hidden
+                          className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5"
+                        />
+                      </button>
                     ) : null}
                   </section>
+
+                  <Separator />
+
+                  {/* SECTION 2: Active Account Limits */}
+                  <section className="flex min-w-0 flex-col gap-2.5" aria-label="Active account">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <span aria-hidden className="size-1.5 rounded-full bg-success" />
+                        Active account
+                      </span>
+                      {modelLabel ? (
+                        <span className="truncate text-2xs text-muted-foreground">
+                          {modelLabel}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {activeAccounts.length > 0 ? (
+                      activeAccounts.map((account) => (
+                        <ActiveAccount key={account.id} account={account} now={now} />
+                      ))
+                    ) : (
+                      <div className="rounded-xl border bg-muted/20 p-3 text-xs text-muted-foreground">
+                        No active subscription account linked to current model provider.
+                      </div>
+                    )}
+                  </section>
+
+                  {/* SECTION 3: Compact Other Accounts (2-3 visible at once) */}
+                  {otherAccounts.length > 0 ? (
+                    <>
+                      <Separator />
+                      <section className="flex min-w-0 flex-col gap-2" aria-label="Other accounts">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-foreground">
+                            Other accounts
+                          </span>
+                          <span className="text-2xs text-muted-foreground tabular-nums">
+                            {otherAccounts.length}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-end gap-2 text-2xs text-muted-foreground">
+                          <span className="w-9 text-right">Session</span>
+                          <span className="w-9 text-right">Week</span>
+                        </div>
+                        <ul className="flex flex-col gap-2">
+                          {otherAccounts.slice(0, 4).map((account) => (
+                            <OtherAccount key={account.id} account={account} />
+                          ))}
+                        </ul>
+                        {otherAccounts.length > 4 ? (
+                          <Button size="xs" variant="link" onClick={openDetails}>
+                            +{otherAccounts.length - 4} more accounts
+                          </Button>
+                        ) : null}
+                      </section>
+                    </>
+                  ) : null}
+
+                  <Separator />
+
+                  {/* Bottom Actions */}
+                  <div className="flex shrink-0 flex-col gap-2 pb-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={openDetails}>
+                          Usage overview
+                        </Button>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-expanded={chooseIcon}
+                        onClick={() => setChooseIcon((value) => !value)}
+                      >
+                        Change icon
+                      </Button>
+                    </div>
+
+                    {chooseIcon ? (
+                      <div
+                        role="group"
+                        aria-label="Usage button icon"
+                        className="flex items-center gap-2 pt-1"
+                      >
+                        {ICONS.map((option) => (
+                          <Tooltip key={option.id}>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  size="icon-sm"
+                                  variant={option.id === iconId ? "secondary" : "ghost"}
+                                  aria-label={option.label}
+                                  aria-pressed={option.id === iconId}
+                                  onClick={() =>
+                                    void updateSettings({ usageControlIcon: option.id })
+                                  }
+                                />
+                              }
+                            >
+                              <option.Icon aria-hidden />
+                            </TooltipTrigger>
+                            <TooltipPopup side="top">{option.label}</TooltipPopup>
+                          </Tooltip>
+                        ))}
+                        <span className="text-xs text-muted-foreground">
+                          {ICONS.find((option) => option.id === iconId)?.label}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 </>
-              ) : null}
-
-              <Separator />
-
-              {/* Bottom Actions */}
-              <div className="flex shrink-0 flex-col gap-2 pb-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={openDetails}>
-                      Usage overview
-                    </Button>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-expanded={chooseIcon}
-                    onClick={() => setChooseIcon((value) => !value)}
-                  >
-                    Change icon
-                  </Button>
-                </div>
-
-                {chooseIcon ? (
-                  <div
-                    role="group"
-                    aria-label="Usage button icon"
-                    className="flex items-center gap-2 pt-1"
-                  >
-                    {ICONS.map((option) => (
-                      <Tooltip key={option.id}>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              size="icon-sm"
-                              variant={option.id === iconId ? "secondary" : "ghost"}
-                              aria-label={option.label}
-                              aria-pressed={option.id === iconId}
-                              onClick={() => void updateSettings({ usageControlIcon: option.id })}
-                            />
-                          }
-                        >
-                          <option.Icon aria-hidden />
-                        </TooltipTrigger>
-                        <TooltipPopup side="top">{option.label}</TooltipPopup>
-                      </Tooltip>
-                    ))}
-                    <span className="text-xs text-muted-foreground">
-                      {ICONS.find((option) => option.id === iconId)?.label}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
+              )}
             </div>
           </div>
         )}

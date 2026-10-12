@@ -2,6 +2,7 @@ import { OrchestratorMcpFailure, type SavedItemError } from "@t3tools/contracts"
 import { OrchestratorToolkit } from "./tools.ts";
 import * as Effect from "effect/Effect";
 
+import * as ModelBenchmarks from "../../../benchmarks/ModelBenchmarks.ts";
 import { readCaller } from "../../threadAccess.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
@@ -246,6 +247,9 @@ const handlers = {
         const service = yield* OrchestratorMcpService.OrchestratorMcpService;
         return yield* service.interruptThread(scope, input);
       }),
+  ),
+  model_benchmarks: McpToolAccess.reads(({ models }) =>
+    Effect.flatMap(ModelBenchmarks.ModelBenchmarks, (benchmarks) => benchmarks.report(models)),
   ),
 } satisfies McpToolAccess.Handlers<typeof OrchestratorToolkit.tools>;
 

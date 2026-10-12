@@ -414,6 +414,9 @@ export function summarizeT3ToolCalls(
     case "capabilities":
       label = phrase("Checked", "check", `orchestration capabilities ${times}`);
       break;
+    case "model-benchmarks":
+      label = phrase("Compared", "compare", `model benchmarks ${times}`);
+      break;
     case "board-task-list":
       label = phrase("Listed", "list", `board tasks ${times}`);
       break;
