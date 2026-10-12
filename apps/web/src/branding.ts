@@ -25,3 +25,9 @@ export const APP_DISPLAY_NAME =
   injectedDesktopAppBranding?.displayName ??
   formatAppDisplayName({ baseName: APP_BASE_NAME, stageLabel: APP_STAGE_LABEL });
 export const APP_VERSION = import.meta.env.APP_VERSION || "0.0.0";
+/**
+ * What people see as "the version". Equals `APP_VERSION` in installed builds; a dev copy shows the
+ * release it is based on plus newer changes. Keep using `APP_VERSION` for server compatibility
+ * checks, because this label is not a real release number.
+ */
+export const APP_VERSION_LABEL = import.meta.env.LEONIDAS_VERSION_LABEL || APP_VERSION;

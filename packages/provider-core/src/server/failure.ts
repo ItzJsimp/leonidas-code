@@ -50,10 +50,17 @@ function causeMessage(cause: unknown): string | undefined {
           return stringField(cause, "message");
         case "ContextHandoffDeliveryUncertainError":
           return "T3 could not confirm whether conversation history reached the provider. Retry the turn to recover the session.";
-        case "ProviderAdapterTurnStartError":
-          message =
-            "The provider could not start this turn. Retry the turn; if it keeps failing, check the provider setup and server logs.";
+        case "ProviderAdapterTurnStartError": {
+          const innerCause = (cause as Record<string, unknown>).cause;
+          const innerDetail =
+            typeof innerCause === "string"
+              ? innerCause
+              : stringField(innerCause, "message");
+          message = innerDetail
+            ? `The provider could not start this turn: ${innerDetail}. Retry the turn; if it keeps failing, check the provider setup and server logs.`
+            : "The provider could not start this turn. Retry the turn; if it keeps failing, check the provider setup and server logs.";
           break;
+        }
         case "ProviderAdapterEventStreamError":
           message =
             "The provider event stream closed unexpectedly. Retry the turn; if it keeps failing, check the provider and server logs.";

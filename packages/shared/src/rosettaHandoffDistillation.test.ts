@@ -131,6 +131,30 @@ describe("rosettaHandoffDistillation", () => {
     expect(envelope.summaryText).toContain("Continue from the latest assistant state above");
   });
 
+  it("extracts referenced file paths into working set when no file changes exist", () => {
+    const envelope = distillRosettaHandoff({
+      coverage: "Covers run 1.",
+      messages: [
+        message({
+          role: "user",
+          kind: "user_message",
+          text: "Audit dictations in history.jsonl",
+          id: "req",
+        }),
+        message({
+          role: "assistant",
+          kind: "assistant_message",
+          text: "Found dictations in `C:/Users/Jacob/AppData/Scribe/history.jsonl` and `antifragile.md`.",
+          id: "resp",
+        }),
+      ],
+    });
+
+    expect(envelope.summaryText).toContain("## Working set");
+    expect(envelope.summaryText).toContain("Referenced path: C:/Users/Jacob/AppData/Scribe/history.jsonl");
+    expect(envelope.summaryText).toContain("Referenced path: antifragile.md");
+  });
+
   it("estimates tokens from UTF-8 text bytes", () => {
     expect(estimateTokenCount("hello world")).toBe(3);
     expect(estimateTokenCount("")).toBe(0);

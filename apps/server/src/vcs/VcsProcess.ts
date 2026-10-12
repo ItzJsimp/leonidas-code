@@ -57,7 +57,12 @@ export class VcsProcess extends Context.Service<
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
 const OUTPUT_TRUNCATED_MARKER = "\n\n[truncated]";
-const VCS_PROCESS_CONCURRENCY = 8;
+const DEFAULT_VCS_PROCESS_CONCURRENCY = process.platform === "win32" ? 2 : 4;
+const VCS_PROCESS_CONCURRENCY =
+  typeof process.env.T3_VCS_CONCURRENCY === "string" &&
+  Number.parseInt(process.env.T3_VCS_CONCURRENCY, 10) > 0
+    ? Number.parseInt(process.env.T3_VCS_CONCURRENCY, 10)
+    : DEFAULT_VCS_PROCESS_CONCURRENCY;
 const GITHUB_PROCESS_CONCURRENCY = 4;
 
 export const CHECKPOINT_CAPTURE_OPERATION = "GitVcsDriver.checkpoints.captureCheckpoint";
@@ -203,6 +208,9 @@ export const make = Effect.gen(function* () {
   });
 
   const run = Effect.fn("VcsProcess.run")(function* (input: VcsProcessInput) {
+    if (input.command === "gh") {
+      return yield* githubProcesses.withPermits(1)(runUnbounded(input));
+    }
     const bounded = vcsProcesses.withPermits(1)(runUnbounded(input));
     if (
       input.command === "git" &&
@@ -224,7 +232,7 @@ export const make = Effect.gen(function* () {
         }),
       );
     }
-    return yield* input.command === "gh" ? githubProcesses.withPermits(1)(bounded) : bounded;
+    return yield* bounded;
   });
 
   return VcsProcess.of({ run });

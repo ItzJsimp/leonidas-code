@@ -3,15 +3,17 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
+import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "~/components/ui/preview-card";
 
 export function TimelineSystemDivider(props: {
   readonly label: string;
-  readonly detail?: ReactNode | null;
-  readonly tone?: "neutral" | "danger";
-  readonly icon?: LucideIcon;
-  readonly showDetailSeparator?: boolean;
-  readonly actionLabel?: string;
-  readonly onAction?: () => void;
+  readonly detail?: ReactNode | null | undefined;
+  readonly tone?: "neutral" | "danger" | undefined;
+  readonly icon?: LucideIcon | undefined;
+  readonly showDetailSeparator?: boolean | undefined;
+  readonly actionLabel?: string | undefined;
+  readonly onAction?: (() => void) | undefined;
+  readonly previewCard?: ReactNode | undefined;
 }) {
   const Icon = props.icon;
   const content = (
@@ -40,7 +42,35 @@ export function TimelineSystemDivider(props: {
       )}
     >
       <span aria-hidden="true" className="h-px flex-1 bg-border/70" />
-      {props.onAction ? (
+      {props.previewCard ? (
+        <PreviewCard>
+          <PreviewCardTrigger
+            delay={200}
+            closeDelay={150}
+            render={
+              <button
+                type="button"
+                aria-label={props.actionLabel ?? props.label}
+                onClick={props.onAction}
+                className={cn(
+                  "flex min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 bg-background px-2.5 py-1 transition-colors hover:bg-accent/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70",
+                  props.tone === "danger" && "border-destructive/40 text-destructive",
+                )}
+              />
+            }
+          >
+            {content}
+          </PreviewCardTrigger>
+          <PreviewCardPopup
+            align="center"
+            side="top"
+            sideOffset={8}
+            className="w-[34rem] max-w-[calc(100vw-2rem)] p-3 shadow-xl"
+          >
+            {props.previewCard}
+          </PreviewCardPopup>
+        </PreviewCard>
+      ) : props.onAction ? (
         <Tooltip>
           <TooltipTrigger
             render={

@@ -36,6 +36,7 @@ function validate(prompt: string | null, draft: string): string | null {
   const suffix = prompt.slice(draft.length);
   if (!suffix || suffix.length > 280 || /[\r\n]|\.{3}|\u2026|\b(?:TBD|TODO)\b/i.test(suffix))
     return null;
+  if ([...suffix.matchAll(/[.!?](?:\s|$)/g)].length > 2) return null;
   // The draft belongs to the user; inspect only the generated suffix.
   if (
     /\b(?:i(?:'ve| have)\s+(?:ran|tested|verified|checked|clicked|pressed|confirmed)|tests?\s+(?:passed|failed))\b/i.test(
@@ -54,14 +55,14 @@ export function make(
   const fetcher = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
   const cache = new Map<string, string>();
-  const sessions = new Map<string, { controller: AbortController; lastCloud: number }>();
+  const sessions = new Map<string, AbortController>();
   const lastCloud = new Map<string, number>();
   let cloudActive = false;
   let cooldownUntil = 0;
   let windowStart = now();
   let cloudCount = 0;
   const cancelSession = (id: string) => {
-    sessions.get(id)?.controller.abort();
+    sessions.get(id)?.abort();
     sessions.delete(id);
   };
 
@@ -123,7 +124,10 @@ export function make(
           const abort = () => controller.abort();
           callerSignal.addEventListener("abort", abort, { once: true });
           const timeout = setTimeout(abort, mode === "cloud" ? 5_000 : 3_000);
-          if (raw.sessionId) sessions.set(raw.sessionId, { controller, lastCloud: now() });
+          if (raw.sessionId) {
+            if (sessions.size >= 64) cancelSession(sessions.keys().next().value!);
+            sessions.set(raw.sessionId, controller);
+          }
           let failed = false;
           try {
             let prompt: string | null;
@@ -152,7 +156,7 @@ export function make(
                   }),
                 }),
               });
-              if (!response.ok) throw "Local model request failed";
+              if (!response.ok) return { prompt: null };
               const output = (await response.json()) as { response?: string };
               prompt = JSON.parse(output.response ?? "null")?.prompt ?? null;
             } else {
@@ -182,7 +186,7 @@ export function make(
           } finally {
             clearTimeout(timeout);
             callerSignal.removeEventListener("abort", abort);
-            if (raw.sessionId && sessions.get(raw.sessionId)?.controller === controller)
+            if (raw.sessionId && sessions.get(raw.sessionId) === controller)
               sessions.delete(raw.sessionId);
             if (mode === "cloud") {
               cloudActive = false;
