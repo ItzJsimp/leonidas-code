@@ -2,9 +2,21 @@ import type { ConfirmDialogOptions, ContextMenuItem, LocalApi } from "@t3tools/c
 
 import { requestConfirmDialog } from "./confirmDialog";
 import { dismissContextMenu, showContextMenuFallback } from "./contextMenuFallback";
+import { isMacPlatform } from "./lib/utils";
 import { readBrowserClientSettings, writeBrowserClientSettings } from "./clientPersistenceStorage";
 
 let cachedApi: LocalApi | undefined;
+
+// Only macOS gets the native menu. Windows and Linux native menus are plain
+// text with no icons or theme, so the desktop app uses the styled in-app menu
+// there, the same one the browser build shows.
+function usesNativeContextMenu(): boolean {
+  return (
+    window.desktopBridge !== undefined &&
+    typeof navigator !== "undefined" &&
+    isMacPlatform(navigator.platform)
+  );
+}
 
 function createBrowserLocalApi(): LocalApi {
   return {
@@ -46,8 +58,8 @@ function createBrowserLocalApi(): LocalApi {
         items: readonly ContextMenuItem<T>[],
         position?: { x: number; y: number },
       ): Promise<T | null> => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.showContextMenu(items, position) as Promise<T | null>;
+        if (usesNativeContextMenu()) {
+          return window.desktopBridge!.showContextMenu(items, position) as Promise<T | null>;
         }
         return showContextMenuFallback(items, position);
       },
@@ -55,7 +67,7 @@ function createBrowserLocalApi(): LocalApi {
       // interaction, so nothing to do there; the DOM fallback needs an explicit
       // dismiss when the state behind it goes away.
       close: async () => {
-        if (!window.desktopBridge) {
+        if (!usesNativeContextMenu()) {
           dismissContextMenu();
         }
       },

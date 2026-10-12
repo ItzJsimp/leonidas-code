@@ -66,6 +66,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -126,6 +127,7 @@ describe("LocalApi", () => {
     const pickFolder = vi.fn().mockResolvedValue("/tmp/project");
     const getClientSettings = vi.fn().mockResolvedValue(DEFAULT_CLIENT_SETTINGS);
     const setClientSettings = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
     testWindow().desktopBridge = {
       showContextMenu,
       pickFolder,
@@ -148,6 +150,20 @@ describe("LocalApi", () => {
     expect(pickFolder).toHaveBeenCalledWith({ initialPath: "/tmp" });
     expect(getClientSettings).toHaveBeenCalledTimes(1);
     expect(setClientSettings).toHaveBeenCalledWith(DEFAULT_CLIENT_SETTINGS);
+  });
+
+  it("shows the styled in-app context menu on Windows desktop instead of the native one", async () => {
+    const showContextMenu = vi.fn();
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    testWindow().desktopBridge = { showContextMenu } as unknown as DesktopBridge;
+    showContextMenuFallbackMock.mockResolvedValue("rename");
+    const { createLocalApi } = await import("./localApi");
+    const items = [{ id: "rename", label: "Rename" }] as const;
+
+    await expect(createLocalApi().contextMenu.show(items)).resolves.toBe("rename");
+    expect(showContextMenu).not.toHaveBeenCalled();
+    await createLocalApi().contextMenu.close();
+    expect(dismissContextMenuMock).toHaveBeenCalledOnce();
   });
 
   it("persists client settings in browser storage", async () => {
