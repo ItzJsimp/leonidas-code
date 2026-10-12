@@ -9,6 +9,7 @@ vi.mock("react", async (original) => {
   return {
     ...actual,
     useState: reactHookHarness.useState,
+    useRef: reactHookHarness.useRef,
     useEffect: (effect: () => (() => void) | undefined) => effects.push(effect),
     useEffectEvent: <T>(callback: T) => callback,
   };
@@ -18,7 +19,8 @@ vi.mock("react/compiler-runtime", async () => {
   return { c: reactHookHarness.useMemoCache };
 });
 const check = vi.fn<() => Promise<{ screen: boolean; accessibility: boolean }>>();
-let cleanup: (() => void) | undefined;
+let cleanups: Array<(() => void) | undefined> = [];
+const cleanup = () => cleanups.forEach((fn) => fn?.());
 let page: EventTarget & { visibilityState: string };
 const render = () => {
   hooks.beginRender();
@@ -27,6 +29,7 @@ const render = () => {
 beforeEach(() => {
   hooks.reset();
   effects.length = 0;
+  cleanups = [];
   vi.useFakeTimers();
   page = Object.assign(new EventTarget(), { visibilityState: "visible" });
   vi.stubGlobal("document", page);
@@ -34,13 +37,13 @@ beforeEach(() => {
   check.mockReset().mockResolvedValue({ screen: false, accessibility: false });
 });
 afterEach(() => {
-  cleanup?.();
+  cleanup();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 const start = async () => {
   render();
-  cleanup = effects[0]!();
+  cleanups = effects.map((effect) => effect());
   await Promise.resolve();
 };
 
@@ -71,7 +74,7 @@ it("does not overlap checks and discards completion after closing", async () => 
   await vi.advanceTimersByTimeAsync(4500);
   window.dispatchEvent(new Event("focus"));
   expect(check).toHaveBeenCalledTimes(1);
-  cleanup?.();
+  cleanup();
   pending.resolve({ screen: true, accessibility: true });
   await pending.promise;
   expect(render().isReady(["screen"])).toBe(false);

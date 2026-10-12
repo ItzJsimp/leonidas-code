@@ -88,6 +88,8 @@ describe("prompt prediction lifecycle", () => {
       value: [{ text: "Run the tests", count: 2, lastSeen: 1 }],
     });
     await act(async () => {
+      // Focus refreshes are throttled to the live-refresh minimum interval.
+      await vi.advanceTimersByTimeAsync(10_000);
       window.dispatchEvent(new Event("focus"));
     });
     await render({ draft: "Run", messages: [{ role: "assistant", text: "The tests are ready." }] });

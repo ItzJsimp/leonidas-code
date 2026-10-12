@@ -16,6 +16,7 @@ import { connectionAtomRuntime } from "../../connection/runtime";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useAtomQueryRunner } from "../../state/use-atom-query-runner";
 import { randomUUID } from "../../lib/utils";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 
 const EMPTY_CANDIDATES: readonly PromptCandidate[] = [];
 const query = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
@@ -93,6 +94,9 @@ export function usePromptPrediction(
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
   const run = useAtomQueryRunner(query, { reportFailure: false, refresh: true });
+  // Focus and idle-interval reads follow the shared live-refresh policy (minimum gap, idle stop).
+  const refreshHistory = useRef<(() => void) | null>(null);
+  useLiveRefresh(() => refreshHistory.current?.(), { enabled: Boolean(cwd) && visible });
   useEffect(() => {
     if (!cwd || !visible) return;
     let active = true;
@@ -114,13 +118,11 @@ export function usePromptPrediction(
         pending = false;
       }
     };
+    refreshHistory.current = () => void refresh();
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 30_000);
-    window.addEventListener("focus", refresh);
     return () => {
       active = false;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
+      refreshHistory.current = null;
     };
   }, [cwd, environmentId, run, visible]);
 
