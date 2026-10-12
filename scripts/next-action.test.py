@@ -98,6 +98,89 @@ class TaskDiscoveryTests(unittest.TestCase):
         self.assertFalse((self.workspace / "tasks").exists())
         self.assertFalse((self.workspace / ".agents/next-action.json").exists())
 
+    def test_detect_project_context_standalone_leonidas_code(self):
+        standalone = self.root / "standalone-code"
+        standalone.mkdir()
+        (standalone / "leonidas-release.json").write_text('{"stage": "development"}')
+        detected = resolver.detect_project_context(standalone)
+        self.assertEqual(detected, "leonidas-code")
+
+    def test_rank_tasks_filters_and_scores_for_user_and_energy(self):
+        folder = self.tasks(self.workspace)
+        task1 = folder / "task-mob-win.md"
+        task1.write_text("""---
+name: "Quick win for Mob"
+priority: "High"
+energy_type: "Quick Win"
+effort: "Low"
+lane: "mob"
+status: "Ready"
+---
+## Why
+Essential quick polish.
+""")
+        task2 = folder / "task-jake-deep.md"
+        task2.write_text("""---
+name: "Deep Architecture for Jake"
+priority: "High"
+energy_type: "Deep Work"
+effort: "High"
+lane: "jake"
+status: "Ready"
+---
+## Why
+Large architectural redesign.
+""")
+        result_mob = resolver.resolve(self.workspace, rank=True, user="mob", energy="low")
+        self.assertTrue(len(result_mob["tasks"]) >= 1)
+        self.assertEqual(result_mob["tasks"][0]["name"], "Quick win for Mob")
+        self.assertEqual(result_mob["tasks"][0]["route"]["route"], "in-chat")
+
+        result_jake = resolver.resolve(self.workspace, rank=True, user="jake", energy="high")
+        self.assertTrue(len(result_jake["tasks"]) >= 1)
+        self.assertEqual(result_jake["tasks"][0]["name"], "Deep Architecture for Jake")
+        self.assertEqual(result_jake["tasks"][0]["route"]["route"], "prompt-composer")
+
+    def test_project_without_matches_never_returns_other_backlog(self):
+        folder = self.tasks(self.workspace)
+        (folder / "other.md").write_text('---\nname: Other\nproject: another\nstatus: Ready\n---\n')
+        result = resolver.resolve(self.workspace, rank=True, project="leonidas-code", save=False)
+        self.assertEqual(result["tasks"], [])
+
+    def test_standalone_untagged_task_is_local_but_conflicting_tag_is_not(self):
+        folder = self.tasks(self.workspace)
+        (self.workspace / "leonidas-release.json").write_text('{}')
+        (folder / "local.md").write_text('---\nname: Local\nstatus: Ready\n---\n')
+        (folder / "leonidas-code-other.md").write_text('---\nname: Other\nproject: another\nstatus: Ready\n---\n')
+        result = resolver.resolve(self.workspace, rank=True, save=False)
+        self.assertEqual([t["name"] for t in result["tasks"]], ["Local"])
+
+    def test_blocked_unknown_and_other_owner_are_excluded(self):
+        folder = self.tasks(self.workspace)
+        for name, fields in {"blocked": "status: Blocked", "unknown": "", "jake": "status: Ready\nlane: jake"}.items():
+            (folder / (name + ".md")).write_text('---\nname: ' + name + '\n' + fields + '\n---\n')
+        result = resolver.resolve(self.workspace, rank=True, user="mob", save=False)
+        self.assertEqual(result["tasks"], [])
+
+    def test_autonomous_title_does_not_prove_delegation_readiness(self):
+        task = {"name": "Verify settings parity", "effort": "Low", "energy_type": "Quick Win", "autonomous": True}
+        self.assertEqual(resolver.assign_execution_route(task)["route"], "in-chat")
+
+    def test_draft_prompt_composer_format(self):
+        task = {
+            "name": "Implement Widget",
+            "why": "Provide better user feedback",
+            "start_here": "src/widget.ts",
+            "done_when": "- [ ] Widget renders correctly",
+            "path": "tasks/widget.md"
+        }
+        prompt = resolver.draft_prompt_composer(task, "leonidas-code")
+        self.assertIn("<task>", prompt)
+        self.assertIn("Implement Widget", prompt)
+        self.assertIn("<context>", prompt)
+        self.assertIn("<rules>", prompt)
+        self.assertIn("<verification>", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()
