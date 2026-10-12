@@ -211,7 +211,13 @@ export function DesktopUpdateCoordinator() {
     runningCount,
     downloadedVersion !== null && (updateWhenSafe || autoUpdateWhenSafe),
   );
+  const setDraining = useUpdateWhenSafeStore((store) => store.setDraining);
+  useEffect(() => {
+    setDraining(whenSafeAction === "wait");
+    return () => setDraining(false);
+  }, [whenSafeAction, setDraining]);
   const installingVersionRef = useRef<string | null>(null);
+  const waitToastedVersionRef = useRef<string | null>(null);
   useEffect(() => {
     if (whenSafeAction === "install") {
       if (installingVersionRef.current === downloadedVersion) return;
@@ -221,6 +227,9 @@ export function DesktopUpdateCoordinator() {
       return;
     }
     if (whenSafeAction !== "wait") return;
+    // The periodic update check flips the state off and on "downloaded"; announce once per version.
+    if (waitToastedVersionRef.current === downloadedVersion) return;
+    waitToastedVersionRef.current = downloadedVersion;
     const toastId = showDesktopUpdateWaitingToast(
       () => {
         setUpdateWhenSafe(false);

@@ -92,12 +92,15 @@ export function showDesktopUpdateDownloadedToast(
   });
 }
 
-/** Shown while "Update when safe" waits on running agents; returns the id so the caller can close it. */
+/**
+ * Shown once while "Update when safe" waits on running agents; returns the id so the caller can
+ * close it. It auto-dismisses because the sidebar update pill carries the lasting waiting state.
+ */
 export function showDesktopUpdateWaitingToast(onCancel: () => void, cancelLabel = "Cancel") {
   return toastManager.add({
     type: "info",
     title: UPDATE_WHEN_SAFE_WAITING_LABEL,
-    timeout: 0,
+    timeout: 6000,
     actionProps: { children: cancelLabel, onClick: onCancel },
   });
 }

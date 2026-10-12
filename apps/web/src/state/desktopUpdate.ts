@@ -89,11 +89,16 @@ export const useUpdateWhenSafeStore = create<{
   readonly setUpdateWhenSafe: (updateWhenSafe: boolean) => void;
   readonly autoUpdateWhenSafe: boolean;
   readonly setAutoUpdateWhenSafe: (enabled: boolean) => void;
+  /** True while a downloaded update waits for running agents; new sends are held so they can finish. */
+  readonly draining: boolean;
+  readonly setDraining: (draining: boolean) => void;
 }>()(
   persist(
     (set) => ({
       updateWhenSafe: false,
       setUpdateWhenSafe: (updateWhenSafe) => set({ updateWhenSafe }),
+      draining: false,
+      setDraining: (draining) => set({ draining }),
       autoUpdateWhenSafe: false,
       setAutoUpdateWhenSafe: (autoUpdateWhenSafe) => set({ autoUpdateWhenSafe }),
     }),

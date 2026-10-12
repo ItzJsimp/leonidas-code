@@ -318,6 +318,7 @@ import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 import { useSplitPane } from "./split/splitPaneContext";
 import { stackedThreadToast, toastManager } from "./ui/toast";
+import { useUpdateWhenSafeStore } from "../state/desktopUpdate";
 import {
   decodeProjectScriptKeybindingRule,
   keybindingValueForCommand,
@@ -9040,6 +9041,25 @@ export default function ChatView(props: ChatViewProps) {
       feedbackUploadsInFlightRef.current.has(routeThreadKey)
     ) {
       notifyDirectAnnotationAttached();
+      return;
+    }
+    // Draining for an update: the draft stays in the composer and sends after the restart.
+    if (useUpdateWhenSafeStore.getState().draining) {
+      toastManager.add({
+        type: "info",
+        title: "Update installing soon",
+        description:
+          "Running agents are finishing first. Your message stays as a draft; send it after the restart.",
+        timeout: 8000,
+        actionProps: {
+          children: "Cancel update",
+          onClick: () => {
+            const store = useUpdateWhenSafeStore.getState();
+            store.setUpdateWhenSafe(false);
+            store.setAutoUpdateWhenSafe(false);
+          },
+        },
+      });
       return;
     }
     if (needsLoadBalancing) {
