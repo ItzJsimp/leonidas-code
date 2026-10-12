@@ -321,7 +321,9 @@ import {
 } from "lucide-react";
 import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
+import { useSplitPane } from "./split/splitPaneContext";
 import { stackedThreadToast, toastManager } from "./ui/toast";
+import { useUpdateWhenSafeStore } from "../state/desktopUpdate";
 import {
   decodeProjectScriptKeybindingRule,
   keybindingValueForCommand,
@@ -1621,6 +1623,10 @@ export default function ChatView(props: ChatViewProps) {
     [environmentId, threadId],
   );
   const routeThreadKey = useMemo(() => scopedThreadKey(routeThreadRef), [routeThreadRef]);
+  // In a split workspace every pane is mounted, but window-level shortcuts and
+  // paste belong to the focused pane only.
+  const paneActiveRef = useRef(true);
+  paneActiveRef.current = useSplitPane().active;
   const currentRouteThreadKeyRef = useRef<string | null>(routeThreadKey);
   useLayoutEffect(() => {
     currentRouteThreadKeyRef.current = routeThreadKey;
@@ -8346,7 +8352,7 @@ export default function ChatView(props: ChatViewProps) {
         event.stopPropagation();
         return;
       }
-      if (!activeThreadId || isCommandPaletteOpen()) {
+      if (!paneActiveRef.current || !activeThreadId || isCommandPaletteOpen()) {
         return;
       }
       const terminalFocusOwner = getTerminalFocusOwner();
@@ -8707,6 +8713,7 @@ export default function ChatView(props: ChatViewProps) {
   // A focused desktop browser page forwards these chords as menu actions.
   useEffect(() => {
     return window.desktopBridge?.onMenuAction((action) => {
+      if (!paneActiveRef.current) return;
       if (action === "rightPanel.toggle") toggleRightPanel();
       else if (action === "rightPanel.toggleMaximized") toggleRightPanelMaximized();
     });
@@ -8725,7 +8732,7 @@ export default function ChatView(props: ChatViewProps) {
       }
     };
     const handler = (event: ClipboardEvent) => {
-      if (!activeThreadId || isCommandPaletteOpen()) return;
+      if (!paneActiveRef.current || !activeThreadId || isCommandPaletteOpen()) return;
       if (getTerminalFocusOwner() !== null) return;
       if (composerRef.current?.isModelPickerOpen()) return;
       const text = pasteTextToFocusComposer(event);
@@ -9178,6 +9185,25 @@ export default function ChatView(props: ChatViewProps) {
       feedbackUploadsInFlightRef.current.has(routeThreadKey)
     ) {
       notifyDirectAnnotationAttached();
+      return;
+    }
+    // Draining for an update: the draft stays in the composer and sends after the restart.
+    if (useUpdateWhenSafeStore.getState().draining) {
+      toastManager.add({
+        type: "info",
+        title: "Update installing soon",
+        description:
+          "Running agents are finishing first. Your message stays as a draft; send it after the restart.",
+        timeout: 8000,
+        actionProps: {
+          children: "Cancel update",
+          onClick: () => {
+            const store = useUpdateWhenSafeStore.getState();
+            store.setUpdateWhenSafe(false);
+            store.setAutoUpdateWhenSafe(false);
+          },
+        },
+      });
       return;
     }
     if (needsLoadBalancing) {
@@ -11604,6 +11630,7 @@ export default function ChatView(props: ChatViewProps) {
     <PanelLayoutControls
       {...panelToggleControlProps}
       showThreadPanelControl={!inlineRightPanelOwnsTitleBar}
+      showSplitLayoutControl
     />
   );
   const threadPanelHeaderControl = (

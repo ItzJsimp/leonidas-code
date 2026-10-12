@@ -174,6 +174,7 @@ export function makeAntigravityAcpAdapterFlavor(
     // Loading history replays every tool call; resume restores the session
     // without the replay and is what the official client does.
     preferResumeSession: true,
+    connectionLostText: /^Agent connection was lost and could not be re-established/,
     subagentsIdleOnTurnCompletion: true,
     ...(options.onSessionEvent === undefined ? {} : { onSessionEvent: options.onSessionEvent }),
     applyModelSelection: ({ runtime, modelSelection }) =>

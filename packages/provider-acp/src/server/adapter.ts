@@ -218,6 +218,8 @@ export interface AcpAdapterV2ExtensionContext {
 export interface AcpAdapterV2Flavor {
   /** Interprets provider-specific prompt errors before they cross into orchestration. */
   readonly promptFailure?: (cause: unknown) => OrchestrationV2ProviderFailure;
+  /** Assistant text the agent emits when its own connection died; the next turn restarts the runtime. */
+  readonly connectionLostText?: RegExp;
   readonly driver: ProviderDriverKind;
   readonly capabilities: OrchestrationV2ProviderCapabilities;
   readonly clientCapabilitiesMeta?: NonNullable<
@@ -4596,6 +4598,11 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             case "agent_message_chunk": {
               const text = acpContentBlockDisplayText(update.content);
               if (text !== undefined) {
+                // The agent drops its session when it cannot rebuild a lost
+                // connection, so the next turn must respawn and resume it.
+                if (flavor.connectionLostText?.test(text) === true) {
+                  yield* Ref.set(runtimeRestartRequired, true);
+                }
                 const startsNewAssistantSegment = context.assistant.current === null;
                 // The injected-turn report is streaming; the normal debounce
                 // after the last chunk takes over from here. Drop matching

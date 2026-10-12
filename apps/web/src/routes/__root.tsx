@@ -28,6 +28,7 @@ import { SshPasswordPromptDialog } from "../components/desktop/SshPasswordPrompt
 import { SnapShotCoordinator } from "../components/desktop/SnapShotCoordinator";
 import { DesktopAppActivationCoordinator } from "../components/desktop/DesktopAppActivationCoordinator";
 import { DesktopUpdateCoordinator } from "../components/desktop/DesktopUpdateCoordinator";
+import { FeatureTourSpotlight } from "../features/tour/FeatureTourSpotlight";
 import { LeonidasMobNotificationNotice } from "../components/desktop/LeonidasMobNotificationNotice";
 import { DesktopWebLinkCoordinator } from "../components/desktop/DesktopWebLinkCoordinator";
 import { RunningThreadKeepAlive } from "../components/desktop/RunningThreadKeepAlive";
@@ -234,6 +235,7 @@ function RootRouteView() {
           {primaryEnvironmentAuthenticated ? <DesktopWebLinkCoordinator /> : null}
           {isElectron ? <RunningThreadKeepAlive /> : null}
           {isElectron ? <DesktopUpdateCoordinator /> : null}
+          <FeatureTourSpotlight />
           <RelayClientInstallDialog />
           <ConnectOnboardingDialog />
           <SshPasswordPromptDialog />

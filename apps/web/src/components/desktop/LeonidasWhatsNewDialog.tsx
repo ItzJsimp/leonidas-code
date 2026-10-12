@@ -1,5 +1,6 @@
 import { SparklesIcon } from "lucide-react";
 
+import { splitTourMarker, type TourTargetId } from "../../features/tour/tourTargets";
 import { Button } from "../ui/button";
 import { ReleaseHistoryButton } from "./ReleaseHistoryButton";
 import {
@@ -15,7 +16,7 @@ import {
 export interface WhatsNewDialogProps {
   readonly version: string | null;
   readonly items: ReadonlyArray<string>;
-  readonly onShowMe: (item: string) => void;
+  readonly onShowMe: (item: string, tourId: TourTargetId | null) => void;
   /** Omit both actions for a preview: the footer is then just Close. */
   readonly onRestartNow?: (() => void) | undefined;
   readonly onUpdateWhenSafe?: (() => void) | undefined;
@@ -43,25 +44,34 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
         </DialogHeader>
         <DialogPanel className="max-h-[55dvh] overflow-y-auto [scrollbar-width:thin]">
           <ul className="space-y-3 text-sm leading-relaxed">
-            {items.map((item, index) => (
-              <li key={`${index}-${item}`} className="relative break-words ps-4">
-                <span
-                  aria-hidden
-                  className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
-                />
-                <p>{item}</p>
-                <div className="-ms-1 mt-1">
-                  <Button
-                    size="xs"
-                    variant="link"
-                    aria-label={`Walk me through: ${item}`}
-                    onClick={() => onShowMe(item)}
-                  >
-                    {onRestartNow ? "Restart and try" : "Walk me through it"}
-                  </Button>
-                </div>
-              </li>
-            ))}
+            {items.map((rawItem, index) => {
+              const { text: item, targetId } = splitTourMarker(rawItem);
+              return (
+                <li key={`${index}-${item}`} className="relative break-words ps-4">
+                  <span
+                    aria-hidden
+                    className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
+                  />
+                  <p>{item}</p>
+                  <div className="-ms-1 mt-1">
+                    <Button
+                      size="xs"
+                      variant="link"
+                      aria-label={`${targetId ? "Show me where" : "Walk me through"}: ${item}`}
+                      onClick={() => onShowMe(item, targetId)}
+                    >
+                      {targetId
+                        ? onRestartNow
+                          ? "Restart and show me where"
+                          : "Show me where"
+                        : onRestartNow
+                          ? "Restart and try"
+                          : "Walk me through it"}
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </DialogPanel>
         <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between">

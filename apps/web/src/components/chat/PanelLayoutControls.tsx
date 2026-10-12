@@ -12,11 +12,14 @@ import type { ThreadPanelPresentation } from "../../rightPanelLayout";
 import { PopoverCreateHandle, PopoverTrigger } from "../ui/popover";
 import { Toggle } from "../ui/toggle";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { SplitLayoutMenu } from "../split/SplitLayoutMenu";
 
 export interface PanelLayoutControlsProps {
   showThreadPanelControl?: boolean;
   showTerminalControl?: boolean;
   showRightPanelControl?: boolean;
+  /** Split and layout menu; chat panes only. */
+  showSplitLayoutControl?: boolean;
   terminalAvailable: boolean;
   terminalOpen: boolean;
   terminalShortcutLabel: string | null;
@@ -40,6 +43,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
   showThreadPanelControl = true,
   showTerminalControl = true,
   showRightPanelControl = true,
+  showSplitLayoutControl = false,
   terminalAvailable,
   terminalOpen,
   terminalShortcutLabel,
@@ -86,6 +90,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
       className="flex h-full shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
       data-panel-layout-controls
     >
+      {showSplitLayoutControl ? <SplitLayoutMenu /> : null}
       {onToggleUsageOverlay ? (
         <Tooltip>
           <TooltipTrigger render={<span className="flex shrink-0" />}>

@@ -130,6 +130,7 @@ import {
   usePromptStashStore,
   type PromptStashEntry,
 } from "../../promptStashStore";
+import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
 import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerStashMenu } from "./ComposerStashMenu";
 import { useComposerMenuState } from "./useComposerMenuState";
@@ -7028,6 +7029,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             pulseKey={stashPulse.key}
             pulsing={stashPulse.active}
             onToggleMenu={toggleStashMenu}
+          />
+        ) : null}
+        {!isComposerApprovalState && prompt.trim().length === 0 ? (
+          <ComposerNextActionBadge
+            alignRight={stashQueue.length === 0}
+            onFill={() => setPrompt(NEXT_ACTION_PROMPT)}
           />
         ) : null}
       </ComposerBanner.Dock>
