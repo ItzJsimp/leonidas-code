@@ -175,7 +175,9 @@ export function insertRankedSearchResult<T>(
   candidate: RankedSearchResult<T>,
   limit: number,
 ): void {
-  if (!Number.isSafeInteger(limit) || limit <= 0) {
+  // Positive infinity is a valid "no limit" (callers pass it explicitly); everything
+  // else non-finite, non-integer, or non-positive would break the insert/pop math below.
+  if (limit !== Number.POSITIVE_INFINITY && (!Number.isSafeInteger(limit) || limit <= 0)) {
     return;
   }
 
