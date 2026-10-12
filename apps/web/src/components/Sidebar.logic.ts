@@ -975,6 +975,23 @@ export function shouldRecedeSidebarThread(input: {
   return false;
 }
 
+/** Statuses that stall until a person acts: answer, approve, or recover. */
+export function sidebarThreadNeedsUser(status: SidebarThreadStatus): boolean {
+  return status === "approval" || status === "input" || status === "failed" || status === "limited";
+}
+
+/** Lifts threads that need the user above the rest, keeping each group's order. */
+export function floatThreadsNeedingUser<T extends SidebarThreadStatusInput>(
+  threads: readonly T[],
+): T[] {
+  const needsUser: T[] = [];
+  const rest: T[] = [];
+  for (const thread of threads) {
+    (sidebarThreadNeedsUser(resolveSidebarThreadStatus(thread)) ? needsUser : rest).push(thread);
+  }
+  return needsUser.length === 0 ? [...threads] : [...needsUser, ...rest];
+}
+
 type SidebarThreadStatusInput = Pick<
   SidebarThreadSummary,
   "hasPendingApprovals" | "hasPendingUserInput" | "runtime"
