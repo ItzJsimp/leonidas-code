@@ -7,6 +7,7 @@
  *
  * @module provider/claudeResetCredits
  */
+import type { SDKControlGetUsageResponse } from "@anthropic-ai/claude-agent-sdk";
 import type {
   ProviderConsumeResetCreditOutcome,
   ServerProviderResetCredits,
@@ -19,6 +20,11 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
+
+type ClaudeUsageResponse = Pick<
+  SDKControlGetUsageResponse,
+  "rate_limits_available" | "rate_limits"
+>;
 
 const API_BASE = "https://api.anthropic.com";
 const PROGRAM = "cedar_ember";
@@ -183,6 +189,33 @@ export const readClaudeResetCredits = Effect.fn("readClaudeResetCredits")(
       body.cedar_ember,
       DateTime.toEpochMillis(yield* DateTime.now),
     );
+  },
+  Effect.timeout("10 seconds"),
+  Effect.orElseSucceed(() => undefined),
+);
+
+/**
+ * The subscription windows straight from the usage endpoint the CLI itself
+ * reads, for a login whose SDK `get_usage` came back empty (rate limited, or
+ * no message sent yet in this session). Same shape as the SDK's `rate_limits`.
+ * Any failure reads as "unknown" and the caller keeps its own answer.
+ */
+export const readClaudeOauthUsage = Effect.fn("readClaudeOauthUsage")(
+  function* (configDir: string, version: string) {
+    const token = yield* readAccessToken(configDir);
+    if (!token) return undefined;
+    const client = yield* HttpClient.HttpClient;
+    const response = yield* client.execute(
+      HttpClientRequest.get(`${API_BASE}/api/oauth/usage`, {
+        urlParams: { skip_spend: "1" },
+      }).pipe(withClaudeHeaders(token, version)),
+    );
+    const body = yield* HttpClientResponse.schemaBodyJson(Schema.Unknown)(
+      yield* HttpClientResponse.filterStatusOk(response),
+    );
+    return typeof body === "object" && body !== null
+      ? ({ rate_limits_available: true, rate_limits: body } as ClaudeUsageResponse)
+      : undefined;
   },
   Effect.timeout("10 seconds"),
   Effect.orElseSucceed(() => undefined),

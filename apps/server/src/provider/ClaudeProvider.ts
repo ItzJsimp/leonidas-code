@@ -505,6 +505,8 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
   scopedLimitNames?: Ref.Ref<ClaudeScopedLimitNames>,
   /** Banked resets for a subscription login, given the CLI version for the user agent. */
   resolveResetCredits?: (version: string) => Effect.Effect<ServerProviderResetCredits | undefined>,
+  /** Reads the usage endpoint directly when the SDK's `get_usage` returned no windows. */
+  resolveDirectUsage?: (version: string) => Effect.Effect<ClaudeCapabilitiesProbe["usage"]>,
 ): Effect.fn.Return<
   ServerProviderDraft,
   never,
@@ -666,13 +668,20 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
       : capabilities.apiProvider !== undefined && capabilities.apiProvider !== "firstParty"
         ? `Claude subscription limits are not available for ${authMetadata?.label ?? "this backend"}.`
         : undefined;
+  // The capabilities probe is cached for minutes, so its usage numbers lag the account.
+  // The direct read is one cheap request per check, so it goes first and the cached SDK
+  // reading is the fallback when the endpoint is unreachable or rate limited.
+  const usage =
+    !unsupportedUsageMessage && resolveDirectUsage && parsedVersion
+      ? ((yield* resolveDirectUsage(parsedVersion)) ?? capabilities.usage)
+      : capabilities.usage;
   const usageLimits = unsupportedUsageMessage
     ? makeUnavailableUsageLimits({
         checkedAt,
         reason: "unsupported",
         message: unsupportedUsageMessage,
       })
-    : !capabilities.usage
+    : !usage
       ? makeUnavailableUsageLimits({
           checkedAt,
           reason: "probeFailed",
@@ -681,10 +690,10 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         })
       : scopedLimitNames
         ? yield* recordClaudeUsageResponse(scopedLimitNames, {
-            response: capabilities.usage,
+            response: usage,
             checkedAt,
           })
-        : claudeUsageResponseToLimits({ response: capabilities.usage, checkedAt }).limits;
+        : claudeUsageResponseToLimits({ response: usage, checkedAt }).limits;
   const resetCredits =
     resolveResetCredits &&
     capabilities.subscriptionType &&

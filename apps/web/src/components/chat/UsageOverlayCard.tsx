@@ -178,7 +178,16 @@ export function OtherAccount({ account }: { readonly account: Account }) {
       />
       <span className="min-w-0 flex-1 truncate text-xs">{title}</span>
       {notice || rows.length === 0 ? (
-        <span className="shrink-0 text-2xs text-muted-foreground">{notice ? "n/a" : "…"}</span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span className="shrink-0 text-2xs text-muted-foreground">
+                {notice ? "n/a" : "…"}
+              </span>
+            }
+          />
+          {notice ? <TooltipPopup>{notice}</TooltipPopup> : null}
+        </Tooltip>
       ) : (
         <div className="flex shrink-0 items-center gap-2">
           {rows.map((row) => {

@@ -257,3 +257,35 @@ effectIt.layer(NodeServices.layer)("consumeClaudeResetCredit", (it) => {
     }),
   );
 });
+
+effectIt.layer(NodeServices.layer)("readClaudeOauthUsage", (it) => {
+  it.effect("returns the subscription windows the usage endpoint reports", () =>
+    Effect.gen(function* () {
+      const { configDir } = yield* writeLogin;
+      const windows = {
+        five_hour: { utilization: 58, resets_at: "2026-09-22T14:29:00Z" },
+        seven_day: { utilization: 12, resets_at: "2026-09-28T15:00:00Z" },
+      };
+      const usage = yield* ClaudeResetCredits.readClaudeOauthUsage(configDir, "2.1.0").pipe(
+        Effect.provideService(HostProcess.Platform, "linux"),
+        Effect.provideService(HttpClient.HttpClient, respond(200, windows)),
+      );
+      expect(usage).toEqual({ rate_limits_available: true, rate_limits: windows });
+    }),
+  );
+
+  it.effect("reads nothing when rate limited or on keychain logins", () =>
+    Effect.gen(function* () {
+      const { configDir } = yield* writeLogin;
+      const limited = yield* ClaudeResetCredits.readClaudeOauthUsage(configDir, "2.1.0").pipe(
+        Effect.provideService(HostProcess.Platform, "linux"),
+        Effect.provideService(HttpClient.HttpClient, respond(429, {})),
+      );
+      const darwin = yield* ClaudeResetCredits.readClaudeOauthUsage(configDir, "2.1.0").pipe(
+        Effect.provideService(HostProcess.Platform, "darwin"),
+        Effect.provideService(HttpClient.HttpClient, refuseRequests),
+      );
+      expect([limited, darwin]).toEqual([undefined, undefined]);
+    }),
+  );
+});
