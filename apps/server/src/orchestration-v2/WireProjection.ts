@@ -15,7 +15,7 @@ const MAX_DETAIL_STRING_BYTES = 32_768;
 const MAX_DYNAMIC_VALUE_BYTES = 16_384;
 const MAX_ON_DEMAND_BYTES = 256 * 1024;
 
-function truncateDetail(
+export function truncateDetail(
   value: string | undefined,
   maxBytes = MAX_DETAIL_STRING_BYTES,
 ): string | undefined {
@@ -198,6 +198,23 @@ export function projectTurnItemForDetail(item: OrchestrationV2TurnItem): Orchest
     default:
       return item;
   }
+}
+
+/**
+ * Caps tool output before it is persisted in the turn-item projection. Detail
+ * reads never serve more than MAX_ON_DEMAND_BYTES, so the rest is dead weight
+ * that every row scan has to page in. Rows written before this stay as they are.
+ */
+export function projectTurnItemForStorage(item: OrchestrationV2TurnItem): OrchestrationV2TurnItem {
+  if (item.type === "command_execution" && item.output !== undefined) {
+    const output = truncateDetail(item.output, MAX_ON_DEMAND_BYTES);
+    return output === item.output ? item : { ...item, output };
+  }
+  if (item.type === "dynamic_tool" && typeof item.output === "string") {
+    const output = truncateDetail(item.output, MAX_ON_DEMAND_BYTES);
+    return output === item.output ? item : { ...item, output };
+  }
+  return item;
 }
 
 export function projectContextHandoffForWire(

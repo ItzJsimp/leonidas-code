@@ -21,6 +21,7 @@ import {
   projectTurnItemForWire,
   projectTurnItemForDetail,
   projectDomainEventForWire,
+  projectTurnItemForStorage,
 } from "./WireProjection.ts";
 import { threadShellFromProjection } from "./ProjectionStore.ts";
 import { MAX_TOOL_OUTPUT_IMAGES, toolOutputImages } from "@t3tools/shared/toolOutput";
@@ -50,6 +51,16 @@ const base = {
 };
 
 describe("orchestration V2 wire projection", () => {
+  it("caps oversized tool output for storage and leaves small output untouched", () => {
+    const big = "x".repeat(300 * 1024);
+    const capped = projectTurnItemForStorage({ ...base, output: big });
+    const output = "output" in capped ? capped.output : undefined;
+    expect(typeof output === "string" && output.length < big.length).toBe(true);
+    expect(output).toContain("output truncated for transport");
+    const small = { ...base, output: "ok" };
+    expect(projectTurnItemForStorage(small)).toBe(small);
+  });
+
   it("keeps copied handoff transcripts out of activity items and live events", () => {
     const item = {
       ...base,
