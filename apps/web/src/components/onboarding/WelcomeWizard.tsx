@@ -84,6 +84,7 @@ import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectLis
 import { presentSavedCloudEnvironmentConnection } from "../cloud/cloudEnvironmentConnectionPresentation";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
+import { ClaudeConnectCard } from "./ClaudeConnectCard";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
@@ -802,6 +803,39 @@ function ConnectedAgentsStep({
               onOpenTerminal={() => {
                 if (
                   provider === undefined ||
+                  !readEnvironmentScope(environmentId, AuthTerminalOperateScope)
+                )
+                  return;
+                setTerminalSession({
+                  environmentId,
+                  driver,
+                  providerInstanceId: provider.instanceId,
+                  cwd: serverConfig.cwd,
+                  command: provider.installed
+                    ? resolveOnboardingProviderLoginCommand(
+                        provider,
+                        serverConfig.settings,
+                        serverConfig.environment.platform.os,
+                      )
+                    : resolveOnboardingProviderInstallCommand(
+                        driver,
+                        serverConfig.environment.platform.os,
+                      ),
+                  keybindings: serverConfig.keybindings,
+                });
+              }}
+            />
+          ) : driver === "claudeAgent" ? (
+            <ClaudeConnectCard
+              key={driver}
+              environmentId={environmentId}
+              provider={provider}
+              terminalOpen={terminalSession?.driver === driver}
+              terminalAvailable={serverConfig !== null && canOperateTerminal}
+              onOpenTerminal={() => {
+                if (
+                  provider === undefined ||
+                  serverConfig === null ||
                   !readEnvironmentScope(environmentId, AuthTerminalOperateScope)
                 )
                   return;

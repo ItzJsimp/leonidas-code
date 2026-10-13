@@ -4,7 +4,7 @@
  * terminal. The service in ClaudeInstallation.ts owns the processes.
  */
 
-// eslint-disable-next-line no-control-regex
+// eslint-disable-next-line no-control-regex -- matching terminal escape codes is the point
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/gu;
 
 export const stripAnsi = (text: string) => text.replace(ANSI, "");

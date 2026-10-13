@@ -93,6 +93,22 @@ vi.mock("../ui/toast", () => ({
   toastManager: { add: mocks.toast, close: vi.fn(), update: vi.fn() },
 }));
 
+vi.mock("./ClaudeConnectCard", () => ({
+  ClaudeConnectCard: ({
+    terminalAvailable,
+    terminalOpen,
+    onOpenTerminal,
+  }: {
+    terminalAvailable: boolean;
+    terminalOpen: boolean;
+    onOpenTerminal: () => void;
+  }) => (
+    <button disabled={terminalOpen || !terminalAvailable} onClick={onOpenTerminal}>
+      Advanced: use a terminal
+    </button>
+  ),
+}));
+
 import { WelcomeWizard } from "./WelcomeWizard";
 
 let root: Root;

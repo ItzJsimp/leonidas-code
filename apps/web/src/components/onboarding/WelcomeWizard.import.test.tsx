@@ -148,6 +148,22 @@ vi.mock("../ui/collapsible", () => ({
 }));
 vi.mock("../ui/toast", () => ({ toastManager: { add: vi.fn(), close: vi.fn(), update: vi.fn() } }));
 
+vi.mock("./ClaudeConnectCard", () => ({
+  ClaudeConnectCard: ({
+    terminalAvailable,
+    terminalOpen,
+    onOpenTerminal,
+  }: {
+    terminalAvailable: boolean;
+    terminalOpen: boolean;
+    onOpenTerminal: () => void;
+  }) => (
+    <button disabled={terminalOpen || !terminalAvailable} onClick={onOpenTerminal}>
+      Advanced: use a terminal
+    </button>
+  ),
+}));
+
 import { WelcomeWizard } from "./WelcomeWizard";
 
 const primaryId = EnvironmentId.make("primary");
