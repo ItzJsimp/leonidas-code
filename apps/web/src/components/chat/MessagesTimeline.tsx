@@ -2690,13 +2690,16 @@ function RevertUserMessageButton({
             variant="ghost"
             disabled={activity.isRevertingCheckpoint || activity.isWorking}
             onClick={() => ctx.onRevertToTurnCount(turnCount, messageId)}
-            aria-label="Edit from here"
+            aria-label="Rewind to here"
           />
         }
       >
         <Undo2Icon className="size-3" />
       </TooltipTrigger>
-      <TooltipPopup side="top">Edit from here</TooltipPopup>
+      <TooltipPopup side="top">
+        <div className="font-medium">Rewind to here</div>
+        <div className="text-muted-foreground">Removes this message and everything after it</div>
+      </TooltipPopup>
     </Tooltip>
   );
 }
