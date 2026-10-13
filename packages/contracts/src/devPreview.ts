@@ -2,8 +2,9 @@ import * as Schema from "effect/Schema";
 import { ProjectId } from "./baseSchemas.ts";
 
 // A second, isolated copy of the project's app (its own profile and ports) that
-// the user previews and picks elements from. Today only projects that ship
-// `scripts/dev-isolated.ps1` can start one.
+// the user previews and picks elements from. Projects that ship
+// `scripts/dev-isolated.ps1` use it; any other project with a `dev` or `start`
+// package script is started with that script.
 export const DevPreviewStatus = Schema.Literals(["stopped", "starting", "running", "failed"]);
 export type DevPreviewStatus = typeof DevPreviewStatus.Type;
 
@@ -18,6 +19,8 @@ export const DevPreviewState = Schema.Struct({
   message: Schema.NullOr(Schema.String),
   // False when the project has no script to start a preview copy.
   supported: Schema.Boolean,
+  // The command a generic project's server is started with, shown in the launch prompt.
+  command: Schema.optional(Schema.NullOr(Schema.String)),
 });
 export type DevPreviewState = typeof DevPreviewState.Type;
 

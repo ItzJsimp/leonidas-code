@@ -31,6 +31,36 @@ export const MAX_PROVIDER_FAILURE_CODE_LENGTH = 128;
 
 const DEFAULT_PROVIDER_FAILURE_MESSAGE = "Provider turn failed.";
 
+/**
+ * Startup errors are safe to surface as a bounded, redacted chain: without
+ * the nested cause, a failed provider bootstrap gives both the user and the
+ * server log only the wrapper's generic message.
+ */
+function turnStartCauseDetails(cause: unknown): string | undefined {
+  const seen = new Set<unknown>();
+  const details: string[] = [];
+  for (let depth = 0; depth < 16 && cause != null && !seen.has(cause); depth++) {
+    seen.add(cause);
+    try {
+      if (Cause.isCause(cause)) {
+        cause = Cause.squash(cause);
+        continue;
+      }
+      if (typeof cause === "string") {
+        details.push(cause);
+        break;
+      }
+      if (typeof cause !== "object") break;
+      const message = stringField(cause, "message");
+      if (message !== undefined && !details.includes(message)) details.push(message);
+      cause = (cause as Record<string, unknown>).cause;
+    } catch {
+      break;
+    }
+  }
+  return details.length === 0 ? undefined : details.join(" Caused by: ");
+}
+
 /** Translate known categories without exposing arbitrary provider defect text. */
 function causeMessage(cause: unknown): string | undefined {
   const seen = new Set<unknown>();
@@ -51,9 +81,7 @@ function causeMessage(cause: unknown): string | undefined {
         case "ContextHandoffDeliveryUncertainError":
           return "Leonidas Code could not confirm whether conversation history reached the provider. Retry the turn to recover the session.";
         case "ProviderAdapterTurnStartError": {
-          const innerCause = (cause as Record<string, unknown>).cause;
-          const innerDetail =
-            typeof innerCause === "string" ? innerCause : stringField(innerCause, "message");
+          const innerDetail = turnStartCauseDetails((cause as Record<string, unknown>).cause);
           message = innerDetail
             ? `The provider could not start this turn: ${innerDetail}. Retry the turn; if it keeps failing, check the provider setup and server logs.`
             : "The provider could not start this turn. Retry the turn; if it keeps failing, check the provider setup and server logs.";
