@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./outputCompliance": {
+      "types": "./src/outputCompliance.ts",
+      "import": "./src/outputCompliance.ts"
+    },
     "./outputDock": {
       "types": "./src/outputDock.ts",
       "import": "./src/outputDock.ts"
