@@ -170,6 +170,7 @@ import {
   fileAttachmentStagingLimit,
   isPreviewableComposerVideo,
   normalizeComposerImageFileMimeType,
+  readClipboardFiles,
   shouldHandleComposerAttachmentPaste,
 } from "./composerAttachmentFiles";
 import {
@@ -1083,6 +1084,7 @@ import { Select, SelectItem, SelectPopup, SelectValue } from "../ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import {
+  AtSignIcon,
   FileIcon,
   BotIcon,
   CircleAlertIcon,
@@ -6241,7 +6243,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   };
 
   const onComposerPaste = (event: React.ClipboardEvent<HTMLElement>) => {
-    const files = Array.from(event.clipboardData.files);
+    const files = readClipboardFiles(event.clipboardData);
     const plainText = event.clipboardData.getData("text/plain");
     const bypassAutoAttachment = Date.now() <= pasteAsTextShortcutUntilRef.current;
     pasteAsTextShortcutUntilRef.current = 0;
@@ -7352,6 +7354,27 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                   <RefreshIcon />
                                 </TooltipTrigger>
                                 <TooltipPopup side="top">{upload.reason}</TooltipPopup>
+                              </Tooltip>
+                            )}
+                            {/* Names this image in the prompt so nearby text is read as its context. */}
+                            {!questionAttachmentTarget && (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      variant="media-close"
+                                      size="icon-xs"
+                                      className="absolute bottom-1 right-1 opacity-0 transition-opacity pointer-coarse:opacity-100 group-hover/attachment:opacity-100 group-focus-within/attachment:opacity-100"
+                                      onClick={() =>
+                                        insertAttachmentReferences([imageContextReference(image)])
+                                      }
+                                      aria-label={`Reference ${image.name} in message`}
+                                    />
+                                  }
+                                >
+                                  <AtSignIcon />
+                                </TooltipTrigger>
+                                <TooltipPopup side="top">Reference in message</TooltipPopup>
                               </Tooltip>
                             )}
                             {/* Snap-shot frames reveal their remove button on hover or focus. */}
