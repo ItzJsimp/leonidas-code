@@ -1,12 +1,20 @@
 import { Button } from "../ui/button";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
-import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
+import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "../ui/preview-card";
+import { useClientSettings, useUpdateClientSettings } from "../../hooks/useSettings";
+import { usageSeverity } from "../../lib/usageLimitsPopover";
 import {
   formatContextWindowCompactionMessage,
   formatContextWindowCost,
 } from "./ContextWindowMeter.logic";
 import { Minimize2Icon } from "lucide-react";
 import { composerFloatingLayerProps } from "./composerEventScope";
+
+const SEVERITY_COLOR = {
+  normal: "var(--color-info)",
+  warning: "var(--color-warning)",
+  critical: "var(--color-destructive)",
+} as const;
 
 function formatPercentage(value: number | null): string | null {
   if (value === null || !Number.isFinite(value)) {
@@ -18,30 +26,33 @@ function formatPercentage(value: number | null): string | null {
   return `${Math.round(value)}%`;
 }
 
+/**
+ * The composer's one usage control, beside Send. Hover shows the context window in brief;
+ * click shows or hides the usage card over the chat's top-left corner.
+ */
 export function ContextWindowMeter(props: {
-  usage: ContextWindowSnapshot;
+  usage: ContextWindowSnapshot | null;
   modelDisplayName?: string | null;
   onCompact?: (() => void) | undefined;
   compactDisabled?: boolean | undefined;
   compactDisabledReason?: string | null | undefined;
 }) {
-  const { usage, modelDisplayName, onCompact, compactDisabled, compactDisabledReason } = props;
-  const usedPercentage = formatPercentage(usage.usedPercentage);
-  const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
+  const { modelDisplayName, onCompact, compactDisabled, compactDisabledReason } = props;
+  const usage = props.usage;
+  const cardOpen = useClientSettings((settings) => settings.usageOverlayEnabled);
+  const updateSettings = useUpdateClientSettings();
+  const usedPercentage = formatPercentage(usage?.usedPercentage ?? null);
+  const normalizedPercentage = Math.max(0, Math.min(100, usage?.usedPercentage ?? 0));
   const radius = 9.75;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - normalizedPercentage / 100);
-  const totalProcessedTokens = usage.totalProcessedTokens ?? null;
+  const totalProcessedTokens = usage?.totalProcessedTokens ?? null;
   const showTotalProcessed = totalProcessedTokens !== null && totalProcessedTokens > 0;
-  const isOverloaded = normalizedPercentage > 90;
-  const usageColor = isOverloaded
-    ? "var(--color-error)"
-    : "color-mix(in oklab, var(--color-muted-foreground) 72%, transparent)";
+  const usageColor = SEVERITY_COLOR[usageSeverity(normalizedPercentage)];
 
   return (
-    <Popover>
-      <PopoverTrigger
-        openOnHover
+    <PreviewCard>
+      <PreviewCardTrigger
         delay={150}
         closeDelay={onCompact ? 150 : 0}
         render={
@@ -49,11 +60,15 @@ export function ContextWindowMeter(props: {
             size="icon-sm"
             variant="ghost-muted"
             className="size-7"
-            aria-label={
-              usage.maxTokens !== null && usedPercentage
-                ? `Context window ${usedPercentage} used`
-                : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
-            }
+            aria-pressed={cardOpen}
+            onClick={() => void updateSettings({ usageOverlayEnabled: !cardOpen })}
+            aria-label={`${
+              usage === null
+                ? "Context window not reported yet"
+                : usage.maxTokens !== null && usedPercentage
+                  ? `Context window ${usedPercentage} used`
+                  : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
+            }. ${cardOpen ? "Hide" : "Show"} usage card`}
           >
             <span className="relative flex size-5 items-center justify-center">
               <svg
@@ -86,19 +101,18 @@ export function ContextWindowMeter(props: {
           </Button>
         }
       />
-      <PopoverPopup
+      <PreviewCardPopup
         {...composerFloatingLayerProps}
-        tooltipStyle
         side="top"
         align="end"
-        padding="none"
-        width="sm"
-        className="text-left whitespace-normal"
+        className="w-64 text-left whitespace-normal"
       >
-        <div className="flex flex-col gap-2 p-(--floating-content-inset)">
+        <div className="flex flex-col gap-2 p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="font-medium text-muted-foreground text-xs">Context Window</div>
-            {usage.maxTokens !== null && usedPercentage ? (
+            {usage === null ? (
+              <div className="text-secondary-label text-2xs">Not reported yet</div>
+            ) : usage.maxTokens !== null && usedPercentage ? (
               <div className="text-secondary-label text-2xs tabular-nums">
                 <span>{usedPercentage}</span>
                 <span className="mx-1">·</span>
@@ -113,7 +127,7 @@ export function ContextWindowMeter(props: {
               </div>
             )}
           </div>
-          {usage.maxTokens !== null ? (
+          {usage !== null && usage.maxTokens !== null ? (
             <div
               className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60"
               role="progressbar"
@@ -136,7 +150,7 @@ export function ContextWindowMeter(props: {
               </span>
             </div>
           ) : null}
-          {usage.cost != null ? (
+          {usage?.cost != null ? (
             <div className="flex items-center justify-between gap-3 text-2xs leading-4">
               <span className="text-secondary-label">Cost</span>
               <span className="font-medium tabular-nums text-secondary-label">
@@ -144,7 +158,7 @@ export function ContextWindowMeter(props: {
               </span>
             </div>
           ) : null}
-          {usage.compactsAutomatically ? (
+          {usage?.compactsAutomatically ? (
             <div className="mt-1 text-pretty text-secondary-label text-2xs font-medium">
               {formatContextWindowCompactionMessage(modelDisplayName, usage.autoCompactThreshold)}
             </div>
@@ -169,12 +183,7 @@ export function ContextWindowMeter(props: {
             </>
           ) : null}
         </div>
-      </PopoverPopup>
-    </Popover>
+      </PreviewCardPopup>
+    </PreviewCard>
   );
-}
-
-/** Holds the meter's footprint while a thread's activities are still loading. */
-export function ContextWindowMeterPlaceholder() {
-  return <span aria-hidden="true" className="size-7 shrink-0" />;
 }

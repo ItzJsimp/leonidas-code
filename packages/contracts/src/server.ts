@@ -151,6 +151,8 @@ export const ServerProviderSkill = Schema.Struct({
    * only the agent can start it. Composers must not offer it under `/`.
    */
   userInvocable: Schema.optional(Schema.Boolean),
+  /** Rough size of the instructions (characters / 4), shown on the composer chip. */
+  approxTokens: Schema.optional(Schema.Int),
 });
 export type ServerProviderSkill = typeof ServerProviderSkill.Type;
 

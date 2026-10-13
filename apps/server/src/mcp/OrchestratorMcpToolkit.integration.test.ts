@@ -1,3 +1,7 @@
+import * as SavedItems from "../savedItems/SavedItemService.ts";
+// @effect-diagnostics-next-line nodeBuiltinImport:off - Convert replay fixture URLs to native Windows paths.
+import * as NodeURL from "node:url";
+import * as SavedItemExecution from "../savedItems/SavedItemExecution.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
@@ -72,6 +76,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as ScheduledTaskService from "../scheduledTasks/ScheduledTaskService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
+import * as ModelBenchmarks from "../benchmarks/ModelBenchmarks.ts";
 import * as TaskBoardService from "../taskBoard/TaskBoardService.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
@@ -130,9 +135,7 @@ const delegatedTaskStatusTranscriptFile = new URL(
 const readDelegatedTaskStatusTranscript = Effect.fn("readDelegatedTaskStatusTranscript")(
   function* () {
     const fs = yield* FileSystem.FileSystem;
-    const text = yield* fs.readFileString(
-      decodeURIComponent(delegatedTaskStatusTranscriptFile.pathname),
-    );
+    const text = yield* fs.readFileString(NodeURL.fileURLToPath(delegatedTaskStatusTranscriptFile));
     return yield* decodeProviderReplayNdjson(text);
   },
   Effect.provide(NodeServices.layer),
@@ -675,7 +678,10 @@ describe("orchestrator MCP toolkit", () => {
             }),
           );
           const layerTest = Layer.merge(
-            McpHttpServer.layerOrchestratorToolkit,
+            McpHttpServer.layerOrchestratorToolkit.pipe(
+              Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+              Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
+            ),
             McpHttpServer.layerThreadToolkit,
           ).pipe(
             Layer.provideMerge(McpServer.McpServer.layer),
@@ -686,6 +692,7 @@ describe("orchestrator MCP toolkit", () => {
             Layer.provide(layerScheduledTaskStub),
             Layer.provide(Layer.mock(ThreadSearch.ThreadSearch)({})),
             Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
+            Layer.provide(Layer.mock(ModelBenchmarks.ModelBenchmarks)({})),
             Layer.provide(
               Layer.mock(ProjectService.ProjectService)({
                 getById: (id) =>
@@ -3842,6 +3849,8 @@ describe("orchestrator MCP toolkit", () => {
           }),
         ]);
         const layerTest = McpHttpServer.layerOrchestratorToolkit.pipe(
+          Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+          Layer.provide(Layer.mock(SavedItemExecution.SavedItemExecution)({})),
           Layer.provideMerge(McpServer.McpServer.layer),
           Layer.provideMerge(layerOrchestration),
           Layer.provide(
@@ -3854,6 +3863,7 @@ describe("orchestrator MCP toolkit", () => {
           Layer.provide(layerUnusedScheduledTaskStub),
           Layer.provide(Layer.mock(ProjectService.ProjectService)({})),
           Layer.provide(Layer.mock(TaskBoardService.TaskBoardService)({})),
+          Layer.provide(Layer.mock(ModelBenchmarks.ModelBenchmarks)({})),
           Layer.provideMerge(
             SecretRequests.layer.pipe(
               Layer.provide(layerMemorySecretStore),

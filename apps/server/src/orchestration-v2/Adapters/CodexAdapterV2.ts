@@ -15,7 +15,10 @@ import {
 } from "../../provider/CodexTurnTokenUsage.ts";
 import type { ManagedServerProvider } from "@t3tools/provider-core/server/snapshot";
 import type { CodexEffectiveRuntime } from "../../provider/CodexManagedRuntime.ts";
-import { buildCodexInitializeParams } from "../../provider/CodexProvider.ts";
+import {
+  buildCodexInitializeParams,
+  parseCodexSkillsListResponse,
+} from "../../provider/CodexProvider.ts";
 import {
   codexRateLimitsToUpdate,
   mergeCodexRateLimits,
@@ -31,6 +34,7 @@ import {
   type ProviderSetupError,
 } from "@t3tools/contracts";
 import { SKILL_MENTION_PATTERN } from "@t3tools/shared/composerInlineTokens";
+import { expandSkills, mayMentionSkill } from "@t3tools/shared/skillExpansion";
 import { AgentScope } from "@t3tools/shared/AgentScope";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { dynamicToolTitle } from "@t3tools/shared/toolActivity";
@@ -3149,6 +3153,31 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
             } satisfies CodexSchema.V2TurnStartParams__UserInput;
           });
 
+        // Skills are inlined by the harness for every provider (see
+        // `expandSkills`), so the listing runs only when the text could name
+        // one. If Codex cannot list them, its native `$name` parsing still
+        // runs on the rewritten sigil.
+        const codexSkillBodies = (text: string) =>
+          Effect.gen(function* () {
+            if (!mayMentionSkill(text) || input.runtimePolicy.cwd == null) {
+              return undefined;
+            }
+            const cwd = input.runtimePolicy.cwd;
+            const listed = yield* client
+              .request("skills/list", { cwds: [cwd] })
+              .pipe(Effect.option);
+            if (Option.isNone(listed)) return undefined;
+            const bodies = new Map<string, string>();
+            for (const skill of parseCodexSkillsListResponse(listed.value, cwd)) {
+              if (!skill.enabled) continue;
+              const body = yield* fileSystem
+                .readFileString(skill.path)
+                .pipe(Effect.orElseSucceed(() => undefined));
+              if (body !== undefined) bodies.set(skill.name, body);
+            }
+            return bodies as ReadonlyMap<string, string>;
+          });
+
         const toCodexInput = (
           turnInput: Pick<
             | ProviderAdapter.ProviderAdapterV2TurnInput
@@ -3158,8 +3187,14 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
         ) =>
           Effect.gen(function* () {
             const inputItems: Array<CodexSchema.V2TurnStartParams__UserInput> = [];
+            const skillBodies = yield* codexSkillBodies(turnInput.message.text);
+            const messageText =
+              (skillBodies === undefined
+                ? undefined
+                : expandSkills(turnInput.message.text, skillBodies)) ??
+              codexSkillMentionText(turnInput.message.text);
             const text = providerMessageTextWithAttachmentPaths({
-              text: codexSkillMentionText(turnInput.message.text),
+              text: messageText,
               attachments: turnInput.message.attachments,
               resolveAttachmentPath: (attachment) =>
                 resolveAttachmentPath({ attachmentsDir: serverConfig.attachmentsDir, attachment }),

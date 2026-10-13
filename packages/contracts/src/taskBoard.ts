@@ -265,6 +265,8 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
 export type TaskBoardCardUpdateInput = typeof TaskBoardCardUpdateInput.Type;
 
 export const TaskBoardCardCreateInput = Schema.Struct({
+  idempotencyKey: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
+  projectId: Schema.optional(ProjectId),
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
   due: Schema.optional(Schema.NullOr(TaskBoardDueDate)),
   milestone: Schema.optional(Schema.NullOr(TaskBoardMilestoneVersion)),

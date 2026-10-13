@@ -347,6 +347,11 @@ function ComposerSkillNodeView({ node }: NodeViewProps) {
               skillDescription ??
               "No description is available for this skill."}
           </p>
+          {skill?.approxTokens ? (
+            <p className="text-muted-foreground text-xs">
+              About {skill.approxTokens.toLocaleString()} tokens when sent
+            </p>
+          ) : null}
           {skill?.path ? (
             <Button variant="outline" size="sm" onClick={() => actions.openMention(skill.path)}>
               View instructions

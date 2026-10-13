@@ -36,12 +36,30 @@ import {
   OrchestratorMcpThreadSendResult,
   OrchestratorMcpThreadWaitInput,
   OrchestratorMcpThreadWaitResult,
+  ModelBenchmarkReport,
+  ModelBenchmarkReportInput,
   ThreadMetadataMcpUpdateInput,
   ThreadMetadataMcpUpdateResult,
 } from "@t3tools/contracts";
 import { Tool, Toolkit } from "effect/ai";
 import * as Schema from "effect/Schema";
+import {
+  SavedItem,
+  SavedItemCreateInput,
+  SavedItemGetInput,
+  SavedItemImportInput,
+  SavedItemLaunchInput,
+  SavedItemListInput,
+  SavedItemListResult,
+  SavedItemScheduleInput,
+  SavedItemTaskInput,
+  SavedItemTransitionInput,
+  SavedItemUpdateInput,
+} from "@t3tools/contracts";
+import * as SavedItems from "../../../savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "../../../savedItems/SavedItemExecution.ts";
 
+import * as ModelBenchmarks from "../../../benchmarks/ModelBenchmarks.ts";
 import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as OrchestratorMcpService from "../../OrchestratorMcpService.ts";
@@ -333,7 +351,114 @@ const ThreadInterruptTool = Tool.make("t3_thread_interrupt", {
   .annotate(Tool.Title, "Interrupt a T3 thread")
   .annotate(Tool.Destructive, true);
 
+const ModelBenchmarksTool = Tool.make("model_benchmarks", {
+  description:
+    "Rank models against public BenchLM benchmarks: overall and category scores, per-benchmark results, price per million tokens and output speed. Pass the models to compare as they appear in orchestrator_capabilities (modelId, optional effort). effortMeasured=false means BenchLM never scored that effort and the numbers are the model's default run; a row without matches is unknown to BenchLM. Each source keeps its own scale, so do not add scores across sources. Credit BenchLM.ai when you show these numbers.",
+  parameters: ModelBenchmarkReportInput,
+  success: ModelBenchmarkReport,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies: [McpInvocationContext.McpInvocationContext, ModelBenchmarks.ModelBenchmarks],
+})
+  .annotate(Tool.Title, "Model benchmarks")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, true);
+
 export const OrchestratorToolkit = Toolkit.make(
+  Tool.make("saved_item_list", {
+    description:
+      "List saved prompts and notes. Omit projectId for all projects, pass null for the no-project bucket. Archived items require status='archived'. Task saves leave this list.",
+    parameters: SavedItemListInput,
+    success: SavedItemListResult,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [...dependencies, SavedItems.SavedItemService],
+  }).annotate(Tool.Readonly, true),
+  Tool.make("saved_item_get", {
+    description: "Read a saved item by id, including its launch and schedule links.",
+    parameters: SavedItemGetInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [...dependencies, SavedItems.SavedItemService],
+  }).annotate(Tool.Readonly, true),
+  Tool.make("saved_item_create", {
+    description:
+      "Save a prompt or note for later. Reuse commandId on retries. This does not start work.",
+    parameters: SavedItemCreateInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [...dependencies, SavedItems.SavedItemService],
+  }),
+  Tool.make("saved_item_update", {
+    description:
+      "Edit supplied saved-item fields. Reuse commandId on retries. Pending execution requests cannot be edited.",
+    parameters: SavedItemUpdateInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [...dependencies, SavedItems.SavedItemService],
+  }),
+  Tool.make("saved_item_transition", {
+    description:
+      "Archive, restore, mark done, or requeue a saved item. Requeue retains the prior thread link. Archive keeps the text; linked schedules are managed with update_scheduled_task.",
+    parameters: SavedItemTransitionInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [...dependencies, SavedItems.SavedItemService],
+  }),
+  Tool.make("saved_item_import", {
+    description:
+      "Import portable Leonidas saved-item markdown into the selected project or no-project bucket.",
+    parameters: SavedItemImportInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [...dependencies, SavedItems.SavedItemService],
+  }),
+  Tool.make("saved_item_launch", {
+    description:
+      "Launch a queued prompt into a new thread. Supply execution modes within your own permissions. Reuse commandId on retries. Agent requests are capped at ten per hour; agents launched by this tool cannot chain more saved-item launches.",
+    parameters: SavedItemLaunchInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [
+      ...dependencies,
+      SavedItems.SavedItemService,
+      SavedItemExecution.SavedItemExecution,
+    ],
+  }).annotate(Tool.Destructive, true),
+  Tool.make("saved_item_schedule", {
+    description:
+      "Run a queued prompt once at runAt (UTC ISO timestamp). Creates a linked scheduled task. Supply execution modes within your own permissions; report the scheduledTaskId and runAt. Reuse commandId on retries.",
+    parameters: SavedItemScheduleInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [
+      ...dependencies,
+      SavedItems.SavedItemService,
+      SavedItemExecution.SavedItemExecution,
+    ],
+  }).annotate(Tool.Destructive, true),
+  Tool.make("saved_item_save_task", {
+    description:
+      "Move a saved item to the task board with its text as the description. The item leaves Saved; no later sync. Bodies over 20000 characters are rejected. Reuse commandId on retries.",
+    parameters: SavedItemTaskInput,
+    success: SavedItem,
+    failure: OrchestratorMcpFailure,
+    failureMode: "return",
+    dependencies: [
+      ...dependencies,
+      SavedItems.SavedItemService,
+      SavedItemExecution.SavedItemExecution,
+    ],
+  }),
   OrchestratorCapabilitiesTool,
   DelegateTaskTool,
   TaskStatusTool,
@@ -355,4 +480,5 @@ export const OrchestratorToolkit = Toolkit.make(
   ThreadSendTool,
   ThreadWaitTool,
   ThreadInterruptTool,
+  ModelBenchmarksTool,
 );

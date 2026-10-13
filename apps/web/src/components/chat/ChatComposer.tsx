@@ -96,7 +96,6 @@ import {
   readFileAsDataUrl,
   resolveComposerInteractionMode,
   resolveComposerProviderSelection,
-  threadShellHasStarted,
 } from "../ChatView.logic";
 import {
   dataTransferHasComposerMention,
@@ -134,6 +133,7 @@ import { openCapture } from "../capture/captureStore";
 import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
 import { ComposerStashBadge } from "./ComposerStashBadge";
+import { ComposerSavedItems } from "./ComposerSavedItems";
 import { ComposerStashMenu } from "./ComposerStashMenu";
 import { useComposerMenuState } from "./useComposerMenuState";
 import { useComposerTriggerState } from "./useComposerTriggerState";
@@ -306,11 +306,10 @@ import {
 } from "./composerProviderState";
 import { TokenCounter } from "./AgentVelocityMeter";
 import type { VelocitySummary } from "./AgentVelocityMeter.logic";
-import { ContextWindowMeter, ContextWindowMeterPlaceholder } from "./ContextWindowMeter";
+import { ContextWindowMeter } from "./ContextWindowMeter";
 import {
   providerSupportsManualCompaction,
   resolveContextWindowModelDisplayName,
-  shouldReserveContextWindowMeter,
 } from "./ContextWindowMeter.logic";
 import {
   attachVideoThumbnail,
@@ -1374,7 +1373,6 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   canOperateThread: boolean;
   activeVelocitySummary?: VelocitySummary | null | undefined;
   activeContextWindow: ContextWindowSnapshot | null;
-  reserveContextWindowMeter: boolean;
   activeThreadModelDisplayName: string | null;
   isPreparingWorktree: boolean;
   pendingAction: {
@@ -1413,17 +1411,13 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   return (
     <>
       {props.activeVelocitySummary ? <TokenCounter summary={props.activeVelocitySummary} /> : null}
-      {props.activeContextWindow ? (
-        <ContextWindowMeter
-          usage={props.activeContextWindow}
-          modelDisplayName={props.activeThreadModelDisplayName}
-          onCompact={props.onCompactContext}
-          compactDisabled={props.compactDisabled}
-          compactDisabledReason={props.compactDisabledReason}
-        />
-      ) : props.reserveContextWindowMeter ? (
-        <ContextWindowMeterPlaceholder />
-      ) : null}
+      <ContextWindowMeter
+        usage={props.activeContextWindow}
+        modelDisplayName={props.activeThreadModelDisplayName}
+        onCompact={props.onCompactContext}
+        compactDisabled={props.compactDisabled}
+        compactDisabledReason={props.compactDisabledReason}
+      />
       <ComposerPrimaryActions
         compact={props.compact}
         canOperateThread={props.canOperateThread}
@@ -1570,7 +1564,6 @@ export interface ChatComposerProps {
   isRevertingCheckpoint?: boolean;
   sendDisabledReason: string | null;
   isPreparingWorktree: boolean;
-  usageControl?: ReactNode;
   bannerItems: readonly ComposerBannerStackItem[];
   /** Tokens a stale session would re-read; null when the thread is not offered compaction. */
   resumeCompactionTokens: number | null;
@@ -1641,6 +1634,7 @@ export interface ChatComposerProps {
   terminalOpen: boolean;
   gitCwd: string | null;
   pullRequestProjectId: ProjectId | null;
+  savedItemsProjectId: ProjectId | null;
   pullRequestRepository: string | null;
   restingControlsHost: HTMLDivElement | null;
   restingControlsHaveLeadingContext: boolean;
@@ -1786,6 +1780,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     terminalOpen,
     gitCwd,
     pullRequestProjectId,
+    savedItemsProjectId,
     pullRequestRepository,
     restingControlsHost,
     restingControlsHaveLeadingContext,
@@ -2493,14 +2488,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     () => resolveContextWindowModelDisplayName(activeThreadModelSelection, modelOptionsByInstance),
     [activeThreadModelSelection, modelOptionsByInstance],
   );
-  const reserveContextWindowMeter = shouldReserveContextWindowMeter({
-    meterEnabled: settings.contextWindowMeterEnabled,
-    detailLoading: props.threadSyncPhase === "loading",
-    threadStarted: threadShellHasStarted(props.activeThreadShell),
-    providerReportsContextWindow: selectedProviderStatus
-      ? selectedProviderStatus.reportsContextWindow === true
-      : null,
-  });
 
   // ------------------------------------------------------------------
   // Composer-local state
@@ -7037,6 +7024,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             </ComposerBanner.Attachment>
           ) : null}
         </ComposerBanner.Column>
+        {!isComposerApprovalState && pendingUserInputs.length === 0 ? (
+          <ComposerSavedItems
+            environmentId={environmentId}
+            projectId={savedItemsProjectId}
+            target={composerDraftTarget}
+            modelSelection={selectedModelSelection}
+            runtimeMode={runtimeMode}
+            interactionMode={interactionMode}
+            canSave={canOperateThread}
+          />
+        ) : null}
         {!isComposerApprovalState ? (
           <ComposerStashBadge
             count={stashQueue.length}
@@ -7821,15 +7819,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       </Tooltip>
                     </>
                   ) : null}
-                  {props.usageControl}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
                     activeVelocitySummary={props.activeVelocitySummary}
-                    activeContextWindow={
-                      settings.contextWindowMeterEnabled ? activeContextWindow : null
-                    }
-                    reserveContextWindowMeter={reserveContextWindowMeter}
+                    activeContextWindow={activeContextWindow}
                     activeThreadModelDisplayName={activeThreadModelDisplayName}
                     pendingAction={pendingPrimaryAction}
                     isRunning={phase === "running"}

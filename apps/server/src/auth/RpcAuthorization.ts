@@ -43,6 +43,8 @@ type WsRpcMethod = RpcGroup.Rpcs<typeof WsRpcGroup>["_tag"];
  * runtime failure.
  */
 export const RPC_REQUIRED_SCOPES = {
+  [WS_METHODS.savedItemsList]: AuthOrchestrationReadScope,
+  [WS_METHODS.savedItemsGet]: AuthOrchestrationReadScope,
   [WS_METHODS.scribeGetStatus]: AuthOrchestrationReadScope,
   ...CLIENT_GUARDED_RPC_SCOPES,
   [ORCHESTRATION_V2_WS_METHODS.dispatchCommand]: AuthOrchestrationOperateScope,
@@ -111,6 +113,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.serverRetryResourceTelemetry]: AuthDiagnosticsReadScope,
   [WS_METHODS.serverGetUsageSummary]: AuthDiagnosticsReadScope,
   [WS_METHODS.serverRefreshUsageRates]: AuthDiagnosticsReadScope,
+  // Public data about models, read when choosing one for a thread.
+  [WS_METHODS.serverGetModelBenchmarks]: AuthOrchestrationReadScope,
   [WS_METHODS.serverSignalProcess]: AuthEnvironmentMaintainScope,
   [WS_METHODS.serverReportClientActivity]: AuthOrchestrationReadScope,
   [WS_METHODS.serverReportHostPowerState]: AuthEnvironmentMaintainScope,

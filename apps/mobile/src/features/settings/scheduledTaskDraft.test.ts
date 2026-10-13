@@ -18,6 +18,10 @@ import {
 } from "./scheduledTaskDraft";
 
 describe("scheduleDraftForTask", () => {
+  it("preserves a one-time trigger while editing other task fields", () => {
+    const schedule = { type: "once" as const, runAt: "2099-10-12T23:30:00.000Z" };
+    expect(scheduleFromDraft(scheduleDraftForTask({ schedule }))).toEqual(schedule);
+  });
   it("opens legacy sub-minute schedules at the writable minimum", () => {
     const draft = scheduleDraftForTask({ schedule: { type: "interval", everyMs: 30_000 } });
     expect(draft.intervalMinutes).toBe("1");

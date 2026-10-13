@@ -799,6 +799,17 @@ export function createCardFile(
       return { fileName: `${slug}.md`, id, raw };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST" || attempt > 500) throw error;
+      if (input.id !== undefined) {
+        const existingRaw = NodeFS.readFileSync(NodePath.join(tasksDir, `${slug}.md`), "utf8");
+        const existing = cardToTask({
+          fileName: `${slug}.md`,
+          raw: existingRaw,
+          mtimeMs: now,
+          now,
+        });
+        if (existing?.id === input.id)
+          return { fileName: `${slug}.md`, id: input.id, raw: existingRaw };
+      }
     }
   }
 }

@@ -47,6 +47,7 @@ import {
   type OrchestrationV2ThreadShell,
   type OrchestrationV2ThreadShellSnapshot,
   type OrchestrationV2StoredEvent,
+  type OrchestrationV2ProviderFailureClass,
   type OrchestrationV2Subagent,
   type OrchestrationV2ThreadProjection,
   type OrchestrationV2TurnItem,
@@ -576,6 +577,12 @@ function delegatedCompletionWakeDetail(taskIds: ReadonlyArray<string>): string {
     ? `Delegated task ${taskList} reached a terminal state. Use task_status with taskId ${taskList} to read the result.`
     : `Delegated tasks ${taskList} reached terminal states. Use task_status with each taskId to read the results.`;
 }
+
+/** Failures a fallback rerun can fix: the provider, not the task, broke. */
+const DELEGATED_FALLBACK_FAILURE_CLASSES: ReadonlySet<OrchestrationV2ProviderFailureClass> =
+  new Set(["usage_limit", "provider_error", "transport_error"]);
+
+export const delegatedFallbackEffectId = (runId: RunId) => `effect:delegated-fallback:${runId}`;
 
 function isTerminalDelegatedTaskStatus(status: OrchestrationV2Subagent["status"]): boolean {
   return (
@@ -6827,6 +6834,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         prompt: command.task,
         title: command.title ?? null,
         model: command.modelSelection.model,
+        ...(command.fallbackModelSelection === undefined
+          ? {}
+          : { fallbackModelSelection: command.fallbackModelSelection }),
         ...(command.completionWake === undefined ? {} : { completionWake: command.completionWake }),
         ...(command.workspaceStrategy !== undefined
           ? { workspaceStrategy: command.workspaceStrategy }
@@ -9941,13 +9951,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
    * RestartContinuation recovers the thread when it declines to continue.
    */
   const awaitsRestartContinuation = (run: OrchestrationV2Run) =>
-    effectOutbox
-      .get(`effect:restart-continuation:${run.id}`)
-      .pipe(
-        Effect.map(
-          Option.exists((effect) => effect.status === "pending" || effect.status === "running"),
-        ),
-      );
+    Effect.forEach(
+      [`effect:restart-continuation:${run.id}`, delegatedFallbackEffectId(run.id)],
+      (effectId) =>
+        effectOutbox
+          .get(effectId)
+          .pipe(
+            Effect.map(
+              Option.exists((effect) => effect.status === "pending" || effect.status === "running"),
+            ),
+          ),
+    ).pipe(Effect.map((pending) => pending.includes(true)));
 
   /**
    * A delegated child's result is held while its result run, or a run after it
@@ -10164,6 +10178,73 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
   });
 
   /**
+   * Holds a failed delegated task's result and queues one rerun on its
+   * fallback model. Only the original task's first failure qualifies, and only
+   * for provider-side errors on a run that changed no file, so the rerun
+   * cannot repeat a half-applied edit. Returns true when the result is held.
+   */
+  const startDelegatedFallback = (input: {
+    readonly task: OrchestrationV2Subagent;
+    readonly childRun: OrchestrationV2Run;
+    readonly childThreadId: ThreadId;
+    readonly isOriginalTask: boolean;
+    readonly errors: ReadonlyArray<OrchestrationV2TurnItem>;
+  }) =>
+    Effect.gen(function* () {
+      const fallback = input.task.fallbackModelSelection;
+      if (
+        fallback === undefined ||
+        !input.isOriginalTask ||
+        input.childRun.status !== "failed" ||
+        input.childRun.modelSelection.instanceId === fallback.instanceId
+      )
+        return false;
+      const failure = input.errors.find(
+        (item) => item.runId === input.childRun.id && item.type === "error",
+      );
+      if (
+        failure?.type !== "error" ||
+        !DELEGATED_FALLBACK_FAILURE_CLASSES.has(failure.failure.class)
+      )
+        return false;
+      const effectId = delegatedFallbackEffectId(input.childRun.id);
+      if (Option.isSome(yield* effectOutbox.get(effectId))) return false;
+      const fileChanges = yield* projectionStore.getThreadRecords(
+        input.childThreadId,
+        ["turnItems"],
+        { turnItemRunId: input.childRun.id, turnItemTypes: ["file_change"] },
+      );
+      if (fileChanges.turnItems.length > 0) return false;
+      const now = yield* DateTime.now;
+      yield* writeSystemEvents(
+        [
+          {
+            type: "subagent.updated",
+            threadId: input.task.threadId,
+            ...(input.task.runId === null ? {} : { runId: input.task.runId }),
+            nodeId: input.task.id,
+            driver: input.task.driver,
+            occurredAt: now,
+            payload: {
+              ...input.task,
+              progress: `${input.childRun.modelSelection.model} failed; retrying on ${fallback.model}`,
+              updatedAt: now,
+            },
+          },
+        ],
+        [
+          {
+            id: effectId,
+            commandId: CommandId.make(`command:delegated-fallback:${input.childRun.id}`),
+            threadId: input.childThreadId,
+            request: { type: "delegated-task.fallback", sourceRunId: input.childRun.id },
+          },
+        ],
+      );
+      return true;
+    });
+
+  /**
    * Transfers a terminal child's result into its parent and offers the parent
    * wake. Every mutation here targets the PARENT thread, so callers must hold
    * the parent thread's dispatch lock rather than the child's: the
@@ -10265,6 +10346,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       if (existingResultTransfer !== undefined) {
         return;
       }
+      if (
+        yield* startDelegatedFallback({
+          task,
+          childRun,
+          childThreadId,
+          isOriginalTask: options.taskId === forkedFrom.nodeId,
+          errors: childResult.turnItems,
+        })
+      ) {
+        return;
+      }
 
       const now = yield* DateTime.now;
       const result = subagentResultForRun(childProjection, childRun);
@@ -10276,8 +10368,24 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       const parentTurnItem = parentProjection.turnItems.find(
         (candidate) => candidate.type === "subagent" && candidate.subagentId === task.id,
       );
+      // A fallback rerun answered, so the task reports that model, not the free one.
+      const answeredOnFallback =
+        task.fallbackModelSelection !== undefined &&
+        childRun.providerInstanceId !== task.providerInstanceId &&
+        childRun.providerInstanceId === task.fallbackModelSelection.instanceId;
       const updatedTask: OrchestrationV2Subagent = {
         ...task,
+        ...(answeredOnFallback
+          ? {
+              driver: yield* providerAdapters.get(childRun.providerInstanceId).pipe(
+                Effect.map((adapter) => adapter.driver),
+                Effect.orElseSucceed(() => task.driver),
+              ),
+              providerInstanceId: childRun.providerInstanceId,
+              model: childRun.modelSelection.model,
+              modelSelection: childRun.modelSelection,
+            }
+          : {}),
         providerThreadId: childRun.providerThreadId,
         status: terminalStatus,
         result: result.text,

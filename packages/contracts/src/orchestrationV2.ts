@@ -763,6 +763,11 @@ export const OrchestrationV2Subagent = Schema.Struct({
   title: Schema.NullOr(Schema.String),
   model: Schema.NullOr(Schema.String),
   modelSelection: Schema.optional(ModelSelection),
+  /**
+   * Model the task reruns on, once, when its first run fails with a provider
+   * error before changing any file. Set when light-task routing picked a free model.
+   */
+  fallbackModelSelection: Schema.optional(ModelSelection),
   // Parent-wake policy for app-owned tasks: "always" offers a continuation on
   // every terminal (async delegations; queue_after_active sequences it behind
   // a live parent run), "settled_only" offers only when the parent has no
@@ -3128,6 +3133,7 @@ export const OrchestrationV2Command = Schema.Union([
     task: TrimmedNonEmptyString,
     title: Schema.optional(TrimmedNonEmptyString),
     modelSelection: ModelSelection,
+    fallbackModelSelection: Schema.optional(ModelSelection),
     runtimeMode: RuntimeMode,
     interactionMode: ProviderInteractionMode,
     // Omitted behaves as "settled_only" (no wake while the parent has a live

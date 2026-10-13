@@ -1519,7 +1519,7 @@ describe("OrchestratorMcpService provider resolution", () => {
               } as never),
             ),
         }),
-        ServerSettings.layerTest(),
+        ServerSettings.layerTest({ routeLightDelegatedTasks: false }),
         providerRegistryLayer([
           providerSnapshot({
             instanceId: codexInstanceId,
@@ -1649,7 +1649,7 @@ describe("OrchestratorMcpService provider resolution", () => {
                 } as never),
               ),
           }),
-          ServerSettings.layerTest(),
+          ServerSettings.layerTest({ routeLightDelegatedTasks: false }),
           Layer.mock(TaskBoardService.TaskBoardService)({}),
           providerRegistryLayer([
             providerSnapshot({
@@ -1718,7 +1718,7 @@ describe("OrchestratorMcpService provider resolution", () => {
                 Effect.as({ sequence: 1, storedEvents: [] } as never),
               ),
           }),
-          ServerSettings.layerTest(),
+          ServerSettings.layerTest({ routeLightDelegatedTasks: false }),
           providerRegistryLayer([
             providerSnapshot({
               instanceId: codexInstanceId,

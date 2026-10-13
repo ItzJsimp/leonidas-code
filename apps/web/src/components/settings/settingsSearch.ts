@@ -374,6 +374,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["usage quota rate limit reset recover continue"],
   },
   {
+    id: "route-light-delegated-tasks",
+    title: "Route light delegated tasks",
+    to: "/settings/general",
+    searchTerms: ["subagent delegate cheap model quota cost autorouter"],
+  },
+  {
     id: "working-shelf",
     title: "Working section (beta)",
     to: "/settings/general",
@@ -703,12 +709,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     title: "Plan mode (legacy)",
     to: "/settings/general",
     searchTerms: ["build plan composer old"],
-  },
-  {
-    id: "legacy-context-window-indicator",
-    title: "Context window indicator (legacy)",
-    to: "/settings/general",
-    searchTerms: ["composer meter usage tokens circle old"],
   },
   {
     id: "legacy-sidebar",

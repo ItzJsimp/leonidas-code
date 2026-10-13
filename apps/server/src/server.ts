@@ -21,6 +21,9 @@ import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as SavedItems from "./savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "./savedItems/SavedItemExecution.ts";
+import * as Scheduler from "./scheduling/Scheduler.ts";
 import * as Option from "effect/Option";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
@@ -166,6 +169,7 @@ import * as CursorAccountReader from "@t3tools/provider-cursor/server/CursorAcco
 import * as CursorKeychain from "@t3tools/provider-cursor/server/CursorKeychain";
 import * as CursorUsageAccounts from "@t3tools/provider-cursor/server/CursorUsageAccounts";
 import * as UsageService from "./usage/UsageService.ts";
+import * as ModelBenchmarks from "./benchmarks/ModelBenchmarks.ts";
 import * as RuntimeLayer from "./orchestration-v2/runtimeLayer.ts";
 import * as ProjectStore from "./orchestration-v2/ProjectStore.ts";
 import * as ThreadSearch from "./orchestration-v2/ThreadSearch.ts";
@@ -516,6 +520,16 @@ const layerOrchestrationApplication = CheckpointDiffQuery.layer.pipe(
   Layer.provideMerge(layerOrchestrationV2Runtime),
 );
 
+const layerSavedItems = SavedItemExecution.layer.pipe(
+  Layer.provideMerge(SavedItems.layer),
+  Layer.provideMerge(layerOrchestrationV2Runtime),
+  Layer.provide(layerWorkspace),
+);
+const layerSavedItemWorker = SavedItemExecution.layerWorker.pipe(
+  Layer.provide(layerSavedItems),
+  Layer.provide(Scheduler.layer),
+);
+
 // Automatic thread settlement (#8600): a server-owned sweep evaluates
 // inactivity and merged pull requests, then settles through the orchestrator
 // so every client sees the same shelf.
@@ -598,6 +612,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
 ).pipe(
   // Core Services
   Layer.provideMerge(layerOrchestrationApplication),
+  Layer.provideMerge(Layer.merge(layerSavedItems, layerSavedItemWorker)),
   Layer.provideMerge(RuntimeLayer.layerEventInfrastructure),
   Layer.provideMerge(Layer.merge(ProjectStore.layer, ThreadSearch.layer)),
   Layer.provideMerge(layerServerSettings),
@@ -687,6 +702,7 @@ const layerRuntimeDependencies = layerRuntimeCoreDependencies.pipe(
   // Usage reads provider history through the ProviderHost, which needs the
   // background policy below it.
   Layer.provideMerge(layerUsage),
+  Layer.provideMerge(ModelBenchmarks.layer),
   Layer.provideMerge(layerBackground),
   Layer.provideMerge(layerResourceDiagnostics),
   Layer.provideMerge(TraceDiagnostics.layer),

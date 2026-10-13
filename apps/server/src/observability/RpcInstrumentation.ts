@@ -15,6 +15,16 @@ type WsRpcMethod = RpcGroup.Rpcs<typeof WsRpcGroup>["_tag"];
  * prefix. Adding an RPC to `WsRpcGroup` without a label is a type error.
  */
 const RPC_AGGREGATES = {
+  [WS_METHODS.savedItemsList]: "savedItems",
+  [WS_METHODS.savedItemsGet]: "savedItems",
+  [WS_METHODS.savedItemsCreate]: "savedItems",
+  [WS_METHODS.savedItemsUpdate]: "savedItems",
+  [WS_METHODS.savedItemsTransition]: "savedItems",
+  [WS_METHODS.savedItemsImport]: "savedItems",
+  [WS_METHODS.savedItemsLaunch]: "savedItems",
+  [WS_METHODS.savedItemsSchedule]: "savedItems",
+  [WS_METHODS.savedItemsSaveTask]: "savedItems",
+
   [ORCHESTRATION_V2_WS_METHODS.dispatchCommand]: "orchestrationV2",
   [ORCHESTRATION_V2_WS_METHODS.getWorkflowScript]: "orchestration",
   [ORCHESTRATION_V2_WS_METHODS.stopWorkflow]: "orchestration",
@@ -82,6 +92,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.serverCheckOtlpEndpoint]: "server",
   [WS_METHODS.serverGetUsageSummary]: "server",
   [WS_METHODS.serverRefreshUsageRates]: "server",
+  [WS_METHODS.serverGetModelBenchmarks]: "server",
   [WS_METHODS.serverSignalProcess]: "server",
   [WS_METHODS.serverReportClientActivity]: "server",
   [WS_METHODS.serverReportHostPowerState]: "server",

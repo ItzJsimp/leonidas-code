@@ -157,6 +157,23 @@ This removes the selected message and later conversation from the active thread
 and provider history. It does not undo external actions or separate provider
 memory. The action is available only when the provider supports rewind.
 
+## Saved prompts and notes
+
+On web and desktop, use **Save** beside the composer to queue an unsent prompt for
+later. The arrow also offers Note or Task. Saving as Task moves the text to the
+task board. A failed save keeps your draft, and saving never clears newer edits.
+Saved items contain plain text; remove attachments and context first, or use Stash.
+
+Open **Saved** to find items in this project, No project, or all projects. Launch a
+queued prompt in a new thread, or schedule it to run once at a local date and time.
+Runs use the composer's current model and modes in the project root. Requeue an
+item to use it again. Archiving keeps a linked schedule active; use **Manage
+schedule** to disable it in Settings > Scheduled Tasks.
+
+Use **Copy Markdown** to carry a prompt or note to another instance. Paste the
+export into the Saved panel, or choose **Import**, then confirm the detected kind.
+Native mobile Saved controls are not yet available.
+
 ## Prompt stash
 
 On web and desktop, press `Cmd+S` on macOS or `Ctrl+S` on Windows and Linux to save

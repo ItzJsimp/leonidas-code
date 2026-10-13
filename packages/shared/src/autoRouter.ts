@@ -177,7 +177,7 @@ const UNKNOWN_PROFILE: ModelRouteProfile = { quality: 3, speed: 3, economy: 3, k
 const PROVIDER_DEFAULT_SLUGS = new Set(["auto", "default", "antigravity-default"]);
 
 // Billed per token from the user's own key rather than a prepaid subscription.
-const METERED_DRIVERS = new Set(["openrouter", "opencode", "pi"]);
+export const METERED_DRIVERS: ReadonlySet<string> = new Set(["openrouter", "opencode", "pi"]);
 
 export function profileModel(slug: string): ModelRouteProfile {
   const normalized = slug.toLowerCase();

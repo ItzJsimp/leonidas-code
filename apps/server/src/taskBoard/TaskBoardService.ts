@@ -1150,11 +1150,34 @@ const make = Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
       return yield* Effect.try({
         try: () => {
+          const stableId =
+            input.idempotencyKey === undefined
+              ? undefined
+              : `task-${NodeCrypto.createHash("sha256").update(input.idempotencyKey).digest("hex")}`;
+          if (stableId !== undefined) {
+            const existing = readAiosTasks(root, { now, cache: cardCache }).find(
+              (card) => card.id === stableId,
+            );
+            if (existing) return { ...existing, sourceRoot: root };
+          }
+          const taskProject =
+            input.projectId === undefined
+              ? undefined
+              : projects.find((project) => project.id === input.projectId);
           const created = createCardFile(
             root,
             {
               ...input,
-              ...(root === nativeRoot ? { id: `task-${NodeCrypto.randomUUID()}` } : {}),
+              ...(input.projectSlug === undefined && input.projectId !== undefined
+                ? {
+                    projectSlug: taskProject === undefined ? null : aiosSlugFor(taskProject),
+                  }
+                : {}),
+              ...(stableId !== undefined
+                ? { id: stableId }
+                : root === nativeRoot
+                  ? { id: `task-${NodeCrypto.randomUUID()}` }
+                  : {}),
             },
             now,
           );

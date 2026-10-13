@@ -275,6 +275,10 @@
       "types": "./src/composerInlineTokens.ts",
       "import": "./src/composerInlineTokens.ts"
     },
+    "./skillExpansion": {
+      "types": "./src/skillExpansion.ts",
+      "import": "./src/skillExpansion.ts"
+    },
     "./assistantCitations": {
       "types": "./src/assistantCitations.ts",
       "import": "./src/assistantCitations.ts"
@@ -514,6 +518,10 @@
     "./PtyAdapter": {
       "types": "./src/PtyAdapter.ts",
       "import": "./src/PtyAdapter.ts"
+    },
+    "./savedItemMarkdown": {
+      "types": "./src/savedItemMarkdown.ts",
+      "import": "./src/savedItemMarkdown.ts"
     },
     "./usageForecast": {
       "types": "./src/usageForecast.ts",

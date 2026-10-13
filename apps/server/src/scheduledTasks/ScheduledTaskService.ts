@@ -45,7 +45,12 @@ import * as Metrics from "../observability/Metrics.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
-import { isMissedFixedTimeRun, isSameSchedule, nextScheduledRunAt } from "./Schedule.ts";
+import {
+  isMissedFixedTimeRun,
+  isSameSchedule,
+  nextScheduledRunAt,
+  isValidOnceRunAt,
+} from "./Schedule.ts";
 import {
   redactHeaders,
   redactQuery,
@@ -271,13 +276,20 @@ function iso(value: DateTime.DateTime): string {
 const localNow = DateTime.withCurrentZoneLocal(DateTime.nowInCurrentZone);
 
 function nextRunAt(
-  task: Pick<ScheduledTask, "enabled" | "schedule">,
+  task: Pick<ScheduledTask, "enabled" | "schedule"> & { readonly runCount?: number },
   from: DateTime.DateTime,
 ): string | null {
   if (!task.enabled) return null;
   // A stored interval can decode yet overflow the representable DateTime
   // range; an unrepresentable occurrence means the task has no next run.
   try {
+    if (task.schedule.type === "once") {
+      return (task.runCount ?? 0) > 0
+        ? null
+        : isValidOnceRunAt(task.schedule.runAt)
+          ? DateTime.formatIso(DateTime.makeUnsafe(task.schedule.runAt))
+          : null;
+    }
     const next = nextScheduledRunAt(task.schedule, from);
     return next !== null && Number.isFinite(DateTime.toEpochMillis(next)) ? iso(next) : null;
   } catch {
@@ -311,6 +323,12 @@ function webhookEndpoint(
 const decodeRow = (row: ScheduledTaskRow, origin: WebhookOrigin | null = null) =>
   Effect.gen(function* () {
     const schedule = yield* decodeScheduleJson(row.schedule_json);
+    const sql = yield* SqlClient.SqlClient;
+    const savedLinks = row.task_id?.startsWith("saved-item:")
+      ? yield* sql<{ item_id: string }>`
+      SELECT item_id FROM saved_item_effects WHERE command_id = ${row.task_id.slice("saved-item:".length)} AND action = 'schedule'
+    `
+      : [];
     const webhook = schedule.type === "webhook" ? webhookEndpoint(row, origin) : undefined;
     const workspaceStrategy = yield* decodeWorkspaceStrategyJson(row.workspace_strategy_json);
     const modelSelection = yield* decodeModelSelectionJson(row.model_selection_json);
@@ -318,6 +336,7 @@ const decodeRow = (row: ScheduledTaskRow, origin: WebhookOrigin | null = null) =
       // The stored id decodes through the task schema so a corrupt value fails
       // as a typed parse error, not a `ScheduledTaskId.make` defect.
       id: row.task_id,
+      ...(savedLinks[0] === undefined ? {} : { savedItemId: savedLinks[0].item_id }),
       title: row.title,
       prompt: row.prompt,
       enabled: row.enabled === 1,
@@ -391,6 +410,8 @@ export const layer = Layer.effect(
   ScheduledTaskService,
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
+    const decodeStoredRow = (row: ScheduledTaskRow, origin: WebhookOrigin | null = null) =>
+      decodeRow(row, origin).pipe(Effect.provideService(SqlClient.SqlClient, sql));
     const crypto = yield* Crypto.Crypto;
     const threadLaunch = yield* ThreadLaunchService.ThreadLaunchService;
     const threadManagement = yield* ThreadManagementService.ThreadManagementService;
@@ -445,7 +466,7 @@ export const layer = Layer.effect(
     const listRows = Effect.fn("ScheduledTaskService.listRows")(function* () {
       const rows = yield* selectAllRows();
       const origin = yield* readWebhookOrigin;
-      return yield* Effect.forEach(rows, (row) => decodeRow(row, origin), { concurrency: 1 });
+      return yield* Effect.forEach(rows, (row) => decodeStoredRow(row, origin), { concurrency: 1 });
     });
 
     const getRows = (id: ScheduledTaskId) => sql<ScheduledTaskRow>`
@@ -485,7 +506,7 @@ export const layer = Layer.effect(
       );
       const row = rows[0];
       if (row === undefined) return null;
-      return yield* decodeRow(row, yield* readWebhookOrigin);
+      return yield* decodeStoredRow(row, yield* readWebhookOrigin);
     });
 
     const findWebhookCredentials = (id: ScheduledTaskId) =>
@@ -842,7 +863,10 @@ export const layer = Layer.effect(
           ...scheduleSource,
           updatedAt: iso(completedAt),
           lastRunAt: startedAtIso,
-          nextRunAt: nextRunAt(scheduleSource, completedAt),
+          nextRunAt: nextRunAt(
+            { ...scheduleSource, runCount: scheduleSource.runCount + 1 },
+            completedAt,
+          ),
           lastRunStatus,
           lastRunError,
           runCount: scheduleSource.runCount + 1,
@@ -939,7 +963,7 @@ export const layer = Layer.effect(
         stuck,
         (row) =>
           Effect.gen(function* () {
-            const decoded = yield* Effect.result(decodeRow(row));
+            const decoded = yield* Effect.result(decodeStoredRow(row));
             if (Result.isSuccess(decoded)) {
               yield* sql`
                 UPDATE scheduled_tasks
@@ -1000,6 +1024,8 @@ export const layer = Layer.effect(
 
     const upsert: ScheduledTaskService["Service"]["upsert"] = (input) =>
       Effect.gen(function* () {
+        if (input.schedule.type === "once" && !isValidOnceRunAt(input.schedule.runAt))
+          return yield* taskError("Run time must be a valid UTC timestamp.");
         const now = yield* localNow;
         const uuid =
           input.commandId === undefined
@@ -1437,7 +1463,7 @@ export const layer = Layer.effect(
         ) {
           return yield* notFound;
         }
-        const task = yield* decodeRow(row);
+        const task = yield* decodeStoredRow(row);
         yield* Effect.annotateCurrentSpan({ "scheduled_task.id": task.id });
         const schedule = task.schedule;
         if (schedule.type !== "webhook") return yield* notFound;

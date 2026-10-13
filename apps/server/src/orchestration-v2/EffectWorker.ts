@@ -29,6 +29,7 @@ import * as ThreadTitleRegenerationService from "./ThreadTitleRegenerationServic
 import * as ThreadManagementService from "./ThreadManagementService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import { continueRestartedRun } from "./RestartContinuation.ts";
+import { rerunDelegatedTaskOnFallback } from "./DelegatedTaskFallback.ts";
 
 export class OrchestrationEffectExecutionError extends Schema.TaggedError<OrchestrationEffectExecutionError>()(
   "OrchestrationEffectExecutionError",
@@ -135,6 +136,26 @@ export const layerExecutor: Layer.Layer<
               Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
               Effect.provideService(ServerSettings.ServerSettingsService, settings),
               // A continuation that will never run still owes a delegated parent a result.
+              Effect.tapError(() =>
+                willRetry
+                  ? Effect.void
+                  : threads.recoverDelegatedTask(effect.threadId, sourceRunId),
+              ),
+              Effect.mapError(
+                (cause) =>
+                  new OrchestrationEffectExecutionError({
+                    effectId: effect.id,
+                    effectType: effect.request.type,
+                    cause,
+                  }),
+              ),
+            );
+          }
+          case "delegated-task.fallback": {
+            const sourceRunId = effect.request.sourceRunId;
+            return rerunDelegatedTaskOnFallback({ threadId: effect.threadId, sourceRunId }).pipe(
+              Effect.provideService(ThreadManagementService.ThreadManagementService, threads),
+              // A rerun that will never start still owes the parent the held failure.
               Effect.tapError(() =>
                 willRetry
                   ? Effect.void

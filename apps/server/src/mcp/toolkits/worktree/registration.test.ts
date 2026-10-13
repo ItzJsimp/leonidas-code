@@ -1,3 +1,5 @@
+import * as SavedItems from "../../../savedItems/SavedItemService.ts";
+import * as SavedItemExecution from "../../../savedItems/SavedItemExecution.ts";
 import * as Orchestrator from "#server/orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "#server/orchestration-v2/ProjectionStore.ts";
 import * as LocalVmService from "#server/localVm/LocalVmService.ts";
@@ -22,6 +24,7 @@ import * as ProviderRegistry from "#server/provider/ProviderRegistry.ts";
 import * as ScheduledTaskService from "#server/scheduledTasks/ScheduledTaskService.ts";
 import * as SecretRequests from "#server/secrets/SecretRequests.ts";
 import * as TaskBoardService from "#server/taskBoard/TaskBoardService.ts";
+import * as ModelBenchmarks from "#server/benchmarks/ModelBenchmarks.ts";
 import * as ServerSettings from "#server/serverSettings.ts";
 import * as VcsStatusBroadcaster from "#server/vcs/VcsStatusBroadcaster.ts";
 import * as ServerSecretStore from "#server/auth/ServerSecretStore.ts";
@@ -37,6 +40,8 @@ import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
 import * as PreviewBrowser from "#server/preview/PreviewBrowser.ts";
 
 const layerStubServices = Layer.mergeAll(
+  Layer.mock(SavedItems.SavedItemService)({}),
+  Layer.mock(SavedItemExecution.SavedItemExecution)({}),
   Layer.mock(Orchestrator.OrchestratorV2)({}),
   Layer.mock(ProjectionStore.ProjectionStoreV2)({}),
   Layer.mock(DeviceService.DeviceService)({}),
@@ -56,6 +61,7 @@ const layerStubServices = Layer.mergeAll(
   Layer.mock(SecretRequests.SecretRequests)({}),
   Layer.mock(ProjectService.ProjectService)({}),
   Layer.mock(TaskBoardService.TaskBoardService)({}),
+  Layer.mock(ModelBenchmarks.ModelBenchmarks)({}),
   ServerSettings.layerTest({}),
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),

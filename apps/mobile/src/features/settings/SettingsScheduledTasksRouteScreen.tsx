@@ -101,6 +101,8 @@ const DAYS = [
 
 function describeSchedule(task: ScheduledTask): string {
   if (task.schedule.type === "webhook") return "On webhook";
+  if (task.schedule.type === "once")
+    return `Once on ${new Date(task.schedule.runAt).toLocaleString()}`;
   if (task.schedule.type === "interval") return formatScheduledTaskInterval(task.schedule.everyMs);
   const days = task.schedule.weekdays?.length ? repeatLabel(task.schedule.weekdays) : "Every day";
   return `${days} at ${formatTime(task.schedule.timeOfDay)}`;
@@ -842,27 +844,33 @@ function TaskForm({
 
       <SettingsSection title="Schedule">
         <View className="px-4 py-3">
-          <SegmentedControl
-            options={[
-              { value: "fixed_time", label: "At a time" },
-              { value: "interval", label: "Interval" },
-              { value: "webhook", label: "On webhook" },
-            ]}
-            selected={draft.schedule.mode}
-            onSelect={(mode) => {
-              setTimePickerOpen(false);
-              setDraft({
-                ...draft,
-                prompt:
-                  mode === "webhook" && !draft.prompt.trim()
-                    ? DEFAULT_WEBHOOK_PROMPT
-                    : draft.prompt,
-                schedule: { ...draft.schedule, mode },
-              });
-            }}
-          />
+          {draft.schedule.onceRunAt !== undefined ? (
+            <Text className="text-base text-foreground-muted">
+              Runs once on {new Date(draft.schedule.onceRunAt).toLocaleString()}.
+            </Text>
+          ) : (
+            <SegmentedControl
+              options={[
+                { value: "fixed_time", label: "At a time" },
+                { value: "interval", label: "Interval" },
+                { value: "webhook", label: "On webhook" },
+              ]}
+              selected={draft.schedule.mode}
+              onSelect={(mode) => {
+                setTimePickerOpen(false);
+                setDraft({
+                  ...draft,
+                  prompt:
+                    mode === "webhook" && !draft.prompt.trim()
+                      ? DEFAULT_WEBHOOK_PROMPT
+                      : draft.prompt,
+                  schedule: { ...draft.schedule, mode },
+                });
+              }}
+            />
+          )}
         </View>
-        {draft.schedule.mode === "fixed_time" ? (
+        {draft.schedule.onceRunAt !== undefined ? null : draft.schedule.mode === "fixed_time" ? (
           <>
             <Pressable
               accessibilityRole="button"

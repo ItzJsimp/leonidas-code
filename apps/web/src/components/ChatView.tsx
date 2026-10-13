@@ -447,7 +447,6 @@ import {
   waitForThreadShell,
 } from "../state/entities";
 import { environmentShell } from "../state/shell";
-import { ChatComposerUsageLimits } from "./chat/ChatComposerUsageLimits";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { createPageScrollController, type PageScrollKey } from "./chat/pageScrollController";
@@ -2628,6 +2627,20 @@ export default function ChatView(props: ChatViewProps) {
   const handleNewThreadInActiveProject = useCallback(() => {
     startNewThreadForProject(activeProjectRef, handleNewThread);
   }, [activeProjectRef, handleNewThread]);
+  // The Benchmarks tab starts a chat preset to the model and effort picked there.
+  const handleNewThreadWithModel = useCallback(
+    (modelSelection: ModelSelection) => {
+      if (activeProjectRef === null) return;
+      void handleNewThread(activeProjectRef).then((target) => {
+        if (!target) return;
+        useComposerDraftStore.getState().setModelSelection(target.draftId, modelSelection, {
+          explicit: true,
+          replaceOptions: true,
+        });
+      });
+    },
+    [activeProjectRef, handleNewThread],
+  );
   const projectGroupingSettings = selectProjectGroupingSettings(settings);
   const activeDraftLogicalProjectKey =
     !isServerThread && activeProject
@@ -11655,7 +11668,7 @@ export default function ChatView(props: ChatViewProps) {
     <div
       // Inset from the chat header's edge, not the window's: --workspace-controls-right also
       // clears the native window buttons, which sit over the right panel, not this header.
-      className="absolute top-[var(--workspace-controls-top)] right-[calc(env(safe-area-inset-right)+0.75rem)] z-50 flex h-[var(--workspace-topbar-height)] items-center [-webkit-app-region:no-drag]"
+      className="absolute top-[var(--workspace-controls-top)] right-[calc(env(safe-area-inset-right)+0.75rem)] z-[45] flex h-[var(--workspace-topbar-height)] items-center [-webkit-app-region:no-drag]"
       data-workspace-titlebar-controls
     >
       <PanelLayoutControls
@@ -11670,7 +11683,7 @@ export default function ChatView(props: ChatViewProps) {
       className={cn(
         // Keep one viewport anchor inside the header's no-drag region. The
         // header can shrink behind the right panel without moving the controls.
-        "pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] z-50 mr-px flex h-[var(--workspace-topbar-height)] items-center gap-1 [-webkit-app-region:no-drag]",
+        "pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] z-[45] mr-px flex h-[var(--workspace-topbar-height)] items-center gap-1 [-webkit-app-region:no-drag]",
       )}
       data-workspace-titlebar-controls
     >
@@ -12152,17 +12165,6 @@ export default function ChatView(props: ChatViewProps) {
                                   />
                                 ) : null
                               }
-                              usageControl={
-                                <ChatComposerUsageLimits
-                                  key={routeThreadKey}
-                                  environmentId={activeThread.environmentId}
-                                  threadId={activeThread.id}
-                                  instanceId={activeProviderInstanceId}
-                                  modelLabel={providerSubagentModelLabel}
-                                  effortLabel={providerSubagentEffortLabel}
-                                  contextWindow={headerContextWindow}
-                                />
-                              }
                               bannerItems={composerBannerItems}
                               resumeCompactionTokens={resumeCompactionTokens}
                               keepFullHistory={keepFullHistory}
@@ -12215,6 +12217,7 @@ export default function ChatView(props: ChatViewProps) {
                               pullRequestProjectId={
                                 supportsPullRequests ? (activeProject?.id ?? null) : null
                               }
+                              savedItemsProjectId={activeProject?.id ?? null}
                               pullRequestRepository={
                                 supportsPullRequests ? activeProjectRepository : null
                               }

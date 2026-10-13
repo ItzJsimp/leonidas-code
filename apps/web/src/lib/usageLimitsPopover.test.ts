@@ -26,11 +26,11 @@ const window = (
 ): ServerProviderUsageWindow => ({ id, kind, label, usedPercent: 10 });
 
 describe("usage limits popover helpers", () => {
-  it("grades usage at 75% and 90%", () => {
-    expect(usageSeverity(74.9)).toBe("normal");
-    expect(usageSeverity(75)).toBe("warning");
-    expect(usageSeverity(89)).toBe("warning");
-    expect(usageSeverity(90)).toBe("critical");
+  it("grades what is left: blue from 50%, amber under 50%, red under 10%", () => {
+    expect(usageSeverity(50)).toBe("normal");
+    expect(usageSeverity(50.1)).toBe("warning");
+    expect(usageSeverity(90)).toBe("warning");
+    expect(usageSeverity(90.1)).toBe("critical");
     expect(usageSeverity(100)).toBe("critical");
   });
 

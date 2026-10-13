@@ -35,6 +35,7 @@ import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
+import * as EffectWorker from "./EffectWorker.ts";
 import * as EventSink from "./EventSink.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import { continueRestartedRun } from "./RestartContinuation.ts";
@@ -92,12 +93,26 @@ const providerInstance = {
   textGeneration: {} as ProviderInstance["textGeneration"],
 } satisfies ProviderInstance;
 
+/** A second provider so a delegated fallback rerun can switch instance. */
+const fallbackInstanceId = ProviderInstanceId.make("claude");
+const fallbackProviderInstance = {
+  ...providerInstance,
+  instanceId: fallbackInstanceId,
+  continuationIdentity: { driverKind: driver, continuationKey: "codex:fallback-test" },
+  displayName: "Fallback test",
+  orchestrationAdapter: { ...orchestrationAdapter, instanceId: fallbackInstanceId },
+} satisfies ProviderInstance;
+
 const layerTestProviderInstanceRegistry = Layer.succeed(
   ProviderInstanceRegistry.ProviderInstanceRegistry,
   {
     getInstance: (instanceId) =>
-      Effect.succeed(instanceId === providerInstance.instanceId ? providerInstance : undefined),
-    listInstances: Effect.succeed([providerInstance]),
+      Effect.succeed(
+        [providerInstance, fallbackProviderInstance].find(
+          (instance) => instance.instanceId === instanceId,
+        ),
+      ),
+    listInstances: Effect.succeed([providerInstance, fallbackProviderInstance]),
     listUnavailable: Effect.succeed([]),
     streamChanges: Stream.empty,
     subscribeChanges: Effect.never,
@@ -802,7 +817,8 @@ const seedRestartCancelledChild = (input: {
   readonly completionWake: "always" | "settled_only";
   readonly continuationPending: boolean;
   /** "completed" seeds a settled turn whose background work the restart cancelled. */
-  readonly runStatus?: "cancelled" | "completed";
+  readonly runStatus?: "cancelled" | "completed" | "running";
+  readonly fallbackModelSelection?: ModelSelection;
   readonly now: DateTime.Utc;
 }) =>
   Effect.gen(function* () {
@@ -870,6 +886,9 @@ const seedRestartCancelledChild = (input: {
             prompt: `Run ${input.name}.`,
             title: null,
             model: null,
+            ...(input.fallbackModelSelection === undefined
+              ? {}
+              : { fallbackModelSelection: input.fallbackModelSelection }),
             completionWake: input.completionWake,
             status: "running",
             result: null,
@@ -1708,6 +1727,276 @@ it.layer(layerTest)("delegated tasks across a server restart", (it) => {
           ["queued", true],
         ],
       );
+    }),
+  );
+
+  const haikuFallback = {
+    instanceId: fallbackInstanceId,
+    model: "claude-haiku-5-5",
+  } satisfies ModelSelection;
+
+  /** Seeds a running free-model child, then fails its run with a provider error. */
+  const failFallbackChild = (
+    name: string,
+    options?: { readonly changedFile?: boolean; readonly brief?: string },
+  ) =>
+    Effect.gen(function* () {
+      const eventSink = yield* EventSink.EventSinkV2;
+      const now = yield* DateTime.now;
+      const threadId = ThreadId.make(`thread:${name}-parent`);
+      const projectId = ProjectId.make(`project:${name}-parent`);
+      const runId = RunId.make(`run:${name}-parent`);
+      const rootNodeId = NodeId.make(`node:${name}-parent-root`);
+      yield* seedParentWithTerminalTask({
+        threadId,
+        projectId,
+        runId,
+        rootNodeId,
+        taskId: NodeId.make(`node:${name}-parent-settled`),
+        deliveryState: "delivered",
+        now,
+      });
+      const child = yield* seedRestartCancelledChild({
+        parentThreadId: threadId,
+        projectId,
+        parentRunId: runId,
+        rootNodeId,
+        name,
+        completionWake: "always",
+        continuationPending: false,
+        runStatus: "running",
+        fallbackModelSelection: haikuFallback,
+        now,
+      });
+      const item = {
+        threadId: child.childThreadId,
+        runId: child.childRunId,
+        nodeId: null,
+        providerThreadId: null,
+        providerTurnId: null,
+        nativeItemRef: null,
+        parentItemId: null,
+        startedAt: now,
+        completedAt: now,
+        updatedAt: now,
+      };
+      const afterSequence = yield* eventSink.latestSequence();
+      yield* eventSink.write({
+        commandId: CommandId.make(`command:${name}:failed`),
+        events: [
+          ...(options?.brief === undefined
+            ? []
+            : [
+                {
+                  id: EventId.make(`event:${name}:brief`),
+                  type: "message.updated" as const,
+                  threadId: child.childThreadId,
+                  runId: child.childRunId,
+                  occurredAt: now,
+                  payload: {
+                    id: MessageId.make(`message:${child.childRunId}`),
+                    threadId: child.childThreadId,
+                    runId: child.childRunId,
+                    nodeId: null,
+                    role: "user" as const,
+                    text: options.brief,
+                    attachments: [],
+                    streaming: false,
+                    createdBy: "agent" as const,
+                    creationSource: "mcp" as const,
+                    createdAt: now,
+                    updatedAt: now,
+                  },
+                },
+              ]),
+          ...(options?.changedFile
+            ? [
+                {
+                  id: EventId.make(`event:${name}:file`),
+                  type: "turn-item.updated" as const,
+                  threadId: child.childThreadId,
+                  runId: child.childRunId,
+                  providerInstanceId: modelSelection.instanceId,
+                  occurredAt: now,
+                  payload: {
+                    ...item,
+                    id: TurnItemId.make(`turn-item:${name}:file`),
+                    type: "file_change" as const,
+                    ordinal: 1,
+                    status: "completed" as const,
+                    title: "Edit",
+                    fileName: "README.md",
+                  },
+                },
+              ]
+            : []),
+          {
+            id: EventId.make(`event:${name}:error`),
+            type: "turn-item.updated",
+            threadId: child.childThreadId,
+            runId: child.childRunId,
+            providerInstanceId: modelSelection.instanceId,
+            occurredAt: now,
+            payload: {
+              ...item,
+              id: TurnItemId.make(`turn-item:${name}:error`),
+              type: "error",
+              ordinal: 2,
+              status: "failed",
+              title: "Provider failure",
+              failure: {
+                class: "usage_limit",
+                message: "Rate limit reached.",
+                code: "rate_limited",
+                retryable: true,
+              },
+            },
+          },
+          runEvent({
+            threadId: child.childThreadId,
+            runId: child.childRunId,
+            ordinal: 1,
+            status: "failed",
+            now,
+          }),
+        ],
+      });
+      // Both the hold and a published result update the task row.
+      yield* awaitTaskUpdate(child.taskId, afterSequence);
+      return { ...child, threadId, now };
+    });
+
+  const awaitTaskUpdate = (taskId: NodeId, afterSequence: number) =>
+    Effect.gen(function* () {
+      const eventSink = yield* EventSink.EventSinkV2;
+      return yield* eventSink.stream({ afterSequence, eventType: "subagent.updated" }).pipe(
+        Stream.filter(
+          (stored) =>
+            stored.event.type === "subagent.updated" && stored.event.payload.id === taskId,
+        ),
+        Stream.take(1),
+        Stream.runHead,
+      );
+    });
+
+  it.effect("holds a free-model provider failure for its fallback rerun's result", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const eventSink = yield* EventSink.EventSinkV2;
+      const child = yield* failFallbackChild("fallback-held");
+
+      const held = (yield* orchestrator.getThreadProjection(child.threadId)).subagents.find(
+        (row) => row.id === child.taskId,
+      );
+      assert.equal(held?.status, "running");
+      assert.isNull(held?.result ?? null);
+      assert.include(held?.progress ?? "", "retrying on claude-haiku-5-5");
+      assert.isTrue(yield* orchestrator.delegatedTaskResultPending(child.childThreadId));
+
+      // The rerun finishing settles the task with its answer, not the failure.
+      const rerunId = RunId.make("run:fallback-held:2");
+      const afterSequence = yield* eventSink.latestSequence();
+      yield* eventSink.write({
+        commandId: CommandId.make("command:fallback-held:rerun"),
+        events: [
+          {
+            id: EventId.make("event:fallback-held:answer"),
+            type: "message.updated",
+            threadId: child.childThreadId,
+            runId: rerunId,
+            occurredAt: child.now,
+            payload: {
+              id: MessageId.make("message:fallback-held:answer"),
+              threadId: child.childThreadId,
+              runId: rerunId,
+              nodeId: null,
+              role: "assistant",
+              text: "Answered on the fallback.",
+              attachments: [],
+              streaming: false,
+              createdBy: "agent",
+              creationSource: "server",
+              createdAt: child.now,
+              updatedAt: child.now,
+            },
+          },
+          (() => {
+            const rerun = runEvent({
+              threadId: child.childThreadId,
+              runId: rerunId,
+              ordinal: 2,
+              status: "completed",
+              now: child.now,
+            });
+            return {
+              ...rerun,
+              providerInstanceId: fallbackInstanceId,
+              payload: {
+                ...rerun.payload,
+                providerInstanceId: fallbackInstanceId,
+                modelSelection: haikuFallback,
+              },
+            };
+          })(),
+        ],
+      });
+      yield* awaitTaskUpdate(child.taskId, afterSequence);
+      const finished = (yield* orchestrator.getThreadProjection(child.threadId)).subagents.find(
+        (row) => row.id === child.taskId,
+      );
+      assert.equal(finished?.status, "completed");
+      assert.equal(finished?.result, "Answered on the fallback.");
+      assert.equal(finished?.providerInstanceId, fallbackInstanceId);
+      assert.equal(finished?.model, "claude-haiku-5-5");
+    }),
+  );
+
+  it.effect("publishes the failure when the failed run already changed a file", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const child = yield* failFallbackChild("fallback-edited", { changedFile: true });
+      const task = (yield* orchestrator.getThreadProjection(child.threadId)).subagents.find(
+        (row) => row.id === child.taskId,
+      );
+      assert.equal(task?.status, "failed");
+      assert.isFalse(yield* orchestrator.delegatedTaskResultPending(child.childThreadId));
+    }),
+  );
+
+  it.effect("reruns the brief on the fallback model in the same child thread", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+      const child = yield* failFallbackChild("fallback-rerun", { brief: "List the files." });
+      yield* worker.drain();
+      const childProjection = yield* orchestrator.getThreadProjection(child.childThreadId);
+      const rerun = childProjection.runs.find((run) => run.ordinal === 2);
+      assert.equal(rerun?.modelSelection.instanceId, fallbackInstanceId);
+      assert.equal(rerun?.modelSelection.model, "claude-haiku-5-5");
+      assert.equal(
+        childProjection.messages.find((message) => message.id === rerun?.userMessageId)?.text,
+        "List the files.",
+      );
+      // The rerun now owns the result; the failure is not published.
+      const task = (yield* orchestrator.getThreadProjection(child.threadId)).subagents.find(
+        (row) => row.id === child.taskId,
+      );
+      assert.equal(task?.status, "running");
+    }),
+  );
+
+  it.effect("publishes the held failure when the fallback rerun cannot start", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+      // The seeded run has no brief message, so the rerun declines.
+      const child = yield* failFallbackChild("fallback-declined");
+      yield* worker.drain();
+      const task = (yield* orchestrator.getThreadProjection(child.threadId)).subagents.find(
+        (row) => row.id === child.taskId,
+      );
+      assert.equal(task?.status, "failed");
+      assert.isFalse(yield* orchestrator.delegatedTaskResultPending(child.childThreadId));
     }),
   );
 

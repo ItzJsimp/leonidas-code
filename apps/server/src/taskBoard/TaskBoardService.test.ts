@@ -210,6 +210,26 @@ const cardFile = (id: string, name: string, extra = "") =>
 
 const noGithub = boardRunner(() => {});
 
+it.effect("replays a saved-item task conversion without creating another task file", () =>
+  withAios({}, (_root, project) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const input = {
+        title: 'Save quotes: "雪"',
+        description: "Prompt\r\n---\nBody",
+        actor: "Mob",
+        idempotencyKey: "saved-conversion:one",
+        projectId: project.id,
+      };
+      const first = yield* board.cardCreate(input, [project]);
+      const second = yield* board.cardCreate(input, [project]);
+      expect(second.id).toBe(first.id);
+      expect(first.projectSlug).toBe("leonidas-code");
+      expect((yield* board.workspace([project])).tasks).toHaveLength(1);
+    }).pipe(Effect.provide(boardLayer(noGithub))),
+  ),
+);
+
 it.effect("publishes native tasks through the existing shared project board", () => {
   const writes: ReadonlyArray<string>[] = [];
   return withAios({}, (root, project) => {

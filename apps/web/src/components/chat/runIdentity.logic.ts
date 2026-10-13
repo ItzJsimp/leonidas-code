@@ -7,7 +7,7 @@ import {
 import { normalizeProviderAccentColor } from "../../providerInstances";
 import { getDisplayModelName } from "./providerIconUtils";
 
-const EFFORT_OPTION_IDS = ["reasoningEffort", "effort", "reasoning", "variant"] as const;
+export const EFFORT_OPTION_IDS = ["reasoningEffort", "effort", "reasoning", "variant"] as const;
 
 export interface RunIdentity {
   readonly provider: ServerProvider | undefined;
