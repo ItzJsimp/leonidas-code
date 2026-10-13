@@ -21,6 +21,7 @@ import { CommandPalette } from "../components/CommandPalette";
 import { CaptureDialogHost } from "../components/capture/CaptureDialog";
 import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialog";
 import { ConfirmDialogHost } from "../components/ConfirmDialogHost";
+import { ReleaseHistoryDialogHost } from "../components/desktop/ReleaseHistoryDialog";
 import { KeybindingsConfigWarning } from "../components/KeybindingsConfigWarning";
 import { FirstRunGate } from "../components/onboarding/FirstRunGate";
 import { ConnectOnboardingDialog } from "../components/cloud/ConnectOnboardingDialog";
@@ -254,6 +255,7 @@ function RootRouteView() {
           <LeonidasMobNotificationNotice />
           <ReopenClosedViewShortcut />
           <ConfirmDialogHost />
+          <ReleaseHistoryDialogHost />
           <CustomSnoozeDialogHost />
           <CaptureDialogHost />
           <SlowRpcRequestToastCoordinator />

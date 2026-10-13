@@ -91,6 +91,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
 import { ExpandableText } from "./ExpandableText";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
+import { sharedLoginPeerNames, sharedLoginWarning } from "../chat/signInAgain";
 import { UsageProviderSettings } from "./UsageProviderSettings";
 import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetupSection";
 import { ProviderAuthenticationSection } from "./ProviderAuthenticationSection";
@@ -907,6 +908,9 @@ export function EnvironmentProviderSettings({
         key={row.instanceId}
         environmentId={environmentId}
         acpProjects={projects}
+        sharedLoginWarning={sharedLoginWarning(
+          sharedLoginPeerNames(serverProviders, row.instanceId),
+        )}
         onAcceptUrlAuth={
           readOnly ? undefined : (action) => acceptUrlAuthentication(row.instanceId, action)
         }

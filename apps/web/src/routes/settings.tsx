@@ -1,11 +1,14 @@
 import { Outlet, createFileRoute, redirect, useLocation } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { RotateCcwIcon } from "lucide-react";
+import { ArrowLeftIcon, ExternalLinkIcon, PanelsTopLeftIcon, RotateCcwIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipPopup } from "../components/ui/tooltip";
+import { toastManager } from "../components/ui/toast";
+import { SETTINGS_DOCK_MESSAGE, SETTINGS_WINDOW_NAME } from "../components/settings/settingsWindow";
 import { useSettingsRestore } from "../components/settings/SettingsPanels";
 
 import { SettingsBreadcrumb } from "../components/settings/SettingsBreadcrumb";
-import { SidebarInset } from "../components/ui/sidebar";
+import { SidebarInset, useSidebar } from "../components/ui/sidebar";
 import { useNavigateToMainApp } from "../components/sidebar/mainAppLocation";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { isElectron } from "../env";
@@ -34,11 +37,12 @@ function RestoreDeviceDefaultsButton({ onRestored }: { onRestored: () => void })
     <Button
       size="xs"
       variant="ghost"
+      aria-label="Restore device defaults"
       disabled={changedSettingLabels.length === 0}
       onClick={() => void restoreDefaults()}
     >
       <RotateCcwIcon className="mx-1 size-3.5" />
-      Restore device defaults
+      <span className="hidden md:inline">Restore device defaults</span>
     </Button>
   );
 }
@@ -113,6 +117,7 @@ function SettingsScopeBoundary({ pathname, children }: { pathname: string; child
 function SettingsContentLayout() {
   const location = useLocation();
   const navigateToMainApp = useNavigateToMainApp();
+  const { open, isMobile } = useSidebar();
   useEscapeToGoBack(navigateToMainApp);
   const { search, environment } = useSettingsScope();
   const contentScopeKey =
@@ -120,20 +125,97 @@ function SettingsContentLayout() {
       ? environment?.environmentId
       : JSON.stringify(search);
   const [restoreSignal, setRestoreSignal] = useState(0);
+  const detached = window.name === SETTINGS_WINDOW_NAME;
+  const toggleSettingsWindow = () => {
+    if (detached && (!window.opener || window.opener.closed)) {
+      window.name = "";
+      void navigateToMainApp();
+      return;
+    }
+    if (detached && window.opener && !window.opener.closed) {
+      window.opener.postMessage(
+        { type: SETTINGS_DOCK_MESSAGE, href: window.location.href },
+        window.location.origin === "null" ? "*" : window.location.origin,
+      );
+      window.opener.focus();
+      window.close();
+      return;
+    }
+    const settingsWindow = window.open(
+      window.location.href,
+      SETTINGS_WINDOW_NAME,
+      "popup,width=1100,height=800",
+    );
+    if (!settingsWindow) {
+      toastManager.add({
+        type: "warning",
+        title: "Settings window was blocked",
+        description: "Allow popups for Leonidas Code, then try again.",
+      });
+      return;
+    }
+    settingsWindow.focus();
+    void navigateToMainApp();
+  };
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
-        <WorkspacePageHeader electron={isElectron}>
+        <WorkspacePageHeader electron={isElectron && !detached}>
           <div className="flex w-full items-center gap-3">
-            <SettingsBreadcrumb pathname={location.pathname} />
-            {location.pathname === "/settings/general" ? (
-              <div className="ms-auto flex shrink-0 items-center">
-                <RestoreDeviceDefaultsButton
-                  onRestored={() => setRestoreSignal((value) => value + 1)}
-                />
-              </div>
+            {!open || isMobile ? (
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => void navigateToMainApp()}
+                aria-label="Back to chat"
+              >
+                <ArrowLeftIcon className="size-3.5" />
+                Back
+              </Button>
             ) : null}
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <SettingsBreadcrumb pathname={location.pathname} />
+            </div>
+            <div className="ms-auto flex shrink-0 items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      onClick={toggleSettingsWindow}
+                      aria-label={
+                        detached
+                          ? "Move settings back to the main window"
+                          : "Open settings in a separate window"
+                      }
+                    >
+                      {detached ? (
+                        <PanelsTopLeftIcon className="size-3.5" />
+                      ) : (
+                        <ExternalLinkIcon className="size-3.5" />
+                      )}
+                      <span className="hidden lg:inline">
+                        {detached ? "Move settings back" : "Separate window"}
+                      </span>
+                    </Button>
+                  }
+                />
+                <TooltipPopup>
+                  {detached
+                    ? "Move settings back to the main window"
+                    : "Open settings in a separate window"}
+                </TooltipPopup>
+              </Tooltip>
+              {location.pathname === "/settings/general" ? (
+                <div className="flex shrink-0 items-center">
+                  <RestoreDeviceDefaultsButton
+                    onRestored={() => setRestoreSignal((value) => value + 1)}
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
         </WorkspacePageHeader>
 

@@ -2441,3 +2441,78 @@ code {
     }
   }
 }
+
+/* Tasks window: the drafting grid is replaced by a red (top left) to blue
+   (bottom right) gradient with three blurred blobs drifting on slow loops. */
+html[data-theme-id="leonidas"] [data-slot="sidebar-inset"][data-tasks-surface] {
+  background-image: var(--surface-grain);
+  background-repeat: repeat;
+  background-size: var(--surface-grain-size);
+}
+
+.task-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgb(200 40 52 / 0.22), rgb(40 80 210 / 0.22));
+}
+
+.task-backdrop__blob {
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 9999px;
+  opacity: 0.4;
+  filter: blur(80px);
+  will-change: transform;
+  animation: task-backdrop-drift 75s ease-in-out infinite alternate;
+}
+
+.task-backdrop__blob--red {
+  top: -25vmax;
+  left: -20vmax;
+  background: rgb(225 45 55);
+}
+
+.task-backdrop__blob--violet {
+  top: 25%;
+  left: 30%;
+  width: 40vmax;
+  height: 40vmax;
+  background: rgb(130 60 190);
+  opacity: 0.22;
+  animation-duration: 90s;
+  animation-direction: alternate-reverse;
+}
+
+.task-backdrop__blob--blue {
+  right: -20vmax;
+  bottom: -25vmax;
+  background: rgb(45 95 235);
+  animation-duration: 82s;
+  animation-direction: alternate-reverse;
+}
+
+.task-backdrop[data-paused] .task-backdrop__blob {
+  animation-play-state: paused;
+}
+
+@keyframes task-backdrop-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(14vmax, 8vmax, 0) scale(1.15);
+  }
+  100% {
+    transform: translate3d(4vmax, 18vmax, 0) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-backdrop__blob {
+    animation: none;
+  }
+}

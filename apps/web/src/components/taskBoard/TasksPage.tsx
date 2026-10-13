@@ -1,3 +1,4 @@
+import { TaskBackdrop } from "./TaskBackdrop";
 import {
   ColumnsIcon,
   LayoutDashboardIcon,
@@ -249,7 +250,11 @@ export function TasksPage() {
   }
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
+    <SidebarInset
+      data-tasks-surface
+      className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none"
+    >
+      <TaskBackdrop />
       <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
         <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <h1 className="hidden truncate text-sm font-medium sm:block">Tasks</h1>

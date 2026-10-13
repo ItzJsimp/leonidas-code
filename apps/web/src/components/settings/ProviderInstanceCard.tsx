@@ -58,6 +58,8 @@ import { RedactedSensitiveText } from "./RedactedSensitiveText";
 import { SettingsRow, SettingsSection } from "./settingsLayout";
 import { AcpSessionManagementSection } from "./AcpSessionManagementSection";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
+import { ActiveAgentsBadge } from "../chat/ActiveAgentsBadge";
+import { useActiveAgentCounts } from "../../hooks/useActiveAgentCounts";
 import { readCodexSetupMode } from "./CodexSetupSection.logic";
 import {
   getProviderVersionAdvisoryPresentation,
@@ -515,6 +517,8 @@ interface ProviderInstanceCardProps {
   readonly isUpdating?: boolean | undefined;
   readonly onAcceptUrlAuth?: ((action: AcpRegistryUrlAuthAction) => void) | undefined;
   readonly environmentId?: EnvironmentId | undefined;
+  /** Set when another enabled profile is signed in as the same account. */
+  readonly sharedLoginWarning?: string | null | undefined;
   readonly acpProjects?:
     | ReadonlyArray<{
         readonly id: ProjectId;
@@ -572,8 +576,10 @@ export function ProviderInstanceCard({
   isUpdating = false,
   onAcceptUrlAuth,
   environmentId,
+  sharedLoginWarning,
   acpProjects = EMPTY_ACP_PROJECTS,
 }: ProviderInstanceCardProps) {
+  const activeAgentCount = useActiveAgentCounts();
   const enabled = resolveProviderInstanceEnabled(instance);
   const compatibility = enabled ? liveProvider?.compatibilityAdvisory : undefined;
   // A locally disabled provider reads "Disabled" with a muted dot even if its
@@ -937,6 +943,9 @@ export function ProviderInstanceCard({
           <span className="min-w-0 flex-1">
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-sm font-medium text-foreground">{displayName}</span>
+              {environmentId !== undefined ? (
+                <ActiveAgentsBadge count={activeAgentCount(`${environmentId}:${instanceId}`)} />
+              ) : null}
               {versionLabel ? (
                 <code className="max-w-24 shrink-0 truncate text-xs text-muted-foreground">
                   {versionLabel}
@@ -1046,6 +1055,9 @@ export function ProviderInstanceCard({
                   {editorStatusNode}
                 </div>
               </ProviderStatusDiagnostic>
+              {enabled && sharedLoginWarning ? (
+                <p className="max-w-xl pt-1 text-xs text-warning">{sharedLoginWarning}</p>
+              ) : null}
               {urlAuthAction && onAcceptUrlAuth ? (
                 <div className="grid max-w-xl gap-1.5 pt-1 text-xs">
                   <p>{urlAuthAction.message}</p>

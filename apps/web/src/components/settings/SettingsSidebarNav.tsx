@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   ArchiveIcon,
+  ArrowLeftIcon,
   BlocksIcon,
   BotIcon,
   createLucideIcon,
@@ -31,6 +32,7 @@ import { Button } from "../ui/button";
 import { Kbd } from "../ui/kbd";
 import {
   SidebarContent,
+  SidebarHeader,
   SidebarFooter,
   SidebarGroup,
   SidebarMenu,
@@ -39,7 +41,8 @@ import {
   useSidebar,
   SidebarInput,
 } from "../ui/sidebar";
-import { SidebarUtilityMenu } from "../sidebar/SidebarChrome";
+import { SidebarUpdatePill } from "../sidebar/SidebarUpdatePill";
+import { useNavigateToMainApp } from "../sidebar/mainAppLocation";
 import { scrollToSettingsTarget } from "./settingsLayout";
 import {
   searchSettings,
@@ -131,6 +134,7 @@ function SettingsSectionIcon({ to }: { to: SettingsPath }) {
 }
 
 export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+  const navigateToMainApp = useNavigateToMainApp();
   const navigate = useNavigate();
   const currentHash = useLocation({ select: (location) => location.hash });
   const currentSearch = useLocation({ select: (location) => location.search });
@@ -270,6 +274,21 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   );
   return (
     <>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => {
+                setOpenMobile(false);
+                void navigateToMainApp();
+              }}
+            >
+              <ArrowLeftIcon />
+              <span>Back to chat</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
       <SidebarContent className="overflow-x-hidden">
         <SidebarGroup>
           <div className="flex flex-col gap-2">
@@ -403,7 +422,9 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
         </Suspense>
         <div className="flex items-center gap-1">
           <div className="min-w-0 flex-1">
-            <SidebarUtilityMenu />
+            <SidebarMenu className="flex-row flex-wrap items-center">
+              <SidebarUpdatePill />
+            </SidebarMenu>
           </div>
           <Suspense fallback={null}>
             <T3ConnectSidebarAvatar />

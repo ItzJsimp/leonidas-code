@@ -35,7 +35,35 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
+});
+
+describe("settings in separate windows", () => {
+  it("publishes persisted preferences and receives validated updates without writing them again", async () => {
+    const channel = {
+      addEventListener:
+        vi.fn<(type: string, listener: (event: MessageEvent<unknown>) => void) => void>(),
+      postMessage: vi.fn(),
+      close: vi.fn(),
+    };
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("BroadcastChannel", function () {
+      return channel;
+    });
+    await persistClientSettingsPatch({ timestampFormat: "12-hour" });
+    expect(channel.postMessage).toHaveBeenCalledWith({ timestampFormat: "12-hour" });
+    const writes = persistenceMocks.setClientSettings.mock.calls.length;
+    const receive = channel.addEventListener.mock.calls[0]![1];
+    receive({
+      data: { ...DEFAULT_CLIENT_SETTINGS, timestampFormat: "24-hour" },
+    } as MessageEvent<unknown>);
+    await ensureClientSettingsHydrated();
+    expect(getClientSettings().timestampFormat).toBe("24-hour");
+    expect(persistenceMocks.setClientSettings).toHaveBeenCalledTimes(writes);
+    receive({ data: { timestampFormat: "invalid" } } as MessageEvent<unknown>);
+    expect(getClientSettings().timestampFormat).toBe("24-hour");
+  });
 });
 
 describe("client settings hydration", () => {

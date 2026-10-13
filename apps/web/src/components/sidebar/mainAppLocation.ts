@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
+import { readSettingsDockHref } from "../settings/settingsWindow";
 
 // Utility pages replace the sidebar utility row with a
 // Back button. Everything else is the main app. Legacy `/projects/<key>` links
@@ -21,6 +22,15 @@ let mainAppHref: string | null = null;
 // Mount once in the app shell. Records the latest main app URL so Back can
 // return there no matter how many utility pages were visited since.
 export function MainAppLocationTracker() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handleSettingsDock = (event: MessageEvent<unknown>) => {
+      const href = readSettingsDockHref(event.data, event.origin, window.location.href);
+      if (href) void navigate({ href });
+    };
+    window.addEventListener("message", handleSettingsDock);
+    return () => window.removeEventListener("message", handleSettingsDock);
+  }, [navigate]);
   const href = useLocation({
     select: (location) => (isSidebarUtilityPage(location.pathname) ? null : location.href),
   });
