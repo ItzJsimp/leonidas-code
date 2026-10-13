@@ -7,6 +7,10 @@ import * as Path from "effect/Path";
 
 import { discoverClaudeSkills, skillOverrideSettingsPaths } from "./ClaudeSkills.ts";
 
+// `approxTokens` tracks file length, so these assertions compare the rest.
+const withoutSize = (skills: ReadonlyArray<{ readonly approxTokens?: number }>) =>
+  skills.map(({ approxTokens: _approxTokens, ...rest }) => rest);
+
 const writeSkill = Effect.fn(function* (
   skillsDir: string,
   directoryName: string,
@@ -48,7 +52,7 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
 
       const skills = yield* discoverClaudeSkills({ homePath: configDir }, workspace);
 
-      assert.deepEqual(skills, [
+      assert.deepEqual(withoutSize(skills), [
         {
           name: "codex-review",
           path: path.join(configDir, "skills", "codex-review", "SKILL.md"),
@@ -64,6 +68,20 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
           description: "Deploy the app.",
         },
       ]);
+    }),
+  );
+
+  it.effect("reports a rough token size from the skill file length", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const configDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-claude-skills-" });
+      const contents = ["---", "name: big", "---", "x".repeat(400)].join("\n");
+      yield* writeSkill(path.join(configDir, "skills"), "big", contents);
+
+      const skills = yield* discoverClaudeSkills({ homePath: configDir }, undefined);
+
+      assert.equal(skills[0]?.approxTokens, Math.ceil(contents.length / 4));
     }),
   );
 
@@ -115,7 +133,7 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
 
       const skills = yield* discoverClaudeSkills({ homePath: configDir }, workspace);
 
-      assert.deepEqual(skills, [
+      assert.deepEqual(withoutSize(skills), [
         {
           name: "deploy",
           path: path.join(configDir, "skills", "deploy", "SKILL.md"),
@@ -181,7 +199,7 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
 
         const skills = yield* discoverClaudeSkills({ homePath: configDir }, undefined);
 
-        assert.deepEqual(skills, [
+        assert.deepEqual(withoutSize(skills), [
           {
             name: "kane-cli",
             path: path.join(configDir, "skills", "kane-cli", "SKILL.md"),

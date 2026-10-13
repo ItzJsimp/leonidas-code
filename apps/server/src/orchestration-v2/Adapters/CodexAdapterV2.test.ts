@@ -2528,20 +2528,41 @@ describe("CodexAdapterV2 post-settle continuation", () => {
     Effect.gen(function* () {
       const nativeThreadId = "skill-sigil-thread";
       const nativeTurnId = "skill-sigil-turn";
+      // A prompt that could name a skill makes the adapter list skills first;
+      // an empty list leaves Codex's own `$name` parsing to run on the
+      // rewritten sigil.
+      const skillsList = (id: number): Array<CodexReplay.CodexAppServerReplayEntry> => [
+        {
+          type: "expect_outbound",
+          label: "skills/list",
+          frame: { id, method: "skills/list", params: { cwds: ["/workspace"] } },
+        },
+        { type: "emit_inbound", label: "skills/list", frame: { id, result: { data: [] } } },
+      ];
+      const preamble = codexReplayPreamble({
+        nativeThreadId,
+        nativeTurnId,
+        prompt: "€review do it",
+        sentPrompt: "$review do it",
+      });
+      const turnStartAt = preamble.findIndex(
+        (entry) => entry.type === "expect_outbound" && entry.label === "turn/start",
+      );
       const transcript = makeCodexReplayTranscript({
         scenario: "skill-sigil-canonicalized",
         entries: [
-          ...codexReplayPreamble({
-            nativeThreadId,
-            nativeTurnId,
-            prompt: "€review do it",
-            sentPrompt: "$review do it",
-          }),
+          ...preamble.slice(0, turnStartAt),
+          ...skillsList(3),
+          ...preamble
+            .slice(turnStartAt, turnStartAt + 2)
+            .map((entry) => withReplayRequestId(entry, 4)),
+          ...preamble.slice(turnStartAt + 2),
+          ...skillsList(5),
           {
             type: "expect_outbound",
             label: "turn/steer",
             frame: {
-              id: 4,
+              id: 6,
               method: "turn/steer",
               params: {
                 expectedTurnId: nativeTurnId,
@@ -2553,7 +2574,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
           {
             type: "emit_inbound",
             label: "turn/steer",
-            frame: { id: 4, result: { turnId: nativeTurnId } },
+            frame: { id: 6, result: { turnId: nativeTurnId } },
           },
         ],
       });

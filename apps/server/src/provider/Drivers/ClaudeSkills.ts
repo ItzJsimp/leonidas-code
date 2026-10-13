@@ -386,6 +386,7 @@ export const discoverClaudeSkills = Effect.fn("discoverClaudeSkills")(function* 
         path: skillPath,
         enabled: override?.enabled ?? true,
         scope: root.scope,
+        approxTokens: Math.ceil(contents.length / 4),
         ...(frontmatter.kind === "parsed" && frontmatter.description
           ? { description: frontmatter.description }
           : {}),

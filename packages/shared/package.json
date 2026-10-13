@@ -275,6 +275,10 @@
       "types": "./src/composerInlineTokens.ts",
       "import": "./src/composerInlineTokens.ts"
     },
+    "./skillExpansion": {
+      "types": "./src/skillExpansion.ts",
+      "import": "./src/skillExpansion.ts"
+    },
     "./assistantCitations": {
       "types": "./src/assistantCitations.ts",
       "import": "./src/assistantCitations.ts"

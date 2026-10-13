@@ -105,7 +105,7 @@ import * as Stream from "effect/Stream";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { resolveClaudeSdkExecutablePath } from "../../provider/Drivers/ClaudeExecutable.ts";
-import { planClaudeSkillDispatch } from "../../provider/Drivers/ClaudeSkillDispatch.ts";
+import { expandSkills, mayMentionSkill } from "@t3tools/shared/skillExpansion";
 import { discoverClaudeSkills } from "../../provider/Drivers/ClaudeSkills.ts";
 import { compileClaudeModelSelection } from "../../claudeModelOptions.ts";
 import * as ServerConfig from "../../config.ts";
@@ -1455,30 +1455,19 @@ function isSupportedClaudeImageMimeType(
 export function makeClaudeUserMessage(input: {
   readonly text: string;
   readonly priority?: SDKUserMessage["priority"];
-  readonly skillNames?: ReadonlySet<string>;
+  readonly skills?: ReadonlyMap<string, string>;
   // Claude echoes it as user_message_uuid on the turn that answers it.
   readonly uuid?: SDKUserMessage["uuid"];
 }): SDKUserMessage {
-  // Claude Code expands a skill only from the LAST text block, and only when
-  // `/name` is its first character. A `$skill` chip anywhere in the prompt is
-  // therefore split into [leading text, "/name trailing text"] so the CLI
-  // runs it natively and the prose around it survives. See ClaudeSkillDispatch.
-  const dispatch =
-    input.skillNames === undefined
-      ? undefined
-      : planClaudeSkillDispatch(input.text, input.skillNames);
+  // The CLI expands one `/name` per message and only from the first character
+  // of the last text block, so skills are inlined here instead. See
+  // `expandSkills` for the shape every provider receives.
+  const expanded = input.skills === undefined ? undefined : expandSkills(input.text, input.skills);
   return {
     type: "user",
     message: {
       role: "user",
-      content: dispatch
-        ? [
-            ...(dispatch.leadingText === undefined
-              ? []
-              : [{ type: "text" as const, text: dispatch.leadingText }]),
-            { type: "text" as const, text: dispatch.commandText },
-          ]
-        : input.text,
+      content: expanded ?? input.text,
     },
     parent_tool_use_id: null,
     ...(input.priority === undefined ? {} : { priority: input.priority }),
@@ -1493,12 +1482,12 @@ const makeClaudeUserMessageWithAttachments = Effect.fnUntraced(function* (input:
   readonly uuid?: SDKUserMessage["uuid"];
   readonly attachmentsDir: string;
   readonly fileSystem: FileSystem.FileSystem;
-  readonly skillNames?: ReadonlySet<string>;
+  readonly skills?: ReadonlyMap<string, string>;
 }) {
   if (input.attachments.length === 0) {
     return makeClaudeUserMessage({
       text: input.text,
-      ...(input.skillNames === undefined ? {} : { skillNames: input.skillNames }),
+      ...(input.skills === undefined ? {} : { skills: input.skills }),
       ...(input.priority === undefined ? {} : { priority: input.priority }),
       ...(input.uuid === undefined ? {} : { uuid: input.uuid }),
     });
@@ -1514,14 +1503,11 @@ const makeClaudeUserMessageWithAttachments = Effect.fnUntraced(function* (input:
       resolveAttachmentPath({ attachmentsDir: input.attachmentsDir, attachment }),
   });
 
-  const dispatch =
-    input.skillNames === undefined
-      ? undefined
-      : planClaudeSkillDispatch(textWithAttachmentPaths, input.skillNames);
+  const text =
+    input.skills === undefined
+      ? textWithAttachmentPaths
+      : (expandSkills(textWithAttachmentPaths, input.skills) ?? textWithAttachmentPaths);
   const content: Array<ClaudeUserContentBlock> = [];
-  if (dispatch?.leadingText !== undefined) {
-    content.push({ type: "text", text: dispatch.leadingText });
-  }
 
   for (const attachment of input.attachments) {
     if (attachment.type === "file") {
@@ -1565,12 +1551,8 @@ const makeClaudeUserMessageWithAttachments = Effect.fnUntraced(function* (input:
     });
   }
 
-  // Images go before the command block: a text block after them still
-  // expands, a command block followed by an image does not.
-  if (dispatch) {
-    content.push({ type: "text", text: dispatch.commandText });
-  } else if (textWithAttachmentPaths.length > 0) {
-    content.push({ type: "text", text: textWithAttachmentPaths });
+  if (text.length > 0) {
+    content.push({ type: "text", text });
   }
 
   return {
@@ -3381,23 +3363,29 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
   // the scan is a few directory reads. A skill switched off via skillOverrides,
   // or reserved for the agent with `user-invocable: false`, is left as prose:
   // the CLI would answer `/name` with a notice instead of running it.
-  const userInvocableSkillNames = (cwd: string | null) =>
-    discoverClaudeSkills(
+  const invocableSkillBodies = Effect.fn("ClaudeAdapterV2.invocableSkillBodies")(function* (
+    cwd: string | null,
+    text: string,
+  ) {
+    if (!mayMentionSkill(text)) return undefined;
+    const skills = yield* discoverClaudeSkills(
       adapterOptions.settings,
       cwd ?? undefined,
       adapterOptions.environment,
     ).pipe(
-      Effect.map(
-        (skills) =>
-          new Set(
-            skills
-              .filter((skill) => skill.enabled && skill.userInvocable !== false)
-              .map((skill) => skill.name),
-          ),
-      ),
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
     );
+    const bodies = new Map<string, string>();
+    for (const skill of skills) {
+      if (!skill.enabled || skill.userInvocable === false) continue;
+      const body = yield* fileSystem
+        .readFileString(skill.path)
+        .pipe(Effect.orElseSucceed(() => undefined));
+      if (body !== undefined) bodies.set(skill.name, body);
+    }
+    return bodies as ReadonlyMap<string, string>;
+  });
 
   return ProviderAdapter.ProviderAdapterV2.of({
     instanceId: adapterOptions.instanceId,
@@ -8633,7 +8621,10 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                     attachments: turnInput.message.attachments,
                     attachmentsDir,
                     fileSystem,
-                    skillNames: yield* userInvocableSkillNames(turnInput.runtimePolicy.cwd),
+                    skills: yield* invocableSkillBodies(
+                      turnInput.runtimePolicy.cwd,
+                      turnInput.message.text,
+                    ),
                     uuid: promptUuid,
                   });
             const querySession = yield* openQuery(turnInput, nativeThreadId);
@@ -8885,7 +8876,10 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               priority: "now",
               attachmentsDir,
               fileSystem,
-              skillNames: yield* userInvocableSkillNames(currentTurn.input.runtimePolicy.cwd),
+              skills: yield* invocableSkillBodies(
+                currentTurn.input.runtimePolicy.cwd,
+                turnInput.message.text,
+              ),
             });
             yield* Ref.update(steeredTurns, (current) => {
               const next = new Set(current);
