@@ -4,6 +4,7 @@ import {
   capSentences,
   contextualPromptCandidates,
   countSentences,
+  looksLikeSecret,
   MAX_SUGGESTION_SENTENCES,
   predictPrompt,
   STYLE_STANDARD,
@@ -288,5 +289,35 @@ describe("prompt prediction", () => {
     expect(withModelPrediction(base, null)).toBe(base);
     expect(withModelPrediction(base, "ok")).toBe(base);
     expect(withModelPrediction(base, "line one\nline two")).toBe(base);
+  });
+  it("drops dictated prompts that carry a key or token before they can be completed", () => {
+    const history = buildPromptCandidates(
+      [
+        row("Deploy with sk-ant-api03-AbCdEf0123456789XyZ"),
+        row("Set password: hunter2hunter2 in the env"),
+        row("Run the tests"),
+      ].join("\n"),
+    );
+    expect(history.map((candidate) => candidate.text)).toEqual(["Run the tests"]);
+  });
+  it("never ghost-completes a recommended reply that contains a secret", () => {
+    const candidates = contextualPromptCandidates(
+      [],
+      [
+        {
+          role: "assistant",
+          text: "**Recommended next step:** Put token=ghp_0123456789abcdefABCDEF0123456789 in CI",
+        },
+      ],
+    );
+    expect(predictPrompt(candidates, "")).toBeNull();
+    expect(predictPrompt(candidates, "Put")).toBeNull();
+  });
+  it("keeps ordinary prompts that only look technical", () => {
+    expect(looksLikeSecret("Fix the task-manager layout at 1280px")).toBe(false);
+    expect(
+      looksLikeSecret("Check commit 54340e9754 and session 3f2b1c9a-8d7e-4f6a-9b1c-2d3e4f5a6b7c"),
+    ).toBe(false);
+    expect(looksLikeSecret("Rename the token counter label")).toBe(false);
   });
 });

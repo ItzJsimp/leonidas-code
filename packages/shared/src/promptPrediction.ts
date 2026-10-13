@@ -25,6 +25,28 @@ const ACKNOWLEDGEMENT =
   /^(?:yes|yep|yeah|ok(?:ay)?|sure|no|thanks|thank you|go ahead|continue|do it|ship it)[.!\s]*$/i;
 /** Anonymized phrasing patterns; rebuilt by scripts/extract-prompt-style-standard.ts. */
 export const STYLE_STANDARD: readonly string[] = styleStandard.prompts;
+/** Key and token shapes. A dictated prompt that carries one is dropped, never completed. */
+const SECRET_SHAPES = [
+  /\b(?:sk|pk|rk)[-_][A-Za-z0-9_-]{16,}/,
+  /\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}/,
+  /\bxox[abprs]-[A-Za-z0-9-]{10,}/,
+  /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/,
+  /\bAIza[0-9A-Za-z_-]{30,}/,
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  /\b(?:api[_-]?key|secret|token|password|passwd)["']?\s*[:=]\s*["']?[^\s"']{12,}/i,
+  /\bBearer\s+[A-Za-z0-9._~+/-]{16,}/i,
+];
+const LONG_RUN = /[A-Za-z0-9_+/]{32,}/g;
+
+export function looksLikeSecret(text: string) {
+  if (SECRET_SHAPES.some((shape) => shape.test(text))) return true;
+  // A long unbroken run with both letters and digits is an opaque key; UUIDs split on hyphens.
+  for (const run of text.match(LONG_RUN) ?? [])
+    if (/\d/.test(run) && /[A-Za-z]/.test(run)) return true;
+  return false;
+}
+
 const STOP_WORDS = new Set(
   "a an and are as at be been but by can do for from have i in is it me my of on or our please that the this to we with you your".split(
     " ",
@@ -231,6 +253,8 @@ export function buildPromptCandidates(history: string): PromptCandidate[] {
               .replace(/\s+\S*$/, "")
               .trim()
           : text;
+      // Only the bounded text can ever be shown, so only it needs the check.
+      if (looksLikeSecret(bounded)) continue;
       const key = bounded.toLocaleLowerCase();
       prompts.set(key, {
         text: capSentences(bounded),
@@ -259,8 +283,12 @@ export function predictPrompt(
       candidate.text.length > prefix.length &&
       candidate.text.toLocaleLowerCase().replace(/\s+/g, " ").startsWith(normalized),
   );
+  // Secret check runs only until the first safe match, so the per-keystroke cost stays flat.
+  const safe = (list: readonly PromptCandidate[]) => list.find((c) => !looksLikeSecret(c.text));
   const match =
-    prefix.trim().length > 0 ? (matches.find((c) => !c.standard) ?? matches[0]) : matches[0];
+    prefix.trim().length > 0
+      ? (safe(matches.filter((c) => !c.standard)) ?? safe(matches))
+      : safe(matches);
   if (!match) return null;
   const suffix = match.text.replace(/\s+/g, " ").trim().slice(normalized.length);
   return prefix + (prefix.endsWith(" ") ? suffix.trimStart() : suffix);
