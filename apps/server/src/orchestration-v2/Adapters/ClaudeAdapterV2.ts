@@ -6011,6 +6011,17 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                     ...(goal.checks === undefined ? {} : { checks: goal.checks }),
                   });
                 }
+                // Diagnostic: a run that ends while background work is live
+                // looks finished in the UI; this shows whether the roster saw it.
+                yield* Effect.logInfo(
+                  "orchestration-v2.claude-run-completed-with-background-work",
+                  {
+                    runOrdinal: input.context.input.runOrdinal,
+                    status: input.status,
+                    pendingBackgroundTaskCount: roster.size,
+                    kinds: Array.from(roster.values(), (task) => task.kind),
+                  },
+                );
                 const providerThread: OrchestrationV2ProviderThread = {
                   ...input.context.input.providerThread,
                   providerSessionId: session.id,

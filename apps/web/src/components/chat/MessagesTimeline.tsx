@@ -1,4 +1,5 @@
 import { ThreadFindTimelineContext } from "./ThreadFindProvider";
+import { liveBackgroundCommandIds } from "./backgroundCommands";
 import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/markdownPipeline";
 import { MarkdownFindContext, useFindRevealRef } from "./markdownFindContext";
 import { ComputerUseAppIcon } from "~/components/Icons";
@@ -5446,6 +5447,40 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: WorkEntryRowP
   );
 });
 
+/**
+ * A backgrounded command settles as completed the moment it launches. While
+ * the provider still lists it as running, this chip shows it is alive.
+ */
+function BackgroundCommandTimer({
+  item,
+  startedAt,
+}: {
+  item: OrchestrationV2TurnItem;
+  startedAt: string;
+}) {
+  const ctx = use(TimelineRowCtx);
+  const liveIds = useAtomValue(
+    environmentThreadDetails.threadAtom(
+      scopeThreadRef(ctx.activeThreadEnvironmentId, item.threadId),
+    ),
+    (thread) =>
+      thread === null || thread === undefined
+        ? ""
+        : liveBackgroundCommandIds(
+            thread.projection.turnItems,
+            thread.projection.providerThreads.flatMap(
+              (providerThread) => providerThread.pendingBackgroundTasks ?? [],
+            ),
+          ).join(","),
+  );
+  if (!liveIds.split(",").includes(item.id)) return null;
+  return (
+    <span className="shrink-0 text-xs text-muted-foreground">
+      Running <WorkingTimer createdAt={startedAt} />
+    </span>
+  );
+}
+
 function WorkEntryLogRow(props: WorkEntryRowProps) {
   const { workEntry, workspaceRoot, displayLabel } = props;
   const ctx = use(TimelineRowCtx);
@@ -5766,6 +5801,14 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
           !showDestructiveRowStyle &&
           !toolIconAcceptsTint(entryIconName, entryToolIcon) ? (
             <XIcon aria-hidden className={cn("size-3 shrink-0", failedToolIconClassName)} />
+          ) : null}
+          {workEntry.projectedItem?.item.type === "command_execution" &&
+          workEntry.projectedItem.item.status === "completed" &&
+          workEntry.projectedItem.item.output !== undefined ? (
+            <BackgroundCommandTimer
+              item={workEntry.projectedItem.item}
+              startedAt={workEntry.createdAt}
+            />
           ) : null}
           <TimelineRowTimestamp createdAt={workEntry.createdAt} timestampFormat={timestampFormat} />
           <span
