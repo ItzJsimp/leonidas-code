@@ -27,14 +27,23 @@ const queryKey = (query: Pick<ModelBenchmarkQuery, "modelId" | "effort">) =>
 
 /**
  * Every ready provider's current models, one candidate per effort level the
- * model's picker offers. Several instances of one driver share queries.
+ * model's picker offers. Several instances of one driver (four Claude accounts)
+ * list a model once; `preferInstanceId`'s instance wins so starting a chat from
+ * a row keeps the current account.
  */
 export function connectedBenchmarkCandidates(
   entries: ReadonlyArray<ProviderInstanceEntry>,
+  preferInstanceId: string | null = null,
 ): ReadonlyArray<BenchmarkCandidate> {
   const candidates: BenchmarkCandidate[] = [];
   const queries = new Set<string>();
-  for (const entry of entries) {
+  const ordered = preferInstanceId
+    ? entries.toSorted(
+        (a, b) =>
+          Number(b.instanceId === preferInstanceId) - Number(a.instanceId === preferInstanceId),
+      )
+    : entries;
+  for (const entry of ordered) {
     if (!isProviderInstancePickerReady(entry)) continue;
     for (const model of entry.models) {
       if (model.isLegacy) continue;
@@ -54,10 +63,8 @@ export function connectedBenchmarkCandidates(
           ...(effort ? { effort: effort.option.id } : {}),
         };
         const key = queryKey(query);
-        if (!queries.has(key)) {
-          if (queries.size >= MAX_BENCHMARK_QUERIES) continue;
-          queries.add(key);
-        }
+        if (queries.has(key) || queries.size >= MAX_BENCHMARK_QUERIES) continue;
+        queries.add(key);
         candidates.push({
           key: `${entry.instanceId}\u0000${key}`,
           providerName: entry.displayName,

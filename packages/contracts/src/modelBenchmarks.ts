@@ -88,3 +88,11 @@ export const ModelBenchmarkReportInput = Schema.Struct({
   models: Schema.Array(ModelBenchmarkQuery).check(Schema.isMaxLength(200)),
 });
 export type ModelBenchmarkReportInput = typeof ModelBenchmarkReportInput.Type;
+
+/** Everything a source publishes, for the explorer that charts models the user has not connected. */
+export const ModelBenchmarkCatalog = Schema.Struct({
+  sources: Schema.Array(ModelBenchmarkSourceStatus),
+  metrics: Schema.Array(ModelBenchmarkMetric),
+  entries: Schema.Array(ModelBenchmarkEntry),
+});
+export type ModelBenchmarkCatalog = typeof ModelBenchmarkCatalog.Type;

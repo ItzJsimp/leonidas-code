@@ -93,6 +93,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.serverGetUsageSummary]: "server",
   [WS_METHODS.serverRefreshUsageRates]: "server",
   [WS_METHODS.serverGetModelBenchmarks]: "server",
+  [WS_METHODS.serverGetModelBenchmarkCatalog]: "server",
   [WS_METHODS.serverSignalProcess]: "server",
   [WS_METHODS.serverReportClientActivity]: "server",
   [WS_METHODS.serverReportHostPowerState]: "server",

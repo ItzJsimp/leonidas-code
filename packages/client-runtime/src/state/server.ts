@@ -1279,6 +1279,11 @@ export function createServerEnvironmentAtoms<R, E>(
       tag: WS_METHODS.serverGetModelBenchmarks,
       staleTimeMs: 10 * 60_000,
     }),
+    modelBenchmarkCatalog: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:model-benchmark-catalog",
+      tag: WS_METHODS.serverGetModelBenchmarkCatalog,
+      staleTimeMs: 10 * 60_000,
+    }),
     resourceTelemetryHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:resource-telemetry-history",
       tag: WS_METHODS.serverGetResourceTelemetryHistory,
