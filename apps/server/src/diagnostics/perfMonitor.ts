@@ -1,3 +1,6 @@
+// @effect-diagnostics nodeBuiltinImport:off - perf events are appended synchronously from non-Effect hot paths.
+// @effect-diagnostics globalDate:off - timing reads the wall clock directly; the monitor runs outside Effect.
+// @effect-diagnostics globalConsole:off - the monitor warns on stderr when perf logging itself fails.
 /**
  * Leonidas performance emitter (TypeScript, node built-ins only).
  *

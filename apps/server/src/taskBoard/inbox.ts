@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - inbox drops are written synchronously with a caller-supplied timestamp.
 // @effect-diagnostics nodeBuiltinImport:off - Drops are plain markdown files read by people and agents.
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";

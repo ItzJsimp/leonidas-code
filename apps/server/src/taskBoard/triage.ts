@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - pure date arithmetic on the caller-supplied now.
 export type DropKind = "task" | "note" | "idea";
 
 export interface DropTriage {

@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - tests seed synchronous inbox drops with real timestamps.
 // @effect-diagnostics nodeBuiltinImport:off - Exercises real files in a temp folder.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";

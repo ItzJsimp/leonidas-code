@@ -1,3 +1,4 @@
+import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -500,14 +501,14 @@ export const probeCodexSkillsForCwd = Effect.fn("probeCodexSkillsForCwd")(functi
   readonly environment?: NodeJS.ProcessEnv;
 }) {
   const cached = codexSkillsProbeCache.get(input.cwd);
-  if (cached !== undefined && cached.expiresAt > Date.now()) {
+  if (cached !== undefined && cached.expiresAt > (yield* Clock.currentTimeMillis)) {
     return cached.skills;
   }
   const { client } = yield* withCodexAppServerClient(input);
   const skillsResponse = yield* client.request("skills/list", { cwds: [input.cwd] });
   const skills = parseCodexSkillsListResponse(skillsResponse, input.cwd);
   codexSkillsProbeCache.set(input.cwd, {
-    expiresAt: Date.now() + CODEX_SKILLS_PROBE_CACHE_TTL_MS,
+    expiresAt: (yield* Clock.currentTimeMillis) + CODEX_SKILLS_PROBE_CACHE_TTL_MS,
     skills,
   });
   return skills;

@@ -2,6 +2,7 @@ import type { AntigravitySettings, ServerProviderUsageWindow } from "@t3tools/co
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";
+import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -81,7 +82,7 @@ function describeFailure(step: string, error: unknown): string {
   return `${step} failed`;
 }
 
-class ProbeStepError extends Error {}
+class ProbeStepError extends Data.TaggedError("ProbeStepError")<{ readonly message: string }> {}
 
 function iso(value: string | undefined): string | undefined {
   const parsed = value ? DateTime.make(value) : Option.none();
@@ -210,7 +211,8 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
     const token = yield* fs.readFileString(tokenPath).pipe(
       Effect.flatMap(decodeTokenFile),
       Effect.mapError(
-        (error) => new ProbeStepError(describeFailure("Reading the sign-in file", error)),
+        (error) =>
+          new ProbeStepError({ message: describeFailure("Reading the sign-in file", error) }),
       ),
     );
     const fingerprint = Array.from(
@@ -238,7 +240,8 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
       ).pipe(
         Effect.flatMap(decodeTokenResponse),
         Effect.mapError(
-          (error) => new ProbeStepError(describeFailure("Google token refresh", error)),
+          (error) =>
+            new ProbeStepError({ message: describeFailure("Google token refresh", error) }),
         ),
       );
       accessToken = refreshed.access_token;

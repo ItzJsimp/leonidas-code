@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - tests build fixed local dates for triage.
 import { describe, expect, it } from "@effect/vitest";
 
 import { triageDrop } from "./triage.ts";

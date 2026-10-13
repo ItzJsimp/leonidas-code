@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off - turn timing is synchronous and runs outside Effect.
 /**
  * Leonidas Code agent latency KPIs: time to first token and total turn duration per run.
  * Rules live in the AIOS standards/perf-thresholds.json (code.turn.*); without an AIOS the
