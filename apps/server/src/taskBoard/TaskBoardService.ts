@@ -37,7 +37,8 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import { ServerConfig } from "../config.ts";
-import { removeDrop, writeDrop } from "./inbox.ts";
+import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
+import { triageDrop } from "./triage.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import {
   applyCardPatch,
@@ -1183,10 +1184,33 @@ const make = Effect.gen(function* () {
       const root = inboxRoot(projects);
       if (root === null) return yield* storageError("No folder is available for the inbox.");
       const now = yield* Clock.currentTimeMillis;
-      return yield* Effect.try({
-        try: () => writeDrop(root, input, now),
+      const verdict = triageDrop(input.text, now);
+      const receipt = yield* Effect.try({
+        try: () => writeDrop(root, { ...input, suggested: verdict.kind }, now),
         catch: cardWriteFailure,
       });
+      if (verdict.kind !== "task" || !verdict.confident) {
+        return { ...receipt, kind: verdict.kind };
+      }
+      // The drop is already safe on disk; filing it as a task must never lose it.
+      const task = yield* cardCreate(
+        {
+          title: verdict.title,
+          due: verdict.due,
+          description: `From a quick capture:\n\n${input.text.trim()}`,
+          projectSlug: input.projectSlug ?? null,
+          actor: input.actor,
+        },
+        projects,
+      ).pipe(Effect.option);
+      if (Option.isNone(task) || !task.value.sourceFile)
+        return { ...receipt, kind: "note" as const };
+      const sourceFile = task.value.sourceFile;
+      yield* Effect.try({
+        try: () => linkDropToTask(root, receipt.id, sourceFile),
+        catch: cardWriteFailure,
+      }).pipe(Effect.ignore);
+      return { ...receipt, kind: "task" as const, filedTask: verdict.title };
     });
 
   const inboxUndo = (input: InboxUndoInput, projects: ReadonlyArray<Project>) =>
@@ -1194,7 +1218,13 @@ const make = Effect.gen(function* () {
       const root = inboxRoot(projects);
       if (root === null) return { removed: false };
       return yield* Effect.try({
-        try: () => ({ removed: removeDrop(root, input.id) }),
+        try: () => {
+          const { removed, taskFile } = removeDrop(root, input.id);
+          const cardRoot = nativeRoot ?? aiosRootFor(projects);
+          const card = taskFile && cardRoot ? findCardFile(cardRoot, taskFile) : null;
+          if (card) NodeFS.rmSync(card);
+          return { removed };
+        },
         catch: cardWriteFailure,
       });
     });

@@ -284,7 +284,13 @@ export const InboxDropInput = Schema.Struct({
 });
 export type InboxDropInput = typeof InboxDropInput.Type;
 
-export const InboxDrop = Schema.Struct({ id: Schema.String, createdAt: Schema.String });
+export const InboxDrop = Schema.Struct({
+  id: Schema.String,
+  createdAt: Schema.String,
+  /** Triage's guess. A confident task also becomes a task card, titled `filedTask`. */
+  kind: Schema.Literals(["note", "idea", "task"]),
+  filedTask: Schema.optional(Schema.String),
+});
 export type InboxDrop = typeof InboxDrop.Type;
 
 export const InboxUndoInput = Schema.Struct({ id: TrimmedNonEmptyString });

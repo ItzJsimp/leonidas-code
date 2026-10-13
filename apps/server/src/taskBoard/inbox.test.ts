@@ -4,7 +4,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 
-import { removeDrop, writeDrop } from "./inbox.ts";
+import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
 
 const roots: string[] = [];
 const tempRoot = () => {
@@ -37,9 +37,23 @@ describe("inbox drops", () => {
     const root = tempRoot();
     const { id } = writeDrop(root, { text: "idea", actor: "Jake" }, Date.now());
     NodeFS.writeFileSync(NodePath.join(root, "keep.md"), "x");
-    expect(removeDrop(root, "../keep")).toBe(false);
-    expect(removeDrop(root, id)).toBe(true);
-    expect(removeDrop(root, id)).toBe(false);
+    expect(removeDrop(root, "../keep").removed).toBe(false);
+    expect(removeDrop(root, id).removed).toBe(true);
+    expect(removeDrop(root, id).removed).toBe(false);
     expect(NodeFS.existsSync(NodePath.join(root, "keep.md"))).toBe(true);
+  });
+
+  it("links a drop to its task card and reports it on undo", () => {
+    const root = tempRoot();
+    const { id } = writeDrop(
+      root,
+      { text: "call Mob", suggested: "task", actor: "Jake" },
+      Date.now(),
+    );
+    linkDropToTask(root, id, "task-call-mob.md");
+    const raw = NodeFS.readFileSync(NodePath.join(root, "inbox", `${id}.md`), "utf8");
+    expect(raw).toContain("status: filed");
+    expect(raw).toContain("suggested: task");
+    expect(removeDrop(root, id)).toEqual({ removed: true, taskFile: "task-call-mob.md" });
   });
 });

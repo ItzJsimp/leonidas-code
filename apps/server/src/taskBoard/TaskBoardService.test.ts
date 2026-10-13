@@ -512,3 +512,45 @@ it.effect("publishes open project cards to the shared board and marks them share
     ),
   );
 });
+
+it.effect(
+  "files a clear capture as a task card, keeps a vague one as a note, and undoes both",
+  () =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "leonidas-inbox-"))),
+      (stateDir) =>
+        Effect.gen(function* () {
+          const board = yield* TaskBoardService.TaskBoardService;
+          const root = NodePath.join(stateDir, "task-board");
+          const tasks = () => NodeFS.readdirSync(NodePath.join(root, "tasks"));
+          const drops = () => NodeFS.readdirSync(NodePath.join(root, "inbox"));
+
+          const filed = yield* board.inboxDrop(
+            { text: "call Mob about the hotkey", actor: "Jake" },
+            [],
+          );
+          expect(filed).toMatchObject({ kind: "task", filedTask: "Call Mob about the hotkey" });
+          expect(tasks()).toHaveLength(1);
+
+          const vague = yield* board.inboxDrop(
+            { text: "Should the hotkey be configurable?", actor: "Jake" },
+            [],
+          );
+          expect(vague.kind).toBe("note");
+          expect(vague.filedTask).toBeUndefined();
+          expect(tasks()).toHaveLength(1);
+          expect(drops()).toHaveLength(2);
+
+          yield* board.inboxUndo({ id: filed.id }, []);
+          expect(tasks()).toHaveLength(0);
+          expect(drops()).toHaveLength(1);
+        }).pipe(
+          Effect.provide(
+            boardLayer(noGithub).pipe(
+              Layer.provide(Layer.succeed(ServerConfig, { stateDir } as ServerConfig["Service"])),
+            ),
+          ),
+        ),
+      (stateDir) => Effect.sync(() => NodeFS.rmSync(stateDir, { recursive: true, force: true })),
+    ),
+);

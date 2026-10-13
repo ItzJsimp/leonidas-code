@@ -2,11 +2,15 @@
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
+import type { DropKind } from "./triage.ts";
+
 export interface InboxDropRequest {
   readonly text: string;
   readonly source?: string | undefined;
   readonly projectSlug?: string | null | undefined;
   readonly actor: string;
+  /** What triage guessed; recorded so a later pass or a person can confirm it. */
+  readonly suggested?: DropKind | undefined;
 }
 
 export interface InboxDropReceipt {
@@ -48,6 +52,7 @@ export function writeDrop(root: string, input: InboxDropRequest, now: number): I
     `by: ${yaml(input.actor)}`,
     ...(input.source?.trim() ? [`source: ${yaml(input.source)}`] : []),
     ...(project ? [`project: ${yaml(project)}`] : []),
+    ...(input.suggested ? [`suggested: ${input.suggested}`] : []),
     "---",
     input.text.trim(),
     "",
@@ -63,11 +68,31 @@ export function writeDrop(root: string, input: InboxDropRequest, now: number): I
   }
 }
 
-/** Removes a drop saved moments ago; only an id this module issued can name a file. */
-export function removeDrop(root: string, id: string): boolean {
-  if (!DROP_ID.test(id)) return false;
-  const file = NodePath.join(root, "inbox", `${id}.md`);
-  if (!NodeFS.existsSync(file)) return false;
+const dropFile = (root: string, id: string) =>
+  DROP_ID.test(id) ? NodePath.join(root, "inbox", `${id}.md`) : null;
+
+/** Marks a drop as filed into a task card, so undo can remove both and nobody files it twice. */
+export function linkDropToTask(root: string, id: string, taskFile: string): void {
+  const file = dropFile(root, id);
+  if (!file) return;
+  const raw = NodeFS.readFileSync(file, "utf8");
+  const linked = raw
+    .replace("\nstatus: new\n", "\nstatus: filed\n")
+    .replace("\n---\n", `\ntask_file: ${yaml(taskFile)}\n---\n`);
+  NodeFS.writeFileSync(file, linked, "utf8");
+}
+
+/**
+ * Removes a drop saved moments ago and reports the task card it was filed into, if any. Only an
+ * id this module issued can name a file.
+ */
+export function removeDrop(
+  root: string,
+  id: string,
+): { readonly removed: boolean; readonly taskFile: string | null } {
+  const file = dropFile(root, id);
+  if (!file || !NodeFS.existsSync(file)) return { removed: false, taskFile: null };
+  const taskFile = /^task_file: (".*")$/m.exec(NodeFS.readFileSync(file, "utf8"))?.[1];
   NodeFS.rmSync(file);
-  return true;
+  return { removed: true, taskFile: taskFile ? (JSON.parse(taskFile) as string) : null };
 }

@@ -72,7 +72,8 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
       const id = result.value.id;
       const toastId = toastManager.add({
         type: "success",
-        title: "Saved to inbox",
+        title: result.value.kind === "task" ? "Added to your tasks" : "Saved to inbox",
+        ...(result.value.filedTask ? { description: result.value.filedTask } : {}),
         timeout: 4000,
         actionProps: {
           children: "Undo",
