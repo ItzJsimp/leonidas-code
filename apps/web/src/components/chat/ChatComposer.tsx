@@ -132,6 +132,8 @@ import {
 import { openCapture } from "../capture/captureStore";
 import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
+import { ComposerSkillsButton } from "./ComposerSkillsButton";
+import { prefixPromptWithSkill } from "./composerSkillPrefix";
 import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerSavedItems } from "./ComposerSavedItems";
 import { ComposerStashMenu } from "./ComposerStashMenu";
@@ -7051,6 +7053,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               context: { terminalFocus: false, terminalOpen, modelPickerOpen: false },
             })}
             onOpen={() => openCapture({ source: "composer" })}
+          />
+        ) : null}
+        {!isComposerApprovalState && selectedProviderSkills.length > 0 ? (
+          <ComposerSkillsButton
+            skills={selectedProviderSkills}
+            alignRight={stashQueue.length === 0 && prompt.trim().length > 0}
+            onSelect={(skillName) => setPrompt(prefixPromptWithSkill(promptRef.current, skillName))}
           />
         ) : null}
         {!isComposerApprovalState && prompt.trim().length === 0 ? (
