@@ -78,6 +78,8 @@ verified: 2026-10-11
 
 ## 7. Session notes (newest first, one line each, keep 10, older in the archive)
 
+- **2026-10-12 (Leonidas pet, slices 1 to 3):** petdex-format pet (192x208 cells, 9 state rows, MIT code) is committed locally on `feat/leonidas-pet` in worktree `C:/lcw/pet` (`154503bbca`, `1ef7f2bd77`, `e053a4e609`): atlas core, flagged canvas player with `petEnabled` setting, activity-to-state mapping, walk and bubble. 9 pet tests pass; not seen in a client yet and not pushed. Worktrees on D: stall for 10+ minutes, use `C:/lcw`. Resume from `handoff-docs/2026-10-12-leonidas-pet-slice-4.md`.
+
 - **2026-10-12 (native tasks and connected roadmap):** daily planning and the V0.21 to V1.0 map are committed in `036dd3214a` and `67707f3c95`. The map has ten release gates, twenty executable tasks and editable milestone assignments; 154 focused tests pass. Preview checks cover import, reload, reassignment, clear, complete/reopen, zoom and narrow layouts. Three unrelated web typecheck errors remain; no release was published.
 
 - **2026-10-12 (slowness diagnosis and perf audit):** agents were slow because D: is a 7200rpm HDD (queue 35 to 50) with no Defender exclusion, whole-tree git checkpoints with per-object fsync (66 to 112 s), and per-turn `npx` MCP spawns; nothing in source changed. 56 evidence-tagged changes in `handoff-docs/leonidas-code-perf-audit-20261012.md`; resume from `handoff-docs/2026-10-12-leonidas-code-performance-audit.md`. Open: Defender exclusions (admin), SSD move decision with Mob, real Codex turn-start failure cause (masked in `failure.ts`).

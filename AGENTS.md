@@ -2,6 +2,10 @@
 
 > **Leonidas Code:** this repo is Leonidas Code, Jake and Mob's own product forked from T3 Code (MIT, `pingdotgg/t3code`). Read [LEONIDAS.md](./LEONIDAS.md) first. The T3 Code text below is upstream's engineering guide; its code rules apply, its product claims describe T3, not us.
 
+## Performance gate
+
+Every code change passes the `performance-gate` skill (AIOS canon `.agents/skills/performance-gate/SKILL.md`, linked into this repo's `.agents/skills/`) before commit or "done": measured memory and speed, component efficiency, no code bloat, high quality. This is the enforcement of "Performance without compromise" below. Do not grow oversized files; a perf claim needs a before and after number.
+
 ## Reply format
 
 The mandatory Top / Body / Dock reply standard lives once in [LEONIDAS.md](./LEONIDAS.md) ("Output standard"), imported below.

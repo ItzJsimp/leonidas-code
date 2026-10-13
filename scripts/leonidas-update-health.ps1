@@ -23,7 +23,8 @@ if ($Register) {
     if ($value.Contains('"')) { throw 'Task arguments cannot contain quotes.' }
   }
   $arguments = "-NoProfile -WindowStyle Hidden -File `"$monitor`" -DeviceLabel `"$DeviceLabel`" -Repository `"$Repository`" -StateDirectory `"$StateDirectory`" -ReportDirectory `"$ReportDirectory`""
-  $action = New-ScheduledTaskAction -Execute (Get-Process -Id $PID).Path -Argument $arguments
+  # Wrap pwsh in a headless conhost: -WindowStyle Hidden alone still flashes a console every five minutes.
+  $action = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot 'System32\conhost.exe') -Argument "--headless `"$((Get-Process -Id $PID).Path)`" $arguments"
   $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
   $settings = New-ScheduledTaskSettingsSet -Hidden -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
   Register-ScheduledTask -TaskName 'Leonidas Code update health' -Action $action -Trigger $trigger -Settings $settings -Description 'Local-only release delivery status and timings' -Force | Out-Null

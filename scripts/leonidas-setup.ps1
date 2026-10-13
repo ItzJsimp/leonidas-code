@@ -75,3 +75,9 @@ $exePath = Join-Path $env:LOCALAPPDATA "Programs\t3code\Leonidas Code.exe"
 if (-not (Test-Path -LiteralPath $exePath)) { throw "Expected $exePath after install." }
 Start-Process -FilePath $exePath
 Write-Host "Launched Leonidas Code. Right-click its taskbar icon > Pin to taskbar (Windows blocks scripted pins)."
+
+# Always-on dev copy: server task plus a green "Leonidas Code (Dev)" Desktop shortcut.
+try {
+  & (Join-Path $PSScriptRoot 'Install-DevShortcut.ps1')
+  Write-Host 'Right-click "Leonidas Code (Dev)" on the Desktop > Show more options > Pin to taskbar. Its first click installs dependencies (10 to 20 minutes, once).'
+} catch { Write-Warning "Dev shortcut setup skipped: $($_.Exception.Message)" }
