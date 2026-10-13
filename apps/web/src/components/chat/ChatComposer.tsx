@@ -130,6 +130,8 @@ import {
   usePromptStashStore,
   type PromptStashEntry,
 } from "../../promptStashStore";
+import { openCapture } from "../capture/captureStore";
+import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
 import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerStashMenu } from "./ComposerStashMenu";
@@ -7044,9 +7046,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             onToggleMenu={toggleStashMenu}
           />
         ) : null}
+        {!isComposerApprovalState ? (
+          <ComposerCaptureBadge
+            alignRight={stashQueue.length === 0}
+            shortcutLabel={shortcutLabelForCommand(keybindings, "capture.open", {
+              context: { terminalFocus: false, terminalOpen, modelPickerOpen: false },
+            })}
+            onOpen={() => openCapture({ source: "composer" })}
+          />
+        ) : null}
         {!isComposerApprovalState && prompt.trim().length === 0 ? (
           <ComposerNextActionBadge
-            alignRight={stashQueue.length === 0}
+            alignRight={false}
             onFill={() => setPrompt(NEXT_ACTION_PROMPT)}
           />
         ) : null}

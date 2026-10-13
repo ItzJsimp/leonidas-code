@@ -36,6 +36,9 @@ import {
   TaskBoardWorkspaceSnapshot,
   TaskBoardCardUpdateInput,
   TaskBoardCardCreateInput,
+  InboxDrop,
+  InboxDropInput,
+  InboxUndoInput,
   TaskBoardShareInput,
 } from "./taskBoard.ts";
 import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
@@ -431,6 +434,8 @@ export const WS_METHODS = {
   taskBoardCardUpdate: "taskBoard.cardUpdate",
   taskBoardCardCreate: "taskBoard.cardCreate",
   taskBoardShare: "taskBoard.share",
+  inboxDrop: "inbox.drop",
+  inboxUndo: "inbox.undo",
   devPreviewStatus: "devPreview.status",
   devPreviewStart: "devPreview.start",
   devPreviewStop: "devPreview.stop",
@@ -1352,6 +1357,18 @@ const WsTaskBoardCardCreateRpc = Rpc.make(WS_METHODS.taskBoardCardCreate, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsInboxDropRpc = Rpc.make(WS_METHODS.inboxDrop, {
+  payload: InboxDropInput,
+  success: InboxDrop,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsInboxUndoRpc = Rpc.make(WS_METHODS.inboxUndo, {
+  payload: InboxUndoInput,
+  success: Schema.Struct({ removed: Schema.Boolean }),
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
@@ -2208,6 +2225,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardCardUpdateRpc,
   WsTaskBoardCardCreateRpc,
   WsTaskBoardShareRpc,
+  WsInboxDropRpc,
+  WsInboxUndoRpc,
   WsDevPreviewStatusRpc,
   WsDevPreviewStartRpc,
   WsDevPreviewStopRpc,

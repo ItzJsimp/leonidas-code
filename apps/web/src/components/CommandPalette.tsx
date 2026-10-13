@@ -60,6 +60,7 @@ import {
   ArrowLeftIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
+  InboxIcon,
   ListChecksIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -143,6 +144,7 @@ import {
   resolveProjectPathForDispatch,
 } from "../lib/projectPaths";
 import { onOpenCommandPalette } from "../commandPaletteBus";
+import { openCapture } from "./capture/captureStore";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import {
@@ -462,6 +464,13 @@ export function CommandPalette({ children }: { children: ReactNode }) {
           themeHalves,
           initialAppearance: resolvedTheme,
         });
+        return;
+      }
+      if (command === "capture.open") {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        openCapture({ source: "keybinding" });
         return;
       }
       if (command === "usage.open") {
@@ -2190,6 +2199,18 @@ function OpenCommandPaletteDialog(props: {
     icon: <ListChecksIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/tasks" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:capture",
+    searchTerms: ["capture", "note", "idea", "task", "inbox", "brain dump", "save"],
+    title: "Quick capture",
+    icon: <InboxIcon className={ITEM_ICON_CLASS} />,
+    shortcutCommand: "capture.open",
+    run: async () => {
+      openCapture({ source: "command palette" });
     },
   });
 

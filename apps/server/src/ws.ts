@@ -2746,6 +2746,14 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.cardCreate(input, projects)),
           ),
+        [WS_METHODS.inboxDrop]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.inboxDrop(input, projects)),
+          ),
+        [WS_METHODS.inboxUndo]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.inboxUndo(input, projects)),
+          ),
         [WS_METHODS.taskBoardShare]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.share(project, input)),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),

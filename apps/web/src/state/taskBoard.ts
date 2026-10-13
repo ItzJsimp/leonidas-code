@@ -58,3 +58,13 @@ export const taskBoardUpdate = createEnvironmentRpcCommand(connectionAtomRuntime
   label: "environment-data:task-board:update",
   tag: WS_METHODS.taskBoardUpdate,
 });
+
+export const inboxDrop = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:inbox:drop",
+  tag: WS_METHODS.inboxDrop,
+});
+
+export const inboxUndo = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:inbox:undo",
+  tag: WS_METHODS.inboxUndo,
+});

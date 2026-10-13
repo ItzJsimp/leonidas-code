@@ -146,6 +146,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.taskBoardCardUpdate]: "workspace",
   [WS_METHODS.taskBoardCardCreate]: "workspace",
   [WS_METHODS.taskBoardShare]: "workspace",
+  [WS_METHODS.inboxDrop]: "workspace",
+  [WS_METHODS.inboxUndo]: "workspace",
   [WS_METHODS.devPreviewStatus]: "workspace",
   [WS_METHODS.devPreviewStart]: "workspace",
   [WS_METHODS.devPreviewStop]: "workspace",

@@ -10,6 +10,9 @@ import {
   type TaskBoardCompleteInput,
   type TaskBoardCreateInput,
   type TaskBoardHistoryEntry,
+  type InboxDrop,
+  type InboxDropInput,
+  type InboxUndoInput,
   type TaskBoardCardCreateInput,
   type TaskBoardCardUpdateInput,
   type TaskBoardReleaseInput,
@@ -34,6 +37,7 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import { ServerConfig } from "../config.ts";
+import { removeDrop, writeDrop } from "./inbox.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import {
   applyCardPatch,
@@ -378,6 +382,15 @@ export class TaskBoardService extends Context.Service<
       project: Project,
       input: TaskBoardShareInput,
     ) => Effect.Effect<TaskBoardSnapshot, TaskBoardReadError | TaskBoardOperationError>;
+    /** Saves a raw capture in the AIOS `inbox/` folder (the native root when no AIOS is found). */
+    readonly inboxDrop: (
+      input: InboxDropInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<InboxDrop, TaskBoardOperationError>;
+    readonly inboxUndo: (
+      input: InboxUndoInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<{ readonly removed: boolean }, TaskBoardOperationError>;
   }
 >()("t3/taskBoard/TaskBoardService") {}
 
@@ -1162,6 +1175,30 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const inboxRoot = (projects: ReadonlyArray<Project>) =>
+    aiosRootFor(projects) ?? nativeRoot ?? null;
+
+  const inboxDrop = (input: InboxDropInput, projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      const root = inboxRoot(projects);
+      if (root === null) return yield* storageError("No folder is available for the inbox.");
+      const now = yield* Clock.currentTimeMillis;
+      return yield* Effect.try({
+        try: () => writeDrop(root, input, now),
+        catch: cardWriteFailure,
+      });
+    });
+
+  const inboxUndo = (input: InboxUndoInput, projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      const root = inboxRoot(projects);
+      if (root === null) return { removed: false };
+      return yield* Effect.try({
+        try: () => ({ removed: removeDrop(root, input.id) }),
+        catch: cardWriteFailure,
+      });
+    });
+
   const share = (projectInput: Project, input: TaskBoardShareInput) =>
     Effect.gen(function* () {
       const project = yield* projectContext(projectInput);
@@ -1225,6 +1262,8 @@ const make = Effect.gen(function* () {
     workspace,
     cardUpdate,
     cardCreate,
+    inboxDrop,
+    inboxUndo,
     share,
   });
 });

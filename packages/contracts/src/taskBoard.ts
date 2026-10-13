@@ -275,6 +275,21 @@ export const TaskBoardCardCreateInput = Schema.Struct({
 });
 export type TaskBoardCardCreateInput = typeof TaskBoardCardCreateInput.Type;
 
+/** A raw capture: saved first, classified later. `source` says where it came from. */
+export const InboxDropInput = Schema.Struct({
+  text: TrimmedNonEmptyString.check(Schema.isMaxLength(20_000)),
+  source: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(500))),
+  projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  actor: TrimmedNonEmptyString.check(Schema.isMaxLength(100)),
+});
+export type InboxDropInput = typeof InboxDropInput.Type;
+
+export const InboxDrop = Schema.Struct({ id: Schema.String, createdAt: Schema.String });
+export type InboxDrop = typeof InboxDrop.Type;
+
+export const InboxUndoInput = Schema.Struct({ id: TrimmedNonEmptyString });
+export type InboxUndoInput = typeof InboxUndoInput.Type;
+
 // Publishes (or withdraws) cards on the project's shared board. Omitting `taskIds` targets every
 // open card linked to the project.
 export const TaskBoardShareInput = Schema.Struct({
