@@ -2940,6 +2940,7 @@ describe("orchestration v2 provider switching", () => {
         );
         assert.equal(turns[0]?.text, firstPrompt);
         assert.include(turns[1]?.text ?? "", "Context handoff (full_thread_summary):");
+        assert.include(turns[1]?.text ?? "", "## Handoff note");
         assert.include(turns[1]?.text ?? "", "codex before switch");
         assert.include(turns[1]?.text ?? "", claudePrompt);
         // The fresh native thread has none of the earlier Codex turn, so the

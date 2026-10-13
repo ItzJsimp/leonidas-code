@@ -1,7 +1,11 @@
 import { ThreadId, TurnItemId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { distillRosettaHandoff, estimateTokenCount } from "./rosettaHandoffDistillation.js";
+import {
+  distillRosettaHandoff,
+  estimateTokenCount,
+  handoffNote,
+} from "./rosettaHandoffDistillation.js";
 
 const message = (input: {
   readonly role: "user" | "assistant";
@@ -151,12 +155,49 @@ describe("rosettaHandoffDistillation", () => {
     });
 
     expect(envelope.summaryText).toContain("## Working set");
-    expect(envelope.summaryText).toContain("Referenced path: C:/Users/Jacob/AppData/Scribe/history.jsonl");
+    expect(envelope.summaryText).toContain(
+      "Referenced path: C:/Users/Jacob/AppData/Scribe/history.jsonl",
+    );
     expect(envelope.summaryText).toContain("Referenced path: antifragile.md");
   });
 
   it("estimates tokens from UTF-8 text bytes", () => {
     expect(estimateTokenCount("hello world")).toBe(3);
     expect(estimateTokenCount("")).toBe(0);
+  });
+});
+
+describe("handoff note", () => {
+  it("leads with objective, branch, files, last passing check and next step", () => {
+    const note = handoffNote(
+      [
+        message({ role: "user", kind: "user_message", text: "Write failover notes.", id: "u" }),
+        message({
+          role: "assistant",
+          kind: "file_change",
+          text: "File change: apps/a.ts",
+          id: "f",
+        }),
+        message({
+          role: "assistant",
+          kind: "command_execution",
+          text: "vp test run a.test.ts\nExit code: 0",
+          id: "c1",
+        }),
+        message({
+          role: "assistant",
+          kind: "command_execution",
+          text: "git status\nExit code: 0",
+          id: "c2",
+        }),
+        message({ role: "assistant", kind: "assistant_message", text: "Tests pass.", id: "a" }),
+      ],
+      "feat/failover-note",
+    );
+    expect(note).toContain("Objective: Write failover notes.");
+    expect(note).toContain("Branch: feat/failover-note");
+    expect(note).toContain("apps/a.ts");
+    expect(note).toContain("Last verified: vp test run a.test.ts");
+    expect(note).toContain("Next step: Continue from the latest assistant state");
   });
 });
