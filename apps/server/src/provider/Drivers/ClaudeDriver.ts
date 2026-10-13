@@ -14,6 +14,7 @@
  */
 import { ClaudeSettings, ProviderDriverKind } from "@t3tools/contracts";
 import * as Cache from "effect/Cache";
+import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -35,7 +36,7 @@ import {
 } from "../../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
 import { ProviderDriverError } from "../Errors.ts";
 import { claudeUsageReader } from "./claudeUsage.ts";
-import { makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
+import { claudeUsageResponseToLimits, makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
 import * as ClaudeResetCredits from "../claudeResetCredits.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
@@ -76,6 +77,9 @@ const decodeClaudeSettings = Schema.decodeSync(ClaudeSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
 const CAPABILITIES_PROBE_TTL = Duration.minutes(5);
+// Limit bars refresh on their own faster cadence: one cheap HTTP read per account,
+// never the CLI spawn the full health check costs.
+const USAGE_POLL_INTERVAL = Duration.seconds(60);
 
 function isClaudeNativeCommandPath(commandPath: string): boolean {
   const normalized = normalizeCommandPath(commandPath);
@@ -293,6 +297,34 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
       // Same rules as Codex: serialised on the config directory that holds the
       // login, one request id kept until Claude answers (a cooldown or rate
       // limit is an answer), then a re-probe.
+      const host = yield* ProviderHost.ProviderHost;
+      const pollUsage = Effect.gen(function* () {
+        const [genericDemand, instanceDemand] = yield* Effect.all([
+          host.shouldRunBackgroundWork({ type: "provider-status" }),
+          host.shouldRunBackgroundWork({ type: "provider-status", instanceId }),
+        ]);
+        const current = yield* snapshot.getSnapshot;
+        if (!(genericDemand || instanceDemand) || !current.version) return;
+        if (!current.enabled || current.auth.status !== "authenticated") return;
+        const response = yield* ClaudeResetCredits.readClaudeOauthUsage(configDir, current.version);
+        if (!response?.rate_limits) return;
+        const checkedAt = DateTime.formatIso(yield* DateTime.now);
+        const { limits } = claudeUsageResponseToLimits({ response, checkedAt });
+        if (limits.windows.length > 0) {
+          yield* snapshot.applyUsageLimits({ windows: limits.windows, checkedAt });
+        }
+      }).pipe(
+        Effect.provideService(HttpClient.HttpClient, httpClient),
+        Effect.provideService(FileSystem.FileSystem, fileSystem),
+        Effect.provideService(Path.Path, path),
+        Effect.ignoreCause({ log: true }),
+      );
+      yield* Effect.sleep(USAGE_POLL_INTERVAL).pipe(
+        Effect.andThen(pollUsage),
+        Effect.forever,
+        Effect.forkScoped,
+      );
+
       const consumeResetCredit: NonNullable<ProviderInstance["consumeResetCredit"]> = () =>
         Effect.gen(function* () {
           const current = yield* snapshot.getSnapshot;
