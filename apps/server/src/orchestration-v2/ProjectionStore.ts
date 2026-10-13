@@ -1,4 +1,4 @@
-import { projectTurnItemForWire } from "./WireProjection.ts";
+import { projectTurnItemForStorage, projectTurnItemForWire } from "./WireProjection.ts";
 import { summarizeThreadActivity } from "./threadActivitySummary.ts";
 import * as Stream from "effect/Stream";
 import { makeThreadFind, findProjectedThreadItems } from "./ThreadFind.ts";
@@ -2450,7 +2450,9 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
             break;
           }
           case "turn-item.updated": {
-            const payloadJson = yield* encodeTurnItemPayload(event.payload);
+            const payloadJson = yield* encodeTurnItemPayload(
+              projectTurnItemForStorage(event.payload),
+            );
             yield* sql`
               INSERT INTO orchestration_v2_projection_turn_items (
                 turn_item_id,
