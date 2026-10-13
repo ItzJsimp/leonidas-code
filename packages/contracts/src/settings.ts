@@ -646,16 +646,16 @@ export const CodexSettings = makeProviderSettingsSchema(
     ),
     binaryPath: makeBinaryPathSetting("codex").pipe(
       Schema.annotateKey({
-        title: "Binary path",
-        description: "Path to the Codex binary used by this instance.",
+        title: "Program location",
+        description: "Where the program is installed. Leave blank to let Leonidas Code find it.",
         providerSettingsForm: { placeholder: "codex", clearWhenEmpty: "omit" },
       }),
     ),
     homePath: TrimmedString.pipe(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
-        title: "CODEX_HOME path",
-        description: "Custom Codex home and config directory.",
+        title: "Shared data folder",
+        description: "Where Codex keeps its settings and history. Leave blank to use the default.",
         providerSettingsForm: {
           placeholder: "~/.codex",
           clearWhenEmpty: "omit",
@@ -665,9 +665,9 @@ export const CodexSettings = makeProviderSettingsSchema(
     shadowHomePath: TrimmedString.pipe(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
-        title: "Shadow home path",
+        title: "Account data folder",
         description:
-          "Account-specific Codex home. Keeps auth.json separate while sharing state from CODEX_HOME.",
+          "Where this account's sign-in is stored. Each extra Codex account needs its own folder.",
         providerSettingsForm: {
           placeholder: "~/.codex-t3/personal",
           clearWhenEmpty: "omit",
@@ -677,8 +677,8 @@ export const CodexSettings = makeProviderSettingsSchema(
     launchArgs: TrimmedString.pipe(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
-        title: "Launch arguments",
-        description: "Additional CLI arguments passed to codex app-server on session start.",
+        title: "Extra startup options",
+        description: "Advanced. Extra options passed when the program starts.",
       }),
     ),
     customModels: Schema.Array(CustomModelSetting).pipe(
@@ -705,17 +705,17 @@ export const ClaudeSettings = makeProviderSettingsSchema(
     ),
     binaryPath: makeBinaryPathSetting("claude").pipe(
       Schema.annotateKey({
-        title: "Binary path",
-        description: "Path to the Claude binary used by this instance.",
+        title: "Program location",
+        description: "Where the program is installed. Leave blank to let Leonidas Code find it.",
         providerSettingsForm: { placeholder: "claude", clearWhenEmpty: "omit" },
       }),
     ),
     homePath: TrimmedString.pipe(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
-        title: "CLAUDE_CONFIG_DIR path",
+        title: "Account data folder",
         description:
-          "Custom Claude home and config directory. Keeps .claude.json and .claude separate.",
+          "Where this account's sign-in and settings are stored. Each Claude account needs its own folder.",
         providerSettingsForm: { placeholder: "~/.claude", clearWhenEmpty: "omit" },
       }),
     ),
@@ -726,8 +726,8 @@ export const ClaudeSettings = makeProviderSettingsSchema(
     launchArgs: Schema.String.pipe(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
-        title: "Launch arguments",
-        description: "Additional CLI arguments passed on session start.",
+        title: "Extra startup options",
+        description: "Advanced. Extra options passed when the program starts.",
         providerSettingsForm: {
           placeholder: "e.g. --chrome",
           clearWhenEmpty: "omit",
@@ -805,8 +805,8 @@ export const OpenRouterSettings = makeProviderSettingsSchema(
     launchArgs: Schema.String.pipe(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
-        title: "Launch arguments",
-        description: "Additional CLI arguments passed on session start.",
+        title: "Extra startup options",
+        description: "Advanced. Extra options passed when the program starts.",
         providerSettingsForm: { hidden: true },
       }),
     ),

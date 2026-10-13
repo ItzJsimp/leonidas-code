@@ -28,7 +28,7 @@ const ITEMS: ReadonlyArray<SettingsSearchItem> = [
   },
   {
     id: "providers",
-    title: "Providers",
+    title: "AI accounts",
     to: "/settings/providers",
     searchTerms: ["claude codex agents"],
   },

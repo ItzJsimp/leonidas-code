@@ -655,7 +655,9 @@ function ManagedCodexSetup({
   const callbackCompletion =
     !handoff && auth?.phase === "waiting" && url ? (
       <div className="flex w-full flex-col gap-3 text-xs leading-relaxed text-muted-foreground">
-        <p>If sign-in doesn't return to Leonidas Code, paste the URL from the final localhost page.</p>
+        <p>
+          If sign-in doesn't return to Leonidas Code, paste the URL from the final localhost page.
+        </p>
         <form
           className="flex flex-col gap-2 sm:flex-row sm:items-center"
           onSubmit={(event) => {
@@ -1031,8 +1033,8 @@ export function CodexManagedRuntimeFields({
   return (
     <>
       <SettingsRow
-        title="Binary path"
-        description="Selected by Leonidas Code."
+        title="Program location"
+        description="Chosen by Leonidas Code. Nothing to set up."
         control={
           <div className="w-full sm:w-80">
             <Input
@@ -1046,8 +1048,8 @@ export function CodexManagedRuntimeFields({
         }
       />
       <SettingsRow
-        title="CODEX_HOME path"
-        description="Shared Codex config, sessions, and state."
+        title="Shared data folder"
+        description="Where Codex keeps its settings and conversation history for all accounts."
         control={
           <div className="w-full sm:w-80">
             <Input
@@ -1061,11 +1063,11 @@ export function CodexManagedRuntimeFields({
         }
       />
       <SettingsRow
-        title="Shadow home path"
+        title="Account data folder"
         description={
           provider?.runtimePaths?.shadowHomePath
-            ? "Account-specific home sharing the Codex state above."
-            : "This instance uses the shared Codex home directly."
+            ? "This account's own sign-in folder. It shares the data above."
+            : "This account uses the shared data folder directly."
         }
         control={
           <div className="w-full sm:w-80">

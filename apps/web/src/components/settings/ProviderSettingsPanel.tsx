@@ -92,7 +92,9 @@ import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
 import { ExpandableText } from "./ExpandableText";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
 import { UsageProviderSettings } from "./UsageProviderSettings";
+import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetupSection";
+import { ClaudeConnectCard } from "../onboarding/ClaudeConnectCard";
 import { ProviderAuthenticationSection } from "./ProviderAuthenticationSection";
 import { CodexSetupSection, CodexManagedRuntimeFields } from "./CodexSetupSection";
 import { readCodexSetupMode } from "./CodexSetupSection.logic";
@@ -633,6 +635,12 @@ export function EnvironmentProviderSettings({
           provider.instanceId === defaultInstanceIdForDriver(ProviderDriverKind.make("cursor")),
       ),
   );
+  // Offer the first-run banner only once the server has reported its providers.
+  const hasNoSignedInAccount =
+    serverProviders.length > 0 &&
+    !serverProviders.some(
+      (provider) => provider.enabled && provider.auth.status === "authenticated",
+    );
   const textGenerationModelSelection = resolveAppModelSelectionState(settings, serverProviders);
   const textGenInstanceId = textGenerationModelSelection.instanceId;
   const resolvedBackgroundActivity = resolveServerBackgroundActivitySettings(settings);
@@ -967,6 +975,16 @@ export function EnvironmentProviderSettings({
                 })
               }
             />
+          ) : mode === "editor" && !readOnly && row.driver === "claudeAgent" ? (
+            <div className="px-3 py-3 sm:px-4">
+              <ClaudeConnectCard
+                key={`${environmentId}:${row.instanceId}`}
+                environmentId={environmentId}
+                provider={liveProvider}
+                instanceId={row.instanceId}
+                displayName={row.instance.displayName?.trim() || "Claude"}
+              />
+            </div>
           ) : mode === "editor" &&
             !readOnly &&
             liveProvider &&
@@ -1080,6 +1098,7 @@ export function EnvironmentProviderSettings({
       <SettingsSection
         {...searchableSetting("providers")}
         variant="plain"
+        title="AI accounts"
         titleAction={
           !readOnly ? (
             <Tooltip>
@@ -1089,13 +1108,13 @@ export function EnvironmentProviderSettings({
                     size="icon-xs"
                     variant="ghost-muted"
                     onClick={() => setIsAddInstanceDialogOpen(true)}
-                    aria-label="Add provider"
+                    aria-label="Connect an account"
                   >
                     <PlusIcon />
                   </Button>
                 }
               />
-              <TooltipPopup side="top">Add provider</TooltipPopup>
+              <TooltipPopup side="top">Connect an account</TooltipPopup>
             </Tooltip>
           ) : null
         }
@@ -1132,6 +1151,20 @@ export function EnvironmentProviderSettings({
         {deviceTabs ? (
           <div className="flex min-h-11 min-w-0 items-center gap-2 px-3 sm:px-4">{deviceTabs}</div>
         ) : null}
+        {hasNoSignedInAccount && !readOnly ? (
+          <SettingsGroup divided={false} className="overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
+              <p className="min-w-0 flex-1 text-sm text-foreground">
+                Connect an AI account to start. Pick Claude or ChatGPT, click Connect, and sign in
+                in your browser.
+              </p>
+              <Button size="sm" onClick={() => setIsAddInstanceDialogOpen(true)}>
+                <PlusIcon />
+                Connect an account
+              </Button>
+            </div>
+          </SettingsGroup>
+        ) : null}
         {readOnly ? (
           <SettingsGroup divided={false} className="overflow-hidden">
             <SettingsRow
@@ -1162,7 +1195,7 @@ export function EnvironmentProviderSettings({
                     onClick={() => setIsAddInstanceDialogOpen(true)}
                   >
                     <PlusIcon className="size-4 shrink-0" />
-                    Add provider
+                    Connect an account
                   </button>
                 ) : null}
               </div>
@@ -1185,16 +1218,24 @@ export function EnvironmentProviderSettings({
         </SettingsGroup>
       </SettingsSection>
 
-      <UsageProviderSettings
-        key={environmentId}
-        environmentId={environmentId}
-        environmentLabel={environmentLabel}
-        sources={settings.usageLimitSources}
-        cursorKeychainUsageEnabled={settings.cursorKeychainUsageEnabled}
-        readOnly={readOnly}
-      />
-
-      <SettingsSection title="Advanced">
+      <FoldedSettingsSection
+        id="provider-advanced"
+        title="Advanced"
+        summary="Usage tracking and background status checks."
+        openForIds={[
+          searchableSetting("usage-providers").id,
+          searchableSetting("cursor-keychain-usage").id,
+          searchableSetting("provider-health-check-interval").id,
+        ]}
+      >
+        <UsageProviderSettings
+          key={environmentId}
+          environmentId={environmentId}
+          environmentLabel={environmentLabel}
+          sources={settings.usageLimitSources}
+          cursorKeychainUsageEnabled={settings.cursorKeychainUsageEnabled}
+          readOnly={readOnly}
+        />
         <SettingsRow
           id={searchableSetting("provider-health-check-interval").id}
           title={
@@ -1268,7 +1309,7 @@ export function EnvironmentProviderSettings({
             </div>
           }
         />
-      </SettingsSection>
+      </FoldedSettingsSection>
 
       {isAddInstanceDialogOpen && !readOnly ? (
         <AddProviderInstanceDialog

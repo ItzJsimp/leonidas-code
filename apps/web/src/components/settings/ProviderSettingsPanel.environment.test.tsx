@@ -205,7 +205,7 @@ function isRefreshButton(element: ReactElement<Record<string, unknown>>): boolea
 }
 
 function isAddProviderButton(element: ReactElement<Record<string, unknown>>): boolean {
-  return element.props["aria-label"] === "Add provider";
+  return element.props["aria-label"] === "Connect an account";
 }
 
 async function flushPromises(): Promise<void> {
@@ -432,7 +432,7 @@ describe("EnvironmentProviderSettings routing", () => {
   it("removes an open add-instance dialog when the provider grant is revoked", () => {
     let panel = renderPanel();
     const add = visitElements(panel, isAddProviderButton);
-    if (!add) throw new Error("Missing Add provider action.");
+    if (!add) throw new Error("Missing Connect an account action.");
     (add.props.onClick as () => void)();
     panel = renderPanel();
     expect(

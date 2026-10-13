@@ -17,6 +17,7 @@ export function FoldedSettingsSection({
   summary,
   control,
   headerPlacement = "inside",
+  openForIds,
   children,
 }: {
   readonly id: string;
@@ -24,6 +25,8 @@ export function FoldedSettingsSection({
   readonly summary?: string | null;
   readonly control?: ReactNode;
   readonly headerPlacement?: "inside" | "outside";
+  /** Extra settings search target ids that live inside this fold and should open it. */
+  readonly openForIds?: ReadonlyArray<string>;
   readonly children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -31,8 +34,11 @@ export function FoldedSettingsSection({
   const targetRef = useSettingsSearchTarget<HTMLElement>(id);
   // A search jump lands inside the fold, so open it before the scroll runs.
   const [openedForTarget, setOpenedForTarget] = useState<string | null>(null);
-  if (searchTargetId === id && openedForTarget !== id) {
-    setOpenedForTarget(id);
+  const targetsThisFold =
+    searchTargetId !== null &&
+    (searchTargetId === id || (openForIds?.includes(searchTargetId) ?? false));
+  if (targetsThisFold && openedForTarget !== searchTargetId) {
+    setOpenedForTarget(searchTargetId);
     if (!open) setOpen(true);
   }
 

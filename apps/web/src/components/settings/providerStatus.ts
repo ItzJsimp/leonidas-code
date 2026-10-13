@@ -44,7 +44,8 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
     return {
       headline: "Disabled",
       detail:
-        provider.message ?? "This provider is installed but disabled for new sessions in Leonidas Code.",
+        provider.message ??
+        "This provider is installed but disabled for new sessions in Leonidas Code.",
     };
   }
   if (!provider.installed) {
@@ -84,6 +85,56 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
     headline: "Available",
     detail: provider.message ?? null,
   };
+}
+
+export type ProviderListStatusKind =
+  | "off"
+  | "checking"
+  | "signed-in"
+  | "needs-sign-in"
+  | "problem"
+  | "ready";
+
+const SIGN_IN_PROBLEM_PATTERN =
+  /not authenticated|unauthenticated|auth(?:entication)? login|log ?in|sign ?in/i;
+
+/**
+ * One plain status line for a provider row and editor header. Authentication
+ * jargon ("Run `claude auth login`") collapses into "Needs sign in"; other
+ * problems keep the server's headline and detail.
+ */
+export function getProviderListStatus(
+  provider: ServerProvider | undefined,
+  enabled: boolean,
+): {
+  readonly kind: ProviderListStatusKind;
+  readonly text: string;
+  readonly detail: string | null;
+} {
+  if (!enabled) return { kind: "off", text: "Off", detail: null };
+  if (!provider) {
+    return { kind: "checking", text: "Checking...", detail: null };
+  }
+  if (!provider.installed) {
+    return { kind: "problem", text: "Not installed", detail: null };
+  }
+  const message = provider.message ?? "";
+  if (
+    provider.auth.status === "unauthenticated" ||
+    ((provider.status === "error" || provider.status === "warning") &&
+      provider.auth.status !== "authenticated" &&
+      SIGN_IN_PROBLEM_PATTERN.test(message))
+  ) {
+    return { kind: "needs-sign-in", text: "Needs sign in", detail: null };
+  }
+  if (provider.status === "error" || provider.status === "warning") {
+    const summary = getProviderSummary(provider);
+    return { kind: "problem", text: summary.headline, detail: summary.detail };
+  }
+  if (provider.auth.status === "authenticated") {
+    return { kind: "signed-in", text: "Signed in", detail: null };
+  }
+  return { kind: "ready", text: "Ready", detail: null };
 }
 
 /**

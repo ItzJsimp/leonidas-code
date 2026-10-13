@@ -6,7 +6,53 @@ import {
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { claudeSteps, describeClaudeConnect } from "./claudeConnect.logic";
+import {
+  CLAUDE_BUSY_MESSAGE,
+  claudeSteps,
+  describeClaudeConnect,
+  isSignInUnfinished,
+  mapClaudeConnectFailure,
+} from "./claudeConnect.logic";
+
+describe("isSignInUnfinished", () => {
+  const job = (overrides: Partial<ProviderInstallState>): ProviderInstallState => ({
+    driver: ProviderDriverKind.make("claudeAgent"),
+    operationId: "op-1",
+    phase: "idle",
+    downloadedBytes: 0,
+    totalBytes: null,
+    version: null,
+    installedVersion: null,
+    canRemove: false,
+    message: null,
+    ...overrides,
+  });
+
+  it("treats a cancelled job and a sign-in failure as unfinished, but not other failures", () => {
+    expect(isSignInUnfinished(job({ phase: "cancelled" }))).toBe(true);
+    expect(isSignInUnfinished(job({ phase: "failed", recovery: "signIn" }))).toBe(true);
+    expect(isSignInUnfinished(job({ phase: "failed", recovery: "retry" }))).toBe(false);
+    expect(isSignInUnfinished(job({ phase: "signingIn" }))).toBe(false);
+    expect(isSignInUnfinished(undefined)).toBe(false);
+  });
+});
+
+describe("mapClaudeConnectFailure", () => {
+  it("maps a second start while one job runs to the finish-or-cancel message", () => {
+    expect(mapClaudeConnectFailure(new Error("Claude setup is already in progress."), "x")).toBe(
+      CLAUDE_BUSY_MESSAGE,
+    );
+    expect(mapClaudeConnectFailure(new Error("Another install is running"), "x")).toBe(
+      CLAUDE_BUSY_MESSAGE,
+    );
+  });
+
+  it("keeps other server messages and falls back for empty or non-error failures", () => {
+    expect(mapClaudeConnectFailure(new Error("No network."), "fallback")).toBe("No network.");
+    expect(mapClaudeConnectFailure(new Error(""), "fallback")).toBe("fallback");
+    expect(mapClaudeConnectFailure("boom", "fallback")).toBe("fallback");
+  });
+});
 
 const provider = (overrides: Partial<ServerProvider> = {}): ServerProvider => ({
   instanceId: ProviderInstanceId.make("claudeAgent"),
@@ -43,7 +89,10 @@ describe("describeClaudeConnect", () => {
   });
 
   it("offers one connect action for a missing or signed-out Claude", () => {
-    const missing = describeClaudeConnect(provider({ installed: false, status: "error" }), undefined);
+    const missing = describeClaudeConnect(
+      provider({ installed: false, status: "error" }),
+      undefined,
+    );
     expect(missing.kind).toBe("idle");
     const signedOut = describeClaudeConnect(
       provider({ auth: { status: "unauthenticated" }, status: "error" }),

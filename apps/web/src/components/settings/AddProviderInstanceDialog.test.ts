@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  collectClaudeHomePaths,
+  deriveAccountLabel,
   deriveAvailableInstanceId,
+  deriveClaudeHomePath,
+  findDuplicateAccount,
   getProviderIdentityDraft,
+  isClaudeDefaultSlotInUse,
   isConfiguredAcpRegistryAgent,
   resolveAcpRegistryWizardNavigation,
   resolveWizardNavigation,
@@ -113,5 +118,134 @@ describe("ACP Registry wizard", () => {
       label: "Gemini CLI",
       instanceIdOverride: "acpRegistry_gemini_cli",
     });
+  });
+});
+
+describe("deriveAccountLabel", () => {
+  it("uses the provider name first, then numbers later accounts", () => {
+    expect(deriveAccountLabel("Claude", [])).toBe("Claude");
+    expect(deriveAccountLabel("Claude", ["Claude"])).toBe("Claude 2");
+    expect(deriveAccountLabel("Claude", ["claude", "Claude 2"])).toBe("Claude 3");
+    expect(deriveAccountLabel("Claude", ["Work"])).toBe("Claude");
+  });
+});
+
+describe("deriveClaudeHomePath", () => {
+  const base = { label: "Justine", defaultSlotInUse: true, existingHomePaths: [] as string[] };
+
+  it("leaves the first Claude account on the default folder", () => {
+    expect(deriveClaudeHomePath({ ...base, defaultSlotInUse: false })).toBeUndefined();
+  });
+
+  it("isolates a later account in a folder named after its label", () => {
+    expect(deriveClaudeHomePath(base)).toBe("~/.claude-justine");
+    expect(deriveClaudeHomePath({ ...base, label: "  Work & Co! " })).toBe("~/.claude-work-co");
+    expect(deriveClaudeHomePath({ ...base, label: "???" })).toBe("~/.claude-account");
+  });
+
+  it("never reuses a folder another instance already claims", () => {
+    expect(deriveClaudeHomePath({ ...base, existingHomePaths: ["~/.claude-justine"] })).toBe(
+      "~/.claude-justine-2",
+    );
+    expect(
+      deriveClaudeHomePath({
+        ...base,
+        existingHomePaths: ["~/.Claude-Justine/", "~\\.claude-justine-2"],
+      }),
+    ).toBe("~/.claude-justine-3");
+  });
+});
+
+describe("isClaudeDefaultSlotInUse and collectClaudeHomePaths", () => {
+  it("is free on a clean install and in use once a Claude instance exists or the default is signed in", () => {
+    expect(isClaudeDefaultSlotInUse({}, [])).toBe(false);
+    expect(
+      isClaudeDefaultSlotInUse({}, [
+        { instanceId: "claudeAgent", driver: "claudeAgent", auth: { status: "unauthenticated" } },
+      ]),
+    ).toBe(false);
+    expect(isClaudeDefaultSlotInUse({ claudeAgent_2: { driver: "claudeAgent" } }, [])).toBe(true);
+    expect(
+      isClaudeDefaultSlotInUse({}, [
+        { instanceId: "claudeAgent", driver: "claudeAgent", auth: { status: "authenticated" } },
+      ]),
+    ).toBe(true);
+    expect(isClaudeDefaultSlotInUse({ codex_2: { driver: "codex" } }, [])).toBe(false);
+  });
+
+  it("collects home paths from Claude instances only", () => {
+    expect(
+      collectClaudeHomePaths({
+        a: { driver: "claudeAgent", config: { homePath: "~/.claude-a" } },
+        b: { driver: "claudeAgent", config: {} },
+        c: { driver: "codex", config: { homePath: "~/.codex-c" } },
+      }),
+    ).toEqual(["~/.claude-a"]);
+  });
+});
+
+describe("findDuplicateAccount", () => {
+  const provider = (
+    instanceId: string,
+    email: string | undefined,
+    extra: { workspaceId?: string; status?: string; displayName?: string } = {},
+  ) => ({
+    instanceId,
+    driver: "claudeAgent",
+    ...(extra.displayName ? { displayName: extra.displayName } : {}),
+    auth: {
+      status: extra.status ?? "authenticated",
+      ...(email ? { email } : {}),
+      ...(extra.workspaceId ? { workspaceId: extra.workspaceId } : {}),
+    },
+  });
+
+  it("names the other instance when the same email is already connected", () => {
+    expect(
+      findDuplicateAccount(
+        [
+          provider("claudeAgent", "Jake@x.com", { displayName: "Claude" }),
+          provider("c2", "jake@x.com"),
+        ],
+        "c2",
+      ),
+    ).toBe("Claude");
+    expect(
+      findDuplicateAccount([provider("claudeAgent", "a@x.com"), provider("c2", "a@x.com")], "c2"),
+    ).toBe("claudeAgent");
+  });
+
+  it("passes different emails, signed-out accounts, unknown emails and other workspaces", () => {
+    expect(
+      findDuplicateAccount([provider("a", "a@x.com"), provider("b", "b@x.com")], "b"),
+    ).toBeNull();
+    expect(
+      findDuplicateAccount(
+        [provider("a", "a@x.com", { status: "unauthenticated" }), provider("b", "a@x.com")],
+        "b",
+      ),
+    ).toBeNull();
+    expect(
+      findDuplicateAccount([provider("a", "a@x.com"), provider("b", undefined)], "b"),
+    ).toBeNull();
+    expect(
+      findDuplicateAccount(
+        [
+          provider("a", "a@x.com", { workspaceId: "w1" }),
+          provider("b", "a@x.com", { workspaceId: "w2" }),
+        ],
+        "b",
+      ),
+    ).toBeNull();
+    expect(findDuplicateAccount([provider("a", "a@x.com")], "missing")).toBeNull();
+  });
+
+  it("ignores a different driver sharing the email", () => {
+    expect(
+      findDuplicateAccount(
+        [{ ...provider("a", "a@x.com"), driver: "codex" }, provider("b", "a@x.com")],
+        "b",
+      ),
+    ).toBeNull();
   });
 });

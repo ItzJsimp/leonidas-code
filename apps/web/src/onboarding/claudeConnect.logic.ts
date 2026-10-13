@@ -96,6 +96,29 @@ export function describeClaudeConnect(
   return {
     kind: "idle",
     headline:
-      state === "signIn" ? "Sign in to start coding." : "Connect your Claude account to start coding.",
+      state === "signIn"
+        ? "Sign in to start coding."
+        : "Connect your Claude account to start coding.",
   };
+}
+
+export const CLAUDE_BUSY_MESSAGE = "Another sign-in is still running. Finish or cancel it first.";
+export const SIGN_IN_UNFINISHED_MESSAGE = "Sign-in didn't finish.";
+
+const BUSY_PATTERN =
+  /\b(already|another|still)\b.*\b(running|in progress|in flight)\b|\bin progress\b/i;
+
+/** The sign-in was cancelled, timed out or was abandoned before it completed. */
+export const isSignInUnfinished = (install: ProviderInstallState | undefined) =>
+  install !== undefined &&
+  (install.phase === "cancelled" || (install.phase === "failed" && install.recovery === "signIn"));
+
+/**
+ * Plain sentence for a failed setup request. The server job is single flight,
+ * so a second start while one runs maps to the "finish or cancel it" message.
+ */
+export function mapClaudeConnectFailure(failure: unknown, fallback: string): string {
+  const message = failure instanceof Error ? failure.message : "";
+  if (BUSY_PATTERN.test(message)) return CLAUDE_BUSY_MESSAGE;
+  return message || fallback;
 }

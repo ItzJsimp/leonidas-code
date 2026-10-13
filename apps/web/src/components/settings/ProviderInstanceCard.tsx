@@ -62,6 +62,7 @@ import { readCodexSetupMode } from "./CodexSetupSection.logic";
 import {
   getProviderVersionAdvisoryPresentation,
   PROVIDER_STATUS_STYLES,
+  getProviderListStatus,
   getProviderSummary,
   getProviderVersionLabel,
   type ProviderStatusKey,
@@ -582,9 +583,8 @@ export function ProviderInstanceCard({
     ? ((liveProvider?.status as ProviderStatusKey | undefined) ?? "warning")
     : "disabled";
   const statusStyle = PROVIDER_STATUS_STYLES[statusKey];
-  const summary = enabled
-    ? getProviderSummary(liveProvider)
-    : { headline: "Disabled", detail: null };
+  const summary = enabled ? getProviderSummary(liveProvider) : { headline: "Off", detail: null };
+  const listStatus = getProviderListStatus(liveProvider, enabled);
   const authEmail = liveProvider?.auth.email?.trim();
   const isAuthenticated = enabled && liveProvider?.auth.status === "authenticated";
   const authLabel =
@@ -760,10 +760,6 @@ export function ProviderInstanceCard({
     <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">{headerAction}</span>
   ) : null;
 
-  const versionCodeNode = versionLabel ? (
-    <code className="text-xs text-muted-foreground">{versionLabel}</code>
-  ) : null;
-
   // Healthy and disabled rows read fine from their text; only trouble gets a dot.
   const statusDotNode =
     statusKey === "warning" || statusKey === "error" ? (
@@ -780,11 +776,18 @@ export function ProviderInstanceCard({
         : "Limited support"
     : summary.detail;
   const editorStatusNode =
-    isAuthenticated && authEmail ? (
+    listStatus.kind === "needs-sign-in" ? (
+      <span>Not signed in</span>
+    ) : listStatus.kind === "signed-in" ? (
       <>
-        {needsAttention ? statusDotNode : null}
-        <span>Authenticated as</span>
-        <ProviderAuthEmail email={authEmail} />
+        {authEmail ? (
+          <>
+            <span>Signed in as</span>
+            <ProviderAuthEmail email={authEmail} />
+          </>
+        ) : (
+          <span>Signed in</span>
+        )}
         {authLabel ? <span>· {authLabel}</span> : null}
         {inlineStatusDetail ? (
           <span className="min-w-0 [overflow-wrap:anywhere]">· {inlineStatusDetail}</span>
@@ -937,37 +940,48 @@ export function ProviderInstanceCard({
           <span className="min-w-0 flex-1">
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-sm font-medium text-foreground">{displayName}</span>
-              {versionLabel ? (
-                <code className="max-w-24 shrink-0 truncate text-xs text-muted-foreground">
-                  {versionLabel}
-                </code>
-              ) : null}
               {versionAdvisoryNode}
             </span>
             <span className="mt-0.5 flex items-start gap-1.5 text-xs leading-normal text-muted-foreground/80">
               {/* The dot describes provider health, not the update in progress. */}
-              {statusDotNode && !updateProgress ? (
+              {statusDotNode && listStatus.kind === "problem" && !updateProgress ? (
                 <span className="flex h-[1.45em] shrink-0 items-center">{statusDotNode}</span>
               ) : null}
               <ProviderStatusDiagnostic detail={statusDiagnostic}>
                 <span
                   tabIndex={statusDiagnostic ? 0 : undefined}
                   aria-live="polite"
-                  className="pointer-events-auto line-clamp-2 [overflow-wrap:anywhere]"
+                  className={cn(
+                    "pointer-events-auto line-clamp-2 [overflow-wrap:anywhere]",
+                    listStatus.kind === "needs-sign-in" && "text-warning",
+                  )}
                 >
                   {updateProgress ? (
                     `Updating · ${updateProgress}`
-                  ) : (
+                  ) : listStatus.kind === "signed-in" ? (
+                    authEmail ? (
+                      <ProviderAuthEmail email={authEmail} />
+                    ) : (
+                      "Signed in"
+                    )
+                  ) : listStatus.kind === "problem" ? (
                     <>
-                      {summary.headline}
-                      {needsAttention && inlineStatusDetail ? ` · ${inlineStatusDetail}` : null}
+                      {listStatus.text}
+                      {listStatus.detail ? ` · ${listStatus.detail}` : null}
                     </>
+                  ) : (
+                    listStatus.text
                   )}
                 </span>
               </ProviderStatusDiagnostic>
             </span>
           </span>
         </div>
+        {listStatus.kind === "needs-sign-in" && !readOnly ? (
+          <Button type="button" size="xs" variant="outline" onClick={onSelect}>
+            Sign in
+          </Button>
+        ) : null}
         <span className="flex h-5 shrink-0 items-center">
           <Switch
             checked={enabled}
@@ -987,7 +1001,6 @@ export function ProviderInstanceCard({
           {driverOption.badgeLabel}
         </Badge>
       ) : null}
-      {versionCodeNode}
       {versionAdvisoryNode}
       <span
         inert={readOnly}
@@ -1030,6 +1043,34 @@ export function ProviderInstanceCard({
       }
     />
   );
+
+  const accountContent =
+    setup || environmentFields.length > 0 ? (
+      <SettingsSection title="Account">
+        {setup}
+        <div
+          inert={readOnly}
+          aria-disabled={readOnly || undefined}
+          className={readOnly ? "opacity-50 select-none" : undefined}
+        >
+          {environmentFields.map((field) => (
+            <ProviderEnvironmentFieldRow
+              key={field.name}
+              field={field}
+              variable={readProviderEnvironmentVariable(instance.environment, field.name)}
+              idPrefix={`provider-instance-${instanceId}`}
+              onCommit={updateEnvironmentField}
+              onRemove={removeEnvironmentField}
+            />
+          ))}
+        </div>
+      </SettingsSection>
+    ) : null;
+
+  const managedCodexRuntime =
+    instance.driver === "codex" && readCodexSetupMode(instance.config) === "managed";
+  const showRuntimeFields =
+    managedCodexRuntime || !driverOption || deriveProviderSettingsFields(driverOption).length > 0;
 
   return (
     <>
@@ -1080,13 +1121,6 @@ export function ProviderInstanceCard({
                 readOnly && "opacity-50 select-none",
               )}
             >
-              <ProviderAccentColorPicker
-                layout="inline"
-                displayName={displayName}
-                value={accentColor}
-                onCommit={updateAccentColor}
-                commitDelayMs={120}
-              />
               <DraftInput
                 id={`provider-instance-${instanceId}-display-name`}
                 size="sm"
@@ -1101,78 +1135,7 @@ export function ProviderInstanceCard({
         />
       </SettingsSection>
 
-      {setup || environmentFields.length > 0 ? (
-        <SettingsSection title="Setup">
-          {setup}
-          <div
-            inert={readOnly}
-            aria-disabled={readOnly || undefined}
-            className={readOnly ? "opacity-50 select-none" : undefined}
-          >
-            {environmentFields.length > 0 ? (
-              <>
-                {environmentFields.map((field) => (
-                  <ProviderEnvironmentFieldRow
-                    key={field.name}
-                    field={field}
-                    variable={readProviderEnvironmentVariable(instance.environment, field.name)}
-                    idPrefix={`provider-instance-${instanceId}`}
-                    onCommit={updateEnvironmentField}
-                    onRemove={removeEnvironmentField}
-                  />
-                ))}
-              </>
-            ) : null}
-          </div>
-        </SettingsSection>
-      ) : null}
-
-      {instance.driver === "codex" && readCodexSetupMode(instance.config) === "managed" ? (
-        <div
-          inert={readOnly}
-          aria-disabled={readOnly || undefined}
-          className={readOnly ? "opacity-50 select-none" : undefined}
-        >
-          <FoldedSettingsSection
-            key={instanceId}
-            id={`provider-instance-${instanceId}-runtime`}
-            title="Runtime"
-            headerPlacement="outside"
-          >
-            {runtime ?? runtimeFields}
-          </FoldedSettingsSection>
-        </div>
-      ) : !driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
-        <SettingsSection
-          title="Runtime"
-          inert={readOnly}
-          aria-disabled={readOnly || undefined}
-          className={readOnly ? "opacity-50 select-none" : undefined}
-        >
-          {runtimeFields}
-        </SettingsSection>
-      ) : null}
-
-      <SettingsSection
-        title="Environment"
-        inert={readOnly}
-        aria-disabled={readOnly || undefined}
-        className={readOnly ? "opacity-50 select-none" : undefined}
-      >
-        <ProviderEnvironmentSection
-          environment={genericEnvironment}
-          onChange={updateGenericEnvironment}
-        />
-      </SettingsSection>
-      {environmentId !== undefined && liveProvider?.driver === "acpRegistry" ? (
-        <AcpSessionManagementSection
-          environmentId={environmentId}
-          instanceId={instanceId}
-          provider={liveProvider}
-          projects={acpProjects}
-          readOnly={readOnly}
-        />
-      ) : null}
+      {accountContent}
 
       {driverOption !== undefined ? (
         <SettingsSection title="Models">
@@ -1200,6 +1163,68 @@ export function ProviderInstanceCard({
           </div>
         </SettingsSection>
       ) : null}
+
+      <FoldedSettingsSection
+        key={instanceId}
+        id={`provider-instance-${instanceId}-advanced`}
+        title="Advanced settings"
+        summary="Most people never need these. Change them only if you know why."
+      >
+        <SettingsRow
+          title="Accent color"
+          description="Tints this account's icon so you can tell accounts apart."
+          control={
+            <div
+              inert={readOnly}
+              aria-disabled={readOnly || undefined}
+              className={readOnly ? "opacity-50 select-none" : undefined}
+            >
+              <ProviderAccentColorPicker
+                layout="inline"
+                displayName={displayName}
+                value={accentColor}
+                onCommit={updateAccentColor}
+                commitDelayMs={120}
+              />
+            </div>
+          }
+        />
+        {showRuntimeFields ? (
+          <div
+            inert={readOnly}
+            aria-disabled={readOnly || undefined}
+            className={readOnly ? "opacity-50 select-none" : undefined}
+          >
+            {managedCodexRuntime ? (runtime ?? runtimeFields) : runtimeFields}
+          </div>
+        ) : null}
+        <div
+          inert={readOnly}
+          aria-disabled={readOnly || undefined}
+          className={readOnly ? "opacity-50 select-none" : undefined}
+        >
+          <ProviderEnvironmentSection
+            environment={genericEnvironment}
+            onChange={updateGenericEnvironment}
+          />
+        </div>
+        {environmentId !== undefined && liveProvider?.driver === "acpRegistry" ? (
+          <AcpSessionManagementSection
+            environmentId={environmentId}
+            instanceId={instanceId}
+            provider={liveProvider}
+            projects={acpProjects}
+            readOnly={readOnly}
+          />
+        ) : null}
+        {versionLabel ? (
+          <SettingsRow
+            title="Version"
+            description="The installed program version."
+            control={<code className="text-xs text-muted-foreground">{versionLabel}</code>}
+          />
+        ) : null}
+      </FoldedSettingsSection>
     </>
   );
 }

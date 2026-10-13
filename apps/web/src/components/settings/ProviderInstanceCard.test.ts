@@ -123,7 +123,7 @@ describe("deriveProviderModelsForDisplay", () => {
       }),
     );
 
-    expect(markup).toContain("Authenticated as");
+    expect(markup).toContain("Signed in as");
     expect(markup).toContain('aria-label="Toggle account email visibility"');
     expect(markup).toContain("d••••••@example.com");
     expect(markup).not.toContain("developer@example.com");
@@ -167,6 +167,75 @@ describe("deriveProviderModelsForDisplay", () => {
       expect(markup).toContain("Unavailable");
       expect(markup).toContain("is not a symlink");
     }
+  });
+});
+
+describe("ProviderInstanceCard plain status", () => {
+  const instanceId = ProviderInstanceId.make("claudeAgent");
+  const driver = ProviderDriverKind.make("claudeAgent");
+  const baseProps = {
+    instanceId,
+    instance: { driver },
+    driverOption: undefined,
+    onUpdate: () => undefined,
+    hiddenModels: [],
+    favoriteModels: [],
+    modelOrder: [],
+    onHiddenModelsChange: () => undefined,
+    onFavoriteModelsChange: () => undefined,
+    onToggleFavorite: () => undefined,
+    onModelOrderChange: () => undefined,
+  } as const;
+  const provider = (overrides: Partial<ServerProvider>): ServerProvider => ({
+    instanceId,
+    driver,
+    enabled: true,
+    installed: true,
+    version: "2.1.296",
+    status: "error",
+    auth: { status: "unknown" },
+    checkedAt: "2026-08-28T12:00:00.000Z",
+    models: [],
+    slashCommands: [],
+    skills: [],
+    ...overrides,
+  });
+
+  it("shows Needs sign in with a Sign in button and no version in the list row", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ProviderInstanceCard, {
+        ...baseProps,
+        mode: "list",
+        liveProvider: provider({
+          message: "Claude Code is not authenticated. Run `claude auth login`.",
+        }),
+      }),
+    );
+    expect(markup).toContain("Needs sign in");
+    expect(markup).toContain("Sign in");
+    expect(markup).not.toContain("auth login");
+    expect(markup).not.toContain("v2.1.296");
+  });
+
+  it("says Off for a disabled account and Not signed in in the editor", () => {
+    const off = renderToStaticMarkup(
+      createElement(ProviderInstanceCard, {
+        ...baseProps,
+        instance: { driver, enabled: false },
+        mode: "list",
+        liveProvider: provider({ status: "disabled" }),
+      }),
+    );
+    expect(off).toContain("Off");
+    const editor = renderToStaticMarkup(
+      createElement(ProviderInstanceCard, {
+        ...baseProps,
+        mode: "editor",
+        liveProvider: provider({ auth: { status: "unauthenticated" } }),
+      }),
+    );
+    expect(editor).toContain("Not signed in");
+    expect(editor).toContain("Advanced settings");
   });
 });
 

@@ -118,6 +118,144 @@ export function resolveWizardNavigation(
   return { kind: "navigate", step: targetStep };
 }
 
+/** `Claude`, then `Claude 2`, `Claude 3`... the first name no existing account uses. */
+export function deriveAccountLabel(
+  baseName: string,
+  existingLabels: ReadonlyArray<string>,
+): string {
+  const taken = new Set(existingLabels.map((label) => label.trim().toLowerCase()));
+  if (!taken.has(baseName.trim().toLowerCase())) return baseName;
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${baseName} ${suffix}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
+const normalizeHomePath = (value: string) =>
+  value.trim().replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
+
+/**
+ * Claude keeps one login per config folder (CLAUDE_CONFIG_DIR, the instance's
+ * `homePath`). The first account may use the default folder; every later one
+ * needs its own, or it silently reuses the first account's login.
+ * Returns undefined when the default folder is still free.
+ */
+export function deriveClaudeHomePath(input: {
+  readonly label: string;
+  readonly defaultSlotInUse: boolean;
+  readonly existingHomePaths: ReadonlyArray<string>;
+}): string | undefined {
+  if (!input.defaultSlotInUse) return undefined;
+  const slug =
+    input.label
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "account";
+  const taken = new Set(input.existingHomePaths.map(normalizeHomePath));
+  taken.add(normalizeHomePath("~/.claude"));
+  for (let suffix = 1; ; suffix += 1) {
+    const candidate = suffix === 1 ? `~/.claude-${slug}` : `~/.claude-${slug}-${suffix}`;
+    if (!taken.has(normalizeHomePath(candidate))) return candidate;
+  }
+}
+
+type InstanceRecord = Readonly<
+  Record<string, { readonly driver: string; readonly config?: unknown } | undefined>
+>;
+
+/** Whether a Claude account already occupies the default config folder. */
+export function isClaudeDefaultSlotInUse(
+  instances: InstanceRecord,
+  providers: ReadonlyArray<{
+    readonly instanceId: string;
+    readonly driver: string;
+    readonly auth: { readonly status: string };
+  }>,
+): boolean {
+  const configured = Object.values(instances).some(
+    (instance) => instance?.driver === "claudeAgent",
+  );
+  const defaultSignedIn = providers.some(
+    (provider) =>
+      provider.driver === "claudeAgent" &&
+      provider.instanceId === "claudeAgent" &&
+      provider.auth.status === "authenticated",
+  );
+  return configured || defaultSignedIn;
+}
+
+/** Collect the `homePath` values already claimed by Claude instances. */
+export function collectClaudeHomePaths(instances: InstanceRecord): ReadonlyArray<string> {
+  const paths: string[] = [];
+  for (const instance of Object.values(instances)) {
+    if (instance?.driver !== "claudeAgent") continue;
+    const config = instance.config;
+    if (config !== null && typeof config === "object") {
+      const homePath = (config as Record<string, unknown>).homePath;
+      if (typeof homePath === "string" && homePath.trim()) paths.push(homePath);
+    }
+  }
+  return paths;
+}
+
+/**
+ * When the new instance signs in as an email another instance of the same
+ * driver already uses, return that instance's name so the dialog can say so.
+ * Accounts in different workspaces of one email have separate quota and pass.
+ */
+export function findDuplicateAccount(
+  providers: ReadonlyArray<{
+    readonly instanceId: string;
+    readonly driver: string;
+    readonly displayName?: string | undefined;
+    readonly auth: {
+      readonly status: string;
+      readonly email?: string | undefined;
+      readonly workspaceId?: string | undefined;
+    };
+  }>,
+  instanceId: string,
+): string | null {
+  const current = providers.find((provider) => provider.instanceId === instanceId);
+  const email = current?.auth.status === "authenticated" ? current.auth.email?.toLowerCase() : null;
+  if (!current || !email) return null;
+  const other = providers.find(
+    (provider) =>
+      provider.instanceId !== instanceId &&
+      provider.driver === current.driver &&
+      provider.auth.status === "authenticated" &&
+      provider.auth.email?.toLowerCase() === email &&
+      (provider.auth.workspaceId ?? null) === (current.auth.workspaceId ?? null),
+  );
+  return other ? (other.displayName ?? other.instanceId) : null;
+}
+
+/** The four providers shown as big cards; everything else sits under "More providers". */
+export const HEADLINE_PROVIDERS = [
+  {
+    driver: "claudeAgent",
+    name: "Claude",
+    blurb: "Anthropic's coding AI. Needs a Claude Pro or Max plan.",
+  },
+  {
+    driver: "codex",
+    name: "ChatGPT / Codex",
+    blurb: "OpenAI's coding AI. Needs a ChatGPT Plus or Pro plan.",
+  },
+  {
+    driver: "antigravity",
+    name: "Google Antigravity",
+    blurb: "Google's coding AI. Sign in with your Google account.",
+  },
+  {
+    driver: "openrouter",
+    name: "OpenRouter",
+    blurb: "Pay-as-you-go access to many AIs. Needs an API key.",
+  },
+] as const;
+
 export function resolveAcpRegistryWizardNavigation(
   currentStep: number,
   requestedStep: number,

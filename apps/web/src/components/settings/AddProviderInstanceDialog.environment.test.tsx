@@ -8,6 +8,7 @@ const actions = vi.hoisted(() => ({
   update: vi.fn(),
   toast: vi.fn(),
   onOpenChange: vi.fn(),
+  onCreated: vi.fn(),
   canManageProviders: true,
 }));
 
@@ -16,6 +17,8 @@ const settingsHooks = vi.hoisted(() => ({
   mutate: vi.fn(),
   useMutation: vi.fn(),
 }));
+
+const serverState = vi.hoisted(() => ({ providers: [] as unknown[] }));
 
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
@@ -31,6 +34,11 @@ vi.mock("react/compiler-runtime", async () => {
   const { reactHookHarness } = await import("../../test/reactHookHarness");
   return { c: reactHookHarness.useMemoCache };
 });
+
+vi.mock("@effect/atom-react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@effect/atom-react")>()),
+  useAtomValue: () => serverState.providers,
+}));
 
 vi.mock("@t3tools/client-runtime/state/runtime", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@t3tools/client-runtime/state/runtime")>()),
@@ -68,13 +76,14 @@ const preparedAgent: AcpRegistrySearchAgent = {
   integrity: "sha256",
 };
 
-function render(onOpenChange = vi.fn()) {
+function render(onOpenChange = actions.onOpenChange) {
   hooks.beginRender();
   return AddProviderInstanceDialog({
     open: true,
     environmentId: remoteEnvironmentId,
     environmentLabel: "Remote device",
     onOpenChange,
+    onCreated: actions.onCreated,
   });
 }
 
@@ -84,27 +93,11 @@ function findByChildren(tree: ReturnType<typeof render>, children: string) {
   return result!;
 }
 
-async function selectPreparedAcp() {
-  const searchStep = render();
-  const search = visitElements(
-    searchStep,
-    (element) =>
-      typeof element.type === "function" && element.type.name === "AcpRegistrySearchStep",
+function findByName(tree: unknown, name: string) {
+  return visitElements(
+    tree,
+    (element) => typeof element.type === "function" && element.type.name === name,
   );
-  expect(search).not.toBeNull();
-  (search?.props.onPrepared as ((agent: AcpRegistrySearchAgent) => void) | undefined)?.(
-    preparedAgent,
-  );
-}
-
-function renderDialog() {
-  hooks.beginRender();
-  return AddProviderInstanceDialog({
-    open: true,
-    environmentId: remoteEnvironmentId,
-    environmentLabel: "Remote device",
-    onOpenChange: actions.onOpenChange,
-  });
 }
 
 function button(dialog: unknown, label: string) {
@@ -116,18 +109,26 @@ function button(dialog: unknown, label: string) {
   return element;
 }
 
-function prepareInstance() {
-  let dialog = renderDialog();
-  (button(dialog, "Configure manually").props.onClick as () => void)();
-  dialog = renderDialog();
-  const label = visitElements(dialog, (entry) => entry.props.placeholder === "e.g. Work");
-  if (!label) throw new Error("Missing instance label input.");
-  (label.props.onChange as (event: { target: { value: string } }) => void)({
-    target: { value: "Work" },
+function pickDriver(driver: string, component = "HeadlineProviderCards") {
+  const tree = render();
+  const cards = findByName(tree, component);
+  (cards!.props.onSelect as (value: string) => void)(driver);
+}
+
+function typeName(value: string) {
+  const tree = render();
+  const input = visitElements(tree, (element) => element.props.id === "add-provider-label");
+  (input!.props.onChange as (event: { target: { value: string } }) => void)({
+    target: { value },
   });
-  dialog = renderDialog();
-  (button(dialog, "Next").props.onClick as () => void)();
-  return renderDialog();
+}
+
+async function selectPreparedAcp() {
+  const search = findByName(render(), "AcpRegistrySearchStep");
+  expect(search).not.toBeNull();
+  (search?.props.onPrepared as ((agent: AcpRegistrySearchAgent) => void) | undefined)?.(
+    preparedAgent,
+  );
 }
 
 describe("AddProviderInstanceDialog environment routing", () => {
@@ -136,24 +137,98 @@ describe("AddProviderInstanceDialog environment routing", () => {
     actions.canManageProviders = true;
     actions.toast.mockReset();
     actions.onOpenChange.mockReset();
+    actions.onCreated.mockReset();
+    serverState.providers = [];
     settingsHooks.read.mockReset().mockReturnValue({ providerInstances: {} });
     settingsHooks.mutate.mockReset().mockResolvedValue({ _tag: "Success", value: {} });
     settingsHooks.useMutation.mockReset().mockReturnValue(settingsHooks.mutate);
   });
 
-  it("creates a provider with its default identity without typing", async () => {
-    let tree = render();
-    const group = visitElements(
-      tree,
-      (element) => element.props["aria-labelledby"] === "add-instance-driver-label",
-    );
-    (group!.props.onValueChange as (value: string) => void)("grok");
-    tree = render();
-    (findByChildren(tree, "Next").props.onClick as () => void)();
-    tree = render();
-    (findByChildren(tree, "Next").props.onClick as () => void)();
-    tree = render();
-    (findByChildren(tree, "Add instance").props.onClick as () => void)();
+  it("shows the plain title, step text and Connect button with Claude preselected", () => {
+    const tree = render();
+    expect(visitElements(tree, (e) => e.props.title === "Connect an AI account")).not.toBeNull();
+    expect(findByName(tree, "HeadlineProviderCards")?.props.value).toBe("claudeAgent");
+    expect(button(tree, "Connect").props.disabled).toBe(false);
+    expect(findByChildren(tree, "Advanced options")).not.toBeNull();
+    expect(findByChildren(tree, "More providers")).not.toBeNull();
+  });
+
+  it("connects the first Claude account on the default folder and moves to sign-in", async () => {
+    (button(render(), "Connect").props.onClick as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settingsHooks.mutate).toHaveBeenCalledWith({
+      operation: "create",
+      instanceId: "claudeAgent_2",
+      instance: { driver: "claudeAgent", enabled: true, displayName: "Claude" },
+    });
+    const auth = findByName(render(), "ProviderWizardAuthenticationStep");
+    expect(auth?.props.instanceId).toBe("claudeAgent_2");
+    expect(auth?.props.driver).toBe("claudeAgent");
+    expect(auth?.props.displayName).toBe("Claude");
+    expect(typeof auth?.props.onRemove).toBe("function");
+    // Selection is deferred until the dialog closes.
+    expect(actions.onCreated).not.toHaveBeenCalled();
+  });
+
+  it("isolates a second Claude account in its own config folder", async () => {
+    settingsHooks.read.mockReturnValue({
+      providerInstances: {
+        claudeAgent_2: { driver: "claudeAgent", displayName: "Claude" },
+      },
+    });
+    typeName("Justine");
+    (button(render(), "Connect").props.onClick as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settingsHooks.mutate).toHaveBeenCalledWith({
+      operation: "create",
+      instanceId: "claudeAgent_justine",
+      instance: {
+        driver: "claudeAgent",
+        enabled: true,
+        displayName: "Justine",
+        config: { homePath: "~/.claude-justine" },
+      },
+    });
+  });
+
+  it("numbers the default name for a second account when the name is left blank", async () => {
+    settingsHooks.read.mockReturnValue({
+      providerInstances: {
+        claudeAgent_2: {
+          driver: "claudeAgent",
+          displayName: "Claude",
+          config: { homePath: "~/.claude-claude-2" },
+        },
+      },
+    });
+    (button(render(), "Connect").props.onClick as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settingsHooks.mutate).toHaveBeenCalledWith({
+      operation: "create",
+      instanceId: "claudeAgent_3",
+      instance: {
+        driver: "claudeAgent",
+        enabled: true,
+        displayName: "Claude 2",
+        config: { homePath: "~/.claude-claude-2-2" },
+      },
+    });
+  });
+
+  it("hands ChatGPT sign-in to the managed Codex account dialog", () => {
+    pickDriver("codex");
+    (button(render(), "Connect").props.onClick as () => void)();
+    const tree = render();
+    expect(findByName(tree, "AddManagedCodexAccountDialog")).not.toBeNull();
+    expect(settingsHooks.mutate).not.toHaveBeenCalled();
+  });
+
+  it("creates another provider with its default identity without typing", async () => {
+    pickDriver("grok", "MoreProviderCards");
+    (button(render(), "Connect").props.onClick as () => void)();
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
       operation: "create",
@@ -162,19 +237,12 @@ describe("AddProviderInstanceDialog environment routing", () => {
     });
   });
 
-  it("chooses an unused identity for another account without replacing configured instances", async () => {
+  it("uses an installed Codex from Advanced options with an unused identity", async () => {
     settingsHooks.read.mockReturnValue({
-      providerInstances: {
-        codex_2: { driver: "codex", enabled: false },
-      },
+      providerInstances: { codex_2: { driver: "codex", enabled: false } },
     });
-    let tree = render();
-    // Codex offers ChatGPT sign-in first; manual setup keeps the existing CLI flow.
-    (findByChildren(tree, "Configure manually").props.onClick as () => void)();
-    tree = render();
-    (findByChildren(tree, "Next").props.onClick as () => void)();
-    tree = render();
-    (findByChildren(tree, "Add instance").props.onClick as () => void)();
+    pickDriver("codex");
+    (button(render(), "Use installed Codex").props.onClick as () => void)();
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
       operation: "create",
@@ -193,6 +261,44 @@ describe("AddProviderInstanceDialog environment routing", () => {
 
     expect(settingsHooks.read).toHaveBeenCalledWith(remoteEnvironmentId);
     expect(settingsHooks.useMutation).toHaveBeenCalledWith(remoteEnvironmentId);
+  });
+
+  it("says what failed and offers Try again when creating the account fails", async () => {
+    settingsHooks.mutate.mockResolvedValueOnce({ _tag: "Failure", cause: new Error("Conflict") });
+    (button(render(), "Connect").props.onClick as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    const tree = render();
+    expect(findByChildren(tree, "Couldn't add this account.")).not.toBeNull();
+    expect(button(tree, "Try again")).not.toBeNull();
+    expect(actions.onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps a half-set-up account and selects it when the dialog closes mid-sign-in", async () => {
+    (button(render(), "Connect").props.onClick as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    const auth = findByName(render(), "ProviderWizardAuthenticationStep");
+    (auth!.props.onFinish as () => void)();
+    expect(actions.onCreated).toHaveBeenCalledWith("claudeAgent_2");
+    expect(actions.onOpenChange).toHaveBeenCalledWith(false);
+    expect(settingsHooks.mutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes the new account on request and closes without selecting it", async () => {
+    (button(render(), "Connect").props.onClick as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    const auth = findByName(render(), "ProviderWizardAuthenticationStep");
+    (auth!.props.onRemove as () => void)();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(settingsHooks.mutate).toHaveBeenLastCalledWith({
+      operation: "remove",
+      instanceId: "claudeAgent_2",
+    });
+    expect(actions.onOpenChange).toHaveBeenCalledWith(false);
+    expect(actions.onCreated).not.toHaveBeenCalled();
   });
 
   it("awaits an atomic create before closing and retains prepared ACP metadata", async () => {
@@ -236,14 +342,10 @@ describe("AddProviderInstanceDialog environment routing", () => {
     await Promise.resolve();
     expect(onOpenChange).not.toHaveBeenCalled();
     const signInStep = render(onOpenChange);
-    const authentication = visitElements(
-      signInStep,
-      (element) =>
-        typeof element.type === "function" &&
-        element.type.name === "ProviderWizardAuthenticationStep",
-    );
+    const authentication = findByName(signInStep, "ProviderWizardAuthenticationStep");
     expect(authentication?.props.instanceId).toBe("acpRegistry_kilo_code");
     expect(authentication?.props.environmentId).toBe(remoteEnvironmentId);
+    expect(authentication?.props.onRemove).toBeUndefined();
     expect(settingsHooks.mutate).toHaveBeenCalledTimes(1);
     (authentication!.props.onFinish as () => void)();
     expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -251,11 +353,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
 
   it("configures a manually entered registry agent from the first provider screen", async () => {
     let tree = render();
-    const search = visitElements(
-      tree,
-      (element) =>
-        typeof element.type === "function" && element.type.name === "AcpRegistrySearchStep",
-    );
+    const search = findByName(tree, "AcpRegistrySearchStep");
     (search!.props.onManualConfiguration as () => void)();
     tree = render();
     const configuration = visitElements(
@@ -280,25 +378,13 @@ describe("AddProviderInstanceDialog environment routing", () => {
         config: { agentId: "devin" },
       },
     });
-    tree = render();
-    expect(
-      visitElements(
-        tree,
-        (element) =>
-          typeof element.type === "function" &&
-          element.type.name === "ProviderWizardAuthenticationStep",
-      ),
-    ).not.toBeNull();
+    expect(findByName(render(), "ProviderWizardAuthenticationStep")).not.toBeNull();
   });
 
   it("creates a local command in the selected environment without a sign-in step", async () => {
     const onOpenChange = vi.fn();
     let tree = render(onOpenChange);
-    const search = visitElements(
-      tree,
-      (element) =>
-        typeof element.type === "function" && element.type.name === "AcpRegistrySearchStep",
-    );
+    const search = findByName(tree, "AcpRegistrySearchStep");
     (search!.props.onLocalConfiguration as () => void)();
     tree = render(onOpenChange);
     (findByChildren(tree, "Next").props.onClick as () => void)();
@@ -316,11 +402,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
       commandPath: "dsh",
       commandArgs,
     });
-    const environmentEditor = visitElements(
-      tree,
-      (element) =>
-        typeof element.type === "function" && element.type.name === "ProviderEnvironmentSection",
-    );
+    const environmentEditor = findByName(tree, "ProviderEnvironmentSection");
     const environment = [{ name: "DSH_PROFILE", value: "work", sensitive: false }];
     (environmentEditor!.props.onChange as (value: typeof environment) => void)(environment);
     tree = render(onOpenChange);
@@ -348,15 +430,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
       },
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    tree = render(onOpenChange);
-    expect(
-      visitElements(
-        tree,
-        (element) =>
-          typeof element.type === "function" &&
-          element.type.name === "ProviderWizardAuthenticationStep",
-      ),
-    ).toBeNull();
+    expect(findByName(render(onOpenChange), "ProviderWizardAuthenticationStep")).toBeNull();
   });
 
   it("keeps the dialog open when the atomic upsert fails", async () => {
@@ -374,9 +448,10 @@ describe("AddProviderInstanceDialog environment routing", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("adds an instance with the selected environment's provider grant alone", async () => {
-    const dialog = prepareInstance();
-    (button(dialog, "Add instance").props.onClick as () => void)();
+  it("adds a named instance with the selected environment's provider grant alone", async () => {
+    pickDriver("codex");
+    typeName("Work");
+    (button(render(), "Use installed Codex").props.onClick as () => void)();
 
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
@@ -389,37 +464,31 @@ describe("AddProviderInstanceDialog environment routing", () => {
         config: { setupMode: "existing" },
       },
     });
-    expect(actions.toast).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "success", title: "Provider instance added" }),
-    );
-    expect(actions.onOpenChange).toHaveBeenCalledWith(false);
+    expect(findByName(render(), "ProviderWizardAuthenticationStep")).not.toBeNull();
   });
 
-  it("rejects a queued save after the provider grant is revoked", () => {
-    const dialog = prepareInstance();
-    const save = button(dialog, "Add instance").props.onClick as () => void;
+  it("rejects a queued connect after the provider grant is revoked", () => {
+    const connect = button(render(), "Connect").props.onClick as () => void;
     actions.canManageProviders = false;
-    save();
+    connect();
 
     expect(settingsHooks.mutate).not.toHaveBeenCalled();
     expect(actions.toast).not.toHaveBeenCalled();
     expect(actions.onOpenChange).not.toHaveBeenCalled();
-    expect(button(renderDialog(), "Add instance").props.disabled).toBe(true);
+    expect(button(render(), "Connect").props.disabled).toBe(true);
   });
 
   it("keeps a denied draft available when the provider grant arrives", async () => {
     actions.canManageProviders = false;
-    let dialog = prepareInstance();
-    (button(dialog, "Add instance").props.onClick as () => void)();
+    let dialog = render();
+    (button(dialog, "Connect").props.onClick as () => void)();
     expect(settingsHooks.mutate).not.toHaveBeenCalled();
-    expect(actions.toast).not.toHaveBeenCalled();
 
     actions.canManageProviders = true;
-    dialog = renderDialog();
-    expect(button(dialog, "Add instance").props.disabled).toBe(false);
-    (button(dialog, "Add instance").props.onClick as () => void)();
+    dialog = render();
+    expect(button(dialog, "Connect").props.disabled).toBe(false);
+    (button(dialog, "Connect").props.onClick as () => void)();
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledOnce();
-    expect(actions.onOpenChange).toHaveBeenCalledWith(false);
   });
 });
