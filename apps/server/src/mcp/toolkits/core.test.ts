@@ -476,6 +476,7 @@ it.effect(
         McpHttpServer.layerOrchestratorToolkit.pipe(
           Layer.provideMerge(McpServer.McpServer.layer),
           Layer.provide(Layer.mock(SavedItems.SavedItemService)({})),
+          Layer.provide(Layer.mock(ModelBenchmarks.ModelBenchmarks)({})),
           Layer.provide(
             Layer.mock(SavedItemExecution.SavedItemExecution)({
               launch: () =>
