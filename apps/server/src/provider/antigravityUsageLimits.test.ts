@@ -222,12 +222,22 @@ describe("Antigravity subscription limits", () => {
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("names the HTTP status when the quota endpoints reject the request", () =>
+    Effect.gen(function* () {
+      const { probe } = yield* fixture({ summaryStatus: 403 });
+      const limits = yield* probe;
+      expect(limits.unavailable?.reason).toBe("probeFailed");
+      expect(limits.unavailable?.message).toContain("retrieveUserQuotaSummary returned HTTP 403");
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("returns a safe failure when OAuth refresh fails", () =>
     Effect.gen(function* () {
       const { probe } = yield* fixture({ tokenStatus: 401 });
       const limits = yield* probe;
       expect(limits.windows).toEqual([]);
       expect(limits.unavailable?.reason).toBe("probeFailed");
+      expect(limits.unavailable?.message).toContain("Google token refresh returned HTTP 401");
       expect(JSON.stringify(limits)).not.toMatch(/client-secret|refresh-a|access-token/);
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );

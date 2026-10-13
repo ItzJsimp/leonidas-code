@@ -796,16 +796,10 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
       return path.isAbsolute(gitCommonDir) ? gitCommonDir : path.resolve(cwd, gitCommonDir);
     });
 
-  // Git renames loose objects and refs into place without fsync by default, so
-  // an unclean restart can leave 0-byte files under refs/t3/** that break every
-  // later fetch and push. Checkpoint writes flush before they are published;
-  // macOS defaults to writeout-only, which does not reach the disk either.
-  const durableWrite = [
-    "-c",
-    "core.fsync=objects,reference",
-    "-c",
-    "core.fsyncMethod=fsync",
-  ] as const;
+  // Batch object durability amortizes the HDD flush; the published checkpoint
+  // ref still uses fsync so a restart cannot leave a broken refs/t3 entry.
+  const durableObjectWrite = ["-c", "core.fsync=objects", "-c", "core.fsyncMethod=batch"] as const;
+  const durableRefWrite = ["-c", "core.fsync=reference", "-c", "core.fsyncMethod=fsync"] as const;
 
   const checkpoints: VcsDriver.VcsCheckpointOps = {
     captureCheckpoint: Effect.fn("GitVcsDriver.checkpoints.captureCheckpoint")(function* (input) {
@@ -968,7 +962,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
             // Preserve absent skipped entries, but capture present nonignored files outside the cone.
             args: [
               ...indexConfig,
-              ...durableWrite,
+              ...durableObjectWrite,
               "add",
               ...(sparseCheckout ? ["--sparse"] : []),
               "-A",
@@ -1034,7 +1028,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         const writeTreeResult = yield* execute({
           operation,
           cwd: input.cwd,
-          args: [...indexConfig, ...durableWrite, "write-tree"],
+          args: [...indexConfig, ...durableObjectWrite, "write-tree"],
           env: commitEnv,
         });
         const treeOid = writeTreeResult.stdout.trim();
@@ -1054,7 +1048,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           operation,
           cwd: input.cwd,
           args: [
-            ...durableWrite,
+            ...durableObjectWrite,
             "commit-tree",
             treeOid,
             ...(headExists ? ["-p", "HEAD"] : []),
@@ -1077,7 +1071,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         yield* execute({
           operation,
           cwd: input.cwd,
-          args: [...durableWrite, "update-ref", input.checkpointRef, commitOid],
+          args: [...durableRefWrite, "update-ref", input.checkpointRef, commitOid],
         });
       }).pipe(Effect.ensuring(cleanupTempIndex));
     }),

@@ -68,6 +68,21 @@ const decodeTokenResponse = Schema.decodeUnknownEffect(TokenResponse);
 const decodeSummary = Schema.decodeUnknownEffect(Summary);
 const decodeModels = Schema.decodeUnknownEffect(Models);
 
+/** Names why a call failed without echoing bodies, which could carry tokens. */
+function describeFailure(step: string, error: unknown): string {
+  const status =
+    typeof error === "object" && error !== null && "response" in error
+      ? (error as { response?: { status?: unknown } }).response?.status
+      : undefined;
+  if (typeof status === "number") return `${step} returned HTTP ${status}`;
+  const name = typeof error === "object" && error !== null && "_tag" in error ? error._tag : "";
+  if (name === "TimeoutError") return `${step} timed out`;
+  if (name === "SchemaError") return `${step} returned an unexpected format`;
+  return `${step} failed`;
+}
+
+class ProbeStepError extends Error {}
+
 function iso(value: string | undefined): string | undefined {
   const parsed = value ? DateTime.make(value) : Option.none();
   return Option.isSome(parsed) ? DateTime.formatIso(parsed.value) : undefined;
@@ -192,7 +207,12 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
         message: "Sign in with Google to see Antigravity limits.",
       });
     }
-    const token = yield* fs.readFileString(tokenPath).pipe(Effect.flatMap(decodeTokenFile));
+    const token = yield* fs.readFileString(tokenPath).pipe(
+      Effect.flatMap(decodeTokenFile),
+      Effect.mapError(
+        (error) => new ProbeStepError(describeFailure("Reading the sign-in file", error)),
+      ),
+    );
     const fingerprint = Array.from(
       yield* crypto.digest(
         "SHA-256",
@@ -215,7 +235,12 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
             grant_type: "refresh_token",
           }),
         ),
-      ).pipe(Effect.flatMap(decodeTokenResponse));
+      ).pipe(
+        Effect.flatMap(decodeTokenResponse),
+        Effect.mapError(
+          (error) => new ProbeStepError(describeFailure("Google token refresh", error)),
+        ),
+      );
       accessToken = refreshed.access_token;
       if (generation === startedGeneration) {
         cached = { fingerprint, accessToken, expiresAt: now + refreshed.expires_in * 1000 };
@@ -223,6 +248,7 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
     } else {
       accessToken = cached.accessToken;
     }
+    const failures: string[] = [];
     const fetchWindows = Effect.fn("AntigravityUsageProbe.fetchWindows")(function* <E>(
       operation: string,
       parse: (response: unknown) => Effect.Effect<ServerProviderUsageWindow[], E>,
@@ -238,7 +264,10 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
           ),
         ).pipe(
           Effect.flatMap(parse),
-          Effect.orElseSucceed(() => []),
+          Effect.catch((error) => {
+            failures.push(describeFailure(operation, error));
+            return Effect.succeed([] as ServerProviderUsageWindow[]);
+          }),
         );
         if (windows.length > 0) return windows;
       }
@@ -256,19 +285,24 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
       return makeUnavailableUsageLimits({
         checkedAt,
         reason: "probeFailed",
-        message: "Antigravity did not return usable quota information.",
+        message: failures.length
+          ? `Antigravity limits unavailable: ${[...new Set(failures)].join("; ")}.`
+          : "Antigravity returned no usable quota information.",
       });
     }
     return { ...makeUsageLimits({ checkedAt, windows }), credentialFingerprint: fingerprint };
   });
   const probe = read.pipe(
     Effect.timeout("30 seconds"),
-    Effect.catch(() =>
+    Effect.catch((error) =>
       Effect.gen(function* () {
         return makeUnavailableUsageLimits({
           checkedAt: DateTime.formatIso(yield* DateTime.now),
           reason: "probeFailed",
-          message: "Could not read Antigravity limits. Refresh provider status to retry.",
+          message:
+            error instanceof ProbeStepError
+              ? `Could not read Antigravity limits: ${error.message}. Refresh provider status to retry.`
+              : "Could not read Antigravity limits. Refresh provider status to retry.",
         });
       }),
     ),

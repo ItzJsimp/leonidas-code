@@ -25,8 +25,65 @@ export function parseWebPort(line: string): number | null {
   return port === undefined ? null : Number(port);
 }
 
+/** A plain dev server prints its address as `http://localhost:PORT`, in any of its loopback spellings. */
+export function parseLocalUrl(line: string): number | null {
+  const port = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]):(\d+)/i.exec(
+    line.replace(ANSI, ""),
+  )?.[1];
+  return port === undefined ? null : Number(port);
+}
+
+export interface GenericDevServer {
+  readonly command: string;
+  /** The port the script names or its framework defaults to; null when unknown. */
+  readonly port: number | null;
+}
+
+const FRAMEWORK_PORTS: ReadonlyArray<readonly [string, number]> = [
+  ["vite", 5173],
+  ["next", 3000],
+  ["astro", 4321],
+  ["ng serve", 4200],
+  ["react-scripts", 3000],
+];
+
+/** Finds how an ordinary project starts its dev server: its `dev` (else `start`) package script. */
+export function detectDevServer(root: string): GenericDevServer | null {
+  let scripts: Record<string, unknown> | undefined;
+  try {
+    scripts = JSON.parse(NodeFS.readFileSync(NodePath.join(root, "package.json"), "utf8")).scripts;
+  } catch {
+    return null;
+  }
+  const name = typeof scripts?.dev === "string" ? "dev" : "start";
+  const body = scripts?.[name];
+  if (typeof body !== "string") return null;
+  const has = (file: string) => NodeFS.existsSync(NodePath.join(root, file));
+  const manager = has("pnpm-lock.yaml")
+    ? "pnpm"
+    : has("yarn.lock")
+      ? "yarn"
+      : has("bun.lock") || has("bun.lockb")
+        ? "bun"
+        : "npm";
+  const named = /(?:--port[ =]|-p |PORT=)(\d{2,5})/.exec(body)?.[1];
+  const port =
+    named === undefined
+      ? (FRAMEWORK_PORTS.find(([needle]) => body.includes(needle))?.[1] ?? null)
+      : Number(named);
+  return { command: `${manager} run ${name}`, port };
+}
+
+const answers = (port: number) =>
+  fetch(`http://localhost:${String(port)}/`, { signal: AbortSignal.timeout(500) }).then(
+    () => true,
+    () => false,
+  );
+
 interface Session {
   readonly child: NodeChildProcess.ChildProcess;
+  /** Set for a plain dev server, which has no sign-in link to wait for. */
+  readonly generic: GenericDevServer | null;
   state: DevPreviewState;
   webPort: number | null;
   webUpAt: number | null;
@@ -45,8 +102,11 @@ export class DevPreviewService extends Context.Service<
   }
 >()("t3/devPreview/DevPreviewService") {}
 
-const isSupported = (project: Project) =>
+const hasIsolatedScript = (project: Project) =>
   NodeFS.existsSync(NodePath.join(project.workspaceRoot, SCRIPT));
+
+const isSupported = (project: Project) =>
+  hasIsolatedScript(project) || detectDevServer(project.workspaceRoot) !== null;
 
 function killTree(child: NodeChildProcess.ChildProcess): void {
   // The pid was captured at spawn, so this can only ever hit our own child.
@@ -76,14 +136,22 @@ export const make = Effect.gen(function* () {
 
   yield* Effect.addFinalizer(() => Effect.sync(() => [...sessions.keys()].forEach(stopSession)));
 
-  const status = (project: Project) =>
-    Effect.sync(
-      (): DevPreviewState =>
-        sessions.get(project.workspaceRoot)?.state ?? {
-          ...STOPPED,
-          supported: isSupported(project),
-        },
-    );
+  // The state of a generic project whose server is not ours: already answering on its port, or idle.
+  const idleState = (project: Project) =>
+    Effect.promise(async (): Promise<DevPreviewState> => {
+      const generic = hasIsolatedScript(project) ? null : detectDevServer(project.workspaceRoot);
+      const command = generic?.command ?? null;
+      if (generic?.port != null && (await answers(generic.port))) {
+        const url = `http://localhost:${String(generic.port)}`;
+        return { status: "running", url, message: null, supported: true, command };
+      }
+      return { ...STOPPED, supported: generic !== null || isSupported(project), command };
+    });
+
+  const status = (project: Project) => {
+    const session = sessions.get(project.workspaceRoot);
+    return session ? Effect.succeed(session.state) : idleState(project);
+  };
 
   const start = (project: Project) =>
     Effect.gen(function* () {
@@ -93,16 +161,32 @@ export const make = Effect.gen(function* () {
       if (!isSupported(project)) {
         return yield* new DevPreviewError({ reason: "unsupported" });
       }
+      const generic = hasIsolatedScript(project) ? null : detectDevServer(root);
+      if (generic !== null) {
+        // Something already serves the project's port: preview that instead of starting a second copy.
+        const idle = yield* idleState(project);
+        if (idle.status === "running") return idle;
+      }
       failedExits.delete(root);
       return yield* Effect.try({
         try: () => {
-          const child = NodeChildProcess.spawn(
-            "pwsh",
-            ["-NoProfile", "-File", SCRIPT, "-Mode", "web"],
-            { cwd: root, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
-          );
+          const child =
+            generic === null
+              ? NodeChildProcess.spawn("pwsh", ["-NoProfile", "-File", SCRIPT, "-Mode", "web"], {
+                  cwd: root,
+                  windowsHide: true,
+                  stdio: ["ignore", "pipe", "pipe"],
+                })
+              : // The command is built from a fixed manager name and script name, never user text.
+                NodeChildProcess.spawn(generic.command, {
+                  cwd: root,
+                  shell: true,
+                  windowsHide: true,
+                  stdio: ["ignore", "pipe", "pipe"],
+                });
           const session: Session = {
             child,
+            generic,
             state: {
               status: "starting",
               url: null,
@@ -135,7 +219,7 @@ export const make = Effect.gen(function* () {
             for (const line of chunk.toString("utf8").split(/\r?\n/)) {
               const text = line.replace(ANSI, "").trim();
               if (text.length === 0) continue;
-              session.webPort ??= parseWebPort(text);
+              session.webPort ??= generic === null ? parseWebPort(text) : parseLocalUrl(text);
               const pairing = parsePairingUrl(text);
               if (pairing !== null) {
                 session.pairingUrl = pairing;
@@ -156,7 +240,10 @@ export const make = Effect.gen(function* () {
               session.state = {
                 status: code === 0 ? "stopped" : "failed",
                 url: null,
-                message: code === 0 ? null : `Preview copy exited with code ${String(code)}.`,
+                message:
+                  code === 0
+                    ? null
+                    : `Preview copy exited with code ${String(code)}${lastLine ? `: ${lastLine.slice(0, 200)}` : "."}`,
                 supported: true,
               };
               // Keep the final state readable until the next start.
@@ -170,8 +257,12 @@ export const make = Effect.gen(function* () {
           session.poll = setInterval(() => {
             if (Date.now() - startedAt > READY_TIMEOUT_MS)
               return fail("Preview copy took too long to start.");
+            // A server that never prints its address is tried on the port its script implies.
+            if (session.webPort === null && generic?.port != null && Date.now() - startedAt > 8_000)
+              session.webPort = generic.port;
             if (session.webPort === null) return;
             if (session.webUpAt !== null) {
+              if (generic !== null) return markRunning();
               if (Date.now() - session.webUpAt > PAIRING_GRACE_MS) markRunning();
               return;
             }

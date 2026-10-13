@@ -1127,7 +1127,7 @@ it.effect("GitVcsDriver forwards execute env to the VCS process", () => {
   );
 });
 
-it.effect("GitVcsDriver flushes checkpoint objects and refs to disk before publishing them", () => {
+it.effect("GitVcsDriver batches checkpoint object durability and fsyncs the published ref", () => {
   const observedArgs: ReadonlyArray<string>[] = [];
 
   return Effect.gen(function* () {
@@ -1143,9 +1143,9 @@ it.effect("GitVcsDriver flushes checkpoint objects and refs to disk before publi
       writeCommands.some((command) => args.includes(command)),
     );
     assert.strictEqual(writes.length, 4);
-    for (const args of writes) {
+    for (const args of writes.slice(0, -1)) {
       const command = args.findIndex((arg) => writeCommands.includes(arg));
-      for (const setting of ["core.fsync=objects,reference", "core.fsyncMethod=fsync"]) {
+      for (const setting of ["core.fsync=objects", "core.fsyncMethod=batch"]) {
         const index = args.indexOf(setting);
         assert.strictEqual(args[index - 1], "-c", args.join(" "));
         assert.isBelow(index, command);
@@ -1155,7 +1155,7 @@ it.effect("GitVcsDriver flushes checkpoint objects and refs to disk before publi
       "-C",
       "/repo",
       "-c",
-      "core.fsync=objects,reference",
+      "core.fsync=reference",
       "-c",
       "core.fsyncMethod=fsync",
       "update-ref",

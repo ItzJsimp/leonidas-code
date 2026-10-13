@@ -51,6 +51,11 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 import packageJson from "../../package.json" with { type: "json" };
 const isCodexAppServerSpawnError = Schema.is(CodexErrors.CodexAppServerSpawnError);
 const RATE_LIMITS_PROBE_TIMEOUT_MS = 3_000;
+const CODEX_SKILLS_PROBE_CACHE_TTL_MS = 30_000;
+const codexSkillsProbeCache = new Map<
+  string,
+  { readonly expiresAt: number; readonly skills: ReadonlyArray<ServerProviderSkill> }
+>();
 
 type CodexRateLimitsProbe =
   | {
@@ -494,9 +499,18 @@ export const probeCodexSkillsForCwd = Effect.fn("probeCodexSkillsForCwd")(functi
   readonly cwd: string;
   readonly environment?: NodeJS.ProcessEnv;
 }) {
+  const cached = codexSkillsProbeCache.get(input.cwd);
+  if (cached !== undefined && cached.expiresAt > Date.now()) {
+    return cached.skills;
+  }
   const { client } = yield* withCodexAppServerClient(input);
   const skillsResponse = yield* client.request("skills/list", { cwds: [input.cwd] });
-  return parseCodexSkillsListResponse(skillsResponse, input.cwd);
+  const skills = parseCodexSkillsListResponse(skillsResponse, input.cwd);
+  codexSkillsProbeCache.set(input.cwd, {
+    expiresAt: Date.now() + CODEX_SKILLS_PROBE_CACHE_TTL_MS,
+    skills,
+  });
+  return skills;
 });
 
 const emptyCodexModelsFromSettings = (codexSettings: CodexSettings): ServerProvider["models"] =>

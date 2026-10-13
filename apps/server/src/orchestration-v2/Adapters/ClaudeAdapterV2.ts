@@ -84,6 +84,7 @@ import {
 } from "@t3tools/contracts";
 
 import * as Cause from "effect/Cause";
+import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Hex from "effect/encoding/Hex";
@@ -675,6 +676,7 @@ export const layerQueryRunner: Layer.Layer<
       open: Effect.fn("ClaudeAgentSdkQueryRunner.open")(function* (
         input: ClaudeAgentSdkQueryOpenInput,
       ) {
+        const openedAt = yield* Clock.currentTimeMillis;
         const protocolLogger = makeClaudeAgentSdkProtocolLogger({
           nativeEventLogger,
           threadId: input.threadId,
@@ -725,6 +727,7 @@ export const layerQueryRunner: Layer.Layer<
             try: () => query({ prompt, options }),
             catch: (cause) => queryRunnerError(cause, "query"),
           }).pipe(
+            Effect.withSpan("ClaudeAgentSdkQueryRunner.open.spawn"),
             Effect.tap((queryRuntime) =>
               restore(
                 Effect.gen(function* () {
@@ -740,13 +743,12 @@ export const layerQueryRunner: Layer.Layer<
                       Effect.orElseSucceed(() => Object.keys(mcpServers)),
                       Effect.timeoutOrElse({
                         duration: CLAUDE_MCP_REGISTRATION_TIMEOUT,
-                        orElse: () =>
-                          Effect.fail(
-                            queryRunnerError(
-                              "Claude Code did not answer the MCP server registration.",
-                              "setMcpServers",
-                            ),
-                          ),
+                        // A slow answer means the CLI is still connecting the
+                        // user's own MCP servers (npx/python starts, claude.ai
+                        // connectors), not that it is dead. Failing here killed
+                        // every turn on a busy machine, so the turn starts and
+                        // the registration finishes in the background.
+                        orElse: () => Effect.succeed(Object.keys(mcpServers)),
                       }),
                     );
                     if (failed.length > 0) {
@@ -764,7 +766,7 @@ export const layerQueryRunner: Layer.Layer<
                       options: loggedClaudeQueryOptions(input.options),
                     },
                   });
-                }),
+                }).pipe(Effect.withSpan("ClaudeAgentSdkQueryRunner.open.mcpInit")),
               ).pipe(
                 Effect.onError(() =>
                   Queue.shutdown(promptQueue).pipe(
@@ -1564,12 +1566,8 @@ const makeClaudeUserMessageWithAttachments = Effect.fnUntraced(function* (input:
     });
   }
 
-  // Images go before the command block: a text block after them still
-  // expands, a command block followed by an image does not.
-  if (dispatch) {
-    content.push({ type: "text", text: dispatch.commandText });
-  } else if (textWithAttachmentPaths.length > 0) {
-    content.push({ type: "text", text: textWithAttachmentPaths });
+  if (text.length > 0) {
+    content.push({ type: "text", text });
   }
 
   return {
@@ -6011,6 +6009,17 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                     ...(goal.checks === undefined ? {} : { checks: goal.checks }),
                   });
                 }
+                // Diagnostic: a run that ends while background work is live
+                // looks finished in the UI; this shows whether the roster saw it.
+                yield* Effect.logInfo(
+                  "orchestration-v2.claude-run-completed-with-background-work",
+                  {
+                    runOrdinal: input.context.input.runOrdinal,
+                    status: input.status,
+                    pendingBackgroundTaskCount: roster.size,
+                    kinds: Array.from(roster.values(), (task) => task.kind),
+                  },
+                );
                 const providerThread: OrchestrationV2ProviderThread = {
                   ...input.context.input.providerThread,
                   providerSessionId: session.id,
