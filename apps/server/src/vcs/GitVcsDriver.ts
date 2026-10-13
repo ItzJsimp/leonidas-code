@@ -471,6 +471,22 @@ function chunkPathsForGitCheckIgnore(relativePaths: ReadonlyArray<string>): stri
   return chunks;
 }
 
+function checkpointStatusPaths(stdout: string): string[] {
+  const paths = new Set<string>();
+  const records = stdout.split("\0");
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    if (record === undefined || record.length <= 3 || record[2] !== " ") continue;
+    paths.add(record.slice(3));
+    // Porcelain v1 -z emits a second, bare path for rename and copy records.
+    if (record[0] === "R" || record[0] === "C" || record[1] === "R" || record[1] === "C") {
+      const originalPath = records[++index];
+      if (originalPath !== undefined && originalPath.length > 0) paths.add(originalPath);
+    }
+  }
+  return [...paths];
+}
+
 function parseGitRemoteVerboseOutput(
   output: string,
 ): Map<string, { url?: string; pushUrl?: string }> {
@@ -955,75 +971,105 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           }
         }
 
+        // The private index matches HEAD, so status lists exactly what differs from it. Stage
+        // those paths instead of re-walking the whole tree. Fsmonitor and the untracked cache
+        // stay off so a stale cache cannot hide a changed file.
+        const changed = yield* execute({
+          operation,
+          cwd: input.cwd,
+          args: [
+            ...indexConfig,
+            "-c",
+            "core.untrackedCache=false",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+            "--ignore-submodules=none",
+            "--",
+            ".",
+          ],
+          env: commitEnv,
+          maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
+          outputMode: "truncate",
+          allowNonZeroExit: true,
+        });
+        // A failed or truncated status falls back to staging the whole tree.
+        const changedPaths =
+          changed.exitCode !== 0 || changed.stdoutTruncated
+            ? ["."]
+            : checkpointStatusPaths(changed.stdout).map((entry) => `:(top,literal)${entry}`);
         const stageFiles = (exclusions: ReadonlyArray<string>) =>
           execute({
             operation,
             cwd: input.cwd,
             // Preserve absent skipped entries, but capture present nonignored files outside the cone.
+            // Pathspecs travel on stdin so a large change set cannot exceed the command line limit.
             args: [
               ...indexConfig,
               ...durableObjectWrite,
               "add",
               ...(sparseCheckout ? ["--sparse"] : []),
               "-A",
-              "--",
-              ".",
-              ...exclusions,
+              "--pathspec-from-file=-",
+              "--pathspec-file-nul",
             ],
+            stdin: [...changedPaths, ...exclusions].join("\0") + "\0",
             env: commitEnv,
           });
-        yield* stageFiles([]).pipe(
-          Effect.catchTags({
-            VcsProcessExitError: (error) =>
-              Effect.gen(function* () {
-                // Git cannot stage an embedded repository until it has a commit. Discover these
-                // only after staging fails so ordinary checkpoints do not need another file scan.
-                const untracked = yield* execute({
-                  operation,
-                  cwd: input.cwd,
-                  args: ["ls-files", "--others", "--exclude-standard", "-z", "--", "."],
-                  env: commitEnv,
-                  maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
-                });
-                if (untracked.stdoutTruncated) return yield* error;
-                const candidates = splitNullSeparatedGitStdoutPaths(untracked).filter((entry) =>
-                  entry.endsWith("/"),
-                );
-                // Refuse excessive recovery work before probing any nested repositories.
-                if (candidates.length > CHECKPOINT_RECOVERY_MAX_CANDIDATES) return yield* error;
-                // Discover each child's repository instead of inheriting the server's Git bindings.
-                const nestedRepoEnv: NodeJS.ProcessEnv = {
-                  ...process.env,
-                  GIT_DIR: undefined,
-                  GIT_WORK_TREE: undefined,
-                  GIT_COMMON_DIR: undefined,
-                  GIT_INDEX_FILE: undefined,
-                  GIT_OBJECT_DIRECTORY: undefined,
-                  GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
-                };
-                const exclusions: Array<string> = [];
-                for (const entry of candidates) {
-                  const nestedCwd = path.join(input.cwd, entry);
-                  if (
-                    (yield* fileSystem
-                      .exists(path.join(nestedCwd, ".git"))
-                      .pipe(Effect.mapError(() => error))) &&
-                    !(yield* hasHeadCommit(nestedCwd, nestedRepoEnv))
-                  ) {
-                    exclusions.push(`:(exclude,literal)${entry}`);
+        if (changedPaths.length > 0)
+          yield* stageFiles([]).pipe(
+            Effect.catchTags({
+              VcsProcessExitError: (error) =>
+                Effect.gen(function* () {
+                  // Git cannot stage an embedded repository until it has a commit. Discover these
+                  // only after staging fails so ordinary checkpoints do not need another file scan.
+                  const untracked = yield* execute({
+                    operation,
+                    cwd: input.cwd,
+                    args: ["ls-files", "--others", "--exclude-standard", "-z", "--", "."],
+                    env: commitEnv,
+                    maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
+                  });
+                  if (untracked.stdoutTruncated) return yield* error;
+                  const candidates = splitNullSeparatedGitStdoutPaths(untracked).filter((entry) =>
+                    entry.endsWith("/"),
+                  );
+                  // Refuse excessive recovery work before probing any nested repositories.
+                  if (candidates.length > CHECKPOINT_RECOVERY_MAX_CANDIDATES) return yield* error;
+                  // Discover each child's repository instead of inheriting the server's Git bindings.
+                  const nestedRepoEnv: NodeJS.ProcessEnv = {
+                    ...process.env,
+                    GIT_DIR: undefined,
+                    GIT_WORK_TREE: undefined,
+                    GIT_COMMON_DIR: undefined,
+                    GIT_INDEX_FILE: undefined,
+                    GIT_OBJECT_DIRECTORY: undefined,
+                    GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
+                  };
+                  const exclusions: Array<string> = [];
+                  for (const entry of candidates) {
+                    const nestedCwd = path.join(input.cwd, entry);
+                    if (
+                      (yield* fileSystem
+                        .exists(path.join(nestedCwd, ".git"))
+                        .pipe(Effect.mapError(() => error))) &&
+                      !(yield* hasHeadCommit(nestedCwd, nestedRepoEnv))
+                    ) {
+                      exclusions.push(`:(exclude,literal)${entry}`);
+                    }
                   }
-                }
-                if (exclusions.length === 0) return yield* error;
-                return yield* stageFiles(exclusions);
-              }).pipe(
-                // One budget covers discovery, queued Git admission, probes, and the staging retry.
-                Effect.timeoutOrElse({
-                  duration: CHECKPOINT_RECOVERY_TIMEOUT,
-                  orElse: () => Effect.fail(error),
-                }),
-              ),
-          }),
-        );
+                  if (exclusions.length === 0) return yield* error;
+                  return yield* stageFiles(exclusions);
+                }).pipe(
+                  // One budget covers discovery, queued Git admission, probes, and the staging retry.
+                  Effect.timeoutOrElse({
+                    duration: CHECKPOINT_RECOVERY_TIMEOUT,
+                    orElse: () => Effect.fail(error),
+                  }),
+                ),
+            }),
+          );
 
         const writeTreeResult = yield* execute({
           operation,
