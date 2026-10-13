@@ -7,6 +7,8 @@ import * as Schema from "effect/Schema";
 
 import * as NetService from "@t3tools/shared/Net";
 import * as Crypto from "effect/Crypto";
+import * as Electron from "electron";
+import { CAPTURE_MENU_ACTION, registerCaptureHotkey } from "../capture/DesktopCaptureHotkey.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronDialog from "../electron/ElectronDialog.ts";
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
@@ -189,6 +191,15 @@ const bootstrap = Effect.gen(function* () {
   );
 
   yield* snapShot.initialize;
+
+  // The OS-wide capture chord reveals the app and opens the quick-capture box.
+  registerCaptureHotkey(Electron.globalShortcut, () => {
+    void Effect.runPromise(
+      desktopWindow
+        .dispatchMenuAction(CAPTURE_MENU_ACTION, { reveal: true })
+        .pipe(Effect.ignoreCause),
+    );
+  });
 
   if (!settings.localEnvironmentEnabled) {
     yield* logBootstrapInfo("bootstrap skipping local environment (disabled in settings)");
