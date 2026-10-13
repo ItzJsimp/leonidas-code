@@ -6,7 +6,6 @@
  * they cannot race while appending to the same thread-scoped file.
  */
 import * as NodeFS from "node:fs";
-import * as NodeFSAsync from "node:fs/promises";
 import * as NodePath from "node:path";
 
 import type { ThreadId } from "@t3tools/contracts";
@@ -29,8 +28,8 @@ const DAY_MS = 24 * 60 * 60 * 1_000;
 const DEFAULT_MAX_BYTES = 10 * MEBIBYTE;
 const DEFAULT_MAX_FILES = 10;
 const DEFAULT_BATCH_WINDOW_MS = 1_000;
-const DEFAULT_MAX_TOTAL_BYTES = 128 * MEBIBYTE;
-const DEFAULT_MAX_AGE_MS = 7 * DAY_MS;
+const DEFAULT_MAX_TOTAL_BYTES = 512 * MEBIBYTE;
+const DEFAULT_MAX_AGE_MS = 14 * DAY_MS;
 const DEFAULT_RETENTION_CHECK_INTERVAL_MS = 5 * 60 * 1_000;
 const DEFAULT_MAX_BUFFERED_BYTES = MEBIBYTE;
 const DEFAULT_MAX_BUFFERED_RECORDS = 512;
@@ -401,38 +400,34 @@ export function writeBatchedMessages(
   flush();
 }
 
-async function isProviderLogFile(
-  filePath: string,
-  fileName: string,
-  filePrefix: string,
-): Promise<boolean> {
+function isProviderLogFile(filePath: string, fileName: string, filePrefix: string): boolean {
   if (!/\.log(?:\.\d+)?$/u.test(fileName)) return false;
   if (fileName.startsWith(filePrefix)) return true;
 
-  const descriptor = await NodeFSAsync.open(filePath, "r");
+  const descriptor = NodeFS.openSync(filePath, "r");
   try {
     const header = Buffer.alloc(256);
-    const { bytesRead } = await descriptor.read(header, 0, header.byteLength, 0);
+    const bytesRead = NodeFS.readSync(descriptor, header, 0, header.byteLength, 0);
     return /^\[[^\]\r\n]+\] (?:NTIVE|CANON|ORCH): /u.test(header.toString("utf8", 0, bytesRead));
   } finally {
-    await descriptor.close();
+    NodeFS.closeSync(descriptor);
   }
 }
 
-async function enforceRetention(input: {
+function enforceRetention(input: {
   readonly directory: string;
   readonly maxTotalBytes: number;
   readonly maxAgeMs: number;
   readonly activeFilePaths: ReadonlySet<string>;
   readonly filePrefix: string;
   readonly now: number;
-}): Promise<RetentionResult> {
+}): RetentionResult {
   const failures: Array<FileOperationFailure> = [];
   const files: Array<{ filePath: string; mtimeMs: number; size: number }> = [];
 
   let entries: ReadonlyArray<NodeFS.Dirent>;
   try {
-    entries = await NodeFSAsync.readdir(input.directory, { withFileTypes: true });
+    entries = NodeFS.readdirSync(input.directory, { withFileTypes: true });
   } catch (cause) {
     return { failures: [{ filePath: input.directory, cause }] };
   }
@@ -441,8 +436,8 @@ async function enforceRetention(input: {
     if (!entry.isFile()) continue;
     const filePath = NodePath.join(input.directory, entry.name);
     try {
-      if (!(await isProviderLogFile(filePath, entry.name, input.filePrefix))) continue;
-      const stat = await NodeFSAsync.stat(filePath);
+      if (!isProviderLogFile(filePath, entry.name, input.filePrefix)) continue;
+      const stat = NodeFS.statSync(filePath);
       files.push({ filePath, mtimeMs: stat.mtimeMs, size: stat.size });
     } catch (cause) {
       failures.push({ filePath, cause });
@@ -450,10 +445,10 @@ async function enforceRetention(input: {
   }
 
   let totalBytes = files.reduce((total, file) => total + file.size, 0);
-  const remove = async (file: (typeof files)[number]) => {
+  const remove = (file: (typeof files)[number]) => {
     if (input.activeFilePaths.has(file.filePath)) return false;
     try {
-      await NodeFSAsync.rm(file.filePath, { force: true });
+      NodeFS.rmSync(file.filePath, { force: true });
       totalBytes -= file.size;
       return true;
     } catch (cause) {
@@ -462,16 +457,16 @@ async function enforceRetention(input: {
     }
   };
 
-  const retained: Array<(typeof files)[number]> = [];
-  for (const file of files) {
-    if (input.now - file.mtimeMs <= input.maxAgeMs || !(await remove(file))) retained.push(file);
-  }
+  const retained = files.filter((file) => {
+    if (input.now - file.mtimeMs <= input.maxAgeMs) return true;
+    return !remove(file);
+  });
 
   for (const file of retained.toSorted(
     (left, right) => left.mtimeMs - right.mtimeMs || left.filePath.localeCompare(right.filePath),
   )) {
     if (totalBytes <= input.maxTotalBytes) break;
-    await remove(file);
+    remove(file);
   }
 
   return { failures };
@@ -522,7 +517,7 @@ function resolveOptions(
   return Effect.succeed(resolved);
 }
 
-async function drainPending(input: {
+function drainPending(input: {
   readonly directory: string;
   readonly options: ResolvedOptions;
   readonly state: StoreState;
@@ -530,7 +525,7 @@ async function drainPending(input: {
   readonly now: number;
   readonly timerFired: boolean;
   readonly close: boolean;
-}): Promise<readonly [DrainResult, StoreState]> {
+}): readonly [DrainResult, StoreState] {
   if (input.state.closed) {
     return [{ attributions: [], failures: [] }, input.state];
   }
@@ -589,7 +584,7 @@ async function drainPending(input: {
   const retentionDue =
     input.now - input.state.lastRetentionAt >= input.options.retentionCheckIntervalMs;
   const retention = retentionDue
-    ? await enforceRetention({
+    ? enforceRetention({
         directory: input.directory,
         maxTotalBytes: input.options.maxTotalBytes,
         maxAgeMs: input.options.maxAgeMs,
@@ -640,13 +635,13 @@ export const makeEventNdjsonLogStore = Effect.fnUntraced(function* (
   const directory = NodePath.dirname(filePath);
   const filePrefix = providerLogPrefix(filePath);
 
-  yield* Effect.tryPromise({
-    try: () => NodeFSAsync.mkdir(directory, { recursive: true }),
+  yield* Effect.try({
+    try: () => NodeFS.mkdirSync(directory, { recursive: true }),
     catch: (cause) => new EventNdjsonLogDirectoryError({ directory, cause }),
   });
 
   const initializedAt = yield* Clock.currentTimeMillis;
-  const initialRetention = yield* Effect.tryPromise(() =>
+  const initialRetention = yield* Effect.sync(() =>
     enforceRetention({
       directory,
       maxTotalBytes: resolved.maxTotalBytes,
@@ -676,7 +671,7 @@ export const makeEventNdjsonLogStore = Effect.fnUntraced(function* (
   const flush = Effect.fnUntraced(function* (timerFired: boolean, close: boolean) {
     const startedAt = yield* Clock.currentTimeMillis;
     const result = yield* SynchronizedRef.modifyEffect(stateRef, (state) =>
-      Effect.tryPromise(() =>
+      Effect.sync(() =>
         drainPending({
           directory,
           options: resolved,
