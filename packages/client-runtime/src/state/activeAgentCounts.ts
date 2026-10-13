@@ -4,8 +4,10 @@ import type { ThreadRuntimeSummary } from "./models.ts";
 
 type AccountIdentity = Pick<ServerProvider, "instanceId" | "driver" | "auth" | "continuation"> & {
   /** Instance ids repeat across environments, so scope them when known. */
-  readonly environmentId?: string;
-  readonly usageLimits?: Pick<NonNullable<ServerProvider["usageLimits"]>, "credentialFingerprint">;
+  readonly environmentId?: string | undefined;
+  readonly usageLimits?:
+    | Pick<NonNullable<ServerProvider["usageLimits"]>, "credentialFingerprint">
+    | undefined;
 };
 
 /**

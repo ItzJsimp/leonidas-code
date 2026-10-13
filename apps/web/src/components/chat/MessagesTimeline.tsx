@@ -5502,7 +5502,7 @@ function BackgroundCommandTimer({
       thread === null || thread === undefined
         ? ""
         : liveBackgroundCommandIds(
-            thread.projection.turnItems.map(({ item: turnItem }) => turnItem),
+            thread.projection.turnItems,
             thread.projection.providerThreads.flatMap(
               (providerThread) => providerThread.pendingBackgroundTasks ?? [],
             ),
