@@ -53,6 +53,7 @@ import {
   ProviderAuthStartInput,
   ProviderAuthRespondInput,
   ProviderInstallCancelInput,
+  ProviderInstallSubmitCodeInput,
   ProviderInstallState,
   ProviderSetupError,
   ProviderSetupInput,
@@ -480,6 +481,7 @@ export const WS_METHODS = {
   providerInstallCancel: "provider.install.cancel",
   providerInstallSubscribe: "provider.install.subscribe",
   providerInstallRemove: "provider.install.remove",
+  providerInstallSubmitCode: "provider.install.submitCode",
 
   // VCS methods
   vcsPull: "vcs.pull",
@@ -787,6 +789,12 @@ const WsProviderInstallSubscribeRpc = Rpc.make(WS_METHODS.providerInstallSubscri
   success: ProviderInstallState,
   error: ProviderSetupRpcError,
   stream: true,
+});
+
+const WsProviderInstallSubmitCodeRpc = Rpc.make(WS_METHODS.providerInstallSubmitCode, {
+  payload: ProviderInstallSubmitCodeInput,
+  success: ProviderInstallState,
+  error: ProviderSetupRpcError,
 });
 
 const WsProviderInstallRemoveRpc = Rpc.make(WS_METHODS.providerInstallRemove, {
@@ -2113,6 +2121,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProviderInstallCancelRpc,
   WsProviderInstallSubscribeRpc,
   WsProviderInstallRemoveRpc,
+  WsProviderInstallSubmitCodeRpc,
   WsServerUpdateServerRpc,
   WsServerUpdateServerWithProgressRpc,
   WsServerCommitDesktopUpdateRpc,

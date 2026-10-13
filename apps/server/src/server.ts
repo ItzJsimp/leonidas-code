@@ -85,6 +85,7 @@ import * as ServerSettings from "./serverSettings.ts";
 import * as ProjectEnrichmentService from "./project/ProjectEnrichmentService.ts";
 import * as NativeAppIconResolver from "./assets/NativeAppIconResolver.ts";
 import * as AntigravityInstallation from "./provider/AntigravityInstallation.ts";
+import * as ClaudeInstallation from "./provider/ClaudeInstallation.ts";
 import * as CodexInstallation from "./provider/CodexInstallation.ts";
 import * as ProviderInstanceRegistry from "./provider/ProviderInstanceRegistry.ts";
 import * as ProviderAdapterRegistry from "./orchestration-v2/ProviderAdapterRegistry.ts";
@@ -530,9 +531,11 @@ const layerProviderInstallationRefresh = Layer.effectDiscard(
   Effect.gen(function* () {
     const antigravity = yield* AntigravityInstallation.AntigravityInstallation;
     const codex = yield* CodexInstallation.CodexInstallation;
+    const claude = yield* ClaudeInstallation.ClaudeInstallation;
     const instances = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
     const providers = yield* ProviderRegistry.ProviderRegistry;
-    yield* Stream.merge(
+    yield* Stream.mergeAll(
+      [
       antigravity.changes.pipe(
         Stream.changesWith((a, b) => a.installedVersion === b.installedVersion),
         Stream.drop(1),
@@ -541,6 +544,13 @@ const layerProviderInstallationRefresh = Layer.effectDiscard(
         Stream.changesWith((a, b) => a.installedVersion === b.installedVersion),
         Stream.drop(1),
       ),
+      // Claude also changes sign-in state without a version change, so refresh on success.
+      claude.changes.pipe(
+        Stream.changesWith((a, b) => a.installedVersion === b.installedVersion && a.phase === b.phase),
+        Stream.filter((state) => state.phase === "succeeded"),
+      ),
+      ],
+      { concurrency: "unbounded" },
     ).pipe(
       Stream.runForEach((state) =>
         instances.listInstances.pipe(
@@ -619,6 +629,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
     Layer.mergeAll(
       AntigravityInstallation.AntigravityInstallation.layer,
       CodexInstallation.CodexInstallation.layer,
+      ClaudeInstallation.ClaudeInstallation.layer,
     ),
   ),
 );

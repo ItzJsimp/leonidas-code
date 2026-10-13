@@ -1121,6 +1121,10 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:provider:install-cancel",
       tag: WS_METHODS.providerInstallCancel,
     }),
+    submitProviderInstallCode: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:provider:install-submit-code",
+      tag: WS_METHODS.providerInstallSubmitCode,
+    }),
     removeProviderInstallation: createEnvironmentRpcCommand(runtime, {
       label: "environment-data:provider:install-remove",
       tag: WS_METHODS.providerInstallRemove,

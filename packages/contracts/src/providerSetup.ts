@@ -168,6 +168,10 @@ export const ProviderInstallState = Schema.Struct({
     "succeeded",
     "failed",
     "cancelled",
+    // Managed one-button setups (Claude) add coarse steps of their own.
+    "checking",
+    "installing",
+    "signingIn",
   ]),
   downloadedBytes: ByteCount,
   totalBytes: Schema.NullOr(ByteCount),
@@ -177,6 +181,14 @@ export const ProviderInstallState = Schema.Struct({
   source: Schema.optionalKey(Schema.NullOr(Schema.Literals(["managed", "local"]))),
   canRemove: Schema.Boolean,
   message: Schema.NullOr(Schema.String),
+  /** Sign-in page the CLI printed while `phase` is `signingIn`. */
+  signInUrl: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  /** True when the CLI is waiting for a code pasted from the sign-in page. */
+  awaitingCode: Schema.optionalKey(Schema.Boolean),
+  /** The one action that can fix a failed setup. */
+  recovery: Schema.optionalKey(Schema.NullOr(Schema.Literals(["retry", "signIn"]))),
+  /** Technical detail for a collapsed "Details" section; never the headline. */
+  details: Schema.optionalKey(Schema.NullOr(Schema.String)),
 });
 export type ProviderInstallState = typeof ProviderInstallState.Type;
 
@@ -185,6 +197,13 @@ export const ProviderInstallCancelInput = Schema.Struct({
   operationId: SetupOperationId,
 });
 export type ProviderInstallCancelInput = typeof ProviderInstallCancelInput.Type;
+
+export const ProviderInstallSubmitCodeInput = Schema.Struct({
+  instanceId: ProviderInstanceId,
+  operationId: SetupOperationId,
+  code: TrimmedNonEmptyString.check(Schema.isMaxLength(4_096)),
+});
+export type ProviderInstallSubmitCodeInput = typeof ProviderInstallSubmitCodeInput.Type;
 
 /** Safe setup failure text. Never include OAuth codes, URLs, or native token data. */
 export class ProviderSetupError extends Schema.TaggedError<ProviderSetupError>()(

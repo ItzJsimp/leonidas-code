@@ -6,6 +6,7 @@ import {
   type ProviderInstallState,
 } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -13,6 +14,7 @@ import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 
 import * as ServerSettings from "../serverSettings.ts";
+import * as ClaudeInstallation from "./ClaudeInstallation.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
 import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
@@ -62,10 +64,12 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
   const calls: string[] = [];
   let protectedPaths: ReadonlyArray<string> = [];
   const configured = input.instance ?? instance();
+  const settingsContext = yield* Layer.build(ServerSettings.layerTest(input.settings));
+  const settingsService = Context.get(settingsContext, ServerSettings.ServerSettingsService);
   const router = yield* makeProviderInstallation().pipe(
     Effect.provide(
       Layer.mergeAll(
-        ServerSettings.layerTest(input.settings),
+        Layer.succeedContext(settingsContext),
         Layer.mock(ProviderInstanceRegistry.ProviderInstanceRegistry)({
           getInstance: (id) =>
             Effect.succeed(id === configured.instanceId ? configured : undefined),
@@ -97,6 +101,27 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
               calls.push("codex-remove");
             }),
         }),
+        Layer.mock(ClaudeInstallation.ClaudeInstallation)({
+          start: (input) =>
+            Effect.gen(function* () {
+              calls.push(`claude-start:${input.binaryPath}`);
+              yield* input.pinBinaryPath("/home/.local/bin/claude");
+              return { ...state, driver: ProviderDriverKind.make("claudeAgent") };
+            }),
+          cancel: () =>
+            Effect.sync(() => {
+              calls.push("claude-cancel");
+              return { ...state, driver: ProviderDriverKind.make("claudeAgent") };
+            }),
+          submitCode: (operationId, code) =>
+            Effect.sync(() => {
+              calls.push(`claude-code:${operationId}:${code}`);
+              return { ...state, driver: ProviderDriverKind.make("claudeAgent") };
+            }),
+          state: Effect.succeed({ ...state, driver: ProviderDriverKind.make("claudeAgent") }),
+          changes: Stream.succeed({ ...state, driver: ProviderDriverKind.make("claudeAgent") }),
+          remove: () => Effect.void,
+        }),
         Layer.mock(AntigravityInstallation.AntigravityInstallation)({
           managedDirectory: "/unused-managed-runtime",
           start: Effect.sync(() => {
@@ -119,7 +144,7 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
       ),
     ),
   );
-  return { router, calls, protectedPaths: () => protectedPaths };
+  return { router, calls, settings: settingsService, protectedPaths: () => protectedPaths };
 });
 
 describe("provider installation routing", () => {
@@ -208,6 +233,49 @@ describe("provider installation routing", () => {
         "Choose managed setup",
       );
       assert.deepEqual(harness.calls, []);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("routes Claude through its own installer and keeps a custom binary path", () =>
+    Effect.gen(function* () {
+      const claudeId = ProviderInstanceId.make("claudeAgent");
+      const claudeDriver = ProviderDriverKind.make("claudeAgent");
+      const harness = yield* makeHarness({
+        instance: instance(claudeDriver, claudeId),
+        settings: {
+          providerInstances: {
+            [claudeId]: { driver: claudeDriver, config: { binaryPath: "/custom/claude" } },
+          },
+        },
+      });
+      assert.equal((yield* harness.router.start({ instanceId: claudeId })).driver, "claudeAgent");
+      yield* harness.router.submitCode({
+        instanceId: claudeId,
+        operationId: "operation",
+        code: "abc",
+      });
+      const saved = (yield* harness.settings.getSettings).providerInstances[claudeId];
+      assert.deepEqual(harness.calls, ["claude-start:/custom/claude", "claude-code:operation:abc"]);
+      // The router hands over the pin hook; the stub installer calls it once.
+      assert.deepEqual(saved?.config, { binaryPath: "/home/.local/bin/claude" });
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("refuses sign-in codes and removal for providers that do not use them", () =>
+    Effect.gen(function* () {
+      const claudeId = ProviderInstanceId.make("claudeAgent");
+      const claudeDriver = ProviderDriverKind.make("claudeAgent");
+      const claude = yield* makeHarness({ instance: instance(claudeDriver, claudeId) });
+      assert.include(
+        (yield* Effect.flip(claude.router.remove({ instanceId: claudeId }))).detail,
+        "can't be removed",
+      );
+      const other = yield* makeHarness();
+      const rejected = yield* Effect.flip(
+        other.router.submitCode({ instanceId, operationId: "operation", code: "abc" }),
+      );
+      assert.include(rejected.detail, "does not use a sign-in code");
+      assert.deepEqual([...claude.calls, ...other.calls], []);
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 

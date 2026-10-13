@@ -558,8 +558,11 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         status: "error",
         auth: { status: "unknown" },
         message: isCommandMissingCause(error)
-          ? "Claude Agent CLI (`claude`) was not found on PATH."
+          ? "Claude isn't installed yet."
           : "Failed to execute Claude Agent CLI health check.",
+        ...(isCommandMissingCause(error)
+          ? { detail: "Claude Agent CLI (`claude`) was not found on PATH." }
+          : {}),
       },
     });
   }
@@ -651,7 +654,8 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         version: parsedVersion,
         status: "error",
         auth: { status: "unauthenticated" },
-        message: "Claude Code is not authenticated. Run `claude auth login` and try again.",
+        message: "Claude isn't signed in yet.",
+        detail: "Claude Code is not authenticated. Run `claude auth login` and try again.",
       },
     });
   }

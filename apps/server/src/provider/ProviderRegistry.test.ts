@@ -3558,7 +3558,11 @@ it.layer(
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.installed, false);
         assert.strictEqual(status.auth.status, "unknown");
-        assert.strictEqual(status.message, "Claude Agent CLI (`claude`) was not found on PATH.");
+        assert.strictEqual(status.message, "Claude isn't installed yet.");
+        assert.strictEqual(
+          status.messageDetail,
+          "Claude Agent CLI (`claude`) was not found on PATH.",
+        );
       }).pipe(Effect.provide(layerFailingSpawner("spawn claude ENOENT"))),
     );
 
