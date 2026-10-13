@@ -13,6 +13,7 @@
  * @module providerInstances
  */
 import {
+  DEFAULT_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
   defaultInstanceIdForDriver,
   isUnconfiguredDefaultInstanceEnabled,
@@ -337,4 +338,40 @@ export function resolveDefaultProviderModelSelection(
   if (selection?.instanceId === instanceId) return selection;
   const model = getDefaultProviderInstanceModel(providers, instanceId);
   return model ? { instanceId, model } : null;
+}
+
+/**
+ * Pick the default model selection for a user who has not chosen one: the
+ * first instance that is picker-ready and signed in, with that instance's own
+ * default model. Never returns a disconnected provider, so a Claude-only user
+ * does not land on a Codex model. `null` when nothing is connected yet.
+ */
+export function pickFirstReadyDefaultSelection(
+  providers: ReadonlyArray<ServerProvider>,
+): ModelSelection | null {
+  const entry = deriveProviderInstanceEntries(providers).find(
+    (candidate) =>
+      isProviderInstancePickerReady(candidate) && candidate.snapshot.auth.status === "authenticated",
+  );
+  if (!entry) return null;
+  const model = getDefaultProviderInstanceModel(providers, entry.instanceId);
+  return model ? { instanceId: entry.instanceId, model } : null;
+}
+
+/**
+ * Model slug for a new thread on `instanceId`. Keeps the instance and model
+ * from the same provider: a project default only applies when it belongs to
+ * this instance, otherwise the instance's own default is used.
+ */
+export function resolveThreadCreateModel(input: {
+  readonly providers: ReadonlyArray<ServerProvider>;
+  readonly instanceId: ProviderInstanceId;
+  readonly selectedModel: string | null | undefined;
+  readonly projectDefault: ModelSelection | null | undefined;
+}): string {
+  if (input.selectedModel) return input.selectedModel;
+  if (input.projectDefault?.instanceId === input.instanceId && input.projectDefault.model) {
+    return input.projectDefault.model;
+  }
+  return getDefaultProviderInstanceModel(input.providers, input.instanceId) ?? DEFAULT_MODEL;
 }

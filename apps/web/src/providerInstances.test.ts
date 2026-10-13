@@ -7,9 +7,11 @@ import {
   getDefaultProviderInstanceModel,
   isProviderInstancePickerReady,
   isProviderInstancePickerVisible,
+  pickFirstReadyDefaultSelection,
   resolveDefaultProviderModelSelection,
   resolveProviderCatalogAvailability,
   resolveSelectableProviderInstance,
+  resolveThreadCreateModel,
 } from "./providerInstances";
 
 function provider(input: {
@@ -656,5 +658,60 @@ describe("provider icon metadata", () => {
     ]);
     expect(entry?.acpRegistryIconUrl).toBe(iconUrl);
     expect(entry?.driverKind).toBe("acpRegistry");
+  });
+});
+
+describe("pickFirstReadyDefaultSelection", () => {
+  const codex = ProviderDriverKind.make("codex");
+  const claude = ProviderDriverKind.make("claudeAgent");
+  const signedOut = (p: ServerProvider): ServerProvider => ({
+    ...p,
+    auth: { status: "unauthenticated" },
+  });
+
+  it("skips a signed-out Codex and picks the connected Claude with its own model", () => {
+    const providers = [
+      signedOut(provider({ provider: codex, instanceId: "codex", models: [model("gpt-6-astra")] })),
+      provider({ provider: claude, instanceId: "claudeAgent", models: [model("claude-sonnet-5-5")] }),
+    ];
+    expect(pickFirstReadyDefaultSelection(providers)).toEqual({
+      instanceId: ProviderInstanceId.make("claudeAgent"),
+      model: "claude-sonnet-5-5",
+    });
+  });
+
+  it("returns null when nothing is connected", () => {
+    const providers = [signedOut(provider({ provider: codex, instanceId: "codex" }))];
+    expect(pickFirstReadyDefaultSelection(providers)).toBeNull();
+  });
+});
+
+describe("resolveThreadCreateModel", () => {
+  const claude = ProviderDriverKind.make("claudeAgent");
+  const providers = [
+    provider({ provider: claude, instanceId: "claudeAgent", models: [model("claude-sonnet-5-5")] }),
+  ];
+  const claudeId = ProviderInstanceId.make("claudeAgent");
+
+  it("ignores a project default that belongs to another provider", () => {
+    expect(
+      resolveThreadCreateModel({
+        providers,
+        instanceId: claudeId,
+        selectedModel: "",
+        projectDefault: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6-astra" },
+      }),
+    ).toBe("claude-sonnet-5-5");
+  });
+
+  it("keeps an explicit selection", () => {
+    expect(
+      resolveThreadCreateModel({
+        providers,
+        instanceId: claudeId,
+        selectedModel: "claude-opus-5-5",
+        projectDefault: null,
+      }),
+    ).toBe("claude-opus-5-5");
   });
 });

@@ -67,7 +67,6 @@ import {
   type AssistantCitation,
   type ChatFileAttachment,
   CommandId,
-  DEFAULT_MODEL,
   isProviderNativeSubagentThread,
   type ChatAttachment as ContractChatAttachment,
   EnvironmentAuthorizationError,
@@ -344,6 +343,7 @@ import {
   NO_PROVIDER_MODEL_SELECTION,
   shouldShowInstanceBadge,
   sortProviderInstanceEntries,
+  resolveThreadCreateModel,
 } from "../providerInstances";
 import {
   useClientSettings,
@@ -10287,7 +10287,12 @@ export default function ChatView(props: ChatViewProps) {
     const title = truncate(titleSeed);
     const threadCreateModelSelection = createModelSelection(
       ctxSelectedModelSelection.instanceId,
-      ctxSelectedModel || activeProjectDefaultModelSelection?.model || DEFAULT_MODEL,
+      resolveThreadCreateModel({
+        providers: providerStatuses,
+        instanceId: ctxSelectedModelSelection.instanceId,
+        selectedModel: ctxSelectedModel,
+        projectDefault: activeProjectDefaultModelSelection,
+      }),
       ctxSelectedModelSelection.options,
     );
 

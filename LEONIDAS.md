@@ -69,6 +69,10 @@ Agents find or create a task before substantive work, keep it updated and close 
 
 Match the model to the work: frontier plans and reviews, mid edits, light scans, Codex researches. Full rule: @.agents/rules/tiered-models.md.
 
+## No terminal for users (standing rule)
+
+A user never has to open, read or type into a terminal to use Leonidas. Installing, signing in, setting up an AIOS and fixing problems are buttons, progress cards and plain-language messages. A terminal may exist only as a collapsed Advanced option for experts. Every error says what happened in one sentence and offers one button. New features that need a command run it for the user as a managed background job.
+
 ## Roadmap (in order, tick when merged to main)
 
 - [x] Subscription token calibration: shipped in [v0.2.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.2.0); session/weekly estimates pair local Claude/Codex tokens with provider quota percentages. Google AI Pro needs a reliable quota source and token reader before calibration is available.
