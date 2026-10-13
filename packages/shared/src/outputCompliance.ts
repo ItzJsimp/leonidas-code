@@ -1,8 +1,8 @@
-import { parseOutputDock } from "./outputDock.ts";
+import { parseOutputDock, withoutFencedCode } from "./outputDock.ts";
 
 /** Fixed canvas categories and the 400-word body threshold; examples in fences are excluded. */
 export function canvasRequired(body: string) {
-  const prose = body.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1\s*$/gm, "");
+  const prose = withoutFencedCode(body);
   return (
     prose.trim().split(/\s+/).filter(Boolean).length > 400 ||
     /^#{1,6}\s+[^\p{L}\p{N}]*(?:(?:system|technical)\s+)?(?:spec(?:ification)?|architecture|(?:deep\s+)?research|roadmap|audit)\b/imu.test(

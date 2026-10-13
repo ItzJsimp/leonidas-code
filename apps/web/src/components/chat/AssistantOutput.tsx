@@ -59,6 +59,7 @@ export function OutputDock({
                 <div key={key} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3">
                   <div className="flex min-h-6 items-center">
                     <Checkbox
+                      size="touch"
                       checked={item.checked}
                       disabled={item.checked || !onReply}
                       aria-label={`Add action to composer: ${item.text.replaceAll("**", "")}`}

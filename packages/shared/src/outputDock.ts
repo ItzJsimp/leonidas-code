@@ -13,35 +13,47 @@ export type DockItem =
   | { kind: "replies"; replies: string[] };
 export type DockSection = { kind: DockKind; heading: string; items: DockItem[] };
 
+function fencedLineIndexes(lines: string[]) {
+  const excluded = new Set<number>();
+  let fence: { char: string; length: number } | null = null;
+  for (const [index, line] of lines.entries()) {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (marker) {
+      excluded.add(index);
+      if (!fence) fence = { char: marker[0]!, length: marker.length };
+      else if (marker[0] === fence.char && marker.length >= fence.length && line.trim() === marker)
+        fence = null;
+    } else if (fence) excluded.add(index);
+  }
+  return { excluded, open: fence !== null };
+}
+
+export function withoutFencedCode(text: string) {
+  const lines = text.replaceAll("\r\n", "\n").split("\n");
+  const { excluded } = fencedLineIndexes(lines);
+  return lines.filter((_, index) => !excluded.has(index)).join("\n");
+}
+
 /** Only terminal, ordered exact-heading Docks become controls; other text stays Markdown. */
 export function parseOutputDock(text: string) {
   const lines = text.replaceAll("\r\n", "\n").split("\n");
   const headings: { index: number; kind: DockKind; heading: string }[] = [];
-  let fence: { char: string; length: number } | null = null;
+  const fenced = fencedLineIndexes(lines);
   let invalid = false;
   for (const [index, line] of lines.entries()) {
-    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-    if (marker) {
-      if (!fence) fence = { char: marker[0]!, length: marker.length };
-      else if (marker[0] === fence.char && marker.length >= fence.length && line.trim() === marker)
-        fence = null;
-      continue;
-    }
-    if (fence) continue;
+    if (fenced.excluded.has(index)) continue;
     const heading = line.trimEnd();
     if (Object.hasOwn(DOCK_HEADINGS, heading)) {
       headings.push({ index, heading, kind: DOCK_HEADINGS[heading as keyof typeof DOCK_HEADINGS] });
     } else if (headings.length > 0 && /^#{1,6} /.test(line)) invalid = true;
   }
-  if (invalid || fence || headings[0]?.kind !== "summary") return null;
+  if (invalid || fenced.open || headings[0]?.kind !== "summary") return null;
   const order = { summary: 0, actions: 1, complete: 1, decisions: 2 };
   if (headings.some((h, i) => i > 0 && order[h.kind] <= order[headings[i - 1]!.kind])) return null;
   const sections: DockSection[] = [];
   for (const [i, h] of headings.entries()) {
-    const content = lines
-      .slice(h.index + 1, headings[i + 1]?.index)
-      .join("\n")
-      .trim();
+    const contentLines = lines.slice(h.index + 1, headings[i + 1]?.index);
+    const content = contentLines.join("\n").trim();
     if (!content) return null;
     const items: DockItem[] = [];
     let block: string[] = [];
@@ -50,14 +62,8 @@ export function parseOutputDock(text: string) {
       if (value) items.push({ kind: "markdown", text: value });
       block = [];
     };
-    let inFence = false;
-    for (const line of content.split("\n")) {
-      if (/^ {0,3}(?:`{3,}|~{3,})/.test(line)) {
-        inFence = !inFence;
-        block.push(line);
-        continue;
-      }
-      if (inFence) {
+    for (const [offset, line] of contentLines.entries()) {
+      if (fenced.excluded.has(h.index + 1 + offset)) {
         block.push(line);
         continue;
       }

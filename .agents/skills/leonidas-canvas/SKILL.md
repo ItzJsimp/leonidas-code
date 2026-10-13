@@ -1,143 +1,47 @@
 ---
-name: "leonidas-canvas"
-description: "Generate Apple-grade interactive HTML canvases (pill navigation tabs, glowing KPI metric cards, SVG flowcharts, system maps, and styled data tables) directly in the Leonidas Code chat feed via html_render for architecture, deep research, specs, roadmaps, and designs."
-category: "design"
-scope: "structural"
-distribution: "template"
-type: "skill"
-id: "skill-leonidas-canvas"
-title: "Leonidas Interactive Canvas"
-kind: "procedure"
-load: "on-demand"
-owner: "leonidas"
-verified: "2026-10-11"
-related: ["design-build", "design-audit", "impeccable", "prompt-composer"]
+name: leonidas-canvas
+description: Build and publish offline interactive canvases in Leonidas Code for specifications, architecture, research, roadmaps, audits, and reply bodies over 400 words. Use structured canvas sections or custom HTML, preview both widths, then publish inline.
 ---
 
-# Leonidas Interactive Canvas
+# Leonidas canvas
 
-Transforms complex agent output—architecture specifications, multi-facet research, system designs, game mechanics, and roadmaps—from overwhelming walls of markdown into an **Apple-grade, interactive executive dashboard** rendered directly in the Leonidas Code chat stream.
+Read this file before building a required canvas. The harness owns the reply shape; this skill owns the visual workflow. Progress notes, short answers and simple fixes use Markdown.
 
-Inspired by Rostyslav Melnyk's executive research outputs in T3 Code, this skill uses Leonidas Code's native `html_render` tool to display an interactive canvas with clickable pill tabs, glowing KPI cards, inline SVG diagrams, and high-density styled tables.
+Use a canvas for specifications, architecture, research, roadmaps, audits, or a reply body over 400 words, excluding its Dock and fenced examples. Keep the final text to immediate decisions and the Dock.
 
----
+## Build and verify
 
-## 1. When to Use (Activation Triggers)
+1. Group the result into 1 to 6 sections. Give each a short tab title and summary. Add only useful metrics, flows and tables.
+2. Call `canvas` with `skillLoaded: true` after reading this file. The tool builds HTML; it does not publish anything.
+3. Pass the returned HTML to `html_preview` at 728 and 390 pixels. Check the screenshots, content height and console errors; fix any overflow or unreadable labels.
+4. Call `html_render` with the returned title, HTML and measured height. Only a successful render means the page was published.
+5. Write the final reply without repeating the canvas. If a skill or required tool is unavailable, say which and provide a concise Markdown fallback.
 
-Use an Interactive Canvas whenever your output is substantive and multifaceted:
+Structured input example:
 
-| Category                         | Typical Scenarios                                                | What the Canvas Replaces                         |
-| :------------------------------- | :--------------------------------------------------------------- | :----------------------------------------------- |
-| **System Architecture & Specs**  | End-to-end subsystem designs, data schemas, API contracts        | 800+ lines of nested headers and ascii diagrams  |
-| **Deep Research & Syntheses**    | Multi-topic investigation, tech stack evaluation, game mechanics | Walls of unstructured bullet points              |
-| **Release & Strategic Roadmaps** | Multi-phase milestones, deliverables, dependency graphs          | Long, dry chronological markdown lists           |
-| **Audits & Trade-off Matrices**  | Codebase assessments, benchmark comparisons, pros/cons           | Unreadable plain-text tables with scroll fatigue |
-
-**Do NOT use for:** Quick bug fixes, single-function edits, simple questions, or progress notes between subagent tool runs. For those, use standard markdown with Focus / Next Actions.
-
----
-
-## 2. Anatomy of a Leonidas Canvas
-
-Every canvas follows a structured visual hierarchy engineered to match the Leonidas Code dark-mode aesthetic:
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│  [Plan]  [Power · levels · death]  [World & Maps]  [Weapons]  [Roadmap] │ ⤢
-├────────────────────────────────────────────────────────────────────────┤ (gradient line)
-│  Title & Executive Thesis (1-2 sentences bold lead-in)                │
-│                                                                        │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  │
-│  │ ⚡ KPI 1      │ │ ⏱️ KPI 2     │ │ 🎯 KPI 3     │ │ 💰 KPI 4     │  │
-│  │ Three.js ≤8MB│ │ 12 Weeks     │ │ 1 + 3 Hubs   │ │ $25-40/mo    │  │
-│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  │
-│                                                                        │
-│  ■ SECTION HEADER WITH ACCENT GLYPH                                    │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ [Step 1] ──> [Step 2] ──> [Step 3] ──> [Step 4] ──> [Outcome]     │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                        │
-│  ■ DATA & ENTITY MATRIX                                                │
-│  ┌──────────────┬──────────────┬──────────────┬─────────────────────┐  │
-│  │ Name         │ Type         │ Status       │ Action / Specs      │  │
-│  ├──────────────┼──────────────┼──────────────┼─────────────────────┤  │
-│  │ Firstlight   │ Hub World    │ [ GREEN ]    │ Launch Default      │  │
-│  └──────────────┴──────────────┴──────────────┴─────────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-### Visual Components & Styling Tokens
-
-1. **Pill Navigation Tabs**:
-   - Capsule buttons (`border-radius: 9999px`) with subtle borders.
-   - Active tab highlighted in vibrant magenta/purple (`#ec4899` / `#a855f7`) with a soft glow (`box-shadow: 0 0 12px rgba(236, 72, 153, 0.35)`).
-   - Underneath the tab bar: A sleek 1px gradient hairline (`linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6, #06b6d4)`).
-2. **Executive KPI Stat Cards**:
-   - 4-column responsive grid on desktop (collapses gracefully on mobile).
-   - Border-accented with distinct thematic hues:
-     - **Cyan/Teal (`#2dd4bf`)**: Technical parameters, client tech, engine.
-     - **Pink/Magenta (`#fb7185`)**: Timeline, velocity, duration.
-     - **Amber/Orange (`#fbbf24`)**: Scope, milestones, quantity.
-     - **Emerald/Green (`#34d399`)**: Economics, hosting, cost, efficiency.
-3. **Pipeline Flowcharts & Sequential Loops**:
-   - Step boxes connected with pill arrows (`➔`).
-   - Clean color coding for phases (Initialization ➔ Loop ➔ Terminal State).
-4. **Orbital & System Network Diagrams**:
-   - Inline clean `<svg>` with centered hub nodes, concentric dashed orbits, and color-coded destination planets or microservices.
-5. **Styled Matrix Tables**:
-   - Dark translucent table rows (`rgba(255, 255, 255, 0.02)` / alternating `0.04`).
-   - Status pill badges (`GREEN`, `YELLOW`, `V1 starter`).
-   - Crisp uppercase headers with subtle letter-spacing.
-
----
-
-## 3. The CSS & Theme Variable Contract
-
-Leonidas Code automatically injects its theme tokens into `:root`. Always build against these variables to guarantee 100% theme fidelity:
-
-```css
-:root {
-  /* Injected automatically by Leonidas Code */
-  --background: canvas background (matches chat thread);
-  --foreground: primary text color;
-  --muted: muted background surface;
-  --muted-foreground: secondary/subtitle text color;
-  --card: card and container background;
-  --border: subtle line and container border;
-  --accent: brand accent color;
-  --font-sans: system UI font stack;
-  --font-mono: monospace font stack;
-  --radius: 0.625rem;
+```json
+{
+  "skillLoaded": true,
+  "title": "Release gates",
+  "sections": [
+    {
+      "title": "Plan",
+      "summary": "Ship each gate after its proof passes.",
+      "metrics": [{ "label": "Gates", "value": "3" }],
+      "flow": ["Build", "Verify", "Ship"],
+      "columns": ["Gate", "Proof"],
+      "rows": [
+        ["Renderer", "Draft preserved"],
+        ["Compliance", "Recorded once"]
+      ]
+    },
+    { "title": "Risks", "summary": "Automatic repair waits for measured failure rates." }
+  ]
 }
 ```
 
-### Critical Rules
+## Custom diagrams
 
-- **No external CDN dependencies**: Everything must load offline and instantly. No unpkg/cdnjs links. Use native CSS and SVG.
-- **Self-contained vanilla JS**: Tab switching must use clean vanilla DOM manipulation (`document.querySelectorAll('.tab-pane')`).
-- **Zero layout shift**: Ensure container heights are stable when switching tabs.
+When the structured tool cannot express a system map, write one self-contained HTML document and use the same preview/render workflow. Native CSS, SVG and vanilla JavaScript only; no external fonts, images or CDN libraries. Use injected `--background`, `--foreground`, `--card`, `--muted`, `--muted-foreground`, `--border`, `--primary`, `--ring`, `--radius`, `--font-sans` and `--font-mono` variables. Theme changes must stay readable.
 
----
-
-## 4. End-to-End Workflow
-
-Follow this disciplined sequence:
-
-1. **Synthesize the Architecture / Findings**: Group your content into 3 to 6 logical pill tabs (e.g. `Plan`, `System Architecture`, `Data Model`, `Roadmap`, `Economics`).
-2. **Draft the HTML Document**: Use the pre-built template in [`templates/canvas-boilerplate.html`](templates/canvas-boilerplate.html). Customize the tabs, KPI cards, flowcharts, and tables.
-3. **Preview & Measure (`html_preview`)**:
-   Call `html_preview({ html, width: 728 })` to verify visual layout, ensure there are no CSS/JS errors, and obtain `contentHeight`.
-4. **Render in Chat (`html_render`)**:
-   Call `html_render({ title: "Executive Specification", html, height: contentHeight })`.
-5. **Output Final Chat Message**:
-   Because the reader sees the interactive canvas directly above your response:
-   - Provide a 1-2 sentence executive summary pointing to the canvas.
-   - Follow the standard Focus / Next Actions / Dock format.
-   - Do NOT duplicate the content already inside the canvas.
-
----
-
-## 5. Reference Templates & Snippets
-
-- [`templates/canvas-boilerplate.html`](templates/canvas-boilerplate.html): Complete, drop-in HTML canvas ready for customization.
-- [`templates/components.html`](templates/components.html): Standalone code snippets for KPI grids, pipeline flowcharts, SVG orbital maps, and styled data tables.
+Tabs need `tablist`, `tab`, `tabpanel`, selected state and visible focus; support arrow keys, Home and End. Reserve the maximum panel height so tab switches do not jump. No continuously repainting animation. Wrap labels and let tables scroll inside their own container on narrow screens. Escape content before putting it into HTML or attributes.

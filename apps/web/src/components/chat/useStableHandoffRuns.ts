@@ -10,7 +10,7 @@ export type TimelineRun = HandoffTimelineRun & {
 /** Content-stable projection of the runs the handoff rows read. The incoming
  *  array is rebuilt on every projection event (status/timestamp churn), but
  *  the returned reference only changes when a run's identity-relevant fields
- *  (id, ordinal, instance, model) do — keeping TimelineRowCtx stable. */
+ *  (id, ordinal, instance, model) do, keeping TimelineRowCtx stable. */
 export function useStableHandoffRuns(runs: ReadonlyArray<TimelineRun>): ReadonlyArray<TimelineRun> {
   const prev = useRef<{
     signature: string;

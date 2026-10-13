@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./canvas": {
+      "types": "./src/canvas.ts",
+      "import": "./src/canvas.ts"
+    },
     "./outputCompliance": {
       "types": "./src/outputCompliance.ts",
       "import": "./src/outputCompliance.ts"

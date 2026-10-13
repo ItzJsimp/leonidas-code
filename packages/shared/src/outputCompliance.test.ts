@@ -36,5 +36,6 @@ describe("output compliance measurement", () => {
   it("does not treat a fenced example or mention as the output category", () => {
     expect(canvasRequired("Use an architecture diagram later.")).toBe(false);
     expect(canvasRequired("```md\n### Architecture\n```\nDone")).toBe(false);
+    expect(canvasRequired("````md\n" + "word ".repeat(401) + "\n`````\nDone")).toBe(false);
   });
 });

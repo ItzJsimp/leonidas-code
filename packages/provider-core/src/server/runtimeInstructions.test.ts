@@ -47,6 +47,9 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).toContain("🎯 **Focus:** <project or topic>");
     expect(instructions).toContain("leonidas-canvas");
     expect(instructions).toContain("html_render");
+    expect(instructions).toContain("over 400 words");
+    expect(instructions).toContain("actually read the available leonidas-canvas/SKILL.md");
+    expect(instructions).toContain("skillLoaded:true");
     expect(instructions).toContain("### 🎯 TL;DR");
     expect(instructions).toContain("### ⚡ Immediate Next Actions");
     expect(instructions).toContain("### ❓ Input & Decisions Needed");

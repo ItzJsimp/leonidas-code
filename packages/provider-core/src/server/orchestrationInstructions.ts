@@ -1,4 +1,5 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
+import { LEONIDAS_CANVAS_INSTRUCTIONS } from "./outputStandard.ts";
 
 export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
 
@@ -61,7 +62,7 @@ Tool names may carry a harness-normalized prefix, such as \`mcp__t3_code__delega
 
 ### Showing visuals
 
-For deep research, multi-part specs, architecture, roadmaps, or comparison matrices, build an interactive HTML canvas (\`leonidas-canvas\` standard) styled with the Leonidas theme variables. Check layout with \`html_preview\`, then publish with \`html_render\` before your final reply.
+${LEONIDAS_CANVAS_INSTRUCTIONS}
 `;
 
 /**

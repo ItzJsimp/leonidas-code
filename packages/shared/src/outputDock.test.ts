@@ -67,6 +67,12 @@ describe("output Dock", () => {
     )!;
     expect(dock.sections[1]!.items.map((i) => i.kind)).toEqual(["markdown"]);
   });
+  it("keeps shorter and different fence markers inside a longer example inert", () => {
+    const dock = parseOutputDock(
+      "Body\n### 🎯 TL;DR\n- Ready\n### ⚡ Immediate Next Actions\n\n````md\n```\n~~~\n- [ ] 🤖 **Leonidas:** Do not run\n`````\n- [ ] 👤 **You:** Review",
+    )!;
+    expect(dock.sections[1]!.items.map((item) => item.kind)).toEqual(["markdown", "action"]);
+  });
   it("uses finished run timestamps only", () => {
     expect(workedForMs("2026-10-13T00:00:00Z", "2026-10-13T00:01:12Z")).toBe(72000);
     expect(workedForMs(null, "2026-10-13T00:01:12Z")).toBeNull();
