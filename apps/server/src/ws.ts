@@ -121,6 +121,9 @@ import {
   HttpServerResponse,
 } from "effect/http";
 import { RpcSerialization, RpcServer } from "effect/rpc";
+import type * as RpcGroup from "effect/rpc/RpcGroup";
+import type * as ServerSecretStore from "./auth/ServerSecretStore.ts";
+import type * as ProjectFaviconResolver from "./project/ProjectFaviconResolver.ts";
 
 import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as ServerConfig from "./config.ts";
@@ -263,6 +266,7 @@ import {
 import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
 import * as AgentSessionImporter from "./project/AgentSessionImporter.ts";
 import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
+import { makeHandlerContext, type HandlerMap } from "./wsRpcHandlers.ts";
 
 const CONFIG_DISCOVERY_TIMEOUT = Duration.seconds(5);
 const isProviderUploadFeedbackError = Schema.is(ProviderUploadFeedbackError);
@@ -557,6 +561,23 @@ const PROVIDER_STATUS_DEBOUNCE_MS = 200;
 
 // Middleware added later wraps middleware added earlier, so instrumentation wraps authorization.
 const ServerWsRpcGroup = WsRpcGroup.middleware(RpcInstrumentation);
+type WsRpcHandlerServices =
+  | Crypto.Crypto
+  | FileSystem.FileSystem
+  | OrchestrationEventStore.OrchestrationEventStore
+  | Orchestrator.OrchestratorV2
+  | Path.Path
+  | ProjectEnrichmentService.ProjectEnrichmentService
+  | ProjectFaviconResolver.ProjectFaviconResolver
+  | ProjectService.ProjectService
+  | ProjectStore.ProjectStoreV2
+  | ServerConfig.ServerConfig
+  | ServerSecretStore.ServerSecretStore
+  | SqlClient.SqlClient
+  | ThreadManagementService.ThreadManagementService
+  | TraceDiagnostics.TraceDiagnostics
+  | WorkspacePaths.WorkspacePaths;
+type WsRpcHandlers = HandlerMap<RpcGroup.Rpcs<typeof ServerWsRpcGroup>, WsRpcHandlerServices>;
 // When a resuming client's cursor is more than this many events behind the
 // current head, skip the per-event catch-up replay and send a fresh shell
 // snapshot instead. Replaying each intervening event costs a shell refetch;
@@ -1204,7 +1225,7 @@ const layerWsRpc = (
   previewAutomationBroker: PreviewAutomationBroker.PreviewAutomationBroker["Service"],
   serverBrowser: ServerBrowser.ServerBrowser["Service"],
 ) =>
-  ServerWsRpcGroup.toLayer(
+  Layer.effectContext(
     Effect.gen(function* () {
       const currentSessionId = currentSession.sessionId;
       const sql = yield* SqlClient.SqlClient;
@@ -1880,7 +1901,7 @@ const layerWsRpc = (
         return result;
       });
 
-      const handlers = ServerWsRpcGroup.of({
+      const handlers: WsRpcHandlers = {
         [ORCHESTRATION_V2_WS_METHODS.dispatchCommand]: (command) =>
           Effect.annotateCurrentSpan({
             "orchestration_v2.command_id": command.commandId,
@@ -3255,8 +3276,11 @@ const layerWsRpc = (
               Stream.concat(Stream.make(latest), changes),
             ),
           ),
-      });
-      return handlers;
+      };
+      return yield* makeHandlerContext<
+        RpcGroup.Rpcs<typeof ServerWsRpcGroup>,
+        WsRpcHandlerServices
+      >(ServerWsRpcGroup, handlers);
     }),
   );
 

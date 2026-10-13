@@ -1484,7 +1484,7 @@ const makeClaudeUserMessageWithAttachments = Effect.fnUntraced(function* (input:
   readonly uuid?: SDKUserMessage["uuid"];
   readonly attachmentsDir: string;
   readonly fileSystem: FileSystem.FileSystem;
-  readonly skills?: ReadonlyMap<string, string>;
+  readonly skills?: ReadonlyMap<string, string> | undefined;
 }) {
   if (input.attachments.length === 0) {
     return makeClaudeUserMessage({

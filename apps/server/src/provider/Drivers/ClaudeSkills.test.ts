@@ -8,7 +8,7 @@ import * as Path from "effect/Path";
 import { discoverClaudeSkills, skillOverrideSettingsPaths } from "./ClaudeSkills.ts";
 
 // `approxTokens` tracks file length, so these assertions compare the rest.
-const withoutSize = (skills: ReadonlyArray<{ readonly approxTokens?: number }>) =>
+const withoutSize = (skills: ReadonlyArray<{ readonly approxTokens?: number | undefined }>) =>
   skills.map(({ approxTokens: _approxTokens, ...rest }) => rest);
 
 const writeSkill = Effect.fn(function* (

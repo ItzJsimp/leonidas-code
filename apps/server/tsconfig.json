@@ -1,6 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Server code is bundled or run directly; #server imports retain their .ts extensions.
+    "rewriteRelativeImportExtensions": false,
     "types": ["node"],
     "lib": ["ESNext", "esnext.disposable"]
   },

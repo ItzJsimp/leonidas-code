@@ -1,5 +1,4 @@
 import * as SavedItems from "../savedItems/SavedItemService.ts";
-// @effect-diagnostics-next-line nodeBuiltinImport:off - Convert replay fixture URLs to native Windows paths.
 import * as NodeURL from "node:url";
 import * as SavedItemExecution from "../savedItems/SavedItemExecution.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
