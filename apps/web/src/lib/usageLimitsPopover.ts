@@ -16,10 +16,10 @@ const DAY = 24 * HOUR;
 
 export type UsageSeverity = "normal" | "warning" | "critical";
 
-/** Amber from 75% used, red from 90%: the point where a window may run dry this session. */
+/** Blue while half or more is left, amber under 50% left, red under 10% left. */
 export function usageSeverity(usedPercent: number): UsageSeverity {
-  if (usedPercent >= 90) return "critical";
-  if (usedPercent >= 75) return "warning";
+  if (usedPercent > 90) return "critical";
+  if (usedPercent > 50) return "warning";
   return "normal";
 }
 

@@ -20,7 +20,7 @@ import {
   formatTokenCount,
   glanceLimitRows,
   limitsFreshness,
-  shortPlanName,
+  percentText,
   usageSeverity,
   usedPercentLabel,
 } from "../../lib/usageLimitsPopover";
@@ -29,7 +29,6 @@ import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useThreadContextBreakdown } from "../../state/queries";
 import { Button } from "../ui/button";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { barSegments } from "./ContextBreakdown.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
@@ -39,8 +38,6 @@ type Account = UsageLimitsReport["accounts"][number];
 /** How often the open card re-reads account limits; the server caches probes inside this. */
 const LIMITS_REFRESH_MS = 5 * 60_000;
 
-/** Other accounts shown before the rest fold into "+N more"; the card never scrolls. */
-const MAX_OTHER_ACCOUNTS = 4;
 const MAX_CONTEXT_SEGMENTS = 3;
 
 function titleOf(account: Account): string {
@@ -101,140 +98,81 @@ function ContextSegments({
   );
 }
 
-export function ActiveAccount({
+/** One connected account: name, active marker, then its session and weekly bars (draining). */
+function AccountLimits({
   account,
+  active,
   now,
 }: {
   readonly account: Account;
+  readonly active: boolean;
   readonly now: number;
 }) {
   const title = titleOf(account);
   const rows = glanceLimitRows(account.limits.windows);
   const notice = limitsNotice(account.limits);
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-2.5">
-      <div className="flex min-w-0 items-center gap-2">
-        <ProviderInstanceIcon
-          driverKind={account.driver}
-          displayName={title}
-          iconClassName="size-5"
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm font-semibold leading-tight">{title}</span>
-          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-            <span aria-hidden className="size-1.5 rounded-full bg-success" />
-            Active in this chat
-          </span>
+    <div className="flex min-w-0 items-start gap-2">
+      <ProviderInstanceIcon
+        driverKind={account.driver}
+        displayName={title}
+        className="mt-0.5"
+        iconClassName="size-3.5"
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-1">
+          <span className="truncate text-xs font-medium">{title}</span>
+          {active ? (
+            <span className="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground">
+              <span aria-hidden className="size-1.5 rounded-full bg-success" />
+              Active
+            </span>
+          ) : null}
         </div>
-        {account.plan ? (
-          <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-2xs leading-4 text-muted-foreground">
-            {shortPlanName(account.plan)}
-          </span>
-        ) : null}
-      </div>
-      {notice || rows.length === 0 ? (
-        <span className="text-2xs text-muted-foreground">{notice ?? "Limits pending"}</span>
-      ) : (
-        rows.map((row) => {
-          if (!row.window) {
+        {notice || rows.length === 0 ? (
+          <span className="text-2xs text-muted-foreground">{notice ?? "Limits pending"}</span>
+        ) : (
+          rows.map((row) => {
+            if (!row.window) {
+              return (
+                <div
+                  key={row.key}
+                  className="flex items-center justify-between text-2xs text-muted-foreground"
+                >
+                  <span>{row.label}</span>
+                  <span>Not reported</span>
+                </div>
+              );
+            }
+            const countdown = formatResetCountdown(row.window.resetsAt, now, true);
+            const leftText = percentText(row.window.usedPercent, "left");
             return (
-              <div
-                key={row.key}
-                className="flex items-center justify-between text-2xs text-muted-foreground"
-              >
-                <span>{row.label}</span>
-                <span>Not reported</span>
+              <div key={row.key} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between text-2xs">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="tabular-nums text-foreground">
+                    {countdown ? `${countdown} · ${leftText}` : leftText}
+                  </span>
+                </div>
+                <UsageBar
+                  usedPercent={row.window.usedPercent}
+                  label={`${row.label}: ${leftText}`}
+                  className="h-1"
+                />
               </div>
             );
-          }
-          const used = usedPercentLabel(row.window.usedPercent);
-          const reset = formatResetCountdown(row.window.resetsAt, now, true);
-          return (
-            <div key={row.key} className="flex flex-col gap-1">
-              <div className="flex items-baseline justify-between gap-2 text-2xs">
-                <span className="text-muted-foreground">{row.label}</span>
-                <span className="tabular-nums text-foreground">
-                  <span className="font-semibold">{100 - used}% left</span>
-                  {reset ? <span className="text-muted-foreground"> · {reset}</span> : null}
-                </span>
-              </div>
-              <UsageBar
-                usedPercent={row.window.usedPercent}
-                label={`${row.label}: ${used}% used`}
-                className="h-1"
-              />
-            </div>
-          );
-        })
-      )}
+          })
+        )}
+      </div>
     </div>
   );
 }
 
-export function OtherAccount({ account }: { readonly account: Account }) {
-  const title = titleOf(account);
-  const rows = glanceLimitRows(account.limits.windows);
-  const notice = limitsNotice(account.limits);
-  return (
-    <li className="flex min-w-0 items-center gap-2">
-      <ProviderInstanceIcon
-        driverKind={account.driver}
-        displayName={title}
-        iconClassName="size-3.5"
-      />
-      <span className="min-w-0 flex-1 truncate text-xs">{title}</span>
-      {notice || rows.length === 0 ? (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <span className="shrink-0 text-2xs text-muted-foreground">
-                {notice ? "n/a" : "…"}
-              </span>
-            }
-          />
-          {notice ? <TooltipPopup>{notice}</TooltipPopup> : null}
-        </Tooltip>
-      ) : (
-        <div className="flex shrink-0 items-center gap-2">
-          {rows.map((row) => {
-            const used = row.window ? usedPercentLabel(row.window.usedPercent) : null;
-            return (
-              <Tooltip key={row.key}>
-                <TooltipTrigger
-                  render={
-                    <span
-                      className={cn(
-                        "w-9 text-right text-2xs tabular-nums",
-                        used === null
-                          ? "text-muted-foreground"
-                          : usageSeverity(used) === "critical"
-                            ? "font-medium text-destructive"
-                            : usageSeverity(used) === "warning"
-                              ? "font-medium text-warning"
-                              : "text-foreground",
-                      )}
-                    />
-                  }
-                >
-                  {used === null ? "—" : `${used}%`}
-                </TooltipTrigger>
-                <TooltipPopup side="bottom">
-                  {row.label}: {used === null ? "not reported" : `${used}% used`}
-                </TooltipPopup>
-              </Tooltip>
-            );
-          })}
-        </div>
-      )}
-    </li>
-  );
-}
-
 /**
- * Always-on glance card over the chat's top-left corner: the context window and what fills
- * it, this chat's account in full, and every other connected account in one line each.
- * Wide chat columns show the whole card; narrow ones show a one-line pill that expands over
- * the chat on click, so the card never covers the conversation text by default.
+ * The one usage card, over the chat's top-left corner: model, effort, the context window and
+ * what fills it, then every connected account's session and weekly bars with this chat's
+ * account first. The composer's context ring toggles it. Wide chat columns show the whole
+ * card; narrow ones show a one-line pill that expands over the chat on click.
  */
 export const UsageOverlayCard = memo(function UsageOverlayCard({
   environmentId,
@@ -279,11 +217,11 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
       : null;
   const severity = percent === null ? "normal" : usageSeverity(percent);
   const primary = active[0] ?? null;
-  const shownOthers = others.slice(0, MAX_OTHER_ACCOUNTS);
-  const hiddenOthers = others.length - shownOthers.length;
+  const activeIds = useMemo(() => new Set(active.map((account) => account.id)), [active]);
+  const accounts = useMemo(() => [...active, ...others], [active, others]);
 
   const freshness = limitsFreshness(
-    [primary, ...shownOthers].flatMap((account) => (account ? [account.limits.checkedAt] : [])),
+    accounts.map((account) => account.limits.checkedAt),
     now,
   );
 
@@ -311,7 +249,13 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           aria-label="Show context and accounts"
           className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-background/90 py-1 pr-3 pl-1.5 text-xs shadow-sm backdrop-blur transition-colors hover:bg-muted/60 @7xl:hidden"
         >
-          <UsageRing percent={percent} size={20} strokeWidth={2.5} severity={severity} />
+          <UsageRing
+            fill="used"
+            percent={percent}
+            size={20}
+            strokeWidth={2.5}
+            severity={severity}
+          />
           <span className="tabular-nums font-medium">
             {percent === null ? "Context" : `${percent}%`}
           </span>
@@ -329,7 +273,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
       <section
         aria-label="Context and accounts"
         className={cn(
-          "pointer-events-auto w-64 max-w-full max-h-[calc(100dvh-10rem)] overflow-y-auto flex-col gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-md backdrop-blur",
+          "pointer-events-auto w-80 max-w-full max-h-[calc(100dvh-10rem)] [scrollbar-width:thin] overflow-y-auto flex-col gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-md backdrop-blur",
           expanded ? "flex" : "hidden @7xl:flex",
         )}
       >
@@ -337,6 +281,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2.5">
             <UsageRing
+              fill="used"
               percent={percent}
               size={34}
               strokeWidth={3}
@@ -364,9 +309,15 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
               <ChevronUpIcon aria-hidden />
             </Button>
           </div>
-          <UsageBar usedPercent={percent ?? 0} label={`Context: ${percent ?? 0}% used`} />
+          {threadId && figures.state === "reported" ? null : (
+            <UsageBar
+              fill="used"
+              usedPercent={percent ?? 0}
+              label={`Context: ${percent ?? 0}% used`}
+            />
+          )}
           <div className="flex items-center justify-between text-2xs tabular-nums text-muted-foreground">
-            <span>{contextLine} tokens</span>
+            <span>{figures.state === "reported" ? `${contextLine} tokens` : contextLine}</span>
             {leftLine ? <span>{leftLine}</span> : null}
           </div>
           {threadId && figures.state === "reported" ? (
@@ -378,41 +329,23 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           ) : null}
         </div>
 
-        {/* This chat's account */}
-        {primary ? (
-          <ActiveAccount account={primary} now={now} />
+        {/* Every connected account, this chat's first */}
+        {accounts.length > 0 ? (
+          <div className="flex flex-col gap-3.5 border-t border-border/60 pt-3">
+            {accounts.map((account) => (
+              <AccountLimits
+                key={account.id}
+                account={account}
+                active={activeIds.has(account.id)}
+                now={now}
+              />
+            ))}
+          </div>
         ) : (
           <p className="rounded-lg border border-dashed border-border/60 p-2.5 text-2xs text-muted-foreground">
             No subscription account is linked to this chat's provider.
           </p>
         )}
-
-        {/* Everyone else */}
-        {shownOthers.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-2xs text-muted-foreground">
-              <span>Other accounts</span>
-              <span className="flex gap-2 pr-0.5 tabular-nums">
-                <span className="w-9 text-right">Session</span>
-                <span className="w-9 text-right">Week</span>
-              </span>
-            </div>
-            <ul className="flex flex-col gap-1.5">
-              {shownOthers.map((account) => (
-                <OtherAccount key={account.id} account={account} />
-              ))}
-            </ul>
-            {hiddenOthers > 0 ? (
-              <button
-                type="button"
-                onClick={() => void navigate({ to: "/usage" })}
-                className="cursor-pointer self-start text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                +{hiddenOthers} more accounts
-              </button>
-            ) : null}
-          </div>
-        ) : null}
 
         {freshness ? (
           <span

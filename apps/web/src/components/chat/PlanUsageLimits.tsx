@@ -25,7 +25,7 @@ import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { AccountSummary } from "./ComposerUsageLimits";
 
-/** Bar fill by severity: blue while there is room, amber from 75%, red from 90%. */
+/** Bar fill by severity: blue while half or more is left, amber under 50% left, red under 10%. */
 const SEVERITY_FILL: Record<UsageSeverity, string> = {
   normal: "bg-info",
   warning: "bg-warning",
@@ -65,37 +65,43 @@ export function useResetMomentFormatter(now: number): (at: number) => string {
   }, [now, timestampFormat]);
 }
 
-/** A used-quota bar coloured by severity. */
+/**
+ * A quota bar coloured by severity. It drains: the fill is what is left, so a nearly spent
+ * window is a small sliver. `fill="used"` fills with consumption instead (the context window).
+ */
 export function UsageBar({
   usedPercent,
   label,
   className,
+  fill = "left",
 }: {
   readonly usedPercent: number;
   readonly label: string;
   readonly className?: string;
+  readonly fill?: "left" | "used";
 }) {
   const used = usedPercentLabel(usedPercent);
+  const shown = fill === "left" ? 100 - used : used;
   return (
     <div
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={used}
+      aria-valuenow={shown}
       className={cn("h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
     >
-      {used > 0 ? (
+      {shown > 0 ? (
         <div
-          className={cn("h-full rounded-full", SEVERITY_FILL[usageSeverity(used)])}
-          style={{ width: `${used}%` }}
+          className={cn("h-full min-w-1 rounded-full", SEVERITY_FILL[usageSeverity(used)])}
+          style={{ width: `${shown}%` }}
         />
       ) : null}
     </div>
   );
 }
 
-/** A circular used-quota gauge; children sit in its centre. A static SVG, never animated. */
+/** A circular quota gauge (drains like `UsageBar`); children sit in its centre. A static SVG. */
 export function UsageRing({
   percent,
   size,
@@ -103,7 +109,9 @@ export function UsageRing({
   severity,
   className,
   children,
+  fill: fillMode = "left",
 }: {
+  readonly fill?: "left" | "used";
   readonly percent: number | null;
   readonly size: number;
   readonly strokeWidth: number;
@@ -113,7 +121,8 @@ export function UsageRing({
 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const fill = percent === null ? 0 : Math.max(0, Math.min(100, percent));
+  const used = percent === null ? null : Math.max(0, Math.min(100, percent));
+  const fill = used === null ? 0 : fillMode === "left" ? 100 - used : used;
   const circle = {
     cx: size / 2,
     cy: size / 2,
@@ -164,7 +173,9 @@ function PlanWindowRow({
     <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex min-w-0 items-baseline justify-between gap-3 text-sm">
         <span className="min-w-0 break-words font-medium text-foreground">{label}</span>
-        <span className="shrink-0 font-semibold tabular-nums text-foreground">{used}%</span>
+        <span className="shrink-0 font-semibold tabular-nums text-foreground">
+          {100 - used}% left
+        </span>
       </div>
       <UsageBar
         usedPercent={window.usedPercent}
@@ -210,6 +221,7 @@ export function ContextSummary({ usage }: { readonly usage: ContextWindowSnapsho
   return (
     <div className="flex min-w-0 items-center gap-3">
       <UsageRing
+        fill="used"
         percent={unreported ? null : percent}
         size={52}
         strokeWidth={5}

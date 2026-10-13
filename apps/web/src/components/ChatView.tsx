@@ -447,7 +447,6 @@ import {
   waitForThreadShell,
 } from "../state/entities";
 import { environmentShell } from "../state/shell";
-import { ChatComposerUsageLimits } from "./chat/ChatComposerUsageLimits";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { createPageScrollController, type PageScrollKey } from "./chat/pageScrollController";
@@ -12165,21 +12164,6 @@ export default function ChatView(props: ChatViewProps) {
                                     onCancelEdit={cancelEditingQueuedRun}
                                   />
                                 ) : null
-                              }
-                              usageControl={
-                                <ChatComposerUsageLimits
-                                  key={routeThreadKey}
-                                  environmentId={activeThread.environmentId}
-                                  threadId={activeThread.id}
-                                  instanceId={activeProviderInstanceId}
-                                  modelLabel={providerSubagentModelLabel}
-                                  effortLabel={providerSubagentEffortLabel}
-                                  contextWindow={headerContextWindow}
-                                  providerEntries={providerInstanceEntries}
-                                  onStartChat={
-                                    activeProjectRef === null ? null : handleNewThreadWithModel
-                                  }
-                                />
                               }
                               bannerItems={composerBannerItems}
                               resumeCompactionTokens={resumeCompactionTokens}
