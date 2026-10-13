@@ -155,7 +155,7 @@ function githubRepository(project: Project): string | null {
 }
 
 /** The slug cards use for a Leonidas project: its folder under `projects/`, else its slugified title. */
-function aiosSlugFor(project: Project): string {
+export function aiosSlugFor(project: Project): string {
   const root = project.workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
   const inProjects = NodePath.posix.basename(NodePath.posix.dirname(root)) === "projects";
   return inProjects ? NodePath.posix.basename(root).toLowerCase() : slugify(project.title);
