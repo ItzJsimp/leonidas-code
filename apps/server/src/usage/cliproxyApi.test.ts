@@ -48,7 +48,14 @@ const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 
 function fixture(
   options: {
-    accounts?: Array<(typeof accounts)[number] & { disabled?: boolean }>;
+    accounts?: Array<{
+      id: string;
+      auth_index: string;
+      provider: string;
+      email?: string;
+      disabled?: boolean;
+      id_token?: { chatgpt_account_id?: string; chatgpt_plan_type?: string };
+    }>;
     upstream?: (request: RequestBody) => { status: number; body: unknown };
     cooldownStatus?: number;
   } = {},
@@ -178,6 +185,67 @@ describe("CLIProxyAPI built-in management API", () => {
       expect(result[0]?.usageLimits.unavailable?.reason).toBe("probeFailed");
       expect(result[1]?.usageLimits.windows[0]?.usedPercent).toBe(12);
       expect(encodeJson(result)).not.toContain("do-not-publish");
+    }),
+  );
+
+  it.effect("labels the exact Codex tier, falling back to the token when usage says unknown", () =>
+    Effect.gen(function* () {
+      const test = fixture({
+        accounts: [
+          {
+            id: "unknown.json",
+            auth_index: "u",
+            provider: "codex",
+            id_token: { chatgpt_account_id: "account-u", chatgpt_plan_type: "prolite" },
+          },
+          {
+            id: "known.json",
+            auth_index: "k",
+            provider: "codex",
+            id_token: { chatgpt_account_id: "account-k", chatgpt_plan_type: "prolite" },
+          },
+        ],
+        upstream: (request) =>
+          request.url?.endsWith("/usage")
+            ? {
+                status: 200,
+                body: {
+                  plan_type: request.auth_index === "u" ? "unknown" : "pro",
+                  rate_limit: null,
+                },
+              }
+            : { status: 200, body: { credits: [] } },
+      });
+      const api = yield* test.api;
+      const result = yield* api.readAccounts(config);
+      expect(result.map((account) => account.plan)).toEqual([
+        "ChatGPT Pro 5x Subscription",
+        "ChatGPT Pro 20x Subscription",
+      ]);
+    }),
+  );
+
+  it.effect("labels a Claude account with the tier of the same local login", () =>
+    Effect.gen(function* () {
+      const test = fixture({
+        accounts: [
+          { id: "claude.json", auth_index: "c", provider: "claude", email: "Max@Example.com" },
+          { id: "other.json", auth_index: "o", provider: "claude", email: "other@example.com" },
+        ],
+        upstream: () => ({
+          status: 200,
+          body: { five_hour: { utilization: 10, resets_at: null } },
+        }),
+      });
+      const api = yield* test.api;
+      const result = yield* api.readAccounts(
+        config,
+        new Map([["max@example.com", "Claude Max 20x Subscription"]]),
+      );
+      expect(result.map((account) => account.plan)).toEqual([
+        "Claude Max 20x Subscription",
+        "Claude Subscription",
+      ]);
     }),
   );
 

@@ -209,6 +209,7 @@ export const makeCliproxyApi = Effect.gen(function* () {
   const readAccount = Effect.fn("CliproxyApi.readAccount")(function* (
     config: UsageLimitSourceConfig,
     account: typeof AuthFile.Type,
+    claudePlansByEmail: ReadonlyMap<string, string>,
   ) {
     const checkedAt = DateTime.formatIso(yield* DateTime.now);
     const base = {
@@ -236,7 +237,9 @@ export const makeCliproxyApi = Effect.gen(function* () {
         );
         return {
           ...base,
-          plan: "Claude Subscription",
+          // The hub's auth file carries no tier; a matching local login does.
+          plan:
+            claudePlansByEmail.get((account.email ?? "").toLowerCase()) ?? "Claude Subscription",
           usageLimits: claudeUsageResponseToLimits({
             checkedAt,
             response: {
@@ -265,9 +268,13 @@ export const makeCliproxyApi = Effect.gen(function* () {
       // A credits outage must not hide successfully fetched quota windows.
       const available = yield* credits(config, account).pipe(Effect.orElseSucceed(() => undefined));
       const next = available?.[0];
+      // "unknown" is a real string, so `??` would keep it and hide the tier the token names.
+      const planSlug = [usage.plan_type, account.id_token?.chatgpt_plan_type].find(
+        (slug) => slug !== undefined && slug !== "unknown" && codexPlanLabel(slug) !== undefined,
+      );
       return {
         ...base,
-        plan: codexPlanLabel(usage.plan_type ?? account.id_token?.chatgpt_plan_type),
+        plan: codexPlanLabel(planSlug ?? usage.plan_type ?? account.id_token?.chatgpt_plan_type),
         usageLimits: {
           ...codexRateLimitsToLimits({
             checkedAt,
@@ -307,6 +314,7 @@ export const makeCliproxyApi = Effect.gen(function* () {
 
   const readAccounts = Effect.fn("CliproxyApi.readAccounts")(function* (
     config: UsageLimitSourceConfig,
+    claudePlansByEmail: ReadonlyMap<string, string> = new Map(),
   ): Effect.fn.Return<ReadonlyArray<UsageLimitSourceAccount>, UsageLimitSourceError> {
     const accounts = yield* authFiles(config).pipe(
       Effect.mapError(
@@ -318,7 +326,7 @@ export const makeCliproxyApi = Effect.gen(function* () {
         (account) =>
           !account.disabled && (account.provider === "codex" || account.provider === "claude"),
       ),
-      (account) => readAccount(config, account),
+      (account) => readAccount(config, account, claudePlansByEmail),
       { concurrency: 4 },
     );
   });

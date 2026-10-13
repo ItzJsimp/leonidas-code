@@ -16,6 +16,7 @@ import {
   UsageLimitSourceError,
   type UsageLimitSourceConsumeResetCreditInput,
   type ProviderConsumeResetCreditResult,
+  type ServerProvider,
   type ServerSettings,
   type UsageLimitSourceConfig,
   type UsageLimitSourceId,
@@ -34,6 +35,7 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
+import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as Settings from "../serverSettings.ts";
 import { makeCliproxyApi } from "./cliproxyApi.ts";
 
@@ -60,10 +62,23 @@ function sourceLabel(id: string, config: UsageLimitSourceConfig): string {
   }
 }
 
+/** Local Claude logins by lowercased email, so a hub account can show its tier. */
+function localClaudePlans(providers: ReadonlyArray<ServerProvider>): ReadonlyMap<string, string> {
+  const plans = new Map<string, string>();
+  for (const provider of providers) {
+    const { auth } = provider;
+    if (provider.driver !== "claudeAgent" || !auth.email || !auth.label) continue;
+    if (auth.type === undefined || auth.type === "apiKey") continue;
+    plans.set(auth.email.toLowerCase(), auth.label);
+  }
+  return plans;
+}
+
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
   const api = yield* makeCliproxyApi;
   const settingsService = yield* Settings.ServerSettingsService;
+  const providerRegistry = yield* ProviderRegistry.ProviderRegistry;
   const backgroundPolicy = yield* BackgroundPolicy.BackgroundPolicy;
   const stateRef = yield* Ref.make<ReadonlyArray<UsageLimitSourceSnapshot>>([]);
   const changes = yield* Effect.acquireRelease(
@@ -74,13 +89,14 @@ export const make = Effect.gen(function* () {
   const readSource = Effect.fn("UsageLimitSources.readSource")(function* (
     id: UsageLimitSourceId,
     config: UsageLimitSourceConfig,
+    claudePlans: ReadonlyMap<string, string>,
   ) {
     const checkedAt = DateTime.formatIso(yield* DateTime.now);
     const base = { id, kind: config.kind, label: sourceLabel(id, config), checkedAt } as const;
     if (config.managementKey.length === 0) {
       return { ...base, accounts: [], error: "No management key configured." };
     }
-    const accounts = yield* api.readAccounts(config).pipe(Effect.result);
+    const accounts = yield* api.readAccounts(config, claudePlans).pipe(Effect.result);
     if (accounts._tag === "Failure") {
       yield* Effect.logDebug("usage limit source read failed", { id, cause: accounts.failure });
       return { ...base, accounts: [], error: accounts.failure.detail };
@@ -107,9 +123,10 @@ export const make = Effect.gen(function* () {
     const entries = Object.entries(settings?.usageLimitSources ?? {}).filter(
       ([, config]) => config.enabled,
     );
+    const claudePlans = localClaudePlans(yield* providerRegistry.getProviders);
     const snapshots = yield* Effect.forEach(
       entries,
-      ([id, config]) => readSource(id as UsageLimitSourceId, config),
+      ([id, config]) => readSource(id as UsageLimitSourceId, config, claudePlans),
       { concurrency: 4 },
     );
     yield* publish(snapshots);
@@ -130,7 +147,8 @@ export const make = Effect.gen(function* () {
         });
       }
       const result = yield* api.consume(config, input.accountId, input.creditId);
-      const snapshot = yield* readSource(input.sourceId, config);
+      const claudePlans = localClaudePlans(yield* providerRegistry.getProviders);
+      const snapshot = yield* readSource(input.sourceId, config, claudePlans);
       const previous = yield* Ref.get(stateRef);
       yield* publish(previous.map((source) => (source.id === input.sourceId ? snapshot : source)));
       return result;
