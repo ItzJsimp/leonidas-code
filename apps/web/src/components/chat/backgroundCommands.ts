@@ -7,7 +7,7 @@ const BACKGROUNDED_OUTPUT = /^command running in background/iu;
 interface BackgroundCommandCandidate {
   readonly id: string;
   readonly type: string;
-  readonly output?: string | undefined;
+  readonly output?: unknown;
 }
 
 /**
@@ -24,7 +24,11 @@ export function liveBackgroundCommandIds(
   const ids: string[] = [];
   for (let index = turnItems.length - 1; index >= 0 && ids.length < liveCount; index -= 1) {
     const item = turnItems[index]!;
-    if (item.type === "command_execution" && BACKGROUNDED_OUTPUT.test(item.output ?? "")) {
+    if (
+      item.type === "command_execution" &&
+      typeof item.output === "string" &&
+      BACKGROUNDED_OUTPUT.test(item.output)
+    ) {
       ids.push(item.id);
     }
   }
