@@ -1,7 +1,3 @@
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
 import { useState, type KeyboardEvent } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -16,13 +12,8 @@ import {
 } from "~/components/ui/dialog";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
-import { toastManager } from "~/components/ui/toast";
-import { usePrimaryEnvironmentId } from "~/state/environments";
-import { useEnvironmentQuery } from "~/state/query";
-import { inboxDrop, inboxUndo, taskBoardWorkspaceQuery } from "~/state/taskBoard";
-import { useAtomCommand } from "~/state/use-atom-command";
-import { failureText } from "../taskBoard/useTaskActions.logic";
 import { closeCapture, useCaptureStore } from "./captureStore";
+import { useCaptureDrop } from "./useCaptureDrop";
 
 /** Mounted once at the app root so every entry point shares one capture box. */
 export function CaptureDialogHost() {
@@ -41,51 +32,22 @@ export function CaptureDialogHost() {
   );
 }
 
-/** One field, one key: Enter saves the raw text to the inbox; sorting happens later. */
+/** One field, one key: Enter saves the raw text to the inbox; sorting happens on the server. */
 function CaptureForm(props: { readonly source?: string; readonly initialText: string }) {
-  const environmentId = usePrimaryEnvironmentId();
-  const workspace = useEnvironmentQuery(
-    environmentId ? taskBoardWorkspaceQuery({ environmentId, input: {} }) : null,
-  );
-  const runDrop = useAtomCommand(inboxDrop, { reportFailure: false });
-  const runUndo = useAtomCommand(inboxUndo, { reportFailure: false });
+  const { drop, canDrop } = useCaptureDrop();
   const [text, setText] = useState(props.initialText);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canSave = text.trim().length > 0 && environmentId !== null && !busy;
+  const canSave = text.trim().length > 0 && canDrop && !busy;
 
   const save = async () => {
-    if (!canSave || environmentId === null) return;
+    if (!canSave) return;
     setBusy(true);
     setError(null);
-    const result = await runDrop({
-      environmentId,
-      input: {
-        text: text.trim(),
-        ...(props.source ? { source: props.source } : {}),
-        actor: workspace.data?.member ?? "Leonidas Code",
-      },
-    });
+    const result = await drop(text, props.source);
     setBusy(false);
-    if (result._tag === "Success") {
-      closeCapture();
-      const id = result.value.id;
-      const toastId = toastManager.add({
-        type: "success",
-        title: result.value.kind === "task" ? "Added to your tasks" : "Saved to inbox",
-        ...(result.value.filedTask ? { description: result.value.filedTask } : {}),
-        timeout: 4000,
-        actionProps: {
-          children: "Undo",
-          onClick: () => {
-            toastManager.close(toastId);
-            void runUndo({ environmentId, input: { id } });
-          },
-        },
-      });
-    } else if (!isAtomCommandInterrupted(result)) {
-      setError(failureText(squashAtomCommandFailure(result), "Could not save the drop."));
-    }
+    if (result.ok) closeCapture();
+    else setError(result.error);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -99,7 +61,7 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
       <DialogHeader>
         <DialogTitle>Quick capture</DialogTitle>
         <DialogDescription>
-          A note, idea or task. Just write it; it is sorted later.
+          A note, idea or task. Just write it; clear tasks land on your list.
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>

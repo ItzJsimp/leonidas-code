@@ -185,6 +185,7 @@ import {
   rememberTimelinePosition,
   timelineContentOverflowsViewport,
 } from "./timelineScrollAnchoring";
+import { MessageCaptureButton } from "./MessageCaptureButton";
 import { MessageCopyButton } from "./MessageCopyButton";
 import { RunIdentityTag } from "./RunIdentityTag";
 import { resolveRunIdentity } from "./runIdentity.logic";
@@ -2596,6 +2597,12 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                 variant="ghost"
               />
             )}
+            {resolvedContext.text && (
+              <MessageCaptureButton
+                text={resolvedContext.text}
+                threadId={ctx.threadRef?.threadId}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -2948,6 +2955,7 @@ function AssistantMessageMeta({
           message={message}
           showCopyButton={showCopyButton}
           streaming={copyStreaming}
+          threadId={projectedItem?.item.threadId}
         />
         {projectedItem?.item.type === "assistant_message" ? (
           <AssistantForkButton projectedItem={projectedItem} />
@@ -2971,10 +2979,12 @@ function AssistantCopyButton({
   message,
   showCopyButton,
   streaming,
+  threadId,
 }: {
   message: ChatMessage;
   showCopyButton: boolean;
   streaming: boolean;
+  threadId: string | undefined;
 }) {
   const assistantCopyState = resolveAssistantMessageCopyState({
     text: message.text ?? null,
@@ -2986,7 +2996,12 @@ function AssistantCopyButton({
     return null;
   }
 
-  return <MessageCopyButton text={assistantCopyState.text ?? ""} variant="ghost" />;
+  return (
+    <>
+      <MessageCopyButton text={assistantCopyState.text ?? ""} variant="ghost" />
+      <MessageCaptureButton text={assistantCopyState.text ?? ""} threadId={threadId} />
+    </>
+  );
 }
 
 function ProposedPlanTimelineRow({
