@@ -12,10 +12,23 @@ import {
   inferImageMimeTypeFromName,
   isPreviewableComposerVideo,
   normalizeComposerImageFileMimeType,
+  readClipboardFiles,
   shouldHandleComposerAttachmentPaste,
 } from "./composerAttachmentFiles";
 
 describe("composer attachment files", () => {
+  it("reads a pasted bitmap that is only exposed through clipboard items", () => {
+    const image = new File(["png"], "image.png", { type: "image/png" });
+    const clipboard = {
+      files: [],
+      items: [
+        { kind: "string", getAsFile: () => null },
+        { kind: "file", getAsFile: () => image },
+      ],
+    } as unknown as DataTransfer;
+    expect(readClipboardFiles(clipboard)).toEqual([image]);
+  });
+
   it("keeps inline non-media files out of the legacy attachment row", () => {
     const environmentId = EnvironmentId.make("env-1");
     const files = [

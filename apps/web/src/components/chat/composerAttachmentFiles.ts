@@ -150,6 +150,21 @@ export function attachmentsToReleaseOnUploadCapabilityLoss(
 }
 
 /**
+ * Files carried by a paste. Some sources (screenshot tools, simulated Ctrl+V) expose a
+ * copied bitmap only through `items`, leaving `files` empty, which would let the paste
+ * fall through to text.
+ */
+export function readClipboardFiles(clipboardData: DataTransfer): File[] {
+  const files = Array.from(clipboardData.files);
+  if (files.length > 0) return files;
+  return Array.from(clipboardData.items ?? []).flatMap((item) => {
+    if (item.kind !== "file") return [];
+    const file = item.getAsFile();
+    return file ? [file] : [];
+  });
+}
+
+/**
  * Whether a paste's files should be claimed as composer attachments instead of
  * falling through to the default text paste. Deliberately no capacity or
  * pending-plan-question gate here: `addComposerAttachments` owns those limits

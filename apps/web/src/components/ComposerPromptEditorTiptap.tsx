@@ -95,6 +95,7 @@ import { cn, isMacPlatform } from "~/lib/utils";
 import { basenameOfPath } from "~/pierre-icons";
 import { WorkspaceEntryTooltip } from "./chat/WorkspaceEntryIcon";
 import { FileTagChipContent } from "./chat/FileTagChip";
+import { readClipboardFiles } from "./chat/composerAttachmentFiles";
 import { SkillChipIcon } from "./chat/SkillInlineText";
 import { AssistantCitationChip } from "./chat/AssistantCitationChip";
 import { getTimelinePageScrollKey } from "./chat/pageScrollController";
@@ -1402,7 +1403,7 @@ function ComposerPromptEditorTiptapInner(props: ComposerPromptEditorProps) {
         },
         handlePaste: (view, event) => {
           const clipboardData = event.clipboardData;
-          if (!clipboardData || clipboardData.files.length > 0) return false;
+          if (!clipboardData || readClipboardFiles(clipboardData).length > 0) return false;
           const pastedText = clipboardData.getData("text/plain");
           if (!pastedText) return false;
           event.preventDefault();

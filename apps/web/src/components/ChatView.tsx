@@ -296,7 +296,6 @@ import { PullRequestDetailGhost } from "./pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "./pullRequest/PullRequestsUnavailableState";
 import { RightPanelTabs } from "./RightPanelTabs";
 import { LinkPullRequestDialogHost } from "./pullRequest/LinkPullRequestDialog";
-import { ReleaseHistoryDialogHost } from "./desktop/ReleaseHistoryDialog";
 import { ThreadPullRequestsPanel } from "./pullRequest/ThreadPullRequestsPanel";
 import { useDeviceState } from "~/state/device";
 import { DeviceSetup } from "./device/DeviceSetup";
@@ -587,7 +586,10 @@ import { RightPanelSheet } from "./RightPanelSheet";
 import { previewEnvironment } from "../state/preview";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { appAtomRegistry } from "../rpc/atomRegistry";
-import { fileAttachmentCapabilityBlockReason } from "./chat/composerAttachmentFiles";
+import {
+  fileAttachmentCapabilityBlockReason,
+  readClipboardFiles,
+} from "./chat/composerAttachmentFiles";
 import { assetEnvironment } from "../state/assets";
 import { readEnvironmentScope, readPreparedConnection } from "../state/session";
 import { useAtomCommand } from "../state/use-atom-command";
@@ -813,7 +815,7 @@ function shouldTypeToFocusComposer(event: KeyboardEvent): boolean {
  * composer blurred. Files are left to the composer's own paste handler.
  */
 function pasteTextToFocusComposer(event: ClipboardEvent): string | null {
-  if (!event.clipboardData || event.clipboardData.files.length > 0) return null;
+  if (!event.clipboardData || readClipboardFiles(event.clipboardData).length > 0) return null;
   if (!shouldRedirectInputToComposer(event)) return null;
   const text = event.clipboardData.getData("text/plain");
   return text.length > 0 ? text : null;
@@ -12617,7 +12619,6 @@ export default function ChatView(props: ChatViewProps) {
         </AlertDialogPopup>
       </AlertDialog>
       <LinkPullRequestDialogHost />
-      <ReleaseHistoryDialogHost />
       {expandedImage && (
         <ExpandedImageDialog
           key={expandedImageKey(expandedImage)}
