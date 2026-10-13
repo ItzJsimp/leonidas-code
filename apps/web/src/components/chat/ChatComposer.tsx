@@ -130,6 +130,8 @@ import {
   type PromptStashEntry,
 } from "../../promptStashStore";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
+import { ComposerSkillsButton } from "./ComposerSkillsButton";
+import { prefixPromptWithSkill } from "./composerSkillPrefix";
 import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerSavedItems } from "./ComposerSavedItems";
 import { ComposerStashMenu } from "./ComposerStashMenu";
@@ -7040,6 +7042,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             pulseKey={stashPulse.key}
             pulsing={stashPulse.active}
             onToggleMenu={toggleStashMenu}
+          />
+        ) : null}
+        {!isComposerApprovalState && selectedProviderSkills.length > 0 ? (
+          <ComposerSkillsButton
+            skills={selectedProviderSkills}
+            alignRight={stashQueue.length === 0 && prompt.trim().length > 0}
+            onSelect={(skillName) => setPrompt(prefixPromptWithSkill(promptRef.current, skillName))}
           />
         ) : null}
         {!isComposerApprovalState && prompt.trim().length === 0 ? (
