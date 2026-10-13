@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./outputDock": {
+      "types": "./src/outputDock.ts",
+      "import": "./src/outputDock.ts"
+    },
     "./connectedUsageLimits": {
       "types": "./src/connectedUsageLimits.ts",
       "import": "./src/connectedUsageLimits.ts"
