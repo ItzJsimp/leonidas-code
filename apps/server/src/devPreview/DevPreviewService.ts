@@ -215,10 +215,13 @@ export const make = Effect.gen(function* () {
             session.state = { status: "running", url, message: null, supported: true };
           };
 
+          // The last printed line explains a non-zero exit in the failure message.
+          let lastLine: string | null = null;
           const onChunk = (chunk: Buffer) => {
             for (const line of chunk.toString("utf8").split(/\r?\n/)) {
               const text = line.replace(ANSI, "").trim();
               if (text.length === 0) continue;
+              lastLine = text;
               session.webPort ??= generic === null ? parseWebPort(text) : parseLocalUrl(text);
               const pairing = parsePairingUrl(text);
               if (pairing !== null) {
