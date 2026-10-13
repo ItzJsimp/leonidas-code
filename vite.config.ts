@@ -87,6 +87,9 @@ export default defineConfig({
       // Macroscope's glob-per-line ignore grammar, not Markdown: formatting
       // it rewrites `*` as `_` and joins lines.
       ".macroscope/ignore.md",
+      // Generated from packages/provider-core outputStandard.ts; formatting it on commit
+      // makes it drift from the harness source that `sync-output-standard --check` compares.
+      ".agents/rules/output-standard.md",
       ".alchemy",
       "dist",
       "dist-electron",
