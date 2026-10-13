@@ -165,9 +165,20 @@ function blob(value: unknown): Uint8Array {
   return value;
 }
 
+/**
+ * `steps.step_type` of a model tool call (its payload names the tool). A tool
+ * step whose usage is empty is skipped with it, so counts can run slightly low.
+ */
+const TOOL_CALL_STEP_TYPE = 132;
+
 interface UsageCandidate {
   record: UsageRecord;
   keys: readonly string[];
+  /**
+   * Tool call steps as `session:idx`. Parallel calls share one usage and merge
+   * into one group; a set keeps each once, including copies in backup stores.
+   */
+  toolSteps?: readonly string[];
   timestampQuality: number;
   /** A numeric id this record's own text name identifies, for naming id-only records. */
   learned?: { readonly id: number } & AntigravityModelName;
@@ -209,13 +220,17 @@ const readDatabase = Effect.fn("readDatabase")(function* (
       column: string,
       step: boolean,
     ) {
-      const entries: Array<{ idx: number; entry: Metadata }> = [];
+      const entries: Array<{ idx: number; entry: Metadata; toolStep: boolean }> = [];
       for (const row of yield* sql.unsafe<Record<string, unknown>>(query)) {
         const idx = row.idx;
         if (typeof idx !== "number") {
           return yield* new AntigravityDatabaseDecodeError({ path });
         }
-        entries.push({ idx, entry: yield* decode(() => metadata(blob(row[column]), step)) });
+        entries.push({
+          idx,
+          entry: yield* decode(() => metadata(blob(row[column]), step)),
+          toolStep: row.step_type === TOOL_CALL_STEP_TYPE,
+        });
         if (entries.length % 256 === 0) yield* Effect.yieldNow;
       }
       return entries;
@@ -231,9 +246,15 @@ const readDatabase = Effect.fn("readDatabase")(function* (
         trajectoryTimestamp ??= yield* decode(() => timestamp(nested(fields(blob(row.data)), 2)));
       }
     }
+    // Older stores have no `step_type`; their steps count no tool calls.
+    const stepType = (yield* sql.unsafe<{ readonly name: unknown }>(
+      "SELECT name FROM pragma_table_info('steps')",
+    )).some((column) => column.name === "step_type")
+      ? "step_type"
+      : "NULL AS step_type";
     const steps = tables.has("steps")
       ? yield* readMetadata(
-          "SELECT idx, metadata FROM steps WHERE metadata IS NOT NULL ORDER BY idx",
+          `SELECT idx, ${stepType}, metadata FROM steps WHERE metadata IS NOT NULL ORDER BY idx`,
           "metadata",
           true,
         )
@@ -246,8 +267,8 @@ const readDatabase = Effect.fn("readDatabase")(function* (
 
 function usageCandidates(
   sessionId: string,
-  generations: ReadonlyArray<{ idx: number; entry: Metadata }>,
-  steps: ReadonlyArray<{ idx: number; entry: Metadata }>,
+  generations: ReadonlyArray<{ idx: number; entry: Metadata; toolStep: boolean }>,
+  steps: ReadonlyArray<{ idx: number; entry: Metadata; toolStep: boolean }>,
   trajectoryTimestamp: number | null,
   fallbackTimestamp: number,
 ): UsageCandidate[] {
@@ -257,7 +278,7 @@ function usageCandidates(
     ["step", steps],
     ["generation", generations],
   ] as const) {
-    for (const [index, { idx, entry }] of entries.entries()) {
+    for (const [index, { idx, entry, toolStep }] of entries.entries()) {
       for (const [usageIndex, usage] of entry.usages.entries()) {
         const outputTokens = Math.max(numberAt(usage, 3), numberAt(usage, 9) + numberAt(usage, 10));
         const totals = {
@@ -302,6 +323,7 @@ function usageCandidates(
         records.push({
           record,
           keys,
+          ...(toolStep && usageIndex === 0 ? { toolSteps: [`${sessionId}:${idx}`] } : {}),
           timestampQuality: entry.timestampMs !== null ? 2 : trajectoryTimestamp !== null ? 1 : 0,
           ...(entry.named && entry.modelId > 0 && MODEL_IDS[entry.modelId] === undefined
             ? { learned: { id: entry.modelId, ...entryModel(entry) } }
@@ -394,6 +416,9 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
         reasoningTokens: Math.max(x.reasoningTokens, y.reasoningTokens),
       },
     };
+    if (source.toolSteps) {
+      target.toolSteps = [...new Set([...(target.toolSteps ?? []), ...source.toolSteps])];
+    }
     target.timestampQuality = bestTime.timestampQuality;
     target.owner = first.owner;
     target.fileIndex = first.fileIndex;
@@ -494,7 +519,10 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
   };
   for (const [index, group] of groups.entries()) {
     if (group.parent === index && group.record.timestampMs >= sinceMs) {
-      files[group.fileIndex]!.records.push(named(group.record));
+      const toolCalls = group.toolSteps?.length ?? 0;
+      files[group.fileIndex]!.records.push(
+        named(toolCalls > 0 ? { ...group.record, toolCalls } : group.record),
+      );
     }
   }
   return { files, errors };

@@ -41,6 +41,8 @@ export interface UsageRecord {
   readonly reportedCostUsd: number | null;
   /** Only Claude Code and Codex record a speed; other providers are `standard`. */
   readonly speed: UsageSpeed;
+  /** Tool calls the model made in this usage event. Absent means none recorded. */
+  readonly toolCalls?: number;
   /**
    * Key for cross-file de-duplication, or `null` when the record is inherently
    * unique and needs no dedup.

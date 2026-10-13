@@ -32,6 +32,15 @@ function claudeLine(overrides: {
 }
 
 describe("parseClaudeLine", () => {
+  it("counts tool calls in the record's content block", () => {
+    expect(
+      parseClaudeLine(claudeLine({ messageId: "m", contentType: "tool_use" }))?.toolCalls,
+    ).toBe(1);
+    expect(
+      parseClaudeLine(claudeLine({ messageId: "m", contentType: "text" }))?.toolCalls,
+    ).toBeUndefined();
+  });
+
   it("extracts token totals and a dedupe key", () => {
     const record = parseClaudeLine(claudeLine({ messageId: "msg_1", contentType: "text" }));
 

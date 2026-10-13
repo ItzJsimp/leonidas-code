@@ -95,6 +95,7 @@ describe("scan cache round trip", () => {
           sawSessionMeta: true,
           suppressingForkCopies: false,
           forkCopyAnchorMs: 0,
+          pendingToolCalls: 0,
         },
       }),
     });
@@ -152,6 +153,28 @@ describe("scan cache round trip", () => {
     expect(
       decodeScanCache(JSON.parse(JSON.stringify(poisoned)), TEST_FORMAT_MAP).has("/a.jsonl"),
     ).toBe(false);
+  });
+
+  it("restores tool call counts", () => {
+    const cache = cacheWith([["/a.jsonl", 100, [record({ toolCalls: 3 }), record()]]]);
+    const restored = decodeScanCache(
+      JSON.parse(JSON.stringify(encodeScanCache(cache))),
+      TEST_FORMAT_MAP,
+    ).get("/a.jsonl");
+
+    expect(restored?.records.map((entry) => entry.toolCalls)).toEqual([3, undefined]);
+  });
+
+  it("keeps v5 records as history but re-parses their files whole", () => {
+    const encoded = encodeScanCache(cacheWith([["/a.jsonl", 100, [record()]]]));
+    const previous = { ...encoded, version: 5 };
+    const restored = decodeScanCache(JSON.parse(JSON.stringify(previous)), TEST_FORMAT_MAP).get(
+      "/a.jsonl",
+    );
+
+    expect(restored?.records).toHaveLength(1);
+    expect(restored?.size).toBe(-1);
+    expect(restored?.position.resumeOffset).toBe(0);
   });
 
   it("rejects a document from before records carried a speed", () => {
@@ -263,6 +286,17 @@ describe("pruneScanCache", () => {
 });
 
 describe("dedupeWithinFile", () => {
+  it("folds a dropped repeat's tool calls into the kept record", () => {
+    const kept = dedupeWithinFile([
+      record(),
+      record({ toolCalls: 1 }),
+      record({ toolCalls: 2 }),
+      record({ dedupeKey: "msg_2:", toolCalls: 1 }),
+    ]);
+
+    expect(kept.map((entry) => entry.toolCalls)).toEqual([3, 1]);
+  });
+
   it("keeps the first record per dedupe key", () => {
     const kept = dedupeWithinFile([
       record({ totals: { ...record().totals, outputTokens: 1 } }),

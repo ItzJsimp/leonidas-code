@@ -31,17 +31,23 @@ import { GUARD_LENGTH, type TranscriptParsePosition } from "./usageTranscriptRea
 // v4: records carry Claude fast mode, which v3 rows never captured.
 // v5: Codex records carry their service tier. v4 rows store speed the same
 // way, so v4 entries still load; see `decodeScanCache` for v4 stateful entries.
-const USAGE_SCAN_CACHE_VERSION = 5 as const;
+// v6: records carry tool call counts. Older entries load as fallback history
+// but their live files re-parse whole.
+const USAGE_SCAN_CACHE_VERSION = 6 as const;
 const SPEED_COMPATIBLE_SINCE_VERSION = 4;
 
 /**
  * Each cache version writes its own file in the state directory. An older
  * server sharing that directory cannot read a newer cache and would replace
  * it, dropping saved usage for deleted transcripts. Separate files keep both.
- * A v5 server reads the legacy (v4) file once, when its own file is missing.
+ * A server reads the newest older file once, when its own file is missing.
  */
-export const SCAN_CACHE_FILE_NAME = "usage-scan-cache-v5.json";
-export const LEGACY_SCAN_CACHE_FILE_NAME = "usage-scan-cache.json";
+export const SCAN_CACHE_FILE_NAME = "usage-scan-cache-v6.json";
+/** Older cache files, newest first. */
+export const LEGACY_SCAN_CACHE_FILE_NAMES = [
+  "usage-scan-cache-v5.json",
+  "usage-scan-cache.json",
+] as const;
 
 /** Serialised as the index into this list. */
 const SPEEDS: readonly UsageSpeed[] = ["standard", "fast", "ultrafast"];
@@ -82,6 +88,8 @@ type SerializedRecord = readonly [
   speed: number,
   /** Optional trailing field keeps existing cache rows readable. */
   rateModelIndex?: number | null,
+  /** Optional trailing field; absent or 0 means no tool calls. */
+  toolCalls?: number,
 ];
 
 interface SerializedFile {
@@ -143,6 +151,7 @@ function serializeFile(entry: CachedFile, tables: InternTables): SerializedFile 
     record.rateModel === undefined
       ? null
       : intern(tables.models, tables.modelIndex, record.rateModel),
+    record.toolCalls ?? 0,
   ];
   return {
     s: entry.size,
@@ -270,6 +279,7 @@ export function decodeScanCache(
         reportedCostUsd,
         speedIndex,
         rateModelIndex,
+        toolCalls,
       ] = row as SerializedRecord;
       const speed = typeof speedIndex === "number" ? SPEEDS[speedIndex] : undefined;
 
@@ -305,6 +315,7 @@ export function decodeScanCache(
         },
         reportedCostUsd: typeof reportedCostUsd === "number" ? reportedCostUsd : null,
         speed,
+        ...(typeof toolCalls === "number" && toolCalls > 0 ? { toolCalls } : {}),
         dedupeKey: typeof dedupeKey === "string" ? dedupeKey : null,
       });
     }
@@ -337,11 +348,10 @@ export function decodeScanCache(
     ) {
       continue;
     }
-    // v4 records of stateful formats (Codex) predate service tiers, so they
-    // all priced as standard. Keep them, because the rollout may be gone, but
-    // make a live rollout re-parse whole: no file has size -1, and a zero
-    // position cannot resume.
-    const legacy = format.state !== undefined && version < USAGE_SCAN_CACHE_VERSION;
+    // Older records lack tool call counts (and v4 Codex records service
+    // tiers). Keep them, because the transcript may be gone, but make a live
+    // file re-parse whole: no file has size -1, and a zero position cannot resume.
+    const legacy = version < USAGE_SCAN_CACHE_VERSION;
     // A corrupt state disqualifies the entry: resuming with it would attach
     // appended usage to the wrong model or replay fork-copied history.
     if (!legacy && !isValidState.get(entry.p)?.(entry.cs)) continue;
@@ -406,17 +416,27 @@ export function pruneScanCache(cache: ScanCache, retentionCutoffMs: number): num
  *
  * Callers stitching an incremental parse together pass one `seen` set across
  * the line and tail record batches so the whole file stays deduplicated as a
- * unit; the set is mutated in place.
+ * unit; the set is mutated in place. A dropped repeat's tool calls fold into
+ * the kept record when it is in the same batch.
  */
 export function dedupeWithinFile(
   records: readonly UsageRecord[],
   seen: Set<string> = new Set(),
 ): readonly UsageRecord[] {
   const kept: UsageRecord[] = [];
+  const keptIndex = new Map<string, number>();
   for (const record of records) {
     if (record.dedupeKey !== null) {
-      if (seen.has(record.dedupeKey)) continue;
+      if (seen.has(record.dedupeKey)) {
+        const index = keptIndex.get(record.dedupeKey);
+        if (index !== undefined && record.toolCalls) {
+          const first = kept[index]!;
+          kept[index] = { ...first, toolCalls: (first.toolCalls ?? 0) + record.toolCalls };
+        }
+        continue;
+      }
       seen.add(record.dedupeKey);
+      keptIndex.set(record.dedupeKey, kept.length);
     }
     kept.push(record);
   }

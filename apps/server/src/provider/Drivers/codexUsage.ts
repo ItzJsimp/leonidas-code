@@ -42,6 +42,8 @@ export const CodexScanState = Schema.Struct({
   /** While true, leading usage events are re-stamped copies of parent history. */
   suppressingForkCopies: Schema.mutableKey(Schema.Boolean),
   forkCopyAnchorMs: Schema.mutableKey(Schema.Finite),
+  /** Tool calls since the last usage event; the next one carries them. */
+  pendingToolCalls: Schema.mutableKey(Schema.Finite),
 });
 export type CodexScanState = typeof CodexScanState.Type;
 
@@ -54,7 +56,29 @@ export function initialCodexScanState(): CodexScanState {
     sawSessionMeta: false,
     suppressingForkCopies: false,
     forkCopyAnchorMs: 0,
+    pendingToolCalls: 0,
   };
+}
+
+/** Response items that are a model tool call; their outputs are separate items. */
+const TOOL_CALL_ITEM =
+  /"payload":\{"type":"(?:function_call|custom_tool_call|local_shell_call|web_search_call)"/;
+const TOOL_CALL_TYPES: ReadonlySet<unknown> = new Set([
+  "function_call",
+  "custom_tool_call",
+  "local_shell_call",
+  "web_search_call",
+]);
+
+/** Counts a tool call unless it belongs to a fork's copied parent history. */
+function countToolCall(state: CodexScanState, timestampMs: number | null): void {
+  if (
+    state.suppressingForkCopies &&
+    (timestampMs === null || timestampMs - state.forkCopyAnchorMs < FORK_COPY_MAX_GAP_MS)
+  ) {
+    return;
+  }
+  state.pendingToolCalls += 1;
 }
 
 /**
@@ -87,6 +111,11 @@ function isForkedSessionMeta(payload: Record<string, unknown>): boolean {
  * consecutive duplicate events are dropped, which this does.
  */
 export function parseCodexLine(line: string, state: CodexScanState): UsageRecord | null {
+  // Tool calls can carry large arguments; the timestamp prefix is all they need.
+  if (TOOL_CALL_ITEM.test(line)) {
+    countToolCall(state, parseTimestampMs(/"timestamp":"([^"]+)"/.exec(line)?.[1]));
+    return null;
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(line);
@@ -134,6 +163,11 @@ function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord |
     return null;
   }
 
+  if (record["type"] === "response_item" && TOOL_CALL_TYPES.has(payloadType)) {
+    countToolCall(state, parseTimestampMs(record["timestamp"]));
+    return null;
+  }
+
   if (payloadType !== "token_count") return null;
 
   const info = payloadRecord["info"];
@@ -162,6 +196,7 @@ function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord |
   if (state.suppressingForkCopies) {
     if (timestampMs - state.forkCopyAnchorMs < FORK_COPY_MAX_GAP_MS) {
       state.forkCopyAnchorMs = timestampMs;
+      state.pendingToolCalls = 0;
       return null;
     }
     state.suppressingForkCopies = false;
@@ -184,6 +219,8 @@ function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord |
 
   if (totalTokens(totals) === 0) return null;
 
+  const toolCalls = state.pendingToolCalls;
+  state.pendingToolCalls = 0;
   return {
     provider: "codex",
     timestampMs,
@@ -193,6 +230,7 @@ function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord |
     // Codex does not report cost in the rollout.
     reportedCostUsd: null,
     speed: state.speed,
+    ...(toolCalls > 0 ? { toolCalls } : {}),
     // Events surviving the fork-copy suppression above are unique to this
     // rollout, so they need no global dedup.
     dedupeKey: null,
@@ -233,6 +271,7 @@ export const codexUsageFormat: TranscriptUsageFormat<CodexScanState> = {
   // usage, but they carry the model, tier and session the reducer needs.
   mightCarryUsage: (line) =>
     line.includes('"token_count"') ||
+    TOOL_CALL_ITEM.test(line) ||
     line.includes('"turn_context"') ||
     line.includes('"thread_settings_applied"') ||
     line.includes('"session_meta"'),

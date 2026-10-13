@@ -31,6 +31,24 @@ describe("parseCodexLine", () => {
       },
     });
 
+  it("attaches tool calls to the next usage event, ignoring their outputs", () => {
+    const item = (type: string) =>
+      JSON.stringify({
+        timestamp: "2026-08-01T05:17:45.000Z",
+        type: "response_item",
+        payload: { type, call_id: "call_1", name: "shell", input: "ls" },
+      });
+    const state = initialCodexScanState();
+    parseCodexLine(sessionMeta, state);
+    parseCodexLine(turnContext, state);
+    parseCodexLine(item("custom_tool_call"), state);
+    parseCodexLine(item("custom_tool_call_output"), state);
+    parseCodexLine(item("function_call"), state);
+
+    expect(parseCodexLine(tokenCount(100, 0, 10, 0), state)?.toolCalls).toBe(2);
+    expect(parseCodexLine(tokenCount(200, 0, 10, 0), state)?.toolCalls).toBeUndefined();
+  });
+
   it("attributes usage to the model from the preceding turn context", () => {
     const state = initialCodexScanState();
     parseCodexLine(sessionMeta, state);

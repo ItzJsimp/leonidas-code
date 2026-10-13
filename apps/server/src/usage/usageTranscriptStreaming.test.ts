@@ -170,6 +170,7 @@ describe("large usage records", () => {
         },
         reportedCostUsd: 0.25,
         speed: "fast",
+        toolCalls: 1,
         dedupeKey: "m1:r-m1",
       },
     ]);

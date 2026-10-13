@@ -25,7 +25,9 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
  * Leonidas Code writes one record per assistant *content block*, and every one of
  * those records repeats the same complete `usage` object for the parent
  * message. Summing them overcounts by roughly 2.4x on a real workload, so the
- * caller must drop repeats by `dedupeKey` and keep the first.
+ * caller must drop repeats by `dedupeKey` and keep the first. Each record
+ * counts the tool calls in its own block; `dedupeWithinFile` folds a dropped
+ * repeat's calls into the record it keeps.
  */
 export function parseClaudeLine(line: string): UsageRecord | null {
   let parsed: unknown;
@@ -65,6 +67,15 @@ function parseClaudeRecord(parsed: unknown): UsageRecord | null {
     messageId === null && requestId === null ? null : `${messageId ?? ""}:${requestId ?? ""}`;
 
   const cost = record["costUSD"];
+  const content = messageRecord["content"];
+  const toolCalls = Array.isArray(content)
+    ? content.filter(
+        (block) =>
+          typeof block === "object" &&
+          block !== null &&
+          (block as Record<string, unknown>)["type"] === "tool_use",
+      ).length
+    : 0;
 
   return {
     provider: "claude",
@@ -81,6 +92,7 @@ function parseClaudeRecord(parsed: unknown): UsageRecord | null {
     },
     reportedCostUsd: typeof cost === "number" && Number.isFinite(cost) ? cost : null,
     speed: usageRecord["speed"] === "fast" ? "fast" : "standard",
+    ...(toolCalls > 0 ? { toolCalls } : {}),
     dedupeKey,
   };
 }
@@ -96,7 +108,8 @@ export const claudeUsageFormat: TranscriptUsageFormat<void> = {
     requestId: true,
     sessionId: true,
     costUSD: true,
-    message: { id: true, model: true, usage: true },
+    // Content blocks keep only their type, enough to count tool calls.
+    message: { id: true, model: true, usage: true, content: { type: true } },
   },
   mightCarryUsage: (line) => line.includes('"usage"'),
   parseLine: (line) => orEmpty(parseClaudeLine(line)),

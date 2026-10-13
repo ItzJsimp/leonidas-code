@@ -143,6 +143,38 @@ describe("readAntigravityUsage", () => {
       }).pipe(Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("counts each tool call step once across parallel calls and backup copies", () =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const dir = yield* tempDir;
+      const usage = [...protoNumber(2, 100), ...protoNumber(3, 40), ...protoText(11, "resp-1")];
+      const step = new Uint8Array([
+        ...protoBytes(9, usage),
+        ...protoBytes(8, protoNumber(1, 1780000000)),
+      ]);
+      for (const store of ["main", "backup"]) {
+        yield* (yield* FileSystem.FileSystem).makeDirectory(path.join(dir, store));
+        yield* seedDatabase(path.join(dir, store, "tools.db"), (db) =>
+          Effect.gen(function* () {
+            yield* db.exec("CREATE TABLE steps (idx INTEGER, step_type INTEGER, metadata BLOB)");
+            yield* db.run("INSERT INTO steps VALUES (?, ?, ?)", [0, 15, step]);
+            yield* db.run("INSERT INTO steps VALUES (?, ?, ?)", [1, 132, step]);
+            yield* db.run("INSERT INTO steps VALUES (?, ?, ?)", [2, 132, step]);
+          }),
+        );
+      }
+      const result = yield* readAntigravityUsage(
+        [path.join(dir, "main"), path.join(dir, "backup")],
+        0,
+      );
+      assert.deepStrictEqual(result.errors, []);
+      assert.deepStrictEqual(
+        records(result).map((record) => record.toolCalls),
+        [2],
+      );
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("uses the matching Antigravity generation model for each model-less step", () =>
     Effect.gen(function* () {
       const path = yield* Path.Path;

@@ -90,6 +90,8 @@ function selectUsageFields(fields: SelectedFields) {
     let selected: true | SelectedFields = fields;
     for (const key of path) {
       if (selected === true) return true;
+      // Array elements inherit their array's selection.
+      if (typeof key === "number") continue;
       if (typeof key !== "string" || !Object.hasOwn(selected, key)) return false;
       selected = selected[key]!;
     }
