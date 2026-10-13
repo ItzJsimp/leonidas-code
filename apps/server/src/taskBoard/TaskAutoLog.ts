@@ -1,4 +1,11 @@
-import type { OrchestrationV2ConversationMessage, ThreadId } from "@t3tools/contracts";
+import type {
+  OrchestrationV2ConversationMessage,
+  OrchestrationV2Run,
+  Project,
+  ProjectId,
+  TaskBoardTask,
+  ThreadId,
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
@@ -13,7 +20,6 @@ import { aiosSlugFor, TaskBoardService } from "./TaskBoardService.ts";
 const ACTOR = "Leonidas";
 const MIN_REQUEST_LENGTH = 12;
 const TITLE_LENGTH = 80;
-const SEEN_LIMIT = 2_000;
 
 /** A request is real work when a person typed it; relays, schedules and one-word replies are not. */
 export function isLoggableRequest(message: OrchestrationV2ConversationMessage): boolean {
@@ -37,41 +43,86 @@ export function titleFromRequest(text: string): string {
 }
 
 /**
+ * The task id an explicit "Send to agent" prompt names (`buildTaskPrompt` in the web client).
+ * It lets the server link the thread to that card even when the client never recorded the link.
+ */
+export function explicitTaskId(text: string): string | undefined {
+  return /^You are picking up task (\S+?):\s/.exec(text)?.[1];
+}
+
+/** Notes carry the message or run id so a replayed event is recognized from the card itself. */
+const messageMarker = (id: string) => `[message ${id}]`;
+const runMarker = (id: string) => `[run ${id}]`;
+
+export type AutoLogEvent =
+  | { readonly type: "message.updated"; readonly payload: OrchestrationV2ConversationMessage }
+  | {
+      readonly type: "run.updated";
+      readonly threadId: ThreadId;
+      readonly payload: Pick<OrchestrationV2Run, "id" | "status">;
+    };
+
+/**
  * Files every user request as a task card, one card per thread: later messages
  * and the run outcome are appended to the same card's activity log. The card
  * is the log; the agent and the nightly auditor add detail on top of it.
+ *
+ * The thread-to-card link is the card's own `thread_id`, never process memory, so a restart,
+ * a replayed event or a client that failed to claim the card all resolve to the same card.
  */
-export const make = Effect.gen(function* () {
-  const orchestrator = yield* Orchestrator.OrchestratorV2;
-  const projections = yield* ProjectionStore.ProjectionStoreV2;
-  const projectService = yield* ProjectService.ProjectService;
-  const taskBoard = yield* TaskBoardService;
+export const makeAutoLog = (deps: {
+  readonly taskBoard: TaskBoardService["Service"];
+  readonly allProjects: Effect.Effect<ReadonlyArray<Project>, ProjectService.ProjectOperationError>;
+  readonly threadProjectId: (threadId: ThreadId) => Effect.Effect<ProjectId | undefined>;
+}) => {
+  const { taskBoard } = deps;
 
-  const cards = new Map<ThreadId, string>();
-  const seen = new Set<string>();
+  const tasks = (projects: ReadonlyArray<Project>) =>
+    taskBoard.workspace(projects).pipe(Effect.map((snapshot) => snapshot.tasks));
 
-  const allProjects = projectService.snapshot.pipe(Effect.map((snapshot) => snapshot.projects));
+  const hasMarker = (task: TaskBoardTask, marker: string) =>
+    task.history.some((entry) => entry.note?.includes(marker));
 
   const logRequest = (message: OrchestrationV2ConversationMessage) =>
     Effect.gen(function* () {
-      if (seen.has(message.id)) return;
-      seen.add(message.id);
-      if (seen.size > SEEN_LIMIT) seen.delete(seen.values().next().value!);
-      const projects = yield* allProjects;
-      const existing = cards.get(message.threadId);
-      if (existing !== undefined) {
+      const projects = yield* deps.allProjects;
+      const all = yield* tasks(projects);
+      const marker = messageMarker(message.id);
+      const named = explicitTaskId(message.text);
+      const linked = all.find((task) => task.claimedAgent?.threadId === message.threadId);
+      const target =
+        linked ?? (named === undefined ? undefined : all.find((task) => task.id === named));
+
+      if (target !== undefined) {
+        if (hasMarker(target, marker)) return;
+        const starting = named === target.id;
+        // An explicit card keeps its first thread: a second thread only adds a note.
+        const adopt = starting && target.claimedAgent?.threadId === undefined;
         yield* taskBoard.cardUpdate(
-          { taskId: existing, actor: ACTOR, note: `Follow-up: ${titleFromRequest(message.text)}` },
+          {
+            taskId: target.id,
+            actor: ACTOR,
+            ...(adopt
+              ? {
+                  agent: { threadId: message.threadId },
+                  ...(target.status === "todo" ? { status: "in_progress" as const } : {}),
+                }
+              : {}),
+            note: starting
+              ? `Agent started on this task. ${marker}`
+              : `Follow-up: ${titleFromRequest(message.text)} ${marker}`,
+          },
           projects,
         );
         return;
       }
-      const shell = yield* projections.getThreadShell(message.threadId);
-      const project = shell
-        ? projects.find((candidate) => candidate.id === shell.projectId)
-        : undefined;
+
+      const projectId = yield* deps.threadProjectId(message.threadId);
+      const project = projects.find((candidate) => candidate.id === projectId);
+      // A stable key makes a replay or a racing duplicate resolve to the same card.
       const task = yield* taskBoard.cardCreate(
         {
+          idempotencyKey: `task-auto-log:${message.threadId}`,
           title: titleFromRequest(message.text),
           description: `${message.text.trim()}\n\nThread: ${message.threadId}`,
           projectSlug: project ? aiosSlugFor(project) : null,
@@ -79,44 +130,75 @@ export const make = Effect.gen(function* () {
         },
         projects,
       );
-      cards.set(message.threadId, task.id);
+      if (hasMarker(task, marker)) return;
       yield* taskBoard.cardUpdate(
         {
           taskId: task.id,
           actor: ACTOR,
           status: "in_progress",
-          note: "Agent started on this request.",
+          agent: { threadId: message.threadId },
+          note: `Agent started on this request. ${marker}`,
         },
         projects,
       );
     });
 
-  const logOutcome = (threadId: ThreadId, status: string) =>
+  const logOutcome = (threadId: ThreadId, run: Pick<OrchestrationV2Run, "id" | "status">) =>
     Effect.gen(function* () {
-      const taskId = cards.get(threadId);
-      if (taskId === undefined) return;
+      const projects = yield* deps.allProjects;
+      const task = (yield* tasks(projects)).find(
+        (item) => item.claimedAgent?.threadId === threadId,
+      );
+      const marker = runMarker(run.id);
+      if (task === undefined || hasMarker(task, marker)) return;
+      // Failed and cancelled runs stay visible as such; only people move a card to done.
       yield* taskBoard.cardUpdate(
-        { taskId, actor: ACTOR, note: `Run ${status}.` },
-        yield* allProjects,
+        { taskId: task.id, actor: ACTOR, note: `Run ${run.status}. ${marker}` },
+        projects,
       );
     });
 
   const skip = (what: string) => (cause: Cause.Cause<unknown>) =>
     Effect.logWarning(`task auto-log skipped: ${what}`, { cause: Cause.pretty(cause) });
 
+  const handle = (event: AutoLogEvent) => {
+    if (event.type === "message.updated" && isLoggableRequest(event.payload)) {
+      return logRequest(event.payload).pipe(Effect.catchCause(skip("request")));
+    }
+    if (event.type === "run.updated" && isTerminalRunStatus(event.payload.status)) {
+      return logOutcome(event.threadId, event.payload).pipe(Effect.catchCause(skip("outcome")));
+    }
+    return Effect.void;
+  };
+
+  return { handle };
+};
+
+export const make = Effect.gen(function* () {
+  const orchestrator = yield* Orchestrator.OrchestratorV2;
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
+  const projectService = yield* ProjectService.ProjectService;
+  const taskBoard = yield* TaskBoardService;
+
+  const log = makeAutoLog({
+    taskBoard,
+    allProjects: projectService.snapshot.pipe(Effect.map((snapshot) => snapshot.projects)),
+    threadProjectId: (threadId) =>
+      projections.getThreadShell(threadId).pipe(
+        Effect.map((shell) => shell?.projectId),
+        Effect.catchCause(() => Effect.succeed(undefined)),
+      ),
+  });
+
   const start = Effect.fn("TaskAutoLog.start")(function* () {
     yield* forkParked(
-      Stream.runForEach(orchestrator.streamDomainEvents, (event) => {
-        if (event.type === "message.updated" && isLoggableRequest(event.payload)) {
-          return logRequest(event.payload).pipe(Effect.catchCause(skip("request")));
-        }
-        if (event.type === "run.updated" && isTerminalRunStatus(event.payload.status)) {
-          return logOutcome(event.threadId, event.payload.status).pipe(
-            Effect.catchCause(skip("outcome")),
-          );
-        }
-        return Effect.void;
-      }),
+      Stream.runForEach(orchestrator.streamDomainEvents, (event) =>
+        event.type === "message.updated"
+          ? log.handle({ type: event.type, payload: event.payload })
+          : event.type === "run.updated"
+            ? log.handle({ type: event.type, threadId: event.threadId, payload: event.payload })
+            : Effect.void,
+      ),
     );
   });
 

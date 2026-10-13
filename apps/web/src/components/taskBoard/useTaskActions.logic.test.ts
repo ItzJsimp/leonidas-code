@@ -1,7 +1,14 @@
 import type { ProjectId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { claimPatch, failureText, pickLaunchProject } from "./useTaskActions.logic";
+import {
+  claimPatch,
+  failureText,
+  linkPatch,
+  pickLaunchProject,
+  planSend,
+  unlinkPatch,
+} from "./useTaskActions.logic";
 
 const project = (id: string, workspaceRoot: string) => ({ id: id as ProjectId, workspaceRoot });
 
@@ -61,5 +68,48 @@ describe("failureText", () => {
     expect(failureText(new Error("Nope"), "Failed")).toBe("Nope");
     expect(failureText({ message: "  " }, "Failed")).toBe("Failed");
     expect(failureText(null, "Failed")).toBe("Failed");
+  });
+});
+
+describe("planSend", () => {
+  const linked = { claimedAgent: { threadId: "thread-1" } };
+
+  it("opens the linked thread instead of launching another", () => {
+    expect(planSend(linked, () => true)).toEqual({ kind: "open", threadId: "thread-1" });
+  });
+
+  it("relaunches into the same thread when the link has no thread", () => {
+    expect(planSend(linked, () => false)).toEqual({ kind: "launch", threadId: "thread-1" });
+    expect(planSend({ claimedAgent: null }, () => false)).toEqual({
+      kind: "launch",
+      threadId: null,
+    });
+  });
+});
+
+describe("linkPatch and unlinkPatch", () => {
+  it("claims and links before the launch, and restores status after a failed launch", () => {
+    const task = { status: "todo" as const, claimedBy: null };
+    const link = linkPatch(task, {
+      member: "Mob",
+      threadId: "t1",
+      providerInstanceId: "claude",
+      model: "m",
+    });
+    expect(link).toMatchObject({
+      claimedBy: "Mob",
+      status: "in_progress",
+      agent: { threadId: "t1" },
+    });
+    expect(unlinkPatch(task, "Mob", "boom")).toEqual({
+      claimedBy: null,
+      status: "todo",
+      note: "Agent did not start: boom",
+    });
+  });
+
+  it("keeps an existing claim by the same member", () => {
+    const patch = unlinkPatch({ status: "in_progress", claimedBy: "Mob" }, "Mob", "boom");
+    expect(patch).not.toHaveProperty("claimedBy");
   });
 });

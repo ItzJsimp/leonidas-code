@@ -50,3 +50,47 @@ export function failureText(error: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+/**
+ * What "Send to agent" does for a task. A task already linked to a thread the client knows opens
+ * that thread; a link whose thread never materialized relaunches into the same thread id, so a
+ * retry (or a second click) never leaves two threads behind one card.
+ */
+export function planSend(
+  task: Pick<TaskView, "claimedAgent">,
+  threadExists: (threadId: string) => boolean,
+): { kind: "open"; threadId: string } | { kind: "launch"; threadId: string | null } {
+  const linked = task.claimedAgent?.threadId ?? null;
+  if (linked !== null && threadExists(linked)) return { kind: "open", threadId: linked };
+  return { kind: "launch", threadId: linked };
+}
+
+/** Recorded before the turn starts: a failure here means no thread was ever launched. */
+export function linkPatch(
+  task: Pick<TaskView, "status">,
+  input: { member: string; threadId: string; providerInstanceId: string; model: string },
+) {
+  return {
+    ...claimPatch(task, input.member),
+    agent: {
+      providerInstanceId: input.providerInstanceId,
+      model: input.model,
+      threadId: input.threadId,
+    },
+    note: "Sending to agent",
+  };
+}
+
+/** Undoes `linkPatch` when the turn did not start, keeping the card's earlier status and claim. */
+export function unlinkPatch(
+  task: Pick<TaskView, "status" | "claimedBy">,
+  member: string,
+  reason: string,
+) {
+  const freshClaim = task.claimedBy === null || task.claimedBy !== member;
+  return {
+    ...(freshClaim ? { claimedBy: null } : {}),
+    status: task.status,
+    note: `Agent did not start: ${reason}`,
+  };
+}

@@ -8,6 +8,7 @@ import {
   DEFAULT_SERVER_SETTINGS,
   type EnvironmentId,
   type ProjectId,
+  type ThreadId,
   type TaskBoardCardUpdateInput,
   type TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
@@ -18,7 +19,7 @@ import { useAtomValue } from "@effect/atom-react";
 
 import { newMessageId, newThreadId } from "~/lib/utils";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
-import { readProjects, useProjects } from "~/state/entities";
+import { readProjects, readThreadShell, useProjects } from "~/state/entities";
 import { environmentServerConfigsAtom } from "~/state/server";
 import { taskBoardCardUpdate, taskBoardShare } from "~/state/taskBoard";
 import { threadEnvironment } from "~/state/threads";
@@ -30,7 +31,14 @@ import { toastManager } from "~/components/ui/toast";
 
 import { buildTaskPrompt, type TaskView } from "./taskBoard.logic";
 import type { TaskActions } from "./taskBoard.types";
-import { claimPatch, failureText, pickLaunchProject } from "./useTaskActions.logic";
+import {
+  claimPatch,
+  failureText,
+  linkPatch,
+  pickLaunchProject,
+  planSend,
+  unlinkPatch,
+} from "./useTaskActions.logic";
 
 type CardPatch = Omit<TaskBoardCardUpdateInput, "taskId" | "projectId" | "actor">;
 
@@ -68,6 +76,8 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
   const startThreadTurn = useOrchestrationCommand(threadEnvironment.startTurn, {
     reportFailure: false,
   });
+  // Tasks whose launch is under way; `busy` is React state and lags a rapid second click.
+  const launching = useRef<Set<string>>(new Set());
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   const [isSharingSection, setSharingSection] = useState(false);
 
@@ -144,95 +154,128 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
   const sendToAgent = useCallback(
     (task: TaskView) =>
       track(task.id, async () => {
-        const { input: current, startThreadTurn: startTurn, navigate: go } = latest.current;
-        const targetEnvironment = current.environmentId;
-        if (!targetEnvironment) return;
-        const projects = readProjects().filter(
-          (project) => project.environmentId === targetEnvironment,
-        );
-        const sectionProject = current.projects.find((project) => project.slug === task.section);
-        const selectedProject =
-          current.selectedSlug === null
-            ? null
-            : (current.projects.find((project) => project.slug === current.selectedSlug) ?? null);
-        const project = pickLaunchProject({
-          projects,
-          taskProjectId: sectionProject?.projectId ?? null,
-          selectedProjectId: selectedProject?.projectId ?? null,
-          aiosRoot: current.aiosRoot,
-        });
-        if (!project) {
-          report("No project to start the agent in", "Add a project to Leonidas Code first.");
-          return;
-        }
-        const settings =
-          appAtomRegistry.get(environmentServerConfigsAtom).get(targetEnvironment)?.settings ??
-          DEFAULT_SERVER_SETTINGS;
-        const resolved = resolveProjectSettings(settings, project.id, project).settings;
-        const modelSelection = resolved.defaultModelSelection;
-        if (!modelSelection) {
-          report(
-            "Pick a default model first",
-            `Choose a default model for ${project.title} in Settings, then send the task again.`,
+        if (launching.current.has(task.id)) return;
+        launching.current.add(task.id);
+        try {
+          const { input: current, startThreadTurn: startTurn, navigate: go } = latest.current;
+          const targetEnvironment = current.environmentId;
+          if (!targetEnvironment) return;
+          const projects = readProjects().filter(
+            (project) => project.environmentId === targetEnvironment,
           );
-          return;
-        }
+          const sectionProject = current.projects.find((project) => project.slug === task.section);
+          const selectedProject =
+            current.selectedSlug === null
+              ? null
+              : (current.projects.find((project) => project.slug === current.selectedSlug) ?? null);
+          const project = pickLaunchProject({
+            projects,
+            taskProjectId: sectionProject?.projectId ?? null,
+            selectedProjectId: selectedProject?.projectId ?? null,
+            aiosRoot: current.aiosRoot,
+          });
+          if (!project) {
+            report("No project to start the agent in", "Add a project to Leonidas Code first.");
+            return;
+          }
+          const settings =
+            appAtomRegistry.get(environmentServerConfigsAtom).get(targetEnvironment)?.settings ??
+            DEFAULT_SERVER_SETTINGS;
+          const resolved = resolveProjectSettings(settings, project.id, project).settings;
+          const modelSelection = resolved.defaultModelSelection;
+          if (!modelSelection) {
+            report(
+              "Pick a default model first",
+              `Choose a default model for ${project.title} in Settings, then send the task again.`,
+            );
+            return;
+          }
 
-        const threadId = newThreadId();
-        const createdAt = new Date().toISOString();
-        const runtimeMode = resolved.defaultRuntimeMode;
-        const launch = await startTurn({
-          environmentId: targetEnvironment,
-          input: {
-            threadId,
-            message: {
-              messageId: newMessageId(),
-              role: "user",
-              text: buildTaskPrompt(task, { aiosRoot: current.aiosRoot, member: current.member }),
-              attachments: [],
-            },
-            modelSelection,
-            titleSeed: task.title,
-            runtimeMode,
-            interactionMode: DEFAULT_INTERACTION_MODE,
-            bootstrap: {
-              createThread: {
-                projectId: project.id,
-                title: task.title,
-                modelSelection,
-                runtimeMode,
-                interactionMode: DEFAULT_INTERACTION_MODE,
-                branch: null,
-                worktreePath: null,
-                createdAt,
-              },
-            },
-            createdAt,
-          },
-        });
-        if (!reportResult(launch, "Could not start the agent")) return;
+          const openThread = (threadId: ThreadId) =>
+            go({
+              to: "/$environmentId/$threadId",
+              params: buildThreadRouteParams(scopeThreadRef(targetEnvironment, threadId)),
+            });
+          const plan = planSend(
+            task,
+            (id) => readThreadShell(scopeThreadRef(targetEnvironment, id as ThreadId)) !== null,
+          );
+          if (plan.kind === "open") {
+            toastManager.add({
+              type: "info",
+              title: "Already sent to an agent",
+              description: task.title,
+            });
+            void openThread(plan.threadId as ThreadId);
+            return;
+          }
 
-        const claimed = await updateCard(
-          task,
-          {
-            status: "in_progress",
-            claimedBy: current.member,
-            agent: {
+          const threadId = (plan.threadId as ThreadId | null) ?? newThreadId();
+          const createdAt = new Date().toISOString();
+          const runtimeMode = resolved.defaultRuntimeMode;
+
+          // Record the claim and thread before launching: if this fails nothing was started, and if
+          // the launch then fails the card is restored below. The server also links the thread from
+          // the prompt, so a card is never left without its thread.
+          const linked = await updateCard(
+            task,
+            linkPatch(task, {
+              member: current.member,
+              threadId,
               providerInstanceId: modelSelection.instanceId,
               model: modelSelection.model,
+            }),
+            "Could not claim the task for the agent",
+          );
+          if (!linked) return;
+
+          const launch = await startTurn({
+            environmentId: targetEnvironment,
+            input: {
               threadId,
+              message: {
+                messageId: newMessageId(),
+                role: "user",
+                text: buildTaskPrompt(task, { aiosRoot: current.aiosRoot, member: current.member }),
+                attachments: [],
+              },
+              modelSelection,
+              titleSeed: task.title,
+              runtimeMode,
+              interactionMode: DEFAULT_INTERACTION_MODE,
+              bootstrap: {
+                createThread: {
+                  projectId: project.id,
+                  title: task.title,
+                  modelSelection,
+                  runtimeMode,
+                  interactionMode: DEFAULT_INTERACTION_MODE,
+                  branch: null,
+                  worktreePath: null,
+                  createdAt,
+                },
+              },
+              createdAt,
             },
-            note: "Sent to agent",
-          },
-          "The agent started, but the task was not updated",
-        );
-        if (claimed) {
+          });
+          if (launch._tag !== "Success") {
+            reportResult(launch, "Could not start the agent");
+            const reason = isAtomCommandInterrupted(launch)
+              ? "interrupted"
+              : failureText(squashAtomCommandFailure(launch), "launch failed");
+            await updateCard(
+              task,
+              unlinkPatch(task, current.member, reason),
+              "Could not restore the task",
+            );
+            return;
+          }
+
           toastManager.add({ type: "success", title: "Sent to agent", description: task.title });
+          void openThread(threadId);
+        } finally {
+          launching.current.delete(task.id);
         }
-        void go({
-          to: "/$environmentId/$threadId",
-          params: buildThreadRouteParams(scopeThreadRef(targetEnvironment, threadId)),
-        });
       }),
     [report, reportResult, track, updateCard],
   );

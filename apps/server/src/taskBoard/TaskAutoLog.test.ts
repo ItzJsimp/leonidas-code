@@ -1,7 +1,25 @@
-import type { OrchestrationV2ConversationMessage } from "@t3tools/contracts";
+// @effect-diagnostics nodeBuiltinImport:off - temp AIOS folders are plain Node fixtures.
+import type {
+  OrchestrationV2ConversationMessage,
+  Project,
+  TaskBoardTask,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 
-import { isLoggableRequest, titleFromRequest } from "./TaskAutoLog.ts";
+import * as ProcessRunner from "../processRunner.ts";
+import * as TaskBoardServiceModule from "./TaskBoardService.ts";
+import {
+  explicitTaskId,
+  isLoggableRequest,
+  makeAutoLog,
+  titleFromRequest,
+  type AutoLogEvent,
+} from "./TaskAutoLog.ts";
 
 const message = (patch: Record<string, unknown>) =>
   ({
@@ -36,4 +54,177 @@ describe("titleFromRequest", () => {
     expect(title.length).toBeLessThanOrEqual(80);
     expect(title.endsWith("…")).toBe(true);
   });
+});
+
+describe("explicitTaskId", () => {
+  it("reads the card id out of a Send to agent prompt", () => {
+    expect(explicitTaskId("You are picking up task task-abc-123: Do it.\nPriority: high.")).toBe(
+      "task-abc-123",
+    );
+    expect(explicitTaskId("Please fix the login redirect bug")).toBeUndefined();
+  });
+});
+
+// Integration: the real card store in a throwaway AIOS, driven through the same handler the
+// orchestrator stream feeds. "Restart" is a second handler over the same files.
+const boardProject = {
+  id: "project-board",
+  title: "Leonidas Code",
+  workspaceRoot: "D:/leonidas-code",
+} as Project;
+
+const withBoard = <A, E, R>(
+  use: (input: {
+    readonly project: Project;
+    readonly board: TaskBoardServiceModule.TaskBoardService["Service"];
+    readonly newLog: () => ReturnType<typeof makeAutoLog>;
+  }) => Effect.Effect<A, E, R>,
+) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const root = NodeFS.realpathSync(
+        NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "aios-autolog-")),
+      );
+      NodeFS.mkdirSync(NodePath.join(root, "tasks"), { recursive: true });
+      NodeFS.mkdirSync(NodePath.join(root, "projects", "leonidas-code"), { recursive: true });
+      const previous = process.env.LEONIDAS_AIOS_ROOT;
+      process.env.LEONIDAS_AIOS_ROOT = root;
+      return { root, previous };
+    }),
+    ({ root }) =>
+      Effect.gen(function* () {
+        const board = yield* TaskBoardServiceModule.TaskBoardService;
+        const project = {
+          ...boardProject,
+          workspaceRoot: NodePath.join(root, "projects", "leonidas-code"),
+        } as Project;
+        return yield* use({
+          project,
+          board,
+          newLog: () =>
+            makeAutoLog({
+              taskBoard: board,
+              allProjects: Effect.succeed([project]),
+              threadProjectId: () => Effect.succeed(project.id),
+            }),
+        });
+      }).pipe(
+        Effect.provide(
+          TaskBoardServiceModule.layer.pipe(
+            Layer.provide(
+              Layer.succeed(
+                ProcessRunner.ProcessRunner,
+                ProcessRunner.ProcessRunner.of({ run: () => Effect.die("no GitHub in this test") }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ({ root, previous }) =>
+      Effect.sync(() => {
+        if (previous === undefined) delete process.env.LEONIDAS_AIOS_ROOT;
+        else process.env.LEONIDAS_AIOS_ROOT = previous;
+        NodeFS.rmSync(root, { recursive: true, force: true });
+      }),
+  );
+
+const request = (id: string, threadId: string, text = "Fix the login redirect bug") =>
+  ({
+    type: "message.updated",
+    payload: message({ id, threadId, text }),
+  }) as unknown as AutoLogEvent;
+
+const runEvent = (threadId: string, id: string, status: string) =>
+  ({ type: "run.updated", threadId, payload: { id, status } }) as unknown as AutoLogEvent;
+
+const notes = (task: TaskBoardTask) => task.history.map((entry) => entry.note ?? "");
+
+const sendPrompt = (card: TaskBoardTask) =>
+  `You are picking up task ${card.id}: ${card.title}.\nPriority: high.`;
+
+const newCard = (board: TaskBoardServiceModule.TaskBoardService["Service"], project: Project) =>
+  board.cardCreate({ title: "Persist task identity", actor: "Mob", projectSlug: "leonidas-code" }, [
+    project,
+  ]);
+
+describe("TaskAutoLog persistence", () => {
+  it.effect("links a thread to one card and ignores a replayed request", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-1"));
+        yield* log.handle(request("m1", "thread-1"));
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks).toHaveLength(1);
+        expect(tasks[0]!.claimedAgent?.threadId).toBe("thread-1");
+        expect(tasks[0]!.status).toBe("in_progress");
+        expect(notes(tasks[0]!).filter((note) => note.includes("[message m1]"))).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.effect("keeps appending to the same card after a restart", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        yield* newLog().handle(request("m1", "thread-1"));
+        const restarted = newLog();
+        const followUp = request("m2", "thread-1", "Also update the sidebar copy");
+        yield* restarted.handle(followUp);
+        yield* restarted.handle(followUp);
+        yield* restarted.handle(runEvent("thread-1", "run-1", "completed"));
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks).toHaveLength(1);
+        const history = notes(tasks[0]!);
+        expect(history.filter((note) => note.includes("Follow-up"))).toHaveLength(1);
+        expect(history.filter((note) => note.includes("[run run-1]"))).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.effect("reuses an explicitly sent card when the client never recorded the link", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const card = yield* newCard(board, project);
+        yield* newLog().handle(request("m1", "thread-9", sendPrompt(card)));
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks).toHaveLength(1);
+        expect(tasks[0]!.id).toBe(card.id);
+        expect(tasks[0]!.claimedAgent?.threadId).toBe("thread-9");
+        expect(tasks[0]!.status).toBe("in_progress");
+      }),
+    ),
+  );
+
+  it.effect("keeps the first thread when the same task is sent twice", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const card = yield* newCard(board, project);
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-a", sendPrompt(card)));
+        yield* log.handle(request("m2", "thread-b", sendPrompt(card)));
+        yield* log.handle(runEvent("thread-b", "run-b", "failed"));
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks).toHaveLength(1);
+        expect(tasks[0]!.claimedAgent?.threadId).toBe("thread-a");
+        expect(notes(tasks[0]!).some((note) => note.includes("[run run-b]"))).toBe(false);
+      }),
+    ),
+  );
+
+  it.effect("records failed and cancelled runs once each without completing the card", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-1"));
+        yield* log.handle(runEvent("thread-1", "run-1", "failed"));
+        yield* log.handle(runEvent("thread-1", "run-2", "cancelled"));
+        yield* log.handle(runEvent("thread-1", "run-1", "failed"));
+        const [task] = (yield* board.workspace([project])).tasks;
+        const history = notes(task!);
+        expect(history.filter((note) => note.includes("Run failed."))).toHaveLength(1);
+        expect(history.filter((note) => note.includes("Run cancelled."))).toHaveLength(1);
+        expect(task!.status).toBe("in_progress");
+      }),
+    ),
+  );
 });
