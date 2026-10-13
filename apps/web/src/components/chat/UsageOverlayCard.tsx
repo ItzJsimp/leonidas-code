@@ -1,5 +1,6 @@
 import type {
   EnvironmentId,
+  ModelSelection,
   ProviderInstanceId,
   ThreadId,
   UsageLimitsReport,
@@ -12,6 +13,8 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { useConnectedUsageAccounts } from "../../hooks/useConnectedUsageAccounts";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useUpdateClientSettings } from "../../hooks/useSettings";
+import { connectedBenchmarkCandidates } from "../../lib/modelBenchmarks";
+import type { ProviderInstanceEntry } from "../../providerInstances";
 import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import {
   accountTitle,
@@ -32,6 +35,7 @@ import { Button } from "../ui/button";
 import { barSegments } from "./ContextBreakdown.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
+import { UsageBenchmarks } from "./UsageBenchmarks";
 
 type Account = UsageLimitsReport["accounts"][number];
 
@@ -181,6 +185,8 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   modelLabel,
   effortLabel,
   contextWindow,
+  providerEntries,
+  onStartChat,
 }: {
   readonly environmentId: EnvironmentId;
   /** Null for drafts, which have no server-side context to break down yet. */
@@ -189,6 +195,9 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   readonly modelLabel: string;
   readonly effortLabel: string | null;
   readonly contextWindow: ContextWindowSnapshot | null;
+  readonly providerEntries: ReadonlyArray<ProviderInstanceEntry>;
+  /** Null when no project is active, which hides the row action. */
+  readonly onStartChat: ((selection: ModelSelection) => void) | null;
 }) {
   const navigate = useNavigate();
   const updateSettings = useUpdateClientSettings();
@@ -219,6 +228,10 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const primary = active[0] ?? null;
   const activeIds = useMemo(() => new Set(active.map((account) => account.id)), [active]);
   const accounts = useMemo(() => [...active, ...others], [active, others]);
+  const benchmarkCandidates = useMemo(
+    () => connectedBenchmarkCandidates(providerEntries),
+    [providerEntries],
+  );
 
   const freshness = limitsFreshness(
     accounts.map((account) => account.limits.checkedAt),
@@ -346,6 +359,12 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             No subscription account is linked to this chat's provider.
           </p>
         )}
+
+        <UsageBenchmarks
+          environmentId={environmentId}
+          candidates={benchmarkCandidates}
+          onStartChat={onStartChat}
+        />
 
         {freshness ? (
           <span

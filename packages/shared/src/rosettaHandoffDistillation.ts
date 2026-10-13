@@ -55,10 +55,13 @@ function uniqueLatest(
   return reverseCopy(selected);
 }
 
-function extractReferencedPaths(messages: readonly OrchestrationV2HistoricalMessage[]): readonly string[] {
+function extractReferencedPaths(
+  messages: readonly OrchestrationV2HistoricalMessage[],
+): readonly string[] {
   const seen = new Set<string>();
   const paths: string[] = [];
-  const pathRegex = /(?:[A-Za-z]:[/\\]|(?:\/|\.{1,2}\/))[\w.-]+(?:[/\\][\w.-]+)*\.[A-Za-z0-9_-]+|`([^`]+\.[A-Za-z0-9_-]+)`/g;
+  const pathRegex =
+    /(?:[A-Za-z]:[/\\]|(?:\/|\.{1,2}\/))[\w.-]+(?:[/\\][\w.-]+)*\.[A-Za-z0-9_-]+|`([^`]+\.[A-Za-z0-9_-]+)`/g;
   for (const message of messages) {
     let match: RegExpExecArray | null;
     while ((match = pathRegex.exec(message.text)) !== null) {
@@ -93,6 +96,36 @@ function immediateNextStep(messages: readonly OrchestrationV2HistoricalMessage[]
 function failedCommand(message: OrchestrationV2HistoricalMessage): boolean {
   const exitCode = /(?:^|\n)Exit code: (-?\d+)/.exec(message.text)?.[1];
   return message.kind === "error" || (exitCode !== undefined && exitCode !== "0");
+}
+
+const VERIFY_COMMAND = /\b(test|vitest|typecheck|tsc|lint|check|build)\b/i;
+
+/** Short note for the next agent: objective, branch, files, last passing check, next step. */
+export function handoffNote(
+  messages: readonly OrchestrationV2HistoricalMessage[],
+  branch: string | null | undefined,
+): string {
+  const objective = messages.find((message) => message.role === "user");
+  const files = uniqueLatest(messages, "file_change", 5).map((message) =>
+    compactText(message.text.replace(/^File change: /, ""), 120),
+  );
+  const verified = messages
+    .findLast(
+      (message) =>
+        message.kind === "command_execution" &&
+        /(?:^|\n)Exit code: 0\b/.test(message.text) &&
+        VERIFY_COMMAND.test(message.text),
+    )
+    ?.text.split("\n")[0];
+  const next = immediateNextStep(messages).replace(/^- /, "");
+  return [
+    "## Handoff note",
+    `- Objective: ${objective === undefined ? "recover it from the source thread" : compactText(objective.text, 200)}`,
+    `- Branch: ${branch ?? "unknown"}`,
+    `- Files edited (git status not checked): ${files.length === 0 ? "none" : files.join(", ")}`,
+    `- Last verified: ${verified === undefined ? "nothing passing in the selected history" : compactText(verified, 160)}`,
+    `- Next step: ${compactText(next, 300)}`,
+  ].join("\n");
 }
 
 export function distillRosettaHandoff(input: RosettaHandoffInput): RosettaHandoffEnvelope {

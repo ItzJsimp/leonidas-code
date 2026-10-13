@@ -1526,6 +1526,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                 },
                 runs: projection.runs,
                 strategy: handoffStrategy,
+                branch: projection.thread.branch,
                 items: [
                   ...(needsFullContext && latestCompletedRun !== undefined
                     ? legacyImportItems
@@ -4389,6 +4390,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
             coveredRunOrdinals: { from: 1, to: targetRun.ordinal },
             strategy: "full_thread_summary",
             items: yield* readHandoffItems(input.command.threadId),
+            branch: input.projection.thread.branch,
             runs: input.projection.runs,
             createdAt: now,
           })
@@ -6055,6 +6057,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                     : "delta_since_target_last_seen",
                 items: providerSwitchItems,
                 runs: projection.runs,
+                branch: projection.thread.branch,
                 createdAt: now,
               })
               .pipe(

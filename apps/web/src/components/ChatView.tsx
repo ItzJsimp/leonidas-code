@@ -2627,7 +2627,7 @@ export default function ChatView(props: ChatViewProps) {
   const handleNewThreadInActiveProject = useCallback(() => {
     startNewThreadForProject(activeProjectRef, handleNewThread);
   }, [activeProjectRef, handleNewThread]);
-  // The Benchmarks tab starts a chat preset to the model and effort picked there.
+  // The usage card's benchmark rows start a chat preset to the model and effort picked there.
   const handleNewThreadWithModel = useCallback(
     (modelSelection: ModelSelection) => {
       if (activeProjectRef === null) return;
@@ -11820,6 +11820,8 @@ export default function ChatView(props: ChatViewProps) {
               modelLabel={providerSubagentModelLabel}
               effortLabel={providerSubagentEffortLabel}
               contextWindow={headerContextWindow}
+              providerEntries={providerInstanceEntries}
+              onStartChat={activeProjectRef === null ? null : handleNewThreadWithModel}
             />
           ) : null}
           {/* Chat column */}
