@@ -1,4 +1,9 @@
 import { makeAssistantStreamingFilter } from "./assistantStreaming.ts";
+import {
+  perfRunFinished,
+  perfRunFirstOutput,
+  perfRunStarted,
+} from "../diagnostics/AgentTurnPerf.ts";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import {
   isOrchestrationV2WorkActive,
@@ -606,6 +611,12 @@ export const layer: Layer.Layer<
         };
         const shouldFinalizeRun =
           input.shouldFinalizeRun === undefined ? true : yield* input.shouldFinalizeRun();
+        if (shouldFinalizeRun) {
+          perfRunFinished(input.run.id, input.terminal.status, {
+            model: String(input.run.modelSelection.model),
+            provider: String(input.run.modelSelection.instanceId),
+          });
+        }
         if (!shouldFinalizeRun) {
           // Superseded attempt (steer / selection restart). Emit
           // run_interrupt_result only when hard Stop left an unpaired request
@@ -822,6 +833,7 @@ export const layer: Layer.Layer<
     return RunExecutionServiceV2.of({
       startRootRun: (input) =>
         Effect.gen(function* () {
+          perfRunStarted(input.run.id);
           // Startup failure and stream shutdown can report the same attempt.
           const refreshAfterTurn = yield* Effect.cached(
             finalizationObserver.refreshAfterTurn(input.appThread.projectId).pipe(
@@ -1031,6 +1043,13 @@ export const layer: Layer.Layer<
           ) =>
             Effect.gen(function* () {
               const routing = yield* Ref.get(eventRouting);
+              if (
+                event.type === "turn_item.updated" &&
+                event.turnItem.runId === input.run.id &&
+                (event.turnItem.type === "assistant_message" || event.turnItem.type === "reasoning")
+              ) {
+                perfRunFirstOutput(input.run.id);
+              }
               if (event.type === "provider_turn.updated") {
                 const isRoot =
                   event.providerTurn.runAttemptId === input.attempt.id ||
