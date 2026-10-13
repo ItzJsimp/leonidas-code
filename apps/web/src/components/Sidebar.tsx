@@ -5524,7 +5524,6 @@ export default function Sidebar() {
                             environmentId={thread.environmentId}
                             disabled={
                               renamingThreadKey === threadKey ||
-                              section === "working" ||
                               !draggableThreadKeys.has(threadKey) ||
                               optimisticDrop !== null
                             }
