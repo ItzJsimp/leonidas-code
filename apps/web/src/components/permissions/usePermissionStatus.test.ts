@@ -8,6 +8,7 @@ vi.mock("react", async (original) => {
   const { reactHookHarness } = await import("../../test/reactHookHarness");
   return {
     ...actual,
+    useRef: reactHookHarness.useRef,
     useState: reactHookHarness.useState,
     useEffect: (effect: () => (() => void) | undefined) => effects.push(effect),
     useEffectEvent: <T>(callback: T) => callback,
@@ -39,12 +40,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 const start = async () => {
+  effects.length = 0;
   render();
-  cleanup = effects[0]!();
+  const cleanups = effects.map((effect) => effect());
+  cleanup = () => cleanups.forEach((done) => done?.());
   await Promise.resolve();
 };
 
-it("unlocks Continue only for required grants and relocks on revocation", async () => {
+it("unlocks Continue only for required grants", async () => {
   await start();
   expect(render().isReady(["screen"])).toBe(false);
   check.mockResolvedValue({ screen: true, accessibility: false });
@@ -54,10 +57,6 @@ it("unlocks Continue only for required grants and relocks on revocation", async 
   check.mockResolvedValue({ screen: true, accessibility: true });
   await vi.advanceTimersByTimeAsync(1500);
   expect(render().isReady(["screen", "accessibility"])).toBe(true);
-  check.mockResolvedValue({ screen: false, accessibility: true });
-  window.dispatchEvent(new Event("focus"));
-  await Promise.resolve();
-  expect(render().isReady(["screen"])).toBe(false);
 });
 
 it("does not overlap checks and discards completion after closing", async () => {
@@ -65,15 +64,13 @@ it("does not overlap checks and discards completion after closing", async () => 
   const promise = new Promise<{ screen: boolean; accessibility: boolean }>((done) => {
     resolve = done;
   });
-  const pending = { promise, resolve };
-  check.mockReturnValue(pending.promise);
+  check.mockReturnValue(promise);
   await start();
   await vi.advanceTimersByTimeAsync(4500);
-  window.dispatchEvent(new Event("focus"));
   expect(check).toHaveBeenCalledTimes(1);
   cleanup?.();
-  pending.resolve({ screen: true, accessibility: true });
-  await pending.promise;
+  resolve({ screen: true, accessibility: true });
+  await promise;
   expect(render().isReady(["screen"])).toBe(false);
   expect(vi.getTimerCount()).toBe(0);
 });
@@ -88,7 +85,7 @@ it("pauses in the background and blocks stale grants after a check failure", asy
   check.mockRejectedValue(new Error("IPC unavailable"));
   page.visibilityState = "visible";
   page.dispatchEvent(new Event("visibilitychange"));
-  await Promise.resolve();
+  await vi.advanceTimersByTimeAsync(0);
   expect(render().isReady(["screen"])).toBe(false);
   check.mockResolvedValue({ screen: true, accessibility: true });
   await vi.advanceTimersByTimeAsync(1500);

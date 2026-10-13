@@ -1,4 +1,5 @@
 import { ThreadFindTimelineContext } from "./ThreadFindProvider";
+import { liveBackgroundCommandIds } from "./backgroundCommands";
 import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/markdownPipeline";
 import { MarkdownFindContext, useFindRevealRef } from "./markdownFindContext";
 import { ComputerUseAppIcon } from "~/components/Icons";
@@ -187,6 +188,7 @@ import {
 } from "./timelineScrollAnchoring";
 import { MessageCaptureButton } from "./MessageCaptureButton";
 import { MessageCopyButton } from "./MessageCopyButton";
+import { signInCommandForFailure } from "./signInAgain";
 import { RunIdentityTag } from "./RunIdentityTag";
 import { resolveRunIdentity } from "./runIdentity.logic";
 import { PierreEntryIcon } from "./PierreEntryIcon";
@@ -3179,8 +3181,11 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
   const presentation = v2EventPresentation(item);
   const Icon = presentation.icon;
   if (item.type === "error") {
+    const signInCommand =
+      item.status === "failed" ? signInCommandForFailure(item.failure.message) : null;
     return (
       <details
+        open={signInCommand !== null || undefined}
         className={cn(
           "group rounded-md border",
           presentation.tone === "warning" && "border-warning/25 bg-warning/5",
@@ -3235,6 +3240,19 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
                 skills={ctx.skills}
                 lineBreaks
               />
+            </div>
+          ) : null}
+          {signInCommand !== null ? (
+            <div className="mt-2 grid gap-1.5 text-xs">
+              <p className="font-medium text-foreground/90">
+                Sign in again in a terminal, then send your message again.
+              </p>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded bg-muted px-2 py-1 font-mono text-3xs">
+                  {signInCommand}
+                </code>
+                <MessageCopyButton text={signInCommand} size="icon-xs" variant="ghost" />
+              </div>
             </div>
           ) : null}
           {visibility === "inherited" ? (
@@ -5464,6 +5482,40 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: WorkEntryRowP
   );
 });
 
+/**
+ * A backgrounded command settles as completed the moment it launches. While
+ * the provider still lists it as running, this chip shows it is alive.
+ */
+function BackgroundCommandTimer({
+  item,
+  startedAt,
+}: {
+  item: OrchestrationV2TurnItem;
+  startedAt: string;
+}) {
+  const ctx = use(TimelineRowCtx);
+  const liveIds = useAtomValue(
+    environmentThreadDetails.threadAtom(
+      scopeThreadRef(ctx.activeThreadEnvironmentId, item.threadId),
+    ),
+    (thread) =>
+      thread === null || thread === undefined
+        ? ""
+        : liveBackgroundCommandIds(
+            thread.projection.turnItems.map(({ item: turnItem }) => turnItem),
+            thread.projection.providerThreads.flatMap(
+              (providerThread) => providerThread.pendingBackgroundTasks ?? [],
+            ),
+          ).join("\n"),
+  );
+  if (!liveIds.split("\n").includes(item.id)) return null;
+  return (
+    <span className="shrink-0 text-xs text-muted-foreground">
+      Running <WorkingTimer createdAt={startedAt} />
+    </span>
+  );
+}
+
 function WorkEntryLogRow(props: WorkEntryRowProps) {
   const { workEntry, workspaceRoot, displayLabel } = props;
   const ctx = use(TimelineRowCtx);
@@ -5784,6 +5836,14 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
           !showDestructiveRowStyle &&
           !toolIconAcceptsTint(entryIconName, entryToolIcon) ? (
             <XIcon aria-hidden className={cn("size-3 shrink-0", failedToolIconClassName)} />
+          ) : null}
+          {workEntry.projectedItem?.item.type === "command_execution" &&
+          workEntry.projectedItem.item.status === "completed" &&
+          workEntry.projectedItem.item.output !== undefined ? (
+            <BackgroundCommandTimer
+              item={workEntry.projectedItem.item}
+              startedAt={workEntry.createdAt}
+            />
           ) : null}
           <TimelineRowTimestamp createdAt={workEntry.createdAt} timestampFormat={timestampFormat} />
           <span

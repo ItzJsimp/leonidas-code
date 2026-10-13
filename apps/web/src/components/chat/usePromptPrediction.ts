@@ -16,6 +16,7 @@ import { connectionAtomRuntime } from "../../connection/runtime";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useAtomQueryRunner } from "../../state/use-atom-query-runner";
 import { randomUUID } from "../../lib/utils";
+import { useLiveRefresh } from "~/hooks/useLiveRefresh";
 
 const EMPTY_CANDIDATES: readonly PromptCandidate[] = [];
 const query = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
@@ -93,36 +94,34 @@ export function usePromptPrediction(
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
   const run = useAtomQueryRunner(query, { reportFailure: false, refresh: true });
+  const inFlight = useRef<string | null>(null);
+  // Results carry their environment and cwd, so a read that finishes after a switch is ignored below.
+  const refreshCandidates = () => {
+    if (!cwd) return;
+    const requestKey = `${environmentId}\n${cwd}`;
+    if (inFlight.current === requestKey) return;
+    inFlight.current = requestKey;
+    run({ environmentId, input: { cwd } })
+      .then((value) =>
+        setResult({
+          environmentId,
+          cwd,
+          candidates: value._tag === "Success" ? value.value : [],
+        }),
+      )
+      .catch(() => setResult({ environmentId, cwd, candidates: [] }))
+      .finally(() => {
+        if (inFlight.current === requestKey) inFlight.current = null;
+      });
+  };
   useEffect(() => {
-    if (!cwd || !visible) return;
-    let active = true;
-    let pending = false;
-    const refresh = async () => {
-      if (pending) return;
-      pending = true;
-      try {
-        const value = await run({ environmentId, input: { cwd } });
-        if (active)
-          setResult({
-            environmentId,
-            cwd,
-            candidates: value._tag === "Success" ? value.value : [],
-          });
-      } catch {
-        if (active) setResult({ environmentId, cwd, candidates: [] });
-      } finally {
-        pending = false;
-      }
-    };
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), 30_000);
-    window.addEventListener("focus", refresh);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [cwd, environmentId, run, visible]);
+    if (cwd && visible) refreshCandidates();
+  }, [cwd, environmentId, run]);
+  useLiveRefresh(refreshCandidates, {
+    enabled: Boolean(cwd),
+    key: `${environmentId}\n${cwd}`,
+    intervalMs: 30_000,
+  });
 
   const history =
     result?.environmentId === environmentId && result.cwd === cwd

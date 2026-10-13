@@ -93,7 +93,9 @@ export function PreviewDevCopyCard({ threadRef, onOpenUrl }: Props) {
         ? "Running. Click to open, then use the picker to send an element to the chat."
         : state.status === "failed"
           ? (state.message ?? "Could not start. Click to try again.")
-          : "Starts a separate copy so you can change it without touching this app.";
+          : state.command != null
+            ? `Starts this project's dev server (${state.command}), then opens it here.`
+            : "Starts a separate copy so you can change it without touching this app.";
 
   const showStop = state.status !== "stopped";
 
