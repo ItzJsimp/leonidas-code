@@ -1,10 +1,7 @@
 import type {
   ModelSelection,
-  ProviderInstanceId,
-  ServerProvider,
   ServerProviderModel,
   ServerProviderUsageWindow,
-  UsageLimitSourceSnapshots,
 } from "@t3tools/contracts";
 import { getProviderOptionCurrentValue, getProviderOptionDescriptors } from "@t3tools/shared/model";
 
@@ -187,39 +184,6 @@ export function withKnownContextWindow(
     cost: null,
     updatedAt: new Date(0).toISOString(),
   };
-}
-
-/**
- * Highest usage across the provider's own windows and any hub accounts for
- * the same driver, or null when nothing reports. Cheap enough to run while
- * the popover is closed so the trigger can carry the warning colour.
- */
-export function peakUsedPercent(
-  instanceId: ProviderInstanceId,
-  providers: readonly ServerProvider[],
-  sources: UsageLimitSourceSnapshots,
-): number | null {
-  const selected = providers.find((provider) => provider.instanceId === instanceId);
-  if (!selected) return null;
-  let peak: number | null = null;
-  const take = (windows: ReadonlyArray<ServerProviderUsageWindow> | undefined) => {
-    for (const window of windows ?? []) {
-      peak = Math.max(peak ?? 0, window.usedPercent);
-    }
-  };
-  for (const provider of providers) {
-    if (provider.driver === selected.driver && !provider.usageLimits?.unavailable) {
-      take(provider.usageLimits?.windows);
-    }
-  }
-  for (const source of sources) {
-    for (const account of source.accounts) {
-      if (account.driver === selected.driver && !account.usageLimits.unavailable) {
-        take(account.usageLimits.windows);
-      }
-    }
-  }
-  return peak;
 }
 
 /** `38% used` or `62% left`: the word is always spelled out so a newcomer never guesses. */
