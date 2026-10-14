@@ -186,7 +186,7 @@ const PullRequestIdentity = {
   url: Schema.String,
 };
 
-export const LinkPullRequestResult = Schema.Struct({
+const LinkPullRequestResult = Schema.Struct({
   ...PullRequestIdentity,
   alreadyLinked: Schema.Boolean.annotate({
     description: "True when the pull request was linked to this thread before the call.",
@@ -194,7 +194,7 @@ export const LinkPullRequestResult = Schema.Struct({
 });
 export type LinkPullRequestResult = typeof LinkPullRequestResult.Type;
 
-export const UnlinkPullRequestResult = Schema.Struct({
+const UnlinkPullRequestResult = Schema.Struct({
   host: Schema.String,
   repository: Schema.String,
   number: Schema.Int,
@@ -204,7 +204,7 @@ export const UnlinkPullRequestResult = Schema.Struct({
 });
 export type UnlinkPullRequestResult = typeof UnlinkPullRequestResult.Type;
 
-export const WatchPullRequestResult = Schema.Struct({
+const WatchPullRequestResult = Schema.Struct({
   ...PullRequestIdentity,
   watching: Schema.Boolean.annotate({
     description: "Whether Leonidas Code now watches the pull request for this thread.",

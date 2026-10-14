@@ -261,7 +261,7 @@ const PreviewScrollTool = safeBrowserTool(
  * whole result when it is not. Wrapping keeps arrays, strings, numbers, and
  * null valid instead of failing only for non-object expressions.
  */
-export const PreviewEvaluateResult = Schema.Struct({
+const PreviewEvaluateResult = Schema.Struct({
   ...presentationFields,
   value: Schema.Unknown.annotate({
     description: "The JSON-serializable value the expression produced, or null.",

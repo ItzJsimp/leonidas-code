@@ -7,7 +7,7 @@ import { classifyTask, METERED_DRIVERS, routeTurn } from "@t3tools/shared/autoRo
  * failed on dead endpoints or rate limits, and the router's family scores
  * rate old 7B to 8B models above Haiku.
  */
-export const TESTED_FREE_LIGHT_MODELS = [
+const TESTED_FREE_LIGHT_MODELS = [
   "cohere/north-mini-code:free",
   "apodex/apodex-1.1-mini:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
