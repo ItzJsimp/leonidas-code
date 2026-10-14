@@ -518,6 +518,14 @@ export function readAiosTasks(
       try {
         const symlink = entry.isSymbolicLink();
         if (!symlink && !entry.isFile()) continue;
+        // Project task views link to global cards already seen; one readlink skips them without a realpath.
+        if (
+          symlink &&
+          seenFiles.has(
+            keyFor(NodePath.resolve(baseDir, NodeFS.readlinkSync(NodePath.join(baseDir, name)))),
+          )
+        )
+          continue;
         const file = symlink
           ? NodeFS.realpathSync.native(NodePath.join(baseDir, name))
           : NodePath.join(baseDir, name);
