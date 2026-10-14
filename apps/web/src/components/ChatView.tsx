@@ -1605,10 +1605,6 @@ function releaseChatTimelineAnchor<T extends { readonly messageId: MessageId | n
 const retryingWorkspacePreparationRunIds = new Set<RunId>();
 
 export default function ChatView(props: ChatViewProps) {
-  {
-    const p = ((globalThis as any).__perf ??= {});
-    p["ChatView"] = (p["ChatView"] ?? 0) + 1;
-  } // PERF-PROBE
   const {
     environmentId,
     threadId,
