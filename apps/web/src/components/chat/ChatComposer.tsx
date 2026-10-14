@@ -315,6 +315,7 @@ import {
 } from "./composerProviderState";
 import type { VelocitySummary } from "./AgentVelocityMeter.logic";
 import type { ComposerContextSlice } from "./composerContextSlice";
+import type { ComposerLayoutSlice } from "./composerLayout";
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import {
   providerSupportsManualCompaction,
@@ -1633,6 +1634,7 @@ export interface ChatComposerProps {
   context: ComposerContextSlice;
 
   // Misc
+  layout: ComposerLayoutSlice;
   resolvedTheme: "light" | "dark";
   settings: UnifiedSettings;
   keybindings: ResolvedKeybindingsConfig;
@@ -1641,19 +1643,6 @@ export interface ChatComposerProps {
   pullRequestProjectId: ProjectId | null;
   savedItemsProjectId: ProjectId | null;
   pullRequestRepository: string | null;
-  restingControlsHost: HTMLDivElement | null;
-  restingControlsHaveLeadingContext: boolean;
-  onRestingControlsVisibilityChange: (visible: boolean) => void;
-  getTimelineScrollableNode: () => HTMLElement | null;
-  isTimelineAtLogicalEnd: () => boolean;
-  /** Whether the timeline has more content than fits above the composer. */
-  timelineOverflows: boolean;
-  onComposerOverlayHeightChange: (height: number) => void;
-  /**
-   * Whether the desktop resting layout is active. Reported from a layout
-   * effect, so it is current before the chat view measures the overlay.
-   */
-  onRestingChange: (resting: boolean) => void;
 
   // Refs the parent needs kept in sync
   promptRef: React.RefObject<string>;
@@ -1661,9 +1650,6 @@ export interface ChatComposerProps {
   composerFilesRef: React.RefObject<ComposerFileAttachment[]>;
   composerTerminalContextsRef: React.RefObject<TerminalContextDraft[]>;
   composerRef: React.RefObject<ChatComposerHandle | null>;
-  onPageScrollKeyDown: (key: "PageUp" | "PageDown") => void;
-  onPageScrollKeyUp: (key: string) => void;
-  onPageScrollRelease: () => void;
 
   // Queued runs strip rendered above the composer (v2 queue/steer).
   queuedRunsControl?: ReactNode;
@@ -1769,6 +1755,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     runtimeMode,
     interactionMode: requestedInteractionMode,
     context,
+    layout,
     lockedProvider,
     providerStatuses,
     providerCatalogKnown,
@@ -1783,22 +1770,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     pullRequestProjectId,
     savedItemsProjectId,
     pullRequestRepository,
-    restingControlsHost,
-    restingControlsHaveLeadingContext,
-    onRestingControlsVisibilityChange,
-    getTimelineScrollableNode,
-    isTimelineAtLogicalEnd,
-    timelineOverflows,
-    onComposerOverlayHeightChange,
-    onRestingChange,
     promptRef,
     composerRef,
     composerImagesRef,
     composerFilesRef,
     composerTerminalContextsRef,
-    onPageScrollKeyDown,
-    onPageScrollKeyUp,
-    onPageScrollRelease,
     onSend,
     onResume,
     onInterrupt,
@@ -1823,6 +1799,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
   } = props;
+  const {
+    restingControlsHost,
+    restingControlsHaveLeadingContext,
+    onRestingControlsVisibilityChange,
+    getTimelineScrollableNode,
+    isTimelineAtLogicalEnd,
+    timelineOverflows,
+    onComposerOverlayHeightChange,
+    onRestingChange,
+    onPageScrollKeyDown,
+    onPageScrollKeyUp,
+    onPageScrollRelease,
+  } = layout;
   const {
     contextWindow: activeContextWindow,
     compactUnavailable: compactThreadUnavailable,

@@ -450,6 +450,7 @@ import { environmentShell } from "../state/shell";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { useComposerContextSlice } from "./chat/composerContextSlice";
+import type { ComposerLayoutSlice } from "./chat/composerLayout";
 import { createPageScrollController, type PageScrollKey } from "./chat/pageScrollController";
 import { isTimelineScrollTarget } from "./chat/timelineScrollTarget";
 import { DraftHeroHeadline } from "./chat/DraftHeroHeadline";
@@ -9070,6 +9071,20 @@ export default function ChatView(props: ChatViewProps) {
     if (compactDisabled) return;
     void sendStandaloneCommand("/compact", "Failed to compact context.");
   };
+  const composerLayout: ComposerLayoutSlice = {
+    restingControlsHost: restingComposerControlsHost,
+    restingControlsHaveLeadingContext:
+      mountComposerContextStrip && (isGitRepo || showComposerEnvironmentIndicator),
+    onRestingControlsVisibilityChange: setRestingComposerControlsVisible,
+    getTimelineScrollableNode: getTimelineScrollableNode,
+    isTimelineAtLogicalEnd: isTimelineAtLogicalEnd,
+    timelineOverflows: timelineOverflows,
+    onComposerOverlayHeightChange: publishComposerOverlayHeight,
+    onRestingChange: onComposerRestingChange,
+    onPageScrollKeyDown: onComposerPageScrollKeyDown,
+    onPageScrollKeyUp: onComposerPageScrollKeyUp,
+    onPageScrollRelease: onComposerPageScrollRelease,
+  };
   const composerContext = useComposerContextSlice({
     contextWindow: activeContextWindow,
     velocity: activeVelocitySummary,
@@ -12114,6 +12129,7 @@ export default function ChatView(props: ChatViewProps) {
                           ) : null}
                           {!composerMounted ? null : (
                             <ChatComposer
+                              layout={composerLayout}
                               context={composerContext}
                               canOperateThread={canOperateThread}
                               reportedModelSelection={reportedModelSelection}
@@ -12248,24 +12264,10 @@ export default function ChatView(props: ChatViewProps) {
                               pullRequestRepository={
                                 supportsPullRequests ? activeProjectRepository : null
                               }
-                              restingControlsHost={restingComposerControlsHost}
-                              restingControlsHaveLeadingContext={
-                                mountComposerContextStrip &&
-                                (isGitRepo || showComposerEnvironmentIndicator)
-                              }
-                              onRestingControlsVisibilityChange={setRestingComposerControlsVisible}
-                              getTimelineScrollableNode={getTimelineScrollableNode}
-                              isTimelineAtLogicalEnd={isTimelineAtLogicalEnd}
-                              timelineOverflows={timelineOverflows}
-                              onComposerOverlayHeightChange={publishComposerOverlayHeight}
-                              onRestingChange={onComposerRestingChange}
                               promptRef={promptRef}
                               composerImagesRef={composerImagesRef}
                               composerFilesRef={composerFilesRef}
                               composerTerminalContextsRef={composerTerminalContextsRef}
-                              onPageScrollKeyDown={onComposerPageScrollKeyDown}
-                              onPageScrollKeyUp={onComposerPageScrollKeyUp}
-                              onPageScrollRelease={onComposerPageScrollRelease}
                               onSend={onSend}
                               onResume={onResume}
                               onInterrupt={onInterrupt}
