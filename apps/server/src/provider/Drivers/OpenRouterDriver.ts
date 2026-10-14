@@ -112,7 +112,7 @@ const openRouterUsageFormat: TranscriptUsageFormat<void> = {
     asOpenRouter(claudeUsageFormat.parseProjected(projected, state)),
 };
 
-export const openRouterUsageReader: ProviderUsageReader<OpenRouterSettings, Path.Path> = {
+const openRouterUsageReader: ProviderUsageReader<OpenRouterSettings, Path.Path> = {
   kind: "transcripts",
   provider: "openrouter",
   format: openRouterUsageFormat,
