@@ -9,21 +9,20 @@ import { useMemo, useState } from "react";
 
 import {
   buildPoints,
+  availableEntries,
+  catalogEfforts,
   columnBests,
   defaultXMetric,
   headlineScoreMetrics,
   isLogMetric,
+  matchesEffort,
   paretoFrontier,
   scaleValue,
   sortEntries,
   type ExplorerPoint,
   type ExplorerSort,
 } from "../../lib/benchmarkExplorer";
-import {
-  benchmarkQueries,
-  formatBenchmarkValue,
-  type BenchmarkCandidate,
-} from "../../lib/modelBenchmarks";
+import { formatBenchmarkValue, type BenchmarkCandidate } from "../../lib/modelBenchmarks";
 import { cn } from "../../lib/utils";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
@@ -296,8 +295,8 @@ function ModelPicker({
             onChange={(event) => setSearch(event.target.value)}
           />
           <div className="flex gap-1 text-2xs">
-            {preset("Top + yours", onReset)}
-            {preset("Yours", () => onChange(new Set(connectedKeys)))}
+            {preset("Top + available", onReset)}
+            {preset("Available", () => onChange(new Set(connectedKeys)))}
             {preset("All", () => onChange(new Set(entries.map((entry) => entry.sourceModelKey))))}
             {preset("None", () => onChange(new Set()))}
           </div>
@@ -317,9 +316,7 @@ function ModelPicker({
                       }}
                     />
                     <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-                    {connectedKeys.has(key) ? (
-                      <span className="text-2xs text-muted-foreground">yours</span>
-                    ) : null}
+                    {connectedKeys.has(key) ? <AvailableBadge /> : null}
                   </label>
                 </li>
               );
@@ -328,6 +325,14 @@ function ModelPicker({
         </div>
       </PopoverPopup>
     </Popover>
+  );
+}
+
+function AvailableBadge() {
+  return (
+    <span className="shrink-0 rounded-full bg-success/12 px-1.5 text-2xs font-medium text-success">
+      Available
+    </span>
   );
 }
 
@@ -348,12 +353,6 @@ function ExplorerBody({
   const catalogQuery = useEnvironmentQuery(
     serverEnvironment.modelBenchmarkCatalog({ environmentId, input: {} }),
   );
-  const models = useMemo(() => benchmarkQueries(candidates), [candidates]);
-  const connectedQuery = useEnvironmentQuery(
-    models.length === 0
-      ? null
-      : serverEnvironment.modelBenchmarks({ environmentId, input: { models } }),
-  );
   const catalog = catalogQuery.data;
 
   const [view, setView] = useState<"chart" | "table">("chart");
@@ -363,22 +362,17 @@ function ExplorerBody({
   const [pinned, setPinned] = useState<string | null>(null);
   const hovered = hoveredRaw ?? pinned;
   const [picked, setPicked] = useState<Set<string> | null>(null);
+  const [effort, setEffort] = useState("all");
   const [sort, setSort] = useState<ExplorerSort>({ key: "y", direction: "desc" });
 
-  /** Source model key to the candidate the user can start a chat with. */
+  /** Source model key to the candidate a "New chat" starts; matched locally, so no provider is cut off. */
   const connected = useMemo(() => {
     const byKey = new Map<string, BenchmarkCandidate>();
-    for (const row of connectedQuery.data?.rows ?? []) {
-      const match = row.matches[0]?.entry;
-      const candidate = candidates.find(
-        (item) =>
-          item.query.modelId === row.query.modelId && item.query.effort === row.query.effort,
-      );
-      if (match && candidate && !byKey.has(match.sourceModelKey))
-        byKey.set(match.sourceModelKey, candidate);
+    for (const [key, list] of availableEntries(catalog?.entries ?? [], candidates)) {
+      if (list[0]) byKey.set(key, list[0]);
     }
     return byKey;
-  }, [connectedQuery.data, candidates]);
+  }, [catalog, candidates]);
   const connectedKeys = useMemo(() => new Set(connected.keys()), [connected]);
 
   const metrics = useMemo(() => catalog?.metrics ?? [], [catalog]);
@@ -408,7 +402,11 @@ function ExplorerBody({
     return index >= 0 && index < CREATOR_COLORS.length ? CREATOR_COLORS[index]! : OTHER_COLOR;
   };
 
-  const entries = useMemo(() => catalog?.entries ?? [], [catalog]);
+  const efforts = useMemo(() => catalogEfforts(catalog?.entries ?? []), [catalog]);
+  const entries = useMemo(
+    () => (catalog?.entries ?? []).filter((entry) => matchesEffort(entry, effort)),
+    [catalog, effort],
+  );
   // Default view: the models you can run plus the strongest few, like AA's curated chart.
   const selected = useMemo(() => {
     if (picked) return picked;
@@ -461,13 +459,13 @@ function ExplorerBody({
   const hoveredEntry = hovered
     ? visible.find((entry) => entry.sourceModelKey === hovered)
     : undefined;
-  const sortBy = (metric: ModelBenchmarkMetric | "name") => {
-    const key = metric === "name" ? "name" : metric.key;
+  const sortBy = (metric: ModelBenchmarkMetric | "name" | "effort") => {
+    const key = typeof metric === "string" ? metric : metric.key;
     if (sortKey === key) {
       setSort({ key, direction: sort.direction === "desc" ? "asc" : "desc" });
       return;
     }
-    const ascending = metric === "name" || !metric.higherIsBetter;
+    const ascending = typeof metric === "string" || !metric.higherIsBetter;
     setSort({ key, direction: ascending ? "asc" : "desc" });
   };
   const sortIcon = (key: string) =>
@@ -525,6 +523,27 @@ function ExplorerBody({
           connectedKeys={connectedKeys}
         />
       </div>
+      {efforts.length > 0 ? (
+        <div className="-mt-1 flex items-center gap-2">
+          <span className="text-2xs text-muted-foreground">Effort</span>
+          <Segmented
+            label="Effort"
+            value={effort}
+            options={[
+              { id: "all", label: "All" },
+              { id: "default", label: "Default" },
+              ...efforts.map((id) => ({
+                id,
+                label: id === "xhigh" ? "XHigh" : id[0]!.toUpperCase() + id.slice(1),
+              })),
+            ]}
+            onChange={(next) => {
+              setEffort(next);
+              setPicked(null);
+            }}
+          />
+        </div>
+      ) : null}
       <div className="-mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label="Score">
         {headline.map((metric) => (
           <button
@@ -586,7 +605,7 @@ function ExplorerBody({
           </div>
           <p className="-mt-1 text-2xs text-muted-foreground">
             Up and to the {xMetric.higherIsBetter ? "right" : "left"} is better. Dotted line: the
-            best score at each {xMetric.label.toLowerCase()}. Ringed dots are models you can run;
+            best score at each {xMetric.label.toLowerCase()}. Ringed dots are available to you;
             click a dot to pin it.
           </p>
         </>
@@ -608,6 +627,15 @@ function ExplorerBody({
                   onClick={() => sortBy("name")}
                 >
                   Model {sortIcon("name")}
+                </button>
+              </th>
+              <th className="px-2 py-1 text-left font-medium">
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground"
+                  onClick={() => sortBy("effort")}
+                >
+                  Effort {sortIcon("effort")}
                 </button>
               </th>
               {tableColumns.map((metric) => (
@@ -646,10 +674,11 @@ function ExplorerBody({
                         style={{ background: colorOf(entry) }}
                       />
                       <span className="truncate">{entry.name}</span>
-                      {connected.has(key) ? (
-                        <span className="shrink-0 text-2xs text-muted-foreground">yours</span>
-                      ) : null}
+                      {connected.has(key) ? <AvailableBadge /> : null}
                     </span>
+                  </td>
+                  <td className="px-2 py-1 text-muted-foreground capitalize">
+                    {entry.effort ?? "Default"}
                   </td>
                   {tableColumns.map((metric) => {
                     const value = entry.values[metric.key];

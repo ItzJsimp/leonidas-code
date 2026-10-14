@@ -1,4 +1,7 @@
 import type { ModelBenchmarkEntry, ModelBenchmarkMetric } from "@t3tools/contracts";
+import { indexBenchmarkEntries, matchBenchmarks } from "@t3tools/shared/modelBenchmarkMatch";
+
+import type { BenchmarkCandidate } from "./modelBenchmarks";
 
 /** One model plotted on two metrics. */
 export interface ExplorerPoint {
@@ -72,6 +75,8 @@ export function sortEntries(
   const direction = sort.direction === "asc" ? 1 : -1;
   return entries.toSorted((a, b) => {
     if (sort.key === "name") return direction * a.name.localeCompare(b.name);
+    if (sort.key === "effort")
+      return direction * (effortRank(a) - effortRank(b)) || a.name.localeCompare(b.name);
     const left = a.values[sort.key];
     const right = b.values[sort.key];
     if (left === undefined && right === undefined) return a.name.localeCompare(b.name);
@@ -114,4 +119,63 @@ export function columnBests(
     }
   }
   return bests;
+}
+
+const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
+
+/** Default (unsplit) runs sort first, then efforts from lightest to heaviest. */
+export const effortRank = (entry: ModelBenchmarkEntry) =>
+  entry.effort === undefined ? -1 : EFFORT_ORDER.indexOf(entry.effort);
+
+/** Efforts present in the catalog, lightest first. */
+export const catalogEfforts = (entries: ReadonlyArray<ModelBenchmarkEntry>) =>
+  [...new Set(entries.flatMap((entry) => (entry.effort ? [entry.effort] : [])))].toSorted(
+    (a, b) => EFFORT_ORDER.indexOf(a) - EFFORT_ORDER.indexOf(b),
+  );
+
+/** "default" keeps runs the source did not split by effort. */
+export const matchesEffort = (entry: ModelBenchmarkEntry, effort: string) =>
+  effort === "all" || (effort === "default" ? entry.effort === undefined : entry.effort === effort);
+
+const FALLBACK_EFFORTS: ReadonlyArray<string | undefined> = [
+  undefined,
+  "medium",
+  "high",
+  "low",
+  "xhigh",
+  "max",
+  "minimal",
+];
+
+/**
+ * Source model key to the runnable candidates it describes, matched locally
+ * against the whole catalog so no provider's list is ever truncated. A
+ * candidate whose effort the source measured is listed first.
+ */
+export function availableEntries(
+  entries: ReadonlyArray<ModelBenchmarkEntry>,
+  candidates: ReadonlyArray<BenchmarkCandidate>,
+): ReadonlyMap<string, ReadonlyArray<BenchmarkCandidate>> {
+  const index = indexBenchmarkEntries(entries);
+  const byKey = new Map<
+    string,
+    { measured: BenchmarkCandidate[]; fallback: BenchmarkCandidate[] }
+  >();
+  for (const candidate of candidates) {
+    for (const match of matchBenchmarks(candidate.query, index)) {
+      const key = match.entry.sourceModelKey;
+      const slot = byKey.get(key) ?? { measured: [], fallback: [] };
+      (match.effortMeasured ? slot.measured : slot.fallback).push(candidate);
+      byKey.set(key, slot);
+    }
+  }
+  // A default run says nothing about effort; start that chat on the provider's usual setting.
+  const fallbackRank = (candidate: BenchmarkCandidate) =>
+    FALLBACK_EFFORTS.indexOf(candidate.query.effort?.toLowerCase());
+  return new Map(
+    [...byKey].map(([key, slot]) => [
+      key,
+      [...slot.measured, ...slot.fallback.toSorted((a, b) => fallbackRank(a) - fallbackRank(b))],
+    ]),
+  );
 }

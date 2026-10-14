@@ -9,9 +9,6 @@ import { createModelSelection } from "@t3tools/shared/model";
 import { EFFORT_OPTION_IDS } from "../components/chat/runIdentity.logic";
 import { isProviderInstancePickerReady, type ProviderInstanceEntry } from "../providerInstances";
 
-/** The RPC accepts at most this many models per request. */
-const MAX_BENCHMARK_QUERIES = 200;
-
 /** One model and effort the user can start a chat with right now. */
 export interface BenchmarkCandidate {
   readonly key: string;
@@ -63,7 +60,7 @@ export function connectedBenchmarkCandidates(
           ...(effort ? { effort: effort.option.id } : {}),
         };
         const key = queryKey(query);
-        if (queries.has(key) || queries.size >= MAX_BENCHMARK_QUERIES) continue;
+        if (queries.has(key)) continue;
         queries.add(key);
         candidates.push({
           key: `${entry.instanceId}\u0000${key}`,

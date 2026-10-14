@@ -7,6 +7,7 @@
  *
  * @module ModelBenchmarks
  */
+import { indexBenchmarkEntries } from "@t3tools/shared/modelBenchmarkMatch";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -97,8 +98,8 @@ const make = Effect.gen(function* () {
   const report: ModelBenchmarks["Service"]["report"] = Effect.fn("ModelBenchmarks.report")(
     function* (queries) {
       yield* refreshLock.withPermits(1)(refresh);
-      const entries = cached?.parsed.entries ?? [];
-      const rows = queries.map((query) => ({ query, matches: matchBenchmarks(query, entries) }));
+      const index = indexBenchmarkEntries(cached?.parsed.entries ?? []);
+      const rows = queries.map((query) => ({ query, matches: matchBenchmarks(query, index) }));
       const usedKeys = new Set(
         rows.flatMap((row) => row.matches.flatMap((match) => Object.keys(match.entry.values))),
       );
