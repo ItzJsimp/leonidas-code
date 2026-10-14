@@ -1413,3 +1413,37 @@ it.effect("checkpoint capture records a moved submodule even when status ignores
     assert.include((yield* git(["ls-tree", checkpointRef, "--", "sub"])).stdout, moved);
   }).pipe(Effect.scoped, Effect.provide(layerGitContract)),
 );
+
+it.effect.each([
+  { indexState: "reused", statusRuns: 0 },
+  { indexState: "missing", statusRuns: 1 },
+] as const)(
+  "checkpoint runs the status pass only when the index is rebuilt (index=$indexState)",
+  ({ indexState, statusRuns }) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const liveProcess = yield* VcsProcess.VcsProcess;
+      const driver = yield* GitVcsDriver.makeVcsDriverShape();
+      const cwd = yield* fs.makeTempDirectoryScoped({ prefix: "t3-checkpoint-status-gate-" });
+      const { git, checkpointRef } = yield* makeCheckpointFixture(driver, cwd);
+      yield* git(["add", "."]);
+      yield* git(["commit", "-m", "fixture"]);
+      yield* fs.writeFileString(path.join(cwd, "file.txt"), "edited\n");
+      if (indexState === "missing") yield* fs.remove(path.join(cwd, ".git/index"));
+      let observed = 0;
+      const captureDriver = yield* GitVcsDriver.makeVcsDriverShape().pipe(
+        Effect.provideService(VcsProcess.VcsProcess, {
+          run: (input) => {
+            if (input.args.includes("status")) observed += 1;
+            return liveProcess.run(input);
+          },
+        }),
+      );
+
+      yield* captureDriver.checkpoints.captureCheckpoint({ cwd, checkpointRef });
+
+      assert.strictEqual(observed, statusRuns);
+      assert.strictEqual((yield* git(["show", `${checkpointRef}:file.txt`])).stdout, "edited\n");
+    }).pipe(Effect.scoped, Effect.provide(layerGitContract)),
+);

@@ -863,6 +863,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           });
           sparseCheckout = /--(?:\[no-\])?sparse\b/.test(`${help.stdout}${help.stderr}`);
         }
+        let reusedIndexStat = false;
         if (headExists) {
           const reusedIndex = yield* Effect.gen(function* () {
             const indexPath = yield* execute({
@@ -939,6 +940,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
             // Sparse Git clears skip-worktree for present files. Manual flags still need a reset.
             return !specialFlags;
           }).pipe(Effect.orElseSucceed(() => false));
+          reusedIndexStat = reusedIndex;
           if (!reusedIndex) {
             if (sparseCheckout) {
               const cone = yield* execute({
@@ -971,32 +973,35 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           }
         }
 
-        // The private index matches HEAD, so status lists exactly what differs from it. Stage
-        // those paths instead of re-walking the whole tree. Fsmonitor and the untracked cache
-        // stay off so a stale cache cannot hide a changed file.
-        const changed = yield* execute({
-          operation,
-          cwd: input.cwd,
-          args: [
-            ...indexConfig,
-            "-c",
-            "core.untrackedCache=false",
-            "status",
-            "--porcelain=v1",
-            "-z",
-            "--untracked-files=all",
-            "--ignore-submodules=none",
-            "--",
-            ".",
-          ],
-          env: commitEnv,
-          maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
-          outputMode: "truncate",
-          allowNonZeroExit: true,
-        });
-        // A failed or truncated status falls back to staging the whole tree.
+        // A rebuilt index has no stat data, so `add .` would rehash and freshen every tracked
+        // file. Status lists exactly what differs from HEAD, so stage only those paths. A reused
+        // index keeps its stat data and `add .` is already cheap, so skip the extra process.
+        // Fsmonitor and the untracked cache stay off so a stale cache cannot hide a changed file.
+        const changed = reusedIndexStat
+          ? undefined
+          : yield* execute({
+              operation,
+              cwd: input.cwd,
+              args: [
+                ...indexConfig,
+                "-c",
+                "core.untrackedCache=false",
+                "status",
+                "--porcelain=v1",
+                "-z",
+                "--untracked-files=all",
+                "--ignore-submodules=none",
+                "--",
+                ".",
+              ],
+              env: commitEnv,
+              maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
+              outputMode: "truncate",
+              allowNonZeroExit: true,
+            });
+        // No status pass, or a failed or truncated one, stages the whole tree.
         const changedPaths =
-          changed.exitCode !== 0 || changed.stdoutTruncated
+          changed === undefined || changed.exitCode !== 0 || changed.stdoutTruncated
             ? ["."]
             : checkpointStatusPaths(changed.stdout).map((entry) => `:(top,literal)${entry}`);
         const stageFiles = (exclusions: ReadonlyArray<string>) =>
