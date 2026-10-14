@@ -12,7 +12,7 @@ verified: 2026-10-11
 
 ## 1. Start here (under 5 calls)
 
-1. Read [`project/plan.md`](./project/plan.md), [`LEONIDAS.md`](./LEONIDAS.md) (the shared brief every builder's agent reads; keep its roadmap and status log in step with the task cards) and the open cards listed in [`project.md`](./project.md).
+1. Read [`project/plan.md`](./project/plan.md), [`LEONIDAS.md`](./LEONIDAS.md) (the shared brief; keep [project/roadmap.md](./project/roadmap.md) and the status log in step with the task cards) and the open cards listed in [`project.md`](./project.md).
 2. Fork state: `git fetch -q upstream; git rev-list --left-right --count upstream/main...main`.
 3. Open only the files the task names, using the map below. The source is this folder.
 

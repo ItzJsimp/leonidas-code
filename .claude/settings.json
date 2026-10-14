@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -File scripts/Sync-LeonidasSource.ps1 2>&1 | tail -n 3; pwsh -NoProfile -File scripts/Sync-ProjectTaskViews.ps1 -RepoPath ../.. -Project leonidas-code 2>&1 | tail -n 2; pwsh -NoProfile -File scripts/Install-NextAction.ps1 2>&1 | tail -n 3; pwsh -NoProfile -Command \"Start-Process pwsh -WindowStyle Hidden -ArgumentList '-NoProfile','-File','scripts/Write-BranchStatus.ps1'\"; exit 0",
+            "command": "pwsh -NoProfile -File scripts/Session-Start.ps1; exit 0",
             "timeout": 60
           }
         ]
