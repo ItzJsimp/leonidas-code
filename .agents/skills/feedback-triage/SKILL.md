@@ -13,7 +13,7 @@ Reports land as Issues in the private repo `ItzJsimp/leonidas-feedback` (filed b
 2. **Dedupe.** Search the feedback repo (`gh issue list -R ... --state all --search "<keywords>"`) and the open task board. If it repeats an earlier report, comment `Duplicate of #<n>`, add `duplicate`, remove `needs-triage`, close it as not planned, and move on. A new angle on an old report gets a comment on the old one instead.
 3. **Understand it.** Use the type (`bug`, `idea`, `suggestion`) and the context table (version, screen, provider, model, scrubbed last error). Find the code involved. Do not guess: if you cannot place it, say so.
 4. **Write one triage comment** on the issue: a one-line plain summary, the likely area (files), a rough size (tiny, small, large) and, for bugs, how likely it is a real defect versus a misunderstanding.
-5. **Create a task** on the Leonidas board (`board_task_create`) with a sanitized title and body. Never copy the reporter's name, install id or quoted text verbatim into a public place; the board and the public repo are not private.
+5. **Create a task** on the Leonidas board (`board_task_create`) with a sanitized title and body. In a headless run that tool is not available: skip this step, the private issue is the record. Never copy the reporter's name, install id or quoted text verbatim into a public place; the board and the public repo are not private.
 6. Relabel: remove `needs-triage`, add `triaged`.
 
 ## Drafting a fix (bugs only)
