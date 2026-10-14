@@ -1,5 +1,5 @@
 {
-  "description": "Install and verify the shared next-action skill when Code sessions start or resume.",
+  "description": "Shared session start (scripts/Session-Start.ps1) and push-complete signal.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,9 +7,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Start-NextActionSession.ps1')\"",
+            "command": "pwsh -NoProfile -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Session-Start.ps1') -Json\"",
             "timeout": 60,
-            "statusMessage": "Installing and verifying next action"
+            "statusMessage": "Syncing source, tasks and next action"
           }
         ]
       }

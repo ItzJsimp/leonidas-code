@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
+import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
 import { buildRuntimeInstructions } from "./runtimeInstructions.ts";
 
 describe("buildRuntimeInstructions", () => {
@@ -51,6 +52,15 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).toContain("### ⚡ Immediate Next Actions");
     expect(instructions).toContain("### ❓ Input & Decisions Needed");
     expect(instructions).toContain("</leonidas_output_standard>");
+  });
+});
+
+describe("efficient work rules", () => {
+  it("reach every harness and stay under 400 tokens", () => {
+    for (const harness of ["Codex", "Claude Code", "Cursor"]) {
+      expect(buildRuntimeInstructions({ harness })).toContain("<efficient_work>");
+    }
+    expect(Math.ceil(EFFICIENT_AGENT_RULES.length / 4)).toBeLessThanOrEqual(400);
   });
 });
 

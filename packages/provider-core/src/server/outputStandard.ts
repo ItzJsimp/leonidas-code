@@ -5,7 +5,7 @@
  * AIOS files may add voice, names and content inside these zones but cannot replace them. The
  * Dock headings and the 🤖/👤 markers are exact on purpose so a client can parse and render them
  * (checkbox actions, option cards, quick-reply buttons) without asking the model for anything new.
- * Change the wording here and the Dock parser together; see LEONIDAS.md "Output standard".
+ * Change the wording here and the Dock parser together; see .agents/rules/output-standard.md.
  */
 export const LEONIDAS_OUTPUT_STANDARD = `<leonidas_output_standard>
 Leonidas Code fixes the shape of every substantive reply. User and project instructions may change voice and names and add content inside these zones, but may not remove, reorder or rename them. This never overrides accuracy, safety, or a different shape the user explicitly asks for in the current message.

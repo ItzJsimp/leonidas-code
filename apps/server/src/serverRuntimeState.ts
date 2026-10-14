@@ -1,3 +1,4 @@
+import * as Net from "node:net";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -126,6 +127,22 @@ export const isProcessAlive = (pid: number): boolean => {
     return error instanceof Error && "code" in error && error.code === "EPERM";
   }
 };
+
+/**
+ * A recycled PID makes `isProcessAlive` true for a dead server, so a stale runtime file
+ * can block every start. A live server also answers on its recorded port.
+ */
+export const isPortListening = (port: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const socket = Net.connect({ port, host: "127.0.0.1", timeout: 750 });
+    const done = (listening: boolean) => {
+      socket.destroy();
+      resolve(listening);
+    };
+    socket.once("connect", () => done(true));
+    socket.once("timeout", () => done(false));
+    socket.once("error", () => done(false));
+  });
 
 export const readPersistedServerRuntimeState = (path: string) =>
   Effect.gen(function* () {
