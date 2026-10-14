@@ -1,4 +1,5 @@
 import * as SavedItems from "../savedItems/SavedItemService.ts";
+import { DelegatedTaskLedger, type DelegatedTaskLedgerEntry } from "./DelegatedTaskLedger.ts";
 import * as NodeURL from "node:url";
 import * as SavedItemExecution from "../savedItems/SavedItemExecution.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -524,6 +525,7 @@ describe("orchestrator MCP toolkit", () => {
         Effect.gen(function* () {
           const cwd = yield* checkpointWorkspace("orchestrator-mcp-toolkit");
           const capturedTurns = yield* Ref.make<ReadonlyArray<CapturedTurn>>([]);
+          const ledgerEntries: Array<DelegatedTaskLedgerEntry> = [];
           const parentTerminalGates = new Map<ThreadId, Deferred.Deferred<void>>();
           const deliveryTerminalGates = new Map<ThreadId, Deferred.Deferred<void>>();
           const layerRegistry = ProviderAdapterRegistry.layerFromAdapters([
@@ -709,6 +711,16 @@ describe("orchestrator MCP toolkit", () => {
               ),
             ),
             Layer.provide(NodeServices.layer),
+            // Built first, so the orchestrator finds the optional ledger in its context.
+            Layer.provideMerge(
+              Layer.succeed(
+                DelegatedTaskLedger,
+                DelegatedTaskLedger.of({
+                  record: (entry) => Effect.sync(() => void ledgerEntries.push(entry)),
+                  summarize: () => Effect.succeed([]),
+                }),
+              ),
+            ),
           );
 
           yield* Effect.gen(function* () {
@@ -1812,6 +1824,15 @@ describe("orchestrator MCP toolkit", () => {
             });
             expect(delegatedStatus.resultContextTransferId).not.toBeNull();
             expect(delegatedStatus.latestTerminalResultContextTransferId).not.toBeNull();
+
+            // The ledger records the terminal task read once, keyed by task id.
+            const ledgerEntry = ledgerEntries.find((entry) => entry.taskId === delegated.taskId);
+            expect(ledgerEntry).toMatchObject({
+              status: "completed",
+              childThreadId: delegated.childThreadId,
+              parentThreadId,
+            });
+            expect(ledgerEntry?.usage.runCount).toBeGreaterThan(0);
 
             // Wait-mode completion already returned its result while the parent was live.
             yield* expectOffersToStay(0);
