@@ -15,7 +15,7 @@ const MAX_DETAIL_STRING_BYTES = 32_768;
 const MAX_DYNAMIC_VALUE_BYTES = 16_384;
 const MAX_ON_DEMAND_BYTES = 256 * 1024;
 
-export function truncateDetail(
+function truncateDetail(
   value: string | undefined,
   maxBytes = MAX_DETAIL_STRING_BYTES,
 ): string | undefined {

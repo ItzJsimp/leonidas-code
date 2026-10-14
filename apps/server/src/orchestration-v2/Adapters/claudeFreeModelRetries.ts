@@ -5,7 +5,7 @@ import type { OrchestrationV2AppThread } from "@t3tools/contracts";
  * off for about three minutes on a rate limit before failing; a delegated task
  * has a subscription fallback that answers in seconds, so failing fast wins.
  */
-export const DELEGATED_FREE_MODEL_MAX_RETRIES = "2";
+const DELEGATED_FREE_MODEL_MAX_RETRIES = "2";
 
 /**
  * The environment for one Claude turn: delegated children on free models

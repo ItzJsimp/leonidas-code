@@ -61,7 +61,7 @@ const busyTurnKey = (providerThreadId: ProviderThreadId, runOrdinal: number) =>
   `${busyTurnPrefix(providerThreadId)}${runOrdinal}`;
 const UNLOAD_THREAD_TIMEOUT_MS = 10 * 1000;
 
-export const ProviderSessionReleaseReason = Schema.Literals([
+const ProviderSessionReleaseReason = Schema.Literals([
   "idle_timeout",
   "runtime_error",
   "manual_shutdown",

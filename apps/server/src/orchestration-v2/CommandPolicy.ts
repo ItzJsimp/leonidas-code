@@ -15,7 +15,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
-export const MessageDispatchDecisionV2 = Schema.Union([
+const MessageDispatchDecisionV2 = Schema.Union([
   Schema.Struct({
     type: Schema.Literal("start_run"),
     modelSelection: ModelSelection,
@@ -45,7 +45,7 @@ export type MessageDispatchDecisionV2 = typeof MessageDispatchDecisionV2.Type;
 export const SteeringExecutionPolicyV2 = Schema.Literals(["active_steering", "interrupt_restart"]);
 export type SteeringExecutionPolicyV2 = typeof SteeringExecutionPolicyV2.Type;
 
-export const ForkExecutionPolicyV2 = Schema.Literals(["native_fork", "portable_context"]);
+const ForkExecutionPolicyV2 = Schema.Literals(["native_fork", "portable_context"]);
 export type ForkExecutionPolicyV2 = typeof ForkExecutionPolicyV2.Type;
 
 export const CommandPolicyCapability = Schema.Literals([

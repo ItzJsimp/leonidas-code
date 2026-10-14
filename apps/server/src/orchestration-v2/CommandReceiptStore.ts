@@ -43,7 +43,7 @@ export type CommandReceiptStoreV2Error = typeof CommandReceiptStoreV2Error.Type;
 /**
  * SERVICE DEFINITION
  */
-export const CommandReceiptV2Status = Schema.Literals(["accepted", "rejected"]);
+const CommandReceiptV2Status = Schema.Literals(["accepted", "rejected"]);
 export type CommandReceiptV2Status = typeof CommandReceiptV2Status.Type;
 
 export const CommandReceiptV2 = Schema.Struct({

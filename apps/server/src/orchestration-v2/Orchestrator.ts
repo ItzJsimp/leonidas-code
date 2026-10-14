@@ -582,7 +582,7 @@ function delegatedCompletionWakeDetail(taskIds: ReadonlyArray<string>): string {
 const DELEGATED_FALLBACK_FAILURE_CLASSES: ReadonlySet<OrchestrationV2ProviderFailureClass> =
   new Set(["usage_limit", "provider_error", "transport_error"]);
 
-export const delegatedFallbackEffectId = (runId: RunId) => `effect:delegated-fallback:${runId}`;
+const delegatedFallbackEffectId = (runId: RunId) => `effect:delegated-fallback:${runId}`;
 
 function isTerminalDelegatedTaskStatus(status: OrchestrationV2Subagent["status"]): boolean {
   return (
