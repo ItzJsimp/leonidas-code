@@ -138,7 +138,23 @@ export interface TraceSinkOptions {
   readonly maxBytes: number;
   readonly maxFiles: number;
   readonly batchWindowMs: number;
+  /**
+   * Successful spans shorter than this, with no events, are counted per name
+   * instead of written. A `trace-drop-summary` line keeps the counts, at most
+   * once per minute. Most spans are sub-millisecond, so this keeps far more
+   * history in the same rotated files. Unset or 0 writes every span.
+   */
+  readonly minDurationMs?: number;
   readonly onFlush?: (stats: TraceSinkFlushStats) => Effect.Effect<void>;
+}
+
+const DROP_SUMMARY_INTERVAL_MS = 60_000;
+
+function isDroppableTraceRecord(record: TraceRecord, minDurationMs: number): boolean {
+  if (record.durationMs >= minDurationMs || record.events.length > 0) return false;
+  return record.type === "effect-span"
+    ? record.exit._tag === "Success"
+    : record.status?.code !== "2";
 }
 
 export interface TraceSinkFlushStats {
@@ -372,6 +388,30 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
   });
 
   let buffer: Array<string> = [];
+  const minDurationMs = options.minDurationMs ?? 0;
+  let fastSpanCounts = new Map<string, number>();
+  // Wall clock from the monotonic timer: push and flush run outside the Effect clock.
+  const wallClockMs = () => Math.round(performance.timeOrigin + performance.now());
+  let fastSpanWindowStartMs = wallClockMs();
+  const pushFastSpanSummary = (force: boolean) => {
+    const now = wallClockMs();
+    if (fastSpanCounts.size === 0) {
+      fastSpanWindowStartMs = now;
+      return;
+    }
+    if (!force && now - fastSpanWindowStartMs < DROP_SUMMARY_INTERVAL_MS) return;
+    buffer.push(
+      `${JSON.stringify({
+        type: "trace-drop-summary",
+        startTimeUnixNano: `${fastSpanWindowStartMs}000000`,
+        endTimeUnixNano: `${now}000000`,
+        minDurationMs,
+        counts: Object.fromEntries(fastSpanCounts),
+      })}\n`,
+    );
+    fastSpanCounts = new Map();
+    fastSpanWindowStartMs = now;
+  };
   // A failure episode starts at the first dropped record and ends when a flush
   // sees that the latest write succeeded. Flush checks once per window, so a
   // disk that flaps inside one window stays one episode.
@@ -433,39 +473,43 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
 
   // Logs once when writes start failing and once when they recover, so a disk
   // that stays broken costs one line, not one per flush.
-  const flush = Effect.gen(function* () {
-    flushUnsafe();
-    const stats = pendingFlushStats;
-    pendingFlushStats = {
-      logicalWriteBytes: 0,
-      count: 0,
-      durationMs: 0,
-    };
-    if (stats.count > 0 && options.onFlush) {
-      yield* options.onFlush(stats).pipe(Effect.ignore);
-    }
-    if (droppedCount > 0 && !failureReported) {
-      failureReported = true;
-      yield* Effect.logWarning("Trace writes are failing, dropping records until they recover", {
-        filePath: options.filePath,
-      });
-    }
-    if (failureReported && !writeFailing) {
-      yield* Effect.logInfo("Trace writes recovered", {
-        filePath: options.filePath,
-        droppedCount,
-      });
-      failureReported = false;
-      droppedCount = 0;
-    }
-  }).pipe(
-    Effect.withTracerEnabled(false),
-    // The timed fiber inherits the makeTraceSink span. That span has ended but
-    // lives as long as the sink, so the tracer logger must not add logs to it.
-    Effect.updateContext(Context.omit(Tracer.ParentSpan)<never>),
-  );
+  const flushWith = (forceSummary: boolean) =>
+    Effect.gen(function* () {
+      pushFastSpanSummary(forceSummary);
+      flushUnsafe();
+      const stats = pendingFlushStats;
+      pendingFlushStats = {
+        logicalWriteBytes: 0,
+        count: 0,
+        durationMs: 0,
+      };
+      if (stats.count > 0 && options.onFlush) {
+        yield* options.onFlush(stats).pipe(Effect.ignore);
+      }
+      if (droppedCount > 0 && !failureReported) {
+        failureReported = true;
+        yield* Effect.logWarning("Trace writes are failing, dropping records until they recover", {
+          filePath: options.filePath,
+        });
+      }
+      if (failureReported && !writeFailing) {
+        yield* Effect.logInfo("Trace writes recovered", {
+          filePath: options.filePath,
+          droppedCount,
+        });
+        failureReported = false;
+        droppedCount = 0;
+      }
+    }).pipe(
+      Effect.withTracerEnabled(false),
+      // The timed fiber inherits the makeTraceSink span. That span has ended but
+      // lives as long as the sink, so the tracer logger must not add logs to it.
+      Effect.updateContext(Context.omit(Tracer.ParentSpan)<never>),
+    );
+  const flush = flushWith(false);
+  const close = flushWith(true);
 
-  yield* Effect.addFinalizer(() => flush.pipe(Effect.ignore));
+  yield* Effect.addFinalizer(() => close.pipe(Effect.ignore));
   yield* Effect.forkScoped(
     Effect.sleep(`${options.batchWindowMs} millis`).pipe(Effect.andThen(flush), Effect.forever),
   );
@@ -474,6 +518,10 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
     filePath: options.filePath,
     push(record) {
       try {
+        if (minDurationMs > 0 && isDroppableTraceRecord(record, minDurationMs)) {
+          fastSpanCounts.set(record.name, (fastSpanCounts.get(record.name) ?? 0) + 1);
+          return;
+        }
         buffer.push(`${JSON.stringify(record)}\n`);
         if (buffer.length >= FLUSH_BUFFER_THRESHOLD) {
           flushUnsafe();
@@ -483,7 +531,7 @@ export const makeTraceSink = Effect.fn("makeTraceSink")(function* (options: Trac
       }
     },
     flush,
-    close: () => flush,
+    close: () => close,
   } satisfies TraceSink;
 });
 

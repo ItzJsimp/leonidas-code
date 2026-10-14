@@ -70,6 +70,8 @@ export class ServerConfig extends Context.Service<
     readonly traceBatchWindowMs: number;
     readonly traceMaxBytes: number;
     readonly traceMaxFiles: number;
+    /** Successful spans shorter than this are counted, not written. Unset writes every span. */
+    readonly traceMinDurationMs?: number;
     readonly otlpTracesUrl: string | undefined;
     readonly otlpMetricsUrl: string | undefined;
     readonly otlpLogsUrl: string | undefined;

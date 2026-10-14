@@ -12,6 +12,11 @@ const { values } = NodeUtil.parseArgs({
     prefix: { type: "string", default: "server.trace.ndjson" },
     top: { type: "string", default: "40" },
     json: { type: "string" },
+    // Long-lived spans (subscriptions, waits for the user) measure lifetime, not latency.
+    exclude: {
+      type: "string",
+      default: "subscribe|Subscribe|runCachePersistence|awaitClaudeUserInputAnswers|canUseTool",
+    },
     focus: {
       type: "string",
       default: "runGitCommand,branchPullRequest,readAntigravityUsage.readFile",
@@ -23,6 +28,8 @@ const top = Number(values.top);
 interface Stat {
   durations: number[];
   errors: number;
+  // Sub-threshold spans the sink counted instead of writing (trace-drop-summary).
+  fast: number;
 }
 const bySpan = new Map<string, Stat>();
 const bySql = new Map<string, Stat>();
@@ -35,7 +42,7 @@ let bytes = 0;
 
 const add = (map: Map<string, Stat>, key: string, ms: number, failed: boolean) => {
   let stat = map.get(key);
-  if (!stat) map.set(key, (stat = { durations: [], errors: 0 }));
+  if (!stat) map.set(key, (stat = { durations: [], errors: 0, fast: 0 }));
   stat.durations.push(ms);
   if (failed) stat.errors += 1;
 };
@@ -50,6 +57,8 @@ for (const file of files) {
   for await (const line of reader) {
     lines += 1;
     let record: {
+      type?: string;
+      counts?: Record<string, number>;
       name?: string;
       durationMs?: number;
       startTimeUnixNano?: string;
@@ -64,6 +73,15 @@ for (const file of files) {
     try {
       record = JSON.parse(line);
     } catch {
+      continue;
+    }
+    if (record.type === "trace-drop-summary") {
+      for (const [name, count] of Object.entries(record.counts ?? {})) {
+        add(bySpan, name, 0, false);
+        const stat = bySpan.get(name)!;
+        stat.durations.pop();
+        stat.fast += count;
+      }
       continue;
     }
     if (!record.name || typeof record.durationMs !== "number") continue;
@@ -95,8 +113,9 @@ const summarize = (map: Map<string, Stat>) =>
     const total = sorted.reduce((sum, value) => sum + value, 0);
     return {
       name,
-      count: sorted.length,
-      perMin: sorted.length / windowMin,
+      count: sorted.length + stat.fast,
+      perMin: (sorted.length + stat.fast) / windowMin,
+      fast: stat.fast,
       p50: pct(sorted, 0.5),
       p95: pct(sorted, 0.95),
       p99: pct(sorted, 0.99),
@@ -106,12 +125,14 @@ const summarize = (map: Map<string, Stat>) =>
     };
   });
 
-const spans = summarize(bySpan);
+const excluded = new RegExp(values.exclude);
+const spans = summarize(bySpan).filter((row) => !excluded.test(row.name));
 const sql = summarize(bySql);
 const fmt = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1));
 const table = (title: string, rows: ReturnType<typeof summarize>) => {
   console.log(`\n## ${title}`);
-  console.log("count  /min    p50     p95     p99     max   total_s  err  name");
+  // Percentiles cover written spans only; `fast` spans were under the sink threshold.
+  console.log("count  /min    p50     p95     p99     max   total_s  err   fast  name");
   for (const r of rows.slice(0, top)) {
     console.log(
       [
@@ -123,6 +144,7 @@ const table = (title: string, rows: ReturnType<typeof summarize>) => {
         fmt(r.max).padStart(7),
         (r.totalMs / 1000).toFixed(1).padStart(8),
         String(r.errors).padStart(4),
+        String(r.fast).padStart(6),
         ` ${r.name}`,
       ].join(" "),
     );

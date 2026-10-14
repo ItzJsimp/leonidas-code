@@ -40,6 +40,9 @@ export const layer = Layer.unwrap(
           maxBytes: config.traceMaxBytes,
           maxFiles: config.traceMaxFiles,
           batchWindowMs: config.traceBatchWindowMs,
+          ...(config.traceMinDurationMs === undefined
+            ? {}
+            : { minDurationMs: config.traceMinDurationMs }),
           onFlush: (stats) =>
             attribution.record({
               component: "server-trace",

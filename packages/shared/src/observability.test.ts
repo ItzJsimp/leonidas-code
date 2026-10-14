@@ -359,6 +359,51 @@ describe("observability", () => {
       ),
     );
 
+    it.effect("counts fast successful spans instead of writing them", () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const fileSystem = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const tempDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-trace-sink-" });
+          const tracePath = path.join(tempDir, "shared.trace.ndjson");
+
+          const sink = yield* makeTraceSink({
+            filePath: tracePath,
+            maxBytes: 64 * 1024,
+            maxFiles: 2,
+            batchWindowMs: 10_000,
+            minDurationMs: 1,
+          });
+
+          const fast = (name: string, suffix: string): EffectTraceRecord => ({
+            ...(makeRecord(name, suffix) as EffectTraceRecord),
+            durationMs: 0.2,
+          });
+          sink.push(fast("sqlite", "1"));
+          sink.push(fast("sqlite", "2"));
+          sink.push(fast("settle", "1"));
+          sink.push(makeRecord("slow", "1"));
+          sink.push({ ...fast("failed", "1"), exit: { _tag: "Failure", cause: "boom" } });
+          sink.push({
+            ...fast("evented", "1"),
+            events: [{ name: "note", timeUnixNano: "1", attributes: {} }],
+          });
+          yield* sink.close();
+
+          const lines = (yield* fileSystem.readFileString(tracePath))
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line) as { type: string; name?: string; counts?: object });
+          assert.deepEqual(
+            lines.filter((line) => line.type !== "trace-drop-summary").map((line) => line.name),
+            ["slow", "failed", "evented"],
+          );
+          const summary = lines.find((line) => line.type === "trace-drop-summary");
+          assert.deepEqual(summary?.counts, { sqlite: 2, settle: 1 });
+        }),
+      ),
+    );
+
     it.effect("reports successful logical trace writes", () =>
       Effect.scoped(
         Effect.gen(function* () {
