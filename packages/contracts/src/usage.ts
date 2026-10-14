@@ -21,7 +21,7 @@ import { ForwardCompatibleArray, NonNegativeInt, TrimmedNonEmptyString } from ".
  * entries are skipped on decode and do not require a version bump. So are
  * optional bucket fields, which older clients ignore.
  */
-export const USAGE_CONTRACT_VERSION = 6 as const;
+export const USAGE_CONTRACT_VERSION = 7 as const;
 
 /**
  * Oldest {@link UsageSummary} version a current client will still merge.
@@ -115,6 +115,8 @@ export const UsageBucket = Schema.Struct({
   model: TrimmedNonEmptyString,
   /** Source directory, so overlapping multi-home environments merge once per source. */
   sourcePath: Schema.optional(TrimmedNonEmptyString),
+  /** Reasoning effort the requests ran at, when the provider records it. */
+  effort: Schema.optional(TrimmedNonEmptyString),
   totals: UsageTokenTotals,
   costUsd: Schema.Number,
   /**

@@ -49,6 +49,27 @@ describe("parseCodexLine", () => {
     expect(parseCodexLine(tokenCount(200, 0, 10, 0), state)?.toolCalls).toBeUndefined();
   });
 
+  it("carries the reasoning effort from the turn context onto usage", () => {
+    const withEffort = JSON.stringify({
+      type: "turn_context",
+      timestamp: "2026-08-01T05:17:42.694Z",
+      payload: {
+        type: "turn_context",
+        model: "gpt-5.6-sol",
+        collaboration_mode: { settings: { reasoning_effort: "high" } },
+      },
+    });
+    const state = initialCodexScanState();
+    parseCodexLine(sessionMeta, state);
+    parseCodexLine(withEffort, state);
+    expect(parseCodexLine(tokenCount(100, 0, 10, 0), state)?.effort).toBe("high");
+
+    const plain = initialCodexScanState();
+    parseCodexLine(sessionMeta, plain);
+    parseCodexLine(turnContext, plain);
+    expect(parseCodexLine(tokenCount(100, 0, 10, 0), plain)?.effort).toBeUndefined();
+  });
+
   it("attributes usage to the model from the preceding turn context", () => {
     const state = initialCodexScanState();
     parseCodexLine(sessionMeta, state);

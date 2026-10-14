@@ -89,6 +89,7 @@ describe("scan cache round trip", () => {
       position: position({
         state: {
           model: "gpt-6-astra",
+          effort: "high",
           speed: "ultrafast",
           sessionId: "session-c",
           lastUsageSignature: '{"input_tokens":1}',

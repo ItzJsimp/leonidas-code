@@ -35,6 +35,8 @@ import { resolveCodexHomeLayout } from "./CodexHomeLayout.ts";
  */
 export const CodexScanState = Schema.Struct({
   model: Schema.mutableKey(Schema.String),
+  /** Reasoning effort from the latest `turn_context`; empty when unknown. */
+  effort: Schema.mutableKey(Schema.String),
   speed: Schema.mutableKey(Schema.Literals(["standard", "fast", "ultrafast"])),
   sessionId: Schema.mutableKey(Schema.String),
   lastUsageSignature: Schema.mutableKey(Schema.NullOr(Schema.String)),
@@ -50,6 +52,7 @@ export type CodexScanState = typeof CodexScanState.Type;
 export function initialCodexScanState(): CodexScanState {
   return {
     model: "",
+    effort: "",
     speed: "standard",
     sessionId: "",
     lastUsageSignature: null,
@@ -125,6 +128,21 @@ export function parseCodexLine(line: string, state: CodexScanState): UsageRecord
   return parseCodexRecord(parsed, state);
 }
 
+function turnContextEffort(payload: Record<string, unknown>): string {
+  const direct = payload["effort"];
+  if (typeof direct === "string") return direct;
+  const mode = payload["collaboration_mode"];
+  const settings =
+    typeof mode === "object" && mode !== null
+      ? (mode as Record<string, unknown>)["settings"]
+      : null;
+  const nested =
+    typeof settings === "object" && settings !== null
+      ? (settings as Record<string, unknown>)["reasoning_effort"]
+      : null;
+  return typeof nested === "string" ? nested : "";
+}
+
 function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord | null {
   if (typeof parsed !== "object" || parsed === null) return null;
 
@@ -152,6 +170,7 @@ function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord |
 
   if (record["type"] === "turn_context") {
     if (typeof payloadRecord["model"] === "string") state.model = payloadRecord["model"];
+    state.effort = turnContextEffort(payloadRecord);
     return null;
   }
 
@@ -230,6 +249,7 @@ function parseCodexRecord(parsed: unknown, state: CodexScanState): UsageRecord |
     // Codex does not report cost in the rollout.
     reportedCostUsd: null,
     speed: state.speed,
+    ...(state.effort === "" ? {} : { effort: state.effort }),
     ...(toolCalls > 0 ? { toolCalls } : {}),
     // Events surviving the fork-copy suppression above are unique to this
     // rollout, so they need no global dedup.
@@ -261,6 +281,8 @@ export const codexUsageFormat: TranscriptUsageFormat<CodexScanState> = {
       id: true,
       session_id: true,
       model: true,
+      effort: true,
+      collaboration_mode: { settings: { reasoning_effort: true } },
       thread_settings: { service_tier: true },
       forked_from_id: true,
       source: { subagent: { thread_spawn: { parent_thread_id: true } } },
