@@ -4,8 +4,8 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   buildPoints,
   columnBests,
-  groupScoreMetrics,
-  matchesEffort,
+  defaultXMetric,
+  headlineScoreMetrics,
   paretoFrontier,
   scaleValue,
   sortEntries,
@@ -106,15 +106,26 @@ describe("explorer table helpers", () => {
       ...(effort ? { effort } : {}),
     }) as ModelBenchmarkEntry;
 
-  it("groups individual benchmarks under their category label", () => {
-    const groups = groupScoreMetrics([
+  it("keeps only overall and category scores as headline metrics", () => {
+    const headline = headlineScoreMetrics([
       metric("benchLm:overall"),
-      metric("benchLm:category:coding", { label: "Coding", category: "coding" }),
+      metric("benchLm:category:coding", { category: "coding" }),
       metric("benchLm:benchmark:swe", { category: "coding" }),
       metric("benchLm:price:output", { kind: "price" }),
     ]);
-    expect(groups.map((group) => group.label)).toEqual(["Overall and categories", "Coding"]);
-    expect(groups[1]!.metrics.map((item) => item.key)).toEqual(["benchLm:benchmark:swe"]);
+    expect(headline.map((item) => item.key)).toEqual([
+      "benchLm:overall",
+      "benchLm:category:coding",
+    ]);
+  });
+
+  it("picks output price as the cost axis", () => {
+    const metrics = [
+      metric("benchLm:price:input", { kind: "price" }),
+      metric("benchLm:price:output", { kind: "price" }),
+    ];
+    expect(defaultXMetric(metrics, "price")?.key).toBe("benchLm:price:output");
+    expect(defaultXMetric(metrics, "speed")).toBeUndefined();
   });
 
   it("finds the best per column in the metric's direction", () => {
@@ -124,12 +135,5 @@ describe("explorer table helpers", () => {
     );
     expect(bests.get("s")).toBe(70);
     expect(bests.get("p")).toBe(3);
-  });
-
-  it("filters by effort", () => {
-    expect(matchesEffort(entry("a", {}), "default")).toBe(true);
-    expect(matchesEffort(entry("a", {}, "high"), "default")).toBe(false);
-    expect(matchesEffort(entry("a", {}, "high"), "high")).toBe(true);
-    expect(matchesEffort(entry("a", {}, "high"), "all")).toBe(true);
   });
 });

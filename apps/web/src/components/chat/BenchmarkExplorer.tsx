@@ -10,9 +10,9 @@ import { useMemo, useState } from "react";
 import {
   buildPoints,
   columnBests,
-  groupScoreMetrics,
+  defaultXMetric,
+  headlineScoreMetrics,
   isLogMetric,
-  matchesEffort,
   paretoFrontier,
   scaleValue,
   sortEntries,
@@ -33,17 +33,7 @@ import { Checkbox } from "../ui/checkbox";
 import { Dialog, DialogPanel, DialogPopup, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import {
-  Select,
-  SelectGroup,
-  SelectGroupLabel,
-  SelectItem,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { Spinner } from "../ui/spinner";
-import { Toggle, ToggleGroup } from "../ui/toggle-group";
 
 /** Creator dot colors; creators past the palette share the last, neutral one. */
 const CREATOR_COLORS = [
@@ -223,32 +213,80 @@ function Scatter({
   );
 }
 
+/** Plain segmented control; the stock Toggle hovers in the red accent, which reads as an error here. */
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  readonly label: string;
+  readonly value: T;
+  readonly options: ReadonlyArray<{ readonly id: T; readonly label: string }>;
+  readonly onChange: (next: T) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="inline-flex shrink-0 rounded-lg bg-muted/60 p-0.5 text-xs"
+    >
+      {options.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          role="radio"
+          aria-checked={option.id === value}
+          onClick={() => onChange(option.id)}
+          className={cn(
+            "cursor-pointer rounded-md px-2.5 py-1 whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+            option.id === value && "bg-background text-foreground shadow-xs/10",
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ModelPicker({
   entries,
   selected,
   onChange,
+  onReset,
   connectedKeys,
 }: {
   readonly entries: ReadonlyArray<ModelBenchmarkEntry>;
   readonly selected: ReadonlySet<string>;
   readonly onChange: (next: Set<string>) => void;
+  readonly onReset: () => void;
   readonly connectedKeys: ReadonlySet<string>;
 }) {
   const [search, setSearch] = useState("");
   const shown = entries.filter((entry) =>
     entry.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const preset = (text: string, run: () => void) => (
+    <button
+      type="button"
+      onClick={run}
+      className="cursor-pointer rounded-md px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      {text}
+    </button>
+  );
   return (
     <Popover>
       <PopoverTrigger
         render={
-          <Button size="xs" variant="outline">
-            {selected.size} of {entries.length} models
+          <Button size="xs" variant="outline" className="ms-auto">
+            {selected.size} models
             <ChevronsUpDownIcon aria-hidden />
           </Button>
         }
       />
-      <PopoverPopup align="start" className="w-72">
+      <PopoverPopup align="end" className="w-72">
         <div className="flex flex-col gap-2">
           <Input
             size="sm"
@@ -258,26 +296,17 @@ function ModelPicker({
             onChange={(event) => setSearch(event.target.value)}
           />
           <div className="flex gap-1 text-2xs">
-            <Button size="xs" variant="ghost" onClick={() => onChange(new Set(connectedKeys))}>
-              Connected
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => onChange(new Set(entries.map((entry) => entry.sourceModelKey)))}
-            >
-              All
-            </Button>
-            <Button size="xs" variant="ghost" onClick={() => onChange(new Set())}>
-              None
-            </Button>
+            {preset("Top + yours", onReset)}
+            {preset("Yours", () => onChange(new Set(connectedKeys)))}
+            {preset("All", () => onChange(new Set(entries.map((entry) => entry.sourceModelKey))))}
+            {preset("None", () => onChange(new Set()))}
           </div>
           <ul className="flex max-h-64 flex-col overflow-y-auto [scrollbar-width:thin]">
             {shown.map((entry) => {
               const key = entry.sourceModelKey;
               return (
                 <li key={key}>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-muted/60">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-muted">
                     <Checkbox
                       checked={selected.has(key)}
                       onCheckedChange={(checked) => {
@@ -302,6 +331,9 @@ function ModelPicker({
   );
 }
 
+const shortLabel = (metric: ModelBenchmarkMetric) =>
+  metric.label.replace(/^BenchLM overall$/, "Overall");
+
 function ExplorerBody({
   environmentId,
   candidates,
@@ -324,16 +356,12 @@ function ExplorerBody({
   );
   const catalog = catalogQuery.data;
 
+  const [view, setView] = useState<"chart" | "table">("chart");
   const [xKind, setXKind] = useState<XKind>("price");
-  const [xKey, setXKey] = useState<string | null>(null);
   const [yKey, setYKey] = useState<string | null>(null);
-  const [creator, setCreator] = useState<string>("all");
   const [hoveredRaw, setHovered] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
   const hovered = hoveredRaw ?? pinned;
-  const [effort, setEffort] = useState("all");
-  const [view, setView] = useState<"chart" | "table">("chart");
-  const [columnGroup, setColumnGroup] = useState(0);
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [sort, setSort] = useState<ExplorerSort>({ key: "y", direction: "desc" });
 
@@ -353,23 +381,18 @@ function ExplorerBody({
   }, [connectedQuery.data, candidates]);
   const connectedKeys = useMemo(() => new Set(connected.keys()), [connected]);
 
-  const xMetrics = (catalog?.metrics ?? []).filter((metric) => metric.kind === xKind);
-  const yMetrics = (catalog?.metrics ?? []).filter((metric) => metric.kind === "score");
-  const scoreGroups = useMemo(() => groupScoreMetrics(catalog?.metrics ?? []), [catalog]);
-  const efforts = useMemo(
+  const metrics = useMemo(() => catalog?.metrics ?? [], [catalog]);
+  const headline = useMemo(() => headlineScoreMetrics(metrics), [metrics]);
+  const sideMetrics = useMemo(
     () =>
-      [
-        ...new Set(
-          (catalog?.entries ?? []).flatMap((entry) => (entry.effort ? [entry.effort] : [])),
-        ),
-      ].toSorted(),
-    [catalog],
+      X_KINDS.flatMap((kind) => {
+        const metric = defaultXMetric(metrics, kind.id);
+        return metric ? [metric] : [];
+      }),
+    [metrics],
   );
-  const xMetric =
-    xMetrics.find((metric) => metric.key === xKey) ??
-    xMetrics.find((m) => m.key.endsWith("output")) ??
-    xMetrics[0];
-  const yMetric = yMetrics.find((metric) => metric.key === yKey) ?? yMetrics[0];
+  const xMetric = sideMetrics.find((metric) => metric.kind === xKind);
+  const yMetric = headline.find((metric) => metric.key === yKey) ?? headline[0];
 
   const creators = useMemo(
     () =>
@@ -385,23 +408,20 @@ function ExplorerBody({
     return index >= 0 && index < CREATOR_COLORS.length ? CREATOR_COLORS[index]! : OTHER_COLOR;
   };
 
-  const inCreator = useMemo(
-    () =>
-      (catalog?.entries ?? []).filter(
-        (entry) => (creator === "all" || entry.creator === creator) && matchesEffort(entry, effort),
-      ),
-    [catalog, creator, effort],
-  );
+  const entries = useMemo(() => catalog?.entries ?? [], [catalog]);
   // Default view: the models you can run plus the strongest few, like AA's curated chart.
   const selected = useMemo(() => {
     if (picked) return picked;
     const top = yMetric
-      ? sortEntries(inCreator, { key: yMetric.key, direction: "desc" }).slice(0, DEFAULT_TOP_MODELS)
+      ? sortEntries(entries, { key: yMetric.key, direction: "desc" }).slice(0, DEFAULT_TOP_MODELS)
       : [];
     return new Set([...top.map((entry) => entry.sourceModelKey), ...connectedKeys]);
-  }, [picked, inCreator, yMetric, connectedKeys]);
+  }, [picked, entries, yMetric, connectedKeys]);
 
-  const visible = inCreator.filter((entry) => selected.has(entry.sourceModelKey));
+  const visible = useMemo(
+    () => entries.filter((entry) => selected.has(entry.sourceModelKey)),
+    [entries, selected],
+  );
   const points = useMemo(
     () => (xMetric && yMetric ? buildPoints(visible, xMetric, yMetric) : []),
     [visible, xMetric, yMetric],
@@ -410,18 +430,13 @@ function ExplorerBody({
     () => (xMetric && yMetric ? paretoFrontier(points, xMetric, yMetric) : []),
     [points, xMetric, yMetric],
   );
+  const columns = useMemo(() => [...headline, ...sideMetrics], [headline, sideMetrics]);
+  const sortKey = sort.key === "y" ? yMetric?.key : sort.key === "x" ? xMetric?.key : sort.key;
   const rows = useMemo(
-    () =>
-      sortEntries(
-        visible,
-        sort.key === "y" && yMetric
-          ? { ...sort, key: yMetric.key }
-          : sort.key === "x" && xMetric
-            ? { ...sort, key: xMetric.key }
-            : sort,
-      ),
-    [visible, sort, xMetric, yMetric],
+    () => (sortKey ? sortEntries(visible, { key: sortKey, direction: sort.direction }) : visible),
+    [visible, sortKey, sort.direction],
   );
+  const bests = useMemo(() => columnBests(visible, columns), [visible, columns]);
 
   if (!catalog) {
     return (
@@ -446,147 +461,91 @@ function ExplorerBody({
   const hoveredEntry = hovered
     ? visible.find((entry) => entry.sourceModelKey === hovered)
     : undefined;
-  const header = (label: string, key: string, align: "left" | "right") => {
-    const active = sort.key === key;
-    return (
-      <th className={cn("px-2 py-1 font-medium", align === "right" ? "text-right" : "text-left")}>
-        <button
-          type="button"
-          className="inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground"
-          onClick={() =>
-            setSort(
-              active
-                ? { key, direction: sort.direction === "desc" ? "asc" : "desc" }
-                : { key, direction: key === "name" ? "asc" : "desc" },
-            )
-          }
-        >
-          {label}
-          {active ? (
-            sort.direction === "desc" ? (
-              <ArrowDownIcon aria-hidden className="size-3" />
-            ) : (
-              <ArrowUpIcon aria-hidden className="size-3" />
-            )
-          ) : null}
-        </button>
-      </th>
-    );
+  const sortBy = (metric: ModelBenchmarkMetric | "name") => {
+    const key = metric === "name" ? "name" : metric.key;
+    if (sortKey === key) {
+      setSort({ key, direction: sort.direction === "desc" ? "asc" : "desc" });
+      return;
+    }
+    const ascending = metric === "name" || !metric.higherIsBetter;
+    setSort({ key, direction: ascending ? "asc" : "desc" });
   };
+  const sortIcon = (key: string) =>
+    sortKey !== key ? null : sort.direction === "desc" ? (
+      <ArrowDownIcon aria-hidden className="size-3" />
+    ) : (
+      <ArrowUpIcon aria-hidden className="size-3" />
+    );
+  const chatButton = (entry: ModelBenchmarkEntry) => {
+    const candidate = connected.get(entry.sourceModelKey);
+    return candidate && onStartChat ? (
+      <Button
+        size="xs"
+        variant="outline"
+        aria-label={`New chat with ${entry.name}`}
+        onClick={() => {
+          onStartChat(candidate.selection);
+          onClose();
+        }}
+      >
+        New chat
+      </Button>
+    ) : null;
+  };
+  const tableColumns = view === "chart" ? [yMetric, xMetric] : columns;
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <ToggleGroup
-          aria-label="View"
-          value={[view]}
-          onValueChange={(next) => {
-            if (next[0] === "chart" || next[0] === "table") setView(next[0]);
-          }}
-        >
-          <Toggle value="chart">Chart</Toggle>
-          <Toggle value="table">All benchmarks</Toggle>
-        </ToggleGroup>
-        <ToggleGroup
-          aria-label="Compare score against"
-          value={[xKind]}
-          onValueChange={(next) => {
-            const value = X_KINDS.find((entry) => entry.id === next[0]);
-            if (!value) return;
-            setXKind(value.id);
-            setXKey(null);
-          }}
-        >
-          {X_KINDS.map((entry) => (
-            <Toggle key={entry.id} value={entry.id}>
-              {entry.label}
-            </Toggle>
-          ))}
-        </ToggleGroup>
-        {xMetrics.length > 1 ? (
-          <Select value={xMetric.key} onValueChange={(value) => setXKey(value)}>
-            <SelectTrigger aria-label="X axis" size="xs">
-              <SelectValue>{xMetric.label}</SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              {xMetrics.map((metric) => (
-                <SelectItem key={metric.key} value={metric.key}>
-                  {metric.label}
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-        ) : null}
-        <Select value={yMetric.key} onValueChange={(value) => setYKey(value)}>
-          <SelectTrigger aria-label="Benchmark" size="xs" className="max-w-56">
-            <SelectValue>{yMetric.label}</SelectValue>
-          </SelectTrigger>
-          <SelectPopup>
-            {scoreGroups.map((group) => (
-              <SelectGroup key={group.label}>
-                <SelectGroupLabel>{group.label}</SelectGroupLabel>
-                {group.metrics.map((metric) => (
-                  <SelectItem key={metric.key} value={metric.key}>
-                    {metric.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
-          </SelectPopup>
-        </Select>
-        <Select
-          value={creator}
-          onValueChange={(value) => {
-            setCreator(value ?? "all");
-            setPicked(null);
-          }}
-        >
-          <SelectTrigger aria-label="Creator" size="xs">
-            <SelectValue>{creator === "all" ? "All creators" : creator}</SelectValue>
-          </SelectTrigger>
-          <SelectPopup>
-            <SelectItem value="all">All creators</SelectItem>
-            {creators.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
-        {efforts.length > 0 ? (
-          <Select
-            value={effort}
-            onValueChange={(value) => {
-              setEffort(value ?? "all");
-              setPicked(null);
-            }}
-          >
-            <SelectTrigger aria-label="Effort" size="xs">
-              <SelectValue>
-                {effort === "all"
-                  ? "All efforts"
-                  : effort === "default"
-                    ? "Default effort"
-                    : `${effort} effort`}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              <SelectItem value="all">All efforts</SelectItem>
-              <SelectItem value="default">Default effort</SelectItem>
-              {efforts.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name} effort
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
+        <Segmented
+          label="View"
+          value={view}
+          options={[
+            { id: "chart", label: "Chart" },
+            { id: "table", label: "Table" },
+          ]}
+          onChange={setView}
+        />
+        {view === "chart" ? (
+          <>
+            <span className="text-2xs text-muted-foreground">Score vs</span>
+            <Segmented
+              label="Compare score against"
+              value={xKind}
+              options={X_KINDS}
+              onChange={setXKind}
+            />
+          </>
         ) : null}
         <ModelPicker
-          entries={inCreator}
+          entries={entries}
           selected={selected}
           onChange={setPicked}
+          onReset={() => setPicked(null)}
           connectedKeys={connectedKeys}
         />
+      </div>
+      <div className="-mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label="Score">
+        {headline.map((metric) => (
+          <button
+            key={metric.key}
+            type="button"
+            role="radio"
+            aria-checked={metric.key === yMetric.key}
+            onClick={() => {
+              setYKey(metric.key);
+              setSort({ key: "y", direction: "desc" });
+            }}
+            className={cn(
+              "cursor-pointer rounded-full border px-2.5 py-0.5 text-2xs transition-colors",
+              metric.key === yMetric.key
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+            )}
+          >
+            {shortLabel(metric)}
+          </button>
+        ))}
       </div>
 
       {view === "chart" ? (
@@ -610,99 +569,121 @@ function ExplorerBody({
               </p>
             )}
             {hoveredEntry ? (
-              <div className="pointer-events-none absolute top-2 right-2 rounded-lg border bg-popover px-2.5 py-1.5 text-2xs shadow-md">
-                <div className="font-medium text-foreground">{hoveredEntry.name}</div>
-                <div className="text-muted-foreground">
-                  {yMetric.label}:{" "}
-                  {formatBenchmarkValue(hoveredEntry.values[yMetric.key] ?? 0, yMetric)}
-                  {" · "}
-                  {xMetric.label}:{" "}
-                  {formatBenchmarkValue(hoveredEntry.values[xMetric.key] ?? 0, xMetric)}
+              <div className="absolute top-2 right-2 flex items-center gap-2 rounded-lg border bg-popover px-2.5 py-1.5 text-2xs shadow-md">
+                <div>
+                  <div className="font-medium text-foreground">{hoveredEntry.name}</div>
+                  <div className="text-muted-foreground">
+                    {shortLabel(yMetric)}:{" "}
+                    {formatBenchmarkValue(hoveredEntry.values[yMetric.key] ?? 0, yMetric)}
+                    {" · "}
+                    {xMetric.label}:{" "}
+                    {formatBenchmarkValue(hoveredEntry.values[xMetric.key] ?? 0, xMetric)}
+                  </div>
                 </div>
+                {pinned === hoveredEntry.sourceModelKey ? chatButton(hoveredEntry) : null}
               </div>
             ) : null}
           </div>
-          <p className="text-2xs text-muted-foreground">
-            Dotted line: the best score at each {xMetric.label.toLowerCase()}. Outlined dots are
-            models you can run.
+          <p className="-mt-1 text-2xs text-muted-foreground">
+            Up and to the {xMetric.higherIsBetter ? "right" : "left"} is better. Dotted line: the
+            best score at each {xMetric.label.toLowerCase()}. Ringed dots are models you can run;
+            click a dot to pin it.
           </p>
-
-          <div className="max-h-64 overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-background text-2xs text-muted-foreground">
-                <tr>
-                  {header("Model", "name", "left")}
-                  {header(yMetric.label, "y", "right")}
-                  {header(xMetric.label, "x", "right")}
-                  <th className="w-0" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((entry) => {
-                  const key = entry.sourceModelKey;
-                  const candidate = connected.get(key);
-                  const yValue = entry.values[yMetric.key];
-                  const xValue = entry.values[xMetric.key];
-                  return (
-                    <tr
-                      key={key}
-                      onPointerEnter={() => setHovered(key)}
-                      onPointerLeave={() => setHovered(null)}
-                      className={cn("border-t border-border/40", hovered === key && "bg-muted/50")}
-                    >
-                      <td className="max-w-0 px-2 py-1">
-                        <span className="flex items-center gap-1.5">
-                          <span
-                            aria-hidden
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ background: colorOf(entry) }}
-                          />
-                          <span className="truncate">{entry.name}</span>
-                        </span>
-                      </td>
-                      <td className="px-2 py-1 text-right tabular-nums">
-                        {yValue === undefined ? "–" : formatBenchmarkValue(yValue, yMetric)}
-                      </td>
-                      <td className="px-2 py-1 text-right tabular-nums">
-                        {xValue === undefined ? "–" : formatBenchmarkValue(xValue, xMetric)}
-                      </td>
-                      <td className="px-2 py-1 text-right">
-                        {candidate && onStartChat ? (
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            aria-label={`New chat with ${entry.name}`}
-                            onClick={() => {
-                              onStartChat(candidate.selection);
-                              onClose();
-                            }}
-                          >
-                            New chat
-                          </Button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </>
-      ) : (
-        <AllBenchmarksTable
-          entries={picked ? visible : inCreator}
-          groups={scoreGroups}
-          group={columnGroup}
-          onGroupChange={setColumnGroup}
-          extraMetrics={(catalog.metrics ?? []).filter(
-            (metric) => metric.kind !== "score" && metric.key !== "benchLm:price:input",
-          )}
-          colorOf={colorOf}
-          connected={connected}
-          onStartChat={onStartChat}
-          onClose={onClose}
-        />
-      )}
+      ) : null}
+
+      <div
+        className={cn(
+          "overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]",
+          view === "chart" ? "max-h-64" : "max-h-[60vh]",
+        )}
+      >
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 z-10 bg-background text-2xs text-muted-foreground">
+            <tr>
+              <th className="sticky left-0 z-10 bg-background px-2 py-1 text-left font-medium">
+                <button
+                  type="button"
+                  className="inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground"
+                  onClick={() => sortBy("name")}
+                >
+                  Model {sortIcon("name")}
+                </button>
+              </th>
+              {tableColumns.map((metric) => (
+                <th key={metric.key} className="px-2 py-1 text-right font-medium whitespace-nowrap">
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground",
+                      metric.key === yMetric.key && "text-foreground",
+                    )}
+                    onClick={() => sortBy(metric)}
+                  >
+                    {shortLabel(metric)}
+                    {sortIcon(metric.key)}
+                  </button>
+                </th>
+              ))}
+              <th className="w-0" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((entry) => {
+              const key = entry.sourceModelKey;
+              return (
+                <tr
+                  key={key}
+                  onPointerEnter={() => setHovered(key)}
+                  onPointerLeave={() => setHovered(null)}
+                  className={cn("border-t border-border/40", hovered === key && "bg-muted/60")}
+                >
+                  <td className="sticky left-0 max-w-56 bg-background px-2 py-1">
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        aria-hidden
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ background: colorOf(entry) }}
+                      />
+                      <span className="truncate">{entry.name}</span>
+                      {connected.has(key) ? (
+                        <span className="shrink-0 text-2xs text-muted-foreground">yours</span>
+                      ) : null}
+                    </span>
+                  </td>
+                  {tableColumns.map((metric) => {
+                    const value = entry.values[metric.key];
+                    const best =
+                      view === "table" && value !== undefined && bests.get(metric.key) === value;
+                    return (
+                      <td
+                        key={metric.key}
+                        className={cn(
+                          "px-2 py-1 text-right tabular-nums",
+                          best
+                            ? "font-semibold text-success"
+                            : metric.key === yMetric.key
+                              ? "text-foreground"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        {value === undefined ? "–" : formatBenchmarkValue(value, metric)}
+                      </td>
+                    );
+                  })}
+                  <td className="px-2 py-1 text-right">{chatButton(entry)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {view === "table" ? (
+        <p className="-mt-1 text-2xs text-muted-foreground">
+          Green marks the leader in each column. Click a header to sort.
+        </p>
+      ) : null}
+
       {source ? (
         <a
           href={source.url}
@@ -718,158 +699,6 @@ function ExplorerBody({
   );
 }
 
-function AllBenchmarksTable({
-  entries,
-  groups,
-  group,
-  onGroupChange,
-  extraMetrics,
-  colorOf,
-  connected,
-  onStartChat,
-  onClose,
-}: {
-  readonly entries: ReadonlyArray<ModelBenchmarkEntry>;
-  readonly groups: ReturnType<typeof groupScoreMetrics>;
-  readonly group: number;
-  readonly onGroupChange: (index: number) => void;
-  readonly extraMetrics: ReadonlyArray<ModelBenchmarkMetric>;
-  readonly colorOf: (entry: ModelBenchmarkEntry) => string;
-  readonly connected: ReadonlyMap<string, BenchmarkCandidate>;
-  readonly onStartChat: ((selection: ModelSelection) => void) | null;
-  readonly onClose: () => void;
-}) {
-  const active = groups[Math.min(group, groups.length - 1)];
-  const columns = useMemo(
-    () => [...(active?.metrics ?? []), ...extraMetrics],
-    [active, extraMetrics],
-  );
-  const [sort, setSort] = useState<ExplorerSort>({ key: "", direction: "desc" });
-  const sortKey = columns.some((metric) => metric.key === sort.key) ? sort.key : columns[0]?.key;
-  const rows = useMemo(() => {
-    if (!sortKey) return entries;
-    const metric = columns.find((item) => item.key === sortKey);
-    const direction =
-      sort.key === sortKey ? sort.direction : metric?.higherIsBetter ? "desc" : "asc";
-    return sortEntries(entries, { key: sortKey, direction });
-  }, [entries, columns, sort, sortKey]);
-  const bests = useMemo(() => columnBests(entries, columns), [entries, columns]);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-1">
-        {groups.map((item, index) => (
-          <Button
-            key={item.label}
-            size="xs"
-            variant={item === active ? "secondary" : "ghost"}
-            onClick={() => onGroupChange(index)}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </div>
-      <div className="max-h-[60vh] overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 z-10 bg-background text-2xs text-muted-foreground">
-            <tr>
-              <th className="sticky left-0 z-10 bg-background px-2 py-1 text-left font-medium">
-                Model
-              </th>
-              {columns.map((metric) => (
-                <th key={metric.key} className="px-2 py-1 text-right font-medium whitespace-nowrap">
-                  <button
-                    type="button"
-                    className={cn(
-                      "inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground",
-                      sortKey === metric.key && "text-foreground",
-                    )}
-                    onClick={() =>
-                      setSort({
-                        key: metric.key,
-                        direction:
-                          sortKey === metric.key && sort.key === metric.key
-                            ? sort.direction === "desc"
-                              ? "asc"
-                              : "desc"
-                            : metric.higherIsBetter
-                              ? "desc"
-                              : "asc",
-                      })
-                    }
-                  >
-                    {metric.label}
-                  </button>
-                </th>
-              ))}
-              <th className="w-0" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((entry) => {
-              const candidate = connected.get(entry.sourceModelKey);
-              return (
-                <tr
-                  key={entry.sourceModelKey}
-                  className="border-t border-border/40 hover:bg-muted/40"
-                >
-                  <td className="sticky left-0 max-w-48 bg-background px-2 py-1">
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        aria-hidden
-                        className="size-2 shrink-0 rounded-full"
-                        style={{ background: colorOf(entry) }}
-                      />
-                      <span className="truncate">{entry.name}</span>
-                      {candidate ? (
-                        <span className="shrink-0 text-2xs text-muted-foreground">yours</span>
-                      ) : null}
-                    </span>
-                  </td>
-                  {columns.map((metric) => {
-                    const value = entry.values[metric.key];
-                    const best = value !== undefined && bests.get(metric.key) === value;
-                    return (
-                      <td
-                        key={metric.key}
-                        className={cn(
-                          "px-2 py-1 text-right tabular-nums",
-                          best ? "font-semibold text-success" : "text-muted-foreground",
-                        )}
-                      >
-                        {value === undefined ? "–" : formatBenchmarkValue(value, metric)}
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-1 text-right">
-                    {candidate && onStartChat ? (
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        aria-label={`New chat with ${entry.name}`}
-                        onClick={() => {
-                          onStartChat(candidate.selection);
-                          onClose();
-                        }}
-                      >
-                        New chat
-                      </Button>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-2xs text-muted-foreground">
-        Green marks the leader in each column. Click a header to sort.
-      </p>
-    </div>
-  );
-}
-
-/** The mini benchmark explorer: scatter chart, filters and a sortable table over every model the source publishes. */
 export function BenchmarkExplorer({
   open,
   onOpenChange,

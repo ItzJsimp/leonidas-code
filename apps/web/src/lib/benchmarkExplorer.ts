@@ -81,26 +81,20 @@ export function sortEntries(
   });
 }
 
-/** Score metrics as picker groups: the headline scores first, then each category's own benchmarks. */
-export function groupScoreMetrics(metrics: ReadonlyArray<ModelBenchmarkMetric>): ReadonlyArray<{
-  readonly label: string;
-  readonly metrics: ReadonlyArray<ModelBenchmarkMetric>;
-}> {
-  const scores = metrics.filter((metric) => metric.kind === "score");
-  const headline = scores.filter((metric) => !metric.key.includes(":benchmark:"));
-  const byCategory = new Map<string, ModelBenchmarkMetric[]>();
-  for (const metric of scores) {
-    if (!metric.key.includes(":benchmark:")) continue;
-    const label = headline.find((item) => item.category === metric.category)?.label;
-    const group = label ?? metric.category ?? "Other";
-    byCategory.set(group, [...(byCategory.get(group) ?? []), metric]);
-  }
-  return [
-    ...(headline.length > 0 ? [{ label: "Overall and categories", metrics: headline }] : []),
-    ...[...byCategory.entries()]
-      .toSorted(([a], [b]) => a.localeCompare(b))
-      .map(([label, items]) => ({ label, metrics: items })),
-  ];
+/**
+ * The scores most people compare on: the source's overall number and its
+ * category scores. The hundreds of individual benchmarks stay out of the picker.
+ */
+export const headlineScoreMetrics = (metrics: ReadonlyArray<ModelBenchmarkMetric>) =>
+  metrics.filter((metric) => metric.kind === "score" && !metric.key.includes(":benchmark:"));
+
+/** The one axis metric per kind: output price for cost, the first otherwise. */
+export function defaultXMetric(
+  metrics: ReadonlyArray<ModelBenchmarkMetric>,
+  kind: ModelBenchmarkMetric["kind"],
+): ModelBenchmarkMetric | undefined {
+  const ofKind = metrics.filter((metric) => metric.kind === kind);
+  return ofKind.find((metric) => metric.key.endsWith("output")) ?? ofKind[0];
 }
 
 /** The best value per metric across entries, for highlighting the leader in each column. */
@@ -121,7 +115,3 @@ export function columnBests(
   }
   return bests;
 }
-
-/** "default" keeps entries the source did not split by effort. */
-export const matchesEffort = (entry: ModelBenchmarkEntry, effort: string) =>
-  effort === "all" || (effort === "default" ? entry.effort === undefined : entry.effort === effort);
