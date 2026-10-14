@@ -881,56 +881,6 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
   });
 });
 
-describe("ClaudeAdapterV2 context usage", () => {
-  it("projects assistant usage against the selected context window", () => {
-    const usage = ClaudeAdapterV2.claudeProviderTurnTokenUsage(
-      {
-        input_tokens: 42_000,
-        cache_creation_input_tokens: 2_000,
-        cache_read_input_tokens: 5_000,
-        output_tokens: 1_000,
-      },
-      CLAUDE_TEST_MODEL_SELECTION,
-      "2026-08-29T00:00:00.000Z",
-    );
-
-    assert.deepEqual(usage, {
-      usedTokens: 50_000,
-      maxTokens: 200_000,
-      inputTokens: 49_000,
-      cachedInputTokens: 5_000,
-      outputTokens: 1_000,
-      reasoningOutputTokens: 0,
-      updatedAt: "2026-08-29T00:00:00.000Z",
-    });
-  });
-
-  it("reports the prompt cache TTL the response wrote", () => {
-    const ttlFor = (cache_creation: {
-      ephemeral_1h_input_tokens: number;
-      ephemeral_5m_input_tokens: number;
-    }) =>
-      ClaudeAdapterV2.claudeProviderTurnTokenUsage(
-        { input_tokens: 1, output_tokens: 1, cache_creation },
-        CLAUDE_TEST_MODEL_SELECTION,
-        "2026-08-29T00:00:00.000Z",
-      ).promptCacheTtlMs;
-
-    assert.strictEqual(
-      ttlFor({ ephemeral_1h_input_tokens: 2_000, ephemeral_5m_input_tokens: 300 }),
-      60 * 60_000,
-    );
-    assert.strictEqual(
-      ttlFor({ ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 300 }),
-      5 * 60_000,
-    );
-    assert.strictEqual(
-      ttlFor({ ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 0 }),
-      undefined,
-    );
-  });
-});
-
 describe("ClaudeAdapterV2 session permissions", () => {
   it("keeps explicit user refusals classified as user_reject", () => {
     const result = ClaudeAdapterV2.permissionResultFromDecision({
@@ -2232,6 +2182,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
     readonly isError?: boolean;
     readonly errors?: ReadonlyArray<string>;
     readonly apiErrorStatus?: number;
+    readonly modelUsage?: SDKResultMessage["modelUsage"];
     // null omits the field, as the CLI does on a zero-turn result.
     readonly terminalReason?: SDKResultMessage["terminal_reason"] | null;
   }) =>
@@ -2251,7 +2202,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
         cache_creation_input_tokens: 0,
         cache_read_input_tokens: 0,
       },
-      modelUsage: {},
+      modelUsage: input.modelUsage ?? {},
       permission_denials: [],
       uuid: input.uuid,
       session_id: WAKE_NATIVE_SESSION,
@@ -3467,6 +3418,54 @@ describe("ClaudeAdapterV2 background wake turns", () => {
           Layer.mergeAll(IdAllocator.layer, McpProviderSessions.layer, NodeServices.layer),
         ),
       ),
+  );
+
+  it.effect("pairs reported capacity with current context, not cumulative usage", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeWakeHarness;
+      yield* harness.runtime.startTurn(
+        makeClaudeTestTurnInput({
+          threadId: harness.threadId,
+          providerThread: harness.providerThread,
+          now: yield* DateTime.now,
+          attemptId: RunAttemptId.make("attempt-reported-context"),
+          text: "Continue.",
+          attachments: [],
+        }),
+      );
+      yield* Queue.offerAll(harness.sdkMessages, [
+        makeAssistantTextFrame({ uuid: "00000000-0000-4000-8000-000000000670", text: "Done." }),
+        makeResultFrame({
+          uuid: "00000000-0000-4000-8000-000000000671",
+          result: "Done.",
+          modelUsage: {
+            "claude-sonnet-4-6": {
+              inputTokens: 500_000,
+              outputTokens: 100_000,
+              cacheReadInputTokens: 0,
+              cacheCreationInputTokens: 0,
+              webSearchRequests: 0,
+              costUSD: 0,
+              contextWindow: 200_000,
+              maxOutputTokens: 32_000,
+            },
+          },
+        }),
+      ]);
+      yield* Queue.take(harness.terminalReceipts);
+      const reports = harness.events.flatMap((event) =>
+        event.type === "provider_turn.updated" && event.providerTurn.tokenUsage
+          ? [event.providerTurn.tokenUsage]
+          : [],
+      );
+      assert.equal(reports[0]?.maxTokens, null);
+      assert.equal(reports.at(-1)?.maxTokens, 200_000);
+      assert.equal(reports.at(-1)?.usedTokens, 2);
+    }).pipe(
+      Effect.provide(
+        Layer.mergeAll(IdAllocator.layer, McpProviderSessions.layer, NodeServices.layer),
+      ),
+    ),
   );
 
   it.effect("keeps the measured context when a usage limit ends the turn", () =>
