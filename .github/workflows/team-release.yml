@@ -79,6 +79,9 @@ jobs:
         run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"
 
       - name: Build JS bundle
+        env:
+          # Public relay address; turns the in-app feedback button on.
+          VITE_LEONIDAS_FEEDBACK_URL: ${{ vars.LEONIDAS_FEEDBACK_URL }}
         run: vp run build:desktop
 
       - name: Check the web bundle boots
