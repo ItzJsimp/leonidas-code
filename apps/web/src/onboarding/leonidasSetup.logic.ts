@@ -93,19 +93,3 @@ export function buildAiosSetupPrompt(
       : "When done, list what you created and tell me how to open that folder in Leonidas Code.",
   ].join("\n\n");
 }
-
-/** Asks the user's own agent for skills beyond the bundled packs. */
-export function buildSkillSuggestionPrompt(
-  goalIds: readonly string[],
-  installedSkillNames: readonly string[],
-): string {
-  const goals = goalLabels(goalIds);
-  return [
-    `Suggest and write 3 to 5 extra skills for me. I mainly use AI to work on: ${goals.length > 0 ? goals.join(", ") : "general coding"}.`,
-    installedSkillNames.length > 0
-      ? `These skills are already installed, so do not repeat them: ${installedSkillNames.join(", ")}.`
-      : "No skills are installed yet.",
-    "Look at this folder first so the skills fit how I work. A skill is a folder with a SKILL.md file: frontmatter with name and description, then short step-by-step instructions.",
-    "Write each one to .claude/skills/<name>/SKILL.md and .agents/skills/<name>/SKILL.md, then list what you added in one line each.",
-  ].join("\n\n");
-}
