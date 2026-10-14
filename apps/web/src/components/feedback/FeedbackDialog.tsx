@@ -111,7 +111,7 @@ function FeedbackForm(props: {
     toastManager.add({
       type: "success",
       title: "Sent, thanks",
-      description: "Jake and Mob will see it. You'll hear when it's fixed.",
+      description: "The Leonidas team will see it. You'll hear when it's fixed.",
     });
   };
 
