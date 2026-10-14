@@ -29,22 +29,6 @@ export function formatFriendlyReleaseDate(isoString: string): string {
   }).format(date);
 }
 
-export function formatExactReleaseDate(isoString: string): string {
-  if (!isoString) return "";
-  const date = new Date(isoString);
-  if (!Number.isFinite(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-export function formatReleaseTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (!isoString || !Number.isFinite(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(date);
-}
-
 /** "Alex 70% · Sam 30%" when per-author commit counts exist, else the plain author list. */
 export function formatReleaseCredits(meta: ReleaseHistoryMeta | null | undefined): string {
   const counts = Object.entries(meta?.authorCommits ?? {}).filter(([, n]) => n > 0);
