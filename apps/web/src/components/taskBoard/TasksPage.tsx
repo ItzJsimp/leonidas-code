@@ -46,6 +46,9 @@ import {
   type TasksPrefs,
   type TasksView,
 } from "./tasksPage.logic";
+import { PracticeDryRunDialog } from "./PracticeDryRunDialog";
+import { PRACTICE_NAME, PRACTICE_SLUG } from "./practice.logic";
+import { usePracticeActions } from "./usePracticeActions";
 import { useTaskActions } from "./useTaskActions";
 import { useTaskBoard } from "./useTaskBoard";
 
@@ -76,9 +79,20 @@ export function TasksPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const board = useTaskBoard({ selectedSlug: prefs.section, prefs, query });
+  const practice = usePracticeActions();
+  const inPractice = prefs.section === PRACTICE_SLUG;
+  const board = useTaskBoard({
+    selectedSlug: prefs.section,
+    prefs,
+    query,
+    practiceTasks: practice.tasks,
+  });
   const canCreate = useAtomValue(taskBoardCardCreate.permissionAtom(board.environmentId));
-  const { actions, shareSection, isSharingSection } = useTaskActions({
+  const {
+    actions: realActions,
+    shareSection,
+    isSharingSection,
+  } = useTaskActions({
     environmentId: board.environmentId,
     member: board.member,
     aiosRoot: board.aiosRoot,
@@ -86,6 +100,8 @@ export function TasksPage() {
     selectedSlug: prefs.section,
     refresh: board.refresh,
   });
+
+  const actions = inPractice ? practice.actions : realActions;
 
   useEffect(() => {
     try {
@@ -129,14 +145,30 @@ export function TasksPage() {
   const selectedTask = selectedId
     ? (board.allTasks.find((task) => task.id === selectedId) ?? null)
     : null;
+  const rail = useMemo(
+    () => [
+      ...board.rail,
+      {
+        slug: PRACTICE_SLUG,
+        name: PRACTICE_NAME,
+        projectId: null,
+        repository: null,
+        open: practice.tasks.filter((task) => task.status !== "done").length,
+        total: practice.tasks.length,
+      },
+    ],
+    [board.rail, practice.tasks],
+  );
   const railEntry = prefs.section
-    ? (board.rail.find((entry) => entry.slug === prefs.section) ?? null)
+    ? (rail.find((entry) => entry.slug === prefs.section) ?? null)
     : null;
   const roadmapSlug = prefs.section ?? "leonidas-code";
   const roadmap =
     board.roadmaps.find((plan) => plan.projectSlug === roadmapSlug) ??
     (roadmapSlug === "leonidas-code" ? leonidasRoadmap : null);
-  const shareState = sectionShareState(railEntry, board.scopedTasks);
+  const shareState = inPractice
+    ? ({ kind: "hidden" } as const)
+    : sectionShareState(railEntry, board.scopedTasks);
   const allOpen = board.rail.reduce((sum, entry) => sum + entry.open, 0);
   const counts = useMemo(
     () => ({
@@ -162,7 +194,7 @@ export function TasksPage() {
   const picker = (
     <div className="lg:hidden">
       <TaskProjectSelect
-        entries={board.rail}
+        entries={rail}
         selectedSlug={prefs.section}
         onSelect={selectSection}
         focus={prefs.focus}
@@ -172,13 +204,13 @@ export function TasksPage() {
   );
 
   let body;
-  if (board.isLoading) {
+  if (board.isLoading && !inPractice) {
     body = (
       <div className="flex flex-1 items-center justify-center">
         <Spinner />
       </div>
     );
-  } else if (board.error !== null && board.allTasks.length === 0) {
+  } else if (board.error !== null && board.allTasks.length === 0 && !inPractice) {
     body = (
       <Empty>
         <EmptyHeader>
@@ -302,7 +334,7 @@ export function TasksPage() {
             aria-label="New task"
             size="sm"
             onClick={() => setCreateOpen(true)}
-            disabled={!board.environmentId || !canCreate}
+            disabled={!board.environmentId || !canCreate || inPractice}
           >
             <PlusIcon aria-hidden />
             <span className="hidden sm:inline">New task</span>
@@ -316,7 +348,7 @@ export function TasksPage() {
           className="hidden shrink-0 overflow-y-auto p-2 lg:block"
         >
           <TaskProjectRail
-            entries={board.rail}
+            entries={rail}
             allOpen={allOpen}
             selectedSlug={prefs.section}
             onSelect={selectSection}
@@ -349,7 +381,18 @@ export function TasksPage() {
             </p>
           </div>
           <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
-          {prefs.view !== "roadmap" ? (
+          {inPractice ? (
+            <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
+              <span className="min-w-0 flex-1">
+                Practice project: sample tasks to try things on. Nothing here touches your real
+                tasks, GitHub or agents.
+              </span>
+              <Button size="sm" variant="outline" onClick={practice.reset}>
+                Reset
+              </Button>
+            </div>
+          ) : null}
+          {prefs.view !== "roadmap" && !inPractice ? (
             <TaskQuickAdd
               key={`${prefs.section}:${prefs.focus}`}
               environmentId={board.environmentId}
@@ -435,6 +478,11 @@ export function TasksPage() {
         ) : null}
       </div>
 
+      <PracticeDryRunDialog
+        dryRun={practice.dryRun}
+        onClose={practice.closeDryRun}
+        onFinish={practice.finishDryRun}
+      />
       <TaskCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
