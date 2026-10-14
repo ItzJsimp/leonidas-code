@@ -1,0 +1,131 @@
+name: Upstream review
+
+# Weekly: merge upstream T3 Code (pingdotgg/t3code) main into a review branch, run scoped tests,
+# and open a PR for Jake. This workflow never pushes to main: it only creates upstream-review/* branches.
+# Upstream merges are Jake's job (LEONIDAS.md), so the PR is the gate. A merge that conflicts
+# opens an issue listing the files instead of a PR.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-review
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Merge upstream and open review
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create review branch from main
+        id: branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "leonidas-upstream-review"
+          git config user.email "upstream-review@users.noreply.github.com"
+          git remote add upstream https://github.com/pingdotgg/t3code.git
+          git fetch --quiet upstream main
+
+          week="$(date -u +%G-W%V)"
+          branch="upstream-review/$week"
+          echo "week=$week" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+          if git merge-base --is-ancestor upstream/main origin/main; then
+            echo "Upstream main is already in main. Nothing to review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "Review branch $branch already exists. Skipping so nothing is overwritten."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            git checkout -b "$branch" origin/main
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge upstream main
+        id: merge
+        if: steps.branch.outputs.skip == 'false'
+        run: |
+          set -uo pipefail
+          count="$(git rev-list --count origin/main..upstream/main)"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if git merge --no-ff --no-edit -m "Merge upstream T3 Code main (weekly review)" upstream/main; then
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/conflicts.txt"
+            git merge --abort
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Vite+
+        if: steps.merge.outputs.conflicts == 'false'
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Scoped tests on the merge
+        id: tests
+        if: steps.merge.outputs.conflicts == 'false'
+        continue-on-error: true
+        run: vp test run apps/server packages/contracts packages/client-runtime
+
+      - name: Push review branch and open PR
+        if: steps.merge.outputs.conflicts == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          WEEK: ${{ steps.branch.outputs.week }}
+          COUNT: ${{ steps.merge.outputs.count }}
+          TESTS: ${{ steps.tests.outcome }}
+        run: |
+          set -euo pipefail
+          git push origin "$BRANCH"
+
+          args=(--base main --head "$BRANCH" --title "Upstream review $WEEK: T3 Code main")
+          if [ "$TESTS" = "success" ]; then
+            status="Scoped tests passed on the merge (apps/server, packages/contracts, packages/client-runtime)."
+          else
+            status="Scoped tests failed on the merge. Fix them on this branch before merging."
+            args+=(--draft)
+          fi
+          body="Weekly upstream review ($WEEK): $COUNT upstream commits merged cleanly into main.
+
+          $status
+
+          Jake reviews and merges this PR. Nothing reaches main before then."
+          gh pr create "${args[@]}" --body "$body"
+
+      - name: Report conflicts as an issue
+        if: steps.merge.outputs.conflicts == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEEK: ${{ steps.branch.outputs.week }}
+          COUNT: ${{ steps.merge.outputs.count }}
+        run: |
+          set -euo pipefail
+          total="$(wc -l < "$RUNNER_TEMP/conflicts.txt")"
+          {
+            echo "$COUNT upstream commits did not merge cleanly into main this week: $total conflicted files."
+            echo
+            echo "Resolve locally (the resolving-merge-conflicts skill helps), then push the result to upstream-review/$WEEK and open the PR."
+            echo
+            sed 's/^/- /' "$RUNNER_TEMP/conflicts.txt"
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --title "Upstream review $WEEK: merge conflicts" --body-file "$RUNNER_TEMP/issue.md"
