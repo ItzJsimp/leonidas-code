@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { clearChunkReloadGuard, reloadOnceForChunkLoadError } from "./chunkReloadGuard";
+import {
+  clearChunkReloadGuard,
+  isChunkLoadError,
+  reloadOnceForChunkLoadError,
+} from "./chunkReloadGuard";
 
 function createStorageStub(): Storage {
   const store = new Map<string, string>();
@@ -52,5 +56,16 @@ describe("reloadOnceForChunkLoadError", () => {
     expect(reloadOnceForChunkLoadError(blocked, reload)).toBe(false);
     expect(reload).not.toHaveBeenCalled();
     expect(() => clearChunkReloadGuard(blocked)).not.toThrow();
+  });
+});
+
+describe("isChunkLoadError", () => {
+  it("matches failed lazy-module fetches and nothing else", () => {
+    expect(isChunkLoadError(new TypeError("Failed to fetch dynamically imported module: x"))).toBe(
+      true,
+    );
+    expect(isChunkLoadError(new Error("Importing a module script failed."))).toBe(true);
+    expect(isChunkLoadError(new Error("boom"))).toBe(false);
+    expect(isChunkLoadError(undefined)).toBe(false);
   });
 });

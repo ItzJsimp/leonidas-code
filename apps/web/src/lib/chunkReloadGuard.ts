@@ -37,3 +37,16 @@ export function clearChunkReloadGuard(getStorage: () => Storage = () => window.s
     // Blocked storage never held the flag.
   }
 }
+
+const CHUNK_LOAD_ERROR_PATTERN =
+  /dynamically imported module|importing a module script|error loading dynamically imported module/i;
+
+/**
+ * Whether a route error is a failed lazy-module fetch (stale assets, or a dev
+ * server restarting mid-session). These never surface as `vite:preloadError`
+ * when the router lazy-loads a route component, so the error view checks too.
+ */
+export function isChunkLoadError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  return CHUNK_LOAD_ERROR_PATTERN.test(message);
+}

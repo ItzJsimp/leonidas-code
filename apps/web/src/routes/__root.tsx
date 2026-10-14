@@ -12,6 +12,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { Check, Copy } from "lucide";
+import { isChunkLoadError, reloadOnceForChunkLoadError } from "../lib/chunkReloadGuard";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { APP_BASE_NAME, APP_DISPLAY_NAME, APP_STAGE_LABEL, APP_VERSION } from "../branding";
@@ -453,6 +454,11 @@ function RootRouteErrorView({ error }: ErrorComponentProps) {
   // Router pathname rather than window.location: desktop uses hash history, where the window path is always "/".
   const pathname = useLocation({ select: (location) => location.pathname });
   const report = useMemo(() => errorReport(error, pathname), [error, pathname]);
+
+  // A failed lazy-module fetch heals with one reload; the guard stops a loop.
+  useEffect(() => {
+    if (isChunkLoadError(error)) reloadOnceForChunkLoadError();
+  }, [error]);
 
   return (
     <StandalonePage tone="error">
