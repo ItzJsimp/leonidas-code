@@ -37,6 +37,7 @@ import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
 import { DetailedContextBreakdownView } from "./DetailedContextBreakdownView";
 import { barSegments } from "./ContextBreakdown.logic";
 import { deriveTrimSuggestions } from "./ContextTrim.logic";
+import { deriveWasteFindings } from "./ContextWaste.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
 import type { StartBenchmarkArena } from "./BenchmarkExplorer";
@@ -90,6 +91,7 @@ function ContextSegments({
     [query.data],
   );
   const trim = useMemo(() => (query.data ? deriveTrimSuggestions(query.data) : []), [query.data]);
+  const waste = useMemo(() => (query.data ? deriveWasteFindings(query.data) : []), [query.data]);
   const used = segments.filter((segment) => segment.kind === "used" && segment.tokens > 0);
   if (used.length === 0) return null;
   const top = used.slice(0, MAX_CONTEXT_SEGMENTS);
@@ -142,6 +144,21 @@ function ContextSegments({
                 <span className="tabular-nums text-foreground">
                   {item.estimated ? "~" : ""}
                   {formatTokenCount(item.tokens)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {waste.length > 0 ? (
+        <div className="flex flex-col gap-0.5 border-t border-border/50 pt-1.5">
+          <span className="text-2xs font-medium text-foreground">Waste: repeated work</span>
+          <ul className="flex flex-col gap-0.5 text-2xs text-muted-foreground">
+            {waste.map((item) => (
+              <li key={item.key} className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                <span className="tabular-nums text-foreground">
+                  ~{formatTokenCount(item.tokens)}
                 </span>
               </li>
             ))}
