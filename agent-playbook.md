@@ -39,6 +39,9 @@ verified: 2026-10-11
 1. Updater logic: run the updater tests in `apps/desktop` (fast, no build).
 2. Toast flow end to end: `pnpm start:mock-update-server` plus a mock-updates desktop build, before touching CI.
 3. Real proof: push to `main`, wait for the release, confirm the toast on the other machine.
+4. First-run starter skills: `node scripts/verify-starter-skills.ts --live` installs all of them into a fresh temp folder and checks both roots plus Claude Code and Codex loading (about 8 s, one haiku call). `--list <folder>` audits any AIOS folder.
+5. Which skills Codex sees in a folder, free and with no model call: `codex debug prompt-input` run there (skills are listed as `(file: rN/<name>/SKILL.md)`).
+6. Web typecheck: from `apps/web`, `../../node_modules/.bin/vp run typecheck` (about 13 s). `npx tsgo` and a local `tsc` bin do not exist.
 
 ## 5. Gotchas (the ones that bite first)
 
@@ -61,3 +64,5 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 ## 7. Session notes
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
+
+- 2026-10-14: starter skills verified 22/22 in both roots for Claude Code and Codex; `SKILL_ROOTS` now lives in `skillPacks.ts` so the wizard and the verifier share it.
