@@ -29,10 +29,11 @@ verified: 2026-10-11
 
 ## 3. Data sources: shape, cost, traps
 
-| Source         | Reached by                                                                                                   | Latency                                     | Trap                                                                                                                                          |
-| -------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Update feed    | GitHub Releases of the repo named in `T3CODE_DESKTOP_UPDATE_REPOSITORY` or `GITHUB_REPOSITORY` at build time | 4 minute poll (`AUTO_UPDATE_POLL_INTERVAL`) | Baked in at build: an official T3 install keeps updating from `pingdotgg` until replaced by our build. Private repo needs a token in the app. |
-| Update channel | Derived from version string: `-nightly.YYYYMMDD.N` is nightly, else latest                                   | n/a                                         | Updates whose channel does not match the selected one are ignored silently; version our builds as plain semver (`1.0.<run_number>`).          |
+| Source          | Reached by                                                                                                                   | Latency                                     | Trap                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Update feed     | GitHub Releases of the repo named in `T3CODE_DESKTOP_UPDATE_REPOSITORY` or `GITHUB_REPOSITORY` at build time                 | 4 minute poll (`AUTO_UPDATE_POLL_INTERVAL`) | Baked in at build: an official T3 install keeps updating from `pingdotgg` until replaced by our build. Private repo needs a token in the app. |
+| Public download | `releases/latest/download/Leonidas-Setup.exe` on `ItzJsimp/leonidas-code`, a fixed-name copy that `team-release.yml` uploads | n/a                                         | The versioned `Leonidas-Code-<v>-x64.exe` name changes every release; give users only the fixed link. Unsigned, so SmartScreen shows once.    |
+| Update channel  | Derived from version string: `-nightly.YYYYMMDD.N` is nightly, else latest                                                   | n/a                                         | Updates whose channel does not match the selected one are ignored silently; version our builds as plain semver (`1.0.<run_number>`).          |
 
 ## 4. The cheap build and verify loop
 
@@ -47,6 +48,7 @@ verified: 2026-10-11
 
 Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.md). Search it before touching updater, release, rebrand, worktree, build-preflight or quota code.
 
+- **`gh` defaults to upstream in this fork:** `gh release list` with no `-R` reads `pingdotgg/t3code`. Always pass `-R ItzJsimp/leonidas-code`.
 - **A push to `main` ships a release to both machines:** changes stay local commits until Jake says push.
 - **Rebrand scope rule:** change user-visible names only; leave `@t3tools/*`, `T3CODE_*`, the `~/.t3` folder and app id `com.t3tools.t3code`, or threads orphan and installs duplicate.
 - **No `vp` on PATH:** run `node_modules/.bin/vp test run <files>` from the repo.
@@ -69,6 +71,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
+- 2026-10-14: fixed-name `Leonidas-Setup.exe` added to every release (`team-release.yml`, commit `5de80b185c`) as the one beginner download link; Scribe still has 0 releases, so dictation is not installable from a link.
 - 2026-10-14: skill folders in the `/` menu (`packages/client-runtime/src/skillFolders.ts`, `apps/web/src/components/chat/composerSkillFolders.logic.ts`, `settings/SkillFoldersEditor.tsx`), commits `e518535038` and `b0e9835b08`; checked live in Claude, 97 flat rows became 9 folders. Open: AIOS mirror file, category and source for Codex skills.
 - 2026-10-14: delegated task status returns a provider-reported `usage` block (`apps/server/src/mcp/delegatedTaskUsage.ts`, commit `c0efa878cf`); harness-gates card 1 of 4. Cards 2 to 4 build on it.
 - 2026-10-14: AIOS Home on the Command tab (`taskBoard.home`, `aiosHome.ts`, `AiosHomeCard.tsx`), verified live on 583 cards; Home build 1 ms, shared card scan 92 ms warm is the next cost to cut.
