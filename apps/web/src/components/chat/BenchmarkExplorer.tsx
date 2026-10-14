@@ -9,7 +9,10 @@ import { useMemo, useState } from "react";
 
 import {
   buildPoints,
+  columnBests,
+  groupScoreMetrics,
   isLogMetric,
+  matchesEffort,
   paretoFrontier,
   scaleValue,
   sortEntries,
@@ -30,7 +33,15 @@ import { Checkbox } from "../ui/checkbox";
 import { Dialog, DialogPanel, DialogPopup, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Select,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { Spinner } from "../ui/spinner";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 
@@ -85,7 +96,9 @@ function Scatter({
   connectedKeys,
   hovered,
   onHover,
+  onPick,
 }: {
+  readonly onPick: (key: string) => void;
   readonly points: ReadonlyArray<ExplorerPoint>;
   readonly frontier: ReadonlyArray<ExplorerPoint>;
   readonly xMetric: ModelBenchmarkMetric;
@@ -113,6 +126,7 @@ function Scatter({
     (tick) => tick >= xMin * 0.999 && tick <= xMax * 1.001,
   );
   const yTicks = niceTicks(yMin, yMax, false);
+  const frontierKeys = new Set(frontier.map((point) => point.entry.sourceModelKey));
 
   return (
     <svg
@@ -171,19 +185,38 @@ function Scatter({
       {points.map((point) => {
         const key = point.entry.sourceModelKey;
         const active = hovered === key;
+        // Name the dots worth reading at a glance: the frontier, yours and the hovered one.
+        const labelled = active || connectedKeys.has(key) || frontierKeys.has(key);
+        const right = x(point.x) < WIDTH - 140;
         return (
-          <circle
-            key={key}
-            cx={x(point.x)}
-            cy={y(point.y)}
-            r={active ? 7 : 5}
-            fill={colorOf(point.entry)}
-            stroke={connectedKeys.has(key) ? "currentColor" : "none"}
-            strokeWidth={2}
-            opacity={hovered && !active ? 0.45 : 1}
-            onPointerEnter={() => onHover(key)}
-            onPointerLeave={() => onHover(null)}
-          />
+          <g key={key}>
+            {labelled ? (
+              <text
+                x={x(point.x) + (right ? 8 : -8)}
+                y={y(point.y) + 3}
+                textAnchor={right ? "start" : "end"}
+                fontSize={9}
+                fill="currentColor"
+                className={active ? "fill-foreground" : undefined}
+                pointerEvents="none"
+              >
+                {point.entry.name}
+              </text>
+            ) : null}
+            <circle
+              className="cursor-pointer"
+              onClick={() => onPick(key)}
+              cx={x(point.x)}
+              cy={y(point.y)}
+              r={active ? 7 : 5}
+              fill={colorOf(point.entry)}
+              stroke={connectedKeys.has(key) ? "currentColor" : "none"}
+              strokeWidth={2}
+              opacity={hovered && !active ? 0.45 : 1}
+              onPointerEnter={() => onHover(key)}
+              onPointerLeave={() => onHover(null)}
+            />
+          </g>
         );
       })}
     </svg>
@@ -295,7 +328,12 @@ function ExplorerBody({
   const [xKey, setXKey] = useState<string | null>(null);
   const [yKey, setYKey] = useState<string | null>(null);
   const [creator, setCreator] = useState<string>("all");
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredRaw, setHovered] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
+  const hovered = hoveredRaw ?? pinned;
+  const [effort, setEffort] = useState("all");
+  const [view, setView] = useState<"chart" | "table">("chart");
+  const [columnGroup, setColumnGroup] = useState(0);
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [sort, setSort] = useState<ExplorerSort>({ key: "y", direction: "desc" });
 
@@ -317,6 +355,16 @@ function ExplorerBody({
 
   const xMetrics = (catalog?.metrics ?? []).filter((metric) => metric.kind === xKind);
   const yMetrics = (catalog?.metrics ?? []).filter((metric) => metric.kind === "score");
+  const scoreGroups = useMemo(() => groupScoreMetrics(catalog?.metrics ?? []), [catalog]);
+  const efforts = useMemo(
+    () =>
+      [
+        ...new Set(
+          (catalog?.entries ?? []).flatMap((entry) => (entry.effort ? [entry.effort] : [])),
+        ),
+      ].toSorted(),
+    [catalog],
+  );
   const xMetric =
     xMetrics.find((metric) => metric.key === xKey) ??
     xMetrics.find((m) => m.key.endsWith("output")) ??
@@ -339,8 +387,10 @@ function ExplorerBody({
 
   const inCreator = useMemo(
     () =>
-      (catalog?.entries ?? []).filter((entry) => creator === "all" || entry.creator === creator),
-    [catalog, creator],
+      (catalog?.entries ?? []).filter(
+        (entry) => (creator === "all" || entry.creator === creator) && matchesEffort(entry, effort),
+      ),
+    [catalog, creator, effort],
   );
   // Default view: the models you can run plus the strongest few, like AA's curated chart.
   const selected = useMemo(() => {
@@ -428,6 +478,16 @@ function ExplorerBody({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <ToggleGroup
+          aria-label="View"
+          value={[view]}
+          onValueChange={(next) => {
+            if (next[0] === "chart" || next[0] === "table") setView(next[0]);
+          }}
+        >
+          <Toggle value="chart">Chart</Toggle>
+          <Toggle value="table">All benchmarks</Toggle>
+        </ToggleGroup>
+        <ToggleGroup
           aria-label="Compare score against"
           value={[xKind]}
           onValueChange={(next) => {
@@ -462,10 +522,15 @@ function ExplorerBody({
             <SelectValue>{yMetric.label}</SelectValue>
           </SelectTrigger>
           <SelectPopup>
-            {yMetrics.map((metric) => (
-              <SelectItem key={metric.key} value={metric.key}>
-                {metric.label}
-              </SelectItem>
+            {scoreGroups.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectGroupLabel>{group.label}</SelectGroupLabel>
+                {group.metrics.map((metric) => (
+                  <SelectItem key={metric.key} value={metric.key}>
+                    {metric.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectPopup>
         </Select>
@@ -488,6 +553,34 @@ function ExplorerBody({
             ))}
           </SelectPopup>
         </Select>
+        {efforts.length > 0 ? (
+          <Select
+            value={effort}
+            onValueChange={(value) => {
+              setEffort(value ?? "all");
+              setPicked(null);
+            }}
+          >
+            <SelectTrigger aria-label="Effort" size="xs">
+              <SelectValue>
+                {effort === "all"
+                  ? "All efforts"
+                  : effort === "default"
+                    ? "Default effort"
+                    : `${effort} effort`}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectPopup>
+              <SelectItem value="all">All efforts</SelectItem>
+              <SelectItem value="default">Default effort</SelectItem>
+              {efforts.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name} effort
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        ) : null}
         <ModelPicker
           entries={inCreator}
           selected={selected}
@@ -496,65 +589,231 @@ function ExplorerBody({
         />
       </div>
 
-      <div className="relative rounded-xl border border-border/60 bg-muted/10 p-2">
-        {points.length > 0 ? (
-          <Scatter
-            points={points}
-            frontier={frontier}
-            xMetric={xMetric}
-            yMetric={yMetric}
-            colorOf={colorOf}
-            connectedKeys={connectedKeys}
-            hovered={hovered}
-            onHover={setHovered}
-          />
-        ) : (
-          <p className="py-16 text-center text-xs text-muted-foreground">
-            None of the selected models have both numbers.
-          </p>
-        )}
-        {hoveredEntry ? (
-          <div className="pointer-events-none absolute top-2 right-2 rounded-lg border bg-popover px-2.5 py-1.5 text-2xs shadow-md">
-            <div className="font-medium text-foreground">{hoveredEntry.name}</div>
-            <div className="text-muted-foreground">
-              {yMetric.label}:{" "}
-              {formatBenchmarkValue(hoveredEntry.values[yMetric.key] ?? 0, yMetric)}
-              {" · "}
-              {xMetric.label}:{" "}
-              {formatBenchmarkValue(hoveredEntry.values[xMetric.key] ?? 0, xMetric)}
-            </div>
+      {view === "chart" ? (
+        <>
+          <div className="relative rounded-xl border border-border/60 bg-muted/10 p-2">
+            {points.length > 0 ? (
+              <Scatter
+                points={points}
+                frontier={frontier}
+                xMetric={xMetric}
+                yMetric={yMetric}
+                colorOf={colorOf}
+                connectedKeys={connectedKeys}
+                hovered={hovered}
+                onHover={setHovered}
+                onPick={(key) => setPinned((current) => (current === key ? null : key))}
+              />
+            ) : (
+              <p className="py-16 text-center text-xs text-muted-foreground">
+                None of the selected models have both numbers.
+              </p>
+            )}
+            {hoveredEntry ? (
+              <div className="pointer-events-none absolute top-2 right-2 rounded-lg border bg-popover px-2.5 py-1.5 text-2xs shadow-md">
+                <div className="font-medium text-foreground">{hoveredEntry.name}</div>
+                <div className="text-muted-foreground">
+                  {yMetric.label}:{" "}
+                  {formatBenchmarkValue(hoveredEntry.values[yMetric.key] ?? 0, yMetric)}
+                  {" · "}
+                  {xMetric.label}:{" "}
+                  {formatBenchmarkValue(hoveredEntry.values[xMetric.key] ?? 0, xMetric)}
+                </div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
-      <p className="text-2xs text-muted-foreground">
-        Dotted line: the best score at each {xMetric.label.toLowerCase()}. Outlined dots are models
-        you can run.
-      </p>
+          <p className="text-2xs text-muted-foreground">
+            Dotted line: the best score at each {xMetric.label.toLowerCase()}. Outlined dots are
+            models you can run.
+          </p>
 
-      <div className="max-h-64 overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]">
+          <div className="max-h-64 overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-background text-2xs text-muted-foreground">
+                <tr>
+                  {header("Model", "name", "left")}
+                  {header(yMetric.label, "y", "right")}
+                  {header(xMetric.label, "x", "right")}
+                  <th className="w-0" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((entry) => {
+                  const key = entry.sourceModelKey;
+                  const candidate = connected.get(key);
+                  const yValue = entry.values[yMetric.key];
+                  const xValue = entry.values[xMetric.key];
+                  return (
+                    <tr
+                      key={key}
+                      onPointerEnter={() => setHovered(key)}
+                      onPointerLeave={() => setHovered(null)}
+                      className={cn("border-t border-border/40", hovered === key && "bg-muted/50")}
+                    >
+                      <td className="max-w-0 px-2 py-1">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            aria-hidden
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ background: colorOf(entry) }}
+                          />
+                          <span className="truncate">{entry.name}</span>
+                        </span>
+                      </td>
+                      <td className="px-2 py-1 text-right tabular-nums">
+                        {yValue === undefined ? "–" : formatBenchmarkValue(yValue, yMetric)}
+                      </td>
+                      <td className="px-2 py-1 text-right tabular-nums">
+                        {xValue === undefined ? "–" : formatBenchmarkValue(xValue, xMetric)}
+                      </td>
+                      <td className="px-2 py-1 text-right">
+                        {candidate && onStartChat ? (
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            aria-label={`New chat with ${entry.name}`}
+                            onClick={() => {
+                              onStartChat(candidate.selection);
+                              onClose();
+                            }}
+                          >
+                            New chat
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <AllBenchmarksTable
+          entries={picked ? visible : inCreator}
+          groups={scoreGroups}
+          group={columnGroup}
+          onGroupChange={setColumnGroup}
+          extraMetrics={(catalog.metrics ?? []).filter(
+            (metric) => metric.kind !== "score" && metric.key !== "benchLm:price:input",
+          )}
+          colorOf={colorOf}
+          connected={connected}
+          onStartChat={onStartChat}
+          onClose={onClose}
+        />
+      )}
+      {source ? (
+        <a
+          href={source.url}
+          target="_blank"
+          rel="noreferrer"
+          className="self-end text-2xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          {source.attribution}
+          {source.fetchedAt ? ` · updated ${formatRelativeTimeLabel(source.fetchedAt)}` : ""}
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+function AllBenchmarksTable({
+  entries,
+  groups,
+  group,
+  onGroupChange,
+  extraMetrics,
+  colorOf,
+  connected,
+  onStartChat,
+  onClose,
+}: {
+  readonly entries: ReadonlyArray<ModelBenchmarkEntry>;
+  readonly groups: ReturnType<typeof groupScoreMetrics>;
+  readonly group: number;
+  readonly onGroupChange: (index: number) => void;
+  readonly extraMetrics: ReadonlyArray<ModelBenchmarkMetric>;
+  readonly colorOf: (entry: ModelBenchmarkEntry) => string;
+  readonly connected: ReadonlyMap<string, BenchmarkCandidate>;
+  readonly onStartChat: ((selection: ModelSelection) => void) | null;
+  readonly onClose: () => void;
+}) {
+  const active = groups[Math.min(group, groups.length - 1)];
+  const columns = useMemo(
+    () => [...(active?.metrics ?? []), ...extraMetrics],
+    [active, extraMetrics],
+  );
+  const [sort, setSort] = useState<ExplorerSort>({ key: "", direction: "desc" });
+  const sortKey = columns.some((metric) => metric.key === sort.key) ? sort.key : columns[0]?.key;
+  const rows = useMemo(() => {
+    if (!sortKey) return entries;
+    const metric = columns.find((item) => item.key === sortKey);
+    const direction =
+      sort.key === sortKey ? sort.direction : metric?.higherIsBetter ? "desc" : "asc";
+    return sortEntries(entries, { key: sortKey, direction });
+  }, [entries, columns, sort, sortKey]);
+  const bests = useMemo(() => columnBests(entries, columns), [entries, columns]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-1">
+        {groups.map((item, index) => (
+          <Button
+            key={item.label}
+            size="xs"
+            variant={item === active ? "secondary" : "ghost"}
+            onClick={() => onGroupChange(index)}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </div>
+      <div className="max-h-[60vh] overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]">
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-background text-2xs text-muted-foreground">
+          <thead className="sticky top-0 z-10 bg-background text-2xs text-muted-foreground">
             <tr>
-              {header("Model", "name", "left")}
-              {header(yMetric.label, "y", "right")}
-              {header(xMetric.label, "x", "right")}
+              <th className="sticky left-0 z-10 bg-background px-2 py-1 text-left font-medium">
+                Model
+              </th>
+              {columns.map((metric) => (
+                <th key={metric.key} className="px-2 py-1 text-right font-medium whitespace-nowrap">
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground",
+                      sortKey === metric.key && "text-foreground",
+                    )}
+                    onClick={() =>
+                      setSort({
+                        key: metric.key,
+                        direction:
+                          sortKey === metric.key && sort.key === metric.key
+                            ? sort.direction === "desc"
+                              ? "asc"
+                              : "desc"
+                            : metric.higherIsBetter
+                              ? "desc"
+                              : "asc",
+                      })
+                    }
+                  >
+                    {metric.label}
+                  </button>
+                </th>
+              ))}
               <th className="w-0" />
             </tr>
           </thead>
           <tbody>
             {rows.map((entry) => {
-              const key = entry.sourceModelKey;
-              const candidate = connected.get(key);
-              const yValue = entry.values[yMetric.key];
-              const xValue = entry.values[xMetric.key];
+              const candidate = connected.get(entry.sourceModelKey);
               return (
                 <tr
-                  key={key}
-                  onPointerEnter={() => setHovered(key)}
-                  onPointerLeave={() => setHovered(null)}
-                  className={cn("border-t border-border/40", hovered === key && "bg-muted/50")}
+                  key={entry.sourceModelKey}
+                  className="border-t border-border/40 hover:bg-muted/40"
                 >
-                  <td className="max-w-0 px-2 py-1">
+                  <td className="sticky left-0 max-w-48 bg-background px-2 py-1">
                     <span className="flex items-center gap-1.5">
                       <span
                         aria-hidden
@@ -562,14 +821,26 @@ function ExplorerBody({
                         style={{ background: colorOf(entry) }}
                       />
                       <span className="truncate">{entry.name}</span>
+                      {candidate ? (
+                        <span className="shrink-0 text-2xs text-muted-foreground">yours</span>
+                      ) : null}
                     </span>
                   </td>
-                  <td className="px-2 py-1 text-right tabular-nums">
-                    {yValue === undefined ? "–" : formatBenchmarkValue(yValue, yMetric)}
-                  </td>
-                  <td className="px-2 py-1 text-right tabular-nums">
-                    {xValue === undefined ? "–" : formatBenchmarkValue(xValue, xMetric)}
-                  </td>
+                  {columns.map((metric) => {
+                    const value = entry.values[metric.key];
+                    const best = value !== undefined && bests.get(metric.key) === value;
+                    return (
+                      <td
+                        key={metric.key}
+                        className={cn(
+                          "px-2 py-1 text-right tabular-nums",
+                          best ? "font-semibold text-success" : "text-muted-foreground",
+                        )}
+                      >
+                        {value === undefined ? "–" : formatBenchmarkValue(value, metric)}
+                      </td>
+                    );
+                  })}
                   <td className="px-2 py-1 text-right">
                     {candidate && onStartChat ? (
                       <Button
@@ -591,18 +862,9 @@ function ExplorerBody({
           </tbody>
         </table>
       </div>
-
-      {source ? (
-        <a
-          href={source.url}
-          target="_blank"
-          rel="noreferrer"
-          className="self-end text-2xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-        >
-          {source.attribution}
-          {source.fetchedAt ? ` · updated ${formatRelativeTimeLabel(source.fetchedAt)}` : ""}
-        </a>
-      ) : null}
+      <p className="text-2xs text-muted-foreground">
+        Green marks the leader in each column. Click a header to sort.
+      </p>
     </div>
   );
 }
@@ -625,7 +887,7 @@ export function BenchmarkExplorer({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-4xl">
         <DialogPanel>
-          <DialogTitle className="mb-3 text-base">Model benchmarks</DialogTitle>
+          <DialogTitle className="mb-3">Model benchmarks</DialogTitle>
           <ExplorerBody
             environmentId={environmentId}
             candidates={candidates}

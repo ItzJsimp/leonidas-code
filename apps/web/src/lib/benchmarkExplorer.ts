@@ -80,3 +80,48 @@ export function sortEntries(
     return direction * (left - right) || a.name.localeCompare(b.name);
   });
 }
+
+/** Score metrics as picker groups: the headline scores first, then each category's own benchmarks. */
+export function groupScoreMetrics(metrics: ReadonlyArray<ModelBenchmarkMetric>): ReadonlyArray<{
+  readonly label: string;
+  readonly metrics: ReadonlyArray<ModelBenchmarkMetric>;
+}> {
+  const scores = metrics.filter((metric) => metric.kind === "score");
+  const headline = scores.filter((metric) => !metric.key.includes(":benchmark:"));
+  const byCategory = new Map<string, ModelBenchmarkMetric[]>();
+  for (const metric of scores) {
+    if (!metric.key.includes(":benchmark:")) continue;
+    const label = headline.find((item) => item.category === metric.category)?.label;
+    const group = label ?? metric.category ?? "Other";
+    byCategory.set(group, [...(byCategory.get(group) ?? []), metric]);
+  }
+  return [
+    ...(headline.length > 0 ? [{ label: "Overall and categories", metrics: headline }] : []),
+    ...[...byCategory.entries()]
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([label, items]) => ({ label, metrics: items })),
+  ];
+}
+
+/** The best value per metric across entries, for highlighting the leader in each column. */
+export function columnBests(
+  entries: ReadonlyArray<ModelBenchmarkEntry>,
+  metrics: ReadonlyArray<ModelBenchmarkMetric>,
+): ReadonlyMap<string, number> {
+  const bests = new Map<string, number>();
+  for (const metric of metrics) {
+    for (const entry of entries) {
+      const value = entry.values[metric.key];
+      if (value === undefined) continue;
+      const current = bests.get(metric.key);
+      if (current === undefined || (metric.higherIsBetter ? value > current : value < current)) {
+        bests.set(metric.key, value);
+      }
+    }
+  }
+  return bests;
+}
+
+/** "default" keeps entries the source did not split by effort. */
+export const matchesEffort = (entry: ModelBenchmarkEntry, effort: string) =>
+  effort === "all" || (effort === "default" ? entry.effort === undefined : entry.effort === effort);

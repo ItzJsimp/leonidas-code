@@ -1,7 +1,15 @@
 import type { ModelBenchmarkEntry, ModelBenchmarkMetric } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildPoints, paretoFrontier, scaleValue, sortEntries } from "./benchmarkExplorer";
+import {
+  buildPoints,
+  columnBests,
+  groupScoreMetrics,
+  matchesEffort,
+  paretoFrontier,
+  scaleValue,
+  sortEntries,
+} from "./benchmarkExplorer";
 
 const metric = (
   key: string,
@@ -73,5 +81,55 @@ describe("sortEntries", () => {
       { key: "score", direction: "desc" },
     );
     expect(sorted.map((row) => row.name)).toEqual(["high", "low", "none"]);
+  });
+});
+
+describe("explorer table helpers", () => {
+  const metric = (
+    key: string,
+    extra: Partial<ModelBenchmarkMetric> = {},
+  ): ModelBenchmarkMetric => ({
+    key,
+    source: "benchLm",
+    label: key,
+    kind: "score",
+    unit: "score",
+    higherIsBetter: true,
+    ...extra,
+  });
+  const entry = (name: string, values: Record<string, number>, effort?: string) =>
+    ({
+      source: "benchLm",
+      sourceModelKey: name,
+      name,
+      values,
+      ...(effort ? { effort } : {}),
+    }) as ModelBenchmarkEntry;
+
+  it("groups individual benchmarks under their category label", () => {
+    const groups = groupScoreMetrics([
+      metric("benchLm:overall"),
+      metric("benchLm:category:coding", { label: "Coding", category: "coding" }),
+      metric("benchLm:benchmark:swe", { category: "coding" }),
+      metric("benchLm:price:output", { kind: "price" }),
+    ]);
+    expect(groups.map((group) => group.label)).toEqual(["Overall and categories", "Coding"]);
+    expect(groups[1]!.metrics.map((item) => item.key)).toEqual(["benchLm:benchmark:swe"]);
+  });
+
+  it("finds the best per column in the metric's direction", () => {
+    const bests = columnBests(
+      [entry("a", { s: 50, p: 3 }), entry("b", { s: 70, p: 9 })],
+      [metric("s"), metric("p", { kind: "price", higherIsBetter: false })],
+    );
+    expect(bests.get("s")).toBe(70);
+    expect(bests.get("p")).toBe(3);
+  });
+
+  it("filters by effort", () => {
+    expect(matchesEffort(entry("a", {}), "default")).toBe(true);
+    expect(matchesEffort(entry("a", {}, "high"), "default")).toBe(false);
+    expect(matchesEffort(entry("a", {}, "high"), "high")).toBe(true);
+    expect(matchesEffort(entry("a", {}, "high"), "all")).toBe(true);
   });
 });
