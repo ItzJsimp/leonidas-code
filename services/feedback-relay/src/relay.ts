@@ -181,7 +181,11 @@ export async function handleRequest(request: Request, env: RelayEnv): Promise<Re
     method: "POST",
     body: JSON.stringify(buildIssue(report, screenshotUrl)),
   });
-  if (!issue.ok) return reply(502, { ok: false });
+  if (!issue.ok) {
+    // Visible in `wrangler tail`; the body names the cause (bad token, missing permission, repo).
+    console.error("github issue failed", issue.status, (await issue.text()).slice(0, 300));
+    return reply(502, { ok: false });
+  }
   const created = (await issue.json()) as { number?: number };
   return reply(200, { ok: true, issue: created.number ?? null });
 }
