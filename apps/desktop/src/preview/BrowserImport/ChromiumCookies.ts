@@ -49,7 +49,7 @@ const isChromiumKeyError = Schema.is(ChromiumKeyError);
  * Every way the read can fail: the key failures, plus the ones this module
  * raises itself.
  */
-export const ChromiumCookieReadReason = Schema.Literals([
+const ChromiumCookieReadReason = Schema.Literals([
   // `readFailed` already comes from the key failures, so it is not repeated.
   ...ChromiumKeyFailure.literals,
   "browserRunning",

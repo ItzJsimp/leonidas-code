@@ -37,7 +37,7 @@ const COOKIE_RECORD_HEADER_SIZE = 56;
 const FLAG_SECURE = 0x1;
 const FLAG_HTTP_ONLY = 0x4;
 
-export const SafariCookieReadFailure = Schema.Literals(["needsFullDiskAccess", "readFailed"]);
+const SafariCookieReadFailure = Schema.Literals(["needsFullDiskAccess", "readFailed"]);
 export type SafariCookieReadFailure = typeof SafariCookieReadFailure.Type;
 
 export class SafariCookieReadError extends Schema.TaggedError<SafariCookieReadError>()(

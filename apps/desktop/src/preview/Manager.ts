@@ -236,14 +236,10 @@ const artifactSiteSlug = (rawUrl: string): string => {
   }
 };
 
-export const PreviewAutomationSelectorKind = Schema.Literals([
-  "focused-element",
-  "selector",
-  "locator",
-]);
+const PreviewAutomationSelectorKind = Schema.Literals(["focused-element", "selector", "locator"]);
 export type PreviewAutomationSelectorKind = typeof PreviewAutomationSelectorKind.Type;
 
-export const PreviewAutomationEvaluationDetailKind = Schema.Literals([
+const PreviewAutomationEvaluationDetailKind = Schema.Literals([
   "exception-description",
   "exception-text",
   "unknown",
