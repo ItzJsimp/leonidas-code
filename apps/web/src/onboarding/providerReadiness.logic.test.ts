@@ -335,13 +335,12 @@ describe("resolveOnboardingProviderInstallCommand", () => {
     );
   });
 
-  it("chains Claude sign-in after the Windows install and refreshes PATH first", () => {
+  it("refreshes PATH after the Windows install and leaves sign-in to the app", () => {
     const command = resolveOnboardingProviderInstallCommand("claudeAgent", "windows");
 
     expect(command.startsWith("irm https://claude.ai/install.ps1 | iex; ")).toBe(true);
     expect(command).toContain("[Environment]::GetEnvironmentVariable('Path', 'User')");
-    expect(command).toContain("{ claude auth login }");
-    expect(command).toContain("Open a new terminal and run: claude auth login");
+    expect(command).not.toContain("claude auth login");
   });
 
   it.each(["darwin", "linux", "unknown"] as const)("uses the shell installer on %s", (platform) => {

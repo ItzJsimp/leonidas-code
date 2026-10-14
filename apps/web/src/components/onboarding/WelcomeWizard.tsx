@@ -82,6 +82,7 @@ import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectLis
 import { presentSavedCloudEnvironmentConnection } from "../cloud/cloudEnvironmentConnectionPresentation";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
+import { ClaudeSignInCard } from "./ClaudeSignInCard";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
@@ -825,6 +826,7 @@ function ConnectedAgentsStep({
   const serverConfig = useAtomValue(serverEnvironment.configValueAtom(environmentId));
   const [terminalSession, setTerminalSession] = useState<AgentTerminalSession | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
+  const [claudeInstallStarted, setClaudeInstallStarted] = useState(false);
   const [createdAccount, setCreatedAccount] = useState<{
     instanceId: ProviderInstanceId;
     displayName: string;
@@ -907,6 +909,38 @@ function ConnectedAgentsStep({
                 });
               }}
             />
+          ) : driver === "claudeAgent" &&
+            provider !== undefined &&
+            getOnboardingProviderState(provider) === "signIn" ? (
+            <ClaudeSignInCard
+              key={driver}
+              environmentId={environmentId}
+              provider={provider}
+              displayName={provider.displayName || "Claude Code"}
+              autoStart={claudeInstallStarted}
+              onAutoStartConsumed={() => setClaudeInstallStarted(false)}
+              terminalOpen={terminalSession?.driver === driver}
+              terminalAvailable={serverConfig !== null && canOperateTerminal}
+              onOpenTerminal={() => {
+                if (
+                  serverConfig === null ||
+                  !readEnvironmentScope(environmentId, AuthTerminalOperateScope)
+                )
+                  return;
+                setTerminalSession({
+                  environmentId,
+                  driver,
+                  providerInstanceId: provider.instanceId,
+                  cwd: serverConfig.cwd,
+                  command: resolveOnboardingProviderLoginCommand(
+                    provider,
+                    serverConfig.settings,
+                    serverConfig.environment.platform.os,
+                  ),
+                  keybindings: serverConfig.keybindings,
+                });
+              }}
+            />
           ) : (
             <AgentCard
               key={driver}
@@ -921,6 +955,8 @@ function ConnectedAgentsStep({
                   !readEnvironmentScope(environmentId, AuthTerminalOperateScope)
                 )
                   return;
+                // After a Claude install in the terminal, the app signs in by itself.
+                if (driver === "claudeAgent" && !provider.installed) setClaudeInstallStarted(true);
                 setTerminalSession({
                   environmentId,
                   driver,

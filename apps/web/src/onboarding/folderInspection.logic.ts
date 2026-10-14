@@ -23,6 +23,15 @@ export function folderInspectionRequest(
   return { environmentId, input: { path, filesToCheck: [...new Set(filesToCheck)] } };
 }
 
+/**
+ * The folder as the owning computer sees it. A typed `~/Documents/My AIOS` and the project
+ * root `C:\Users\Sam\Documents\My AIOS` are the same folder; only the server knows that.
+ * Falls back to the typed text when the check could not run.
+ */
+export function resolvedFolderPath(inspection: FolderInspection, typed: string): string {
+  return inspection._tag === "unknown" ? typed : inspection.resolvedPath;
+}
+
 /** Only a missing folder or a truly empty one is safe to write into without asking. */
 export function needsConfirmation(inspection: FolderInspection): boolean {
   switch (inspection._tag) {
