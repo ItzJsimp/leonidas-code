@@ -94,6 +94,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import * as ProviderAdapterRegistry from "../orchestration-v2/ProviderAdapterRegistry.ts";
+import { DelegatedTaskAcceptance } from "./DelegatedTaskAcceptance.ts";
 import { DelegatedTaskLedger } from "./DelegatedTaskLedger.ts";
 import { delegatedTaskUsage } from "./delegatedTaskUsage.ts";
 import {
@@ -1033,6 +1034,7 @@ const make = Effect.gen(function* () {
   const taskBoard = yield* TaskBoardService.TaskBoardService;
   // Optional so test compositions without a database skip the ledger.
   const taskLedger = yield* Effect.serviceOption(DelegatedTaskLedger);
+  const taskAcceptance = yield* Effect.serviceOption(DelegatedTaskAcceptance);
 
   /** The user's task cards plus the board's view of which Leonidas project each section belongs to. */
   const boardProjects = projects.snapshot.pipe(
@@ -1687,6 +1689,26 @@ const make = Effect.gen(function* () {
             null);
       const resultTransfer = taskResultTransfer(parentProjection, childProjection, task) ?? null;
       const terminalStatus = terminalRun === undefined ? null : taskStatusForRun(terminalRun);
+      // The check runs once, when the child completes, in its worktree or else the project root.
+      const acceptance =
+        Option.isSome(taskAcceptance) && status === "completed"
+          ? yield* Effect.gen(function* () {
+              const worktreePath = task.worktreePath ?? childProjection.thread.worktreePath ?? null;
+              const cwd =
+                worktreePath ??
+                (yield* projects.getById(childProjection.thread.projectId).pipe(
+                  Effect.map((project) =>
+                    Option.isSome(project) ? project.value.workspaceRoot : null,
+                  ),
+                  Effect.orElseSucceed(() => null),
+                ));
+              return yield* taskAcceptance.value.evaluate(
+                task.id,
+                cwd,
+                DateTime.formatIso(yield* DateTime.now),
+              );
+            })
+          : Option.none();
       const response = {
         taskId: task.id,
         childThreadId: task.childThreadId,
@@ -1716,6 +1738,7 @@ const make = Effect.gen(function* () {
           childControls.runs,
           yield* DateTime.now,
         ),
+        ...(Option.isSome(acceptance) ? { acceptance: acceptance.value } : {}),
       } satisfies OrchestratorMcpDelegateTaskResult;
       if (Option.isSome(taskLedger) && isTerminalTaskStatus(status)) {
         yield* taskLedger.value.record({
@@ -2477,6 +2500,9 @@ const make = Effect.gen(function* () {
           );
         }
         const taskId = taskEvent.event.payload.id;
+        if (input.acceptance !== undefined && Option.isSome(taskAcceptance)) {
+          yield* taskAcceptance.value.register(taskId, input.acceptance.command);
+        }
 
         if (input.mode !== "wait") {
           return yield* readTask(scope, taskId, false, true);

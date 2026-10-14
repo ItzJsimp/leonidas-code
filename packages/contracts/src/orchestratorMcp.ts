@@ -192,6 +192,17 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
       "Wait budget for mode=wait only. Default 10 minutes. Elapsing it returns waitTimedOut=true on that call and does not cancel the child.",
   }),
   clientRequestId: Schema.optional(OrchestratorMcpClientRequestId),
+  acceptance: Schema.optional(
+    Schema.Struct({
+      command: TrimmedNonEmptyString.check(Schema.isMaxLength(2_000)).annotate({
+        description:
+          "Shell command run once in the child's worktree when the child completes. Exit code 0 passes.",
+      }),
+    }).annotate({
+      description:
+        "Optional check on the child's work. The result carries an acceptance block with the verdict and the output tail; the harness does not retry the child.",
+    }),
+  ),
   runtimeMode: Schema.optional(OrchestratorMcpRuntimeMode),
   interactionMode: Schema.optional(OrchestratorMcpInteractionMode),
   workspaceStrategy: Schema.optional(
@@ -216,6 +227,15 @@ export const OrchestratorMcpDelegatedTaskUsage = Schema.Struct({
 });
 export type OrchestratorMcpDelegatedTaskUsage = typeof OrchestratorMcpDelegatedTaskUsage.Type;
 
+/** Verdict of a delegate_task acceptance command. "error" means the command could not run. */
+export const OrchestratorMcpAcceptanceResult = Schema.Struct({
+  command: Schema.String,
+  verdict: Schema.Literals(["pass", "fail", "error"]),
+  exitCode: Schema.NullOr(Schema.Number),
+  outputTail: Schema.String,
+});
+export type OrchestratorMcpAcceptanceResult = typeof OrchestratorMcpAcceptanceResult.Type;
+
 export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
   taskId: NodeId,
   childThreadId: ThreadId,
@@ -239,6 +259,7 @@ export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
   worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   usage: Schema.optional(OrchestratorMcpDelegatedTaskUsage),
+  acceptance: Schema.optional(OrchestratorMcpAcceptanceResult),
 });
 export type OrchestratorMcpDelegateTaskResult = typeof OrchestratorMcpDelegateTaskResult.Type;
 

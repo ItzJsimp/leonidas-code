@@ -1,4 +1,5 @@
 import * as SavedItems from "../savedItems/SavedItemService.ts";
+import { DelegatedTaskAcceptance } from "./DelegatedTaskAcceptance.ts";
 import { DelegatedTaskLedger, type DelegatedTaskLedgerEntry } from "./DelegatedTaskLedger.ts";
 import * as NodeURL from "node:url";
 import * as SavedItemExecution from "../savedItems/SavedItemExecution.ts";
@@ -526,6 +527,7 @@ describe("orchestrator MCP toolkit", () => {
           const cwd = yield* checkpointWorkspace("orchestrator-mcp-toolkit");
           const capturedTurns = yield* Ref.make<ReadonlyArray<CapturedTurn>>([]);
           const ledgerEntries: Array<DelegatedTaskLedgerEntry> = [];
+          const acceptanceCommands = new Map<string, string>();
           const parentTerminalGates = new Map<ThreadId, Deferred.Deferred<void>>();
           const deliveryTerminalGates = new Map<ThreadId, Deferred.Deferred<void>>();
           const layerRegistry = ProviderAdapterRegistry.layerFromAdapters([
@@ -712,6 +714,26 @@ describe("orchestrator MCP toolkit", () => {
             ),
             Layer.provide(NodeServices.layer),
             // Built first, so the orchestrator finds the optional ledger in its context.
+            Layer.provideMerge(
+              Layer.succeed(
+                DelegatedTaskAcceptance,
+                DelegatedTaskAcceptance.of({
+                  register: (taskId, command) =>
+                    Effect.sync(() => void acceptanceCommands.set(taskId, command)),
+                  evaluate: (taskId) =>
+                    Effect.succeed(
+                      Option.fromNullishOr(acceptanceCommands.get(taskId)).pipe(
+                        Option.map((command) => ({
+                          command,
+                          verdict: "pass" as const,
+                          exitCode: 0,
+                          outputTail: "stub",
+                        })),
+                      ),
+                    ),
+                }),
+              ),
+            ),
             Layer.provideMerge(
               Layer.succeed(
                 DelegatedTaskLedger,
@@ -1723,6 +1745,7 @@ describe("orchestrator MCP toolkit", () => {
               mode: "wait",
               timeoutMs: 10_000,
               clientRequestId: "delegate-claude-1",
+              acceptance: { command: "npm test" },
             });
             expect(delegatedCall.isError).toBe(false);
             const delegated = yield* decodeDelegateTaskResult(delegatedCall.structuredContent).pipe(
@@ -1826,6 +1849,13 @@ describe("orchestrator MCP toolkit", () => {
             expect(delegatedStatus.latestTerminalResultContextTransferId).not.toBeNull();
 
             // The ledger records the terminal task read once, keyed by task id.
+            // A task with a check reports the verdict; the stub ran nothing real.
+            expect(delegatedStatus.acceptance).toEqual({
+              command: "npm test",
+              verdict: "pass",
+              exitCode: 0,
+              outputTail: "stub",
+            });
             const ledgerEntry = ledgerEntries.find((entry) => entry.taskId === delegated.taskId);
             expect(ledgerEntry).toMatchObject({
               status: "completed",

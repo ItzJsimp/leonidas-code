@@ -67,6 +67,7 @@ import * as SourceControlBuiltInDrivers from "./sourceControl/builtInDrivers.ts"
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as ProviderInstanceRegistryHydration from "./provider/ProviderInstanceRegistryHydration.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
+import * as DelegatedTaskAcceptance from "./mcp/DelegatedTaskAcceptance.ts";
 import * as DelegatedTaskLedger from "./mcp/DelegatedTaskLedger.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
@@ -761,6 +762,7 @@ const layerMakeRoutes = Layer.mergeAll(
   McpHttpServer.layer.pipe(
     // Not in the layer's declared inputs: the orchestrator reads it as an optional service.
     Layer.provide(DelegatedTaskLedger.layer),
+    Layer.provide(DelegatedTaskAcceptance.layer),
     Layer.provide(ProviderAdapterRegistry.layerFromProviderInstanceRegistry),
     Layer.provide(McpOAuth.layerMcpClientAuthenticator),
   ),
