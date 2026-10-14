@@ -165,7 +165,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.hardwareSetLimit]: "server",
   [WS_METHODS.hardwareAcknowledgeAlert]: "server",
   [WS_METHODS.hardwareSetDeepSensors]: "server",
-  [WS_METHODS.hardwareStartAgent]: "server",
+  [WS_METHODS.hardwarePrepareAgent]: "server",
   [WS_METHODS.inboxDrop]: "workspace",
   [WS_METHODS.inboxUndo]: "workspace",
   [WS_METHODS.devPreviewStatus]: "workspace",

@@ -126,3 +126,90 @@ export function relativeTime(at: number, now: number): string {
   if (hours < 48) return `${hours} h ago`;
   return `${Math.round(hours / 24)} days ago`;
 }
+
+export type MetricGroup = "Processor" | "Graphics" | "Memory" | "Storage";
+export const METRIC_GROUPS: ReadonlyArray<MetricGroup> = [
+  "Processor",
+  "Graphics",
+  "Memory",
+  "Storage",
+];
+
+export function metricGroup(metric: string): MetricGroup {
+  const head = metric.split(".")[0];
+  if (head === "cpu") return "Processor";
+  if (head === "gpu") return "Graphics";
+  if (head === "memory") return "Memory";
+  return "Storage";
+}
+
+const SHORT_LABELS: Record<string, string> = {
+  load: "Busy",
+  temp: "Temperature",
+  hotspot: "Hot spot",
+  power: "Power",
+  clock: "Speed",
+  fan: "Fan",
+  vram: "Video memory",
+  read: "Reads",
+  write: "Writes",
+  active: "Busy",
+  used: "Space used",
+};
+
+/** Short chip text inside a group, where the group heading already says Processor or Graphics. */
+export function shortMetricLabel(metric: string, fullLabel: string): string {
+  const parts = metric.split(".");
+  const head = parts[0];
+  if (head === "memory") return "In use";
+  if (head === "volume") return `${parts.slice(1, -1).join(".")} space`;
+  if (head === "drive") return fullLabel.replace(/ temperature$/, "");
+  return SHORT_LABELS[parts.at(-1) ?? ""] ?? fullLabel;
+}
+
+export interface SeriesStats {
+  readonly latest: number | null;
+  readonly min: number | null;
+  readonly avg: number | null;
+  readonly max: number | null;
+}
+
+export function seriesStats(values: ReadonlyArray<number | null>): SeriesStats {
+  const present = values.filter((value): value is number => value !== null);
+  if (present.length === 0) return { latest: null, min: null, avg: null, max: null };
+  return {
+    latest: present.at(-1) ?? null,
+    min: Math.min(...present),
+    avg: present.reduce((sum, value) => sum + value, 0) / present.length,
+    max: Math.max(...present),
+  };
+}
+
+export const RANGE_LABEL = {
+  "1h": "1 hour",
+  "24h": "24 hours",
+  "7d": "7 days",
+  "90d": "90 days",
+} as const;
+
+/** Whole-number step for a limit stepper, and the bounds it may be moved within. */
+export function limitBounds(unit: string): { step: number; min: number; max: number } {
+  if (unit === "%") return { step: 5, min: 10, max: 100 };
+  if (unit === "°C") return { step: 1, min: 20, max: 120 };
+  return { step: 1, min: 0, max: 1000 };
+}
+
+export function stepLimit(value: number, direction: 1 | -1, unit: string): number {
+  const { step, min, max } = limitBounds(unit);
+  return Math.min(max, Math.max(min, Math.round(value + direction * step)));
+}
+
+/** Scale top for a limit bar, so the warn and critical marks never sit at the very edge. */
+export function limitScaleMax(limit: Pick<HardwareLimit, "critical" | "unit">): number {
+  if (limit.unit === "%") return 100;
+  return Math.ceil((limit.critical * 1.15) / 10) * 10;
+}
+
+/** Limits where moving the numbers makes sense: rates, throttle flags and clocks are not editable. */
+export const isEditableLimit = (limit: Pick<HardwareLimit, "metric" | "unit">) =>
+  (limit.unit === "%" || limit.unit === "°C") && !limit.metric.endsWith(".throttle");

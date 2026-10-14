@@ -1,26 +1,18 @@
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 import {
   squashAtomCommandFailure,
   type AtomCommandResult,
 } from "@t3tools/client-runtime/state/runtime";
-import {
-  CommandId,
-  DEFAULT_SERVER_SETTINGS,
-  type HardwareHistoryRange,
-  type HardwareSample,
-} from "@t3tools/contracts";
-import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
-import { useNavigate } from "@tanstack/react-router";
+import type { HardwareHistoryRange, HardwareSample } from "@t3tools/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { randomUUID } from "~/lib/utils";
-import { appAtomRegistry } from "~/rpc/atomRegistry";
+import { useComposerDraftStore } from "~/composerDraftStore";
+import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
+import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
-import { environmentServerConfigsAtom, serverEnvironment } from "~/state/server";
+import { serverEnvironment } from "~/state/server";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { buildThreadRouteParams } from "~/threadRoutes";
-import { DEFAULT_INTERACTION_MODE } from "~/types";
 import { toastManager } from "~/components/ui/toast";
 
 import { appendSample } from "./systemCare.logic";
@@ -101,16 +93,16 @@ export function useSystemCareLimits() {
 
 export function useSystemCareActions() {
   const environmentId = usePrimaryEnvironmentId();
-  const navigate = useNavigate();
   const acknowledge = useAtomCommand(serverEnvironment.hardwareAcknowledgeAlert, {
     reportFailure: false,
   });
   const deepSensors = useAtomCommand(serverEnvironment.hardwareSetDeepSensors, {
     reportFailure: false,
   });
-  const startAgent = useAtomCommand(serverEnvironment.hardwareStartAgent, {
+  const prepareAgent = useAtomCommand(serverEnvironment.hardwarePrepareAgent, {
     reportFailure: false,
   });
+  const openNewThread = useNewThreadHandler();
   const [busy, setBusy] = useState(false);
   const starting = useRef(false);
 
@@ -140,51 +132,45 @@ export function useSystemCareActions() {
     [deepSensors, environmentId, run],
   );
 
-  /** Starts an approve-first agent in a new thread, then opens it. */
-  const start = useCallback(
+  /**
+   * Builds the agent prompt, copies it, and puts it in a new unsent draft. Nothing is ever sent:
+   * the person reads it and presses send themselves.
+   */
+  const preparePrompt = useCallback(
     (kind: "investigate" | "checkup", alertId?: string) =>
-      run("Could not start the agent", async () => {
+      run("Could not prepare the prompt", async () => {
         if (environmentId === null || starting.current) return;
-        const settings =
-          appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId)?.settings ??
-          DEFAULT_SERVER_SETTINGS;
-        const resolved = resolveProjectSettings(settings, null).settings;
-        const modelSelection = resolved.defaultModelSelection;
-        if (!modelSelection) {
-          toastManager.add({
-            type: "warning",
-            title: "Pick a default model first",
-            description: "Choose a default model in Settings, then start the agent again.",
-          });
-          return;
-        }
         starting.current = true;
         setBusy(true);
         try {
           const result = unwrap(
-            await startAgent({
+            await prepareAgent({
               environmentId,
-              input: {
-                commandId: CommandId.make(randomUUID()),
-                kind,
-                ...(alertId ? { alertId } : {}),
-                modelSelection,
-                runtimeMode: resolved.defaultRuntimeMode,
-                interactionMode: DEFAULT_INTERACTION_MODE,
-              },
+              input: { kind, ...(alertId ? { alertId } : {}) },
             }),
           );
-          void navigate({
-            to: "/$environmentId/$threadId",
-            params: buildThreadRouteParams(scopeThreadRef(environmentId, result.threadId)),
+          const copied = await writeTextToClipboard(result.prompt, "System Care prompt").then(
+            () => true,
+            () => false,
+          );
+          const opened = await openNewThread(scopeProjectRef(environmentId, result.projectId));
+          if (opened) {
+            useComposerDraftStore.getState().setPrompt(opened.draftId, result.prompt);
+          }
+          toastManager.add({
+            type: "success",
+            title: opened ? "Prompt ready, not sent" : "Prompt copied, not sent",
+            description: opened
+              ? `${copied ? "It is also copied. " : ""}Read it, then press send when you are ready.`
+              : "Open a new thread in the System Care project and paste it.",
           });
         } finally {
           starting.current = false;
           setBusy(false);
         }
       }),
-    [environmentId, navigate, run, startAgent],
+    [environmentId, openNewThread, prepareAgent, run],
   );
 
-  return { busy, setAcknowledged, setDeepSensors, start };
+  return { busy, setAcknowledged, setDeepSensors, preparePrompt };
 }

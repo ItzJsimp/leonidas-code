@@ -1,17 +1,18 @@
 // @effect-diagnostics globalDate:off globalDateInEffect:off preferSchemaOverJson:off
 /**
- * Starts System Care agents. Every investigation and checkup runs in one dedicated project rooted
- * in the T3 home, so incident notes accumulate in one place and never land in a code repository.
- * The project's AGENTS.md carries the approve-first rule, so it holds for every provider.
+ * Prepares System Care agent prompts. Every investigation and checkup is meant to run in one
+ * dedicated project rooted in the T3 home, so incident notes accumulate in one place and never land
+ * in a code repository. The project's AGENTS.md carries the approve-first rule, so it holds for every
+ * provider. This service only writes the context files and returns the prompt: it never starts a
+ * thread or sends a message.
  */
 import {
   CommandId,
   HardwareWatchError,
-  MessageId,
   ProjectId,
   type HardwareInventory,
-  type HardwareStartAgentInput,
-  type HardwareStartAgentResult,
+  type HardwarePrepareAgentInput,
+  type HardwarePrepareAgentResult,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -22,16 +23,15 @@ import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
 import * as ServerConfig from "../config.ts";
-import * as ThreadLaunch from "../orchestration-v2/ThreadLaunchService.ts";
 import * as Projects from "../project/ProjectService.ts";
 import { HardwareWatch, type AgentContext } from "./HardwareWatch.ts";
 
 export class SystemCare extends Context.Service<
   SystemCare,
   {
-    readonly startAgent: (
-      input: HardwareStartAgentInput,
-    ) => Effect.Effect<HardwareStartAgentResult, HardwareWatchError>;
+    readonly prepareAgent: (
+      input: HardwarePrepareAgentInput,
+    ) => Effect.Effect<HardwarePrepareAgentResult, HardwareWatchError>;
   }
 >()("t3/hardwareWatch/SystemCare") {}
 
@@ -81,7 +81,7 @@ export function machineSummary(inventory: HardwareInventory): string {
 }
 
 export function buildAgentPrompt(
-  kind: HardwareStartAgentInput["kind"],
+  kind: HardwarePrepareAgentInput["kind"],
   context: AgentContext,
   incidentPath: string,
 ): string {
@@ -121,7 +121,6 @@ const slug = (text: string) =>
 const make = Effect.gen(function* () {
   const watch = yield* HardwareWatch;
   const projects = yield* Projects.ProjectService;
-  const launcher = yield* ThreadLaunch.ThreadLaunchService;
   const config = yield* ServerConfig.ServerConfig;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -153,7 +152,7 @@ const make = Effect.gen(function* () {
     return project.id;
   });
 
-  const startAgent = (input: HardwareStartAgentInput) =>
+  const prepareAgent = (input: HardwarePrepareAgentInput) =>
     Effect.gen(function* () {
       if (input.kind === "investigate" && !input.alertId)
         return yield* new HardwareWatchError({
@@ -187,34 +186,23 @@ const make = Effect.gen(function* () {
         ),
       );
       const projectId = yield* ensureProject;
-      const result = yield* launcher.launch({
-        commandId: input.commandId,
+      const title =
+        input.kind === "investigate" && context.alert
+          ? `Investigate: ${context.alert.label}`
+          : "System checkup";
+      return {
         projectId,
-        title:
-          input.kind === "investigate" && context.alert
-            ? `Investigate: ${context.alert.label}`
-            : "System checkup",
-        modelSelection: input.modelSelection,
-        runtimeMode: input.runtimeMode,
-        interactionMode: input.interactionMode,
-        workspaceStrategy: { type: "root" },
-        initialMessage: {
-          messageId: MessageId.make(`system-care:${input.commandId}`),
-          text: buildAgentPrompt(input.kind, context, incident),
-          attachments: [],
-        },
-        createdBy: "user",
-        creationSource: "web",
-      });
-      if (context.alert) yield* watch.linkThread(context.alert.id, result.threadId);
-      return { projectId, threadId: result.threadId };
+        workspaceRoot: root,
+        title,
+        prompt: buildAgentPrompt(input.kind, context, incident),
+      };
     }).pipe(
       Effect.mapError((cause) =>
         Schema.is(HardwareWatchError)(cause) ? cause : fail("launch")(cause),
       ),
     );
 
-  return SystemCare.of({ startAgent });
+  return SystemCare.of({ prepareAgent });
 });
 
 export const layer = Layer.effect(SystemCare, make);

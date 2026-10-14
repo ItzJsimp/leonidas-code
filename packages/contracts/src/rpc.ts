@@ -55,8 +55,8 @@ import {
   HardwareLiveEvent,
   HardwareSetDeepSensorsInput,
   HardwareSetLimitInput,
-  HardwareStartAgentInput,
-  HardwareStartAgentResult,
+  HardwarePrepareAgentInput,
+  HardwarePrepareAgentResult,
   HardwareWatchError,
   HardwareWatchStatus,
 } from "./hardwareWatch.ts";
@@ -478,7 +478,7 @@ export const WS_METHODS = {
   hardwareSetLimit: "hardware.setLimit",
   hardwareAcknowledgeAlert: "hardware.acknowledgeAlert",
   hardwareSetDeepSensors: "hardware.setDeepSensors",
-  hardwareStartAgent: "hardware.startAgent",
+  hardwarePrepareAgent: "hardware.prepareAgent",
   inboxDrop: "inbox.drop",
   inboxUndo: "inbox.undo",
   devPreviewStatus: "devPreview.status",
@@ -1492,9 +1492,9 @@ const WsHardwareSetDeepSensorsRpc = Rpc.make(WS_METHODS.hardwareSetDeepSensors, 
   error: HardwareRpcError,
 });
 
-const WsHardwareStartAgentRpc = Rpc.make(WS_METHODS.hardwareStartAgent, {
-  payload: HardwareStartAgentInput,
-  success: HardwareStartAgentResult,
+const WsHardwarePrepareAgentRpc = Rpc.make(WS_METHODS.hardwarePrepareAgent, {
+  payload: HardwarePrepareAgentInput,
+  success: HardwarePrepareAgentResult,
   error: HardwareRpcError,
 });
 
@@ -2427,7 +2427,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsHardwareSetLimitRpc,
   WsHardwareAcknowledgeAlertRpc,
   WsHardwareSetDeepSensorsRpc,
-  WsHardwareStartAgentRpc,
+  WsHardwarePrepareAgentRpc,
   WsSubscribeHardwareRpc,
   WsInboxDropRpc,
   WsInboxUndoRpc,

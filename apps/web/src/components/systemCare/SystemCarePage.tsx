@@ -1,4 +1,6 @@
 import type { HardwareHistoryRange, HardwareLimit } from "@t3tools/contracts";
+import { isDiscreteGpu, metricInfo, sampleMetrics } from "@t3tools/shared/hardwareWatch";
+import { ClipboardCopyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { cn } from "~/lib/utils";
@@ -7,15 +9,33 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Switch } from "../ui/switch";
 import {
+  AreaChart,
+  Card,
+  Chip,
+  Gauge,
+  LEVEL_TEXT,
+  LimitBar,
+  Segmented,
+  Stepper,
+  Trend,
+  worstLevel,
+  type Level,
+} from "./SystemCareCharts";
+import {
   HEALTH_LABEL,
+  METRIC_GROUPS,
+  RANGE_LABEL,
   formatBytes,
   formatValue,
   historyMetrics,
   historySeries,
+  isEditableLimit,
   limitLevel,
+  metricGroup,
   openAlerts,
   relativeTime,
-  sparklinePoints,
+  seriesStats,
+  shortMetricLabel,
   systemHealth,
 } from "./systemCare.logic";
 import {
@@ -26,84 +46,108 @@ import {
   useSystemCareLive,
 } from "./useSystemCare";
 
-const LEVEL_CLASS = {
-  ok: "text-foreground",
-  warning: "text-warning",
-  critical: "text-destructive",
-} as const;
 const HEALTH_DOT = {
   good: "bg-success",
   warning: "bg-warning",
   critical: "bg-destructive",
   unknown: "bg-muted-foreground/40",
 } as const;
-const RANGES: ReadonlyArray<HardwareHistoryRange> = ["1h", "24h", "7d", "90d"];
+const RANGE_OPTIONS = (["1h", "24h", "7d", "90d"] as const).map((value) => ({
+  value,
+  label: value,
+}));
 
-function Sparkline(props: {
-  values: ReadonlyArray<number | null>;
-  min?: number | undefined;
-  max?: number | undefined;
-}) {
-  const points = sparklinePoints(props.values, { min: props.min, max: props.max });
-  if (!points) return <div className="h-8" />;
-  return (
-    <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="h-8 w-full text-primary">
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
+/** A friendly top for a chart axis: 100 for percentages, a rounded-up value otherwise. */
+function chartMax(unit: string, values: ReadonlyArray<number | null>): number {
+  if (unit === "%") return 100;
+  const peak = Math.max(1, ...values.filter((value): value is number => value !== null));
+  const magnitude = 10 ** Math.floor(Math.log10(peak));
+  return Math.ceil((peak * 1.15) / magnitude) * magnitude;
 }
 
-function Meter(props: {
-  label: string;
+function GaugeCard(props: {
+  title: string;
   value: number | null;
-  unit: string;
-  detail?: string | undefined;
-  limit?: HardwareLimit | undefined;
+  level: Level;
+  lines: ReadonlyArray<string>;
   trend: ReadonlyArray<number | null>;
-  max?: number | undefined;
 }) {
-  const level = limitLevel(props.value, props.limit);
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="text-xs text-muted-foreground">{props.label}</div>
-      <div className={cn("text-2xl font-semibold tabular-nums", LEVEL_CLASS[level])}>
-        {formatValue(props.value, props.unit)}
+    <Card>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {props.title}
       </div>
-      <div className="min-h-4 text-xs text-muted-foreground">{props.detail ?? ""}</div>
-      <Sparkline values={props.trend} min={0} max={props.max} />
-    </div>
+      <div className="mt-3 flex items-center gap-4">
+        <Gauge value={props.value} level={props.level}>
+          <span className={cn("text-2xl font-semibold tabular-nums", LEVEL_TEXT[props.level])}>
+            {props.value === null ? "-" : `${Math.round(props.value)}%`}
+          </span>
+        </Gauge>
+        <ul className="min-w-0 flex-1 space-y-1 text-sm text-muted-foreground">
+          {props.lines.map((line) => (
+            <li key={line} className="truncate">
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-3">
+        <Trend values={props.trend} level={props.level} />
+      </div>
+    </Card>
   );
 }
 
-function LimitField(props: {
-  label: string;
-  value: number;
-  unit: string;
-  onSave: (value: number) => void;
+function LimitRow(props: {
+  limit: HardwareLimit;
+  current: number | null;
+  onSave: (warn: number | null, critical: number | null) => void;
 }) {
-  const [draft, setDraft] = useState(String(props.value));
+  const { limit } = props;
   return (
-    <label className="flex items-center gap-1 text-xs text-muted-foreground">
-      {props.label}
-      <input
-        className="w-16 rounded-md border bg-background px-1.5 py-0.5 text-sm text-foreground"
-        inputMode="decimal"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => {
-          const next = Number(draft);
-          if (Number.isFinite(next) && next !== props.value) props.onSave(next);
-          else setDraft(String(props.value));
-        }}
+    <li className="grid grid-cols-1 items-center gap-x-4 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,14rem)_auto]">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium">{limit.label}</div>
+        <div className="text-xs text-muted-foreground">
+          {limit.source === "user"
+            ? "Your setting"
+            : limit.source === "spec"
+              ? "From the part's own rating"
+              : "Standard setting"}
+          {limit.source === "user" ? (
+            <button
+              type="button"
+              className="ml-2 underline underline-offset-2 hover:text-foreground"
+              onClick={() => props.onSave(null, null)}
+            >
+              Reset
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <LimitBar
+        warn={limit.warn}
+        critical={limit.critical}
+        unit={limit.unit}
+        current={props.current}
       />
-      {props.unit}
-    </label>
+      <div className="flex items-center gap-2">
+        <Stepper
+          label="Warn"
+          tone="warning"
+          unit={limit.unit}
+          value={limit.warn}
+          onChange={(next) => props.onSave(Math.min(next, limit.critical - 1), limit.critical)}
+        />
+        <Stepper
+          label="Critical"
+          tone="critical"
+          unit={limit.unit}
+          value={limit.critical}
+          onChange={(next) => props.onSave(limit.warn, Math.max(next, limit.warn + 1))}
+        />
+      </div>
+    </li>
   );
 }
 
@@ -120,216 +164,382 @@ export function SystemCarePage() {
     () => new Map((limitsView.data?.limits ?? []).map((limit) => [limit.metric, limit])),
     [limitsView.data],
   );
+  const inv = inventory.data ?? null;
   const sample = live.sample;
+  const metrics = useMemo(() => (sample ? sampleMetrics(sample) : {}), [sample]);
   const health = systemHealth(live.alerts, sample !== null);
   const alerts = openAlerts(live.alerts);
-  const points = history.data?.points ?? [];
-  const metrics = useMemo(() => historyMetrics(points), [points]);
-  const activeMetric = metric && metrics.includes(metric) ? metric : (metrics[0] ?? null);
+  const supported = live.status?.supported ?? true;
   const gpu = sample?.gpus[0];
+  const level = (key: string, value: number | null | undefined): Level =>
+    limitLevel(value, limits.get(key));
   const memPct = (s: { memory: { usedBytes: number; totalBytes: number } }) =>
     (s.memory.usedBytes / Math.max(1, s.memory.totalBytes)) * 100;
-  const supported = live.status?.supported ?? true;
+
+  const points = history.data?.points ?? [];
+  const available = useMemo(() => historyMetrics(points), [points]);
+  const activeMetric = metric && available.includes(metric) ? metric : (available[0] ?? null);
+  const grouped = METRIC_GROUPS.map((group) => ({
+    group,
+    keys: available.filter((key) => metricGroup(key) === group),
+  })).filter((entry) => entry.keys.length > 0);
+  const activeInfo = activeMetric ? metricInfo(activeMetric, inv, sample) : null;
+  const series = activeMetric ? historySeries(points, activeMetric) : [];
+  const stats = seriesStats(series);
+  const activeLimit = activeMetric ? limits.get(activeMetric) : undefined;
+  const unit = activeInfo?.unit ?? "";
+
+  const editable = [...limits.values()].filter(isEditableLimit);
+  const limitGroups = METRIC_GROUPS.map((group) => ({
+    group,
+    rows: editable.filter((limit) => metricGroup(limit.metric) === group),
+  })).filter((entry) => entry.rows.length > 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
-        <header className="flex flex-wrap items-center gap-3">
-          <span className={cn("size-3 rounded-full", HEALTH_DOT[health])} />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold">System Care</h1>
-            <p className="text-sm text-muted-foreground">
-              {HEALTH_LABEL[health]}
-              {inventory.data ? ` · ${inventory.data.cpu.name}` : ""}
-            </p>
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 p-6">
+        <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-card to-card p-6">
+          <div className="flex flex-wrap items-center gap-5">
+            <div className="relative flex size-14 items-center justify-center">
+              <span
+                className={cn(
+                  "absolute inset-0 rounded-full opacity-25 blur-md",
+                  HEALTH_DOT[health],
+                )}
+              />
+              <span className={cn("relative size-5 rounded-full", HEALTH_DOT[health])} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-semibold tracking-tight">System Care</h1>
+              <p className="text-sm text-muted-foreground">
+                {HEALTH_LABEL[health]}
+                {alerts.length > 0 ? ` · ${alerts.length} open` : ""}
+              </p>
+              {inv ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    inv.cpu.name,
+                    ...inv.gpus
+                      .filter(isDiscreteGpu)
+                      .slice(0, 1)
+                      .map((card) => card.name),
+                    `${formatBytes(inv.memory.totalBytes, 0)} memory`,
+                  ].map((text) => (
+                    <Badge key={text} variant="outline" className="max-w-full truncate">
+                      {text}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex flex-col items-start gap-1.5 sm:items-end">
+              <Button
+                disabled={actions.busy || !supported}
+                onClick={() => void actions.preparePrompt("checkup")}
+              >
+                {actions.busy ? <Spinner /> : <ClipboardCopyIcon />}
+                Get a checkup prompt
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Fills a new chat for you. Nothing is sent until you press send.
+              </p>
+            </div>
           </div>
-          <Button
-            disabled={actions.busy || !supported}
-            onClick={() => void actions.start("checkup")}
-          >
-            {actions.busy ? <Spinner /> : null}
-            Run a checkup
-          </Button>
-        </header>
+        </section>
 
         {live.error ? <p className="text-sm text-destructive">{live.error}</p> : null}
         {!supported ? (
           <p className="text-sm text-muted-foreground">
             System Care is not available on this machine yet.
           </p>
-        ) : live.isPending ? (
-          <Spinner />
         ) : null}
 
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Meter
-            label="Processor"
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <GaugeCard
+            title="Processor"
             value={sample?.cpu.loadPct ?? null}
-            unit="%"
-            detail={
+            level={worstLevel(
+              level("cpu.load", sample?.cpu.loadPct),
+              level("cpu.temp", sample?.cpu.packageTempC ?? sample?.cpu.maxCoreTempC),
+            )}
+            lines={
               sample
-                ? `${formatValue(sample.cpu.packageTempC, "°C")} · ${formatValue(sample.cpu.clockMhz, "MHz")}`
-                : ""
+                ? [
+                    formatValue(sample.cpu.packageTempC ?? sample.cpu.maxCoreTempC, "°C"),
+                    formatValue(sample.cpu.clockMhz, "MHz"),
+                    sample.cpu.powerW !== null ? formatValue(sample.cpu.powerW, "W") : "",
+                  ].filter((line) => line !== "" && line !== "—")
+                : ["Waiting for data"]
             }
-            limit={limits.get("cpu.temp")}
             trend={live.samples.map((s) => s.cpu.loadPct)}
-            max={100}
           />
-          <Meter
-            label="Graphics"
+          <GaugeCard
+            title="Graphics"
             value={gpu?.loadPct ?? null}
-            unit="%"
-            detail={
+            level={worstLevel(
+              level("gpu.0.temp", gpu?.tempC),
+              level("gpu.0.vram", metrics["gpu.0.vram"]),
+            )}
+            lines={
               gpu
-                ? `${formatValue(gpu.tempC, "°C")} · ${formatBytes(gpu.vramUsedBytes, 0)} VRAM`
-                : "No GPU reading"
+                ? [
+                    formatValue(gpu.tempC, "°C"),
+                    `${formatBytes(gpu.vramUsedBytes, 1)} video memory`,
+                    gpu.powerW !== null ? formatValue(gpu.powerW, "W") : "",
+                  ].filter((line) => line !== "" && line !== "—")
+                : ["No graphics reading"]
             }
-            limit={limits.get("gpu.temp")}
             trend={live.samples.map((s) => s.gpus[0]?.loadPct ?? null)}
-            max={100}
           />
-          <Meter
-            label="Memory"
+          <GaugeCard
+            title="Memory"
             value={sample ? memPct(sample) : null}
-            unit="%"
-            detail={
+            level={level("memory.load", sample ? memPct(sample) : null)}
+            lines={
               sample
-                ? `${formatBytes(sample.memory.usedBytes)} of ${formatBytes(sample.memory.totalBytes, 0)}`
-                : ""
+                ? [
+                    `${formatBytes(sample.memory.usedBytes)} in use`,
+                    `of ${formatBytes(sample.memory.totalBytes, 0)}`,
+                  ]
+                : ["Waiting for data"]
             }
-            limit={limits.get("memory.used")}
             trend={live.samples.map(memPct)}
-            max={100}
           />
-          <Meter
-            label="Disk activity"
+          <GaugeCard
+            title="Disk activity"
             value={sample?.disk.activePct ?? null}
-            unit="%"
-            detail={sample ? `${formatBytes(sample.disk.readBytesPerSec, 0)}/s read` : ""}
+            level="ok"
+            lines={
+              sample
+                ? [
+                    `Reading ${formatValue(sample.disk.readBytesPerSec, "B/s")}`,
+                    `Writing ${formatValue(sample.disk.writeBytesPerSec, "B/s")}`,
+                  ]
+                : ["Waiting for data"]
+            }
             trend={live.samples.map((s) => s.disk.activePct)}
-            max={100}
           />
-        </section>
+        </div>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">Alerts</h2>
-          {alerts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing needs attention.</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {alerts.map((alert) => (
-                <li
-                  key={alert.id}
-                  className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3"
-                >
-                  <Badge variant={alert.severity === "critical" ? "error" : "warning"}>
-                    {alert.severity}
-                  </Badge>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm">{alert.message}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {alert.label} · since {relativeTime(alert.startedAt, Date.now())}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Card
+            title="Alerts"
+            hint="Investigate fills a new chat with a prompt. Nothing is sent."
+            className="lg:col-span-2"
+          >
+            {alerts.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-4 py-6 text-sm text-muted-foreground">
+                <span className="size-2.5 rounded-full bg-success" />
+                All clear. Nothing needs your attention.
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {alerts.map((alert) => (
+                  <li
+                    key={alert.id}
+                    className="flex flex-wrap items-center gap-3 rounded-xl border bg-background/60 p-3"
+                  >
+                    <span
+                      className={cn(
+                        "h-9 w-1 shrink-0 rounded-full",
+                        alert.severity === "critical" ? "bg-destructive" : "bg-warning",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">{alert.message}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {alert.label} · started {relativeTime(alert.startedAt, Date.now())}
+                        {alert.acknowledged ? " · dismissed" : ""}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={actions.busy}
+                      onClick={() => void actions.preparePrompt("investigate", alert.id)}
+                    >
+                      Investigate
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void actions.setAcknowledged(alert.id, !alert.acknowledged)}
+                    >
+                      {alert.acknowledged ? "Unmute" : "Dismiss"}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title="Storage">
+            <ul className="flex flex-col gap-4">
+              {(sample?.volumes ?? []).map((volume) => {
+                const used = (volume.usedBytes / Math.max(1, volume.totalBytes)) * 100;
+                const tone = level(`volume.${volume.mount}.used`, used);
+                return (
+                  <li key={volume.mount}>
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="font-medium">{volume.label ?? volume.mount}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {formatBytes(volume.usedBytes, 0)} of {formatBytes(volume.totalBytes, 0)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          "h-full rounded-full",
+                          tone === "ok"
+                            ? "bg-primary"
+                            : tone === "warning"
+                              ? "bg-warning"
+                              : "bg-destructive",
+                        )}
+                        style={{ width: `${Math.min(100, used)}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+              {(sample?.volumes.length ?? 0) === 0 ? (
+                <li className="text-sm text-muted-foreground">No drives reported yet.</li>
+              ) : null}
+            </ul>
+            {sample && sample.driveTemps.length > 0 ? (
+              <ul className="mt-4 space-y-1 border-t pt-3 text-xs text-muted-foreground">
+                {sample.driveTemps.map((drive) => (
+                  <li key={drive.diskId} className="flex justify-between gap-3">
+                    <span className="truncate">{drive.model}</span>
+                    <span className="tabular-nums">{formatValue(drive.tempC, "°C")}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Card>
+        </div>
+
+        <Card
+          title="History"
+          action={
+            <Segmented
+              label="History range"
+              value={range}
+              options={RANGE_OPTIONS}
+              onChange={setRange}
+            />
+          }
+        >
+          {grouped.length > 0 ? (
+            <div className="mb-5 flex flex-col gap-2.5">
+              {grouped.map((entry) => (
+                <div key={entry.group} className="flex flex-wrap items-center gap-2">
+                  <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">
+                    {entry.group}
+                  </span>
+                  {entry.keys.map((key) => (
+                    <Chip key={key} active={key === activeMetric} onClick={() => setMetric(key)}>
+                      {shortMetricLabel(key, metricInfo(key, inv, sample).label)}
+                    </Chip>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {activeMetric ? (
+            <>
+              <div className="mb-4 flex flex-wrap items-end gap-x-8 gap-y-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">{activeInfo?.label}</div>
+                  <div className="text-3xl font-semibold tabular-nums">
+                    {formatValue(stats.latest, unit)}
+                  </div>
+                </div>
+                {(
+                  [
+                    ["Lowest", stats.min],
+                    ["Average", stats.avg],
+                    ["Highest", stats.max],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label}>
+                    <div className="text-xs text-muted-foreground">{label}</div>
+                    <div className="text-lg font-medium tabular-nums">
+                      {formatValue(value, unit)}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={actions.busy}
-                    onClick={() => void actions.start("investigate", alert.id)}
-                  >
-                    Investigate
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => void actions.setAcknowledged(alert.id, !alert.acknowledged)}
-                  >
-                    {alert.acknowledged ? "Unmute" : "Dismiss"}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="flex-1 text-sm font-semibold">History</h2>
-            {RANGES.map((value) => (
-              <Button
-                key={value}
-                size="sm"
-                variant={value === range ? "default" : "outline"}
-                onClick={() => setRange(value)}
-              >
-                {value}
-              </Button>
-            ))}
-          </div>
-          {metrics.length > 0 ? (
-            <select
-              className="w-fit rounded-md border bg-background px-2 py-1 text-sm"
-              value={activeMetric ?? ""}
-              onChange={(event) => setMetric(event.target.value)}
-            >
-              {metrics.map((key) => (
-                <option key={key} value={key}>
-                  {limits.get(key)?.label ?? key}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <div className="rounded-lg border bg-card p-3">
-            {activeMetric ? (
-              <Sparkline values={historySeries(points, activeMetric)} min={0} />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {history.isPending ? "Loading history..." : "History fills in as System Care runs."}
-              </p>
-            )}
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">Deep sensors</h2>
-          <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
-            <div className="min-w-0 flex-1 text-sm">
-              Fans, voltages and every temperature.
-              <div className="text-xs text-muted-foreground">
-                {live.status?.deepSensorsMessage ?? `Status: ${live.status?.deepSensors ?? "off"}`}
+                ))}
               </div>
-            </div>
+              <AreaChart
+                values={series}
+                max={chartMax(unit, series)}
+                format={(value) => formatValue(value, unit)}
+                startLabel={`${RANGE_LABEL[range]} ago`}
+                marks={
+                  activeLimit
+                    ? [
+                        { value: activeLimit.warn, level: "warning" },
+                        { value: activeLimit.critical, level: "critical" },
+                      ]
+                    : []
+                }
+              />
+            </>
+          ) : (
+            <p className="rounded-xl bg-muted/50 px-4 py-8 text-center text-sm text-muted-foreground">
+              {history.isPending
+                ? "Loading history..."
+                : "History fills in as System Care keeps watching."}
+            </p>
+          )}
+        </Card>
+
+        <Card
+          title="Deep sensors"
+          hint="Adds fan speeds, voltages and every temperature to the readings."
+          action={
             <Switch
               aria-label="Deep sensors"
               checked={live.status?.deepSensors === "on" || live.status?.deepSensors === "starting"}
               onCheckedChange={(enabled) => void actions.setDeepSensors(enabled)}
             />
-          </div>
-        </section>
+          }
+        >
+          <p className="text-sm text-muted-foreground">
+            {live.status?.deepSensorsMessage ?? `Status: ${live.status?.deepSensors ?? "off"}`}
+          </p>
+        </Card>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">Alert limits</h2>
-          <ul className="flex flex-col gap-1">
-            {[...limits.values()].map((limit) => (
-              <li key={limit.metric} className="flex items-center gap-3 text-sm">
-                <span className="flex-1">{limit.label}</span>
-                <LimitField
-                  label="Warn"
-                  value={limit.warn}
-                  unit={limit.unit}
-                  onSave={(warn) => void limitsView.save(limit.metric, warn, limit.critical)}
-                />
-                <LimitField
-                  label="Critical"
-                  value={limit.critical}
-                  unit={limit.unit}
-                  onSave={(critical) => void limitsView.save(limit.metric, limit.warn, critical)}
-                />
-                <Badge variant="outline">{limit.source}</Badge>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Card
+          title="Alert limits"
+          hint="You get an alert when a reading stays past Warn or Critical for a while."
+        >
+          {limitGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Limits appear once readings arrive.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {limitGroups.map((entry) => (
+                <div key={entry.group}>
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {entry.group}
+                  </div>
+                  <ul className="divide-y">
+                    {entry.rows.map((limit) => (
+                      <LimitRow
+                        key={limit.metric}
+                        limit={limit}
+                        current={metrics[limit.metric] ?? null}
+                        onSave={(warn, critical) =>
+                          void limitsView.save(limit.metric, warn, critical)
+                        }
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

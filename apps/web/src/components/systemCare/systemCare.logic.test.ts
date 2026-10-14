@@ -5,8 +5,14 @@ import {
   formatBytes,
   formatValue,
   historyMetrics,
+  isEditableLimit,
   limitLevel,
+  limitScaleMax,
+  metricGroup,
+  seriesStats,
+  shortMetricLabel,
   sparklinePoints,
+  stepLimit,
   systemHealth,
 } from "./systemCare.logic";
 
@@ -85,5 +91,42 @@ describe("charts", () => {
         },
       ]),
     ).toEqual(["cpu.temp", "gpu.0.temp", "memory.load"]);
+  });
+});
+
+describe("history picker helpers", () => {
+  it("groups metrics and shortens their labels", () => {
+    expect(metricGroup("cpu.temp")).toBe("Processor");
+    expect(metricGroup("gpu.0.fan")).toBe("Graphics");
+    expect(metricGroup("volume.C:.used")).toBe("Storage");
+    expect(shortMetricLabel("gpu.0.fan", "GPU fan")).toBe("Fan");
+    expect(shortMetricLabel("volume.C:.used", "Drive C: space used")).toBe("C: space");
+    expect(shortMetricLabel("drive.0.temp", "WDC WD10EZEX temperature")).toBe("WDC WD10EZEX");
+  });
+
+  it("summarizes a series and ignores gaps", () => {
+    expect(seriesStats([null, 10, 30, null, 20])).toEqual({
+      latest: 20,
+      min: 10,
+      avg: 20,
+      max: 30,
+    });
+    expect(seriesStats([null]).max).toBeNull();
+  });
+});
+
+describe("limit editing", () => {
+  it("steps within bounds", () => {
+    expect(stepLimit(95, 1, "%")).toBe(100);
+    expect(stepLimit(100, 1, "%")).toBe(100);
+    expect(stepLimit(81, -1, "°C")).toBe(80);
+    expect(stepLimit(20, -1, "°C")).toBe(20);
+  });
+
+  it("only offers percent and temperature limits, not throttle flags", () => {
+    expect(isEditableLimit({ metric: "cpu.temp", unit: "°C" })).toBe(true);
+    expect(isEditableLimit({ metric: "gpu.0.throttle", unit: "" })).toBe(false);
+    expect(limitScaleMax({ critical: 98, unit: "°C" })).toBe(120);
+    expect(limitScaleMax({ critical: 97, unit: "%" })).toBe(100);
   });
 });

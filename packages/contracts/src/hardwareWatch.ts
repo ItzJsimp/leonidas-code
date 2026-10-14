@@ -7,8 +7,6 @@ import {
   ThreadId,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
-import { ModelSelection } from "./modelSelection.ts";
-import { ProviderInteractionMode, RuntimeMode } from "./providerPolicy.ts";
 
 const NullableNumber = Schema.NullOr(Schema.Number);
 const NullableString = Schema.NullOr(Schema.String);
@@ -252,22 +250,24 @@ export type HardwareAcknowledgeAlertInput = typeof HardwareAcknowledgeAlertInput
 export const HardwareSetDeepSensorsInput = Schema.Struct({ enabled: Schema.Boolean });
 export type HardwareSetDeepSensorsInput = typeof HardwareSetDeepSensorsInput.Type;
 
-/** Starts an approve-first agent: `investigate` for one alert, `checkup` for a full optimization pass. */
-export const HardwareStartAgentInput = Schema.Struct({
-  commandId: CommandId,
+/**
+ * Writes the context files an agent needs and returns the prompt text. It never starts a thread or
+ * sends anything: the person pastes or sends the prompt themselves.
+ */
+export const HardwarePrepareAgentInput = Schema.Struct({
   kind: Schema.Literals(["investigate", "checkup"]),
   alertId: Schema.optional(TrimmedNonEmptyString),
-  modelSelection: ModelSelection,
-  runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
 });
-export type HardwareStartAgentInput = typeof HardwareStartAgentInput.Type;
+export type HardwarePrepareAgentInput = typeof HardwarePrepareAgentInput.Type;
 
-export const HardwareStartAgentResult = Schema.Struct({
+export const HardwarePrepareAgentResult = Schema.Struct({
   projectId: ProjectId,
-  threadId: ThreadId,
+  /** Folder the prompt's file references are relative to. */
+  workspaceRoot: Schema.String,
+  title: Schema.String,
+  prompt: Schema.String,
 });
-export type HardwareStartAgentResult = typeof HardwareStartAgentResult.Type;
+export type HardwarePrepareAgentResult = typeof HardwarePrepareAgentResult.Type;
 
 export class HardwareWatchError extends Schema.TaggedError<HardwareWatchError>()(
   "HardwareWatchError",

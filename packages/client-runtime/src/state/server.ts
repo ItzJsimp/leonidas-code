@@ -1263,9 +1263,9 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "hardware:deep-sensors",
       tag: WS_METHODS.hardwareSetDeepSensors,
     }),
-    hardwareStartAgent: createEnvironmentRpcCommand(runtime, {
-      label: "hardware:start-agent",
-      tag: WS_METHODS.hardwareStartAgent,
+    hardwarePrepareAgent: createEnvironmentRpcCommand(runtime, {
+      label: "hardware:prepare-agent",
+      tag: WS_METHODS.hardwarePrepareAgent,
     }),
     resourceTelemetry: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
       label: "environment-data:server:resource-telemetry",
