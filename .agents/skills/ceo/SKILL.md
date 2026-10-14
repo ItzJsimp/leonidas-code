@@ -1,10 +1,10 @@
 ---
-name: "tiered-orchestration"
+name: "ceo"
 description: "Use a frontier-capable orchestrator and bounded lower-cost workers for complex, parallelizable work, then inspect and integrate every result."
 category: "architecture"
 type: "skill"
-id: "skill-tiered-orchestration"
-title: "Tiered Orchestration: Plan, Delegate, Review"
+id: "skill-ceo"
+title: "CEO: Plan, Delegate, Review"
 kind: "procedure"
 load: "on-demand"
 owner: "shared"

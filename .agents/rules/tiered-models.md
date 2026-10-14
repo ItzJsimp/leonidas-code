@@ -1,6 +1,6 @@
 # Tiered models (every agent, every provider)
 
-Match the model to the work. Procedure for splitting work: the `tiered-orchestration` skill. This rule only says which tier does what.
+Match the model to the work. Procedure for splitting work: the `ceo` skill (`/ceo`). This rule only says which tier does what.
 
 ## Tiers
 
