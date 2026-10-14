@@ -1,6 +1,6 @@
 # Output standard (Leonidas Code)
 
-Leonidas Code fixes the shape of every substantive reply across all providers (Claude, Codex, Antigravity, Cursor, Grok, OpenCode) and all users (Jake and Mob).
+Leonidas Code fixes the shape of every substantive reply across all providers (Claude, Codex, Antigravity, Cursor, Grok, OpenCode) and all users.
 
 ## Top Slot: Opening Orientation HUD
 
@@ -29,7 +29,7 @@ Every substantive turn MUST terminate at the absolute screen bottom with this ex
 ### ⚡ Immediate Next Actions
 
 - [ ] 🤖 **Leonidas:** <specific command or file edit queued next>
-- [ ] 👤 **Jake / Mob:** <single step doable in <=2 minutes with exact link, command or phrase> _(unblocks: <milestone>)_
+- [ ] 👤 **You:** <single step doable in <=2 minutes with exact link, command or phrase> _(unblocks: <milestone>)_
 
 ### ❓ Input & Decisions Needed
 

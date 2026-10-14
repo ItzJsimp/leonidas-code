@@ -1,17 +1,17 @@
-# Leonidas Code: how Jake and Mob build it
+# Leonidas Code: how the Leonidas team builds it
 
-Read this first if you are an agent working in this repo. It is the shared brief for both machines. Jake's and Mob's private notes live in their own AI operating systems and are not visible here, so anything both sides need goes in this file.
+Read this first if you are an agent working in this repo. It is the shared brief for both machines. Each builder's private notes live in their own AI operating system and are not visible here, so anything both sides need goes in this file.
 
 ## What Leonidas Code is (say it this way every time)
 
 - **T3 Code** is an open-source, MIT-licensed AI coding harness by T3 Tools (`pingdotgg/t3code`). We forked it.
-- **Leonidas Code** is our own product built from that fork by Jake and Mob, repo `ItzJsimp/leonidas-code`. It is not T3 Code: it gets its own features and direction, and it ships inside the **Leonidas app** we are building at the same time.
+- **Leonidas Code** is our own product built from that fork by the Leonidas team, repo `ItzJsimp/leonidas-code`. It is not T3 Code: it gets its own features and direction, and it ships inside the **Leonidas app** we are building at the same time.
 - It replaces the Claude Code and Antigravity front ends for both of us, running on our own AI subscriptions, with extra built-in tools.
 - Credit stays: keep the original MIT notice in `LICENSE`. Say "T3 Code" only when talking about upstream (merges, credit, internal ids like `@t3tools/*`, `T3CODE_*`, `~/.t3` that stay for data safety). Everywhere a user sees the app, it is Leonidas Code.
 
 ## Output standard (mandatory for every agent reply)
 
-Leonidas Code fixes the shape of every substantive reply across all providers (Claude, Codex, Antigravity, Cursor, Grok, OpenCode) and all users (Jake and Mob). Personal files add voice, names and banners inside these zones; they never replace them.
+Leonidas Code fixes the shape of every substantive reply across all providers (Claude, Codex, Antigravity, Cursor, Grok, OpenCode) and all users. Personal files add voice, names and banners inside these zones; they never replace them.
 
 ### Top Slot: Opening Orientation HUD
 
@@ -40,7 +40,7 @@ Every substantive turn MUST terminate at the absolute screen bottom with this ex
 ### ⚡ Immediate Next Actions
 
 - [ ] 🤖 **Leonidas:** <specific command or file edit queued next>
-- [ ] 👤 **Jake / Mob:** <single step doable in <=2 minutes with exact link, command or phrase> _(unblocks: <milestone>)_
+- [ ] 👤 **You:** <single step doable in <=2 minutes with exact link, command or phrase> _(unblocks: <milestone>)_
 
 ### ❓ Input & Decisions Needed
 
@@ -73,9 +73,9 @@ Match the model to the work: frontier plans and reviews, mid edits, light scans,
 
 - [x] Subscription token calibration: shipped in [v0.2.0](https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.2.0); session/weekly estimates pair local Claude/Codex tokens with provider quota percentages. Google AI Pro needs a reliable quota source and token reader before calibration is available.
 
-- [x] Shared repo, based on Mob's build (branch `mob-base`, now `main`)
+- [x] Shared repo, based on a teammate's build (branch `mob-base`, now `main`)
 - [x] Push-to-update: every push to `main` builds the Windows installer and publishes a semantic development release (`0.x` until public launch); the desktop app's updater shows the update toast
-- [x] Prove the update toast across both machines (sound, OS notification, and confirmation dialog for Mob to test on next update)
+- [x] Prove the update toast across both machines (sound, OS notification, and confirmation dialog for a teammate to test on next update)
 - [x] Token counter: provider-reported output and thinking tokens, current-turn average t/s, and recent-turn averages; missing telemetry is visible rather than hiding the counter
 - [x] Synced task board panel in the web UI. Store: GitHub Issues on this repo (decided). Agents add tasks with `gh issue create`; the panel polls and shows the same list on both machines within about 10 seconds
 - [x] Prompt predictor: ghost text of the prompt the user is most likely to send next, built from the user's own Leonidas Scribe `history.jsonl` (filtered to agent apps), Tab accepts, nothing is typed until Tab. Port of Jake's Claude Code mod `voice-predict`
@@ -118,7 +118,7 @@ Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Sc
 - First installs show a one-time Windows SmartScreen warning (unsigned). Updates still apply.
 - Two Claude accounts do not share threads: threads move only between instances with the same `CLAUDE_CONFIG_DIR`.
 
-## New machine setup (Mob: do this once)
+## New machine setup (teammates: do this once)
 
 Paste this to your Claude in any folder:
 
@@ -136,7 +136,7 @@ To install now, from your AIOS root run `git -C projects/leonidas-code pull --re
 
 App updates and AIOS updates are separate: downloading a desktop installer does not by itself update the task folders or skill files in an existing AIOS.
 
-## AIOS task views (Mob: do this once)
+## AIOS task views (teammates: do this once)
 
 The project's `tasks/` folder is a generated view: one symlink per task card whose `project:` is `leonidas-code`, pointing at your AIOS `tasks/` folder (the cards stay the only copy). The session-start hook already refreshes it for this project. To get the same for every project in your AIOS and to make new cards appear instantly, paste this to your Claude:
 
@@ -154,7 +154,7 @@ Keep the newest 3 here; older entries: [project/status-log-archive.md](./project
 
 Select this repo folder in T3 Code. To also load your own AI operating system's identity in these sessions:
 
-1. Create `CLAUDE.local.md` in the repo root containing `@<path to your AIOS>/CLAUDE.md` (forward slashes, a backslash before every space, for example `@D:/Mob\ AIOS/CLAUDE.md`). Optionally add a second line importing your AIOS's playbook for this project.
+1. Create `CLAUDE.local.md` in the repo root containing `@<path to your AIOS>/CLAUDE.md` (forward slashes, a backslash before every space, for example `@D:/My\ AIOS/CLAUDE.md`). Optionally add a second line importing your AIOS's playbook for this project.
 2. Make it local only: `mkdir -p .git/info` then add `CLAUDE.local.md` to `.git/info/exclude`.
 3. Run `claude` once in this folder and answer Yes to the external imports dialog. Without that approval the imports silently do not load.
 4. Check: ask an agent in a new session to quote a line that only your AIOS canon contains.

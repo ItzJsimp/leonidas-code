@@ -12,7 +12,7 @@ Machine delivery is separate from publication. On each Windows machine run:
 
 ```powershell
 pwsh -File scripts/leonidas-update-health.ps1 -Register -DeviceLabel Jake
-# On Mob's machine use -DeviceLabel Mob.
+# On another machine use its own -DeviceLabel.
 ```
 
 This registers the Windows task **Leonidas Code update health**, running every

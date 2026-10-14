@@ -42,7 +42,7 @@ export function formatReleaseTime(isoString: string): string {
   return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(date);
 }
 
-/** "Jake 70% · Mob 30%" when per-author commit counts exist, else the plain author list. */
+/** "Alex 70% · Sam 30%" when per-author commit counts exist, else the plain author list. */
 export function formatReleaseCredits(meta: ReleaseHistoryMeta | null | undefined): string {
   const counts = Object.entries(meta?.authorCommits ?? {}).filter(([, n]) => n > 0);
   const total = counts.reduce((sum, [, n]) => sum + n, 0);

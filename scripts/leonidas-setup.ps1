@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  One-shot setup for a Leonidas Code builder machine (Jake or Mob). Safe to re-run.
+  One-shot setup for a Leonidas Code builder machine (any teammate). Safe to re-run.
 .DESCRIPTION
   1. Git: fast-forward-only pulls preserve local history and unfinished work; disables a copied
      AIOS pre-commit hook that does not exist in this repo.
@@ -10,7 +10,7 @@
   The repo's .claude/settings.json pulls main at every Claude session start, and the installed
   app's updater shows a toast for every new release, so after this nothing needs managing.
 .EXAMPLE
-  pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "D:/Mob AIOS/CLAUDE.md"
+  pwsh -File scripts/leonidas-setup.ps1 -AiosClaudeMd "D:/My AIOS/CLAUDE.md"
 #>
 [CmdletBinding()]
 param(

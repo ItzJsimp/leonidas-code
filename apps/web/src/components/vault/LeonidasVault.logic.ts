@@ -522,7 +522,6 @@ The unified autonomous AI operating system bridging frontier model cognition wit
 - [[OpenRouter Integration]]: First-class routing and model access.
 - [[3D Knowledge Graph]]: Futuristic interactive network visualization replacing Obsidian.
 - [[Subagent Swarm]]: Distributed subagents executing tasks asynchronously.
-- [[Mob Notification System]]: Direct push updates and audio verifications for team members.
 
 #architecture #aios #core
 `,
@@ -617,26 +616,6 @@ Native support for:
 - Real-time 3D visualization via [[3D Knowledge Graph]]
 
 #vault #notes #markdown
-`,
-  },
-  {
-    id: "mob-notification-system",
-    title: "Mob Notification System",
-    path: ".leonidas/vault/mob-notification-system.md",
-    tags: ["notifications", "audio", "team"],
-    outgoingLinks: ["leonidas-aios-architecture"],
-    updatedAt: Date.now(),
-    createdAt: Date.now(),
-    content: `# Mob Notification System
-
-Dedicated team verification channel delivering rich notifications with audio cues.
-
-Includes:
-- Synthesized Web Audio chime verification
-- Persistent confirmation banner
-- Direct test alert for Mob: "Hey Mob, this is an update that Jake sent to make sure notifications are working."
-
-#notifications #audio #team
 `,
   },
   {
