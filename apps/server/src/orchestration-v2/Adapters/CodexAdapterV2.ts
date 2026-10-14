@@ -1385,48 +1385,6 @@ export const makeCodexAppServerSpawnCommand = Effect.fn(
   });
 });
 
-const layerCodexAppServerClientFactoryCommand = (
-  options: CodexClient.CodexAppServerClientOptions & {
-    readonly command: string;
-    readonly args?: ReadonlyArray<string>;
-    readonly cwd?: string;
-    readonly env?: NodeJS.ProcessEnv;
-  },
-): Layer.Layer<CodexAppServerClientFactory, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Layer.effect(
-    CodexAppServerClientFactory,
-    Effect.gen(function* () {
-      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      return CodexAppServerClientFactory.of({
-        open: (input) =>
-          Effect.gen(function* () {
-            const scope = yield* Scope.Scope;
-            const command = yield* makeCodexAppServerSpawnCommand({
-              command: options.command,
-              args: [...(options.args ?? [])],
-              ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-              ...(options.env === undefined ? {} : { env: options.env, extendEnv: true }),
-            });
-            const handle = yield* spawner.spawn(command).pipe(
-              Effect.provideService(Scope.Scope, scope),
-              Effect.mapError(
-                (cause) =>
-                  new ProviderAdapter.ProviderAdapterOpenSessionError({
-                    driver: CODEX_PROVIDER,
-                    providerSessionId: input.providerSessionId,
-                    cause,
-                  }),
-              ),
-            );
-            const context = yield* Layer.build(CodexClient.layerChildProcess(handle, options));
-            return yield* Effect.service(CodexClient.CodexAppServerClient).pipe(
-              Effect.provide(context),
-            );
-          }),
-      });
-    }),
-  );
-
 export function makeCodexAppServerProtocolLogger(input: {
   readonly nativeEventLogger: ProviderEventLoggers.EventNdjsonLogger | undefined;
   readonly threadId: ThreadId;
