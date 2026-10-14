@@ -49,7 +49,13 @@ const LIMITS_REFRESH_MS = 5 * 60_000;
 
 const MAX_CONTEXT_SEGMENTS = 8;
 const MAX_TRIM_ROWS = 3;
-const TRIM_KIND_LABEL = { mcp: "MCP", skill: "Skill", agent: "Agent", memory: "File" } as const;
+const TRIM_KIND_LABEL = {
+  mcp: "MCP",
+  skill: "Skill",
+  agent: "Agent",
+  memory: "File",
+  "tool-results": "Compact:",
+} as const;
 const sumTokens = (rows: ReadonlyArray<{ readonly tokens: number }> | undefined) =>
   rows?.reduce((total, row) => total + row.tokens, 0) ?? 0;
 

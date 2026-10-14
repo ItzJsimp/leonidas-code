@@ -2,7 +2,7 @@ import type { ThreadContextBreakdown } from "@t3tools/contracts";
 
 export interface TrimSuggestion {
   readonly key: string;
-  readonly kind: "mcp" | "skill" | "agent" | "memory";
+  readonly kind: "mcp" | "skill" | "agent" | "memory" | "tool-results";
   readonly label: string;
   /** Tokens this item adds to every turn while it stays loaded. */
   readonly tokens: number;
@@ -11,6 +11,9 @@ export interface TrimSuggestion {
 
 const MIN_TRIM_TOKENS = 500;
 const MAX_SUGGESTIONS = 5;
+/** Newest tool calls kept out of the compact suggestion; the agent is most likely to reuse them. */
+const KEEP_NEWEST_TOOL_CALLS = 10;
+const MIN_OLD_TOOL_TOKENS = 2_000;
 
 /**
  * Fixed overhead worth removing: MCP servers (tool schemas summed per server), skills, agents and
@@ -18,7 +21,8 @@ const MAX_SUGGESTIONS = 5;
  * conversation, not overhead, so they never appear here.
  */
 export function deriveTrimSuggestions(
-  breakdown: Pick<ThreadContextBreakdown, "mcpTools" | "skills" | "agents" | "files">,
+  breakdown: Pick<ThreadContextBreakdown, "mcpTools" | "skills" | "agents" | "files"> &
+    Partial<Pick<ThreadContextBreakdown, "toolCalls">>,
 ): ReadonlyArray<TrimSuggestion> {
   const servers = new Map<string, number>();
   for (const tool of breakdown.mcpTools) {
@@ -56,6 +60,18 @@ export function deriveTrimSuggestions(
         estimated: file.estimated,
       })),
   ];
+  // Every old tool result is resent each turn until the chat compacts. Calls arrive oldest first.
+  const oldCalls = (breakdown.toolCalls ?? []).slice(0, -KEEP_NEWEST_TOOL_CALLS);
+  const oldTokens = oldCalls.reduce((total, call) => total + call.tokens, 0);
+  if (oldTokens >= MIN_OLD_TOOL_TOKENS) {
+    all.push({
+      key: "tool-results:old",
+      kind: "tool-results",
+      label: `${oldCalls.length} older tool results (compact the chat)`,
+      tokens: oldTokens,
+      estimated: true,
+    });
+  }
   return all
     .filter((item) => item.tokens >= MIN_TRIM_TOKENS)
     .toSorted((a, b) => b.tokens - a.tokens || a.label.localeCompare(b.label))

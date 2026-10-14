@@ -51,4 +51,38 @@ describe("deriveTrimSuggestions", () => {
     expect(result.map((s) => s.label)).toEqual(["CLAUDE.md"]);
     expect(result[0]?.estimated).toBe(true);
   });
+
+  it("suggests compacting old tool results but keeps the newest ten out of the total", () => {
+    const call = (i: number, tokens: number) => ({
+      id: `c${i}`,
+      name: "Command",
+      target: null,
+      tokens,
+      estimated: true,
+      turnIndex: i,
+      status: "ok" as const,
+    });
+    const toolCalls = [
+      call(0, 1_500),
+      call(1, 1_000),
+      ...Array.from({ length: 10 }, (_, i) => call(i + 2, 900)),
+    ];
+    const result = deriveTrimSuggestions({ ...base, toolCalls });
+    expect(result.map((s) => [s.kind, s.tokens, s.estimated])).toEqual([
+      ["tool-results", 2_500, true],
+    ]);
+  });
+
+  it("stays quiet when old tool results are small", () => {
+    const toolCalls = Array.from({ length: 12 }, (_, i) => ({
+      id: `c${i}`,
+      name: "Read",
+      target: null,
+      tokens: 100,
+      estimated: true,
+      turnIndex: i,
+      status: "ok" as const,
+    }));
+    expect(deriveTrimSuggestions({ ...base, toolCalls })).toEqual([]);
+  });
 });
