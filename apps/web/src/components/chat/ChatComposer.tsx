@@ -314,6 +314,7 @@ import {
   renderProviderTraitsPicker,
 } from "./composerProviderState";
 import type { VelocitySummary } from "./AgentVelocityMeter.logic";
+import type { ComposerContextSlice } from "./composerContextSlice";
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import {
   providerSupportsManualCompaction,
@@ -1629,11 +1630,7 @@ export interface ChatComposerProps {
   reportedModelSelection?: ModelSelection | null;
 
   // Context window
-  activeVelocitySummary?: VelocitySummary | null | undefined;
-  activeContextWindow: ContextWindowSnapshot | null;
-  compactThreadUnavailable: boolean;
-  compactDisabled: boolean;
-  compactDisabledReason: string | null;
+  context: ComposerContextSlice;
 
   // Misc
   resolvedTheme: "light" | "dark";
@@ -1680,7 +1677,6 @@ export interface ChatComposerProps {
   onRemoveEditingQueuedAttachment: (attachmentId: string) => void;
 
   // Callbacks
-  onCompactContext: () => void;
   onSend: (
     e?: { preventDefault: () => void },
     dispatchMode?: ComposerDispatchMode,
@@ -1772,16 +1768,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activeProposedPlan,
     runtimeMode,
     interactionMode: requestedInteractionMode,
+    context,
     lockedProvider,
     providerStatuses,
     providerCatalogKnown,
     activeProjectDefaultModelSelection,
     activeThreadModelSelection,
     reportedModelSelection,
-    activeContextWindow,
-    compactThreadUnavailable,
-    compactDisabled,
-    compactDisabledReason,
     resolvedTheme,
     settings,
     keybindings,
@@ -1806,7 +1799,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onPageScrollKeyDown,
     onPageScrollKeyUp,
     onPageScrollRelease,
-    onCompactContext,
     onSend,
     onResume,
     onInterrupt,
@@ -1831,6 +1823,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
   } = props;
+  const {
+    contextWindow: activeContextWindow,
+    compactUnavailable: compactThreadUnavailable,
+    compactUnavailable: compactDisabled,
+    compactDisabledReason,
+    onCompact: onCompactContext,
+  } = context;
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const composerDraftTargetKey = composerTargetKey(composerDraftTarget);
   const {
@@ -7904,7 +7903,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
-                    activeVelocitySummary={props.activeVelocitySummary}
+                    activeVelocitySummary={context.velocity}
                     activeContextWindow={activeContextWindow}
                     activeThreadModelDisplayName={activeThreadModelDisplayName}
                     pendingAction={pendingPrimaryAction}

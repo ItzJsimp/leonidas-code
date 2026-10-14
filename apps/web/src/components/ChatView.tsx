@@ -449,6 +449,7 @@ import {
 import { environmentShell } from "../state/shell";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
+import { useComposerContextSlice } from "./chat/composerContextSlice";
 import { createPageScrollController, type PageScrollKey } from "./chat/pageScrollController";
 import { isTimelineScrollTarget } from "./chat/timelineScrollTarget";
 import { DraftHeroHeadline } from "./chat/DraftHeroHeadline";
@@ -9069,6 +9070,13 @@ export default function ChatView(props: ChatViewProps) {
     if (compactDisabled) return;
     void sendStandaloneCommand("/compact", "Failed to compact context.");
   };
+  const composerContext = useComposerContextSlice({
+    contextWindow: activeContextWindow,
+    velocity: activeVelocitySummary,
+    compactUnavailable: compactThreadUnavailable,
+    compactDisabledReason,
+    onCompact: onCompactContext,
+  });
 
   const onResume = async () => {
     if (
@@ -12106,6 +12114,7 @@ export default function ChatView(props: ChatViewProps) {
                           ) : null}
                           {!composerMounted ? null : (
                             <ChatComposer
+                              context={composerContext}
                               canOperateThread={canOperateThread}
                               reportedModelSelection={reportedModelSelection}
                               multipleModelSelections={multipleModelSelections}
@@ -12225,13 +12234,8 @@ export default function ChatView(props: ChatViewProps) {
                                 activeProjectDefaultModelSelection
                               }
                               activeThreadModelSelection={activeThread?.modelSelection}
-                              activeVelocitySummary={activeVelocitySummary}
-                              activeContextWindow={activeContextWindow}
                               activeTasksProgress={activeComposerTasksProgress}
                               activeTaskSteps={activeComposerTaskSteps}
-                              compactThreadUnavailable={compactThreadUnavailable}
-                              compactDisabled={compactDisabled}
-                              compactDisabledReason={compactDisabledReason}
                               resolvedTheme={resolvedTheme}
                               settings={settings}
                               keybindings={keybindings}
@@ -12262,7 +12266,6 @@ export default function ChatView(props: ChatViewProps) {
                               onPageScrollKeyDown={onComposerPageScrollKeyDown}
                               onPageScrollKeyUp={onComposerPageScrollKeyUp}
                               onPageScrollRelease={onComposerPageScrollRelease}
-                              onCompactContext={onCompactContext}
                               onSend={onSend}
                               onResume={onResume}
                               onInterrupt={onInterrupt}
