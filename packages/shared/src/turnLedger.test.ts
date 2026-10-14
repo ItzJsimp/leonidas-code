@@ -20,6 +20,33 @@ describe("buildTurnLedger", () => {
     });
   });
 
+  it("reports cache writes separately from fresh input", () => {
+    const ledger = buildTurnLedger({
+      inputTokens: 10_000,
+      cachedInputTokens: 6_000,
+      cacheCreationTokens: 3_000,
+      outputTokens: 0,
+    });
+    expect(ledger).toMatchObject({
+      cacheReadTokens: 6_000,
+      cacheWriteTokens: 3_000,
+      freshInputTokens: 1_000,
+      cacheHitRate: 0.6,
+    });
+  });
+
+  it("never lets reads plus writes exceed the input sent", () => {
+    const ledger = buildTurnLedger({
+      inputTokens: 1_000,
+      cachedInputTokens: 800,
+      cacheCreationTokens: 800,
+      outputTokens: 0,
+    });
+    expect(ledger.cacheReadTokens).toBe(800);
+    expect(ledger.cacheWriteTokens).toBe(200);
+    expect(ledger.freshInputTokens).toBe(0);
+  });
+
   it("treats reasoning as part of output and never goes negative", () => {
     const ledger = buildTurnLedger({
       inputTokens: 100,
@@ -74,6 +101,7 @@ describe("sumTurnLedgers", () => {
     const b = buildTurnLedger({ inputTokens: 9_000, cachedInputTokens: 0, outputTokens: 0 });
     const total = sumTurnLedgers([a, b]);
     expect(total.cacheHitRate).toBe(0.1);
+    expect(total.cacheWriteTokens).toBe(0);
     expect(total.totalTokens).toBe(10_000);
   });
 

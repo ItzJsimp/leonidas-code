@@ -1,6 +1,6 @@
 /**
  * Where one turn's tokens went, from the provider-reported usage a turn already
- * carries. `inputTokens` is everything sent (cache reads included). Providers
+ * carries. `inputTokens` is everything sent (cache reads and writes included). Providers
  * count reasoning inside `outputTokens`, so thinking is a slice of output.
  * Fixed overhead (instructions, skills, tool schemas) is not reported by any
  * provider; callers pass an estimate, and the split is `null` without one.
@@ -8,6 +8,8 @@
 export interface TurnLedgerInput {
   readonly inputTokens: number;
   readonly cachedInputTokens: number;
+  /** Tokens written to the prompt cache; counted inside `inputTokens`. */
+  readonly cacheCreationTokens?: number;
   readonly outputTokens: number;
   readonly reasoningOutputTokens?: number;
   readonly fixedOverheadTokens?: number;
@@ -16,6 +18,7 @@ export interface TurnLedgerInput {
 export interface TurnLedger {
   readonly freshInputTokens: number;
   readonly cacheReadTokens: number;
+  readonly cacheWriteTokens: number;
   readonly thinkingTokens: number;
   readonly answerTokens: number;
   readonly totalTokens: number;
@@ -34,12 +37,14 @@ export function buildTurnLedger(input: TurnLedgerInput): TurnLedger {
   const inputTokens = Math.max(input.inputTokens, 0);
   const outputTokens = Math.max(input.outputTokens, 0);
   const cacheReadTokens = clamp(input.cachedInputTokens, inputTokens);
+  const cacheWriteTokens = clamp(input.cacheCreationTokens ?? 0, inputTokens - cacheReadTokens);
   const thinkingTokens = clamp(input.reasoningOutputTokens ?? 0, outputTokens);
   const fixedOverheadTokens =
     input.fixedOverheadTokens === undefined ? null : clamp(input.fixedOverheadTokens, inputTokens);
   return {
-    freshInputTokens: inputTokens - cacheReadTokens,
+    freshInputTokens: inputTokens - cacheReadTokens - cacheWriteTokens,
     cacheReadTokens,
+    cacheWriteTokens,
     thinkingTokens,
     answerTokens: outputTokens - thinkingTokens,
     totalTokens: inputTokens + outputTokens,
@@ -53,6 +58,7 @@ export function buildTurnLedger(input: TurnLedgerInput): TurnLedger {
 export function sumTurnLedgers(ledgers: ReadonlyArray<TurnLedger>): TurnLedger {
   let fresh = 0;
   let cached = 0;
+  let written = 0;
   let thinking = 0;
   let answer = 0;
   let overhead = 0;
@@ -61,6 +67,7 @@ export function sumTurnLedgers(ledgers: ReadonlyArray<TurnLedger>): TurnLedger {
   for (const ledger of ledgers) {
     fresh += ledger.freshInputTokens;
     cached += ledger.cacheReadTokens;
+    written += ledger.cacheWriteTokens;
     thinking += ledger.thinkingTokens;
     answer += ledger.answerTokens;
     if (ledger.fixedOverheadTokens === null || ledger.conversationTokens === null) {
@@ -70,10 +77,11 @@ export function sumTurnLedgers(ledgers: ReadonlyArray<TurnLedger>): TurnLedger {
       conversation += ledger.conversationTokens;
     }
   }
-  const input = fresh + cached;
+  const input = fresh + cached + written;
   return {
     freshInputTokens: fresh,
     cacheReadTokens: cached,
+    cacheWriteTokens: written,
     thinkingTokens: thinking,
     answerTokens: answer,
     totalTokens: input + thinking + answer,
