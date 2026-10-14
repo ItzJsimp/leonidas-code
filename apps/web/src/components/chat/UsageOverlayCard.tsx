@@ -34,6 +34,7 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { useThreadContextBreakdown } from "../../state/queries";
 import { Button } from "../ui/button";
 import { barSegments } from "./ContextBreakdown.logic";
+import { deriveTrimSuggestions } from "./ContextTrim.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
 import { UsageBenchmarks } from "./UsageBenchmarks";
@@ -44,7 +45,8 @@ type Account = UsageLimitsReport["accounts"][number];
 const LIMITS_REFRESH_MS = 5 * 60_000;
 
 const MAX_CONTEXT_SEGMENTS = 3;
-
+const MAX_TRIM_ROWS = 3;
+const TRIM_KIND_LABEL = { mcp: "MCP", skill: "Skill", agent: "Agent", memory: "File" } as const;
 
 function titleOf(account: Account): string {
   return accountTitle(
@@ -74,6 +76,7 @@ function ContextSegments({
     () => (query.data ? barSegments(query.data.categories, query.data.maxTokens) : []),
     [query.data],
   );
+  const trim = useMemo(() => (query.data ? deriveTrimSuggestions(query.data) : []), [query.data]);
   const used = segments.filter((segment) => segment.kind === "used" && segment.tokens > 0);
   if (used.length === 0) return null;
   const top = used.slice(0, MAX_CONTEXT_SEGMENTS);
@@ -100,6 +103,24 @@ function ContextSegments({
           </li>
         ))}
       </ul>
+      {trim.length > 0 ? (
+        <div className="flex flex-col gap-0.5 border-t border-border/50 pt-1.5">
+          <span className="text-2xs font-medium text-foreground">Trim: loaded every turn</span>
+          <ul className="flex flex-col gap-0.5 text-2xs text-muted-foreground">
+            {trim.slice(0, MAX_TRIM_ROWS).map((item) => (
+              <li key={item.key} className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 flex-1 truncate" title={item.label}>
+                  {TRIM_KIND_LABEL[item.kind]} {item.label}
+                </span>
+                <span className="tabular-nums text-foreground">
+                  {item.estimated ? "~" : ""}
+                  {formatTokenCount(item.tokens)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
