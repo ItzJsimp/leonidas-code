@@ -52,6 +52,10 @@ import {
   type ProviderInstanceEntry,
 } from "../../providerInstances";
 import { providerModelKey, sortProviderModelItems } from "../../modelOrdering";
+import { indexBenchmarkEntries } from "@t3tools/shared/modelBenchmarkMatch";
+import { useEnvironmentQuery } from "../../state/query";
+import { serverEnvironment } from "../../state/server";
+import { pickerModelStats } from "../../lib/pickerModelStats";
 
 type ModelPickerItem = {
   slug: string;
@@ -283,6 +287,16 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   const keybindings = providedKeybindings ?? serverKeybindings;
   const navigate = useNavigate();
   const toggleFavorite = useToggleEnvironmentModelFavorite(props.environmentId);
+  // The server caches the catalog; one shared copy serves every row.
+  const benchmarkCatalog = useEnvironmentQuery(
+    props.environmentId
+      ? serverEnvironment.modelBenchmarkCatalog({ environmentId: props.environmentId, input: {} })
+      : null,
+  ).data;
+  const benchmarkIndex = useMemo(
+    () => (benchmarkCatalog ? indexBenchmarkEntries(benchmarkCatalog.entries) : null),
+    [benchmarkCatalog],
+  );
 
   const focusSearchInput = useCallback(() => {
     searchInputRef.current?.focus({ preventScroll: true });
@@ -1041,6 +1055,14 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                         unavailable={model.isUnavailable === true}
                         jumpLabel={modelJumpLabelByKey.get(modelKey) ?? null}
                         disabledReason={disabledReason}
+                        stats={
+                          benchmarkIndex
+                            ? pickerModelStats(benchmarkIndex, {
+                                modelId: model.slug,
+                                displayName: model.name,
+                              })
+                            : null
+                        }
                         onToggleFavorite={() => toggleFavorite(model.instanceId, model.slug)}
                       />
                     );

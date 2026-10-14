@@ -15,6 +15,66 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import {
+  formatPickerCost,
+  formatPickerIntelligence,
+  formatPickerSpeed,
+  hasPickerStats,
+  type PickerModelStats,
+} from "../../lib/pickerModelStats";
+
+const formatPrice = (value: number | null) => (value === null ? "n/a" : `$${value} per 1M tokens`);
+
+function ModelStatChips(props: { stats: PickerModelStats }) {
+  const { stats } = props;
+  const known = hasPickerStats(stats);
+  const chips = [
+    { label: "Intelligence", value: formatPickerIntelligence(stats) },
+    { label: "Speed", value: formatPickerSpeed(stats) },
+    { label: "Cost", value: formatPickerCost(stats) },
+  ];
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <div className="mt-1 flex items-center gap-1 text-3xs tabular-nums text-muted-foreground">
+            {chips.map((chip) => (
+              <span
+                key={chip.label}
+                className="rounded border border-border/60 px-1 py-px leading-none"
+                aria-label={`${chip.label}: ${chip.value ?? "no data"}`}
+              >
+                {chip.value ?? "-"}
+              </span>
+            ))}
+          </div>
+        }
+      />
+      <TooltipPopup side="right" align="start">
+        {known ? (
+          <div className="space-y-0.5 text-xs">
+            <div>
+              {stats.intelligenceSource === "aa"
+                ? "Artificial Analysis Intelligence Index"
+                : "BenchLM overall score"}
+              : {formatPickerIntelligence(stats) ?? "n/a"}
+            </div>
+            <div>Speed: {formatPickerSpeed(stats) ?? "n/a"}</div>
+            <div>
+              Time to first token:{" "}
+              {stats.ttftSeconds === null ? "n/a" : `${stats.ttftSeconds.toFixed(1)} s`}
+            </div>
+            <div>Input: {formatPrice(stats.inputPrice)}</div>
+            <div>Output: {formatPrice(stats.outputPrice)}</div>
+            <div className="text-muted-foreground">Source: BenchLM</div>
+          </div>
+        ) : (
+          "No data yet"
+        )}
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
 
 export const ModelListRow = memo(function ModelListRow(props: {
   index: number;
@@ -42,6 +102,8 @@ export const ModelListRow = memo(function ModelListRow(props: {
   unavailable?: boolean;
   jumpLabel?: string | null;
   disabledReason?: string | null;
+  /** Benchmark numbers for this model; null while the catalog loads. */
+  stats?: PickerModelStats | null;
   onToggleFavorite: () => void;
 }) {
   const providerLabel = getProviderRowLabel(props.providerDisplayName, props.model.subProvider);
@@ -97,6 +159,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
             </span>
           </div>
         )}
+        {props.stats ? <ModelStatChips stats={props.stats} /> : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
