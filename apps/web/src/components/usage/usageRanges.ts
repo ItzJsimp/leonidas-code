@@ -36,18 +36,12 @@ export const USAGE_RANGES = [
 
 export type UsageRange = (typeof USAGE_RANGES)[number];
 export type UsageRangeId = UsageRange["id"];
-export const USAGE_RANGE_IDS = USAGE_RANGES.map((range) => range.id) as readonly UsageRangeId[];
-
 export const rangeById = (id: UsageRangeId): UsageRange =>
   USAGE_RANGES.find((range) => range.id === id) ?? USAGE_RANGES[9];
 
 /** Maps the retired day-count preference onto a range. */
 export const rangeIdForDays = (days: number): UsageRangeId =>
   days === 1 ? "24h" : days === 7 ? "7d" : days === 90 ? "90d" : "30d";
-
-/** Width of one chart/table period, in minutes, for an hourly range. */
-export const bucketMinutesOf = (range: UsageRange): number =>
-  "bucketMinutes" in range ? range.bucketMinutes : 60;
 
 export function makeRangeWindow(id: UsageRangeId, now = new Date()): UsageSummaryInput {
   const range = rangeById(id);
