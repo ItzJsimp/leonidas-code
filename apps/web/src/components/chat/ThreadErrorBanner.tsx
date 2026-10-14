@@ -26,7 +26,7 @@ export function shouldShowThreadErrorBanner(
 const CAUSE_SEPARATOR = " Caused by: ";
 
 /** The server joins the nested causes of a failure with "Caused by:"; one line per link. */
-export function splitErrorCauseChain(error: string): string[] {
+function splitErrorCauseChain(error: string): string[] {
   return error.includes(CAUSE_SEPARATOR) ? error.split(CAUSE_SEPARATOR) : [];
 }
 
