@@ -172,7 +172,9 @@ export function ContextWindowMeter(props: {
             </div>
           ) : null}
           {velocity ? <SpeedSection summary={velocity} /> : null}
-          {velocity?.ledger ? <InputLedger ledger={velocity.ledger} /> : null}
+          {velocity?.ledger ? (
+            <InputLedger ledger={velocity.ledger} cacheBreak={velocity.cacheBreak} />
+          ) : null}
           {onCompact ? (
             <>
               <Button

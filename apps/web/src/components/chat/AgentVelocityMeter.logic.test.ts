@@ -5,6 +5,7 @@ import {
   calculateTurnVelocity,
   deriveVelocitySummary,
   extractTurnOutputTokens,
+  formatCacheBreak,
   formatCacheHitRate,
   formatRollingFill,
   formatToolDuration,
@@ -214,6 +215,28 @@ describe("AgentVelocityMeter.logic", () => {
         cacheHitRate: 0.75,
         thinkingTokens: 100,
       });
+    });
+
+    it("reports a cache break when the newest turn lost the cache the one before had", () => {
+      const turn = (id: string, cached: number, written: number) =>
+        ({
+          id,
+          status: "completed",
+          startedAt: "2026-10-10T12:00:00Z",
+          completedAt: "2026-10-10T12:00:04Z",
+          turnTokenUsage: {
+            usageStatus: "complete",
+            usageScope: "main_agent",
+            hasSubagents: false,
+            inputTokens: 40_000,
+            cachedInputTokens: cached,
+            cacheCreationTokens: written,
+            outputTokens: 100,
+          },
+        }) as unknown as OrchestrationV2ProviderTurn;
+      const summary = deriveVelocitySummary([turn("a", 36_000, 0), turn("b", 2_000, 30_000)], []);
+      expect(summary.cacheBreak).toMatchObject({ rewrittenTokens: 30_000 });
+      expect(deriveVelocitySummary([turn("a", 36_000, 0)], []).cacheBreak).toBeNull();
     });
 
     it("has no ledger until a turn reports input", () => {
@@ -463,5 +486,15 @@ describe("AgentVelocityMeter.logic", () => {
       expect(formatCacheHitRate(null)).toBe("--");
       expect(formatToolDuration(1800)).toBe("1.8s");
     });
+  });
+});
+
+describe("formatCacheBreak", () => {
+  it("says what fell and what was written again", () => {
+    expect(
+      formatCacheBreak({ previousRate: 0.9, currentRate: 0.05, rewrittenTokens: 30_000 }),
+    ).toBe(
+      "The cache restarted: hits fell from 90% to 5% and 30,000 tokens were written again. Something at the start of the prompt changed.",
+    );
   });
 });

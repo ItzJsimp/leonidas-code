@@ -1,5 +1,6 @@
-import type { TurnLedger } from "@t3tools/shared/turnLedger";
+import type { CacheBreak, TurnLedger } from "@t3tools/shared/turnLedger";
 import {
+  formatCacheBreak,
   formatCacheHitRate,
   formatRollingFill,
   formatToolDuration,
@@ -64,7 +65,13 @@ export function SpeedSection({ summary }: { summary: VelocitySummary }) {
  * Where the latest reporting turn's input went. Cache reads are the cheap part; a low hit rate
  * with high writes means the prompt prefix changed and the cache restarted.
  */
-export function InputLedger({ ledger }: { ledger: TurnLedger }) {
+export function InputLedger({
+  ledger,
+  cacheBreak,
+}: {
+  ledger: TurnLedger;
+  cacheBreak: CacheBreak | null;
+}) {
   const input = ledger.cacheReadTokens + ledger.cacheWriteTokens + ledger.freshInputTokens;
   const share = (tokens: number) => `${input > 0 ? (tokens / input) * 100 : 0}%`;
   return (
@@ -86,6 +93,11 @@ export function InputLedger({ ledger }: { ledger: TurnLedger }) {
         <Row label="Cache writes" value={ledger.cacheWriteTokens.toLocaleString()} />
         <Row label="Fresh" value={ledger.freshInputTokens.toLocaleString()} />
       </dl>
+      {cacheBreak ? (
+        <p className="text-pretty text-2xs text-warning-foreground leading-4" role="status">
+          {formatCacheBreak(cacheBreak)}
+        </p>
+      ) : null}
     </section>
   );
 }
