@@ -69,6 +69,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
+- 2026-10-14: skill folders in the `/` menu (`packages/client-runtime/src/skillFolders.ts`, `apps/web/src/components/chat/composerSkillFolders.logic.ts`, `settings/SkillFoldersEditor.tsx`), commits `e518535038` and `b0e9835b08`; checked live in Claude, 97 flat rows became 9 folders. Open: AIOS mirror file, category and source for Codex skills.
 - 2026-10-14: delegated task status returns a provider-reported `usage` block (`apps/server/src/mcp/delegatedTaskUsage.ts`, commit `c0efa878cf`); harness-gates card 1 of 4. Cards 2 to 4 build on it.
 - 2026-10-14: AIOS Home on the Command tab (`taskBoard.home`, `aiosHome.ts`, `AiosHomeCard.tsx`), verified live on 583 cards; Home build 1 ms, shared card scan 92 ms warm is the next cost to cut.
 - 2026-10-14: starter skills verified 22/22 in both roots for Claude Code and Codex; `SKILL_ROOTS` now lives in `skillPacks.ts` so the wizard and the verifier share it.
