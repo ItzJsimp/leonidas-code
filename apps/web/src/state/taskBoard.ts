@@ -76,6 +76,13 @@ export const taskBoardAiosDetectQuery = createEnvironmentRpcQueryAtomFamily(conn
   idleTtlMs: 30_000,
 });
 
+export const taskBoardHomeQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:home",
+  tag: WS_METHODS.taskBoardHome,
+  staleTimeMs: 30_000,
+  idleTtlMs: 60_000,
+});
+
 export const taskBoardAiosConfirm = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:task-board:aios-confirm",
   tag: WS_METHODS.taskBoardAiosConfirm,

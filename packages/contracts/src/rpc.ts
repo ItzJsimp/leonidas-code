@@ -43,6 +43,8 @@ import {
   TaskBoardAiosConfirmInput,
   TaskBoardAiosDetectInput,
   TaskBoardAiosDetectResult,
+  TaskBoardHome,
+  TaskBoardHomeInput,
 } from "./taskBoard.ts";
 import {
   HardwareAcknowledgeAlertInput,
@@ -477,6 +479,7 @@ export const WS_METHODS = {
   taskBoardShare: "taskBoard.share",
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
+  taskBoardHome: "taskBoard.home",
   hardwareGetInventory: "hardware.getInventory",
   hardwareGetHistory: "hardware.getHistory",
   hardwareGetLimits: "hardware.getLimits",
@@ -1467,6 +1470,12 @@ const WsTaskBoardAiosConfirmRpc = Rpc.make(WS_METHODS.taskBoardAiosConfirm, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
+  payload: TaskBoardHomeInput,
+  success: TaskBoardHome,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
@@ -2442,6 +2451,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardShareRpc,
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
+  WsTaskBoardHomeRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,

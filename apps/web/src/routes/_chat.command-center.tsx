@@ -13,6 +13,7 @@ import { groupCommandCenterThreads, type CommandCenterStatus } from "../commandC
 import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
+import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { Spinner } from "../components/ui/spinner";
@@ -100,6 +101,7 @@ function CommandCenterPage() {
               work.
             </p>
           </div>
+          <AiosHomeCard />
           {disconnected.length > 0 ? (
             <div
               role="status"

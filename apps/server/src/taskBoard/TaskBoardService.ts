@@ -18,6 +18,7 @@ import {
   type TaskBoardAiosDetectResult,
   type TaskBoardCardCreateInput,
   type TaskBoardCardUpdateInput,
+  type TaskBoardHome,
   type TaskBoardReleaseInput,
   type TaskBoardShareInput,
   type TaskBoardSnapshot,
@@ -42,6 +43,7 @@ import * as Option from "effect/Option";
 import { ServerConfig } from "../config.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
+import { buildHome } from "./aiosHome.ts";
 import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
 import { triageDrop } from "./triage.ts";
 import * as ProcessRunner from "../processRunner.ts";
@@ -456,6 +458,10 @@ export class TaskBoardService extends Context.Service<
       input: InboxDropInput,
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<InboxDrop, TaskBoardOperationError>;
+    /** The Command tab's Home, read from the AIOS folder; an empty Home when none is connected. */
+    readonly home: (
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<TaskBoardHome, TaskBoardReadError>;
     /** Folders that look like the user's AIOS, plus the one already confirmed. */
     readonly aiosDetect: (
       input: TaskBoardAiosDetectInput,
@@ -1500,6 +1506,18 @@ const make = Effect.gen(function* () {
       return yield* list(projectInput);
     });
 
+  const home = (projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      const root = aiosRootFor(projects, confirmedRoot);
+      if (root === null) return buildHome(null, []);
+      const now = yield* Clock.currentTimeMillis;
+      const tasks = yield* readCards(root, now);
+      return yield* Effect.try({
+        try: () => buildHome(root, tasks),
+        catch: (cause) => new TaskBoardReadError({ reason: "request_failed", cause }),
+      });
+    });
+
   const aiosDetect = (input: TaskBoardAiosDetectInput, projects: ReadonlyArray<Project>) =>
     Effect.sync(() => ({
       confirmedRoot: confirmedRoot ?? null,
@@ -1528,6 +1546,7 @@ const make = Effect.gen(function* () {
 
   return TaskBoardService.of({
     list,
+    home,
     aiosDetect,
     aiosConfirm,
     create,

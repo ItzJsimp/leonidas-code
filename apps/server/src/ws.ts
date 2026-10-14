@@ -2814,6 +2814,8 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.inboxUndo(input, projects)),
           ),
+        [WS_METHODS.taskBoardHome]: () =>
+          allTaskBoardProjects.pipe(Effect.flatMap((projects) => taskBoard.home(projects))),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.aiosDetect(input, projects)),

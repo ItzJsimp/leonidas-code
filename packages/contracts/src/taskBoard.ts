@@ -339,6 +339,46 @@ export const TaskBoardAiosDetectResult = Schema.Struct({
 });
 export type TaskBoardAiosDetectResult = typeof TaskBoardAiosDetectResult.Type;
 
+// The Command tab's Home: today's brief priorities, open-task counts and one next move, all read
+// from the AIOS folder. `root` is null when no AIOS is connected yet.
+export const TaskBoardHomeInput = Schema.Struct({});
+export type TaskBoardHomeInput = typeof TaskBoardHomeInput.Type;
+
+export const TaskBoardHomePriority = Schema.Struct({
+  title: Schema.String,
+  detail: Schema.String,
+  done: Schema.Boolean,
+  taskId: Schema.NullOr(Schema.String),
+});
+export type TaskBoardHomePriority = typeof TaskBoardHomePriority.Type;
+
+export const TaskBoardHomeMove = Schema.Struct({
+  kind: Schema.Literals(["review", "finish", "unblock", "focus", "rest"]),
+  title: Schema.String,
+  reason: Schema.String,
+  taskId: Schema.NullOr(Schema.String),
+});
+export type TaskBoardHomeMove = typeof TaskBoardHomeMove.Type;
+
+export const TaskBoardHome = Schema.Struct({
+  root: Schema.NullOr(Schema.String),
+  brief: Schema.NullOr(
+    Schema.Struct({
+      date: Schema.String,
+      file: Schema.String,
+      priorities: Schema.Array(TaskBoardHomePriority),
+    }),
+  ),
+  counts: Schema.Struct({
+    todo: Schema.Number,
+    inProgress: Schema.Number,
+    review: Schema.Number,
+    blocked: Schema.Number,
+  }),
+  move: TaskBoardHomeMove,
+});
+export type TaskBoardHome = typeof TaskBoardHome.Type;
+
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({
   root: Schema.NullOr(TrimmedNonEmptyString),

@@ -160,6 +160,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.taskBoardCardCreate]: "workspace",
   [WS_METHODS.taskBoardShare]: "workspace",
   [WS_METHODS.taskBoardAiosDetect]: "workspace",
+  [WS_METHODS.taskBoardHome]: "workspace",
   [WS_METHODS.taskBoardAiosConfirm]: "workspace",
   [WS_METHODS.hardwareGetInventory]: "server",
   [WS_METHODS.hardwareGetHistory]: "server",
