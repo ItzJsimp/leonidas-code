@@ -83,6 +83,23 @@ export const taskBoardHomeQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 60_000,
 });
 
+export const taskBoardHomeWeatherQuery = createEnvironmentRpcQueryAtomFamily(
+  connectionAtomRuntime,
+  {
+    label: "environment-data:task-board:home-weather",
+    tag: WS_METHODS.taskBoardHomeWeather,
+    staleTimeMs: 10 * 60_000,
+    idleTtlMs: 10 * 60_000,
+  },
+);
+
+export const taskBoardHomeNewsQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:home-news",
+  tag: WS_METHODS.taskBoardHomeNews,
+  staleTimeMs: 15 * 60_000,
+  idleTtlMs: 15 * 60_000,
+});
+
 export const taskBoardAiosConfirm = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:task-board:aios-confirm",
   tag: WS_METHODS.taskBoardAiosConfirm,

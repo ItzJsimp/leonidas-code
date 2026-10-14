@@ -379,6 +379,46 @@ export const TaskBoardHome = Schema.Struct({
 });
 export type TaskBoardHome = typeof TaskBoardHome.Type;
 
+// Optional Home cards. Weather is for a place the user names (no location is assumed); news is
+// a few public AI feeds. Both are free, keyless reads and degrade to "unavailable" or empty.
+export const TaskBoardHomeWeatherInput = Schema.Struct({
+  place: TrimmedNonEmptyString.check(Schema.isMaxLength(80)),
+});
+export type TaskBoardHomeWeatherInput = typeof TaskBoardHomeWeatherInput.Type;
+
+export const TaskBoardHomeWeather = Schema.Union([
+  Schema.Struct({
+    status: Schema.Literal("available"),
+    place: Schema.String,
+    unit: Schema.Literals(["F", "C"]),
+    temp: Schema.Number,
+    feels: Schema.Number,
+    high: Schema.Number,
+    low: Schema.Number,
+    condition: Schema.String,
+    icon: Schema.String,
+    observed: Schema.String,
+  }),
+  Schema.Struct({
+    status: Schema.Literal("unavailable"),
+    reason: Schema.Literals(["place_not_found", "offline"]),
+  }),
+]);
+export type TaskBoardHomeWeather = typeof TaskBoardHomeWeather.Type;
+
+export const TaskBoardHomeNewsItem = Schema.Struct({
+  title: Schema.String,
+  link: Schema.String,
+  image: Schema.NullOr(Schema.String),
+  at: Schema.NullOr(Schema.String),
+  summary: Schema.String,
+  source: Schema.String,
+});
+export type TaskBoardHomeNewsItem = typeof TaskBoardHomeNewsItem.Type;
+
+export const TaskBoardHomeNews = Schema.Struct({ items: Schema.Array(TaskBoardHomeNewsItem) });
+export type TaskBoardHomeNews = typeof TaskBoardHomeNews.Type;
+
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({
   root: Schema.NullOr(TrimmedNonEmptyString),

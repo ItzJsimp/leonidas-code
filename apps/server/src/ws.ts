@@ -9,6 +9,7 @@ import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
+import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as Crypto from "effect/Crypto";
@@ -2814,6 +2815,9 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.inboxUndo(input, projects)),
           ),
+        [WS_METHODS.taskBoardHomeWeather]: (input) =>
+          Effect.promise(() => homeWeather(input.place)),
+        [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
         [WS_METHODS.taskBoardHome]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap((projects) => taskBoard.home(projects))),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>

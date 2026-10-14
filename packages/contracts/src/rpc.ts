@@ -45,6 +45,9 @@ import {
   TaskBoardAiosDetectResult,
   TaskBoardHome,
   TaskBoardHomeInput,
+  TaskBoardHomeNews,
+  TaskBoardHomeWeather,
+  TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
 import {
   HardwareAcknowledgeAlertInput,
@@ -480,6 +483,8 @@ export const WS_METHODS = {
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
+  taskBoardHomeWeather: "taskBoard.homeWeather",
+  taskBoardHomeNews: "taskBoard.homeNews",
   hardwareGetInventory: "hardware.getInventory",
   hardwareGetHistory: "hardware.getHistory",
   hardwareGetLimits: "hardware.getLimits",
@@ -1476,6 +1481,18 @@ const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
+const WsTaskBoardHomeWeatherRpc = Rpc.make(WS_METHODS.taskBoardHomeWeather, {
+  payload: TaskBoardHomeWeatherInput,
+  success: TaskBoardHomeWeather,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
+  payload: Schema.Struct({}),
+  success: TaskBoardHomeNews,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
@@ -2452,6 +2469,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
   WsTaskBoardHomeRpc,
+  WsTaskBoardHomeWeatherRpc,
+  WsTaskBoardHomeNewsRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,
