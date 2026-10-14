@@ -17,6 +17,7 @@ This project lives inside its builder's AI operating system at `../../`. If `../
 7. **Task first:** find or create the task card before substantive work and close it with a verified note ([task-driven-work](./.agents/rules/task-driven-work.md)).
 8. **Public repo:** no keys, tokens, `.env`, personal paths or launchers in commits.
 9. No em dash (U+2014) in anything you write. Plain words for user-facing text.
+10. **Release notes are for users:** before committing a user-visible change or writing an update, read [leonidas-release](./.agents/skills/leonidas-release/SKILL.md) and its [writing guide](./.agents/skills/leonidas-release/references/writing-guide.md). Use final plain-language `Release-Note:` trailers. Release authors use the illustrated story template; never publish raw commit messages as patch notes.
 
 ## 3. Read when the task calls for it
 

@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Leonidas alignment check</title>
+    <style>
+      :root {
+        --bg: #0e0f12;
+        --card: #17191f;
+        --line: #2a2d36;
+        --fg: #e8eaf0;
+        --mut: #8b90a0;
+        --ok: #3ecf8e;
+        --bad: #ff6b6b;
+        --acc: #7c9cff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 system-ui,
+          Segoe UI,
+          sans-serif;
+      }
+      main {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 28px 18px 80px;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 6px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 28px 0 10px;
+      }
+      .mut {
+        color: var(--mut);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin: 14px 0;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        border: 1px solid var(--line);
+        color: var(--mut);
+        margin-right: 6px;
+      }
+      label.opt {
+        display: block;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin: 6px 0;
+        cursor: pointer;
+      }
+      label.opt:hover {
+        border-color: var(--acc);
+      }
+      label.opt input {
+        margin-right: 8px;
+      }
+      button {
+        background: var(--acc);
+        color: #0b0d14;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 15px;
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--fg);
+        border: 1px solid var(--line);
+      }
+      input[type="text"] {
+        background: var(--bg);
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        width: 260px;
+        font-size: 15px;
+      }
+      .bar {
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .bad {
+        color: var(--bad);
+      }
+      .big {
+        font-size: 44px;
+        font-weight: 700;
+      }
+      .rev.right {
+        border-left: 4px solid var(--ok);
+      }
+      .rev.wrong {
+        border-left: 4px solid var(--bad);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      td,
+      th {
+        border-bottom: 1px solid var(--line);
+        padding: 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .disagree {
+        background: #2a1d1d;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script>
+      // Questions come only from the project instruction files (AGENTS.md, LEONIDAS.md, agent-playbook.md) and the git status snapshot of 2026-10-14.
+      // d: 1 foundation, 2 working knowledge, 3 deep. a: index of the correct option. s: where the answer lives.
+      const Q = [
+        {
+          d: 1,
+          q: "In one line, what is Leonidas Code?",
+          o: [
+            "A website builder for customers",
+            "Our own AI coding app, built from an open-source app (T3 Code) that we copied and made our own",
+            "A plugin for Microsoft Word",
+            "A paid service run by T3 Tools",
+          ],
+          a: 1,
+          e: "Leonidas Code is our product. T3 Code is the open-source app we started from, and we keep its MIT licence notice.",
+          s: "LEONIDAS.md",
+        },
+        {
+          d: 1,
+          q: "What does Leonidas Code replace for Jake and Mob?",
+          o: [
+            "Todoist and Notion",
+            "Windows File Explorer",
+            "The Claude Code and Antigravity front ends, running on our own AI subscriptions",
+            "Google Chrome",
+          ],
+          a: 2,
+          e: "The goal is one home for working with AI instead of several separate tools.",
+          s: "LEONIDAS.md",
+        },
+        {
+          d: 1,
+          q: "When a user looks at the app, what name should they see?",
+          o: ["Leonidas Code", "T3 Code", "Leonidas Studio", "Claude Code"],
+          a: 0,
+          e: "We only say T3 Code when talking about the original project we forked.",
+          s: "LEONIDAS.md",
+        },
+        {
+          d: 1,
+          q: "How many main copies of the code do Jake and Mob share?",
+          o: [
+            "Two, one each, merged on Fridays",
+            "One shared main",
+            "One per feature",
+            "A new one every release",
+          ],
+          a: 1,
+          e: "One shared main. That is why pushing to it needs care.",
+          s: "AGENTS.md",
+        },
+        {
+          d: 2,
+          q: "What happens when someone pushes to main?",
+          o: [
+            "Nothing until it is approved",
+            "It only saves a backup",
+            "It ships an update to both Jake's and Mob's machines",
+            "It deletes older versions",
+          ],
+          a: 2,
+          e: "A push to main ships a release to both machines, so we commit locally and push only when told to.",
+          s: "AGENTS.md",
+        },
+        {
+          d: 2,
+          q: "Why do we never open the real live data folder (~/.t3/userdata) to experiment?",
+          o: [
+            "It is the real data the app is using right now, so we only look at copies",
+            "It is too large to open",
+            "It belongs to T3 Tools",
+            "It is empty",
+          ],
+          a: 0,
+          e: "Experiments happen on copies so real threads and settings stay safe.",
+          s: "AGENTS.md",
+        },
+        {
+          d: 2,
+          q: "The repo is public. Which of these must never be committed?",
+          o: [
+            "A bug fix",
+            "A release note",
+            "A test file",
+            "API keys, tokens, or personal file paths",
+          ],
+          a: 3,
+          e: "Anything private stays out of the repo, because anyone can read it.",
+          s: "AGENTS.md",
+        },
+        {
+          d: 2,
+          q: "What is the first thing we do before starting real work?",
+          o: [
+            "Find or create the task card",
+            "Push a draft to main",
+            "Ask the AI to guess",
+            "Update the version number",
+          ],
+          a: 0,
+          e: "Task first: the card comes before the work, and it is closed with a verified note.",
+          s: "AGENTS.md",
+        },
+        {
+          d: 2,
+          q: "Which best describes the Leonidas app pieces?",
+          o: [
+            "Command Center and Scribe are both just names for Leonidas Code",
+            "Scribe is the main screen and Command Center runs in the tray",
+            "Command Center is a view inside the app, and Scribe stays a small tray process",
+            "They are separate competitors",
+          ],
+          a: 2,
+          e: "Leonidas Code is the shell. Command Center lives inside it and Scribe runs in the tray.",
+          s: "LEONIDAS.md",
+        },
+        {
+          d: 1,
+          q: "What is vibe coding?",
+          o: [
+            "Writing code only while listening to music",
+            "Describing what you want in plain language and letting AI write the code, then steering by the results",
+            "Copying code from old projects without reading it",
+            "Coding only on a phone",
+          ],
+          a: 1,
+          e: "You guide with intent and feedback instead of typing every line yourself.",
+          s: "General knowledge",
+        },
+        {
+          d: 1,
+          q: "The AI says it finished and the code looks right. What is the best habit?",
+          o: [
+            "Run it and check that it really works",
+            "Trust it and move on",
+            "Ask the AI to say it is sure",
+            "Wait a day",
+          ],
+          a: 0,
+          e: "Looking right is not working. Run it, click through it, and run the tests.",
+          s: "General knowledge",
+        },
+        {
+          d: 2,
+          q: "Which request will get the best result from an AI agent?",
+          o: [
+            "Make it better",
+            "Fix the app",
+            "Do the usual thing",
+            "On the settings page, add a dark mode toggle that remembers the choice after restart",
+          ],
+          a: 3,
+          e: "Specific goals, a place, and a clear finish line beat vague asks.",
+          s: "General knowledge",
+        },
+        {
+          d: 2,
+          q: "The agent keeps going the wrong way after several tries. What is the best move?",
+          o: [
+            "Keep repeating the same request louder",
+            "Stop, restate the goal with clear context and limits, or start a fresh thread",
+            "Delete the project",
+            "Switch off the tests",
+          ],
+          a: 1,
+          e: "A long confused thread carries its mistakes with it. A clean restart with a clearer brief often fixes it.",
+          s: "General knowledge",
+        },
+        {
+          d: 2,
+          q: "Why save progress in small steps (commit often) when working with AI?",
+          o: [
+            "It makes the AI faster",
+            "Git requires it daily",
+            "It is easy to undo when a change breaks something",
+            "It hides mistakes",
+          ],
+          a: 2,
+          e: "Small saved steps give you safe places to go back to.",
+          s: "General knowledge",
+        },
+        {
+          d: 3,
+          q: "An AI tool needs an API key. What is the safe way to give it?",
+          o: [
+            "Paste it in the chat so it remembers",
+            "Put it in a file and commit it so both machines have it",
+            "Put it in the project name",
+            "Enter it privately through a secret prompt or a local settings file that is never committed",
+          ],
+          a: 3,
+          e: "Secrets never go in chat history or the public repo. Use a private entry or a local file that stays out of git.",
+          s: "General knowledge, AGENTS.md rule 8",
+        },
+      ];
+      const KEY = "leonidas-align-quiz-v1",
+        DL = ["", "Easy", "Medium", "Harder"];
+      let st = JSON.parse(localStorage.getItem(KEY) || "null") || {
+        name: "",
+        ans: {},
+        done: false,
+      };
+      const save = () => localStorage.setItem(KEY, JSON.stringify(st));
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
+      const L = "ABCD";
+      const app = document.getElementById("app");
+
+      function start() {
+        app.innerHTML = `<h1>Leonidas alignment check</h1>
+  <p class="mut">${Q.length} multiple-choice questions on what Leonidas is, how we work, and vibe coding basics. No tech background needed. Take it on your own, no peeking at each other. You get a grade and a full review at the end.</p>
+  <div class="card"><p>Your name</p><input type="text" id="nm" value="${esc(st.name)}" placeholder="Jake or Mob"> <button id="go">Start</button></div>
+  <p class="mut">Progress saves in this browser, so a refresh is safe.</p>`;
+        document.getElementById("go").onclick = () => {
+          const v = document.getElementById("nm").value.trim();
+          if (!v) return;
+          st.name = v;
+          save();
+          quiz();
+        };
+      }
+
+      function quiz() {
+        let h = `<div class="bar"><b>${esc(st.name)}</b><span id="cnt" class="mut"></span></div>`;
+        Q.forEach((x, i) => {
+          h +=
+            `<div class="card"><span class="tag">Q${i + 1}</span><span class="tag">${DL[x.d]}</span><p><b>${esc(x.q)}</b></p>` +
+            x.o
+              .map(
+                (t, j) =>
+                  `<label class="opt"><input type="radio" name="q${i}" value="${j}" ${st.ans[i] === j ? "checked" : ""}>${L[j]}. ${esc(t)}</label>`,
+              )
+              .join("") +
+            `</div>`;
+        });
+        h += `<button id="sub">Submit and grade</button>`;
+        app.innerHTML = h;
+        const upd = () =>
+          (document.getElementById("cnt").textContent =
+            `${Object.keys(st.ans).length} / ${Q.length} answered`);
+        app.querySelectorAll("input[type=radio]").forEach(
+          (r) =>
+            (r.onchange = () => {
+              st.ans[+r.name.slice(1)] = +r.value;
+              save();
+              upd();
+            }),
+        );
+        upd();
+        document.getElementById("sub").onclick = () => {
+          const left = Q.length - Object.keys(st.ans).length;
+          if (left && !confirm(`${left} unanswered will count as wrong. Submit anyway?`)) return;
+          st.done = true;
+          save();
+          results();
+          window.scrollTo(0, 0);
+        };
+      }
+
+      function score(ans) {
+        const by = { 1: [0, 0], 2: [0, 0], 3: [0, 0] };
+        let n = 0;
+        Q.forEach((x, i) => {
+          by[x.d][1]++;
+          if (ans[i] === x.a) {
+            n++;
+            by[x.d][0]++;
+          }
+        });
+        return { n, by };
+      }
+
+      function results() {
+        const { n, by } = score(st.ans),
+          pct = Math.round((n / Q.length) * 100);
+        const grade =
+          pct >= 90
+            ? "Aligned"
+            : pct >= 75
+              ? "Mostly aligned"
+              : pct >= 60
+                ? "Gaps to close"
+                : "Re-read the brief";
+        let h = `<h1>${esc(st.name)}: results</h1>
+  <div class="card"><div class="big ${pct >= 75 ? "ok" : "bad"}">${n} / ${Q.length} (${pct}%)</div><p>${grade}</p>
+  <p class="mut">${[1, 2, 3].map((d) => `${DL[d]}: ${by[d][0]}/${by[d][1]}`).join(" &nbsp;|&nbsp; ")}</p>
+  <button id="exp">Download my results</button> <button class="ghost" id="retry">Retake</button></div>
+  <div class="card"><b>Compare with the other person</b><p class="mut">Both of you download your results file, then load the other person's file here to see where you agree and disagree.</p><input type="file" id="oth" accept=".json"><div id="cmp"></div></div>
+  <h2>Detailed review</h2>`;
+        Q.forEach((x, i) => {
+          const mine = st.ans[i],
+            ok = mine === x.a;
+          h += `<div class="card rev ${ok ? "right" : "wrong"}"><span class="tag">Q${i + 1}</span><span class="tag">${DL[x.d]}</span><span class="${ok ? "ok" : "bad"}">${ok ? "Correct" : "Incorrect"}</span>
+    <p><b>${esc(x.q)}</b></p>
+    <p>Your answer: ${mine === undefined ? "<i>none</i>" : L[mine] + ". " + esc(x.o[mine])}</p>
+    ${ok ? "" : `<p>Correct: <span class="ok">${L[x.a]}. ${esc(x.o[x.a])}</span></p>`}
+    <p class="mut">${esc(x.e)} Source: ${esc(x.s)}.</p></div>`;
+        });
+        app.innerHTML = h;
+        document.getElementById("exp").onclick = () => {
+          const b = new Blob([JSON.stringify({ name: st.name, ans: st.ans, n, total: Q.length })], {
+            type: "application/json",
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(b);
+          a.download = `leonidas-quiz-${st.name.replace(/\W+/g, "_")}.json`;
+          a.click();
+        };
+        document.getElementById("retry").onclick = () => {
+          if (confirm("Clear your answers and retake?")) {
+            st = { name: st.name, ans: {}, done: false };
+            save();
+            quiz();
+          }
+        };
+        document.getElementById("oth").onchange = (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          f.text().then((t) => {
+            let o;
+            try {
+              o = JSON.parse(t);
+            } catch {
+              return alert("Not a valid results file.");
+            }
+            if (!o || typeof o.ans !== "object") return alert("Not a valid results file.");
+            const os = score(o.ans);
+            let diff = 0,
+              both = 0;
+            let r = `<p>${esc(st.name)}: <b>${n}</b> &nbsp; ${esc(o.name)}: <b>${os.n}</b></p><table><tr><th>Q</th><th>${esc(st.name)}</th><th>${esc(o.name)}</th><th>Right</th></tr>`;
+            Q.forEach((x, i) => {
+              const a = st.ans[i],
+                b = o.ans[i],
+                d = a !== b;
+              if (d) diff++;
+              if (a !== x.a && b !== x.a) both++;
+              r += `<tr class="${d ? "disagree" : ""}"><td>${i + 1}</td><td>${a === undefined ? "-" : L[a]}</td><td>${b === undefined ? "-" : L[b]}</td><td>${L[x.a]}</td></tr>`;
+            });
+            document.getElementById("cmp").innerHTML =
+              `${r}</table><p><b>${diff}</b> disagreements (shaded). <b>${both}</b> questions both missed, so fix the docs or your memory there.</p>`;
+          });
+        };
+      }
+
+      st.done ? results() : st.name ? quiz() : start();
+    </script>
+  </body>
+</html>

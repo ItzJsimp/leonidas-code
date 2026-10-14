@@ -397,7 +397,8 @@ export function formatTpsLabel(tps: number | null): string {
 
 /** Window fill for a rolling average: "" when full, else "1 of 5" so a partial average reads as one. */
 export function formatRollingFill(windowSize: number, turnsTracked: number): string {
-  return turnsTracked >= windowSize ? "" : `${turnsTracked} of ${windowSize}`;
+  if (turnsTracked >= windowSize) return "";
+  return turnsTracked === 0 ? "none yet" : `${turnsTracked} of ${windowSize}`;
 }
 
 /** "12.4s (35% of turn)"; tool wait is only known once the turn window is. */
