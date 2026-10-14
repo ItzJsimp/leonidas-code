@@ -1282,7 +1282,8 @@ export function createServerEnvironmentAtoms<R, E>(
     modelRunStats: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:model-run-stats",
       tag: WS_METHODS.serverGetModelRunStats,
-      staleTimeMs: 5 * 60_000,
+      // Cheap (a few ms) and should reflect a blind test that just finished.
+      staleTimeMs: 30_000,
     }),
     modelBenchmarkCatalog: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:model-benchmark-catalog",
