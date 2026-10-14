@@ -7779,7 +7779,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   <div
                     data-testid="composer-draft-stats"
                     className="mt-1 text-right text-2xs text-muted-foreground/70 tabular-nums"
-                    title={`${promptDraftStats.words.toLocaleString()} words · ${promptDraftStats.lines.toLocaleString()} lines. Tokens are an estimate for this message only; context is shown by the meter beside Send.`}
+                    title={`${promptDraftStats.words.toLocaleString()} words · ${promptDraftStats.lines.toLocaleString()} ${promptDraftStats.lines === 1 ? "line" : "lines"}. Tokens are an estimate for this message only; context is shown by the meter beside Send.`}
                   >
                     {formatPromptDraftStats(promptDraftStats)}
                   </div>
