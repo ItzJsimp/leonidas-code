@@ -2,8 +2,7 @@
  * Display names for Antigravity models.
  *
  * Usage records carry either a text name or only a numeric model id. Names are
- * normalized here, and ids the reader cannot name are looked up in a registry
- * filled from the account's own model list.
+ * normalized here so the usage reader reports one stable model name.
  *
  * @module provider/antigravityModelNames
  */
@@ -42,42 +41,4 @@ export function antigravityModelNameFromLabel(label: string): AntigravityModelNa
   return {
     model: slug.replace(/^(gemini-[\d.]+-(?:pro|flash(?:-lite)?))-(?:thinking|[a-z])$/, "$1"),
   };
-}
-
-/** Numeric id of an enum name such as `MODEL_PLACEHOLDER_M319` (1000 + N), else `null`. */
-export function antigravityModelIdFromEnum(modelEnum: string): number | null {
-  const match = modelEnum.trim().match(/^MODEL_PLACEHOLDER_M(\d+)$/);
-  return match?.[1] === undefined ? null : 1000 + Number(match[1]);
-}
-
-const registry = new Map<number, AntigravityModelName>();
-
-/** Records ids the language server has named; called by the limits probe. */
-export function registerAntigravityModelNames(
-  names: ReadonlyMap<number, AntigravityModelName>,
-): void {
-  for (const [id, name] of names) registry.set(id, name);
-}
-
-export function antigravityRegisteredModelName(id: number): AntigravityModelName | undefined {
-  return registry.get(id);
-}
-
-/** One entry of an account's model list; only the fields the name registry reads. */
-export interface AntigravityClientModelConfig {
-  readonly label?: string | null;
-  readonly modelOrAlias?: { readonly model?: string | null } | null;
-}
-
-/** Names for the numeric model ids an account's model list carries. */
-export function antigravityModelNamesFromConfigs(
-  configs: ReadonlyArray<AntigravityClientModelConfig> | null | undefined,
-): Map<number, AntigravityModelName> {
-  const names = new Map<number, AntigravityModelName>();
-  for (const config of configs ?? []) {
-    const id = antigravityModelIdFromEnum(config.modelOrAlias?.model ?? "");
-    const label = config.label?.trim();
-    if (id !== null && label) names.set(id, antigravityModelNameFromLabel(label));
-  }
-  return names;
 }

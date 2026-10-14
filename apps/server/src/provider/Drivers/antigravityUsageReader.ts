@@ -5,7 +5,6 @@ import * as NodeFSP from "node:fs/promises";
 import {
   type AntigravityModelName,
   antigravityModelNameFromLabel,
-  antigravityRegisteredModelName,
 } from "../antigravityModelNames.ts";
 import type { UsageRecord } from "@t3tools/provider-core/server/usage";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
@@ -503,12 +502,12 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
     for (const key of cache.keys()) if (!visited.has(key)) cache.delete(key);
   }
   // Records that carry only a numeric model id take the name another record in
-  // this scan gave that id, then the name the language server reported for it.
+  // this scan gave that id.
   const learned = new Map<number, AntigravityModelName>();
   for (const group of groups) if (group.learned) learned.set(group.learned.id, group.learned);
   const named = (record: UsageRecord): UsageRecord => {
     const id = Number(UNMAPPED_MODEL.exec(record.model)?.[1]);
-    const name = learned.get(id) ?? antigravityRegisteredModelName(id);
+    const name = learned.get(id);
     if (name === undefined) return record;
     const { rateModel: _unnamedRateModel, ...rest } = record;
     return {

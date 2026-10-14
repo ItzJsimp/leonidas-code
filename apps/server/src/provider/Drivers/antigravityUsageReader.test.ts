@@ -11,7 +11,6 @@ import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as SqlClient from "effect/sql/SqlClient";
 
-import { registerAntigravityModelNames } from "../antigravityModelNames.ts";
 import {
   makeAntigravityUsageCache,
   readAntigravityUsage,
@@ -271,33 +270,6 @@ describe("readAntigravityUsage", () => {
           ["gemini-3.8-flash-low", "gemini-3.8-flash"],
           ["gemini-3.8-flash-high", "gemini-3.8-flash"],
         ],
-      );
-    }).pipe(Effect.provide(NodeServices.layer)),
-  );
-
-  it.effect("names id-only records from the language server model registry", () =>
-    Effect.gen(function* () {
-      const path = yield* Path.Path;
-      const dir = yield* tempDir;
-      registerAntigravityModelNames(
-        new Map([[1320, { model: "gemini-3.8-flash-low", rateModel: "gemini-3.8-flash" }]]),
-      );
-      yield* seedDatabase(path.join(dir, "registry.db"), (db) =>
-        Effect.gen(function* () {
-          yield* createTables(db);
-          yield* db.run("INSERT INTO gen_metadata VALUES (?, ?)", [
-            0,
-            idOnlyGeneration(1320, "r-registry"),
-          ]);
-        }),
-      );
-      const cache = makeAntigravityUsageCache();
-      assert.deepStrictEqual(
-        records(yield* readAntigravityUsage(dir, 0, cache)).map((record) => [
-          record.model,
-          record.rateModel,
-        ]),
-        [["gemini-3.8-flash-low", "gemini-3.8-flash"]],
       );
     }).pipe(Effect.provide(NodeServices.layer)),
   );
