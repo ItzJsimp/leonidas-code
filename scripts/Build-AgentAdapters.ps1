@@ -39,12 +39,19 @@ $targets = [ordered]@{
   '.cursor/rules/leonidas.mdc'  = $cursor
 }
 
+# Compare modulo formatter whitespace (vp fmt pads tables and inserts blank lines on commit).
+function Normalize([string]$Text) {
+  (($Text -replace "`r`n", "`n") -split "`n" | Where-Object { $_.Trim() } | ForEach-Object {
+    $_ -replace '-{3,}', '---' -replace '\s+', ''
+  }) -join "`n"
+}
+
 $stale = @()
 foreach ($rel in $targets.Keys) {
   $path = Join-Path $root $rel
   $want = ($targets[$rel] -replace "`r`n", "`n").TrimEnd() + "`n"
   $have = if (Test-Path -LiteralPath $path) { (Get-Content -Raw -LiteralPath $path) -replace "`r`n", "`n" } else { '' }
-  if ($have -ceq $want) { continue }
+  if ((Normalize $have) -ceq (Normalize $want)) { continue }
   $stale += $rel
   if (-not $Check) { [IO.File]::WriteAllText($path, $want, [Text.UTF8Encoding]::new($false)) }
 }
