@@ -29,6 +29,20 @@ export function normalizeGoalIds(stored: readonly string[]): readonly string[] {
   return stored.filter((id) => known.has(id));
 }
 
+/** How many goals the Welcome step shows before "Show more". */
+export const GOALS_COLLAPSED_COUNT = 6;
+
+/** Goals to render: the first few, plus any picked goal so a pick never hides. */
+export function selectVisibleGoals(
+  selected: readonly string[],
+  showAll: boolean,
+): readonly LeonidasGoal[] {
+  if (showAll) return LEONIDAS_GOALS;
+  return LEONIDAS_GOALS.filter(
+    (goal, index) => index < GOALS_COLLAPSED_COUNT || selected.includes(goal.id),
+  );
+}
+
 export function toggleGoal(selected: readonly string[], id: string): readonly string[] {
   return selected.includes(id) ? selected.filter((entry) => entry !== id) : [...selected, id];
 }

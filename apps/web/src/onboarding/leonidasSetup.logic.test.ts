@@ -5,6 +5,7 @@ import {
   buildAiosSetupPrompt,
   LEONIDAS_GOALS,
   normalizeGoalIds,
+  selectVisibleGoals,
   toggleGoal,
 } from "./leonidasSetup.logic";
 
@@ -20,6 +21,17 @@ describe("leonidasSetup.logic", () => {
   it("toggles a goal on and off", () => {
     expect(toggleGoal([], "games")).toEqual(["games"]);
     expect(toggleGoal(["games"], "games")).toEqual([]);
+  });
+
+  it("shows six goals until the user asks for more", () => {
+    expect(selectVisibleGoals([], false)).toHaveLength(6);
+    expect(selectVisibleGoals([], true)).toHaveLength(10);
+  });
+
+  it("keeps a picked goal visible even past the collapsed list", () => {
+    const visible = selectVisibleGoals(["learning"], false).map((goal) => goal.id);
+    expect(visible).toHaveLength(7);
+    expect(visible).toContain("learning");
   });
 
   it("names the picked goals and every preset path in the prompt", () => {

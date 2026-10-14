@@ -1,4 +1,5 @@
 import { ArrowRightIcon } from "lucide-react";
+import { useState } from "react";
 
 import { PRIVACY_POLICY_URL } from "../../legalLinks";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
@@ -7,6 +8,7 @@ import {
   LEONIDAS_GOALS_STORAGE_KEY,
   LeonidasGoalsSchema,
   normalizeGoalIds,
+  selectVisibleGoals,
   toggleGoal,
 } from "../../onboarding/leonidasSetup.logic";
 import { Button } from "../ui/button";
@@ -16,6 +18,9 @@ import { ScrollArea } from "../ui/scroll-area";
 export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => void }) {
   const [stored, setStored] = useLocalStorage(LEONIDAS_GOALS_STORAGE_KEY, [], LeonidasGoalsSchema);
   const selected = normalizeGoalIds(stored);
+  const [showAll, setShowAll] = useState(false);
+  const visibleGoals = selectVisibleGoals(selected, showAll);
+  const hiddenCount = LEONIDAS_GOALS.length - visibleGoals.length;
 
   return (
     <>
@@ -28,7 +33,7 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
       </p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="grid grid-cols-1 gap-1 pr-3 sm:grid-cols-2">
-          {LEONIDAS_GOALS.map((goal) => (
+          {visibleGoals.map((goal) => (
             <label
               key={goal.id}
               className="flex cursor-pointer items-start gap-2.5 rounded-md px-2 py-2 hover:bg-muted/40"
@@ -44,6 +49,11 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
             </label>
           ))}
         </div>
+        {hiddenCount > 0 ? (
+          <Button size="xs" variant="ghost-muted" className="mt-1" onClick={() => setShowAll(true)}>
+            Show {hiddenCount} more
+          </Button>
+        ) : null}
       </ScrollArea>
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
         Leonidas Code collects anonymous usage data to help us improve it. To read more about how
