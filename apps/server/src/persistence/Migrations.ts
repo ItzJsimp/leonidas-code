@@ -75,6 +75,8 @@ import Migration0058 from "./Migrations/058_WebhookRelayDeliveries.ts";
 import Migration0059 from "./Migrations/059_McpAppModelContext.ts";
 import Migration0060 from "./Migrations/060_ThreadSnapshotWindowIndexes.ts";
 import Migration0061 from "./Migrations/061_SavedItems.ts";
+import Migration0062 from "./Migrations/062_PullRequestReviewGuides.ts";
+import Migration0063 from "./Migrations/063_ThreadFailureLookupIndex.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -149,7 +151,12 @@ export const migrationEntries = [
   [58, "WebhookRelayDeliveries", Migration0058],
   [59, "McpAppModelContext", Migration0059],
   [60, "ThreadSnapshotWindowIndexes", Migration0060],
+  // Leonidas fork: 61 is ours and installed databases recorded it, so upstream
+  // migrations from its 61 on run here at upstream id + 1. Keep that offset when
+  // merging upstream: rename its new migration files and entries, keep ours.
   [61, "SavedItems", Migration0061],
+  [62, "PullRequestReviewGuides", Migration0062],
+  [63, "ThreadFailureLookupIndex", Migration0063],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);
