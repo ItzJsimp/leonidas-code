@@ -203,6 +203,19 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
 });
 export type OrchestratorMcpDelegateTaskInput = typeof OrchestratorMcpDelegateTaskInput.Type;
 
+/** Provider-reported cost of a delegated child thread. Null means not reported. */
+export const OrchestratorMcpDelegatedTaskUsage = Schema.Struct({
+  usageStatus: Schema.Literals(["complete", "partial", "unavailable"]),
+  inputTokens: Schema.NullOr(NonNegativeInt),
+  outputTokens: Schema.NullOr(NonNegativeInt),
+  cachedInputTokens: Schema.NullOr(NonNegativeInt),
+  reasoningTokens: Schema.NullOr(NonNegativeInt),
+  providerTurnCount: NonNegativeInt,
+  runCount: NonNegativeInt,
+  wallTimeMs: Schema.NullOr(NonNegativeInt),
+});
+export type OrchestratorMcpDelegatedTaskUsage = typeof OrchestratorMcpDelegatedTaskUsage.Type;
+
 export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
   taskId: NodeId,
   childThreadId: ThreadId,
@@ -225,6 +238,7 @@ export const OrchestratorMcpDelegateTaskResult = Schema.Struct({
   }),
   worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  usage: Schema.optional(OrchestratorMcpDelegatedTaskUsage),
 });
 export type OrchestratorMcpDelegateTaskResult = typeof OrchestratorMcpDelegateTaskResult.Type;
 

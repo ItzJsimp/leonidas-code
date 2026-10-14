@@ -94,6 +94,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import * as ProviderAdapterRegistry from "../orchestration-v2/ProviderAdapterRegistry.ts";
+import { delegatedTaskUsage } from "./delegatedTaskUsage.ts";
 import {
   subagentResultForRun,
   delegatedTaskProgress,
@@ -1599,7 +1600,7 @@ const make = Effect.gen(function* () {
       const childControls = yield* threadManagement
         .getThreadRecords(
           task.childThreadId,
-          ["runs", "messages", "contextTransfers", "subagents", "providerThreads"],
+          ["runs", "messages", "contextTransfers", "subagents", "providerThreads", "providerTurns"],
           { messageRoles: ["user"] },
         )
         .pipe(Effect.mapError(threadManagementFailure));
@@ -1707,6 +1708,11 @@ const make = Effect.gen(function* () {
         waitTimedOut,
         worktreePath: task.worktreePath ?? childProjection.thread.worktreePath ?? null,
         branch: task.branch ?? childProjection.thread.branch ?? null,
+        usage: delegatedTaskUsage(
+          childControls.providerTurns ?? [],
+          childControls.runs,
+          yield* DateTime.now,
+        ),
       } satisfies OrchestratorMcpDelegateTaskResult;
       if (
         acknowledgeTerminal &&

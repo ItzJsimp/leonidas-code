@@ -175,6 +175,9 @@ describe("OrchestratorMcpService", () => {
         assert.equal(result.summary, "terminal result");
         assert.equal(result.latestTerminalRunId, childRunId);
         assert.equal(result.latestTerminalStatus, "completed");
+        assert.equal(result.usage?.usageStatus, "unavailable");
+        assert.equal(result.usage?.runCount, 2);
+        assert.equal(result.usage?.wallTimeMs, 780_000);
         const commandIds = yield* Ref.get(acknowledgementCommandIds);
         assert.equal(commandIds.length, 2);
         assert.notEqual(commandIds[0], commandIds[1]);
