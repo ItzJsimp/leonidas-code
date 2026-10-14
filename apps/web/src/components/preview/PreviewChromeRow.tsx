@@ -230,6 +230,21 @@ export function PreviewChromeRow({
               </span>
             </InputGroupAddon>
           ) : null}
+          {inputFocused && draft.trim().length > 0 && draft.trim() !== url ? (
+            <InputGroupAddon align="inline-end">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Go to address"
+                type="button"
+                // Keep focus in the field so the click does not discard the typed address.
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={submit}
+              >
+                <ArrowRight />
+              </Button>
+            </InputGroupAddon>
+          ) : null}
         </InputGroup>
 
         {onPickElement ? (

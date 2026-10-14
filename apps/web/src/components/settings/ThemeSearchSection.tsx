@@ -284,6 +284,16 @@ export function ThemeSearchSection({
           type="search"
           value={query}
         />
+        <InputGroupAddon align="inline-end">
+          <Button
+            size="xs"
+            variant="ghost"
+            disabled={isSearching || installingId !== null || query.trim().length === 0}
+            onClick={() => void runSearch(query.trim())}
+          >
+            Search
+          </Button>
+        </InputGroupAddon>
       </InputGroup>
 
       {!isSearching || results !== null ? (
