@@ -143,19 +143,31 @@ export const makeAutoLog = (deps: {
       );
     });
 
+  // Every card sharing the thread (a batch sends several to one agent) gets the outcome. A run
+  // that finished while a card is still in progress means the agent did not close it itself, so
+  // the card moves to review: an honest "ready to check" rather than a guess that it is done.
+  // Failed and cancelled runs stay visible as such; the agent or a person moves a card to done.
   const logOutcome = (threadId: ThreadId, run: Pick<OrchestrationV2Run, "id" | "status">) =>
     Effect.gen(function* () {
       const projects = yield* deps.allProjects;
-      const task = (yield* tasks(projects)).find(
-        (item) => item.claimedAgent?.threadId === threadId,
-      );
       const marker = runMarker(run.id);
-      if (task === undefined || hasMarker(task, marker)) return;
-      // Failed and cancelled runs stay visible as such; only people move a card to done.
-      yield* taskBoard.cardUpdate(
-        { taskId: task.id, actor: ACTOR, note: `Run ${run.status}. ${marker}` },
-        projects,
+      const linked = (yield* tasks(projects)).filter(
+        (item) => item.claimedAgent?.threadId === threadId && !hasMarker(item, marker),
       );
+      for (const task of linked) {
+        const finishing = run.status === "completed" && task.status === "in_progress";
+        yield* taskBoard.cardUpdate(
+          {
+            taskId: task.id,
+            actor: ACTOR,
+            ...(finishing ? { status: "review" as const } : {}),
+            note: finishing
+              ? `Run completed. Moved to review because the agent did not mark it done. ${marker}`
+              : `Run ${run.status}. ${marker}`,
+          },
+          projects,
+        );
+      }
     });
 
   const skip = (what: string) => (cause: Cause.Cause<unknown>) =>

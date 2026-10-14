@@ -211,6 +211,41 @@ describe("TaskAutoLog persistence", () => {
     ),
   );
 
+  it.effect("moves a still-in-progress card to review when its run completes", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-1"));
+        yield* log.handle(runEvent("thread-1", "run-1", "completed"));
+        yield* log.handle(runEvent("thread-1", "run-1", "completed"));
+        const [task] = (yield* board.workspace([project])).tasks;
+        expect(task!.status).toBe("review");
+        expect(notes(task!).filter((note) => note.includes("[run run-1]"))).toHaveLength(1);
+      }),
+    ),
+  );
+
+  it.effect("updates every card a batch shares one thread with, leaving closed ones alone", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const first = yield* newCard(board, project);
+        const second = yield* newCard(board, project);
+        const agent = { threadId: "thread-batch" };
+        yield* board.cardUpdate({ taskId: first.id, actor: "Mob", agent, status: "in_progress" }, [
+          project,
+        ]);
+        yield* board.cardUpdate({ taskId: second.id, actor: "Mob", agent, status: "in_progress" }, [
+          project,
+        ]);
+        yield* board.cardUpdate({ taskId: first.id, actor: "Agent", status: "done" }, [project]);
+        yield* newLog().handle(runEvent("thread-batch", "run-b", "completed"));
+        const byId = new Map((yield* board.workspace([project])).tasks.map((t) => [t.id, t]));
+        expect(byId.get(first.id)!.status).toBe("done");
+        expect(byId.get(second.id)!.status).toBe("review");
+      }),
+    ),
+  );
+
   it.effect("records failed and cancelled runs once each without completing the card", () =>
     withBoard(({ board, project, newLog }) =>
       Effect.gen(function* () {

@@ -222,7 +222,7 @@ const BoardTaskGetTool = Tool.make("board_task_get", {
 
 const BoardTaskUpdateTool = Tool.make("board_task_update", {
   description:
-    "Update a task card the user can see in the Tasks view. Set in_progress when you start, add a note on meaningful progress, and finish with review (needs a human check) or done, putting the verification result in note. Only the fields you pass change; claim=true takes the task for the current user.",
+    "Update a task card the user can see in the Tasks view. Keeping cards current is your job, not the user's: set in_progress when you start, add a note on meaningful progress, and always finish with review (needs a human check) or done, putting the verification result in note. Never leave a card for the user to close. Only the fields you pass change; claim=true takes the task for the current user.",
   parameters: OrchestratorMcpBoardTaskUpdateInput,
   success: OrchestratorMcpBoardTaskRow,
   failure: OrchestratorMcpFailure,

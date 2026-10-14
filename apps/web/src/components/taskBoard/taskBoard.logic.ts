@@ -526,7 +526,7 @@ export function buildTaskPrompt(
 
   lines.push(
     "",
-    "Report progress on the task board with the board_task_update tool (task id above):",
+    "You keep this card current yourself; the user should never have to update or close it. Use the board_task_update tool (task id above):",
     "1. Set the card status to in_progress when you start.",
     "2. Add a note on each meaningful step of progress.",
     "3. When finished, set the status to review (or done if nothing needs a human check) and put the verification result in the note.",
@@ -649,7 +649,7 @@ export function buildBatchPrompt(
   ctx: { aiosRoot: string | null; member: string },
 ): string {
   return [
-    `You have ${tasks.length} small tasks to complete in one session. Do them one at a time, in order. Finish and report each before starting the next, and stop to ask only if one is genuinely unclear.`,
+    `You have ${tasks.length} small tasks to complete in one session. Do them one at a time, in order. Finish each one and update its card with board_task_update (in progress when you start, a note on progress, then done once verified or review if a person must check) before starting the next. You keep every card current yourself; the user should never have to update or close one. Stop to ask only if a task is genuinely unclear.`,
     ...tasks.map(
       (task, index) =>
         `\n--- Task ${index + 1} of ${tasks.length} ---\n${buildTaskPrompt(task, ctx)}`,
