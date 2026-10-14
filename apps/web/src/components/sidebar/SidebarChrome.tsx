@@ -1,5 +1,6 @@
 import {
   ArrowLeftIcon,
+  ActivityIcon,
   ChartNoAxesColumnIcon,
   ListChecksIcon,
   MicIcon,
@@ -242,6 +243,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/usage" });
   }, [isMobile, navigate, setOpenMobile]);
 
+  const handleSystemCareClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/system-care" });
+  }, [closeMobileSidebar, navigate]);
+
   const handleUpdateHistoryClick = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -304,6 +310,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Usage"
             tourId="sidebar-usage"
             onClick={handleUsageClick}
+          />
+          <SidebarUtilityItem
+            icon={<ActivityIcon />}
+            label="System Care"
+            onClick={handleSystemCareClick}
           />
           <SidebarUtilityItem
             icon={<ScrollTextIcon />}

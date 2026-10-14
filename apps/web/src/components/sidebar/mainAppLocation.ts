@@ -11,6 +11,7 @@ export function isSidebarUtilityPage(pathname: string) {
     pathname.startsWith("/settings/") ||
     pathname.startsWith("/projects/") ||
     pathname === "/usage" ||
+    pathname === "/system-care" ||
     pathname === "/command-center" ||
     pathname === "/tasks" ||
     pathname === "/pull-requests"
