@@ -133,6 +133,7 @@ import { openCapture } from "../capture/captureStore";
 import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
+import { ComposerToolbar } from "./ComposerToolbar";
 import { prefixPromptWithSkill } from "./composerSkillPrefix";
 import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerSavedItems } from "./ComposerSavedItems";
@@ -5297,6 +5298,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // Banners and the tasks badge dock above the surface rather than inside
   // it, so they do not hold the composer open; only surface-internal chrome
   // does.
+  // Question and approval cards take the full width, so the bar steps out of their way.
+  const showComposerToolbar = !isComposerApprovalState && pendingUserInputs.length === 0;
   const composerHasExpandedChrome =
     showComposerTopDrawer ||
     isTasksDrawerOpen ||
@@ -6857,8 +6860,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             restingControlsHost,
           )
         : null}
-      <ComposerBanner.Dock>
-        <ComposerBanner.Column>
+      {/* Cards live in their own full-width column; the button bar never shares a row with them. */}
+      <>
+        <ComposerBanner.Column className="mx-auto -mb-[calc(1rem+1px)] w-[calc(100%-2*var(--chat-composer-drawer-inset))] flex-none">
           <ComposerBannerStack
             key={activeThreadId}
             className="relative z-0"
@@ -7025,50 +7029,67 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               />
             </ComposerBanner.Attachment>
           ) : null}
+          {showComposerToolbar ? (
+            <ComposerToolbar
+              prefs={settings.composerToolbar}
+              collapsed={settings.composerToolbarCollapsed}
+              onFillPrompt={setPrompt}
+              onCollapsedChange={(collapsed) =>
+                void updateClientSettings({ composerToolbarCollapsed: collapsed })
+              }
+              onPrefsChange={(composerToolbar) => void updateClientSettings({ composerToolbar })}
+              builtins={{
+                saved: (
+                  <ComposerSavedItems
+                    environmentId={environmentId}
+                    projectId={savedItemsProjectId}
+                    target={composerDraftTarget}
+                    modelSelection={selectedModelSelection}
+                    runtimeMode={runtimeMode}
+                    interactionMode={interactionMode}
+                    canSave={canOperateThread}
+                  />
+                ),
+                stash: (
+                  <ComposerStashBadge
+                    count={stashQueue.length}
+                    menuOpen={isStashMenuOpen}
+                    pulseKey={stashPulse.key}
+                    pulsing={stashPulse.active}
+                    onToggleMenu={toggleStashMenu}
+                  />
+                ),
+                capture: (
+                  <ComposerCaptureBadge
+                    alignRight={false}
+                    shortcutLabel={shortcutLabelForCommand(keybindings, "capture.open", {
+                      context: { terminalFocus: false, terminalOpen, modelPickerOpen: false },
+                    })}
+                    onOpen={() => openCapture({ source: "composer" })}
+                  />
+                ),
+                skills:
+                  selectedProviderSkills.length > 0 ? (
+                    <ComposerSkillsButton
+                      skills={selectedProviderSkills}
+                      alignRight={false}
+                      onSelect={(skillName) =>
+                        setPrompt(prefixPromptWithSkill(promptRef.current, skillName))
+                      }
+                    />
+                  ) : null,
+                nextAction:
+                  prompt.trim().length === 0 ? (
+                    <ComposerNextActionBadge
+                      alignRight={false}
+                      onFill={() => setPrompt(NEXT_ACTION_PROMPT)}
+                    />
+                  ) : null,
+              }}
+            />
+          ) : null}
         </ComposerBanner.Column>
-        {!isComposerApprovalState && pendingUserInputs.length === 0 ? (
-          <ComposerSavedItems
-            environmentId={environmentId}
-            projectId={savedItemsProjectId}
-            target={composerDraftTarget}
-            modelSelection={selectedModelSelection}
-            runtimeMode={runtimeMode}
-            interactionMode={interactionMode}
-            canSave={canOperateThread}
-          />
-        ) : null}
-        {!isComposerApprovalState ? (
-          <ComposerStashBadge
-            count={stashQueue.length}
-            menuOpen={isStashMenuOpen}
-            pulseKey={stashPulse.key}
-            pulsing={stashPulse.active}
-            onToggleMenu={toggleStashMenu}
-          />
-        ) : null}
-        {!isComposerApprovalState ? (
-          <ComposerCaptureBadge
-            alignRight={stashQueue.length === 0}
-            shortcutLabel={shortcutLabelForCommand(keybindings, "capture.open", {
-              context: { terminalFocus: false, terminalOpen, modelPickerOpen: false },
-            })}
-            onOpen={() => openCapture({ source: "composer" })}
-          />
-        ) : null}
-        {!isComposerApprovalState && selectedProviderSkills.length > 0 ? (
-          <ComposerSkillsButton
-            skills={selectedProviderSkills}
-            alignRight={stashQueue.length === 0 && prompt.trim().length > 0}
-            onSelect={(skillName) => setPrompt(prefixPromptWithSkill(promptRef.current, skillName))}
-          />
-        ) : null}
-        {!isComposerApprovalState && prompt.trim().length === 0 ? (
-          <ComposerNextActionBadge
-            alignRight={false}
-            onFill={() => setPrompt(NEXT_ACTION_PROMPT)}
-          />
-        ) : null}
-      </ComposerBanner.Dock>
+      </>
       <div className="relative">
         <ComposerSurface.Main
           ref={composerMainSurfaceRef}

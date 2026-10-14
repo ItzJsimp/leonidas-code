@@ -329,6 +329,20 @@ export const UsageWarningPercent = Schema.Int.check(Schema.isBetween({ minimum: 
 
 export const NotificationVolume = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }));
 
+export const ComposerToolbarCustomButton = Schema.Struct({
+  id: Schema.String,
+  label: Schema.String,
+  /** Text the button drops into the prompt; the user reviews it before sending. */
+  prompt: Schema.String,
+});
+
+export const ComposerToolbarPrefs = Schema.Struct({
+  hidden: Schema.Array(Schema.String),
+  order: Schema.Array(Schema.String),
+  custom: Schema.Array(ComposerToolbarCustomButton),
+});
+export type ComposerToolbarPrefs = typeof ComposerToolbarPrefs.Type;
+
 export const ClientSettingsSchema = Schema.Struct({
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
@@ -503,6 +517,12 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   proactivePanelsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   showSkillsInSlashMenu: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  // Button bar above the prompt: collapsed state plus the user's changes to the
+  // team default set (hidden ids, order, custom prompt buttons).
+  composerToolbarCollapsed: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  composerToolbar: ComposerToolbarPrefs.pipe(
+    Schema.withDecodingDefault(Effect.succeed({ hidden: [], order: [], custom: [] })),
+  ),
   // Legacy sidebar (the original per-project tree). Deliberately a fresh key
   // (was `sidebarV2Enabled` + `sidebarV2ConfiguredByUser`): decoding drops the
   // old keys, so everyone, including prior beta opt-outs, resets to the new
@@ -1792,6 +1812,8 @@ export const ClientSettingsPatch = Schema.Struct({
   followUpBehavior: Schema.optionalKey(Schema.Literals(["queue", "steer"])),
   proactivePanelsEnabled: Schema.optionalKey(Schema.Boolean),
   showSkillsInSlashMenu: Schema.optionalKey(Schema.Boolean),
+  composerToolbarCollapsed: Schema.optionalKey(Schema.Boolean),
+  composerToolbar: Schema.optionalKey(ComposerToolbarPrefs),
   legacySidebarEnabled: Schema.optionalKey(Schema.Boolean),
   sidebarWorkingShelfEnabled: Schema.optionalKey(Schema.Boolean),
   sidebarProjectGroupingMode: Schema.optionalKey(SidebarProjectGroupingMode),
