@@ -29,7 +29,7 @@ export const PullRequestFilesViewedScope = Schema.Struct({
 export type PullRequestFilesViewedScope = typeof PullRequestFilesViewedScope.Type;
 
 /** A file this reader cleared, and what it was when they cleared it. */
-export const PullRequestFileViewedMark = Schema.Struct({
+const PullRequestFileViewedMark = Schema.Struct({
   path: Schema.String,
   /**
    * The host's own name for that version of the file, opaque here. Empty where the host said it
