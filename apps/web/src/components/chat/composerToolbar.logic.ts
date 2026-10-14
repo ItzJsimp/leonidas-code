@@ -1,7 +1,7 @@
 import type { ComposerToolbarPrefs } from "@t3tools/contracts/settings";
 
 /** Team default set and order; users change it through `composerToolbar` in client settings. */
-export const BUILTIN_TOOLBAR_ITEMS = [
+const BUILTIN_TOOLBAR_ITEMS = [
   { id: "saved", label: "Saved" },
   { id: "stash", label: "Stash" },
   { id: "capture", label: "Capture" },

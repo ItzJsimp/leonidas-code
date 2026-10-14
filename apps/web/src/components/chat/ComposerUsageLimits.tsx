@@ -24,11 +24,7 @@ function accountLabel(account: UsageLimitsReport["accounts"][number]): string {
 }
 
 /** The account's label (redactable when it is an email) and plan. */
-export function AccountSummary({
-  account,
-}: {
-  readonly account: UsageLimitsReport["accounts"][number];
-}) {
+function AccountSummary({ account }: { readonly account: UsageLimitsReport["accounts"][number] }) {
   const label = accountLabel(account);
   return (
     <>
@@ -50,7 +46,7 @@ export function AccountSummary({
 }
 
 /** The single account's label and plan, or the account count. */
-export function UsageLimitsSummary({ report }: { readonly report: UsageLimitsReport }) {
+function UsageLimitsSummary({ report }: { readonly report: UsageLimitsReport }) {
   const [first] = report.accounts;
   return report.accounts.length === 1 && first ? (
     <AccountSummary account={first} />
@@ -100,7 +96,7 @@ function UsageLimitsBannerBody({
  * notices. Inside a popover pass `redeemable={false}`: the redeem confirm is a
  * dialog, and dialogs stack under popovers, so credits show as a summary only.
  */
-export function UsageLimitsAccounts({
+function UsageLimitsAccounts({
   report,
   environmentId,
   redeemable = true,

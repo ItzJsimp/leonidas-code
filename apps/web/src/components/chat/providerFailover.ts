@@ -23,7 +23,7 @@ export interface ProviderFailoverTarget {
   readonly availableModels: ReadonlyArray<ProviderFailoverModelChoice>;
 }
 
-export const FAILOVER_SUPPORTED_DRIVERS: ReadonlySet<string> = new Set([
+const FAILOVER_SUPPORTED_DRIVERS: ReadonlySet<string> = new Set([
   "codex",
   "claudeAgent",
   "antigravity",
@@ -44,7 +44,7 @@ export function isProviderUsageWindowExhausted(
   return true;
 }
 
-export function isProviderInstanceRateLimited(
+function isProviderInstanceRateLimited(
   entry: ProviderInstanceEntry,
   sources?: UsageLimitSourceSnapshots,
   nowMs = Date.now(),
@@ -95,7 +95,7 @@ export function isProviderInstanceRateLimited(
   return false;
 }
 
-export function resolveRecommendedFailoverModel(
+function resolveRecommendedFailoverModel(
   driverKind: ProviderDriverKind,
   models: ReadonlyArray<AppModelOption>,
 ): { readonly modelSlug: string; readonly effort?: "medium" } {

@@ -124,7 +124,7 @@ export function calculateRollingVelocity(
 /**
  * Checks if a turn item represents an active tool call or system action.
  */
-export function isToolCallItem(item: OrchestrationV2TurnItem): boolean {
+function isToolCallItem(item: OrchestrationV2TurnItem): boolean {
   return (
     item.type === "command_execution" ||
     item.type === "file_change" ||
@@ -137,7 +137,7 @@ export function isToolCallItem(item: OrchestrationV2TurnItem): boolean {
 /**
  * Formats a clean human-readable title for a tool call item.
  */
-export function formatToolItemLabel(item: OrchestrationV2TurnItem): string {
+function formatToolItemLabel(item: OrchestrationV2TurnItem): string {
   if (item.title) return item.title;
   switch (item.type) {
     case "command_execution":
