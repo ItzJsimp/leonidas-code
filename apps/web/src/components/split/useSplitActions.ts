@@ -19,7 +19,7 @@ import {
 type Navigate = ReturnType<typeof useNavigate>;
 
 /** The URL always names the focused pane's chat, so showing a chat means navigating to it. */
-export function navigateToThreadTarget(navigate: Navigate, target: ThreadRouteTarget) {
+function navigateToThreadTarget(navigate: Navigate, target: ThreadRouteTarget) {
   return target.kind === "server"
     ? navigate({
         to: "/$environmentId/$threadId",
