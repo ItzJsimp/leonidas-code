@@ -450,6 +450,7 @@ import { environmentShell } from "../state/shell";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { useComposerContextSlice } from "./chat/composerContextSlice";
+import type { ComposerAttachmentSlice } from "./chat/composerAttachments";
 import type { ComposerLayoutSlice } from "./chat/composerLayout";
 import { createPageScrollController, type PageScrollKey } from "./chat/pageScrollController";
 import { isTimelineScrollTarget } from "./chat/timelineScrollTarget";
@@ -11451,6 +11452,16 @@ export default function ChatView(props: ChatViewProps) {
   ]);
 
   // Empty state: no active thread
+  const composerAttachments: ComposerAttachmentSlice = {
+    uploadsCapabilityKnown: attachmentUploadsCapabilityKnown,
+    supportsUploads: supportsAttachmentUploads,
+    supportsQuestionAttachments: supportsQuestionAttachments,
+    maxFileBytes: maxFileAttachmentBytes,
+    editingQueued: composerEditingQueuedAttachments,
+    onRemoveEditingQueued: removeEditingQueuedAttachment,
+    onExpandImage: onExpandTimelineImage,
+    onFileOpen: openFileAttachment,
+  };
   if (!activeThread) {
     return <NoActiveThreadState />;
   }
@@ -12129,6 +12140,7 @@ export default function ChatView(props: ChatViewProps) {
                           ) : null}
                           {!composerMounted ? null : (
                             <ChatComposer
+                              attachments={composerAttachments}
                               layout={composerLayout}
                               context={composerContext}
                               canOperateThread={canOperateThread}
@@ -12142,10 +12154,6 @@ export default function ChatView(props: ChatViewProps) {
                               composerRef={composerRef}
                               composerDraftTarget={composerDraftTarget}
                               environmentId={environmentId}
-                              attachmentUploadsCapabilityKnown={attachmentUploadsCapabilityKnown}
-                              supportsAttachmentUploads={supportsAttachmentUploads}
-                              supportsQuestionAttachments={supportsQuestionAttachments}
-                              maxFileAttachmentBytes={maxFileAttachmentBytes}
                               routeKind={routeKind}
                               routeThreadRef={routeThreadRef}
                               draftId={draftId}
@@ -12293,10 +12301,6 @@ export default function ChatView(props: ChatViewProps) {
                               focusComposer={focusComposer}
                               scheduleComposerFocus={scheduleComposerFocus}
                               setThreadError={setThreadError}
-                              onExpandImage={onExpandTimelineImage}
-                              onFileOpen={openFileAttachment}
-                              editingQueuedAttachments={composerEditingQueuedAttachments}
-                              onRemoveEditingQueuedAttachment={removeEditingQueuedAttachment}
                             />
                           )}
                         </div>
