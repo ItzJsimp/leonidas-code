@@ -12,6 +12,8 @@ const { values } = NodeUtil.parseArgs({
     prefix: { type: "string", default: "server.trace.ndjson" },
     top: { type: "string", default: "40" },
     json: { type: "string" },
+    // Saves a dated snapshot here and prints spans that moved against the previous one.
+    snapshot: { type: "string" },
     // Long-lived spans (subscriptions, waits for the user) measure lifetime, not latency.
     exclude: {
       type: "string",
@@ -192,4 +194,46 @@ for (const focus of values.focus.split(",").filter(Boolean)) {
 }
 if (values.json) {
   NodeFS.writeFileSync(values.json, JSON.stringify({ windowMin, bytes, spans, sql }, null, 2));
+}
+if (values.snapshot) {
+  NodeFS.mkdirSync(values.snapshot, { recursive: true });
+  const previousName = NodeFS.readdirSync(values.snapshot)
+    .filter((name) => name.endsWith(".json"))
+    .toSorted()
+    .at(-1);
+  const snapshot = {
+    takenAt: new Date().toISOString(),
+    windowMin,
+    mbPerMin: bytes / 1e6 / windowMin,
+    spans: spans.filter((row) => row.count >= 20),
+  };
+  NodeFS.writeFileSync(
+    NodePath.join(values.snapshot, `${snapshot.takenAt.replaceAll(":", "-")}.json`),
+    JSON.stringify(snapshot),
+  );
+  if (previousName !== undefined) {
+    const previous = JSON.parse(
+      NodeFS.readFileSync(NodePath.join(values.snapshot, previousName), "utf8"),
+    ) as typeof snapshot;
+    const before = new Map(previous.spans.map((row) => [row.name, row]));
+    // A move counts when p95 or rate changes by half and by a real amount.
+    const moved = snapshot.spans.flatMap((row) => {
+      const old = before.get(row.name);
+      if (!old) return [];
+      const p95Moved = Math.abs(row.p95 - old.p95) > 50 && row.p95 / Math.max(old.p95, 0.1) > 1.5;
+      const p95Fell = Math.abs(row.p95 - old.p95) > 50 && old.p95 / Math.max(row.p95, 0.1) > 1.5;
+      const rateMoved = Math.abs(row.perMin - old.perMin) > 5;
+      if (!p95Moved && !p95Fell && !rateMoved) return [];
+      return [
+        `${p95Moved ? "SLOWER" : p95Fell ? "FASTER" : "RATE"} ${row.name}: p95 ${fmt(old.p95)} -> ${fmt(row.p95)} ms, ${fmt(old.perMin)} -> ${fmt(row.perMin)} /min`,
+      ];
+    });
+    console.log(`
+## Changes since ${previousName}`);
+    console.log(
+      `trace MB/min ${previous.mbPerMin.toFixed(2)} -> ${snapshot.mbPerMin.toFixed(2)}, window ${previous.windowMin.toFixed(0)} -> ${windowMin.toFixed(0)} min`,
+    );
+    for (const line of moved.slice(0, top)) console.log(line);
+    if (moved.length === 0) console.log("No span moved by more than the thresholds.");
+  }
 }
