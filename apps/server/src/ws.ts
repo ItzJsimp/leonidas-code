@@ -2806,6 +2806,14 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.inboxUndo(input, projects)),
           ),
+        [WS_METHODS.taskBoardAiosDetect]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.aiosDetect(input, projects)),
+          ),
+        [WS_METHODS.taskBoardAiosConfirm]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.aiosConfirm(input, projects)),
+          ),
         [WS_METHODS.taskBoardShare]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.share(project, input)),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),

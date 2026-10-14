@@ -40,6 +40,9 @@ import {
   InboxDropInput,
   InboxUndoInput,
   TaskBoardShareInput,
+  TaskBoardAiosConfirmInput,
+  TaskBoardAiosDetectInput,
+  TaskBoardAiosDetectResult,
 } from "./taskBoard.ts";
 import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
 import * as Schema from "effect/Schema";
@@ -451,6 +454,8 @@ export const WS_METHODS = {
   taskBoardCardUpdate: "taskBoard.cardUpdate",
   taskBoardCardCreate: "taskBoard.cardCreate",
   taskBoardShare: "taskBoard.share",
+  taskBoardAiosDetect: "taskBoard.aiosDetect",
+  taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   inboxDrop: "inbox.drop",
   inboxUndo: "inbox.undo",
   devPreviewStatus: "devPreview.status",
@@ -1407,6 +1412,18 @@ const WsInboxUndoRpc = Rpc.make(WS_METHODS.inboxUndo, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsTaskBoardAiosDetectRpc = Rpc.make(WS_METHODS.taskBoardAiosDetect, {
+  payload: TaskBoardAiosDetectInput,
+  success: TaskBoardAiosDetectResult,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardAiosConfirmRpc = Rpc.make(WS_METHODS.taskBoardAiosConfirm, {
+  payload: TaskBoardAiosConfirmInput,
+  success: TaskBoardAiosDetectResult,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
@@ -2326,6 +2343,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardCardUpdateRpc,
   WsTaskBoardCardCreateRpc,
   WsTaskBoardShareRpc,
+  WsTaskBoardAiosDetectRpc,
+  WsTaskBoardAiosConfirmRpc,
   WsInboxDropRpc,
   WsInboxUndoRpc,
   WsDevPreviewStatusRpc,

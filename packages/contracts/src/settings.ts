@@ -1362,6 +1362,8 @@ export const ServerSettings = Schema.Struct({
   ),
   branchNamePrefix: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed("leonidas"))),
   branchNameInstructions: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  /** Confirmed AIOS folder the task board reads cards from; empty means auto-detect. */
+  aiosRoot: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   removeAgentCreditsOnMerge: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   sourceControlWritingStyle: SourceControlWritingStyleSettings.pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
@@ -1640,6 +1642,7 @@ export const ServerSettingsPatch = Schema.Struct({
   branchNamingMode: Schema.optionalKey(BranchNamingMode),
   branchNamePrefix: Schema.optionalKey(TrimmedString),
   branchNameInstructions: Schema.optionalKey(TrimmedString),
+  aiosRoot: Schema.optionalKey(TrimmedString),
   removeAgentCreditsOnMerge: Schema.optionalKey(Schema.Boolean),
   sourceControlWritingStyle: Schema.optionalKey(
     Schema.Struct({

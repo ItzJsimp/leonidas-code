@@ -29,7 +29,12 @@ import { buildThreadRouteParams } from "~/threadRoutes";
 import { DEFAULT_INTERACTION_MODE } from "~/types";
 import { toastManager } from "~/components/ui/toast";
 
-import { buildTaskPrompt, type TaskView } from "./taskBoard.logic";
+import {
+  buildBatchPrompt,
+  buildTaskPrompt,
+  type TaskView,
+  type TriageSuggestion,
+} from "./taskBoard.logic";
 import type { TaskActions } from "./taskBoard.types";
 import {
   claimPatch,
@@ -110,19 +115,23 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
     return projects.find((project) => project.slug === task.section)?.projectId ?? null;
   }, []);
 
-  const track = useCallback(async (taskId: string, work: () => Promise<void>) => {
-    setBusy((current) => new Set(current).add(taskId));
-    try {
-      await work();
-    } finally {
-      setBusy((current) => {
-        const next = new Set(current);
-        next.delete(taskId);
-        return next;
-      });
-      latest.current.input.refresh();
-    }
-  }, []);
+  const track = useCallback(
+    async (taskIds: string | ReadonlyArray<string>, work: () => Promise<void>) => {
+      const ids = typeof taskIds === "string" ? [taskIds] : taskIds;
+      setBusy((current) => new Set([...current, ...ids]));
+      try {
+        await work();
+      } finally {
+        setBusy((current) => {
+          const next = new Set(current);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+        latest.current.input.refresh();
+      }
+    },
+    [],
+  );
 
   const updateCard = useCallback(
     (task: TaskView, patch: CardPatch, failureTitle: string) => {
@@ -286,6 +295,161 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
     [report, reportResult, track, updateCard],
   );
 
+  // Several small tasks of one project share a single thread. Each card is linked first, and
+  // every link is undone if the thread does not start.
+  const sendBatchToAgent = useCallback(
+    (tasks: ReadonlyArray<TaskView>) => {
+      const first = tasks[0];
+      if (!first) return Promise.resolve();
+      const ids = tasks.map((item) => item.id);
+      return track(ids, async () => {
+        if (ids.some((id) => launching.current.has(id))) return;
+        for (const id of ids) launching.current.add(id);
+        try {
+          const { input: current, startThreadTurn: startTurn, navigate: go } = latest.current;
+          const targetEnvironment = current.environmentId;
+          if (!targetEnvironment) return;
+          const sectionProject = current.projects.find((item) => item.slug === first.section);
+          const project = pickLaunchProject({
+            projects: readProjects().filter((item) => item.environmentId === targetEnvironment),
+            taskProjectId: sectionProject?.projectId ?? null,
+            selectedProjectId: null,
+            aiosRoot: current.aiosRoot,
+          });
+          if (!project) {
+            report("No project to start the agent in", "Add a project to Leonidas Code first.");
+            return;
+          }
+          const settings =
+            appAtomRegistry.get(environmentServerConfigsAtom).get(targetEnvironment)?.settings ??
+            DEFAULT_SERVER_SETTINGS;
+          const resolved = resolveProjectSettings(settings, project.id, project).settings;
+          const modelSelection = resolved.defaultModelSelection;
+          if (!modelSelection) {
+            report(
+              "Pick a default model first",
+              `Choose a default model for ${project.title} in Settings, then send the tasks again.`,
+            );
+            return;
+          }
+
+          const threadId = newThreadId();
+          const createdAt = new Date().toISOString();
+          const title = `${tasks.length} quick tasks: ${first.title}`;
+          const linkedTasks: TaskView[] = [];
+          const undoLinks = (reason: string) =>
+            Promise.all(
+              linkedTasks.map((item) =>
+                updateCard(item, unlinkPatch(item, current.member, reason), "Could not restore"),
+              ),
+            );
+          for (const item of tasks) {
+            const linked = await updateCard(
+              item,
+              linkPatch(item, {
+                member: current.member,
+                threadId,
+                providerInstanceId: modelSelection.instanceId,
+                model: modelSelection.model,
+              }),
+              "Could not claim the task for the agent",
+            );
+            if (!linked) {
+              await undoLinks("batch not started");
+              return;
+            }
+            linkedTasks.push(item);
+          }
+
+          const launch = await startTurn({
+            environmentId: targetEnvironment,
+            input: {
+              threadId,
+              message: {
+                messageId: newMessageId(),
+                role: "user",
+                text: buildBatchPrompt(tasks, {
+                  aiosRoot: current.aiosRoot,
+                  member: current.member,
+                }),
+                attachments: [],
+              },
+              modelSelection,
+              titleSeed: title,
+              runtimeMode: resolved.defaultRuntimeMode,
+              interactionMode: DEFAULT_INTERACTION_MODE,
+              bootstrap: {
+                createThread: {
+                  projectId: project.id,
+                  title,
+                  modelSelection,
+                  runtimeMode: resolved.defaultRuntimeMode,
+                  interactionMode: DEFAULT_INTERACTION_MODE,
+                  branch: null,
+                  worktreePath: null,
+                  createdAt,
+                },
+              },
+              createdAt,
+            },
+          });
+          if (launch._tag !== "Success") {
+            reportResult(launch, "Could not start the agent");
+            await undoLinks(
+              isAtomCommandInterrupted(launch)
+                ? "interrupted"
+                : failureText(squashAtomCommandFailure(launch), "launch failed"),
+            );
+            return;
+          }
+          toastManager.add({
+            type: "success",
+            title: "Sent to agent",
+            description: `${tasks.length} tasks in one chat`,
+          });
+          void go({
+            to: "/$environmentId/$threadId",
+            params: buildThreadRouteParams(scopeThreadRef(targetEnvironment, threadId)),
+          });
+        } finally {
+          for (const id of ids) launching.current.delete(id);
+        }
+      });
+    },
+    [report, reportResult, track, updateCard],
+  );
+
+  const organize = useCallback(
+    async (changes: ReadonlyArray<{ task: TaskView; suggestion: TriageSuggestion }>) => {
+      await track(
+        changes.map(({ task }) => task.id),
+        async () => {
+          const results = await Promise.all(
+            changes.map(({ task, suggestion }) =>
+              updateCard(
+                task,
+                {
+                  ...(suggestion.effort ? { effort: suggestion.effort } : {}),
+                  ...(suggestion.labels ? { labels: suggestion.labels } : {}),
+                  note: "Organized automatically",
+                },
+                "Could not organize a task",
+              ),
+            ),
+          );
+          const done = results.filter(Boolean).length;
+          if (done > 0) {
+            toastManager.add({
+              type: "success",
+              title: `Organized ${done} ${done === 1 ? "task" : "tasks"}`,
+            });
+          }
+        },
+      );
+    },
+    [track, updateCard],
+  );
+
   const setShared = useCallback(
     (task: TaskView, shared: boolean) =>
       track(task.id, async () => {
@@ -343,6 +507,8 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
         void patchAction(task, { projectSlug: slug }, "Could not change the project"),
       setShared: (task, shared) => void setShared(task, shared),
       sendToAgent: (task) => void sendToAgent(task),
+      sendBatchToAgent: (tasks) => void sendBatchToAgent(tasks),
+      organize: (changes) => void (changes.length > 0 && organize(changes)),
       addNote: (task, note) => void patchAction(task, { note }, "Could not add the note"),
       isBusy: (taskId) => busy.has(taskId),
       canShare: (task) => {
@@ -351,7 +517,17 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
       },
       canSendToAgent: () => hasLaunchProject,
     }),
-    [busy, canEdit, hasLaunchProject, patchAction, sections, sendToAgent, setShared],
+    [
+      busy,
+      canEdit,
+      hasLaunchProject,
+      organize,
+      patchAction,
+      sections,
+      sendBatchToAgent,
+      sendToAgent,
+      setShared,
+    ],
   );
 
   return { actions, shareSection, isSharingSection };

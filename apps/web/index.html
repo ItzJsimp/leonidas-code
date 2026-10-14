@@ -460,7 +460,7 @@
       }
 
       html.dark body {
-        background: #07070a;
+        background: #0b0a0c;
         color: #f4f4f5;
       }
 
@@ -471,29 +471,88 @@
         min-height: 100%;
         align-items: center;
         justify-content: center;
-        background: inherit;
+        background-color: inherit;
         color: inherit;
       }
 
       html[data-theme-selected="true"] #boot-shell {
-        background: var(--boot-background);
+        background-color: var(--boot-background);
         color: var(--boot-foreground);
+      }
+
+      /* One soft ember glow behind the mark. Static: no grid, no looping motion. */
+      #boot-shell {
+        background-image: radial-gradient(
+          ellipse 55% 42% at 50% 56%,
+          color-mix(in srgb, var(--boot-accent, #a8221b) 16%, transparent),
+          transparent 72%
+        );
+      }
+
+      html.dark #boot-shell {
+        background-image:
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .09 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"),
+          radial-gradient(ellipse 80% 180px at 50% -50px, rgb(214 40 57 / 0.11), transparent 70%),
+          radial-gradient(ellipse at 50% 40%, #151216 0%, #0b0a0c 60%, #050405 100%);
+        background-repeat: repeat, no-repeat, no-repeat;
+        background-size:
+          160px 160px,
+          100% 100%,
+          100% 100%;
       }
 
       #boot-shell-card {
         position: relative;
         z-index: 1;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        width: 96px;
-        height: 96px;
+        max-width: min(440px, 86vw);
+        padding: 24px;
+        text-align: center;
       }
 
       #boot-shell-logo {
-        width: 64px;
-        height: 64px;
+        width: 72px;
+        height: 72px;
         object-fit: contain;
+        animation: boot-rise 450ms ease-out both;
+      }
+
+      #boot-shell-name {
+        margin-top: 16px;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        animation: boot-rise 450ms ease-out 120ms both;
+      }
+
+      #boot-shell-line {
+        margin: 10px 0 0;
+        font-size: 15px;
+        opacity: 0.85;
+        animation: boot-rise 450ms ease-out 260ms both;
+      }
+
+      #boot-shell-tip {
+        margin: 22px 0 0;
+        font-size: 12px;
+        line-height: 1.5;
+        opacity: 0.55;
+        animation: boot-rise 450ms ease-out 420ms both;
+      }
+
+      @keyframes boot-rise {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #boot-shell-card * {
+          animation: none !important;
+        }
       }
 
       #boot-error {
@@ -526,10 +585,40 @@
     <div id="root">
       <div id="boot-shell">
         <div id="boot-shell-card" aria-label="Leonidas Code splash screen">
-          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="Leonidas Code" />
+          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="" />
+          <div id="boot-shell-name">Leonidas Code</div>
+          <p id="boot-shell-line"></p>
+          <p id="boot-shell-tip"></p>
         </div>
       </div>
     </div>
+    <script>
+      // One line and one tip per launch, picked before first paint. React replaces all of this.
+      (() => {
+        const lines = [
+          "Sharpening the spears…",
+          "Counting to 300…",
+          "Polishing the helmet…",
+          "Forming the phalanx…",
+          "Waking the agents. Gently.",
+          "No retreat. No merge conflicts.",
+          "Shields up…",
+          "Tonight we code in Hades.",
+        ];
+        const tips = [
+          "Tip: press Tab to accept the prompt Leonidas predicts you will send next.",
+          "Tip: drag a running chat next to another to work in split view.",
+          "Tip: hit a usage limit? Another provider can take over the same chat in one click.",
+          "Tip: the Skills button above the composer opens a searchable skill library.",
+          "Tip: your task board stays in sync across both machines within seconds.",
+        ];
+        const pick = (items) => items[Math.floor(Math.random() * items.length)];
+        const line = document.getElementById("boot-shell-line");
+        const tip = document.getElementById("boot-shell-tip");
+        if (line) line.textContent = pick(lines);
+        if (tip) tip.textContent = pick(tips);
+      })();
+    </script>
     <script type="module" src="/src/bootstrap.ts"></script>
   </body>
 </html>

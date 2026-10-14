@@ -4,7 +4,7 @@ import type {
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 
-import type { TaskView } from "./taskBoard.logic";
+import type { TaskView, TriageSuggestion } from "./taskBoard.logic";
 
 /** Everything the Tasks views need to render and act on tasks, supplied by `TasksPage`. */
 export type TaskContext = {
@@ -30,6 +30,12 @@ export type TaskActions = {
   readonly setShared: (task: TaskView, shared: boolean) => void;
   /** Starts a new agent thread for the task, claims it and opens the thread. */
   readonly sendToAgent: (task: TaskView) => void;
+  /** Starts one agent thread for several small tasks of the same project and claims them all. */
+  readonly sendBatchToAgent: (tasks: ReadonlyArray<TaskView>) => void;
+  /** Writes suggested effort and labels onto each card; returns how many cards changed. */
+  readonly organize: (
+    changes: ReadonlyArray<{ task: TaskView; suggestion: TriageSuggestion }>,
+  ) => void;
   readonly addNote: (task: TaskView, note: string) => void;
   /** True while a mutation for this task is in flight. */
   readonly isBusy: (taskId: string) => boolean;

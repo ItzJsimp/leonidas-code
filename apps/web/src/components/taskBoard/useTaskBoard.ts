@@ -4,7 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useVisibleInterval } from "~/hooks/useVisibleInterval";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
-import { taskBoardQuery, taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import { taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import { useSharedBoards } from "./useSharedBoards";
 import type { RoadmapPlan } from "./taskRoadmap.logic";
 
 import {
@@ -19,7 +20,6 @@ import {
 } from "./taskBoard.logic";
 import {
   buildRailEntries,
-  placeSharedOnlyIn,
   tasksInSection,
   tasksInFocus,
   toTaskFilters,
@@ -80,32 +80,35 @@ export function useTaskBoard(input: {
   const projects = data?.projects ?? NO_PROJECTS;
   const member = data?.member ?? "Unknown";
 
-  const selectedProject = selectedSlug
-    ? (projects.find((project) => project.slug === selectedSlug) ?? null)
-    : null;
-  const sharedProjectId =
-    selectedProject?.projectId && selectedProject.repository ? selectedProject.projectId : null;
-  const shared = useEnvironmentQuery(
-    environmentId && sharedProjectId
-      ? taskBoardQuery({ environmentId, input: { projectId: sharedProjectId } })
-      : null,
+  // Every repository-backed project's shared board is read, selected or not, so a project a
+  // collaborator shares (a shared Leonidas Code repo) shows up on its own.
+  const sharedTargets = useMemo(
+    () =>
+      projects.flatMap((project) =>
+        project.projectId && project.repository
+          ? [{ slug: project.slug, projectId: project.projectId }]
+          : [],
+      ),
+    [projects],
   );
+  const shared = useSharedBoards(environmentId, sharedTargets);
 
   const { refresh: refreshWorkspace } = workspace;
   const { refresh: refreshShared } = shared;
+  const hasSharedBoards = sharedTargets.length > 0;
   const refresh = useCallback(() => {
     refreshWorkspace();
-    if (sharedProjectId) refreshShared();
-  }, [refreshShared, refreshWorkspace, sharedProjectId]);
+    if (hasSharedBoards) refreshShared();
+  }, [hasSharedBoards, refreshShared, refreshWorkspace]);
 
   useVisibleInterval(refreshWorkspace, WORKSPACE_REFRESH_MS, environmentId !== null);
-  useVisibleInterval(refreshShared, SHARED_REFRESH_MS, sharedProjectId !== null);
+  useVisibleInterval(refreshShared, SHARED_REFRESH_MS, hasSharedBoards);
 
-  const sharedTasks = shared.data?.tasks;
-  const allTasks = useMemo(() => {
-    const merged = mergeTasks(data?.tasks ?? [], sharedTasks ?? []);
-    return selectedSlug ? placeSharedOnlyIn(merged, selectedSlug) : merged;
-  }, [data?.tasks, selectedSlug, sharedTasks]);
+  const sharedTasks = shared.tasks;
+  const allTasks = useMemo(
+    () => mergeTasks(data?.tasks ?? [], sharedTasks),
+    [data?.tasks, sharedTasks],
+  );
 
   // The page's clock moves with each answer from the server rather than on its own timer.
   const [openedAt] = useState(() => Date.now());

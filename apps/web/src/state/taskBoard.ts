@@ -68,3 +68,15 @@ export const inboxUndo = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:inbox:undo",
   tag: WS_METHODS.inboxUndo,
 });
+
+export const taskBoardAiosDetectQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-detect",
+  tag: WS_METHODS.taskBoardAiosDetect,
+  staleTimeMs: 30_000,
+  idleTtlMs: 30_000,
+});
+
+export const taskBoardAiosConfirm = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-confirm",
+  tag: WS_METHODS.taskBoardAiosConfirm,
+});
