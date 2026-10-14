@@ -1,6 +1,7 @@
 import { ArrowRightIcon, CheckIcon, CopyIcon, MonitorIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { buildAiosFoldersCommand } from "../../../onboarding/aiosFolders.logic";
 import {
   AIOS_PRESET,
   buildAiosSetupPrompt,
@@ -152,7 +153,10 @@ export function SimAiosStep({
   const [mode, setMode] = useState<"run" | "prompt">("run");
   const [folder, setFolder] = useState(DEFAULT_AIOS_FOLDER);
   const [copied, setCopied] = useState(false);
+  const [commandCopied, setCommandCopied] = useState(false);
   const prompt = buildAiosSetupPrompt(goals);
+  // Same one-line command the real step shows, built from the same folder value.
+  const folderCommand = buildAiosFoldersCommand(folder.trim() || DEFAULT_AIOS_FOLDER);
   return (
     <>
       <h1 className={H1}>Give your AI a memory</h1>
@@ -206,6 +210,20 @@ export function SimAiosStep({
               </div>
             </div>
           ) : null}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Prefer no chat? Paste this into PowerShell to create the same folders.
+            </p>
+            <div className="flex items-start justify-between gap-3">
+              <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
+                {folderCommand}
+              </pre>
+              <Button size="compact" variant="outline" onClick={() => setCommandCopied(true)}>
+                {commandCopied ? <CheckIcon /> : <CopyIcon />}
+                {commandCopied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
           <Button
             size="xs"
             variant="ghost-muted"

@@ -12,6 +12,23 @@ function psQuote(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
+/** Raw file on the public main branch; the installed app has no repo checkout to run it from. */
+export const AIOS_FOLDERS_SCRIPT_URL =
+  "https://raw.githubusercontent.com/ItzJsimp/leonidas-code/main/scripts/New-AiosFolders.ps1";
+
+/** A leading ~/ becomes the user's home, since PowerShell would not expand it inside quotes. */
+function psFolderArgument(folder: string): string {
+  const underHome = folder.match(/^~(?:[\\/](.*))?$/);
+  if (!underHome) return psQuote(folder);
+  const rest = underHome[1] ?? "";
+  return rest ? `(Join-Path $HOME ${psQuote(rest)})` : "$HOME";
+}
+
+/** One PowerShell line that creates the starter AIOS folders with no chat. */
+export function buildAiosFoldersCommand(folder: string): string {
+  return `& ([scriptblock]::Create((irm ${AIOS_FOLDERS_SCRIPT_URL}))) -Path ${psFolderArgument(folder)}`;
+}
+
 export function renderAiosFoldersScript(entries: readonly AiosFolderEntry[]): string {
   const entryLines = entries.map((entry) => `  ${psQuote(entry.path)}`).join("\n");
 
