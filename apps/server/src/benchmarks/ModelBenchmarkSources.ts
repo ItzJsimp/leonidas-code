@@ -3,13 +3,7 @@
  * provider's model id with a source's record. Feeds are read leniently: a
  * field a source drops or renames becomes a missing value, never a failure.
  */
-import type {
-  ModelBenchmarkEntry,
-  ModelBenchmarkMatch,
-  ModelBenchmarkMetric,
-  ModelBenchmarkQuery,
-  ModelBenchmarkSourceId,
-} from "@t3tools/contracts";
+import type { ModelBenchmarkEntry, ModelBenchmarkMetric } from "@t3tools/contracts";
 
 export interface ParsedBenchmarkSource {
   readonly metrics: ReadonlyArray<ModelBenchmarkMetric>;
@@ -37,80 +31,12 @@ const stringAt = (value: unknown, key: string): string | undefined => {
   return typeof field === "string" && field.trim().length > 0 ? field.trim() : undefined;
 };
 
-const EFFORT_SUFFIX = /\s*\((minimal|low|medium|high|xhigh|max)(?: effort)?\)\s*$/i;
-
-/** "GPT-6 Luna (medium)" -> { base: "GPT-6 Luna", effort: "medium" }. */
-export function splitEffort(name: string): { readonly base: string; readonly effort?: string } {
-  const match = EFFORT_SUFFIX.exec(name);
-  if (!match?.[1]) return { base: name };
-  return { base: name.slice(0, match.index), effort: match[1].toLowerCase() };
-}
-
-/** "anthropic/Claude Opus 5.5[1m]" -> "claude-opus-5-5". */
-export function canonicalModelKey(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/^[a-z0-9-]+\//, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-/** Release dates and moving tags that a source's key never carries. */
-const VERSION_TAIL = /-(?:latest|preview|\d{4}-?\d{2}-?\d{2}|\d{8})$/;
-
-/**
- * Provider model ids whose canonical form differs from every source's key.
- * Add an entry only after a real mismatch; the canonical form covers the rest.
- */
-const MODEL_ALIASES: Readonly<Record<string, string>> = {};
-
-function queryKeys(query: ModelBenchmarkQuery): ReadonlyArray<string> {
-  const keys: string[] = [];
-  const add = (key: string) => {
-    if (key.length > 0 && !keys.includes(key)) keys.push(key);
-  };
-  for (const name of [query.modelId, query.displayName]) {
-    if (!name) continue;
-    const key = canonicalModelKey(name);
-    add(MODEL_ALIASES[key] ?? key);
-    add(key.replace(VERSION_TAIL, ""));
-  }
-  return keys;
-}
-
-const entryKey = (entry: ModelBenchmarkEntry) =>
-  canonicalModelKey(splitEffort(entry.name).base) || canonicalModelKey(entry.sourceModelKey);
-
-/**
- * The best entry per source for one model: the exact effort when the source
- * measured it, otherwise the model's default run, flagged as not measured.
- */
-export function matchBenchmarks(
-  query: ModelBenchmarkQuery,
-  entries: ReadonlyArray<ModelBenchmarkEntry>,
-): ReadonlyArray<ModelBenchmarkMatch> {
-  const keys = queryKeys(query);
-  const effort = query.effort?.toLowerCase();
-  const bySource = new Map<ModelBenchmarkSourceId, ModelBenchmarkMatch & { rank: number }>();
-  for (const entry of entries) {
-    const keyRank = keys.indexOf(entryKey(entry));
-    if (keyRank < 0) continue;
-    const effortMeasured = effort !== undefined && entry.effort === effort;
-    // An entry for a different effort says nothing about the one asked for.
-    if (entry.effort !== undefined && !effortMeasured) continue;
-    const rank = keyRank * 2 + (effortMeasured || effort === undefined ? 0 : 1);
-    const current = bySource.get(entry.source);
-    if (current === undefined || rank < current.rank) {
-      bySource.set(entry.source, {
-        entry,
-        effortMeasured: effort === undefined || effortMeasured,
-        rank,
-      });
-    }
-  }
-  return [...bySource.values()].map(({ entry, effortMeasured }) => ({ entry, effortMeasured }));
-}
+export {
+  canonicalModelKey,
+  matchBenchmarks,
+  splitEffort,
+} from "@t3tools/shared/modelBenchmarkMatch";
+import { splitEffort } from "@t3tools/shared/modelBenchmarkMatch";
 
 const BENCHLM_CATEGORY_LABELS: Readonly<Record<string, string>> = {
   agentic: "Agentic",

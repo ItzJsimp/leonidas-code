@@ -7,6 +7,7 @@
  *
  * @module ModelBenchmarks
  */
+import { indexBenchmarkEntries } from "@t3tools/shared/modelBenchmarkMatch";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -15,7 +16,11 @@ import * as Layer from "effect/Layer";
 import * as Semaphore from "effect/Semaphore";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
-import type { ModelBenchmarkQuery, ModelBenchmarkReport } from "@t3tools/contracts";
+import type {
+  ModelBenchmarkCatalog,
+  ModelBenchmarkQuery,
+  ModelBenchmarkReport,
+} from "@t3tools/contracts";
 
 import {
   matchBenchmarks,
@@ -33,6 +38,8 @@ export class ModelBenchmarks extends Context.Service<
     readonly report: (
       queries: ReadonlyArray<ModelBenchmarkQuery>,
     ) => Effect.Effect<ModelBenchmarkReport>;
+    /** Every model and metric the source publishes, for the benchmark explorer. */
+    readonly catalog: Effect.Effect<ModelBenchmarkCatalog>;
   }
 >()("t3/benchmarks/ModelBenchmarks") {}
 
@@ -71,33 +78,40 @@ const make = Effect.gen(function* () {
     );
   });
 
+  const sourceStatus = () => ({
+    source: "benchLm" as const,
+    state: cached ? ("ready" as const) : ("unavailable" as const),
+    ...(cached ? { fetchedAt: DateTime.formatIso(DateTime.makeUnsafe(cached.fetchedAtMs)) } : {}),
+    attribution: "Data from BenchLM.ai",
+    url: "https://benchlm.ai",
+  });
+
+  const catalog: ModelBenchmarks["Service"]["catalog"] = Effect.gen(function* () {
+    yield* refreshLock.withPermits(1)(refresh);
+    return {
+      sources: [sourceStatus()],
+      metrics: cached?.parsed.metrics ?? [],
+      entries: cached?.parsed.entries ?? [],
+    };
+  });
+
   const report: ModelBenchmarks["Service"]["report"] = Effect.fn("ModelBenchmarks.report")(
     function* (queries) {
       yield* refreshLock.withPermits(1)(refresh);
-      const entries = cached?.parsed.entries ?? [];
-      const rows = queries.map((query) => ({ query, matches: matchBenchmarks(query, entries) }));
+      const index = indexBenchmarkEntries(cached?.parsed.entries ?? []);
+      const rows = queries.map((query) => ({ query, matches: matchBenchmarks(query, index) }));
       const usedKeys = new Set(
         rows.flatMap((row) => row.matches.flatMap((match) => Object.keys(match.entry.values))),
       );
       return {
-        sources: [
-          {
-            source: "benchLm" as const,
-            state: cached ? ("ready" as const) : ("unavailable" as const),
-            ...(cached
-              ? { fetchedAt: DateTime.formatIso(DateTime.makeUnsafe(cached.fetchedAtMs)) }
-              : {}),
-            attribution: "Data from BenchLM.ai",
-            url: "https://benchlm.ai",
-          },
-        ],
+        sources: [sourceStatus()],
         metrics: (cached?.parsed.metrics ?? []).filter((metric) => usedKeys.has(metric.key)),
         rows,
       };
     },
   );
 
-  return ModelBenchmarks.of({ report });
+  return ModelBenchmarks.of({ report, catalog });
 });
 
 export const layer = Layer.effect(ModelBenchmarks, make);

@@ -4,6 +4,7 @@ import {
   AUTO_ROUTE_PREFERENCES,
   rankModelsForPreference,
   type AutoRouteCandidate,
+  type BenchmarkRouteProfiles,
 } from "@t3tools/shared/autoRouter";
 import { RouteIcon } from "lucide-react";
 import { useMemo } from "react";
@@ -53,6 +54,7 @@ function formatProfileScores(
 export function AutoRouterPickerSection(props: {
   preference: AutoRoutePreference | null;
   candidates: ReadonlyArray<AutoRouteCandidate>;
+  profiles?: BenchmarkRouteProfiles | undefined;
   onPreferenceChange: (preference: AutoRoutePreference | null) => void;
   onPickModel: (instanceId: ProviderInstanceId, model: string) => void;
 }) {
@@ -61,8 +63,14 @@ export function AutoRouterPickerSection(props: {
     () =>
       preference === null
         ? []
-        : rankModelsForPreference({ preference, candidates, now: Date.now(), limit: 5 }),
-    [preference, candidates],
+        : rankModelsForPreference({
+            preference,
+            candidates,
+            now: Date.now(),
+            limit: 5,
+            profiles: props.profiles,
+          }),
+    [preference, candidates, props.profiles],
   );
   return (
     <div className="flex flex-col gap-1.5 border-b px-3 py-2.5" data-auto-router-section="true">

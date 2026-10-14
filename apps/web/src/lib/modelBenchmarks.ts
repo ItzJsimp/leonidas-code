@@ -4,16 +4,51 @@ import type {
   ModelBenchmarkReport,
   ModelSelection,
 } from "@t3tools/contracts";
+import { METERED_DRIVERS } from "@t3tools/shared/autoRouter";
 import { createModelSelection } from "@t3tools/shared/model";
 
 import { EFFORT_OPTION_IDS } from "../components/chat/runIdentity.logic";
 import { isProviderInstancePickerReady, type ProviderInstanceEntry } from "../providerInstances";
 
-/** The RPC accepts at most this many models per request. */
-const MAX_BENCHMARK_QUERIES = 200;
+/**
+ * What running a model costs this user right now. `subscription` carries the
+ * tightest window's remaining percent; `metered` bills per token from a key.
+ */
+export type BenchmarkQuota =
+  | { readonly kind: "subscription"; readonly leftPercent: number; readonly resetsAt?: string }
+  | { readonly kind: "metered" }
+  | { readonly kind: "unknown" };
+
+/** The tightest usage window of one provider instance. */
+export function instanceQuota(entry: ProviderInstanceEntry): BenchmarkQuota {
+  if (METERED_DRIVERS.has(entry.driverKind)) return { kind: "metered" };
+  const windows = entry.snapshot.usageLimits?.windows ?? [];
+  if (windows.length === 0) return { kind: "unknown" };
+  const tightest = windows.reduce((worst, window) =>
+    window.usedPercent > worst.usedPercent ? window : worst,
+  );
+  const resetsAt = tightest.resetsAt;
+  return {
+    kind: "subscription",
+    leftPercent: Math.max(0, Math.round(100 - tightest.usedPercent)),
+    ...(resetsAt ? { resetsAt } : {}),
+  };
+}
+
+/** Higher is more runnable: spare subscription quota, then metered, then unknown, then exhausted. */
+export const quotaRank = (quota: BenchmarkQuota) =>
+  quota.kind === "subscription"
+    ? quota.leftPercent > 0
+      ? 100 + quota.leftPercent
+      : -1
+    : quota.kind === "metered"
+      ? 50
+      : 0;
 
 /** One model and effort the user can start a chat with right now. */
 export interface BenchmarkCandidate {
+  /** The best quota across every account that offers this model. */
+  readonly quota: BenchmarkQuota;
   readonly key: string;
   readonly providerName: string;
   readonly modelName: string;
@@ -27,14 +62,23 @@ const queryKey = (query: Pick<ModelBenchmarkQuery, "modelId" | "effort">) =>
 
 /**
  * Every ready provider's current models, one candidate per effort level the
- * model's picker offers. Several instances of one driver share queries.
+ * model's picker offers. Several instances of one driver (four Claude accounts)
+ * list a model once; `preferInstanceId`'s instance wins so starting a chat from
+ * a row keeps the current account.
  */
 export function connectedBenchmarkCandidates(
   entries: ReadonlyArray<ProviderInstanceEntry>,
+  preferInstanceId: string | null = null,
 ): ReadonlyArray<BenchmarkCandidate> {
   const candidates: BenchmarkCandidate[] = [];
-  const queries = new Set<string>();
-  for (const entry of entries) {
+  const queries = new Map<string, number>();
+  const ordered = preferInstanceId
+    ? entries.toSorted(
+        (a, b) =>
+          Number(b.instanceId === preferInstanceId) - Number(a.instanceId === preferInstanceId),
+      )
+    : entries;
+  for (const entry of ordered) {
     if (!isProviderInstancePickerReady(entry)) continue;
     for (const model of entry.models) {
       if (model.isLegacy) continue;
@@ -54,21 +98,36 @@ export function connectedBenchmarkCandidates(
           ...(effort ? { effort: effort.option.id } : {}),
         };
         const key = queryKey(query);
-        if (!queries.has(key)) {
-          if (queries.size >= MAX_BENCHMARK_QUERIES) continue;
-          queries.add(key);
+        const quota = instanceQuota(entry);
+        const selection = createModelSelection(
+          entry.instanceId,
+          model.slug,
+          effort ? [{ id: effort.descriptorId, value: effort.option.id }] : null,
+        );
+        const existing = queries.get(key);
+        if (existing !== undefined) {
+          // Another account of the same model: keep the preferred account unless
+          // it is out of quota, and always report the best quota available.
+          const current = candidates[existing]!;
+          if (quotaRank(quota) > quotaRank(current.quota)) {
+            const exhausted = quotaRank(current.quota) < 0;
+            candidates[existing] = {
+              ...current,
+              quota,
+              ...(exhausted ? { selection, providerName: entry.displayName } : {}),
+            };
+          }
+          continue;
         }
+        queries.set(key, candidates.length);
         candidates.push({
+          quota,
           key: `${entry.instanceId}\u0000${key}`,
           providerName: entry.displayName,
           modelName: model.name,
           effortLabel: effort?.option.label ?? null,
           query,
-          selection: createModelSelection(
-            entry.instanceId,
-            model.slug,
-            effort ? [{ id: effort.descriptorId, value: effort.option.id }] : null,
-          ),
+          selection,
         });
       }
     }

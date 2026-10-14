@@ -69,7 +69,16 @@ const score: ModelBenchmarkMetric = {
 };
 
 describe("connectedBenchmarkCandidates", () => {
-  it("lists each effort of ready providers and shares queries across instances", () => {
+  it("keeps the preferred instance's copy of a shared model", () => {
+    const entries = deriveProviderInstanceEntries([
+      provider("codex", [plainModel]),
+      provider("codex_work", [plainModel]),
+    ]);
+    const candidates = connectedBenchmarkCandidates(entries, "codex_work");
+    expect(candidates.map((candidate) => candidate.selection.instanceId)).toEqual(["codex_work"]);
+  });
+
+  it("lists each effort of ready providers once across instances of one driver", () => {
     const entries = deriveProviderInstanceEntries([
       provider("codex", [effortModel, plainModel]),
       provider("codex_work", [effortModel]),
@@ -81,8 +90,6 @@ describe("connectedBenchmarkCandidates", () => {
       ["GPT-6", "Low"],
       ["GPT-6", "High"],
       ["Mini", null],
-      ["GPT-6", "Low"],
-      ["GPT-6", "High"],
     ]);
     expect(candidates[1]?.selection).toEqual({
       instanceId: "codex",

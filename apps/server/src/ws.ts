@@ -247,6 +247,7 @@ import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import * as ModelBenchmarks from "./benchmarks/ModelBenchmarks.ts";
+import { readModelRunStats } from "./benchmarks/ModelRunStats.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
 import { listLinkedPullRequestThreads } from "./pullRequest/linkedThreads.ts";
@@ -2545,6 +2546,9 @@ const layerWsRpc = (
         [WS_METHODS.serverGetUsageSummary]: (input) => usage.readSummary(input),
         [WS_METHODS.serverRefreshUsageRates]: (_input) => usage.refreshRates,
         [WS_METHODS.serverGetModelBenchmarks]: (input) => modelBenchmarks.report(input.models),
+        [WS_METHODS.serverGetModelBenchmarkCatalog]: () => modelBenchmarks.catalog,
+        [WS_METHODS.serverGetModelRunStats]: () =>
+          readModelRunStats().pipe(Effect.provideService(SqlClient.SqlClient, sql)),
         [WS_METHODS.serverRetryResourceTelemetry]: (_input) => resourceTelemetry.retry,
         [WS_METHODS.serverCheckOtlpEndpoint]: (input) => otlpEndpointCheck.check(input),
         [WS_METHODS.serverSignalProcess]: (input) => processDiagnostics.signal(input),

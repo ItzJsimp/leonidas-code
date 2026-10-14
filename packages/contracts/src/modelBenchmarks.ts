@@ -88,3 +88,35 @@ export const ModelBenchmarkReportInput = Schema.Struct({
   models: Schema.Array(ModelBenchmarkQuery).check(Schema.isMaxLength(200)),
 });
 export type ModelBenchmarkReportInput = typeof ModelBenchmarkReportInput.Type;
+
+/** Everything a source publishes, for the explorer that charts models the user has not connected. */
+export const ModelBenchmarkCatalog = Schema.Struct({
+  sources: Schema.Array(ModelBenchmarkSourceStatus),
+  metrics: Schema.Array(ModelBenchmarkMetric),
+  entries: Schema.Array(ModelBenchmarkEntry),
+});
+export type ModelBenchmarkCatalog = typeof ModelBenchmarkCatalog.Type;
+
+/** How one model and effort has actually performed in this user's own chats. */
+const ModelRunStat = Schema.Struct({
+  model: TrimmedNonEmptyString,
+  effort: Schema.optional(TrimmedNonEmptyString),
+  runs: Schema.Number,
+  completed: Schema.Number,
+  /** Failed or interrupted by an error; user cancels are counted separately. */
+  failed: Schema.Number,
+  cancelled: Schema.Number,
+  /** Runs that needed a second attempt (retry or provider failover). */
+  retried: Schema.Number,
+  /** Median wall time of completed runs, in seconds. */
+  medianSeconds: Schema.optional(Schema.Number),
+  lastUsedAt: Schema.optional(IsoDateTime),
+});
+export type ModelRunStat = typeof ModelRunStat.Type;
+
+export const ModelRunStats = Schema.Struct({
+  /** Only runs requested on or after this time are counted. */
+  since: IsoDateTime,
+  stats: Schema.Array(ModelRunStat),
+});
+export type ModelRunStats = typeof ModelRunStats.Type;

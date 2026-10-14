@@ -67,6 +67,10 @@
       "types": "./src/projectFavicon.ts",
       "import": "./src/projectFavicon.ts"
     },
+    "./modelBenchmarkMatch": {
+      "types": "./src/modelBenchmarkMatch.ts",
+      "import": "./src/modelBenchmarkMatch.ts"
+    },
     "./model": {
       "types": "./src/model.ts",
       "import": "./src/model.ts"

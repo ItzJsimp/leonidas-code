@@ -33,10 +33,13 @@ import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useThreadContextBreakdown } from "../../state/queries";
 import { Button } from "../ui/button";
+import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
+import { DetailedContextBreakdownView } from "./DetailedContextBreakdownView";
 import { barSegments } from "./ContextBreakdown.logic";
 import { deriveTrimSuggestions } from "./ContextTrim.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
+import type { StartBenchmarkArena } from "./BenchmarkExplorer";
 import { UsageBenchmarks } from "./UsageBenchmarks";
 
 type Account = UsageLimitsReport["accounts"][number];
@@ -44,9 +47,11 @@ type Account = UsageLimitsReport["accounts"][number];
 /** How often the open card re-reads account limits; the server caches probes inside this. */
 const LIMITS_REFRESH_MS = 5 * 60_000;
 
-const MAX_CONTEXT_SEGMENTS = 3;
+const MAX_CONTEXT_SEGMENTS = 8;
 const MAX_TRIM_ROWS = 3;
 const TRIM_KIND_LABEL = { mcp: "MCP", skill: "Skill", agent: "Agent", memory: "File" } as const;
+const sumTokens = (rows: ReadonlyArray<{ readonly tokens: number }> | undefined) =>
+  rows?.reduce((total, row) => total + row.tokens, 0) ?? 0;
 
 function titleOf(account: Account): string {
   return accountTitle(
@@ -60,10 +65,12 @@ function ContextSegments({
   environmentId,
   threadId,
   usedTokens,
+  onOpenDetails,
 }: {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
   readonly usedTokens: number;
+  readonly onOpenDetails: () => void;
 }) {
   const query = useThreadContextBreakdown({ environmentId, threadId });
   const { refresh } = query;
@@ -80,6 +87,13 @@ function ContextSegments({
   const used = segments.filter((segment) => segment.kind === "used" && segment.tokens > 0);
   if (used.length === 0) return null;
   const top = used.slice(0, MAX_CONTEXT_SEGMENTS);
+  // Skills, MCP tools and agents are not always their own provider category.
+  const named = new Set(top.map((segment) => segment.name.toLowerCase()));
+  const extras = [
+    { name: "Skills", tokens: sumTokens(query.data?.skills) },
+    { name: "MCP tools", tokens: sumTokens(query.data?.mcpTools) },
+    { name: "Agents", tokens: sumTokens(query.data?.agents) },
+  ].filter((extra) => extra.tokens > 0 && !named.has(extra.name.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -102,6 +116,13 @@ function ContextSegments({
             <span className="tabular-nums text-foreground">{formatTokenCount(segment.tokens)}</span>
           </li>
         ))}
+        {extras.map((extra) => (
+          <li key={extra.name} className="flex min-w-0 items-center gap-1.5">
+            <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+            <span className="min-w-0 flex-1 truncate">{extra.name}</span>
+            <span className="tabular-nums text-foreground">{formatTokenCount(extra.tokens)}</span>
+          </li>
+        ))}
       </ul>
       {trim.length > 0 ? (
         <div className="flex flex-col gap-0.5 border-t border-border/50 pt-1.5">
@@ -121,6 +142,13 @@ function ContextSegments({
           </ul>
         </div>
       ) : null}
+      <button
+        type="button"
+        onClick={onOpenDetails}
+        className="cursor-pointer self-start text-2xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        See detailed breakdown
+      </button>
     </div>
   );
 }
@@ -213,6 +241,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   contextWindow,
   providerEntries,
   onStartChat,
+  onStartArena,
 }: {
   readonly environmentId: EnvironmentId;
   /** Null for drafts, which have no server-side context to break down yet. */
@@ -224,12 +253,14 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   readonly providerEntries: ReadonlyArray<ProviderInstanceEntry>;
   /** Null when no project is active, which hides the row action. */
   readonly onStartChat: ((selection: ModelSelection) => void) | null;
+  readonly onStartArena: StartBenchmarkArena | null;
 }) {
   const navigate = useNavigate();
   const updateSettings = useUpdateClientSettings();
-  const { active, others } = useConnectedUsageAccounts(environmentId, instanceId);
+  const { active } = useConnectedUsageAccounts(environmentId, instanceId);
   const [expanded, setExpanded] = useState(false);
   const [view, toggleView] = useLimitView();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const minute = useNowMinute();
   const now = Date.parse(`${minute}:00Z`);
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
@@ -253,15 +284,13 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
       : null;
   const severity = percent === null ? "normal" : usageSeverity(percent);
   const primary = active[0] ?? null;
-  const activeIds = useMemo(() => new Set(active.map((account) => account.id)), [active]);
-  const accounts = useMemo(() => [...active, ...others], [active, others]);
   const benchmarkCandidates = useMemo(
-    () => connectedBenchmarkCandidates(providerEntries),
-    [providerEntries],
+    () => connectedBenchmarkCandidates(providerEntries, instanceId),
+    [providerEntries, instanceId],
   );
 
   const freshness = limitsFreshness(
-    accounts.map((account) => account.limits.checkedAt),
+    active.map((account) => account.limits.checkedAt),
     now,
   );
 
@@ -365,21 +394,16 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
               environmentId={environmentId}
               threadId={threadId}
               usedTokens={figures.usedTokens}
+              onOpenDetails={() => setDetailsOpen(true)}
             />
           ) : null}
         </div>
 
-        {/* Every connected account, this chat's first */}
-        {accounts.length > 0 ? (
+        {/* This chat's account only; the full usage overview lists the rest */}
+        {active.length > 0 ? (
           <div className="flex flex-col gap-3.5 border-t border-border/60 pt-3">
-            {accounts.map((account) => (
-              <AccountLimits
-                key={account.id}
-                account={account}
-                active={activeIds.has(account.id)}
-                now={now}
-                view={view}
-              />
+            {active.map((account) => (
+              <AccountLimits key={account.id} account={account} active now={now} view={view} />
             ))}
           </div>
         ) : (
@@ -392,6 +416,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           environmentId={environmentId}
           candidates={benchmarkCandidates}
           onStartChat={onStartChat}
+          onStartArena={onStartArena}
         />
 
         {freshness ? (
@@ -431,6 +456,19 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           </Button>
         </div>
       </section>
+      {threadId ? (
+        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <DialogPopup className="max-w-2xl">
+            <DialogPanel>
+              <DetailedContextBreakdownView
+                environmentId={environmentId}
+                threadId={threadId}
+                onBack={() => setDetailsOpen(false)}
+              />
+            </DialogPanel>
+          </DialogPopup>
+        </Dialog>
+      ) : null}
     </div>
   );
 });
