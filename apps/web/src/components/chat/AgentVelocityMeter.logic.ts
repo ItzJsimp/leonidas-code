@@ -95,7 +95,7 @@ export function calculateTurnVelocity(
 
 /**
  * Calculates weighted rolling tokens per second over exactly the last N valid turns.
- * Returns null until N turns exist, so "last 20" never silently repeats a smaller window.
+ * Returns null when fewer than N turns exist; callers pass min(N, turns) for a partial window.
  * Weighted by total tokens / total duration to avoid bias from 1-token turns.
  * Hermes compatible (no ES2023 array mutation methods).
  */
@@ -354,9 +354,10 @@ export function deriveVelocitySummary(
       ? Math.round((outputTokens / activeMs) * 1000 * 10) / 10
       : null;
 
-  const rolling5Tps = calculateRollingVelocity(samples, 5);
-  const rolling10Tps = calculateRollingVelocity(samples, 10);
-  const rolling20Tps = calculateRollingVelocity(samples, 20);
+  // A window that is not full yet averages the turns that exist; the label says how many.
+  const rolling5Tps = calculateRollingVelocity(samples, Math.min(5, samples.length));
+  const rolling10Tps = calculateRollingVelocity(samples, Math.min(10, samples.length));
+  const rolling20Tps = calculateRollingVelocity(samples, Math.min(20, samples.length));
 
   const tpsHistory = samples.slice(-20).map((s) => s.tps);
 
@@ -394,14 +395,9 @@ export function formatTpsLabel(tps: number | null): string {
   return `${tps.toFixed(1).replace(/\.0$/, "")} t/s`;
 }
 
-/** Rolling averages need a full window; until then say how far along it is. */
-export function formatRollingLabel(
-  tps: number | null,
-  windowSize: number,
-  turnsTracked: number,
-): string {
-  if (tps !== null) return formatTpsLabel(tps);
-  return `Needs ${windowSize} turns (${Math.min(turnsTracked, windowSize)} so far)`;
+/** Window fill for a rolling average: "" when full, else "1 of 5" so a partial average reads as one. */
+export function formatRollingFill(windowSize: number, turnsTracked: number): string {
+  return turnsTracked >= windowSize ? "" : `${turnsTracked} of ${windowSize}`;
 }
 
 /** "12.4s (35% of turn)"; tool wait is only known once the turn window is. */

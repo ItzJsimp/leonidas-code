@@ -8,7 +8,10 @@ import {
   formatContextWindowCost,
 } from "./ContextWindowMeter.logic";
 import { Minimize2Icon } from "lucide-react";
+import { formatTpsLabel } from "./AgentVelocityMeter.logic";
 import { composerFloatingLayerProps } from "./composerEventScope";
+import { InputLedger, SpeedSection } from "./AgentVelocityMeter";
+import type { VelocitySummary } from "./AgentVelocityMeter.logic";
 
 const SEVERITY_COLOR = {
   normal: "var(--color-info)",
@@ -27,18 +30,20 @@ function formatPercentage(value: number | null): string | null {
 }
 
 /**
- * The composer's one usage control, beside Send. Hover shows the context window in brief;
- * click shows or hides the usage card over the chat's top-left corner.
+ * The composer's one usage control, beside Send: a context ring with the tokens in context.
+ * Hover shows context, speed and input in one card; click shows or hides the usage card over
+ * the chat's top-left corner.
  */
 export function ContextWindowMeter(props: {
   usage: ContextWindowSnapshot | null;
+  velocity?: VelocitySummary | null | undefined;
   modelDisplayName?: string | null;
   onCompact?: (() => void) | undefined;
   compactDisabled?: boolean | undefined;
   compactDisabledReason?: string | null | undefined;
 }) {
   const { modelDisplayName, onCompact, compactDisabled, compactDisabledReason } = props;
-  const usage = props.usage;
+  const { usage, velocity } = props;
   const cardOpen = useClientSettings((settings) => settings.usageOverlayEnabled);
   const updateSettings = useUpdateClientSettings();
   const usedPercentage = formatPercentage(usage?.usedPercentage ?? null);
@@ -57,9 +62,9 @@ export function ContextWindowMeter(props: {
         closeDelay={onCompact ? 150 : 0}
         render={
           <Button
-            size="icon-sm"
+            size="compact"
             variant="ghost-muted"
-            className="size-7"
+            className="shrink-0"
             aria-pressed={cardOpen}
             onClick={() => void updateSettings({ usageOverlayEnabled: !cardOpen })}
             aria-label={`${
@@ -68,9 +73,9 @@ export function ContextWindowMeter(props: {
                 : usage.maxTokens !== null && usedPercentage
                   ? `Context window ${usedPercentage} used`
                   : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
-            }. ${cardOpen ? "Hide" : "Show"} usage card`}
+            }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last turn ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. ${cardOpen ? "Hide" : "Show"} usage card`}
           >
-            <span className="relative flex size-5 items-center justify-center">
+            <span className="relative flex size-4 items-center justify-center">
               <svg
                 viewBox="0 0 24 24"
                 className="-rotate-90 absolute inset-0 size-full transform-gpu mx-0!"
@@ -98,6 +103,9 @@ export function ContextWindowMeter(props: {
                 />
               </svg>
             </span>
+            <span className="text-2xs tabular-nums" aria-hidden>
+              {usage === null ? "--" : formatContextWindowTokens(usage.usedTokens)}
+            </span>
           </Button>
         }
       />
@@ -105,7 +113,7 @@ export function ContextWindowMeter(props: {
         {...composerFloatingLayerProps}
         side="top"
         align="end"
-        className="w-64 text-left whitespace-normal"
+        className="w-72 text-left whitespace-normal"
       >
         <div className="flex flex-col gap-2 p-3">
           <div className="flex items-center justify-between gap-3">
@@ -163,6 +171,8 @@ export function ContextWindowMeter(props: {
               {formatContextWindowCompactionMessage(modelDisplayName, usage.autoCompactThreshold)}
             </div>
           ) : null}
+          {velocity ? <SpeedSection summary={velocity} /> : null}
+          {velocity?.ledger ? <InputLedger ledger={velocity.ledger} /> : null}
           {onCompact ? (
             <>
               <Button
