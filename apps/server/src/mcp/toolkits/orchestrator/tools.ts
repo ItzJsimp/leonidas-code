@@ -404,7 +404,7 @@ export const OrchestratorToolkit = Toolkit.make(
   }),
   Tool.make("saved_item_transition", {
     description:
-      "Archive, restore, mark done, or requeue a saved item. Requeue retains the prior thread link. Archive keeps the text; linked schedules are managed with update_scheduled_task.",
+      "Archive, restore, mark done, or requeue a saved item. Requeue retains the prior thread link. Archive keeps the text; permanent delete is reserved for the user; linked schedules are managed with update_scheduled_task.",
     parameters: SavedItemTransitionInput,
     success: SavedItem,
     failure: OrchestratorMcpFailure,
