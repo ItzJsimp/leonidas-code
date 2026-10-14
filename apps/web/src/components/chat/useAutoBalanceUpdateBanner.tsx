@@ -1,5 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import type { ServerUpdateState } from "@t3tools/client-runtime/state/server";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { Atom } from "effect/reactivity";
 import { useMemo, useState } from "react";
 
@@ -30,17 +31,23 @@ import { ComposerServerUpdateIcon } from "./ComposerServerUpdateStatus";
 export function useAutoBalanceUpdateBanner(
   environments: readonly EnvironmentPresentation[],
 ): ComposerBannerStackItem | null {
-  const statesAtom = useMemo(
+  // Callers rebuild this list on every render. Key the atom by environment
+  // ids, or each render makes a new atom, a new subscription and one more render.
+  const idsKey = environments.map((environment) => environment.environmentId).join("|");
+  const updateStatesAtom = useMemo(
     () =>
       Atom.make((get) =>
-        environments.map((environment) => ({
-          environment,
-          state: get(serverEnvironment.updateStateAtom(environment.environmentId)),
-        })),
+        (idsKey === "" ? [] : (idsKey.split("|") as EnvironmentId[])).map((environmentId) =>
+          get(serverEnvironment.updateStateAtom(environmentId)),
+        ),
       ),
-    [environments],
+    [idsKey],
   );
-  const states = useAtomValue(statesAtom);
+  const updateStates = useAtomValue(updateStatesAtom);
+  const states = environments.flatMap((environment, index) => {
+    const state = updateStates[index];
+    return state === undefined ? [] : [{ environment, state }];
+  });
   const [dismissedNotices, setDismissedNotices] = useState<ReadonlySet<string | ServerUpdateState>>(
     () => new Set(),
   );

@@ -20,10 +20,13 @@ export function useLoadBalancedEnvironment(
     },
     [registry],
   );
+  // Callers rebuild the id list on every render. Key the atom by its content,
+  // or each render makes a new atom, a new subscription and one more render.
+  const idsKey = environmentIds.join("|");
   const resourcesAtom = useMemo(
     () =>
       Atom.make((get) =>
-        environmentIds.map((environmentId) => {
+        (idsKey === "" ? [] : (idsKey.split("|") as EnvironmentId[])).map((environmentId) => {
           const result = get(serverEnvironment.hostResources({ environmentId, input: {} }));
           return {
             environmentId,
@@ -34,7 +37,7 @@ export function useLoadBalancedEnvironment(
           };
         }),
       ),
-    [environmentIds],
+    [idsKey],
   );
   const resources = useAtomValue(resourcesAtom);
   const pending = resources.some((resource) => resource.pending);

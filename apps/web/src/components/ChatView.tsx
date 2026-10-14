@@ -1814,18 +1814,18 @@ export default function ChatView(props: ChatViewProps) {
   );
   const timestampFormat = settings.timestampFormat;
   const navigate = useNavigate();
-  const citationLocation = useLocation({
-    select: (location) => ({
-      href: location.href,
-      key: location.state.assistantCitationActivation ?? location.state.__TSR_key,
-    }),
+  // Select primitives: an object result is new on every router store update,
+  // which re-rendered ChatView about twice per second while a reply streamed.
+  const citationHref = useLocation({ select: (location) => location.href });
+  const citationKey = useLocation({
+    select: (location) => location.state.assistantCitationActivation ?? location.state.__TSR_key,
   });
   const citationRequest = useMemo<AssistantCitationRequest | null>(() => {
-    const citation = assistantCitationFromLocation(citationLocation.href);
+    const citation = assistantCitationFromLocation(citationHref);
     return citation && citation.environmentId === environmentId && citation.threadId === threadId
-      ? { citation, key: citationLocation.key ?? citationLocation.href }
+      ? { citation, key: citationKey ?? citationHref }
       : null;
-  }, [citationLocation.href, citationLocation.key, environmentId, threadId]);
+  }, [citationHref, citationKey, environmentId, threadId]);
   const { resolvedTheme } = useTheme();
   // Granular store selectors — avoid subscribing to prompt changes.
   const composerRuntimeMode = useComposerDraftStore(
