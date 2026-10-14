@@ -349,7 +349,7 @@ export interface Physics3DConfig {
   maxVelocity: number; // Velocity cap (e.g. 8)
 }
 
-export const DEFAULT_PHYSICS_CONFIG: Physics3DConfig = {
+const DEFAULT_PHYSICS_CONFIG: Physics3DConfig = {
   repulsion: 800,
   springStrength: 0.006,
   springLength: 75,
