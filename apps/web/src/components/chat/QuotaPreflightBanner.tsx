@@ -1,6 +1,7 @@
-import { GaugeIcon } from "lucide-react";
+import { EyeIcon, GaugeIcon } from "lucide-react";
 
 import { Button } from "../ui/button";
+import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
 import type { ProviderFailoverTarget } from "./providerFailover";
 import type { QuotaPreflightAdvice } from "./quotaPreflight";
@@ -16,8 +17,22 @@ export function usageWarningBannerItem(input: {
     variant: "warning",
     priority: "notice",
     icon: <GaugeIcon />,
-    title: `${input.label} is at ${Math.round(input.usedPercent)}% of its usage`,
-    description: "You can change or turn off this warning in Settings under General.",
+    title: `${input.label}: ${Math.round(input.usedPercent)}% of usage limit used`,
+    actions: (
+      <Popover>
+        <PopoverTrigger
+          openOnHover
+          render={
+            <Button size="icon-xs" variant="ghost-muted" aria-label="Usage warning settings" />
+          }
+        >
+          <EyeIcon />
+        </PopoverTrigger>
+        <PopoverPopup aria-label="Usage warning settings" tooltipStyle side="top">
+          You can change or turn off this warning in Settings under General.
+        </PopoverPopup>
+      </Popover>
+    ),
     dismissLabel: "Dismiss",
     onDismiss: input.onDismiss,
   };

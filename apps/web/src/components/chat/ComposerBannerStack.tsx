@@ -49,7 +49,12 @@ interface ComposerBannerStackProps {
 }
 
 export function ComposerBannerStack({ className, items, attachedAbove }: ComposerBannerStackProps) {
-  const [stackExpanded, setStackExpanded] = useState(false);
+  const [stackHovered, setStackHovered] = useState(false);
+  // Warnings must stay readable above activity, even while the pointer is elsewhere.
+  const hasPersistentNotice = items.some(
+    (item) => item.variant === "warning" || item.variant === "error",
+  );
+  const stackExpanded = stackHovered || hasPersistentNotice;
   const noticesRef = useRef<HTMLDivElement>(null);
   const peekRef = useRef<HTMLButtonElement>(null);
   const expandedItemsRef = useRef<HTMLDivElement>(null);
@@ -71,7 +76,7 @@ export function ComposerBannerStack({ className, items, attachedAbove }: Compose
   }, []);
 
   useEffect(() => {
-    if (items.length < 2) setStackExpanded(false);
+    if (items.length < 2) setStackHovered(false);
   }, [items.length]);
 
   useLayoutEffect(() => {
@@ -101,7 +106,7 @@ export function ComposerBannerStack({ className, items, attachedAbove }: Compose
   }
   const stackedItems = orderedItems.slice(1);
   const hasStack = stackedItems.length > 0;
-  const showCollapsedStackCap = hasStack && exitingItemId !== frontItem.id;
+  const showCollapsedStackCap = hasStack && !hasPersistentNotice && exitingItemId !== frontItem.id;
   const firstStackedItem = stackedItems[0];
 
   const requestDismiss = (item: ComposerBannerStackEntry) => {
@@ -130,25 +135,25 @@ export function ComposerBannerStack({ className, items, attachedAbove }: Compose
             if (document.activeElement === peekRef.current) {
               pendingFocusRef.current = "notice";
             }
-            setStackExpanded(true);
+            setStackHovered(true);
           }}
           onPointerLeave={(event) => {
-            if (!event.currentTarget.contains(document.activeElement)) setStackExpanded(false);
+            if (!event.currentTarget.contains(document.activeElement)) setStackHovered(false);
           }}
           onBlurCapture={(event) => {
             if (
               !event.currentTarget.contains(event.relatedTarget) &&
               !event.currentTarget.matches(":hover")
             ) {
-              setStackExpanded(false);
+              setStackHovered(false);
             }
           }}
           onKeyDown={(event) => {
-            if (event.key !== "Escape" || !stackExpanded) return;
+            if (event.key !== "Escape" || !stackExpanded || hasPersistentNotice) return;
             event.preventDefault();
             event.stopPropagation();
             pendingFocusRef.current = "peek";
-            setStackExpanded(false);
+            setStackHovered(false);
           }}
         >
           {showCollapsedStackCap && firstStackedItem ? (
@@ -163,7 +168,7 @@ export function ComposerBannerStack({ className, items, attachedAbove }: Compose
               onClick={(event) => {
                 event.currentTarget.focus({ preventScroll: true });
                 pendingFocusRef.current = "notice";
-                setStackExpanded(true);
+                setStackHovered(true);
               }}
               className={cn(stackExpanded && "pointer-events-none invisible opacity-0")}
             />
@@ -227,7 +232,7 @@ export function ComposerBannerStack({ className, items, attachedAbove }: Compose
               : "opacity-100",
           )}
           onPointerDownCapture={() => {
-            setStackExpanded(false);
+            setStackHovered(false);
             const activeElement = document.activeElement;
             if (
               activeElement instanceof HTMLElement &&
