@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vite-plus/test";
 import * as DateTime from "effect/DateTime";
 import {
+  shouldNudgeContextHandoff,
   deriveLatestContextWindowSnapshot,
   formatContextWindowTokens,
   latestProviderTurnTokenUsage,
 } from "./contextWindow";
+
+describe("context handoff threshold", () => {
+  it("nudges at 45 percent using only reported context size", () => {
+    expect(shouldNudgeContextHandoff({ usedTokens: 44_999, maxTokens: 100_000 })).toBe(false);
+    expect(shouldNudgeContextHandoff({ usedTokens: 45_000, maxTokens: 100_000 })).toBe(true);
+    expect(shouldNudgeContextHandoff({ usedTokens: 80_000, maxTokens: 100_000 })).toBe(true);
+    expect(shouldNudgeContextHandoff({ usedTokens: 80_000, maxTokens: null })).toBe(false);
+    expect(shouldNudgeContextHandoff({ usedTokens: 80_000, maxTokens: 0 })).toBe(false);
+    expect(shouldNudgeContextHandoff(null)).toBe(false);
+  });
+});
 
 describe("V2 context window presentation", () => {
   it("uses retained compaction token data when available", () => {

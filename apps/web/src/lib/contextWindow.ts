@@ -24,6 +24,19 @@ export type ContextWindowSnapshot = NullableContextWindowUsage & {
   readonly updatedAt: string;
 };
 
+export function shouldNudgeContextHandoff(
+  usage: Pick<ContextWindowSnapshot, "usedTokens" | "maxTokens"> | null,
+): boolean {
+  return (
+    usage !== null &&
+    usage.maxTokens != null &&
+    Number.isFinite(usage.maxTokens) &&
+    usage.maxTokens > 0 &&
+    Number.isFinite(usage.usedTokens) &&
+    usage.usedTokens / usage.maxTokens >= 0.45
+  );
+}
+
 /** Newest usage report across a thread's provider turns. Snapshots order turns
     by provider thread, not time, so pick by timestamp. */
 export function latestProviderTurnTokenUsage(

@@ -314,7 +314,6 @@ import {
   PaperclipIcon,
   ChevronDownIcon,
   DownloadIcon,
-  ArrowRightLeftIcon,
   GitBranchIcon,
   TargetIcon,
   WifiOffIcon,
@@ -504,6 +503,7 @@ import {
 import { useLinkedThreadPullRequest } from "./ThreadStatusIndicators";
 import type { ComposerBannerStackItem } from "./chat/ComposerBannerStack";
 import { ThreadStatusLine } from "./chat/ThreadStatusLine";
+import { ContextHandoffNudge } from "./chat/ContextHandoffNudge";
 import { formatRelativeTimeLabel, formatRelativeTimeUntilLabel } from "../timestampFormat";
 import { ComposerSurface } from "./chat/ComposerSurface";
 import { resolveThreadSyncPhase } from "../threadSync";
@@ -8150,49 +8150,7 @@ export default function ChatView(props: ChatViewProps) {
           },
         })
       : null;
-  // Offered from 45% of the model's own context window (1M for Claude, less for others), so
-  // the nudge arrives before quality drops. Optional: dismiss it per chat and keep going.
-  const [handoffDismissedKeys, setHandoffDismissedKeys] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const handoffPercent = activeContextWindow?.usedPercentage ?? null;
-  const handoffBannerItem: ComposerBannerStackItem | null =
-    handoffPercent !== null &&
-    handoffPercent >= 45 &&
-    phase !== "running" &&
-    !compactDisabled &&
-    !handoffDismissedKeys.has(routeThreadKey)
-      ? {
-          id: `session-handoff:${routeThreadKey}`,
-          variant: "info",
-          icon: <ArrowRightLeftIcon />,
-          title: (
-            <span className="font-normal text-muted-foreground">
-              This chat is {Math.round(handoffPercent)}% full. A handoff keeps your place in a fresh
-              session.
-            </span>
-          ),
-          actions: (
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() =>
-                void sendStandaloneCommand(
-                  "Use the session-handoff skill to write a handoff for this chat so I can continue in a fresh session.",
-                  "Failed to start the handoff.",
-                )
-              }
-            >
-              Hand off
-            </Button>
-          ),
-          dismissLabel: "Dismiss handoff suggestion",
-          onDismiss: () =>
-            setHandoffDismissedKeys((current) => new Set(current).add(routeThreadKey)),
-        }
-      : null;
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
-    const handoffItems = handoffBannerItem === null ? [] : [handoffBannerItem];
     // A stopped turn outranks a warning about the next one, so the pre-flight only fills an empty slot.
     const limitRecoveryItems = [
       limitRecoveryBanner ?? quotaPreflightBanner ?? usageWarningBanner ?? uiVerificationBanner,
@@ -8212,7 +8170,6 @@ export default function ChatView(props: ChatViewProps) {
         ...usageLimitsItems,
         ...projectCloneItems,
         ...systemComposerBannerItems,
-        ...handoffItems,
         ...backgroundWorkItems,
       ];
     }
@@ -8222,7 +8179,6 @@ export default function ChatView(props: ChatViewProps) {
       ...usageLimitsItems,
       ...projectCloneItems,
       ...systemComposerBannerItems,
-      ...handoffItems,
       ...backgroundWorkItems,
       {
         id: `branch-mismatch:${activeBranchMismatchKey}`,
@@ -8279,7 +8235,6 @@ export default function ChatView(props: ChatViewProps) {
     backgroundWorkBannerItem,
     childInputBannerItem,
     goalBannerItem,
-    handoffBannerItem,
     localCheckoutBranchMismatch,
     projectCloneBannerItem,
     showBranchMismatchBanner,
@@ -11815,6 +11770,19 @@ export default function ChatView(props: ChatViewProps) {
         </header>
 
         {/* Main content area with optional plan sidebar */}
+        {isServerThread ? (
+          <ContextHandoffNudge
+            key={routeThreadKey}
+            chatKey={routeThreadKey}
+            contextWindow={activeContextWindow}
+            onHandoff={() =>
+              void sendStandaloneCommand(
+                "Use the session-handoff skill to write a handoff for this chat so I can continue in a fresh session.",
+                "Failed to start the handoff.",
+              )
+            }
+          />
+        ) : null}
         <div className="@container relative flex min-h-0 min-w-0 flex-1">
           {usageOverlayEnabled ? (
             <UsageOverlayCard

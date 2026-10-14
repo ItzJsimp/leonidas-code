@@ -170,57 +170,8 @@ import {
 export const CLAUDE_PROVIDER = ProviderDriverKind.make("claudeAgent");
 export const CLAUDE_AGENT_SDK_QUERY_PROTOCOL = "claude-agent-sdk.query" as const;
 
-function claudeContextWindow(modelSelection: ModelSelection): number | null {
-  return (
-    resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, modelSelection) ?? null
-  );
-}
+import { claudeProviderTurnTokenUsage } from "./ClaudeContextUsage.ts";
 
-interface ClaudeCacheCreation {
-  readonly ephemeral_1h_input_tokens: number;
-  readonly ephemeral_5m_input_tokens: number;
-}
-
-// Claude Code writes 1h cache entries on a subscription within its limits and
-// 5m entries otherwise (API key, Bedrock, Vertex, extra usage). A response
-// that wrote nothing leaves the TTL unknown.
-function claudePromptCacheTtlMs(
-  cacheCreation: ClaudeCacheCreation | null | undefined,
-): number | undefined {
-  if (!cacheCreation) return undefined;
-  if (cacheCreation.ephemeral_1h_input_tokens > 0) return 60 * 60_000;
-  if (cacheCreation.ephemeral_5m_input_tokens > 0) return 5 * 60_000;
-  return undefined;
-}
-
-export function claudeProviderTurnTokenUsage(
-  usage: {
-    readonly input_tokens: number;
-    readonly cache_creation_input_tokens?: number | null;
-    readonly cache_read_input_tokens?: number | null;
-    readonly cache_creation?: ClaudeCacheCreation | null;
-    readonly output_tokens: number;
-  },
-  modelSelection: ModelSelection,
-  updatedAt: string,
-) {
-  const inputTokens =
-    usage.input_tokens +
-    (usage.cache_creation_input_tokens ?? 0) +
-    (usage.cache_read_input_tokens ?? 0);
-  const outputTokens = usage.output_tokens;
-  const promptCacheTtlMs = claudePromptCacheTtlMs(usage.cache_creation);
-  return {
-    usedTokens: inputTokens + outputTokens,
-    maxTokens: claudeContextWindow(modelSelection),
-    inputTokens,
-    cachedInputTokens: usage.cache_read_input_tokens ?? 0,
-    outputTokens,
-    reasoningOutputTokens: 0,
-    ...(promptCacheTtlMs === undefined ? {} : { promptCacheTtlMs }),
-    updatedAt,
-  };
-}
 export const CLAUDE_DEFAULT_INSTANCE_ID = defaultInstanceIdForDriver(CLAUDE_PROVIDER);
 const DEFAULT_CLAUDE_SETTINGS = Schema.decodeSync(ClaudeSettings)({});
 // Entry extensions the Claude SDK runs through node instead of executing.
@@ -2945,6 +2896,8 @@ interface ActiveClaudeTurnContext {
   readonly rejectedRateLimitTypes: Set<string>;
   readonly rateLimitResetTimes: Map<string, string | null>;
   latestAssistantRateLimited: boolean;
+  latestContextUsage?: ReturnType<typeof claudeProviderTurnTokenUsage>;
+  latestContextModel?: string;
   readonly subagentsByTaskId: Map<string, ActiveClaudeSubagent>;
   readonly subagentsByToolUseId: Map<string, ActiveClaudeSubagent>;
   readonly subagentNodesByTaskId: Map<string, OrchestrationV2ExecutionNode["id"]>;
@@ -5942,6 +5895,9 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   failure: null,
                   threadDisposition,
                 };
+          const reportedContextWindow = input.context.latestContextModel
+            ? input.result?.modelUsage[input.context.latestContextModel]?.contextWindow
+            : undefined;
           yield* Effect.all(
             [
               emitProviderEvent({
@@ -5953,6 +5909,18 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                     status: input.status,
                     completedAt: input.completedAt,
                   }),
+                  ...(input.context.latestContextUsage === undefined ||
+                  reportedContextWindow === undefined ||
+                  !Number.isFinite(reportedContextWindow) ||
+                  reportedContextWindow <= 0
+                    ? {}
+                    : {
+                        tokenUsage: {
+                          ...input.context.latestContextUsage,
+                          maxTokens: reportedContextWindow,
+                          updatedAt: DateTime.formatIso(input.completedAt),
+                        },
+                      }),
                   turnTokenUsage: normalizeClaudeTurnTokenUsage(
                     input.result,
                     input.context.subagentsByTaskId.size > 0 ||
@@ -6968,6 +6936,13 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                 ? Math.round(postTokens)
                 : undefined;
             if (afterTokenCount !== undefined) {
+              if (context.latestContextUsage !== undefined) {
+                context.latestContextUsage = {
+                  ...context.latestContextUsage,
+                  usedTokens: afterTokenCount,
+                  updatedAt: DateTime.formatIso(now),
+                };
+              }
               yield* emitProviderEvent({
                 type: "provider_turn.updated",
                 driver: CLAUDE_PROVIDER,
@@ -6988,7 +6963,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   completedAt: null,
                   tokenUsage: {
                     usedTokens: afterTokenCount,
-                    maxTokens: claudeContextWindow(context.input.modelSelection),
+                    maxTokens: context.latestContextUsage?.maxTokens ?? null,
                     updatedAt: DateTime.formatIso(now),
                   },
                 },
@@ -7119,6 +7094,11 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               message.message.usage !== undefined &&
               message.message.model !== "<synthetic>"
             ) {
+              context.latestContextModel = message.message.model;
+              context.latestContextUsage = claudeProviderTurnTokenUsage(
+                message.message.usage,
+                DateTime.formatIso(now),
+              );
               yield* emitProviderEvent({
                 type: "provider_turn.updated",
                 driver: CLAUDE_PROVIDER,
@@ -7137,11 +7117,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   status: "running",
                   startedAt: context.startedAt,
                   completedAt: null,
-                  tokenUsage: claudeProviderTurnTokenUsage(
-                    message.message.usage,
-                    context.input.modelSelection,
-                    DateTime.formatIso(now),
-                  ),
+                  tokenUsage: context.latestContextUsage,
                 },
               });
             }
