@@ -9,6 +9,7 @@ describe("release articles", () => {
     );
     expect(article.title).toBe("Tasks that stay in sync");
     expect(article.summary).toBe("A simpler way to finish your work.");
+    expect(article.hasIntroduction).toBe(true);
     expect(article.image).toEqual({ src: "https://example.com/tasks.webp", alt: "Task board" });
     expect(article.markdown).toContain("## Improvements");
     expect(article.markdown).not.toMatch(/leonidas-release|tour:/);
@@ -17,6 +18,7 @@ describe("release articles", () => {
     const article = parseReleaseArticle("# 0.42.0 · Development\n\n- Fixed task labels.", "0.42.0");
     expect(article.title).toBe("Update 0.42.0");
     expect(article.image).toBeNull();
+    expect(article.hasIntroduction).toBe(false);
     expect(article.markdown).toBe("- Fixed task labels.");
   });
   it("rejects unsafe resource URLs and bounds long release bodies", () => {

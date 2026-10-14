@@ -78,7 +78,7 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
               }}
             />
           ) : null}
-          {entry && !fullNotes ? (
+          {entry?.article.hasIntroduction && !fullNotes ? (
             <p className="text-sm leading-relaxed text-muted-foreground">{entry.article.summary}</p>
           ) : null}
           {fullNotes && entry ? (

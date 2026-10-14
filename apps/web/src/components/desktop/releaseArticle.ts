@@ -30,6 +30,7 @@ export function parseReleaseArticle(body: string, version: string) {
   const image = /!\[([^\]]*)\]\((https:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/.exec(content);
   return {
     title,
+    hasIntroduction: intro !== undefined,
     summary:
       (intro ?? firstNote)?.replace(/\s+/g, " ").slice(0, 240) ??
       "No patch notes were published for this release.",
