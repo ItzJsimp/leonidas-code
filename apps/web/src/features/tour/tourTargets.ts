@@ -111,7 +111,7 @@ export type TourTargetId = keyof typeof TOUR_TARGETS;
 
 const TOUR_MARKER = /\s*\{tour:([a-z0-9-]+)\}\s*$/;
 
-export function isTourTargetId(id: string): id is TourTargetId {
+function isTourTargetId(id: string): id is TourTargetId {
   return Object.hasOwn(TOUR_TARGETS, id);
 }
 
