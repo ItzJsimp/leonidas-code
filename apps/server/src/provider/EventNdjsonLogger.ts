@@ -5,7 +5,7 @@
  * Native and canonical views share batching, rotation, and retention state so
  * they cannot race while appending to the same thread-scoped file.
  */
-import * as NodeFS from "node:fs";
+import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 
 import type { ThreadId } from "@t3tools/contracts";
@@ -16,6 +16,7 @@ import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as SynchronizedRef from "effect/SynchronizedRef";
@@ -33,6 +34,8 @@ const DEFAULT_MAX_AGE_MS = 14 * DAY_MS;
 const DEFAULT_RETENTION_CHECK_INTERVAL_MS = 5 * 60 * 1_000;
 const DEFAULT_MAX_BUFFERED_BYTES = MEBIBYTE;
 const DEFAULT_MAX_BUFFERED_RECORDS = 512;
+// Bounds open descriptors while retention reads headers and stats.
+const RETENTION_IO_CONCURRENCY = 16;
 const MAX_RECORD_CHARACTERS = 64 * 1024;
 const MAX_RECORD_FIELDS = 1_024;
 const MAX_RECORD_DEPTH = 16;
@@ -153,6 +156,12 @@ interface AttributionSummary {
 interface FileOperationFailure {
   readonly filePath: string;
   readonly cause: unknown;
+}
+
+interface RetainedFile {
+  readonly filePath: string;
+  readonly mtimeMs: number;
+  readonly size: number;
 }
 
 interface RetentionResult {
@@ -400,77 +409,108 @@ export function writeBatchedMessages(
   flush();
 }
 
-function isProviderLogFile(filePath: string, fileName: string, filePrefix: string): boolean {
+/** Runs one retention file operation, turning its rejection into a reported failure. */
+function attemptFileOperation<A>(
+  filePath: string,
+  evaluate: () => Promise<A>,
+): Effect.Effect<Result.Result<A, FileOperationFailure>> {
+  return Effect.result(
+    Effect.tryPromise({ try: evaluate, catch: (cause) => ({ filePath, cause }) }),
+  );
+}
+
+async function isProviderLogFile(
+  filePath: string,
+  fileName: string,
+  filePrefix: string,
+): Promise<boolean> {
   if (!/\.log(?:\.\d+)?$/u.test(fileName)) return false;
   if (fileName.startsWith(filePrefix)) return true;
 
-  const descriptor = NodeFS.openSync(filePath, "r");
+  const handle = await NodeFSP.open(filePath, "r");
   try {
     const header = Buffer.alloc(256);
-    const bytesRead = NodeFS.readSync(descriptor, header, 0, header.byteLength, 0);
+    const { bytesRead } = await handle.read(header, 0, header.byteLength, 0);
     return /^\[[^\]\r\n]+\] (?:NTIVE|CANON|ORCH): /u.test(header.toString("utf8", 0, bytesRead));
   } finally {
-    NodeFS.closeSync(descriptor);
+    await handle.close();
   }
 }
 
-function enforceRetention(input: {
+async function statProviderLogFile(
+  filePath: string,
+  fileName: string,
+  filePrefix: string,
+): Promise<RetainedFile | undefined> {
+  if (!(await isProviderLogFile(filePath, fileName, filePrefix))) return undefined;
+  const stat = await NodeFSP.stat(filePath);
+  return { filePath, mtimeMs: stat.mtimeMs, size: stat.size };
+}
+
+/** Removes expired files, then the oldest files until the directory fits its byte budget. */
+const enforceRetention = Effect.fnUntraced(function* (input: {
   readonly directory: string;
   readonly maxTotalBytes: number;
   readonly maxAgeMs: number;
   readonly activeFilePaths: ReadonlySet<string>;
   readonly filePrefix: string;
   readonly now: number;
-}): RetentionResult {
+}): Effect.fn.Return<RetentionResult> {
   const failures: Array<FileOperationFailure> = [];
-  const files: Array<{ filePath: string; mtimeMs: number; size: number }> = [];
+  const listed = yield* attemptFileOperation(input.directory, () =>
+    NodeFSP.readdir(input.directory, { withFileTypes: true }),
+  );
+  if (Result.isFailure(listed)) return { failures: [listed.failure] };
 
-  let entries: ReadonlyArray<NodeFS.Dirent>;
-  try {
-    entries = NodeFS.readdirSync(input.directory, { withFileTypes: true });
-  } catch (cause) {
-    return { failures: [{ filePath: input.directory, cause }] };
-  }
-
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const filePath = NodePath.join(input.directory, entry.name);
-    try {
-      if (!isProviderLogFile(filePath, entry.name, input.filePrefix)) continue;
-      const stat = NodeFS.statSync(filePath);
-      files.push({ filePath, mtimeMs: stat.mtimeMs, size: stat.size });
-    } catch (cause) {
-      failures.push({ filePath, cause });
-    }
+  const scanned = yield* Effect.forEach(
+    listed.success.filter((entry) => entry.isFile()),
+    (entry) => {
+      const filePath = NodePath.join(input.directory, entry.name);
+      return attemptFileOperation(filePath, () =>
+        statProviderLogFile(filePath, entry.name, input.filePrefix),
+      );
+    },
+    { concurrency: RETENTION_IO_CONCURRENCY },
+  );
+  const files: Array<RetainedFile> = [];
+  for (const result of scanned) {
+    if (Result.isFailure(result)) failures.push(result.failure);
+    else if (result.success) files.push(result.success);
   }
 
   let totalBytes = files.reduce((total, file) => total + file.size, 0);
-  const remove = (file: (typeof files)[number]) => {
-    if (input.activeFilePaths.has(file.filePath)) return false;
-    try {
-      NodeFS.rmSync(file.filePath, { force: true });
-      totalBytes -= file.size;
-      return true;
-    } catch (cause) {
-      failures.push({ filePath: file.filePath, cause });
-      return false;
-    }
+  const remove = (file: RetainedFile): Effect.Effect<boolean> => {
+    if (input.activeFilePaths.has(file.filePath)) return Effect.succeed(false);
+    return attemptFileOperation(file.filePath, () =>
+      NodeFSP.rm(file.filePath, { force: true }),
+    ).pipe(
+      Effect.map((result) => {
+        if (Result.isFailure(result)) {
+          failures.push(result.failure);
+          return false;
+        }
+        totalBytes -= file.size;
+        return true;
+      }),
+    );
   };
 
-  const retained = files.filter((file) => {
-    if (input.now - file.mtimeMs <= input.maxAgeMs) return true;
-    return !remove(file);
-  });
+  const expiredRemoved = yield* Effect.forEach(
+    files,
+    (file) => (input.now - file.mtimeMs <= input.maxAgeMs ? Effect.succeed(false) : remove(file)),
+    { concurrency: RETENTION_IO_CONCURRENCY },
+  );
+  const retained = files.filter((_, index) => !expiredRemoved[index]);
 
   for (const file of retained.toSorted(
     (left, right) => left.mtimeMs - right.mtimeMs || left.filePath.localeCompare(right.filePath),
   )) {
     if (totalBytes <= input.maxTotalBytes) break;
-    remove(file);
+    yield* remove(file);
   }
 
   return { failures };
-}
+});
 
 function validateOption(input: {
   readonly filePath: string;
@@ -517,7 +557,7 @@ function resolveOptions(
   return Effect.succeed(resolved);
 }
 
-function drainPending(input: {
+const drainPending = Effect.fnUntraced(function* (input: {
   readonly directory: string;
   readonly options: ResolvedOptions;
   readonly state: StoreState;
@@ -525,9 +565,9 @@ function drainPending(input: {
   readonly now: number;
   readonly timerFired: boolean;
   readonly close: boolean;
-}): readonly [DrainResult, StoreState] {
+}): Effect.fn.Return<readonly [DrainResult, StoreState]> {
   if (input.state.closed) {
-    return [{ attributions: [], failures: [] }, input.state];
+    return [{ attributions: [], failures: [] }, input.state] as const;
   }
 
   const sinks = new Map(input.state.sinks);
@@ -584,7 +624,7 @@ function drainPending(input: {
   const retentionDue =
     input.now - input.state.lastRetentionAt >= input.options.retentionCheckIntervalMs;
   const retention = retentionDue
-    ? enforceRetention({
+    ? yield* enforceRetention({
         directory: input.directory,
         maxTotalBytes: input.options.maxTotalBytes,
         maxAgeMs: input.options.maxAgeMs,
@@ -614,8 +654,8 @@ function drainPending(input: {
       closed: input.close,
       lastRetentionAt: retentionDue ? input.now : input.state.lastRetentionAt,
     },
-  ];
-}
+  ] as const;
+});
 
 const serializeEvent = Effect.fnUntraced(function* (event: unknown) {
   return yield* encodeUnknownJsonString(event).pipe(
@@ -635,22 +675,20 @@ export const makeEventNdjsonLogStore = Effect.fnUntraced(function* (
   const directory = NodePath.dirname(filePath);
   const filePrefix = providerLogPrefix(filePath);
 
-  yield* Effect.try({
-    try: () => NodeFS.mkdirSync(directory, { recursive: true }),
+  yield* Effect.tryPromise({
+    try: () => NodeFSP.mkdir(directory, { recursive: true }),
     catch: (cause) => new EventNdjsonLogDirectoryError({ directory, cause }),
   });
 
   const initializedAt = yield* Clock.currentTimeMillis;
-  const initialRetention = yield* Effect.sync(() =>
-    enforceRetention({
-      directory,
-      maxTotalBytes: resolved.maxTotalBytes,
-      maxAgeMs: resolved.maxAgeMs,
-      activeFilePaths: new Set(),
-      filePrefix,
-      now: initializedAt,
-    }),
-  );
+  const initialRetention = yield* enforceRetention({
+    directory,
+    maxTotalBytes: resolved.maxTotalBytes,
+    maxAgeMs: resolved.maxAgeMs,
+    activeFilePaths: new Set(),
+    filePrefix,
+    now: initializedAt,
+  });
   for (const failure of initialRetention.failures) {
     yield* logWarning("provider event log retention failed", {
       filePath: failure.filePath,
@@ -670,18 +708,17 @@ export const makeEventNdjsonLogStore = Effect.fnUntraced(function* (
 
   const flush = Effect.fnUntraced(function* (timerFired: boolean, close: boolean) {
     const startedAt = yield* Clock.currentTimeMillis;
+    // Retention runs inside the state lock so a sink cannot open a file it is deleting.
     const result = yield* SynchronizedRef.modifyEffect(stateRef, (state) =>
-      Effect.sync(() =>
-        drainPending({
-          directory,
-          options: resolved,
-          state,
-          filePrefix,
-          now: startedAt,
-          timerFired,
-          close,
-        }),
-      ),
+      drainPending({
+        directory,
+        options: resolved,
+        state,
+        filePrefix,
+        now: startedAt,
+        timerFired,
+        close,
+      }),
     );
 
     for (const failure of result.failures) {

@@ -5,6 +5,7 @@ import * as NodePath from "node:path";
 
 import { ThreadId } from "@t3tools/contracts";
 import { assert, describe, it } from "@effect/vitest";
+import { vi } from "vite-plus/test";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -19,6 +20,18 @@ import {
   type PendingRecord,
   writeBatchedMessages,
 } from "./EventNdjsonLogger.ts";
+
+const failingOpenPaths = new Set<string>();
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    open: (...args: Parameters<typeof actual.open>) =>
+      typeof args[0] === "string" && failingOpenPaths.has(args[0])
+        ? Promise.reject(Object.assign(new Error("simulated EACCES"), { code: "EACCES" }))
+        : actual.open(...args),
+  };
+});
 
 const encodeUnknownJson = Schema.encodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 const decodeUnknownJson = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
@@ -783,6 +796,81 @@ describe("EventNdjsonLogger", () => {
         assert.equal(NodeFS.existsSync(activePath), true);
         yield* store.close();
       } finally {
+        NodeFS.rmSync(tempDir, { recursive: true, force: true });
+      }
+    }),
+  );
+
+  it.effect("reports a failed header read and still prunes the remaining files", () => {
+    const messages: Array<unknown> = [];
+    const logCapture = Logger.make<unknown, void>(({ message }) => {
+      messages.push(...(Array.isArray(message) ? message : [message]));
+    });
+
+    return Effect.gen(function* () {
+      const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-provider-log-"));
+      const basePath = NodePath.join(tempDir, "events.log");
+      const unreadablePath = NodePath.join(tempDir, "unreadable.log");
+      const expiredPath = ownedLogPath(basePath, "expired");
+
+      try {
+        yield* TestClock.setTime(1_800_000_000_000);
+        const now = yield* Clock.currentTimeMillis;
+        NodeFS.writeFileSync(unreadablePath, "[2026-01-01T00:00:00.000Z] CANON: legacy\n");
+        NodeFS.writeFileSync(expiredPath, "x");
+        for (const filePath of [unreadablePath, expiredPath]) {
+          NodeFS.utimesSync(filePath, (now - 20_000) / 1_000, (now - 20_000) / 1_000);
+        }
+        failingOpenPaths.add(unreadablePath);
+
+        const store = yield* makeEventNdjsonLogStore(basePath, { maxAgeMs: 10_000 });
+        yield* store.close();
+
+        assert.equal(NodeFS.existsSync(expiredPath), false);
+        assert.equal(NodeFS.existsSync(unreadablePath), true);
+        assert.isTrue(
+          messages.some(
+            (message) =>
+              typeof message === "object" &&
+              message !== null &&
+              Reflect.get(message, "filePath") === unreadablePath,
+          ),
+        );
+      } finally {
+        failingOpenPaths.clear();
+        NodeFS.rmSync(tempDir, { recursive: true, force: true });
+      }
+    }).pipe(Effect.provide(Logger.layer([logCapture], { mergeWithExisting: false })));
+  });
+
+  it.live("scans the log directory without blocking the event loop", () =>
+    Effect.gen(function* () {
+      const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-provider-log-"));
+      const basePath = NodePath.join(tempDir, "events.log");
+      // Unprefixed names force a header read per file, the most expensive scan path.
+      for (let index = 0; index < 200; index += 1) {
+        NodeFS.writeFileSync(NodePath.join(tempDir, `legacy-${index}.log`), "plain text\n");
+      }
+
+      let ticks = 0;
+      let scanning = true;
+      const tick = () => {
+        ticks += 1;
+        if (scanning) setImmediate(tick);
+      };
+
+      try {
+        setImmediate(tick);
+        const store = yield* makeEventNdjsonLogStore(basePath, {}).pipe(
+          Effect.ensuring(Effect.sync(() => (scanning = false))),
+        );
+        yield* store.close();
+
+        // A synchronous scan finishes inside one macrotask, so no immediate can run.
+        assert.isAbove(ticks, 1);
+        assert.equal(NodeFS.readdirSync(tempDir).length, 200);
+      } finally {
+        scanning = false;
         NodeFS.rmSync(tempDir, { recursive: true, force: true });
       }
     }),
