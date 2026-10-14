@@ -50,6 +50,8 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 - **A push to `main` ships a release to both machines:** changes stay local commits until Jake says push.
 - **Rebrand scope rule:** change user-visible names only; leave `@t3tools/*`, `T3CODE_*`, the `~/.t3` folder and app id `com.t3tools.t3code`, or threads orphan and installs duplicate.
 - **No `vp` on PATH:** run `node_modules/.bin/vp test run <files>` from the repo.
+- **The main checkout is shared with live agents:** another session may be committing here every few seconds. Never `git switch`/`git checkout -b` (its commits land on your branch) and never `git stash` (an old `stash@{0}` exists and `pop` applies it). Commit by explicit path with `git commit --only -- <paths>`; for a baseline, compare error lists instead of stashing.
+- **A dev server for this checkout may already be running:** `vp run dev` then refuses. Start yours with `--home-dir <temp folder>` (own ports and data) and stop only the PID you captured (`/proc/<pid>/winpid`, then `taskkill //T`).
 - **Fresh worktrees need an install first:** `pnpm install --frozen-lockfile` (about 7.5 minutes) before any check. Worktrees on D: stall; use `C:/lcw`.
 - **A commit that hangs is usually the hook:** let `vp fmt` finish; never bypass it.
 
@@ -65,4 +67,5 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
+- 2026-10-14: AIOS Home on the Command tab (`taskBoard.home`, `aiosHome.ts`, `AiosHomeCard.tsx`), verified live on 583 cards; Home build 1 ms, shared card scan 92 ms warm is the next cost to cut.
 - 2026-10-14: starter skills verified 22/22 in both roots for Claude Code and Codex; `SKILL_ROOTS` now lives in `skillPacks.ts` so the wizard and the verifier share it.
