@@ -1,10 +1,16 @@
-import type { EnvironmentId, ProjectId, TaskBoardWorkspaceProject } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  ProjectId,
+  TaskBoardTask,
+  TaskBoardWorkspaceProject,
+} from "@t3tools/contracts";
 import { useCallback, useMemo, useState } from "react";
 
 import { useVisibleInterval } from "~/hooks/useVisibleInterval";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import { PRACTICE_SLUG } from "./practice.logic";
 import { useSharedBoards } from "./useSharedBoards";
 import type { RoadmapPlan } from "./taskRoadmap.logic";
 
@@ -70,8 +76,10 @@ export function useTaskBoard(input: {
   readonly selectedSlug: string | null;
   readonly prefs: TasksPrefs;
   readonly query: string;
+  /** Sample tasks shown instead of the real ones while the practice project is selected. */
+  readonly practiceTasks?: ReadonlyArray<TaskBoardTask>;
 }): TaskBoardState {
-  const { selectedSlug, prefs, query } = input;
+  const { selectedSlug, prefs, query, practiceTasks } = input;
   const environmentId = usePrimaryEnvironmentId();
   const workspace = useEnvironmentQuery(
     environmentId ? taskBoardWorkspaceQuery({ environmentId, input: {} }) : null,
@@ -112,9 +120,14 @@ export function useTaskBoard(input: {
   useVisibleInterval(refreshShared, SHARED_REFRESH_MS, hasSharedBoards);
 
   const sharedTasks = shared.tasks;
-  const allTasks = useMemo(
+  const realTasks = useMemo(
     () => mergeTasks(data?.tasks ?? [], sharedTasks),
     [data?.tasks, sharedTasks],
+  );
+  const allTasks = useMemo(
+    () =>
+      practiceTasks && selectedSlug === PRACTICE_SLUG ? mergeTasks(practiceTasks, []) : realTasks,
+    [practiceTasks, realTasks, selectedSlug],
   );
 
   // The page's clock moves with each answer from the server rather than on its own timer.
@@ -139,7 +152,7 @@ export function useTaskBoard(input: {
     () => groupBySection(visibleTasks, projects, { hideEmpty: true }),
     [projects, visibleTasks],
   );
-  const rail = useMemo(() => buildRailEntries(allTasks, projects), [allTasks, projects]);
+  const rail = useMemo(() => buildRailEntries(realTasks, projects), [realTasks, projects]);
   const dashboard = useMemo(
     () => buildDashboard(scopedTasks, now, member),
     [member, now, scopedTasks],

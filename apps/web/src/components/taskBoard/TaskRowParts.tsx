@@ -33,8 +33,8 @@ export function LaneChip({ labels }: { readonly labels: ReadonlyArray<string> })
   if (!lane) return null;
   const name = lane.slice(LANE_PREFIX.length).replace(/-/g, " ");
   return (
-    <Badge variant="secondary" size="sm" className="capitalize">
-      {name}
+    <Badge variant="secondary" size="sm">
+      {name.replace(/(^|\s)\S/g, (letter) => letter.toUpperCase())}
     </Badge>
   );
 }
