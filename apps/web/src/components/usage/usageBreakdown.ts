@@ -183,7 +183,7 @@ export function freeModelKind(model: string): "free" | "local" | null {
  * leading dot and provider name, so `.claude` is "default" and
  * `.claude-simplygersi` is "simplygersi".
  */
-export function sourceLabel(provider: UsageProviderKind, sourcePath: string | undefined): string {
+function sourceLabel(provider: UsageProviderKind, sourcePath: string | undefined): string {
   if (sourcePath === undefined) return "Other";
   const base = sourcePath.split(/[\\/]+/).findLast((part) => part !== "") ?? sourcePath;
   const stem = base.replace(/^\.+/, "").replace(new RegExp(`^${provider}[-_]?`, "i"), "");
