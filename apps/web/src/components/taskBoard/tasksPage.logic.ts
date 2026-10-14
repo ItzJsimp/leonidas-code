@@ -5,10 +5,10 @@ import type {
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 
+import { inDailyFocus } from "@t3tools/client-runtime/task-board/daily-planning";
+
 import {
   groupBySection,
-  isOpen,
-  daysUntilDue,
   shareableOpenCount,
   type TaskFilters,
   type TaskSort,
@@ -218,12 +218,7 @@ export function tasksInFocus(
   includeClosed = false,
 ): TaskView[] {
   if (focus === "all") return [...tasks];
-  return tasks.filter((task) => {
-    if (!isOpen(task) && !(includeClosed && task.status === "done")) return false;
-    if (focus === "inbox") return task.section === "general";
-    const days = daysUntilDue(task.due, now);
-    return days !== null && (focus === "today" ? days <= 0 : days >= 0);
-  });
+  return tasks.filter((task) => inDailyFocus(task, focus, now, includeClosed));
 }
 
 /**

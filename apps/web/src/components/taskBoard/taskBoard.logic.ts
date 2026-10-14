@@ -6,6 +6,9 @@ import type {
   TaskBoardTaskStatus,
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
+import { daysUntilDue, dueSortKey } from "@t3tools/client-runtime/task-board/daily-planning";
+
+export { daysUntilDue, formatDue } from "@t3tools/client-runtime/task-board/daily-planning";
 
 export type TaskView = TaskBoardTask & {
   origin: "local" | "shared" | "both";
@@ -206,26 +209,6 @@ export function filterTasks<T extends TaskView>(
   });
 }
 
-/** Days from `now`'s local date to a `yyyy-mm-dd` due date, or null when absent or malformed. */
-export function daysUntilDue(due: string | null | undefined, now: number): number | null {
-  if (!due) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(due);
-  if (!match) return null;
-  const today = new Date(now);
-  const dueDay = new Date(`${match[0]}T00:00:00Z`).getTime();
-  if (!Number.isFinite(dueDay) || new Date(dueDay).toISOString().slice(0, 10) !== match[0])
-    return null;
-  const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((dueDay - todayDay) / DAY_MS);
-}
-
-function dueSortKey(task: TaskBoardTask): number {
-  const match = task.due ? /^(\d{4})-(\d{2})-(\d{2})/.exec(task.due) : null;
-  return match
-    ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-    : Number.POSITIVE_INFINITY;
-}
-
 export function sortTasks<T extends TaskBoardTask>(tasks: ReadonlyArray<T>, sort: TaskSort): T[] {
   const byPriority = (a: T, b: T) => priorityRank(a.priority) - priorityRank(b.priority);
   const byUpdated = (a: T, b: T) => b.updatedAt - a.updatedAt;
@@ -237,8 +220,8 @@ export function sortTasks<T extends TaskBoardTask>(tasks: ReadonlyArray<T>, sort
       return copy.sort(byUpdated);
     case "due":
       return copy.sort((a, b) => {
-        const left = dueSortKey(a);
-        const right = dueSortKey(b);
+        const left = dueSortKey(a.due);
+        const right = dueSortKey(b.due);
         if (left !== right) return left < right ? -1 : 1;
         return byPriority(a, b) || byUpdated(a, b);
       });
@@ -581,15 +564,6 @@ export function relativeTime(ms: number, now: number): string {
     day: "numeric",
     ...(sameYear ? {} : { year: "numeric" }),
   });
-}
-
-/** Human due label, or null when the task has no valid due date. */
-export function formatDue(due: string | null | undefined, now: number): string | null {
-  const days = daysUntilDue(due, now);
-  if (days === null) return null;
-  if (days < 0) return `Overdue ${-days}d`;
-  if (days === 0) return "Due today";
-  return `Due in ${days}d`;
 }
 
 /** Open cards in a section that are not yet published to the shared board. */

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAtomValue } from "@effect/atom-react";
+import { defaultDueForFocus } from "@t3tools/client-runtime/task-board/daily-planning";
 
 import { WorkspacePageContainer } from "~/components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
@@ -153,11 +154,8 @@ export function TasksPage() {
           : prefs.focus === "upcoming"
             ? "Upcoming"
             : (railEntry?.name ?? "All tasks");
-  const date = new Date(board.now);
   const defaultDue =
-    prefs.focus === "today" || prefs.focus === "upcoming"
-      ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-      : "";
+    prefs.focus === "all" ? "" : (defaultDueForFocus(prefs.focus, board.now) ?? "");
 
   const picker = (
     <div className="lg:hidden">

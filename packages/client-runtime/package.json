@@ -43,6 +43,10 @@
       "types": "./src/secretRequest.ts",
       "default": "./src/secretRequest.ts"
     },
+    "./task-board/daily-planning": {
+      "types": "./src/taskBoard/dailyPlanning.ts",
+      "default": "./src/taskBoard/dailyPlanning.ts"
+    },
     "./scheduled-task-webhook": {
       "types": "./src/scheduledTaskWebhook.ts",
       "default": "./src/scheduledTaskWebhook.ts"
