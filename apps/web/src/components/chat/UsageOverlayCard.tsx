@@ -257,7 +257,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
 }) {
   const navigate = useNavigate();
   const updateSettings = useUpdateClientSettings();
-  const { active } = useConnectedUsageAccounts(environmentId, instanceId);
+  const { active, others } = useConnectedUsageAccounts(environmentId, instanceId);
   const [expanded, setExpanded] = useState(false);
   const [view, toggleView] = useLimitView();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -284,13 +284,15 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
       : null;
   const severity = percent === null ? "normal" : usageSeverity(percent);
   const primary = active[0] ?? null;
+  const activeIds = useMemo(() => new Set(active.map((account) => account.id)), [active]);
+  const accounts = useMemo(() => [...active, ...others], [active, others]);
   const benchmarkCandidates = useMemo(
     () => connectedBenchmarkCandidates(providerEntries, instanceId),
     [providerEntries, instanceId],
   );
 
   const freshness = limitsFreshness(
-    active.map((account) => account.limits.checkedAt),
+    accounts.map((account) => account.limits.checkedAt),
     now,
   );
 
@@ -399,11 +401,17 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           ) : null}
         </div>
 
-        {/* This chat's account only; the full usage overview lists the rest */}
-        {active.length > 0 ? (
+        {/* Every connected account, this chat's first */}
+        {accounts.length > 0 ? (
           <div className="flex flex-col gap-3.5 border-t border-border/60 pt-3">
-            {active.map((account) => (
-              <AccountLimits key={account.id} account={account} active now={now} view={view} />
+            {accounts.map((account) => (
+              <AccountLimits
+                key={account.id}
+                account={account}
+                active={activeIds.has(account.id)}
+                now={now}
+                view={view}
+              />
             ))}
           </div>
         ) : (
