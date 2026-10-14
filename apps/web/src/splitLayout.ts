@@ -41,14 +41,14 @@ export interface Rect {
 }
 
 export const MAX_PANES = 6;
-export const MIN_RATIO = 0.15;
-export const MIN_PANE_WIDTH_PX = 320;
-export const MIN_PANE_HEIGHT_PX = 260;
+const MIN_RATIO = 0.15;
+const MIN_PANE_WIDTH_PX = 320;
+const MIN_PANE_HEIGHT_PX = 260;
 
 const EPSILON = 1e-6;
 
 let idCounter = 0;
-export function createSplitId(prefix: "leaf" | "split" = "leaf"): string {
+function createSplitId(prefix: "leaf" | "split" = "leaf"): string {
   idCounter += 1;
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`;
 }
@@ -265,7 +265,7 @@ export function findNeighbor(
 }
 
 /** Swaps two panes' positions. Pane identity moves with the chat, so nothing remounts. */
-export function swapLeaves(root: SplitNode, aId: string, bId: string): SplitNode {
+function swapLeaves(root: SplitNode, aId: string, bId: string): SplitNode {
   const a = findLeaf(root, aId);
   const b = findLeaf(root, bId);
   if (!a || !b || aId === bId) return root;
@@ -306,7 +306,7 @@ export const LAYOUT_PRESET_LABELS: Record<LayoutPresetId, string> = {
   "main-bottom": "Main + bottom row",
 };
 
-export function presetPaneCount(preset: LayoutPresetId): number {
+function presetPaneCount(preset: LayoutPresetId): number {
   switch (preset) {
     case "single":
       return 1;

@@ -3,8 +3,8 @@ import { useEffect } from "react";
 
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
-export const LEONIDAS_GRID_STORAGE_KEY = "leonidas-code:appearance-grid";
-export const LEONIDAS_GLOW_STORAGE_KEY = "leonidas-code:appearance-glow";
+const LEONIDAS_GRID_STORAGE_KEY = "leonidas-code:appearance-grid";
+const LEONIDAS_GLOW_STORAGE_KEY = "leonidas-code:appearance-glow";
 export const DEFAULT_LEONIDAS_GLOW_STRENGTH = 30;
 
 export function clampLeonidasGlowStrength(value: number): number {

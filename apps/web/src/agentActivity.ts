@@ -79,7 +79,7 @@ export interface WaitingOn {
  * subagent and nothing is thinking or writing. Short file reads and searches
  * return at once, so they never count as a wait.
  */
-export function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
+function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
   const live = items.filter((item) => item.status === "running" || item.status === "pending");
   if (live.some((item) => item.type === "reasoning" || item.type === "assistant_message")) {
     return [];

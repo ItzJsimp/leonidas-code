@@ -208,7 +208,7 @@ export type PersistedComposerFileAttachment = typeof PersistedComposerFileAttach
  * handle cannot serialize, so it persists as a metadata-only marker (no
  * `attachmentId`) and hydrates as a needs-reattach row instead of vanishing.
  */
-export const PersistedComposerDraftFileAttachment = Schema.Struct({
+const PersistedComposerDraftFileAttachment = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
   mimeType: Schema.String,
