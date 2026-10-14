@@ -81,6 +81,8 @@ const encodeCommand = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))
 const decodeCreate = Schema.decodeUnknownEffect(SavedItemCreateInput);
 const decodeUpdate = Schema.decodeUnknownEffect(SavedItemUpdateInput);
 const isSavedItemError = Schema.is(SavedItemError);
+/** Permanent removal: the event stays in the log so a rebuild replays it, but the item leaves the projection. */
+const DELETE_EVENT = "saved_item.delete";
 /** Field order can change across transports and reconnects without changing a retried command. */
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -124,7 +126,9 @@ const make = Effect.gen(function* () {
       const json = yield* encode(item);
       yield* sql`INSERT INTO saved_item_events (command_id, item_id, event_type, item_json, occurred_at)
       VALUES (${commandId}, ${item.id}, ${eventType}, ${json}, ${item.updatedAt})`;
-      yield* project(item);
+      if (eventType === DELETE_EVENT)
+        yield* sql`DELETE FROM projection_saved_items WHERE item_id = ${item.id}`;
+      else yield* project(item);
     });
   const command = <I extends { readonly commandId: CommandId }, E>(
     input: I,
@@ -229,15 +233,23 @@ const make = Effect.gen(function* () {
       Effect.gen(function* () {
         const item = yield* get(input.id);
         yield* editable(item);
+        const caller = yield* SavedItemCaller;
+        // A pending schedule keeps running without its item, so it blocks deletion; agents never delete.
+        const deletable =
+          caller.actor === "user" &&
+          (!item.scheduledTaskId || item.status === "launched" || item.status === "done");
         const valid =
-          input.action === "archive"
-            ? item.status !== "archived"
-            : input.action === "restore"
-              ? item.status === "archived"
-              : input.action === "done"
-                ? item.status === "launched" || item.status === "queued"
-                : item.status === "done" || item.status === "launched";
+          input.action === "delete"
+            ? deletable
+            : input.action === "archive"
+              ? item.status !== "archived"
+              : input.action === "restore"
+                ? item.status === "archived"
+                : input.action === "done"
+                  ? item.status === "launched" || item.status === "queued"
+                  : item.status === "done" || item.status === "launched";
         if (!valid) return yield* new SavedItemError({ reason: "invalid_transition" });
+        if (input.action === "delete") return { ...item, updatedAt: yield* now };
         return {
           ...item,
           status:
@@ -382,7 +394,10 @@ const make = Effect.gen(function* () {
         AND NOT EXISTS (SELECT 1 FROM saved_item_events WHERE command_id = 'scheduled-item:' || effect.command_id)
         ORDER BY message.created_at DESC`;
           for (const row of rows) {
-            const item = yield* get(SavedItemId.make(row.item_id));
+            // A deleted item has nothing left to mark launched.
+            const found = yield* Effect.option(get(SavedItemId.make(row.item_id)));
+            if (found._tag === "None") continue;
+            const item = found.value;
             const eventId = CommandId.make(`scheduled-item:${row.command_id}`);
             const exists =
               yield* sql`SELECT sequence FROM saved_item_events WHERE command_id = ${eventId}`;
@@ -429,9 +444,15 @@ const make = Effect.gen(function* () {
         Effect.gen(function* () {
           const rows = yield* sql<{
             item_json: string;
-          }>`SELECT item_json FROM saved_item_events ORDER BY sequence`;
+            event_type: string;
+          }>`SELECT item_json, event_type FROM saved_item_events ORDER BY sequence`;
           yield* sql`DELETE FROM projection_saved_items`;
-          for (const row of rows) yield* project(yield* decode(row.item_json));
+          for (const row of rows) {
+            const item = yield* decode(row.item_json);
+            if (row.event_type === DELETE_EVENT)
+              yield* sql`DELETE FROM projection_saved_items WHERE item_id = ${item.id}`;
+            else yield* project(item);
+          }
         }),
       )
       .pipe(storage),

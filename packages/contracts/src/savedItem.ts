@@ -83,7 +83,7 @@ export type SavedItemUpdateInput = typeof SavedItemUpdateInput.Type;
 export const SavedItemTransitionInput = Schema.Struct({
   commandId: CommandId,
   id: SavedItemId,
-  action: Schema.Literals(["archive", "restore", "requeue", "done"]),
+  action: Schema.Literals(["archive", "restore", "requeue", "done", "delete"]),
 });
 export type SavedItemTransitionInput = typeof SavedItemTransitionInput.Type;
 export const SavedItemImportInput = Schema.Struct({

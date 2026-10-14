@@ -145,3 +145,30 @@ it.effect("rejects missing items, duplicate ids, invalid lifecycle and invalid i
     );
   }).pipe(Effect.provide(layer)),
 );
+
+it.effect("deletes permanently, survives a rebuild, and blocks agents and pending schedules", () =>
+  Effect.gen(function* () {
+    const service = yield* SavedItems.SavedItemService;
+    const keep = yield* service.create(create("keep"));
+    const gone = yield* service.create(create("gone"));
+    const del = (id: typeof gone.id, name: string) =>
+      service.transition({ id, commandId: CommandId.make(name), action: "delete" });
+    const asAgent = Effect.provideService(SavedItems.SavedItemCaller, {
+      actor: "agent",
+      threadId: null,
+    });
+    assert.equal((yield* Effect.result(del(gone.id, "agent-del").pipe(asAgent)))._tag, "Failure");
+    assert.equal((yield* service.get(gone.id)).id, gone.id);
+    yield* del(gone.id, "del");
+    // A retried command returns its receipt instead of failing on the missing row.
+    assert.equal((yield* del(gone.id, "del")).id, gone.id);
+    assert.equal((yield* Effect.result(service.get(gone.id)))._tag, "Failure");
+    assert.equal((yield* service.list({ status: "archived" })).items.length, 0);
+    yield* service.rebuild;
+    assert.deepEqual(
+      (yield* service.list({})).items.map((item) => item.id),
+      [keep.id],
+    );
+    assert.equal((yield* Effect.result(del(gone.id, "del-again")))._tag, "Failure");
+  }).pipe(Effect.provide(layer)),
+);
