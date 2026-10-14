@@ -3,12 +3,33 @@ import * as NodeFSP from "node:fs/promises";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
-import { renderAiosFoldersScript } from "./aiosFolders.logic";
+import {
+  AIOS_FOLDERS_SCRIPT_URL,
+  buildAiosFoldersCommand,
+  renderAiosFoldersScript,
+} from "./aiosFolders.logic";
 import { AIOS_PRESET } from "./leonidasSetup.logic";
 
 const committedScript = NodeURL.fileURLToPath(
   new URL("../../../../scripts/New-AiosFolders.ps1", import.meta.url),
 );
+
+describe("buildAiosFoldersCommand", () => {
+  it("runs the published script with the default folder under the user's home", () => {
+    expect(buildAiosFoldersCommand("~/AIOS")).toBe(
+      `& ([scriptblock]::Create((irm ${AIOS_FOLDERS_SCRIPT_URL}))) -Path (Join-Path $HOME 'AIOS')`,
+    );
+  });
+
+  it("passes an absolute folder as a quoted literal", () => {
+    expect(buildAiosFoldersCommand("D:\\My AIOS")).toContain("-Path 'D:\\My AIOS'");
+  });
+
+  it("maps a bare ~ to the home folder and escapes quotes", () => {
+    expect(buildAiosFoldersCommand("~")).toMatch(/-Path \$HOME$/);
+    expect(buildAiosFoldersCommand("D:\\Jake's AIOS")).toContain("-Path 'D:\\Jake''s AIOS'");
+  });
+});
 
 describe("renderAiosFoldersScript", () => {
   it("lists every starter path from the preset", () => {
