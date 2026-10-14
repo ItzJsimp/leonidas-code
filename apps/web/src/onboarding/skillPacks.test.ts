@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { LEONIDAS_GOALS } from "./leonidasSetup.logic";
 import {
+  CORE_SKILLS,
   SKILL_PACKS,
   skillFiles,
   skillMarkdown,
@@ -10,6 +11,7 @@ import {
 } from "./skillPacks";
 
 const allSkills = Object.values(SKILL_PACKS).flat();
+const everySkill = [...CORE_SKILLS, ...allSkills];
 
 describe("skillPacks", () => {
   it("gives every goal exactly two skills", () => {
@@ -20,9 +22,9 @@ describe("skillPacks", () => {
   });
 
   it("uses unique kebab-case names and short descriptions", () => {
-    const names = allSkills.map((skill) => skill.name);
+    const names = everySkill.map((skill) => skill.name);
     expect(new Set(names).size).toBe(names.length);
-    for (const skill of allSkills) {
+    for (const skill of everySkill) {
       expect(skill.name).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
       expect(skill.description.length).toBeGreaterThan(0);
       expect(skill.description.length).toBeLessThan(200);
@@ -50,12 +52,15 @@ describe("skillPacks", () => {
     expect(skillFiles(skill, "skills")[0]?.relativePath).toBe(`skills/${skill.name}/SKILL.md`);
   });
 
-  it("suggests skills in goal order, deduped, ignoring unknown ids", () => {
+  it("always includes the core skills, then goal skills in order, deduped, ignoring unknown ids", () => {
+    const core = CORE_SKILLS.map((s) => s.name);
+    expect(core).toEqual(["grill-me", "session-handoff"]);
     const names = suggestSkills(["learning", "nope", "web-apps", "learning"]).map((s) => s.name);
     expect(names).toEqual([
+      ...core,
       ...SKILL_PACKS["learning"]!.map((s) => s.name),
       ...SKILL_PACKS["web-apps"]!.map((s) => s.name),
     ]);
-    expect(suggestSkills(["unknown", "toString"])).toEqual([]);
+    expect(suggestSkills(["unknown", "toString"]).map((s) => s.name)).toEqual(core);
   });
 });

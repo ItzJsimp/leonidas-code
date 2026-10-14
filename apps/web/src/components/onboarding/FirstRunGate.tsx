@@ -2,7 +2,7 @@ import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Atom } from "effect/reactivity";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import {
   ensureClientSettingsHydrated,
@@ -30,6 +30,7 @@ import { primaryServerConfigAtom, primaryServerWelcomeAtom } from "../../state/s
 import { environmentShell } from "../../state/shell";
 import { environmentThreadShells } from "../../state/threads";
 import { Button } from "../ui/button";
+import { useOnboardingSimActive } from "./sim/onboardingSim.flag";
 
 /**
  * Holds back authenticated and hosted app trees until the first-run decision
@@ -70,15 +71,34 @@ const workspaceEvidenceLiveAtom = Atom.make((get) => {
   return true;
 }).pipe(Atom.withLabel("web-onboarding-workspace-evidence-live"));
 
-export function FirstRunGate({
-  enabled,
-  hostedStatic,
-  children,
-}: {
+interface FirstRunGateProps {
   readonly enabled: boolean;
   readonly hostedStatic: boolean;
   readonly children: React.ReactNode;
-}) {
+}
+
+// Dev-only new-user walkthrough with fake accounts; see sim/onboardingSim.flag.ts.
+const OnboardingSimulation = import.meta.env.DEV
+  ? lazy(() =>
+      import("./sim/OnboardingSimulation").then((module) => ({
+        default: module.OnboardingSimulation,
+      })),
+    )
+  : null;
+
+export function FirstRunGate(props: FirstRunGateProps) {
+  const simulating = useOnboardingSimActive();
+  if (simulating && OnboardingSimulation !== null) {
+    return (
+      <Suspense fallback={null}>
+        <OnboardingSimulation />
+      </Suspense>
+    );
+  }
+  return <FirstRunGateInner {...props} />;
+}
+
+function FirstRunGateInner({ enabled, hostedStatic, children }: FirstRunGateProps) {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const hydrationStatus = useClientSettingsHydrationStatus();

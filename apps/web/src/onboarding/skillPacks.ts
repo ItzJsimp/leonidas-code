@@ -437,6 +437,52 @@ export const SKILL_PACKS: Readonly<Record<string, readonly BundledSkill[]>> = {
   ],
 };
 
+/**
+ * Installed for everyone, whatever goals they picked: the two habits that make
+ * every other session better (get the plan right first, then hand off cleanly).
+ */
+export const CORE_SKILLS: readonly BundledSkill[] = [
+  {
+    name: "grill-me",
+    description:
+      "Use before building anything unclear: interview the user one question at a time until the plan is settled, then summarize it.",
+    body: lines(
+      "# Grill me",
+      "",
+      'Use this when the user says "grill me", or hands over a plan, idea or request that still has open questions.',
+      "",
+      "1. Read the files first. If the code or notes already answer a question, do not ask it.",
+      "2. Ask exactly one question at a time, in plain words, and wait for the answer.",
+      "3. With each question, give your own recommended answer and the one thing that would change it.",
+      "4. Start with the decisions that block everything else (goal, who it is for, what must never happen), then go into details.",
+      "5. When an answer opens a new question, follow it before moving on.",
+      "6. Stop when the main decisions are settled. Do not invent questions to look thorough.",
+      "7. Finish with a short summary: what we decided, what is still open, and the first step to build.",
+      "",
+      "Done looks like: the user could hand the summary to anyone and they would build the same thing.",
+    ),
+  },
+  {
+    name: "session-handoff",
+    description:
+      "Use when ending a chat or running low on context: write a handoff file so a fresh chat can continue exactly where this one stopped.",
+    body: lines(
+      "# Session handoff",
+      "",
+      'Use this when the user says "handoff", wants to close the chat, or the conversation has grown long.',
+      "",
+      "1. Make sure everything worth keeping is saved: finish or clearly mark any half-done edit, and list files you changed.",
+      "2. Write one file named handoff-docs/YYYY-MM-DD-short-topic.md in the project folder.",
+      "3. Put these headings in it: Goal, What is done, What is left (in order), Decisions and why, Files that matter, Commands to run, Open questions.",
+      '4. Write for someone who has seen none of this chat. Use exact file names, commands and error messages, not "as discussed".',
+      "5. Keep it under one page. Link to files instead of pasting their contents.",
+      '6. Tell the user the file path and give them one sentence to paste into a new chat, such as "Continue from handoff-docs/<file>".',
+      "",
+      "Done looks like: a new chat can read the file and carry on without asking what happened.",
+    ),
+  },
+];
+
 const escapeYamlDoubleQuoted = (value: string): string =>
   value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ");
 
@@ -455,12 +501,13 @@ export function skillFiles(
 export function suggestSkills(goalIds: readonly string[]): readonly BundledSkill[] {
   const seen = new Set<string>();
   const result: BundledSkill[] = [];
-  for (const id of goalIds) {
-    for (const skill of Object.hasOwn(SKILL_PACKS, id) ? SKILL_PACKS[id]! : []) {
-      if (seen.has(skill.name)) continue;
-      seen.add(skill.name);
-      result.push(skill);
-    }
+  const goalSkills = goalIds.flatMap((id) =>
+    Object.hasOwn(SKILL_PACKS, id) ? SKILL_PACKS[id]! : [],
+  );
+  for (const skill of [...CORE_SKILLS, ...goalSkills]) {
+    if (seen.has(skill.name)) continue;
+    seen.add(skill.name);
+    result.push(skill);
   }
   return result;
 }

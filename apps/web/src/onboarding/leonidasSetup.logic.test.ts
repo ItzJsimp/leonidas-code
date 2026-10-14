@@ -24,7 +24,7 @@ describe("leonidasSetup.logic", () => {
 
   it("names the picked goals and every preset path in the prompt", () => {
     const prompt = buildAiosSetupPrompt(["games", "data"]);
-    expect(prompt).toContain("Games, Data and analysis");
+    expect(prompt).toContain("Games, Data and numbers");
     for (const entry of AIOS_PRESET) expect(prompt).toContain(entry.path);
   });
 
