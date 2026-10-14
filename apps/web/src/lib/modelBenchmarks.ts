@@ -20,7 +20,7 @@ export type BenchmarkQuota =
   | { readonly kind: "unknown" };
 
 /** The tightest usage window of one provider instance. */
-export function instanceQuota(entry: ProviderInstanceEntry): BenchmarkQuota {
+function instanceQuota(entry: ProviderInstanceEntry): BenchmarkQuota {
   if (METERED_DRIVERS.has(entry.driverKind)) return { kind: "metered" };
   const windows = entry.snapshot.usageLimits?.windows ?? [];
   if (windows.length === 0) return { kind: "unknown" };

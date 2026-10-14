@@ -327,7 +327,7 @@ export function contextWindowFigures(snapshot: ContextWindowSnapshot | null): Co
 }
 
 /** Limits older than this are drawn as stale: the source has not been read in a while. */
-export const LIMITS_STALE_AFTER_MS = 10 * MINUTE;
+const LIMITS_STALE_AFTER_MS = 10 * MINUTE;
 
 /**
  * How current the numbers on the card are: the oldest read among the accounts
