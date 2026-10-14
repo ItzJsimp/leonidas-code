@@ -1,5 +1,7 @@
 import * as Cause from "effect/Cause";
+import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
+import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -33,6 +35,11 @@ import * as ServerSettings from "../serverSettings.ts";
 const DEFAULT_VCS_STATUS_REFRESH_INTERVAL = Duration.seconds(30);
 const VCS_STATUS_REFRESH_FAILURE_BASE_DELAY = Duration.seconds(30);
 const VCS_STATUS_REFRESH_FAILURE_MAX_DELAY = Duration.minutes(15);
+// A refresh that runs this long, or fails, blocks repeat calls for a short
+// time. The repeat gets the same outcome instead of starting another run.
+const VCS_STATUS_SLOW_REFRESH_THRESHOLD_MS = 5_000;
+const VCS_STATUS_SLOW_REFRESH_BACKOFF_MS = 10_000;
+const VCS_STATUS_FAILED_REFRESH_BACKOFF_MS = 2_000;
 const MAX_FAILURE_DIAGNOSTIC_VALUES = 8;
 const MAX_FAILURE_DIAGNOSTIC_VALUE_LENGTH = 128;
 
@@ -478,13 +485,10 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  const refreshStatus: VcsStatusBroadcaster["Service"]["refreshStatus"] = Effect.fn(
-    "VcsStatusBroadcaster.refreshStatus",
-  )(function* (rawCwd) {
-    const cwd = yield* withFileSystem(normalizeCwd(rawCwd));
+  const refreshStatusCore = (cwd: string, rawCwd: string) =>
     // invalidateStatus (not the two partial invalidations) so an explicit
     // refresh also bypasses GitManager's slow PR-lookup cache.
-    return yield* withRemoteWriteLock(
+    withRemoteWriteLock(
       cwd,
       Effect.gen(function* () {
         yield* workflow.invalidateStatus(cwd);
@@ -495,6 +499,53 @@ export const make = Effect.gen(function* () {
         if (pulled !== null) return mergeGitStatusParts(pulled.local, pulled.remote);
         return yield* updateCachedStatus(cwd, local, remote, { publish: true });
       }),
+    );
+
+  // Single-flight per cwd: callers that arrive during a run join it. After a
+  // slow or failed run, callers inside the backoff window get its outcome.
+  const refreshFlights = new Map<
+    string,
+    Deferred.Deferred<VcsStatusResult, GitManagerServiceError>
+  >();
+  const recentRefreshes = new Map<
+    string,
+    { until: number; exit: Exit.Exit<VcsStatusResult, GitManagerServiceError> }
+  >();
+
+  const refreshStatus: VcsStatusBroadcaster["Service"]["refreshStatus"] = Effect.fn(
+    "VcsStatusBroadcaster.refreshStatus",
+  )(function* (rawCwd) {
+    const cwd = yield* withFileSystem(normalizeCwd(rawCwd));
+    const startedAt = yield* Clock.currentTimeMillis;
+    const recent = recentRefreshes.get(cwd);
+    if (recent !== undefined) {
+      if (startedAt < recent.until) return yield* recent.exit;
+      recentRefreshes.delete(cwd);
+    }
+    const inFlight = refreshFlights.get(cwd);
+    if (inFlight !== undefined) return yield* Deferred.await(inFlight);
+
+    const deferred = yield* Deferred.make<VcsStatusResult, GitManagerServiceError>();
+    refreshFlights.set(cwd, deferred);
+    return yield* refreshStatusCore(cwd, rawCwd).pipe(
+      Effect.onExit((exit) =>
+        Effect.gen(function* () {
+          const finishedAt = yield* Clock.currentTimeMillis;
+          refreshFlights.delete(cwd);
+          const failed = Exit.isFailure(exit);
+          const interrupted = failed && Cause.hasInterruptsOnly(exit.cause);
+          const slow = finishedAt - startedAt >= VCS_STATUS_SLOW_REFRESH_THRESHOLD_MS;
+          if (!interrupted && (failed || slow)) {
+            recentRefreshes.set(cwd, {
+              until:
+                finishedAt +
+                (slow ? VCS_STATUS_SLOW_REFRESH_BACKOFF_MS : VCS_STATUS_FAILED_REFRESH_BACKOFF_MS),
+              exit,
+            });
+          }
+          yield* Deferred.done(deferred, exit);
+        }),
+      ),
     );
   });
 
