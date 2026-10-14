@@ -62,6 +62,8 @@ export interface ModelTotals {
    * mixes these with reported costs counts its tokens by record share.
    */
   readonly unpricedTokens: number;
+  /** Tokens per reasoning effort, largest first. Empty when the provider records none. */
+  readonly efforts: readonly { readonly effort: string; readonly totalTokens: number }[];
   readonly costShare: number;
   readonly tokenShare: number;
 }
@@ -176,7 +178,13 @@ function bucketsForSource(summary: UsageSummary, source: UsageSource): readonly 
 }
 
 function bucketKey(bucket: UsageBucket): string {
-  return JSON.stringify([bucket.day, bucket.hourStart ?? null, bucket.provider, bucket.model]);
+  return JSON.stringify([
+    bucket.day,
+    bucket.hourStart ?? null,
+    bucket.provider,
+    bucket.model,
+    bucket.effort ?? null,
+  ]);
 }
 
 /**
@@ -465,6 +473,7 @@ export function mergeUsage(
       records: number;
       unpricedRecords: number;
       unpricedTokens: number;
+      efforts: Map<string, number>;
     }
   >();
   const dailyAccumulator = new Map<
@@ -555,6 +564,7 @@ export function mergeUsage(
         records: 0,
         unpricedRecords: 0,
         unpricedTokens: 0,
+        efforts: new Map<string, number>(),
       };
       model.costUsd += bucket.costUsd;
       model.totalTokens += tokens;
@@ -569,6 +579,9 @@ export function mergeUsage(
       model.unpricedRecords += bucket.unpricedRecords;
       if (bucket.records > 0) {
         model.unpricedTokens += (tokens * bucket.unpricedRecords) / bucket.records;
+      }
+      if (bucket.effort !== undefined) {
+        model.efforts.set(bucket.effort, (model.efforts.get(bucket.effort) ?? 0) + tokens);
       }
       modelAccumulator.set(modelKey, model);
 
@@ -634,6 +647,9 @@ export function mergeUsage(
       records: totals.records,
       unpricedRecords: totals.unpricedRecords,
       unpricedTokens: totals.unpricedTokens,
+      efforts: [...totals.efforts]
+        .map(([effort, totalTokens]) => ({ effort, totalTokens }))
+        .sort((a, b) => b.totalTokens - a.totalTokens),
       costShare: costUsd === 0 ? 0 : totals.costUsd / costUsd,
       tokenShare: totalTokens === 0 ? 0 : totals.totalTokens / totalTokens,
     }))

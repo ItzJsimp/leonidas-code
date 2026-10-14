@@ -35,6 +35,7 @@ const model = (
   records: 1,
   unpricedRecords: 0,
   unpricedTokens: 0,
+  efforts: [],
   costShare: 0,
   tokenShare: 0,
   ...overrides,

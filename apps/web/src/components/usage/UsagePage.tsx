@@ -914,6 +914,22 @@ export function UsagePage() {
                                   >
                                     <ProviderMark provider={model.provider} className="size-3.5" />
                                     {displayModelName(model.model)}
+                                    {model.efforts.length > 0 ? (
+                                      <span
+                                        className="rounded-sm border border-border px-1 text-3xs leading-4 font-medium text-muted-foreground"
+                                        title={model.efforts
+                                          .map(
+                                            (entry) =>
+                                              `${entry.effort}: ${formatTokens(entry.totalTokens)}`,
+                                          )
+                                          .join(", ")}
+                                      >
+                                        {model.efforts[0]?.effort}
+                                        {model.efforts.length > 1
+                                          ? ` +${model.efforts.length - 1}`
+                                          : ""}
+                                      </span>
+                                    ) : null}
                                   </button>
                                   <div
                                     aria-hidden

@@ -33,7 +33,8 @@ import { GUARD_LENGTH, type TranscriptParsePosition } from "./usageTranscriptRea
 // way, so v4 entries still load; see `decodeScanCache` for v4 stateful entries.
 // v6: records carry tool call counts. Older entries load as fallback history
 // but their live files re-parse whole.
-const USAGE_SCAN_CACHE_VERSION = 6 as const;
+// v7: Codex records carry their reasoning effort.
+const USAGE_SCAN_CACHE_VERSION = 7 as const;
 const SPEED_COMPATIBLE_SINCE_VERSION = 4;
 
 /**
@@ -42,9 +43,10 @@ const SPEED_COMPATIBLE_SINCE_VERSION = 4;
  * it, dropping saved usage for deleted transcripts. Separate files keep both.
  * A server reads the newest older file once, when its own file is missing.
  */
-export const SCAN_CACHE_FILE_NAME = "usage-scan-cache-v6.json";
+export const SCAN_CACHE_FILE_NAME = "usage-scan-cache-v7.json";
 /** Older cache files, newest first. */
 export const LEGACY_SCAN_CACHE_FILE_NAMES = [
+  "usage-scan-cache-v6.json",
   "usage-scan-cache-v5.json",
   "usage-scan-cache.json",
 ] as const;
@@ -90,6 +92,8 @@ type SerializedRecord = readonly [
   rateModelIndex?: number | null,
   /** Optional trailing field; absent or 0 means no tool calls. */
   toolCalls?: number,
+  /** Optional trailing field; absent or empty means no recorded effort. */
+  effort?: string,
 ];
 
 interface SerializedFile {
@@ -152,6 +156,7 @@ function serializeFile(entry: CachedFile, tables: InternTables): SerializedFile 
       ? null
       : intern(tables.models, tables.modelIndex, record.rateModel),
     record.toolCalls ?? 0,
+    record.effort ?? "",
   ];
   return {
     s: entry.size,
@@ -280,6 +285,7 @@ export function decodeScanCache(
         speedIndex,
         rateModelIndex,
         toolCalls,
+        effort,
       ] = row as SerializedRecord;
       const speed = typeof speedIndex === "number" ? SPEEDS[speedIndex] : undefined;
 
@@ -315,6 +321,7 @@ export function decodeScanCache(
         },
         reportedCostUsd: typeof reportedCostUsd === "number" ? reportedCostUsd : null,
         speed,
+        ...(typeof effort === "string" && effort !== "" ? { effort } : {}),
         ...(typeof toolCalls === "number" && toolCalls > 0 ? { toolCalls } : {}),
         dedupeKey: typeof dedupeKey === "string" ? dedupeKey : null,
       });
