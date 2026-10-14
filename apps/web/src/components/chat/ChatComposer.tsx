@@ -318,6 +318,7 @@ import type { ComposerContextSlice } from "./composerContextSlice";
 import type { ComposerAttachmentSlice } from "./composerAttachments";
 import type { ComposerLayoutSlice } from "./composerLayout";
 import { ContextWindowMeter } from "./ContextWindowMeter";
+import { computePromptDraftStats, formatPromptDraftStats } from "./promptDraftStats";
 import {
   providerSupportsManualCompaction,
   resolveContextWindowModelDisplayName,
@@ -5350,6 +5351,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     hasMultilinePrompt,
     timelineOverflows,
   });
+  const promptDraftStats = useMemo(
+    () =>
+      isComposerResting || isComposerApprovalState || activePendingProgress || prompt.length === 0
+        ? null
+        : computePromptDraftStats(prompt),
+    [activePendingProgress, isComposerApprovalState, isComposerResting, prompt],
+  );
   const expandedComposerImages = isComposerResting
     ? standaloneComposerImages.filter((image) => pendingSnapShotIdSet.has(image.id))
     : standaloneComposerImages;
@@ -7767,6 +7775,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     }
                   />
                 </ComposerContextActionsContext>
+                {promptDraftStats ? (
+                  <div
+                    data-testid="composer-draft-stats"
+                    className="mt-1 text-right text-2xs text-muted-foreground/70 tabular-nums"
+                    title={`${promptDraftStats.words.toLocaleString()} words · ${promptDraftStats.lines.toLocaleString()} lines. Tokens are an estimate for this message only; context is shown by the meter beside Send.`}
+                  >
+                    {formatPromptDraftStats(promptDraftStats)}
+                  </div>
+                ) : null}
                 {isComposerResting ? collapsedComposerImagePreviews : null}
                 {showMobilePendingAnswerActions ? (
                   <div
