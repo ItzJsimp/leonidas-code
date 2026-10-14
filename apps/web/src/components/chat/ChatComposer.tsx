@@ -7091,6 +7091,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     runtimeMode={runtimeMode}
                     interactionMode={interactionMode}
                     canSave={canOperateThread}
+                    threadId={routeKind === "server" ? activeThreadId : null}
                   />
                 ),
                 stash: (

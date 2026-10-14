@@ -24,11 +24,11 @@ export interface TourTarget {
 
 export const TOUR_TARGETS = {
   "saved-items": {
-    name: "Saved prompts and notes",
+    name: "Prompts",
     steps: [
       {
         title: "Keep a prompt for later",
-        body: "Use Save beside the composer to queue an unsent prompt. The arrow also saves notes or tasks. Open Saved to import Markdown, launch prompts, or schedule a one-time run.",
+        body: "Use Save beside the composer to queue an unsent prompt. The arrow also saves notes or tasks. Open Prompts to edit, remove or delete a prompt, queue it in the open thread, launch it in a new thread, or schedule a one-time run.",
         route: "/",
         anchor: "saved-items",
         tryPrompt:
