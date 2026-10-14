@@ -546,23 +546,25 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
       ) : null}
       {query.isPending && query.data === null ? (
         <div className="space-y-2" role="status" aria-label="Loading prompts">
-          <Skeleton className="h-20 rounded-xl" />
-          <Skeleton className="h-20 rounded-xl" />
-          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
         </div>
       ) : items.length === 0 && !query.error ? (
-        <Empty className="rounded-xl border border-dashed py-10" size="default">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <BookmarkPlusIcon />
-            </EmptyMedia>
-            <EmptyTitle>{EMPTY_COPY[status]}</EmptyTitle>
-            <EmptyDescription>
-              Write something in the composer and press Save, or paste exported Markdown here to
-              import it.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <div className="rounded-xl border border-dashed">
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <BookmarkPlusIcon />
+              </EmptyMedia>
+              <EmptyTitle>{EMPTY_COPY[status]}</EmptyTitle>
+              <EmptyDescription>
+                Write something in the composer and press Save, or paste exported Markdown here to
+                import it.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </div>
       ) : null}
       <ul className="space-y-2" aria-label="Saved items">
         {items.map((item) => {
