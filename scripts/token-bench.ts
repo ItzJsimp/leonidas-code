@@ -100,22 +100,21 @@ function runOne(variant: Variant, task: BenchTask, modelOverride?: string): RunR
     }
     const model = variant.model ?? modelOverride;
     const started = Date.now();
+    // The prompt goes in on stdin and the rule in a file, so the Windows shell never parses either.
+    const rulesFile = NodePath.join(dir, ".rules.txt");
+    if (variant.appendRules) NodeFS.writeFileSync(rulesFile, EFFICIENT_AGENT_RULES);
     const run = spawnSync(
       "claude",
       [
         "-p",
-        task.prompt,
-        "--output-format",
-        "json",
-        "--permission-mode",
-        "bypassPermissions",
+        "--output-format json",
+        "--permission-mode bypassPermissions",
         "--no-session-persistence",
-        "--setting-sources",
-        "project",
-        ...(variant.appendRules ? ["--append-system-prompt", EFFICIENT_AGENT_RULES] : []),
+        "--setting-sources project",
+        ...(variant.appendRules ? ["--append-system-prompt-file", JSON.stringify(rulesFile)] : []),
         ...(model ? ["--model", model] : []),
       ],
-      { cwd: dir, encoding: "utf8", timeout: 600_000 },
+      { cwd: dir, input: task.prompt, encoding: "utf8", timeout: 600_000, shell: true },
     );
     const parsed = parseClaudeResult(run.stdout ?? "");
     const check = spawnSync(task.check, { cwd: dir, shell: true, timeout: 60_000 });
