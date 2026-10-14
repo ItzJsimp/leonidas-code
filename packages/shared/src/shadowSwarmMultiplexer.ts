@@ -17,7 +17,7 @@ export interface MultiplexSelectionResult {
   readonly reason: string;
 }
 
-export function isAccountAvailable(account: SwarmAccountProfile, nowMs: number): boolean {
+function isAccountAvailable(account: SwarmAccountProfile, nowMs: number): boolean {
   const usedPercent = computeMaxUsedPercent(account.windows, nowMs);
   return (
     account.available &&

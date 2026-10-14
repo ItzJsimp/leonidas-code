@@ -1,7 +1,7 @@
 import type { SavedItemExport, SavedItemKind } from "@t3tools/contracts";
 
 /** Bumped only when the exported layout changes in a way an older importer cannot read. */
-export const SAVED_ITEM_MARKDOWN_VERSION = 1;
+const SAVED_ITEM_MARKDOWN_VERSION = 1;
 
 const KINDS: ReadonlyArray<SavedItemKind> = ["prompt", "note"];
 

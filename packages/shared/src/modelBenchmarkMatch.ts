@@ -52,7 +52,7 @@ const MODEL_ALIASES: Readonly<Record<string, string>> = {};
  * Candidate keys, most specific first. A key reached by reading an effort out
  * of the name carries that effort; a query's explicit effort always wins.
  */
-export function queryKeys(
+function queryKeys(
   query: ModelBenchmarkQuery,
 ): ReadonlyArray<{ readonly key: string; readonly effort?: string }> {
   const keys: Array<{ key: string; effort?: string }> = [];
@@ -79,7 +79,7 @@ export function queryKeys(
   return keys;
 }
 
-export const entryMatchKey = (entry: ModelBenchmarkEntry) =>
+const entryMatchKey = (entry: ModelBenchmarkEntry) =>
   canonicalModelKey(splitEffort(entry.name).base) || canonicalModelKey(entry.sourceModelKey);
 
 /** Entries grouped by match key, built once per catalog for repeated matching. */

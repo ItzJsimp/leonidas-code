@@ -2,7 +2,7 @@ import styleStandard from "./promptStyleStandard.json" with { type: "json" };
 
 /** Hard ceiling: longer candidates are trimmed at a sentence boundary. Soft target: 1 to 3. */
 export const MAX_SUGGESTION_SENTENCES = 2;
-export const SOFT_SUGGESTION_SENTENCES = 2;
+const SOFT_SUGGESTION_SENTENCES = 2;
 /** Ranking points lost per sentence beyond the soft target, against one point per shared word. */
 const LENGTH_PENALTY = 0.5;
 

@@ -162,7 +162,7 @@ const QUALITY_RANK: ReadonlyArray<{ readonly pattern: RegExp; readonly rank: num
 ];
 
 /** Position on the Quality list; larger is better. Unknown models sit mid-field. */
-export function qualityRank(slug: string): number {
+function qualityRank(slug: string): number {
   const normalized = slug.toLowerCase();
   const family = QUALITY_RANK.find((entry) => entry.pattern.test(normalized));
   const version = /(\d+)(?:[-.](\d+))?/.exec(normalized.replace(/^.*?(?=\d)/, ""));
@@ -267,7 +267,7 @@ export function projectUsedPercentAtReset(
  * high, and one projected to run dry before reset is the dearest. Null when a
  * window is already exhausted.
  */
-export function quotaOutlook(
+function quotaOutlook(
   limits: ServerProviderUsageLimits | undefined,
   now: number,
   history?: UsageHistoryProfile | ReadonlyArray<UsageObservationPoint>,
@@ -323,7 +323,7 @@ const chatTokens = (thread: AutoRouteThreadState) =>
  * re-reads the whole context; another provider reads its own baseline plus at
  * most the handoff cap of chat.
  */
-export function nextTurnInputCost(input: {
+function nextTurnInputCost(input: {
   readonly thread: AutoRouteThreadState;
   readonly driverKind: string;
   readonly profile: ModelRouteProfile;
