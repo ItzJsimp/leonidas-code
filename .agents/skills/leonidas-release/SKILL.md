@@ -28,10 +28,11 @@ Standard for Leonidas Code, Scribe and anything Jake builds. Adapted from Keep a
 - Start with a verb in past tense: `Added`, `Improved`, `Fixed` (also `Changed`, `Removed`). Active voice. User-visible outcome first, cause never.
 - 8 to 18 words. One idea per bullet; two outcomes become two bullets or one is dropped.
 - Say what the user sees in the app (the reply label, the update popup, the usage panel), not what you edited. No file names, function names, package names, commit jargon, PR numbers or internal terms (`provider-core`, `RPC`, `contract`, `projection`, `CI`).
-- Max 5 highlight bullets per release. Merge related ones or drop the weakest; never pad. A release with no user-visible change gets the single line `Behind-the-scenes reliability improvements`.
+- Max 5 highlight bullets per release. Merge related ones or drop the weakest; never pad. A release without curated notes gets `No patch notes were provided for this update.`; do not invent a reliability improvement. Detail-only releases point readers to the additional changes.
 - Internal-only work (CI, refactors, tests, docs, dependency bumps) gets no bullet.
 - Never claim what you did not run and see work. Unverified means no bullet.
 - A change that needs the user to act (restart, re-sign-in, reinstall) says so in the bullet.
+- Keep bullets informational. Do not append calls to action such as "walk me through it" or "update now"; installation controls belong in the popup footer.
 - Optional `## Details` for power users: extra specifics (limits, settings paths, edge cases), same verb-led style, no cap but stay terse.
 
 **Rewrites from real Code commits**
@@ -50,9 +51,9 @@ Rewrites are illustrations: check each against the diff or the running app befor
 
 **Trailer to bullet mapping** (`scripts/leonidas-release.ts` in the Code repo)
 
-- **Feature tour:** for every user-visible `feat:` bullet, add or update a target in `apps/web/src/features/tour/tourTargets.ts` (anchor via a `data-tour` attribute, or a `tryPrompt` for agent skills) and end the trailer with ` {tour:<id>}`. The app strips the marker and shows "Show me where", which spotlights the feature. A feature without a target ships invisible, which is how Next action got lost.
+- **Read-only notes:** update history and the update popup show plain text, with five highlights and expandable additional changes. Do not add walkthrough, tour, install, or restart actions to individual bullets. Existing tour markers are hidden for older releases; new trailers should omit them.
 - Each `Release-Note:` trailer becomes exactly one bullet, verbatim, so write it in final form (starts with the verb). Put it on the commit that makes the outcome true; several trailers per commit are fine, and any commit type may carry one.
-- Order: trailers first (features, then fixes, then the rest), then cleaned subjects of commits with no trailer. The first 5 distinct bullets are highlights; the overflow and every `Release-Detail:` trailer go under `## Details`. The cleaned-subject fallback is a safety net and reads badly: write a trailer on every user-visible `feat:` and `fix:` commit. Commits with no trailer and an internal type (`ci`, `chore`, `refactor`, `test`, `docs`, `style`, `sync`) are skipped.
+- Order: curated trailers only (features, then fixes, then the rest). The first 5 distinct bullets are highlights; overflow and every `Release-Detail:` trailer go under `## Details`. Raw commit subjects never become notes. Write a trailer on every user-visible `feat:` and `fix:` commit; commits without trailers contribute only release metadata.
 - Output shape of `notes.md`: `# <version> · Development`, highlight `- ` bullets, optional `## Details` bullets, then one final line `<!-- leonidas-release {"commit":"<full sha>","authors":[...],"coAuthors":[...]} -->`. The update dialog parses it; never hand-edit or change it without telling whoever owns the dialog. Authors come from git author names (ItzJsimp is Jake, Seth Moncada is Mob); coAuthors come from `Co-Authored-By:` trailers (Claude and Anthropic names collapse to Claude), so keep that trailer on agent commits.
 - Scribe's generator (`scripts/Sync-ScribeDistro.ps1`) should follow these wording rules; its output shape is still its own until aligned.
 
@@ -66,3 +67,13 @@ Rewrites are illustrations: check each against the diff or the running app befor
 6. Would a friend who has never seen the app understand it without asking a question?
 7. Are there already 5 highlights this release? Merge, drop the weakest, or use `Release-Detail:`.
 8. Does the user need to act (restart, sign in again)? Say so.
+
+## Illustrated release stories
+
+For a user-visible update, write a named story in `release-posts/<slug>.md` and add `Release-Post: release-posts/<slug>.md` to its commit. The latest post trailer in the release range wins. The publisher reads that file, appends the curated patch-note trailers, and preserves the build metadata. Do not change the workflow to publish a story separately from its installer.
+
+Start with one `# Title`, a short introduction about what changed for the user, then real screenshots and `##` feature sections. Use plain language and explain what the user can do, where to start, and any limits. Put small fixes in the generated patch notes instead of giving each its own feature story. Avoid invented claims, mock data, personal information, and decorative images standing in for a real product change.
+
+Save sanitized screenshots beside the post, preferably WebP or AVIF, at most 2 MB each. Use relative Markdown image links with descriptive alt text. The publisher pins these to the exact source commit; later updates cannot replace an older story image. Public HTTPS image URLs also work. Images must show the verified shipped behavior. Do not commit screenshots used only for PR evidence.
+
+Before committing, verify the post in the dev reader, including images, captions, narrow layout, and full notes. Preserve the existing updater confirmation and waiting-for-agents behavior. Commit locally; push only when the user asks.

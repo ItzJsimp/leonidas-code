@@ -1,3 +1,5 @@
+import { parseReleaseArticle } from "./releaseArticle";
+
 const RELEASES_URL = "https://api.github.com/repos/ItzJsimp/leonidas-code/releases";
 
 export interface ReleaseHistoryMeta {
@@ -12,6 +14,7 @@ export interface ReleaseHistoryEntry {
   readonly publishedAt: string;
   readonly notes: ReadonlyArray<string>;
   readonly url: string;
+  readonly article: ReturnType<typeof parseReleaseArticle>;
   readonly meta?: ReleaseHistoryMeta | null;
 }
 
@@ -88,6 +91,10 @@ export function parseReleaseHistory(value: unknown): ReleaseHistoryEntry[] {
     return [
       {
         version: row.tag_name.slice(1),
+        article: parseReleaseArticle(
+          typeof row.body === "string" ? row.body : "",
+          row.tag_name.slice(1),
+        ),
         publishedAt: typeof row.published_at === "string" ? row.published_at : "",
         notes: [...new Set(notes)],
         url:
@@ -122,4 +129,18 @@ export async function fetchReleaseHistory(
     entries: parseReleaseHistory(value),
     hasMore: Array.isArray(value) && value.length === 10,
   };
+}
+
+/** Fetch the article for the downloaded version, not whichever release happens to be latest. */
+export async function fetchReleaseEntry(
+  version: string,
+  signal?: AbortSignal,
+): Promise<ReleaseHistoryEntry> {
+  const tag = version.trim().replace(/^v/i, "");
+  if (!/^\d+\.\d+\.\d+$/.test(tag)) throw new Error("Invalid release version");
+  const response = await fetch(`${RELEASES_URL}/tags/v${tag}`, { signal: signal ?? null });
+  if (!response.ok) throw new Error("The full update story could not be loaded.");
+  const entry = parseReleaseHistory([await response.json()])[0];
+  if (!entry || entry.version !== tag) throw new Error("The release does not match this update.");
+  return entry;
 }

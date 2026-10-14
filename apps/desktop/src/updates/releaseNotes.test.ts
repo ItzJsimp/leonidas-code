@@ -3,6 +3,16 @@ import { describe, expect, it } from "vite-plus/test";
 import { normalizeDesktopUpdateReleaseNotes } from "./releaseNotes.ts";
 
 describe("normalizeDesktopUpdateReleaseNotes", () => {
+  it("keeps curated highlights first and excludes article prose and image captions", () => {
+    const body =
+      '# An illustrated update\n\nA short introduction.\n\n![Screenshot](https://example.com/image.webp)\n\n## Features\nA feature explanation.\n\n## Patch notes\n- Added release articles.\n- Fixed update labels.\n<!-- leonidas-release {"commit":"abc"} -->';
+    const result = normalizeDesktopUpdateReleaseNotes(body, "0.43.0", "latest");
+    expect(result.releaseNotes[0]?.items).toEqual([
+      "Added release articles.",
+      "Fixed update labels.",
+    ]);
+    expect(result.releaseNotes[0]?.totalItems).toBe(2);
+  });
   it("shows the newest changes and counts all real changes", () => {
     const result = normalizeDesktopUpdateReleaseNotes(
       [
@@ -37,6 +47,8 @@ describe("normalizeDesktopUpdateReleaseNotes", () => {
             "fix: fifth change",
             "fix: fourth change",
             "fix: third change",
+            "fix: second change",
+            "feat: first change",
           ],
           totalItems: 10,
         },

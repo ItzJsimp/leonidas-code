@@ -8,6 +8,25 @@ import {
 } from "./leonidas-release.ts";
 
 describe("Leonidas release policy", () => {
+  it("publishes an illustrated article and keeps curated patch notes and metadata", () => {
+    const post =
+      "# A better way to catch up\n\nRead each update as a story.\n\n![Update history](https://example.com/history.webp)\n\n## History\nBrowse previous releases.";
+    const notes = releaseNotes(
+      [
+        {
+          subject: "feat: release articles",
+          body: "Release-Note: Added illustrated release articles with clearly organized features and fixes.",
+        },
+      ],
+      "0.43.0",
+      true,
+      "a".repeat(40),
+      post,
+    );
+    expect(notes.startsWith(post)).toBe(true);
+    expect(notes).toContain("## Patch notes\n\n### New\n- Added illustrated release articles");
+    expect(notes.trimEnd().split("\n").at(-1)).toMatch(/^<!-- leonidas-release /);
+  });
   it("reserves 1.0.0 for an explicit public launch", () => {
     expect(nextReleaseVersion("0.1.2", "patch", true)).toBe("0.1.3");
     expect(nextReleaseVersion("0.1.2", "minor", true)).toBe("0.2.0");
@@ -31,7 +50,7 @@ describe("Leonidas release policy", () => {
     expect(() => nextReleaseVersion("1.2.3", "launch", false)).toThrow();
     expect(() => nextReleaseVersion("01.2.3", "patch", false)).toThrow();
   });
-  it("uses release trailers first, then cleaned subjects, and skips internal commits", () => {
+  it("uses curated release trailers and excludes raw commit subjects", () => {
     const notes = releaseNotes(
       [
         {
@@ -47,9 +66,10 @@ describe("Leonidas release policy", () => {
       "a".repeat(40),
     );
     expect(notes).toContain(
-      "# 0.2.0 · Development\n\n- Added a list of past updates\n- Added a live token counter\n- Missing counter\n",
+      "# 0.2.0 · Development\n\n- Added a list of past updates\n- Added a live token counter\n",
     );
     expect(notes).not.toContain("## Details");
+    expect(notes).not.toContain("Missing counter");
     expect(notes).not.toContain("internal implementation");
     expect(notes).not.toContain("cache Rust");
     expect(notes).not.toContain("status");
@@ -76,6 +96,20 @@ describe("Leonidas release policy", () => {
     expect(highlights).toContain("- Added thing 5\n");
     expect(details).toContain("- Added thing 6\n- Added thing 7\n- Takes effect after a restart\n");
     expect(details.match(/^- /gm)).toHaveLength(3);
+  });
+  it("keeps detail-only changes out of the highlights and does not repeat their subject", () => {
+    const notes = releaseNotes(
+      [
+        {
+          subject: "fix: internal cache implementation",
+          body: "Release-Detail: Fixed missing totals after reopening a conversation.",
+        },
+      ],
+      "0.3.1",
+      true,
+    );
+    expect(notes).toContain("## Details\n- Fixed missing totals after reopening a conversation.");
+    expect(notes).not.toContain("internal cache");
   });
   it("ends with a metadata comment of full sha, aliased authors and co-authors", () => {
     const sha = "0123456789abcdef0123456789abcdef01234567";
@@ -114,7 +148,7 @@ describe("Leonidas release policy", () => {
       "0.3.1",
       true,
     );
-    expect(quiet).toContain("\n- Behind-the-scenes reliability improvements\n");
+    expect(quiet).toContain("\n- No patch notes were provided for this update.\n");
     const comment = quiet.trimEnd().split("\n").at(-1)!;
     expect(comment.indexOf("-->")).toBe(comment.length - 3);
     const json = JSON.parse(comment.slice("<!-- leonidas-release ".length, -4));

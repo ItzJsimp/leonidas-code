@@ -1,7 +1,27 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { fetchReleaseHistory, parseReleaseHistory } from "./releaseHistory";
+import { fetchReleaseEntry, fetchReleaseHistory, parseReleaseHistory } from "./releaseHistory";
 
 describe("release history", () => {
+  it("loads the exact downloaded release and rejects a mismatched version", async () => {
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({ tag_name: "v0.42.0", body: "# Tasks\n\nTasks that stay in sync." }),
+          ),
+      );
+    try {
+      expect((await fetchReleaseEntry("v0.42.0")).article.title).toBe("Tasks");
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/tags/v0.42.0"), {
+        signal: null,
+      });
+      await expect(fetchReleaseEntry("0.41.0")).rejects.toThrow("does not match");
+      await expect(fetchReleaseEntry("../../private")).rejects.toThrow("Invalid release version");
+    } finally {
+      fetch.mockRestore();
+    }
+  });
   it("retains every bullet, including older 1.0 releases, and omits drafts", () => {
     const body = Array.from({ length: 12 }, (_, index) => `- Change ${index}`).join("\n");
     const entries = parseReleaseHistory([

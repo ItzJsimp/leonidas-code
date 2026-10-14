@@ -1,12 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import { appAtomRegistry } from "../../rpc/atomRegistry";
-import { useTourStore } from "../../features/tour/tourStore";
-import { splitTourMarker, type TourTargetId } from "../../features/tour/tourTargets";
-import { createFeatureWalkthroughPrompt } from "../desktopUpdate.logic";
+import { ArrowLeftIcon, ArrowUpRightIcon } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -17,14 +15,16 @@ import {
   DialogPopup,
   DialogTitle,
 } from "../ui/dialog";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   fetchReleaseHistory,
   formatReleaseCredits,
-  formatReleaseTime,
   formatFriendlyReleaseDate,
   type ReleaseHistoryEntry,
 } from "./releaseHistory";
+
+const ReleaseArticle = lazy(() =>
+  import("./ReleaseArticleView").then((module) => ({ default: module.ReleaseArticle })),
+);
 
 export const releaseHistoryDialogOpenAtom = Atom.make<boolean>(false).pipe(
   Atom.keepAlive,
@@ -39,39 +39,39 @@ export function closeReleaseHistoryDialog(): void {
   appAtomRegistry.set(releaseHistoryDialogOpenAtom, false);
 }
 
-const BULLET_CAP = 6;
-
 /** Load notes only when opened, with bounded pages and a retry for network failures. */
 export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
-  const navigate = useNavigate();
+  const [selected, setSelected] = useState<ReleaseHistoryEntry | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const feedScroll = useRef(0);
+  const selectedVersion = useRef<string | null>(null);
   const [entries, setEntries] = useState<ReleaseHistoryEntry[]>([]);
   const [request, setRequest] = useState({ page: 1, attempt: 0 });
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedVersions, setExpandedVersions] = useState<ReadonlySet<string>>(new Set());
+
+  const openArticle = (entry: ReleaseHistoryEntry) => {
+    if (!selected)
+      feedScroll.current =
+        panelRef.current?.closest("[data-slot=scroll-area-viewport]")?.scrollTop ?? 0;
+    selectedVersion.current = entry.version;
+    setSelected(entry);
+  };
+
+  useEffect(() => {
+    const viewport = panelRef.current?.closest("[data-slot=scroll-area-viewport]");
+    if (viewport) viewport.scrollTop = selected ? 0 : feedScroll.current;
+    if (!selected && selectedVersion.current) {
+      panelRef.current
+        ?.querySelector<HTMLButtonElement>(`[data-release-version="${selectedVersion.current}"]`)
+        ?.focus({ preventScroll: true });
+    }
+  }, [selected, panelRef, feedScroll, selectedVersion]);
 
   const handleClose = () => {
     closeReleaseHistoryDialog();
     onClose?.();
-  };
-
-  const openWalkthrough = (note: string, tourId: TourTargetId | null) => {
-    handleClose();
-    if (tourId) {
-      useTourStore.getState().start([tourId]);
-      return;
-    }
-    void navigate({ to: "/", search: { guidePrompt: createFeatureWalkthroughPrompt(note) } });
-  };
-
-  const toggleExpanded = (version: string) => {
-    setExpandedVersions((prev) => {
-      const next = new Set(prev);
-      if (next.has(version)) next.delete(version);
-      else next.add(version);
-      return next;
-    });
   };
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
             (entry) => !current.some((old) => old.version === entry.version),
           ),
         ]);
-        setHasMore(result.hasMore);
+        setHasMore(result.hasMore && request.page < 10);
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted)
@@ -99,124 +99,138 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogPopup className="max-w-xl" bottomStickOnMobile={false}>
+      <DialogPopup className={selected ? "max-w-4xl" : "max-w-3xl"} bottomStickOnMobile={false}>
         <DialogHeader>
-          <DialogTitle>Update history</DialogTitle>
+          {selected ? (
+            <div className="mb-2">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
+                      <ArrowLeftIcon aria-hidden className="size-4" /> All updates
+                    </Button>
+                  }
+                />
+                <TooltipPopup>Return to all releases</TooltipPopup>
+              </Tooltip>
+            </div>
+          ) : null}
+          <DialogTitle>{selected ? selected.article.title : "Update history"}</DialogTitle>
           <DialogDescription>
-            What changed in each Leonidas Code version. Choose a change to open a guided chat.
-            Versions below 1.0 are development releases.
+            {selected
+              ? `Version ${selected.version} · ${formatFriendlyReleaseDate(selected.publishedAt)}`
+              : "Explore what is new, what has improved, and what has been fixed."}
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel>
-          <div
-            className="max-h-[58vh] space-y-7 overflow-y-auto pr-2 [scrollbar-gutter:stable] [scrollbar-width:thin]"
-            aria-busy={loading}
-          >
-            {entries.map((entry) => {
-              const isExpanded = expandedVersions.has(entry.version);
-              const hasMoreNotes = entry.notes.length > BULLET_CAP;
-              const displayedNotes = isExpanded ? entry.notes : entry.notes.slice(0, BULLET_CAP);
-
-              return (
-                <article key={entry.version} className="space-y-3">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-2.5">
-                    <h3 className="flex items-baseline gap-2 text-sm font-semibold tabular-nums tracking-tight text-foreground">
-                      {entry.version}
-                      {entry.version.startsWith("0.") ? (
-                        <span className="text-2xs font-normal tracking-normal text-muted-foreground">
-                          Development
-                        </span>
-                      ) : null}
-                    </h3>
-                    {entry.publishedAt ? (
-                      <Tooltip>
+        <DialogPanel className="max-h-[65dvh]">
+          <div ref={panelRef} className="space-y-8" aria-busy={loading}>
+            {selected ? (
+              <div className="grid gap-6 sm:grid-cols-[140px_minmax(0,1fr)] sm:gap-8">
+                <nav
+                  aria-label="Release versions"
+                  className="sticky top-0 hidden self-start sm:block"
+                >
+                  <div className="space-y-1 border-r border-border pr-4">
+                    {entries.map((entry) => (
+                      <Tooltip key={entry.version}>
                         <TooltipTrigger
-                          delay={200}
                           render={
-                            <time
-                              className="rounded-sm text-xs tabular-nums text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground cursor-default"
-                              tabIndex={0}
-                              dateTime={entry.publishedAt}
+                            <button
+                              type="button"
+                              aria-current={selected.version === entry.version ? "page" : undefined}
+                              onClick={() => openArticle(entry)}
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs tabular-nums text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:bg-muted aria-[current=page]:font-semibold aria-[current=page]:text-foreground"
                             />
                           }
                         >
-                          {formatFriendlyReleaseDate(entry.publishedAt)}
+                          {entry.version}
                         </TooltipTrigger>
-                        <TooltipPopup side="top" align="end" className="flex flex-col">
-                          <span className="font-medium text-foreground">
-                            {formatReleaseTime(entry.publishedAt)}
-                          </span>
-                          {formatReleaseCredits(entry.meta) ? (
-                            <span className="text-muted-foreground">
-                              Built by {formatReleaseCredits(entry.meta)}
-                            </span>
-                          ) : null}
-                          {entry.meta?.commit ? (
-                            <span className="font-mono text-muted-foreground">
-                              Build {entry.meta.commit.slice(0, 7)}
-                            </span>
-                          ) : null}
-                        </TooltipPopup>
+                        <TooltipPopup>Read version {entry.version}</TooltipPopup>
                       </Tooltip>
-                    ) : null}
+                    ))}
                   </div>
+                </nav>
+                <Suspense
+                  fallback={
+                    <p role="status" className="text-sm text-muted-foreground">
+                      Loading article…
+                    </p>
+                  }
+                >
+                  <ReleaseArticle key={selected.version} entry={selected} />
+                </Suspense>
+              </div>
+            ) : null}
 
-                  {entry.notes.length ? (
-                    <div className="flex flex-col gap-1.5">
-                      <ul className="space-y-2 text-sm leading-relaxed text-popover-foreground">
-                        {displayedNotes.map((rawNote) => {
-                          const { text: note, targetId } = splitTourMarker(rawNote);
-                          return (
-                            <li key={rawNote} className="relative break-words ps-4">
-                              <span
-                                aria-hidden
-                                className="absolute start-0.5 top-[0.6em] size-1 rounded-full bg-muted-foreground/40"
-                              />
-                              <p>{note}</p>
-                              <div className="-ms-1 mt-1">
-                                <Button
-                                  size="xs"
-                                  variant="link"
-                                  aria-label={`${targetId ? "Show me where" : "Walk me through"}: ${note}`}
-                                  onClick={() => openWalkthrough(note, targetId)}
-                                >
-                                  {targetId ? "Show me where" : "Walk me through it"}
-                                </Button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      {hasMoreNotes ? (
-                        <Button
-                          size="xs"
-                          variant="link"
-                          className="self-start -ms-2 text-muted-foreground hover:text-foreground"
-                          aria-expanded={isExpanded}
-                          onClick={() => toggleExpanded(entry.version)}
-                        >
-                          {isExpanded
-                            ? "Show fewer changes"
-                            : `Show ${entry.notes.length - BULLET_CAP} more ${
-                                entry.notes.length - BULLET_CAP === 1 ? "change" : "changes"
-                              }`}
-                        </Button>
-                      ) : null}
+            {!selected
+              ? entries.map((entry, index) => (
+                  <article
+                    key={entry.version}
+                    className="overflow-hidden rounded-xl border border-border"
+                  >
+                    {entry.article.image?.src ? (
+                      <img
+                        src={entry.article.image.src}
+                        alt={entry.article.image.alt}
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        className="aspect-video w-full bg-muted object-contain"
+                        onError={(event) => {
+                          event.currentTarget.hidden = true;
+                        }}
+                      />
+                    ) : null}
+                    <div className="space-y-3 p-5 sm:p-6">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="font-medium tabular-nums">Version {entry.version}</span>
+                        {index === 0 ? (
+                          <span className="font-medium text-foreground">Latest</span>
+                        ) : null}
+                        {entry.publishedAt ? (
+                          <time dateTime={entry.publishedAt}>
+                            {formatFriendlyReleaseDate(entry.publishedAt)}
+                          </time>
+                        ) : null}
+                      </div>
+                      <h3 className="text-xl font-semibold tracking-tight">
+                        {entry.article.title}
+                      </h3>
+                      <p className="max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
+                        {entry.article.summary}
+                      </p>
+                      <div className="flex items-center justify-between gap-3 pt-1">
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                data-release-version={entry.version}
+                                onClick={() => openArticle(entry)}
+                              >
+                                Read update <ArrowUpRightIcon aria-hidden className="size-3.5" />
+                              </Button>
+                            }
+                          />
+                          <TooltipPopup>Read all changes in version {entry.version}</TooltipPopup>
+                        </Tooltip>
+                        <span className="text-xs text-muted-foreground">
+                          {entry.notes.length} {entry.notes.length === 1 ? "change" : "changes"}
+                        </span>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No patch notes were published.</p>
-                  )}
-                </article>
-              );
-            })}
+                  </article>
+                ))
+              : null}
 
-            {loading ? (
+            {!selected && loading ? (
               <p role="status" className="text-sm text-muted-foreground">
                 Loading updates…
               </p>
             ) : null}
 
-            {error ? (
+            {!selected && error ? (
               <div className="space-y-2">
                 <p role="alert" className="text-sm text-destructive">
                   {error}
@@ -235,11 +249,26 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
               </div>
             ) : null}
 
-            {!loading && !error && entries.length === 0 ? (
+            {!selected && !loading && !error && entries.length === 0 ? (
               <p className="text-sm text-muted-foreground">No published updates yet.</p>
             ) : null}
 
-            {!loading && !error && hasMore ? (
+            {!selected && !loading && !error && !hasMore && request.page >= 10 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                render={
+                  <a
+                    href="https://github.com/ItzJsimp/leonidas-code/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                Earlier releases on GitHub
+              </Button>
+            ) : null}
+            {!selected && !loading && !error && hasMore ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -254,7 +283,14 @@ export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => voi
             ) : null}
           </div>
         </DialogPanel>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            {selected
+              ? formatReleaseCredits(selected.meta)
+                ? `Built by ${formatReleaseCredits(selected.meta)}`
+                : "Leonidas Code"
+              : "Versions below 1.0 are development releases."}
+          </p>
           <Button variant="ghost" onClick={handleClose}>
             Close
           </Button>

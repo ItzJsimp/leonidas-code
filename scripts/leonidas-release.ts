@@ -2,6 +2,7 @@
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
+import { loadReleasePost } from "./release-post.ts";
 
 export type ReleaseKind = "patch" | "minor" | "major" | "launch";
 export interface ReleaseCommit {
@@ -64,8 +65,6 @@ export interface ReleaseMeta {
   authorCommits?: Record<string, number>;
 }
 
-const INTERNAL_SUBJECT = /^(?:docs|test|style|sync|ci|chore|refactor)(?:\([^)]*\))?!?:/i;
-
 function aliasName(name: string): string {
   return AUTHOR_ALIASES[name] ?? name;
 }
@@ -97,8 +96,8 @@ export function releaseMetaComment(meta: ReleaseMeta): string {
 }
 
 /**
- * Highlights (max 5) come from `Release-Note:` trailers first, then from cleaned subjects of
- * commits without trailers. Overflow plus `Release-Detail:` trailers go under `## Details`.
+ * Highlights (max 5) come only from curated `Release-Note:` trailers.
+ * Overflow plus `Release-Detail:` trailers go under `## Details`.
  * The last line is a machine-readable metadata comment.
  */
 export function releaseNotes(
@@ -106,6 +105,7 @@ export function releaseNotes(
   version: string,
   development: boolean,
   commit = "",
+  post = "",
 ): string {
   const rank = (subject: string) =>
     /^feat(?:\(|:)/i.test(subject) || /^Build:/i.test(subject)
@@ -116,25 +116,15 @@ export function releaseNotes(
   const trailerValues = (body: string, key: string) =>
     [...body.matchAll(new RegExp(`^${key}:\\s*(.+)$`, "gim"))].map((match) => match[1]!.trim());
   const trailers: Array<{ rank: number; text: string }> = [];
-  const fallbacks: Array<{ rank: number; text: string }> = [];
   const details: string[] = [];
   for (const { subject, body } of commits) {
     const notes = trailerValues(body, "Release-Note");
     details.push(...trailerValues(body, "Release-Detail"));
-    if (notes.length) {
-      for (const text of notes) trailers.push({ rank: rank(subject), text });
-      continue;
-    }
-    if (INTERNAL_SUBJECT.test(subject)) continue;
-    const cleaned = subject.replace(/^[a-z]+(?:\([^)]*\))?!?:\s*/i, "").trim();
-    if (cleaned)
-      fallbacks.push({ rank: rank(subject), text: cleaned[0]!.toUpperCase() + cleaned.slice(1) });
+    for (const text of notes) trailers.push({ rank: rank(subject), text });
   }
   const seen = new Set<string>();
-  const ordered = [
-    ...trailers.toSorted((a, b) => a.rank - b.rank),
-    ...fallbacks.toSorted((a, b) => a.rank - b.rank),
-  ]
+  const ordered = trailers
+    .toSorted((a, b) => a.rank - b.rank)
     .map(({ text }) => text)
     .filter((text) => {
       const key = text.toLowerCase();
@@ -160,10 +150,34 @@ export function releaseNotes(
     if (name) authorCommits[name] = (authorCommits[name] ?? 0) + 1;
   }
   const bullets = (items: ReadonlyArray<string>) => items.map((item) => `- ${item}`).join("\n");
+  const editorialNotes = (
+    [
+      [0, "New"],
+      [1, "Fixes"],
+      [2, "Improvements"],
+    ] as const
+  )
+    .map(([group, title]) => {
+      const groupItems = ordered.filter(
+        (text) => trailers.find((note) => note.text === text)?.rank === group,
+      );
+      return groupItems.length ? `### ${title}\n${bullets(groupItems)}\n` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+  const postDetails = details.filter((text) => {
+    const key = text.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   return (
-    `# ${version}${development ? " · Development" : ""}\n\n` +
-    `${bullets(highlights.length ? highlights : ["Behind-the-scenes reliability improvements"])}\n` +
-    (extra.length ? `\n## Details\n${bullets(extra)}\n` : "") +
+    (post
+      ? `${post.trim()}\n\n## Patch notes\n\n${editorialNotes || "No patch notes were provided for this update.\n"}`
+      : `# ${version}${development ? " · Development" : ""}\n\n${bullets(highlights.length ? highlights : [extra.length ? "Additional changes are listed below." : "No patch notes were provided for this update."])}\n`) +
+    ((post ? postDetails : extra).length
+      ? `\n## Details\n${bullets(post ? postDetails : extra)}\n`
+      : "") +
     `\n${releaseMetaComment({ commit, authors, coAuthors, authorCommits })}\n`
   );
 }
@@ -244,14 +258,16 @@ function main() {
     kind,
     development,
   );
+  const sourceCommit = process.env.GITHUB_SHA ?? run("git", ["rev-parse", "HEAD"]);
+  const postFile = commits
+    .flatMap(({ body }) =>
+      [...body.matchAll(/^Release-Post:\s*(.+)$/gim)].map((match) => match[1]!.trim()),
+    )
+    .at(-1);
+  const post = postFile ? loadReleasePost(process.cwd(), postFile, repo, sourceCommit) : "";
   NodeFS.writeFileSync(
     "notes.md",
-    releaseNotes(
-      commits,
-      version,
-      development && kind !== "launch",
-      process.env.GITHUB_SHA ?? run("git", ["rev-parse", "HEAD"]),
-    ),
+    releaseNotes(commits, version, development && kind !== "launch", sourceCommit, post),
   );
   if (process.env.GITHUB_OUTPUT)
     NodeFS.appendFileSync(
