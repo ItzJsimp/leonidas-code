@@ -1,7 +1,9 @@
+import type { TurnLedger } from "@t3tools/shared/turnLedger";
 import { ZapIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import {
+  formatCacheHitRate,
   formatRollingLabel,
   formatToolDuration,
   formatToolWait,
@@ -75,6 +77,7 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
               {formatRollingLabel(summary.rolling20Tps, 20, summary.totalTurnsTracked)}
             </dd>
           </dl>
+          {summary.ledger ? <InputLedger ledger={summary.ledger} /> : null}
           <p className="text-xs leading-relaxed text-muted-foreground">
             {summary.outputTokens === null
               ? "Waiting for the provider to report turn totals. Some providers report only when the turn finishes or do not report output counts."
@@ -83,5 +86,37 @@ export function TokenCounter({ summary }: { summary: VelocitySummary }) {
         </div>
       </PopoverPopup>
     </Popover>
+  );
+}
+
+/**
+ * Where the latest reporting turn's input went. Cache reads are the cheap part; a low hit rate
+ * with high writes means the prompt prefix changed and the cache restarted.
+ */
+function InputLedger({ ledger }: { ledger: TurnLedger }) {
+  const input = ledger.cacheReadTokens + ledger.cacheWriteTokens + ledger.freshInputTokens;
+  const share = (tokens: number) => `${input > 0 ? (tokens / input) * 100 : 0}%`;
+  return (
+    <div className="space-y-2 border-t pt-2">
+      <div className="flex items-center justify-between font-semibold">
+        <span>Input tokens</span>
+        <span className="tabular-nums">{input.toLocaleString()}</span>
+      </div>
+      <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+        <div className="bg-success" style={{ width: share(ledger.cacheReadTokens) }} />
+        <div className="bg-warning" style={{ width: share(ledger.cacheWriteTokens) }} />
+        <div className="bg-foreground/60" style={{ width: share(ledger.freshInputTokens) }} />
+      </div>
+      <dl className="grid grid-cols-2 gap-2 tabular-nums">
+        <dt className="text-muted-foreground">Cache reads</dt>
+        <dd className="text-right">
+          {ledger.cacheReadTokens.toLocaleString()} ({formatCacheHitRate(ledger.cacheHitRate)})
+        </dd>
+        <dt className="text-muted-foreground">Cache writes</dt>
+        <dd className="text-right">{ledger.cacheWriteTokens.toLocaleString()}</dd>
+        <dt className="text-muted-foreground">Fresh input</dt>
+        <dd className="text-right">{ledger.freshInputTokens.toLocaleString()}</dd>
+      </dl>
+    </div>
   );
 }

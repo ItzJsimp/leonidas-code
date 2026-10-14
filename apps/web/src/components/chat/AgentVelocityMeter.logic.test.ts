@@ -5,6 +5,7 @@ import {
   calculateTurnVelocity,
   deriveVelocitySummary,
   extractTurnOutputTokens,
+  formatCacheHitRate,
   formatRollingLabel,
   formatToolDuration,
   formatToolWait,
@@ -180,6 +181,54 @@ describe("AgentVelocityMeter.logic", () => {
       expect(summary.averageTurnTps).toBe(50);
       expect(summary.isLive).toBe(true);
       expect(summary.totalTurnsTracked).toBe(0);
+    });
+
+    it("builds an input ledger from the latest turn that reported input", () => {
+      const done = {
+        id: "done",
+        status: "completed",
+        startedAt: "2026-10-10T12:00:00Z",
+        completedAt: "2026-10-10T12:00:04Z",
+        turnTokenUsage: {
+          usageStatus: "complete",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          inputTokens: 20_000,
+          cachedInputTokens: 15_000,
+          cacheCreationTokens: 3_000,
+          outputTokens: 400,
+          reasoningTokens: 100,
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      const live = {
+        id: "live",
+        status: "running",
+        startedAt: "2026-10-10T12:00:05Z",
+        completedAt: null,
+        turnTokenUsage: { usageStatus: "partial", usageScope: "main_agent", hasSubagents: false },
+      } as unknown as OrchestrationV2ProviderTurn;
+      expect(deriveVelocitySummary([done, live], []).ledger).toMatchObject({
+        cacheReadTokens: 15_000,
+        cacheWriteTokens: 3_000,
+        freshInputTokens: 2_000,
+        cacheHitRate: 0.75,
+        thinkingTokens: 100,
+      });
+    });
+
+    it("has no ledger until a turn reports input", () => {
+      expect(deriveVelocitySummary([], []).ledger).toBeNull();
+      const turn = {
+        id: "t",
+        status: "completed",
+        turnTokenUsage: {
+          usageStatus: "partial",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 5,
+        },
+      } as unknown as OrchestrationV2ProviderTurn;
+      expect(deriveVelocitySummary([turn], []).ledger).toBeNull();
     });
 
     it("averages reported turn totals over the whole turn, including tool waits", () => {
@@ -409,6 +458,8 @@ describe("AgentVelocityMeter.logic", () => {
     it("formats tool durations appropriately", () => {
       expect(formatToolDuration(null)).toBe("--");
       expect(formatToolDuration(250)).toBe("250ms");
+      expect(formatCacheHitRate(0.754)).toBe("75%");
+      expect(formatCacheHitRate(null)).toBe("--");
       expect(formatToolDuration(1800)).toBe("1.8s");
     });
   });
