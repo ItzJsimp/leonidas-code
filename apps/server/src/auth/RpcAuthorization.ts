@@ -116,6 +116,7 @@ export const RPC_REQUIRED_SCOPES = {
   // Public data about models, read when choosing one for a thread.
   [WS_METHODS.serverGetModelBenchmarks]: AuthOrchestrationReadScope,
   [WS_METHODS.serverGetModelBenchmarkCatalog]: AuthOrchestrationReadScope,
+  [WS_METHODS.serverGetModelRunStats]: AuthOrchestrationReadScope,
   [WS_METHODS.serverSignalProcess]: AuthEnvironmentMaintainScope,
   [WS_METHODS.serverReportClientActivity]: AuthOrchestrationReadScope,
   [WS_METHODS.serverReportHostPowerState]: AuthEnvironmentMaintainScope,

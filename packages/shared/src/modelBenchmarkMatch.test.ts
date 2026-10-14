@@ -1,7 +1,11 @@
 import type { ModelBenchmarkEntry, ModelBenchmarkQuery } from "@t3tools/contracts";
 import { assert, describe, it } from "@effect/vitest";
 
-import { canonicalModelKey, matchBenchmarks } from "./modelBenchmarkMatch.ts";
+import {
+  benchmarkRouteProfiles,
+  canonicalModelKey,
+  matchBenchmarks,
+} from "./modelBenchmarkMatch.ts";
 
 const entry = (name: string, effort?: string): ModelBenchmarkEntry => ({
   source: "benchLm",
@@ -63,5 +67,25 @@ describe("matchBenchmarks across providers", () => {
   it("matches Claude and Codex slugs with explicit effort", () => {
     assert.equal(matched({ modelId: "claude-opus-5-5", effort: "high" }), "Claude Opus 5.5 ~");
     assert.equal(matched({ modelId: "gpt-6-luna", effort: "high" }), "GPT-6 Luna (high)");
+  });
+});
+
+describe("benchmarkRouteProfiles", () => {
+  const scored = (name: string, overall: number, speed: number, price: number) => ({
+    ...entry(name),
+    values: { "benchLm:overall": overall, "benchLm:speed": speed, "benchLm:price:output": price },
+  });
+  const guess = () => ({ quality: 3, speed: 3, economy: 3 });
+
+  it("ranks measured models into 1-5 quintiles and skips unknown slugs", () => {
+    const entries = [
+      scored("Top Model", 90, 20, 30),
+      scored("Mid Model", 60, 80, 5),
+      scored("Low Model", 30, 200, 0.5),
+    ];
+    const profiles = benchmarkRouteProfiles(entries, ["top-model", "low-model", "mystery"], guess);
+    assert.deepEqual(profiles.get("top-model"), { quality: 4, speed: 1, economy: 1, known: true });
+    assert.deepEqual(profiles.get("low-model"), { quality: 1, speed: 4, economy: 4, known: true });
+    assert.equal(profiles.has("mystery"), false);
   });
 });

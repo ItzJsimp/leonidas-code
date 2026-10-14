@@ -89,6 +89,8 @@ export interface AutoRouteInput {
   /** The thread's last concrete selection. */
   readonly current?: ModelSelection | null | undefined;
   readonly thread?: AutoRouteThreadState | undefined;
+  /** Benchmark-measured profiles that override the family guesses. */
+  readonly profiles?: BenchmarkRouteProfiles | undefined;
   readonly attachmentCount?: number | undefined;
   readonly planMode?: boolean | undefined;
   readonly now: number;
@@ -179,7 +181,15 @@ const PROVIDER_DEFAULT_SLUGS = new Set(["auto", "default", "antigravity-default"
 // Billed per token from the user's own key rather than a prepaid subscription.
 export const METERED_DRIVERS: ReadonlySet<string> = new Set(["openrouter", "opencode", "pi"]);
 
-export function profileModel(slug: string): ModelRouteProfile {
+/**
+ * Measured profiles keyed by model slug (see `benchmarkRouteProfiles`). When a
+ * slug is present it replaces the family guess below; others keep the guess.
+ */
+export type BenchmarkRouteProfiles = ReadonlyMap<string, ModelRouteProfile>;
+
+export function profileModel(slug: string, measured?: BenchmarkRouteProfiles): ModelRouteProfile {
+  const fromBenchmarks = measured?.get(slug);
+  if (fromBenchmarks) return fromBenchmarks;
   const normalized = slug.toLowerCase();
   const family = MODEL_FAMILIES.find((entry) => entry.pattern.test(normalized));
   return family ? { ...family.profile, known: true } : UNKNOWN_PROFILE;
@@ -481,6 +491,7 @@ export function rankModelsForPreference(input: {
   readonly candidates: ReadonlyArray<AutoRouteCandidate>;
   readonly now: number;
   readonly limit?: number | undefined;
+  readonly profiles?: BenchmarkRouteProfiles | undefined;
 }): ReadonlyArray<RankedRouteModel> {
   const ranked: Array<RankedRouteModel & { readonly score: number; readonly metered: boolean }> =
     [];
@@ -489,7 +500,7 @@ export function rankModelsForPreference(input: {
     if (outlook === null) continue;
     for (const model of candidate.models) {
       if (PROVIDER_DEFAULT_SLUGS.has(model.slug) && candidate.models.length > 1) continue;
-      const profile = profileModel(model.slug);
+      const profile = profileModel(model.slug, input.profiles);
       const free = model.inputCostPerMillionTokens === 0 && model.outputCostPerMillionTokens === 0;
       const base = fitScore({
         model,
@@ -591,7 +602,7 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
       (currentGroup !== undefined && candidate.continuationGroupKey === currentGroup);
     for (const model of candidate.models) {
       if (PROVIDER_DEFAULT_SLUGS.has(model.slug) && candidate.models.length > 1) continue;
-      const profile = profileModel(model.slug);
+      const profile = profileModel(model.slug, input.profiles);
       const isCurrent = sameProviderSession && model.slug === current?.model;
       options.push({
         candidate,

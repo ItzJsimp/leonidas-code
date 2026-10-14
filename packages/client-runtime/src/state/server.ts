@@ -1279,6 +1279,11 @@ export function createServerEnvironmentAtoms<R, E>(
       tag: WS_METHODS.serverGetModelBenchmarks,
       staleTimeMs: 10 * 60_000,
     }),
+    modelRunStats: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:model-run-stats",
+      tag: WS_METHODS.serverGetModelRunStats,
+      staleTimeMs: 5 * 60_000,
+    }),
     modelBenchmarkCatalog: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:model-benchmark-catalog",
       tag: WS_METHODS.serverGetModelBenchmarkCatalog,

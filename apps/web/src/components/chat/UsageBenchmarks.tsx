@@ -3,17 +3,19 @@ import { ChartScatterIcon } from "lucide-react";
 import { useState } from "react";
 
 import type { BenchmarkCandidate } from "../../lib/modelBenchmarks";
-import { BenchmarkExplorer } from "./BenchmarkExplorer";
+import { BenchmarkExplorer, type StartBenchmarkArena } from "./BenchmarkExplorer";
 
 /** The card's one benchmark entry: a row that opens the explorer window. */
 export function UsageBenchmarks({
   environmentId,
   candidates,
   onStartChat,
+  onStartArena,
 }: {
   readonly environmentId: EnvironmentId;
   readonly candidates: ReadonlyArray<BenchmarkCandidate>;
   readonly onStartChat: ((selection: ModelSelection) => void) | null;
+  readonly onStartArena: StartBenchmarkArena | null;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -33,6 +35,7 @@ export function UsageBenchmarks({
           environmentId={environmentId}
           candidates={candidates}
           onStartChat={onStartChat}
+          onStartArena={onStartArena}
         />
       ) : null}
     </>

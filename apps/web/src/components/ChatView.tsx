@@ -7069,6 +7069,53 @@ export default function ChatView(props: ChatViewProps) {
     requestedEnvMode: envMode,
     isGitRepo,
   });
+  // Benchmark blind tests: one plan-mode chat per model, same prompt, neutral titles.
+  const handleStartArena = useCallback(
+    async (
+      prompt: string,
+      selections: ReadonlyArray<ModelSelection>,
+      labels: ReadonlyArray<string>,
+    ): Promise<ReadonlyArray<string>> => {
+      if (!activeProject) throw new Error("Open a project to run a blind test.");
+      const createdAt = new Date().toISOString();
+      const topic = prompt.length > 40 ? `${prompt.slice(0, 40).trimEnd()}...` : prompt;
+      return Promise.all(
+        selections.map(async (selection, index) => {
+          const threadId = newThreadId();
+          const title = `Blind test ${labels[index] ?? index + 1}: ${topic}`;
+          const result = await startThreadTurn({
+            environmentId,
+            input: {
+              threadId,
+              message: { messageId: newMessageId(), role: "user", text: prompt, attachments: [] },
+              modelSelection: selection,
+              runtimeMode,
+              interactionMode: "plan",
+              bootstrap: {
+                createThread: {
+                  projectId: activeProject.id,
+                  title,
+                  modelSelection: selection,
+                  runtimeMode,
+                  interactionMode: "plan",
+                  branch: activeThreadBranch,
+                  worktreePath: null,
+                  createdAt,
+                },
+              },
+              createdAt,
+            },
+          });
+          if (result._tag === "Failure") {
+            const error = squashAtomCommandFailure(result);
+            throw error instanceof Error ? error : new Error("Could not start a blind test chat.");
+          }
+          return threadId;
+        }),
+      );
+    },
+    [activeProject, activeThreadBranch, environmentId, runtimeMode, startThreadTurn],
+  );
   const localCheckoutBranchMismatch = useMemo(
     () =>
       isServerThread
@@ -11827,6 +11874,7 @@ export default function ChatView(props: ChatViewProps) {
               contextWindow={headerContextWindow}
               providerEntries={providerInstanceEntries}
               onStartChat={activeProjectRef === null ? null : handleNewThreadWithModel}
+              onStartArena={activeProject ? handleStartArena : null}
             />
           ) : null}
           {/* Chat column */}

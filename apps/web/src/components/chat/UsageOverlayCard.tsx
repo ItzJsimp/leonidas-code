@@ -39,6 +39,7 @@ import { barSegments } from "./ContextBreakdown.logic";
 import { deriveTrimSuggestions } from "./ContextTrim.logic";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { UsageBar, UsageRing } from "./PlanUsageLimits";
+import type { StartBenchmarkArena } from "./BenchmarkExplorer";
 import { UsageBenchmarks } from "./UsageBenchmarks";
 
 type Account = UsageLimitsReport["accounts"][number];
@@ -240,6 +241,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   contextWindow,
   providerEntries,
   onStartChat,
+  onStartArena,
 }: {
   readonly environmentId: EnvironmentId;
   /** Null for drafts, which have no server-side context to break down yet. */
@@ -251,6 +253,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   readonly providerEntries: ReadonlyArray<ProviderInstanceEntry>;
   /** Null when no project is active, which hides the row action. */
   readonly onStartChat: ((selection: ModelSelection) => void) | null;
+  readonly onStartArena: StartBenchmarkArena | null;
 }) {
   const navigate = useNavigate();
   const updateSettings = useUpdateClientSettings();
@@ -413,6 +416,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           environmentId={environmentId}
           candidates={benchmarkCandidates}
           onStartChat={onStartChat}
+          onStartArena={onStartArena}
         />
 
         {freshness ? (

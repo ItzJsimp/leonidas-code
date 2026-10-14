@@ -6,7 +6,11 @@ import {
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
 import type { AutoRoutePreference } from "@t3tools/contracts/settings";
-import { AUTO_ROUTE_PREFERENCE_LABELS, type AutoRouteCandidate } from "@t3tools/shared/autoRouter";
+import {
+  AUTO_ROUTE_PREFERENCE_LABELS,
+  type AutoRouteCandidate,
+  type BenchmarkRouteProfiles,
+} from "@t3tools/shared/autoRouter";
 import { RouteIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Badge } from "../ui/badge";
@@ -71,6 +75,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     onPreferenceChange: (preference: AutoRoutePreference | null) => void;
     /** Runnable models the goal tabs rank, built from the same rules as routing. */
     candidates: ReadonlyArray<AutoRouteCandidate>;
+    /** Benchmark-measured profiles; the ranked list matches what routing will pick. */
+    profiles?: BenchmarkRouteProfiles | undefined;
   };
 }) {
   const composerFloatingLayerProps = useComposerMenuProps();
@@ -324,6 +330,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           <AutoRouterPickerSection
             preference={props.autoRoute.preference}
             candidates={props.autoRoute.candidates}
+            profiles={props.autoRoute.profiles}
             onPreferenceChange={(preference) => {
               if (props.disabled) return;
               props.autoRoute?.onPreferenceChange(preference);

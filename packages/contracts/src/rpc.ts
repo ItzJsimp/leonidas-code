@@ -394,6 +394,7 @@ import {
   ModelBenchmarkCatalog,
   ModelBenchmarkReport,
   ModelBenchmarkReportInput,
+  ModelRunStats,
 } from "./modelBenchmarks.ts";
 import {
   StorageCleanupReport,
@@ -634,6 +635,7 @@ export const WS_METHODS = {
   serverRefreshUsageRates: "server.refreshUsageRates",
   serverGetModelBenchmarks: "server.getModelBenchmarks",
   serverGetModelBenchmarkCatalog: "server.getModelBenchmarkCatalog",
+  serverGetModelRunStats: "server.getModelRunStats",
 
   // Scheduled tasks
   scheduledTasksList: "scheduledTasks.list",
@@ -1048,6 +1050,12 @@ const WsServerGetUsageSummaryRpc = Rpc.make(WS_METHODS.serverGetUsageSummary, {
 const WsServerGetModelBenchmarksRpc = Rpc.make(WS_METHODS.serverGetModelBenchmarks, {
   payload: ModelBenchmarkReportInput,
   success: ModelBenchmarkReport,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsServerGetModelRunStatsRpc = Rpc.make(WS_METHODS.serverGetModelRunStats, {
+  payload: Schema.Struct({}),
+  success: ModelRunStats,
   error: EnvironmentAuthorizationError,
 });
 
@@ -2366,6 +2374,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerRefreshUsageRatesRpc,
   WsServerGetModelBenchmarksRpc,
   WsServerGetModelBenchmarkCatalogRpc,
+  WsServerGetModelRunStatsRpc,
   WsServerSignalProcessRpc,
   WsScheduledTasksListRpc,
   WsScheduledTasksSubscribeRpc,

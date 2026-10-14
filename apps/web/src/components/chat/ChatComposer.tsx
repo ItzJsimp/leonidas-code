@@ -1,3 +1,4 @@
+import { useBenchmarkRouteProfiles } from "../../lib/useBenchmarkRouteProfiles";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { usePromptPrediction } from "./usePromptPrediction";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
@@ -2459,6 +2460,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       providerInstanceEntries,
     ],
   );
+  const autoRouteProfiles = useBenchmarkRouteProfiles(
+    environmentId,
+    autoRouteCandidates,
+    autoRoutePreference !== null,
+  );
   const routeAutoTurn = useCallback(
     (prompt: string) => {
       if (autoRoutePreference === null) return null;
@@ -2466,6 +2472,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         preference: autoRoutePreference,
         prompt,
         candidates: autoRouteCandidates,
+        profiles: autoRouteProfiles,
         current: activeThreadModelSelection,
         thread: composerAutoRouteThreadState({
           contextWindow: activeContextWindow,
@@ -2491,6 +2498,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       activeContextWindow,
       activeThreadModelSelection,
       autoRouteCandidates,
+      autoRouteProfiles,
       autoRoutePreference,
       composerFilesRef,
       composerImagesRef,
@@ -5749,6 +5757,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           preference: autoRoutePreference,
           lastRouteLabel: lastAutoRouteLabel,
           candidates: autoRouteCandidates,
+          profiles: autoRouteProfiles,
           onPreferenceChange: (preference) => {
             void updateClientSettings({ composerAutoRoutePreference: preference });
           },

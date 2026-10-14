@@ -128,3 +128,55 @@ export function matchBenchmarks(
   });
   return [...bySource.values()].map(({ entry, effortMeasured }) => ({ entry, effortMeasured }));
 }
+
+/** 1..5 by quintile of `value` among `pool`; `invert` when lower is better. */
+function quintile(value: number, pool: ReadonlyArray<number>, invert: boolean): number {
+  if (pool.length === 0) return 3;
+  const below = pool.filter((item) => (invert ? item > value : item < value)).length;
+  return Math.min(5, 1 + Math.floor((below / pool.length) * 5));
+}
+
+const OVERALL = "benchLm:overall";
+const SPEED = "benchLm:speed";
+const OUTPUT_PRICE = "benchLm:price:output";
+
+/**
+ * Route profiles measured from benchmarks, one per slug the source knows:
+ * quality from the overall score, speed from output speed and economy from
+ * output price, each as a 1-5 quintile across every model the source rates.
+ * An axis the source did not measure keeps `fallback`'s guess.
+ */
+export function benchmarkRouteProfiles<
+  P extends { quality: number; speed: number; economy: number },
+>(
+  entries: ReadonlyArray<ModelBenchmarkEntry>,
+  slugs: ReadonlyArray<string>,
+  fallback: (slug: string) => P,
+): ReadonlyMap<string, P & { known: boolean }> {
+  const pool = (key: string) =>
+    entries.flatMap((entry) => {
+      const value = entry.values[key];
+      return value === undefined || (key === OUTPUT_PRICE && value <= 0) ? [] : [value];
+    });
+  const overall = pool(OVERALL);
+  const speed = pool(SPEED);
+  const price = pool(OUTPUT_PRICE);
+  const index = indexBenchmarkEntries(entries);
+  const profiles = new Map<string, P & { known: boolean }>();
+  for (const slug of new Set(slugs)) {
+    const entry = matchBenchmarks({ modelId: slug }, index)[0]?.entry;
+    if (!entry) continue;
+    const guess = fallback(slug);
+    const score = entry.values[OVERALL];
+    const tps = entry.values[SPEED];
+    const cost = entry.values[OUTPUT_PRICE];
+    profiles.set(slug, {
+      ...guess,
+      quality: score === undefined ? guess.quality : quintile(score, overall, false),
+      speed: tps === undefined ? guess.speed : quintile(tps, speed, false),
+      economy: cost === undefined ? guess.economy : cost <= 0 ? 5 : quintile(cost, price, true),
+      known: true,
+    });
+  }
+  return profiles;
+}

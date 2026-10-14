@@ -5,13 +5,14 @@ import type {
   ModelSelection,
 } from "@t3tools/contracts";
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import * as Schema from "effect/Schema";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
   buildPoints,
   availableEntries,
   catalogEfforts,
-  columnBests,
   defaultXMetric,
   headlineScoreMetrics,
   isLogMetric,
@@ -22,8 +23,28 @@ import {
   type ExplorerPoint,
   type ExplorerSort,
 } from "../../lib/benchmarkExplorer";
-import { formatBenchmarkValue, type BenchmarkCandidate } from "../../lib/modelBenchmarks";
-import { cn } from "../../lib/utils";
+import {
+  addArenaMatch,
+  ARENA_STORAGE_KEY,
+  ArenaState,
+  bestRunnableNow,
+  CATALOG_SEEN_STORAGE_KEY,
+  CatalogSeen,
+  contestantLabel,
+  effortCurves,
+  EMPTY_ARENA,
+  newChallengers,
+  recordArenaVote,
+  runStatsByEntry,
+} from "../../lib/benchmarkInsights";
+import {
+  formatBenchmarkValue,
+  quotaRank,
+  type BenchmarkCandidate,
+  type BenchmarkQuota,
+} from "../../lib/modelBenchmarks";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { cn, randomUUID } from "../../lib/utils";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
@@ -33,6 +54,7 @@ import { Dialog, DialogPanel, DialogPopup, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Spinner } from "../ui/spinner";
+import { Textarea } from "../ui/textarea";
 
 /** Creator dot colors; creators past the palette share the last, neutral one. */
 const CREATOR_COLORS = [
@@ -86,6 +108,7 @@ function Scatter({
   hovered,
   onHover,
   onPick,
+  curves,
 }: {
   readonly onPick: (key: string) => void;
   readonly points: ReadonlyArray<ExplorerPoint>;
@@ -96,6 +119,8 @@ function Scatter({
   readonly connectedKeys: ReadonlySet<string>;
   readonly hovered: string | null;
   readonly onHover: (key: string | null) => void;
+  /** One model's effort variants, lightest first, joined by a thin line. */
+  readonly curves: ReadonlyArray<ReadonlyArray<ExplorerPoint>>;
 }) {
   const xLog = isLogMetric(xMetric);
   const xs = points.map((point) => point.x);
@@ -171,6 +196,17 @@ function Scatter({
           strokeWidth={1.5}
         />
       ) : null}
+      {curves.map((curve) => (
+        <polyline
+          key={`curve${curve[0]!.entry.sourceModelKey}`}
+          points={curve.map((point) => `${x(point.x)},${y(point.y)}`).join(" ")}
+          fill="none"
+          stroke={colorOf(curve[0]!.entry)}
+          strokeOpacity={0.55}
+          strokeWidth={1.25}
+          pointerEvents="none"
+        />
+      ))}
       {points.map((point) => {
         const key = point.entry.sourceModelKey;
         const active = hovered === key;
@@ -339,23 +375,262 @@ function AvailableBadge() {
 const shortLabel = (metric: ModelBenchmarkMetric) =>
   metric.label.replace(/^BenchLM overall$/, "Overall");
 
+const CatalogSeenOrNull = Schema.NullOr(CatalogSeen);
+
+/** Starts one blind-test chat per selection with the same prompt; resolves to their thread ids. */
+export type StartBenchmarkArena = (
+  prompt: string,
+  selections: ReadonlyArray<ModelSelection>,
+  labels: ReadonlyArray<string>,
+) => Promise<ReadonlyArray<string>>;
+
+interface Column {
+  readonly key: string;
+  readonly label: string;
+  readonly value: (entry: ModelBenchmarkEntry) => number | undefined;
+  readonly format: (entry: ModelBenchmarkEntry) => ReactNode;
+  readonly higherIsBetter: boolean;
+  /** The column the chips select; drawn in full contrast. */
+  readonly focus?: boolean;
+}
+
+const formatSeconds = (seconds: number) =>
+  seconds < 60 ? `${Math.round(seconds)}s` : `${(seconds / 60).toFixed(1).replace(/\.0$/, "")}m`;
+
+function quotaText(quota: BenchmarkQuota): string {
+  if (quota.kind === "metered") return "Pay per use";
+  if (quota.kind === "unknown") return "Unknown";
+  if (quota.leftPercent > 0) return `${quota.leftPercent}% left`;
+  return quota.resetsAt ? `Out until ${formatRelativeTimeLabel(quota.resetsAt)}` : "Out";
+}
+
+function ArenaPanel({
+  environmentId,
+  entries,
+  connected,
+  arena,
+  setArena,
+  onStartArena,
+  defaults,
+}: {
+  readonly environmentId: EnvironmentId;
+  readonly entries: ReadonlyArray<ModelBenchmarkEntry>;
+  readonly connected: ReadonlyMap<string, BenchmarkCandidate>;
+  readonly arena: ArenaState;
+  readonly setArena: (update: (state: ArenaState) => ArenaState) => void;
+  readonly onStartArena: StartBenchmarkArena | null;
+  readonly defaults: ReadonlyArray<string>;
+}) {
+  const navigate = useNavigate();
+  const runnable = useMemo(
+    () =>
+      entries
+        .filter((entry) => connected.has(entry.sourceModelKey))
+        .toSorted((a, b) => a.name.localeCompare(b.name)),
+    [entries, connected],
+  );
+  const [chosen, setChosen] = useState<ReadonlyArray<string>>(() => defaults.slice(0, 2));
+  const [prompt, setPrompt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const byKey = new Map(entries.map((entry) => [entry.sourceModelKey, entry]));
+
+  const start = async () => {
+    if (!onStartArena || chosen.length < 2 || prompt.trim().length === 0) return;
+    setBusy(true);
+    setError(null);
+    // Shuffle so the label never hints at which model is which.
+    const order = chosen.toSorted(() => Math.random() - 0.5);
+    const labels = order.map((_, index) => contestantLabel(index));
+    try {
+      const threadIds = await onStartArena(
+        prompt.trim(),
+        order.map((key) => connected.get(key)!.selection),
+        labels,
+      );
+      setArena((state) =>
+        addArenaMatch(state, {
+          id: randomUUID(),
+          prompt: prompt.trim(),
+          createdAt: new Date().toISOString(),
+          contestants: order.map((key, index) => ({
+            label: labels[index]!,
+            entryKey: key,
+            name: byKey.get(key)?.name ?? key,
+            threadId: threadIds[index]!,
+          })),
+        }),
+      );
+      setPrompt("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not start the blind test.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const ratings = Object.entries(arena.ratings).toSorted(([, a], [, b]) => b.elo - a.elo);
+
+  return (
+    <div className="flex flex-col gap-3 text-xs">
+      <div className="flex flex-col gap-2 rounded-xl border border-border/60 p-3">
+        <p className="text-muted-foreground">
+          Send one prompt to 2 to 4 of your models. Each gets its own chat in plan mode, labelled A,
+          B, C so you judge the answer, not the name. Vote here and your personal rating updates.
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {runnable.map((entry) => {
+            const key = entry.sourceModelKey;
+            const on = chosen.includes(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={on}
+                disabled={!on && chosen.length >= 4}
+                onClick={() =>
+                  setChosen((current) =>
+                    on ? current.filter((item) => item !== key) : [...current, key],
+                  )
+                }
+                className={cn(
+                  "cursor-pointer rounded-full border px-2.5 py-0.5 text-2xs transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                  on
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {entry.name}
+              </button>
+            );
+          })}
+        </div>
+        <Textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          placeholder="A real task you care about, e.g. a bug report or a design question"
+          aria-label="Blind test prompt"
+          rows={3}
+        />
+        <div className="flex items-center gap-2">
+          <Button
+            size="xs"
+            disabled={!onStartArena || busy || chosen.length < 2 || prompt.trim().length === 0}
+            onClick={() => void start()}
+          >
+            {busy ? <Spinner className="size-3" /> : null}
+            Start blind test ({chosen.length})
+          </Button>
+          {!onStartArena ? (
+            <span className="text-2xs text-muted-foreground">Open a project to run tests.</span>
+          ) : null}
+          {error ? <span className="text-2xs text-destructive">{error}</span> : null}
+        </div>
+      </div>
+
+      {arena.matches.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {arena.matches.slice(0, 8).map((match) => (
+            <li key={match.id} className="rounded-xl border border-border/60 p-2.5">
+              <p className="line-clamp-2 text-foreground">{match.prompt}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {match.contestants.map((contestant) => (
+                  <Button
+                    key={contestant.label}
+                    size="xs"
+                    variant="outline"
+                    onClick={() =>
+                      void navigate({
+                        to: "/$environmentId/$threadId",
+                        params: { environmentId, threadId: contestant.threadId },
+                      })
+                    }
+                  >
+                    Open {contestant.label}
+                    {match.winner !== undefined ? ` · ${contestant.name}` : ""}
+                  </Button>
+                ))}
+                <span className="ms-auto text-2xs text-muted-foreground">
+                  {match.winner === undefined ? "Best answer:" : "Winner:"}
+                </span>
+                {match.winner === undefined ? (
+                  <>
+                    {match.contestants.map((contestant) => (
+                      <Button
+                        key={contestant.label}
+                        size="xs"
+                        variant="secondary"
+                        onClick={() =>
+                          setArena((state) => recordArenaVote(state, match.id, contestant.label))
+                        }
+                      >
+                        {contestant.label}
+                      </Button>
+                    ))}
+                    <Button
+                      size="xs"
+                      variant="secondary"
+                      onClick={() => setArena((state) => recordArenaVote(state, match.id, "tie"))}
+                    >
+                      Tie
+                    </Button>
+                  </>
+                ) : (
+                  <span className="font-medium text-foreground">
+                    {match.winner === "tie"
+                      ? "Tie"
+                      : match.contestants.find((item) => item.label === match.winner)?.name}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {ratings.length > 0 ? (
+        <div className="rounded-xl border border-border/60 p-2.5">
+          <p className="mb-1 font-medium text-foreground">Your rating</p>
+          <ol className="flex flex-col gap-0.5">
+            {ratings.map(([key, rating], index) => (
+              <li key={key} className="flex items-center gap-2 tabular-nums">
+                <span className="w-4 text-muted-foreground">{index + 1}</span>
+                <span className="min-w-0 flex-1 truncate">{byKey.get(key)?.name ?? key}</span>
+                <span className="text-foreground">{Math.round(rating.elo)}</span>
+                <span className="w-16 text-right text-muted-foreground">
+                  {rating.games} {rating.games === 1 ? "vote" : "votes"}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ExplorerBody({
   environmentId,
   candidates,
   onStartChat,
+  onStartArena,
   onClose,
 }: {
   readonly environmentId: EnvironmentId;
   readonly candidates: ReadonlyArray<BenchmarkCandidate>;
   readonly onStartChat: ((selection: ModelSelection) => void) | null;
+  readonly onStartArena: StartBenchmarkArena | null;
   readonly onClose: () => void;
 }) {
   const catalogQuery = useEnvironmentQuery(
     serverEnvironment.modelBenchmarkCatalog({ environmentId, input: {} }),
   );
+  const runStatsQuery = useEnvironmentQuery(
+    serverEnvironment.modelRunStats({ environmentId, input: {} }),
+  );
   const catalog = catalogQuery.data;
 
-  const [view, setView] = useState<"chart" | "table">("chart");
+  const [view, setView] = useState<"chart" | "table" | "arena">("chart");
   const [xKind, setXKind] = useState<XKind>("price");
   const [yKey, setYKey] = useState<string | null>(null);
   const [hoveredRaw, setHovered] = useState<string | null>(null);
@@ -364,6 +639,13 @@ function ExplorerBody({
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [effort, setEffort] = useState("all");
   const [sort, setSort] = useState<ExplorerSort>({ key: "y", direction: "desc" });
+  const [arena, writeArena] = useLocalStorage(ARENA_STORAGE_KEY, EMPTY_ARENA, ArenaState);
+  const setArena = (update: (state: ArenaState) => ArenaState) => writeArena(update);
+  const [seen, setSeen] = useLocalStorage(
+    CATALOG_SEEN_STORAGE_KEY,
+    null as CatalogSeen | null,
+    CatalogSeenOrNull,
+  );
 
   /** Source model key to the candidate a "New chat" starts; matched locally, so no provider is cut off. */
   const connected = useMemo(() => {
@@ -374,6 +656,10 @@ function ExplorerBody({
     return byKey;
   }, [catalog, candidates]);
   const connectedKeys = useMemo(() => new Set(connected.keys()), [connected]);
+  const runStats = useMemo(
+    () => runStatsByEntry(catalog?.entries ?? [], runStatsQuery.data?.stats ?? []),
+    [catalog, runStatsQuery.data],
+  );
 
   const metrics = useMemo(() => catalog?.metrics ?? [], [catalog]);
   const headline = useMemo(() => headlineScoreMetrics(metrics), [metrics]);
@@ -402,11 +688,41 @@ function ExplorerBody({
     return index >= 0 && index < CREATOR_COLORS.length ? CREATOR_COLORS[index]! : OTHER_COLOR;
   };
 
-  const efforts = useMemo(() => catalogEfforts(catalog?.entries ?? []), [catalog]);
+  const allEntries = useMemo(() => catalog?.entries ?? [], [catalog]);
+  const efforts = useMemo(() => catalogEfforts(allEntries), [allEntries]);
   const entries = useMemo(
-    () => (catalog?.entries ?? []).filter((entry) => matchesEffort(entry, effort)),
-    [catalog, effort],
+    () => allEntries.filter((entry) => matchesEffort(entry, effort)),
+    [allEntries, effort],
   );
+
+  const best = yMetric ? bestRunnableNow(allEntries, connected, yMetric.key) : null;
+  const challengers = useMemo(
+    () =>
+      yMetric
+        ? newChallengers(
+            allEntries,
+            seen,
+            yMetric.key,
+            best ? (best.entry.values[yMetric.key] ?? null) : null,
+          ).slice(0, 3)
+        : [],
+    [allEntries, seen, yMetric, best],
+  );
+  const markSeen = () =>
+    setSeen({
+      keys: allEntries.map((entry) => entry.sourceModelKey),
+      takenAt: new Date().toISOString(),
+    });
+  // First visit: remember today's catalog so later visits can flag what is new.
+  useEffect(() => {
+    if (seen === null && allEntries.length > 0) {
+      setSeen({
+        keys: allEntries.map((entry) => entry.sourceModelKey),
+        takenAt: new Date().toISOString(),
+      });
+    }
+  }, [seen, allEntries, setSeen]);
+
   // Default view: the models you can run plus the strongest few, like AA's curated chart.
   const selected = useMemo(() => {
     if (picked) return picked;
@@ -428,13 +744,121 @@ function ExplorerBody({
     () => (xMetric && yMetric ? paretoFrontier(points, xMetric, yMetric) : []),
     [points, xMetric, yMetric],
   );
-  const columns = useMemo(() => [...headline, ...sideMetrics], [headline, sideMetrics]);
+  const curves = useMemo(() => effortCurves(points), [points]);
+
+  const metricColumn = (metric: ModelBenchmarkMetric): Column => ({
+    key: metric.key,
+    label: shortLabel(metric),
+    value: (entry) => entry.values[metric.key],
+    format: (entry) => {
+      const value = entry.values[metric.key];
+      return value === undefined ? "–" : formatBenchmarkValue(value, metric);
+    },
+    higherIsBetter: metric.higherIsBetter,
+    ...(metric.key === yMetric?.key ? { focus: true } : {}),
+  });
+  const quotaColumn: Column = {
+    key: "quota",
+    label: "Quota now",
+    value: (entry) => {
+      const candidate = connected.get(entry.sourceModelKey);
+      return candidate ? quotaRank(candidate.quota) : undefined;
+    },
+    format: (entry) => {
+      const candidate = connected.get(entry.sourceModelKey);
+      return candidate ? quotaText(candidate.quota) : "–";
+    },
+    higherIsBetter: true,
+  };
+  const yoursColumns: ReadonlyArray<Column> = [
+    {
+      key: "runs",
+      label: "Your runs",
+      value: (entry) => runStats.get(entry.sourceModelKey)?.runs,
+      format: (entry) => runStats.get(entry.sourceModelKey)?.runs ?? "–",
+      higherIsBetter: true,
+    },
+    {
+      key: "success",
+      label: "Finished",
+      value: (entry) => runStats.get(entry.sourceModelKey)?.successRate ?? undefined,
+      format: (entry) => {
+        const rate = runStats.get(entry.sourceModelKey)?.successRate;
+        return rate === null || rate === undefined ? "–" : `${Math.round(rate * 100)}%`;
+      },
+      higherIsBetter: true,
+    },
+    {
+      key: "median",
+      label: "Typical time",
+      value: (entry) => runStats.get(entry.sourceModelKey)?.medianSeconds ?? undefined,
+      format: (entry) => {
+        const seconds = runStats.get(entry.sourceModelKey)?.medianSeconds;
+        return seconds === null || seconds === undefined ? "–" : formatSeconds(seconds);
+      },
+      higherIsBetter: false,
+    },
+    {
+      key: "elo",
+      label: "Your rating",
+      value: (entry) => arena.ratings[entry.sourceModelKey]?.elo,
+      format: (entry) => {
+        const rating = arena.ratings[entry.sourceModelKey];
+        return rating ? Math.round(rating.elo) : "–";
+      },
+      higherIsBetter: true,
+    },
+  ];
+  const hasRuns = runStats.size > 0;
+  const hasRatings = Object.keys(arena.ratings).length > 0;
+  const columns: ReadonlyArray<Column> =
+    !xMetric || !yMetric
+      ? []
+      : view === "chart"
+        ? [
+            metricColumn(yMetric),
+            metricColumn(xMetric),
+            quotaColumn,
+            ...(hasRuns ? [yoursColumns[0]!, yoursColumns[1]!] : []),
+          ]
+        : [
+            ...headline.map(metricColumn),
+            ...sideMetrics.map(metricColumn),
+            quotaColumn,
+            ...yoursColumns.filter((column) => (column.key === "elo" ? hasRatings : hasRuns)),
+          ];
+
   const sortKey = sort.key === "y" ? yMetric?.key : sort.key === "x" ? xMetric?.key : sort.key;
-  const rows = useMemo(
-    () => (sortKey ? sortEntries(visible, { key: sortKey, direction: sort.direction }) : visible),
-    [visible, sortKey, sort.direction],
-  );
-  const bests = useMemo(() => columnBests(visible, columns), [visible, columns]);
+  const sortColumn = columns.find((column) => column.key === sortKey);
+  const rows = useMemo(() => {
+    if (sortKey === "name" || sortKey === "effort") {
+      return sortEntries(visible, { key: sortKey, direction: sort.direction });
+    }
+    if (!sortColumn) return visible;
+    const direction = sort.direction === "asc" ? 1 : -1;
+    return visible.toSorted((a, b) => {
+      const left = sortColumn.value(a);
+      const right = sortColumn.value(b);
+      if (left === undefined && right === undefined) return a.name.localeCompare(b.name);
+      if (left === undefined) return 1;
+      if (right === undefined) return -1;
+      return direction * (left - right) || a.name.localeCompare(b.name);
+    });
+  }, [visible, sortKey, sortColumn, sort.direction]);
+  const bests = useMemo(() => {
+    const result = new Map<string, number>();
+    for (const column of columns) {
+      for (const entry of visible) {
+        const value = column.value(entry);
+        if (value === undefined || column.key === "quota") continue;
+        const current = result.get(column.key);
+        if (current === undefined || (column.higherIsBetter ? value > current : value < current)) {
+          result.set(column.key, value);
+        }
+      }
+    }
+    return result;
+  }, [columns, visible]);
 
   if (!catalog) {
     return (
@@ -459,14 +883,12 @@ function ExplorerBody({
   const hoveredEntry = hovered
     ? visible.find((entry) => entry.sourceModelKey === hovered)
     : undefined;
-  const sortBy = (metric: ModelBenchmarkMetric | "name" | "effort") => {
-    const key = typeof metric === "string" ? metric : metric.key;
+  const sortBy = (key: string, higherIsBetter: boolean) => {
     if (sortKey === key) {
       setSort({ key, direction: sort.direction === "desc" ? "asc" : "desc" });
       return;
     }
-    const ascending = typeof metric === "string" || !metric.higherIsBetter;
-    setSort({ key, direction: ascending ? "asc" : "desc" });
+    setSort({ key, direction: higherIsBetter ? "desc" : "asc" });
   };
   const sortIcon = (key: string) =>
     sortKey !== key ? null : sort.direction === "desc" ? (
@@ -474,6 +896,10 @@ function ExplorerBody({
     ) : (
       <ArrowUpIcon aria-hidden className="size-3" />
     );
+  const startChat = (candidate: BenchmarkCandidate) => {
+    onStartChat?.(candidate.selection);
+    onClose();
+  };
   const chatButton = (entry: ModelBenchmarkEntry) => {
     const candidate = connected.get(entry.sourceModelKey);
     return candidate && onStartChat ? (
@@ -481,19 +907,80 @@ function ExplorerBody({
         size="xs"
         variant="outline"
         aria-label={`New chat with ${entry.name}`}
-        onClick={() => {
-          onStartChat(candidate.selection);
-          onClose();
-        }}
+        onClick={() => startChat(candidate)}
       >
         New chat
       </Button>
     ) : null;
   };
-  const tableColumns = view === "chart" ? [yMetric, xMetric] : columns;
+  const headerButton = (key: string, label: string, higherIsBetter: boolean, focus?: boolean) => (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground",
+        focus && "text-foreground",
+      )}
+      onClick={() => sortBy(key, higherIsBetter)}
+    >
+      {label}
+      {sortIcon(key)}
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-3">
+      {best ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-success/30 bg-success/8 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">
+            Best you can run now for {shortLabel(yMetric)}
+          </span>
+          <span className="font-medium text-foreground">{best.entry.name}</span>
+          <span className="tabular-nums text-muted-foreground">
+            {formatBenchmarkValue(best.entry.values[yMetric.key] ?? 0, yMetric)} ·{" "}
+            {quotaText(best.candidate.quota)}
+          </span>
+          {onStartChat ? (
+            <Button
+              size="xs"
+              variant="outline"
+              className="ms-auto"
+              onClick={() => startChat(best.candidate)}
+            >
+              New chat
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {challengers.length > 0 && seen ? (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-border/60 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">
+            New since {formatRelativeTimeLabel(seen.takenAt)}, ahead of your best on{" "}
+            {shortLabel(yMetric)}:
+          </span>
+          {challengers.map((entry) => (
+            <span key={entry.sourceModelKey} className="font-medium text-foreground">
+              {entry.name} ({formatBenchmarkValue(entry.values[yMetric.key] ?? 0, yMetric)})
+            </span>
+          ))}
+          <span className="ms-auto flex gap-1">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() =>
+                setPicked(
+                  new Set([...selected, ...challengers.map((entry) => entry.sourceModelKey)]),
+                )
+              }
+            >
+              Show
+            </Button>
+            <Button size="xs" variant="ghost" onClick={markSeen}>
+              Dismiss
+            </Button>
+          </span>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
         <Segmented
           label="View"
@@ -501,6 +988,7 @@ function ExplorerBody({
           options={[
             { id: "chart", label: "Chart" },
             { id: "table", label: "Table" },
+            { id: "arena", label: "Blind test" },
           ]}
           onChange={setView}
         />
@@ -515,203 +1003,213 @@ function ExplorerBody({
             />
           </>
         ) : null}
-        <ModelPicker
-          entries={entries}
-          selected={selected}
-          onChange={setPicked}
-          onReset={() => setPicked(null)}
-          connectedKeys={connectedKeys}
-        />
-      </div>
-      {efforts.length > 0 ? (
-        <div className="-mt-1 flex items-center gap-2">
-          <span className="text-2xs text-muted-foreground">Effort</span>
-          <Segmented
-            label="Effort"
-            value={effort}
-            options={[
-              { id: "all", label: "All" },
-              { id: "default", label: "Default" },
-              ...efforts.map((id) => ({
-                id,
-                label: id === "xhigh" ? "XHigh" : id[0]!.toUpperCase() + id.slice(1),
-              })),
-            ]}
-            onChange={(next) => {
-              setEffort(next);
-              setPicked(null);
-            }}
+        {view !== "arena" ? (
+          <ModelPicker
+            entries={entries}
+            selected={selected}
+            onChange={setPicked}
+            onReset={() => setPicked(null)}
+            connectedKeys={connectedKeys}
           />
-        </div>
-      ) : null}
-      <div className="-mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label="Score">
-        {headline.map((metric) => (
-          <button
-            key={metric.key}
-            type="button"
-            role="radio"
-            aria-checked={metric.key === yMetric.key}
-            onClick={() => {
-              setYKey(metric.key);
-              setSort({ key: "y", direction: "desc" });
-            }}
+        ) : null}
+      </div>
+
+      {view === "arena" ? (
+        <ArenaPanel
+          environmentId={environmentId}
+          entries={allEntries}
+          connected={connected}
+          arena={arena}
+          setArena={setArena}
+          onStartArena={onStartArena}
+          defaults={sortEntries(
+            allEntries.filter((entry) => connectedKeys.has(entry.sourceModelKey)),
+            { key: yMetric.key, direction: "desc" },
+          ).map((entry) => entry.sourceModelKey)}
+        />
+      ) : (
+        <>
+          {efforts.length > 0 ? (
+            <div className="-mt-1 flex items-center gap-2">
+              <span className="text-2xs text-muted-foreground">Effort</span>
+              <Segmented
+                label="Effort"
+                value={effort}
+                options={[
+                  { id: "all", label: "All" },
+                  { id: "default", label: "Default" },
+                  ...efforts.map((id) => ({
+                    id,
+                    label: id === "xhigh" ? "XHigh" : id[0]!.toUpperCase() + id.slice(1),
+                  })),
+                ]}
+                onChange={(next) => {
+                  setEffort(next);
+                  setPicked(null);
+                }}
+              />
+            </div>
+          ) : null}
+          <div className="-mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label="Score">
+            {headline.map((metric) => (
+              <button
+                key={metric.key}
+                type="button"
+                role="radio"
+                aria-checked={metric.key === yMetric.key}
+                onClick={() => {
+                  setYKey(metric.key);
+                  setSort({ key: "y", direction: "desc" });
+                }}
+                className={cn(
+                  "cursor-pointer rounded-full border px-2.5 py-0.5 text-2xs transition-colors",
+                  metric.key === yMetric.key
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+                )}
+              >
+                {shortLabel(metric)}
+              </button>
+            ))}
+          </div>
+
+          {view === "chart" ? (
+            <>
+              <div className="relative rounded-xl border border-border/60 bg-muted/10 p-2">
+                {points.length > 0 ? (
+                  <Scatter
+                    points={points}
+                    frontier={frontier}
+                    curves={curves}
+                    xMetric={xMetric}
+                    yMetric={yMetric}
+                    colorOf={colorOf}
+                    connectedKeys={connectedKeys}
+                    hovered={hovered}
+                    onHover={setHovered}
+                    onPick={(key) => setPinned((current) => (current === key ? null : key))}
+                  />
+                ) : (
+                  <p className="py-16 text-center text-xs text-muted-foreground">
+                    None of the selected models have both numbers.
+                  </p>
+                )}
+                {hoveredEntry ? (
+                  <div className="absolute top-2 right-2 flex items-center gap-2 rounded-lg border bg-popover px-2.5 py-1.5 text-2xs shadow-md">
+                    <div>
+                      <div className="font-medium text-foreground">{hoveredEntry.name}</div>
+                      <div className="text-muted-foreground">
+                        {shortLabel(yMetric)}:{" "}
+                        {formatBenchmarkValue(hoveredEntry.values[yMetric.key] ?? 0, yMetric)}
+                        {" · "}
+                        {xMetric.label}:{" "}
+                        {formatBenchmarkValue(hoveredEntry.values[xMetric.key] ?? 0, xMetric)}
+                      </div>
+                      {runStats.get(hoveredEntry.sourceModelKey) ? (
+                        <div className="text-muted-foreground">
+                          You: {runStats.get(hoveredEntry.sourceModelKey)!.runs} runs
+                        </div>
+                      ) : null}
+                    </div>
+                    {pinned === hoveredEntry.sourceModelKey ? chatButton(hoveredEntry) : null}
+                  </div>
+                ) : null}
+              </div>
+              <p className="-mt-1 text-2xs text-muted-foreground">
+                Up and to the {xMetric.higherIsBetter ? "right" : "left"} is better. Dotted line:
+                the best score at each {xMetric.label.toLowerCase()}. Solid lines join one model's
+                effort levels. Ringed dots are available to you; click a dot to pin it.
+              </p>
+            </>
+          ) : null}
+
+          <div
             className={cn(
-              "cursor-pointer rounded-full border px-2.5 py-0.5 text-2xs transition-colors",
-              metric.key === yMetric.key
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+              "overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]",
+              view === "chart" ? "max-h-64" : "max-h-[60vh]",
             )}
           >
-            {shortLabel(metric)}
-          </button>
-        ))}
-      </div>
-
-      {view === "chart" ? (
-        <>
-          <div className="relative rounded-xl border border-border/60 bg-muted/10 p-2">
-            {points.length > 0 ? (
-              <Scatter
-                points={points}
-                frontier={frontier}
-                xMetric={xMetric}
-                yMetric={yMetric}
-                colorOf={colorOf}
-                connectedKeys={connectedKeys}
-                hovered={hovered}
-                onHover={setHovered}
-                onPick={(key) => setPinned((current) => (current === key ? null : key))}
-              />
-            ) : (
-              <p className="py-16 text-center text-xs text-muted-foreground">
-                None of the selected models have both numbers.
-              </p>
-            )}
-            {hoveredEntry ? (
-              <div className="absolute top-2 right-2 flex items-center gap-2 rounded-lg border bg-popover px-2.5 py-1.5 text-2xs shadow-md">
-                <div>
-                  <div className="font-medium text-foreground">{hoveredEntry.name}</div>
-                  <div className="text-muted-foreground">
-                    {shortLabel(yMetric)}:{" "}
-                    {formatBenchmarkValue(hoveredEntry.values[yMetric.key] ?? 0, yMetric)}
-                    {" · "}
-                    {xMetric.label}:{" "}
-                    {formatBenchmarkValue(hoveredEntry.values[xMetric.key] ?? 0, xMetric)}
-                  </div>
-                </div>
-                {pinned === hoveredEntry.sourceModelKey ? chatButton(hoveredEntry) : null}
-              </div>
-            ) : null}
-          </div>
-          <p className="-mt-1 text-2xs text-muted-foreground">
-            Up and to the {xMetric.higherIsBetter ? "right" : "left"} is better. Dotted line: the
-            best score at each {xMetric.label.toLowerCase()}. Ringed dots are available to you;
-            click a dot to pin it.
-          </p>
-        </>
-      ) : null}
-
-      <div
-        className={cn(
-          "overflow-auto rounded-xl border border-border/60 [scrollbar-width:thin]",
-          view === "chart" ? "max-h-64" : "max-h-[60vh]",
-        )}
-      >
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 z-10 bg-background text-2xs text-muted-foreground">
-            <tr>
-              <th className="sticky left-0 z-10 bg-background px-2 py-1 text-left font-medium">
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground"
-                  onClick={() => sortBy("name")}
-                >
-                  Model {sortIcon("name")}
-                </button>
-              </th>
-              <th className="px-2 py-1 text-left font-medium">
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground"
-                  onClick={() => sortBy("effort")}
-                >
-                  Effort {sortIcon("effort")}
-                </button>
-              </th>
-              {tableColumns.map((metric) => (
-                <th key={metric.key} className="px-2 py-1 text-right font-medium whitespace-nowrap">
-                  <button
-                    type="button"
-                    className={cn(
-                      "inline-flex cursor-pointer items-center gap-0.5 hover:text-foreground",
-                      metric.key === yMetric.key && "text-foreground",
-                    )}
-                    onClick={() => sortBy(metric)}
-                  >
-                    {shortLabel(metric)}
-                    {sortIcon(metric.key)}
-                  </button>
-                </th>
-              ))}
-              <th className="w-0" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((entry) => {
-              const key = entry.sourceModelKey;
-              return (
-                <tr
-                  key={key}
-                  onPointerEnter={() => setHovered(key)}
-                  onPointerLeave={() => setHovered(null)}
-                  className={cn("border-t border-border/40", hovered === key && "bg-muted/60")}
-                >
-                  <td className="sticky left-0 max-w-56 bg-background px-2 py-1">
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        aria-hidden
-                        className="size-2 shrink-0 rounded-full"
-                        style={{ background: colorOf(entry) }}
-                      />
-                      <span className="truncate">{entry.name}</span>
-                      {connected.has(key) ? <AvailableBadge /> : null}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1 text-muted-foreground capitalize">
-                    {entry.effort ?? "Default"}
-                  </td>
-                  {tableColumns.map((metric) => {
-                    const value = entry.values[metric.key];
-                    const best =
-                      view === "table" && value !== undefined && bests.get(metric.key) === value;
-                    return (
-                      <td
-                        key={metric.key}
-                        className={cn(
-                          "px-2 py-1 text-right tabular-nums",
-                          best
-                            ? "font-semibold text-success"
-                            : metric.key === yMetric.key
-                              ? "text-foreground"
-                              : "text-muted-foreground",
-                        )}
-                      >
-                        {value === undefined ? "–" : formatBenchmarkValue(value, metric)}
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-1 text-right">{chatButton(entry)}</td>
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 z-10 bg-background text-2xs text-muted-foreground">
+                <tr>
+                  <th className="sticky left-0 z-10 bg-background px-2 py-1 text-left font-medium">
+                    {headerButton("name", "Model", false)}
+                  </th>
+                  <th className="px-2 py-1 text-left font-medium">
+                    {headerButton("effort", "Effort", false)}
+                  </th>
+                  {columns.map((column) => (
+                    <th
+                      key={column.key}
+                      className="px-2 py-1 text-right font-medium whitespace-nowrap"
+                    >
+                      {headerButton(column.key, column.label, column.higherIsBetter, column.focus)}
+                    </th>
+                  ))}
+                  <th className="w-0" />
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {view === "table" ? (
-        <p className="-mt-1 text-2xs text-muted-foreground">
-          Green marks the leader in each column. Click a header to sort.
-        </p>
-      ) : null}
+              </thead>
+              <tbody>
+                {rows.map((entry) => {
+                  const key = entry.sourceModelKey;
+                  return (
+                    <tr
+                      key={key}
+                      onPointerEnter={() => setHovered(key)}
+                      onPointerLeave={() => setHovered(null)}
+                      className={cn("border-t border-border/40", hovered === key && "bg-muted/60")}
+                    >
+                      <td className="sticky left-0 max-w-56 bg-background px-2 py-1">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            aria-hidden
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ background: colorOf(entry) }}
+                          />
+                          <span className="truncate">{entry.name}</span>
+                          {connected.has(key) ? <AvailableBadge /> : null}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1 text-muted-foreground capitalize">
+                        {entry.effort ?? "Default"}
+                      </td>
+                      {columns.map((column) => {
+                        const value = column.value(entry);
+                        const isBest =
+                          view === "table" &&
+                          value !== undefined &&
+                          bests.get(column.key) === value;
+                        return (
+                          <td
+                            key={column.key}
+                            className={cn(
+                              "px-2 py-1 text-right tabular-nums whitespace-nowrap",
+                              isBest
+                                ? "font-semibold text-success"
+                                : column.focus
+                                  ? "text-foreground"
+                                  : "text-muted-foreground",
+                            )}
+                          >
+                            {column.format(entry)}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-1 text-right">{chatButton(entry)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {view === "table" ? (
+            <p className="-mt-1 text-2xs text-muted-foreground">
+              Green marks the leader in each column. "Your runs", "Finished" and "Typical time" come
+              from your own chats in the last 90 days.
+            </p>
+          ) : null}
+        </>
+      )}
 
       {source ? (
         <a
@@ -728,28 +1226,32 @@ function ExplorerBody({
   );
 }
 
+/** The benchmark explorer: chart, table and blind tests over every model the source publishes. */
 export function BenchmarkExplorer({
   open,
   onOpenChange,
   environmentId,
   candidates,
   onStartChat,
+  onStartArena,
 }: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly environmentId: EnvironmentId;
   readonly candidates: ReadonlyArray<BenchmarkCandidate>;
   readonly onStartChat: ((selection: ModelSelection) => void) | null;
+  readonly onStartArena: StartBenchmarkArena | null;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup className="max-w-4xl">
+      <DialogPopup className="max-w-5xl">
         <DialogPanel>
           <DialogTitle className="mb-3">Model benchmarks</DialogTitle>
           <ExplorerBody
             environmentId={environmentId}
             candidates={candidates}
             onStartChat={onStartChat}
+            onStartArena={onStartArena}
             onClose={() => onOpenChange(false)}
           />
         </DialogPanel>
