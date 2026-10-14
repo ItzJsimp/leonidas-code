@@ -1,4 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off
+import type * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
 
 import * as Context from "effect/Context";
@@ -8,9 +9,12 @@ import * as Path from "effect/Path";
 import * as RcMap from "effect/RcMap";
 import * as Schema from "effect/Schema";
 
+import { FILESYSTEM_INSPECT_NAME_LIMIT } from "@t3tools/contracts";
 import type {
   FilesystemBrowseInput,
   FilesystemBrowseResult,
+  FilesystemInspectFolderInput,
+  FilesystemInspectFolderResult,
   ProjectEntry,
   ProjectListEntriesInput,
   ProjectListEntriesResult,
@@ -93,6 +97,9 @@ export class WorkspaceEntries extends Context.Service<
     readonly browse: (
       input: FilesystemBrowseInput,
     ) => Effect.Effect<FilesystemBrowseResult, WorkspaceEntriesBrowseError>;
+    readonly inspectFolder: (
+      input: FilesystemInspectFolderInput,
+    ) => Effect.Effect<FilesystemInspectFolderResult, WorkspaceEntriesBrowseError>;
     readonly list: (
       input: ProjectListEntriesInput,
     ) => Effect.Effect<ProjectListEntriesResult, WorkspaceEntriesError>;
@@ -133,6 +140,57 @@ const resolveBrowseTarget = Effect.fn("WorkspaceEntries.resolveBrowseTarget")(fu
     input.partialPath,
   );
 });
+
+function errorCode(cause: unknown): string | undefined {
+  const code = (cause as NodeJS.ErrnoException | undefined)?.code;
+  return typeof code === "string" ? code : undefined;
+}
+
+/** Lists every entry and checks the named files; read failures become results, not errors. */
+async function inspectDirectory(
+  resolvedPath: string,
+  filesToCheck: ReadonlyArray<string>,
+  path: Path.Path,
+): Promise<FilesystemInspectFolderResult> {
+  let dirents: Array<NodeFS.Dirent>;
+  try {
+    dirents = await NodeFSP.readdir(resolvedPath, { withFileTypes: true });
+  } catch (cause) {
+    const code = errorCode(cause);
+    if (code === "ENOENT") return { _tag: "missing", resolvedPath };
+    if (code === "ENOTDIR") return { _tag: "notDirectory", resolvedPath };
+    return code === undefined
+      ? { _tag: "unreadable", resolvedPath }
+      : { _tag: "unreadable", resolvedPath, code };
+  }
+  const byName = (left: string, right: string) => left.localeCompare(right);
+  const directories = dirents.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const files = dirents.filter((entry) => !entry.isDirectory()).map((entry) => entry.name);
+  const checks = await Promise.all(
+    filesToCheck.map(async (relativePath) => {
+      const target = path.resolve(resolvedPath, relativePath);
+      const relative = path.relative(resolvedPath, target);
+      if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) return null;
+      try {
+        await NodeFSP.lstat(target);
+        return relativePath;
+      } catch (cause) {
+        const code = errorCode(cause);
+        // Anything but "not there" might still be a file the write would replace.
+        return code === "ENOENT" || code === "ENOTDIR" ? null : relativePath;
+      }
+    }),
+  );
+  return {
+    _tag: "directory",
+    resolvedPath,
+    directoryCount: directories.length,
+    fileCount: files.length,
+    directories: directories.toSorted(byName).slice(0, FILESYSTEM_INSPECT_NAME_LIMIT),
+    files: files.toSorted(byName).slice(0, FILESYSTEM_INSPECT_NAME_LIMIT),
+    existingFiles: checks.filter((entry): entry is string => entry !== null),
+  };
+}
 
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
@@ -234,6 +292,13 @@ export const make = Effect.gen(function* () {
       };
     },
   );
+
+  const inspectFolder: WorkspaceEntries["Service"]["inspectFolder"] = Effect.fn(
+    "WorkspaceEntries.inspectFolder",
+  )(function* (input) {
+    const resolvedPath = yield* resolveBrowseTarget({ partialPath: input.path }, path);
+    return yield* Effect.promise(() => inspectDirectory(resolvedPath, input.filesToCheck, path));
+  });
 
   const search: WorkspaceEntries["Service"]["search"] = Effect.fn("WorkspaceEntries.search")(
     function* (input) {
@@ -358,7 +423,7 @@ export const make = Effect.gen(function* () {
     },
   );
 
-  return WorkspaceEntries.of({ browse, list, refresh, search, searchContents });
+  return WorkspaceEntries.of({ browse, inspectFolder, list, refresh, search, searchContents });
 });
 
 export const layer = Layer.effect(WorkspaceEntries, make).pipe(

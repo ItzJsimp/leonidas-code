@@ -2847,6 +2847,17 @@ const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.filesystemInspectFolder]: (input) =>
+          workspaceEntries.inspectFolder(input).pipe(
+            Effect.mapError(
+              (cause) =>
+                new FilesystemBrowseError({
+                  partialPath: input.path,
+                  ...filesystemBrowseFailureContext(cause),
+                  cause,
+                }),
+            ),
+          ),
         [WS_METHODS.attachmentsCreateUploadUrl]: (input) => issueAttachmentUploadUrl(input),
         [WS_METHODS.attachmentsDelete]: (input) => deletePendingAttachment(input.attachmentId),
         [WS_METHODS.agentSessionsScan]: () => agentSessionScanner.scan,

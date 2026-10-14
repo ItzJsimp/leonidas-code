@@ -119,5 +119,9 @@ export function createFilesystemEnvironmentAtoms<R, E>(
       label: "environment-data:filesystem:browse",
       tag: WS_METHODS.filesystemBrowse,
     }),
+    inspectFolder: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:filesystem:inspect-folder",
+      tag: WS_METHODS.filesystemInspectFolder,
+    }),
   };
 }

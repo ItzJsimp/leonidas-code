@@ -46,6 +46,41 @@ export const FilesystemBrowseResult = Schema.Struct({
 });
 export type FilesystemBrowseResult = typeof FilesystemBrowseResult.Type;
 
+export const FILESYSTEM_INSPECT_FILE_LIMIT = 512;
+export const FILESYSTEM_INSPECT_NAME_LIMIT = 50;
+
+// Checks a folder before something writes into it. Paths are absolute or ~/; the
+// owning environment inspects its own disk, so a remote folder is read remotely.
+export const FilesystemInspectFolderInput = Schema.Struct({
+  path: TrimmedNonEmptyString.check(Schema.isMaxLength(FILESYSTEM_PATH_MAX_LENGTH)),
+  // Paths relative to the folder that a write would replace.
+  filesToCheck: Schema.Array(
+    TrimmedNonEmptyString.check(Schema.isMaxLength(FILESYSTEM_PATH_MAX_LENGTH)),
+  ).check(Schema.isMaxLength(FILESYSTEM_INSPECT_FILE_LIMIT)),
+});
+export type FilesystemInspectFolderInput = typeof FilesystemInspectFolderInput.Type;
+
+// Every outcome is a value, so an unreadable folder is never mistaken for an empty one.
+export const FilesystemInspectFolderResult = Schema.Union([
+  Schema.TaggedStruct("missing", { resolvedPath: TrimmedNonEmptyString }),
+  Schema.TaggedStruct("notDirectory", { resolvedPath: TrimmedNonEmptyString }),
+  Schema.TaggedStruct("unreadable", {
+    resolvedPath: TrimmedNonEmptyString,
+    code: Schema.optional(Schema.String),
+  }),
+  Schema.TaggedStruct("directory", {
+    resolvedPath: TrimmedNonEmptyString,
+    directoryCount: NonNegativeInt,
+    fileCount: NonNegativeInt,
+    // Sorted, capped at FILESYSTEM_INSPECT_NAME_LIMIT; hidden entries included.
+    directories: Schema.Array(Schema.String),
+    files: Schema.Array(Schema.String),
+    // The subset of filesToCheck that already exists, in request order.
+    existingFiles: Schema.Array(Schema.String),
+  }),
+]);
+export type FilesystemInspectFolderResult = typeof FilesystemInspectFolderResult.Type;
+
 export const FilesystemBrowseFailure = Schema.Literals([
   "windows_path_unsupported",
   "current_project_required",

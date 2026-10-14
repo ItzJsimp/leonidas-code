@@ -868,4 +868,120 @@ it.layer(layerTest, { excludeTestServices: true })("WorkspaceEntries", (it) => {
       }),
     );
   });
+
+  describe("inspectFolder", () => {
+    it.effect("reports a missing folder", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const path = yield* Path.Path;
+        const cwd = yield* makeTempDir({ prefix: "t3code-inspect-missing-" });
+        const target = path.join(cwd, "AIOS");
+
+        const result = yield* workspaceEntries.inspectFolder({
+          path: target,
+          filesToCheck: ["CLAUDE.md"],
+        });
+        expect(result).toEqual({ _tag: "missing", resolvedPath: target });
+      }),
+    );
+
+    it.effect("reports an empty folder with no entries", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const cwd = yield* makeTempDir({ prefix: "t3code-inspect-empty-" });
+
+        const result = yield* workspaceEntries.inspectFolder({
+          path: cwd,
+          filesToCheck: ["CLAUDE.md"],
+        });
+        expect(result).toEqual({
+          _tag: "directory",
+          resolvedPath: cwd,
+          directoryCount: 0,
+          fileCount: 0,
+          directories: [],
+          files: [],
+          existingFiles: [],
+        });
+      }),
+    );
+
+    it.effect("lists loose root files, including hidden ones", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const cwd = yield* makeTempDir({ prefix: "t3code-inspect-loose-" });
+        yield* writeTextFile(cwd, "notes.txt", "keep me");
+        yield* writeTextFile(cwd, ".env", "SECRET=1");
+
+        const result = yield* workspaceEntries.inspectFolder({
+          path: cwd,
+          filesToCheck: ["CLAUDE.md"],
+        });
+        expect(result).toMatchObject({
+          _tag: "directory",
+          directoryCount: 0,
+          fileCount: 2,
+          files: [".env", "notes.txt"],
+          existingFiles: [],
+        });
+      }),
+    );
+
+    it.effect("finds target files that a write would replace", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const cwd = yield* makeTempDir({ prefix: "t3code-inspect-targets-" });
+        yield* writeTextFile(cwd, "CLAUDE.md", "mine");
+        yield* writeTextFile(cwd, ".claude/skills/tdd/SKILL.md", "mine");
+
+        const result = yield* workspaceEntries.inspectFolder({
+          path: cwd,
+          filesToCheck: [".claude/skills/tdd/SKILL.md", "AGENTS.md", "CLAUDE.md", "../outside.md"],
+        });
+        expect(result).toMatchObject({
+          _tag: "directory",
+          directoryCount: 1,
+          fileCount: 1,
+          directories: [".claude"],
+          files: ["CLAUDE.md"],
+          existingFiles: [".claude/skills/tdd/SKILL.md", "CLAUDE.md"],
+        });
+      }),
+    );
+
+    it.effect("reports a file path as not a directory", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const path = yield* Path.Path;
+        const cwd = yield* makeTempDir({ prefix: "t3code-inspect-file-" });
+        yield* writeTextFile(cwd, "AIOS", "a file");
+        const target = path.join(cwd, "AIOS");
+
+        const result = yield* workspaceEntries.inspectFolder({ path: target, filesToCheck: [] });
+        expect(result._tag).toBe("notDirectory");
+      }),
+    );
+
+    it.effect("reports a permission failure instead of an empty folder", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const cwd = yield* makeTempDir({ prefix: "t3code-inspect-eacces-" });
+        const denied = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+        vi.mocked(NodeFSP.readdir).mockRejectedValueOnce(denied);
+
+        const result = yield* workspaceEntries.inspectFolder({ path: cwd, filesToCheck: [] });
+        expect(result).toEqual({ _tag: "unreadable", resolvedPath: cwd, code: "EACCES" });
+      }),
+    );
+
+    it.effect("rejects relative paths", () =>
+      Effect.gen(function* () {
+        const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
+        const error = yield* workspaceEntries
+          .inspectFolder({ path: "./AIOS", filesToCheck: [] })
+          .pipe(Effect.flip);
+        expect(error._tag).toBe("WorkspaceEntriesCurrentProjectRequiredError");
+      }),
+    );
+  });
 });
