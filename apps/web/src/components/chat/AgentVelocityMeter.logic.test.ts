@@ -440,6 +440,7 @@ describe("AgentVelocityMeter.logic", () => {
       expect(formatRollingFill(10, 3)).toBe("3 of 10");
       expect(formatRollingFill(5, 12)).toBe("");
       expect(formatRollingFill(5, 5)).toBe("");
+      expect(formatRollingFill(5, 0)).toBe("none yet");
     });
     it("formats TPS labels cleanly", () => {
       expect(formatTpsLabel(null)).toBe("--");

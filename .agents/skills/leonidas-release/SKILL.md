@@ -1,9 +1,11 @@
 ---
 name: leonidas-release
-description: Choose development versions and write patch notes when preparing or shipping a Leonidas app update, including Code and Scribe.
+description: Write plain-language patch notes, illustrated update stories, and release trailers for user-visible Leonidas changes; choose versions and verify publication when preparing or shipping Code or Scribe updates.
 ---
 
 # Leonidas releases
+
+Use this skill when making a user-visible commit, drafting patch notes, editing a release story, or preparing an update. Every project agent follows the same standard, regardless of provider. Read [the writing guide](references/writing-guide.md) before writing copy. For Code stories, start from [the article template](assets/release-story-template.md). This is the shared standard; do not create a competing patch-note skill.
 
 Reserve **1.0.0 for an explicitly approved public launch**. Before launch use 0.MINOR.PATCH: fixes and maintenance advance PATCH; new capabilities and breaking development changes advance MINOR and reset PATCH. After launch, breaking compatibility advances MAJOR. Never skip arbitrary patch numbers to suggest update size.
 
@@ -54,7 +56,7 @@ Rewrites are illustrations: check each against the diff or the running app befor
 - **Read-only notes:** update history and the update popup show plain text, with five highlights and expandable additional changes. Do not add walkthrough, tour, install, or restart actions to individual bullets. Existing tour markers are hidden for older releases; new trailers should omit them.
 - Each `Release-Note:` trailer becomes exactly one bullet, verbatim, so write it in final form (starts with the verb). Put it on the commit that makes the outcome true; several trailers per commit are fine, and any commit type may carry one.
 - Order: curated trailers only (features, then fixes, then the rest). The first 5 distinct bullets are highlights; overflow and every `Release-Detail:` trailer go under `## Details`. Raw commit subjects never become notes. Write a trailer on every user-visible `feat:` and `fix:` commit; commits without trailers contribute only release metadata.
-- Output shape of `notes.md`: `# <version> · Development`, highlight `- ` bullets, optional `## Details` bullets, then one final line `<!-- leonidas-release {"commit":"<full sha>","authors":[...],"coAuthors":[...]} -->`. The update dialog parses it; never hand-edit or change it without telling whoever owns the dialog. Authors come from git author names (ItzJsimp is Jake, Seth Moncada is Mob); coAuthors come from `Co-Authored-By:` trailers (Claude and Anthropic names collapse to Claude), so keep that trailer on agent commits.
+- Output shape without a story: `# <version> · Development`, five highlight bullets, optional `## Details`, then the final `leonidas-release` metadata comment. With a `Release-Post:` story: the authored title, introduction, images and feature sections, followed by generated `## Patch notes` grouped under `### New`, `### Fixes`, and `### Improvements`, optional `## Details`, then the same metadata. Empty groups are omitted. Do not manually add those generated sections to the story or duplicate the trailers. The dialog parses this format; preserve it. Authors come from git author names; coAuthors come from `Co-Authored-By:` trailers, so keep that trailer on agent commits.
 - Scribe's generator (`scripts/Sync-ScribeDistro.ps1`) should follow these wording rules; its output shape is still its own until aligned.
 
 **Checklist before writing a `Release-Note:` trailer** (run silently, fix before committing)
