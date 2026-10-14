@@ -4,6 +4,9 @@ export interface BundledSkill {
   readonly body: string;
 }
 
+/** Every skill is written to both roots: Claude reads .claude/skills, Codex and others read .agents/skills. */
+export const SKILL_ROOTS = [".claude/skills", ".agents/skills"] as const;
+
 const lines = (...rows: readonly string[]): string => rows.join("\n");
 
 export const SKILL_PACKS: Readonly<Record<string, readonly BundledSkill[]>> = {

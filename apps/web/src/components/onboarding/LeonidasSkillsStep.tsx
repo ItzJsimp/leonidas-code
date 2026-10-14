@@ -8,7 +8,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { skillFiles, suggestSkills } from "../../onboarding/skillPacks";
+import { SKILL_ROOTS, skillFiles, suggestSkills } from "../../onboarding/skillPacks";
 import {
   AIOS_FOLDER_STORAGE_KEY,
   DEFAULT_AIOS_FOLDER,
@@ -28,17 +28,16 @@ import { FolderCheckNotice } from "./FolderCheckNotice";
 import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
 
-const SKILL_ROOTS = [".claude/skills", ".agents/skills"] as const;
-
 type InstallState =
   | { readonly status: "idle" }
   | { readonly status: "installing" }
-  | { readonly status: "error"; readonly message: string };
+  | { readonly status: "error"; readonly message: string }
+  | { readonly status: "installed"; readonly names: readonly string[]; readonly folder: string };
 
 /**
- * One primary action: install the ticked skills and move on. Installing and
- * continuing used to be two buttons, so clicking Continue alone silently
- * installed nothing.
+ * One primary action: install the ticked skills, then show what landed where
+ * before moving on. Installing and continuing used to be two buttons, so
+ * clicking Continue alone silently installed nothing.
  */
 export function LeonidasSkillsStep({
   environmentId,
@@ -133,9 +132,47 @@ export function LeonidasSkillsStep({
         }
       }
     }
-    setState({ status: "idle" });
-    onContinue();
+    setState({
+      status: "installed",
+      names: selected.map((skill) => skill.name),
+      folder: project.workspaceRoot,
+    });
   };
+
+  if (state.status === "installed") {
+    return (
+      <>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {state.names.length} {state.names.length === 1 ? "skill" : "skills"} installed
+        </h1>
+        <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+          Saved in <span className="font-mono text-xs">{state.folder}</span> under{" "}
+          {SKILL_ROOTS.map((root, index) => (
+            <span key={root}>
+              {index > 0 ? " and " : null}
+              <span className="font-mono text-xs">{root}</span>
+            </span>
+          ))}
+          . Find them any time with the Skills button above the prompt box.
+        </p>
+        <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
+          <ul className="space-y-1 pr-3">
+            {state.names.map((name) => (
+              <li key={name} className="font-mono text-xs">
+                {name}
+              </li>
+            ))}
+          </ul>
+        </ScrollArea>
+        <div className="mt-6 flex justify-end">
+          <Button autoFocus onClick={onContinue}>
+            Continue
+            <ArrowRightIcon className="size-3.5" />
+          </Button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
