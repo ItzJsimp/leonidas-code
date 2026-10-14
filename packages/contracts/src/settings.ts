@@ -347,6 +347,19 @@ export const ComposerToolbarPrefs = Schema.Struct({
 });
 export type ComposerToolbarPrefs = typeof ComposerToolbarPrefs.Type;
 
+/** A user-made group of skills shown as one folder in the slash menu. Skills are matched by name. */
+export const SkillFolder = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  skills: Schema.Array(Schema.String),
+});
+export type SkillFolder = typeof SkillFolder.Type;
+
+export const SkillFolderPrefs = Schema.Struct({
+  folders: Schema.Array(SkillFolder),
+});
+export type SkillFolderPrefs = typeof SkillFolderPrefs.Type;
+
 export const ClientSettingsSchema = Schema.Struct({
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
@@ -522,6 +535,8 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   proactivePanelsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   showSkillsInSlashMenu: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  // The user's own skill folders. Automatic folders (by category and source) are derived, not stored.
+  skillFolders: SkillFolderPrefs.pipe(Schema.withDecodingDefault(Effect.succeed({ folders: [] }))),
   // Button bar above the prompt: collapsed state plus the user's changes to the
   // team default set (hidden ids, order, custom prompt buttons).
   composerToolbarCollapsed: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
@@ -1818,6 +1833,7 @@ export const ClientSettingsPatch = Schema.Struct({
   followUpBehavior: Schema.optionalKey(Schema.Literals(["queue", "steer"])),
   proactivePanelsEnabled: Schema.optionalKey(Schema.Boolean),
   showSkillsInSlashMenu: Schema.optionalKey(Schema.Boolean),
+  skillFolders: Schema.optionalKey(SkillFolderPrefs),
   composerToolbarCollapsed: Schema.optionalKey(Schema.Boolean),
   composerToolbar: Schema.optionalKey(ComposerToolbarPrefs),
   legacySidebarEnabled: Schema.optionalKey(Schema.Boolean),

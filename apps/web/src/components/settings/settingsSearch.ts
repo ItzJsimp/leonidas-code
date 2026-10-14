@@ -514,6 +514,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["command menu dollar $ slash /"],
   },
   {
+    id: "skill-folders",
+    title: "Skill folders",
+    to: "/settings/general",
+    targetId: "composer",
+    searchTerms: ["group organize skills folders collections slash menu"],
+  },
+  {
     id: "prompt-prediction",
     title: "Prompt prediction",
     to: "/settings/general",

@@ -1,4 +1,5 @@
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
+import { SkillFoldersEditor } from "./SkillFoldersEditor";
 import { ResetSectionButton } from "./ResetSectionButton";
 import { LoginItemSettings } from "./LoginItemSettings";
 import { ReasoningEffortSettings } from "./ReasoningEffortSettings";
@@ -3448,6 +3449,7 @@ export function GeneralSettingsPanel() {
             label="composer"
             keys={[
               "showSkillsInSlashMenu",
+              "skillFolders",
               "composerPromptPredictionEnabled",
               "composerRichTextEnabled",
               "composerCollapseOnScroll",
@@ -3480,6 +3482,16 @@ export function GeneralSettingsPanel() {
             />
           }
         />
+        <SettingsRow
+          {...searchableSetting("skill-folders")}
+          description="Group skills into your own folders. The / menu shows each folder as one row. Skills with a category or a source repo also group themselves."
+        >
+          <SkillFoldersEditor
+            prefs={settings.skillFolders}
+            availableSkills={serverProviders.flatMap((provider) => provider.skills)}
+            onChange={(skillFolders) => updateSettings({ skillFolders })}
+          />
+        </SettingsRow>
         <SettingsRow
           {...searchableSetting("prompt-prediction")}
           description="Complete your draft using this conversation and relevant past prompts. Tab accepts; Escape dismisses."

@@ -13,6 +13,8 @@ import {
 } from "@t3tools/contracts";
 import {
   BlocksIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   FolderIcon,
   MessagesSquareIcon,
   PackageIcon,
@@ -59,6 +61,24 @@ export type ComposerCommandItem =
       type: "skill";
       provider: ProviderDriverKind;
       skill: ServerProviderSkill;
+      label: string;
+      description: string;
+    }
+  | {
+      id: string;
+      type: "skill-folder";
+      folder: {
+        id: string;
+        name: string;
+        kind: "custom" | "pack" | "category";
+        skillCount: number;
+      };
+      label: string;
+      description: string;
+    }
+  | {
+      id: string;
+      type: "skill-folder-back";
       label: string;
       description: string;
     }
@@ -197,6 +217,12 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
           theme={props.resolvedTheme}
         />
       ) : null}
+      {props.item.type === "skill-folder" ? (
+        <FolderIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
+      ) : null}
+      {props.item.type === "skill-folder-back" ? (
+        <ChevronLeftIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
+      ) : null}
       {props.item.type === "thread" ? (
         <MessagesSquareIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
       ) : null}
@@ -221,6 +247,12 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
         <span className="min-w-0 flex-1 truncate text-left text-secondary-label text-xs">
           {props.item.description}
         </span>
+        {props.item.type === "skill-folder" ? (
+          <ChevronRightIcon
+            aria-hidden="true"
+            className="ms-auto size-4 shrink-0 text-secondary-label"
+          />
+        ) : null}
         {skillSourceKind ? (
           <SkillSourceBadge
             kind={skillSourceKind}

@@ -282,6 +282,7 @@ import {
   ComposerCommandMenu,
   composerSuggestionOptionId,
 } from "./ComposerCommandMenu";
+import { applySkillFolderView } from "./composerSkillFolders.logic";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
 import { ComposerImageThumbnail } from "./ComposerImageThumbnail";
@@ -1150,6 +1151,7 @@ import {
   resolveProviderSkillsForCwd,
   resolveProviderSlashCommandsForCwd,
 } from "@t3tools/client-runtime/providerSkills";
+import { resolveSkillFolders } from "@t3tools/client-runtime/skillFolders";
 import { searchProviderSkills } from "../../providerSkillSearch";
 import { useDelayedStatus } from "../../hooks/useDelayedStatus";
 import { useUpdateClientSettings } from "../../hooks/useSettings";
@@ -2518,6 +2520,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isLiteralPendingAnswer ? null : detectComposerTrigger(prompt, prompt.length),
   );
   const [composerHighlightedItemId, setComposerHighlightedItemId] = useState<string | null>(null);
+  const [openSkillFolderId, setOpenSkillFolderId] = useState<string | null>(null);
   const skillWarningShownRef = useRef(false);
   const composerSuggestionId = useId();
   const composerSuggestionListId = `${composerSuggestionId}-${encodeURIComponent(draftId ?? activeThreadId ?? "new")}-suggestions`;
@@ -2857,7 +2860,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         [...builtInSlashCommandItems, ...visibleProviderSlashCommandItems, ...skillItems],
         composerTrigger.rangeStart === 0 || !prompt.startsWith("/"),
       );
-      return searchSlashCommandItems(slashCommandItems, query);
+      const searched = searchSlashCommandItems(slashCommandItems, query);
+      return applySkillFolderView({
+        items: searched,
+        folders: resolveSkillFolders(slashMenuSkills, settings.skillFolders),
+        openFolderId: openSkillFolderId,
+        query,
+      });
     }
     if (composerTrigger.kind === "skill") {
       return searchProviderSkills(selectedProviderSkills, composerTrigger.query).map((skill) => ({
@@ -2941,11 +2950,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     selectedProviderSkills,
     selectedProviderSlashCommands,
     selectedProviderStatus,
+    openSkillFolderId,
     settings.showSkillsInSlashMenu,
+    settings.skillFolders,
     workspaceEntries.entries,
   ]);
 
   const composerMenuOpen = Boolean(composerTrigger);
+  useEffect(() => {
+    if (!composerMenuOpen) setOpenSkillFolderId(null);
+  }, [composerMenuOpen]);
   const composerMenuSearchKey = composerTrigger
     ? `${composerSuggestionListId}:${composerTrigger.kind}:${composerTrigger.query.trim().toLowerCase()}`
     : null;
@@ -4108,6 +4122,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       });
       const { snapshot, trigger } = resolveActiveComposerTrigger();
       if (!trigger) return;
+      if (item.type === "skill-folder" || item.type === "skill-folder-back") {
+        setOpenSkillFolderId(item.type === "skill-folder" ? item.folder.id : null);
+        setComposerHighlightedItemId(null);
+        return;
+      }
       if (item.type === "path") {
         const replacement = `${serializeComposerFileLink(item.path)} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(

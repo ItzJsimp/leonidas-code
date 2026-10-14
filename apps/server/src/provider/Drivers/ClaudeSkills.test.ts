@@ -391,6 +391,50 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
     }),
   );
 
+  it.effect("reports a skill's category and source frontmatter", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-claude-skills-" });
+      const workspace = path.join(tempDir, "workspace");
+
+      yield* writeSkill(
+        path.join(workspace, ".claude", "skills"),
+        "tdd",
+        [
+          "---",
+          "name: tdd",
+          "description: Red green refactor.",
+          "category: code",
+          'source: "https://github.com/mattpocock/skills (skills/engineering/tdd, MIT)"',
+          "---",
+          "",
+          "# Body",
+        ].join("\n"),
+      );
+      yield* writeSkill(
+        path.join(workspace, ".claude", "skills"),
+        "plain",
+        ["---", "name: plain", "description: No metadata.", "---", "", "# Body"].join("\n"),
+      );
+
+      const skills = yield* discoverClaudeSkills(
+        { homePath: path.join(tempDir, "home") },
+        workspace,
+      );
+
+      const tdd = skills.find((skill) => skill.name === "tdd");
+      assert.equal(tdd?.category, "code");
+      assert.equal(
+        tdd?.source,
+        "https://github.com/mattpocock/skills (skills/engineering/tdd, MIT)",
+      );
+      const plain = skills.find((skill) => skill.name === "plain");
+      assert.equal(plain?.category, undefined);
+      assert.equal(plain?.source, undefined);
+    }),
+  );
+
   it.effect("disables skills switched off by skillOverrides", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

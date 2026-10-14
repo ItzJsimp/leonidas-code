@@ -153,6 +153,10 @@ export const ServerProviderSkill = Schema.Struct({
   userInvocable: Schema.optional(Schema.Boolean),
   /** Rough size of the instructions (characters / 4), shown on the composer chip. */
   approxTokens: Schema.optional(Schema.Int),
+  /** Topic from the skill's `category` frontmatter; groups the skill into an automatic folder. */
+  category: Schema.optional(TrimmedNonEmptyString),
+  /** Where the skill came from, from its `source` frontmatter (usually a GitHub URL). */
+  source: Schema.optional(TrimmedNonEmptyString),
 });
 export type ServerProviderSkill = typeof ServerProviderSkill.Type;
 

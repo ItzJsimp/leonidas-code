@@ -107,6 +107,10 @@
       "types": "./src/providerSkills.ts",
       "default": "./src/providerSkills.ts"
     },
+    "./skillFolders": {
+      "types": "./src/skillFolders.ts",
+      "default": "./src/skillFolders.ts"
+    },
     "./providerUpdateRequiredModels": {
       "types": "./src/providerUpdateRequiredModels.ts",
       "default": "./src/providerUpdateRequiredModels.ts"

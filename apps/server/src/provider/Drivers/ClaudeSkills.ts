@@ -37,6 +37,8 @@ type SkillFrontmatter =
       readonly description?: string;
       readonly userInvocationOnly?: boolean;
       readonly userInvocable?: boolean;
+      readonly category?: string;
+      readonly source?: string;
     };
 
 /**
@@ -103,9 +105,13 @@ function parseSkillFrontmatter(contents: string): SkillFrontmatter {
 
   const record = parsed as Record<string, unknown>;
   const description = typeof record.description === "string" ? record.description.trim() : "";
+  const category = typeof record.category === "string" ? record.category.trim() : "";
+  const source = typeof record.source === "string" ? record.source.trim() : "";
   return {
     kind: "parsed",
     ...(description ? { description } : {}),
+    ...(category ? { category } : {}),
+    ...(source ? { source } : {}),
     ...(parseFrontmatterBoolean(record["disable-model-invocation"]) === true
       ? { userInvocationOnly: true }
       : {}),
@@ -401,6 +407,12 @@ export const discoverClaudeSkills = Effect.fn("discoverClaudeSkills")(function* 
         approxTokens: Math.ceil(contents.length / 4),
         ...(frontmatter.kind === "parsed" && frontmatter.description
           ? { description: frontmatter.description }
+          : {}),
+        ...(frontmatter.kind === "parsed" && frontmatter.category
+          ? { category: frontmatter.category }
+          : {}),
+        ...(frontmatter.kind === "parsed" && frontmatter.source
+          ? { source: frontmatter.source }
           : {}),
         ...(userInvocationOnly ? { userInvocationOnly: true } : {}),
         ...(frontmatter.kind === "parsed" && frontmatter.userInvocable === false
