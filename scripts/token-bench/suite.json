@@ -1,0 +1,33 @@
+{
+  "variants": [{ "id": "baseline" }, { "id": "efficient-rules", "appendRules": true }],
+  "tasks": [
+    {
+      "id": "fix-off-by-one",
+      "prompt": "sum.js should return the sum of all numbers in the array, but the last one is skipped. Fix it.",
+      "files": {
+        "sum.js": "exports.sum = (xs) => { let t = 0; for (let i = 0; i < xs.length - 1; i++) t += xs[i]; return t; };\n",
+        "check.js": "const { sum } = require('./sum.js'); process.exit(sum([1, 2, 3]) === 6 && sum([]) === 0 ? 0 : 1);\n"
+      },
+      "check": "node check.js"
+    },
+    {
+      "id": "rename-function",
+      "prompt": "Rename the function getUser to fetchUser everywhere in this folder, including its caller.",
+      "files": {
+        "user.js": "exports.getUser = (id) => ({ id });\n",
+        "main.js": "const { getUser } = require('./user.js');\nexports.run = () => getUser(1);\n",
+        "check.js": "const u = require('./user.js'); const m = require('./main.js'); const fs = require('fs'); const src = fs.readFileSync('main.js','utf8') + fs.readFileSync('user.js','utf8'); process.exit(typeof u.fetchUser === 'function' && m.run().id === 1 && !src.includes('getUser') ? 0 : 1);\n"
+      },
+      "check": "node check.js"
+    },
+    {
+      "id": "add-function",
+      "prompt": "Add an exported function slugify(text) to slug.js that lowercases, trims, replaces runs of non-alphanumeric characters with a single hyphen, and strips leading or trailing hyphens.",
+      "files": {
+        "slug.js": "// TODO\n",
+        "check.js": "const { slugify } = require('./slug.js'); process.exit(slugify('  Hello, World!! ') === 'hello-world' && slugify('--A  b--') === 'a-b' ? 0 : 1);\n"
+      },
+      "check": "node check.js"
+    }
+  ]
+}
