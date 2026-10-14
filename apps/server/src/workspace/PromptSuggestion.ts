@@ -25,7 +25,7 @@ function bounded(request: PromptSuggestionRequest) {
   };
 }
 
-export function suggestionKey(request: PromptSuggestionRequest, mode = "local", model = "") {
+function suggestionKey(request: PromptSuggestionRequest, mode = "local", model = "") {
   return createHash("sha256")
     .update(JSON.stringify([2, mode, model, bounded(request)]))
     .digest("hex");
