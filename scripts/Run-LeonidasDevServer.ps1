@@ -10,6 +10,9 @@ $devHome = Join-Path $repoRoot '.t3'
 $log = Join-Path $devHome 'dev-server.log'
 New-Item -ItemType Directory -Force -Path $devHome | Out-Null
 $pwsh = (Get-Process -Id $PID).Path
+$serverPort = 23773
+$startGraceSeconds = 180   # first start can take a while (install repair, cold caches)
+$downRestartSeconds = 60  # longer than a normal hot-reload restart
 
 # An interrupted install can leave a patched package without its patch (pnpm still thinks it is
 # current), which breaks the web page. For every entry in pnpm-workspace.yaml patchedDependencies,
@@ -65,9 +68,28 @@ while ($true) {
     $runaway = (& (Join-Path $PSScriptRoot 'Find-RunawayProcesses.ps1') 2>&1) -join "`n"
     if ($runaway -notmatch '^No runaway') { Add-Content -LiteralPath $log -Value "[supervisor] $runaway" }
     # The dev runner writes straight to its console, so capture it through file redirection.
-    $proc = Start-Process -FilePath $pwsh -WindowStyle Hidden -PassThru -Wait `
+    $proc = Start-Process -FilePath $pwsh -WindowStyle Hidden -PassThru `
         -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + (Join-Path $PSScriptRoot 'dev-isolated.ps1') + '"'), '-Mode', 'web') `
         -RedirectStandardOutput $log -RedirectStandardError (Join-Path $devHome 'dev-server.err.log')
-    Add-Content -LiteralPath $log -Value "[supervisor] dev server exited ($($proc.ExitCode)) at $(Get-Date -Format o); restarting in 10 s"
+    # When the server crashes on a half-written file (a merge or checkout in progress), the dev runner
+    # stays alive printing "Waiting for file changes" and nothing restarts it, so the web page shows a
+    # 502 until someone edits a file. Watch the server port and restart the runner we started
+    # (by its captured PID only) when the server stays down.
+    $startedAt = Get-Date
+    $downSince = $null
+    while (-not $proc.HasExited) {
+        Start-Sleep -Seconds 5
+        $up = $null -ne (Get-NetTCPConnection -LocalPort $serverPort -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1)
+        if ($up) { $downSince = $null; continue }
+        if (((Get-Date) - $startedAt).TotalSeconds -lt $startGraceSeconds) { continue }
+        if (-not $downSince) { $downSince = Get-Date; continue }
+        if (((Get-Date) - $downSince).TotalSeconds -ge $downRestartSeconds) {
+            Add-Content -LiteralPath $log -Value "[supervisor] server port $serverPort down for $downRestartSeconds s while the dev runner is alive; restarting it at $(Get-Date -Format o)"
+            & taskkill.exe /PID $proc.Id /T /F *> $null
+            break
+        }
+    }
+    $proc.WaitForExit(15000) | Out-Null
+    Add-Content -LiteralPath $log -Value "[supervisor] dev server exited ($(if ($proc.HasExited) { $proc.ExitCode } else { 'killed' })) at $(Get-Date -Format o); restarting in 10 s"
     Start-Sleep -Seconds 10
 }
