@@ -615,7 +615,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                     ) : null}
                     {item.pendingCommandId ? <Badge variant="warning">Working</Badge> : null}
                   </span>
-                  {open ? null : (
+                  {open || item.body.trim() === item.title.trim() ? null : (
                     <span className="mt-2 line-clamp-2 block whitespace-pre-wrap text-sm text-muted-foreground">
                       {item.body}
                     </span>
