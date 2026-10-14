@@ -1417,6 +1417,9 @@ export const make = Effect.gen(function* () {
 
   const readConfigValueNullable = (cwd: string, key: string) =>
     gitCore.readConfigValue(cwd, key).pipe(Effect.orElseSucceed(() => null));
+  // Reads one config key. A caller that already read the config in one process
+  // passes a reader over that snapshot instead of starting `git config --get`.
+  type ConfigReader = (key: string) => Effect.Effect<string | null>;
 
   const resolveHostingProvider = Effect.fn("resolveHostingProvider")(function* (
     cwd: string,
@@ -1444,6 +1447,7 @@ export const make = Effect.gen(function* () {
   const resolveRemoteRepositoryContext = Effect.fn("resolveRemoteRepositoryContext")(function* (
     cwd: string,
     remoteName: string | null,
+    readConfig: ConfigReader = (key) => readConfigValueNullable(cwd, key),
   ) {
     if (!remoteName) {
       return {
@@ -1453,7 +1457,7 @@ export const make = Effect.gen(function* () {
       };
     }
 
-    const remoteUrl = yield* readConfigValueNullable(cwd, `remote.${remoteName}.url`);
+    const remoteUrl = yield* readConfig(`remote.${remoteName}.url`);
     let repositoryNameWithOwner = parseRepositoryNameWithOwnerFromRemoteUrl(remoteUrl);
     if (
       remoteUrl !== null &&
@@ -1477,24 +1481,36 @@ export const make = Effect.gen(function* () {
   });
 
   // Returns [head remote, origin]. Most branches track origin, so read it once.
-  const resolveHeadAndOriginContexts = (cwd: string, remoteName: string | null) =>
+  const resolveHeadAndOriginContexts = (
+    cwd: string,
+    remoteName: string | null,
+    readConfig?: ConfigReader,
+  ) =>
     remoteName === "origin"
-      ? resolveRemoteRepositoryContext(cwd, "origin").pipe(
+      ? resolveRemoteRepositoryContext(cwd, "origin", readConfig).pipe(
           Effect.map((origin) => [origin, origin] as const),
         )
       : Effect.all(
           [
-            resolveRemoteRepositoryContext(cwd, remoteName),
-            resolveRemoteRepositoryContext(cwd, "origin"),
+            resolveRemoteRepositoryContext(cwd, remoteName, readConfig),
+            resolveRemoteRepositoryContext(cwd, "origin", readConfig),
           ],
           { concurrency: "unbounded" },
         );
 
   const resolvePrLookupRepositoryIdentity = Effect.fn("resolvePrLookupRepositoryIdentity")(
-    function* (cwd: string, branch: string, remoteNameOverride?: string) {
-      const remoteName =
-        remoteNameOverride ?? (yield* readConfigValueNullable(cwd, `branch.${branch}.remote`));
-      const [headRemote, targetRemote] = yield* resolveHeadAndOriginContexts(cwd, remoteName);
+    function* (
+      cwd: string,
+      branch: string,
+      remoteNameOverride?: string,
+      readConfig: ConfigReader = (key) => readConfigValueNullable(cwd, key),
+    ) {
+      const remoteName = remoteNameOverride ?? (yield* readConfig(`branch.${branch}.remote`));
+      const [headRemote, targetRemote] = yield* resolveHeadAndOriginContexts(
+        cwd,
+        remoteName,
+        readConfig,
+      );
       return {
         remoteName,
         headRemoteUrlKey:
@@ -2356,32 +2372,52 @@ export const make = Effect.gen(function* () {
     "branchPullRequest",
   )(function* ({ cwd, branch }, options) {
     const cacheCwd = yield* normalizeStatusCacheKey(cwd);
-    const remotes = yield* gitCore.execute({
-      operation: "GitManager.branchPullRequest.remotes",
-      cwd: cacheCwd,
-      args: ["remote"],
-    });
-    const remoteNames = remotes.stdout
-      .split("\n")
-      .map((remoteName) => remoteName.trim())
+    // Two git processes answer every ref and config question below. Settlement and
+    // pull request sweeps call this for each active thread every minute, so the
+    // separate `remote`, `for-each-ref`, `symbolic-ref` and `config --get` calls
+    // were most of the server's git processes.
+    const [refs, config] = yield* Effect.all(
+      [
+        gitCore.execute({
+          operation: "GitManager.branchPullRequest.refs",
+          cwd: cacheCwd,
+          args: [
+            "for-each-ref",
+            "--format=%(refname)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)%00%(symref)",
+            `refs/heads/${branch}`,
+            `refs/remotes/**/${branch}`,
+            "refs/remotes/**/HEAD",
+          ],
+        }),
+        gitCore.execute({
+          operation: "GitManager.branchPullRequest.config",
+          cwd: cacheCwd,
+          args: ["config", "-z", "--get-regexp", "^(remote\\..*\\.url|branch\\..*\\.remote)$"],
+          // Exit 1 means no key matched: a repository without remotes.
+          allowNonZeroExit: true,
+        }),
+      ],
+      { concurrency: "unbounded" },
+    );
+    const configValues = new Map<string, string>();
+    for (const entry of config.stdout.split("\u0000")) {
+      const newline = entry.indexOf("\n");
+      if (newline <= 0) continue;
+      // A multi-valued key resolves to its last value, as `git config --get` does.
+      configValues.set(entry.slice(0, newline), entry.slice(newline + 1).trim());
+    }
+    const readConfig: ConfigReader = (key) => Effect.succeed(configValues.get(key) || null);
+    const remoteNames = [...configValues.keys()]
+      .filter((key) => key.startsWith("remote.") && key.endsWith(".url"))
+      .map((key) => key.slice("remote.".length, -".url".length))
       .filter((remoteName) => remoteName.length > 0);
     const [firstRemoteName] = remoteNames;
     if (firstRemoteName === undefined) return null;
-    const branchRef = yield* gitCore.execute({
-      operation: "GitManager.branchPullRequest.branchRef",
-      cwd: cacheCwd,
-      args: [
-        "for-each-ref",
-        "--format=%(refname)%00%(upstream:short)%00%(upstream:remotename)%00%(upstream:remoteref)",
-        `refs/heads/${branch}`,
-      ],
-    });
+    const refLines = refs.stdout.split("\n").map((line) => line.split("\u0000"));
     const expectedRefName = `refs/heads/${branch}`;
-    const exactBranch = branchRef.stdout
-      .split("\n")
-      .find((line) => line.split("\u0000", 1)[0] === expectedRefName);
+    const exactBranch = refLines.find(([refName]) => refName === expectedRefName);
     const [refName = "", savedUpstream = "", savedRemoteName = "", savedRemoteRef = ""] =
-      exactBranch?.split("\u0000") ?? [];
+      exactBranch ?? [];
     const localBranchExists = refName.length > 0;
     let upstreamRef: string | null = null;
     let remoteName: string | null = null;
@@ -2397,17 +2433,7 @@ export const make = Effect.gen(function* () {
       const upstreamBranch = savedRemoteRef.replace(/^refs\/heads\//, "");
       upstreamRef = `${remoteName}/${upstreamBranch}`;
     } else if (!localBranchExists) {
-      const trackingRefs = yield* gitCore.execute({
-        operation: "GitManager.branchPullRequest.remoteTrackingRefs",
-        cwd: cacheCwd,
-        args: ["for-each-ref", "--format=%(refname)", "refs/remotes"],
-      });
-      const refNames = new Set(
-        trackingRefs.stdout
-          .split("\n")
-          .map((remoteRef) => remoteRef.trim())
-          .filter((remoteRef) => remoteRef.length > 0),
-      );
+      const refNames = new Set(refLines.map(([remoteRef = ""]) => remoteRef));
       const matchingRemoteNames = remoteNames.filter((candidate) =>
         refNames.has(`refs/remotes/${candidate}/${branch}`),
       );
@@ -2424,9 +2450,12 @@ export const make = Effect.gen(function* () {
       }
     }
     const defaultRemoteName = remoteNames.includes("origin") ? "origin" : firstRemoteName;
-    const defaultBranch = yield* gitCore
-      .resolveDefaultBranchName(cacheCwd, defaultRemoteName)
-      .pipe(Effect.orElseSucceed(() => null));
+    const defaultHeadPrefix = `refs/remotes/${defaultRemoteName}/`;
+    const defaultHeadTarget =
+      refLines.find(([refName]) => refName === `${defaultHeadPrefix}HEAD`)?.[4] ?? "";
+    const defaultBranch = defaultHeadTarget.startsWith(defaultHeadPrefix)
+      ? defaultHeadTarget.slice(defaultHeadPrefix.length) || null
+      : null;
     const cacheKey = prLookupCacheKey(cacheCwd, {
       branch,
       upstreamRef,
@@ -2452,6 +2481,7 @@ export const make = Effect.gen(function* () {
       cacheCwd,
       branch,
       identityRemoteName(cached.headContext),
+      readConfig,
     );
     const canVerifyIdentity = (headContext: BranchHeadContext, identity: typeof currentIdentity) =>
       !(

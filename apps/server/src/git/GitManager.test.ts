@@ -726,6 +726,8 @@ function makeManager(input?: {
   serverSettings?: Parameters<typeof ServerSettings.layerTest>[0];
   setupScriptRunner?: ProjectSetupScriptRunner.ProjectSetupScriptRunner["Service"];
   gitConfigReads?: string[];
+  /** Records one entry per git process the manager starts through the driver. */
+  gitProcesses?: string[];
   /** Seeds the V2 stores the per-project settings lookup reads. */
   seed?: Effect.Effect<
     void,
@@ -743,30 +745,40 @@ function makeManager(input?: {
 
   const layerServerSettings = ServerSettings.ServerSettingsService.layerTest(input?.serverSettings);
 
-  const layerVcsDriver = input?.gitConfigReads
-    ? Layer.effect(
-        GitVcsDriver.GitVcsDriver,
-        GitVcsDriver.make.pipe(
-          Effect.map((service) =>
-            GitVcsDriver.GitVcsDriver.of({
-              ...service,
-              readConfigValue: (cwd, key) =>
-                Effect.sync(() => input.gitConfigReads?.push(key)).pipe(
-                  Effect.andThen(service.readConfigValue(cwd, key)),
-                ),
-            }),
+  const layerVcsDriver =
+    input?.gitConfigReads || input?.gitProcesses
+      ? Layer.effect(
+          GitVcsDriver.GitVcsDriver,
+          GitVcsDriver.make.pipe(
+            Effect.map((service) =>
+              GitVcsDriver.GitVcsDriver.of({
+                ...service,
+                execute: (executeInput) =>
+                  Effect.sync(() => input.gitProcesses?.push(executeInput.operation)).pipe(
+                    Effect.andThen(service.execute(executeInput)),
+                  ),
+                resolveDefaultBranchName: (cwd, remoteName) =>
+                  Effect.sync(() => input.gitProcesses?.push("resolveDefaultBranchName")).pipe(
+                    Effect.andThen(service.resolveDefaultBranchName(cwd, remoteName)),
+                  ),
+                readConfigValue: (cwd, key) =>
+                  Effect.sync(() => {
+                    input.gitConfigReads?.push(key);
+                    input.gitProcesses?.push(`config ${key}`);
+                  }).pipe(Effect.andThen(service.readConfigValue(cwd, key))),
+              }),
+            ),
           ),
-        ),
-      ).pipe(
-        Layer.provideMerge(VcsProcess.layer),
-        Layer.provideMerge(NodeServices.layer),
-        Layer.provideMerge(layerServerConfig),
-      )
-    : GitVcsDriver.layer.pipe(
-        Layer.provideMerge(VcsProcess.layer),
-        Layer.provideMerge(NodeServices.layer),
-        Layer.provideMerge(layerServerConfig),
-      );
+        ).pipe(
+          Layer.provideMerge(VcsProcess.layer),
+          Layer.provideMerge(NodeServices.layer),
+          Layer.provideMerge(layerServerConfig),
+        )
+      : GitVcsDriver.layer.pipe(
+          Layer.provideMerge(VcsProcess.layer),
+          Layer.provideMerge(NodeServices.layer),
+          Layer.provideMerge(layerServerConfig),
+        );
   const layerSourceControlRegistry = Layer.effect(
     SourceControlProviderRegistry.SourceControlProviderRegistry,
     Effect.gen(function* () {
@@ -1248,7 +1260,7 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
     }),
   );
 
-  it.effect("a branch tracking origin reads origin's URL once per PR lookup", () =>
+  it.effect("a branch tracking origin reads no remote URL key per cached PR lookup", () =>
     Effect.gen(function* () {
       const repoDir = yield* makeTempDir("t3code-git-manager-");
       yield* initRepo(repoDir);
@@ -1286,7 +1298,62 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       });
 
       expect(pullRequest?.number).toBe(217);
-      expect(gitConfigReads.filter((key) => key === "remote.origin.url")).toHaveLength(1);
+      // The lookup reads remote URLs from its one-process config snapshot.
+      expect(gitConfigReads.filter((key) => key === "remote.origin.url")).toHaveLength(0);
+    }),
+  );
+
+  it.effect("a cached branch PR lookup starts at most two git processes", () =>
+    Effect.gen(function* () {
+      const repoDir = yield* makeTempDir("t3code-git-manager-");
+      yield* initRepo(repoDir);
+      const remoteDir = yield* createBareRemote();
+      yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
+      yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
+      yield* runGit(repoDir, [
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+      ]);
+      yield* runGit(repoDir, ["checkout", "-b", "feature/spawn-budget"]);
+      yield* runGit(repoDir, ["push", "-u", "origin", "feature/spawn-budget"]);
+      yield* runGit(repoDir, ["checkout", "main"]);
+      // A thread whose local branch is gone still resolves through its remote ref.
+      yield* runGit(repoDir, ["branch", "-D", "feature/spawn-budget"]);
+
+      const gitProcesses: string[] = [];
+      const { manager } = yield* makeManager({
+        gitProcesses,
+        ghScenario: {
+          prListSequence: [
+            JSON.stringify([
+              {
+                number: 311,
+                title: "Spawn budget PR",
+                url: "https://github.com/pingdotgg/t3code/pull/311",
+                baseRefName: "main",
+                headRefName: "feature/spawn-budget",
+                state: "OPEN",
+                updatedAt: "2026-10-14T15:00:00Z",
+              },
+            ]),
+          ],
+        },
+      });
+
+      const first = yield* manager.branchPullRequest({
+        cwd: repoDir,
+        branch: "feature/spawn-budget",
+      });
+      gitProcesses.length = 0;
+      const second = yield* manager.branchPullRequest({
+        cwd: repoDir,
+        branch: "feature/spawn-budget",
+      });
+
+      expect(first?.number).toBe(311);
+      expect(second?.number).toBe(311);
+      expect(gitProcesses.length, gitProcesses.join(", ")).toBeLessThanOrEqual(2);
     }),
   );
 
@@ -2624,7 +2691,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         const forkDir = yield* createBareRemote();
         yield* runGit(repoDir, ["remote", "add", "origin", originDir]);
         yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-        yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
+        yield* runGit(repoDir, [
+          "symbolic-ref",
+          "refs/remotes/origin/HEAD",
+          "refs/remotes/origin/main",
+        ]);
         yield* runGit(repoDir, ["remote", "add", "fork-seed", forkDir]);
         yield* runGit(repoDir, ["push", "fork-seed", "main"]);
         yield* runGit(repoDir, ["checkout", "-b", "t3code/pr-777/main"]);
@@ -2842,7 +2913,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       const remoteDir = yield* createBareRemote();
       yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
       yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
+      yield* runGit(repoDir, [
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+      ]);
       yield* runGit(repoDir, ["checkout", "-b", "feature/from-main", "origin/main"]);
 
       const { manager, ghCalls } = yield* makeManager({
@@ -2878,7 +2953,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       const remoteDir = yield* createBareRemote();
       yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
       yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
+      yield* runGit(repoDir, [
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+      ]);
       yield* runGit(repoDir, ["checkout", "-b", "feature/pushed-plain", "origin/main"]);
       // A plain push (no -u) leaves the upstream on origin/main.
       yield* runGit(repoDir, ["push", "origin", "feature/pushed-plain"]);
@@ -2919,7 +2998,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
         const forkDir = yield* createBareRemote();
         yield* runGit(repoDir, ["remote", "add", "origin", originDir]);
         yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-        yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
+        yield* runGit(repoDir, [
+          "symbolic-ref",
+          "refs/remotes/origin/HEAD",
+          "refs/remotes/origin/main",
+        ]);
         yield* configureRemote(repoDir, "team/fork", forkDir, "team/fork");
         yield* runGit(repoDir, ["checkout", "-b", "feature/fork-plain", "origin/main"]);
         // Pushed to the fork without -u: upstream stays origin/main.
@@ -2975,7 +3058,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       const forkDir = yield* createBareRemote();
       yield* runGit(repoDir, ["remote", "add", "origin", originDir]);
       yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
+      yield* runGit(repoDir, [
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+      ]);
       yield* configureRemote(repoDir, "team/fork", forkDir, "team/fork");
       yield* runGit(repoDir, ["checkout", "-b", "feature/fork-settle", "origin/main"]);
       yield* runGit(repoDir, ["push", "team/fork", "feature/fork-settle"]);
@@ -3035,7 +3122,11 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       const remoteDir = yield* createBareRemote();
       yield* runGit(repoDir, ["remote", "add", "origin", remoteDir]);
       yield* runGit(repoDir, ["push", "-u", "origin", "main"]);
-      yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
+      yield* runGit(repoDir, [
+        "symbolic-ref",
+        "refs/remotes/origin/HEAD",
+        "refs/remotes/origin/main",
+      ]);
       yield* runGit(repoDir, ["checkout", "-b", "feature/sticky-plain", "origin/main"]);
       yield* runGit(repoDir, ["push", "origin", "feature/sticky-plain"]);
 
