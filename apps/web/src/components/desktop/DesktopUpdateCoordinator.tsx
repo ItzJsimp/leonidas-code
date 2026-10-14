@@ -22,6 +22,7 @@ import {
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { playUpdateReadySound } from "./updateReadySound";
 import { LeonidasWhatsNewDialog } from "./LeonidasWhatsNewDialog";
+import { DesktopUpdateProgress } from "./DesktopUpdateProgress";
 import { fetchLatestReleaseWhatsNew, onWhatsNewPreviewRequested } from "./whatsNewPreview";
 
 const PENDING_FEATURE_WALKTHROUGH_KEY = "leonidas:pending-feature-walkthrough:v1";
@@ -246,14 +247,19 @@ export function DesktopUpdateCoordinator() {
     setAutoUpdateWhenSafe,
   ]);
 
-  return whatsNew ? (
-    <LeonidasWhatsNewDialog
-      version={whatsNew.version}
-      items={whatsNew.items}
-      onShowMe={showMe}
-      onRestartNow={whatsNew.actions?.onRestartNow}
-      onUpdateWhenSafe={whatsNew.actions?.onUpdateWhenSafe}
-      onClose={() => setWhatsNew(null)}
-    />
-  ) : null;
+  return (
+    <>
+      <DesktopUpdateProgress state={state} />
+      {whatsNew ? (
+        <LeonidasWhatsNewDialog
+          version={whatsNew.version}
+          items={whatsNew.items}
+          onShowMe={showMe}
+          onRestartNow={whatsNew.actions?.onRestartNow}
+          onUpdateWhenSafe={whatsNew.actions?.onUpdateWhenSafe}
+          onClose={() => setWhatsNew(null)}
+        />
+      ) : null}
+    </>
+  );
 }

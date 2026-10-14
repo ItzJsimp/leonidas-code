@@ -33,6 +33,7 @@ import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as IpcChannels from "../ipc/channels.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import { normalizeDesktopUpdateReleaseNotes } from "./releaseNotes.ts";
+import { applyDownloadProgress, decodeDownloadProgressInfo } from "./downloadProgress.ts";
 import { resolveDefaultDesktopUpdateChannel } from "./updateChannels.ts";
 import {
   createInitialDesktopUpdateState,
@@ -40,7 +41,6 @@ import {
   reduceDesktopUpdateStateOnCheckStart,
   reduceDesktopUpdateStateOnDownloadComplete,
   reduceDesktopUpdateStateOnDownloadFailure,
-  reduceDesktopUpdateStateOnDownloadProgress,
   reduceDesktopUpdateStateOnDownloadStart,
   reduceDesktopUpdateStateOnInstallFailure,
   reduceDesktopUpdateStateOnNoUpdate,
@@ -68,12 +68,8 @@ const UpdateInfo = Schema.Struct({
   releaseNotes: Schema.optional(Schema.Unknown),
 });
 
-const DownloadProgressInfo = Schema.Struct({
-  percent: Schema.Number,
-});
 const decodeAppUpdateYmlConfig = Schema.decodeUnknownEffect(AppUpdateYmlConfig);
 const decodeUpdateInfo = Schema.decodeUnknownEffect(UpdateInfo);
-const decodeDownloadProgressInfo = Schema.decodeUnknownEffect(DownloadProgressInfo);
 
 const currentIsoTimestamp = DateTime.now.pipe(Effect.map(DateTime.formatIso));
 
@@ -225,24 +221,6 @@ function createBaseUpdateState(
 
 function getCanRetryFromState(state: DesktopUpdateState): boolean {
   return state.availableVersion !== null || state.downloadedVersion !== null;
-}
-
-function shouldBroadcastDownloadProgress(
-  currentState: DesktopUpdateState,
-  nextPercent: number,
-): boolean {
-  if (currentState.status !== "downloading") {
-    return true;
-  }
-
-  const currentPercent = currentState.downloadPercent;
-  if (currentPercent === null) {
-    return true;
-  }
-
-  const previousStep = Math.floor(currentPercent / 10);
-  const nextStep = Math.floor(nextPercent / 10);
-  return nextStep !== previousStep || nextPercent === 100;
 }
 
 function getAutoUpdateDisabledReason(args: {
@@ -489,7 +467,9 @@ export const make = Effect.gen(function* () {
     }
 
     return yield* Effect.gen(function* () {
-      yield* setState(reduceDesktopUpdateStateOnDownloadStart(state));
+      yield* setState(
+        reduceDesktopUpdateStateOnDownloadStart(state, DateTime.toEpochMillis(yield* DateTime.now)),
+      );
       yield* electronUpdater.setDisableDifferentialDownload(
         isArm64HostRunningIntelBuild(environment.runtimeInfo),
       );
@@ -665,7 +645,7 @@ export const make = Effect.gen(function* () {
           );
           yield* recordDelivery("installing", (yield* Ref.get(updateStateRef)).downloadedVersion);
           yield* electronUpdater.quitAndInstall({
-            isSilent: true,
+            isSilent: false,
             isForceRunAfter: true,
           });
           return { accepted: true, completed: false, failed: false };
@@ -844,11 +824,18 @@ export const make = Effect.gen(function* () {
       const checkedAt = yield* currentIsoTimestamp;
       yield* updateState((current) => ({
         ...current,
-        status: "error",
+        status:
+          (current.status === "downloading" || current.status === "available") &&
+          current.availableVersion !== null
+            ? "available"
+            : "error",
         message: error.message,
         checkedAt,
         downloadPercent: null,
-        errorContext: current.errorContext,
+        errorContext:
+          current.status === "downloading" || current.status === "available"
+            ? "download"
+            : current.errorContext,
         canRetry: getCanRetryFromState(current),
       }));
     }
@@ -867,9 +854,9 @@ export const make = Effect.gen(function* () {
         Effect.fn("desktop.updates.applyDownloadProgress")(function* (progress) {
           const state = yield* Ref.get(updateStateRef);
           const percent = Math.floor(progress.percent);
-          if (shouldBroadcastDownloadProgress(state, progress.percent) || state.message !== null) {
-            yield* setState(reduceDesktopUpdateStateOnDownloadProgress(state, progress.percent));
-          }
+          const now = DateTime.toEpochMillis(yield* DateTime.now);
+          const next = applyDownloadProgress(state, progress, now);
+          if (next) yield* setState(next);
           const milestone = percent - (percent % 10);
           const lastLoggedMilestone = yield* Ref.get(lastLoggedDownloadMilestoneRef);
           if (milestone > lastLoggedMilestone) {

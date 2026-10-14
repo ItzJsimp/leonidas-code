@@ -1,4 +1,14 @@
 import * as Schema from "effect/Schema";
+import {
+  DesktopDownloadProgressSchema,
+  type DesktopDownloadProgress,
+  DesktopUpdateReleaseNoteSchema,
+  type DesktopUpdateReleaseNote,
+} from "./desktopUpdateTransfer.ts";
+export {
+  DesktopUpdateReleaseNoteSchema,
+  type DesktopUpdateReleaseNote,
+} from "./desktopUpdateTransfer.ts";
 
 import { SnapShotSource } from "./chatAttachment.ts";
 import { EnvironmentId, TrimmedNonEmptyString } from "./baseSchemas.ts";
@@ -280,23 +290,12 @@ export interface DesktopUpdateState {
   releaseNotes: ReadonlyArray<DesktopUpdateReleaseNote>;
   omittedReleaseCount: number;
   downloadPercent: number | null;
+  downloadProgress?: DesktopDownloadProgress | null;
   checkedAt: string | null;
   message: string | null;
   errorContext: "check" | "download" | "install" | null;
   canRetry: boolean;
 }
-
-export interface DesktopUpdateReleaseNote {
-  version: string;
-  items: ReadonlyArray<string>;
-  totalItems: number;
-}
-
-export const DesktopUpdateReleaseNoteSchema = Schema.Struct({
-  version: Schema.String,
-  items: Schema.Array(Schema.String),
-  totalItems: Schema.Number,
-});
 
 export const DesktopUpdateStateSchema = Schema.Struct({
   enabled: Schema.Boolean,
@@ -311,6 +310,7 @@ export const DesktopUpdateStateSchema = Schema.Struct({
   releaseNotes: Schema.Array(DesktopUpdateReleaseNoteSchema),
   omittedReleaseCount: Schema.Number,
   downloadPercent: Schema.NullOr(Schema.Number),
+  downloadProgress: Schema.optionalKey(Schema.NullOr(DesktopDownloadProgressSchema)),
   checkedAt: Schema.NullOr(Schema.String),
   message: Schema.NullOr(Schema.String),
   errorContext: Schema.NullOr(Schema.Literals(["check", "download", "install"])),

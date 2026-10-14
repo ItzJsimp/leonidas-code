@@ -103,6 +103,7 @@ export function reduceDesktopUpdateStateOnUpdateAvailable(
     releaseNotes: preserveReleaseNotes ? state.releaseNotes : releaseNotes,
     omittedReleaseCount: preserveReleaseNotes ? state.omittedReleaseCount : omittedReleaseCount,
     downloadPercent: isDownloadedVersion ? 100 : null,
+    downloadProgress: null,
     checkedAt,
     message: null,
     errorContext: null,
@@ -144,11 +145,23 @@ export function reduceDesktopUpdateStateOnNoUpdate(
 
 export function reduceDesktopUpdateStateOnDownloadStart(
   state: DesktopUpdateState,
+  startedAt?: number,
 ): DesktopUpdateState {
   return {
     ...state,
     status: "downloading",
     downloadPercent: 0,
+    downloadProgress:
+      startedAt === undefined
+        ? null
+        : {
+            startedAt,
+            elapsedSeconds: 0,
+            transferred: 0,
+            total: 0,
+            bytesPerSecond: 0,
+            remainingSeconds: null,
+          },
     message: null,
     errorContext: null,
     canRetry: false,
