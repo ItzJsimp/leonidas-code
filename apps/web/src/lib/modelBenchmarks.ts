@@ -203,9 +203,6 @@ export function rankBenchmarkCandidates(
 
 export type BenchmarkMetricGroup = "score" | "price" | "speed";
 
-export const benchmarkMetricGroup = (metric: ModelBenchmarkMetric): BenchmarkMetricGroup =>
-  metric.kind === "latency" ? "speed" : metric.kind;
-
 const UNIT_SUFFIX: Readonly<Record<string, string>> = {
   tokens_per_second: " tok/s",
   seconds: " s",
