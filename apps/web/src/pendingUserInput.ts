@@ -21,20 +21,6 @@ export interface PendingUserInputProgress {
   canAdvance: boolean;
 }
 
-const RECOMMENDED_SUFFIX = /\s*\(recommended\)\s*$/i;
-
-/**
- * Agents mark their pick by ending an option label with "(Recommended)" (the
- * Claude Code convention, requested by the shared question instructions). The
- * card shows it as a badge; the original label stays the answer value.
- */
-export function parseRecommendedLabel(label: string): { label: string; recommended: boolean } {
-  const stripped = label.replace(RECOMMENDED_SUFFIX, "");
-  return stripped.length > 0 && stripped !== label
-    ? { label: stripped, recommended: true }
-    : { label, recommended: false };
-}
-
 function normalizeDraftAnswer(value: string | undefined): string | null {
   if (typeof value !== "string") {
     return null;

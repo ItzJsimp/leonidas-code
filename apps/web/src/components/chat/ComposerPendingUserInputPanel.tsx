@@ -1,9 +1,9 @@
 import { type RuntimeRequestId } from "@t3tools/contracts";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { deriveUserQuestionPresentation } from "@t3tools/client-runtime/state/user-question-presentation";
 import { type PendingUserInput } from "../../session-logic";
 import {
   derivePendingUserInputProgress,
-  parseRecommendedLabel,
   type PendingUserInputDraftAnswer,
 } from "../../pendingUserInput";
 import { CheckIcon } from "lucide-react";
@@ -75,6 +75,10 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   const responseDisabled = disabled || isResponding || !canRespond;
   const progress = derivePendingUserInputProgress(prompt.questions, answers, questionIndex);
   const activeQuestion = progress.activeQuestion;
+  const presentation = useMemo(
+    () => (activeQuestion ? deriveUserQuestionPresentation(activeQuestion) : null),
+    [activeQuestion],
+  );
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const onAdvanceRef = useRef(onAdvance);
   const [optimisticSingleSelect, setOptimisticSingleSelect] = useState<{
@@ -178,7 +182,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     return () => document.removeEventListener("keydown", handler);
   }, [activeQuestion, handleOptionSelection, isCollapsed, responseDisabled]);
 
-  if (!activeQuestion) {
+  if (!activeQuestion || !presentation) {
     return null;
   }
 
@@ -205,7 +209,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
           </span>
           {isCollapsed ? (
             <span className="min-w-0 flex-1 truncate text-secondary-label">
-              {activeQuestion.question}
+              {presentation.question}
             </span>
           ) : (
             <span className="text-3xs text-primary">Waiting on your answer</span>
@@ -245,13 +249,13 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       <CollapsiblePanel>
         <ComposerBanner.Scroll>
           <ComposerBanner.Body className="pe-1 pb-1 wrap-anywhere">
-            <p className="text-sm text-foreground/85">{activeQuestion.question}</p>
+            <p className="text-sm text-foreground/85">{presentation.question}</p>
             {activeQuestion.multiSelect ? (
               <p className="mt-1 text-secondary-label text-xs">Select one or more options.</p>
             ) : null}
             <div className="mt-2 space-y-0.5">
-              {activeQuestion.options.map((option, index) => {
-                const optionValue = option.value ?? option.label;
+              {presentation.options.map((option, index) => {
+                const optionValue = option.value;
                 const isOptimisticallySelected =
                   optimisticSingleSelect?.questionId === activeQuestion.id &&
                   optimisticSingleSelect.optionValue === optionValue;
@@ -259,7 +263,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   isOptimisticallySelected ||
                   (!customAnswerActive && progress.selectedOptionValues.includes(optionValue));
                 const shortcutKey = index < 9 ? index + 1 : null;
-                const { label: optionLabel, recommended } = parseRecommendedLabel(option.label);
+                const { label: optionLabel, recommended } = option;
                 const className = cn(
                   "group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
                   isSelected
@@ -271,8 +275,9 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                 const content = (
                   <>
                     <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                      <span className="flex items-center gap-1.5 text-sm font-medium">
-                        {optionLabel}
+                      <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                        <span className="shrink-0 text-primary">{option.letter}</span>
+                        <span>{optionLabel}</span>
                         {recommended ? (
                           <span
                             data-recommended-option

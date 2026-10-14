@@ -2,6 +2,7 @@ import { RequestActionButton } from "./RequestActionButton";
 import { QuestionAttachments } from "./QuestionAttachments";
 import type { RuntimeRequestId } from "@t3tools/contracts";
 import type { ThreadUserInputQuestion } from "@t3tools/client-runtime/state/thread-requests";
+import { deriveUserQuestionPresentation } from "@t3tools/client-runtime/state/user-question-presentation";
 import { useCallback, useRef } from "react";
 import { Platform, Pressable, ScrollView, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
@@ -272,17 +273,18 @@ export function PendingUserInputCard(props: PendingUserInputCardProps) {
         ) : null}
         {props.pendingUserInput.questions.map((question) => {
           const draft = props.drafts[question.id];
+          const presentation = deriveUserQuestionPresentation(question);
           return (
             <View key={question.id} className="gap-2 pt-1">
               <Text className="font-t3-bold text-xs uppercase tracking-[1px] text-foreground-muted">
                 {question.header}
               </Text>
               <Text className="font-sans text-base leading-snug text-foreground">
-                {question.question}
+                {presentation.question}
               </Text>
               <View className="gap-2">
-                {question.options.map((option) => {
-                  const optionValue = option.value ?? option.label.trim();
+                {presentation.options.map((option) => {
+                  const optionValue = option.value;
                   const selected = isPendingUserInputOptionSelected(question, draft, optionValue);
                   const description =
                     option.description !== option.label ? option.description : undefined;
@@ -311,8 +313,11 @@ export function PendingUserInputCard(props: PendingUserInputCardProps) {
                             selected ? "text-foreground" : "text-foreground-secondary",
                           )}
                         >
-                          {option.label}
+                          {option.letter} · {option.label}
                         </Text>
+                        {option.recommended ? (
+                          <Text className="font-t3-bold text-xs text-primary">Recommended</Text>
+                        ) : null}
                         {description ? (
                           <Text className="font-sans text-sm leading-5 text-foreground-muted">
                             {description}

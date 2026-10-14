@@ -6,7 +6,6 @@ import {
   countAnsweredPendingUserInputQuestions,
   derivePendingUserInputProgress,
   findFirstUnansweredPendingUserInputQuestionIndex,
-  parseRecommendedLabel,
   resolvePendingUserInputAnswer,
   setPendingUserInputCustomAnswer,
   togglePendingUserInputOptionSelection,
@@ -392,29 +391,5 @@ describe("carryDisplacedCustomAnswerIntoPrompt", () => {
     expect(carryDisplacedCustomAnswerIntoPrompt("first half\n", "second half")).toBe(
       "first half\n\nsecond half",
     );
-  });
-});
-
-describe("parseRecommendedLabel", () => {
-  it("strips a trailing (Recommended) marker and flags the option", () => {
-    expect(parseRecommendedLabel("Ship it now (Recommended)")).toEqual({
-      label: "Ship it now",
-      recommended: true,
-    });
-    expect(parseRecommendedLabel("Ship it now (recommended) ")).toEqual({
-      label: "Ship it now",
-      recommended: true,
-    });
-  });
-
-  it("leaves other labels alone", () => {
-    expect(parseRecommendedLabel("Recommended reading")).toEqual({
-      label: "Recommended reading",
-      recommended: false,
-    });
-    expect(parseRecommendedLabel("(Recommended)")).toEqual({
-      label: "(Recommended)",
-      recommended: false,
-    });
   });
 });

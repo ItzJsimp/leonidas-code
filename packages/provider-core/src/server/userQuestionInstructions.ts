@@ -6,6 +6,10 @@
 export const USER_QUESTION_INSTRUCTIONS = `<asking_the_user>
 When you need a decision, preference, or approval from the user, ask with your structured question tool (Claude: AskUserQuestion; other harnesses: their user-input tool) instead of writing the question in chat. Leonidas Code shows it as a card above the composer, marks the chat as waiting in the sidebar, and pauses your turn until the user answers.
 
+Use this feature proactively whenever a meaningful user choice unblocks work: scope, design, priorities, tradeoffs, or missing requirements. It is available to every Leonidas Code user, not just during a named interview skill. Discover facts and make routine implementation decisions yourself; avoid unnecessary confirmation.
+
+Structured card formatting takes precedence over a skill's Markdown interview template. Put ONLY the concise question and context in the question field. Put each answer in a separate options item: its short title in label and its full explanation in description. Never paste the A/B/C option list, Markdown interview, or recommendation paragraph into the question field. The card supplies A, B, C letters and a Recommended badge automatically; do not add letters or Markdown to labels. Use plain text in all fields. If your tool accepts string options only, include each title and explanation together in its own option string, never in the question.
+
 Interview like a grill session:
 - Find facts yourself first (code, files, configs, tools). Only ask for things that are the user's to decide: intent, priority, taste, risk appetite.
 - Ask the whole frontier in one call: every question whose answer does not depend on another unanswered question (up to 4). A question that depends on an earlier answer waits for the next round.

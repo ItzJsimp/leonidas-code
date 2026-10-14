@@ -142,3 +142,59 @@ it("still auto-advances once after the answer draft rerenders the same question"
   await act(async () => vi.advanceTimersByTime(200));
   expect(activeIndex()).toBe("1");
 });
+
+it("renders repaired explanations inside clickable choices and submits the exact answer", async () => {
+  const onToggleOption = vi.fn();
+  const onAdvance = vi.fn();
+  await act(async () => {
+    renderer = create(
+      <ComposerPendingUserInputPanel
+        pendingUserInputs={[
+          {
+            ...prompt,
+            questions: [
+              {
+                id: "repair",
+                header: "Approach",
+                multiSelect: false,
+                question:
+                  "Choose a path - **A) Native:** Reuse existing tools. - **B) Custom:** Build new tools. ➡️ **Recommended: A** - Smaller change.",
+                options: [
+                  {
+                    label: "Native (Recommended)",
+                    description: "Native (Recommended)",
+                    value: "native-id",
+                  },
+                  { label: "Custom", description: "Custom" },
+                ],
+              },
+            ],
+          },
+        ]}
+        respondingRequestIds={[]}
+        answers={{}}
+        questionIndex={0}
+        onToggleOption={onToggleOption}
+        onAdvance={onAdvance}
+        onDismiss={() => {}}
+      />,
+    );
+  });
+  const choice = renderer!.root
+    .findAllByType("button")
+    .find((button) =>
+      button
+        .findAllByType("span")
+        .some((span) => span.children.includes("Reuse existing tools. Smaller change.")),
+    )!;
+  expect(choice).toBeDefined();
+  expect(choice.findAllByType("span").some((span) => span.children.includes("A"))).toBe(true);
+  expect(choice.findAllByType("span").some((span) => span.children.includes("Recommended"))).toBe(
+    true,
+  );
+  expect(renderer!.root.findAllByType("p")[0]?.children).toEqual(["Choose a path"]);
+  await act(async () => choice.props.onClick());
+  expect(onToggleOption).toHaveBeenCalledWith("repair", "native-id");
+  await act(async () => vi.advanceTimersByTime(200));
+  expect(onAdvance).toHaveBeenCalledTimes(1);
+});

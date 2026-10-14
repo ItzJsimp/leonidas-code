@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./state/user-question-presentation": {
+      "types": "./src/state/userQuestionPresentation.ts",
+      "default": "./src/state/userQuestionPresentation.ts"
+    },
     "./composerThreadItems": {
       "types": "./src/composerThreadItems.ts",
       "default": "./src/composerThreadItems.ts"
