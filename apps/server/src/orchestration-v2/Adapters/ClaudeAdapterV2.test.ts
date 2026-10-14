@@ -2808,9 +2808,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
   );
 
   for (const status of ["completed", "interrupted"] as const) {
-    it.effect(
-      `projects Claude assistant text stream and final result when ${status}`,
-      () =>
+    it.effect(`projects Claude assistant text stream and final result when ${status}`, () =>
       Effect.gen(function* () {
         const harness = yield* makeWakeHarnessWithOptions({
           environment: { CLAUDE_STREAM_ASSISTANT_TEXT: "1" },
@@ -2919,7 +2917,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
           Layer.mergeAll(IdAllocator.layer, McpProviderSessions.layer, NodeServices.layer),
         ),
       ),
-  );
+    );
   }
 
   it.effect.each(["cancelled", "denied", "permission_denied", undefined])(
@@ -4763,6 +4761,82 @@ describe("ClaudeAdapterV2 background wake turns", () => {
           .pendingBackgroundTasks;
         assert.deepEqual(roster, [
           { taskId: longRunning.taskId, kind: "monitor", description: "Monitor 0" },
+        ]);
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(IdAllocator.layer, McpProviderSessions.layer, NodeServices.layer),
+        ),
+      ),
+    ),
+  );
+
+  it.effect("names a background command by its own text when the SDK sends no description", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const harness = yield* makeWakeHarness;
+        const now = yield* DateTime.now;
+        let frameNumber = 0;
+        const nextUuid = () => `00000000-0000-4000-8000-${String(++frameNumber).padStart(12, "0")}`;
+        const command = "pnpm install --frozen-lockfile";
+        yield* harness.runtime.startTurn(
+          makeClaudeTestTurnInput({
+            threadId: harness.threadId,
+            providerThread: harness.providerThread,
+            now,
+            attemptId: RunAttemptId.make("attempt-claude-background-command-label"),
+            text: "Install in the background.",
+            attachments: [],
+          }),
+        );
+        yield* Queue.offer(
+          harness.sdkMessages,
+          claudeSdkFrame({
+            type: "assistant",
+            message: {
+              model: "claude-sonnet-4-6",
+              id: "msg_background_command",
+              type: "message",
+              role: "assistant",
+              content: [
+                {
+                  type: "tool_use",
+                  id: "toolu_background_command",
+                  name: "Bash",
+                  input: { command, run_in_background: true },
+                },
+              ],
+              stop_reason: null,
+              stop_sequence: null,
+              usage: { input_tokens: 1, output_tokens: 1 },
+            },
+            parent_tool_use_id: null,
+            uuid: nextUuid(),
+            session_id: WAKE_NATIVE_SESSION,
+          }),
+        );
+        yield* Queue.offer(
+          harness.sdkMessages,
+          claudeSdkFrame({
+            type: "system",
+            subtype: "task_started",
+            task_id: "task-background-command",
+            tool_use_id: "toolu_background_command",
+            is_backgrounded: true,
+            task_type: "local_bash",
+            uuid: nextUuid(),
+            session_id: WAKE_NATIVE_SESSION,
+          }),
+        );
+        yield* Queue.offer(
+          harness.sdkMessages,
+          makeResultFrame({ uuid: nextUuid(), result: "Installing." }),
+        );
+        yield* awaitUntil(() => harness.terminalEvents().length === 1, "turn terminal");
+
+        const roster = providerThreadRosterEvents(harness.events).at(-1)?.providerThread
+          .pendingBackgroundTasks;
+        assert.deepEqual(roster, [
+          { taskId: "task-background-command", kind: "command", description: command },
         ]);
       }).pipe(
         Effect.provide(

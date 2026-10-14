@@ -95,12 +95,14 @@ function WaitingSection({ waiting }: { readonly waiting: readonly WaitingOn[] })
       {waiting.map((entry) => (
         <div
           key={entry.id}
-          className="flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1"
+          className="flex w-full min-w-0 items-start gap-2 rounded-md px-1.5 py-1"
         >
           <WaitingKindIcon kind={entry.kind} className="size-3.5 shrink-0 text-warning" />
-          <span className="min-w-0 flex-1 truncate">
+          <span className="min-w-0 flex-1 break-words" title={entry.full ?? undefined}>
             <span className="font-medium text-foreground/90">{entry.source}</span>
-            {entry.detail ? <span className="text-muted-foreground"> · {entry.detail}</span> : null}
+            {entry.full ? (
+              <span className="font-mono text-muted-foreground"> · {entry.full}</span>
+            ) : null}
           </span>
           {entry.since ? (
             <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">

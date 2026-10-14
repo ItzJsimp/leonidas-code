@@ -1961,6 +1961,18 @@ function claudePendingBackgroundTask(input: {
   };
 }
 
+const BACKGROUND_COMMAND_LABEL_LIMIT = 200;
+
+/** A background command's own text, so the user can see what the agent is waiting on. */
+function claudeBackgroundCommandLabel(call: ActiveClaudeToolCall | undefined): string | undefined {
+  const command = call === undefined ? undefined : firstStringInputField(call.input, ["command"]);
+  if (command === undefined) return undefined;
+  const oneLine = command.replace(/\s+/g, " ");
+  return oneLine.length > BACKGROUND_COMMAND_LABEL_LIMIT
+    ? `${oneLine.slice(0, BACKGROUND_COMMAND_LABEL_LIMIT - 1).trimEnd()}…`
+    : oneLine;
+}
+
 function claudeTaskTypeFromSdkMessage(message: SDKMessage): string | null {
   if (typeof message !== "object" || message === null) {
     return null;
@@ -6489,10 +6501,20 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               (taskId, task) =>
                 task.nativeThreadId === input.nativeThreadId && !listedTaskIds.has(taskId),
             );
+            const knownTasks = rosterForNativeThread(
+              yield* Ref.get(pendingBackgroundTasksByNativeThread),
+              input.nativeThreadId,
+            );
             for (const entry of roster) {
               const task = parseClaudeBackgroundTaskEntry(entry, monitorTasks);
               if (task !== null) {
-                nextTasks.push(task);
+                // The snapshot may omit the description the launch already supplied.
+                const known = knownTasks.get(task.taskId)?.description;
+                nextTasks.push(
+                  task.description === undefined && known !== undefined
+                    ? { ...task, description: known }
+                    : task,
+                );
               }
             }
             yield* replacePendingBackgroundTasks(input.nativeThreadId, nextTasks);
@@ -6518,7 +6540,13 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
                   toolUseId: message.tool_use_id,
                 }),
                 description:
-                  typeof message.description === "string" ? message.description : undefined,
+                  typeof message.description === "string" && message.description.trim().length > 0
+                    ? message.description
+                    : claudeBackgroundCommandLabel(
+                        message.tool_use_id === undefined
+                          ? undefined
+                          : input.activeContext?.toolCalls.get(message.tool_use_id),
+                      ),
               }),
             );
             rosterChanged = true;

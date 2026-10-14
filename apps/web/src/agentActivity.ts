@@ -14,6 +14,7 @@ import {
   classifyActivityItem,
   commandShell,
   firstThought,
+  readableCommand,
 } from "./agentActivityAccess";
 
 export interface AccessedFile {
@@ -67,6 +68,8 @@ export interface WaitingOn {
   readonly source: string;
   /** The command, task or tool in question. */
   readonly detail: string | null;
+  /** The whole command, unclipped, for hover text and the expanded list. */
+  readonly full: string | null;
   /** ISO time the wait began, for the live elapsed clock. */
   readonly since: string | null;
 }
@@ -86,7 +89,12 @@ export function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): Waitin
     const { event } = classifyActivityItem(item);
     if (!event?.running) continue;
     const since = item.startedAt ? DateTime.formatIso(item.startedAt) : null;
-    const entry = { id: item.id, detail: event.target, since };
+    const entry = {
+      id: item.id,
+      detail: event.target,
+      full: item.type === "command_execution" ? readableCommand(item.input) : event.target,
+      since,
+    };
     if (item.type === "command_execution" && event.kind === "command") {
       waiting.push({ ...entry, kind: "shell", source: commandShell(item.input) });
     } else if (event.kind === "agent") {

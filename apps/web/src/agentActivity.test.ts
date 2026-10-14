@@ -208,6 +208,20 @@ describe("agent activity", () => {
     ]);
     expect(waiting[0]?.detail).toBe("npm test");
   });
+
+  it("keeps the whole command for a long wait while the bar text is clipped", () => {
+    const command =
+      `pnpm install --frozen-lockfile --reporter=append-only ${"--filter=@scope/package ".repeat(6)}`.trim();
+    const shell = {
+      ...base,
+      id: TurnItemId.make("long-shell"),
+      type: "command_execution",
+      input: `pwsh -NoProfile -Command "${command}"`,
+    } as OrchestrationV2TurnItem;
+    const [entry] = derive([shell]).waiting;
+    expect(entry?.full).toBe(command);
+    expect(entry?.detail?.length).toBeLessThan(command.length);
+  });
   it("is not waiting while the agent is thinking or nothing is running", () => {
     const thinking: OrchestrationV2TurnItem = {
       ...base,

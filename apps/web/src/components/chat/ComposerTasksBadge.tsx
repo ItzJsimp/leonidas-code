@@ -105,6 +105,7 @@ function TaskSummary({
         <span
           className="min-w-0 flex-1 truncate text-left font-medium text-foreground/80"
           data-composer-task-current="true"
+          title={waiting?.full ? `${waiting.source}: ${waiting.full}` : undefined}
         >
           {waiting
             ? `${waiting.source}${waiting.detail ? `: ${waiting.detail}` : ""}${extraWaits > 0 ? ` +${extraWaits} more` : ""}`
