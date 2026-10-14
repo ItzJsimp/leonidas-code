@@ -89,6 +89,7 @@ import {
   freshTokens,
   usageHighlights,
   modelShare,
+  accountBreakdownRows,
   providerBreakdownRows,
   sortModelsByTokens,
   speedCostSegments,
@@ -150,7 +151,7 @@ export function UsagePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [limitsNow, setLimitsNow] = useState(() => Date.now());
   const refreshingRef = useRef(false);
-  const [breakdown, setBreakdown] = useState<"model" | "provider" | "time">("model");
+  const [breakdown, setBreakdown] = useState<"model" | "provider" | "account" | "time">("model");
   const [priceDialog, setPriceDialog] = useState<{ readonly model?: string } | null>(null);
   const [selectedModelKey, setSelectedModelKey] = useState<string | null>(null);
   const [selectedEnvironmentIds, setSelectedEnvironmentIds] =
@@ -256,6 +257,7 @@ export function UsagePage() {
     [merged.providers],
   );
   // A provider still refreshing keeps its row and line before its usage lands.
+  const accountRows = useMemo(() => accountBreakdownRows(merged.providers), [merged.providers]);
   const activeProviders = useMemo(
     () =>
       PROVIDER_ORDER.filter(
@@ -837,7 +839,12 @@ export function UsagePage() {
                       value={[breakdown]}
                       onValueChange={(next) => {
                         const value = next[0];
-                        if (value === "model" || value === "provider" || value === "time")
+                        if (
+                          value === "model" ||
+                          value === "provider" ||
+                          value === "account" ||
+                          value === "time"
+                        )
                           setBreakdown(value);
                       }}
                     >
@@ -845,6 +852,7 @@ export function UsagePage() {
                         [
                           { value: "model", label: "Model" },
                           { value: "provider", label: "Provider" },
+                          { value: "account", label: "Account" },
                           {
                             value: "time",
                             label: shownHourly ? (shownMinutes ? "Time" : "Hour") : "Day",
@@ -1046,6 +1054,65 @@ export function UsagePage() {
                                   );
                                 })}
                               </Fragment>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  ) : breakdown === "account" ? (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-right text-xs text-muted-foreground">
+                          <th className="w-full py-2 text-left font-normal">Account</th>
+                          <th className="py-2 pl-6 font-normal" title={API_COST_NOTE}>
+                            Cost
+                          </th>
+                          <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
+                          <th className="py-2 pl-6 font-normal">Sessions</th>
+                          <th className="py-2 pl-6 font-normal">Tokens</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accountRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                              No activity in this window.
+                            </td>
+                          </tr>
+                        ) : (
+                          accountRows.map((row) => {
+                            const rowFigures = figureClass(isProviderLoading(row.provider));
+                            const total = metric === "tokens" ? merged.totalTokens : merged.costUsd;
+                            const value =
+                              metric === "tokens" ? row.totals.totalTokens : row.totals.costUsd;
+                            return (
+                              <tr
+                                key={`${row.provider}:${row.sourcePath ?? ""}`}
+                                className="border-b border-border/50 text-right whitespace-nowrap text-muted-foreground tabular-nums"
+                              >
+                                <td
+                                  className="py-2.5 text-left text-foreground"
+                                  title={row.sourcePath}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <ProviderMark provider={row.provider} className="size-3.5" />
+                                    {providerLabel(row.provider)}
+                                    <span className="text-muted-foreground">{row.label}</span>
+                                  </span>
+                                </td>
+                                <td className={cn("py-2.5 pl-6 text-foreground", rowFigures)}>
+                                  {formatUsd(row.totals.costUsd)}
+                                </td>
+                                <td className={cn("hidden py-2.5 pl-6 sm:table-cell", rowFigures)}>
+                                  {formatPercent(total === 0 ? 0 : value / total)}
+                                </td>
+                                <td className={cn("py-2.5 pl-6", rowFigures)}>
+                                  {formatCount(row.totals.sessions)}
+                                </td>
+                                <td className={cn("py-2.5 pl-6", rowFigures)}>
+                                  {formatTokens(row.totals.totalTokens)}
+                                </td>
+                              </tr>
                             );
                           })
                         )}

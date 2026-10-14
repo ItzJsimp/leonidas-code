@@ -214,3 +214,31 @@ export function providerBreakdownRows(
     };
   });
 }
+
+export interface AccountBreakdownRow {
+  readonly provider: UsageProviderKind;
+  readonly label: string;
+  readonly sourcePath: string | undefined;
+  readonly totals: SourceTotals;
+}
+
+/** One flat row per provider home (account), largest first, including single-home providers. */
+export function accountBreakdownRows(
+  providers: readonly ProviderTotals[],
+): readonly AccountBreakdownRow[] {
+  return providers
+    .flatMap((entry) => {
+      const labels = entry.sources.map((source) => sourceLabel(entry.provider, source.sourcePath));
+      return entry.sources.map((source, index) => {
+        const label = labels[index] ?? "default";
+        const ambiguous = labels.indexOf(label) !== labels.lastIndexOf(label);
+        return {
+          provider: entry.provider,
+          label: ambiguous ? (source.sourcePath ?? label) : label,
+          sourcePath: source.sourcePath,
+          totals: source,
+        };
+      });
+    })
+    .toSorted((a, b) => b.totals.totalTokens - a.totals.totalTokens);
+}

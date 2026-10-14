@@ -3,7 +3,7 @@ import { type EnvironmentId, type ProviderInstanceId } from "@t3tools/contracts"
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { SparklesIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
-import { ActiveAgentsBadge } from "./ActiveAgentsBadge";
+import { ActiveAgentsOverlay } from "./ActiveAgentsBadge";
 import { useActiveAgentCounts } from "../../hooks/useActiveAgentCounts";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
@@ -258,15 +258,13 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                     </div>
                   </TooltipPopup>
                 </Tooltip>
-                <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-40">
-                  <ActiveAgentsBadge
-                    count={
-                      props.environmentId
-                        ? activeAgentCount(`${props.environmentId}:${entry.instanceId}`)
-                        : 0
-                    }
-                  />
-                </span>
+                <ActiveAgentsOverlay
+                  count={
+                    props.environmentId
+                      ? activeAgentCount(`${props.environmentId}:${entry.instanceId}`)
+                      : 0
+                  }
+                />
               </div>
             );
           })}

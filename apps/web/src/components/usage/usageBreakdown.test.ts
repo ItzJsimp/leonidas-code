@@ -8,6 +8,7 @@ import {
   freeModelKind,
   freshTokens,
   modelShare,
+  accountBreakdownRows,
   providerBreakdownRows,
   sortModelsByTokens,
   usageHighlights,
@@ -208,6 +209,37 @@ describe("providerBreakdownRows", () => {
       "/linux/.claude",
     ]);
     expect(rows[1]?.sources.map((entry) => entry.label)).toEqual(["Other", "default"]);
+  });
+});
+
+describe("accountBreakdownRows", () => {
+  it("flattens every home into one list, largest first, across providers", () => {
+    const src = (sourcePath: string, totalTokens: number): SourceTotals => ({
+      sourcePath,
+      costUsd: 0,
+      totalTokens,
+      records: 1,
+      sessions: 1,
+    });
+    const prov = (kind: ProviderTotals["provider"], sources: SourceTotals[]): ProviderTotals => ({
+      provider: kind,
+      costUsd: 0,
+      totalTokens: 0,
+      records: 1,
+      sessions: 1,
+      costShare: 0,
+      tokenShare: 0,
+      sources,
+    });
+    const rows = accountBreakdownRows([
+      prov("claude", [src("/h/.claude", 10), src("/h/.claude-work", 50)]),
+      prov("codex", [src("/h/.codex", 30)]),
+    ]);
+    expect(rows.map((row) => [row.provider, row.label])).toEqual([
+      ["claude", "work"],
+      ["codex", "default"],
+      ["claude", "default"],
+    ]);
   });
 });
 
