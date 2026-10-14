@@ -15,7 +15,7 @@ const row = (
   completedAt:
     seconds === null
       ? null
-      : new Date(Date.parse("2026-10-14T10:00:00.000Z") + seconds * 1000).toISOString(),
+      : `2026-10-14T10:${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}.000Z`,
   attempts: extra.attempts ?? 1,
 });
 
