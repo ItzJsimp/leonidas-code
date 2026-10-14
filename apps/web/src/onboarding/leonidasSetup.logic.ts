@@ -64,7 +64,7 @@ export const AIOS_PRESET: readonly AiosPresetEntry[] = [
   },
 ];
 
-export function goalLabels(goalIds: readonly string[]): readonly string[] {
+function goalLabels(goalIds: readonly string[]): readonly string[] {
   return normalizeGoalIds(goalIds).flatMap((id) => {
     const goal = LEONIDAS_GOALS.find((entry) => entry.id === id);
     return goal ? [goal.label] : [];
