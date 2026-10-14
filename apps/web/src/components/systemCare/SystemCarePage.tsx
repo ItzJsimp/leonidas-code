@@ -186,6 +186,8 @@ export function SystemCarePage() {
   const activeInfo = activeMetric ? metricInfo(activeMetric, inv, sample) : null;
   const series = activeMetric ? historySeries(points, activeMetric) : [];
   const stats = seriesStats(series);
+  // The averaged series hides short spikes; the real peak lives in each point's max.
+  const peak = activeMetric ? seriesStats(historySeries(points, activeMetric, "max")).max : null;
   const activeLimit = activeMetric ? limits.get(activeMetric) : undefined;
   const unit = activeInfo?.unit ?? "";
 
@@ -459,7 +461,7 @@ export function SystemCarePage() {
                   [
                     ["Lowest", stats.min],
                     ["Average", stats.avg],
-                    ["Highest", stats.max],
+                    ["Highest", peak],
                   ] as const
                 ).map(([label, value]) => (
                   <div key={label}>
