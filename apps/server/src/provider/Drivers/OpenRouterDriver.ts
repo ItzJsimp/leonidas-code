@@ -52,6 +52,7 @@ import { makeManagedServerProvider } from "@t3tools/provider-core/server/managed
 import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
 import { providerModelsFromSettings } from "@t3tools/provider-core/server/snapshotProbe";
 import { resolveClaudeModelCatalog } from "../ClaudeModelCatalog.ts";
+import { readOpenRouterUsageLimits } from "../openRouterUsageLimits.ts";
 import { bundledOpenRouterModels, fetchOpenRouterModels } from "../openRouterModelCatalog.ts";
 import {
   defaultProviderContinuationIdentity,
@@ -331,6 +332,16 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
                       () => Effect.succeed(undefined),
                     ).pipe(
                       Effect.map(stampIdentity),
+                      Effect.flatMap((providerSnapshot) =>
+                        effectiveApiKey && discovery.authStatus !== "unauthenticated"
+                          ? readOpenRouterUsageLimits({
+                              apiKey: effectiveApiKey,
+                              baseUrl: effectiveBaseUrl,
+                            }).pipe(
+                              Effect.map((usageLimits) => ({ ...providerSnapshot, usageLimits })),
+                            )
+                          : Effect.succeed(providerSnapshot),
+                      ),
                       Effect.map((providerSnapshot) => ({
                         ...providerSnapshot,
                         status:

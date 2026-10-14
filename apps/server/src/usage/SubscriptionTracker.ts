@@ -1,6 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - hashes opaque account identities without persisting email addresses.
 import * as NodeCrypto from "node:crypto";
-import type { ServerProvider } from "@t3tools/contracts";
+import { UsageDay, type ServerProvider } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -14,6 +15,15 @@ import {
 } from "@t3tools/shared/usageForecast";
 import { UsageService } from "./UsageService.ts";
 import { SubscriptionLedger, advanceSubscriptionWindow } from "./subscriptionTracking.ts";
+
+const OPENROUTER_TOKEN_CACHE_MS = 60_000;
+
+const formatTokens = (count: number): string =>
+  count >= 1_000_000
+    ? `${(count / 1_000_000).toFixed(1)}M`
+    : count >= 1_000
+      ? `${Math.round(count / 1_000)}K`
+      : String(count);
 
 const encodeJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 const encodeLedger = Schema.encodeSync(Schema.fromJsonString(SubscriptionLedger));
@@ -72,8 +82,65 @@ export const makeSubscriptionTracker = Effect.fn("makeSubscriptionTracker")(func
     }
   }
 
+  const readSummary = Option.isSome(usage) ? usage.value.readSummary : undefined;
+  let tokenCache: { readonly at: number; readonly tokens: number } | undefined;
+  /** OpenRouter has no windows to calibrate, so its card gets a plain recent token count. */
+  const withOpenRouterTokens = (provider: ServerProvider): Effect.Effect<ServerProvider> => {
+    const limits = provider.usageLimits;
+    if (!readSummary || provider.driver !== "openrouter" || !limits || limits.unavailable)
+      return Effect.succeed(provider);
+    const tokens = Effect.flatMap(DateTime.now, (nowTime) => {
+      const now = DateTime.toEpochMillis(nowTime);
+      if (tokenCache && now - tokenCache.at < OPENROUTER_TOKEN_CACHE_MS)
+        return Effect.succeed(tokenCache.tokens);
+      const day = (epochMs: number) =>
+        UsageDay.make(DateTime.formatIso(DateTime.makeUnsafe(epochMs)).slice(0, 10));
+      return readSummary({
+        sinceDay: day(now - 29 * 86_400_000),
+        untilDay: day(now),
+        timeZone: "UTC",
+      }).pipe(
+        Effect.map((summary) =>
+          summary.buckets.reduce(
+            (sum, { provider: source, totals }) =>
+              source === "openrouter"
+                ? sum +
+                  totals.uncachedInputTokens +
+                  totals.cachedInputTokens +
+                  totals.cacheCreationTokens +
+                  totals.outputTokens
+                : sum,
+            0,
+          ),
+        ),
+        Effect.tap((total) =>
+          Effect.sync(() => {
+            tokenCache = { at: now, tokens: total };
+          }),
+        ),
+      );
+    });
+    return tokens.pipe(
+      Effect.map((total) => ({
+        ...provider,
+        usageLimits: {
+          ...limits,
+          windows: limits.windows.map((window) =>
+            window.id === "openrouter_credits"
+              ? { ...window, label: `${window.label} · ${formatTokens(total)} tokens (30d)` }
+              : window,
+          ),
+        },
+      })),
+      Effect.orElseSucceed(() => provider),
+    );
+  };
+
   return (provider: ServerProvider) =>
-    mutex.withPermit(
+    withOpenRouterTokens(provider).pipe(Effect.flatMap(trackWindows));
+
+  function trackWindows(provider: ServerProvider) {
+    return mutex.withPermit(
       Effect.gen(function* () {
         const limits = provider.usageLimits;
         if (!reader || !limits || limits.unavailable || limits.windows.length === 0)
@@ -186,4 +253,5 @@ export const makeSubscriptionTracker = Effect.fn("makeSubscriptionTracker")(func
         Effect.orElseSucceed(() => provider),
       ),
     );
+  }
 });
