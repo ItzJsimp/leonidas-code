@@ -322,6 +322,10 @@ export type ModelPreferences = {
 export const AutoRoutePreference = Schema.Literals(["balanced", "cost", "quality", "speed"]);
 export type AutoRoutePreference = typeof AutoRoutePreference.Type;
 
+/** Token-spending switch; see @t3tools/shared/efficiencyProfile for what each value does. */
+export const EfficiencyProfile = Schema.Literals(["economy", "balanced", "max"]);
+export type EfficiencyProfile = typeof EfficiencyProfile.Type;
+
 export const TimeOfDay = Schema.String.check(Schema.isPattern(/^([01]\d|2[0-3]):[0-5]\d$/));
 export type TimeOfDay = typeof TimeOfDay.Type;
 
@@ -508,6 +512,7 @@ export const ClientSettingsSchema = Schema.Struct({
   composerAutoRoutePreference: Schema.NullOr(AutoRoutePreference).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
+  efficiencyProfile: EfficiencyProfile.pipe(Schema.withDecodingDefault(Effect.succeed("balanced"))),
   composerRichTextEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   sendShortcut: Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"]).pipe(
     Schema.withDecodingDefault(Effect.succeed("enter")),
@@ -1807,6 +1812,7 @@ export const ClientSettingsPatch = Schema.Struct({
   composerCollapseOnScroll: Schema.optionalKey(Schema.Boolean),
   composerPromptPredictionEnabled: Schema.optionalKey(Schema.Boolean),
   composerAutoRoutePreference: Schema.optionalKey(Schema.NullOr(AutoRoutePreference)),
+  efficiencyProfile: Schema.optionalKey(EfficiencyProfile),
   composerRichTextEnabled: Schema.optionalKey(Schema.Boolean),
   sendShortcut: Schema.optionalKey(Schema.Literals(["enter", "mod-enter-multiline", "mod-enter"])),
   followUpBehavior: Schema.optionalKey(Schema.Literals(["queue", "steer"])),
