@@ -9033,9 +9033,11 @@ export default function ChatView(props: ChatViewProps) {
 
   // Timeline rows read this through shared context. The inline wrapper was a
   // new function per streamed delta, so every row re-rendered. Read the latest
-  // handler from a render-synced mirror and keep one stable callback.
+  // handler from a mirror synced after each commit and keep one stable callback.
   const timelineRollbackRef = useRef({ onRollbackCheckpoint, paintOnlyDisplayedTimeline });
-  timelineRollbackRef.current = { onRollbackCheckpoint, paintOnlyDisplayedTimeline };
+  useLayoutEffect(() => {
+    timelineRollbackRef.current = { onRollbackCheckpoint, paintOnlyDisplayedTimeline };
+  }, [onRollbackCheckpoint, paintOnlyDisplayedTimeline]);
   const onTimelineRollbackCheckpoint = useCallback(
     (input: { readonly checkpointId: string; readonly scopeId: string }) => {
       const latest = timelineRollbackRef.current;
