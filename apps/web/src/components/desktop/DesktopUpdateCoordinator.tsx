@@ -20,7 +20,7 @@ import {
   showDesktopUpdateWaitingToast,
 } from "../desktopUpdate.toast";
 import { stackedThreadToast, toastManager } from "../ui/toast";
-import { playTestSound } from "./LeonidasMobNotificationNotice";
+import { playUpdateReadySound } from "./updateReadySound";
 import { LeonidasWhatsNewDialog } from "./LeonidasWhatsNewDialog";
 import { fetchLatestReleaseWhatsNew, onWhatsNewPreviewRequested } from "./whatsNewPreview";
 
@@ -202,7 +202,7 @@ export function DesktopUpdateCoordinator() {
       showDesktopUpdateDownloadedToast(bridge, state, actions);
       return;
     }
-    playTestSound();
+    playUpdateReadySound();
     setWhatsNew({ version: downloadedVersion, items, actions });
     // `state` only feeds the toast copy; the version is the once-per-update key.
   }, [downloadedVersion, setUpdateWhenSafe]);
