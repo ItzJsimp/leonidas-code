@@ -18,7 +18,7 @@ export function TaskRoadmapMap(props: {
 }) {
   const canvas = useRef<HTMLDivElement>(null);
   const marker = useId().replace(/:/g, "");
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.85);
   const [drawing, setDrawing] = useState({ width: 0, height: 0, paths: [] as string[] });
 
   useLayoutEffect(() => {
@@ -86,8 +86,8 @@ export function TaskRoadmapMap(props: {
             size="icon-sm"
             variant="outline"
             aria-label="Zoom out roadmap"
-            disabled={zoom <= 0.5}
-            onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
+            disabled={zoom <= 0.4}
+            onClick={() => setZoom((value) => Math.max(0.4, value - 0.15))}
           >
             <MinusIcon aria-hidden />
           </Button>
@@ -95,7 +95,7 @@ export function TaskRoadmapMap(props: {
             size="sm"
             variant="ghost"
             aria-label="Reset roadmap zoom"
-            onClick={() => setZoom(1)}
+            onClick={() => setZoom(0.85)}
           >
             {Math.round(zoom * 100)}%
           </Button>
@@ -104,7 +104,7 @@ export function TaskRoadmapMap(props: {
             variant="outline"
             aria-label="Zoom in roadmap"
             disabled={zoom >= 1.5}
-            onClick={() => setZoom((value) => Math.min(1.5, value + 0.25))}
+            onClick={() => setZoom((value) => Math.min(1.5, value + 0.15))}
           >
             <PlusIcon aria-hidden />
           </Button>
@@ -115,7 +115,7 @@ export function TaskRoadmapMap(props: {
         tabIndex={0}
         aria-label="Roadmap canvas. Scroll horizontally or use zoom to inspect branches."
       >
-        <div ref={canvas} className="relative min-w-[720px] space-y-6 p-6" style={{ zoom }}>
+        <div ref={canvas} className="relative min-w-[560px] space-y-3 p-3" style={{ zoom }}>
           <svg
             aria-hidden
             className="pointer-events-none absolute inset-0 text-muted-foreground/50"
@@ -145,13 +145,13 @@ export function TaskRoadmapMap(props: {
               />
             ))}
           </svg>
-          <div className="relative grid grid-cols-[16rem_minmax(0,1fr)] gap-16">
+          <div className="relative grid grid-cols-[11rem_minmax(0,1fr)] gap-8">
             <div
               data-roadmap-node="baseline"
-              className="rounded-lg border border-primary/40 bg-background px-4 py-3"
+              className="rounded-lg border border-primary/40 bg-background px-3 py-2"
             >
               <p className="text-xs text-muted-foreground">Start here · Current baseline</p>
-              <p className="mt-1 font-mono text-lg font-semibold">V{props.currentVersion}</p>
+              <p className="font-mono text-base font-semibold">V{props.currentVersion}</p>
             </div>
             <p className="self-center text-xs leading-relaxed text-muted-foreground">
               Version nodes connect in release order.
@@ -162,15 +162,15 @@ export function TaskRoadmapMap(props: {
           {props.stages.map((stage, index) => (
             <div
               key={stage.version}
-              className="relative grid grid-cols-[16rem_minmax(0,1fr)] items-center gap-16"
+              className="relative grid grid-cols-[11rem_minmax(0,1fr)] items-center gap-8"
             >
               <article
                 data-roadmap-node={`stage:${stage.version}`}
                 aria-label={`Step ${index + 1}: V${stage.version} ${stage.title}`}
                 className={
                   stage.complete
-                    ? "rounded-lg border border-primary/50 bg-background px-4 py-3"
-                    : "rounded-lg border border-border bg-background px-4 py-3"
+                    ? "rounded-lg border border-primary/50 bg-background px-3 py-2"
+                    : "rounded-lg border border-border bg-background px-3 py-2"
                 }
               >
                 <div className="flex items-center justify-between gap-2">
@@ -181,33 +181,36 @@ export function TaskRoadmapMap(props: {
                     <FlagIcon aria-hidden className="size-4 text-muted-foreground" />
                   ) : null}
                 </div>
-                <h4 className="mt-1 font-mono text-base font-semibold">V{stage.version}</h4>
+                <h4 className="font-mono text-sm font-semibold">V{stage.version}</h4>
                 <p className="text-sm font-medium">{stage.title}</p>
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {stage.done}/{stage.total} tasks complete
                 </p>
-                <div className="mt-2 h-1 rounded bg-muted">
+                <div className="mt-1 h-1 rounded bg-muted">
                   <div
                     className="h-full rounded bg-primary"
                     style={{ width: `${stage.total ? (stage.done / stage.total) * 100 : 0}%` }}
                   />
                 </div>
               </article>
-              <ul aria-label={`Tasks for V${stage.version}`} className="space-y-3">
+              <ul
+                aria-label={`Tasks for V${stage.version}`}
+                className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-1.5"
+              >
                 {stage.tasks.map((task) => (
                   <li key={task.id}>
                     <button
                       data-roadmap-node={`task:${task.id}`}
                       type="button"
                       onClick={() => props.onSelect(task)}
-                      className="flex min-h-16 w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-left outline-hidden hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      className="flex min-h-9 w-full items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-left outline-hidden hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     >
                       {task.status === "done" ? (
                         <CheckIcon aria-hidden className="size-4 shrink-0 text-primary" />
                       ) : (
                         <CircleIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                       )}
-                      <span className="min-w-0 flex-1 text-sm leading-snug">{task.title}</span>
+                      <span className="min-w-0 flex-1 text-xs leading-snug">{task.title}</span>
                       <StatusBadge status={task.status} />
                     </button>
                   </li>
@@ -216,20 +219,20 @@ export function TaskRoadmapMap(props: {
                   <li key={task.key}>
                     <details
                       data-roadmap-node={`brief:${task.key}`}
-                      className="min-h-16 rounded-lg border border-dashed border-border bg-background px-3 py-3"
+                      className="min-h-9 rounded-md border border-dashed border-border bg-background px-2 py-1.5"
                     >
-                      <summary className="cursor-pointer text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                      <summary className="cursor-pointer text-xs outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
                         {task.title}
                         <span className="ml-2 text-xs text-muted-foreground">Planned</span>
                       </summary>
-                      <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                      <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
                         {task.description}
                       </p>
                     </details>
                   </li>
                 ))}
                 {stage.total === 0 ? (
-                  <li className="text-xs text-muted-foreground">
+                  <li className="col-span-full text-xs text-muted-foreground">
                     Assign tasks to scope this release gate.
                   </li>
                 ) : null}
