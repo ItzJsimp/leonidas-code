@@ -29,16 +29,6 @@ export const OPEN_STATUSES: ReadonlySet<TaskBoardTaskStatus> = new Set([
   "blocked",
 ]);
 
-export const STATUS_ORDER: ReadonlyArray<TaskBoardTaskStatus> = [
-  "todo",
-  "in_progress",
-  "review",
-  "blocked",
-  "done",
-  "parked",
-  "retired",
-];
-
 const PRIORITY_ORDER: ReadonlyArray<TaskBoardTaskPriority> = ["critical", "high", "medium", "low"];
 
 const STATUS_LABELS: Record<TaskBoardTaskStatus, string> = {

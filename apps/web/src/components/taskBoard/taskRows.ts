@@ -30,14 +30,6 @@ export function statusDotClass(status: TaskBoardTaskStatus): string {
   return STATUS_DOT_CLASS[status];
 }
 
-const BOARD_STATUS_SET: ReadonlySet<TaskBoardTaskStatus> = new Set([
-  "todo",
-  "in_progress",
-  "review",
-  "blocked",
-  "done",
-]);
-
 /** Statuses a card can be moved to from the board (the five columns). */
 export const BOARD_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
   "todo",
@@ -46,10 +38,6 @@ export const BOARD_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
   "blocked",
   "done",
 ];
-
-export function isBoardStatus(status: TaskBoardTaskStatus): boolean {
-  return BOARD_STATUS_SET.has(status);
-}
 
 /** The status a card takes when dropped on a column, or null when it is already there. */
 export function statusChangeForDrop(
