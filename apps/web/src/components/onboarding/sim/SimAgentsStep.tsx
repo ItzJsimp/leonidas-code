@@ -2,12 +2,14 @@ import { ProviderDriverKind } from "@t3tools/contracts";
 import { ArrowRightIcon, CheckIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { CLAUDE_WINDOWS_INSTALL_COMMAND } from "../../../onboarding/providerReadiness.logic";
 import { ProviderInstanceIcon } from "../../chat/ProviderInstanceIcon";
 import { Button } from "../../ui/button";
 import { ScrollArea } from "../../ui/scroll-area";
 import type { SimPersona } from "./onboardingSim.logic";
 
-const INSTALL_COMMAND = "irm https://claude.ai/install.ps1 | iex";
+// Same line the real setup terminal runs: install, then sign-in in one terminal.
+const INSTALL_COMMAND = CLAUDE_WINDOWS_INSTALL_COMMAND;
 const LOGIN_COMMAND = "claude auth login";
 
 /** Mirrors the real card layout in WelcomeWizard's AgentCard. */
@@ -154,15 +156,16 @@ function ClaudeRow({
   const [approved, setApproved] = useState(false);
 
   // Like the real setup terminal, it closes itself once the command has finished.
+  // The install line now ends in sign-in, so it is finished only after approval.
   useEffect(() => {
-    const finished = (terminal === "install" && ran) || (terminal === "login" && approved);
+    const finished = approved && (terminal === "install" || terminal === "login");
     if (!finished) return;
     const timer = window.setTimeout(() => {
-      setState(terminal === "install" ? "needs-signin" : "ready");
+      setState("ready");
       setTerminal(null);
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [terminal, ran, approved]);
+  }, [terminal, approved]);
 
   const open = (kind: "install" | "login") => {
     setTerminal(kind);
@@ -170,8 +173,8 @@ function ClaudeRow({
     setApproved(false);
   };
   const close = () => {
-    if (terminal === "install" && ran) setState("needs-signin");
-    if (terminal === "login" && approved) setState("ready");
+    if (approved) setState("ready");
+    else if (terminal === "install" && ran) setState("needs-signin");
     setTerminal(null);
   };
 
@@ -227,12 +230,12 @@ function ClaudeRow({
             {ran ? (
               <div className="mt-1 text-muted-foreground">
                 {terminal === "install"
-                  ? "Downloading and installing Claude Code… done."
+                  ? "Downloading and installing Claude Code… done. Opening your browser to sign in…"
                   : "Opening your browser to sign in…"}
               </div>
             ) : null}
           </div>
-          {terminal === "login" && ran && !approved ? (
+          {terminal !== null && ran && !approved ? (
             <div className="px-3 pb-3">
               <SimBrowserPrompt
                 text="Claude sign-in opened in your browser."
