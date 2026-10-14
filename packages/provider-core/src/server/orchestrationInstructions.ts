@@ -91,7 +91,14 @@ Investigate with read-only actions and do not edit files or otherwise execute th
 export interface T3AcpInstructionState {
   readonly interactionMode: ProviderInteractionMode;
   readonly hasT3Mcp: boolean;
+  /** The credential grants `preview_*` tools. Defaults to true when omitted. */
+  readonly hasBrowserTools?: boolean;
+  /** `T3_ACP_MCP_NODE` is in the agent environment. Defaults to true when omitted. */
+  readonly hasAcpFallback?: boolean;
 }
+
+const acpStateKey = (state: T3AcpInstructionState) =>
+  `${state.interactionMode}|${state.hasT3Mcp}|${state.hasT3Mcp && state.hasBrowserTools !== false}|${state.hasT3Mcp && state.hasAcpFallback !== false}`;
 
 /**
  * ACP has no system/developer prompt field, so send T3-owned context in the
@@ -105,8 +112,8 @@ export function t3AcpPromptWithInstructions(input: {
   // Native slash commands must remain at the start of the prompt.
   if (input.prompt.trimStart().startsWith("/")) return input.prompt;
   if (
-    input.previousState?.interactionMode === input.state.interactionMode &&
-    input.previousState.hasT3Mcp === input.state.hasT3Mcp
+    input.previousState !== undefined &&
+    acpStateKey(input.previousState) === acpStateKey(input.state)
   ) {
     return input.prompt;
   }
@@ -116,9 +123,11 @@ export function t3AcpPromptWithInstructions(input: {
       : T3_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
     ...(input.state.hasT3Mcp
       ? [
-          T3_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(),
+          ...(input.state.hasBrowserTools === false
+            ? []
+            : [T3_CODE_BROWSER_TOOL_INSTRUCTIONS.trim()]),
           T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
-          T3_ACP_FALLBACK_INSTRUCTIONS,
+          ...(input.state.hasAcpFallback === false ? [] : [T3_ACP_FALLBACK_INSTRUCTIONS]),
         ]
       : []),
   ];
