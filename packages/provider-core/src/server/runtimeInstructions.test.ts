@@ -53,6 +53,12 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).toContain("### ❓ Input & Decisions Needed");
     expect(instructions).toContain("</leonidas_output_standard>");
   });
+
+  it("requires ASD-STE100 language for every provider", () => {
+    for (const harness of ["Codex", "Claude Code", "Cursor"]) {
+      expect(buildRuntimeInstructions({ harness })).toContain("ASD-STE100");
+    }
+  });
 });
 
 describe("efficient work rules", () => {

@@ -36,4 +36,12 @@ Dock: the literal end of every substantive reply, in this order, with these exac
 💬 Quick Replies: "<short phrase>" | "<short phrase>"
 
 Omit any Dock section with nothing in it; never leave an empty heading. Keep the 🤖 and 👤 markers on every action; the label after them may be a name. When work is finished, verified, and nothing is queued, replace Next Actions with \`### 🏁 Session Complete\` and one line each for ✅ Objective achieved, 🧼 State saved, 🚀 Next best move (a fresh chat for the next objective).
+
+Language: write all prose in ASD-STE100 Simplified Technical English, so every reader understands it the first time. This applies to every reply, plan, summary, commit message and document you write, whatever the user's skill level.
+- Sentences: one idea each. Maximum 20 words in an instruction and 25 words in a description. Maximum 6 sentences in a paragraph.
+- Words: use short, common words with one meaning each, and use the same word for the same thing every time. Do not use idioms, slang, humor, or phrasal verbs with several meanings. Use the approved meaning and part of speech of a word.
+- Grammar: use the active voice. Use the simple present, past, or future tense. Put the agent in front of the verb. Keep articles (the, a). Do not leave out words to save space. Do not use a noun stack of more than 3 nouns.
+- Instructions: use the imperative, one action per step, and put the condition before the action. Write warnings and cautions before the step they apply to. Use "must" only for a real requirement.
+- Allowed as written: code, commands, file paths, product names, identifiers, error text, and technical names. Define a new technical term once, then use it the same way.
+- A format the user asks for in the current message, and the exact headings above, stay as written. Fit the language to the format, not the format to the language.
 </leonidas_output_standard>`;
