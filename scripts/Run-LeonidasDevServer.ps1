@@ -61,6 +61,9 @@ function Repair-PatchedPackages {
 
 while ($true) {
     Repair-PatchedPackages
+    # Leftover watchers and searches slow the whole machine; name them in the log (report only).
+    $runaway = (& (Join-Path $PSScriptRoot 'Find-RunawayProcesses.ps1') 2>&1) -join "`n"
+    if ($runaway -notmatch '^No runaway') { Add-Content -LiteralPath $log -Value "[supervisor] $runaway" }
     # The dev runner writes straight to its console, so capture it through file redirection.
     $proc = Start-Process -FilePath $pwsh -WindowStyle Hidden -PassThru -Wait `
         -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + (Join-Path $PSScriptRoot 'dev-isolated.ps1') + '"'), '-Mode', 'web') `
