@@ -26,7 +26,7 @@ const ReleaseArticle = lazy(() =>
   import("./ReleaseArticleView").then((module) => ({ default: module.ReleaseArticle })),
 );
 
-export const releaseHistoryDialogOpenAtom = Atom.make<boolean>(false).pipe(
+const releaseHistoryDialogOpenAtom = Atom.make<boolean>(false).pipe(
   Atom.keepAlive,
   Atom.withLabel("release-history:dialog-open"),
 );
@@ -35,12 +35,12 @@ export function openReleaseHistoryDialog(): void {
   appAtomRegistry.set(releaseHistoryDialogOpenAtom, true);
 }
 
-export function closeReleaseHistoryDialog(): void {
+function closeReleaseHistoryDialog(): void {
   appAtomRegistry.set(releaseHistoryDialogOpenAtom, false);
 }
 
 /** Load notes only when opened, with bounded pages and a retry for network failures. */
-export function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
+function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
   const [selected, setSelected] = useState<ReleaseHistoryEntry | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const feedScroll = useRef(0);
