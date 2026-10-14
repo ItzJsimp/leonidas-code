@@ -1,185 +1,582 @@
 {
   "projectSlug": "leonidas-code",
   "name": "Leonidas Code",
-  "currentVersion": "0.21.0",
+  "currentVersion": "0.34.0",
   "targetVersion": "1.0.0",
-  "releaseDefinition": "A dependable people-and-agents workspace: capture and plan tasks, explicitly delegate work, coordinate shared projects, connect remotely, and recover data across supported desktop, web and mobile clients. V1.0 requires a verified release candidate and explicit approval from Jake and Mob. Leonidas Scribe and the broader Leonidas app are separate release scopes.",
+  "releaseDefinition": "One Leonidas app for beginner and aspiring vibe coders: harness, personalized AIOS, dictation and clipboard as one supported workflow on Windows, with remote web access (Mac follows launch, per Jake 2026-10-13). V1.0 is the explicit public launch and needs Jake's approval after the five-user and 20-user gates pass.",
   "milestones": [
     {
-      "version": "0.22.0",
-      "title": "Daily planning",
-      "goal": "A person can capture, schedule, complete and trace work to a release.",
+      "version": "0.35.0",
+      "title": "Feasibility check",
+      "goal": "A clean Windows PC runs the current harness end to end, every target provider sign-in is tried, and every launch cost and provider term is listed.",
       "tasks": [
         {
-          "key": "daily-task-parity",
-          "title": "Finish daily task workflows on all entry points",
+          "key": "run-the-windows-clean-pc-smoke-checklist",
+          "title": "Run the Windows clean-PC smoke checklist",
           "priority": "high",
-          "description": "## Goal\nExercise capture, due set/clear, Today/Upcoming, complete/reopen and project switching. Share derived date logic between clients; preserve imported cards.\n\n## Start files\napps/web/src/components/taskBoard; apps/mobile task navigation; packages/client-runtime\n\n## Dependencies\nV0.21 planning baseline.\n\n## Done when\n- [ ] Focused daily-task tests pass; desktop and narrow web verified; native mobile proof recorded.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused daily-task tests pass; desktop and narrow web verified; native mobile proof recorded.\n\nRoadmap key: daily-task-parity"
+          "description": "## Goal\nInstall the current release on a clean Windows PC or VM, run the welcome wizard, one agent turn, rewind and remote web from a second device.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Checklist recorded with pass/fail per step and screenshots.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nChecklist recorded with pass/fail per step and screenshots.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: run-the-windows-clean-pc-smoke-checklist"
         },
         {
-          "key": "release-planning",
-          "title": "Make release planning editable and shareable",
+          "key": "try-every-target-provider-sign-in",
+          "title": "Try every target provider sign-in",
           "priority": "high",
-          "description": "## Goal\nPersist milestone assignments, expose them to agents, and support editing project-roadmap.json without losing existing task progress. Verify collaborators see the same assignments.\n\n## Start files\napps/web/src/components/taskBoard; apps/server/src/taskBoard; packages/contracts/src/taskBoard.ts\n\n## Dependencies\nV0.21 planning baseline.\n\n## Done when\n- [ ] Create, move, clear and reload a milestone task; shared records round trip; malformed plans leave tasks usable.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nCreate, move, clear and reload a milestone task; shared records round trip; malformed plans leave tasks usable.\n\nRoadmap key: release-planning"
+          "description": "## Goal\nConnect Claude, ChatGPT (Codex), Gemini/Antigravity and Grok on a clean profile and note what breaks.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] One row per provider: works, needs fix, or blocked, with the error seen.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nOne row per provider: works, needs fix, or blocked, with the error seen.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: try-every-target-provider-sign-in"
+        },
+        {
+          "key": "audit-scribe-bundling-on-windows",
+          "title": "Audit Scribe bundling on Windows",
+          "priority": "high",
+          "description": "## Goal\nCheck what bundling Scribe needs (runtime size, capture exes, hotkey conflicts with the app).\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Written bundling plan with size estimate.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nWritten bundling plan with size estimate.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: audit-scribe-bundling-on-windows"
+        },
+        {
+          "key": "write-the-launch-cost-sheet",
+          "title": "Write the launch cost sheet",
+          "priority": "medium",
+          "description": "## Goal\nJake-owned business task. No Mob action needed; details stay in Jake's private notes.\n\n## Lane\nJake and his agents.\n\nRoadmap key: write-the-launch-cost-sheet"
+        },
+        {
+          "key": "read-provider-terms-for-apps-driving-a-users-own-login",
+          "title": "Read provider terms for apps driving a user's own login",
+          "priority": "high",
+          "description": "## Goal\nJake-owned business task. No Mob action needed; details stay in Jake's private notes.\n\n## Lane\nJake and his agents.\n\nRoadmap key: read-provider-terms-for-apps-driving-a-users-own-login"
         }
       ]
     },
     {
-      "version": "0.23.0",
-      "title": "Agent execution",
-      "goal": "Delegation is explicit, recoverable and returns truthful progress to tasks.",
+      "version": "0.36.0",
+      "title": "Guided mode by default, and the feasibility review closes",
+      "goal": "New users start in Guided mode: the agent shows its plan and asks before meaningful changes. The 14-day feasibility review is written and a beta target is set.",
       "tasks": [
         {
-          "key": "agent-task-lifecycle",
-          "title": "Persist the task-to-agent execution lifecycle",
-          "priority": "high",
-          "description": "## Goal\nConnect task IDs to thread and turn receipts. Keep progress, failure and completion summaries durable; a failed or cancelled turn must not mark its task done.\n\n## Start files\napps/web/src/components/taskBoard/useTaskActions.ts; apps/server/src/taskBoard; apps/server/src/orchestration-v2\n\n## Dependencies\nComplete the V0.22.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Focused success/failure/cancel/reconnect tests; one isolated explicit delegation demonstrated with no duplicate thread.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused success/failure/cancel/reconnect tests; one isolated explicit delegation demonstrated with no duplicate thread.\n\nRoadmap key: agent-task-lifecycle"
+          "key": "make-guided-the-default-for-new-installs",
+          "title": "Make Guided the default for new installs",
+          "priority": "medium",
+          "description": "## Goal\nSwitch the new-install default from full access to plan plus approval; existing users keep their setting.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Fresh profile starts in Guided; an existing profile is unchanged; focused settings test passes.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFresh profile starts in Guided; an existing profile is unchanged; focused settings test passes.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: make-guided-the-default-for-new-installs"
         },
         {
-          "key": "execution-controls",
-          "title": "Add cancellation and retry to delegated tasks",
+          "key": "rename-modes-in-plain-words",
+          "title": "Rename modes in plain words",
+          "priority": "medium",
+          "description": "## Goal\nShow the existing modes as Guided, Project autonomy and Full access, with one sentence each and a visible way back.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] A beginner can name what each mode does after reading the picker once.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nA beginner can name what each mode does after reading the picker once.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: rename-modes-in-plain-words"
+        },
+        {
+          "key": "always-confirm-publishing-spending-and-wider-access",
+          "title": "Always confirm publishing, spending and wider access",
           "priority": "high",
-          "description": "## Goal\nExpose running work, stop and explicit retry using existing orchestration services. Retrying must retain history and prevent simultaneous duplicate work.\n\n## Start files\napps/web task detail; packages/client-runtime; apps/server/src/orchestration-v2\n\n## Dependencies\nComplete the V0.22.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Stop/retry and stale connection tests pass; all installed provider adapters have a documented supported or unsupported outcome.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nStop/retry and stale connection tests pass; all installed provider adapters have a documented supported or unsupported outcome.\n\nRoadmap key: execution-controls"
+          "description": "## Goal\nIn every mode, ask before pushing, publishing, purchases or access outside the project folder.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Tests cover each of the four triggers in all three modes.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTests cover each of the four triggers in all three modes.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: always-confirm-publishing-spending-and-wider-access"
+        },
+        {
+          "key": "write-the-14-day-feasibility-report",
+          "title": "Write the 14-day feasibility report",
+          "priority": "high",
+          "description": "## Goal\nCombine the Windows smoke results, provider verdicts, cost sheet, provider terms and merchant check into one readiness review with a beta target date.\n\n## Dependencies\nv0.35 exit gate\n\n## Done when\n- [ ] Report filed; Jake approves; Mob has reviewed it.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nReport filed; Jake approves; Mob has reviewed it.\n\nSize: M.  Needs: Jake, Mob.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: write-the-14-day-feasibility-report"
+        },
+        {
+          "key": "check-merchant-of-record-eligibility-and-full-fees",
+          "title": "Check merchant-of-record eligibility and full fees",
+          "priority": "medium",
+          "description": "## Goal\nJake-owned business task. No Mob action needed; details stay in Jake's private notes.\n\n## Lane\nJake and his agents.\n\nRoadmap key: check-merchant-of-record-eligibility-and-full-fees"
+        },
+        {
+          "key": "draft-the-partner-agreement",
+          "title": "Draft the partner agreement (Jake)",
+          "priority": "medium",
+          "description": "## Goal\nJake-owned business task. No Mob action needed; details stay in Jake's private notes.\n\n## Lane\nJake and his agents.\n\nRoadmap key: draft-the-partner-agreement"
         }
       ]
     },
     {
-      "version": "0.24.0",
-      "title": "Team projects",
-      "goal": "Jake and Mob can coordinate ownership and shared work without overwrites.",
+      "version": "0.37.0",
+      "title": "One install",
+      "goal": "One Windows installer gives the app plus dictation; speaking into the composer works with no separate Scribe install.",
       "tasks": [
         {
-          "key": "shared-concurrency",
-          "title": "Prevent shared task edits from overwriting teammates",
+          "key": "bundle-scribe-as-a-sidecar-of-the-desktop-app",
+          "title": "Bundle Scribe as a sidecar of the desktop app",
           "priority": "high",
-          "description": "## Goal\nUse the existing GitHub shared board and compare stored revisions before overwriting. Surface conflicts with reload/retry and preserve task history.\n\n## Start files\napps/server/src/taskBoard/TaskBoardService.ts; apps/server/src/taskBoard tests\n\n## Dependencies\nComplete the V0.23.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Two concurrent claim/edit scenarios tested; conflict produces recoverable feedback; remote changes remain intact.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTwo concurrent claim/edit scenarios tested; conflict produces recoverable feedback; remote changes remain intact.\n\nRoadmap key: shared-concurrency"
+          "description": "## Goal\nPackage the Scribe runtime with the installer; the desktop app starts, supervises and stops it.\n\n## Dependencies\none-leonidas-app card decision\n\n## Done when\n- [ ] Clean Windows VM: one installer, dictation works, also with the window closed.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nClean Windows VM: one installer, dictation works, also with the window closed.\n\nSize: L.  Needs: Jake.\n\n## Lane\nMob and his agents, after a Jake go. Start when: Jake approves the bundling plan from \"Audit Scribe bundling on Windows\".\n\nRoadmap key: bundle-scribe-as-a-sidecar-of-the-desktop-app"
         },
         {
-          "key": "team-visibility",
-          "title": "Show team ownership and shared project activity",
+          "key": "finish-the-scribe-local-api",
+          "title": "Finish the Scribe local API",
           "priority": "high",
-          "description": "## Goal\nAdd readable shared activity, ownership and pending publication states. Explain project sharing setup and permission failures in place.\n\n## Start files\napps/web/src/components/taskBoard; apps/mobile task views\n\n## Dependencies\nComplete the V0.23.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Two-member isolated fixture covers claim/release, publication failure and refresh; no false synced labels.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTwo-member isolated fixture covers claim/release, publication failure and refresh; no false synced labels.\n\nRoadmap key: team-visibility"
+          "description": "## Goal\nAdd start, stop, cancel and recent history beside the existing status endpoint the app already reads.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] API self-test passes; existing Scribe regression suite passes.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nAPI self-test passes; existing Scribe regression suite passes.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: finish-the-scribe-local-api"
+        },
+        {
+          "key": "dictate-straight-into-the-composer",
+          "title": "Dictate straight into the composer",
+          "priority": "high",
+          "description": "## Goal\nA mic button and the hotkey put the transcript into the composer, not wherever the cursor was.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Ten dictations land in the composer with no lost text.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTen dictations land in the composer with no lost text.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: dictate-straight-into-the-composer"
+        },
+        {
+          "key": "delete-raw-audio-after-a-good-transcript",
+          "title": "Delete raw audio after a good transcript",
+          "priority": "medium",
+          "description": "## Goal\nKeep transcripts; delete raw audio after success unless the user keeps it; failed captures stay briefly with a retry button.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Tests cover success, keep-audio and failed-capture recovery.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTests cover success, keep-audio and failed-capture recovery.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: delete-raw-audio-after-a-good-transcript"
+        },
+        {
+          "key": "measure-installer-size-and-antivirus-friction",
+          "title": "Measure installer size and antivirus friction",
+          "priority": "medium",
+          "description": "## Goal\nRecord installer size and memory before and after bundling, and note SmartScreen and Defender behavior.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Before/after numbers recorded per the performance gate.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nBefore/after numbers recorded per the performance gate.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: measure-installer-size-and-antivirus-friction"
         }
       ]
     },
     {
-      "version": "0.25.0",
-      "title": "Remote continuity",
-      "goal": "The same workspace works through local, remote and tunnel connections.",
+      "version": "0.38.0",
+      "title": "Clipboard history and more AI accounts",
+      "goal": "Clipboard history joins the workflow, and Gemini/Antigravity and Grok accounts connect as easily as Claude and ChatGPT.",
       "tasks": [
         {
-          "key": "remote-task-recovery",
-          "title": "Recover task state after disconnects",
+          "key": "add-clipboard-history-to-the-app",
+          "title": "Add clipboard history to the app",
           "priority": "high",
-          "description": "## Goal\nRefresh authoritative tasks after reconnection, preserve unsaved capture text and avoid duplicate submissions. Keep destination permission checks in the existing command layer.\n\n## Start files\npackages/client-runtime connection and RPC; apps/web/src/components/taskBoard/useTaskBoard.ts\n\n## Dependencies\nComplete the V0.24.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Focused disconnect/reconnect and duplicate-submit tests across direct and relay transport fixtures.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused disconnect/reconnect and duplicate-submit tests across direct and relay transport fixtures.\n\nRoadmap key: remote-task-recovery"
+          "description": "## Goal\nShow recent copies in Leonidas on Windows, from the Scribe Copy store, with delete and clear.\n\n## Dependencies\nv0.37 API\n\n## Done when\n- [ ] Copy three items, paste any of them from history on Windows.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nCopy three items, paste any of them from history on Windows.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: add-clipboard-history-to-the-app"
         },
         {
-          "key": "pairing-preview",
-          "title": "Make development preview and remote pairing dependable",
+          "key": "keep-secrets-out-of-clipboard-history",
+          "title": "Keep secrets out of clipboard history",
+          "priority": "medium",
+          "description": "## Goal\nSkip or mask copied keys and tokens, reusing the prediction secret filter.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Test fixtures with API keys are never stored.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTest fixtures with API keys are never stored.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: keep-secrets-out-of-clipboard-history"
+        },
+        {
+          "key": "connect-geminiantigravity-in-one-flow",
+          "title": "Connect Gemini/Antigravity in one flow",
           "priority": "high",
-          "description": "## Goal\nShow healthy dev server URLs in Browser, recover expired pairing tokens and distinguish source version from installed release. Preserve isolated test state.\n\n## Start files\napps/web/src/components/preview; scripts/dev-runner.ts; apps/server/src/auth\n\n## Dependencies\nComplete the V0.24.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Start isolated dev app, open Browser, pair, reconnect and observe source changes; user can repeat from instructions.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nStart isolated dev app, open Browser, pair, reconnect and observe source changes; user can repeat from instructions.\n\nRoadmap key: pairing-preview"
+          "description": "## Goal\nSame detect, sign-in and green-check flow as Claude and ChatGPT.\n\n## Dependencies\nv0.35 provider verdicts\n\n## Done when\n- [ ] Clean profile reaches a green check and runs a turn.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nClean profile reaches a green check and runs a turn.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: connect-geminiantigravity-in-one-flow"
+        },
+        {
+          "key": "connect-grok-in-one-flow",
+          "title": "Connect Grok in one flow",
+          "priority": "high",
+          "description": "## Goal\nSame flow for Grok using the existing adapter.\n\n## Dependencies\nv0.35 provider verdicts\n\n## Done when\n- [ ] Clean profile reaches a green check and runs a turn.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nClean profile reaches a green check and runs a turn.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: connect-grok-in-one-flow"
+        },
+        {
+          "key": "show-limits-honestly-for-every-provider",
+          "title": "Show limits honestly for every provider",
+          "priority": "medium",
+          "description": "## Goal\nWhere a provider exposes no quota, say so instead of showing empty bars.\n\n## Dependencies\nTasks 3-4\n\n## Done when\n- [ ] Each provider shows limits or a clear not-available note.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach provider shows limits or a clear not-available note.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: show-limits-honestly-for-every-provider"
         }
       ]
     },
     {
-      "version": "0.26.0",
-      "title": "Every surface",
-      "goal": "Core task and agent controls work on supported desktop, web and mobile clients.",
+      "version": "0.39.0",
+      "title": "Connect an existing AI account without getting stuck",
+      "goal": "A beginner with a Claude or ChatGPT plan connects it on first launch in a few minutes, and every failure shows a fix.",
       "tasks": [
         {
-          "key": "mobile-task-workflow",
-          "title": "Ship native mobile task planning and delegation",
-          "priority": "high",
-          "description": "## Goal\nImplement Inbox/Today/Upcoming/projects, milestone display, detail edits and explicit delegation with shared contracts. Reuse permissions and reconnect behavior.\n\n## Start files\napps/mobile navigation/screens; packages/client-runtime\n\n## Dependencies\nComplete the V0.25.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] iOS and Android integrated task flows verified against isolated state; offline failures retain input.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\niOS and Android integrated task flows verified against isolated state; offline failures retain input.\n\nRoadmap key: mobile-task-workflow"
+          "key": "confirm-the-launch-provider-list",
+          "title": "Confirm the launch provider list",
+          "priority": "medium",
+          "description": "## Goal\nClaude, ChatGPT, Gemini/Antigravity and Grok (Jake, 2026-10-13), minus any the terms review blocks.\n\n## Dependencies\nv0.35 terms review\n\n## Done when\n- [ ] List recorded with reasons for any removal.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nList recorded with reasons for any removal.\n\nSize: S.  Needs: Jake.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: confirm-the-launch-provider-list"
         },
         {
-          "key": "surface-parity",
-          "title": "Close desktop and web navigation gaps",
+          "key": "detect-and-install-the-claude-and-codex-clis",
+          "title": "Detect and install the Claude and Codex CLIs",
           "priority": "high",
-          "description": "## Goal\nMake Tasks and Roadmap reachable through navigation and applicable command palette/keybindings. Verify desktop packaging and browser deep links.\n\n## Start files\napps/web command palette/settings/keybindings; apps/desktop shell\n\n## Dependencies\nComplete the V0.25.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Entry-point checks pass; Electron and remote web open the same project task and milestone without stale selection.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEntry-point checks pass; Electron and remote web open the same project task and milestone without stale selection.\n\nRoadmap key: surface-parity"
+          "description": "## Goal\nDetect the Claude and Codex CLIs, offer a guided install when missing, then open the provider's own sign-in.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Clean Windows profiles reach a green check.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nClean Windows profiles reach a green check.\n\nSize: L. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: detect-and-install-the-claude-and-codex-clis"
+        },
+        {
+          "key": "explain-each-setup-failure",
+          "title": "Explain each setup failure",
+          "priority": "high",
+          "description": "## Goal\nPlain messages and one fix for missing CLI, expired login, no subscription and rate-limited checks.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Each failure is reproduced and shows its fix.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach failure is reproduced and shows its fix.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: explain-each-setup-failure"
+        },
+        {
+          "key": "audit-for-credential-exposure",
+          "title": "Audit for credential exposure",
+          "priority": "high",
+          "description": "## Goal\nConfirm no tokens appear in logs, predictions, exports or clipboard history.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Secret scan of a full session's files finds nothing.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nSecret scan of a full session's files finds nothing.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: audit-for-credential-exposure"
+        },
+        {
+          "key": "time-the-connect-step",
+          "title": "Time the connect step",
+          "priority": "medium",
+          "description": "## Goal\nRecord local, content-free timestamps from first launch to connected.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Median of 3 runs recorded.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nMedian of 3 runs recorded.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: time-the-connect-step"
         }
       ]
     },
     {
-      "version": "0.27.0",
-      "title": "Data confidence",
-      "goal": "Task and conversation data survives crashes, upgrades and operator mistakes.",
+      "version": "0.40.0",
+      "title": "Your assistant and a fresh AIOS in a few minutes",
+      "goal": "First launch creates a fresh personal AIOS; the user names the assistant and workspace in a short interview; the app remembers facts with their source.",
       "tasks": [
         {
-          "key": "backup-restore",
-          "title": "Add verified task and workspace backup recovery",
+          "key": "short-interview-in-the-welcome-wizard",
+          "title": "Short interview in the welcome wizard",
           "priority": "high",
-          "description": "## Goal\nImplement export and restore through services with read-only preview, explicit confirmation and preservation of current data. Include native and imported task provenance.\n\n## Start files\napps/server persistence services; taskBoard card storage; docs/user\n\n## Dependencies\nComplete the V0.26.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Round-trip isolated fixtures with Unicode paths and history; interruption leaves previous data readable; restore cannot escape its destination.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nRound-trip isolated fixtures with Unicode paths and history; interruption leaves previous data readable; restore cannot escape its destination.\n\nRoadmap key: backup-restore"
+          "description": "## Goal\nFive or fewer questions, typed or dictated, building on the existing goals and AIOS steps.\n\n## Dependencies\nv0.39\n\n## Done when\n- [ ] Interview finishes in 3 minutes or less in 3 internal runs.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nInterview finishes in 3 minutes or less in 3 internal runs.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: short-interview-in-the-welcome-wizard"
         },
         {
-          "key": "upgrade-migration",
-          "title": "Prove safe upgrades from existing Leonidas installs",
+          "key": "name-the-assistant-and-workspace",
+          "title": "Name the assistant and workspace",
+          "priority": "medium",
+          "description": "## Goal\nStore the assistant name, workspace name and accent in the AIOS; the app itself stays Leonidas.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Names show in chat and sidebar after restart; a bad file falls back to defaults.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nNames show in chat and sidebar after restart; a bad file falls back to defaults.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: name-the-assistant-and-workspace"
+        },
+        {
+          "key": "save-memories-with-their-source",
+          "title": "Save memories with their source",
           "priority": "high",
-          "description": "## Goal\nAdd versioned migration fixtures for current/legacy state, preserve app identity and test rollback/recovery on an isolated copy.\n\n## Start files\napps/desktop/src/updates; scripts/leonidas-release.ts; apps/server migrations\n\n## Dependencies\nComplete the V0.26.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Upgrade and failed-migration recovery evidence; no live userdata writes; installer and update metadata identify the same source commit.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nUpgrade and failed-migration recovery evidence; no live userdata writes; installer and update metadata identify the same source commit.\n\nRoadmap key: upgrade-migration"
+          "description": "## Goal\nRoutine facts save with where they came from, plus edit and undo; sensitive guesses and instruction changes need approval.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Edit, undo and approval paths tested.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEdit, undo and approval paths tested.\n\nSize: L. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: save-memories-with-their-source"
+        },
+        {
+          "key": "cut-the-starter-skills-to-a-validated-set",
+          "title": "Cut the starter skills to a validated set",
+          "priority": "high",
+          "description": "## Goal\nKeep only starter skills that pass a smoke prompt for each goal.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Each kept skill has a recorded pass.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach kept skill has a recorded pass.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: cut-the-starter-skills-to-a-validated-set"
+        },
+        {
+          "key": "record-the-setup-complete-moment-locally",
+          "title": "Record the setup-complete moment locally",
+          "priority": "medium",
+          "description": "## Goal\nMark provider connected plus AIOS created on the device; this is the future founding-seat event.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Event recorded once per profile, no work content stored.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEvent recorded once per profile, no work content stored.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: record-the-setup-complete-moment-locally"
         }
       ]
     },
     {
-      "version": "0.28.0",
-      "title": "First successful session",
-      "goal": "A new user can connect an agent and finish a real task without assistance.",
+      "version": "0.41.0",
+      "title": "Suggest a small build from your own work",
+      "goal": "After setup Leonidas offers a small build drawn from the interview and folders the user chose: an adapted workflow, a scoped custom task, or a goal.",
       "tasks": [
         {
-          "key": "onboarding-path",
-          "title": "Simplify setup into one successful task",
+          "key": "pick-folders-and-see-what-the-ai-can-read",
+          "title": "Pick folders and see what the AI can read",
           "priority": "high",
-          "description": "## Goal\nBuild a guided path: connect a supported account, add a workspace, capture a task and explicitly start it. Offer recovery for missing runtimes and unsupported permissions.\n\n## Start files\napps/web onboarding; provider connection settings; taskBoard\n\n## Dependencies\nComplete the V0.27.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Fresh-profile walkthrough reaches completed task; failed account/runtime setup has a working recovery path.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFresh-profile walkthrough reaches completed task; failed account/runtime setup has a working recovery path.\n\nRoadmap key: onboarding-path"
+          "description": "## Goal\nA folder picker with a plain summary of what will be read and sent to the provider.\n\n## Dependencies\nv0.40\n\n## Done when\n- [ ] User can add, remove and inspect shared folders.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nUser can add, remove and inspect shared folders.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: pick-folders-and-see-what-the-ai-can-read"
         },
         {
-          "key": "user-guides",
-          "title": "Document people, agents and project sharing workflows",
+          "key": "write-5-to-8-reviewed-starter-workflows",
+          "title": "Write 5 to 8 reviewed starter workflows",
           "priority": "high",
-          "description": "## Goal\nWrite concise guides for daily tasks, roadmap assignment, team sharing, remote access and recovery. Add contextual tours to actual controls.\n\n## Start files\ndocs/user; apps/web/features/tour\n\n## Dependencies\nComplete the V0.27.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Each guide followed in isolated app; links and tour targets work; no internal contributor commands in product guidance.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach guide followed in isolated app; links and tour targets work; no internal contributor commands in product guidance.\n\nRoadmap key: user-guides"
+          "description": "## Goal\nSmall builds (page, tracker, script, tool) each tested to finish in 5 minutes or less with Guided approvals.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Each workflow has 3 timed passing runs.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach workflow has 3 timed passing runs.\n\nSize: L. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: write-5-to-8-reviewed-starter-workflows"
+        },
+        {
+          "key": "adapt-workflows-to-the-user",
+          "title": "Adapt workflows to the user",
+          "priority": "high",
+          "description": "## Goal\nMatch the interview and folders to a workflow, fill in the user's content and say why it helps.\n\n## Dependencies\nTasks 1-2\n\n## Done when\n- [ ] Suggestion appears within 90 seconds of setup ending.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nSuggestion appears within 90 seconds of setup ending.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: adapt-workflows-to-the-user"
+        },
+        {
+          "key": "scope-check-custom-tasks",
+          "title": "Scope-check custom tasks",
+          "priority": "high",
+          "description": "## Goal\nEstimate a custom request; simplify it or offer a fallback when it will not fit the first session.\n\n## Dependencies\nTask 3\n\n## Done when\n- [ ] Ten oversized requests each get a smaller offer.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTen oversized requests each get a smaller offer.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: scope-check-custom-tasks"
+        },
+        {
+          "key": "offer-a-goal-based-build",
+          "title": "Offer a goal-based build",
+          "priority": "medium",
+          "description": "## Goal\nTurn one interview goal into a build option.\n\n## Dependencies\nTask 3\n\n## Done when\n- [ ] Option shows when the interview captured a goal.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nOption shows when the interview captured a goal.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: offer-a-goal-based-build"
         }
       ]
     },
     {
-      "version": "0.29.0",
-      "title": "Quality floor",
-      "goal": "Busy workspaces stay responsive, accessible and truthful.",
+      "version": "0.42.0",
+      "title": "A guided first build that runs",
+      "goal": "The user approves the plan and changes, sees the result running, and can undo it.",
       "tasks": [
         {
-          "key": "task-performance",
-          "title": "Measure and fix task views under realistic load",
+          "key": "tie-the-build-to-a-task-and-thread",
+          "title": "Tie the build to a task and thread",
           "priority": "high",
-          "description": "## Goal\nProfile thousands of cards, shared refresh and large descriptions. Remove unnecessary renders/reads; use existing virtualization patterns where measurement warrants it.\n\n## Start files\napps/web/src/components/taskBoard; apps/server/taskBoard card reader\n\n## Dependencies\nComplete the V0.28.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Record before/after CPU, render and RPC measurements; no continuous repaint animation; large fixture remains interactive.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nRecord before/after CPU, render and RPC measurements; no continuous repaint animation; large fixture remains interactive.\n\nRoadmap key: task-performance"
+          "description": "## Goal\nThe chosen suggestion becomes a task linked to its thread; a failed or cancelled run never marks it done.\n\n## Dependencies\nv0.41\n\n## Done when\n- [ ] Success, failure and cancel tests pass.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nSuccess, failure and cancel tests pass.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: tie-the-build-to-a-task-and-thread"
         },
         {
-          "key": "accessibility-pass",
-          "title": "Complete keyboard and screen-reader task flows",
+          "key": "open-the-running-result-automatically",
+          "title": "Open the running result automatically",
           "priority": "high",
-          "description": "## Goal\nAudit focus order, dialog recovery, milestone semantics, contrast, labels and target sizes. Fix failures without duplicating generic UI styles.\n\n## Start files\napps/web taskBoard and UI components; apps/mobile task views\n\n## Dependencies\nComplete the V0.28.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Keyboard capture/edit/complete/roadmap flows and screen-reader announcements verified; WCAG 2.2 AA findings closed for scoped screens.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nKeyboard capture/edit/complete/roadmap flows and screen-reader announcements verified; WCAG 2.2 AA findings closed for scoped screens.\n\nRoadmap key: accessibility-pass"
+          "description": "## Goal\nStart the preview for the built page or tool and show it beside the chat.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] All starter workflows open a running result.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nAll starter workflows open a running result.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: open-the-running-result-automatically"
+        },
+        {
+          "key": "stop-and-retry-without-duplicate-work",
+          "title": "Stop and retry without duplicate work",
+          "priority": "high",
+          "description": "## Goal\nVisible stop and retry that keep history and never run twice at once.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Stop/retry tests pass on Windows.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nStop/retry tests pass on Windows.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: stop-and-retry-without-duplicate-work"
+        },
+        {
+          "key": "undo-in-plain-words",
+          "title": "Undo in plain words",
+          "priority": "medium",
+          "description": "## Goal\nExpose the existing rewind as Undo this change on the first build.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] A tester undoes a change without help.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nA tester undoes a change without help.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: undo-in-plain-words"
+        },
+        {
+          "key": "time-the-whole-first-win",
+          "title": "Time the whole first win",
+          "priority": "medium",
+          "description": "## Goal\nRecord first launch to confirmed running result, locally and content-free.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Timer output matches a stopwatch within 10 seconds.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTimer output matches a stopwatch within 10 seconds.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: time-the-whole-first-win"
         }
       ]
     },
     {
-      "version": "0.30.0",
+      "version": "0.43.0",
+      "title": "Your work stays yours",
+      "goal": "Users can export everything, make and restore a manual backup, and import an existing AIOS as a previewed separate copy.",
+      "tasks": [
+        {
+          "key": "export-everything",
+          "title": "Export everything",
+          "priority": "high",
+          "description": "## Goal\nExport the AIOS, projects and transcripts to a folder or zip the user picks.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Round trip on Unicode paths passes on Windows.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nRound trip on Unicode paths passes on Windows.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: export-everything"
+        },
+        {
+          "key": "manual-backup-and-restore-with-preview",
+          "title": "Manual backup and restore with preview",
+          "priority": "high",
+          "description": "## Goal\nRestore shows what changes and never overwrites without confirmation.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Interrupted restore leaves previous data readable.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nInterrupted restore leaves previous data readable.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: manual-backup-and-restore-with-preview"
+        },
+        {
+          "key": "import-an-existing-aios-as-a-separate-copy",
+          "title": "Import an existing AIOS as a separate copy",
+          "priority": "high",
+          "description": "## Goal\nPreview, list conflicts, filter credentials and personal data, leave the original untouched.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Source folder hash unchanged after import; filter fixtures pass.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nSource folder hash unchanged after import; filter fixtures pass.\n\nSize: L. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: import-an-existing-aios-as-a-separate-copy"
+        },
+        {
+          "key": "audit-for-data-loss",
+          "title": "Audit for data loss",
+          "priority": "high",
+          "description": "## Goal\nKill the app mid-build, mid-dictation and mid-update and check nothing is lost.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Each crash case recorded with result.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach crash case recorded with result.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: audit-for-data-loss"
+        }
+      ]
+    },
+    {
+      "version": "0.44.0",
+      "title": "Five-user private beginner test",
+      "goal": "Five fresh beginners each try first launch to a guided running build without help; blockers are fixed.",
+      "tasks": [
+        {
+          "key": "write-the-test-protocol",
+          "title": "Write the test protocol",
+          "priority": "medium",
+          "description": "## Goal\nClock starts at first launch; install and signup timed separately; consent and a simple recording sheet.\n\n## Dependencies\nv0.42, v0.43\n\n## Done when\n- [ ] Protocol reviewed by Mob.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nProtocol reviewed by Mob.\n\nSize: S. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: write-the-test-protocol"
+        },
+        {
+          "key": "recruit-five-fresh-beginners",
+          "title": "Recruit five fresh beginners",
+          "priority": "medium",
+          "description": "## Goal\nVoluntary testers with an existing AI account.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Five sessions booked.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFive sessions booked.\n\nSize: S.  Needs: Jake.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: recruit-five-fresh-beginners"
+        },
+        {
+          "key": "run-the-sessions-hands-off",
+          "title": "Run the sessions hands-off",
+          "priority": "high",
+          "description": "## Goal\nObserve only; log every stuck point and its time.\n\n## Dependencies\nTask 2\n\n## Done when\n- [ ] Five sheets complete.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFive sheets complete.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: run-the-sessions-hands-off"
+        },
+        {
+          "key": "fix-the-top-blockers",
+          "title": "Fix the top blockers",
+          "priority": "high",
+          "description": "## Goal\nFix what stopped testers, ranked by how many it stopped.\n\n## Dependencies\nTask 3\n\n## Done when\n- [ ] Each fix verified by rerunning its step.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEach fix verified by rerunning its step.\n\nSize: L. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: fix-the-top-blockers"
+        }
+      ]
+    },
+    {
+      "version": "0.45.0",
+      "title": "Updates you can trust",
+      "goal": "Pilot users get tested stable updates that install only when idle and recover if one fails; a beta channel is opt-in.",
+      "tasks": [
+        {
+          "key": "split-stable-and-beta-channels",
+          "title": "Split stable and beta channels",
+          "priority": "high",
+          "description": "## Goal\nPublish development, beta and stable builds separately; the app follows stable unless the user opts in.\n\n## Dependencies\nMob agreement (team-release.yml)\n\n## Done when\n- [ ] A stable install ignores beta builds in a mock feed.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nA stable install ignores beta builds in a mock feed.\n\nSize: M.  Needs: Mob.\n\n## Lane\nMob and his agents, after a Jake go. Start when: Mob confirms the two team-release.yml edits with Jake in the status log.\n\nRoadmap key: split-stable-and-beta-channels"
+        },
+        {
+          "key": "install-only-when-idle",
+          "title": "Install only when idle",
+          "priority": "high",
+          "description": "## Goal\nNever install during a running agent turn, dictation or meeting.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Ten simulated updates during active work never interrupt.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTen simulated updates during active work never interrupt.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: install-only-when-idle"
+        },
+        {
+          "key": "recover-from-a-failed-update",
+          "title": "Recover from a failed update",
+          "priority": "high",
+          "description": "## Goal\nKeep the previous version runnable and roll back on a bad start.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] A deliberately broken update rolls back on Windows.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nA deliberately broken update rolls back on Windows.\n\nSize: L. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: recover-from-a-failed-update"
+        },
+        {
+          "key": "prove-safe-upgrades-from-existing-installs",
+          "title": "Prove safe upgrades from existing installs",
+          "priority": "high",
+          "description": "## Goal\nVersioned migration fixtures for current and older data.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Upgrade and failed-migration recovery evidence; no live data written.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nUpgrade and failed-migration recovery evidence; no live data written.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: prove-safe-upgrades-from-existing-installs"
+        }
+      ]
+    },
+    {
+      "version": "0.46.0",
+      "title": "Pilot ready",
+      "goal": "Pilot users can reach their host from a browser, find help, report private bugs and share a local usage summary if they choose.",
+      "tasks": [
+        {
+          "key": "verify-remote-web-access-on-a-windows-host",
+          "title": "Verify remote web access on a Windows host",
+          "priority": "high",
+          "description": "## Goal\nRun a guided build from a browser on another device against a Windows host.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Three internal remote builds complete.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nThree internal remote builds complete.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: verify-remote-web-access-on-a-windows-host"
+        },
+        {
+          "key": "recover-after-disconnects",
+          "title": "Recover after disconnects",
+          "priority": "high",
+          "description": "## Goal\nRefresh state after reconnect, keep unsent text, no duplicate submits.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Disconnect and duplicate-submit tests pass.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nDisconnect and duplicate-submit tests pass.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: recover-after-disconnects"
+        },
+        {
+          "key": "local-usage-summary-users-can-share",
+          "title": "Local usage summary users can share",
+          "priority": "high",
+          "description": "## Goal\nOn-device count of active days and finished tasks, no work content; user exports it to share.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Summary matches a manual log for one week.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nSummary matches a manual log for one week.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: local-usage-summary-users-can-share"
+        },
+        {
+          "key": "beginner-guides-and-help-route",
+          "title": "Beginner guides and help route",
+          "priority": "high",
+          "description": "## Goal\nJake-owned business task. No Mob action needed; details stay in Jake's private notes.\n\n## Lane\nJake and his agents.\n\nRoadmap key: beginner-guides-and-help-route"
+        },
+        {
+          "key": "pilot-recruitment-plan",
+          "title": "Pilot recruitment plan",
+          "priority": "medium",
+          "description": "## Goal\nWho, where and how 20 users are invited; nothing posted without Jake's explicit go.\n\n## Dependencies\nv0.44 gate\n\n## Done when\n- [ ] Plan approved by Jake.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nPlan approved by Jake.\n\nSize: S.  Needs: Jake.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: pilot-recruitment-plan"
+        }
+      ]
+    },
+    {
+      "version": "0.47.0",
+      "title": "20-user pilot",
+      "goal": "Twenty activated users use Leonidas for two weeks; weekly fix releases ship from their reports.",
+      "tasks": [
+        {
+          "key": "invite-and-activate-20-users",
+          "title": "Invite and activate 20 users",
+          "priority": "high",
+          "description": "## Goal\nRun the approved recruitment plan.\n\n## Dependencies\nv0.46\n\n## Done when\n- [ ] 20 users reach setup complete.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\n20 users reach setup complete.\n\nSize: M.  Needs: Jake.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: invite-and-activate-20-users"
+        },
+        {
+          "key": "collect-week-two-evidence",
+          "title": "Collect week-two evidence",
+          "priority": "high",
+          "description": "## Goal\nGather shared summaries and check-ins and record results by hand.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Week-two table complete.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nWeek-two table complete.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: collect-week-two-evidence"
+        },
+        {
+          "key": "interview-ten-users",
+          "title": "Interview ten users",
+          "priority": "high",
+          "description": "## Goal\nAsk for a completed outcome and when they would use Leonidas again.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Ten interview notes filed.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTen interview notes filed.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: interview-ten-users"
+        },
+        {
+          "key": "ship-weekly-fixes",
+          "title": "Ship weekly fixes",
+          "priority": "high",
+          "description": "## Goal\nReliability and access bugs first, then a shortlist weighted by activation and repeat use.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] One fix release per pilot week.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nOne fix release per pilot week.\n\nSize: L. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: ship-weekly-fixes"
+        }
+      ]
+    },
+    {
+      "version": "0.48.0",
+      "title": "Accounts, founding seats and offline-safe access",
+      "goal": "Leonidas knows whether a user is a founding member, on trial, paid or lapsed, and keeps working through short license outages.",
+      "tasks": [
+        {
+          "key": "design-the-access-model",
+          "title": "Design the access model",
+          "priority": "high",
+          "description": "## Goal\nFounding lifetime, trial, paid and lapsed (read and export only), plus cached access with 7-day outage grace.\n\n## Dependencies\nv0.47 gate\n\n## Done when\n- [ ] Model reviewed by Jake and Mob.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nModel reviewed by Jake and Mob.\n\nSize: M.  Needs: Jake, Mob.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: design-the-access-model"
+        },
+        {
+          "key": "allocate-founding-seats-exactly-once",
+          "title": "Allocate founding seats exactly once",
+          "priority": "high",
+          "description": "## Goal\nOne seat per unique person at setup complete; count stays exact under concurrent signups.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] 200 simulated concurrent activations allocate exactly 100.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\n200 simulated concurrent activations allocate exactly 100.\n\nSize: L. \n\n## Lane\nMob and his agents, after a Jake go. Start when: Jake finishes \"Design the access model\".\n\nRoadmap key: allocate-founding-seats-exactly-once"
+        },
+        {
+          "key": "cache-access-for-seven-days",
+          "title": "Cache access for seven days",
+          "priority": "high",
+          "description": "## Goal\nUse the last verified status offline for up to 7 days; cancellation ends at its stated date.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Day 8 offline: paid features lock, read and export still work.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nDay 8 offline: paid features lock, read and export still work.\n\nSize: M. \n\n## Lane\nMob and his agents, after a Jake go. Start when: Jake finishes \"Design the access model\".\n\nRoadmap key: cache-access-for-seven-days"
+        },
+        {
+          "key": "never-block-a-users-own-work",
+          "title": "Never block a user's own work",
+          "priority": "medium",
+          "description": "## Goal\nLapsed users always open, read and export their AIOS and projects.\n\n## Dependencies\nTask 3\n\n## Done when\n- [ ] Lapse tests pass on Windows.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nLapse tests pass on Windows.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: never-block-a-users-own-work"
+        },
+        {
+          "key": "draft-terms-and-privacy-for-legal-review",
+          "title": "Draft terms and privacy for legal review",
+          "priority": "high",
+          "description": "## Goal\nJake-owned business task. No Mob action needed; details stay in Jake's private notes.\n\n## Lane\nJake and his agents.\n\nRoadmap key: draft-terms-and-privacy-for-legal-review"
+        }
+      ]
+    },
+    {
+      "version": "0.49.0",
+      "title": "Checkout, trial and signed installers",
+      "goal": "A new user can start a 7-day card-free trial and subscribe for $19/month; installers open without security warnings.",
+      "tasks": [
+        {
+          "key": "connect-merchant-of-record-checkout-in-test-mode",
+          "title": "Connect merchant-of-record checkout in test mode",
+          "priority": "high",
+          "description": "## Goal\n$19/month plan, trial without a card, 14-day first-payment refund.\n\n## Dependencies\nv0.48; merchant approved\n\n## Done when\n- [ ] Test purchase, cancel and refund all pass.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTest purchase, cancel and refund all pass.\n\nSize: L.  Needs: Money, Legal.\n\n## Lane\nMob and his agents, after a Jake go. Start when: Jake picks the processor on the cost sheet and merchant review.\n\nRoadmap key: connect-merchant-of-record-checkout-in-test-mode"
+        },
+        {
+          "key": "sign-the-windows-installer",
+          "title": "Sign the Windows installer",
+          "priority": "high",
+          "description": "## Goal\nUse the signing option the cost sheet chose.\n\n## Dependencies\nCost approval\n\n## Done when\n- [ ] Clean Windows PC installs with no SmartScreen warning.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nClean Windows PC installs with no SmartScreen warning.\n\nSize: M.  Needs: Money, Jake.\n\n## Lane\nMob and his agents, after a Jake go. Start when: Jake approves the signing purchase from the cost sheet.\n\nRoadmap key: sign-the-windows-installer"
+        },
+        {
+          "key": "build-the-landing-page-not-public",
+          "title": "Build the landing page (not public)",
+          "priority": "high",
+          "description": "## Goal\nProduct line, build demos, live seat counter, pricing and download.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] Page reviewed by Jake on a private URL.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nPage reviewed by Jake on a private URL.\n\nSize: M.  Needs: Jake.\n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: build-the-landing-page-not-public"
+        },
+        {
+          "key": "prove-the-seat-counter-is-honest",
+          "title": "Prove the seat counter is honest",
+          "priority": "medium",
+          "description": "## Goal\nCounter on the page always equals allocated seats.\n\n## Dependencies\nv0.48\n\n## Done when\n- [ ] Concurrency test shows no drift.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nConcurrency test shows no drift.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: prove-the-seat-counter-is-honest"
+        }
+      ]
+    },
+    {
+      "version": "0.50.0",
       "title": "Release candidate",
-      "goal": "The launch candidate passes an integrated acceptance matrix.",
+      "goal": "The signed launch candidate passes the full acceptance matrix on Windows.",
       "tasks": [
         {
-          "key": "release-candidate",
-          "title": "Run the supported release acceptance matrix",
+          "key": "run-the-release-acceptance-matrix",
+          "title": "Run the release acceptance matrix",
           "priority": "high",
-          "description": "## Goal\nTest supported provider/account paths, daily tasks, delegation, sharing, direct/remote access and recovery on packaged builds. Record defects as tasks; fix release blockers.\n\n## Start files\napps/server provider adapters; apps/web; apps/desktop; apps/mobile; release tooling\n\n## Dependencies\nComplete the V0.29.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Evidence per supported surface/provider/connection mode; no unresolved blocker; limitations visible before launch.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEvidence per supported surface/provider/connection mode; no unresolved blocker; limitations visible before launch.\n\nRoadmap key: release-candidate"
+          "description": "## Goal\nEach supported provider, platform and connection mode through the full workflow on signed builds.\n\n## Dependencies\nv0.49\n\n## Done when\n- [ ] Every cell has evidence; no open blocker.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nEvery cell has evidence; no open blocker.\n\nSize: L. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: run-the-release-acceptance-matrix"
         },
         {
-          "key": "distribution-readiness",
-          "title": "Prepare distributable builds and support recovery",
+          "key": "performance-pass-on-the-core-workflow",
+          "title": "Performance pass on the core workflow",
           "priority": "high",
-          "description": "## Goal\nPrepare installer/update artifacts, licenses, user help, diagnostics export and recovery guidance. Coordinate workflow changes with maintainers; do not publish.\n\n## Start files\napps/desktop packaging; .github/workflows/team-release.yml; docs/user\n\n## Dependencies\nComplete the V0.29.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Artifacts locally validated, source provenance consistent, upgrade rehearsal successful, support guide follows observed behavior.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nArtifacts locally validated, source provenance consistent, upgrade rehearsal successful, support guide follows observed behavior.\n\nRoadmap key: distribution-readiness"
+          "description": "## Goal\nMeasure memory, CPU and startup on Windows and fix regressions.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Before/after numbers recorded per the performance gate.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nBefore/after numbers recorded per the performance gate.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: performance-pass-on-the-core-workflow"
+        },
+        {
+          "key": "keyboard-and-screen-reader-pass-on-core-screens",
+          "title": "Keyboard and screen-reader pass on core screens",
+          "priority": "high",
+          "description": "## Goal\nSetup, composer, approvals and export.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] WCAG 2.2 AA findings closed for those screens.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nWCAG 2.2 AA findings closed for those screens.\n\nSize: M. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: keyboard-and-screen-reader-pass-on-core-screens"
+        },
+        {
+          "key": "rerun-the-beginner-test-on-the-candidate",
+          "title": "Rerun the beginner test on the candidate",
+          "priority": "high",
+          "description": "## Goal\nSame five-user protocol on the signed build.\n\n## Dependencies\nTask 1\n\n## Done when\n- [ ] At least 4 of 5 within 10 minutes unassisted.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nAt least 4 of 5 within 10 minutes unassisted.\n\nSize: M. \n\n## Lane\nJake and his agents (product, look, business or legal decision).\n\nRoadmap key: rerun-the-beginner-test-on-the-candidate"
+        },
+        {
+          "key": "prepare-support-and-recovery",
+          "title": "Prepare support and recovery",
+          "priority": "medium",
+          "description": "## Goal\nDiagnostics export, recovery guide and private bug route checked against real behavior.\n\n## Dependencies\nNone\n\n## Done when\n- [ ] Guide followed on a broken install restores it.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nGuide followed on a broken install restores it.\n\nSize: S. \n\n## Lane\nMob and his agents (fully scoped, no questions needed).\n\nRoadmap key: prepare-support-and-recovery"
         }
       ]
     },
     {
       "version": "1.0.0",
       "title": "Public launch",
-      "goal": "Ship only after owners accept the release candidate and approve public launch.",
+      "goal": "Public launch of the Windows app with remote web access, only after both user gates pass and Jake explicitly approves.",
       "tasks": [
         {
           "key": "launch-signoff",
@@ -192,6 +589,37 @@
           "title": "Publish V1.0 and verify delivery",
           "priority": "critical",
           "description": "## Goal\nAfter launch-signoff only, invoke the approved launch workflow. Verify installer, blockmap and latest.yml correspond to the same source commit; confirm clean install and update on isolated devices.\n\n## Start files\nscripts/leonidas-release.ts; .github/workflows/team-release.yml; apps/desktop/src/updates\n\n## Dependencies\nComplete the V0.30.0 release gate before accepting this milestone. Explicit owner launch approval and launch-signoff are required.\n\n## Done when\n- [ ] Approved V1.0 artifacts verified; installed app shows correct history; rollback/recovery instructions work.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nApproved V1.0 artifacts verified; installed app shows correct history; rollback/recovery instructions work.\n\nRoadmap key: publish-launch"
+        }
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "title": "After launch: parked work",
+      "goal": "Work moved out of the launch path: Mac, mobile, team sharing and the broader task board.",
+      "tasks": [
+        {
+          "key": "daily-task-parity",
+          "title": "Finish daily task workflows on all entry points",
+          "priority": "high",
+          "description": "## Goal\nExercise capture, due set/clear, Today/Upcoming, complete/reopen and project switching. Share derived date logic between clients; preserve imported cards.\n\n## Start files\napps/web/src/components/taskBoard; apps/mobile task navigation; packages/client-runtime\n\n## Dependencies\nV0.21 planning baseline.\n\n## Done when\n- [ ] Focused daily-task tests pass; desktop and narrow web verified; native mobile proof recorded.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nFocused daily-task tests pass; desktop and narrow web verified; native mobile proof recorded.\n\nRoadmap key: daily-task-parity"
+        },
+        {
+          "key": "shared-concurrency",
+          "title": "Prevent shared task edits from overwriting teammates",
+          "priority": "high",
+          "description": "## Goal\nUse the existing GitHub shared board and compare stored revisions before overwriting. Surface conflicts with reload/retry and preserve task history.\n\n## Start files\napps/server/src/taskBoard/TaskBoardService.ts; apps/server/src/taskBoard tests\n\n## Dependencies\nComplete the V0.23.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Two concurrent claim/edit scenarios tested; conflict produces recoverable feedback; remote changes remain intact.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTwo concurrent claim/edit scenarios tested; conflict produces recoverable feedback; remote changes remain intact.\n\nRoadmap key: shared-concurrency"
+        },
+        {
+          "key": "team-visibility",
+          "title": "Show team ownership and shared project activity",
+          "priority": "high",
+          "description": "## Goal\nAdd readable shared activity, ownership and pending publication states. Explain project sharing setup and permission failures in place.\n\n## Start files\napps/web/src/components/taskBoard; apps/mobile task views\n\n## Dependencies\nComplete the V0.23.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] Two-member isolated fixture covers claim/release, publication failure and refresh; no false synced labels.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\nTwo-member isolated fixture covers claim/release, publication failure and refresh; no false synced labels.\n\nRoadmap key: team-visibility"
+        },
+        {
+          "key": "mobile-task-workflow",
+          "title": "Ship native mobile task planning and delegation",
+          "priority": "high",
+          "description": "## Goal\nImplement Inbox/Today/Upcoming/projects, milestone display, detail edits and explicit delegation with shared contracts. Reuse permissions and reconnect behavior.\n\n## Start files\napps/mobile navigation/screens; packages/client-runtime\n\n## Dependencies\nComplete the V0.25.0 release gate before accepting this milestone.\n\n## Done when\n- [ ] iOS and Android integrated task flows verified against isolated state; offline failures retain input.\n- [ ] Report changed files, scoped checks and remaining limitations; preserve unrelated work.\n\n## Verification\niOS and Android integrated task flows verified against isolated state; offline failures retain input.\n\nRoadmap key: mobile-task-workflow"
         }
       ]
     }

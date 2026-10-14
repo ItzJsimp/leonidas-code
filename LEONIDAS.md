@@ -86,6 +86,16 @@ Match the model to the work: frontier plans and reviews, mid edits, light scans,
 
 Not in this repo: the Scribe Copy tab and shared clipboard (lives in Leonidas Scribe).
 
+## Version roadmap and who does what (v0.35 to v1.0.0)
+
+The plan lives in [project-roadmap.json](./project-roadmap.json): one milestone per version, each task ending in a `Roadmap key:` line and a `## Lane` section. Jake approved it on 2026-10-13. Windows plus remote web ships first; macOS is the first version after launch. v1.0.0 is the public launch and needs Jake's explicit approval.
+
+- **Mob and his agents (lane "Mob"):** tasks that are already scoped, with a done-when check. Run them on your own account and tokens, in roadmap order. You should not need to ask Jake for details: if a card is unclear, write the gap in the task and take the next one.
+- **Mob after a Jake go:** the same, but the task names a "Start when" condition (a purchase, a plan approval or a decision). Do not start until that is recorded in the status log.
+- **Jake and his agents (lane "Jake"):** anything that decides what the app looks like or says, plus business, legal and money tasks. Mob does not pick these up; pricing, terms and partner papers are not in this repo.
+
+Before pushing, run the scoped checks in "Run and verify". Add a status-log line for each finished task.
+
 ## Working together (two people, one `main`)
 
 1. Claude and Codex sessions run [guarded source sync](scripts/Sync-LeonidasSource.ps1) through their startup hooks. It updates only clean `main` checkouts that can fast-forward; unfinished work, active Git operations and divergent histories are left alone. Run the same helper before other tools. Integrate divergent history deliberately, preserving upstream merge commits. Push small commits often; do not sit on a big branch.
