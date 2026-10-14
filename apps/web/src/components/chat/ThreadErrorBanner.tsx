@@ -1,5 +1,6 @@
 import type { OrchestrationV2ProviderFailureClass } from "@t3tools/contracts";
-import { memo } from "react";
+import { memo, useEffect } from "react";
+import { recordFeedbackError } from "../feedback/feedbackContext";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CircleAlertIcon, XIcon } from "lucide-react";
@@ -47,10 +48,16 @@ export const ThreadErrorBanner = memo(function ThreadErrorBanner({
   onDismiss?: () => void;
   chatGptUsageLimit?: boolean;
 }) {
+  useEffect(() => {
+    if (error) recordFeedbackError(error);
+  }, [error]);
   if (!error) return null;
   const variant = errorClass === "usage_limit" ? "warning" : "error";
   return (
-    <div className="pointer-events-auto mx-auto w-fit max-w-[min(48rem,calc(100%-2rem))] pt-3">
+    <div
+      data-feedback-error
+      className="pointer-events-auto mx-auto w-fit max-w-[min(48rem,calc(100%-2rem))] pt-3"
+    >
       <Alert variant={variant} surface="glass" controlAlignment="first-line" data-variant={variant}>
         {chatGptUsageLimit ? (
           <OpenAI className="size-4 text-foreground!" aria-hidden="true" />

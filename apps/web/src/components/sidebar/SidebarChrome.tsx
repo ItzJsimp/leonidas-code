@@ -4,6 +4,7 @@ import {
   ListChecksIcon,
   MicIcon,
   RadarIcon,
+  MessageSquareWarningIcon,
   ScrollTextIcon,
   SettingsIcon,
 } from "lucide-react";
@@ -35,6 +36,8 @@ import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPr
 import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
+import { FEEDBACK_ENABLED } from "../feedback/feedbackRelay";
+import { openFeedback } from "../feedback/feedbackStore";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
@@ -246,6 +249,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     openReleaseHistoryDialog();
   }, [isMobile, setOpenMobile]);
 
+  const handleFeedbackClick = useCallback(() => {
+    closeMobileSidebar();
+    openFeedback({ source: "sidebar" });
+  }, [closeMobileSidebar]);
+
   const handleBackClick = useCallback(() => {
     closeMobileSidebar();
     void navigateToMainApp();
@@ -303,6 +311,13 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             tourId="sidebar-updates"
             onClick={handleUpdateHistoryClick}
           />
+          {FEEDBACK_ENABLED ? (
+            <SidebarUtilityItem
+              icon={<MessageSquareWarningIcon />}
+              label="Send feedback"
+              onClick={handleFeedbackClick}
+            />
+          ) : null}
         </>
       )}
       <SidebarUpdatePill />

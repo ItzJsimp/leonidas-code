@@ -1,4 +1,5 @@
 import { deriveAgentActivity } from "../agentActivity";
+import { setFeedbackActiveModel } from "./feedback/feedbackContext";
 import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
 import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
@@ -3314,6 +3315,10 @@ export default function ChatView(props: ChatViewProps) {
   const selectedProvider = selectedProviderEntry?.driverKind ?? requestedDriverKind;
   const activeProviderInstanceId = selectedProviderEntry?.instanceId ?? null;
   const activeProviderStatus = selectedProviderEntry?.snapshot ?? null;
+  const activeModelId = activeThread?.modelSelection.model ?? null;
+  useEffect(() => {
+    setFeedbackActiveModel({ provider: selectedProvider, model: activeModelId });
+  }, [selectedProvider, activeModelId]);
   const { enabled: interactionModeEnabled, interactionMode } = resolveComposerInteractionMode({
     planModeEnabled: settings.planModeEnabled,
     provider: activeProviderStatus,

@@ -61,6 +61,7 @@ import {
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   InboxIcon,
+  MessageSquareWarningIcon,
   ListChecksIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -145,6 +146,8 @@ import {
 } from "../lib/projectPaths";
 import { onOpenCommandPalette } from "../commandPaletteBus";
 import { openCapture } from "./capture/captureStore";
+import { FEEDBACK_ENABLED } from "./feedback/feedbackRelay";
+import { openFeedback } from "./feedback/feedbackStore";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import {
@@ -471,6 +474,13 @@ export function CommandPalette({ children }: { children: ReactNode }) {
         event.stopPropagation();
         setOpen(false);
         openCapture({ source: "keybinding" });
+        return;
+      }
+      if (command === "feedback.open") {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        openFeedback({ source: "keybinding" });
         return;
       }
       if (command === "usage.open") {
@@ -2213,6 +2223,28 @@ function OpenCommandPaletteDialog(props: {
       openCapture({ source: "command palette" });
     },
   });
+
+  if (FEEDBACK_ENABLED)
+    actionItems.push({
+      kind: "action",
+      value: "action:feedback",
+      searchTerms: [
+        "feedback",
+        "bug",
+        "report",
+        "idea",
+        "suggestion",
+        "problem",
+        "broken",
+        "improve",
+      ],
+      title: "Send feedback or report a bug",
+      icon: <MessageSquareWarningIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "feedback.open",
+      run: async () => {
+        openFeedback({ source: "command palette" });
+      },
+    });
 
   actionItems.push({
     kind: "action",
