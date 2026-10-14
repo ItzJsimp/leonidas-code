@@ -13,6 +13,18 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Hook-PushCompleteSignal.ps1')\"",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }

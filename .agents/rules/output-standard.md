@@ -46,6 +46,25 @@ When work is finished, verified, committed, and zero queued tasks remain, replac
 - 🧼 **Substrate Clean:** Committed (`<hash>`), 0 pending diffs, tests passing.
 - 🚀 **Next Best Action:** Close this chat. Open fresh chat for next objective to keep context lean.
 
+## Pushed-to-main banner
+
+A successful push to `main` ends the work, so the reply must say so unmistakably. The `PostToolUse` hook `scripts/Hook-PushCompleteSignal.ps1` reminds the agent when one lands; the rule applies even if the hook did not fire.
+
+Only when every task the user asked for in this chat is done and verified, the reply ends with this block, as the very last thing, in place of `### ⚡ Immediate Next Actions`:
+
+```
+════════════════════════════════════════
+🏁 SESSION COMPLETE · SHIPPED TO MAIN
+════════════════════════════════════════
+```
+
+- ✅ **Done:** <each original ask, one line each, max 5>
+- 🚀 **Shipped:** commit `<hash>` on `main`; release run `<queued|running|passed>` (state only what you observed)
+- 🧼 **Left behind:** <nothing, or uncommitted files that belong to someone else>
+- 🔒 **This chat is finished. You can close it now.** Start a fresh chat for the next objective.
+
+If any ask is still open or unverified, do not use the block. End with `⏳ PUSHED, SESSION CONTINUES` and list what is left. Never show both.
+
 ## Mid-Turn Execution Rules
 
 Quick lookups, one-line answers, or fast mid-execution turns omit full dock: `⚡ Next: <step> | 👤 You: <step> | ❓ Input: None`.

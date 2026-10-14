@@ -57,6 +57,10 @@ When work is finished, verified, committed, and zero queued tasks remain, replac
 - 🧼 **Substrate Clean:** Committed (`<hash>`), 0 pending diffs, tests passing.
 - 🚀 **Next Best Action:** Close this chat. Open fresh chat for next objective to keep context lean.
 
+### Pushed-to-main banner
+
+After a successful push to `main`, end with the `🏁 SESSION COMPLETE · SHIPPED TO MAIN` block (or `⏳ PUSHED, SESSION CONTINUES` if any ask is still open). Exact wording: `.agents/rules/output-standard.md`. A `PostToolUse` hook (`scripts/Hook-PushCompleteSignal.ps1`, wired in `.claude/settings.json` and `.codex/hooks.json`) reminds the agent.
+
 ### Mid-Turn Execution Rules
 
 Quick lookups, one-line answers, or fast mid-execution turns omit full dock: `⚡ Next: <step> | 👤 You: <step> | ❓ Input: None`.
