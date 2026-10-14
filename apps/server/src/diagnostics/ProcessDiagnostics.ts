@@ -13,14 +13,11 @@ import * as Schema from "effect/Schema";
 
 import * as ResourceTelemetry from "../resourceTelemetry/ResourceTelemetry.ts";
 
-export class ProcessSignalFailed extends Schema.TaggedError<ProcessSignalFailed>()(
-  "ProcessSignalFailed",
-  {
-    pid: Schema.Number,
-    signal: Schema.String,
-    cause: Schema.Defect(),
-  },
-) {
+class ProcessSignalFailed extends Schema.TaggedError<ProcessSignalFailed>()("ProcessSignalFailed", {
+  pid: Schema.Number,
+  signal: Schema.String,
+  cause: Schema.Defect(),
+}) {
   override get message(): string {
     return `Failed to signal process ${this.pid} with ${this.signal}.`;
   }

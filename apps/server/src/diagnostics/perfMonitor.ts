@@ -55,7 +55,7 @@ const TAIL_BYTES = 4 * 1024 * 1024;
 const BASELINE_TTL_MS = 300_000;
 const SPIKE_GAP_MS = 120_000;
 
-export function findAiosRoot(start: string = process.cwd()): string | null {
+function findAiosRoot(start: string = process.cwd()): string | null {
   const env = process.env.LEONIDAS_AIOS_ROOT;
   if (env && existsSync(join(env, "standards", "perf-thresholds.json"))) return env;
   let dir = resolve(start);
