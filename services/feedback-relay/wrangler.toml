@@ -1,0 +1,13 @@
+name = "leonidas-feedback-relay"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+GITHUB_REPO = "ItzJsimp/leonidas-feedback"
+
+# Create once: npx wrangler kv namespace create RATE, then paste the id below.
+[[kv_namespaces]]
+binding = "RATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secret (never committed): npx wrangler secret put GITHUB_TOKEN
