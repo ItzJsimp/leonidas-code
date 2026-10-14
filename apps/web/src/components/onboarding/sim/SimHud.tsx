@@ -69,7 +69,7 @@ export function SimHud({
           <textarea
             rows={2}
             className="mt-3 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            placeholder="Say or type an improvement, then Enter"
+            placeholder="Say or type an improvement, then Pin note"
             value={draft}
             onChange={(event) => setDraft(event.currentTarget.value)}
             onKeyDown={(event) => {
@@ -90,6 +90,9 @@ export function SimHud({
             </ul>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-1.5">
+            <Button size="xs" variant="ghost" disabled={draft.trim().length === 0} onClick={submit}>
+              Pin note
+            </Button>
             <Button size="xs" variant="ghost" onClick={onRestart}>
               Restart
             </Button>

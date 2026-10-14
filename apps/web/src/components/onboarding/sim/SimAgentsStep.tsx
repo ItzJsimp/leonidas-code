@@ -212,11 +212,18 @@ function ClaudeRow({
             <span className="text-2xs font-medium text-muted-foreground">
               {ran
                 ? "Command running."
-                : "Press Enter to run this command. Nothing runs until you do."}
+                : "Run this command when you are ready. Nothing runs until you do."}
             </span>
-            <Button size="xs" variant="ghost-muted" onClick={close}>
-              Close
-            </Button>
+            <div className="flex items-center gap-1">
+              {ran ? null : (
+                <Button size="xs" variant="ghost" onClick={() => setRan(true)}>
+                  Run
+                </Button>
+              )}
+              <Button size="xs" variant="ghost-muted" onClick={close}>
+                Close
+              </Button>
+            </div>
           </div>
           <div
             tabIndex={0}

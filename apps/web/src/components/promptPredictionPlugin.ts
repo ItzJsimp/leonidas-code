@@ -73,10 +73,17 @@ export function createPromptPredictionPlugin(options: {
         return DecorationSet.create(state.doc, [
           Decoration.widget(
             state.selection.from,
-            () => {
+            (view) => {
               const wrapper = document.createElement("span");
-              wrapper.className = "pointer-events-none select-none";
+              wrapper.className = "cursor-pointer select-none";
+              wrapper.title = "Click to accept the suggestion";
               wrapper.setAttribute("aria-hidden", "true");
+              // mousedown, not click, so the editor keeps focus; the same insert Tab makes.
+              wrapper.addEventListener("mousedown", (event) => {
+                event.preventDefault();
+                view.dispatch(closeHistory(view.state.tr).insertText(suggestion).scrollIntoView());
+                view.focus();
+              });
               const ghost = document.createElement("span");
               ghost.className = "text-placeholder/75";
               ghost.textContent = suggestion;

@@ -405,9 +405,19 @@ export function ProjectScriptEditorDialog({
                     onKeyDown={captureKeybinding}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Press a shortcut. Use <code>Backspace</code> to clear. Shortcuts are
-                    environment-wide. Projects using the same action share its shortcut.
+                    Press a shortcut, or clear it with the button. Shortcuts are environment-wide.
+                    Projects using the same action share its shortcut.
                   </p>
+                  {keybinding !== "" && canWriteSettings ? (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="ghost"
+                      onClick={() => setKeybinding("")}
+                    >
+                      Clear shortcut
+                    </Button>
+                  ) : null}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="script-command">Command</Label>
