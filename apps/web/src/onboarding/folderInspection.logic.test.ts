@@ -5,6 +5,7 @@ import {
   describeInspection,
   folderInspectionRequest,
   needsConfirmation,
+  resolvedFolderPath,
   type FolderInspection,
 } from "./folderInspection.logic";
 
@@ -23,6 +24,19 @@ const directory = (
     existingFiles: contents.existingFiles ?? [],
   };
 };
+
+describe("resolvedFolderPath", () => {
+  it("returns the path the server resolved, so ~ matches an existing project root", () => {
+    const resolved = String.raw`C:\Users\Sam\Documents\My AIOS`;
+    expect(
+      resolvedFolderPath({ _tag: "missing", resolvedPath: resolved }, "~/Documents/My AIOS"),
+    ).toBe(resolved);
+  });
+
+  it("falls back to the typed path when the check could not run", () => {
+    expect(resolvedFolderPath({ _tag: "unknown" }, "~/AIOS")).toBe("~/AIOS");
+  });
+});
 
 describe("folderInspection.logic", () => {
   it("writes without asking only into a missing or empty folder", () => {

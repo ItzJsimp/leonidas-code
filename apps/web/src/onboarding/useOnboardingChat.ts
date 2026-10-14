@@ -24,7 +24,9 @@ import { threadEnvironment } from "../state/threads";
 import { useAtomCommand } from "../state/use-atom-command";
 import { useOrchestrationCommand } from "../state/use-orchestration-command";
 import { DEFAULT_RUNTIME_MODE } from "../types";
+import { resolvedFolderPath } from "./folderInspection.logic";
 import { resolveOnboardingProjectId } from "./projectImport.logic";
+import { useFolderInspection } from "./useFolderInspection";
 import { getOnboardingProviderState } from "./providerReadiness.logic";
 
 type EnsureFolderProjectResult =
@@ -55,6 +57,7 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
   const startThreadTurn = useOrchestrationCommand(threadEnvironment.startTurn, {
     reportFailure: false,
   });
+  const inspectFolder = useFolderInspection(environmentId);
   const providers = useAtomValue(
     serverEnvironment.providersValueAtom(environmentId ?? ("" as EnvironmentId)),
   );
@@ -65,8 +68,12 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
         return { ok: false, message: NO_PERMISSION_MESSAGE };
       }
       try {
+        // "~/AIOS" and the project root "C:\Users\Sam\AIOS" are one folder, but only the
+        // server can tell. Without this, the second step created a second project for the
+        // same root and the server refused it.
+        const resolvedFolder = resolvedFolderPath(await inspectFolder(folder, []), folder);
         const existingId = resolveOnboardingProjectId(readProjects(), environmentId, {
-          path: folder,
+          path: resolvedFolder,
         });
         if (existingId !== null) {
           const existing = readProjects().find(
@@ -82,7 +89,7 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
           input: {
             projectId,
             title: folderTitle(folder),
-            workspaceRoot: folder,
+            workspaceRoot: resolvedFolder,
             createWorkspaceRootIfMissing: true,
             defaultModelSelection: null,
           },
@@ -103,7 +110,7 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
         return { ok: false, message: "Could not set up that folder." };
       }
     },
-    [canOperate, createProject, environmentId],
+    [canOperate, createProject, environmentId, inspectFolder],
   );
 
   const startChat = useCallback(

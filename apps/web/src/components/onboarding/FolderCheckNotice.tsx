@@ -1,4 +1,4 @@
-import { TriangleAlertIcon } from "lucide-react";
+import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -8,15 +8,20 @@ export function FolderCheckNotice({
   onConfirm,
   onCancel,
   confirmLabel = "Use this folder anyway",
+  cancelLabel = "Choose another folder",
+  tone = "warning",
 }: {
   readonly lines: readonly string[];
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
-  readonly confirmLabel?: string;
+  readonly confirmLabel?: string | undefined;
+  readonly cancelLabel?: string | undefined;
+  /** `info` explains a normal case; `warning` flags a real risk. */
+  readonly tone?: "info" | "warning";
 }) {
   return (
-    <Alert variant="warning">
-      <TriangleAlertIcon />
+    <Alert variant={tone}>
+      {tone === "info" ? <InfoIcon /> : <TriangleAlertIcon />}
       <AlertDescription>
         <div className="space-y-2">
           {lines.map((line) => (
@@ -27,7 +32,7 @@ export function FolderCheckNotice({
               {confirmLabel}
             </Button>
             <Button size="compact" variant="ghost" onClick={onCancel}>
-              Choose another folder
+              {cancelLabel}
             </Button>
           </div>
         </div>

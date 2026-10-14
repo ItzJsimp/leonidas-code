@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   AIOS_PRESET,
   buildAiosSetupPrompt,
+  DEFAULT_AIOS_FOLDER,
   LEONIDAS_GOALS,
   normalizeGoalIds,
   selectVisibleGoals,
@@ -42,5 +43,15 @@ describe("leonidasSetup.logic", () => {
 
   it("stays general when no goal is picked", () => {
     expect(buildAiosSetupPrompt([])).toContain("keep the setup general");
+  });
+
+  it("defaults the AIOS folder to a named folder in Documents", () => {
+    expect(DEFAULT_AIOS_FOLDER).toBe("~/Documents/My AIOS");
+  });
+
+  it("tells the chat to keep files that already exist in the folder", () => {
+    const prompt = buildAiosSetupPrompt([], { inCurrentFolder: true });
+    expect(prompt).toContain("Leave them alone");
+    expect(prompt).toContain("ask me before you change it");
   });
 });

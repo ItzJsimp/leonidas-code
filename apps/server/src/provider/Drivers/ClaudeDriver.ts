@@ -35,6 +35,7 @@ import {
   type ClaudeAdapterV2DriverEnv,
 } from "../../orchestration-v2/Adapters/ClaudeAdapterV2.ts";
 import { ProviderDriverError } from "../Errors.ts";
+import { makeClaudeAuth, makeClaudeAuthCommands } from "../ClaudeAuth.ts";
 import { claudeUsageReader } from "./claudeUsage.ts";
 import { claudeUsageResponseToLimits, makeClaudeScopedLimitNames } from "../claudeUsageLimits.ts";
 import * as ClaudeResetCredits from "../claudeResetCredits.ts";
@@ -384,9 +385,30 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
           ),
         );
 
+      // Browser sign-in: `claude auth login` opens the browser. After it ends,
+      // drop the cached probe and re-check so the card turns Ready.
+      const authCommands = yield* makeClaudeAuthCommands(
+        effectiveConfig,
+        processEnv,
+        instanceId,
+      ).pipe(
+        Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+        Effect.provideService(Path.Path, path),
+      );
+      const auth = yield* makeClaudeAuth({
+        instanceId,
+        ...authCommands,
+        credentialKey: continuationGroupKey,
+        onAuthenticated: Cache.invalidateAll(capabilitiesProbeCache).pipe(
+          Effect.andThen(snapshot.refresh),
+          Effect.ignore,
+        ),
+      });
+
       return {
         instanceId,
         driverKind: DRIVER_KIND,
+        auth,
         continuationIdentity: {
           ...fallbackContinuationIdentity,
           continuationKey: continuationGroupKey,

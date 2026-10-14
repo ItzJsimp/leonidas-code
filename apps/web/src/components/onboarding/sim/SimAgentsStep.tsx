@@ -8,7 +8,7 @@ import { Button } from "../../ui/button";
 import { ScrollArea } from "../../ui/scroll-area";
 import type { SimPersona } from "./onboardingSim.logic";
 
-// Same line the real setup terminal runs: install, then sign-in in one terminal.
+// Same lines the real setup terminal runs: install only, or sign-in for "Use a terminal instead".
 const INSTALL_COMMAND = CLAUDE_WINDOWS_INSTALL_COMMAND;
 const LOGIN_COMMAND = "claude auth login";
 
@@ -141,7 +141,7 @@ function CodexRow({
   );
 }
 
-type ClaudeState = "missing" | "needs-signin" | "ready";
+type ClaudeState = "missing" | "needs-signin" | "waiting" | "ready";
 
 function ClaudeRow({
   initial,
@@ -154,18 +154,26 @@ function ClaudeRow({
   const [terminal, setTerminal] = useState<"install" | "login" | null>(null);
   const [ran, setRan] = useState(false);
   const [approved, setApproved] = useState(false);
+  // The real flow opens the sign-in page by itself; the button is only a fallback.
+  const [browserOpen, setBrowserOpen] = useState(false);
 
   // Like the real setup terminal, it closes itself once the command has finished.
-  // The install line now ends in sign-in, so it is finished only after approval.
+  // The install line only installs: the card then starts the browser sign-in by itself.
+  // The secondary "Use a terminal instead" line signs in, so it finishes after approval.
   useEffect(() => {
-    const finished = approved && (terminal === "install" || terminal === "login");
+    const finished = terminal === "install" ? ran : terminal === "login" && approved;
     if (!finished) return;
     const timer = window.setTimeout(() => {
-      setState("ready");
+      if (terminal === "install") {
+        setState("waiting");
+        setBrowserOpen(true);
+      } else {
+        setState("ready");
+      }
       setTerminal(null);
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [terminal, approved]);
+  }, [terminal, ran, approved]);
 
   const open = (kind: "install" | "login") => {
     setTerminal(kind);
@@ -174,7 +182,10 @@ function ClaudeRow({
   };
   const close = () => {
     if (approved) setState("ready");
-    else if (terminal === "install" && ran) setState("needs-signin");
+    else if (terminal === "install" && ran) {
+      setState("waiting");
+      setBrowserOpen(true);
+    }
     setTerminal(null);
   };
 
@@ -186,26 +197,76 @@ function ClaudeRow({
         detail={
           state === "ready"
             ? "Ready to code."
-            : state === "needs-signin"
-              ? "Sign in to Claude Code"
-              : "Claude Code is not installed"
+            : state === "waiting"
+              ? "Finish signing in in your browser."
+              : state === "needs-signin"
+                ? "Sign in to use your Claude plan."
+                : "Claude Code is not installed"
         }
         control={
           state === "ready" ? (
             <ReadyBadge />
+          ) : state === "waiting" ? (
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => setBrowserOpen(true)}>
+                Open sign-in page
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost-muted"
+                onClick={() => {
+                  setBrowserOpen(false);
+                  setState("needs-signin");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : state === "needs-signin" ? (
+            <Button
+              size="sm"
+              disabled={terminal !== null}
+              onClick={() => {
+                setState("waiting");
+                setBrowserOpen(true);
+              }}
+            >
+              Sign in with Claude
+            </Button>
           ) : (
             <Button
               size="xs"
               variant="ghost"
               disabled={terminal !== null}
-              onClick={() => open(state === "missing" ? "install" : "login")}
+              onClick={() => open("install")}
             >
               <TerminalIcon className="size-3.5" />
-              {state === "missing" ? "Install" : "Sign in"}
+              Install
             </Button>
           )
         }
       />
+      {state === "needs-signin" && terminal === null ? (
+        <button
+          type="button"
+          data-sim-control
+          className="mt-1 ml-12 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          onClick={() => open("login")}
+        >
+          Use a terminal instead
+        </button>
+      ) : null}
+      {state === "waiting" && browserOpen ? (
+        <SimBrowserPrompt
+          text="Claude opened in your browser."
+          actionLabel="Pretend I approved"
+          onDone={() => {
+            onExternal("Claude sign-in page in the browser (log in, approve access)");
+            setBrowserOpen(false);
+            setState("ready");
+          }}
+        />
+      ) : null}
       {terminal !== null ? (
         <div className="mt-2 overflow-hidden rounded-lg border border-border/70 bg-background">
           <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
@@ -237,12 +298,12 @@ function ClaudeRow({
             {ran ? (
               <div className="mt-1 text-muted-foreground">
                 {terminal === "install"
-                  ? "Downloading and installing Claude Code… done. Opening your browser to sign in…"
+                  ? "Downloading and installing Claude Code… done. Opening the sign-in page next…"
                   : "Opening your browser to sign in…"}
               </div>
             ) : null}
           </div>
-          {terminal !== null && ran && !approved ? (
+          {terminal === "login" && ran && !approved ? (
             <div className="px-3 pb-3">
               <SimBrowserPrompt
                 text="Claude sign-in opened in your browser."

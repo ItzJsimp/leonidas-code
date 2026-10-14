@@ -49,7 +49,10 @@ export function toggleGoal(selected: readonly string[], id: string): readonly st
 
 /** Where the guided setup builds the AIOS; the server expands the leading ~. */
 export const AIOS_FOLDER_STORAGE_KEY = "leonidas:aios-folder";
-export const DEFAULT_AIOS_FOLDER = "~/AIOS";
+/** The default sits in Documents, where a new user already looks for their files. */
+export const DEFAULT_AIOS_LOCATION = "~/Documents";
+export const DEFAULT_AIOS_NAME = "My AIOS";
+export const DEFAULT_AIOS_FOLDER = `${DEFAULT_AIOS_LOCATION}/${DEFAULT_AIOS_NAME}`;
 
 export interface AiosPresetEntry {
   readonly path: string;
@@ -98,7 +101,7 @@ export function buildAiosSetupPrompt(
       ? `I mainly use AI to work on: ${goals.join(", ")}.`
       : "I have not picked a main use yet, so keep the setup general.",
     options.inCurrentFolder
-      ? "Create this structure in the current folder, which is already my AIOS folder:"
+      ? "Create this structure in the current folder, which is already my AIOS folder. The folder may already hold other files. Leave them alone. If one of the files below already exists, read it, keep what is in it, and ask me before you change it:"
       : "Create this structure in a new folder (ask me where first):",
     tree,
     "Ask me a few short questions (my name, what I build, how I like answers written), then fill in CLAUDE.md and AGENTS.md from my answers. Keep each file short and plain.",

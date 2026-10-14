@@ -8,8 +8,13 @@ import { useRef, useState } from "react";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { buildAiosFoldersCommand } from "../../onboarding/aiosFolders.logic";
-import { describeInspection, needsConfirmation } from "../../onboarding/folderInspection.logic";
+import {
+  buildAiosFoldersCommand,
+  describeAiosFolder,
+  joinAiosFolder,
+  splitAiosFolder,
+  type AiosFolderNotice,
+} from "../../onboarding/aiosFolders.logic";
 import { useFolderInspection } from "../../onboarding/useFolderInspection";
 import { useOnboardingChat } from "../../onboarding/useOnboardingChat";
 import {
@@ -46,11 +51,20 @@ export function LeonidasAiosStep({
   const { canOperate, ensureFolderProject, startChat } = useOnboardingChat(environmentId);
   // Running it in Leonidas is the easy path, so it leads whenever an agent is connected.
   const mode = chosenMode ?? (canOperate ? "run" : "prompt");
-  const [folder, setFolder] = useLocalStorage(
+  const [storedFolder, setStoredFolder] = useLocalStorage(
     AIOS_FOLDER_STORAGE_KEY,
     DEFAULT_AIOS_FOLDER,
     Schema.String,
   );
+  // Two inputs, one stored path: the other onboarding steps read the joined folder.
+  const [parts, setParts] = useState(() => splitAiosFolder(storedFolder || DEFAULT_AIOS_FOLDER));
+  const folder = joinAiosFolder(parts.location, parts.name);
+  const updateParts = (next: { location: string; name: string }) => {
+    setParts(next);
+    setFolderNotice(null);
+    const joined = joinAiosFolder(next.location, next.name);
+    if (joined !== null) setStoredFolder(joined);
+  };
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [stored] = useLocalStorage(LEONIDAS_GOALS_STORAGE_KEY, [], LeonidasGoalsSchema);
@@ -58,22 +72,23 @@ export function LeonidasAiosStep({
   const { copyToClipboard, isCopied } = useCopyToClipboard();
   // Its own copy state, so copying the command does not mark the prompt as copied.
   const noChat = useCopyToClipboard();
-  const folderCommand = buildAiosFoldersCommand(folder.trim() || DEFAULT_AIOS_FOLDER);
+  const folderCommand = buildAiosFoldersCommand(folder ?? DEFAULT_AIOS_FOLDER);
 
   const inspectFolder = useFolderInspection(environmentId);
-  const [folderNotice, setFolderNotice] = useState<readonly string[] | null>(null);
+  const [folderNotice, setFolderNotice] = useState<AiosFolderNotice | null>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   const checkThenStart = async () => {
-    if (!environmentId) return;
+    if (!environmentId || folder === null) return;
     setStarting(true);
     setStartError(null);
     const inspection = await inspectFolder(
-      folder.trim() || DEFAULT_AIOS_FOLDER,
+      folder,
       AIOS_PRESET.filter((entry) => !entry.path.endsWith("/")).map((entry) => entry.path),
     );
-    if (needsConfirmation(inspection)) {
-      setFolderNotice(describeInspection(inspection));
+    const notice = describeAiosFolder(inspection);
+    if (notice !== null) {
+      setFolderNotice(notice);
       setStarting(false);
       return;
     }
@@ -81,11 +96,11 @@ export function LeonidasAiosStep({
   };
 
   const startSetupChat = async () => {
-    if (!environmentId) return;
+    if (!environmentId || folder === null) return;
     setFolderNotice(null);
     setStarting(true);
     setStartError(null);
-    const project = await ensureFolderProject(folder.trim() || DEFAULT_AIOS_FOLDER);
+    const project = await ensureFolderProject(folder);
     if (!project.ok) {
       setStartError(project.message);
       setStarting(false);
@@ -149,21 +164,33 @@ export function LeonidasAiosStep({
           ) : null}
           {mode === "run" ? (
             <div className="space-y-2">
-              <label className="block space-y-1.5">
-                <span className="text-xs text-muted-foreground">
-                  AIOS folder (created if missing)
-                </span>
-                <Input
-                  ref={folderInputRef}
-                  value={folder}
-                  onChange={(event) => {
-                    setFolder(event.target.value);
-                    setFolderNotice(null);
-                  }}
-                />
-              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-xs text-muted-foreground">Where to put it</span>
+                  <Input
+                    value={parts.location}
+                    onChange={(event) => updateParts({ ...parts, location: event.target.value })}
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs text-muted-foreground">Folder name</span>
+                  <Input
+                    ref={folderInputRef}
+                    value={parts.name}
+                    onChange={(event) => updateParts({ ...parts, name: event.target.value })}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {folder === null
+                  ? "Enter a location and a name."
+                  : `Leonidas creates ${folder} if it is missing. ~ means your user folder.`}
+              </p>
               <div className="flex items-center gap-3">
-                <Button disabled={!canOperate || starting} onClick={() => void checkThenStart()}>
+                <Button
+                  disabled={!canOperate || starting || folder === null}
+                  onClick={() => void checkThenStart()}
+                >
                   {starting ? <Spinner /> : null}
                   Start setup chat
                 </Button>
@@ -175,7 +202,10 @@ export function LeonidasAiosStep({
               </div>
               {folderNotice ? (
                 <FolderCheckNotice
-                  lines={folderNotice}
+                  tone={folderNotice.tone}
+                  lines={folderNotice.lines}
+                  confirmLabel={folderNotice.tone === "info" ? "Continue" : undefined}
+                  cancelLabel={folderNotice.tone === "info" ? "Pick another folder" : undefined}
                   onConfirm={() => void startSetupChat()}
                   onCancel={() => {
                     setFolderNotice(null);

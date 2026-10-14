@@ -79,15 +79,15 @@ export function selectOnboardingProvidersByDriver(
  * one-click updater in Settings keeps working after install.
  */
 /**
- * Windows Claude install and sign-in in one terminal line. The installer adds
- * claude to the user PATH but not to this session, so the line refreshes PATH
- * from the registry first. If claude still does not resolve, it says what to do
- * instead of starting a login that cannot run.
+ * Windows Claude install in one terminal line. The installer adds claude to
+ * the user PATH but not to this session, so the line refreshes PATH from the
+ * registry. It does not sign in: the Claude card starts the browser sign-in
+ * by itself when the install ends, so the user types nothing.
  */
 export const CLAUDE_WINDOWS_INSTALL_COMMAND = [
   "irm https://claude.ai/install.ps1 | iex",
   "$env:Path = [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')",
-  "if (Get-Command claude -ErrorAction SilentlyContinue) { claude auth login } else { Write-Host 'Claude is installed. Open a new terminal and run: claude auth login' }",
+  "Write-Host 'Claude is installed. Leonidas Code opens the sign-in page next.'",
 ].join("; ");
 
 const NATIVE_INSTALL_COMMANDS = {
