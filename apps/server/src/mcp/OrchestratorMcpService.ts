@@ -94,6 +94,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import * as ProviderAdapterRegistry from "../orchestration-v2/ProviderAdapterRegistry.ts";
+import { DelegatedTaskLedger } from "./DelegatedTaskLedger.ts";
 import { delegatedTaskUsage } from "./delegatedTaskUsage.ts";
 import {
   subagentResultForRun,
@@ -1030,6 +1031,8 @@ const make = Effect.gen(function* () {
   const scheduledTasks = yield* ScheduledTaskService.ScheduledTaskService;
   const projects = yield* ProjectService.ProjectService;
   const taskBoard = yield* TaskBoardService.TaskBoardService;
+  // Optional so test compositions without a database skip the ledger.
+  const taskLedger = yield* Effect.serviceOption(DelegatedTaskLedger);
 
   /** The user's task cards plus the board's view of which Leonidas project each section belongs to. */
   const boardProjects = projects.snapshot.pipe(
@@ -1714,6 +1717,19 @@ const make = Effect.gen(function* () {
           yield* DateTime.now,
         ),
       } satisfies OrchestratorMcpDelegateTaskResult;
+      if (Option.isSome(taskLedger) && isTerminalTaskStatus(status)) {
+        yield* taskLedger.value.record({
+          taskId: task.id,
+          parentThreadId: scope.thread.threadId,
+          childThreadId: task.childThreadId,
+          providerInstanceId: task.providerInstanceId,
+          model: task.model ?? "",
+          status,
+          usage: response.usage,
+          branch: response.branch,
+          recordedAt: DateTime.formatIso(yield* DateTime.now),
+        });
+      }
       if (
         acknowledgeTerminal &&
         isTerminalTaskStatus(status) &&
