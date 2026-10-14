@@ -5,6 +5,7 @@ import {
   createSkillFolder,
   deleteSkillFolder,
   renameSkillFolder,
+  resolveCommandPlugin,
   resolveSkillFolders,
   resolveSkillPack,
   setSkillInFolder,
@@ -73,6 +74,66 @@ describe("resolveSkillFolders", () => {
       "token-optimizer",
       "lonely",
     ]);
+  });
+});
+
+describe("provider command folders", () => {
+  const commands = [
+    { name: "cloudflare:wrangler" },
+    { name: "cloudflare:basin" },
+    { name: "solo:one" },
+    { name: "clear" },
+  ];
+
+  it("gathers six or more unclaimed commands into one built-in folder", () => {
+    const many = [
+      ...commands,
+      { name: "model" },
+      { name: "init" },
+      { name: "fast" },
+      { name: "config" },
+      { name: "doctor" },
+    ];
+    const folders = resolveSkillFolders([], { folders: [] }, many);
+    const builtin = folders.find((folder) => folder.kind === "builtin");
+    expect(builtin?.commands.map((c) => c.name)).toEqual([
+      "solo:one",
+      "clear",
+      "model",
+      "init",
+      "fast",
+      "config",
+      "doctor",
+    ]);
+    expect(folders.find((folder) => folder.kind === "plugin")?.commands).toHaveLength(2);
+  });
+
+  it("groups namespaced commands into a plugin folder and skips single or plain ones", () => {
+    const folders = resolveSkillFolders([], { folders: [] }, commands);
+    expect(folders.map((folder) => `${folder.kind}:${folder.name}`)).toEqual([
+      "plugin:Cloudflare plugin",
+    ]);
+    expect(folders[0]?.commands.map((c) => c.name)).toEqual([
+      "cloudflare:wrangler",
+      "cloudflare:basin",
+    ]);
+  });
+
+  it("lets a custom folder hold a command by name, but a skill of that name wins", () => {
+    const skills = [skill("loop")];
+    const folders = resolveSkillFolders(
+      skills,
+      { folders: [{ id: "a", name: "Mine", skills: ["clear", "loop", "missing"] }] },
+      [{ name: "clear" }, { name: "loop" }],
+    );
+    expect(folders[0]?.skills.map((s) => s.name)).toEqual(["loop"]);
+    expect(folders[0]?.commands.map((c) => c.name)).toEqual(["clear"]);
+  });
+
+  it("reads the plugin prefix of a command name", () => {
+    expect(resolveCommandPlugin({ name: "Cloudflare:wrangler" })).toBe("cloudflare");
+    expect(resolveCommandPlugin({ name: "clear" })).toBeUndefined();
+    expect(resolveCommandPlugin({ name: ":odd" })).toBeUndefined();
   });
 });
 

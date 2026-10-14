@@ -2863,7 +2863,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       const searched = searchSlashCommandItems(slashCommandItems, query);
       return applySkillFolderView({
         items: searched,
-        folders: resolveSkillFolders(slashMenuSkills, settings.skillFolders),
+        folders: resolveSkillFolders(
+          slashMenuSkills,
+          settings.skillFolders,
+          visibleProviderSlashCommandItems.map((item) => item.command),
+        ),
         openFolderId: openSkillFolderId,
         query,
       });

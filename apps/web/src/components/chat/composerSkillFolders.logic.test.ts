@@ -97,6 +97,67 @@ describe("applySkillFolderView", () => {
   });
 });
 
+describe("applySkillFolderView with provider commands", () => {
+  const providerItem = (name: string): ComposerCommandItem => ({
+    id: `provider-slash-command:claudeAgent:${name}`,
+    type: "provider-slash-command",
+    provider: ProviderDriverKind.make("claudeAgent"),
+    command: { name },
+    label: `/${name}`,
+    description: "",
+  });
+  const cmdItems = [
+    command,
+    providerItem("cloudflare:wrangler"),
+    providerItem("cloudflare:basin"),
+    providerItem("clear"),
+  ];
+  const cmdFolders = resolveSkillFolders(
+    [],
+    { folders: [] },
+    cmdItems.flatMap((i) => (i.type === "provider-slash-command" ? [i.command] : [])),
+  );
+
+  it("collapses a plugin's commands into one folder row and keeps plain commands", () => {
+    const view = applySkillFolderView({
+      items: cmdItems,
+      folders: cmdFolders,
+      openFolderId: null,
+      query: "",
+    });
+    expect(view.map((item) => item.id)).toEqual([
+      "slash:model",
+      skillFolderItemId("plugin:cloudflare"),
+      "provider-slash-command:claudeAgent:clear",
+    ]);
+    expect(view[1]).toMatchObject({ description: "2 commands · Plugin" });
+  });
+
+  it("lists the plugin's commands when its folder is open", () => {
+    const view = applySkillFolderView({
+      items: cmdItems,
+      folders: cmdFolders,
+      openFolderId: "plugin:cloudflare",
+      query: "",
+    });
+    expect(view.map((item) => item.id)).toEqual([
+      SKILL_FOLDER_BACK_ITEM_ID,
+      "provider-slash-command:claudeAgent:cloudflare:wrangler",
+      "provider-slash-command:claudeAgent:cloudflare:basin",
+    ]);
+  });
+
+  it("hides a folder whose commands are not in the menu", () => {
+    const view = applySkillFolderView({
+      items: [command],
+      folders: cmdFolders,
+      openFolderId: null,
+      query: "",
+    });
+    expect(view).toEqual([command]);
+  });
+});
+
 describe("skill folder item ids", () => {
   it("round-trips a folder id and rejects the back row", () => {
     expect(skillFolderIdFromItemId(skillFolderItemId("pack:mattpocock"))).toBe("pack:mattpocock");

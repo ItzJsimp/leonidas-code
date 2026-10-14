@@ -1,13 +1,25 @@
-import type { ServerProviderSkill, SkillFolder, SkillFolderPrefs } from "@t3tools/contracts";
+import type {
+  ServerProviderSkill,
+  ServerProviderSlashCommand,
+  SkillFolder,
+  SkillFolderPrefs,
+} from "@t3tools/contracts";
 
 /** Where a folder comes from: the user made it, or it is derived from skill metadata. */
-export type SkillFolderKind = "custom" | "pack" | "category";
+export type SkillFolderKind = "custom" | "pack" | "category" | "plugin" | "builtin";
 
 export interface ResolvedSkillFolder {
   readonly id: string;
   readonly name: string;
   readonly kind: SkillFolderKind;
   readonly skills: ReadonlyArray<ServerProviderSkill>;
+  /** Provider slash commands in the folder: plugin commands, built-ins and bundled skills. */
+  readonly commands: ReadonlyArray<ServerProviderSlashCommand>;
+}
+
+/** How many entries the folder holds, skills and commands together. */
+export function skillFolderSize(folder: Pick<ResolvedSkillFolder, "skills" | "commands">): number {
+  return folder.skills.length + folder.commands.length;
 }
 
 /** Owners whose skill packs people know by a display name. Anything else shows `owner/repo`. */
@@ -34,6 +46,9 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   system: "AIOS system",
   money: "Money & clients",
 };
+
+/** Fewer leftover provider commands than this stay in the main list. */
+const MIN_BUILTIN_FOLDER_SIZE = 6;
 
 const GITHUB_SOURCE = /github\.com[/:]([\w.-]+)\/([\w.-]+)/i;
 
@@ -65,50 +80,113 @@ export function skillCategoryLabel(category: string): string {
 }
 
 /**
- * Every folder the picker can show: the user's own first (in their order), then packs, then
- * categories, each sorted by name. A skill can sit in many folders. Folders with no skill the
- * provider currently offers are left out, so a skill from another project never shows an empty row.
- * An automatic folder needs two skills, because a folder of one is only a longer way to find it.
+ * Every folder the picker can show: the user's own first (in their order), then plugins, packs and
+ * categories, each sorted by name. An entry can sit in many folders. A custom folder matches skills
+ * and provider commands by name. A folder with nothing the provider currently offers is left out,
+ * so a skill from another project never shows an empty row. An automatic folder needs two entries,
+ * because a folder of one is only a longer way to find it. A plugin folder holds the commands that
+ * share a `plugin:` prefix, such as `cloudflare:wrangler`.
  */
 export function resolveSkillFolders(
   skills: ReadonlyArray<ServerProviderSkill>,
   prefs: SkillFolderPrefs,
+  commands: ReadonlyArray<ServerProviderSlashCommand> = [],
 ): ResolvedSkillFolder[] {
-  const byKey = new Map(skills.map((skill) => [skillKey(skill.name), skill]));
-  const resolved: ResolvedSkillFolder[] = [];
+  const skillsByKey = new Map(skills.map((skill) => [skillKey(skill.name), skill]));
+  const commandsByKey = new Map(commands.map((command) => [skillKey(command.name), command]));
+  const custom: ResolvedSkillFolder[] = [];
 
   for (const folder of prefs.folders) {
-    const members = folder.skills.flatMap((name) => byKey.get(skillKey(name)) ?? []);
-    if (members.length > 0) {
-      resolved.push({ id: folder.id, name: folder.name, kind: "custom", skills: members });
+    const memberSkills = folder.skills.flatMap((name) => skillsByKey.get(skillKey(name)) ?? []);
+    const memberCommands = folder.skills.flatMap(
+      (name) => (skillsByKey.has(skillKey(name)) ? [] : commandsByKey.get(skillKey(name))) ?? [],
+    );
+    if (memberSkills.length + memberCommands.length > 0) {
+      custom.push({
+        id: folder.id,
+        name: folder.name,
+        kind: "custom",
+        skills: memberSkills,
+        commands: memberCommands,
+      });
     }
   }
 
-  const packs = new Map<string, { name: string; skills: ServerProviderSkill[] }>();
-  const categories = new Map<string, { name: string; skills: ServerProviderSkill[] }>();
+  type Bucket = {
+    name: string;
+    skills: ServerProviderSkill[];
+    commands: ServerProviderSlashCommand[];
+  };
+  const packs = new Map<string, Bucket>();
+  const categories = new Map<string, Bucket>();
+  const plugins = new Map<string, Bucket>();
+  const bucketFor = (map: Map<string, Bucket>, id: string, name: string): Bucket => {
+    const existing = map.get(id);
+    if (existing) return existing;
+    const created: Bucket = { name, skills: [], commands: [] };
+    map.set(id, created);
+    return created;
+  };
   for (const skill of skills) {
     const pack = resolveSkillPack(skill);
-    if (pack) {
-      const entry = packs.get(pack.id) ?? { name: pack.name, skills: [] };
-      entry.skills.push(skill);
-      packs.set(pack.id, entry);
-    }
+    if (pack) bucketFor(packs, pack.id, pack.name).skills.push(skill);
     if (skill.category) {
       const id = skillKey(skill.category);
-      const entry = categories.get(id) ?? { name: skillCategoryLabel(id), skills: [] };
-      entry.skills.push(skill);
-      categories.set(id, entry);
+      bucketFor(categories, id, skillCategoryLabel(id)).skills.push(skill);
     }
   }
-  const automatic = (
-    source: Map<string, { name: string; skills: ServerProviderSkill[] }>,
-    kind: "pack" | "category",
-  ) =>
+  for (const command of commands) {
+    const prefix = resolveCommandPlugin(command);
+    if (prefix) bucketFor(plugins, prefix, titleCase(prefix)).commands.push(command);
+  }
+
+  const automatic = (source: Map<string, Bucket>, kind: "pack" | "category" | "plugin") =>
     [...source.entries()]
-      .filter(([, entry]) => entry.skills.length >= 2)
-      .map(([id, entry]) => ({ id: `${kind}:${id}`, name: entry.name, kind, skills: entry.skills }))
+      .filter(([, entry]) => entry.skills.length + entry.commands.length >= 2)
+      .map(([id, entry]) => ({
+        id: `${kind}:${id}`,
+        name: kind === "plugin" ? `${entry.name} plugin` : entry.name,
+        kind,
+        skills: entry.skills,
+        commands: entry.commands,
+      }))
       .toSorted((left, right) => left.name.localeCompare(right.name));
-  return [...resolved, ...automatic(packs, "pack"), ...automatic(categories, "category")];
+  // Every provider command that no folder claimed (the harness's built-ins and bundled skills)
+  // goes into one folder, but only when there are enough of them to be worth hiding.
+  const claimed = new Set([
+    ...custom.flatMap((folder) => folder.commands.map((c) => skillKey(c.name))),
+    ...[...plugins.values()]
+      .filter((entry) => entry.commands.length >= 2)
+      .flatMap((entry) => entry.commands.map((c) => skillKey(c.name))),
+  ]);
+  const leftover = commands.filter((command) => !claimed.has(skillKey(command.name)));
+  const builtin: ResolvedSkillFolder[] =
+    leftover.length >= MIN_BUILTIN_FOLDER_SIZE
+      ? [
+          {
+            id: "builtin:commands",
+            name: "Built-in commands",
+            kind: "builtin",
+            skills: [],
+            commands: leftover,
+          },
+        ]
+      : [];
+  return [
+    ...custom,
+    ...builtin,
+    ...automatic(plugins, "plugin"),
+    ...automatic(packs, "pack"),
+    ...automatic(categories, "category"),
+  ];
+}
+
+/** The plugin prefix of a namespaced command such as `cloudflare:wrangler`, else undefined. */
+export function resolveCommandPlugin(
+  command: Pick<ServerProviderSlashCommand, "name">,
+): string | undefined {
+  const index = command.name.indexOf(":");
+  return index > 0 ? command.name.slice(0, index).toLowerCase() : undefined;
 }
 
 /** Skills that sit in no folder, so the picker can still show them after the folder rows. */
@@ -118,6 +196,17 @@ export function skillsOutsideFolders(
 ): ServerProviderSkill[] {
   const inFolder = new Set(folders.flatMap((folder) => folder.skills.map((s) => skillKey(s.name))));
   return skills.filter((skill) => !inFolder.has(skillKey(skill.name)));
+}
+
+/** Provider commands that sit in no folder. */
+export function commandsOutsideFolders(
+  commands: ReadonlyArray<ServerProviderSlashCommand>,
+  folders: ReadonlyArray<ResolvedSkillFolder>,
+): ServerProviderSlashCommand[] {
+  const inFolder = new Set(
+    folders.flatMap((folder) => folder.commands.map((c) => skillKey(c.name))),
+  );
+  return commands.filter((command) => !inFolder.has(skillKey(command.name)));
 }
 
 function newFolderId(existing: ReadonlyArray<SkillFolder>): string {

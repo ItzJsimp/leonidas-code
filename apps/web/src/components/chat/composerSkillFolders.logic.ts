@@ -1,11 +1,12 @@
 import type { ResolvedSkillFolder } from "@t3tools/client-runtime/skillFolders";
-import { skillsOutsideFolders } from "@t3tools/client-runtime/skillFolders";
-import type { ServerProviderSkill } from "@t3tools/contracts";
+import { skillFolderSize } from "@t3tools/client-runtime/skillFolders";
 
 import type { ComposerCommandItem } from "./ComposerCommandMenu";
 import { searchSlashCommandItems } from "./composerSlashCommandSearch";
 
 type SkillItem = Extract<ComposerCommandItem, { type: "skill" }>;
+type CommandItem = Extract<ComposerCommandItem, { type: "provider-slash-command" }>;
+type FolderMember = SkillItem | CommandItem;
 
 export const SKILL_FOLDER_BACK_ITEM_ID = "skill-folder:back";
 
@@ -20,17 +21,52 @@ export function skillFolderIdFromItemId(itemId: string): string | null {
     : null;
 }
 
-const KIND_LABEL = { custom: "Mine", pack: "Pack", category: "Category" } as const;
+const KIND_LABEL = {
+  custom: "Mine",
+  pack: "Pack",
+  category: "Category",
+  plugin: "Plugin",
+  builtin: "Built-in",
+} as const;
 
 function folderItem(folder: ResolvedSkillFolder): ComposerCommandItem {
-  const count = folder.skills.length;
+  const count = skillFolderSize(folder);
+  const noun =
+    folder.commands.length === 0
+      ? count === 1
+        ? "skill"
+        : "skills"
+      : folder.skills.length === 0
+        ? count === 1
+          ? "command"
+          : "commands"
+        : count === 1
+          ? "item"
+          : "items";
   return {
     id: skillFolderItemId(folder.id),
     type: "skill-folder",
     folder: { id: folder.id, name: folder.name, kind: folder.kind, skillCount: count },
     label: folder.name,
-    description: `${count} ${count === 1 ? "skill" : "skills"} · ${KIND_LABEL[folder.kind]}`,
+    description: `${count} ${noun} · ${KIND_LABEL[folder.kind]}`,
   };
+}
+
+function isFolderMember(item: ComposerCommandItem): item is FolderMember {
+  return item.type === "skill" || item.type === "provider-slash-command";
+}
+
+function memberKey(item: FolderMember): string {
+  return `${item.type}:${(item.type === "skill" ? item.skill.name : item.command.name).trim().toLowerCase()}`;
+}
+
+function folderMemberKeys(folder: ResolvedSkillFolder): Set<string> {
+  return new Set([
+    ...folder.skills.map((skill) => `skill:${skill.name.trim().toLowerCase()}`),
+    ...folder.commands.map(
+      (command) => `provider-slash-command:${command.name.trim().toLowerCase()}`,
+    ),
+  ]);
 }
 
 /**
@@ -45,14 +81,18 @@ export function applySkillFolderView(input: {
   openFolderId: string | null;
   query: string;
 }): ComposerCommandItem[] {
-  const { items, folders, openFolderId, query } = input;
+  const { items, openFolderId, query } = input;
+  const members = items.filter(isFolderMember);
+  // Provider commands are absent mid-prompt, so a folder whose members are all gone is not shown.
+  const present = new Set(members.map(memberKey));
+  const folders = input.folders.filter((folder) =>
+    [...folderMemberKeys(folder)].some((key) => present.has(key)),
+  );
   if (folders.length === 0) return [...items];
 
-  const skillItems = items.filter((item): item is SkillItem => item.type === "skill");
   const open = openFolderId ? folders.find((folder) => folder.id === openFolderId) : undefined;
   if (open) {
-    const inside = new Set(open.skills.map((skill) => skill.name.trim().toLowerCase()));
-    const members = skillItems.filter((item) => inside.has(item.skill.name.trim().toLowerCase()));
+    const inside = folderMemberKeys(open);
     return [
       {
         id: SKILL_FOLDER_BACK_ITEM_ID,
@@ -60,17 +100,16 @@ export function applySkillFolderView(input: {
         label: "Back to all skills",
         description: open.name,
       },
-      ...searchSlashCommandItems(members, query),
+      ...searchSlashCommandItems(
+        members.filter((item) => inside.has(memberKey(item))),
+        query,
+      ),
     ];
   }
   if (query.trim()) return [...items];
 
-  const grouped: ServerProviderSkill[] = skillsOutsideFolders(
-    skillItems.map((item) => item.skill),
-    folders,
-  );
-  const loose = new Set(grouped.map((skill) => skill.name.trim().toLowerCase()));
-  const nonSkills = items.filter((item) => item.type !== "skill");
-  const looseSkills = skillItems.filter((item) => loose.has(item.skill.name.trim().toLowerCase()));
-  return [...nonSkills, ...folders.map(folderItem), ...looseSkills];
+  const grouped = new Set(folders.flatMap((folder) => [...folderMemberKeys(folder)]));
+  const builtIns = items.filter((item) => !isFolderMember(item));
+  const loose = members.filter((item) => !grouped.has(memberKey(item)));
+  return [...builtIns, ...folders.map(folderItem), ...loose];
 }

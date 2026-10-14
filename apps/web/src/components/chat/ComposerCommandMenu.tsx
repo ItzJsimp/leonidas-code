@@ -70,7 +70,7 @@ export type ComposerCommandItem =
       folder: {
         id: string;
         name: string;
-        kind: "custom" | "pack" | "category";
+        kind: "custom" | "pack" | "category" | "plugin" | "builtin";
         skillCount: number;
       };
       label: string;
