@@ -68,7 +68,9 @@ const boardRunner = (
           return output(JSON.stringify({ object: { sha: "abc123" } }));
         }
         if (input.args.includes("PUT") || input.args.includes("POST")) {
-          onWrite(input.args);
+          // Writes carry their body on stdin; tests read it as a `content=` argument.
+          const body = input.stdin ? (JSON.parse(input.stdin) as { content: string }) : null;
+          onWrite(body ? [...input.args, `content=${body.content}`] : input.args);
           return output("{}");
         }
         onIssueRead();
@@ -675,8 +677,8 @@ const fakeGithub = (tasks: ReadonlyArray<TaskBoardTask>) => {
           const before = state.beforePut;
           state.beforePut = null;
           before?.();
-          const field = (name: string) =>
-            input.args.find((arg) => arg.startsWith(`${name}=`))?.slice(name.length + 1);
+          const body = JSON.parse(input.stdin ?? "{}") as { sha?: string; content?: string };
+          const field = (name: "sha" | "content") => body[name];
           if (field("sha") !== String(state.sha)) {
             return output("", 1, "HTTP 409: sha does not match");
           }

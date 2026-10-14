@@ -508,7 +508,14 @@ const make = Effect.gen(function* () {
               new TaskBoardReadError({ reason: "issues_disabled", cause: result }),
             );
           }
-          return Effect.fail(new TaskBoardReadError({ reason: "request_failed", cause: result }));
+          return Effect.logWarning("GitHub request for the shared task board failed", {
+            args: args.slice(0, 3).join(" "),
+            stderr: result.stderr.slice(0, 500),
+          }).pipe(
+            Effect.andThen(
+              Effect.fail(new TaskBoardReadError({ reason: "request_failed", cause: result })),
+            ),
+          );
         }),
       );
 
@@ -646,25 +653,36 @@ const make = Effect.gen(function* () {
       const content = Buffer.from(
         JSON.stringify({ version: DATABASE_VERSION, tasks }, null, 2),
       ).toString("base64");
-      const args = [
-        "api",
-        "--method",
-        "PUT",
-        `repos/${project.repository}/contents/${path}`,
-        "--raw-field",
-        "message=Update shared task board",
-        "--raw-field",
-        `branch=${branchName(project)}`,
-        "--raw-field",
-        `content=${content}`,
-      ];
-      if (sha) args.push("--raw-field", `sha=${sha}`);
+      // The whole board rides in the request body on stdin: as a command-line argument it passes
+      // the Windows limit (about 32 KB) once a project has a few dozen cards.
+      const body = JSON.stringify({
+        message: "Update shared task board",
+        branch: branchName(project),
+        content,
+        ...(sha ? { sha } : {}),
+      });
       const result = yield* processes
-        .run({ command: "gh", args, timeout: "30 seconds", maxOutputBytes: 64 * 1024 })
+        .run({
+          command: "gh",
+          args: [
+            "api",
+            "--method",
+            "PUT",
+            `repos/${project.repository}/contents/${path}`,
+            "--input",
+            "-",
+          ],
+          stdin: body,
+          timeout: "30 seconds",
+          maxOutputBytes: 64 * 1024,
+        })
         .pipe(Effect.mapError((cause) => new TaskBoardReadError({ reason: "unavailable", cause })));
       if (result.code === 0 && !result.timedOut) return true;
       if (/HTTP 409|sha.*(does not match|must be provided)|already exists/i.test(result.stderr))
         return false;
+      yield* Effect.logWarning("Could not write the shared task board", {
+        stderr: result.stderr.slice(0, 500),
+      });
       return yield* new TaskBoardReadError({
         reason: /HTTP 403|Resource not accessible|write access/i.test(result.stderr)
           ? "write_access_required"
