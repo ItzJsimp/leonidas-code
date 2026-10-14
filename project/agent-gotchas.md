@@ -55,3 +55,5 @@ Moved out of [agent-playbook.md](../agent-playbook.md) so it is not loaded every
 - **2026-10-14 (live UI test in the shared checkout):** `vp run dev` restarts the server on every file edit by other sessions, so the API is down for about 30 seconds at a time. Probe `/api/auth/session` until it answers 200, then run `node src/bin.ts pair --base-dir <home>` from `apps/server`.
 
 - Older session notes: [project/session-notes-archive.md](../project/session-notes-archive.md).
+
+- **Fresh test repos fail `git commit` on this machine:** the global `init.templatedir` copies the AIOS pre-commit hook into every new repo. Run server tests with `GIT_TEMPLATE_DIR=/tmp/emptytpl` (an empty folder). 4 of 6 `src/mcp` failures were this.
