@@ -986,7 +986,7 @@ describe("VcsStatusBroadcaster", () => {
         ),
       );
 
-    it.effect("shares one run between concurrent calls for a directory", () => {
+    it.effect("shares one trailing run between calls that arrive during a run", () => {
       const control = {
         invalidations: [] as Array<string>,
         gate: Deferred.makeUnsafe<void>(),
@@ -1002,7 +1002,8 @@ describe("VcsStatusBroadcaster", () => {
         yield* TestClock.adjust(Duration.zero);
         yield* Deferred.succeed(control.gate, undefined);
         const results = yield* Effect.forEach(fibers, Fiber.join);
-        assert.equal(control.invalidations.length, 1);
+        // One run for the first call, one trailing run shared by the other four.
+        assert.equal(control.invalidations.length, 2);
         for (const result of results) assert.deepStrictEqual(result, results[0]);
       }).pipe(Effect.provide(makeFlightLayer(control)), Effect.scoped);
     });
@@ -1060,29 +1061,6 @@ describe("VcsStatusBroadcaster", () => {
         yield* TestClock.adjust(Duration.seconds(3));
         const later = yield* broadcaster.refreshStatus("/repo");
         assert.deepStrictEqual(later, baseStatus);
-        assert.equal(control.invalidations.length, 2);
-      }).pipe(
-        Effect.provide(Layer.merge(makeFlightLayer(control), TestClock.layer())),
-        Effect.scoped,
-      );
-    });
-
-    it.effect("a slow run backs off repeat calls, then runs again", () => {
-      const control = {
-        invalidations: [] as Array<string>,
-        gate: Deferred.makeUnsafe<void>(),
-        failNext: false,
-      };
-      return Effect.gen(function* () {
-        const broadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
-        const first = yield* broadcaster.refreshStatus("/repo").pipe(Effect.forkScoped);
-        yield* TestClock.adjust(Duration.seconds(6));
-        yield* Deferred.succeed(control.gate, undefined);
-        yield* Fiber.join(first);
-        yield* broadcaster.refreshStatus("/repo");
-        assert.equal(control.invalidations.length, 1);
-        yield* TestClock.adjust(Duration.seconds(11));
-        yield* broadcaster.refreshStatus("/repo");
         assert.equal(control.invalidations.length, 2);
       }).pipe(
         Effect.provide(Layer.merge(makeFlightLayer(control), TestClock.layer())),

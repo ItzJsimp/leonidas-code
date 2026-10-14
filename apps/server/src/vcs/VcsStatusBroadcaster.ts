@@ -35,10 +35,8 @@ import * as ServerSettings from "../serverSettings.ts";
 const DEFAULT_VCS_STATUS_REFRESH_INTERVAL = Duration.seconds(30);
 const VCS_STATUS_REFRESH_FAILURE_BASE_DELAY = Duration.seconds(30);
 const VCS_STATUS_REFRESH_FAILURE_MAX_DELAY = Duration.minutes(15);
-// A refresh that runs this long, or fails, blocks repeat calls for a short
-// time. The repeat gets the same outcome instead of starting another run.
-const VCS_STATUS_SLOW_REFRESH_THRESHOLD_MS = 5_000;
-const VCS_STATUS_SLOW_REFRESH_BACKOFF_MS = 10_000;
+// A failed refresh blocks repeat calls for a short time. A slow but successful
+// refresh must not: callers refresh right after a change and need fresh status.
 const VCS_STATUS_FAILED_REFRESH_BACKOFF_MS = 2_000;
 const MAX_FAILURE_DIAGNOSTIC_VALUES = 8;
 const MAX_FAILURE_DIAGNOSTIC_VALUE_LENGTH = 128;
@@ -501,49 +499,79 @@ export const make = Effect.gen(function* () {
       }),
     );
 
-  // Single-flight per cwd: callers that arrive during a run join it. After a
-  // slow or failed run, callers inside the backoff window get its outcome.
+  // Single-flight per cwd. A call that arrives during a run cannot reuse it,
+  // because the run may have read the repo before the change that caused the
+  // call. All such callers share one trailing run that starts after it ends.
   const refreshFlights = new Map<
     string,
     Deferred.Deferred<VcsStatusResult, GitManagerServiceError>
   >();
-  const recentRefreshes = new Map<
+  const refreshTrailing = new Map<
+    string,
+    Deferred.Deferred<VcsStatusResult, GitManagerServiceError>
+  >();
+  const recentFailures = new Map<
     string,
     { until: number; exit: Exit.Exit<VcsStatusResult, GitManagerServiceError> }
   >();
+
+  const runFlight = (
+    cwd: string,
+    rawCwd: string,
+    deferred: Deferred.Deferred<VcsStatusResult, GitManagerServiceError>,
+  ) =>
+    Effect.gen(function* () {
+      refreshFlights.set(cwd, deferred);
+      return yield* refreshStatusCore(cwd, rawCwd);
+    }).pipe(
+      Effect.onExit((exit) =>
+        Effect.gen(function* () {
+          refreshFlights.delete(cwd);
+          if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) {
+            const finishedAt = yield* Clock.currentTimeMillis;
+            recentFailures.set(cwd, {
+              until: finishedAt + VCS_STATUS_FAILED_REFRESH_BACKOFF_MS,
+              exit,
+            });
+          }
+          yield* Deferred.done(deferred, exit);
+        }),
+      ),
+    );
 
   const refreshStatus: VcsStatusBroadcaster["Service"]["refreshStatus"] = Effect.fn(
     "VcsStatusBroadcaster.refreshStatus",
   )(function* (rawCwd) {
     const cwd = yield* withFileSystem(normalizeCwd(rawCwd));
-    const startedAt = yield* Clock.currentTimeMillis;
-    const recent = recentRefreshes.get(cwd);
+    const now = yield* Clock.currentTimeMillis;
+    const recent = recentFailures.get(cwd);
     if (recent !== undefined) {
-      if (startedAt < recent.until) return yield* recent.exit;
-      recentRefreshes.delete(cwd);
+      if (now < recent.until) return yield* recent.exit;
+      recentFailures.delete(cwd);
     }
-    const inFlight = refreshFlights.get(cwd);
-    if (inFlight !== undefined) return yield* Deferred.await(inFlight);
 
-    const deferred = yield* Deferred.make<VcsStatusResult, GitManagerServiceError>();
-    refreshFlights.set(cwd, deferred);
-    return yield* refreshStatusCore(cwd, rawCwd).pipe(
+    const inFlight = refreshFlights.get(cwd);
+    if (inFlight === undefined) {
+      const deferred = yield* Deferred.make<VcsStatusResult, GitManagerServiceError>();
+      return yield* runFlight(cwd, rawCwd, deferred);
+    }
+
+    const trailing = refreshTrailing.get(cwd);
+    if (trailing !== undefined) return yield* Deferred.await(trailing);
+
+    const queued = yield* Deferred.make<VcsStatusResult, GitManagerServiceError>();
+    refreshTrailing.set(cwd, queued);
+    return yield* Deferred.await(inFlight).pipe(
+      Effect.exit,
+      Effect.andThen(() => {
+        refreshTrailing.delete(cwd);
+        return runFlight(cwd, rawCwd, queued);
+      }),
+      // If this caller is interrupted while it waits, release the others.
       Effect.onExit((exit) =>
-        Effect.gen(function* () {
-          const finishedAt = yield* Clock.currentTimeMillis;
-          refreshFlights.delete(cwd);
-          const failed = Exit.isFailure(exit);
-          const interrupted = failed && Cause.hasInterruptsOnly(exit.cause);
-          const slow = finishedAt - startedAt >= VCS_STATUS_SLOW_REFRESH_THRESHOLD_MS;
-          if (!interrupted && (failed || slow)) {
-            recentRefreshes.set(cwd, {
-              until:
-                finishedAt +
-                (slow ? VCS_STATUS_SLOW_REFRESH_BACKOFF_MS : VCS_STATUS_FAILED_REFRESH_BACKOFF_MS),
-              exit,
-            });
-          }
-          yield* Deferred.done(deferred, exit);
+        Effect.suspend(() => {
+          if (refreshTrailing.get(cwd) === queued) refreshTrailing.delete(cwd);
+          return Deferred.done(queued, exit);
         }),
       ),
     );
