@@ -48,7 +48,7 @@ const FRAMEWORK_PORTS: ReadonlyArray<readonly [string, number]> = [
 ];
 
 /** Finds how an ordinary project starts its dev server: its `dev` (else `start`) package script. */
-export function detectDevServer(root: string): GenericDevServer | null {
+function detectDevServer(root: string): GenericDevServer | null {
   let scripts: Record<string, unknown> | undefined;
   try {
     scripts = JSON.parse(NodeFS.readFileSync(NodePath.join(root, "package.json"), "utf8")).scripts;
@@ -121,7 +121,7 @@ function killTree(child: NodeChildProcess.ChildProcess): void {
   }
 }
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const sessions = new Map<string, Session>();
   // A session removes itself on exit, so its last failure is parked here for status().
   const failedExits = new Map<string, DevPreviewState>();
