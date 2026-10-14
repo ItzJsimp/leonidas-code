@@ -465,6 +465,16 @@ export type ClaudeAgentSdkProtocolLogEvent =
       };
     }
   | {
+      readonly direction: "incoming";
+      readonly stage: "decoded";
+      readonly payload: {
+        readonly type: "query.first_message";
+        readonly elapsedMs: number;
+        readonly messageType: SDKMessage["type"];
+        readonly subtype?: string;
+      };
+    }
+  | {
       readonly direction: "outgoing";
       readonly stage: "decoded";
       readonly payload: {
@@ -629,6 +639,7 @@ export const layerQueryRunner: Layer.Layer<
         input: ClaudeAgentSdkQueryOpenInput,
       ) {
         const openedAt = yield* Clock.currentTimeMillis;
+        let firstMessageLogged = false;
         const protocolLogger = makeClaudeAgentSdkProtocolLogger({
           nativeEventLogger,
           threadId: input.threadId,
@@ -742,6 +753,29 @@ export const layerQueryRunner: Layer.Layer<
                 payload: message,
               }),
             ),
+            // The wait from spawn to the first CLI message holds auth, MCP
+            // connects and the skills scan. Store it so a slow start is
+            // attributed from the log instead of guessed.
+            Stream.tap((message) => {
+              if (firstMessageLogged) return Effect.void;
+              firstMessageLogged = true;
+              return Clock.currentTimeMillis.pipe(
+                Effect.flatMap((now) =>
+                  logProtocolEvent({
+                    direction: "incoming",
+                    stage: "decoded",
+                    payload: {
+                      type: "query.first_message",
+                      elapsedMs: now - openedAt,
+                      messageType: message.type,
+                      ...("subtype" in message && typeof message.subtype === "string"
+                        ? { subtype: message.subtype }
+                        : {}),
+                    },
+                  }),
+                ),
+              );
+            }),
           ),
           offer: (message) =>
             Queue.offer(promptQueue, message).pipe(

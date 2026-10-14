@@ -5,6 +5,7 @@ import { ProviderSessionId, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
+import * as Stream from "effect/Stream";
 import { vi } from "vite-plus/test";
 
 import { ProviderEventLoggers } from "@t3tools/provider-core/server/ProviderEventLoggers";
@@ -68,6 +69,65 @@ it.effect("logs successful task stops for replay and omits failed stops", () =>
                   Effect.sync(() => {
                     writes.push(event);
                   }),
+                close: () => Effect.void,
+              },
+              canonical: undefined,
+            }),
+          ),
+        ),
+      ),
+    );
+  }).pipe(Effect.provide(NodeServices.layer)),
+);
+
+it.effect("stores how long the CLI took to send its first message", () =>
+  Effect.gen(function* () {
+    const writes: Array<{
+      readonly event?: {
+        readonly payload?: { readonly type?: string; readonly elapsedMs?: number };
+      };
+    }> = [];
+    const messages = [
+      { type: "system", subtype: "init" },
+      { type: "system", subtype: "status" },
+    ];
+    const query = vi.spyOn(ClaudeSdk, "query").mockReturnValue({
+      next: async () => {
+        const value = messages.shift();
+        return value === undefined ? { done: true, value: undefined } : { done: false, value };
+      },
+    } as unknown as ClaudeSdk.Query);
+    yield* Effect.addFinalizer(() => Effect.sync(() => query.mockRestore()));
+    yield* Effect.gen(function* () {
+      const runner = yield* ClaudeAgentSdkQueryRunner;
+      const session = yield* runner.open({
+        threadId: ThreadId.make("thread-first"),
+        providerSessionId: ProviderSessionId.make("session-first"),
+        options: {
+          sessionId: "native-session-first",
+          model: "claude-sonnet-4-6",
+          tools: [],
+          permissionMode: "default",
+        },
+      });
+      yield* Stream.runDrain(session.messages);
+      const first = writes
+        .map((write) => write.event?.payload)
+        .filter((payload) => payload?.type === "query.first_message");
+      assert.equal(first.length, 1);
+      assert.deepInclude(first[0] as Record<string, unknown>, {
+        messageType: "system",
+        subtype: "init",
+      });
+      assert.isAtLeast(first[0]?.elapsedMs ?? -1, 0);
+    }).pipe(
+      Effect.provide(
+        layerQueryRunner.pipe(
+          Layer.provide(
+            Layer.succeed(ProviderEventLoggers, {
+              native: {
+                filePath: "/tmp/events.log",
+                write: (event) => Effect.sync(() => void writes.push(event as never)),
                 close: () => Effect.void,
               },
               canonical: undefined,
