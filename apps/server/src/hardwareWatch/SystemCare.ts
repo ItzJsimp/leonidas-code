@@ -80,34 +80,86 @@ export function machineSummary(inventory: HardwareInventory): string {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * What an `investigate` agent should look at first, by the part the alert is about.
+ * The prompt layout (Goal, Context, Checks, Output, Done when) follows the prompt-composer skill;
+ * `promptAudit.ts` scores every generated prompt against that rubric in tests, so a wording change
+ * that breaks it fails the build. Edit prompts here, then run the System Care tests.
+ */
+const INVESTIGATE_FOCUS: ReadonlyArray<readonly [prefix: string, check: string]> = [
+  [
+    "cpu",
+    "Top CPU processes now (Get-Process sorted by CPU), recent critical events, the active power plan (powercfg /getactivescheme), and cooling clues in the history.",
+  ],
+  [
+    "gpu",
+    "Processes using the GPU (nvidia-smi), GPU driver version and date, power limit and fan behaviour in the history.",
+  ],
+  [
+    "memory",
+    "Top memory processes (Get-Process sorted by working set), commit charge, and startup apps that load at sign-in.",
+  ],
+  [
+    "volume",
+    "Largest folders on the drive (read-only listing), temp and cache sizes, Recycle Bin size, and what grew fastest in the history.",
+  ],
+  [
+    "drive",
+    "Drive health counters (Get-StorageReliabilityCounter), recent heavy disk activity, and airflow clues in the history.",
+  ],
+];
+
+const CHECKUP_CHECKS = [
+  "Alerts: for each open alert in the snapshot, give the most likely cause.",
+  "Temperatures: CPU, GPU and each drive over the last 24 hours against their limits. Give the peak, when it happened, and the trend against the 7-day and 90-day history.",
+  "Startup and background: top CPU and memory processes and startup entries (Get-Process sorted by CPU and memory, Get-CimInstance Win32_StartupCommand).",
+  "Power plan: powercfg /getactivescheme.",
+  "Drivers: GPU and chipset driver version and date (see MACHINE.md) against the latest available.",
+  "Storage: free space per drive and drive health (Get-PhysicalDisk, Get-StorageReliabilityCounter).",
+  "Windows Update: pending updates, last install date, reboot pending.",
+];
+
 export function buildAgentPrompt(
   kind: HardwarePrepareAgentInput["kind"],
   context: AgentContext,
   incidentPath: string,
 ): string {
   const alert = context.alert;
-  const intro =
-    kind === "investigate" && alert
-      ? [
-          `Leonidas Code's System Care watcher raised a ${alert.severity} alert: ${alert.message}`,
-          `It started at ${new Date(alert.startedAt).toLocaleString()} and peaked at ${Math.round(alert.peak)}${alert.unit === "%" ? "%" : ` ${alert.unit}`}.`,
-          "",
-          "Find out why this is happening and how to fix it.",
-        ]
-      : [
-          "Run a full health checkup of this computer and suggest how to make it faster, cooler and more reliable.",
-          "Cover: startup apps and background programs using a lot of CPU or memory, the power plan, driver age (especially the GPU and chipset), free disk space, drive health, temperatures over the last day, and Windows Update state.",
-        ];
+  const investigating = kind === "investigate" && alert;
+  const goal = investigating
+    ? `Find why this alert fired and how to fix it: ${alert.message} It started at ${new Date(alert.startedAt).toLocaleString()} and peaked at ${Math.round(alert.peak)}${alert.unit === "%" ? "%" : ` ${alert.unit}`}. Work read-only, then propose fixes. Change nothing until I approve each fix.`
+    : "Produce a read-only health checkup of this Windows PC, then a ranked list of fixes that make it faster, cooler and more reliable. Change nothing until I approve each fix.";
+  const checks = investigating
+    ? [
+        "Evidence: read the alert, its readings and its limit in the snapshot, then compare the same metric against the 7-day and 90-day history to show whether this is new or normal.",
+        `Cause: ${INVESTIGATE_FOCUS.find(([prefix]) => alert.metric.startsWith(prefix))?.[1] ?? "Find what changed around the time the alert started."}`,
+        "Context: check the other open alerts and the last 24 hours for readings that moved together with this one.",
+      ]
+    : CHECKUP_CHECKS;
+  const topFixes = investigating ? "3" : "5";
   return [
-    ...intro,
+    `Goal: ${goal}`,
     "",
-    "Follow the rules in AGENTS.md: diagnose read-only first, then propose fixes and wait for my approval before each change.",
+    "Context",
+    "- Rules: read AGENTS.md first. It defines the approve-first protocol and LOG.md.",
+    "- Hardware summary: MACHINE.md",
+    `- Snapshot (current readings, limits, open alerts, last 24 hours): ${incidentPath}`,
+    `- History (NDJSON; minute points for 7 days, hour points for 90 days): ${context.historyDir}`,
     "",
-    `- Hardware summary: MACHINE.md`,
-    `- Snapshot of current readings, limits, open alerts and the last 24 hours: ${incidentPath}`,
-    `- Full history (minute points for 7 days, hour points for 90 days, NDJSON): ${context.historyDir}`,
+    "Checks (read-only; cite the number or file behind every finding)",
+    ...checks.map((check, index) => `${index + 1}. ${check}`),
     "",
-    "Start with a short plain-English read of what the data shows, then your diagnosis steps.",
+    "Output",
+    "1. Plain-English read of what the data shows, 5 sentences at most.",
+    "2. Table: Area | Evidence | Status (ok / watch / fix) | Proposed fix | Risk.",
+    `3. The top ${topFixes} fixes in order. For each: one action, expected gain, how to undo it. Then stop and wait for my yes.`,
+    "",
+    "Done when",
+    investigating
+      ? "- The cause is named with the evidence for it, or marked unknown with the next thing to check."
+      : '- Every check above has a finding, or "no issue" with its evidence.',
+    "- No file, setting or process was modified.",
+    "- After I approve a change and it is made, LOG.md gets one dated entry for it.",
   ].join("\n");
 }
 

@@ -10,6 +10,7 @@ import {
   parseWindowsVolumes,
   type HostBasics,
 } from "./parsers.ts";
+import { auditPrompt } from "./promptAudit.ts";
 import { buildAgentPrompt, machineSummary } from "./SystemCare.ts";
 
 const host: HostBasics = {
@@ -288,7 +289,46 @@ describe("System Care prompts", () => {
       },
       "incidents/x.json",
     );
-    expect(prompt).toContain("wait for my approval before each change");
+    expect(prompt).toContain("wait for my yes");
     expect(prompt).toContain("incidents/x.json");
+  });
+
+  it("keeps every generated prompt at full marks on the prompt-composer rubric", () => {
+    const inventory = parseWindowsInventory(inventoryJson, host, 1);
+    const base = {
+      inventory,
+      sample: null,
+      limits: [],
+      alerts: [],
+      history: { range: "24h" as const, resolutionMs: 1, points: [] },
+      historyDir: "/state/hardware/history",
+    };
+    const alert = (metric: string) => ({
+      id: "a1",
+      metric,
+      label: "Drive F: space used",
+      severity: "warning" as const,
+      unit: "%",
+      value: 91,
+      peak: 92,
+      limit: 90,
+      message: "Drive F: space used is 91%.",
+      startedAt: 0,
+      lastSeenAt: 0,
+      resolvedAt: null,
+      acknowledged: false,
+      threadId: null,
+    });
+    const prompts = [
+      buildAgentPrompt("checkup", { ...base, alert: null }, "incidents/x.json"),
+      ...["cpu.temp", "gpu.0.temp", "memory.load", "volume.F:.used", "drive.0.temp", "other"].map(
+        (metric) =>
+          buildAgentPrompt("investigate", { ...base, alert: alert(metric) }, "incidents/x.json"),
+      ),
+    ];
+    for (const prompt of prompts) {
+      expect(auditPrompt(prompt)).toEqual({ score: 100, failures: [] });
+    }
+    expect(auditPrompt("Be thorough and fix the PC.").score).toBeLessThan(60);
   });
 });
