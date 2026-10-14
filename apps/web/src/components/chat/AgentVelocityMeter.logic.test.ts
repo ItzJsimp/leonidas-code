@@ -6,7 +6,7 @@ import {
   deriveVelocitySummary,
   extractTurnOutputTokens,
   formatCacheHitRate,
-  formatRollingLabel,
+  formatRollingFill,
   formatToolDuration,
   formatToolWait,
   formatTpsLabel,
@@ -305,7 +305,7 @@ describe("AgentVelocityMeter.logic", () => {
       const summary = deriveVelocitySummary([completed, interrupted], []);
       expect(summary.outputTokens).toBe(30);
       expect(summary.averageTurnTps).toBe(10);
-      expect(summary.rolling5Tps).toBeNull();
+      expect(summary.rolling5Tps).toBe(50);
       expect(summary.totalTurnsTracked).toBe(1);
     });
     it("keeps the headline pace and rolling pace on the same turn totals", () => {
@@ -325,8 +325,8 @@ describe("AgentVelocityMeter.logic", () => {
       const summary = deriveVelocitySummary(turns, []);
       expect(summary.averageTurnTps).toBe(140);
       expect(summary.rolling5Tps).toBe(140);
-      expect(summary.rolling10Tps).toBeNull();
-      expect(summary.rolling20Tps).toBeNull();
+      expect(summary.rolling10Tps).toBe(140);
+      expect(summary.rolling20Tps).toBe(140);
     });
     it("does not present one response's context usage as a live turn total", () => {
       const turn = {
@@ -436,10 +436,10 @@ describe("AgentVelocityMeter.logic", () => {
   });
 
   describe("formatting helpers", () => {
-    it("explains a rolling window that is not full yet", () => {
-      expect(formatRollingLabel(null, 10, 3)).toBe("Needs 10 turns (3 so far)");
-      expect(formatRollingLabel(null, 5, 12)).toBe("Needs 5 turns (5 so far)");
-      expect(formatRollingLabel(42.5, 5, 5)).toBe("42.5 t/s");
+    it("labels a rolling window that is not full yet", () => {
+      expect(formatRollingFill(10, 3)).toBe("3 of 10");
+      expect(formatRollingFill(5, 12)).toBe("");
+      expect(formatRollingFill(5, 5)).toBe("");
     });
     it("formats TPS labels cleanly", () => {
       expect(formatTpsLabel(null)).toBe("--");
