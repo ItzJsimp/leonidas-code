@@ -582,3 +582,22 @@ describe("VcsProcess.run", () => {
     }).pipe(provideLive),
   );
 });
+
+describe("vcsSubcommand", () => {
+  it("names the git subcommand after global options", () => {
+    assert.equal(
+      VcsProcess.vcsSubcommand([
+        "-c",
+        "core.fsync=objects",
+        "--git-dir=/tmp/x",
+        "-C",
+        "D:/Leonidas AIOS",
+        "write-tree",
+      ]),
+      "write-tree",
+    );
+    assert.equal(VcsProcess.vcsSubcommand(["status", "--porcelain"]), "status");
+    assert.equal(VcsProcess.vcsSubcommand([]), "unknown");
+    assert.equal(VcsProcess.vcsSubcommand(["-c", "a=b"]), "unknown");
+  });
+});

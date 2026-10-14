@@ -118,12 +118,33 @@ const isTransientGitExit = (stderr: string) =>
   /unable to create [^\n]*\.lock['"]?: file exists/i.test(stderr) ||
   /(?:unable to stat|lstat\(|error: open\()[^\n]+: no such file or directory/i.test(stderr);
 
+// Global options that take the next argument as their value.
+const VCS_OPTIONS_WITH_VALUE = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace"]);
+
+/** The subcommand after global options, so a slow span names what ran. */
+export function vcsSubcommand(args: ReadonlyArray<string>): string {
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index]!;
+    if (VCS_OPTIONS_WITH_VALUE.has(arg)) {
+      index++;
+      continue;
+    }
+    if (!arg.startsWith("-")) return arg;
+  }
+  return "unknown";
+}
+
 export const make = Effect.gen(function* () {
   const processRunner = yield* ProcessRunner.ProcessRunner;
   const vcsProcesses = yield* Semaphore.make(VCS_PROCESS_CONCURRENCY);
   const githubProcesses = yield* Semaphore.make(GITHUB_PROCESS_CONCURRENCY);
 
   const runUnbounded = Effect.fn("VcsProcess.runUnbounded")(function* (input: VcsProcessInput) {
+    yield* Effect.annotateCurrentSpan({
+      "vcs.operation": input.operation,
+      "vcs.command": input.command,
+      "vcs.subcommand": vcsSubcommand(input.args),
+    });
     const baseError = {
       operation: input.operation,
       command: input.command,
