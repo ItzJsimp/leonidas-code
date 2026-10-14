@@ -49,11 +49,30 @@ vi.mock("../../rpc/atomRegistry", () => ({
 }));
 vi.mock("@clerk/react", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: false }) }));
 vi.mock("../../hooks/useTheme", () => ({ mountOnboardingTheme: () => () => {} }));
-vi.mock("../../hooks/useLocalStorage", () => ({ useLocalStorage: () => [false, () => {}] }));
+vi.mock("../../hooks/useLocalStorage", () => ({
+  useLocalStorage: (key: string) => [key === "leonidas:onboarding-goals" ? [] : false, () => {}],
+}));
 vi.mock("../../hooks/useCopyToClipboard", () => ({
   useCopyToClipboard: () => ({ copyToClipboard: vi.fn(), copied: false }),
 }));
-vi.mock("../../cloud/publicConfig", () => ({ hasCloudPublicConfig: () => false }));
+vi.mock("../../cloud/publicConfig", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../cloud/publicConfig")>()),
+  hasCloudPublicConfig: () => false,
+}));
+vi.mock("./LeonidasAiosStep", () => ({
+  LeonidasAiosStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip for now
+    </button>
+  ),
+}));
+vi.mock("./LeonidasSkillsStep", () => ({
+  LeonidasSkillsStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip skills
+    </button>
+  ),
+}));
 vi.mock("../clerk/useT3ConnectAuthPrompt", () => ({ useT3ConnectAuthPrompt: vi.fn() }));
 vi.mock("../../onboarding/firstRun", () => ({
   useCompleteOnboarding: () => state.completeOnboarding,
@@ -125,7 +144,7 @@ vi.mock("../../state/use-atom-command", () => ({
   ) => state[command],
 }));
 vi.mock("../../state/terminal", () => ({ terminalEnvironment: {} }));
-vi.mock("../ThreadTerminalDrawer", () => ({ TerminalViewport: "div" }));
+vi.mock("../TerminalViewport", () => ({ TerminalViewport: "div" }));
 vi.mock("../cloud/CloudEnvironmentConnectList", () => ({ CloudEnvironmentConnectRows: "div" }));
 vi.mock("../settings/ChatGptWelcomeCoordinator", () => ({ ChatGptWelcomeCoordinator: () => null }));
 vi.mock("../settings/CodexSetupSection", () => ({
@@ -228,7 +247,8 @@ async function mountImport(remote = false) {
     );
   });
   await click("Continue");
-  await click("Continue");
+  await click("Continue without an agent");
+  await click("Skip skills");
   expect(text(renderer!.root)).toContain("Import your projects");
 }
 
@@ -278,6 +298,7 @@ it("keeps scanning, choosing and skipping available to a paired read-only enviro
   expect(button("Import 2 projects").props.disabled).toBe(true);
   expect(text(renderer!.root)).toContain(permissionMessage);
   await click("Do not import projects");
+  await click("Skip for now");
   expect(state.createProject).not.toHaveBeenCalled();
   expect(state.importThreads).not.toHaveBeenCalled();
   expect(state.completeOnboarding).toHaveBeenCalledOnce();
@@ -290,6 +311,7 @@ it("waits for the selected grant and enables import when it arrives", async () =
   expect(button("Import 2 projects").props.disabled).toBe(true);
   await act(async () => setGrant(primaryId, true));
   await click("Import 2 projects");
+  await click("Skip for now");
   expect(state.createProject).toHaveBeenCalledTimes(2);
   expect(state.importThreads).toHaveBeenCalledTimes(2);
   expect(state.onDone).toHaveBeenCalledWith(expect.objectContaining({ environmentId: primaryId }));
@@ -315,6 +337,7 @@ it("preserves selections and denies a retained action using the paired environme
   await act(async () => setGrant(remoteId, true));
   expect(text(renderer!.root)).not.toContain(permissionMessage);
   await click("Import 1 project");
+  await click("Skip for now");
   expect(state.createProject).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ environmentId: remoteId }),
   );
@@ -344,6 +367,7 @@ it("rechecks after project creation and can retry its history without recreating
 
   await act(async () => setGrant(primaryId, true));
   await click("Import 2 projects");
+  await click("Skip for now");
   expect(state.createProject).toHaveBeenCalledTimes(2);
   expect(state.importThreads).toHaveBeenCalledTimes(2);
   expect(state.onDone).toHaveBeenCalledOnce();
@@ -379,6 +403,7 @@ it.each([false, true])(
 
     await act(async () => setGrant(primaryId, true));
     await click("Import 2 projects");
+    await click("Skip for now");
     expect(state.createProject).toHaveBeenCalledTimes(existing ? 1 : 2);
     expect(state.importThreads).toHaveBeenCalledTimes(2);
     expect(state.onDone).toHaveBeenCalledOnce();
@@ -399,6 +424,7 @@ it("completes accepted imports when permission is revoked after the final server
     await imported.promise;
   });
   expect(state.createProject).toHaveBeenCalledOnce();
+  await click("Skip for now");
   expect(state.importThreads).toHaveBeenCalledOnce();
   expect(state.completeOnboarding).toHaveBeenCalledOnce();
   expect(state.onDone).toHaveBeenCalledOnce();

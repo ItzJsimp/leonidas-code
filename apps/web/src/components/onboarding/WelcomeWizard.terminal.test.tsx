@@ -104,11 +104,30 @@ vi.mock("../ui/wizard", () => ({
 vi.mock("../ui/scroll-area", () => ({ ScrollArea: "div" }));
 vi.mock("../../onboarding/firstRun", () => ({ useCompleteOnboarding: () => state.complete }));
 vi.mock("../../hooks/useTheme", () => ({ mountOnboardingTheme: () => undefined }));
-vi.mock("../../hooks/useLocalStorage", () => ({ useLocalStorage: () => [false, vi.fn()] }));
+vi.mock("../../hooks/useLocalStorage", () => ({
+  useLocalStorage: (key: string) => [key === "leonidas:onboarding-goals" ? [] : false, vi.fn()],
+}));
 vi.mock("../../hooks/useCopyToClipboard", () => ({
   useCopyToClipboard: () => ({ copyToClipboard: vi.fn(), isCopied: false }),
 }));
-vi.mock("../../cloud/publicConfig", () => ({ hasCloudPublicConfig: () => false }));
+vi.mock("../../cloud/publicConfig", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../cloud/publicConfig")>()),
+  hasCloudPublicConfig: () => false,
+}));
+vi.mock("./LeonidasAiosStep", () => ({
+  LeonidasAiosStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip for now
+    </button>
+  ),
+}));
+vi.mock("./LeonidasSkillsStep", () => ({
+  LeonidasSkillsStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip skills
+    </button>
+  ),
+}));
 vi.mock("../clerk/useT3ConnectAuthPrompt", () => ({ useT3ConnectAuthPrompt: vi.fn() }));
 vi.mock("@clerk/react", () => ({ useAuth: vi.fn() }));
 vi.mock("../../env", () => ({ isElectron: false }));
@@ -127,7 +146,7 @@ vi.mock("../settings/providerStatus", () => ({
 vi.mock("../cloud/CloudEnvironmentConnectList", () => ({
   CloudEnvironmentConnectRows: () => null,
 }));
-vi.mock("../ThreadTerminalDrawer", () => ({
+vi.mock("../TerminalViewport", () => ({
   TerminalViewport: () => <div data-terminal-viewport />,
 }));
 vi.mock("../ui/button", () => ({ Button: "button" }));
@@ -305,6 +324,8 @@ describe("welcome agent terminal setup", () => {
     expect(button("Install").props.disabled).toBe(true);
     expect(button("Sign in").props.disabled).toBe(true);
     expect(text(renderer!.root)).toContain("This connection cannot control terminals.");
+    expect(text(renderer!.root)).toContain("No agent is ready yet.");
+    expect(button("Continue without an agent")).toBeDefined();
     await act(async () => {
       button("Install").props.onClick();
       button("Sign in").props.onClick();
@@ -312,8 +333,10 @@ describe("welcome agent terminal setup", () => {
     expect(state.open).not.toHaveBeenCalled();
     expect(state.write).not.toHaveBeenCalled();
     expect(state.close).not.toHaveBeenCalled();
-    await click("Continue");
+    await click("Continue without an agent");
+    await click("Skip skills");
     await click("Do not import projects");
+    await click("Skip for now");
     expect(state.complete).toHaveBeenCalledOnce();
     expect(state.done).toHaveBeenCalledExactlyOnceWith(undefined);
   });
@@ -381,7 +404,9 @@ describe("welcome agent terminal setup", () => {
         data: "/opt/codex-work login",
       },
     });
-    expect(text(renderer!.root)).toContain("Review the command, then press Enter to run it.");
+    expect(text(renderer!.root)).toContain(
+      "Press Enter to run this command. Nothing runs until you do.",
+    );
   });
 
   it("checks access when a queued retry starts and recovers after regrant", async () => {
@@ -430,7 +455,8 @@ describe("welcome agent terminal setup", () => {
     await click("Close");
     expect(hasViewport()).toBe(false);
     expect(state.close).not.toHaveBeenCalled();
-    await click("Continue");
+    await click("Continue without an agent");
+    await click("Skip skills");
     expect(text(renderer!.root)).toContain("Import your projects");
   });
 
@@ -447,7 +473,9 @@ describe("welcome agent terminal setup", () => {
     expect(state.write).toHaveBeenCalledOnce();
     expect(hasViewport()).toBe(true);
     await act(async () => setAccess(remoteId, true));
-    expect(text(renderer!.root)).toContain("Review the command, then press Enter to run it.");
+    expect(text(renderer!.root)).toContain(
+      "Press Enter to run this command. Nothing runs until you do.",
+    );
     expect(state.open).toHaveBeenCalledOnce();
     expect(state.write).toHaveBeenCalledOnce();
     await act(async () => setAccess(remoteId, false));
@@ -467,6 +495,6 @@ describe("welcome agent terminal setup", () => {
       writing.resolve(AsyncResult.success(undefined));
     });
     expect(state.close).not.toHaveBeenCalled();
-    expect(text(renderer!.root)).toContain("Connect your computers");
+    expect(text(renderer!.root)).toContain("What will you mostly use it for");
   });
 });

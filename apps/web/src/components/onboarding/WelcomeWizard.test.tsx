@@ -52,7 +52,10 @@ vi.mock("../../state/server", () => ({
     refreshProviders: "refresh",
   },
 }));
-vi.mock("@effect/atom-react", () => ({ useAtomValue: (value: unknown) => value }));
+vi.mock("@effect/atom-react", async () => ({
+  useAtomValue: (value: unknown) => value,
+  RegistryContext: (await import("react")).createContext(null),
+}));
 vi.mock("../../onboarding/useProjectScans", () => ({
   useProjectScans: () => [
     {
@@ -79,8 +82,25 @@ vi.mock("../../onboarding/useProjectScans", () => ({
 vi.mock("../../connection/onboarding", () => ({ connectPairing: vi.fn() }));
 vi.mock("../../state/terminal", () => ({ terminalEnvironment: {} }));
 vi.mock("../clerk/useT3ConnectAuthPrompt", () => ({ useT3ConnectAuthPrompt: vi.fn() }));
-vi.mock("../../cloud/publicConfig", () => ({ hasCloudPublicConfig: () => false }));
-vi.mock("../ThreadTerminalDrawer", () => ({ TerminalViewport: () => null }));
+vi.mock("../../cloud/publicConfig", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../cloud/publicConfig")>()),
+  hasCloudPublicConfig: () => false,
+}));
+vi.mock("./LeonidasAiosStep", () => ({
+  LeonidasAiosStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip for now
+    </button>
+  ),
+}));
+vi.mock("./LeonidasSkillsStep", () => ({
+  LeonidasSkillsStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip skills
+    </button>
+  ),
+}));
+vi.mock("../TerminalViewport", () => ({ TerminalViewport: () => null }));
 vi.mock("../settings/ChatGptWelcomeCoordinator", () => ({ ChatGptWelcomeCoordinator: () => null }));
 vi.mock("../settings/CodexSetupSection", () => ({
   CodexSetupSection: () => null,
@@ -145,8 +165,10 @@ it("enters the workspace after a partial import and warns after navigation finis
   const onDone = vi.fn(() => navigation);
   await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
   await click("Continue");
-  await click("Continue");
+  await click("Continue without an agent");
+  await click("Skip skills");
   await click("Import 1 project");
+  await click("Skip for now");
   expect(onDone).toHaveBeenCalledWith({
     environmentId: EnvironmentId.make("test-env"),
     projectId: ProjectId.make("test-project"),
@@ -180,8 +202,10 @@ it.each([
     const onDone = vi.fn();
     await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
     await click("Continue");
-    await click("Continue");
+    await click("Continue without an agent");
+    await click("Skip skills");
     await click("Import 1 project");
+    await click("Skip for now");
     expect(onDone).toHaveBeenCalledOnce();
     if (warning === null && importedCount > 0) {
       expect(mocks.toast).toHaveBeenCalledWith({
@@ -203,13 +227,15 @@ it("keeps setup open when saving completion fails and preserves the import warni
   const onDone = vi.fn();
   await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
   await click("Continue");
-  await click("Continue");
+  await click("Continue without an agent");
+  await click("Skip skills");
   await click("Import 1 project");
+  await click("Skip for now");
   expect(onDone).not.toHaveBeenCalled();
   expect(mocks.toast).toHaveBeenCalledWith(
     expect.objectContaining({ type: "error", title: "Could not finish setup" }),
   );
-  await click("Do not import projects");
+  await click("Skip for now");
   expect(onDone).toHaveBeenCalledOnce();
   expect(mocks.importThreads).toHaveBeenCalledOnce();
   expect(mocks.toast).toHaveBeenLastCalledWith(
