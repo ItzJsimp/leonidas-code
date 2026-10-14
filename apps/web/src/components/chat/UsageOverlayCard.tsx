@@ -11,6 +11,7 @@ import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 
 import { useConnectedUsageAccounts } from "../../hooks/useConnectedUsageAccounts";
+import { type LimitView, useLimitView } from "../../hooks/useLimitView";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useUpdateClientSettings } from "../../hooks/useSettings";
 import { connectedBenchmarkCandidates } from "../../lib/modelBenchmarks";
@@ -43,6 +44,7 @@ type Account = UsageLimitsReport["accounts"][number];
 const LIMITS_REFRESH_MS = 5 * 60_000;
 
 const MAX_CONTEXT_SEGMENTS = 3;
+
 
 function titleOf(account: Account): string {
   return accountTitle(
@@ -107,10 +109,12 @@ function AccountLimits({
   account,
   active,
   now,
+  view,
 }: {
   readonly account: Account;
   readonly active: boolean;
   readonly now: number;
+  readonly view: LimitView;
 }) {
   const title = titleOf(account);
   const rows = glanceLimitRows(account.limits.windows);
@@ -149,7 +153,7 @@ function AccountLimits({
               );
             }
             const countdown = formatResetCountdown(row.window.resetsAt, now, true);
-            const leftText = percentText(row.window.usedPercent, "left");
+            const leftText = percentText(row.window.usedPercent, view);
             return (
               <div key={row.key} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-2xs">
@@ -159,6 +163,7 @@ function AccountLimits({
                   </span>
                 </div>
                 <UsageBar
+                  fill={view}
                   usedPercent={row.window.usedPercent}
                   label={`${row.label}: ${leftText}`}
                   className="h-1"
@@ -203,6 +208,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const updateSettings = useUpdateClientSettings();
   const { active, others } = useConnectedUsageAccounts(environmentId, instanceId);
   const [expanded, setExpanded] = useState(false);
+  const [view, toggleView] = useLimitView();
   const minute = useNowMinute();
   const now = Date.parse(`${minute}:00Z`);
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
@@ -351,6 +357,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
                 account={account}
                 active={activeIds.has(account.id)}
                 now={now}
+                view={view}
               />
             ))}
           </div>
@@ -384,6 +391,14 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
           >
             Full usage overview
+          </button>
+          <button
+            type="button"
+            onClick={toggleView}
+            aria-label={`Showing percent ${view}. Switch to percent ${view === "used" ? "left" : "used"}`}
+            className="ms-auto me-1 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Show {view === "used" ? "% left" : "% used"}
           </button>
           <Button
             size="icon-xs"

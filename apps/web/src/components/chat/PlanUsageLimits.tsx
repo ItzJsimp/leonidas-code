@@ -4,6 +4,7 @@ import { limitsNotice } from "@t3tools/shared/usageLimits";
 import { ChevronRightIcon, InfoIcon } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
 
+import { limitText, useLimitView } from "../../hooks/useLimitView";
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { ensureLocalApi } from "../../localApi";
 import type { ContextWindowSnapshot } from "../../lib/contextWindow";
@@ -166,6 +167,7 @@ function PlanWindowRow({
   readonly now: number;
   readonly formatAt: (at: number) => string;
 }) {
+  const [view] = useLimitView();
   const label = planWindowLabel(window);
   const used = usedPercentLabel(window.usedPercent);
   const resets = formatResetLabel(window.resetsAt, now, formatAt);
@@ -174,10 +176,11 @@ function PlanWindowRow({
       <div className="flex min-w-0 items-baseline justify-between gap-3 text-sm">
         <span className="min-w-0 break-words font-medium text-foreground">{label}</span>
         <span className="shrink-0 font-semibold tabular-nums text-foreground">
-          {100 - used}% left
+          {limitText(window.usedPercent, view)}
         </span>
       </div>
       <UsageBar
+        fill={view}
         usedPercent={window.usedPercent}
         label={`${label}: ${used}% used${resets ? `, ${resets.toLowerCase()}` : ""}`}
       />
