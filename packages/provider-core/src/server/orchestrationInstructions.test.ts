@@ -1,6 +1,9 @@
 import { assert, describe, it } from "@effect/vitest";
 
+import { LEONIDAS_OUTPUT_STANDARD } from "./outputStandard.ts";
 import {
+  T3_ACP_FALLBACK_INSTRUCTIONS,
+  T3_CODE_BROWSER_TOOL_INSTRUCTIONS,
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
   t3AcpPromptWithInstructions,
   t3OrchestrationPromptForFirstRun,
@@ -141,5 +144,28 @@ describe("T3 orchestration provider instructions", () => {
     assert.include(withoutMcp, "Leonidas Code interaction mode: Default");
     assert.notInclude(withoutMcp, "Leonidas Code collaborative browser");
     assert.notInclude(withoutMcp, "Leonidas Code orchestration");
+  });
+});
+
+describe("injected instruction budget", () => {
+  const blocks = [
+    T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+    T3_CODE_BROWSER_TOOL_INSTRUCTIONS,
+    T3_ACP_FALLBACK_INSTRUCTIONS,
+    LEONIDAS_OUTPUT_STANDARD,
+  ];
+
+  it("never repeats a heading", () => {
+    const headings = blocks.flatMap((block) => block.match(/^#{2,4} .+$/gm) ?? []);
+    assert.deepStrictEqual(
+      headings.filter((heading, index) => headings.indexOf(heading) !== index),
+      [],
+    );
+  });
+
+  // Ratchet: every turn pays for this text. Lower the cap when you trim; raise it only on purpose.
+  it("stays inside the character budget", () => {
+    const total = blocks.reduce((sum, block) => sum + block.length, 0);
+    assert.isAtMost(total, 14_903);
   });
 });
