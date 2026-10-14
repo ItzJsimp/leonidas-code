@@ -19,7 +19,7 @@ export function formatBytes(bytes: number | null | undefined, digits = 1): strin
   return `${value.toFixed(unit === 0 ? 0 : digits)} ${units[unit]}`;
 }
 
-export const formatRate = (bytesPerSec: number | null | undefined) =>
+const formatRate = (bytesPerSec: number | null | undefined) =>
   bytesPerSec === null || bytesPerSec === undefined ? "—" : `${formatBytes(bytesPerSec)}/s`;
 
 export function formatValue(value: number | null | undefined, unit: string): string {
@@ -193,7 +193,7 @@ export const RANGE_LABEL = {
 } as const;
 
 /** Whole-number step for a limit stepper, and the bounds it may be moved within. */
-export function limitBounds(unit: string): { step: number; min: number; max: number } {
+function limitBounds(unit: string): { step: number; min: number; max: number } {
   if (unit === "%") return { step: 5, min: 10, max: 100 };
   if (unit === "°C") return { step: 1, min: 20, max: 120 };
   return { step: 1, min: 0, max: 1000 };
