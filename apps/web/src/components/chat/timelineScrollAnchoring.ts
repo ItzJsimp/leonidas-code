@@ -161,8 +161,12 @@ export interface RememberedTimelinePosition {
 // Scoped thread keys keep separate environments independent. Bound the session cache.
 const rememberedTimelinePositions = new Map<string, RememberedTimelinePosition>();
 
-export function readTimelinePosition(threadKey: string) {
-  return rememberedTimelinePositions.get(threadKey);
+// Opening a thread always lands on its latest message. Only the disclosure state
+// is restored; a remembered mid-list position (often a transient top-of-list
+// scroll captured while the list was still loading) must never win over the end.
+export function readTimelinePosition(threadKey: string): RememberedTimelinePosition | undefined {
+  const position = rememberedTimelinePositions.get(threadKey);
+  return position && !position.atEnd ? { ...position, atEnd: true } : position;
 }
 
 export function rememberTimelinePosition(threadKey: string, position: RememberedTimelinePosition) {
