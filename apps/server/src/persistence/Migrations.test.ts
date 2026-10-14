@@ -118,6 +118,46 @@ describe("runMigrations", () => {
     }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );
 
+  it.effect("upgrades a Leonidas database that recorded 61_SavedItems", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* runMigrations({ toMigrationInclusive: 61 });
+
+      assert.deepStrictEqual(yield* runMigrations(), [
+        [62, "PullRequestReviewGuides"],
+        [63, "ThreadFailureLookupIndex"],
+      ]);
+      assert.deepStrictEqual(yield* history, migrationManifest);
+      const created = yield* sql<{ readonly name: string }>`
+        SELECT name FROM sqlite_master
+        WHERE name IN ('projection_saved_items', 'pull_request_review_guides')
+        ORDER BY name
+      `;
+      assert.deepStrictEqual(
+        created.map((row) => row.name),
+        ["projection_saved_items", "pull_request_review_guides"],
+      );
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+  );
+
+  it.effect("refuses an upstream T3 database that recorded its own 61", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* runMigrations({ toMigrationInclusive: 60 });
+      yield* sql`
+        INSERT INTO effect_sql_migrations (migration_id, name)
+        VALUES (61, 'PullRequestReviewGuides'), (62, 'ThreadFailureLookupIndex')
+      `;
+      const before = yield* history;
+
+      const exit = yield* Effect.exit(runMigrations());
+
+      assert.isTrue(Exit.isFailure(exit));
+      assert.include(String(exit), "61_SavedItems (recorded: PullRequestReviewGuides)");
+      assert.deepStrictEqual(yield* history, before);
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+  );
+
   it.effect("still starts after a newer build recorded a later V2 migration", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
