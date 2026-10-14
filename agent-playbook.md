@@ -12,7 +12,7 @@ verified: 2026-10-11
 
 ## 1. Start here (under 5 calls)
 
-1. Read [`project/plan.md`](./project/plan.md), [`LEONIDAS.md`](./LEONIDAS.md) (the shared brief Mob's agent also reads; keep its roadmap and status log in step with the task cards) and the open cards listed in [`project.md`](./project.md).
+1. Read [`project/plan.md`](./project/plan.md), [`LEONIDAS.md`](./LEONIDAS.md) (the shared brief every builder's agent reads; keep its roadmap and status log in step with the task cards) and the open cards listed in [`project.md`](./project.md).
 2. Fork state: `git fetch -q upstream; git rev-list --left-right --count upstream/main...main`.
 3. Open only the files the task names, using the map below. The source is this folder.
 
@@ -43,7 +43,7 @@ verified: 2026-10-11
 ## 5. Gotchas already paid for
 
 - **The popup bullets are the GitHub release body:** `scripts/leonidas-release.ts` writes `notes.md`: up to 5 highlight `- ` bullets (`Release-Note:` trailers first, then cleaned subjects of commits without one; internal `ci/chore/refactor/test/docs/style/sync` subjects are skipped), an optional `## Details` list (overflow plus `Release-Detail:` trailers) and a last `<!-- leonidas-release {...} -->` metadata line (commit, authors, coAuthors). Wording standard: the leonidas-release skill. `apps/desktop/src/updates/releaseNotes.ts` stops reading at the `## Details` heading, so the popup shows highlights only (fixed in v0.9.0); it still reverses the list and keeps 8, so highlight order in the popup is unchecked live. No notes means the old toast shows. Notes cover only the newest release, so skipped versions are not listed. The "Read more" links point at `ItzJsimp/leonidas-code` releases (`DESKTOP_RELEASE_HISTORY_URL` in `desktopUpdate.logic.ts`, asserted in 3 test files).
-- **Test the popup any time:** Settings > About > "What's new popup" > Preview opens it with the latest published release's bullets and no install buttons (`desktop/whatsNewPreview.ts`). Every push to `main` ships to Mob through the same release feed.
+- **Test the popup any time:** Settings > About > "What's new popup" > Preview opens it with the latest published release's bullets and no install buttons (`desktop/whatsNewPreview.ts`). Every push to `main` ships to the other machine through the same release feed.
 - **No `vp` on PATH:** run `node_modules/.bin/vp test run <files>` and `node_modules/.bin/tsc --noEmit -p .` from `apps/web`.
 
 - **Identity link needs a manual approval:** `CLAUDE.local.md` in the repo imports the user's AIOS, but external imports stay silently unloaded until `claude` is run once in the folder and the dialog is approved (per path, so redo after a rename). Escape spaces as `\ ` in `@` paths. Standard: [`project-standard.md`](../../standards/project-standard.md) section 9.

@@ -1,6 +1,6 @@
 # Leonidas Code: Agent Operating Standard
 
-> **Leonidas Code:** this repo is Leonidas Code, Jake and Mob's own product forked from T3 Code (MIT, `pingdotgg/t3code`). Read [LEONIDAS.md](./LEONIDAS.md) first. The T3 Code text below is upstream's engineering guide; its code rules apply, its product claims describe T3, not us.
+> **Leonidas Code:** this repo is Leonidas Code, the Leonidas team's own product forked from T3 Code (MIT, `pingdotgg/t3code`). Read [LEONIDAS.md](./LEONIDAS.md) first. The T3 Code text below is upstream's engineering guide; its code rules apply, its product claims describe T3, not us.
 
 ## Performance gate
 
@@ -177,7 +177,7 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 
 ## Leonidas fork
 
-This is the Jake and Mob fork. Read [LEONIDAS.md](./LEONIDAS.md) first: roadmap, working rules and status log.
+This is the Leonidas fork. Read [LEONIDAS.md](./LEONIDAS.md) first: roadmap, working rules and status log.
 
 @LEONIDAS.md
 

@@ -47,13 +47,17 @@ export function ScribeTeamFeedDialog({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Scribe Team Dictation Feed</DialogTitle>
-            <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
+            <Badge
+              variant="outline"
+              className="gap-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]"
+            >
               <RadioIcon className="size-2.5 animate-pulse" />
               Live Sync (10s)
             </Badge>
           </div>
           <DialogDescription>
-            Collaborative voice stream for Jake and Mob. Transcripts broadcasted by team members sync here automatically.
+            Collaborative voice stream for your team. Transcripts broadcasted by team members sync
+            here automatically.
           </DialogDescription>
         </DialogHeader>
 
@@ -83,9 +87,7 @@ export function ScribeTeamFeedPanel() {
             </Button>
           }
         />
-        <TooltipPopup side="bottom">
-          Scribe Collaborative Feed: Jake &amp; Mob stream
-        </TooltipPopup>
+        <TooltipPopup side="bottom">Scribe Collaborative Feed</TooltipPopup>
       </Tooltip>
 
       <ScribeTeamFeedDialog open={open} onOpenChange={setOpen} />
@@ -105,8 +107,8 @@ function FeedContents() {
   // Form state
   const [author, setAuthor] = useState(() => {
     return typeof window !== "undefined"
-      ? localStorage.getItem("leonidas_scribe_author") ?? "Jake"
-      : "Jake";
+      ? (localStorage.getItem("leonidas_scribe_author") ?? "")
+      : "";
   });
   const [text, setText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,7 +133,11 @@ function FeedContents() {
 
   const handleCopyCliCommand = async () => {
     if (!text.trim()) return;
-    const command = buildGhBroadcastCommand({ author, text: text.trim(), app: "Leonidas Code" });
+    const command = buildGhBroadcastCommand({
+      author: author.trim() || "Me",
+      text: text.trim(),
+      app: "Leonidas Code",
+    });
     try {
       await navigator.clipboard.writeText(command);
       setCopiedCli(true);
@@ -149,17 +155,23 @@ function FeedContents() {
     setIsSubmitting(true);
     setBroadcastFeedback(null);
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("leonidas_github_token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("leonidas_github_token") : null;
 
     if (!token) {
       // Prompt user or copy CLI command fallback
       handleCopyCliCommand();
-      setBroadcastFeedback("Copied gh command to clipboard! (Set a GitHub PAT in settings or paste in terminal to publish)");
+      setBroadcastFeedback(
+        "Copied gh command to clipboard! (Set a GitHub PAT in settings or paste in terminal to publish)",
+      );
       setIsSubmitting(false);
       return;
     }
 
-    const res = await broadcastComment({ author, text: text.trim(), app: "Leonidas Code" }, token);
+    const res = await broadcastComment(
+      { author: author.trim() || "Me", text: text.trim(), app: "Leonidas Code" },
+      token,
+    );
     setIsSubmitting(false);
 
     if (res.ok) {
@@ -195,7 +207,11 @@ function FeedContents() {
           >
             <PlusIcon className="size-3" />
             <span>{showBroadcastForm ? "Hide Form" : "Add Broadcast"}</span>
-            {showBroadcastForm ? <ChevronUpIcon className="size-3 ml-0.5" /> : <ChevronDownIcon className="size-3 ml-0.5" />}
+            {showBroadcastForm ? (
+              <ChevronUpIcon className="size-3 ml-0.5" />
+            ) : (
+              <ChevronDownIcon className="size-3 ml-0.5" />
+            )}
           </Button>
 
           <Tooltip>
@@ -209,12 +225,16 @@ function FeedContents() {
                   disabled={loading}
                   aria-label="Refresh feed"
                 >
-                  <RefreshCwIcon className={`size-3.5 ${loading ? "animate-spin text-primary" : ""}`} />
+                  <RefreshCwIcon
+                    className={`size-3.5 ${loading ? "animate-spin text-primary" : ""}`}
+                  />
                 </Button>
               }
             />
             <TooltipPopup side="top">
-              {lastRefreshedAt ? `Last checked ${new Date(lastRefreshedAt).toLocaleTimeString()}` : "Refresh feed"}
+              {lastRefreshedAt
+                ? `Last checked ${new Date(lastRefreshedAt).toLocaleTimeString()}`
+                : "Refresh feed"}
             </TooltipPopup>
           </Tooltip>
         </div>
@@ -236,37 +256,19 @@ function FeedContents() {
               New Voice / Text Broadcast
             </span>
 
-            {/* Author selector pills */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setAuthor("Jake")}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border transition-all ${
-                  author === "Jake"
-                    ? "bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-xs"
-                    : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"
-                }`}
-              >
-                &bull; Jake
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthor("Mob")}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border transition-all ${
-                  author === "Mob"
-                    ? "bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-xs"
-                    : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"
-                }`}
-              >
-                &bull; Mob
-              </button>
-            </div>
+            <input
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="Your name"
+              aria-label="Your name"
+              className="w-28 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px]"
+            />
           </div>
 
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Type a test transcript or dictation note from ${author}...`}
+            placeholder={`Type a test transcript or dictation note from ${author || "you"}...`}
             className="text-xs min-h-16"
             size="sm"
           />
@@ -312,9 +314,7 @@ function FeedContents() {
           </div>
 
           {broadcastFeedback ? (
-            <p className="text-[11px] text-primary/90 mt-0.5 animate-fadeIn">
-              {broadcastFeedback}
-            </p>
+            <p className="text-[11px] text-primary/90 mt-0.5 animate-fadeIn">{broadcastFeedback}</p>
           ) : null}
         </form>
       ) : null}
@@ -335,9 +335,6 @@ function FeedContents() {
           </div>
         ) : (
           items.map((item) => {
-            const isMob = item.author.toLowerCase().includes("mob");
-            const isJake = item.author.toLowerCase().includes("jake") || item.author.toLowerCase().includes("itzjsimp");
-
             return (
               <div
                 key={item.id}
@@ -345,15 +342,7 @@ function FeedContents() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
-                        isMob
-                          ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
-                          : isJake
-                            ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-                            : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                      }`}
-                    >
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
                       &bull; {item.author}
                     </span>
                     {item.app ? (
@@ -364,7 +353,10 @@ function FeedContents() {
                   </div>
 
                   <span className="text-[11px] text-muted-foreground">
-                    {new Date(item.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    {new Date(item.createdAt).toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
 

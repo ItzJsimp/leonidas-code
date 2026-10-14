@@ -78,10 +78,13 @@ def detect_project_context(workspace, store_root=None):
     return None
 
 
+SHARED_LANES = {"", "agent", "leonidas", "draft", "grill", "shared"}
+
+
 def detect_user(explicit_user=None):
     """Explicit canon identity wins; account names are only fallback hints."""
     value = (explicit_user or os.environ.get("USERNAME") or os.environ.get("USER") or "user").lower().strip()
-    aliases = {"jacob": "jake", "itzjsimp": "jake", "seth": "mob", "seth moncada": "mob"}
+    aliases = {"jacob": "jake", "itzjsimp": "jake"}
     return aliases.get(value, value)
 
 
@@ -212,25 +215,13 @@ def score_task(task, user="user", energy="all", focus="all"):
     owner = task["owner"].lower()
     text = (task["name"] + " " + task["why"]).lower()
 
-    if lane in {"jake", "mob"} and lane != user:
+    # Another person's personal lane is never recommended; shared lanes are open to everyone.
+    if lane not in SHARED_LANES and lane != user:
         return -9999
     if lane == user or owner == user:
         score += 60
-
-    if user == "mob":
-        if lane == "jake":
-            return -9999
-        if lane == "mob" or owner == "mob":
-            score += 60
-        if lane in ["leonidas", "agent", "draft"]:
-            score += 15
-    elif user == "jake":
-        if lane == "mob" or owner == "mob":
-            return -9999
-        if lane == "jake" or owner == "leonidas":
-            score += 50
-        if lane in ["grill", "leonidas"]:
-            score += 25
+    if lane in ("leonidas", "agent", "draft", "grill"):
+        score += 15
 
     prio = task["priority"].lower()
     if "critical" in prio or "urgent" in prio:
@@ -286,7 +277,7 @@ def assign_execution_route(task):
     is_auto = task["autonomous"]
     title = task["name"].lower()
 
-    if is_auto and task.get("start_here") and task.get("done_when") and task.get("lane", "").lower() not in {"jake", "mob", "grill"}:
+    if is_auto and task.get("start_here") and task.get("done_when") and task.get("lane", "").lower() in SHARED_LANES - {"grill"}:
         return {
             "route": "subagent",
             "badge": "🟣 Subagent-Ready",
@@ -447,7 +438,7 @@ def main():
     parser.add_argument("--rank", action="store_true", help="Rank and route top candidate tasks")
     parser.add_argument("--energy", default="all", choices=["all", "low", "medium", "high"])
     parser.add_argument("--focus", default="all", choices=["all", "code", "arch", "review"])
-    parser.add_argument("--user", help="Explicit user (e.g. mob, jake)")
+    parser.add_argument("--user", help="Explicit user (your name)")
     parser.add_argument("--project", help="Explicit project name")
     parser.add_argument("--draft-prompt", type=int, help="Output prompt composer draft for task 1-5")
     args = parser.parse_args()

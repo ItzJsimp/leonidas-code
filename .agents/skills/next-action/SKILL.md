@@ -10,7 +10,7 @@ distribution: core
 
 Find the real task store for the current project and operator, conduct quick interactive intake, rank the top 5 concrete actions, and route each to its optimal execution path (in-chat execution, fresh session prompt via prompt-composer, or autonomous subagents).
 
-Works in any AIOS (Leonidas AIOS, Mob / SimplyGersi AIOS) or standalone project repository (such as `leonidas-code`).
+Works in any AIOS (any Leonidas AIOS) or standalone project repository (such as `leonidas-code`).
 
 ---
 
@@ -28,8 +28,7 @@ python <skill-folder>/scripts/resolve_tasks.py --workspace <workspace> --rank
    - For `leonidas-code` (standalone clone or within an AIOS `projects/leonidas-code` directory): prioritizes tasks belonging to `leonidas-code`.
    - Resolves generated project views, handles symlinks, and falls back to parent AIOS task stores if symlinks are unlinked or in separate checkouts.
 2. **Operator Awareness**: Automatically identifies the active user:
-   - **Mob (Seth Moncada)**: Prioritizes tasks in Mob's lane (`lane: mob`, `owner: mob`), tasks mentioning Mob or Seth, and unassigned project work (`lane: agent`, `lane: leonidas`), while filtering out Jake's personal lane.
-   - **Jake (Jacob / Leonidas)**: Prioritizes Jake's lane (`lane: jake`, `owner: leonidas`), high-priority architectural work, and core pipeline items.
+   - **Operator lane**: Prioritizes tasks whose `lane` or `owner` matches the active user, plus unassigned project work (`lane: agent`, `lane: leonidas`), and hides other people's personal lanes.
 3. **Cache & Fallback**: Validates cached store path in `.agents/next-action.json`. If Python is unavailable, uses the documented filesystem fallback.
 
 ---
