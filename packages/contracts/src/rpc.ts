@@ -44,6 +44,22 @@ import {
   TaskBoardAiosDetectInput,
   TaskBoardAiosDetectResult,
 } from "./taskBoard.ts";
+import {
+  HardwareAcknowledgeAlertInput,
+  HardwareAlert,
+  HardwareHistory,
+  HardwareHistoryInput,
+  HardwareInventory,
+  HardwareInventoryInput,
+  HardwareLimitsResult,
+  HardwareLiveEvent,
+  HardwareSetDeepSensorsInput,
+  HardwareSetLimitInput,
+  HardwareStartAgentInput,
+  HardwareStartAgentResult,
+  HardwareWatchError,
+  HardwareWatchStatus,
+} from "./hardwareWatch.ts";
 import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
 import * as Schema from "effect/Schema";
 import {
@@ -456,6 +472,13 @@ export const WS_METHODS = {
   taskBoardShare: "taskBoard.share",
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
+  hardwareGetInventory: "hardware.getInventory",
+  hardwareGetHistory: "hardware.getHistory",
+  hardwareGetLimits: "hardware.getLimits",
+  hardwareSetLimit: "hardware.setLimit",
+  hardwareAcknowledgeAlert: "hardware.acknowledgeAlert",
+  hardwareSetDeepSensors: "hardware.setDeepSensors",
+  hardwareStartAgent: "hardware.startAgent",
   inboxDrop: "inbox.drop",
   inboxUndo: "inbox.undo",
   devPreviewStatus: "devPreview.status",
@@ -687,6 +710,7 @@ export const WS_METHODS = {
   subscribeAuthAccess: "subscribeAuthAccess",
   subscribeBackgroundPolicy: "subscribeBackgroundPolicy",
   subscribeResourceTelemetry: "subscribeResourceTelemetry",
+  subscribeHardware: "subscribeHardware",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -1428,6 +1452,58 @@ const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const HardwareRpcError = Schema.Union([HardwareWatchError, EnvironmentAuthorizationError]);
+
+const WsHardwareGetInventoryRpc = Rpc.make(WS_METHODS.hardwareGetInventory, {
+  payload: HardwareInventoryInput,
+  success: HardwareInventory,
+  error: HardwareRpcError,
+});
+
+const WsHardwareGetHistoryRpc = Rpc.make(WS_METHODS.hardwareGetHistory, {
+  payload: HardwareHistoryInput,
+  success: HardwareHistory,
+  error: HardwareRpcError,
+});
+
+const WsHardwareGetLimitsRpc = Rpc.make(WS_METHODS.hardwareGetLimits, {
+  payload: Schema.Struct({}),
+  success: HardwareLimitsResult,
+  error: HardwareRpcError,
+});
+
+const WsHardwareSetLimitRpc = Rpc.make(WS_METHODS.hardwareSetLimit, {
+  payload: HardwareSetLimitInput,
+  success: HardwareLimitsResult,
+  error: HardwareRpcError,
+});
+
+const WsHardwareAcknowledgeAlertRpc = Rpc.make(WS_METHODS.hardwareAcknowledgeAlert, {
+  payload: HardwareAcknowledgeAlertInput,
+  success: HardwareAlert,
+  error: HardwareRpcError,
+});
+
+const WsHardwareSetDeepSensorsRpc = Rpc.make(WS_METHODS.hardwareSetDeepSensors, {
+  payload: HardwareSetDeepSensorsInput,
+  success: HardwareWatchStatus,
+  error: HardwareRpcError,
+});
+
+const WsHardwareStartAgentRpc = Rpc.make(WS_METHODS.hardwareStartAgent, {
+  payload: HardwareStartAgentInput,
+  success: HardwareStartAgentResult,
+  error: HardwareRpcError,
+});
+
+/** Status and alerts; `live` adds samples and raises sampling to once a second while subscribed. */
+const WsSubscribeHardwareRpc = Rpc.make(WS_METHODS.subscribeHardware, {
+  payload: Schema.Struct({ live: Schema.Boolean }),
+  success: HardwareLiveEvent,
+  error: EnvironmentAuthorizationError,
+  stream: true,
 });
 
 const WsProjectsPromptCandidatesRpc = Rpc.make(WS_METHODS.projectsPromptCandidates, {
@@ -2345,6 +2421,14 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardShareRpc,
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
+  WsHardwareGetInventoryRpc,
+  WsHardwareGetHistoryRpc,
+  WsHardwareGetLimitsRpc,
+  WsHardwareSetLimitRpc,
+  WsHardwareAcknowledgeAlertRpc,
+  WsHardwareSetDeepSensorsRpc,
+  WsHardwareStartAgentRpc,
+  WsSubscribeHardwareRpc,
   WsInboxDropRpc,
   WsInboxUndoRpc,
   WsDevPreviewStatusRpc,

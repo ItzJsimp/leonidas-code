@@ -275,6 +275,10 @@
       "types": "./src/composerInlineTokens.ts",
       "import": "./src/composerInlineTokens.ts"
     },
+    "./hardwareWatch": {
+      "types": "./src/hardwareWatch.ts",
+      "import": "./src/hardwareWatch.ts"
+    },
     "./skillExpansion": {
       "types": "./src/skillExpansion.ts",
       "import": "./src/skillExpansion.ts"

@@ -65,6 +65,7 @@ export * from "./scheduledTask.ts";
 export * from "./worktreeMcp.ts";
 export * from "./resourceTelemetry.ts";
 export * from "./taskBoard.ts";
+export * from "./hardwareWatch.ts";
 export * from "./savedItem.ts";
 export * from "./devPreview.ts";
 export * from "./rpc.ts";
