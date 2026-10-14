@@ -32,6 +32,8 @@ Moved out of [agent-playbook.md](../agent-playbook.md) so it is not loaded every
 
 ## Session notes (newest first, keep 10, older in session-notes-archive.md)
 
+- **2026-10-14 (token efficiency slices 1 to 5):** context-audit script, on-demand docs, turn ledger and cache meter in the token counter. Traps found: `node_modules/.bin` can vanish while another agent reinstalls, so put `node_modules/vite-plus/bin` on PATH before committing (the pre-commit hook needs `vp`); `python3` heredocs hang in this shell, use `node -e`; recursive grep over the repo root hits node_modules and times out, use `git grep`. Resume from `handoff-docs/2026-10-14-token-efficiency-slices.md`.
+
 - **2026-10-12 (Leonidas pet, slices 1 to 3):** petdex-format pet (192x208 cells, 9 state rows, MIT code) is committed locally on `feat/leonidas-pet` in worktree `C:/lcw/pet` (`154503bbca`, `1ef7f2bd77`, `e053a4e609`): atlas core, flagged canvas player with `petEnabled` setting, activity-to-state mapping, walk and bubble. 9 pet tests pass; not seen in a client yet and not pushed. Worktrees on D: stall for 10+ minutes, use `C:/lcw`. Resume from `handoff-docs/2026-10-12-leonidas-pet-slice-4.md`.
 
 - **2026-10-12 (native tasks and connected roadmap):** daily planning and the V0.21 to V1.0 map are committed in `036dd3214a` and `67707f3c95`. The map has ten release gates, twenty executable tasks and editable milestone assignments; 154 focused tests pass. Preview checks cover import, reload, reassignment, clear, complete/reopen, zoom and narrow layouts. Three unrelated web typecheck errors remain; no release was published.

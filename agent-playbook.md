@@ -44,11 +44,40 @@ verified: 2026-10-11
 
 Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.md). Search it before touching updater, release, rebrand, worktree, build-preflight or quota code.
 
+<<<<<<< HEAD
+
 - **A push to `main` ships a release to both machines:** changes stay local commits until Jake says push.
 - **Rebrand scope rule:** change user-visible names only; leave `@t3tools/*`, `T3CODE_*`, the `~/.t3` folder and app id `com.t3tools.t3code`, or threads orphan and installs duplicate.
 - **No `vp` on PATH:** run `node_modules/.bin/vp test run <files>` from the repo.
 - **Fresh worktrees need an install first:** `pnpm install --frozen-lockfile` (about 7.5 minutes) before any check. Worktrees on D: stall; use `C:/lcw`.
 - **A commit that hangs is usually the hook:** let `vp fmt` finish; never bypass it.
+  \=======
+- **Identity link needs a manual approval:** `CLAUDE.local.md` in the repo imports the user's AIOS, but external imports stay silently unloaded until `claude` is run once in the folder and the dialog is approved (per path, so redo after a rename). Escape spaces as `\ ` in `@` paths. Standard: [`project-standard.md`](../../standards/project-standard.md) section 9.
+- **Do not rebuild the update toast:** it already exists end to end; the only gap is publishing releases from our repo. Found 2026-10-09 by reading source before planning.
+- **Keep the `claude` CLI installed:** the Claude provider runs the Claude Agent SDK, which is what loads `CLAUDE.md`, hooks and skills.
+- **`New-Task.ps1` YAML escaping:** Windows paths in `-StartFiles` or quotes in `-Verify` broke card frontmatter before `c1eb7bab7`; fixed with `ConvertTo-YamlDq`. Use forward slashes in card paths anyway.
+- **Upstream workflows need upstream secrets:** `release.yml` runs on a 30-minute cron and expects macOS signing, Azure signing and Clerk keys; disable it in the shared repo or it fails every half hour.
+- **Two Claude accounts do not share threads:** threads only switch between instances with the same `CLAUDE_CONFIG_DIR`, so hitting one account's limit means a new thread on the other; load balancing spreads machines, not accounts. Source: [`project/settings-walkthrough.md`](./project/settings-walkthrough.md).
+- **Launch arguments beat the permission picker:** `--permission-mode` or `--dangerously-skip-permissions` in a Claude instance's launch args silently override the UI choice; default permission mode is Full access.
+- **Settings seed does not exist:** T3 has no team-defaults mechanism; settings sit in `~/.t3/userdata` (server `settings.json`, client `client-settings.json`, `desktop-settings.json`, `keybindings.json`). Map, never-ship list and seed design: [`project/settings-inventory.md`](./project/settings-inventory.md). The default `branchNamePrefix` is `t3`; change it with the rebrand.
+- **Keep "T3 Connect" and its Account sheet:** it names upstream's hosted relay and sign-in (`clerk.t3.codes`), so renaming it would claim a service we do not run. Rebrand only the app's own name ("Sent by Leonidas Code", restart messages, widget text). Agent-facing MCP tool text ("inside a T3 thread") and marketing legal pages written for T3 Tools, Inc. are also left alone. Found 2026-10-12 by a tiered-agent branding scan.
+- **Rebrand scope rule:** change user-visible names only; leave `@t3tools/*`, `T3CODE_*` env vars and the `~/.t3` / Electron userData folder names, or existing threads and settings orphan and upstream merges get costly.
+- **Keep the app id `com.t3tools.t3code`:** changing it gives a new NSIS GUID, so installs land side by side and old T3 shortcuts survive; the runtime AUMID must match it or taskbar pins duplicate.
+- **A push to `main` ships a release to both machines:** the rebrand and any change stay local commits until Jake says push.
+
+- **Claude "no subscription limits" was a 429:** the SDK `get_usage` returns `rate_limits_available: true, rate_limits: null` when Anthropic's usage endpoint is rate limited; that must map to `probeFailed` (retryable), never `unsupported` (sticky, drops streamed `rate_limit_event`s). Antigravity has no reachable quota source: the harness credential gets 403 on `fetchAvailableModels` and `retrieveUserQuota`. Found 2026-10-10.
+- **Fresh worktrees need an install before any check:** `git worktree add` skips the T3 setup script. Run `pnpm install --frozen-lockfile` first (about 7.5 minutes); tests and typecheck fail until it finishes. Found 2026-10-11.
+- **A commit that hangs is usually the hook, not git:** the Vite pre-commit hook runs `vp fmt` on staged files and can stall on a shared temporary index. Commit from a clean worktree and let the hook finish; never bypass it. Found 2026-10-11.
+- **`shadcn/no-restyle` rejects `className` on `Button` and `MenuItem`:** use a `size` such as `icon-xs`, or a plain wrapper for layout. Use the `text-3xs` token, not `text-[10px]`. Found 2026-10-11.
+
+- **Windows desktop preflight is not a dry run:** `node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64` runs the full build unless its prerequisite probe fails first. The probe reads `KitsRoot10` under `HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots`; on this machine it points at `C:\Program Files\Windows Kits\10\` (no `Lib`) while the SDK sits under `Program Files (x86)`. Spectre libraries live at `VC\Tools\MSVC\<ver>\lib\spectre\x64`. Found 2026-10-11.
+- **Node-spawned PowerShell drops backslashes:** a `-Command` probe with `\` paths exits 1 with no stderr. `windowsVswherePrerequisiteScript` in `scripts/build-desktop-artifact.ts` uses forward slashes; that fix was uncommitted when written. Debug a probe by printing each step, not by re-running the whole string.
+- **Isolated dev desktop and model catalog propagation:** launching `scripts/dev-isolated.ps1 -Mode desktop` does not prove that the caller MCP is connected to that dev instance. Check `orchestrator_capabilities` each time and require the exact model ID before delegation. Earlier checks omitted Apodex; the 2026-10-11 continuation advertised `apodex/apodex-1.1-mini:free` on `openrouter` and one synthetic Read/Write/read-back task passed, independently verified on disk. Never substitute `openrouter/auto`. The installer at `release/Leonidas-Code-0.0.45-x64.exe` (supplied build commit `54340e9754`) was not installed during this check; catalog visibility is not installer acceptance proof.
+- **Commit with a pathspec in the shared checkout:** other agents stage files in the same index, so a bare `git commit` sweeps their staged work into yours (a staged `packages/jev-router` deletion rode into one of mine). Use `git commit -m ... -- <paths>`, check `git show --stat HEAD`, and push from a clean `git worktree add --detach C:/lcw/<name> origin/main` plus `git cherry-pick` so only your commit goes. `git add -A` is blocked by a hook. Found 2026-10-13.
+- **"Your desktop is not connected" in the dev app means the dev server is down:** a `pnpm install --frozen-lockfile` in the main checkout deletes `node_modules`, the server fails to restart (`Failed running 'src/bin.ts'` with no reason in `.t3/dev-server.log`) and every task action fails with a misleading connection toast. Confirm with `curl http://localhost:15733/.well-known/t3/environment` (502) and `ls apps/server/node_modules`, wait for the install, then `touch apps/server/src/bin.ts` to restart. Found 2026-10-13.
+- **Tasks: practice before real clicks:** "Send to agent" starts a real agent with real tokens and "Share with collaborators" publishes the card to the public repo. Use the Practice project (rail, bottom) to try the flow; its Send is a dry run. Found 2026-10-13.
+
+> > > > > > > origin/main
 
 ## 6. Why it is this way
 
@@ -60,4 +89,21 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 ## 7. Session notes
 
+<<<<<<< HEAD
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
+=======
+
+- **2026-10-12 (Leonidas pet, slices 1 to 3):** petdex-format pet (192x208 cells, 9 state rows, MIT code) is committed locally on `feat/leonidas-pet` in worktree `C:/lcw/pet` (`154503bbca`, `1ef7f2bd77`, `e053a4e609`): atlas core, flagged canvas player with `petEnabled` setting, activity-to-state mapping, walk and bubble. 9 pet tests pass; not seen in a client yet and not pushed. Worktrees on D: stall for 10+ minutes, use `C:/lcw`. Resume from `handoff-docs/2026-10-12-leonidas-pet-slice-4.md`.
+
+- **2026-10-12 (native tasks and connected roadmap):** daily planning and the V0.21 to V1.0 map are committed in `036dd3214a` and `67707f3c95`. The map has ten release gates, twenty executable tasks and editable milestone assignments; 154 focused tests pass. Preview checks cover import, reload, reassignment, clear, complete/reopen, zoom and narrow layouts. Three unrelated web typecheck errors remain; no release was published.
+
+- **2026-10-12 (slowness diagnosis and perf audit):** agents were slow because D: is a 7200rpm HDD (queue 35 to 50) with no Defender exclusion, whole-tree git checkpoints with per-object fsync (66 to 112 s), and per-turn `npx` MCP spawns; nothing in source changed. 56 evidence-tagged changes in `handoff-docs/leonidas-code-perf-audit-20261012.md`; resume from `handoff-docs/2026-10-12-leonidas-code-performance-audit.md`. Open: Defender exclusions (admin), SSD move decision with Mob, real Codex turn-start failure cause (masked in `failure.ts`).
+
+- **2026-10-11 (Apodex smoke check continuation):** ran the isolated desktop launcher (ports 23773/15733, `.t3` home); live capabilities now advertise exact `apodex/apodex-1.1-mini:free` on OpenRouter. One sanitized delegated file-tool task passed in a detached worktree at `54340e9754`: Read/Write/read-back changed the fixture to `status=passed`, independently verified. Recorded task ID and limits in the private AIOS `tests/personal-suite/run-ledger.md`; no fallback, no installer application, no benchmark tasks run. Earlier blocked result is superseded for the smoke gate only.
+
+- **2026-10-11 (desktop build preflight):** installed the Spectre libraries through the VS Installer; the preflight still fails on the stale `KitsRoot10` value, and the probe's slash fix is uncommitted in `scripts/build-desktop-artifact.ts`. Open: approve the registry fix (machine-wide, admin) or a probe fallback to `Program Files (x86)`.
+- **2026-10-13 (Tasks page upgrade):** Quick wins batching, rule-based Organize, lane chips, shared boards per repo, compact roadmap, obsidian background, finished runs auto-move to review, Practice project with dry-run Send; all on main (`eca2fd5349`, `4bb3db5b68`, `04713a9a3c`, `89a3780d78`, `15a0177f0b`). Open: Tasks landing screen, visible Send button, 2 roadmap-count tests, shared-board privacy rule.
+
+- Older session notes: [project/session-notes-archive.md](./project/session-notes-archive.md).
+
+> > > > > > > origin/main
