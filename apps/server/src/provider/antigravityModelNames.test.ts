@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { antigravityModelNamesFromConfigs } from "./antigravityLanguageServerLimits.ts";
 import {
   antigravityModelIdFromEnum,
+  antigravityModelNamesFromConfigs,
   antigravityModelNameFromLabel,
 } from "./antigravityModelNames.ts";
 

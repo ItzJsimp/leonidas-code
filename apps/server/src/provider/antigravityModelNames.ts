@@ -2,9 +2,8 @@
  * Display names for Antigravity models.
  *
  * Usage records carry either a text name or only a numeric model id. Names are
- * normalized here so the usage reader and the language-server limits probe agree,
- * and ids the reader cannot name are looked up in a registry the probe fills from
- * the account's own model list.
+ * normalized here, and ids the reader cannot name are looked up in a registry
+ * filled from the account's own model list.
  *
  * @module provider/antigravityModelNames
  */
@@ -62,4 +61,23 @@ export function registerAntigravityModelNames(
 
 export function antigravityRegisteredModelName(id: number): AntigravityModelName | undefined {
   return registry.get(id);
+}
+
+/** One entry of an account's model list; only the fields the name registry reads. */
+export interface AntigravityClientModelConfig {
+  readonly label?: string | null;
+  readonly modelOrAlias?: { readonly model?: string | null } | null;
+}
+
+/** Names for the numeric model ids an account's model list carries. */
+export function antigravityModelNamesFromConfigs(
+  configs: ReadonlyArray<AntigravityClientModelConfig> | null | undefined,
+): Map<number, AntigravityModelName> {
+  const names = new Map<number, AntigravityModelName>();
+  for (const config of configs ?? []) {
+    const id = antigravityModelIdFromEnum(config.modelOrAlias?.model ?? "");
+    const label = config.label?.trim();
+    if (id !== null && label) names.set(id, antigravityModelNameFromLabel(label));
+  }
+  return names;
 }
