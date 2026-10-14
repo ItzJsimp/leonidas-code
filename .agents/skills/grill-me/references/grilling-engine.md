@@ -12,7 +12,7 @@ Interview the user relentlessly until you reach a shared understanding. Map this
 Before Round 1:
 
 1. **Gather Environment Facts:** Finding facts is the agent's job, never the user's. When a question needs facts from the environment (filesystem, code, configs, tools), look them up directly via tools or dispatch a subagent. Never ask the user for facts you can discover yourself.
-2. **Initialize Capture File:** Create the capture file at `logs/grill-sessions/{YYYY-MM-DD}-{topic-slug}.md` (create the directory if missing; fetch date via `Get-Date -Format yyyy-MM-dd` or `date +%F`, never guess). Populate header: Topic, Date, One-line Goal, and Pre-Round Facts. Tell the user in one line where it is saving, then ask Round 1.
+2. **Initialize Capture File:** Create the capture file at `logs/grill-sessions/{YYYY-MM-DD}-{topic-slug}.md` (create the directory if missing; fetch date via `Get-Date -Format yyyy-MM-dd` or `date +%F`, never guess). Populate header: Topic, Date, One-line Goal, and Pre-Round Facts. Tell the user in one line where it is saving, then ask Round 1 through the question tool.
    The file, not the conversation, is the durable source of truth: a session that compacts mid-interview must not lose more than the round in flight.
 
 ## 2. The Frontier & Round Discipline
@@ -29,7 +29,7 @@ For visual or aesthetic decisions, convert option branches into generated artifa
 
 ## 3. Option Quality Ceiling Standard
 
-Every question must provide 2 to 4 discrete lettered options (A, B, C, D) followed by a decisive recommendation.
+Every question must provide 2 to 4 discrete options followed by a decisive recommendation, delivered through the question tool (section 5).
 
 To ensure options are genuinely valuable, diverse, and useful rather than obvious filler, every option must satisfy four quality gates:
 
@@ -58,27 +58,25 @@ Preserve the fast-path for the operator. Lead with a clear recommendation, the s
 - Format: `➡️ **Recommended: <Letter>** - <Decisive rationale and single deciding factor>. **What flips it:** <The exact constraint, priority shift, or trade-off that would make another option superior>.`
 - This enables rapid scanning: the operator can read the question, glance at the recommendation and "What flips it", and either accept it in seconds or explore the steelmanned alternatives.
 
-## 5. Round Formatting Contract
+## 5. Round Delivery Contract
 
-Format every round exactly like this. This is a template to imitate, not literal text to reproduce: emit it as live chat markdown, never inside a triple-backtick code fence (a fenced block renders as an inert monospace box, defeating the bold/emoji formatting entirely).
-Each option line stays 1 to 2 punchy, high-signal sentences; never emit conversational filler or multi-paragraph padding inside a candidate option.
+Deliver every round through the structured question tool, never as chat text. In Claude Code that is `AskUserQuestion`; in other harnesses, their user-input tool. The user sees a card and picks an option instead of typing a letter. This is always on, for every grill session.
 
-❓ **Q1** - **<question title>**: <context, technical tension, or problem statement>
+- **One call per round.** Put the whole frontier (up to 4 questions) in a single tool call. A frontier larger than 4 splits across calls, most blocking first.
+- **Question field:** a short header plus the tension or context, plain text only. Never paste the option list, a recommendation paragraph, or markdown into it.
+- **Options:** 2 to 4 per question, each with a short `label` (the title or archetype) and a `description` holding the concrete mechanism and the Wins when clause: `<mechanism>. Wins when: <condition>.` The card supplies A, B, C letters, so do not add them to labels.
+- **Recommendation:** put the recommended option FIRST and end its label with ` (Recommended)`. Add to its description: `Why: <deciding factor>. Flips if: <condition>.`
+- **Plain text everywhere** in the tool fields: no bold, emoji, or markdown. If the tool accepts only string options, put title and explanation together in each string.
+- **Free-form answers:** the card lets the user type their own answer. Treat it as the verbatim answer and checkpoint it as written.
+- If the tool is unavailable or errors, fall back to the chat format below and say so once.
 
-- **A)** **<Option Title / Archetype>**: <Concrete mechanism>. _(Wins when: <condition>)_
-- **B)** **<Option Title / Archetype>**: <Concrete mechanism>. _(Wins when: <condition>)_
-- **C)** **<Option Title / Archetype>**: <Concrete mechanism>. _(Wins when: <condition>)_
+Fallback chat format (only when the tool is unavailable). Emit as live markdown, never inside a code fence:
 
-➡️ **Recommended: <Letter>** - <rationale and single deciding factor>. **What flips it:** <condition>.
+❓ **Q1** - **<question title>**: <context>
+- **A)** **<Option Title>**: <mechanism>. *(Wins when: <condition>)*
+- **B)** **<Option Title>**: <mechanism>. *(Wins when: <condition>)*
 
----
-
-❓ **Q2** - **<question title>**: <context, technical tension, or problem statement>
-
-- **A)** **<Option Title / Archetype>**: <Concrete mechanism>. _(Wins when: <condition>)_
-- **B)** **<Option Title / Archetype>**: <Concrete mechanism>. _(Wins when: <condition>)_
-
-➡️ **Recommended: <Letter>** - <rationale and single deciding factor>. **What flips it:** <condition>.
+➡️ **Recommended: <Letter>** - <rationale>. **What flips it:** <condition>.
 
 ## 6. Checkpointing & State Advancement
 

@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: "Interview Jake on a plan, design or idea in frontier rounds with steelmanned lettered options. Chat-only: writes nothing to canon beyond the grill-session log."
+description: "Interview Jake on a plan, design or idea in frontier rounds with steelmanned options asked through the structured question tool (AskUserQuestion), never as chat text. Chat-only: writes nothing to canon beyond the grill-session log."
 disable-model-invocation: true
 category: planning
 scope: structural
