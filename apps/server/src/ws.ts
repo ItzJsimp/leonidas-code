@@ -5,6 +5,8 @@ import {
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
+import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
+import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
@@ -1343,6 +1345,8 @@ const layerWsRpc = (
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
+      const hardwareWatch = yield* HardwareWatch.HardwareWatch;
+      const systemCare = yield* SystemCare.SystemCare;
       const withTaskBoardProject = <A, E, R>(
         projectId: ProjectId,
         use: (project: Project) => Effect.Effect<A, E, R>,
@@ -2816,6 +2820,16 @@ const layerWsRpc = (
           ),
         [WS_METHODS.taskBoardShare]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.share(project, input)),
+        [WS_METHODS.hardwareGetInventory]: (input) =>
+          hardwareWatch.inventory(input.refresh === true),
+        [WS_METHODS.hardwareGetHistory]: (input) => hardwareWatch.history(input.range),
+        [WS_METHODS.hardwareGetLimits]: (_input) =>
+          Effect.map(hardwareWatch.limits, (limits) => ({ limits })),
+        [WS_METHODS.hardwareSetLimit]: (input) =>
+          Effect.map(hardwareWatch.setLimit(input), (limits) => ({ limits })),
+        [WS_METHODS.hardwareAcknowledgeAlert]: (input) => hardwareWatch.acknowledge(input),
+        [WS_METHODS.hardwareSetDeepSensors]: (input) => hardwareWatch.setDeepSensors(input.enabled),
+        [WS_METHODS.hardwareStartAgent]: (input) => systemCare.startAgent(input),
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsCancelPromptPrediction]: (input) =>
@@ -3304,6 +3318,7 @@ const layerWsRpc = (
               Stream.concat(Stream.make(latest), changes),
             ),
           ),
+        [WS_METHODS.subscribeHardware]: (input) => hardwareWatch.subscribe(input.live),
         [WS_METHODS.subscribeResourceTelemetry]: (_input) =>
           Stream.unwrap(
             Effect.map(resourceTelemetry.subscribe, ({ latest, changes }) =>

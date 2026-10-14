@@ -283,6 +283,10 @@
       "types": "./src/turnLedger.ts",
       "import": "./src/turnLedger.ts"
     },
+    "./hardwareWatch": {
+      "types": "./src/hardwareWatch.ts",
+      "import": "./src/hardwareWatch.ts"
+    },
     "./skillExpansion": {
       "types": "./src/skillExpansion.ts",
       "import": "./src/skillExpansion.ts"

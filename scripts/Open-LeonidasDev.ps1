@@ -5,9 +5,10 @@
 .DESCRIPTION
   The window is an app-style Chromium window (Vivaldi, Chrome, Edge or Brave, first found) on the dev server (http://localhost:15733), with its
   own profile so it keeps its sign-in. Problems show in a message box, not a console.
+  -Simulate turns on the new-user onboarding simulation (fake accounts) in that window until you press Exit in it.
 #>
 [CmdletBinding()]
-param([ValidateRange(10, 600)][int]$WaitSeconds = 240)
+param([ValidateRange(10, 600)][int]$WaitSeconds = 240, [switch]$Simulate)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -37,7 +38,7 @@ try {
             # First run on this machine: install visibly (it takes a while), then carry on.
             $setup = Start-Process -FilePath (Get-Process -Id $PID).Path -Wait -PassThru -WorkingDirectory $repoRoot -ArgumentList @(
                 '-NoProfile', '-Command',
-                'Write-Host "Leonidas Code (Dev): first-time setup, this can take 10 to 20 minutes. Leave this window open."; npx --yes pnpm@11.10.0 install --frozen-lockfile; exit $LASTEXITCODE')
+                'Write-Host "Leonidas Code (Dev): first-time setup, this can take 10 to 20 minutes. Leave this window open."; $env:CI = "true"; npx --yes pnpm@11.10.0 install --frozen-lockfile; exit $LASTEXITCODE')
             if ($setup.ExitCode -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $repoRoot 'node_modules/.bin/vp.cmd'))) {
                 throw "First-time setup failed. In $repoRoot run: npx pnpm@11.10.0 install --frozen-lockfile"
             }
@@ -45,6 +46,7 @@ try {
         if (-not (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue)) {
             throw "The dev server task is not set up. Run scripts\Install-DevShortcut.ps1 once."
         }
+        Enable-ScheduledTask -TaskName $taskName | Out-Null
         Start-ScheduledTask -TaskName $taskName
         $deadline = (Get-Date).AddSeconds($WaitSeconds)
         while ((Get-Date) -lt $deadline -and -not ((Test-Listening $serverPort) -and (Test-Listening $webPort))) {
@@ -55,13 +57,17 @@ try {
         }
     }
 
-    # The first open in a fresh window profile needs the server's one-time pairing URL.
+    # Sign in automatically: the fixed T3CODE_DEV_AUTH_TOKEN in .env is the same value the server seeds
+    # at every start, so the pairing link never changes. Re-opening it just refreshes the cookie.
     $profile = Join-Path $devHome 'dev-window-profile'
     $url = $origin
-    if (-not (Test-Path -LiteralPath $profile) -and (Test-Path -LiteralPath $log)) {
-        $line = Get-Content -LiteralPath $log -Tail 400 | Where-Object { $_ -match 'pairingUrl:\s*(\S+)' } | Select-Object -Last 1
-        if ($line -match 'pairingUrl:\s*(\S+)') { $url = $Matches[1] }
+    $simQuery = if ($Simulate) { '?sim=onboarding' } else { '' }
+    $envFile = Join-Path $repoRoot '.env'
+    if (Test-Path -LiteralPath $envFile) {
+        $line = Get-Content -LiteralPath $envFile | Where-Object { $_ -match '^\s*T3CODE_DEV_AUTH_TOKEN\s*=\s*(\S+)' } | Select-Object -Last 1
+        if ($line -match '=\s*"?([^"\s]+)"?') { $url = "$origin/pair$simQuery#token=$($Matches[1])" }
     }
+    if ($Simulate -and $url -eq $origin) { $url = "$origin/?sim=onboarding" }
     # Any Chromium browser can host the app-style window: use the first one installed.
     $browser = $null
     foreach ($exe in 'vivaldi.exe', 'chrome.exe', 'msedge.exe', 'brave.exe') {

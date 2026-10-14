@@ -33,6 +33,8 @@ import * as HttpApiBuilder from "effect/http-api/HttpApiBuilder";
 
 import * as BackgroundPolicy from "./background/BackgroundPolicy.ts";
 import * as HostPowerMonitor from "./background/HostPowerMonitor.ts";
+import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
+import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as ServerConfig from "./config.ts";
 import { withUntracedRequests } from "./http.ts";
 import * as ServerHttp from "./http.ts";
@@ -525,6 +527,12 @@ const layerSavedItems = SavedItemExecution.layer.pipe(
   Layer.provideMerge(layerOrchestrationV2Runtime),
   Layer.provide(layerWorkspace),
 );
+// System Care: the hardware watcher and the agents it starts.
+const layerSystemCare = SystemCare.layer.pipe(
+  Layer.provideMerge(HardwareWatch.layer.pipe(Layer.provide(layerHostPowerMonitor))),
+  Layer.provideMerge(layerOrchestrationV2Runtime),
+  Layer.provide(layerWorkspace),
+);
 const layerSavedItemWorker = SavedItemExecution.layerWorker.pipe(
   Layer.provide(layerSavedItems),
   Layer.provide(Scheduler.layer),
@@ -613,6 +621,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   // Core Services
   Layer.provideMerge(layerOrchestrationApplication),
   Layer.provideMerge(Layer.merge(layerSavedItems, layerSavedItemWorker)),
+  Layer.provideMerge(layerSystemCare),
   Layer.provideMerge(RuntimeLayer.layerEventInfrastructure),
   Layer.provideMerge(Layer.merge(ProjectStore.layer, ThreadSearch.layer)),
   Layer.provideMerge(layerServerSettings),

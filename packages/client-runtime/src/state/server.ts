@@ -1229,6 +1229,44 @@ export function createServerEnvironmentAtoms<R, E>(
           ),
         ),
     }),
+    /** System Care: `{ live: true }` streams samples; `{ live: false }` only status and alerts. */
+    hardware: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:hardware:live",
+      tag: WS_METHODS.subscribeHardware,
+      idleTtlMs: 0,
+    }),
+    hardwareInventory: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hardware:inventory",
+      tag: WS_METHODS.hardwareGetInventory,
+      staleTimeMs: 10 * 60_000,
+    }),
+    hardwareHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hardware:history",
+      tag: WS_METHODS.hardwareGetHistory,
+      staleTimeMs: 30_000,
+    }),
+    hardwareLimits: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hardware:limits",
+      tag: WS_METHODS.hardwareGetLimits,
+      staleTimeMs: 0,
+      idleTtlMs: 0,
+    }),
+    hardwareSetLimit: createEnvironmentRpcCommand(runtime, {
+      label: "hardware:set-limit",
+      tag: WS_METHODS.hardwareSetLimit,
+    }),
+    hardwareAcknowledgeAlert: createEnvironmentRpcCommand(runtime, {
+      label: "hardware:acknowledge-alert",
+      tag: WS_METHODS.hardwareAcknowledgeAlert,
+    }),
+    hardwareSetDeepSensors: createEnvironmentRpcCommand(runtime, {
+      label: "hardware:deep-sensors",
+      tag: WS_METHODS.hardwareSetDeepSensors,
+    }),
+    hardwareStartAgent: createEnvironmentRpcCommand(runtime, {
+      label: "hardware:start-agent",
+      tag: WS_METHODS.hardwareStartAgent,
+    }),
     resourceTelemetry: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
       label: "environment-data:server:resource-telemetry",
       tag: WS_METHODS.subscribeResourceTelemetry,

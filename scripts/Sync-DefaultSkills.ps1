@@ -91,11 +91,19 @@ function Add-LocalExclude([string]$Workspace, [string]$Relative) {
     $raw = if (Test-Path -LiteralPath $exclude) { [IO.File]::ReadAllText($exclude) } else { '' }
     if ($raw -split "`r?`n" -notcontains $pattern) { [IO.File]::AppendAllText($exclude, $(if ($raw -and -not $raw.EndsWith("`n")) { "`n" }) + $pattern + "`n") }
 }
+function Remove-EmptySkillDir([string]$Path) {
+    # A leftover empty real folder (for example from a removed or reset worktree) blocks the link and hides the skill; clear it so the link is made.
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($item -and $item.PSIsContainer -and -not $item.LinkType -and -not (Get-ChildItem -LiteralPath $Path -Force) -and $PSCmdlet.ShouldProcess($Path, 'Remove empty folder blocking a core skill link')) {
+        Remove-Item -LiteralPath $Path -Force
+    }
+}
 foreach ($name in $canonCore) {
     $canon = Join-Path $repo ".agents/skills/$name"
     foreach ($target in $targets | Select-Object -Unique) {
         $link = Join-Path $target ".agents/skills/$name"
         if ($target -ne $repo) {
+            Remove-EmptySkillDir $link
             if (-not (Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue) -and $PSCmdlet.ShouldProcess($link, 'Link core skill from the AIOS canon')) {
                 New-Item -ItemType Directory -Path (Split-Path $link) -Force | Out-Null
                 New-SkillLink $link $canon
@@ -108,6 +116,7 @@ foreach ($name in $canonCore) {
         $adapterItem = Get-Item -LiteralPath $adapterRoot -Force -ErrorAction SilentlyContinue
         if ($adapterItem -and $adapterItem.LinkType) { continue }
         $adapter = Join-Path $adapterRoot $name
+        Remove-EmptySkillDir $adapter
         if (-not (Get-Item -LiteralPath $adapter -Force -ErrorAction SilentlyContinue) -and $PSCmdlet.ShouldProcess($adapter, 'Make core skill discoverable to the Claude provider')) {
             if (-not $adapterItem) {
                 New-Item -ItemType Directory -Path $adapterRoot -Force | Out-Null
