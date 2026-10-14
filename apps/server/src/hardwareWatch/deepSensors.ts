@@ -14,15 +14,15 @@ import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
-export const DEEP_SENSORS_TASK = "Leonidas Code Deep Sensors";
-export const LHM_VERSION = "0.9.6";
-export const LHM_ZIP_URL = `https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases/download/v${LHM_VERSION}/LibreHardwareMonitor.zip`;
-export const LHM_ZIP_SHA256 = "086d9f1b5a99e643edc2cfaaac16051685b551e4c5ac0b32a57c58c0e529c001";
+const DEEP_SENSORS_TASK = "Leonidas Code Deep Sensors";
+const LHM_VERSION = "0.9.6";
+const LHM_ZIP_URL = `https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases/download/v${LHM_VERSION}/LibreHardwareMonitor.zip`;
+const LHM_ZIP_SHA256 = "086d9f1b5a99e643edc2cfaaac16051685b551e4c5ac0b32a57c58c0e529c001";
 /** Windows ERROR_CANCELLED: the user said no to the admin prompt. */
 const UAC_DECLINED = 1223;
 
 /** Runs elevated from Program Files; reads only numbers from the user-writable control file. */
-export const DEEP_SENSORS_SCRIPT = String.raw`param([string]$Control, [string]$Out)
+const DEEP_SENSORS_SCRIPT = String.raw`param([string]$Control, [string]$Out)
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 [void][Reflection.Assembly]::LoadFrom((Join-Path $here 'lib\LibreHardwareMonitorLib.dll'))

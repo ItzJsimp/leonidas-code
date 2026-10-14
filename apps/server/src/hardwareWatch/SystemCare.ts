@@ -39,7 +39,7 @@ const GiB = 1024 ** 3;
 const gb = (bytes: number | null) =>
   bytes === null ? "unknown" : `${(bytes / GiB).toFixed(1)} GB`;
 
-export const SYSTEM_CARE_RULES = `# System Care
+const SYSTEM_CARE_RULES = `# System Care
 
 You are helping the owner of this computer keep it healthy. This folder is your notebook:
 \`MACHINE.md\` describes the hardware, \`incidents/\` holds one file per investigation, and
