@@ -6,6 +6,8 @@ import {
   ListChecksIcon,
   PlusIcon,
   SendIcon,
+  TagsIcon,
+  ZapIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import { memo, useMemo, type ReactNode } from "react";
@@ -25,6 +27,8 @@ import {
   formatDue,
   isOpen,
   priorityLabel,
+  pickQuickBatches,
+  suggestTriage,
   relativeTime,
   sortTasks,
   type TaskDashboard,
@@ -230,6 +234,92 @@ const NextUpPanel = memo(function NextUpPanel(props: {
           })}
         </ul>
       )}
+    </Panel>
+  );
+});
+
+const QuickBatchPanel = memo(function QuickBatchPanel(props: {
+  readonly tasks: ReadonlyArray<TaskView>;
+  readonly names: SectionNames;
+  readonly actions: TaskActions;
+  readonly className?: string;
+}) {
+  const batches = useMemo(() => pickQuickBatches(props.tasks), [props.tasks]);
+  if (batches.length === 0) return null;
+  return (
+    <Panel
+      title="Quick wins"
+      icon={<ZapIcon />}
+      meta="Small tasks, one agent"
+      {...(props.className ? { className: props.className } : {})}
+    >
+      <ul className="divide-y divide-border">
+        {batches.slice(0, 4).map((batch) => {
+          const busy = batch.tasks.some((task) => props.actions.isBusy(task.id));
+          const canSend = props.actions.canSendToAgent(batch.tasks[0]!);
+          return (
+            <li
+              key={`${batch.section}:${batch.tasks[0]!.id}`}
+              className="flex items-center gap-3 px-4 py-3"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {batch.tasks.length} tasks · {sectionName(props.names, batch.section)}
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  {batch.tasks.map((task) => task.title).join(" · ")}
+                </span>
+              </span>
+              {canSend ? (
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => props.actions.sendBatchToAgent(batch.tasks)}
+                >
+                  <SendIcon />
+                  Send all to one agent
+                </Button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
+});
+
+const OrganizePanel = memo(function OrganizePanel(props: {
+  readonly tasks: ReadonlyArray<TaskView>;
+  readonly actions: TaskActions;
+  readonly className?: string;
+}) {
+  const changes = useMemo(
+    () =>
+      props.tasks.flatMap((task) => {
+        const suggestion = isOpen(task) ? suggestTriage(task) : null;
+        return suggestion ? [{ task, suggestion }] : [];
+      }),
+    [props.tasks],
+  );
+  if (changes.length === 0 || !props.actions.canEdit) return null;
+  const busy = changes.some(({ task }) => props.actions.isBusy(task.id));
+  return (
+    <Panel
+      title="Organize"
+      icon={<TagsIcon />}
+      meta={`${changes.length} to sort`}
+      {...(props.className ? { className: props.className } : {})}
+    >
+      <div className="flex items-center gap-3 px-4 py-3">
+        <p className="min-w-0 flex-1 text-sm text-muted-foreground">
+          {changes.length} open {changes.length === 1 ? "task has" : "tasks have"} no effort or
+          topic labels. Fill them in from each task&apos;s title, description and checklist.
+        </p>
+        <Button size="sm" disabled={busy} onClick={() => props.actions.organize(changes)}>
+          <TagsIcon />
+          Organize
+        </Button>
+      </div>
     </Panel>
   );
 });
@@ -655,6 +745,8 @@ export function TaskDashboardView(props: TaskDashboardViewProps) {
           onCreate={onCreate}
           className="@xl:col-span-2"
         />
+        <OrganizePanel tasks={tasks} actions={actions} className="@xl:col-span-2" />
+        <QuickBatchPanel tasks={tasks} names={names} actions={actions} className="@xl:col-span-2" />
         <ThroughputPanel days={dashboard.completionsPerDay} />
         <PriorityMixPanel byPriority={dashboard.byPriority} />
         <ProjectsPanel

@@ -13,6 +13,9 @@ import {
   type InboxDrop,
   type InboxDropInput,
   type InboxUndoInput,
+  type TaskBoardAiosConfirmInput,
+  type TaskBoardAiosDetectInput,
+  type TaskBoardAiosDetectResult,
   type TaskBoardCardCreateInput,
   type TaskBoardCardUpdateInput,
   type TaskBoardReleaseInput,
@@ -37,6 +40,8 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import { ServerConfig } from "../config.ts";
+import { ServerSettingsService } from "../serverSettings.ts";
+import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
 import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
 import { triageDrop } from "./triage.ts";
 import * as ProcessRunner from "../processRunner.ts";
@@ -161,8 +166,12 @@ export function aiosSlugFor(project: Project): string {
   return inProjects ? NodePath.posix.basename(root).toLowerCase() : slugify(project.title);
 }
 
-function aiosRootFor(projects: ReadonlyArray<{ readonly workspaceRoot: string }>): string | null {
+function aiosRootFor(
+  projects: ReadonlyArray<{ readonly workspaceRoot: string }>,
+  confirmedRoot?: string,
+): string | null {
   return findAiosRoot([
+    confirmedRoot,
     process.env.LEONIDAS_AIOS_ROOT,
     process.env.AIOS_ROOT,
     ...projects.map((project) => project.workspaceRoot),
@@ -326,6 +335,8 @@ function cardPatchFor(input: TaskBoardCardUpdateInput, card: TaskBoardTask): Aio
     milestone: input.milestone,
     projectSlug: input.projectSlug,
     claimedBy: input.claimedBy,
+    effort: input.effort,
+    labels: input.labels,
     note: input.note,
     agentLabel: agentLabel(input.agent),
     threadId: input.agent?.threadId,
@@ -388,6 +399,16 @@ export class TaskBoardService extends Context.Service<
       input: InboxDropInput,
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<InboxDrop, TaskBoardOperationError>;
+    /** Folders that look like the user's AIOS, plus the one already confirmed. */
+    readonly aiosDetect: (
+      input: TaskBoardAiosDetectInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<TaskBoardAiosDetectResult>;
+    /** Persists the chosen AIOS folder for every client (`null` returns to auto-detection). */
+    readonly aiosConfirm: (
+      input: TaskBoardAiosConfirmInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<TaskBoardAiosDetectResult, TaskBoardOperationError>;
     readonly inboxUndo: (
       input: InboxUndoInput,
       projects: ReadonlyArray<Project>,
@@ -401,8 +422,19 @@ const make = Effect.gen(function* () {
   const nativeRoot = Option.isSome(config)
     ? NodePath.join(config.value.stateDir, "task-board")
     : null;
+  const settings = yield* Effect.serviceOption(ServerSettingsService);
+  // The folder the user confirmed; the task board reads it before any detected folder.
+  let confirmedRoot: string | undefined;
+  if (Option.isSome(settings)) {
+    const current = yield* settings.value.getSettings.pipe(Effect.option);
+    confirmedRoot = Option.isSome(current) ? current.value.aiosRoot || undefined : undefined;
+  }
   const rootsFor = (projects: ReadonlyArray<Project>) => [
-    ...new Set([nativeRoot, aiosRootFor(projects)].filter((root): root is string => root !== null)),
+    ...new Set(
+      [nativeRoot, aiosRootFor(projects, confirmedRoot)].filter(
+        (root): root is string => root !== null,
+      ),
+    ),
   ];
 
   const runGh = (args: ReadonlyArray<string>, allowNotFound = false) =>
@@ -641,7 +673,7 @@ const make = Effect.gen(function* () {
     tasks: ReadonlyArray<TaskBoardTask>,
     issues: ReadonlyArray<TaskBoardIssue>,
   ) => {
-    const aiosRoot = aiosRootFor([project]);
+    const aiosRoot = aiosRootFor([project], confirmedRoot);
     return Effect.map(
       Clock.currentTimeMillis,
       (checkedAt) =>
@@ -953,7 +985,7 @@ const make = Effect.gen(function* () {
   const cardCache: AiosCardCache = new Map();
 
   const rootOrFail = (projects: ReadonlyArray<Project>) => {
-    const root = nativeRoot ?? aiosRootFor(projects);
+    const root = nativeRoot ?? aiosRootFor(projects, confirmedRoot);
     return root === null
       ? Effect.fail(
           new TaskBoardReadError({ reason: "aios_not_found", cause: "No AIOS tasks folder" }),
@@ -987,7 +1019,7 @@ const make = Effect.gen(function* () {
   const workspace = (projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
-      const root = aiosRootFor(projects);
+      const root = aiosRootFor(projects, confirmedRoot);
       const tasks = yield* readLocalCards(projects, now);
       return buildWorkspace({
         root,
@@ -1063,6 +1095,8 @@ const make = Effect.gen(function* () {
           milestone: input.milestone === undefined ? existing.milestone : input.milestone,
           status,
           priority: input.priority ?? existing.priority,
+          effort: input.effort === undefined ? existing.effort : input.effort,
+          labels: input.labels ?? existing.labels,
           claimedBy: claimed ? input.claimedBy! : released ? null : existing.claimedBy,
           claimedAt: claimed ? now : released ? null : existing.claimedAt,
           claimedAgent: claimed ? (input.agent ?? null) : released ? null : existing.claimedAgent,
@@ -1200,7 +1234,7 @@ const make = Effect.gen(function* () {
     });
 
   const inboxRoot = (projects: ReadonlyArray<Project>) =>
-    aiosRootFor(projects) ?? nativeRoot ?? null;
+    aiosRootFor(projects, confirmedRoot) ?? nativeRoot ?? null;
 
   const inboxDrop = (input: InboxDropInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
@@ -1243,7 +1277,7 @@ const make = Effect.gen(function* () {
       return yield* Effect.try({
         try: () => {
           const { removed, taskFile } = removeDrop(root, input.id);
-          const cardRoot = nativeRoot ?? aiosRootFor(projects);
+          const cardRoot = nativeRoot ?? aiosRootFor(projects, confirmedRoot);
           const card = taskFile && cardRoot ? findCardFile(cardRoot, taskFile) : null;
           if (card) NodeFS.rmSync(card);
           return { removed };
@@ -1305,8 +1339,36 @@ const make = Effect.gen(function* () {
       return yield* list(projectInput);
     });
 
+  const aiosDetect = (input: TaskBoardAiosDetectInput, projects: ReadonlyArray<Project>) =>
+    Effect.sync(() => ({
+      confirmedRoot: confirmedRoot ?? null,
+      candidates: detectAiosCandidates([
+        input.pickedPath,
+        confirmedRoot,
+        process.env.LEONIDAS_AIOS_ROOT,
+        process.env.AIOS_ROOT,
+        ...projects.map((project) => project.workspaceRoot),
+      ]),
+    }));
+
+  const aiosConfirm = (input: TaskBoardAiosConfirmInput, projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      if (Option.isNone(settings)) return yield* storageError("Settings are not available.");
+      const root = input.root === null ? null : inspectAiosCandidate(input.root)?.root;
+      if (root === undefined) {
+        return yield* storageError("That folder has no AIOS task cards.");
+      }
+      yield* settings.value
+        .updateSettings({ aiosRoot: root ?? "" })
+        .pipe(Effect.mapError(() => storageError("Could not save the AIOS folder.")));
+      confirmedRoot = root ?? undefined;
+      return yield* aiosDetect({}, projects);
+    });
+
   return TaskBoardService.of({
     list,
+    aiosDetect,
+    aiosConfirm,
     create,
     claim,
     release,

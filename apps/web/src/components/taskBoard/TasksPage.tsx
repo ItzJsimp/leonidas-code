@@ -1,4 +1,3 @@
-import { TaskBackdrop } from "./TaskBackdrop";
 import {
   ColumnsIcon,
   LayoutDashboardIcon,
@@ -29,6 +28,8 @@ import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskKanbanView } from "./TaskKanban";
 import { TaskListView } from "./TaskList";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
+import { useRailWidth } from "./TaskRailResizer";
+import { AiosConfirmCard } from "./AiosConfirmCard";
 import { TaskQuickAdd } from "./TaskQuickAdd";
 import { TaskRoadmapView } from "./TaskRoadmap";
 import leonidasRoadmap from "../../../../../project-roadmap.json";
@@ -69,6 +70,7 @@ function readSavedPrefs(): TasksPrefs {
 /** The Tasks route: the user's AIOS task cards, sectioned by project, with shared project boards. */
 export function TasksPage() {
   const [prefs, setPrefs] = useState<TasksPrefs>(readSavedPrefs);
+  const { width: railWidth, handle: railHandle } = useRailWidth();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -254,7 +256,6 @@ export function TasksPage() {
       data-tasks-surface
       className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none"
     >
-      <TaskBackdrop />
       <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
         <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <h1 className="hidden truncate text-sm font-medium sm:block">Tasks</h1>
@@ -312,7 +313,10 @@ export function TasksPage() {
       </WorkspacePageHeader>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-56 shrink-0 overflow-y-auto border-r border-border p-2 lg:block">
+        <aside
+          style={{ width: railWidth }}
+          className="hidden shrink-0 overflow-y-auto p-2 lg:block"
+        >
           <TaskProjectRail
             entries={board.rail}
             allOpen={allOpen}
@@ -323,6 +327,7 @@ export function TasksPage() {
             onFocus={selectFocus}
           />
         </aside>
+        {railHandle}
 
         <main
           className={
@@ -345,6 +350,7 @@ export function TasksPage() {
                       : "Your tasks and agent work in one place."}
             </p>
           </div>
+          <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
           {prefs.view !== "roadmap" ? (
             <TaskQuickAdd
               key={`${prefs.section}:${prefs.focus}`}

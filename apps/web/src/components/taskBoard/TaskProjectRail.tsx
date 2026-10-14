@@ -32,7 +32,12 @@ function RailRow(props: {
       aria-current={props.selected ? "true" : undefined}
       onClick={props.onSelect}
     >
-      <span className="min-w-0 flex-1 truncate text-left">{props.label}</span>
+      <Tooltip>
+        <TooltipTrigger render={<span className="min-w-0 flex-1 truncate text-left" />}>
+          {props.label}
+        </TooltipTrigger>
+        <TooltipPopup side="right">{props.label}</TooltipPopup>
+      </Tooltip>
       {props.shareable ? (
         <Tooltip>
           <TooltipTrigger render={<span className="shrink-0 text-muted-foreground" />}>

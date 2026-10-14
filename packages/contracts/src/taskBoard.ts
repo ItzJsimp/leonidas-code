@@ -259,6 +259,9 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   claimedBy: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  effort: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  // Replaces the card's tags.
+  labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
   // Appended to the card's activity log.
   note: Schema.optional(Schema.String.check(Schema.isMaxLength(4_000))),
 });
@@ -307,6 +310,34 @@ export const TaskBoardShareInput = Schema.Struct({
   actor: TrimmedNonEmptyString.check(Schema.isMaxLength(100)),
 });
 export type TaskBoardShareInput = typeof TaskBoardShareInput.Type;
+
+// Folders that look like the user's AIOS. `pickedPath` is a folder the user chose by hand.
+export const TaskBoardAiosCandidate = Schema.Struct({
+  root: Schema.String,
+  confidence: Schema.Literals(["marker", "schema"]),
+  cardCount: Schema.Number,
+  cardsWithFrontmatter: Schema.Number,
+  markers: Schema.Array(Schema.String),
+});
+export type TaskBoardAiosCandidate = typeof TaskBoardAiosCandidate.Type;
+
+export const TaskBoardAiosDetectInput = Schema.Struct({
+  pickedPath: Schema.optional(TrimmedNonEmptyString),
+});
+export type TaskBoardAiosDetectInput = typeof TaskBoardAiosDetectInput.Type;
+
+export const TaskBoardAiosDetectResult = Schema.Struct({
+  /** The root already confirmed for this environment, if any. */
+  confirmedRoot: Schema.NullOr(Schema.String),
+  candidates: Schema.Array(TaskBoardAiosCandidate),
+});
+export type TaskBoardAiosDetectResult = typeof TaskBoardAiosDetectResult.Type;
+
+// Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
+export const TaskBoardAiosConfirmInput = Schema.Struct({
+  root: Schema.NullOr(TrimmedNonEmptyString),
+});
+export type TaskBoardAiosConfirmInput = typeof TaskBoardAiosConfirmInput.Type;
 
 export const TaskBoardProjectDatabase = Schema.Struct({
   version: Schema.Literal(1),

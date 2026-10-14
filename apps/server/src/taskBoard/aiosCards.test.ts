@@ -299,6 +299,19 @@ describe("applyCardPatch", () => {
   ].join("\n");
   const patchBase = { actor: "Jake" } as const;
 
+  it("writes effort and labels onto the card and reads them back", () => {
+    const next = applyCardPatch(
+      card(header),
+      { ...patchBase, effort: "Low", labels: ["bug", "ui"] },
+      NOW,
+    );
+    expect(next).toContain('effort: "Low"');
+    expect(next).toContain('tags: ["bug", "ui"]');
+    expect(next).toContain("effort → Low, labels → bug, ui");
+    const task = cardToTask({ fileName: "a.md", raw: next, mtimeMs: NOW, now: NOW });
+    expect(task).toMatchObject({ effort: "Low", labels: ["bug", "ui"] });
+  });
+
   it("round-trips a claim through cardToTask", () => {
     const raw = card(header);
     const next = applyCardPatch(

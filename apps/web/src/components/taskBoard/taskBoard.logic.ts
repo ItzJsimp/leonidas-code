@@ -562,6 +562,118 @@ export function buildTaskPrompt(
   return [head, "", "Description and done-when criteria:", body, "", ...tail].join("\n");
 }
 
+export type TriageSuggestion = {
+  readonly effort?: "Low" | "Medium" | "High";
+  /** The card's full tag list, existing tags first. */
+  readonly labels?: ReadonlyArray<string>;
+};
+
+const LABEL_RULES: ReadonlyArray<readonly [string, RegExp]> = [
+  ["bug", /\b(bug|fix|broken|crash|error|regression|fails?)\b/i],
+  ["docs", /\b(docs?|documentation|readme|guide|changelog)\b/i],
+  ["ui", /\b(ui|ux|design|layout|screen|button|style|theme|visual)\b/i],
+  ["tests", /\b(tests?|coverage|e2e|verify)\b/i],
+  ["security", /\b(security|auth|credential|secret|token|permission)\b/i],
+  ["release", /\b(release|launch|publish|installer|update)\b/i],
+  ["research", /\b(research|investigate|compare|evaluate|explore)\b/i],
+];
+
+/**
+ * Plain-rule triage for a card: fills a missing effort from `taskSize` and adds topic labels
+ * matched on the title and description. Never removes or overrides what the card already has.
+ * Returns null when there is nothing to add.
+ */
+export function suggestTriage(task: TaskBoardTask): TriageSuggestion | null {
+  const effort = (task.effort ?? "").trim()
+    ? undefined
+    : ({ small: "Low", medium: "Medium", large: "High" } as const)[taskSize(task)];
+  const text = `${task.title} ${task.description.slice(0, 600)}`;
+  const have = new Set(task.labels.map((label) => label.toLowerCase()));
+  const added = LABEL_RULES.filter(([name, rule]) => !have.has(name) && rule.test(text)).map(
+    ([name]) => name,
+  );
+  if (!effort && added.length === 0) return null;
+  return {
+    ...(effort ? { effort } : {}),
+    ...(added.length > 0 ? { labels: [...task.labels, ...added] } : {}),
+  };
+}
+
+export const QUICK_BATCH_MAX = 5;
+const QUICK_EFFORTS: ReadonlySet<string> = new Set(["low", "small", "xs", "s"]);
+
+export type TaskSize = "small" | "medium" | "large";
+
+const BIG_WORDS =
+  /\b(redesign|refactor|migrate|architecture|rewrite|integrate|launch|implement)\b/i;
+
+/**
+ * Sizes a task. A card's own effort wins; otherwise plain rules on description length,
+ * checklist size, start files and a few big-job words decide. No AI involved.
+ */
+export function taskSize(task: TaskBoardTask): TaskSize {
+  const effort = (task.effort ?? "").trim().toLowerCase();
+  if (QUICK_EFFORTS.has(effort)) return "small";
+  if (effort === "high" || effort === "large" || effort === "l") return "large";
+  if (effort) return "medium";
+
+  const length = task.description.trim().length;
+  const checklist = task.checklist?.total ?? 0;
+  const files = (task.startFiles ?? []).length;
+  if (length > 1_200 || checklist > 8 || files > 5 || BIG_WORDS.test(task.title)) return "large";
+  if (length <= 300 && checklist <= 3 && files <= 2) return "small";
+  return "medium";
+}
+
+/** A small, unblocked, unclaimed to-do that is cheap enough to share an agent with others. */
+export function isQuickTask(task: TaskView): boolean {
+  return (
+    task.status === "todo" &&
+    !task.claimedBy &&
+    (task.blockedBy ?? []).length === 0 &&
+    taskSize(task) === "small"
+  );
+}
+
+export type QuickBatch = { readonly section: string; readonly tasks: ReadonlyArray<TaskView> };
+
+/**
+ * Groups quick tasks by project (an agent works in one project), highest priority first,
+ * in batches of at most `QUICK_BATCH_MAX`. A lone leftover is not worth a batch.
+ */
+export function pickQuickBatches(tasks: ReadonlyArray<TaskView>): QuickBatch[] {
+  const bySection = new Map<string, TaskView[]>();
+  for (const task of tasks) {
+    if (!isQuickTask(task) || task.section === GENERAL_SECTION) continue;
+    bySection.set(task.section, [...(bySection.get(task.section) ?? []), task]);
+  }
+  const batches: QuickBatch[] = [];
+  for (const [section, group] of bySection) {
+    const ranked = group.toSorted(
+      (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority),
+    );
+    for (let i = 0; i < ranked.length; i += QUICK_BATCH_MAX) {
+      const chunk = ranked.slice(i, i + QUICK_BATCH_MAX);
+      if (chunk.length >= 2) batches.push({ section, tasks: chunk });
+    }
+  }
+  return batches.toSorted((a, b) => b.tasks.length - a.tasks.length);
+}
+
+/** One prompt that asks a single agent to work through several small tasks in order. */
+export function buildBatchPrompt(
+  tasks: ReadonlyArray<TaskBoardTask>,
+  ctx: { aiosRoot: string | null; member: string },
+): string {
+  return [
+    `You have ${tasks.length} small tasks to complete in one session. Do them one at a time, in order. Finish and report each before starting the next, and stop to ask only if one is genuinely unclear.`,
+    ...tasks.map(
+      (task, index) =>
+        `\n--- Task ${index + 1} of ${tasks.length} ---\n${buildTaskPrompt(task, ctx)}`,
+    ),
+  ].join("\n");
+}
+
 /** Short "5m ago" style age, falling back to a calendar date after about four weeks. */
 export function relativeTime(ms: number, now: number): string {
   const diff = now - ms;

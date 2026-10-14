@@ -13,7 +13,7 @@ export function clampLeonidasGlowStrength(value: number): number {
 }
 
 export function useLeonidasAtmosphere() {
-  const [showGrid, setShowGrid] = useLocalStorage(LEONIDAS_GRID_STORAGE_KEY, true, Schema.Boolean);
+  const [showGrid, setShowGrid] = useLocalStorage(LEONIDAS_GRID_STORAGE_KEY, false, Schema.Boolean);
   const [storedGlowStrength, setGlowStrength] = useLocalStorage(
     LEONIDAS_GLOW_STORAGE_KEY,
     DEFAULT_LEONIDAS_GLOW_STRENGTH,

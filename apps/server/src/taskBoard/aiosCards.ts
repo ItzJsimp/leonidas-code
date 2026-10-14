@@ -26,6 +26,9 @@ export interface AiosCardPatch {
   readonly milestone?: string | null | undefined;
   readonly projectSlug?: string | null | undefined;
   readonly claimedBy?: string | null | undefined;
+  readonly effort?: string | null | undefined;
+  /** Replaces the card's `tags`. */
+  readonly labels?: ReadonlyArray<string> | undefined;
   /** `true` publishes the card to the shared board; `false` or `null` withdraws it. */
   readonly shared?: boolean | null | undefined;
   readonly sharedBy?: string | null | undefined;
@@ -688,6 +691,22 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     setKey("priority", quote(priorityToCard(patch.priority)));
     other.push(`priority → ${priorityToCard(patch.priority)}`);
     changed = true;
+  }
+
+  if (patch.effort !== undefined && (patch.effort ?? "") !== field(fields, "effort")) {
+    setKey("effort", patch.effort === null ? null : quote(patch.effort));
+    other.push(patch.effort === null ? "removed effort" : `effort → ${patch.effort}`);
+    changed = true;
+  }
+
+  if (patch.labels !== undefined) {
+    const next = [...new Set(patch.labels.map(oneLine).filter(Boolean))];
+    const current = listField(fields, "tags");
+    if (next.join("|") !== current.join("|")) {
+      setKey("tags", next.length === 0 ? null : `[${next.map(quote).join(", ")}]`);
+      other.push(`labels → ${next.join(", ") || "none"}`);
+      changed = true;
+    }
   }
 
   if (patch.due !== undefined && (patch.due ?? "") !== field(fields, "due")) {
