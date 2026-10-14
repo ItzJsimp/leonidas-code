@@ -140,6 +140,7 @@ function ContextSegments({
               <li key={item.key} className="flex min-w-0 items-center gap-1.5">
                 <span className="min-w-0 flex-1 truncate" title={item.label}>
                   {TRIM_KIND_LABEL[item.kind]} {item.label}
+                  {item.unused ? " (not used in this chat)" : ""}
                 </span>
                 <span className="tabular-nums text-foreground">
                   {item.estimated ? "~" : ""}

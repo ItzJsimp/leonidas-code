@@ -125,3 +125,46 @@ describe("splitInputByOverhead", () => {
     expect(splitInputByOverhead(1_000, 0)).toBeNull();
   });
 });
+
+describe("deriveTrimSuggestions unused MCP servers", () => {
+  const call = (id: string, name: string) => ({
+    id,
+    name,
+    target: null,
+    tokens: 10,
+    estimated: true,
+    turnIndex: 1,
+    status: "ok" as const,
+  });
+  const fiveCalls = ["a", "b", "c", "d", "e"].map((id) => call(id, "Read"));
+  const mcpTools = [
+    { name: "x", server: "claude.ai Gmail", tokens: 1_200 },
+    { name: "y", server: "t3-code", tokens: 900 },
+  ];
+
+  it("marks a server no call in this chat used, and keeps a used one plain", () => {
+    const result = deriveTrimSuggestions({
+      ...base,
+      mcpTools,
+      toolCalls: [...fiveCalls, call("f", "mcp__t3-code__thread_list")],
+    });
+    expect(result.map((s) => [s.label, s.unused])).toEqual([
+      ["claude.ai Gmail", true],
+      ["t3-code", false],
+    ]);
+  });
+
+  it("matches dotted server names to their underscored tool prefix", () => {
+    const result = deriveTrimSuggestions({
+      ...base,
+      mcpTools,
+      toolCalls: [...fiveCalls, call("f", "mcp__claude_ai_Gmail__search_threads")],
+    });
+    expect(result.find((s) => s.label === "claude.ai Gmail")?.unused).toBe(false);
+  });
+
+  it("claims nothing until the chat has made a few calls", () => {
+    const result = deriveTrimSuggestions({ ...base, mcpTools, toolCalls: [call("a", "Read")] });
+    expect(result.every((s) => s.unused === false)).toBe(true);
+  });
+});

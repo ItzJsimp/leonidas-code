@@ -7,6 +7,8 @@ export interface TrimSuggestion {
   /** Tokens this item adds to every turn while it stays loaded. */
   readonly tokens: number;
   readonly estimated: boolean;
+  /** MCP server that this chat loaded but never called; false when unknown. */
+  readonly unused: boolean;
 }
 
 const MIN_TRIM_TOKENS = 500;
@@ -14,6 +16,25 @@ const MAX_SUGGESTIONS = 5;
 /** Newest tool calls kept out of the compact suggestion; the agent is most likely to reuse them. */
 const KEEP_NEWEST_TOOL_CALLS = 10;
 const MIN_OLD_TOOL_TOKENS = 2_000;
+/** Fewer calls than this say too little to call a server unused. */
+const MIN_CALLS_TO_JUDGE_UNUSED = 5;
+
+const normalizeServer = (name: string) => name.replaceAll(/[^a-z0-9-]+/gi, "_").toLowerCase();
+
+/** Servers with no call in this chat. Claude names calls `mcp__<server>__<tool>`. */
+function findUnusedServers(
+  servers: Iterable<string>,
+  toolCalls: ReadonlyArray<{ readonly name: string }>,
+): ReadonlySet<string> {
+  if (toolCalls.length < MIN_CALLS_TO_JUDGE_UNUSED) return new Set();
+  const called = toolCalls.map((call) => call.name.toLowerCase());
+  return new Set(
+    [...servers].filter((server) => {
+      const prefix = `mcp__${normalizeServer(server)}__`;
+      return !called.some((name) => name.startsWith(prefix));
+    }),
+  );
+}
 
 /**
  * Fixed overhead worth removing: MCP servers (tool schemas summed per server), skills, agents and
@@ -28,6 +49,7 @@ export function deriveTrimSuggestions(
   for (const tool of breakdown.mcpTools) {
     servers.set(tool.server, (servers.get(tool.server) ?? 0) + tool.tokens);
   }
+  const unusedServers = findUnusedServers(servers.keys(), breakdown.toolCalls ?? []);
   const all: TrimSuggestion[] = [
     ...[...servers].map(([server, tokens]) => ({
       key: `mcp:${server}`,
@@ -35,6 +57,7 @@ export function deriveTrimSuggestions(
       label: server,
       tokens,
       estimated: false,
+      unused: unusedServers.has(server),
     })),
     ...breakdown.skills.map((skill) => ({
       key: `skill:${skill.source}:${skill.name}`,
@@ -42,6 +65,7 @@ export function deriveTrimSuggestions(
       label: skill.name,
       tokens: skill.tokens,
       estimated: false,
+      unused: false,
     })),
     ...breakdown.agents.map((agent) => ({
       key: `agent:${agent.source}:${agent.name}`,
@@ -49,6 +73,7 @@ export function deriveTrimSuggestions(
       label: agent.name,
       tokens: agent.tokens,
       estimated: false,
+      unused: false,
     })),
     ...breakdown.files
       .filter((file) => file.origin === "memory")
@@ -58,6 +83,7 @@ export function deriveTrimSuggestions(
         label: file.path,
         tokens: file.tokens,
         estimated: file.estimated,
+        unused: false,
       })),
   ];
   // Every old tool result is resent each turn until the chat compacts. Calls arrive oldest first.
@@ -70,6 +96,7 @@ export function deriveTrimSuggestions(
       label: `${oldCalls.length} older tool results (compact the chat)`,
       tokens: oldTokens,
       estimated: true,
+      unused: false,
     });
   }
   return all
