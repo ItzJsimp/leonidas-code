@@ -21,7 +21,7 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-export function setLimitView(next: LimitView) {
+function setLimitView(next: LimitView) {
   current = next;
   try {
     localStorage.setItem(KEY, next);

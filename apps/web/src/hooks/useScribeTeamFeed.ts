@@ -3,7 +3,7 @@ import { useLiveRefresh } from "./useLiveRefresh";
 
 export const SCRIBE_FEED_REPO = "ItzJsimp/leonidas-code";
 export const SCRIBE_FEED_ISSUE = 2;
-export const SCRIBE_FEED_API_URL = `https://api.github.com/repos/${SCRIBE_FEED_REPO}/issues/${SCRIBE_FEED_ISSUE}/comments`;
+const SCRIBE_FEED_API_URL = `https://api.github.com/repos/${SCRIBE_FEED_REPO}/issues/${SCRIBE_FEED_ISSUE}/comments`;
 
 export interface ScribeFeedItem {
   readonly id: string;
@@ -34,7 +34,7 @@ export function parseScribeComment(comment: {
         author:
           typeof parsed.author === "string" && parsed.author.trim()
             ? parsed.author.trim()
-            : comment.user?.login ?? "Anonymous",
+            : (comment.user?.login ?? "Anonymous"),
         timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : comment.created_at,
         text: parsed.text,
         app: typeof parsed.app === "string" ? parsed.app : undefined,
