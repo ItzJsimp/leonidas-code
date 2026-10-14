@@ -508,6 +508,22 @@ function TaskDetailBody(props: {
                     ? `Shared${task.sharedBy ? ` by ${task.sharedBy}` : ""} · visible to everyone on ${projectName}`
                     : `Publish this task so everyone on ${projectName} can see it.`}
               </span>
+              {task.shared && task.sharedSync ? (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Badge variant={task.sharedSync === "failed" ? "error" : "warning"}>
+                    {task.sharedSync === "failed" ? "Latest edit not shared" : "Share pending"}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={busy || !canShare}
+                    onClick={() => actions.setShared(task, true)}
+                  >
+                    {busy ? <Spinner /> : <RotateCcwIcon />}
+                    Retry
+                  </Button>
+                </div>
+              ) : null}
             </div>
             <Switch
               aria-label="Share with collaborators"

@@ -332,6 +332,63 @@ function cardPatchFor(input: TaskBoardCardUpdateInput, card: TaskBoardTask): Aio
   };
 }
 
+const staleRevision = () =>
+  new TaskBoardOperationError({
+    reason: "stale_revision",
+    message: "This task changed since you opened it. Review the latest version and try again.",
+  });
+
+/** Both activity logs, oldest first, so a mirror never drops a collaborator's entries. */
+function mergeHistory(
+  shared: ReadonlyArray<TaskBoardHistoryEntry>,
+  local: ReadonlyArray<TaskBoardHistoryEntry>,
+): ReadonlyArray<TaskBoardHistoryEntry> {
+  const byId = new Map(shared.map((entry) => [entry.id, entry] as const));
+  for (const entry of local) byId.set(entry.id, entry);
+  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp);
+}
+
+/**
+ * The shared copy after a local edit. When a collaborator changed the copy after the card's
+ * previous local version, their fields stay and only the fields this edit set are taken from the
+ * card; otherwise the card wins. History is always the union of both.
+ */
+function mirrorCard(
+  copy: TaskBoardTask,
+  card: TaskBoardTask,
+  input: TaskBoardCardUpdateInput,
+  localBefore: number,
+): TaskBoardTask {
+  const base = copy.updatedAt > localBefore ? copy : card;
+  const statusTouched = input.status !== undefined || input.claimedBy !== undefined;
+  return {
+    ...base,
+    ...(input.title !== undefined ? { title: card.title } : {}),
+    ...(input.due !== undefined ? { due: card.due } : {}),
+    ...(input.milestone !== undefined ? { milestone: card.milestone } : {}),
+    ...(input.priority !== undefined ? { priority: card.priority } : {}),
+    ...(input.projectSlug !== undefined ? { projectSlug: card.projectSlug } : {}),
+    ...(statusTouched
+      ? {
+          status: card.status,
+          completedBy: card.completedBy,
+          completedAt: card.completedAt,
+          completionSummary: card.completionSummary,
+        }
+      : {}),
+    ...(input.claimedBy !== undefined
+      ? { claimedBy: card.claimedBy, claimedAt: card.claimedAt, claimedAgent: card.claimedAgent }
+      : {}),
+    project: copy.project,
+    shared: true,
+    sharedBy: copy.sharedBy ?? card.sharedBy ?? null,
+    sharedSync: undefined,
+    sourceRoot: undefined,
+    updatedAt: Math.max(copy.updatedAt, card.updatedAt),
+    history: mergeHistory(copy.history, card.history),
+  };
+}
+
 function databaseFromContents(raw: string): LoadedDatabase {
   const response = JSON.parse(raw) as { readonly content?: string; readonly sha?: string };
   if (!response.content) return { data: { version: DATABASE_VERSION, tasks: [] }, sha: null };
@@ -1011,32 +1068,61 @@ const make = Effect.gen(function* () {
           message: cause instanceof Error ? cause.message : String(cause),
         });
 
-  /** Keeps the collaborators' copy of a published card in step with the local card. */
-  const mirrorShared = (projects: ReadonlyArray<Project>, card: TaskBoardTask) => {
-    const slug = card.projectSlug?.toLowerCase();
-    const project = slug
-      ? projects.find((candidate) => aiosSlugFor(candidate) === slug && githubRepository(candidate))
+  /** The project whose shared board holds the collaborators' copy of a card with this slug. */
+  const mirrorTarget = (projects: ReadonlyArray<Project>, slug: string | null | undefined) => {
+    const wanted = slug?.toLowerCase();
+    return wanted
+      ? projects.find(
+          (candidate) => aiosSlugFor(candidate) === wanted && githubRepository(candidate) !== null,
+        )
       : undefined;
-    if (!project || card.shared !== true) return Effect.void;
-    return projectContext(project).pipe(
+  };
+
+  /** Keeps the collaborators' copy of a published card in step with the local card. */
+  const mirrorShared = (
+    project: Project,
+    card: TaskBoardTask,
+    input: TaskBoardCardUpdateInput,
+    localBefore: number,
+  ) =>
+    projectContext(project).pipe(
       Effect.flatMap((boardProject) =>
         persist(boardProject, (tasks) => {
-          if (!tasks.some((task) => task.id === card.id)) return { tasks, result: undefined };
-          const mirrored: TaskBoardTask = {
-            ...card,
-            sourceRoot: undefined,
-            project: boardProject.name,
-            shared: true,
-          };
+          const copy = tasks.find((task) => task.id === card.id);
+          if (!copy) return { tasks, result: undefined };
+          const mirrored = mirrorCard(copy, card, input, localBefore);
           return {
             tasks: tasks.map((task) => (task.id === card.id ? mirrored : task)),
             result: undefined,
           };
         }),
       ),
-      Effect.ignore,
     );
-  };
+
+  /** Records the card's shared-board sync state and returns the card as it is now on disk. */
+  const markSync = (
+    root: string,
+    file: string,
+    card: TaskBoardTask,
+    actor: string,
+    sharedSync: "failed" | null,
+    now: number,
+  ) =>
+    Effect.try({
+      try: () => {
+        const raw = NodeFS.readFileSync(file, "utf8");
+        const next = applyCardPatch(raw, { actor, sharedSync }, now);
+        if (next !== raw) writeCardAtomically(file, next);
+        const read = readAiosTasks(root, { now, cache: cardCache }).find(
+          (candidate) => candidate.id === card.id,
+        );
+        return read ? { ...read, sourceRoot: root } : card;
+      },
+      catch: cardWriteFailure,
+    }).pipe(
+      // The card on disk still says "pending", which stays true until a retry succeeds.
+      Effect.orElseSucceed((): TaskBoardTask => ({ ...card, sharedSync: sharedSync ?? "pending" })),
+    );
 
   const boardCardUpdate = (projectInput: Project, input: TaskBoardCardUpdateInput) =>
     Effect.gen(function* () {
@@ -1049,6 +1135,9 @@ const make = Effect.gen(function* () {
             reason: "task_not_found",
             message: "Task not found.",
           });
+        // Checked on every attempt, so a GitHub retry re-validates against the latest board.
+        if (input.expectedUpdatedAt !== undefined && existing.updatedAt !== input.expectedUpdatedAt)
+          throw staleRevision();
         const conflict = claimConflict(existing, input);
         if (conflict) throw conflict;
         const status = cardPatchFor(input, existing).status ?? existing.status;
@@ -1112,9 +1201,13 @@ const make = Effect.gen(function* () {
         }
         return yield* boardCardUpdate(project, input);
       }
-      const conflict = claimConflict(card, input);
-      if (conflict) return yield* conflict;
-      const updated = yield* Effect.try({
+      const target = mirrorTarget(
+        projects,
+        input.projectSlug === undefined ? card.projectSlug : input.projectSlug,
+      );
+      // Checks and write run in one synchronous block against the file as it is now, so a claim or
+      // revision check can never pass on a version another editor has already replaced.
+      const written = yield* Effect.try({
         try: () => {
           const file = card.sourceFile ? findCardFile(root, card.sourceFile) : null;
           if (!file) {
@@ -1123,25 +1216,68 @@ const make = Effect.gen(function* () {
               message: "The task card file is missing.",
             });
           }
+          const raw = NodeFS.readFileSync(file, "utf8");
+          const current =
+            cardToTask({
+              fileName: NodePath.basename(file),
+              raw,
+              mtimeMs: NodeFS.statSync(file).mtimeMs,
+              now,
+            }) ?? card;
+          if (
+            input.expectedUpdatedAt !== undefined &&
+            current.updatedAt !== input.expectedUpdatedAt
+          ) {
+            throw staleRevision();
+          }
+          const conflict = claimConflict(current, input);
+          if (conflict) throw conflict;
+          const pending = current.shared === true && target !== undefined;
           writeCardAtomically(
             file,
-            applyCardPatch(NodeFS.readFileSync(file, "utf8"), cardPatchFor(input, card), now),
+            applyCardPatch(
+              raw,
+              { ...cardPatchFor(input, current), ...(pending ? { sharedSync: "pending" } : {}) },
+              now,
+            ),
           );
           const updated = readAiosTasks(root, { now, cache: cardCache }).find(
             (candidate) => candidate.id === card.id,
           );
-          return updated ? { ...updated, sourceRoot: root } : undefined;
+          return updated
+            ? { file, before: current.updatedAt, updated: { ...updated, sourceRoot: root } }
+            : undefined;
         },
         catch: cardWriteFailure,
       });
-      if (!updated) {
+      if (!written) {
         return yield* new TaskBoardOperationError({
           reason: "task_not_found",
           message: "Task not found after the update.",
         });
       }
-      yield* mirrorShared(projects, updated);
-      return updated;
+      const { file, before, updated } = written;
+      const project = updated.shared === true ? mirrorTarget(projects, updated.projectSlug) : null;
+      if (!project) {
+        return updated.sharedSync === "pending"
+          ? yield* markSync(root, file, updated, input.actor, null, now)
+          : updated;
+      }
+      const mirrored = yield* Effect.exit(mirrorShared(project, updated, input, before));
+      if (Exit.isFailure(mirrored)) {
+        yield* Effect.logWarning("Could not mirror a task card to the shared board", {
+          taskId: updated.id,
+          cause: mirrored.cause,
+        });
+      }
+      return yield* markSync(
+        root,
+        file,
+        updated,
+        input.actor,
+        Exit.isSuccess(mirrored) ? null : "failed",
+        now,
+      );
     });
 
   const cardCreate = (input: TaskBoardCardCreateInput, projects: ReadonlyArray<Project>) =>
@@ -1271,9 +1407,15 @@ const make = Effect.gen(function* () {
             ? cards.map((card): TaskBoardTask => ({
                 ...card,
                 sourceRoot: undefined,
+                sharedSync: undefined,
                 project: project.name,
                 shared: true,
                 sharedBy: input.actor,
+                // Re-sharing retries a failed mirror; a collaborator's activity on the copy stays.
+                history: mergeHistory(
+                  tasks.find((task) => task.id === card.id)?.history ?? [],
+                  card.history,
+                ),
               }))
             : [];
           return { tasks: [...rest, ...published], result: undefined };
@@ -1293,6 +1435,7 @@ const make = Effect.gen(function* () {
                   actor: input.actor,
                   shared: input.shared,
                   sharedBy: input.shared ? input.actor : null,
+                  sharedSync: null,
                 },
                 now,
               );

@@ -143,10 +143,16 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
     [reportResult, sectionProjectId],
   );
 
+  // Edits carry the version the user saw, so one made from an old view is refused rather than
+  // overwriting a newer change. Notes only append, so they never conflict.
   const patchAction = useCallback(
     (task: TaskView, patch: CardPatch, failureTitle: string) =>
       track(task.id, async () => {
-        await updateCard(task, patch, failureTitle);
+        await updateCard(
+          task,
+          patch.note !== undefined ? patch : { ...patch, expectedUpdatedAt: task.updatedAt },
+          failureTitle,
+        );
       }),
     [track, updateCard],
   );

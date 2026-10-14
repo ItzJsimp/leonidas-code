@@ -29,6 +29,8 @@ export interface AiosCardPatch {
   /** `true` publishes the card to the shared board; `false` or `null` withdraws it. */
   readonly shared?: boolean | null | undefined;
   readonly sharedBy?: string | null | undefined;
+  /** Shared-board sync state. Recorded without an activity line or a `last_touched` bump. */
+  readonly sharedSync?: "pending" | "failed" | null | undefined;
   readonly note?: string | undefined;
   readonly actor: string;
   readonly agentLabel?: string | undefined;
@@ -431,6 +433,7 @@ export function cardToTask(input: {
   const verify = field(fields, "verify");
   const shared = field(fields, "shared").toLowerCase() === "true";
   const sharedBy = shared ? field(fields, "shared_by") : "";
+  const sharedSync = shared ? field(fields, "shared_sync") : "";
 
   return {
     id,
@@ -469,6 +472,7 @@ export function cardToTask(input: {
     ...(checklist ? { checklist } : {}),
     shared,
     ...(sharedBy ? { sharedBy } : {}),
+    ...(sharedSync === "pending" || sharedSync === "failed" ? { sharedSync } : {}),
     sourceId: declaredId || stem,
     sourceFile: NodePath.basename(input.fileName),
     issueUrl: null,
@@ -729,8 +733,18 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     }
   }
 
+  // Withdrawing a card from the shared board also drops its sync state.
+  const sharedSync = patch.shared === false || patch.shared === null ? null : patch.sharedSync;
+  const syncChanged =
+    sharedSync !== undefined && (sharedSync ?? "") !== field(fields, "shared_sync");
+  if (syncChanged) setKey("shared_sync", sharedSync);
+
+  let closing = text.slice(span.headerEnd, span.bodyStart);
+  if (!closing.endsWith("\n")) closing += eol;
+  const header = () => bom + text.slice(0, span.headerStart) + lines.join("") + closing;
+
   const note = patch.note === undefined ? "" : oneLine(patch.note);
-  if (!changed && !note) return raw;
+  if (!changed && !note) return syncChanged ? header() + text.slice(span.bodyStart) : raw;
 
   setKey("last_touched", localDate(now));
   const parts = [...lifecycle, ...claim, ...other];
@@ -738,15 +752,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   const summary = (parts.length > 0 ? parts.join(", ") : "progress") + (note ? ` — ${note}` : "");
   const entry = `- ${localDate(now)} ${localTime(now)} ${oneLine(patch.actor)}${label ? ` (${label})` : ""}: ${summary}`;
 
-  let closing = text.slice(span.headerEnd, span.bodyStart);
-  if (!closing.endsWith("\n")) closing += eol;
-  return (
-    bom +
-    text.slice(0, span.headerStart) +
-    lines.join("") +
-    closing +
-    appendActivity(text.slice(span.bodyStart), entry, eol)
-  );
+  return header() + appendActivity(text.slice(span.bodyStart), entry, eol);
 }
 
 /** Writes a new task card to `<root>/tasks/<slug>.md` without ever overwriting a file. */

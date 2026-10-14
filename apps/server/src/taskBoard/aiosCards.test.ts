@@ -421,6 +421,19 @@ describe("applyCardPatch", () => {
     expect(() => applyCardPatch("# nope\n", patchBase, NOW)).toThrow("invalid_card");
   });
 
+  it("records shared sync state without logging activity, and drops it when sharing stops", () => {
+    const shared = applyCardPatch(card(header), { ...patchBase, shared: true }, NOW);
+    const failed = applyCardPatch(shared, { ...patchBase, sharedSync: "failed" }, NOW);
+    expect(failed).toContain("shared_sync: failed\n");
+    expect(failed.split("Jake:").length).toBe(shared.split("Jake:").length);
+    expect(cardToTask({ fileName: "a.md", raw: failed, mtimeMs: NOW, now: NOW })).toMatchObject({
+      sharedSync: "failed",
+    });
+    expect(applyCardPatch(failed, { ...patchBase, sharedSync: null }, NOW)).toBe(shared);
+    const withdrawn = applyCardPatch(failed, { ...patchBase, shared: false }, NOW);
+    expect(withdrawn).not.toMatch(/^shared_sync:/m);
+  });
+
   it("writes and removes the shared keys and reads them back", () => {
     const raw = card(header);
     expect(cardToTask({ fileName: "a.md", raw, mtimeMs: NOW, now: NOW })).toMatchObject({

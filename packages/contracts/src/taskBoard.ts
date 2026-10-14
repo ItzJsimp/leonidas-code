@@ -99,6 +99,9 @@ export const TaskBoardTask = Schema.Struct({
   // True when the card is published to the project's shared board so collaborators see it.
   shared: Schema.optional(Schema.Boolean),
   sharedBy: Schema.optional(Schema.NullOr(Schema.String)),
+  // Set while a shared card's latest local edit has not reached the shared board: "pending" while
+  // the copy is being written, "failed" when it could not be. Sharing the card again retries.
+  sharedSync: Schema.optional(Schema.Literals(["pending", "failed"])),
   sourceId: Schema.NullOr(TrimmedNonEmptyString),
   sourceFile: Schema.NullOr(TrimmedNonEmptyString),
   sourceRoot: Schema.optional(TrimmedNonEmptyString),
@@ -259,6 +262,9 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   claimedBy: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  // The `updatedAt` the caller last saw. When set, the update fails with `stale_revision` if the
+  // task changed since, so an edit made from an old view never overwrites a newer one.
+  expectedUpdatedAt: Schema.optional(Schema.Number),
   // Appended to the card's activity log.
   note: Schema.optional(Schema.String.check(Schema.isMaxLength(4_000))),
 });
@@ -363,6 +369,7 @@ export class TaskBoardOperationError extends Schema.TaggedError<TaskBoardOperati
       "storage_error",
       "invalid_data",
       "invalid_card",
+      "stale_revision",
     ]),
     message: Schema.String,
   },

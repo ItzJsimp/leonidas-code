@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off globalDate:off - temp AIOS folders are plain Node fixtures.
 import { expect, it } from "@effect/vitest";
-import type { Project } from "@t3tools/contracts";
+import type { Project, TaskBoardTask } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as TestClock from "effect/testing/TestClock";
@@ -574,3 +574,213 @@ it.effect(
       (stateDir) => Effect.sync(() => NodeFS.rmSync(stateDir, { recursive: true, force: true })),
     ),
 );
+
+const findTask = (tasks: ReadonlyArray<TaskBoardTask>) =>
+  tasks.find((task) => task.id === "task-one");
+
+it.effect("refuses an edit made from an old view and keeps the newer edit and its history", () =>
+  withAios({ "one.md": cardFile("task-one", "First card") }, (root, project) =>
+    Effect.gen(function* () {
+      const old = 1_767_225_600; // 2026-01-01, in seconds
+      NodeFS.utimesSync(NodePath.join(root, "tasks", "one.md"), old, old);
+      const board = yield* TaskBoardService.TaskBoardService;
+      const seen = findTask((yield* board.workspace([project])).tasks)!;
+
+      const first = yield* board.cardUpdate(
+        {
+          taskId: "task-one",
+          actor: "Jake",
+          title: "Jake title",
+          expectedUpdatedAt: seen.updatedAt,
+        },
+        [project],
+      );
+      expect(first.title).toBe("Jake title");
+
+      const stale = yield* Effect.result(
+        board.cardUpdate(
+          {
+            taskId: "task-one",
+            actor: "Mob",
+            title: "Mob title",
+            expectedUpdatedAt: seen.updatedAt,
+          },
+          [project],
+        ),
+      );
+      expect(stale._tag).toBe("Failure");
+      if (stale._tag === "Failure")
+        expect(stale.failure).toMatchObject({ reason: "stale_revision" });
+      const kept = findTask((yield* board.workspace([project])).tasks)!;
+      expect(kept.title).toBe("Jake title");
+      expect(kept.history.map((entry) => entry.actor)).toEqual(["Jake"]);
+
+      const retried = yield* board.cardUpdate(
+        { taskId: "task-one", actor: "Mob", priority: "low", expectedUpdatedAt: kept.updatedAt },
+        [project],
+      );
+      expect(retried).toMatchObject({ title: "Jake title", priority: "low" });
+      expect(retried.history.map((entry) => entry.actor)).toEqual(["Jake", "Mob"]);
+    }),
+  ).pipe(Effect.provide(boardLayer(noGithub))),
+);
+
+// The shared board copy of task-one, as a collaborator's machine would have published it.
+const sharedCopy = (overrides: Partial<TaskBoardTask> = {}): TaskBoardTask => ({
+  id: "task-one",
+  project: "Leonidas Code",
+  title: "First card",
+  description: "",
+  status: "todo",
+  priority: "high",
+  claimedBy: null,
+  claimedAt: null,
+  claimedAgent: null,
+  completedBy: null,
+  completedAt: null,
+  completionSummary: null,
+  createdAt: 0,
+  updatedAt: 0,
+  labels: [],
+  source: "aios_card",
+  projectSlug: "leonidas-code",
+  shared: true,
+  sharedBy: "Mob",
+  sourceId: "task-one",
+  sourceFile: "one.md",
+  issueUrl: null,
+  history: [],
+  ...overrides,
+});
+
+// A stateful GitHub contents API: a PUT lands only with the current sha, like the real one.
+const fakeGithub = (tasks: ReadonlyArray<TaskBoardTask>) => {
+  const state = {
+    tasks,
+    sha: 1,
+    puts: 0,
+    failPuts: false,
+    // Runs once before the next PUT, as if a collaborator wrote first.
+    beforePut: null as null | (() => void),
+  };
+  const runner = ProcessRunner.ProcessRunner.of({
+    run: (input) =>
+      Effect.sync(() => {
+        const path = input.args.find((arg) => arg.startsWith("repos/")) ?? "";
+        const branch = /matching-refs\/heads\/(.+)$/.exec(path)?.[1];
+        if (branch) return output(JSON.stringify([{ ref: `refs/heads/${branch}` }]));
+        if (input.args.includes("PUT")) {
+          state.puts++;
+          if (state.failPuts) return output("", 1, "HTTP 502: Bad Gateway");
+          const before = state.beforePut;
+          state.beforePut = null;
+          before?.();
+          const field = (name: string) =>
+            input.args.find((arg) => arg.startsWith(`${name}=`))?.slice(name.length + 1);
+          if (field("sha") !== String(state.sha)) {
+            return output("", 1, "HTTP 409: sha does not match");
+          }
+          state.tasks = JSON.parse(Buffer.from(field("content")!, "base64").toString("utf8")).tasks;
+          state.sha++;
+          return output("{}");
+        }
+        if (path.includes("/contents/")) {
+          const content = Buffer.from(JSON.stringify({ version: 1, tasks: state.tasks }));
+          return output(
+            JSON.stringify({ content: content.toString("base64"), sha: String(state.sha) }),
+          );
+        }
+        return output("[]");
+      }),
+  });
+  return { state, runner };
+};
+
+it.effect("refuses an edit to a shared-only task when the shared copy changed", () => {
+  const github = fakeGithub([sharedCopy({ updatedAt: 5_000 })]);
+  const edit = (expectedUpdatedAt: number) => ({
+    taskId: "task-one",
+    projectId: boardProject.id,
+    actor: "Mob",
+    priority: "low" as const,
+    expectedUpdatedAt,
+  });
+  return Effect.gen(function* () {
+    const board = yield* TaskBoardService.TaskBoardService;
+    const stale = yield* Effect.result(board.cardUpdate(edit(4_000), [boardProject]));
+    expect(stale._tag).toBe("Failure");
+    if (stale._tag === "Failure") expect(stale.failure).toMatchObject({ reason: "stale_revision" });
+    expect(github.state.puts).toBe(0);
+    const updated = yield* board.cardUpdate(edit(5_000), [boardProject]);
+    expect(updated.priority).toBe("low");
+  }).pipe(Effect.provide(boardLayer(github.runner)));
+});
+
+const sharedCard = cardFile("task-one", "First card", 'shared: true\nshared_by: "Mob"\n');
+
+it.effect("keeps a failed shared mirror visible until a retry publishes the edit", () => {
+  const github = fakeGithub([sharedCopy()]);
+  return withAios({ "one.md": sharedCard }, (root, project) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      github.state.failPuts = true;
+      const edited = yield* board.cardUpdate(
+        { taskId: "task-one", actor: "Mob", title: "Renamed offline" },
+        [project],
+      );
+      expect(edited).toMatchObject({ title: "Renamed offline", sharedSync: "failed" });
+      expect(NodeFS.readFileSync(NodePath.join(root, "tasks", "one.md"), "utf8")).toMatch(
+        /^shared_sync: failed$/m,
+      );
+      expect(findTask((yield* board.workspace([project])).tasks)?.sharedSync).toBe("failed");
+      expect(github.state.tasks[0]?.title).toBe("First card");
+
+      github.state.failPuts = false;
+      yield* board.share(project, {
+        projectId: project.id,
+        taskIds: ["task-one"],
+        shared: true,
+        actor: "Mob",
+      });
+      const recovered = findTask((yield* board.workspace([project])).tasks);
+      expect(recovered).toMatchObject({ shared: true });
+      expect(recovered?.sharedSync).toBeUndefined();
+      expect(github.state.tasks[0]).toMatchObject({ title: "Renamed offline" });
+      expect(github.state.tasks[0]).not.toHaveProperty("sharedSync");
+    }),
+  ).pipe(Effect.provide(boardLayer(github.runner)));
+});
+
+it.effect("retries a mirror after a GitHub sha conflict and keeps the collaborator's edit", () => {
+  const later = Date.now() + 60_000;
+  const jakeNote = {
+    id: "jake-note",
+    taskId: "task-one",
+    action: "progress" as const,
+    actor: "Jake",
+    timestamp: later,
+    note: "Picked this up on my machine",
+  };
+  const github = fakeGithub([sharedCopy()]);
+  return withAios({ "one.md": sharedCard }, (_root, project) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      // Jake retitles the shared copy just before Mob's mirror lands, so Mob's first PUT is stale.
+      github.state.beforePut = () => {
+        github.state.tasks = [
+          sharedCopy({ title: "Jake title", updatedAt: later, history: [jakeNote] }),
+        ];
+        github.state.sha++;
+      };
+      const edited = yield* board.cardUpdate(
+        { taskId: "task-one", actor: "Mob", priority: "low" },
+        [project],
+      );
+      expect(edited.sharedSync).toBeUndefined();
+      expect(github.state.puts).toBe(2);
+      const copy = github.state.tasks[0]!;
+      expect(copy).toMatchObject({ title: "Jake title", priority: "low" });
+      expect(copy.history.map((entry) => entry.actor).sort()).toEqual(["Jake", "Mob"]);
+    }),
+  ).pipe(Effect.provide(boardLayer(github.runner)));
+});
