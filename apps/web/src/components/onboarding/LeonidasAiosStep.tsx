@@ -31,10 +31,12 @@ type AiosMode = "prompt" | "run";
 
 export function LeonidasAiosStep({
   environmentId,
+  onBack,
   onContinue,
   onLeave,
 }: {
   readonly environmentId: EnvironmentId | undefined;
+  readonly onBack: () => void;
   readonly onContinue: () => void;
   /** Called before the setup chat opens, so the wizard can finish first. */
   readonly onLeave?: () => void | Promise<unknown>;
@@ -213,7 +215,10 @@ export function LeonidasAiosStep({
           </Button>
         </div>
       </ScrollArea>
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex items-center justify-between">
+        <Button variant="ghost-muted" onClick={onBack}>
+          Back
+        </Button>
         <Button variant="ghost" onClick={onContinue}>
           Skip for now
         </Button>

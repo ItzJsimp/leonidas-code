@@ -8,6 +8,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   CLAUDE_WINDOWS_INSTALL_COMMAND,
+  describeAgentsStepContinue,
   getOnboardingProviderState,
   resolveOnboardingProviderInstallCommand,
   resolveOnboardingProviderLoginCommand,
@@ -350,5 +351,17 @@ describe("resolveOnboardingProviderInstallCommand", () => {
     expect(resolveOnboardingProviderInstallCommand("claudeAgent", platform)).toBe(
       "curl -fsSL https://claude.ai/install.sh | bash",
     );
+  });
+});
+
+describe("describeAgentsStepContinue", () => {
+  it("keeps the plain label and no note when an agent is ready", () => {
+    expect(describeAgentsStepContinue(true)).toEqual({ label: "Continue", note: null });
+  });
+
+  it("warns and relabels the button when no agent is ready", () => {
+    const copy = describeAgentsStepContinue(false);
+    expect(copy.label).toBe("Continue without an agent");
+    expect(copy.note).toContain("No agent is ready yet");
   });
 });

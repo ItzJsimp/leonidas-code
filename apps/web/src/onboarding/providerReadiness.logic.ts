@@ -137,3 +137,16 @@ export function resolveOnboardingProviderLoginCommand(
 
   return provider.driver;
 }
+
+/** Copy for the Agents step footer: warns when no computer has a ready agent. */
+export function describeAgentsStepContinue(hasReadyAgent: boolean): {
+  readonly label: string;
+  readonly note: string | null;
+} {
+  return hasReadyAgent
+    ? { label: "Continue", note: null }
+    : {
+        label: "Continue without an agent",
+        note: "No agent is ready yet. You can continue, but chats and the AIOS setup need one agent.",
+      };
+}

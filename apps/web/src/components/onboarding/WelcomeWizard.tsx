@@ -46,6 +46,7 @@ import {
   resolveOnboardingProjectId,
 } from "../../onboarding/projectImport.logic";
 import {
+  describeAgentsStepContinue,
   getOnboardingProviderState,
   resolveOnboardingProviderInstallCommand,
   resolveOnboardingProviderLoginCommand,
@@ -358,6 +359,7 @@ export function WelcomeWizard({
           ) : (
             <LeonidasAiosStep
               environmentId={setupIds[0]}
+              onBack={() => setStep("skills")}
               onContinue={() => void finishFromAios(true)}
               onLeave={() => finishFromAios(false)}
             />
@@ -753,6 +755,18 @@ function AgentsStep({
   readonly onContinue: () => void;
 }) {
   const { environments } = useEnvironments();
+  const [readyIds, setReadyIds] = useState<ReadonlySet<EnvironmentId>>(new Set());
+  const reportReady = useCallback((environmentId: EnvironmentId, ready: boolean) => {
+    setReadyIds((current) => {
+      if (current.has(environmentId) === ready) return current;
+      const next = new Set(current);
+      if (ready) next.add(environmentId);
+      else next.delete(environmentId);
+      return next;
+    });
+  }, []);
+  const hasReadyAgent = environmentIds.some((id) => readyIds.has(id));
+  const continueCopy = describeAgentsStepContinue(hasReadyAgent);
   return (
     <StepShell
       title="Connect your agents"
@@ -764,6 +778,7 @@ function AgentsStep({
             <ConnectedAgentsStep
               key={environmentId}
               environmentId={environmentId}
+              onReadyChange={reportReady}
               machineLabel={
                 environments.find((environment) => environment.environmentId === environmentId)
                   ?.label ?? "Computer"
@@ -772,12 +787,17 @@ function AgentsStep({
           ))}
         </div>
       </ScrollArea>
+      {continueCopy.note ? (
+        <p className="mt-3 text-xs text-muted-foreground" role="status">
+          {continueCopy.note}
+        </p>
+      ) : null}
       <div className="mt-6 flex items-center justify-between">
         <Button variant="ghost-muted" onClick={onBack}>
           Back
         </Button>
-        <Button autoFocus onClick={onContinue}>
-          Continue
+        <Button autoFocus variant={hasReadyAgent ? "default" : "outline"} onClick={onContinue}>
+          {continueCopy.label}
           <ArrowRightIcon className="size-3.5" />
         </Button>
       </div>
@@ -788,11 +808,17 @@ function AgentsStep({
 function ConnectedAgentsStep({
   environmentId,
   machineLabel,
+  onReadyChange,
 }: {
   readonly environmentId: EnvironmentId;
   readonly machineLabel: string;
+  readonly onReadyChange: (environmentId: EnvironmentId, ready: boolean) => void;
 }) {
   const providers = useAtomValue(serverEnvironment.providersValueAtom(environmentId));
+  const anyReady = providers?.some((provider) => getOnboardingProviderState(provider) === "ready");
+  useEffect(() => {
+    onReadyChange(environmentId, anyReady === true);
+  }, [anyReady, environmentId, onReadyChange]);
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
     reportFailure: false,
   });
