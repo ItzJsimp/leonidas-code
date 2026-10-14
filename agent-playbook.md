@@ -54,6 +54,8 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 - **A dev server for this checkout may already be running:** `vp run dev` then refuses. Start yours with `--home-dir <temp folder>` (own ports and data) and stop only the PID you captured (`/proc/<pid>/winpid`, then `taskkill //T`).
 - **Fresh worktrees need an install first:** `pnpm install --frozen-lockfile` (about 7.5 minutes) before any check. Worktrees on D: stall; use `C:/lcw`.
 - **A commit that hangs is usually the hook:** let `vp fmt` finish; never bypass it.
+- **MCP service test fixtures are partial records:** `OrchestratorMcpService.test.ts` casts runs without `startedAt`/`completedAt`. New code that reads run or turn fields must guard with `== null`, or 7 unrelated tests fail.
+- **Server typecheck has existing errors** in unrelated test files (`aiosDetect.test.ts`, `relativeImportExtensions.test.ts`). Filter the output to your changed paths instead of reading the total.
 
 ## 6. Why it is this way
 
@@ -67,5 +69,6 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
+- 2026-10-14: delegated task status returns a provider-reported `usage` block (`apps/server/src/mcp/delegatedTaskUsage.ts`, commit `c0efa878cf`); harness-gates card 1 of 4. Cards 2 to 4 build on it.
 - 2026-10-14: AIOS Home on the Command tab (`taskBoard.home`, `aiosHome.ts`, `AiosHomeCard.tsx`), verified live on 583 cards; Home build 1 ms, shared card scan 92 ms warm is the next cost to cut.
 - 2026-10-14: starter skills verified 22/22 in both roots for Claude Code and Codex; `SKILL_ROOTS` now lives in `skillPacks.ts` so the wizard and the verifier share it.
