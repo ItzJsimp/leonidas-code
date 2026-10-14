@@ -48,7 +48,7 @@ export const ComposerToolbar = memo(function ComposerToolbar(props: {
               "[&_[data-composer-banner-surface]]:[--composer-banner-icon-column:--spacing(4)] [&_[data-slot=composer-banner-content]]:sr-only [&_svg]:size-3",
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {entries.map((entry) => {
               if (entry.hidden) return null;
               const custom = customById.get(entry.id);
