@@ -35,7 +35,7 @@ export const emptyTotals = (): UsageTokenTotals => ({
   outputTokens: 0,
   reasoningTokens: 0,
 });
-export function addTotals(a: UsageTokenTotals, b: UsageTokenTotals): UsageTokenTotals {
+function addTotals(a: UsageTokenTotals, b: UsageTokenTotals): UsageTokenTotals {
   return {
     uncachedInputTokens: a.uncachedInputTokens + b.uncachedInputTokens,
     cachedInputTokens: a.cachedInputTokens + b.cachedInputTokens,
@@ -44,7 +44,7 @@ export function addTotals(a: UsageTokenTotals, b: UsageTokenTotals): UsageTokenT
     reasoningTokens: a.reasoningTokens + b.reasoningTokens,
   };
 }
-export const totalTokens = (t: UsageTokenTotals) =>
+const totalTokens = (t: UsageTokenTotals) =>
   t.uncachedInputTokens + t.cachedInputTokens + t.cacheCreationTokens + t.outputTokens;
 
 /** Local token equivalents for the observed workload, never a provider token entitlement. */
