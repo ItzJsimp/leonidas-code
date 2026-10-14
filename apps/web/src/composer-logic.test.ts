@@ -270,6 +270,21 @@ describe("detectComposerTrigger", () => {
     });
   });
 
+  it("opens the slash menu on a later token so a second skill can be picked", () => {
+    const text = "/grill-me then /ts";
+    expect(detectComposerTrigger(text, text.length)).toEqual({
+      kind: "slash-command",
+      query: "ts",
+      rangeStart: "/grill-me then ".length,
+      rangeEnd: text.length,
+    });
+  });
+
+  it("leaves a typed path after text as plain text", () => {
+    const text = "look at /src/index";
+    expect(detectComposerTrigger(text, text.length)).toBeNull();
+  });
+
   it("keeps /model as a slash command item", () => {
     const text = "/model";
     const trigger = detectComposerTrigger(text, text.length);

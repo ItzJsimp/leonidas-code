@@ -85,6 +85,36 @@ it.layer(NodeServices.layer)("discoverClaudeSkills", (it) => {
     }),
   );
 
+  it.effect("reads the repository root's skills from a subfolder workspace", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-claude-skills-" });
+      const repo = path.join(tempDir, "repo");
+      const workspace = path.join(repo, "apps", "server");
+      yield* fs.makeDirectory(path.join(repo, ".git"), { recursive: true });
+      yield* fs.makeDirectory(workspace, { recursive: true });
+      yield* writeSkill(path.join(repo, ".claude", "skills"), "root-skill", "# Root");
+      yield* writeSkill(path.join(repo, ".claude", "skills"), "shared", "# Root copy");
+      yield* writeSkill(path.join(workspace, ".claude", "skills"), "shared", "# Nested copy");
+
+      const skills = yield* discoverClaudeSkills(
+        { homePath: path.join(tempDir, "no-home") },
+        workspace,
+        {},
+      );
+
+      assert.deepStrictEqual(
+        skills.map((skill) => skill.name),
+        ["root-skill", "shared"],
+      );
+      assert.strictEqual(
+        skills.find((skill) => skill.name === "shared")?.path,
+        path.join(workspace, ".claude", "skills", "shared", "SKILL.md"),
+      );
+    }),
+  );
+
   it.effect("ignores .agents/skills, which Claude Code does not load", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
