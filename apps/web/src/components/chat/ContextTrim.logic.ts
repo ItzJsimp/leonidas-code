@@ -77,3 +77,28 @@ export function deriveTrimSuggestions(
     .toSorted((a, b) => b.tokens - a.tokens || a.label.localeCompare(b.label))
     .slice(0, MAX_SUGGESTIONS);
 }
+
+const sumTokens = (items: ReadonlyArray<{ readonly tokens: number }>) =>
+  items.reduce((total, item) => total + item.tokens, 0);
+
+/** Estimated tokens the provider carries on every turn before the conversation starts. */
+export function estimateFixedOverheadTokens(
+  breakdown: Pick<ThreadContextBreakdown, "mcpTools" | "skills" | "agents" | "files">,
+): number {
+  return (
+    sumTokens(breakdown.mcpTools) +
+    sumTokens(breakdown.skills) +
+    sumTokens(breakdown.agents) +
+    sumTokens(breakdown.files.filter((file) => file.origin === "memory"))
+  );
+}
+
+/** Splits one turn's input into the fixed part and the rest; the estimate is capped at the input. */
+export function splitInputByOverhead(
+  inputTokens: number,
+  overheadTokens: number,
+): { readonly fixed: number; readonly conversation: number } | null {
+  if (overheadTokens <= 0 || inputTokens <= 0) return null;
+  const fixed = Math.min(overheadTokens, inputTokens);
+  return { fixed, conversation: inputTokens - fixed };
+}

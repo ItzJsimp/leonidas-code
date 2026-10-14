@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { deriveTrimSuggestions } from "./ContextTrim.logic.ts";
+import {
+  deriveTrimSuggestions,
+  estimateFixedOverheadTokens,
+  splitInputByOverhead,
+} from "./ContextTrim.logic.ts";
 
 const base = { mcpTools: [], skills: [], agents: [], files: [] };
 
@@ -84,5 +88,40 @@ describe("deriveTrimSuggestions", () => {
       status: "ok" as const,
     }));
     expect(deriveTrimSuggestions({ ...base, toolCalls })).toEqual([]);
+  });
+});
+
+describe("estimateFixedOverheadTokens", () => {
+  it("adds MCP schemas, skills, agents and memory files, but not files the agent read", () => {
+    const file = (origin: "memory" | "read", tokens: number) => ({
+      path: `${origin}.md`,
+      tokens,
+      estimated: true,
+      readCount: 1,
+      lastTurnIndex: null,
+      origin,
+    });
+    expect(
+      estimateFixedOverheadTokens({
+        mcpTools: [{ name: "a", server: "docs", tokens: 100 }],
+        skills: [{ name: "s", source: "user", tokens: 20 }],
+        agents: [{ name: "g", source: "user", tokens: 3 }],
+        files: [file("memory", 4_000), file("read", 9_000)],
+      }),
+    ).toBe(4_123);
+  });
+});
+
+describe("splitInputByOverhead", () => {
+  it("keeps the two parts equal to the input", () => {
+    expect(splitInputByOverhead(20_000, 6_000)).toEqual({ fixed: 6_000, conversation: 14_000 });
+  });
+
+  it("never lets the estimate exceed what was sent", () => {
+    expect(splitInputByOverhead(1_000, 6_000)).toEqual({ fixed: 1_000, conversation: 0 });
+  });
+
+  it("says nothing without an estimate", () => {
+    expect(splitInputByOverhead(1_000, 0)).toBeNull();
   });
 });

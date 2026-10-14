@@ -1,3 +1,6 @@
+import { useThreadContextBreakdown } from "../../state/queries";
+import { estimateFixedOverheadTokens, splitInputByOverhead } from "./ContextTrim.logic";
+import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import type { CacheBreak, TurnLedger } from "@t3tools/shared/turnLedger";
 import {
   formatCacheBreak,
@@ -68,9 +71,11 @@ export function SpeedSection({ summary }: { summary: VelocitySummary }) {
 export function InputLedger({
   ledger,
   cacheBreak,
+  threadTarget = null,
 }: {
   ledger: TurnLedger;
   cacheBreak: CacheBreak | null;
+  threadTarget?: ThreadTarget | null;
 }) {
   const input = ledger.cacheReadTokens + ledger.cacheWriteTokens + ledger.freshInputTokens;
   const share = (tokens: number) => `${input > 0 ? (tokens / input) * 100 : 0}%`;
@@ -92,6 +97,7 @@ export function InputLedger({
         />
         <Row label="Cache writes" value={ledger.cacheWriteTokens.toLocaleString()} />
         <Row label="Fresh" value={ledger.freshInputTokens.toLocaleString()} />
+        <OverheadRows threadTarget={threadTarget} inputTokens={input} />
       </dl>
       {cacheBreak ? (
         <p className="text-pretty text-2xs text-warning-foreground leading-4" role="status">
@@ -99,6 +105,32 @@ export function InputLedger({
         </p>
       ) : null}
     </section>
+  );
+}
+
+export interface ThreadTarget {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+}
+
+/** Fixed overhead against conversation. Reads the thread breakdown only while the popover is open. */
+function OverheadRows({
+  threadTarget,
+  inputTokens,
+}: {
+  threadTarget: ThreadTarget | null;
+  inputTokens: number;
+}) {
+  const query = useThreadContextBreakdown(threadTarget);
+  const split = query.data
+    ? splitInputByOverhead(inputTokens, estimateFixedOverheadTokens(query.data))
+    : null;
+  if (split === null) return null;
+  return (
+    <>
+      <Row label="Always loaded (estimate)" value={split.fixed.toLocaleString()} />
+      <Row label="Conversation (estimate)" value={split.conversation.toLocaleString()} />
+    </>
   );
 }
 

@@ -1386,6 +1386,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   compact: boolean;
   canOperateThread: boolean;
   activeVelocitySummary?: VelocitySummary | null | undefined;
+  activeThreadTarget?: { environmentId: EnvironmentId; threadId: ThreadId } | null | undefined;
   activeContextWindow: ContextWindowSnapshot | null;
   activeThreadModelDisplayName: string | null;
   isPreparingWorktree: boolean;
@@ -1427,6 +1428,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
       <ContextWindowMeter
         usage={props.activeContextWindow}
         velocity={props.activeVelocitySummary}
+        threadTarget={props.activeThreadTarget}
         modelDisplayName={props.activeThreadModelDisplayName}
         onCompact={props.onCompactContext}
         compactDisabled={props.compactDisabled}
@@ -7924,6 +7926,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
                     activeVelocitySummary={context.velocity}
+                    activeThreadTarget={routeKind === "server" ? routeThreadRef : null}
                     activeContextWindow={activeContextWindow}
                     activeThreadModelDisplayName={activeThreadModelDisplayName}
                     pendingAction={pendingPrimaryAction}
