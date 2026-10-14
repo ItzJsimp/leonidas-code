@@ -1,4 +1,4 @@
-import type { EnvironmentId, TaskBoardWorkspaceProject } from "@t3tools/contracts";
+import type { EnvironmentId, ProjectId, TaskBoardWorkspaceProject } from "@t3tools/contracts";
 import { useCallback, useMemo, useState } from "react";
 
 import { useVisibleInterval } from "~/hooks/useVisibleInterval";
@@ -82,15 +82,22 @@ export function useTaskBoard(input: {
 
   // Every repository-backed project's shared board is read, selected or not, so a project a
   // collaborator shares (a shared Leonidas Code repo) shows up on its own.
-  const sharedTargets = useMemo(
-    () =>
-      projects.flatMap((project) =>
-        project.projectId && project.repository
-          ? [{ slug: project.slug, projectId: project.projectId }]
-          : [],
-      ),
-    [projects],
-  );
+  const localCards = data?.tasks;
+  const sharedTargets = useMemo(() => {
+    // Projects can point at one repository (a sub-folder and its parent); its board is read
+    // once, for the project that owns the most local cards, so it never shows up twice.
+    const cardsFor = (slug: string) =>
+      (localCards ?? []).filter((task) => task.projectSlug === slug).length;
+    const byRepository = new Map<string, { slug: string; projectId: ProjectId }>();
+    for (const project of projects) {
+      if (!project.projectId || !project.repository) continue;
+      const chosen = byRepository.get(project.repository);
+      if (!chosen || cardsFor(project.slug) > cardsFor(chosen.slug)) {
+        byRepository.set(project.repository, { slug: project.slug, projectId: project.projectId });
+      }
+    }
+    return [...byRepository.values()];
+  }, [localCards, projects]);
   const shared = useSharedBoards(environmentId, sharedTargets);
 
   const { refresh: refreshWorkspace } = workspace;

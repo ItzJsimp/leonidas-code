@@ -20,7 +20,7 @@ import {
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { cn } from "~/lib/utils";
 import { ChecklistBar, DueChip, PriorityBadge, SharedBadge, StatusBadge } from "./TaskBadges";
-import { ClaimedBy, ProjectChip, useLatest } from "./TaskRowParts";
+import { ClaimedBy, LaneChip, ProjectChip, useLatest } from "./TaskRowParts";
 import {
   isOpen,
   relativeTime,
@@ -114,6 +114,7 @@ const TaskRow = memo(function TaskRow({
         </span>
         <span className="hidden shrink-0 items-center gap-1.5 @min-[36rem]:flex">
           {showStatusBadge ? <StatusBadge status={task.status} /> : null}
+          <LaneChip labels={task.labels} />
           <ProjectChip name={projectName} />
           <PriorityBadge priority={task.priority} />
           {done ? null : <DueChip due={task.due} now={now} />}
@@ -219,6 +220,11 @@ export function TaskListView(props: {
     [tasks, sections, groupBy],
   );
   const projectNames = useMemo(() => projectNameIndex(context.projects), [context.projects]);
+  // Inside a single project the chip on every row only repeats the page title.
+  const singleProject = useMemo(
+    () => new Set(tasks.map((task) => task.section)).size <= 1,
+    [tasks],
+  );
   const visibleIds = useMemo(() => visibleTaskIds(groups, overrides), [groups, overrides]);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
   const tabbableId =
@@ -301,7 +307,11 @@ export function TaskListView(props: {
                     now={context.now}
                     onAction={runAction}
                     onSelect={select}
-                    projectName={groupBy === "project" ? null : projectNameFor(task, projectNames)}
+                    projectName={
+                      groupBy === "project" || singleProject
+                        ? null
+                        : projectNameFor(task, projectNames)
+                    }
                     selected={selectedId === task.id}
                     showStatusBadge={groupBy !== "status"}
                     tabbable={tabbableId === task.id}

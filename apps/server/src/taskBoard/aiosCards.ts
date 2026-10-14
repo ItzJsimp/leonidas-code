@@ -429,8 +429,17 @@ export function cardToTask(input: {
     ? /\*\*Resolution Summary:\*\*[ \t]*(.+)/.exec(parsed.body)?.[1]?.trim()
     : undefined;
 
+  // `build_lane` says who builds the card ("Mob", "Jake", "Mob after Jake go"); it becomes a
+  // `lane:` label so every client can show and search it.
+  const buildLane = field(fields, "build_lane");
   const labels = [
-    ...new Set([...listField(fields, "tags"), field(fields, "lane")].filter(Boolean)),
+    ...new Set(
+      [
+        ...listField(fields, "tags"),
+        field(fields, "lane"),
+        buildLane ? `lane:${buildLane.toLowerCase().replace(/\s+/g, "-")}` : "",
+      ].filter(Boolean),
+    ),
   ];
   const due = field(fields, "due");
   const verify = field(fields, "verify");

@@ -25,6 +25,20 @@ export function ProjectChip({ name }: { readonly name: string | null }) {
   );
 }
 
+const LANE_PREFIX = "lane:";
+
+/** Who builds the task, from its `lane:` label. Nothing is shown for tasks without one. */
+export function LaneChip({ labels }: { readonly labels: ReadonlyArray<string> }) {
+  const lane = labels.find((label) => label.startsWith(LANE_PREFIX));
+  if (!lane) return null;
+  const name = lane.slice(LANE_PREFIX.length).replace(/-/g, " ");
+  return (
+    <Badge variant="secondary" size="sm" className="capitalize">
+      {name}
+    </Badge>
+  );
+}
+
 /** Initial of whoever holds the task, with the agent or model when an agent claimed it. */
 export function ClaimedBy({
   name,
