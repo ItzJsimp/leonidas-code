@@ -119,10 +119,20 @@ function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
  * and project files it has used. Tool calls hang off the run's nodes beside the root,
  * so every item of the run counts, not just the root node's.
  */
+/** What a run waits on before its agent sends anything. */
+export type AgentStartPhase = "checkpoint" | "preparing" | "starting";
+
+const START_PHASE_TEXT: Record<AgentStartPhase, string> = {
+  checkpoint: "Saving the last turn's checkpoint",
+  preparing: "Preparing the workspace",
+  starting: "Starting the agent",
+};
+
 export function deriveAgentActivity(input: {
   runId: RunId;
   items: readonly OrchestrationV2TurnItem[];
   plan: Extract<OrchestrationV2PlanArtifact, { kind: "todo_list" }> | null;
+  startPhase?: AgentStartPhase | null;
 }) {
   const items = input.items.filter((item) => item.runId === input.runId);
   const steer = items.findLast(
@@ -228,7 +238,12 @@ export function deriveAgentActivity(input: {
             running: false,
           }
         : {
-            text: steer && !plan ? "Updating plan" : "Getting started",
+            text:
+              steer && !plan
+                ? "Updating plan"
+                : input.startPhase
+                  ? START_PHASE_TEXT[input.startPhase]
+                  : "Getting started",
             kind: "idle",
             running: false,
           };

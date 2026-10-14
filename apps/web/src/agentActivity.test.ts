@@ -136,6 +136,16 @@ describe("agent activity", () => {
     const activity = derive([read("a", "src/a.ts"), read("b", "src/b.ts"), read("c", "src/a.ts")]);
     expect(activity.files).toEqual(["src/b.ts", "src/a.ts"]);
   });
+  it("names the start phase before the agent sends anything", () => {
+    const phased = (startPhase: "checkpoint" | "preparing" | "starting") =>
+      deriveAgentActivity({ runId: base.runId, items: [], plan: null, startPhase }).now.text;
+    expect(phased("checkpoint")).toBe("Saving the last turn's checkpoint");
+    expect(phased("preparing")).toBe("Preparing the workspace");
+    expect(phased("starting")).toBe("Starting the agent");
+    expect(deriveAgentActivity({ runId: base.runId, items: [], plan: null }).now.text).toBe(
+      "Getting started",
+    );
+  });
   it("does not report workspace preparation as the current tool", () => {
     const activity = derive([
       {

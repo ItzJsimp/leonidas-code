@@ -1605,6 +1605,10 @@ function releaseChatTimelineAnchor<T extends { readonly messageId: MessageId | n
 const retryingWorkspacePreparationRunIds = new Set<RunId>();
 
 export default function ChatView(props: ChatViewProps) {
+  {
+    const p = ((globalThis as any).__perf ??= {});
+    p["ChatView"] = (p["ChatView"] ?? 0) + 1;
+  } // PERF-PROBE
   const {
     environmentId,
     threadId,
@@ -2498,10 +2502,19 @@ export default function ChatView(props: ChatViewProps) {
         candidate.status !== "superseded" &&
         candidate.runId === activeActivityRun.runId,
     );
+    // A queued turn starts only after the previous run's checkpoint is captured.
+    const startPhase = serverProjection.runs.some(
+      (run) => run.status === "waiting" && run.id !== activeActivityRun.runId,
+    )
+      ? "checkpoint"
+      : activeActivityRun.status === "preparing" || activeActivityRun.status === "starting"
+        ? activeActivityRun.status
+        : null;
     return deriveAgentActivity({
       runId: activeActivityRun.runId,
       items: serverProjection.turnItems,
       plan: plan?.kind === "todo_list" ? plan : null,
+      startPhase,
     });
   }, [activeActivityRun, activeRuntime, serverProjection]);
   const activeComposerTaskSteps = activeComposerActivity?.steps ?? null;
@@ -9022,6 +9035,19 @@ export default function ChatView(props: ChatViewProps) {
     ],
   );
 
+  // Timeline rows read this through shared context. The inline wrapper was a
+  // new function per streamed delta, so every row re-rendered. Read the latest
+  // handler from a render-synced mirror and keep one stable callback.
+  const timelineRollbackRef = useRef({ onRollbackCheckpoint, paintOnlyDisplayedTimeline });
+  timelineRollbackRef.current = { onRollbackCheckpoint, paintOnlyDisplayedTimeline };
+  const onTimelineRollbackCheckpoint = useCallback(
+    (input: { readonly checkpointId: string; readonly scopeId: string }) => {
+      const latest = timelineRollbackRef.current;
+      if (!latest.paintOnlyDisplayedTimeline) void latest.onRollbackCheckpoint(input);
+    },
+    [],
+  );
+
   const onForkFromRun = useCallback(
     async (input: { readonly sourceThreadId: ThreadId; readonly runId: RunId }) => {
       if (!activeThread || activeEnvironmentUnavailable) return;
@@ -11992,9 +12018,7 @@ export default function ChatView(props: ChatViewProps) {
                 onOpenThread={onOpenRelatedThread}
                 parentThreadLink={paintOnlyDisplayedTimeline ? null : parentThreadLink}
                 onForkFromRun={paintOnlyDisplayedTimeline ? async () => {} : onForkFromRun}
-                onRollbackCheckpoint={(input) => {
-                  if (!paintOnlyDisplayedTimeline) void onRollbackCheckpoint(input);
-                }}
+                onRollbackCheckpoint={onTimelineRollbackCheckpoint}
                 supportsConversationRollback={
                   !paintOnlyDisplayedTimeline && supportsConversationRollback
                 }
