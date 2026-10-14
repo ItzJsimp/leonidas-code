@@ -11,16 +11,16 @@ export interface LeonidasGoal {
 }
 
 export const LEONIDAS_GOALS: readonly LeonidasGoal[] = [
-  { id: "web-apps", label: "Web apps", hint: "Dashboards, tools, SaaS" },
-  { id: "websites", label: "Websites and landing pages", hint: "Sites for you or clients" },
-  { id: "mobile-apps", label: "Mobile apps", hint: "iPhone and Android" },
-  { id: "automation", label: "Automations and scripts", hint: "Save time on repeat work" },
-  { id: "data", label: "Data and analysis", hint: "Spreadsheets, reports, charts" },
-  { id: "agents", label: "AI agents and bots", hint: "Assistants that do things" },
-  { id: "games", label: "Games", hint: "Prototypes to full builds" },
-  { id: "design", label: "Design and UI polish", hint: "Make it look right" },
-  { id: "fix-code", label: "Fixing and improving existing code", hint: "Bugs, cleanups, upgrades" },
-  { id: "learning", label: "Learning to code", hint: "Understand while you build" },
+  { id: "web-apps", label: "Apps and tools", hint: "Anything you click through" },
+  { id: "websites", label: "Websites", hint: "Pages for you or someone else" },
+  { id: "mobile-apps", label: "Phone apps", hint: "iPhone and Android" },
+  { id: "automation", label: "Automation", hint: "Let the computer do the boring parts" },
+  { id: "data", label: "Data and numbers", hint: "Reports, charts, answers" },
+  { id: "agents", label: "AI helpers", hint: "Assistants that do things for you" },
+  { id: "games", label: "Games", hint: "From a quick prototype to a full build" },
+  { id: "design", label: "Making it look good", hint: "Polish, layout, feel" },
+  { id: "fix-code", label: "Fixing what I already have", hint: "Bugs, cleanups, upgrades" },
+  { id: "learning", label: "Learning as I go", hint: "Understand while we build" },
 ];
 
 /** Keeps stored picks that still exist, so a retired goal never breaks the step. */
@@ -89,7 +89,7 @@ export function buildAiosSetupPrompt(
     tree,
     "Ask me a few short questions (my name, what I build, how I like answers written), then fill in CLAUDE.md and AGENTS.md from my answers. Keep each file short and plain.",
     options.inCurrentFolder
-      ? "When done, list what you created in one line each."
+      ? "When done, list what you created in one line each. Then suggest 3 to 5 extra skills that fit how I work and write each to .claude/skills/<name>/SKILL.md and .agents/skills/<name>/SKILL.md."
       : "When done, list what you created and tell me how to open that folder in Leonidas Code.",
   ].join("\n\n");
 }
@@ -109,10 +109,3 @@ export function buildSkillSuggestionPrompt(
     "Write each one to .claude/skills/<name>/SKILL.md and .agents/skills/<name>/SKILL.md, then list what you added in one line each.",
   ].join("\n\n");
 }
-
-export const AIOS_MANUAL_STEPS: readonly string[] = [
-  "Create a new folder anywhere you keep projects, for example AIOS.",
-  "Inside it, make the folders memory, tasks, projects and .claude/skills.",
-  "Create CLAUDE.md and AGENTS.md. Write a few lines: your name, what you build, and how you want answers written.",
-  "Open the folder in Leonidas Code as a project. Your AI now reads those files at the start of every session.",
-];

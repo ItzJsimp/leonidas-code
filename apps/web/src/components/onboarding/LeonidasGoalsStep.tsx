@@ -1,5 +1,6 @@
 import { ArrowRightIcon } from "lucide-react";
 
+import { PRIVACY_POLICY_URL } from "../../legalLinks";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import {
   LEONIDAS_GOALS,
@@ -44,10 +45,20 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
           ))}
         </div>
       </ScrollArea>
+      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+        Leonidas Code collects anonymous usage data to help us improve it. To read more about how
+        your data is used and how to opt out, see our{" "}
+        <a
+          className="underline underline-offset-2 hover:text-foreground"
+          href={PRIVACY_POLICY_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          privacy policy
+        </a>
+        .
+      </p>
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onContinue}>
-          Skip
-        </Button>
         <Button autoFocus onClick={onContinue}>
           Continue
           <ArrowRightIcon className="size-3.5" />

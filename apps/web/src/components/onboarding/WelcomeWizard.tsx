@@ -1,7 +1,6 @@
 import { useAuth } from "@clerk/react";
 import { useAtomValue } from "@effect/atom-react";
 import type {
-  AgentSessionProjectCandidate,
   EnvironmentId,
   ProjectId,
   ProviderInstanceId,
@@ -41,12 +40,10 @@ import { PRIVACY_POLICY_URL } from "../../legalLinks";
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { useCompleteOnboarding } from "../../onboarding/firstRun";
 import {
-  groupOnboardingProjects,
   partitionOnboardingProjects,
   onboardingProjectKey,
   resolveOnboardingLandingProject,
   resolveOnboardingProjectId,
-  type OnboardingProjectGroup,
 } from "../../onboarding/projectImport.logic";
 import {
   getOnboardingProviderState,
@@ -87,20 +84,19 @@ import { T3Wordmark } from "../T3Wordmark";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
+import { ImportCandidateList } from "./ImportCandidateList";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CommandBlock } from "../CommandBlock";
 import { Checkbox } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { Input } from "../ui/input";
-import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { ScrollArea } from "../ui/scroll-area";
 import { Spinner } from "../ui/spinner";
 import { WizardPanel, WizardSteps, WizardPopup, WizardHeader } from "../ui/wizard";
 import { Dialog } from "../ui/dialog";
 import { toastManager } from "../ui/toast";
 import { cn } from "../../lib/utils";
-import { formatRelativeTime } from "../../timestampFormat";
 
 /**
  * First-run welcome wizard. Rendered over the workspace at `/welcome` on a
@@ -111,19 +107,19 @@ import { formatRelativeTime } from "../../timestampFormat";
  * re-runnable by clearing the flag.
  */
 
-type WizardStep = "welcome" | "connection" | "agents" | "aios" | "skills" | "import";
+type WizardStep = "welcome" | "connection" | "agents" | "skills" | "import" | "aios";
 const STEP_ORDER: readonly WizardStep[] = [
   "welcome",
   "connection",
   "agents",
-  "aios",
   "skills",
   "import",
+  "aios",
 ];
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const ONBOARDING_STAGES = ["Welcome", "Connect", "Agents", "AIOS", "Skills", "Projects"] as const;
+const ONBOARDING_STAGES = ["Welcome", "Connect", "Agents", "Skills", "Projects", "AIOS"] as const;
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 export function WelcomeWizard({
@@ -179,7 +175,15 @@ export function WelcomeWizard({
     setSetupIds(ids);
     setStep("agents");
   };
+  // One computer with nothing to choose skips Connect; its privacy notice moves to Welcome.
+  const soloSetup = resolveOnboardingSetup(environments, selectedIds);
+  const skipConnect =
+    environments.length === 1 && !hasCloudPublicConfig() && soloSetup.environmentIds.length === 1;
   const stageIndex = STEP_ORDER.indexOf(step);
+  const goBack = () => {
+    const previous = STEP_ORDER[stageIndex - 1] ?? "welcome";
+    setStep(previous === "connection" && skipConnect ? "welcome" : previous);
+  };
   const finish = useCallback(
     (projectRef?: ScopedProjectRef, importWarning?: string, importedThreadCount = 0) => {
       if (finishingPromiseRef.current !== null) return finishingPromiseRef.current;
@@ -234,6 +238,31 @@ export function WelcomeWizard({
     [completeOnboarding, onDone],
   );
 
+  // AIOS is the last step because its setup chat leaves the wizard. The import
+  // result waits here until the user finishes or leaves from that step.
+  const importResultRef = useRef<{
+    readonly projectRef: ScopedProjectRef | undefined;
+    readonly warning: string | undefined;
+    readonly threadCount: number;
+  } | null>(null);
+  const completeImport = useCallback(
+    async (projectRef?: ScopedProjectRef, warning?: string, threadCount = 0) => {
+      importResultRef.current = { projectRef, warning, threadCount };
+      setIsImporting(false);
+      setStep("aios");
+      return true;
+    },
+    [],
+  );
+  const finishFromAios = (landOnImportedProject: boolean) => {
+    const result = importResultRef.current;
+    return finish(
+      landOnImportedProject ? result?.projectRef : undefined,
+      result?.warning,
+      result?.threadCount ?? 0,
+    );
+  };
+
   return (
     <Dialog open disablePointerDismissal onOpenChange={(_, event) => event.cancel()}>
       <WizardPopup
@@ -245,20 +274,35 @@ export function WelcomeWizard({
         <WizardHeader
           title="Set up Leonidas Code"
           identity={
-            <div className="flex items-baseline gap-1.5" role="img" aria-label="Leonidas Code">
-              <T3Wordmark className="h-4 w-auto shrink-0" aria-hidden />
-              <span className="text-2xl font-medium tracking-tight text-muted-foreground">
-                Code
-              </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2" role="img" aria-label="Leonidas Code">
+                <T3Wordmark className="size-6 shrink-0" aria-hidden />
+                <span className="text-xl font-medium tracking-tight text-foreground">
+                  Leonidas Code
+                </span>
+              </div>
+              <Button
+                size="xs"
+                variant="ghost-muted"
+                disabled={isImporting}
+                onClick={() => void finishFromAios(false)}
+              >
+                Skip setup
+              </Button>
             </div>
           }
         >
           <WizardSteps
             steps={ONBOARDING_STAGES}
             currentStep={stageIndex}
-            isStepDisabled={(index) => isImporting || index >= stageIndex}
+            isStepDisabled={(index) =>
+              isImporting ||
+              index >= stageIndex ||
+              (step === "aios" && STEP_ORDER[index] === "import")
+            }
             onStepChange={(index) => {
               if (isImporting || index > stageIndex) return;
+              if (step === "aios" && STEP_ORDER[index] === "import") return;
               setStep(STEP_ORDER[index] ?? "connection");
             }}
           />
@@ -266,7 +310,11 @@ export function WelcomeWizard({
 
         <WizardPanel holdHeight={isLoadingProjects}>
           {step === "welcome" ? (
-            <LeonidasGoalsStep onContinue={() => setStep("connection")} />
+            <LeonidasGoalsStep
+              onContinue={() =>
+                skipConnect ? startSetup(soloSetup.environmentIds) : setStep("connection")
+              }
+            />
           ) : step === "connection" ? (
             <ConnectionStep
               expandPairingInitially={!localAvailable && !hasCloudPublicConfig()}
@@ -289,25 +337,29 @@ export function WelcomeWizard({
               }}
             />
           ) : step === "agents" ? (
-            <AgentsStep environmentIds={setupIds} onContinue={() => setStep("aios")} />
-          ) : step === "aios" ? (
-            <LeonidasAiosStep
-              environmentId={setupIds[0]}
+            <AgentsStep
+              environmentIds={setupIds}
+              onBack={goBack}
               onContinue={() => setStep("skills")}
-              onLeave={() => finish()}
             />
           ) : step === "skills" ? (
             <LeonidasSkillsStep
               environmentId={setupIds[0]}
+              onBack={goBack}
               onContinue={() => setStep("import")}
-              onLeave={() => finish()}
             />
-          ) : (
+          ) : step === "import" ? (
             <ImportStep
               scans={scans}
               isImporting={isImporting}
               setIsImporting={setIsImporting}
-              onDone={finish}
+              onDone={completeImport}
+            />
+          ) : (
+            <LeonidasAiosStep
+              environmentId={setupIds[0]}
+              onContinue={() => void finishFromAios(true)}
+              onLeave={() => finishFromAios(false)}
             />
           )}
         </WizardPanel>
@@ -693,16 +745,18 @@ interface AgentTerminalSession {
 /** Codex uses managed setup; existing CLI installs retain the terminal path. */
 function AgentsStep({
   environmentIds,
+  onBack,
   onContinue,
 }: {
   readonly environmentIds: readonly EnvironmentId[];
+  readonly onBack: () => void;
   readonly onContinue: () => void;
 }) {
   const { environments } = useEnvironments();
   return (
     <StepShell
       title="Connect your agents"
-      description="Choose an agent to start coding. You can add more later."
+      description="You only need one agent to start. You can add more later."
     >
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-5 pr-3">
@@ -718,7 +772,10 @@ function AgentsStep({
           ))}
         </div>
       </ScrollArea>
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex items-center justify-between">
+        <Button variant="ghost-muted" onClick={onBack}>
+          Back
+        </Button>
         <Button autoFocus onClick={onContinue}>
           Continue
           <ArrowRightIcon className="size-3.5" />
@@ -1161,7 +1218,7 @@ function AgentInstallTerminal({
               terminal.
             </>
           ) : setupState === "ready" ? (
-            "Review the command, then press Enter to run it."
+            "Press Enter to run this command. Nothing runs until you do."
           ) : setupState === "openFailed" ? (
             "Could not open the setup terminal."
           ) : (
@@ -1288,6 +1345,14 @@ function ImportStep({
       ),
     [scans],
   );
+  // A computer with no Claude Code or Codex history has nothing to pick, so skip the step.
+  const autoSkippedRef = useRef(false);
+  useEffect(() => {
+    if (autoSkippedRef.current || scans.length === 0 || candidates.length > 0) return;
+    if (!scans.every((scan) => scan.data !== null && scan.error === null)) return;
+    autoSkippedRef.current = true;
+    void onDone();
+  }, [scans, candidates, onDone]);
   const selectedKeys = useMemo(
     () => selectedPaths ?? new Set(recent.map((candidate) => candidate.key)),
     [selectedPaths, recent],
@@ -1577,236 +1642,6 @@ function ImportStep({
         </Button>
       </div>
     </StepShell>
-  );
-}
-
-type ImportCandidate = AgentSessionProjectCandidate & {
-  readonly environmentId: EnvironmentId;
-  readonly key: string;
-};
-
-/**
- * Repositories first, newest activity on top. Clones of one repository share
- * a group with a tri-state checkbox. Folders that are not git repositories
- * sit collapsed at the bottom so they stay reachable without adding noise.
- * Source icons appear only on repository rows so the columns stay still.
- */
-function ImportCandidateList({
-  candidates,
-  selectedKeys,
-  onSelectionChange,
-}: {
-  readonly candidates: ReadonlyArray<ImportCandidate>;
-  readonly selectedKeys: ReadonlySet<string>;
-  readonly onSelectionChange: (next: ReadonlySet<string>) => void;
-}) {
-  const { repositories, other } = useMemo(() => groupOnboardingProjects(candidates), [candidates]);
-  const setKeys = (keys: ReadonlyArray<string>, checked: boolean) => {
-    const next = new Set(selectedKeys);
-    for (const key of keys) {
-      if (checked) next.add(key);
-      else next.delete(key);
-    }
-    onSelectionChange(next);
-  };
-  const otherSelected = other.filter((candidate) => selectedKeys.has(candidate.key)).length;
-
-  return (
-    <>
-      {repositories.map((group) => (
-        <ImportRepositoryGroup
-          key={group.key}
-          group={group}
-          selectedKeys={selectedKeys}
-          onToggle={setKeys}
-        />
-      ))}
-      {other.length > 0 ? (
-        <Collapsible>
-          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted/40">
-            <Checkbox
-              checked={otherSelected === other.length}
-              indeterminate={otherSelected > 0 && otherSelected < other.length}
-              onCheckedChange={(checked) =>
-                setKeys(
-                  other.map((candidate) => candidate.key),
-                  checked === true,
-                )
-              }
-            />
-            <CollapsibleTrigger className="group flex min-w-0 flex-1 items-center gap-1.5 text-left">
-              <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
-              <span className="truncate text-sm text-muted-foreground">Other folders</span>
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-                {other.length} {other.length === 1 ? "folder" : "folders"}
-              </span>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsiblePanel>
-            {other.map((candidate) => (
-              <ImportCandidateRow
-                key={candidate.key}
-                candidate={candidate}
-                label={candidate.path}
-                nested
-                checked={selectedKeys.has(candidate.key)}
-                onCheckedChange={(checked) => setKeys([candidate.key], checked)}
-              />
-            ))}
-          </CollapsiblePanel>
-        </Collapsible>
-      ) : null}
-    </>
-  );
-}
-
-function ImportRepositoryGroup({
-  group,
-  selectedKeys,
-  onToggle,
-}: {
-  readonly group: OnboardingProjectGroup<ImportCandidate>;
-  readonly selectedKeys: ReadonlySet<string>;
-  readonly onToggle: (keys: ReadonlyArray<string>, checked: boolean) => void;
-}) {
-  const keys = group.candidates.map((candidate) => candidate.key);
-  const selectedCount = keys.filter((key) => selectedKeys.has(key)).length;
-  const single = group.candidates.length === 1;
-  const only = group.candidates[0];
-  if (single && only !== undefined) {
-    return (
-      <ImportCandidateRow
-        candidate={only}
-        label={group.label}
-        {...(group.repository === null ? {} : { secondary: only.path })}
-        checked={selectedKeys.has(only.key)}
-        onCheckedChange={(checked) => onToggle([only.key], checked)}
-      />
-    );
-  }
-  return (
-    <Collapsible defaultOpen>
-      <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted/40">
-        <Checkbox
-          checked={selectedCount === keys.length}
-          indeterminate={selectedCount > 0 && selectedCount < keys.length}
-          onCheckedChange={(checked) => onToggle(keys, checked === true)}
-        />
-        <CollapsibleTrigger className="group flex min-w-0 flex-1 items-center gap-1.5 text-left">
-          <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
-          <span className="truncate text-sm font-medium">{group.label}</span>
-          <ImportRowMeta
-            sources={[...new Set(group.candidates.flatMap((c) => c.sources))]}
-            threadCount={group.threadCount}
-            lastActiveAt={group.lastActiveAt}
-          />
-        </CollapsibleTrigger>
-      </div>
-      <CollapsiblePanel>
-        {group.candidates.map((candidate) => (
-          <ImportCandidateRow
-            key={candidate.key}
-            candidate={candidate}
-            label={candidate.path}
-            nested
-            checked={selectedKeys.has(candidate.key)}
-            onCheckedChange={(checked) => onToggle([candidate.key], checked)}
-          />
-        ))}
-      </CollapsiblePanel>
-    </Collapsible>
-  );
-}
-
-function ImportCandidateRow({
-  candidate,
-  label,
-  secondary,
-  nested = false,
-  checked,
-  onCheckedChange,
-}: {
-  readonly candidate: ImportCandidate;
-  readonly label: string;
-  readonly secondary?: string;
-  readonly nested?: boolean;
-  readonly checked: boolean;
-  readonly onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      className={cn(
-        "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted/40 has-disabled:cursor-default",
-        nested && "pl-8",
-      )}
-    >
-      <Checkbox checked={checked} onCheckedChange={(value) => onCheckedChange(value === true)} />
-      <Tooltip>
-        <TooltipTrigger
-          render={<span className="flex min-w-0 flex-1 items-baseline gap-2 truncate" />}
-        >
-          <span className={cn("truncate", nested ? "font-mono text-xs" : "text-sm font-medium")}>
-            {label}
-          </span>
-          {secondary !== undefined ? (
-            <span className="truncate font-mono text-2xs text-muted-foreground">{secondary}</span>
-          ) : null}
-        </TooltipTrigger>
-        <TooltipPopup variant="code">{candidate.path}</TooltipPopup>
-      </Tooltip>
-      <ImportRowMeta
-        sources={nested ? null : candidate.sources}
-        threadCount={candidate.threadCount}
-        lastActiveAt={candidate.lastActiveAt}
-      />
-    </label>
-  );
-}
-
-/**
- * Trailing columns shared by every import row: source icons, thread count,
- * last activity. Each column has a fixed width and each icon has its own slot
- * so nothing shifts between rows that differ in sources or digit count.
- */
-function ImportRowMeta({
-  sources,
-  threadCount,
-  lastActiveAt,
-}: {
-  readonly sources: ReadonlyArray<"claudeAgent" | "codex"> | null;
-  readonly threadCount: number;
-  readonly lastActiveAt: string | null;
-}) {
-  const relative = lastActiveAt === null ? null : formatRelativeTime(lastActiveAt);
-  // "just now" does not fit the fixed column, so collapse it.
-  const age = relative === null ? "" : relative.suffix === null ? "now" : relative.value;
-  return (
-    <span className="ml-auto grid shrink-0 grid-cols-[1rem_1rem_2.5rem_2.25rem] items-center gap-x-1 text-xs text-muted-foreground tabular-nums">
-      <span className="flex size-4 items-center justify-center">
-        {sources?.includes("claudeAgent") ? (
-          <span role="img" aria-label="Claude Code">
-            <ProviderInstanceIcon
-              driverKind={ProviderDriverKind.make("claudeAgent")}
-              displayName="Claude Code"
-              iconClassName="size-3"
-            />
-          </span>
-        ) : null}
-      </span>
-      <span className="flex size-4 items-center justify-center">
-        {sources?.includes("codex") ? (
-          <span role="img" aria-label="Codex">
-            <ProviderInstanceIcon
-              driverKind={ProviderDriverKind.make("codex")}
-              displayName="Codex"
-              iconClassName="size-3"
-            />
-          </span>
-        ) : null}
-      </span>
-      <span className="text-right">{threadCount}</span>
-      <span className="text-right whitespace-nowrap">{age}</span>
-    </span>
   );
 }
 
