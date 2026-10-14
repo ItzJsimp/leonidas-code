@@ -134,7 +134,12 @@ import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
 import { ComposerToolbar } from "./ComposerToolbar";
-import { prefixPromptWithSkill } from "./composerSkillPrefix";
+import {
+  countMentionedSkills,
+  hoistCommandToPromptStart,
+  prefixPromptWithSkill,
+  SKILL_CONTEXT_WARNING_THRESHOLD,
+} from "./composerSkillPrefix";
 import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerSavedItems } from "./ComposerSavedItems";
 import { ComposerStashMenu } from "./ComposerStashMenu";
@@ -2252,6 +2257,23 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       selectedProviderStatus ? resolveProviderSkillsForCwd(selectedProviderStatus, gitCwd) : [],
     [gitCwd, selectedProviderStatus],
   );
+  const mentionedSkillCount = useMemo(
+    () => countMentionedSkills(prompt, new Set(selectedProviderSkills.map((skill) => skill.name))),
+    [prompt, selectedProviderSkills],
+  );
+  useEffect(() => {
+    if (mentionedSkillCount < SKILL_CONTEXT_WARNING_THRESHOLD) {
+      skillWarningShownRef.current = false;
+      return;
+    }
+    if (skillWarningShownRef.current) return;
+    skillWarningShownRef.current = true;
+    toastManager.add({
+      type: "info",
+      title: `${mentionedSkillCount} skills in this message`,
+      description: "Each skill's full instructions are added to the message and use context.",
+    });
+  }, [mentionedSkillCount]);
   const selectedProviderSlashCommands = useMemo(
     () =>
       selectedProviderStatus
@@ -2509,6 +2531,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isLiteralPendingAnswer ? null : detectComposerTrigger(prompt, prompt.length),
   );
   const [composerHighlightedItemId, setComposerHighlightedItemId] = useState<string | null>(null);
+  const skillWarningShownRef = useRef(false);
   const composerSuggestionId = useId();
   const composerSuggestionListId = `${composerSuggestionId}-${encodeURIComponent(draftId ?? activeThreadId ?? "new")}-suggestions`;
   // Active ArrowUp recall. Cleared on edit and on thread switch.
@@ -2845,7 +2868,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       );
       const slashCommandItems = slashCommandItemsForPromptPosition(
         [...builtInSlashCommandItems, ...visibleProviderSlashCommandItems, ...skillItems],
-        composerTrigger.rangeStart === 0,
+        composerTrigger.rangeStart === 0 || !prompt.startsWith("/"),
       );
       return searchSlashCommandItems(slashCommandItems, query);
     }
@@ -2926,6 +2949,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     pullRequestProjectId,
     pullRequestRepository,
     pullRequestTriggerNumber,
+    prompt,
     selectedProvider,
     selectedProviderSkills,
     selectedProviderSlashCommands,
@@ -4149,6 +4173,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           }
           return;
         }
+        if (trigger.rangeStart > 0) {
+          // A provider expands a command only at message start, so lead with it.
+          const hoisted = applyPromptReplacement(
+            0,
+            trigger.rangeEnd,
+            hoistCommandToPromptStart(
+              snapshot.value,
+              item.command.name,
+              trigger.rangeStart,
+              selectedProviderSkills.some((skill) => skill.name === item.command.name),
+            ),
+            { expectedText: snapshot.value.slice(0, trigger.rangeEnd) },
+          );
+          if (hoisted) {
+            setComposerHighlightedItemId(null);
+          }
+          return;
+        }
         const replacement = `/${item.command.name} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
           snapshot.value,
@@ -4249,6 +4291,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       planModeUiEnabled,
       onUsageLimitsCommand,
       resolveActiveComposerTrigger,
+      selectedProviderSkills,
     ],
   );
 

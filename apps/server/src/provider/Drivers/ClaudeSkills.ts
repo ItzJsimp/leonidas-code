@@ -332,9 +332,21 @@ export const discoverClaudeSkills = Effect.fn("discoverClaudeSkills")(function* 
   const configDirPath = yield* resolveClaudeConfigDirPath(config, environment ?? process.env, cwd);
   const skillOverrides = yield* readSkillOverrides(configDirPath, cwd, environment ?? process.env);
 
+  // A workspace opened in a subfolder still runs the repository's project
+  // skills, so the repo root is read after the cwd (first root wins).
+  const repositoryRoot = cwd === undefined ? undefined : yield* findRepositoryRoot(cwd);
+  const projectDirectories = [
+    ...(cwd ? [cwd] : []),
+    ...(repositoryRoot !== undefined && repositoryRoot !== path.resolve(cwd ?? "")
+      ? [repositoryRoot]
+      : []),
+  ];
   const roots: ReadonlyArray<{ directory: string; scope: ClaudeSkillScope }> = [
     { directory: path.join(configDirPath, "skills"), scope: "user" },
-    ...(cwd ? [{ directory: path.join(cwd, ".claude", "skills"), scope: "project" as const }] : []),
+    ...projectDirectories.map((directory) => ({
+      directory: path.join(directory, ".claude", "skills"),
+      scope: "project" as const,
+    })),
   ];
 
   const skillsByName = new Map<string, ServerProviderSkill>();

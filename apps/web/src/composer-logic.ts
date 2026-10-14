@@ -276,6 +276,17 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
 
   const tokenStart = tokenStartForCursor(text, cursor);
   const token = text.slice(tokenStart, cursor);
+  // Past the first token a `/` only opens the menu for a bare name, so a typed
+  // path such as `/src/index.ts` stays plain text.
+  const midLineSlash = /^\/([^\s/]*)$/.exec(token);
+  if (midLineSlash) {
+    return {
+      kind: "slash-command",
+      query: midLineSlash[1] ?? "",
+      rangeStart: tokenStart,
+      rangeEnd: cursor,
+    };
+  }
   const pullRequestMatch = /^#([\p{L}\p{N}][\p{L}\p{N}_-]*)?$/u.exec(token);
   if (pullRequestMatch) {
     return {
