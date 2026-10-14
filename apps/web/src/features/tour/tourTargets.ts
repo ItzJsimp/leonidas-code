@@ -48,14 +48,13 @@ export const TOUR_TARGETS = {
     ],
   },
   "next-action": {
-    name: "Next action",
+    name: "Start task",
     steps: [
       {
-        title: "Next action",
-        body: 'This tab above the chat box fills it with "next action". Send it and the agent picks the best task from your task cards. You can also just type "what should I work on".',
+        title: "Start task",
+        body: "Select a project with Start task, then prepare a prompt from its tasks. Press Enter to start the agent.",
         route: "/",
         anchor: "composer-next-action",
-        tryPrompt: "next action",
       },
     ],
   },

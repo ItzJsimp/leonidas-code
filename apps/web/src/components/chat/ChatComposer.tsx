@@ -132,7 +132,7 @@ import {
 } from "../../promptStashStore";
 import { openCapture } from "../capture/captureStore";
 import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
-import { ComposerNextActionBadge, NEXT_ACTION_PROMPT } from "./ComposerNextActionBadge";
+import { ComposerNextActionBadge } from "./ComposerNextActionBadge";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
 import { ComposerToolbar } from "./ComposerToolbar";
 import {
@@ -7144,7 +7144,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   prompt.trim().length === 0 ? (
                     <ComposerNextActionBadge
                       alignRight={false}
-                      onFill={() => setPrompt(NEXT_ACTION_PROMPT)}
+                      environmentId={environmentId}
+                      onFill={(nextPrompt) => {
+                        setPrompt(nextPrompt);
+                        requestAnimationFrame(focusComposer);
+                      }}
                     />
                   ) : null,
               }}

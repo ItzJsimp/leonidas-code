@@ -6,7 +6,7 @@ const BUILTIN_TOOLBAR_ITEMS = [
   { id: "stash", label: "Stash" },
   { id: "capture", label: "Capture" },
   { id: "skills", label: "Skills" },
-  { id: "nextAction", label: "Next action" },
+  { id: "nextAction", label: "Start task" },
 ] as const;
 
 export interface ToolbarEntry {
