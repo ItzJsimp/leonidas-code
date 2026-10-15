@@ -762,7 +762,7 @@ const layerMakeRoutes = Layer.mergeAll(
   McpHttpServer.layer.pipe(
     // Not in the layer's declared inputs: the orchestrator reads it as an optional service.
     Layer.provide(DelegatedTaskLedger.layer),
-    Layer.provide(DelegatedTaskAcceptance.layer),
+    Layer.provide(DelegatedTaskAcceptance.layer.pipe(Layer.provide(ProcessRunner.layer))),
     Layer.provide(ProviderAdapterRegistry.layerFromProviderInstanceRegistry),
     Layer.provide(McpOAuth.layerMcpClientAuthenticator),
   ),
