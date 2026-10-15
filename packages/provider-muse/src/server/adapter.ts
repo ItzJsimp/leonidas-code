@@ -30,6 +30,7 @@ import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as FileSystem from "effect/FileSystem";
+import { expandSkillMentionsFromDisk } from "@t3tools/provider-core/server/skillMentions";
 import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
@@ -1594,7 +1595,9 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
       ) {
         const parts: SendUserTurnOptions<unknown>["input"] = [];
         const text = providerMessageTextWithAttachmentPaths({
-          text: message.text,
+          text: yield* expandSkillMentionsFromDisk({ text: message.text, cwd }).pipe(
+            Effect.provideService(FileSystem.FileSystem, fileSystem),
+          ),
           attachments: message.attachments,
           resolveAttachmentPath: providerHost.resolveAttachmentPath,
         });

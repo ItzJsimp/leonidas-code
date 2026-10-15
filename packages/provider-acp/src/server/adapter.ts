@@ -45,6 +45,7 @@ import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
+import { expandSkillMentionsFromDisk } from "@t3tools/provider-core/server/skillMentions";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
@@ -6880,7 +6881,10 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
           } satisfies T3AcpInstructionState;
           const previousInstructionState = (yield* Ref.get(promptInstructionStates)).get(sessionId);
           const messageText = providerMessageTextWithAttachmentPaths({
-            text: turnInput.message.text,
+            text: yield* expandSkillMentionsFromDisk({
+              text: turnInput.message.text,
+              cwd: turnInput.runtimePolicy.cwd,
+            }).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem)),
             attachments: turnInput.message.attachments,
             resolveAttachmentPath: host.resolveAttachmentPath,
           });
