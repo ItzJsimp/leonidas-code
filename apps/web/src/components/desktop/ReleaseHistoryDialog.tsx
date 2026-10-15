@@ -89,7 +89,11 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted)
-          setError(cause instanceof Error ? cause.message : "Could not load release history.");
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Could not load the update history. Select Retry.",
+          );
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -111,7 +115,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
                     </Button>
                   }
                 />
-                <TooltipPopup>Return to all releases</TooltipPopup>
+                <TooltipPopup>Go back to all updates</TooltipPopup>
               </Tooltip>
             </div>
           ) : null}
@@ -119,7 +123,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
           <DialogDescription>
             {selected
               ? `Version ${selected.version} · ${formatFriendlyReleaseDate(selected.publishedAt)}`
-              : "Explore what is new, what has improved, and what has been fixed."}
+              : "See what is new and what we fixed in each update."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel className="max-h-[65dvh]">
@@ -127,7 +131,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
             {selected ? (
               <div className="grid gap-6 sm:grid-cols-[140px_minmax(0,1fr)] sm:gap-8">
                 <nav
-                  aria-label="Release versions"
+                  aria-label="Update versions"
                   className="sticky top-0 hidden self-start sm:block"
                 >
                   <div className="space-y-1 border-r border-border pr-4">
@@ -250,7 +254,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
             ) : null}
 
             {!selected && !loading && !error && entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No published updates yet.</p>
+              <p className="text-sm text-muted-foreground">No updates yet. Check again later.</p>
             ) : null}
 
             {!selected && !loading && !error && !hasMore && request.page >= 10 ? (
@@ -265,7 +269,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
                   />
                 }
               >
-                Earlier releases on GitHub
+                See earlier updates on GitHub
               </Button>
             ) : null}
             {!selected && !loading && !error && hasMore ? (
@@ -289,7 +293,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
               ? formatReleaseCredits(selected.meta)
                 ? `Built by ${formatReleaseCredits(selected.meta)}`
                 : "Leonidas Code"
-              : "Versions below 1.0 are development releases."}
+              : "Versions below 1.0 are test versions."}
           </p>
           <Button variant="ghost" onClick={handleClose}>
             Close

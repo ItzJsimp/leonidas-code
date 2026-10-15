@@ -130,7 +130,7 @@ function useFetchedTurnItem(
         item !== wireItem
           ? null
           : detail.data?.item === null
-            ? "Output is no longer available."
+            ? "The output is gone."
             : detail.error,
       empty: fetches && item !== wireItem,
     },
@@ -153,7 +153,7 @@ function ToolOutput(props: ToolOutputState) {
       key={resource.index}
       environmentId={props.environmentId}
       resource={resource}
-      alt="Tool output image"
+      alt="Image from a tool"
       maxHeightRem={16}
       onImageExpand={props.onImageExpand}
     />
@@ -272,7 +272,7 @@ export const V2ItemInspector = memo(function V2ItemInspector(props: V2ItemInspec
                 variant="outline"
                 onClick={() => props.onOpenTurnDiff(item.runId!, item.fileName)}
               >
-                Open diff
+                Open all changes
               </Button>
             ) : null}
           </div>
@@ -385,7 +385,7 @@ export const V2ItemInspector = memo(function V2ItemInspector(props: V2ItemInspec
               }
             >
               <RotateCcwIcon className="size-3" />
-              Roll back
+              Go back to here
             </Button>
           ) : null}
         </div>
@@ -394,13 +394,13 @@ export const V2ItemInspector = memo(function V2ItemInspector(props: V2ItemInspec
       {item.type === "fork" ? (
         <Button size="xs" variant="outline" onClick={() => props.onOpenThread(item.targetThreadId)}>
           <GitBranchIcon className="size-3" />
-          Open fork
+          Open the new chat
         </Button>
       ) : null}
 
       {item.type === "subagent" && item.childThreadId !== null ? (
         <Button size="xs" variant="outline" onClick={() => props.onOpenThread(item.childThreadId!)}>
-          Open subagent thread
+          Open the helper chat
         </Button>
       ) : null}
 

@@ -66,7 +66,7 @@ export function ReleaseArticle({ entry }: { readonly entry: ReleaseHistoryEntry 
   return (
     <article className="mx-auto max-w-[68ch] text-sm leading-7 text-foreground">
       <ReactMarkdown skipHtml urlTransform={releaseArticleUrl} components={ARTICLE_COMPONENTS}>
-        {entry.article.markdown || "No patch notes were published for this release."}
+        {entry.article.markdown || "No notes were published for this update."}
       </ReactMarkdown>
     </article>
   );

@@ -23,13 +23,13 @@ import { fetchLatestReleaseWhatsNew, onWhatsNewPreviewRequested } from "./whatsN
 
 const INSTALLER_URL =
   "https://github.com/ItzJsimp/leonidas-code/releases/latest/download/Leonidas-Setup.exe";
-const INSTALL_FALLBACK = "Check your internet connection, or download the latest installer.";
+const INSTALL_FALLBACK = "Check your internet connection. Or download the latest installer.";
 
 function toastInstallError(description: string) {
   const toastId = toastManager.add(
     stackedThreadToast({
       type: "error",
-      title: "Could not install update",
+      title: "Could not install the update",
       description,
       actionProps: {
         children: "Try again",
@@ -110,7 +110,7 @@ export function DesktopUpdateCoordinator() {
               if (!confirmed) return;
             } catch (error) {
               toastInstallError(
-                error instanceof Error ? error.message : "Update confirmation failed.",
+                error instanceof Error ? error.message : "Could not confirm the update. Try again.",
               );
               return;
             }

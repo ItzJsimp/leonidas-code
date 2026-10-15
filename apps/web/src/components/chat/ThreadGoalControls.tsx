@@ -63,7 +63,7 @@ export function ThreadGoalControls({
             setCondition(goal?.condition ?? "");
             setOpen(true);
           }}
-          aria-label="Configure thread goal"
+          aria-label="Set a goal for this chat"
         >
           <TargetIcon aria-hidden="true" />
           Goal
@@ -105,11 +105,13 @@ export function ThreadGoalControls({
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogPopup>
           <AlertDialogHeader>
-            <AlertDialogTitle>{resuming ? "Resume goal" : "Start a thread goal"}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {resuming ? "Resume goal" : "Set a goal for this chat"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Allow agent turns and one check after each completed turn, up to the chosen cap. Model
-              checks use your configured text-generation provider and may consume your subscription
-              or credits. Manual checks stay pending. Stop pauses the goal.
+              The AI keeps working and checks the goal after each reply, up to the limit you set.
+              The checks use your AI account and may use some of your limit. Manual checks wait for
+              you. Stop pauses the goal.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex flex-col gap-3 px-6 pb-6">
@@ -123,7 +125,7 @@ export function ThreadGoalControls({
             />
             {!resuming ? (
               <>
-                <label htmlFor="thread-goal-cap">Maximum turns (default 20)</label>
+                <label htmlFor="thread-goal-cap">Most replies (default 20)</label>
                 <Input
                   id="thread-goal-cap"
                   type="number"
@@ -132,7 +134,7 @@ export function ThreadGoalControls({
                   value={turnCap}
                   onChange={(event) => setTurnCap(event.target.value)}
                 />
-                <label htmlFor="thread-goal-budget">Agent token budget (optional)</label>
+                <label htmlFor="thread-goal-budget">Token limit for the AI (optional)</label>
                 <Input
                   id="thread-goal-budget"
                   type="number"
@@ -140,7 +142,7 @@ export function ThreadGoalControls({
                   value={budget}
                   onChange={(event) => setBudget(event.target.value)}
                 />
-                <label htmlFor="thread-goal-check">Check command (optional)</label>
+                <label htmlFor="thread-goal-check">Command that checks the goal (optional)</label>
                 <Input
                   id="thread-goal-check"
                   value={command}
@@ -148,9 +150,9 @@ export function ThreadGoalControls({
                   onChange={(event) => setCommand(event.target.value)}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Adding a command explicitly approves running it in this thread's workspace after
-                  each turn. Exit code 0 meets the goal. With no command, the model checks quoted
-                  transcript evidence.
+                  If you add a command, you let the AI run it in this chat's project after each
+                  reply. Exit code 0 means the goal is met. With no command, the model reads the
+                  chat to check.
                 </p>
               </>
             ) : null}
@@ -188,11 +190,7 @@ export function ThreadGoalControls({
                 )
               }
             >
-              {busy
-                ? "Starting..."
-                : resuming
-                  ? "Allow spending and resume"
-                  : "Allow spending and start"}
+              {busy ? "Starting..." : resuming ? "Allow use and resume" : "Allow use and start"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogPopup>

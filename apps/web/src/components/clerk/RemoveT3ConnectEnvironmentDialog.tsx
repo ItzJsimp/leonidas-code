@@ -45,10 +45,10 @@ export function RemoveT3ConnectEnvironmentDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {shownLabel} from this device?</AlertDialogTitle>
             <AlertDialogDescription>
-              This forgets its pairing, credentials, and cached threads here.
+              This device forgets the connection, the sign-in and the saved chats of this computer.
             </AlertDialogDescription>
             <AlertDialogDescription>
-              It stays on your T3 Connect account and keeps its host space. Deregister it in{" "}
+              It stays on your account and keeps its space. To free the space, remove it in{" "}
               {openAccountPage ? (
                 <InlineButton
                   onClick={() => {
@@ -56,12 +56,12 @@ export function RemoveT3ConnectEnvironmentDialog({
                     openAccountPage();
                   }}
                 >
-                  T3 Connect settings
+                  the remote access settings
                 </InlineButton>
               ) : (
-                "T3 Connect settings"
-              )}{" "}
-              to free it.
+                "the remote access settings"
+              )}
+              .
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

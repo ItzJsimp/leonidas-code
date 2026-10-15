@@ -25,10 +25,10 @@ export function createDraftSaver(commands: {
   let busy = false;
   return {
     async save(draft: DraftSave, unchanged: () => boolean, clear: () => void) {
-      if (busy) throw new Error("A draft save is already in progress.");
-      if (!draft.body.trim()) throw new Error("Write something before saving.");
+      if (busy) throw new Error("The draft is still saving. Wait a moment.");
+      if (!draft.body.trim()) throw new Error("Type something before you save.");
       if (draft.kind === "task" && draft.body.length > 20_000)
-        throw new Error("Tasks can contain up to 20,000 characters.");
+        throw new Error("A task can have up to 20,000 characters. Make it shorter.");
       const key = JSON.stringify(draft);
       if (intent?.key !== key) {
         const id = SavedItemId.make(randomUUID());

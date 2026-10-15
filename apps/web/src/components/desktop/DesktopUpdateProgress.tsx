@@ -39,7 +39,7 @@ export function DesktopUpdateProgress({ state }: { state: DesktopUpdateState | n
     >
       <p role="status" className="text-sm font-semibold">
         {failed
-          ? "Update download failed"
+          ? "The update download failed"
           : `Downloading Leonidas Code ${state.availableVersion ?? "update"}`}
       </p>
       {failed ? (
@@ -56,12 +56,13 @@ export function DesktopUpdateProgress({ state }: { state: DesktopUpdateState | n
                     toastManager.add({
                       type: "error",
                       title: "Could not retry update",
-                      description: error instanceof Error ? error.message : "Download failed.",
+                      description:
+                        error instanceof Error ? error.message : "The download failed. Try again.",
                     });
                   });
                 }}
               >
-                Retry download
+                Try download again
               </Button>
             </div>
           ) : null}

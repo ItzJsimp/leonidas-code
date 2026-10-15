@@ -99,7 +99,7 @@ export function V2LifecycleRow(props: {
   if (item.type === "run_interrupt_result") {
     return (
       <TimelineSystemDivider
-        label="Run interrupted"
+        label="Reply stopped"
         detail={item.message}
         tone="danger"
         icon={XIcon}
@@ -113,12 +113,12 @@ export function V2LifecycleRow(props: {
         : `${item.beforeTokenCount ?? "?"} → ${item.afterTokenCount ?? "?"} tokens`;
     const label =
       item.status === "failed"
-        ? "Context compaction failed"
+        ? "Could not shorten the history"
         : item.status === "cancelled" || item.status === "interrupted"
-          ? "Context compaction stopped"
+          ? "Shortening the history stopped"
           : item.status === "pending" || item.status === "running" || item.status === "waiting"
-            ? "Compacting context"
-            : "Context compacted";
+            ? "Shortening the history"
+            : "History shortened";
     return (
       <TimelineSystemDivider label={label} detail={item.summary ?? tokenDetail} icon={MinusIcon} />
     );
@@ -135,11 +135,11 @@ export function V2LifecycleRow(props: {
     ) : null;
     return (
       <TimelineSystemDivider
-        label="Context handoff"
+        label="Chat moved to another AI account"
         icon={ArrowRightLeftIcon}
         showDetailSeparator={false}
         tone={item.status === "failed" ? "danger" : "neutral"}
-        actionLabel={item.summary ? "Inspect context handoff brief" : undefined}
+        actionLabel={item.summary ? "Read the summary that moved with the chat" : undefined}
         previewCard={previewCard}
         detail={
           <span className="inline-flex min-w-0 flex-wrap items-center justify-center gap-1.5">
@@ -174,9 +174,9 @@ export function V2LifecycleRow(props: {
     const relatedThreadId = item.source.type === "run" ? item.source.threadId : item.targetThreadId;
     return (
       <TimelineSystemDivider
-        label={item.source.type === "run" ? "Forked from conversation" : "Conversation fork"}
+        label={item.source.type === "run" ? "Copied from original chat" : "Copied chat"}
         icon={GitForkIcon}
-        actionLabel={item.source.type === "run" ? "Open source conversation" : "Open fork"}
+        actionLabel={item.source.type === "run" ? "Open original chat" : "Open copied chat"}
         onAction={() => props.onOpenThread(relatedThreadId)}
       />
     );
@@ -192,12 +192,12 @@ export function V2LifecycleRow(props: {
             <MessageSquareIcon className="size-4 text-secondary-label" aria-hidden />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium">
-            {item.title ?? "Created thread"}
+            {item.title ?? "New chat"}
           </span>
           <Button
             size="xs"
             variant="outline"
-            aria-label={`Open ${item.title ?? "created thread"}`}
+            aria-label={`Open ${item.title ?? "new chat"}`}
             onClick={() => props.onOpenThread(item.targetThreadId)}
           >
             Open chat
@@ -209,10 +209,10 @@ export function V2LifecycleRow(props: {
       <WorkLogRow
         data-v2-item-type={item.type}
         icon={<T3Wordmark className="size-4 text-icon-muted" aria-hidden />}
-        label={<>Created thread{item.title ? ` · ${item.title}` : ""}</>}
+        label={<>New chat{item.title ? ` · ${item.title}` : ""}</>}
         trailing={
           <InlineButton
-            aria-label={`Open ${item.title ?? "created thread"}`}
+            aria-label={`Open ${item.title ?? "new chat"}`}
             onClick={() => props.onOpenThread(item.targetThreadId)}
           >
             Open chat
@@ -235,7 +235,7 @@ export function V2LifecycleRow(props: {
           (provider) => provider.instanceId === item.providerInstanceId,
         )}
         providers={props.providerStatuses}
-        title={formatSubagentDisplayTitle(item.title ?? "Subagent")}
+        title={formatSubagentDisplayTitle(item.title ?? "Helper")}
         result={item.result}
         progress={item.progress}
         startedAt={item.startedAt}
@@ -259,10 +259,10 @@ const STATUS_VISUALS: Record<
   OrchestrationV2TurnItem["status"],
   { dotClass: string; label: string }
 > = {
-  pending: { dotClass: "bg-info", label: "Queued" },
+  pending: { dotClass: "bg-info", label: "Waiting" },
   running: { dotClass: "bg-info", label: "Running" },
   waiting: { dotClass: "bg-info", label: "Waiting" },
-  idle: { dotClass: "bg-muted-foreground/50", label: "Idle · resumable" },
+  idle: { dotClass: "bg-muted-foreground/50", label: "Paused · can restart" },
   completed: { dotClass: "bg-success", label: "Completed" },
   failed: { dotClass: "bg-destructive", label: "Failed" },
   cancelled: { dotClass: "bg-muted-foreground/60", label: "Stopped" },
@@ -415,7 +415,7 @@ export function SubagentNotificationLink(props: {
         (provider) => provider.instanceId === agent.providerInstanceId,
       )}
       providers={props.providerStatuses}
-      title={formatSubagentDisplayTitle(agent.title ?? "Subagent")}
+      title={formatSubagentDisplayTitle(agent.title ?? "Helper")}
       result={agent.result}
       progress={agent.progress}
       startedAt={agent.startedAt}
@@ -623,7 +623,7 @@ function HandoffPreviewCard(props: {
       <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <ArrowRightLeftIcon className="size-3.5 text-accent" />
-          <span>Context handoff</span>
+          <span>Chat moved to another AI account</span>
           {item.strategy ? (
             <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-2xs text-muted-foreground">
               {item.strategy}
@@ -673,7 +673,7 @@ function HandoffPreviewCard(props: {
       {item.summary ? (
         <div className="space-y-1">
           <div className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">
-            Transferred Context Brief
+            Summary that moved with the chat
           </div>
           <div className="max-h-80 select-text overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/60 bg-muted/40 p-2.5 font-mono text-2xs leading-relaxed text-muted-foreground">
             {item.summary}
@@ -682,7 +682,8 @@ function HandoffPreviewCard(props: {
       ) : null}
 
       <div className="border-t border-border/40 pt-1.5 text-2xs leading-tight text-muted-foreground/80">
-        Foreign provider reasoning and tool calls are omitted. Omitted history can be retrieved with{" "}
+        The new AI account does not get the old AI account's thinking or tool use. The AI can read
+        the full history with{" "}
         <code className="rounded bg-muted/80 px-1 py-0.5 font-mono text-2xs text-foreground">
           t3_thread_read
         </code>

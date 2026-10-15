@@ -44,7 +44,7 @@ import { useComposerMenuState } from "./useComposerMenuState";
 type ProviderOptions = ReadonlyArray<ProviderOptionSelection>;
 
 const SAVED_OPTION_LABELS: Readonly<Record<string, string>> = {
-  agent: "Agent",
+  agent: "AI mode",
   effort: "Effort",
   reasoningEffort: "Reasoning effort",
   variant: "Reasoning",

@@ -103,15 +103,15 @@ function ShimmerOverlay({ children }: { children: ReactNode }) {
 function headerLabel(snapshot: WorktreeSetupSnapshot): string {
   switch (snapshot.phase) {
     case "running":
-      return "Setting up worktree…";
+      return "Making a separate copy…";
     case "done":
       return snapshot.stages.some((stage) => stage.status === "failed")
-        ? "Worktree ready, setup script failed"
-        : "Worktree ready";
+        ? "Separate copy ready, but the setup steps failed"
+        : "Separate copy ready";
     case "failed":
-      return "Worktree setup failed";
+      return "Could not make the separate copy";
     case "cancelled":
-      return "Worktree setup cancelled";
+      return "Making the separate copy stopped";
   }
 }
 
@@ -369,7 +369,11 @@ export function WorktreeSetupCard({
       (setupStage.status === "running" && setupStage.tail.length > 0));
 
   return (
-    <section aria-label="Worktree setup" data-worktree-setup-phase={snapshot.phase}>
+    <section
+      aria-label="Separate copy setup"
+      title="Git calls this a worktree."
+      data-worktree-setup-phase={snapshot.phase}
+    >
       {showHeader ? <SetupHeaderRow snapshot={snapshot} totalElapsed={totalElapsed} /> : null}
       {collapsed ? (
         <CollapsedSummaryRow snapshot={snapshot} totalElapsed={totalElapsed} />
@@ -418,7 +422,7 @@ export function WorktreeSetupCard({
         {onWorkLocally ? (
           <Button type="button" size="xs" variant="ghost-muted" onClick={onWorkLocally}>
             <LaptopIcon aria-hidden />
-            Work locally
+            Work in the main folder
           </Button>
         ) : null}
         {onCancel && running ? (

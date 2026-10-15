@@ -37,12 +37,12 @@ export function usageLimitRecoveryBannerItem(props: RecoveryProps): ComposerBann
     variant: "warning",
     priority: "urgent",
     icon: <GaugeIcon />,
-    title: "Usage limit reached",
+    title: "You used all of your AI account limit",
     description:
       (resetAt
         ? `Resets ${new Date(resetAt).toLocaleString()}`
-        : "Reset time unavailable; retry manually") +
-      (props.failoverUnavailable ? ". No other connected subscription is ready to take over." : ""),
+        : "The reset time is not known. Try again later.") +
+      (props.failoverUnavailable ? ". No other AI account is ready to take over." : ""),
     actions: <RecoveryActions key={`${runId}:${resetAt}`} {...props} canSchedule={canSchedule} />,
   };
 }
@@ -76,7 +76,7 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
         continueWith: props.onFailover,
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not switch providers.");
+      setError(cause instanceof Error ? cause.message : "Could not switch AI accounts. Try again.");
     } finally {
       pendingRef.current = false;
       setPending(false);
@@ -103,7 +103,7 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
   async function toggle(action: "resume" | "snooze") {
     if (resetAt === null || pendingRef.current) return;
     if (action === "snooze" && !snoozed && Date.parse(resetAt) <= Date.now()) {
-      setError("The reset time has passed. Retry the thread manually.");
+      setError("The reset time has passed. Send your message again.");
       setNowMs(Date.now());
       return;
     }
@@ -117,7 +117,7 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
         ...(action === "resume" ? { autoResume: !scheduled } : { snooze: !snoozed }),
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not change limit recovery.");
+      setError(cause instanceof Error ? cause.message : "Could not save this choice. Try again.");
     }
     pendingRef.current = false;
     setPending(false);
@@ -127,7 +127,7 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
     <div className="flex flex-wrap items-center gap-2">
       {failoverTargets.length === 0 ? (
         <span className="text-xs text-muted-foreground">
-          No other accounts available to continue
+          No other AI account is ready. Add one in Settings.
         </span>
       ) : (
         failoverTargets.map((target) => {
@@ -142,7 +142,7 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
                 variant="ghost"
                 disabled={pending || failoverDisabled}
                 onClick={() => void continueWith(target)}
-                title={`Continue in this chat using ${currentModelName} on ${target.label} with conversation context`}
+                title={`Continue in this chat using ${currentModelName} on ${target.label} and the chat history`}
               >
                 {pending ? "Starting..." : `Continue with ${target.label}`}
               </Button>
@@ -189,7 +189,11 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
       )}
       {canSchedule ? (
         <Button size="xs" variant="ghost" disabled={pending} onClick={() => void toggle("resume")}>
-          {pending ? "Saving..." : scheduled ? "Cancel auto-resume" : "Resume at reset"}
+          {pending
+            ? "Saving..."
+            : scheduled
+              ? "Cancel automatic restart"
+              : "Restart when the limit resets"}
         </Button>
       ) : null}
       {canSchedule && !snoozed ? (
@@ -199,7 +203,7 @@ function RecoveryActions(props: RecoveryProps & { canSchedule: boolean }) {
           disabled={pending || Date.parse(resetAt!) <= nowMs}
           onClick={() => void toggle("snooze")}
         >
-          {pending ? "Saving..." : "Snooze until reset"}
+          {pending ? "Saving..." : "Wait until the limit resets"}
         </Button>
       ) : null}
       {error ? (

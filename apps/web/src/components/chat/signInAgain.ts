@@ -63,5 +63,5 @@ export function sharedLoginPeerNames(
 
 export function sharedLoginWarning(peerNames: ReadonlyArray<string>): string | null {
   if (peerNames.length === 0) return null;
-  return `Same account as ${peerNames.join(", ")}. If one profile was copied from the other, they sign each other out. Give each its own sign-in with claude auth login.`;
+  return `Same account as ${peerNames.join(", ")}. If you copied one AI account from the other, they sign each other out. Give each one its own sign-in with claude auth login.`;
 }

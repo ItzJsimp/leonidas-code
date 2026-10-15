@@ -26,23 +26,23 @@ export function deriveAgentSpawnSummary({
   const live =
     coordinatorStatus !== undefined ? !isTerminalSubagentStatus(coordinatorStatus) : working > 0;
   const subjects = [
-    individuals > 0 ? `${individuals} subagent${individuals === 1 ? "" : "s"}` : null,
+    individuals > 0 ? `${individuals} helper${individuals === 1 ? "" : "s"}` : null,
     batches > 0
-      ? `${batches} ${individuals > 0 ? "" : "subagent "}batch${batches === 1 ? "" : "es"}`
+      ? `${batches} ${individuals > 0 ? "" : "helper "}group${batches === 1 ? "" : "s"}`
       : null,
   ]
     .filter(Boolean)
     .join(" and ");
-  const lead = `${batches > 0 ? "Launched" : live ? "Kicked off" : "Ran"} ${subjects || "subagents"}`;
+  const lead = `${batches > 0 ? "Launched" : live ? "Started" : "Ran"} ${subjects || "helpers"}`;
 
   const status = live
     ? working > 0
       ? `${working} working`
       : "working"
     : coordinatorStatus === "failed"
-      ? "Workflow failed"
+      ? "Teamwork failed"
       : coordinatorStatus === "cancelled" || coordinatorStatus === "interrupted"
-        ? "Workflow stopped"
+        ? "Teamwork stopped"
         : failed > 0
           ? `${failed} failed`
           : stopped > 0
@@ -51,7 +51,7 @@ export function deriveAgentSpawnSummary({
               ? `${idle} idle`
               : coordinatorStatus !== "completed" &&
                   (agents.length === 0 || agents.length < agentCount)
-                ? "Status unavailable"
+                ? "Status not known"
                 : "✓ completed";
   const tone = live
     ? "working"

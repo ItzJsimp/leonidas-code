@@ -16,7 +16,9 @@ export function ReleaseNoteList({ items }: { readonly items: ReadonlyArray<strin
   );
 
   if (!notes.length) {
-    return <p className="text-sm text-muted-foreground">No patch notes were published.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">No notes were published for this update.</p>
+    );
   }
 
   return (
