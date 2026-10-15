@@ -178,6 +178,7 @@ export function ContextWindowMeter(props: {
               ledger={velocity.ledger}
               cacheBreak={velocity.cacheBreak}
               threadTarget={props.threadTarget ?? null}
+              contextTokens={usage?.usedTokens ?? null}
             />
           ) : null}
           {onCompact ? (
