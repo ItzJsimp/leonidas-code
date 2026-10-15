@@ -47,7 +47,7 @@ export function ProviderLimitTooltip({
   if (!limits) {
     return (
       <span className="text-xs text-muted-foreground">
-        Subscription limits not reported. Quota availability is unknown.
+        The AI service does not show your limit, so we cannot tell how much you have left.
       </span>
     );
   }

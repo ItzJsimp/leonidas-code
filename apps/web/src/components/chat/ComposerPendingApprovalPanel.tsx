@@ -16,17 +16,17 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
   const Detail = approval.requestKind === "mcp-elicitation" ? "span" : "code";
   const fallbackLabel =
     approval.requestKind === "mcp-elicitation"
-      ? "App access approval"
+      ? "Tool access approval"
       : approval.requestKind === "command"
         ? "Command approval"
         : approval.requestKind === "file-read"
           ? "File read approval"
           : approval.requestKind === "permission"
-            ? "App permission approval"
+            ? "Permission approval"
             : "File change approval";
   const detailAriaLabel =
     approval.requestKind === "mcp-elicitation"
-      ? "App access request"
+      ? "Tool access request"
       : approval.requestKind === "command"
         ? "Command"
         : approval.requestKind === "file-read"
@@ -60,7 +60,7 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
         tabIndex={0}
       >
         {approval.responseCapability === "not_resumable"
-          ? "Provider process is gone — interrupt or restart the run to respond."
+          ? "The AI service stopped working. Stop the reply and start it again to answer."
           : approval.detail || fallbackLabel}
       </Detail>
     </span>

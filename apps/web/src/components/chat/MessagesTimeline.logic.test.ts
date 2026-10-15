@@ -169,11 +169,11 @@ describe("work entry labels", () => {
   });
 
   it.each([
-    ["inProgress", true, "Reading thread"],
-    ["completed", false, "Read thread"],
-    ["failed", false, "Failed to read thread"],
-    ["declined", false, "Declined to read thread"],
-    ["stopped", false, "Stopped reading thread"],
+    ["inProgress", true, "Reading chat"],
+    ["completed", false, "Read chat"],
+    ["failed", false, "Failed to read chat"],
+    ["declined", false, "Declined to read chat"],
+    ["stopped", false, "Stopped reading chat"],
   ] as const)("names the read thread in the %s label", (toolLifecycleStatus, active, prefix) => {
     const threadRead = {
       ...entry,
@@ -351,7 +351,7 @@ describe("work entry labels", () => {
 
   it.each([
     ["preview_click", "Clicked in the preview browser"],
-    ["task_status", "Got delegated task status"],
+    ["task_status", "Got helper status"],
   ] as const)(
     "renders a settled legacy %s call directly with its completed presentation",
     (tool, label) => {
@@ -824,8 +824,8 @@ describe("deriveMessagesTimelineRows", () => {
     });
     const work = entries.flatMap((entry) => (entry.kind === "work" ? [entry.entry] : []));
     expect(workEntryDisplayLabel(work[0]!, undefined)).toBe("Listed projects");
-    expect(workEntryDisplayLabel(work[1]!, undefined)).toBe("Cloned a repository");
-    expect(workEntryDisplayLabel(work[2]!, undefined)).toBe("Failed to clone a repository");
+    expect(workEntryDisplayLabel(work[1]!, undefined)).toBe("Cloned a project");
+    expect(workEntryDisplayLabel(work[2]!, undefined)).toBe("Failed to clone a project");
     expect(
       resolveTimelineToolPresentation(items[1]!.type === "dynamic_tool" ? items[1].toolName : null)
         ?.logo,
@@ -839,7 +839,7 @@ describe("deriveMessagesTimelineRows", () => {
       supportsConversationRollback: false,
     });
     expect(rows.find((row) => row.kind === "work-toggle")).toMatchObject({
-      summary: "Listed projects 1 time and cloned 1 repository",
+      summary: "Listed projects 1 time and cloned 1 project",
       hasFailure: true,
     });
   });
@@ -1085,7 +1085,7 @@ describe("deriveMessagesTimelineRows", () => {
     const runningRows = deriveMessagesTimelineRows({ ...input, timelineEntries: runningEntries });
     expect(runningRows.find((row) => row.kind === "context-compaction")).toMatchObject({
       active: true,
-      label: "Compacting context",
+      label: "Shortening chat history",
     });
     expect(runningRows.some((row) => row.kind === "thinking")).toBe(false);
 
@@ -1104,7 +1104,7 @@ describe("deriveMessagesTimelineRows", () => {
     });
     expect(completedRows.find((row) => row.kind === "context-compaction")).toMatchObject({
       active: false,
-      label: "Context compacted 899K → 19K tokens",
+      label: "Chat history shortened from 899K to 19K",
     });
     expect(completedRows.at(-1)?.kind).toBe("thinking");
 
@@ -3042,7 +3042,7 @@ describe("deriveMessagesTimelineRows", () => {
 
   it.each([
     ["tools", "tool", "Used 3 tools"],
-    ["tools and status updates", "info", "Used 2 tools and received 1 update"],
+    ["tools and status updates", "info", "Used 2 tools and got 1 notice"],
   ] as const)("expands %s through the same activity group", (_, middleTone, summary) => {
     const timelineEntries = [
       {
@@ -3190,7 +3190,7 @@ describe("deriveMessagesTimelineRows", () => {
 
     expect(row).toMatchObject({
       kind: "work-toggle",
-      summary: "Used Chrome integration and ran 1 command",
+      summary: "Used Chrome tool and ran 1 command",
       toolSurface: "browser",
       toolIcon: {
         _tag: "website",
@@ -3325,8 +3325,8 @@ describe("deriveMessagesTimelineRows", () => {
       expect(rows.find((row) => row.kind === "work-toggle")).toMatchObject({
         hiddenCount: statuses.some((status) => status === "error") ? 2 : 3,
         summary: statuses.some((status) => status === "error")
-          ? "Received 1 update and used 1 tool"
-          : "Used 2 tools and received 1 update",
+          ? "Got 1 notice and used 1 tool"
+          : "Used 2 tools and got 1 notice",
         hasFailure,
       });
       if (statuses.some((status) => status === "error")) {
@@ -3577,14 +3577,14 @@ describe("computeStableMessagesTimelineRows", () => {
 describe("resolveTimelineToolPresentation", () => {
   it("pretty prints Claude and Cursor T3 MCP tool names", () => {
     expect(resolveTimelineToolPresentation("mcp__t3-code__t3_thread_read")).toEqual({
-      displayName: "Read a T3 thread",
+      displayName: "Read a chat",
       logo: "t3-code",
     });
   });
 
   it("pretty prints Codex T3 MCP tool names", () => {
     expect(resolveTimelineToolPresentation("t3-code.create_threads")).toEqual({
-      displayName: "Create T3 threads",
+      displayName: "Create chats",
       logo: "t3-code",
     });
   });
@@ -3652,7 +3652,7 @@ describe("v2 run and attempt history", () => {
           id: "provider-recovered",
           createdAt: "2026-01-01T00:00:09Z",
           runId: "turn-1" as never,
-          label: "Provider recovered (2/5 retries)",
+          label: "AI service recovered (2/5 tries)",
           tone: "info" as const,
           itemType: "error" as const,
           toolLifecycleStatus: "completed" as const,
@@ -3942,7 +3942,7 @@ describe("v2 run and attempt history", () => {
     expect(collapsedRows.find((row) => row.kind === "attempt-fold")).toMatchObject({
       attemptId: supersededAttemptId,
       runId,
-      label: "Superseded attempt",
+      label: "Earlier try",
       expanded: false,
     });
 
@@ -4079,7 +4079,7 @@ describe("v2 run and attempt history", () => {
       const rows = rowsFor(11, "running");
       expect(rows.find((row) => row.kind === "attempt-fold")).toMatchObject({
         attemptId: supersededAttempt.id,
-        label: "Superseded attempt",
+        label: "Earlier try",
       });
       expect(rows.map((row) => row.id)).not.toContain("old-reply-entry");
     });

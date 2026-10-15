@@ -69,7 +69,7 @@ async function renderMermaid(
   try {
     mermaid = await loadMermaid();
   } catch {
-    return { status: "error", message: "Mermaid failed to load.", retryable: true };
+    return { status: "error", message: "The diagram could not load. Try again.", retryable: true };
   }
   try {
     // initialize() mutates global config, so renders run one at a time.

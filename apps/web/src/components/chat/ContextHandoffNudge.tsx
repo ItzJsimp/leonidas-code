@@ -27,12 +27,12 @@ export function ContextHandoffNudge({
     shown.current = true;
     const toastId = toastManager.add({
       type: "info",
-      title: "Consider handing off to a fresh chat",
+      title: "Think about starting a new chat",
       description: (
         <span className="flex flex-col items-start gap-2">
           <span>
-            This chat has used at least 45% of its context window. Prepare a handoff when you reach
-            a good stopping point.
+            This chat has used at least 45% of its memory. Move to a new chat when you reach a good
+            place to stop.
           </span>
           {onHandoff ? (
             <Button
@@ -43,7 +43,7 @@ export function ContextHandoffNudge({
                 onHandoff();
               }}
             >
-              Hand off
+              Move to a new chat
             </Button>
           ) : null}
         </span>
@@ -59,7 +59,8 @@ export function ContextHandoffNudge({
   if (contextWindow?.maxTokens != null && contextWindow.maxTokens > 0) return null;
   return (
     <p className="px-4 py-1 text-2xs text-muted-foreground">
-      This provider has not reported its context window size. Handoff reminders are unavailable.
+      This AI service does not say how much memory a chat has. Reminders to start a new chat are
+      off.
     </p>
   );
 }

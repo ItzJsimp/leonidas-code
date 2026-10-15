@@ -55,7 +55,7 @@ function ThreadErrorDetails({ error }: { error: string }) {
                   type: "error",
                   title: "Could not copy error details",
                   description:
-                    copyError instanceof Error ? copyError.message : "An error occurred.",
+                    copyError instanceof Error ? copyError.message : "Something went wrong.",
                 });
               });
             }}
@@ -115,8 +115,8 @@ export const ThreadErrorBanner = memo(function ThreadErrorBanner({
         <AlertDescription>
           {chatGptUsageLimit ? (
             <div className="space-y-1">
-              <p className="font-medium">ChatGPT usage limit reached</p>
-              <p>Review your usage settings in ChatGPT to continue.</p>
+              <p className="font-medium">You used all of your ChatGPT limit</p>
+              <p>Open your usage settings in ChatGPT to continue.</p>
             </div>
           ) : (
             <Tooltip>

@@ -311,7 +311,7 @@ export function ThreadDetailsPrRow({
           pending: handoff === "conflicts",
           destructive: true,
           suffix: <ArrowUpRightIcon aria-hidden className="size-3 shrink-0" />,
-          tooltip: "Check the branch out and resolve the conflicts in a new thread",
+          tooltip: "Open the branch and fix the conflicts in a new chat",
           onClick: startResolveConflicts,
         }
       : rowAction === "ready"
@@ -331,7 +331,7 @@ export function ThreadDetailsPrRow({
               pending: handoff === "findings",
               destructive: true,
               suffix: <ArrowUpRightIcon aria-hidden className="size-3 shrink-0" />,
-              tooltip: "Fix the failing checks in a new thread",
+              tooltip: "Fix the failing checks in a new chat",
               onClick: startFixChecks,
             }
           : rowAction === "merge"
@@ -378,8 +378,8 @@ export function ThreadDetailsPrRow({
           />
         </TooltipTrigger>
         <TooltipPopup side="top">
-          Watching: the agent wakes when checks finish, someone comments, or the branch conflicts.
-          Click to stop.
+          Watching: the AI wakes up when checks finish, someone comments, or the branch has
+          conflicts. Click to stop watching.
         </TooltipPopup>
       </Tooltip>
     ) : null;

@@ -17,19 +17,17 @@ export function usageWarningBannerItem(input: {
     variant: "warning",
     priority: "notice",
     icon: <GaugeIcon />,
-    title: `${input.label}: ${Math.round(input.usedPercent)}% of usage limit used`,
+    title: `${input.label}: ${Math.round(input.usedPercent)}% of your usage limit used`,
     actions: (
       <Popover>
         <PopoverTrigger
           openOnHover
-          render={
-            <Button size="icon-xs" variant="ghost-muted" aria-label="Usage warning settings" />
-          }
+          render={<Button size="icon-xs" variant="ghost-muted" aria-label="Change usage warning" />}
         >
           <EyeIcon />
         </PopoverTrigger>
-        <PopoverPopup aria-label="Usage warning settings" tooltipStyle side="top">
-          You can change or turn off this warning in Settings under General.
+        <PopoverPopup aria-label="Change usage warning" tooltipStyle side="top">
+          To change or turn off this warning, open Settings and then General.
         </PopoverPopup>
       </Popover>
     ),

@@ -100,7 +100,7 @@ export function deriveTrimSuggestions(
     all.push({
       key: "tool-results:old",
       kind: "tool-results",
-      label: `${oldCalls.length} older tool results (compact the chat)`,
+      label: `${oldCalls.length} older tool results (shorten the history)`,
       tokens: oldTokens,
       estimated: true,
       unused: false,

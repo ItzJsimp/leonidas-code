@@ -122,19 +122,19 @@ describe("resolveContextWindowModelDisplayName", () => {
 describe("formatContextWindowCompactionMessage", () => {
   it("describes compaction in terms of the selected model", () => {
     expect(formatContextWindowCompactionMessage("GPT-5.6 Sol")).toBe(
-      "Context for GPT-5.6 Sol compacts automatically when needed.",
+      "The AI shortens the history for GPT-5.6 Sol when it needs to.",
     );
   });
 
   it("uses neutral copy when the model is unavailable", () => {
     expect(formatContextWindowCompactionMessage(null)).toBe(
-      "Context compacts automatically when needed.",
+      "The AI shortens the history when it needs to.",
     );
   });
 
   it("shows the configured auto-compaction threshold", () => {
     expect(formatContextWindowCompactionMessage("Claude Sonnet 5", 300_000)).toBe(
-      "Compacts automatically at 300,000 tokens.",
+      "The AI shortens the history at 300,000 tokens.",
     );
   });
 });

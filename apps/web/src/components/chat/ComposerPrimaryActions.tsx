@@ -85,6 +85,11 @@ const preventPointerFocus: PointerEventHandler<HTMLElement> = (event) => {
   event.preventDefault();
 };
 
+function dispatchActionLabel(action: "queue" | "steer" | "restart"): string {
+  if (action === "restart") return "stop and send";
+  return action === "queue" ? "add to waiting messages" : "send now";
+}
+
 export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   compact,
   canOperateThread,
@@ -146,7 +151,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
             onClick={() => {
               if (canOperateThread) onInterrupt();
             }}
-            aria-label="Stop generation"
+            aria-label="Stop reply"
           />
         }
       >
@@ -154,7 +159,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           <rect x="2" y="2" width="8" height="8" rx="1.5" />
         </svg>
       </TooltipTrigger>
-      <TooltipPopup>Interrupt</TooltipPopup>
+      <TooltipPopup>Stop reply</TooltipPopup>
     </Tooltip>
   );
 
@@ -170,7 +175,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
               {...pointerFocusProps}
               onClick={onPreviousPendingQuestion}
               disabled={pendingAction.isResponding}
-              aria-label="Previous question"
+              aria-label="Go to previous question"
             >
               <ChevronLeftIcon className="size-3.5" />
             </Button>
@@ -241,7 +246,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
                   messageActionPillClassName,
                   "h-9 rounded-l-none border-l border-message-action-foreground/20 px-2 sm:h-8",
                 )}
-                aria-label="Implementation actions"
+                aria-label="More ways to build this plan"
                 {...pointerFocusProps}
                 disabled={isSendBusy || isSendDisabled || isConnecting || isEnvironmentUnavailable}
               />
@@ -256,7 +261,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
                 if (canOperateThread) onImplementPlanInNewThread();
               }}
             >
-              Implement in a new thread
+              Build in a new chat
             </MenuItem>
           </MenuPopup>
         </Menu>
@@ -277,34 +282,34 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   const compactsBeforeSend = compactTokens !== null && !keepFullHistory;
 
   const submitLabel = showResume
-    ? "Resume thread"
+    ? "Resume chat"
     : isEditingQueuedMessage
-      ? "Update queued message"
+      ? "Update waiting message"
       : compactsBeforeSend
-        ? "Compact and send"
+        ? "Shorten history and send"
         : isQueuing
-          ? "Queue message"
+          ? "Add to waiting messages"
           : isRunning
-            ? "Steer message"
-            : "Submit message";
+            ? "Send now"
+            : "Send message";
   const submitStatus = isEnvironmentUnavailable
-    ? "Environment disconnected"
+    ? "Computer not connected"
     : (sendDisabledReason ??
       (isConnecting
         ? "Connecting"
         : isPreparingWorktree
-          ? "Preparing worktree"
+          ? "Preparing separate copy"
           : isSendBusy
             ? isEditingQueuedMessage
-              ? "Updating queued message"
-              : "Submitting message"
+              ? "Updating waiting message"
+              : "Sending message"
             : null));
   const submitTooltip =
     submitStatus ??
     (compactsBeforeSend
-      ? `Summarize ${compactTokens} tokens of history, then send`
+      ? `Shorten the chat history (${compactTokens} tokens), then send`
       : isRunning && !isEditingQueuedMessage
-        ? `Click to ${followUpBehavior}, Ctrl/⌘-click${alternateShortcutLabel ? ` or ${alternateShortcutLabel}` : ""} to ${alternateAction}`
+        ? `Click to ${dispatchActionLabel(followUpBehavior)}. Ctrl/⌘-click${alternateShortcutLabel ? ` or ${alternateShortcutLabel}` : ""} to ${dispatchActionLabel(alternateAction)}.`
         : submitLabel);
 
   const sendButton = (
@@ -377,20 +382,20 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
               )}
               {...pointerFocusProps}
               aria-pressed={!keepFullHistory}
-              aria-label={`Compact ${compactTokens} tokens of history before sending`}
+              aria-label={`Shorten the chat history (${compactTokens} tokens) before sending`}
               disabled={!canOperateThread}
               onClick={onToggleKeepFullHistory}
             />
           }
         >
           <Minimize2Icon aria-hidden="true" />
-          {keepFullHistory ? "Full" : "Compact"}
+          {keepFullHistory ? "Full history" : "Shorten history"}
           <span>{compactTokens}</span>
         </TooltipTrigger>
         <TooltipPopup>
           {keepFullHistory
-            ? `Next send keeps all ${compactTokens} tokens. Click to compact first`
-            : `Next send compacts ${compactTokens} tokens first. Click to keep full history`}
+            ? `The next message keeps all ${compactTokens} tokens of history. Click to shorten it first.`
+            : `The next message shortens ${compactTokens} tokens of history first. Click to keep the full history.`}
         </TooltipPopup>
       </Tooltip>
       {submit}

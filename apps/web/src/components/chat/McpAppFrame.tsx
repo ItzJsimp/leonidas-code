@@ -39,7 +39,9 @@ const commandFailure = (result: {
 }) => {
   const error = squashAtomCommandFailure(result);
   return new McpAppHostRefusal(
-    error instanceof Error && error.message.trim() !== "" ? error.message : "Request failed.",
+    error instanceof Error && error.message.trim() !== ""
+      ? error.message
+      : "The request failed. Try again.",
   );
 };
 
@@ -306,7 +308,7 @@ export function McpAppFrame(props: {
       // No dialog host is mounted, so nobody was asked; say so rather than
       // reporting that the user declined.
       if (approved === undefined) {
-        throw new McpAppHostRefusal("Leonidas could not ask for approval here.");
+        throw new McpAppHostRefusal("Leonidas Code could not ask you for approval here.");
       }
       return approved;
     };
@@ -331,7 +333,7 @@ export function McpAppFrame(props: {
           const approved = await ask(
             `Allow ${app.server} to run ${info.value.title ?? name}?\n${JSON.stringify(args, null, 2)}`,
           );
-          if (approved !== true) throw new McpAppHostRefusal("Declined by the user.");
+          if (approved !== true) throw new McpAppHostRefusal("You said no.");
         }
         const result = await latest.current.callTool({
           environmentId,
@@ -352,15 +354,15 @@ export function McpAppFrame(props: {
       openLink: async (url) => {
         // Only right after the reader used this frame, as with HTML renders.
         if (document.activeElement !== frameRef.current || !navigator.userActivation?.isActive) {
-          throw new McpAppHostRefusal("Links open only from a click in the app.");
+          throw new McpAppHostRefusal("Links open only when you click them in the app.");
         }
         window.open(url, "_blank", "noopener,noreferrer");
       },
       sendMessage: async (text) => {
         const send = latest.current.props.onSendMessage;
-        if (send === undefined) throw new McpAppHostRefusal("Messages are not available here.");
+        if (send === undefined) throw new McpAppHostRefusal("This app cannot send messages here.");
         const approved = await ask(`Send this message from ${app.server}?\n${text}`);
-        if (approved !== true) throw new McpAppHostRefusal("Declined by the user.");
+        if (approved !== true) throw new McpAppHostRefusal("You said no.");
         await send(text);
       },
       updateModelContext: async (context) => {
@@ -394,7 +396,7 @@ export function McpAppFrame(props: {
       downloadFile: async (files) => {
         const names = files.map((file) => file.name).join(", ");
         const approved = await ask(`Save ${names} from ${app.server}?`);
-        if (approved !== true) throw new McpAppHostRefusal("Declined by the user.");
+        if (approved !== true) throw new McpAppHostRefusal("You said no.");
         for (const file of files) {
           // A linked file is read from the app's own server, like its other reads.
           let bytes: Uint8Array | undefined;

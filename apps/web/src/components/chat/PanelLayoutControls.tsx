@@ -54,7 +54,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
   rightPanelAvailable,
   rightPanelOpen,
   rightPanelShortcutLabel,
-  rightPanelUnavailableLabel = "Right panel is unavailable",
+  rightPanelUnavailableLabel = "The side panel is not available here",
   usageOverlayOpen = false,
   onToggleUsageOverlay,
   onToggleTerminal,
@@ -65,7 +65,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
     <Toggle
       className="relative shrink-0 [-webkit-app-region:no-drag]"
       pressed={threadPanelOpen}
-      aria-label="Toggle thread details panel"
+      aria-label="Show or hide chat details"
       variant="ghost"
       size="sm"
     >
@@ -79,7 +79,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
         {...(threadPanelPresentation === "popover" ? {} : { onClick: onToggleThreadPanel })}
       />
       <TooltipPopup side="bottom">
-        Toggle thread details
+        Show or hide chat details
         {threadPanelShortcutLabel ? ` (${threadPanelShortcutLabel})` : ""}
       </TooltipPopup>
     </Tooltip>
@@ -98,7 +98,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
               className="shrink-0 [-webkit-app-region:no-drag]"
               pressed={usageOverlayOpen}
               onPressedChange={onToggleUsageOverlay}
-              aria-label="Toggle context and accounts card"
+              aria-label="Show or hide memory and accounts"
               variant="ghost"
               size="sm"
             >
@@ -106,7 +106,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
             </Toggle>
           </TooltipTrigger>
           <TooltipPopup side="bottom">
-            {usageOverlayOpen ? "Hide context and accounts" : "Show context and accounts"}
+            {usageOverlayOpen ? "Hide memory and accounts" : "Show memory and accounts"}
           </TooltipPopup>
         </Tooltip>
       ) : null}
@@ -124,7 +124,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
               className="shrink-0 [-webkit-app-region:no-drag]"
               pressed={terminalOpen}
               onPressedChange={onToggleTerminal}
-              aria-label="Toggle terminal drawer"
+              aria-label="Show or hide the terminal"
               variant="ghost"
               size="sm"
               disabled={!terminalAvailable}
@@ -134,8 +134,8 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
           </TooltipTrigger>
           <TooltipPopup side="bottom">
             {terminalAvailable
-              ? `Toggle terminal drawer${terminalShortcutLabel ? ` (${terminalShortcutLabel})` : ""}`
-              : "Terminal drawer is unavailable"}
+              ? `Show or hide the terminal${terminalShortcutLabel ? ` (${terminalShortcutLabel})` : ""}`
+              : "The terminal is not available here"}
           </TooltipPopup>
         </Tooltip>
       ) : null}
@@ -146,7 +146,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
               className="shrink-0 [-webkit-app-region:no-drag]"
               pressed={rightPanelOpen}
               onPressedChange={onToggleRightPanel}
-              aria-label="Toggle right panel"
+              aria-label="Show or hide the side panel"
               variant="ghost"
               size="sm"
               disabled={!rightPanelAvailable}
@@ -156,7 +156,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
           </TooltipTrigger>
           <TooltipPopup side="bottom">
             {rightPanelAvailable
-              ? `Toggle right panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}`
+              ? `Show or hide the side panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}`
               : rightPanelUnavailableLabel}
           </TooltipPopup>
         </Tooltip>
