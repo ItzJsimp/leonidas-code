@@ -10,7 +10,7 @@ describe("thread title context", () => {
       { role: "assistant", text: "Implementation details. ".repeat(2_000) },
       { role: "user", text: "Merge it when green." },
     ]);
-    expect(result.message.length).toBeLessThanOrEqual(8_000);
+    expect(result.message.length).toBeLessThanOrEqual(3_000);
     expect(result.message).toContain("USER:\nReview QR sharing");
     expect(result.message).toContain(
       "USER:\nFocus on pairing expiry instead. Keep remote access working.",

@@ -7,8 +7,8 @@ export type ThreadTitleMessage = {
   readonly attachments?: ReadonlyArray<ChatAttachment> | undefined;
 };
 
-const MAX_CONTEXT = 8_000;
-const MAX_MESSAGE = 2_000;
+const MAX_CONTEXT = 3_000;
+const MAX_MESSAGE = 800;
 const OMITTED = "[Earlier content truncated]\n\n";
 const TRUNCATED = "\n[Content truncated]\n";
 
@@ -62,10 +62,10 @@ export function formatThreadTitleContext(messages: ReadonlyArray<ThreadTitleMess
 
   const firstUser = sections.find((section) => section.message.role === "user");
   if (firstUser) add(firstUser, MAX_MESSAGE);
-  // Up to 6,000 characters go to user messages. Assistant output cannot evict them.
+  // Most of the budget goes to user messages. Assistant output cannot evict them.
   for (const section of sections.toReversed()) {
     if (section.message.role === "user") {
-      add(section, Math.min(MAX_MESSAGE, remaining - 2_000));
+      add(section, Math.min(MAX_MESSAGE, remaining - 800));
     }
   }
   for (const section of sections.toReversed()) {

@@ -2859,6 +2859,8 @@ export const OrchestrationV2Command = Schema.Union([
     title: Schema.optional(TrimmedNonEmptyString),
     /** Kick off (true) or abandon (false) an async title regeneration. */
     regenerateTitle: Schema.optional(Schema.Boolean),
+    /** Optional focus for the regenerated title; read only when regenerateTitle is true. */
+    titleHint: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(200))),
     goalControl: Schema.optional(ThreadGoalControl),
     branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
     worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),

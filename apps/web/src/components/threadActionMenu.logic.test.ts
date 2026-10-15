@@ -57,6 +57,7 @@ describe("buildThreadActionMenuItems", () => {
             "unsnooze",
             "rename",
             "regenerate-title",
+            "regenerate-title-hint",
             "auto-settle",
             "archive",
             "delete",
@@ -67,6 +68,7 @@ describe("buildThreadActionMenuItems", () => {
             "snooze",
             "rename",
             "regenerate-title",
+            "regenerate-title-hint",
             "auto-settle",
             "archive",
             "delete",
@@ -185,6 +187,15 @@ describe("buildThreadActionMenuItems", () => {
       (candidate) => candidate.id === "regenerate-title",
     );
     expect(item).toMatchObject({ label: "Regenerating…", disabled: true });
+  });
+
+  it("offers a hinted regeneration next to the plain one and disables both together", () => {
+    const ids = buildThreadActionMenuItems(baseState).map((candidate) => candidate.id);
+    expect(ids.indexOf("regenerate-title-hint")).toBe(ids.indexOf("regenerate-title") + 1);
+    const busy = buildThreadActionMenuItems({ ...baseState, isRegeneratingTitle: true }).find(
+      (candidate) => candidate.id === "regenerate-title-hint",
+    );
+    expect(busy).toMatchObject({ disabled: true });
   });
 
   it("marks delete as destructive and keeps it last", () => {

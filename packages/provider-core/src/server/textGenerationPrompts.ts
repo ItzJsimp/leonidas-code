@@ -14,6 +14,8 @@ import type { BranchNamingOptions, ChatAttachment } from "@t3tools/contracts";
 import { limitSection } from "./textGenerationUtils.ts";
 import type { TextGenerationPolicy } from "@t3tools/provider-core/server/textGenerationPolicy";
 
+/** Title prompts stay small: titles need the subject, not the whole thread. */
+const TITLE_PROMPT_MESSAGE_BUDGET = 3_200;
 const EARLIER_CONTENT_TRUNCATION_MARKER = "[Earlier content truncated]\n\n";
 
 function policyInstruction(instruction: string | undefined): ReadonlyArray<string> {
@@ -230,6 +232,8 @@ export interface ThreadTitlePromptInput {
   linkedContext?: string | undefined;
   message: string;
   previousTitle?: string | undefined;
+  /** Optional user focus for a regenerated title. */
+  hint?: string | undefined;
   attachments?: ReadonlyArray<ChatAttachment> | undefined;
   policy?: TextGenerationPolicy | undefined;
 }
@@ -266,43 +270,31 @@ Editorial rules:
 - Local git history is not evidence of what a linked PR or issue is about. Never title the thread after branch names, commit messages, or merged commits found in the checkout.
 - If a linked PR or issue cannot be read, fall back to the user's stated action plus its number, such as "Take Over PR 8588". This is the one case where a PR or issue number belongs in the title.`;
 
-function regenerateThreadTitlePrompt(previousTitle: string): string {
+function regenerateThreadTitlePrompt(previousTitle: string, hint?: string): string {
+  const focus = hint?.trim()
+    ? `
+The user wants this focus for the new title: ${JSON.stringify(hint.trim().slice(0, 200))}. Follow it unless the thread contradicts it.`
+    : "";
   return `Regenerate the title for an existing Leonidas Code thread so the user can recognize it weeks later.
-The previous title was ${JSON.stringify(previousTitle)}.
+The previous title was ${JSON.stringify(previousTitle)}.${focus}
 Return JSON with keys title and needsRefinement. Set needsRefinement to false.
 
-Determine the title in this order:
-1. Read the USER messages first. Identify the latest explicit durable goal. The original subject remains the subject until the user clearly changes what the thread is about.
-2. Use ASSISTANT messages to resolve vague links, unnamed code, and discovered product nouns. Do not promote one assistant finding into the thread subject unless the user adopts it as a new goal.
-3. Compare that subject with the previous title. Preserve accurate scope words, especially when earlier content is truncated. Replace the previous title when it is generic, artifact-based, a completion update, or contradicted by the thread.
-4. Title the durable subject and desired outcome, not the current workflow state.
+Pick the title in this order:
+1. Read the USER messages. The latest explicit durable goal is the subject. The original subject stays until the user clearly changes it.
+2. Use ASSISTANT messages only to name vague links or code. A single assistant finding is not the subject.
+3. Keep accurate scope words from the previous title. Replace it when it is generic, names an artifact, reports completion, or the thread contradicts it.
+4. Title the durable subject and outcome, not the workflow state. Research, plan, build, review, CI and merge steps do not change the subject.
 
 Editorial rules:
-- 3-6 words, fewer than 40 characters.
-- Use sentence case, preserving product names and acronyms.
-- Put the specific subject early so it survives sidebar truncation.
-- Do not add emoji or status labels; the app supplies separate visual and live activity cues.
-- Use a compact noun phrase or clear action phrase.
-- Preserve the umbrella subject when later messages focus on one finding, provider, platform, or implementation detail.
-- A thread progressing through research, planning, implementation, review, CI, merge, and monitoring has usually not changed subjects.
-- Ignore deliverables and operations such as mocks, plans, HTML, branches, PRs, tests, CI, commits, merging, and monitoring unless they are the actual topic.
-- Models, subagents, tools, output formats, and monitoring instructions do not belong in the title unless they are themselves the topic.
-- Treat final operational follow-ups and assistant completion summaries as weak evidence of subject.
-- For reviews, name the reviewed feature or system and its durable concern, not one finding from the review.
-- For research, name the question domain rather than the research process.
-- Do not claim the work is complete.
-- Do not copy and truncate a thread message.
-- Avoid project names already visible in the UI, PR numbers, quotes, labels, filler, and trailing punctuation.
-- Use attached images as primary context for UI issues.
-- When a URL or attachment is the only source of the subject, use available tools to inspect it directly.
-- Local git history is not evidence of what a linked PR or issue is about. Never title the thread after branch names, commit messages, or merged commits found in the checkout.
-- If a linked PR or issue cannot be read, fall back to the user's stated action plus its number, such as "Take Over PR 8588". This is the one case where a PR or issue number belongs in the title.
-- Keep the previous title unchanged if it is already accurate. Otherwise return a meaningfully improved title, not a cosmetic paraphrase.
-
-Examples of the distinction:
-- A subagent-monitoring review that finds a Codex roster bug remains "Review Subagent Monitoring Risks," not "Codex Roster Bug Review."
-- A vague failing-test request later identified as a lazy thread-feed mismatch becomes "Fix Lazy Thread Feed Test," not "Prevent Mobile Feed Regressions."
-- A QR-sharing overhaul that ends with CI and merge work remains about QR sharing, not the PR lifecycle.`;
+- 3-6 words, fewer than 40 characters, sentence case, keep product names and acronyms.
+- Put the specific subject first. Use a compact noun phrase or clear action phrase.
+- No emoji, status labels, project names, PR numbers, quotes, filler, or trailing punctuation.
+- Ignore deliverables and operations (mocks, plans, HTML, branches, PRs, tests, commits) and models, tools or output formats unless they are the topic.
+- Do not claim the work is complete. Do not copy and truncate a thread message.
+- Final operational follow-ups and assistant completion summaries are weak evidence of subject.
+- Use attached images as primary context for UI issues. If a URL or attachment is the only source of the subject, inspect it directly.
+- Never title the thread after branch names, commit messages, or merged commits in the checkout. If a linked PR or issue cannot be read, use the user's action plus its number, such as "Take Over PR 8588".
+- Keep the previous title unchanged if it is already accurate. Otherwise return a meaningfully better title, not a paraphrase.`;
 }
 
 function preserveMessageEnd(message: string): string {
@@ -310,10 +302,10 @@ function preserveMessageEnd(message: string): string {
   const contents = alreadyTruncated
     ? message.slice(EARLIER_CONTENT_TRUNCATION_MARKER.length)
     : message;
-  if (!alreadyTruncated && contents.length <= 8_000) {
+  if (!alreadyTruncated && contents.length <= TITLE_PROMPT_MESSAGE_BUDGET) {
     return contents;
   }
-  return `${EARLIER_CONTENT_TRUNCATION_MARKER}${contents.slice(-8_000)}`;
+  return `${EARLIER_CONTENT_TRUNCATION_MARKER}${contents.slice(-TITLE_PROMPT_MESSAGE_BUDGET)}`;
 }
 
 function threadTitlePromptSuffix(input: ThreadTitlePromptInput): string {
@@ -337,11 +329,11 @@ function threadTitlePromptSuffix(input: ThreadTitlePromptInput): string {
 export function buildThreadTitlePrompt(input: ThreadTitlePromptInput) {
   let prompt: string;
   if (input.previousTitle === undefined) {
-    const message = limitTitleMessage(input.message, 8_000);
+    const message = limitTitleMessage(input.message, TITLE_PROMPT_MESSAGE_BUDGET);
     prompt = `${INITIAL_THREAD_TITLE_PROMPT}\n\nUser message:\n${message}${threadTitlePromptSuffix(input)}`;
   } else {
     const message = preserveMessageEnd(input.message);
-    prompt = `${regenerateThreadTitlePrompt(input.previousTitle)}\n\nThread contents:\n${message}${threadTitlePromptSuffix(input)}`;
+    prompt = `${regenerateThreadTitlePrompt(input.previousTitle, input.hint)}\n\nThread contents:\n${message}${threadTitlePromptSuffix(input)}`;
   }
   const outputSchema = Schema.Struct({
     title: Schema.String,

@@ -277,7 +277,7 @@ describe("buildThreadTitlePrompt", () => {
   });
 
   it("does not truncate an already-marked regeneration context twice", () => {
-    const retainedContext = "x".repeat(7_998);
+    const retainedContext = "x".repeat(3_198);
     const result = buildThreadTitlePrompt({
       message: `[Earlier content truncated]\n\n${retainedContext}`,
       previousTitle: "Old title",
@@ -287,6 +287,30 @@ describe("buildThreadTitlePrompt", () => {
       `Thread contents:\n[Earlier content truncated]\n\n${retainedContext}`,
     );
     expect(result.prompt.match(/\[Earlier content truncated\]/g)).toHaveLength(1);
+  });
+
+  it("adds the user's focus to a regenerated title prompt only", () => {
+    const regenerate = buildThreadTitlePrompt({
+      message: "USER:\nFix the updater",
+      previousTitle: "Old title",
+      hint: "  focus on the release pipeline ",
+    });
+    expect(regenerate.prompt).toContain('"focus on the release pipeline"');
+
+    const withoutHint = buildThreadTitlePrompt({
+      message: "USER:\nFix the updater",
+      previousTitle: "Old title",
+    });
+    expect(withoutHint.prompt).not.toContain("wants this focus");
+
+    const initial = buildThreadTitlePrompt({ message: "Fix the updater", hint: "ignored" });
+    expect(initial.prompt).not.toContain("ignored");
+  });
+
+  it("keeps the regenerate prompt rules small", () => {
+    const { prompt } = buildThreadTitlePrompt({ message: "", previousTitle: "Old title" });
+    // Was about 4,900 characters before the compact rewrite.
+    expect(prompt.length).toBeLessThan(2_800);
   });
 });
 

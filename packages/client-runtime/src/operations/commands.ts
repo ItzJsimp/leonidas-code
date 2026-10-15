@@ -134,6 +134,8 @@ export interface UpdateThreadMetadataInput extends ThreadCommandInput {
   readonly worktreePath?: string | null;
   /** Kick off an async title regeneration for the thread. */
   readonly regenerateTitle?: boolean;
+  /** Optional focus for the regenerated title; used only with regenerateTitle. */
+  readonly titleHint?: string;
   /** Link (object) or unlink (null) a pull request (#8160). */
   readonly linkedPullRequest?: ThreadLinkedPullRequest | null;
   /** Apply only while no message or run has landed on the thread. */
@@ -589,6 +591,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
         ...(input.worktreePath === undefined ? {} : { worktreePath: input.worktreePath }),
         ...(input.expectedEmpty === true ? { expectedEmpty: true } : {}),
         ...(input.regenerateTitle === undefined ? {} : { regenerateTitle: input.regenerateTitle }),
+        ...(input.titleHint === undefined ? {} : { titleHint: input.titleHint }),
         ...(input.linkedPullRequest === undefined
           ? {}
           : { linkedPullRequest: input.linkedPullRequest }),

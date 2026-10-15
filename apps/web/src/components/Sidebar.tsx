@@ -267,6 +267,7 @@ import {
   type ProviderInstanceEntry,
 } from "../providerInstances";
 import { useThreadRunningTerminalIds } from "../state/terminalSessions";
+import { openRegenerateTitleHint } from "./RegenerateTitleHintDialog";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { Button, InlineButton } from "./ui/button";
 import {
@@ -1227,6 +1228,23 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   }, [canOperateThread, isRenaming, onCancelRename]);
   const { leaseLiveStatus, rowRef } = useSidebarRowSubscriptionLease(props.isActive);
   const isRegeneratingTitle = thread.titleRegeneration != null;
+  const titleBeforeRegeneration = useRef<string | null>(null);
+  useEffect(() => {
+    if (isRegeneratingTitle) {
+      titleBeforeRegeneration.current ??= thread.title;
+      return;
+    }
+    const before = titleBeforeRegeneration.current;
+    titleBeforeRegeneration.current = null;
+    // A new title lands in the same update that clears the marker, so equal titles mean no change.
+    if (before !== null && before === thread.title) {
+      toastManager.add({
+        type: "info",
+        title: "Title unchanged",
+        description: "The current title still fits this thread.",
+      });
+    }
+  }, [isRegeneratingTitle, thread.title]);
   const localLastVisitedAt = useUiStateStore((state) => state.threadLastVisitedAtById[threadKey]);
   const lastVisitedAt = resolveThreadLastVisitedAt(thread.lastVisitedAt, localLastVisitedAt);
   const isSelected = useThreadSelectionStore((state) => state.selectedThreadKeys.has(threadKey));
@@ -4889,6 +4907,10 @@ export default function Sidebar() {
             }
             return;
           }
+          case "regenerate-title-hint":
+            if (isRegeneratingTitle) return;
+            openRegenerateTitleHint(threadRef);
+            return;
           case "mark-unread":
             markThreadUnread(threadRef);
             return;
