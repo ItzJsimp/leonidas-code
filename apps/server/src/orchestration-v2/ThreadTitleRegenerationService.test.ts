@@ -390,7 +390,13 @@ describe("ThreadTitleRegenerationService", () => {
   it.effect("clears the marker and keeps the title when generation fails", () =>
     Effect.gen(function* () {
       const harness = makeHarness({
-        generateTitle: () => Effect.die(new Error("model unavailable")),
+        generateTitle: () =>
+          Effect.fail(
+            new TextGenerationError({
+              operation: "generateThreadTitle",
+              detail: "model unavailable",
+            }),
+          ),
       });
       yield* Effect.gen(function* () {
         const threads = yield* ThreadManagement.ThreadManagementService;
@@ -406,12 +412,106 @@ describe("ThreadTitleRegenerationService", () => {
         });
         const requestId = yield* armRegeneration({ command: "command:title:failure:1", threadId });
 
-        yield* titleRegeneration.execute({ threadId, requestId, kind: { type: "regenerate" } });
+        const fiber = yield* titleRegeneration
+          .execute({ threadId, requestId, kind: { type: "regenerate" } })
+          .pipe(Effect.forkChild);
+        // One retry after the 2 second backoff, then the marker clears.
+        yield* TestClock.adjust("5 seconds");
+        yield* Fiber.join(fiber);
 
-        assert.equal(harness.generateThreadTitle.mock.calls.length, 1);
+        assert.equal(harness.generateThreadTitle.mock.calls.length, 2);
         const projection = yield* threads.getThreadProjection(threadId);
         assert.equal(projection.thread.title, "Seed title");
         assert.isNotOk(projection.thread.titleRegeneration);
+      }).pipe(Effect.provide(harness.layer));
+    }),
+  );
+
+  it.effect("skips the model when the thread and title have not changed since the last run", () =>
+    Effect.gen(function* () {
+      const harness = makeHarness({
+        generateTitle: () => Effect.succeed({ title: "Fresh title" }),
+      });
+      yield* Effect.gen(function* () {
+        const threads = yield* ThreadManagement.ThreadManagementService;
+        const titleRegeneration = yield* ThreadTitleRegeneration.ThreadTitleRegenerationService;
+        const threadId = yield* createThread({
+          command: "command:title:skip:create",
+          thread: "thread:title:skip",
+        });
+        yield* dispatchUserMessage({
+          command: "command:title:skip:message",
+          threadId,
+          text: "Investigate the flaky login test",
+        });
+        const first = yield* armRegeneration({ command: "command:title:skip:1", threadId });
+        yield* titleRegeneration.execute({
+          threadId,
+          requestId: first,
+          kind: { type: "regenerate" },
+        });
+        assert.equal(harness.generateThreadTitle.mock.calls.length, 1);
+
+        const second = yield* armRegeneration({ command: "command:title:skip:2", threadId });
+        yield* titleRegeneration.execute({
+          threadId,
+          requestId: second,
+          kind: { type: "regenerate" },
+        });
+
+        assert.equal(harness.generateThreadTitle.mock.calls.length, 1);
+        const projection = yield* threads.getThreadProjection(threadId);
+        assert.equal(projection.thread.title, "Fresh title");
+        assert.isNotOk(projection.thread.titleRegeneration);
+
+        yield* dispatchUserMessage({
+          command: "command:title:skip:message2",
+          threadId,
+          text: "Now cover the signup flow too",
+        });
+        const third = yield* armRegeneration({ command: "command:title:skip:3", threadId });
+        yield* titleRegeneration.execute({
+          threadId,
+          requestId: third,
+          kind: { type: "regenerate" },
+        });
+        assert.equal(harness.generateThreadTitle.mock.calls.length, 2);
+      }).pipe(Effect.provide(harness.layer));
+    }),
+  );
+
+  it.effect("sends the user's hint and treats it as new input", () =>
+    Effect.gen(function* () {
+      const harness = makeHarness({
+        generateTitle: () => Effect.succeed({ title: "Seed title" }),
+      });
+      yield* Effect.gen(function* () {
+        const titleRegeneration = yield* ThreadTitleRegeneration.ThreadTitleRegenerationService;
+        const threadId = yield* createThread({
+          command: "command:title:hint:create",
+          thread: "thread:title:hint",
+        });
+        yield* dispatchUserMessage({
+          command: "command:title:hint:message",
+          threadId,
+          text: "Some conversation",
+        });
+        const first = yield* armRegeneration({ command: "command:title:hint:1", threadId });
+        yield* titleRegeneration.execute({
+          threadId,
+          requestId: first,
+          kind: { type: "regenerate" },
+        });
+        const second = yield* armRegeneration({ command: "command:title:hint:2", threadId });
+        yield* titleRegeneration.execute({
+          threadId,
+          requestId: second,
+          kind: { type: "regenerate", hint: "focus on billing" },
+        });
+
+        assert.equal(harness.generateThreadTitle.mock.calls.length, 2);
+        assert.equal(harness.generateThreadTitle.mock.calls[0]?.[0]?.hint, undefined);
+        assert.equal(harness.generateThreadTitle.mock.calls[1]?.[0]?.hint, "focus on billing");
       }).pipe(Effect.provide(harness.layer));
     }),
   );

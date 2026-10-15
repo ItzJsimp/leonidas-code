@@ -22,6 +22,7 @@ export type ThreadActionMenuId =
   | "unsnooze"
   | "rename"
   | "regenerate-title"
+  | "regenerate-title-hint"
   | "mark-unread"
   | "copy"
   | "copy-path"
@@ -174,6 +175,12 @@ export function buildThreadActionMenuItems(
           {
             id: "regenerate-title" as const,
             label: state.isRegeneratingTitle ? "Regenerating…" : "Regenerate title",
+            icon: "refresh-cw",
+            disabled: state.isRegeneratingTitle,
+          },
+          {
+            id: "regenerate-title-hint" as const,
+            label: "Regenerate title with hint…",
             icon: "refresh-cw",
             disabled: state.isRegeneratingTitle,
           },

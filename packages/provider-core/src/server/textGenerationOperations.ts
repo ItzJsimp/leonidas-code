@@ -145,6 +145,7 @@ export function fromRunner(name: string, run: Runner): ProviderTextGeneration {
       ...buildThreadTitlePrompt({
         message: input.message,
         previousTitle: input.previousTitle,
+        hint: input.hint,
         linkedContext: input.linkedContext,
         attachments: input.attachments,
       }),

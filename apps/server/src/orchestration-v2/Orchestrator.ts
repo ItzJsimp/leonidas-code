@@ -502,7 +502,7 @@ function pendingThreadTitleGenerationEffect(
   threadId: ThreadId,
   kind:
     | { readonly type: "initial"; readonly messageId: MessageId }
-    | { readonly type: "regenerate" },
+    | { readonly type: "regenerate"; readonly hint?: string },
 ): PendingOrchestrationEffectV2 {
   return {
     id: `effect:${commandId}:thread-title.generate`,
@@ -3451,6 +3451,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         ...existing,
         pendingThreadTitleGenerationEffect(command.commandId, command.threadId, {
           type: "regenerate",
+          ...(command.titleHint === undefined ? {} : { hint: command.titleHint }),
         }),
       ]);
     }

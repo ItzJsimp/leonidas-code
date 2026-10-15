@@ -1,7 +1,7 @@
-import { ProviderInstanceId, type ProviderAuthState } from "@t3tools/contracts";
+import { ProviderDriverKind, ProviderInstanceId, type ProviderAuthState } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { getClaudeSignInView } from "./claudeSignIn.logic";
+import { getClaudeInstallView, getClaudeSignInView } from "./claudeSignIn.logic";
 
 const state = (patch: Partial<ProviderAuthState>): ProviderAuthState => ({
   instanceId: ProviderInstanceId.make("claudeAgent"),
@@ -99,6 +99,42 @@ describe("getClaudeSignInView", () => {
   it("returns to idle after cancel", () => {
     expect(getClaudeSignInView({ auth: state({ phase: "cancelled" }), requested: true })).toEqual({
       kind: "idle",
+    });
+  });
+});
+
+describe("getClaudeInstallView", () => {
+  const base = {
+    driver: ProviderDriverKind.make("claudeAgent"),
+    operationId: "op-1",
+    downloadedBytes: 0,
+    totalBytes: null,
+    version: null,
+    installedVersion: null,
+    canRemove: false,
+    message: null,
+  } as const;
+
+  it("shows progress while the installer runs", () => {
+    expect(
+      getClaudeInstallView({ installation: { ...base, phase: "downloading" }, requested: false }),
+    ).toEqual({ kind: "installing", operationId: "op-1" });
+  });
+
+  it("reports success", () => {
+    expect(
+      getClaudeInstallView({ installation: { ...base, phase: "succeeded" }, requested: false }),
+    ).toEqual({ kind: "installed" });
+  });
+
+  it("hides an old failure until this client asks again", () => {
+    const failed = { ...base, phase: "failed" as const, message: "No internet." };
+    expect(getClaudeInstallView({ installation: failed, requested: false })).toEqual({
+      kind: "idle",
+    });
+    expect(getClaudeInstallView({ installation: failed, requested: true })).toEqual({
+      kind: "failed",
+      message: "No internet.",
     });
   });
 });

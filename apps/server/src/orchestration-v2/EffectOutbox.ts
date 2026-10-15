@@ -115,7 +115,10 @@ export const OrchestrationEffectRequestV2 = Schema.Union([
     type: Schema.Literal("thread-title.generate"),
     kind: Schema.Union([
       Schema.Struct({ type: Schema.Literal("initial"), messageId: MessageId }),
-      Schema.Struct({ type: Schema.Literal("regenerate") }),
+      Schema.Struct({
+        type: Schema.Literal("regenerate"),
+        hint: Schema.optional(Schema.String),
+      }),
     ]),
   }),
   /** Follows a Stop: sends `thread.stop` to every delegated task under the stopped thread. */

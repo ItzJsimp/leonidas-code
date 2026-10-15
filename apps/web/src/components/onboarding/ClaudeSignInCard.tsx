@@ -8,7 +8,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ensureLocalApi } from "../../localApi";
 import {
   CLAUDE_FINISHING_MESSAGE,
+  CLAUDE_INSTALL_PROMPT,
+  CLAUDE_INSTALLED_ELSEWHERE_MESSAGE,
+  CLAUDE_INSTALLING_MESSAGE,
   CLAUDE_WAITING_MESSAGE,
+  getClaudeInstallView,
   getClaudeSignInView,
 } from "../../onboarding/claudeSignIn.logic";
 import { useEnvironmentQuery } from "../../state/query";
@@ -20,9 +24,11 @@ import { Button } from "../ui/button";
 const SIGN_IN_FAILED_MESSAGE = "Could not start Claude sign-in. Try again.";
 
 /**
- * Claude card for a provider that is installed but signed out. One button
- * starts `claude auth login` on the server. Claude opens the browser. The card
- * turns Ready when the provider snapshot shows the account.
+ * Claude card for a provider that is missing or signed out. When Claude is
+ * missing, one button runs the official installer on the server, then the card
+ * goes on to sign-in by itself. Sign-in starts `claude auth login` on the
+ * server. Claude opens the browser. The card turns Ready when the provider
+ * snapshot shows the account.
  */
 export function ClaudeSignInCard({
   environmentId,
@@ -48,16 +54,30 @@ export function ClaudeSignInCard({
   const authQuery = useEnvironmentQuery(
     serverEnvironment.providerAuthState({ environmentId, input: { instanceId } }),
   );
+  const installQuery = useEnvironmentQuery(
+    provider.installed
+      ? null
+      : serverEnvironment.providerInstallState({ environmentId, input: { instanceId } }),
+  );
   const options = { reportFailure: false, reportDefect: false };
   const startAuth = useAtomCommand(serverEnvironment.startProviderAuth, options);
   const cancelAuth = useAtomCommand(serverEnvironment.cancelProviderAuth, options);
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, options);
+  const startInstall = useAtomCommand(serverEnvironment.startProviderInstall, options);
+  const cancelInstall = useAtomCommand(serverEnvironment.cancelProviderInstall, options);
   const [requested, setRequested] = useState(false);
+  const [installRequested, setInstallRequested] = useState(false);
+  // True after the post-install probe returned; Claude may still be missing then.
+  const [installProbed, setInstallProbed] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingRef = useRef(false);
   const auth = authQuery.data;
   const view = getClaudeSignInView({ auth, requested });
+  const installView = getClaudeInstallView({
+    installation: installQuery.data,
+    requested: installRequested,
+  });
 
   const run = useCallback(async (request: () => Promise<{ readonly _tag: string }>) => {
     if (pendingRef.current) return false;
@@ -104,14 +124,41 @@ export function ClaudeSignInCard({
     }
   }, []);
 
+  const install = useCallback(async () => {
+    setInstallRequested(true);
+    await run(() => startInstall({ environmentId, input: { instanceId } }));
+  }, [run, startInstall, environmentId, instanceId]);
+
+  const cancelInstalling = useCallback(async () => {
+    const operationId = installView.kind === "installing" ? installView.operationId : null;
+    if (!operationId) return;
+    await run(() => cancelInstall({ environmentId, input: { instanceId, operationId } }));
+  }, [installView, run, cancelInstall, environmentId, instanceId]);
+
+  // Install finished: probe again so the provider shows as installed.
+  const refreshedInstall = useRef(false);
+  useEffect(() => {
+    if (provider.installed || installView.kind !== "installed" || refreshedInstall.current) return;
+    refreshedInstall.current = true;
+    void refreshProviders({ environmentId, input: {} }).finally(() => setInstallProbed(true));
+  }, [provider.installed, installView.kind, refreshProviders, environmentId]);
+
+  // Installed from this card: continue into sign-in without another click.
+  const signInAfterInstall = useRef(false);
+  useEffect(() => {
+    if (!installRequested || !provider.installed || signInAfterInstall.current) return;
+    signInAfterInstall.current = true;
+    void signIn();
+  }, [installRequested, provider.installed, signIn]);
+
   // Install finished in the terminal: continue into sign-in once.
   const autoStarted = useRef(false);
   useEffect(() => {
     if (!autoStart || autoStarted.current) return;
     autoStarted.current = true;
     onAutoStartConsumed();
-    void signIn();
-  }, [autoStart, onAutoStartConsumed, signIn]);
+    void (provider.installed ? signIn() : install());
+  }, [autoStart, onAutoStartConsumed, signIn, install, provider.installed]);
 
   // Refresh the provider list when the server says the sign-in worked.
   const refreshedFlow = useRef<string | null>(null);
@@ -123,9 +170,19 @@ export function ClaudeSignInCard({
     void refreshProviders({ environmentId, input: {} });
   }, [auth?.phase, auth?.flowId, refreshProviders, environmentId]);
 
-  const busy = pending || view.kind === "waiting" || view.kind === "finishing";
-  const detail =
-    view.kind === "waiting"
+  const needsInstall = !provider.installed;
+  const installedElsewhere = needsInstall && installView.kind === "installed" && installProbed;
+  const installing =
+    needsInstall &&
+    (installView.kind === "installing" || (installView.kind === "installed" && !installProbed));
+  const busy = pending || installing || view.kind === "waiting" || view.kind === "finishing";
+  const detail = needsInstall
+    ? installing
+      ? CLAUDE_INSTALLING_MESSAGE
+      : installedElsewhere
+        ? CLAUDE_INSTALLED_ELSEWHERE_MESSAGE
+        : (error ?? (installView.kind === "failed" ? installView.message : CLAUDE_INSTALL_PROMPT))
+    : view.kind === "waiting"
       ? CLAUDE_WAITING_MESSAGE
       : view.kind === "finishing"
         ? CLAUDE_FINISHING_MESSAGE
@@ -155,7 +212,29 @@ export function ClaudeSignInCard({
         ) : null}
       </div>
       <div className="shrink-0">
-        {view.kind === "waiting" ? (
+        {needsInstall ? (
+          installing ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground" aria-live="polite">
+                Installing...
+              </span>
+              {installView.kind === "installing" && installView.operationId ? (
+                <Button
+                  size="sm"
+                  variant="ghost-muted"
+                  disabled={pending}
+                  onClick={() => void cancelInstalling()}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <Button size="sm" disabled={pending} onClick={() => void install()}>
+              {installView.kind === "failed" || error !== null ? "Try again" : "Install Claude"}
+            </Button>
+          )
+        ) : view.kind === "waiting" ? (
           <div className="flex items-center gap-1.5">
             {view.url !== null ? (
               <Button size="sm" variant="outline" onClick={() => void openPage(view.url!)}>

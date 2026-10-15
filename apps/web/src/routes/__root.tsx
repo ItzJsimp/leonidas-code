@@ -30,6 +30,7 @@ import { FirstRunGate } from "../components/onboarding/FirstRunGate";
 import { ConnectOnboardingDialog } from "../components/cloud/ConnectOnboardingDialog";
 import { RelayClientInstallDialog } from "../components/cloud/RelayClientInstallDialog";
 import { SshPasswordPromptDialog } from "../components/desktop/SshPasswordPromptDialog";
+import { RegenerateTitleHintDialog } from "../components/RegenerateTitleHintDialog";
 import { SnapShotCoordinator } from "../components/desktop/SnapShotCoordinator";
 import { DesktopAppActivationCoordinator } from "../components/desktop/DesktopAppActivationCoordinator";
 import { DesktopUpdateCoordinator } from "../components/desktop/DesktopUpdateCoordinator";
@@ -254,6 +255,7 @@ function RootRouteView() {
           <RelayClientInstallDialog />
           <ConnectOnboardingDialog />
           <SshPasswordPromptDialog />
+          <RegenerateTitleHintDialog />
           <SnapShotCoordinator />
           <ThreadNotificationCoordinator />
           <TaskCelebrationCoordinator />

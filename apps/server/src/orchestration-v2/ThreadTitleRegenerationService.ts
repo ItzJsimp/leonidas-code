@@ -13,7 +13,10 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schedule from "effect/Schedule";
 
+import { buildThreadTitlePrompt } from "@t3tools/provider-core/server/textGenerationPrompts";
+
 import * as ServerSettings from "../serverSettings.ts";
+import { generateLocalThreadTitle } from "../textGeneration/LocalThreadTitle.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
 import type { OrchestratorV2Error } from "./Orchestrator.ts";
 import * as ProjectStore from "./ProjectStore.ts";
@@ -30,7 +33,7 @@ export class ThreadTitleRegenerationService extends Context.Service<
       readonly requestId: CommandId;
       readonly kind:
         | { readonly type: "initial"; readonly messageId: MessageId }
-        | { readonly type: "regenerate" };
+        | { readonly type: "regenerate"; readonly hint?: string };
     }) => Effect.Effect<
       void,
       OrchestratorV2Error | ProjectStore.ProjectStoreV2Error | ServerSettingsError
@@ -38,11 +41,50 @@ export class ThreadTitleRegenerationService extends Context.Service<
   }
 >()("t3/orchestration-v2/ThreadTitleRegenerationService") {}
 
+const MAX_REMEMBERED_THREADS = 256;
+
+/** cyrb53: a small, fast 53-bit string hash. A rare collision only skips one regenerate. */
+function hashString(text: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    h1 = Math.imul(h1 ^ code, 2654435761);
+    h2 = Math.imul(h2 ^ code, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+/** Names the exact inputs a regenerate call would send, so an unchanged thread skips the model. */
+function titleInputKey(input: {
+  readonly message: string;
+  readonly attachmentIds: ReadonlyArray<string>;
+  readonly title: string;
+  readonly hint: string;
+}) {
+  return hashString(
+    JSON.stringify([input.title.trim(), input.hint, input.message, input.attachmentIds]),
+  );
+}
+
 const make = Effect.gen(function* () {
   const threads = yield* ThreadManagementService.ThreadManagementService;
   const projects = yield* ProjectStore.ProjectStoreV2;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
   const textGeneration = yield* TextGeneration.TextGeneration;
+
+  // Key of the last regenerate result per thread. In memory on purpose: a restart
+  // costs at most one extra call and needs no stored-thread change.
+  const settledKeys = new Map<string, string>();
+  const remember = (threadId: ThreadId, key: string) => {
+    settledKeys.delete(threadId);
+    settledKeys.set(threadId, key);
+    if (settledKeys.size > MAX_REMEMBERED_THREADS) {
+      settledKeys.delete(settledKeys.keys().next().value!);
+    }
+  };
 
   const complete = (input: {
     readonly threadId: ThreadId;
@@ -107,21 +149,63 @@ const make = Effect.gen(function* () {
         yield* serverSettings.getSettings,
         projection.thread.projectId,
       ).settings;
-      const result = yield* textGeneration.generateThreadTitle({
-        cwd: projection.thread.worktreePath ?? project.value.workspaceRoot,
-        message: context.message,
-        attachments: context.attachments,
-        ...(input.kind.type === "regenerate" ? { previousTitle: projection.thread.title } : {}),
-        modelSelection: settings.textGenerationModelSelection,
-      });
-      const generatedTitle = result.title.trim();
-      return generatedTitle === "New thread" ||
-        (input.kind.type === "regenerate" && generatedTitle === projection.thread.title.trim())
+      const previousTitle = projection.thread.title;
+      const hint = input.kind.type === "regenerate" ? (input.kind.hint?.trim() ?? "") : "";
+      const keyFor = (title: string) =>
+        titleInputKey({
+          message: context.message,
+          attachmentIds: context.attachments.map((attachment) => attachment.id),
+          title,
+          hint,
+        });
+      if (
+        input.kind.type === "regenerate" &&
+        settledKeys.get(input.threadId) === keyFor(previousTitle)
+      ) {
+        // Same thread text, same title, same hint: another call cannot do better.
+        return { type: "complete" as const };
+      }
+
+      // Free path first: a local model costs no account usage. It cannot read
+      // attachments, so those threads go straight to the configured model.
+      const localModel = settings.promptPredictionLocalModel.trim();
+      const localTitle =
+        localModel.length > 0 && context.attachments.length === 0
+          ? yield* Effect.promise((signal) =>
+              generateLocalThreadTitle({
+                model: localModel,
+                signal,
+                prompt: buildThreadTitlePrompt({
+                  message: context.message,
+                  ...(input.kind.type === "regenerate" ? { previousTitle } : {}),
+                  ...(hint.length > 0 ? { hint } : {}),
+                }).prompt,
+              }),
+            )
+          : null;
+      const generatedTitle = (
+        localTitle ??
+        (yield* textGeneration.generateThreadTitle({
+          cwd: projection.thread.worktreePath ?? project.value.workspaceRoot,
+          message: context.message,
+          attachments: context.attachments,
+          ...(input.kind.type === "regenerate" ? { previousTitle } : {}),
+          ...(hint.length > 0 ? { hint } : {}),
+          modelSelection: settings.textGenerationModelSelection,
+        })).title
+      ).trim();
+      const unchanged =
+        generatedTitle === "New thread" ||
+        (input.kind.type === "regenerate" && generatedTitle === previousTitle.trim());
+      if (input.kind.type === "regenerate") {
+        remember(input.threadId, keyFor(unchanged ? previousTitle : generatedTitle));
+      }
+      return unchanged
         ? { type: "complete" as const }
-        : { type: "complete" as const, title: result.title };
+        : { type: "complete" as const, title: generatedTitle };
     }).pipe(
       Effect.retry({
-        times: input.kind.type === "initial" ? 2 : 0,
+        times: input.kind.type === "initial" ? 2 : 1,
         schedule: Schedule.exponential("2 seconds"),
       }),
       Effect.catchCause((cause) =>

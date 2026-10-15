@@ -74,6 +74,7 @@ import {
   resolveClaudeHomePath,
 } from "./ClaudeHome.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { withClaudeUserBinOnPath } from "./ClaudeExecutable.ts";
 const decodeClaudeSettings = Schema.decodeSync(ClaudeSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
@@ -136,7 +137,12 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
       const modelCatalog = catalogService
         .current(DRIVER_KIND)
         .pipe(Effect.map(resolveClaudeModelCatalog));
-      const processEnv = yield* mergeProviderInstanceEnvironment(environment);
+      // A Claude installed by Connect (or after server start) lives in ~/.local/bin.
+      const processEnv = withClaudeUserBinOnPath(
+        yield* mergeProviderInstanceEnvironment(environment),
+        yield* HostProcess.HomeDirectory,
+        yield* HostProcess.Platform,
+      );
       const fallbackContinuationIdentity = defaultProviderContinuationIdentity({
         driverKind: DRIVER_KIND,
         instanceId,

@@ -205,7 +205,44 @@ function isRefreshButton(element: ReactElement<Record<string, unknown>>): boolea
 }
 
 function isAddProviderButton(element: ReactElement<Record<string, unknown>>): boolean {
-  return element.props["aria-label"] === "Add AI account";
+  return element.props["aria-label"] === "Connect an account";
+}
+
+type Panel = ReactElement<Record<string, unknown>>;
+
+/** The grouped account list that replaced the old list and detail panel. */
+function accountGroups(panel: Panel) {
+  return visitElements(panel, (element) => Array.isArray(element.props.groups));
+}
+
+function hasAccount(panel: Panel, instanceId: string): boolean {
+  const groups = (accountGroups(panel)?.props.groups ?? []) as ReadonlyArray<{
+    readonly rows: ReadonlyArray<{ readonly instanceId: string }>;
+  }>;
+  return groups.some((group) => group.rows.some((row) => row.instanceId === instanceId));
+}
+
+/** The full account editor, shown only inside the Settings sheet. */
+function accountEditor(panel: Panel, instanceId?: string) {
+  return visitElements(
+    panel,
+    (element) =>
+      typeof element.props.onUpdate === "function" &&
+      typeof element.props.instanceId === "string" &&
+      (instanceId === undefined || element.props.instanceId === instanceId),
+  );
+}
+
+/** Open one account's Settings sheet from its menu, then render again. */
+function openAccountSettings(
+  instanceId: string,
+  options?: Parameters<typeof renderPanel>[0],
+): Panel {
+  const panel = renderPanel(options);
+  const groups = accountGroups(panel);
+  if (!groups) throw new Error("Account groups were not rendered");
+  (groups.props.onSettings as (row: { instanceId: string }) => void)({ instanceId });
+  return renderPanel(options);
 }
 
 async function flushPromises(): Promise<void> {
@@ -241,20 +278,10 @@ describe("EnvironmentProviderSettings routing", () => {
   it("shows Codex and Claude while hiding untouched disabled provider slots", () => {
     const panel = renderPanel();
     for (const driver of ["codex", "claudeAgent"] as const) {
-      expect(
-        visitElements(
-          panel,
-          (element) => element.props.instanceId === driver && element.props.mode === "list",
-        ),
-      ).not.toBeNull();
+      expect(hasAccount(panel, driver)).toBe(true);
     }
     for (const driver of ["cursor", "grok", "pi", "opencode", "antigravity"] as const) {
-      expect(
-        visitElements(
-          panel,
-          (element) => element.props.instanceId === driver && element.props.mode === "list",
-        ),
-      ).toBeNull();
+      expect(hasAccount(panel, driver)).toBe(false);
     }
   });
 
@@ -267,12 +294,7 @@ describe("EnvironmentProviderSettings routing", () => {
       },
     };
     const panel = renderPanel();
-    expect(
-      visitElements(
-        panel,
-        (element) => element.props.instanceId === grokId && element.props.mode === "list",
-      ),
-    ).not.toBeNull();
+    expect(hasAccount(panel, grokId)).toBe(true);
   });
 
   it("keeps legacy provider configuration visible when disabled", () => {
@@ -289,12 +311,7 @@ describe("EnvironmentProviderSettings routing", () => {
       },
     };
     const panel = renderPanel();
-    expect(
-      visitElements(
-        panel,
-        (element) => element.props.instanceId === "grok" && element.props.mode === "list",
-      ),
-    ).not.toBeNull();
+    expect(hasAccount(panel, "grok")).toBe(true);
   });
 
   it("coalesces a nullable provider snapshot before rendering array-backed UI", () => {
@@ -306,7 +323,7 @@ describe("EnvironmentProviderSettings routing", () => {
 
   it("routes refresh and provider update commands to the selected environment", async () => {
     atoms.providers = [provider()];
-    const panel = renderPanel();
+    const panel = openAccountSettings(codexId);
     const refreshButton = visitElements(panel, isRefreshButton);
     expect(refreshButton).not.toBeNull();
     (refreshButton?.props.onClick as (() => void) | undefined)?.();
@@ -341,8 +358,7 @@ describe("EnvironmentProviderSettings routing", () => {
     };
     atoms.providers = [provider()];
     const panel = renderPanel({ targetInstanceId: customId });
-    const editor = visitElements(panel, (element) => element.props.mode === "editor");
-    expect(editor?.props.instanceId).toBe(customId);
+    expect(accountEditor(panel)?.props.instanceId).toBe(customId);
   });
 
   it.each([
@@ -360,11 +376,7 @@ describe("EnvironmentProviderSettings routing", () => {
     ],
   ])("saves %s on the selected environment for every connected client", (action, expected) => {
     atoms.providers = [provider()];
-    const panel = renderPanel();
-    const editor = visitElements(
-      panel,
-      (element) => element.props.instanceId === codexId && element.props.mode === "editor",
-    );
+    const editor = accountEditor(openAccountSettings(codexId), codexId);
     expect(editor).not.toBeNull();
     if (!editor) throw new Error("Provider editor was not rendered");
     (editor.props[action] as (models: string[]) => void)(["chosen"]);
@@ -375,7 +387,7 @@ describe("EnvironmentProviderSettings routing", () => {
   it("does not substitute another account when the requested instance was removed", () => {
     atoms.providers = [provider()];
     const panel = renderPanel({ targetInstanceId: customId });
-    expect(visitElements(panel, (element) => element.props.mode === "editor")).toBeNull();
+    expect(accountEditor(panel)).toBeNull();
     expect(settingsState.updateSettings).not.toHaveBeenCalled();
   });
 
@@ -396,20 +408,11 @@ describe("EnvironmentProviderSettings routing", () => {
     const inertWrapper = visitElements(panel, (element) => element.props.inert === true);
     expect(inertWrapper).not.toBeNull();
 
-    const customRow = visitElements(
-      panel,
-      (element) => element.props.instanceId === customId && element.props.mode === "list",
-    );
-    expect(customRow?.props.readOnly).toBe(true);
-    expect(customRow?.props.onSelect).toBeTypeOf("function");
-    (customRow?.props.onSelect as (() => void) | undefined)?.();
+    expect(hasAccount(panel, customId)).toBe(true);
+    expect(accountGroups(panel)?.props.readOnly).toBe(true);
 
-    panel = renderPanel({ readOnly: true });
-    const customEditor = visitElements(
-      panel,
-      (element) => element.props.instanceId === customId && element.props.mode === "editor",
-    );
-    expect(customEditor).not.toBeNull();
+    panel = openAccountSettings(customId, { readOnly: true });
+    expect(accountEditor(panel, customId)?.props.readOnly).toBe(true);
 
     const notice = visitElements(panel, (element) => element.props.title === "Limited permissions");
     expect(notice).not.toBeNull();
@@ -431,9 +434,9 @@ describe("EnvironmentProviderSettings routing", () => {
 
   it("removes an open add-instance dialog when the provider grant is revoked", () => {
     let panel = renderPanel();
-    const add = visitElements(panel, isAddProviderButton);
-    if (!add) throw new Error("Missing Add AI account action.");
-    (add.props.onClick as () => void)();
+    const tiles = visitElements(panel, (element) => typeof element.props.onMore === "function");
+    if (!tiles) throw new Error("Missing More services action.");
+    (tiles.props.onMore as () => void)();
     panel = renderPanel();
     expect(
       visitElements(panel, (element) => element.type === AddProviderInstanceDialog),
@@ -480,17 +483,8 @@ describe("EnvironmentProviderSettings routing", () => {
       },
       favorites: [{ provider: customId, model: "favorite" }],
     };
-    let panel = renderPanel();
-    const customRow = visitElements(
-      panel,
-      (element) => element.props.instanceId === customId && element.props.mode === "list",
-    );
-    (customRow?.props.onSelect as (() => void) | undefined)?.();
-    panel = renderPanel();
-    const customCard = visitElements(
-      panel,
-      (element) => element.props.instanceId === customId && element.props.mode === "editor",
-    );
+    let panel = openAccountSettings(customId);
+    const customCard = accountEditor(panel, customId);
     expect(customCard).not.toBeNull();
     (customCard?.props.onDelete as (() => void) | undefined)?.();
     await flushPromises();
@@ -501,16 +495,8 @@ describe("EnvironmentProviderSettings routing", () => {
     });
 
     settingsState.mutateProviderInstance.mockClear();
-    const defaultRow = visitElements(
-      panel,
-      (element) => element.props.instanceId === codexId && element.props.mode === "list",
-    );
-    (defaultRow?.props.onSelect as (() => void) | undefined)?.();
-    panel = renderPanel();
-    const defaultCard = visitElements(
-      panel,
-      (element) => element.props.instanceId === codexId && element.props.mode === "editor",
-    );
+    panel = openAccountSettings(codexId);
+    const defaultCard = accountEditor(panel, codexId);
     const resetAction = defaultCard?.props.headerAction;
     const resetButton = visitElements(
       resetAction,
@@ -537,8 +523,7 @@ describe("EnvironmentProviderSettings routing", () => {
         },
       },
     };
-    const panel = renderPanel();
-    const card = visitElements(panel, (element) => element.props.instanceId === customId);
+    const card = accountEditor(openAccountSettings(customId), customId);
     const next = {
       driver: ProviderDriverKind.make("codex"),
       enabled: false,
@@ -568,17 +553,7 @@ describe("EnvironmentProviderSettings routing", () => {
         [secondId]: registryInstance,
       },
     };
-    let panel = renderPanel();
-    const row = visitElements(
-      panel,
-      (element) => element.props.instanceId === firstId && element.props.mode === "list",
-    );
-    (row?.props.onSelect as (() => void) | undefined)?.();
-    panel = renderPanel();
-    const card = visitElements(
-      panel,
-      (element) => element.props.instanceId === firstId && element.props.mode === "editor",
-    );
+    const card = accountEditor(openAccountSettings(firstId), firstId);
     (card?.props.onDelete as (() => void) | undefined)?.();
     await flushPromises();
 
@@ -650,8 +625,7 @@ describe("EnvironmentProviderSettings routing", () => {
       },
     ];
 
-    const panel = renderPanel();
-    const card = visitElements(panel, (element) => element.props.instanceId === instanceId);
+    const card = accountEditor(openAccountSettings(instanceId), instanceId);
     (card?.props.onAcceptUrlAuth as ((candidate: typeof action) => void) | undefined)?.(action);
     await flushPromises();
 

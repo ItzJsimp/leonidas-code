@@ -12,6 +12,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
+import * as ClaudeInstallation from "./ClaudeInstallation.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
@@ -21,6 +22,7 @@ import * as ProviderRegistry from "./ProviderRegistry.ts";
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 
 const ANTIGRAVITY = ProviderDriverKind.make("antigravity");
+const CLAUDE = ProviderDriverKind.make("claudeAgent");
 const hasBinaryPath = Schema.is(Schema.Struct({ binaryPath: Schema.String }));
 const decodeCodexSettings = Schema.decodeUnknownEffect(CodexSettings);
 const decodeAntigravitySettings = Schema.decodeUnknownEffect(AntigravitySettings);
@@ -28,6 +30,7 @@ const decodeAntigravitySettings = Schema.decodeUnknownEffect(AntigravitySettings
 /** Route instance setup to the environment-owned installer without owning the download. */
 export const makeProviderInstallation = Effect.fn("makeProviderInstallation")(function* () {
   const antigravityInstallation = yield* AntigravityInstallation.AntigravityInstallation;
+  const claudeInstallation = yield* ClaudeInstallation.ClaudeInstallation;
   const codexInstallation = yield* CodexInstallation.CodexInstallation;
   const instances = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
   const providers = yield* ProviderRegistry.ProviderRegistry;
@@ -56,6 +59,10 @@ export const makeProviderInstallation = Effect.fn("makeProviderInstallation")(fu
     managedOnly = false,
   ) {
     const instance = yield* instances.getInstance(instanceId);
+    // Claude installs with the official installer and owns its own files.
+    if (instance?.driverKind === CLAUDE) {
+      return { installation: claudeInstallation, driver: instance.driverKind };
+    }
     const isCodex = instance?.driverKind === ProviderDriverKind.make("codex");
     if (instance?.driverKind !== ANTIGRAVITY && !isCodex) {
       return yield* new ProviderSetupError({
@@ -102,6 +109,7 @@ export const makeProviderInstallation = Effect.fn("makeProviderInstallation")(fu
     (
       error:
         | AntigravityInstallation.AntigravityInstallationError
+        | ClaudeInstallation.ClaudeInstallationError
         | CodexInstallation.CodexInstallationError,
     ) =>
       new ProviderSetupError({ instanceId, operation: error.operation, detail: error.detail });
