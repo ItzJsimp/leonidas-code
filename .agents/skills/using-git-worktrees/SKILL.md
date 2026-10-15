@@ -3,6 +3,7 @@ name: using-git-worktrees
 description: "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback"
 category: code
 scope: structural
+distribution: template
 type: skill
 id: skill-using-git-worktrees
 title: "Using Git Worktrees"
@@ -11,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/obra/superpowers (skills/using-git-worktrees, MIT, commit bb92a77)"
+disable-model-invocation: true
 ---
 
 # Using Git Worktrees
