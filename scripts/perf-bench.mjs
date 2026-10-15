@@ -6,8 +6,17 @@
 //   node scripts/perf-bench.mjs --only a,b                 run only the named steps
 //   node scripts/perf-bench.mjs --note "x"                 attach a note (for example the change under test)
 import { spawn, execFileSync } from "node:child_process";
-import { appendFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
-import { cpus, totalmem } from "node:os";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import { createServer } from "node:net";
+import { cpus, tmpdir, totalmem } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -99,6 +108,116 @@ async function testStep(dir, files) {
   };
 }
 
+/** Working set in MB of a PID plus all its descendants (Windows), or RSS of the PID elsewhere. */
+function treeMemoryMb(pid) {
+  try {
+    if (process.platform !== "win32") {
+      const kb = execFileSync("ps", ["-o", "rss=", "-p", String(pid)], { encoding: "utf8" });
+      return Math.round(Number(kb) / 1024);
+    }
+    const script = `$all = Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,WorkingSetSize; $ids = @(${pid}); $i = 0; while ($i -lt $ids.Count) { $ids += @($all | Where-Object { $_.ParentProcessId -eq $ids[$i] } | ForEach-Object { $_.ProcessId }); $i++ }; ($all | Where-Object { $ids -contains $_.ProcessId } | Measure-Object WorkingSetSize -Sum).Sum`;
+    const bytes = execFileSync("powershell", ["-NoProfile", "-Command", script], {
+      encoding: "utf8",
+      timeout: 20_000,
+    });
+    return Math.round(Number(bytes.trim()) / 2 ** 20);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Live server from source on a fresh temp home (never ~/.t3/userdata): time to the
+ * readiness endpoint, one live orchestration command (`project add`), and memory
+ * at idle and after the command. Same boot path as scripts/smoke.mjs.
+ */
+async function serverLiveStep() {
+  const home = mkdtempSync(join(tmpdir(), "leonidas-perf-"));
+  const workspace = join(home, "workspace");
+  mkdirSync(workspace);
+  const entry = join(repoRoot, "apps/server/src/bin.ts");
+  const env = { ...process.env, T3CODE_HOME: home, T3CODE_NO_BROWSER: "1" };
+  const port = await new Promise((res, rej) => {
+    const probe = createServer();
+    probe.once("error", rej);
+    probe.listen(0, "127.0.0.1", () => {
+      const { port: p } = probe.address();
+      probe.close(() => res(p));
+    });
+  });
+  const origin = `http://127.0.0.1:${port}`;
+  const started = performance.now();
+  const server = spawn(
+    process.execPath,
+    [entry, "--base-dir", home, "--host", "127.0.0.1", "--port", String(port), "--no-browser"],
+    { cwd: repoRoot, env },
+  );
+  let log = "";
+  server.stdout.on("data", (d) => (log = (log + d).slice(-4_000)));
+  server.stderr.on("data", (d) => (log = (log + d).slice(-4_000)));
+  const stop = () => {
+    // Kill only the PID captured at spawn, with its child tree.
+    if (server.exitCode !== null) return;
+    if (process.platform === "win32")
+      execFileSync("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+    else server.kill("SIGKILL");
+  };
+  try {
+    let readyMs;
+    while (performance.now() - started < 90_000 && server.exitCode === null) {
+      try {
+        const res = await fetch(`${origin}/.well-known/t3/environment`, {
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (res.status === 200) {
+          readyMs = Math.round(performance.now() - started);
+          break;
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    if (readyMs === undefined)
+      return {
+        ms: Math.round(performance.now() - started),
+        ok: false,
+        detail: tail(log.split(repoRoot).join("<repo>"), 8),
+      };
+    // Let startup work settle before the idle memory sample.
+    await new Promise((r) => setTimeout(r, 3_000));
+    const idleMb = treeMemoryMb(server.pid);
+    const commandStart = performance.now();
+    const cmd = await new Promise((res) => {
+      const child = spawn(
+        process.execPath,
+        [entry, "project", "add", workspace, "--base-dir", home],
+        { cwd: repoRoot, env },
+      );
+      const timer = setTimeout(() => child.kill(), 30_000);
+      child.on("exit", (code) => {
+        clearTimeout(timer);
+        res(code);
+      });
+    });
+    const commandMs = Math.round(performance.now() - commandStart);
+    const afterCommandMb = treeMemoryMb(server.pid);
+    const live = existsSync(join(home, "userdata", "server-runtime.json"));
+    return {
+      ms: Math.round(performance.now() - started),
+      ok: cmd === 0 && live,
+      readyMs,
+      commandMs,
+      idleMb,
+      afterCommandMb,
+      detail: cmd === 0 && live ? undefined : `project add exited ${cmd}, live=${live}`,
+    };
+  } finally {
+    stop();
+    try {
+      rmSync(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch {}
+  }
+}
+
 const steps = [
   [
     "typecheck_web",
@@ -135,6 +254,7 @@ const steps = [
       };
     },
   ],
+  ["server_live", serverLiveStep],
   [
     "boot_web",
     async () => {
