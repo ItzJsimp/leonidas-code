@@ -640,6 +640,8 @@ const make = Effect.gen(function* () {
         [
           "api",
           `repos/${project.repository}/contents/${databaseFile(project.slug)}`,
+          "--method",
+          "GET",
           "-f",
           `ref=${branchName(project)}`,
         ],

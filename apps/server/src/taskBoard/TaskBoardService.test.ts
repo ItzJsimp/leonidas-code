@@ -82,6 +82,35 @@ const boardRunner = (
 const boardLayer = (runner: ReturnType<typeof boardRunner>) =>
   TaskBoardService.layer.pipe(Layer.provide(Layer.succeed(ProcessRunner.ProcessRunner, runner)));
 
+it.effect("reads a shared board branch with GET despite the ref field", () => {
+  let contentsReads = 0;
+  const runner = ProcessRunner.ProcessRunner.of({
+    run: (input) =>
+      Effect.sync(() => {
+        const endpoint = input.args[1] ?? "";
+        if (endpoint.includes("matching-refs")) {
+          return output(JSON.stringify([{ ref: `refs/heads/${endpoint.split("/heads/")[1]}` }]));
+        }
+        if (endpoint.includes("/contents/")) {
+          contentsReads++;
+          expect(input.args).toEqual(expect.arrayContaining(["--method", "GET"]));
+          return output(
+            JSON.stringify({
+              content: Buffer.from(JSON.stringify({ version: 1, tasks: [] })).toString("base64"),
+              sha: "board-sha",
+            }),
+          );
+        }
+        return output("[]");
+      }),
+  });
+  return Effect.gen(function* () {
+    const board = yield* TaskBoardService.TaskBoardService;
+    expect((yield* board.list(boardProject)).tasks).toHaveLength(0);
+    expect(contentsReads).toBe(1);
+  }).pipe(Effect.provide(boardLayer(runner)));
+});
+
 it.effect.each([
   [
     "reports disabled Issues explicitly",
