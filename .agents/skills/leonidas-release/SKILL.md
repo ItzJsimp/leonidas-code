@@ -1,6 +1,9 @@
 ---
 name: leonidas-release
-description: Write plain-language patch notes, illustrated update stories, and release trailers for user-visible Leonidas changes; choose versions and verify publication when preparing or shipping Code or Scribe updates.
+description: "Write plain-language patch notes, illustrated update stories, and release trailers for user-visible Leonidas changes; choose versions and verify publication when preparing or shipping Code or Scribe updates."
+category: code
+scope: structural
+distribution: private
 ---
 
 # Leonidas releases
