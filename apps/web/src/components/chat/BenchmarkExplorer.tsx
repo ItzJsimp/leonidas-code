@@ -1220,6 +1220,7 @@ function ExplorerBody({
         >
           {source.attribution}
           {source.fetchedAt ? ` · updated ${formatRelativeTimeLabel(source.fetchedAt)}` : ""}
+          {source.state === "stale" ? " · refresh failed, showing older scores" : ""}
         </a>
       ) : null}
     </div>

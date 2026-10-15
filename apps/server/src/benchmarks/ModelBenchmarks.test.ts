@@ -101,7 +101,7 @@ const makeHarness = () => {
   const layer = ModelBenchmarks.layer.pipe(
     Layer.provide(Layer.succeed(HttpClient.HttpClient, http)),
   );
-  return { calls, layer, fail: () => (failing = true) };
+  return { calls, layer, fail: () => (failing = true), recover: () => (failing = false) };
 };
 
 describe("ModelBenchmarks", () => {
@@ -129,8 +129,56 @@ describe("ModelBenchmarks", () => {
       yield* TestClock.adjust("61 minutes");
       const report = yield* service.report([{ modelId: "claude-opus-5-5" }]);
       expect(harness.calls.length).toBeGreaterThan(4);
-      expect(report.sources[0]?.state).toBe("ready");
+      expect(report.sources[0]?.state).toBe("stale");
+      expect(report.sources[0]?.refreshFailedAt).toBeDefined();
+      expect(report.sources[0]?.fetchedAt).toBeDefined();
       expect(report.rows[0]?.matches).toHaveLength(1);
+    }).pipe(Effect.provide(harness.layer));
+  });
+
+  it.effect("waits five minutes between downloads after a failed refresh, then recovers", () => {
+    const harness = makeHarness();
+    return Effect.gen(function* () {
+      const service = yield* ModelBenchmarks.ModelBenchmarks;
+      yield* service.report([{ modelId: "claude-opus-5-5" }]);
+      harness.fail();
+      yield* TestClock.adjust("61 minutes");
+      yield* service.report([{ modelId: "claude-opus-5-5" }]);
+      const afterFailure = harness.calls.length;
+
+      yield* TestClock.adjust("4 minutes");
+      const waiting = yield* service.report([{ modelId: "claude-opus-5-5" }]);
+      expect(harness.calls).toHaveLength(afterFailure);
+      expect(waiting.sources[0]?.state).toBe("stale");
+
+      yield* TestClock.adjust("2 minutes");
+      yield* service.report([{ modelId: "claude-opus-5-5" }]);
+      expect(harness.calls.length).toBeGreaterThan(afterFailure);
+
+      harness.recover();
+      yield* TestClock.adjust("6 minutes");
+      const recovered = yield* service.report([{ modelId: "claude-opus-5-5" }]);
+      expect(recovered.sources[0]?.state).toBe("ready");
+      expect(recovered.sources[0]?.refreshFailedAt).toBeUndefined();
+    }).pipe(Effect.provide(harness.layer));
+  });
+
+  it.effect("shares one failed download between concurrent callers", () => {
+    const harness = makeHarness();
+    harness.fail();
+    return Effect.gen(function* () {
+      const service = yield* ModelBenchmarks.ModelBenchmarks;
+      const reports = yield* Effect.forEach(
+        [1, 2, 3],
+        () => service.report([{ modelId: "claude-opus-5-5" }]),
+        { concurrency: "unbounded" },
+      );
+      expect(reports.map((report) => report.sources[0]?.state)).toEqual([
+        "unavailable",
+        "unavailable",
+        "unavailable",
+      ]);
+      expect(harness.calls.length).toBeLessThanOrEqual(4);
     }).pipe(Effect.provide(harness.layer));
   });
 

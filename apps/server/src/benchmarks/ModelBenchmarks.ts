@@ -2,8 +2,8 @@
  * ModelBenchmarks - public benchmark results for the models a user can run.
  *
  * Reads BenchLM's free static files, which need no key. They are fetched at
- * most once an hour, on demand, and a failed refresh keeps serving the last
- * good copy.
+ * most once an hour, on demand. A failed refresh keeps serving the last good
+ * copy, marked stale, and the next download waits five minutes.
  *
  * @module ModelBenchmarks
  */
@@ -29,6 +29,7 @@ import {
 } from "./ModelBenchmarkSources.ts";
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
+const FAILED_REFRESH_RETRY_MS = 5 * 60 * 1000;
 const BENCHLM_DATA_URL = "https://benchlm.ai/data";
 
 export class ModelBenchmarks extends Context.Service<
@@ -46,6 +47,7 @@ export class ModelBenchmarks extends Context.Service<
 const make = Effect.gen(function* () {
   const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
   let cached: { readonly fetchedAtMs: number; readonly parsed: ParsedBenchmarkSource } | undefined;
+  let failedAtMs: number | undefined;
   // Two panels opening at once share one download instead of racing.
   const refreshLock = yield* Semaphore.make(1);
 
@@ -59,6 +61,7 @@ const make = Effect.gen(function* () {
   const refresh = Effect.gen(function* () {
     const now = yield* Clock.currentTimeMillis;
     if (cached && now - cached.fetchedAtMs < CACHE_TTL_MS) return;
+    if (failedAtMs !== undefined && now - failedAtMs < FAILED_REFRESH_RETRY_MS) return;
     yield* Effect.all(
       {
         models: getJson("models"),
@@ -69,27 +72,46 @@ const make = Effect.gen(function* () {
       { concurrency: "unbounded" },
     ).pipe(
       Effect.map(parseBenchLm),
-      Effect.tap((parsed) => Effect.sync(() => (cached = { fetchedAtMs: now, parsed }))),
+      Effect.tap((parsed) =>
+        Effect.sync(() => {
+          cached = { fetchedAtMs: now, parsed };
+          failedAtMs = undefined;
+        }),
+      ),
       Effect.catch((cause) =>
-        Effect.logWarning("BenchLM refresh failed").pipe(
+        Effect.sync(() => {
+          failedAtMs = now;
+        }).pipe(
+          Effect.andThen(Effect.logWarning("BenchLM refresh failed")),
           Effect.annotateLogs({ cause: String(cause) }),
         ),
       ),
     );
   });
 
-  const sourceStatus = () => ({
-    source: "benchLm" as const,
-    state: cached ? ("ready" as const) : ("unavailable" as const),
-    ...(cached ? { fetchedAt: DateTime.formatIso(DateTime.makeUnsafe(cached.fetchedAtMs)) } : {}),
-    attribution: "Data from BenchLM.ai",
-    url: "https://benchlm.ai",
+  const sourceStatus = Effect.gen(function* () {
+    const now = yield* Clock.currentTimeMillis;
+    const state = !cached
+      ? ("unavailable" as const)
+      : failedAtMs !== undefined && now - cached.fetchedAtMs >= CACHE_TTL_MS
+        ? ("stale" as const)
+        : ("ready" as const);
+    return {
+      source: "benchLm" as const,
+      state,
+      ...(cached ? { fetchedAt: DateTime.formatIso(DateTime.makeUnsafe(cached.fetchedAtMs)) } : {}),
+      ...(failedAtMs !== undefined
+        ? { refreshFailedAt: DateTime.formatIso(DateTime.makeUnsafe(failedAtMs)) }
+        : {}),
+      attribution: "Data from BenchLM.ai",
+      url: "https://benchlm.ai",
+    };
   });
 
   const catalog: ModelBenchmarks["Service"]["catalog"] = Effect.gen(function* () {
     yield* refreshLock.withPermits(1)(refresh);
     return {
-      sources: [sourceStatus()],
+      sources: [yield* sourceStatus],
       metrics: cached?.parsed.metrics ?? [],
       entries: cached?.parsed.entries ?? [],
     };
@@ -104,7 +126,7 @@ const make = Effect.gen(function* () {
         rows.flatMap((row) => row.matches.flatMap((match) => Object.keys(match.entry.values))),
       );
       return {
-        sources: [sourceStatus()],
+        sources: [yield* sourceStatus],
         metrics: (cached?.parsed.metrics ?? []).filter((metric) => usedKeys.has(metric.key)),
         rows,
       };
