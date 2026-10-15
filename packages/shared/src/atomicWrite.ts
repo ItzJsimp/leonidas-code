@@ -4,7 +4,7 @@ import * as Path from "effect/Path";
 import { resolveSymlinkTarget } from "@t3tools/shared/symlink";
 
 /**
- * Replaces a file's contents via a sibling temp file and rename. A symlinked
+ * Replaces a file's contents via a sibling temp file, fsync and rename. A symlinked
  * target is resolved first so the link survives and its destination is
  * rewritten, since renaming over the link itself would swap it for a regular file.
  */
@@ -32,7 +32,11 @@ export const writeFileStringAtomically = (input: {
       );
       const tempPath = path.join(tempDirectory, "contents.tmp");
 
-      yield* fs.writeFileString(tempPath, input.contents);
+      // Sync the bytes to disk before the rename. Without it a power cut or restart can leave
+      // the renamed file empty, which loses the user's settings.
+      const file = yield* fs.open(tempPath, { flag: "w" });
+      yield* file.writeAll(new TextEncoder().encode(input.contents));
+      yield* file.sync;
       yield* fs.rename(tempPath, targetPath);
     }),
   );

@@ -135,6 +135,13 @@ if (typeof window !== "undefined" && typeof window.addEventListener === "functio
   window.addEventListener("beforeunload", () => {
     composerDebouncedStorage.flush();
   });
+  // A hidden window can be killed without beforeunload (update install, task kill).
+  window.addEventListener("pagehide", () => {
+    composerDebouncedStorage.flush();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") composerDebouncedStorage.flush();
+  });
 }
 
 export const PersistedComposerImageAttachment = Schema.Struct({
