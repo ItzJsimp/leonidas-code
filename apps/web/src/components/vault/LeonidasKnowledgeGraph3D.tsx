@@ -461,7 +461,7 @@ export function LeonidasKnowledgeGraph3D({
           <Search className="w-3.5 h-3.5 text-cyan-400" />
           <input
             type="text"
-            placeholder="Search knowledge graph..."
+            placeholder="Search the note map…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-48 bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none"
@@ -476,7 +476,7 @@ export function LeonidasKnowledgeGraph3D({
             className={`p-1.5 rounded hover:bg-slate-700/60 transition ${
               autoRotate ? "text-cyan-400 bg-cyan-950/40" : "text-gray-400"
             }`}
-            title={autoRotate ? "Pause Auto-Orbit" : "Start Auto-Orbit"}
+            title={autoRotate ? "Stop turning the map" : "Turn the map by itself"}
           >
             <Sparkles className="w-3.5 h-3.5" />
           </button>
@@ -487,7 +487,7 @@ export function LeonidasKnowledgeGraph3D({
             className={`p-1.5 rounded hover:bg-slate-700/60 transition ${
               isSimulating ? "text-emerald-400" : "text-gray-400"
             }`}
-            title={isSimulating ? "Freeze Physics" : "Simulate Physics"}
+            title={isSimulating ? "Hold the notes still" : "Let the notes move"}
           >
             {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
@@ -498,7 +498,7 @@ export function LeonidasKnowledgeGraph3D({
             className={`p-1.5 rounded hover:bg-slate-700/60 transition ${
               showTags ? "text-purple-400 bg-purple-950/40" : "text-gray-400"
             }`}
-            title="Toggle Tags"
+            title="Show or hide tags"
           >
             <Layers className="w-3.5 h-3.5" />
           </button>
@@ -527,7 +527,7 @@ export function LeonidasKnowledgeGraph3D({
             type="button"
             onClick={resetCamera}
             className="p-1.5 text-gray-400 hover:text-gray-200 rounded hover:bg-slate-700/60 transition"
-            title="Reset Camera"
+            title="Reset the view"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -565,7 +565,7 @@ export function LeonidasKnowledgeGraph3D({
 
           <div className="mt-2 text-slate-400 text-[11px] space-y-1">
             <div className="flex justify-between">
-              <span>Connections:</span>
+              <span>Links:</span>
               <span className="text-gray-200 font-mono font-medium">{hoveredNode.linkCount}</span>
             </div>
             {hoveredNode.tags.length > 0 && (
@@ -586,7 +586,7 @@ export function LeonidasKnowledgeGraph3D({
 
       {/* Futuristic Graph Stats Badge */}
       <div className="absolute bottom-4 right-4 z-10 px-2.5 py-1 rounded bg-[#0d121f]/80 border border-slate-800/80 text-[10px] text-slate-400 font-mono shadow pointer-events-none backdrop-blur-sm">
-        {graphData.nodes.length} NODES · {graphData.links.length} LINKS · 3D ORBIT
+        {graphData.nodes.length} notes and tags · {graphData.links.length} links
       </div>
     </div>
   );

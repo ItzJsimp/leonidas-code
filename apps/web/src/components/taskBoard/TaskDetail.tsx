@@ -61,8 +61,8 @@ const PRIORITIES: ReadonlyArray<TaskBoardTaskPriority> = ["critical", "high", "m
 
 const HISTORY_VERBS: Record<TaskBoardHistoryEntry["action"], string> = {
   created: "created this",
-  claimed: "claimed this",
-  released: "released this",
+  claimed: "took this",
+  released: "gave this back",
   updated: "updated this",
   blocked: "marked this blocked",
   completed: "completed this",
@@ -239,7 +239,7 @@ function TaskDetailBody(props: {
       onClick={() => run("send", () => actions.sendToAgent(task))}
     >
       {spinnerFor("send") ? <Spinner /> : <SparklesIcon />}
-      Send to agent
+      Send to AI
     </Button>
   );
 
@@ -276,7 +276,7 @@ function TaskDetailBody(props: {
                 {sendButton}
               </TooltipTrigger>
               <TooltipPopup>
-                Link this task to a project on this machine to send it to an agent.
+                Link this task to a project on this computer to send it to the AI.
               </TooltipPopup>
             </Tooltip>
           )}
@@ -301,7 +301,7 @@ function TaskDetailBody(props: {
                 }
               >
                 {spinnerFor("claim") ? <Spinner /> : mine ? <UserMinusIcon /> : <UserCheckIcon />}
-                {mine ? "Release" : "Claim"}
+                {mine ? "Give back" : "Take"}
               </Button>
               {task.status !== "review" ? (
                 <Button
@@ -396,7 +396,7 @@ function TaskDetailBody(props: {
               </SelectPopup>
             </Select>
           </Property>
-          <Property label="Claimed by">
+          <Property label="Taken by">
             {task.claimedBy ? (
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="wrap-anywhere">
@@ -414,7 +414,7 @@ function TaskDetailBody(props: {
                     {agent.model ? <span className="font-mono">{agent.model}</span> : null}
                     {agent.threadId ? (
                       <span className="inline-flex min-w-0 items-center gap-1">
-                        thread
+                        chat
                         <MiddleTruncate value={agent.threadId} />
                       </span>
                     ) : null}
@@ -561,7 +561,7 @@ function TaskDetailBody(props: {
         ) : null}
 
         {task.startFiles && task.startFiles.length > 0 ? (
-          <Section title="Starts in">
+          <Section title="Start with these files">
             <ul className="flex flex-col gap-1">
               {task.startFiles.map((file) => (
                 <li key={file} className="flex min-w-0 items-center gap-1.5 font-mono text-xs">

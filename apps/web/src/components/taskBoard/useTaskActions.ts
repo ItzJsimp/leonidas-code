@@ -169,7 +169,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
         aiosRoot: current.aiosRoot,
       });
       if (!project) {
-        report("No project to start the agent in", "Add a project to Leonidas Code first.");
+        report("No project to start the chat in", "Add a project to Leonidas Code first.");
         return false;
       }
       const opened = await newThread(scopeProjectRef(targetEnvironment, project.id));
@@ -193,7 +193,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
         if (plan.kind === "open") {
           toastManager.add({
             type: "info",
-            title: "Already sent to an agent",
+            title: "Already sent to the AI",
             description: task.title,
           });
           void go({
@@ -270,7 +270,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
         const { input: current, runShare: run } = latest.current;
         const projectId = sectionProjectId(task);
         if (!current.environmentId || !projectId) {
-          report("Sharing is unavailable", "Link this task to a project with a GitHub repository.");
+          report("Cannot share this task", "Link this task to a project with a GitHub repository.");
           return;
         }
         const result = await run({

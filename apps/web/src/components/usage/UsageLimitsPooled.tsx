@@ -58,7 +58,7 @@ function AccountChip({ email }: { readonly email: string }) {
   return (
     <span
       role="img"
-      aria-label={`Account ${accountInitials(email)}`}
+      aria-label={`AI account ${accountInitials(email)}`}
       className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-3xs leading-none font-semibold"
       style={{ backgroundColor: `oklch(0.85 0.08 ${hue})`, color: `oklch(0.35 0.1 ${hue})` }}
     >
@@ -176,9 +176,9 @@ function SegmentPopover({
         {account.email ? (
           <RedactedSensitiveText
             value={account.email}
-            ariaLabel="Toggle account email visibility"
-            revealTooltip="Click to reveal email"
-            hideTooltip="Click to hide email"
+            ariaLabel="Show or hide the account email"
+            revealTooltip="Click to show the email"
+            hideTooltip="Click to hide the email"
             className="w-fit"
           />
         ) : null}
@@ -190,13 +190,13 @@ function SegmentPopover({
         ) : null}
       </div>
       <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
-        <Row label="Quota">{limitText(window.usedPercent, view)}</Row>
+        <Row label="Limit used">{limitText(window.usedPercent, view)}</Row>
         {window.tokenEstimate ? (
           <span className="text-xs text-muted-foreground">
             {subscriptionEstimateSummary(window.tokenEstimate)}
             {window.tokenEstimate.capacityTokens === undefined ? null : (
               <span className="block">
-                Approximate local token equivalent; workload and outside usage affect it.
+                This is an estimate. Your work and use outside Leonidas Code change it.
               </span>
             )}
           </span>
@@ -208,7 +208,7 @@ function SegmentPopover({
           </Row>
         ) : null}
         {reset && reset.restoresPercent > 0 ? (
-          <Row label="Restores">+{reset.restoresPercent}% of pool</Row>
+          <Row label="Restores">+{reset.restoresPercent}% of the shared limit</Row>
         ) : null}
       </div>
       {credits && redeem ? (
@@ -267,7 +267,7 @@ function PoolSegment({
           <button
             type="button"
             style={{ gridColumn: index, gridRow: 1 }}
-            aria-label={`${account.displayName ?? (account.email ? accountInitials(account.email) : account.driver)}: ${limitText(window.usedPercent, view)}${resetsIn ? `, ${resetsIn}` : ""}${credits ? `, ${credits} reset ${credits === 1 ? "credit" : "credits"} banked` : ""}`}
+            aria-label={`${account.displayName ?? (account.email ? accountInitials(account.email) : account.driver)}: ${limitText(window.usedPercent, view)}${resetsIn ? `, ${resetsIn}` : ""}${credits ? `, ${credits} reset ${credits === 1 ? "credit" : "credits"} saved` : ""}`}
             className="relative h-5 min-w-0 cursor-pointer overflow-hidden rounded-md bg-muted text-start outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[popup-open]:ring-1 data-[popup-open]:ring-inset data-[popup-open]:ring-border @2xl/pool:h-8"
           />
         }
@@ -608,7 +608,7 @@ export function UsageLimitsPooled({
     <div className="flex flex-col gap-8">
       {pools.length === 0 && notices.length === 0 && !cursorPrompt && externalLinks.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No provider on the selected environments reports subscription limits.
+          No AI service on the selected computers reports limits. Select a different computer.
         </p>
       ) : null}
       {pools.map((pool, index) => (
@@ -631,7 +631,7 @@ export function UsageLimitsPooled({
               <h2 className="text-sm font-medium">{link.label}</h2>
               {link.url === CHATGPT_USAGE_URL ? (
                 <p className="text-xs text-muted-foreground">
-                  View usage in ChatGPT with your connected account.
+                  See your usage in ChatGPT with your connected account.
                 </p>
               ) : link.message ? (
                 <p className="max-w-xl text-xs text-muted-foreground">{link.message}</p>

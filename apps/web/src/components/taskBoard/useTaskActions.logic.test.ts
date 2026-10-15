@@ -104,7 +104,7 @@ describe("linkPatch and unlinkPatch", () => {
     expect(unlinkPatch(task, "Mob", "boom")).toEqual({
       claimedBy: null,
       status: "todo",
-      note: "Agent did not start: boom",
+      note: "The AI did not start: boom",
     });
   });
 

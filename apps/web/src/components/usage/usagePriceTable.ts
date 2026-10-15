@@ -58,7 +58,7 @@ export function usagePriceCell(
   if (values.some((value) => value !== values[0])) return { value: "", placeholder: "Mixed" };
   return {
     value: values[0] ?? "",
-    placeholder: values[0] === null ? "Automatic" : optional ? "Input rate" : "0.00",
+    placeholder: values[0] === null ? "Automatic" : optional ? "Input price" : "0.00",
   };
 }
 
@@ -82,7 +82,7 @@ export function usagePriceTableChanges(
     const alias = (draft.alias ?? currentAlias ?? "").trim();
     if (alias !== "") {
       if (model === "") errors.set(draft.id, "Enter a model ID.");
-      else if (alias === model) errors.set(draft.id, "Map to a different model.");
+      else if (alias === model) errors.set(draft.id, "Pick a different model to count as.");
       else {
         if (alias !== currentAlias) changes.push({ model, alias });
         if (modelPrice(target, model)) changes.push({ model, price: null });

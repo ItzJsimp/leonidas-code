@@ -47,7 +47,12 @@ export function AiosConfirmCard(props: {
       refresh();
       props.onConfirmed();
     } else if (!isAtomCommandInterrupted(result)) {
-      setError(failureText(squashAtomCommandFailure(result), "Could not use that folder."));
+      setError(
+        failureText(
+          squashAtomCommandFailure(result),
+          "Could not use that folder. Pick a different folder.",
+        ),
+      );
     }
   };
 
@@ -58,13 +63,13 @@ export function AiosConfirmCard(props: {
 
   return (
     <section
-      aria-label="Connect your AIOS"
+      aria-label="Connect your AIOS folder"
       className="flex flex-col gap-3 border-b border-border bg-muted/30 px-4 py-3 text-sm"
     >
       <div className="flex items-center gap-2">
         <FolderCheckIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <h3 className="min-w-0 flex-1 font-medium">
-          {data.candidates.length > 0 ? "Is this your AIOS?" : "Where is your AIOS?"}
+          {data.candidates.length > 0 ? "Is this your AIOS folder?" : "Where is your AIOS folder?"}
         </h3>
         <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>
           Not now
@@ -75,8 +80,10 @@ export function AiosConfirmCard(props: {
           <div className="min-w-0 flex-1">
             <p className="truncate">{candidate.root}</p>
             <p className="text-xs text-muted-foreground">
-              {candidate.cardCount} task cards ·{" "}
-              {candidate.confidence === "marker" ? "looks like an AIOS" : "cards match the format"}
+              {candidate.cardCount} task files ·{" "}
+              {candidate.confidence === "marker"
+                ? "looks like an AIOS"
+                : "task files match the format"}
             </p>
           </div>
           <Button
@@ -85,7 +92,7 @@ export function AiosConfirmCard(props: {
             disabled={busy || !canConfirm}
             onClick={() => void confirm(candidate.root)}
           >
-            Use this
+            Use this folder
           </Button>
         </div>
       ))}

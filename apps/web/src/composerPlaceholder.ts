@@ -1,2 +1,1 @@
-export const DISCONNECTED_COMPOSER_PLACEHOLDER =
-  "Ask for changes, send follow-ups, or attach images";
+export const DISCONNECTED_COMPOSER_PLACEHOLDER = "Type a message, or add images";

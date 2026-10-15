@@ -148,14 +148,14 @@ const TaskRow = memo(function TaskRow({
             {canSend ? (
               <MenuItem onClick={() => onAction(task, "send")}>
                 <BotIcon />
-                Send to agent
+                Send to AI
               </MenuItem>
             ) : null}
             {open && !task.claimedBy ? (
-              <MenuItem onClick={() => onAction(task, "claim")}>Claim</MenuItem>
+              <MenuItem onClick={() => onAction(task, "claim")}>Take</MenuItem>
             ) : null}
             {open && mine ? (
-              <MenuItem onClick={() => onAction(task, "release")}>Release</MenuItem>
+              <MenuItem onClick={() => onAction(task, "release")}>Give back</MenuItem>
             ) : null}
             <MenuSeparator />
             {done ? (

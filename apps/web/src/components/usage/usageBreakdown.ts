@@ -47,11 +47,11 @@ export function freshTokens(
 }
 
 export const CACHE_READ_NOTE =
-  "Includes cache reads: the same context re-read every turn. Fresh tokens are closer to real work and quota use.";
+  "Includes reused text: the AI reads the same chat again with each reply. New text is closer to the real work and to your limit.";
 
 /** Cost figures are list-price estimates, not what a plan bills. */
 export const API_COST_NOTE =
-  "What these tokens would cost at public API rates. Subscription plans are billed separately.";
+  "What this text would cost at public prices. Your subscription plan is billed separately.";
 
 /** Effective USD per million priced tokens, or `null` when none were priced. */
 export function costPerMillionTokens(model: ModelTotals): number | null {
@@ -90,10 +90,10 @@ export function tokenTypeSegments(
   tokens: Omit<UsageTokenTotals, "reasoningTokens">,
 ): readonly ShareSegment[] {
   return [
-    { label: "Input", value: tokens.uncachedInputTokens, color: TYPE_COLORS.input },
-    { label: "Cache read", value: tokens.cachedInputTokens, color: TYPE_COLORS.cacheRead },
-    { label: "Cache write", value: tokens.cacheCreationTokens, color: TYPE_COLORS.cacheWrite },
-    { label: "Output", value: tokens.outputTokens, color: TYPE_COLORS.output },
+    { label: "New text sent", value: tokens.uncachedInputTokens, color: TYPE_COLORS.input },
+    { label: "Reused text", value: tokens.cachedInputTokens, color: TYPE_COLORS.cacheRead },
+    { label: "Saved for reuse", value: tokens.cacheCreationTokens, color: TYPE_COLORS.cacheWrite },
+    { label: "Text the AI wrote", value: tokens.outputTokens, color: TYPE_COLORS.output },
   ];
 }
 
@@ -111,7 +111,7 @@ export function speedCostSegments(cost: SpeedCost): readonly ShareSegment[] {
  * and Antigravity numeric ids the server could not name.
  */
 export function displayModelName(model: string): string {
-  if (model === "antigravity-unknown" || model === "<synthetic>") return "Unattributed";
+  if (model === "antigravity-unknown" || model === "<synthetic>") return "Unknown";
   const unmapped = /^antigravity-model-(\d+)$/.exec(model);
   return unmapped ? `Antigravity model ${unmapped[1]} (unmapped)` : model;
 }
@@ -137,30 +137,30 @@ export function usageHighlights(
     highlights.push({
       label: "Top model",
       value: displayModelName(top.model),
-      detail: `${percent(top.tokenShare)} of tokens`,
+      detail: `${percent(top.tokenShare)} of the text`,
     });
   }
   const input = merged.uncachedInputTokens + merged.cachedInputTokens + merged.cacheCreationTokens;
   if (input > 0) {
     highlights.push({
-      label: "Cache hit rate",
+      label: "Reused text",
       value: percent(merged.cachedInputTokens / input),
       detail: `${format.usd(merged.costQuality.cacheSavingsUsd)} saved`,
     });
   }
   if (merged.sessions > 0 && merged.totalTokens > 0) {
     highlights.push({
-      label: "Per session",
+      label: "Per chat",
       value: format.tokens(merged.totalTokens / merged.sessions),
       detail:
-        merged.costUsd > 0 ? `${format.usd(merged.costUsd / merged.sessions)} avg` : undefined,
+        merged.costUsd > 0 ? `${format.usd(merged.costUsd / merged.sessions)} average` : undefined,
     });
   }
   if (merged.outputTokens > 0 && input > 0) {
     highlights.push({
-      label: "Output share",
+      label: "Share the AI wrote",
       value: percent(merged.outputTokens / merged.totalTokens),
-      detail: `${format.tokens(merged.outputTokens)} generated`,
+      detail: `${format.tokens(merged.outputTokens)} written`,
     });
   }
   return highlights;

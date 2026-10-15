@@ -24,11 +24,11 @@ export interface TourTarget {
 
 export const TOUR_TARGETS = {
   "saved-items": {
-    name: "Prompts",
+    name: "Saved messages",
     steps: [
       {
-        title: "Keep a prompt for later",
-        body: "Use Save beside the composer to queue an unsent prompt. The arrow also saves notes or tasks. Open Prompts to edit, remove or delete a prompt, queue it in the open thread, launch it in a new thread, or schedule a one-time run.",
+        title: "Keep a message for later",
+        body: "Use Save beside the message box to keep a message you have not sent. The arrow also saves notes or tasks. Open Saved messages to edit or delete a message, add it to the open chat, start a new chat with it, or schedule it to run once.",
         route: "/",
         anchor: "saved-items",
         tryPrompt:
@@ -41,7 +41,7 @@ export const TOUR_TARGETS = {
     steps: [
       {
         title: "Plan the path to a release",
-        body: "Open Roadmap to see each version milestone, its task briefs and release gate. Open a task to assign its version or explicitly send it to an agent.",
+        body: "Open Roadmap to see each version milestone, its task briefs and release gate. Open a task to assign its version or send it to an AI on purpose.",
         route: "/tasks",
         anchor: "tasks-roadmap-tab",
       },
@@ -52,7 +52,7 @@ export const TOUR_TARGETS = {
     steps: [
       {
         title: "Start task",
-        body: "Select a project with Start task, then prepare a prompt from its tasks. Press Enter to start the agent.",
+        body: "Select a project with Start task. Then prepare a message from its tasks. Press Enter to start the AI.",
         route: "/",
         anchor: "composer-next-action",
       },
@@ -63,7 +63,7 @@ export const TOUR_TARGETS = {
     steps: [
       {
         title: "Command Center",
-        body: "This sidebar button opens one page with every approval, question, limit and running job across your environments.",
+        body: "This sidebar button opens one page with every permission request, question, usage limit and running job across your computers.",
         anchor: "sidebar-command-center",
       },
     ],
@@ -72,12 +72,12 @@ export const TOUR_TARGETS = {
     name: "Tasks",
     steps: [
       {
-        title: "Tasks for you and your agents",
-        body: "Capture work in Inbox, plan Today and Upcoming, and organize tasks into projects. Open a task to set its date, complete it, or explicitly send it to an agent.",
+        title: "Tasks for you and your AI",
+        body: "Add work to your Inbox, plan Today and Upcoming, and sort tasks into projects. Open a task to set its date, finish it, or send it to an AI on purpose.",
         anchor: "sidebar-tasks",
       },
       {
-        title: "Capture a task",
+        title: "Add a task",
         body: "Type a task and press Enter. Add a due date to include it in your daily plan. Choose New task for details, priority, or a new project.",
         route: "/tasks",
         anchor: "tasks-quick-add",
@@ -89,7 +89,7 @@ export const TOUR_TARGETS = {
     steps: [
       {
         title: "Usage and limits",
-        body: "See how much of each subscription you have used and when it resets.",
+        body: "See how much of each AI account you used and when the limit starts again.",
         anchor: "sidebar-usage",
       },
     ],
@@ -99,7 +99,7 @@ export const TOUR_TARGETS = {
     steps: [
       {
         title: "Update history",
-        body: "Every past release with its highlights. Open it any time to replay a walkthrough.",
+        body: "Every past update with its main changes. Open it at any time to see the tour again.",
         anchor: "sidebar-updates",
       },
     ],

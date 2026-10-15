@@ -119,10 +119,10 @@ describe("usageHighlights", () => {
 
   it("reports the top model, cache hit rate, per-session and output share", () => {
     expect(usageHighlights(merged, fmt, pct)).toEqual([
-      { label: "Top model", value: "big", detail: "90% of tokens" },
-      { label: "Cache hit rate", value: "75%", detail: "$3.00 saved" },
-      { label: "Per session", value: "25t", detail: "$2.00 avg" },
-      { label: "Output share", value: "20%", detail: "20t generated" },
+      { label: "Top model", value: "big", detail: "90% of the text" },
+      { label: "Reused text", value: "75%", detail: "$3.00 saved" },
+      { label: "Per chat", value: "25t", detail: "$2.00 average" },
+      { label: "Share the AI wrote", value: "20%", detail: "20t written" },
     ]);
   });
 
@@ -155,7 +155,7 @@ describe("freshTokens", () => {
 
 describe("displayModelName", () => {
   it("labels placeholder and unmapped ids instead of showing the raw slug", () => {
-    expect(displayModelName("antigravity-unknown")).toBe("Unattributed");
+    expect(displayModelName("antigravity-unknown")).toBe("Unknown");
     expect(displayModelName("antigravity-model-1319")).toBe("Antigravity model 1319 (unmapped)");
     expect(displayModelName("gemini-3-pro")).toBe("gemini-3-pro");
   });

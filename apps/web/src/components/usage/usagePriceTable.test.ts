@@ -41,7 +41,7 @@ describe("price table edits", () => {
     });
     expect(usagePriceCell(targets, "example", "cacheReadCostPerMillionTokens")).toEqual({
       value: "",
-      placeholder: "Input rate",
+      placeholder: "Input price",
     });
     expect(
       usagePriceCell([target("a", {})], "example", "inputCostPerMillionTokens").placeholder,
@@ -191,7 +191,7 @@ describe("price table edits", () => {
       usagePriceTableChanges(mapped, [{ ...draft({}), alias: "example" }]).errors.get(
         "model:example",
       ),
-    ).toBe("Map to a different model.");
+    ).toBe("Pick a different model to count as.");
   });
 
   it("clearing a mapping returns to automatic pricing unless prices are entered", () => {

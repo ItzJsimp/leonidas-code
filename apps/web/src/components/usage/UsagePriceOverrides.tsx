@@ -69,13 +69,13 @@ const priceTargetsAtom = Atom.make((get): readonly UsagePriceTarget[] =>
         environment.connection.phase !== "connected"
           ? "Offline"
           : settings === null
-            ? "Prices not loaded"
+            ? "Prices did not load. Try again later."
             : environment.serverConfig?.environment.capabilities.usagePriceOverrides !== true
-              ? "Update server to edit prices"
+              ? "Update Leonidas Code on that computer to edit prices"
               : access === "pending"
                 ? "Checking permissions…"
                 : access === "denied"
-                  ? "Read-only access"
+                  ? "You can only view prices"
                   : null,
     };
   }),
@@ -175,7 +175,7 @@ export function UsagePriceOverrides({
       (customModels.includes(draft.model.trim()) ||
         drafts.some((other) => other.id !== draft.id && other.model.trim() === draft.model.trim()))
     )
-      errors.set(draft.id, "This model already has a row. Edit its prices there.");
+      errors.set(draft.id, "This model already has a row. Change its prices in that row.");
   }
   const failedDestinations =
     attempt?.destinations.filter(
@@ -184,8 +184,8 @@ export function UsagePriceOverrides({
   const locked = pending || failedDestinations.length > 0;
   const hasChanges = stagedDrafts.length > 0;
   const destinationLabel =
-    selected.length === 1 ? selected[0]!.label : `${selected.length} environments`;
-  const selectionLabel = selectedIds === null ? "All environments" : destinationLabel;
+    selected.length === 1 ? selected[0]!.label : `${selected.length} computers`;
+  const selectionLabel = selectedIds === null ? "All computers" : destinationLabel;
   const discard = () => {
     setDrafts([]);
     setAttempt(null);
@@ -237,7 +237,7 @@ export function UsagePriceOverrides({
       (destination) =>
         environments.find(
           (environment) => environment.environmentId === destination.environmentId,
-        ) ?? { ...destination, prices: null, aliases: null, unavailable: "Environment removed" },
+        ) ?? { ...destination, prices: null, aliases: null, unavailable: "Computer removed" },
     );
     const changes = new Map(
       targets.map((target) => [target.environmentId, usagePriceTableChanges(target, edits)]),
@@ -287,7 +287,7 @@ export function UsagePriceOverrides({
         <DialogHeader>
           <DialogTitle>Custom model prices</DialogTitle>
           <DialogDescription>
-            Prices and mappings apply to all past and future usage on the environments you select.
+            Prices and mappings apply to all past and future usage on the computers you select.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -313,7 +313,7 @@ export function UsagePriceOverrides({
                     closeOnClick={false}
                     onCheckedChange={(checked) => selectEnvironments(checked ? null : new Set())}
                   >
-                    All environments
+                    All computers
                   </MenuCheckboxItem>
                   <MenuSeparator />
                   {environments.map((environment) => (
@@ -341,13 +341,13 @@ export function UsagePriceOverrides({
                 </MenuPopup>
               </Menu>
             </div>
-            <span className="text-xs text-muted-foreground">USD / million tokens</span>
+            <span className="text-xs text-muted-foreground">US dollars per million tokens</span>
           </div>
           {selected.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {environments.length === 0
-                ? "Connect an environment to set model prices."
-                : "Select an environment to see and change its model prices."}
+                ? "Connect to a computer to set model prices."
+                : "Select a computer to see and change its model prices."}
             </p>
           ) : (
             <>
@@ -364,7 +364,7 @@ export function UsagePriceOverrides({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Model ID</TableHead>
-                      <TableHead>Map to</TableHead>
+                      <TableHead>Count as</TableHead>
                       {USAGE_PRICE_FIELDS.map((field) => (
                         <TableHead key={field.key}>{field.label}</TableHead>
                       ))}
@@ -391,8 +391,8 @@ export function UsagePriceOverrides({
                         <TableCell colSpan={7} className="text-center whitespace-normal">
                           <p className="py-6 text-muted-foreground">
                             {selected.some((environment) => environment.prices === null)
-                              ? "Some environment prices are unavailable."
-                              : "No custom prices or mappings. Add a row to set one."}
+                              ? "Some computers have no prices to show."
+                              : "No custom prices yet. Select Add model price to start."}
                           </p>
                         </TableCell>
                       </TableRow>
@@ -484,7 +484,7 @@ export function UsagePriceOverrides({
                                       placeholder={
                                         row.isNew
                                           ? field.optional
-                                            ? "Input rate"
+                                            ? "Input price"
                                             : "0.00"
                                           : cell.placeholder
                                       }
@@ -562,10 +562,10 @@ export function UsagePriceOverrides({
                   ))}
               </datalist>
               <p className="text-xs text-muted-foreground">
-                Blank cache rates use the input price. Enter 0 for free tokens. A mapped model’s
-                usage counts as the model it maps to.
+                If you leave a reuse price empty, it uses the input price. Enter 0 for free text.
+                Usage of a model you map counts as the model you map it to.
                 {selected.length > 1
-                  ? " Mixed cells keep each environment’s rate until you edit them."
+                  ? " Mixed cells keep the rate of each computer until you change them."
                   : ""}
               </p>
             </>
@@ -617,7 +617,7 @@ export function UsagePriceOverrides({
               {pending
                 ? "Saving…"
                 : failedDestinations.length > 0
-                  ? "Retry failed saves"
+                  ? "Try failed saves again"
                   : "Save changes"}
             </Button>
           </div>

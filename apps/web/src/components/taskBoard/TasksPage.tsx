@@ -237,10 +237,10 @@ export function TasksPage() {
     ) : (
       <Empty>
         <EmptyHeader>
-          <EmptyTitle>No release plan yet</EmptyTitle>
+          <EmptyTitle>No update plan yet</EmptyTitle>
           <EmptyDescription>
-            Ask your agent to define the current version, target release and intermediate milestones
-            in this project’s project-roadmap.json. Assign tasks to versions in their details.
+            Ask your AI to define the current version, the goal version and the steps between in
+            this project’s project-roadmap.json. Assign tasks to versions in their details.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -370,14 +370,14 @@ export function TasksPage() {
             <h2 className="text-xl font-semibold">{heading}</h2>
             <p className="text-sm text-muted-foreground">
               {prefs.view === "roadmap"
-                ? "Map the next updates to a complete, executable release plan."
+                ? "Plan the next updates, step by step."
                 : prefs.focus === "inbox"
-                  ? "Capture first. Organize when you’re ready."
+                  ? "Add tasks first. Organize them when you are ready."
                   : prefs.focus === "today"
                     ? "Today’s work, with overdue tasks first."
                     : prefs.focus === "upcoming"
-                      ? "Plan what’s next, starting today."
-                      : "Your tasks and agent work in one place."}
+                      ? "Plan what comes next, starting today."
+                      : "Your tasks and your AI work in one place."}
             </p>
           </div>
           <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
@@ -385,7 +385,7 @@ export function TasksPage() {
             <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
               <span className="min-w-0 flex-1">
                 Practice project: sample tasks to try things on. Nothing here touches your real
-                tasks, GitHub or agents.
+                tasks, GitHub or AI.
               </span>
               <Button size="sm" variant="outline" onClick={practice.reset}>
                 Reset
@@ -425,7 +425,7 @@ export function TasksPage() {
                 <>
                   <span className="min-w-0 flex-1 truncate">
                     {shareState.count} open {shareState.count === 1 ? "task is" : "tasks are"} only
-                    on this machine.
+                    on this computer.
                   </span>
                   <Button
                     size="sm"
@@ -453,7 +453,7 @@ export function TasksPage() {
               role="status"
               className="border-b border-border px-3 py-2 text-xs text-warning-foreground"
             >
-              The shared board could not be read, so only this machine&apos;s tasks are shown.
+              The shared board could not be read, so only the tasks on this computer show.
             </p>
           ) : null}
 

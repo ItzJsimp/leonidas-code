@@ -77,7 +77,7 @@ export function linkPatch(
       model: input.model,
       threadId: input.threadId,
     },
-    note: "Sending to agent",
+    note: "Sending to AI",
   };
 }
 
@@ -91,6 +91,6 @@ export function unlinkPatch(
   return {
     ...(freshClaim ? { claimedBy: null } : {}),
     status: task.status,
-    note: `Agent did not start: ${reason}`,
+    note: `The AI did not start: ${reason}`,
   };
 }

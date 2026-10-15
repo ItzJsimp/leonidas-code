@@ -51,7 +51,7 @@ export function TaskQuickAdd(props: {
       setTitle("");
       props.onCreated();
     } else if (!isAtomCommandInterrupted(result)) {
-      setError(failureText(squashAtomCommandFailure(result), "Could not add the task."));
+      setError(failureText(squashAtomCommandFailure(result), "Could not add the task. Try again."));
     }
   };
 
