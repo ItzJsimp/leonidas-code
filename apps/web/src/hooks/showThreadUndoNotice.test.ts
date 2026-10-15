@@ -99,7 +99,11 @@ describe("thread undo notice", () => {
     });
     await notice().undo();
     expect(add).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: "error", title: "Restore failed", description: "offline" }),
+      expect.objectContaining({
+        type: "error",
+        title: "Restore failed",
+        data: expect.objectContaining({ copyText: expect.stringContaining("offline") }),
+      }),
     );
     expect(claim.isCurrent()).toBe(false);
   });
@@ -114,7 +118,10 @@ describe("thread undo notice", () => {
     });
     await notice().undo();
     expect(add).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: "error", description: "disconnected" }),
+      expect.objectContaining({
+        type: "error",
+        data: expect.objectContaining({ copyText: expect.stringContaining("disconnected") }),
+      }),
     );
   });
 

@@ -42,6 +42,7 @@ import { toastManager } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
 import { refreshPreviewStreamAccess, usePreviewStreamAccess } from "~/state/previewStream";
 import { observeResize } from "~/lib/observeResize";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /** Chrome-row controls for a server tab; commands require current ownership. */
 export interface ServerBrowserHandle {
@@ -195,7 +196,7 @@ export function ServerBrowserSurface(props: {
       toastManager.add({
         type: "error",
         title: "Could not send the files. Try again.",
-        description: cause instanceof Error ? cause.message : undefined,
+        ...userErrorToastFields(cause),
       }),
     );
   };

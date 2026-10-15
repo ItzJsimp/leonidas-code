@@ -1,11 +1,12 @@
 import {
+  CircleCheckIcon,
+  CloudUploadIcon,
   ColumnsIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
   ListIcon,
   PlusIcon,
   RefreshCwIcon,
-  Share2Icon,
   RouteIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,8 +19,9 @@ import { Button } from "~/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "~/components/ui/empty";
 import { SidebarInset } from "~/components/ui/sidebar";
 import { Spinner } from "~/components/ui/spinner";
-import { ToggleGroup, Toggle } from "~/components/ui/toggle-group";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { isElectron } from "~/env";
+import { cn } from "~/lib/utils";
 import { taskBoardCardCreate } from "~/state/taskBoard";
 
 import { TaskCreateDialog } from "./TaskCreateDialog";
@@ -33,6 +35,8 @@ import { useRailWidth } from "./TaskRailResizer";
 import { AiosConfirmCard } from "./AiosConfirmCard";
 import { TaskQuickAdd } from "./TaskQuickAdd";
 import { TaskRoadmapView } from "./TaskRoadmap";
+import { OwnerLensTabs } from "./OwnerLensTabs";
+import { isOpen } from "./taskBoard.logic";
 import leonidasRoadmap from "../../../../../project-roadmap.json";
 import type { TaskContext } from "./taskBoard.types";
 import type { TaskView } from "./taskBoard.logic";
@@ -57,9 +61,9 @@ const VIEW_OPTIONS: ReadonlyArray<{
   readonly label: string;
   readonly icon: typeof ListIcon;
 }> = [
-  { view: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
+  { view: "list", label: "Table", icon: ListIcon },
   { view: "board", label: "Board", icon: ColumnsIcon },
-  { view: "list", label: "List", icon: ListIcon },
+  { view: "dashboard", label: "Dashboard", icon: LayoutDashboardIcon },
   { view: "roadmap", label: "Roadmap", icon: RouteIcon },
 ];
 
@@ -72,6 +76,51 @@ function readSavedPrefs(): TasksPrefs {
 }
 
 /** The Tasks route: the user's AIOS task cards, sectioned by project, with shared project boards. */
+/**
+ * Where the selected project stands with collaborators. Open team cards sync on their own about
+ * once a minute; "Sync now" pushes them at once.
+ */
+function SyncStatus(props: {
+  readonly state: ReturnType<typeof sectionShareState>;
+  readonly canSync: boolean;
+  readonly busy: boolean;
+  readonly onSync: () => void;
+}) {
+  const { state } = props;
+  if (state.kind === "hidden") return null;
+  if (state.kind === "unavailable") {
+    return (
+      <Tooltip>
+        <TooltipTrigger render={<span className="text-xs text-muted-foreground" />}>
+          Only on this machine
+        </TooltipTrigger>
+        <TooltipPopup>{state.reason}</TooltipPopup>
+      </Tooltip>
+    );
+  }
+  if (state.kind === "shared") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <CircleCheckIcon aria-hidden className="size-3.5 text-success-foreground" />
+        Synced with collaborators
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="tabular-nums">
+        {state.count} {state.count === 1 ? "task" : "tasks"} waiting to sync
+      </span>
+      {props.canSync ? (
+        <Button size="compact" variant="outline" disabled={props.busy} onClick={props.onSync}>
+          <CloudUploadIcon aria-hidden />
+          Sync now
+        </Button>
+      ) : null}
+    </span>
+  );
+}
+
 export function TasksPage() {
   const [prefs, setPrefs] = useState<TasksPrefs>(readSavedPrefs);
   const { width: railWidth, handle: railHandle } = useRailWidth();
@@ -135,11 +184,13 @@ export function TasksPage() {
   const context = useMemo<TaskContext>(
     () => ({
       member: board.member,
+      viewer: board.viewer,
+      team: board.team,
       now: board.now,
       aiosRoot: board.aiosRoot,
       projects: board.projects,
     }),
-    [board.aiosRoot, board.member, board.now, board.projects],
+    [board.aiosRoot, board.member, board.viewer, board.team, board.now, board.projects],
   );
 
   const selectedTask = selectedId
@@ -172,11 +223,11 @@ export function TasksPage() {
   const allOpen = board.rail.reduce((sum, entry) => sum + entry.open, 0);
   const counts = useMemo(
     () => ({
-      inbox: tasksInFocus(board.allTasks, "inbox", board.now).length,
-      today: tasksInFocus(board.allTasks, "today", board.now).length,
-      upcoming: tasksInFocus(board.allTasks, "upcoming", board.now).length,
+      inbox: tasksInFocus(board.backlogTasks, "inbox", board.now).length,
+      today: tasksInFocus(board.backlogTasks, "today", board.now).length,
+      upcoming: tasksInFocus(board.backlogTasks, "upcoming", board.now).length,
     }),
-    [board.allTasks, board.now],
+    [board.backlogTasks, board.now],
   );
   const heading =
     prefs.view === "roadmap"
@@ -188,6 +239,15 @@ export function TasksPage() {
           : prefs.focus === "upcoming"
             ? "Upcoming"
             : (railEntry?.name ?? "All tasks");
+  const openInLens = board.scopedTasks.filter(isOpen).length;
+  const changeView = (view: TasksView) => {
+    patchPrefs(
+      view === "roadmap"
+        ? { view, focus: "all", section: prefs.section ?? "leonidas-code" }
+        : { view },
+    );
+    setSelectedId(null);
+  };
   const defaultDue =
     prefs.focus === "all" ? "" : (defaultDueForFocus(prefs.focus, board.now) ?? "");
 
@@ -288,35 +348,7 @@ export function TasksPage() {
     >
       <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
         <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        <h1 className="hidden truncate text-sm font-medium sm:block">Tasks</h1>
-        <ToggleGroup
-          aria-label="View"
-          value={[prefs.view]}
-          onValueChange={(next) => {
-            const view = VIEW_OPTIONS.find((option) => option.view === next[0])?.view;
-            if (view) {
-              patchPrefs(
-                view === "roadmap"
-                  ? { view, focus: "all", section: prefs.section ?? "leonidas-code" }
-                  : { view },
-              );
-              setSelectedId(null);
-            }
-          }}
-          className="ml-2"
-        >
-          {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
-            <Toggle
-              key={view}
-              value={view}
-              aria-label={label}
-              data-tour={view === "roadmap" ? "tasks-roadmap-tab" : undefined}
-            >
-              <Icon aria-hidden />
-              <span className="hidden lg:inline">{label}</span>
-            </Toggle>
-          ))}
-        </ToggleGroup>
+        <h1 className="truncate text-sm font-medium">Tasks</h1>
         <div className="ml-auto flex items-center gap-1">
           <Button
             variant="ghost"
@@ -366,19 +398,74 @@ export function TasksPage() {
               : "flex min-h-0 min-w-0 flex-1 flex-col"
           }
         >
-          <div className="flex flex-col gap-1 px-4 pt-5 pb-4">
-            <h2 className="text-xl font-semibold">{heading}</h2>
-            <p className="text-sm text-muted-foreground">
-              {prefs.view === "roadmap"
-                ? "Plan the next updates, step by step."
-                : prefs.focus === "inbox"
-                  ? "Add tasks first. Organize them when you are ready."
-                  : prefs.focus === "today"
-                    ? "Today’s work, with overdue tasks first."
-                    : prefs.focus === "upcoming"
-                      ? "Plan what comes next, starting today."
-                      : "Your tasks and your AI work in one place."}
-            </p>
+          <div className="flex flex-col gap-3 border-b border-border px-4 pt-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <h2 className="truncate text-xl font-semibold">{heading}</h2>
+              {prefs.view !== "roadmap" ? (
+                <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                  {openInLens} open
+                </span>
+              ) : null}
+              <div className="ml-auto flex shrink-0 items-center">
+                <SyncStatus
+                  state={shareState}
+                  canSync={Boolean(railEntry?.projectId)}
+                  busy={isSharingSection}
+                  onSync={() => {
+                    if (railEntry?.projectId) shareSection(railEntry.projectId);
+                  }}
+                />
+              </div>
+            </div>
+            {prefs.view !== "roadmap" ? (
+              <OwnerLensTabs
+                options={board.ownerOptions}
+                value={prefs.owner}
+                onChange={(owner) => {
+                  patchPrefs({ owner });
+                  setSelectedId(null);
+                }}
+              />
+            ) : null}
+            <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
+              <div role="tablist" aria-label="View" className="flex items-end gap-1">
+                {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
+                  <button
+                    key={view}
+                    type="button"
+                    role="tab"
+                    aria-selected={prefs.view === view}
+                    aria-label={label}
+                    data-tour={view === "roadmap" ? "tasks-roadmap-tab" : undefined}
+                    onClick={() => changeView(view)}
+                    className={cn(
+                      "-mb-px inline-flex h-9 cursor-pointer items-center gap-1.5 border-b-2 px-2 text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                      prefs.view === view
+                        ? "border-foreground font-medium text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Icon aria-hidden className="size-4" />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex min-w-64 flex-1 items-center justify-end gap-1 pb-1.5">
+                {prefs.view === "list" || prefs.view === "board" ? (
+                  <TaskFilterBar
+                    prefs={prefs}
+                    query={query}
+                    onQueryChange={setQuery}
+                    onPrefsChange={patchPrefs}
+                    showGroupBy={prefs.view === "list"}
+                    showClosedToggle={prefs.view === "list"}
+                    leading={picker}
+                  />
+                ) : (
+                  picker
+                )}
+              </div>
+            </div>
           </div>
           <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
           {inPractice ? (
@@ -392,7 +479,7 @@ export function TasksPage() {
               </Button>
             </div>
           ) : null}
-          {prefs.view !== "roadmap" && !inPractice ? (
+          {(prefs.view === "list" || prefs.view === "board") && !inPractice ? (
             <TaskQuickAdd
               key={`${prefs.section}:${prefs.focus}`}
               environmentId={board.environmentId}
@@ -401,51 +488,6 @@ export function TasksPage() {
               defaultDue={defaultDue}
               onCreated={board.refresh}
             />
-          ) : null}
-          {prefs.view !== "dashboard" && prefs.view !== "roadmap" ? (
-            <div className="border-b border-border p-2">
-              <TaskFilterBar
-                prefs={prefs}
-                query={query}
-                onQueryChange={setQuery}
-                onPrefsChange={patchPrefs}
-                showGroupBy={prefs.view === "list"}
-                showClosedToggle={prefs.view === "list"}
-                leading={picker}
-              />
-            </div>
-          ) : (
-            <div className="flex border-b border-border p-2 lg:hidden">{picker}</div>
-          )}
-
-          {shareState.kind !== "hidden" && railEntry?.projectId ? (
-            <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
-              <Share2Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-              {shareState.kind === "share" ? (
-                <>
-                  <span className="min-w-0 flex-1 truncate">
-                    {shareState.count} open {shareState.count === 1 ? "task is" : "tasks are"} only
-                    on this computer.
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={isSharingSection}
-                    onClick={() => shareSection(railEntry.projectId!)}
-                  >
-                    Share with collaborators
-                  </Button>
-                </>
-              ) : (
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                  Collaborators on {railEntry.name} can see its shared tasks.
-                </span>
-              )}
-            </div>
-          ) : shareState.kind === "unavailable" ? (
-            <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
-              {shareState.reason}
-            </p>
           ) : null}
 
           {board.sharedError ? (

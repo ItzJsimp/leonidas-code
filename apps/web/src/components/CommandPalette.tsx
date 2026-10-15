@@ -64,6 +64,8 @@ import {
   MessageSquareWarningIcon,
   ListChecksIcon,
   CheckIcon,
+  PaperclipIcon,
+  SquareIcon,
   ChevronRightIcon,
   CornerLeftUpIcon,
   FileSearchIcon,
@@ -83,6 +85,7 @@ import {
   SunIcon,
   TextSearchIcon,
 } from "lucide-react";
+import { requestThreadAction } from "./chat/threadActionBus";
 import { requestThreadFindOpen } from "./chat/threadFindActionBus";
 import {
   useCallback,
@@ -249,6 +252,7 @@ import {
 import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -490,6 +494,14 @@ export function CommandPalette({ children }: { children: ReactNode }) {
         void navigate({ to: "/usage" });
         return;
       }
+      if (command === "settings.open" || command === "tasks.open") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.repeat) return;
+        setOpen(false);
+        void navigate({ to: command === "settings.open" ? "/settings" : "/tasks" });
+        return;
+      }
       const mode = overlayModeForCommand(command);
       if (mode === null) {
         return;
@@ -706,7 +718,7 @@ function OpenCommandPaletteDialog(props: {
         stackedThreadToast({
           type: "error",
           title: target.failureTitle,
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     }
@@ -1869,6 +1881,39 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
+  if (activeThreadId || activeDraftThread) {
+    actionItems.push({
+      kind: "action",
+      value: "action:attach-files",
+      searchTerms: ["attach", "file", "upload", "image", "paperclip"],
+      title: "Attach files",
+      icon: <PaperclipIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "composer.attach",
+      run: async () => requestThreadAction("attach"),
+    });
+  }
+
+  if (activeThreadId) {
+    actionItems.push({
+      kind: "action",
+      value: "action:stop-run",
+      searchTerms: ["stop", "interrupt", "cancel", "halt", "run"],
+      title: "Stop the running turn",
+      icon: <SquareIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "thread.stop",
+      run: async () => requestThreadAction("stop"),
+    });
+    actionItems.push({
+      kind: "action",
+      value: "action:approve-request",
+      searchTerms: ["approve", "accept", "allow", "permission", "request"],
+      title: "Approve the pending request",
+      icon: <CheckIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "approval.accept",
+      run: async () => requestThreadAction("approve"),
+    });
+  }
+
   if (activeThreadId && supportsThreadFind) {
     actionItems.push({
       kind: "action",
@@ -2208,6 +2253,7 @@ function OpenCommandPaletteDialog(props: {
     value: "action:tasks",
     searchTerms: ["tasks", "task board", "todo", "to do", "kanban", "backlog", "cards", "aios"],
     title: "Open tasks",
+    shortcutCommand: "tasks.open",
     icon: <ListChecksIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/tasks" });
@@ -2265,6 +2311,7 @@ function OpenCommandPaletteDialog(props: {
     value: "action:settings",
     searchTerms: ["settings", "preferences", "configuration", "keybindings"],
     title: "Open settings",
+    shortcutCommand: "settings.open",
     icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/settings" });
@@ -2454,7 +2501,7 @@ function OpenCommandPaletteDialog(props: {
               stackedThreadToast({
                 type: "error",
                 title: "Could not open project",
-                description: error instanceof Error ? error.message : "Try again.",
+                ...userErrorToastFields(error),
               }),
             );
             return;
@@ -2492,7 +2539,7 @@ function OpenCommandPaletteDialog(props: {
             stackedThreadToast({
               type: "error",
               title: "Could not add project",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -2508,7 +2555,7 @@ function OpenCommandPaletteDialog(props: {
           stackedThreadToast({
             type: "error",
             title: "Could not add project",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
         return;
@@ -2782,7 +2829,7 @@ function OpenCommandPaletteDialog(props: {
         stackedThreadToast({
           type: "error",
           title: "Could not open project",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     }
@@ -3295,7 +3342,7 @@ function OpenCommandPaletteDialog(props: {
         stackedThreadToast({
           type: "error",
           title: "Could not run command",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     });

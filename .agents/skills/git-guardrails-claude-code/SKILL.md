@@ -3,6 +3,7 @@ name: git-guardrails-claude-code
 description: "Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, branch -D, etc.) before they execute. Use when user wants to prevent destructive git operations, add git safety hooks, or block git push/reset in Claude Code."
 category: code
 scope: structural
+distribution: template
 type: skill
 id: skill-git-guardrails-claude-code
 title: "Git Guardrails Claude Code"
@@ -11,9 +12,12 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/mattpocock/skills (skills/misc/git-guardrails-claude-code, MIT, commit 49dd158)"
+disable-model-invocation: true
 ---
 
 # Setup Git Guardrails
+
+> Leonidas policy: do NOT enable this unless Jake or Mob explicitly asks. Agents here own the whole git workflow (push to main, pull, branch and worktree cleanup, reset, clean), and this hook blocks exactly those commands. It was installed globally once on 2026-10-12 and removed the same day.
 
 Sets up a PreToolUse hook that intercepts and blocks dangerous git commands before Claude executes them.
 

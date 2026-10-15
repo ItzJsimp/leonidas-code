@@ -12,6 +12,12 @@ param([ValidateRange(10, 600)][int]$WaitSeconds = 240, [switch]$Simulate)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
+# The fast C: copy is the permanent dev home (D: installs take an hour). Sync edits into it first.
+$devLive = 'C:/lcw/dev-live'
+if (Test-Path -LiteralPath (Join-Path $devLive 'node_modules/.bin/vp.cmd')) {
+    & (Join-Path $PSScriptRoot 'Sync-DevLive.ps1') | Out-Null
+    $repoRoot = $devLive
+}
 $devHome = Join-Path $repoRoot '.t3'
 $log = Join-Path $devHome 'dev-server.log'
 $taskName = 'Leonidas Code Dev Server'

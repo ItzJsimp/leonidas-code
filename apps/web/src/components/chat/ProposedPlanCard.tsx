@@ -37,6 +37,7 @@ import { projectEnvironment } from "~/state/projects";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { readEnvironmentScope, useEnvironmentScope } from "~/state/session";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 export const ProposedPlanCard = memo(function ProposedPlanCard({
   planMarkdown,
@@ -68,7 +69,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
         stackedThreadToast({
           type: "error",
           title: "Could not copy plan",
-          description: error instanceof Error ? error.message : "Could not copy. Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -153,7 +154,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
           stackedThreadToast({
             type: "error",
             title: "Could not save plan",
-            description: error instanceof Error ? error.message : "Could not save. Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }

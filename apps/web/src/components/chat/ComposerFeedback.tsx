@@ -8,6 +8,7 @@ import { writeTextToClipboard } from "../../hooks/useCopyToClipboard";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import type { ComposerBannerStackItem } from "./ComposerBannerStack";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 export function feedbackBannerItem(
   submission: CodexFeedbackSubmission,
@@ -33,7 +34,7 @@ export function feedbackBannerItem(
                 toastManager.add({
                   type: "error",
                   title: "Could not copy the chat ID",
-                  description: error instanceof Error ? error.message : "Something went wrong.",
+                  ...userErrorToastFields(error),
                 });
               },
             );

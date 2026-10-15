@@ -189,6 +189,7 @@ import {
 import { searchableSetting } from "./settingsSearch";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
   artwork: "Artwork",
@@ -331,10 +332,7 @@ function AboutVersionSection() {
             stackedThreadToast({
               type: "error",
               title: "Could not change the update type",
-              description:
-                error instanceof Error
-                  ? error.message
-                  : "The update type did not change. Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -357,7 +355,7 @@ function AboutVersionSection() {
           stackedThreadToast({
             type: "error",
             title: "Could not download update",
-            description: error instanceof Error ? error.message : "The download failed. Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       });
@@ -380,10 +378,7 @@ function AboutVersionSection() {
           stackedThreadToast({
             type: "error",
             title: "Could not confirm update",
-            description:
-              error instanceof Error
-                ? error.message
-                : "Leonidas Code could not confirm the update. Try again.",
+            ...userErrorToastFields(error),
           }),
         );
         return;
@@ -399,8 +394,7 @@ function AboutVersionSection() {
             stackedThreadToast({
               type: "error",
               title: "Could not install update",
-              description:
-                error instanceof Error ? error.message : "The install failed. Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -428,8 +422,7 @@ function AboutVersionSection() {
           stackedThreadToast({
             type: "error",
             title: "Could not check for updates",
-            description:
-              error instanceof Error ? error.message : "The update check failed. Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       });
@@ -3757,8 +3750,7 @@ export function ArchivedThreadsPanel() {
             stackedThreadToast({
               type: "error",
               title: "Could not unarchive the chat",
-              description:
-                error instanceof Error ? error.message : "Something went wrong. Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3774,9 +3766,8 @@ export function ArchivedThreadsPanel() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Could not delete the chat",
-              description:
-                error instanceof Error ? error.message : "Something went wrong. Try again.",
+              title: "Failed to delete thread",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3843,10 +3834,7 @@ export function ArchivedThreadsPanel() {
                         stackedThreadToast({
                           type: "error",
                           title: "The archived chat action failed",
-                          description:
-                            error instanceof Error
-                              ? error.message
-                              : "Something went wrong. Try again.",
+                          ...userErrorToastFields(error),
                         }),
                       );
                     }
@@ -3881,10 +3869,7 @@ export function ArchivedThreadsPanel() {
                             stackedThreadToast({
                               type: "error",
                               title: "Could not unarchive the chat",
-                              description:
-                                error instanceof Error
-                                  ? error.message
-                                  : "Something went wrong. Try again.",
+                              ...userErrorToastFields(error),
                             }),
                           );
                         }

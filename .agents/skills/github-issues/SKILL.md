@@ -3,6 +3,7 @@ name: github-issues
 description: "Create, update and manage GitHub issues: bugs, features, labels, assignees, milestones, issue types, fields, dependencies and sub-issues. Use when asked to file or update an issue."
 category: code
 scope: structural
+distribution: template
 type: skill
 id: skill-github-issues
 title: "Github Issues"
@@ -11,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/github/awesome-copilot (skills/github-issues, MIT, commit 70ddff7)"
+disable-model-invocation: true
 ---
 
 # GitHub Issues

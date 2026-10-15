@@ -2,6 +2,7 @@ import type { DesktopUpdateState } from "@t3tools/contracts";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function duration(seconds: number) {
   const rounded = Math.max(0, Math.ceil(seconds));
@@ -56,8 +57,7 @@ export function DesktopUpdateProgress({ state }: { state: DesktopUpdateState | n
                     toastManager.add({
                       type: "error",
                       title: "Could not retry update",
-                      description:
-                        error instanceof Error ? error.message : "The download failed. Try again.",
+                      ...userErrorToastFields(error),
                     });
                   });
                 }}

@@ -20,6 +20,70 @@ import {
 
 const NOW = new Date(2026, 9, 11, 14, 30).getTime();
 
+describe("nested game repo cards", () => {
+  const gb = (id: string, status: string, priority = "P1") =>
+    `---\nid: ${id}\ntitle: "${id} card"\nowner: mob\nsystem: Pipeline\nstatus: ${status}\npriority: ${priority}\ndepends: []\ndue: 2026-10-20\n---\n\n## Goal\nShip it.\n`;
+  it("maps game words to board statuses", () => {
+    expect(statusFromCard("doing")).toBe("in_progress");
+    expect(statusFromCard("later")).toBe("parked");
+    expect(statusFromCard("cut")).toBe("retired");
+    expect(statusFromCard("todo")).toBe("todo");
+  });
+  it("writes status and priority back in game words and finds the nested file", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-game-wb-"));
+    const dir = NodePath.join(root, "projects", "rent-due-games", "clean-the-goo");
+    try {
+      NodeFS.mkdirSync(NodePath.join(dir, ".git"), { recursive: true });
+      NodeFS.mkdirSync(NodePath.join(dir, "tasks"));
+      NodeFS.mkdirSync(NodePath.join(root, "tasks"));
+      const file = NodePath.join(dir, "tasks", "GB-005-x.md");
+      NodeFS.writeFileSync(file, gb("GB-005", "todo", "P2"));
+      expect(findCardFile(root, "GB-005-x.md")?.toLowerCase()).toBe(file.toLowerCase());
+      const next = applyCardPatch(
+        NodeFS.readFileSync(file, "utf8"),
+        { actor: "Jake", status: "in_progress", priority: "critical" },
+        NOW,
+      );
+      expect(next).toMatch(/^status: doing$/m);
+      expect(next).toMatch(/^priority: P0$/m);
+      expect(applyCardPatch(next, { actor: "Jake", status: "retired" }, NOW)).toMatch(
+        /^status: cut$/m,
+      );
+    } finally {
+      NodeFS.rmSync(root, { recursive: true, force: true });
+    }
+  });
+  it("reads cards from a child repo that has its own .git, and nothing deeper", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-game-"));
+    const put = (rel: string, text: string) => {
+      const file = NodePath.join(root, rel);
+      NodeFS.mkdirSync(NodePath.dirname(file), { recursive: true });
+      NodeFS.writeFileSync(file, text);
+    };
+    try {
+      put("projects/rent-due-games/clean-the-goo/.git/HEAD", "ref: refs/heads/main\n");
+      put("projects/rent-due-games/clean-the-goo/tasks/GB-001-a.md", gb("GB-001", "doing", "P0"));
+      put("projects/rent-due-games/clean-the-goo/tasks/GB-002-b.md", gb("GB-002", "later"));
+      put("projects/rent-due-games/clean-the-goo/tasks/GB-003-c.md", gb("GB-003", "cut", "P3"));
+      put("projects/rent-due-games/loose/tasks/GB-009-x.md", gb("GB-009", "todo"));
+      put("projects/rent-due-games/clean-the-goo/deeper/.git/HEAD", "x\n");
+      put("projects/rent-due-games/clean-the-goo/deeper/tasks/GB-010-y.md", gb("GB-010", "todo"));
+      const tasks = readAiosTasks(root, { now: NOW });
+      expect(tasks.map((task) => task.id).sort()).toEqual(["GB-001", "GB-002", "GB-003"]);
+      const byId = new Map(tasks.map((task) => [task.id, task]));
+      expect(byId.get("GB-001")).toMatchObject({
+        projectSlug: "rent-due-games",
+        status: "in_progress",
+        priority: "critical",
+      });
+      expect(byId.get("GB-002")?.status).toBe("parked");
+      expect(byId.get("GB-003")).toMatchObject({ status: "retired", priority: "low" });
+    } finally {
+      NodeFS.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("editable due dates", () => {
   it.each(["\n", "\r\n"])("sets and clears dates without damaging the card (%j)", (eol) => {
     const raw = card('id: task-date\nname: "Café"\ncustom: keep', "# Café\n\nDetails.\n", eol);
@@ -660,5 +724,37 @@ describe("real AIOS", () => {
     const warmStarted = performance.now();
     readAiosTasks(realRoot, { now: Date.now(), cache });
     expect(performance.now() - warmStarted).toBeLessThan(150);
+  });
+});
+
+describe("task owners and agent runs", () => {
+  const read = (raw: string) => cardToTask({ fileName: "own.md", raw, mtimeMs: NOW, now: NOW });
+
+  it("takes the owner from assignee, then from a person's build lane", () => {
+    expect(read(card('id: task-a\nname: "A"\nassignee: "Mob"'))?.assignee).toBe("Mob");
+    expect(read(card('id: task-b\nname: "B"\nbuild_lane: Mob after Jake go'))?.assignee).toBe(
+      "Mob",
+    );
+    expect(read(card('id: task-c\nname: "C"\nbuild_lane: grill'))?.assignee).toBeNull();
+  });
+
+  it("sets and clears the owner with an activity line", () => {
+    const raw = card('id: task-d\nname: "D"');
+    const owned = applyCardPatch(raw, { actor: "Jake", assignee: "Jake" }, NOW);
+    expect(read(owned)?.assignee).toBe("Jake");
+    expect(owned).toContain("assigned to Jake");
+    const freed = applyCardPatch(owned, { actor: "Jake", assignee: null }, NOW);
+    expect(read(freed)?.assignee).toBeNull();
+    expect(freed).toContain("made available to anyone");
+  });
+
+  it("marks chat requests as agent runs, declared or from the auto-log note", () => {
+    expect(read(card('id: task-e\nname: "E"\nkind: agent_run'))?.kind).toBe("agent_run");
+    const legacy = card(
+      'id: task-f\nname: "F"',
+      "# F\n\n## Activity\n\n- 2026-10-14 02:32 Leonidas: status → In progress — Agent started on this request. [message m1]\n",
+    );
+    expect(read(legacy)?.kind).toBe("agent_run");
+    expect(read(card('id: task-g\nname: "G"'))?.kind).toBeUndefined();
   });
 });

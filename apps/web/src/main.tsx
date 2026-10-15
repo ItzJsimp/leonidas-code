@@ -15,6 +15,7 @@ import {
 } from "./lib/windowControlsOverlay";
 import { AppRoot } from "./AppRoot";
 import { clearChunkReloadGuard, reloadOnceForChunkLoadError } from "./lib/chunkReloadGuard";
+import { installUnhandledRejectionToasts, registerUserErrorNavigator } from "./lib/userErrorToast";
 
 // Read ?sim= before the router redirects and drops the query.
 captureOnboardingSimRequest();
@@ -24,6 +25,8 @@ prepareProviderAuthDelivery();
 const history = isElectron ? createHashHistory() : createBrowserHistory();
 
 const router = getRouter(history);
+registerUserErrorNavigator((to) => router.history.push(to));
+installUnhandledRejectionToasts();
 
 if (isElectron) {
   syncDocumentElectronPlatformClasses(navigator.platform);

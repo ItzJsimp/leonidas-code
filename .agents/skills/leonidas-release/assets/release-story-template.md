@@ -8,7 +8,7 @@
 
 [Say where to find it, using the actual screen or button name. Include a limit or required action only when relevant.]
 
-![Describe the real feature shown in this screenshot](feature-screenshot.webp)
+`![Describe the real feature shown in this screenshot](feature-screenshot.webp)`
 
 ## [Another useful change, if needed]
 

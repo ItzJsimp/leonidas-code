@@ -39,6 +39,9 @@ export type TaskBoardTaskStatus = typeof TaskBoardTaskStatus.Type;
 export const TaskBoardTaskPriority = Schema.Literals(["low", "medium", "high", "critical"]);
 export type TaskBoardTaskPriority = typeof TaskBoardTaskPriority.Type;
 
+export const TaskBoardTaskKind = Schema.Literals(["task", "agent_run"]);
+export type TaskBoardTaskKind = typeof TaskBoardTaskKind.Type;
+
 export const TaskBoardAgent = Schema.Struct({
   providerInstanceId: Schema.optional(TrimmedNonEmptyString),
   model: Schema.optional(TrimmedNonEmptyString),
@@ -102,6 +105,11 @@ export const TaskBoardTask = Schema.Struct({
   // Set while a shared card's latest local edit has not reached the shared board: "pending" while
   // the copy is being written, "failed" when it could not be. Sharing the card again retries.
   sharedSync: Schema.optional(Schema.Literals(["pending", "failed"])),
+  // The person who owns the task (a team member's name). Null or missing means anyone can take it.
+  assignee: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  // "agent_run" marks a card the app filed from a chat request. It records agent work and stays
+  // out of backlog counts and the shared board.
+  kind: Schema.optional(TaskBoardTaskKind),
   sourceId: Schema.NullOr(TrimmedNonEmptyString),
   sourceFile: Schema.NullOr(TrimmedNonEmptyString),
   sourceRoot: Schema.optional(TrimmedNonEmptyString),
@@ -109,6 +117,24 @@ export const TaskBoardTask = Schema.Struct({
   history: Schema.Array(TaskBoardHistoryEntry),
 });
 export type TaskBoardTask = typeof TaskBoardTask.Type;
+
+/** One move of a task from an open status to done, made through this server. */
+export const TaskBoardCompletion = Schema.Struct({
+  // Unique per completion, so a task completed, reopened and completed again is two completions.
+  id: TrimmedNonEmptyString,
+  taskId: TrimmedNonEmptyString,
+  title: TrimmedNonEmptyString,
+  projectSlug: Schema.NullOr(Schema.String),
+  actor: TrimmedNonEmptyString,
+  // True when an agent made the change, false when the user did.
+  byAgent: Schema.Boolean,
+  completedAt: Schema.Number,
+});
+export type TaskBoardCompletion = typeof TaskBoardCompletion.Type;
+
+/** The latest completions, newest last; a subscriber reads the current list first. */
+export const TaskBoardCompletions = Schema.Array(TaskBoardCompletion);
+export type TaskBoardCompletions = typeof TaskBoardCompletions.Type;
 
 export const TaskBoardIssue = Schema.Struct({
   number: PositiveInt,
@@ -233,6 +259,13 @@ export const TaskBoardWorkspaceProject = Schema.Struct({
 });
 export type TaskBoardWorkspaceProject = typeof TaskBoardWorkspaceProject.Type;
 
+// One collaborator: the name the board shows and every login or git name that means them.
+export const TaskBoardTeamMember = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  aliases: Schema.Array(TrimmedNonEmptyString),
+});
+export type TaskBoardTeamMember = typeof TaskBoardTeamMember.Type;
+
 // Everything in the user's AIOS task folders, read from disk with no GitHub round trip.
 export const TaskBoardWorkspaceSnapshot = Schema.Struct({
   member: TrimmedNonEmptyString,
@@ -242,6 +275,8 @@ export const TaskBoardWorkspaceSnapshot = Schema.Struct({
   projects: Schema.Array(TaskBoardWorkspaceProject),
   tasks: Schema.Array(TaskBoardTask),
   roadmaps: Schema.optional(Schema.Array(TaskBoardRoadmap)),
+  // Read from `leonidas.team.json` in the project folders; empty when no project defines a team.
+  team: Schema.optional(Schema.Array(TaskBoardTeamMember)),
 });
 export type TaskBoardWorkspaceSnapshot = typeof TaskBoardWorkspaceSnapshot.Type;
 
@@ -262,6 +297,8 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   claimedBy: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  // `null` makes the task available to anyone.
+  assignee: Schema.optional(Schema.NullOr(TrimmedNonEmptyString.check(Schema.isMaxLength(100)))),
   // The `updatedAt` the caller last saw. When set, the update fails with `stale_revision` if the
   // task changed since, so an edit made from an old view never overwrites a newer one.
   expectedUpdatedAt: Schema.optional(Schema.Number),
@@ -282,6 +319,8 @@ export const TaskBoardCardCreateInput = Schema.Struct({
   description: Schema.optional(Schema.String.check(Schema.isMaxLength(20_000))),
   priority: Schema.optional(TaskBoardTaskPriority),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  assignee: Schema.optional(Schema.NullOr(TrimmedNonEmptyString.check(Schema.isMaxLength(100)))),
+  kind: Schema.optional(TaskBoardTaskKind),
   actor: TrimmedNonEmptyString.check(Schema.isMaxLength(100)),
 });
 export type TaskBoardCardCreateInput = typeof TaskBoardCardCreateInput.Type;

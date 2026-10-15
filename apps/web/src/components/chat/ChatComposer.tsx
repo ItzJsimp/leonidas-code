@@ -1,4 +1,5 @@
 import { useBenchmarkRouteProfiles } from "../../lib/useBenchmarkRouteProfiles";
+import { ThreadPresetPicker } from "./ThreadPresetPicker";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { usePromptPrediction } from "./usePromptPrediction";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
@@ -58,6 +59,8 @@ import {
   wouldTextPasteExceedLimit,
 } from "@t3tools/client-runtime/text-paste";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
+import { subscribeThreadAction, type ThreadAction } from "./threadActionBus";
+import { useSplitPane } from "../split/splitPaneContext";
 import { folderDropTarget, resolveDroppedFolderPath } from "./folderDrop";
 import { createModelSelection, normalizeModelSlug } from "@t3tools/shared/model";
 import { USAGE_LIMITS_COMMAND } from "@t3tools/shared/usageLimits";
@@ -68,6 +71,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useImperativeHandle,
   useLayoutEffect,
@@ -1402,6 +1406,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   canInterrupt: boolean;
   followUpBehavior: "queue" | "steer";
   alternateShortcutLabel: string | null;
+  stopShortcutLabel: string | null;
   showPlanFollowUpPrompt: boolean;
   promptHasText: boolean;
   isSendBusy: boolean;
@@ -1443,6 +1448,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
         canInterrupt={props.canInterrupt}
         followUpBehavior={props.followUpBehavior}
         alternateShortcutLabel={props.alternateShortcutLabel}
+        stopShortcutLabel={props.stopShortcutLabel}
         showPlanFollowUpPrompt={props.showPlanFollowUpPrompt}
         promptHasText={props.promptHasText}
         isSendBusy={props.isSendBusy}
@@ -3016,6 +3022,25 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       (supportsQuestionAttachments &&
         activePendingProgress.activeQuestion?.allowCustomAnswer !== false));
   const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
+  const isPaneActive = useSplitPane().active;
+  const attachShortcutLabel = shortcutLabelForCommand(keybindings, "composer.attach");
+  const runThreadAction = useEffectEvent((action: ThreadAction) => {
+    if (!isPaneActive) return;
+    if (action === "attach") {
+      if (showComposerAttachAction) attachmentInputRef.current?.click();
+      return;
+    }
+    if (
+      action === "approve" &&
+      canOperateThread &&
+      activePendingApproval?.responseCapability === "live" &&
+      !respondingRequestIds.includes(activePendingApproval.requestId) &&
+      (activePendingApproval.options?.some((option) => option.decision === "accept") ?? true)
+    ) {
+      void onRespondToApproval(activePendingApproval.requestId, "accept");
+    }
+  });
+  useEffect(() => subscribeThreadAction(runThreadAction), []);
   const composerFooterActionLayoutKey = useMemo(() => {
     if (activePendingProgress) {
       return `pending:${activePendingProgress.questionIndex}:${activePendingProgress.isLastQuestion}:${activePendingIsResponding}`;
@@ -5789,6 +5814,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         onOpenProviderSetup={onOpenProviderSetup}
       />
 
+      {routeKind === "draft" ? (
+        <ThreadPresetPicker
+          candidates={autoRouteCandidates}
+          disabled={providerCatalogPending || isSendBusy}
+          onSelect={(selection) => {
+            setMultipleModelSelections(null);
+            if (autoRoutePreference !== null) {
+              void updateClientSettings({ composerAutoRoutePreference: null });
+            }
+            useComposerDraftStore.getState().setModelSelection(composerDraftTarget, selection, {
+              explicit: true,
+              replaceOptions: true,
+            });
+            scheduleComposerFocus();
+          }}
+        />
+      ) : null}
+
       <>
         {restingBlockDefs.map((def, index) => {
           const hidden = index >= restingBlockDefs.length - restingHiddenBlockCount;
@@ -5904,8 +5947,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           terminalFocus: getTerminalFocusOwner() !== null,
           terminalOpen,
           modelPickerOpen: isComposerModelPickerOpen,
+          approvalPending: isComposerApprovalState,
         },
       });
+      if (command === "composer.attach") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!event.repeat) runThreadAction("attach");
+        return;
+      }
+      if (command === "approval.accept") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!event.repeat) runThreadAction("approve");
+        return;
+      }
       if (command !== "composer.stash") return;
       // Always claim the shortcut so the browser save dialog never opens,
       // even when the composer is in a state that can't stash.
@@ -6984,6 +7040,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         options={activePendingApproval.options}
                         canRespond={activePendingApproval.responseCapability === "live"}
                         onRespondToApproval={onRespondToApproval}
+                        acceptShortcutLabel={shortcutLabelForCommand(
+                          keybindings,
+                          "approval.accept",
+                          {
+                            context: { approvalPending: true },
+                          },
+                        )}
                       />
                     </ComposerBanner.Actions>
                   </ComposerBanner.Row>
@@ -7941,7 +8004,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         >
                           <PaperclipIcon />
                         </TooltipTrigger>
-                        <TooltipPopup>Attach files</TooltipPopup>
+                        <TooltipPopup>
+                          {attachShortcutLabel
+                            ? `Attach files (${attachShortcutLabel})`
+                            : "Attach files"}
+                        </TooltipPopup>
                       </Tooltip>
                     </>
                   ) : null}
@@ -7956,6 +8023,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     isRunning={phase === "running"}
                     canInterrupt={canInterrupt}
                     followUpBehavior={settings.followUpBehavior}
+                    stopShortcutLabel={shortcutLabelForCommand(keybindings, "thread.stop", {
+                      context: { turnRunning: true },
+                    })}
                     alternateShortcutLabel={shortcutLabelForCommand(
                       keybindings,
                       "composer.sendAlternate",

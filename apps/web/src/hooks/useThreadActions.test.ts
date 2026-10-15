@@ -22,7 +22,7 @@ describe("navigateAfterThreadDeletion", () => {
     expect(addToast).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Chat deleted, but the app could not open the next page",
-        description: "route unavailable",
+        data: expect.objectContaining({ copyText: expect.stringContaining("route unavailable") }),
       }),
     );
   });

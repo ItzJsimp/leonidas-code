@@ -26,6 +26,8 @@ export interface AiosCardPatch {
   readonly milestone?: string | null | undefined;
   readonly projectSlug?: string | null | undefined;
   readonly claimedBy?: string | null | undefined;
+  /** The owner's name; `null` makes the card available to anyone. */
+  readonly assignee?: string | null | undefined;
   readonly effort?: string | null | undefined;
   /** Replaces the card's `tags`. */
   readonly labels?: ReadonlyArray<string> | undefined;
@@ -237,6 +239,7 @@ export function statusFromCard(value: string | undefined): TaskBoardTaskStatus {
       .replace(/[\s_-]+/g, " ")
   ) {
     case "in progress":
+    case "doing":
     case "active":
       return "in_progress";
     case "awaiting review":
@@ -250,8 +253,10 @@ export function statusFromCard(value: string | undefined): TaskBoardTaskStatus {
       return "done";
     case "dormant":
     case "parked":
+    case "later":
       return "parked";
     case "retired":
+    case "cut":
       return "retired";
     default:
       return "todo";
@@ -272,13 +277,33 @@ export function statusToCard(status: TaskBoardTaskStatus): string {
   return CARD_STATUS[status];
 }
 
+const GAME_STATUS: Record<TaskBoardTaskStatus, string> = {
+  todo: "todo",
+  in_progress: "doing",
+  review: "review",
+  blocked: "blocked",
+  done: "done",
+  parked: "later",
+  retired: "cut",
+};
+
+const GAME_PRIORITY: Record<TaskBoardTaskPriority, string> = {
+  critical: "P0",
+  high: "P1",
+  medium: "P2",
+  low: "P3",
+};
+
 function priorityFromCard(value: string | undefined): TaskBoardTaskPriority {
   switch (value?.trim().toLowerCase()) {
     case "critical":
+    case "p0":
       return "critical";
     case "high":
+    case "p1":
       return "high";
     case "low":
+    case "p3":
       return "low";
     default:
       return "medium";
@@ -445,6 +470,8 @@ export function cardToTask(input: {
   const verify = field(fields, "verify");
   const shared = field(fields, "shared").toLowerCase() === "true";
   const sharedBy = shared ? field(fields, "shared_by") : "";
+  const assignee = field(fields, "assignee") || assigneeFromLane(buildLane);
+  const kind = cardKind(field(fields, "kind"), history);
   const sharedSync = shared ? field(fields, "shared_sync") : "";
 
   return {
@@ -485,6 +512,11 @@ export function cardToTask(input: {
     shared,
     ...(sharedBy ? { sharedBy } : {}),
     ...(sharedSync === "pending" || sharedSync === "failed" ? { sharedSync } : {}),
+    assignee: assignee || null,
+    ...(kind === "agent_run" ? { kind } : {}),
+    ...(field(fields, "private").toLowerCase() === "true"
+      ? { labels: [...labels, "private"] }
+      : {}),
     sourceId: declaredId || stem,
     sourceFile: NodePath.basename(input.fileName),
     issueUrl: null,
@@ -492,7 +524,45 @@ export function cardToTask(input: {
   };
 }
 
+/**
+ * The owner a card's `build_lane` names, for cards written before `assignee` existed:
+ * "Mob" and "Mob after Jake go" are Mob's, "Jake" is Jake's. Other lanes name no person.
+ */
+export function assigneeFromLane(lane: string): string {
+  const person = /^(mob|jake)\b/i.exec(lane.trim())?.[1];
+  return person ? person[0]!.toUpperCase() + person.slice(1).toLowerCase() : "";
+}
+
+/** Marker the chat auto-log writes when it files a request; older agent-run cards carry only this. */
+const AGENT_RUN_NOTE = "Agent started on this request.";
+
+/** `agent_run` for a card the app filed from a chat request, otherwise a normal task. */
+export function cardKind(
+  declared: string,
+  history: ReadonlyArray<TaskBoardHistoryEntry>,
+): "task" | "agent_run" {
+  const value = declared.trim().toLowerCase().replace(/-/g, "_");
+  if (value === "agent_run") return "agent_run";
+  if (value === "task") return "task";
+  return history.some((entry) => entry.note?.includes(AGENT_RUN_NOTE)) ? "agent_run" : "task";
+}
+
 const keyFor = (path: string) => (NodePath.sep === "\\" ? path.toLowerCase() : path);
+
+function nestedRepoDirs(projectDir: string): string[] {
+  try {
+    return NodeFS.readdirSync(projectDir, { withFileTypes: true })
+      .filter(
+        (child) =>
+          child.isDirectory() &&
+          !child.name.startsWith(".") &&
+          NodeFS.existsSync(NodePath.join(projectDir, child.name, ".git")),
+      )
+      .map((child) => NodePath.join(projectDir, child.name));
+  } catch {
+    return [];
+  }
+}
 
 /** Reads every task card under `<root>/tasks` and `<root>/projects/<slug>/tasks`. Never throws per card. */
 export function readAiosTasks(
@@ -570,7 +640,13 @@ export function readAiosTasks(
       withFileTypes: true,
     })) {
       if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
-      visit(NodePath.join(root, "projects", entry.name, "tasks"), entry.name, false);
+      const projectDir = NodePath.join(root, "projects", entry.name);
+      visit(NodePath.join(projectDir, "tasks"), entry.name, false);
+      // A child folder with its own .git is a separate repo (a game) that keeps its own cards.
+      // Read-only here: write-back looks only in the AIOS task folders.
+      for (const child of nestedRepoDirs(projectDir)) {
+        visit(NodePath.join(child, "tasks"), entry.name, false);
+      }
     }
   } catch {
     // No projects folder: only the global cards exist.
@@ -587,7 +663,11 @@ export function findCardFile(root: string, sourceFile: string): string | null {
       withFileTypes: true,
     })) {
       if (!entry.name.startsWith("_") && !entry.name.startsWith(".")) {
-        candidates.push(NodePath.join(root, "projects", entry.name, "tasks", sourceFile));
+        const projectDir = NodePath.join(root, "projects", entry.name);
+        candidates.push(NodePath.join(projectDir, "tasks", sourceFile));
+        for (const child of nestedRepoDirs(projectDir)) {
+          candidates.push(NodePath.join(child, "tasks", sourceFile));
+        }
       }
     }
   } catch {
@@ -623,6 +703,8 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   const parsed = parseFrontmatter(text);
   if (!span || !parsed) throw new Error("invalid_card");
   const { fields } = parsed;
+  // Game-repo cards (`owner` + `system`) keep their own words: `doing`, `P0`, unquoted.
+  const game = "owner" in fields && "system" in fields;
   const eol = text[text.indexOf("\n") - 1] === "\r" ? "\r\n" : "\n";
   const lines = text
     .slice(span.headerStart, span.headerEnd)
@@ -654,6 +736,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     title: field(fields, "name") || field(fields, "title"),
     project: normalizeProjectSlug(field(fields, "project")),
     claimedBy: field(fields, "claimed_by"),
+    assignee: field(fields, "assignee"),
     threadId: field(fields, "thread_id"),
     shared: field(fields, "shared").toLowerCase() === "true",
     sharedBy: field(fields, "shared_by"),
@@ -675,6 +758,13 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   }
   changed ||= claimed || released;
 
+  const assignee = patch.assignee === undefined ? undefined : patch.assignee?.trim() || null;
+  if (assignee !== undefined && (assignee ?? "") !== was.assignee) {
+    setKey("assignee", assignee === null ? null : quote(assignee));
+    other.push(assignee === null ? "made available to anyone" : `assigned to ${assignee}`);
+    changed = true;
+  }
+
   // Releasing a card also drops the thread that held it, unless the caller says otherwise.
   const threadId =
     patch.threadId === undefined ? (released ? null : undefined) : patch.threadId?.trim() || null;
@@ -684,8 +774,8 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   }
 
   if (patch.status !== undefined && patch.status !== was.status) {
-    const card = statusToCard(patch.status);
-    setKey("status", quote(card));
+    const card = game ? GAME_STATUS[patch.status] : statusToCard(patch.status);
+    setKey("status", game ? card : quote(card));
     if (patch.status === "done") {
       setKey("completed_date", localDate(now));
       lifecycle.push("completed");
@@ -709,8 +799,9 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   }
 
   if (patch.priority !== undefined && patch.priority !== was.priority) {
-    setKey("priority", quote(priorityToCard(patch.priority)));
-    other.push(`priority → ${priorityToCard(patch.priority)}`);
+    const priority = game ? GAME_PRIORITY[patch.priority] : priorityToCard(patch.priority);
+    setKey("priority", game ? priority : quote(priority));
+    other.push(`priority → ${priority}`);
     changed = true;
   }
 
@@ -802,6 +893,8 @@ export function createCardFile(
     description?: string | undefined;
     priority?: string | undefined;
     projectSlug?: string | null | undefined;
+    assignee?: string | null | undefined;
+    kind?: "task" | "agent_run" | undefined;
     actor: string;
   },
   now: number,
@@ -831,6 +924,8 @@ export function createCardFile(
         ...(projectSlug ? [`project: ${quote(projectSlug)}`] : []),
         ...(input.due ? [`due: ${quote(input.due)}`] : []),
         ...(input.milestone ? [`milestone: ${quote(input.milestone)}`] : []),
+        ...(input.assignee?.trim() ? [`assignee: ${quote(oneLine(input.assignee))}`] : []),
+        ...(input.kind === "agent_run" ? ["kind: agent_run"] : []),
         "---",
         `# ${title}`,
         "",

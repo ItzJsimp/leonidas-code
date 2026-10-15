@@ -76,6 +76,7 @@ import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsL
 import { keybindingSearchAnchorId, searchableSetting } from "./settingsSearch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function KeybindingPill({ value }: { value: string }) {
   // Keys dedupe repeated parts; a literal "+" in a shortcut splits into empty strings.
@@ -1353,8 +1354,7 @@ export function KeybindingsSettingsPanel() {
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         title: "Could not open the shortcuts file",
-        description:
-          error instanceof Error ? error.message : "The shortcuts file did not open. Try again.",
+        ...userErrorToastFields(error),
         type: "error",
       });
     })();
@@ -1391,9 +1391,8 @@ export function KeybindingsSettingsPanel() {
         if (!isAtomCommandInterrupted(failed)) {
           const error = squashAtomCommandFailure(failed);
           toastManager.add({
-            title: "Could not save the shortcut",
-            description:
-              error instanceof Error ? error.message : "The shortcut did not save. Try again.",
+            title: "Unable to save keybinding",
+            ...userErrorToastFields(error),
             type: "error",
           });
         }
@@ -1426,9 +1425,8 @@ export function KeybindingsSettingsPanel() {
         if (result?._tag === "Failure" && !isAtomCommandInterrupted(result)) {
           const error = squashAtomCommandFailure(result);
           toastManager.add({
-            title: "Could not remove the shortcut",
-            description:
-              error instanceof Error ? error.message : "The shortcut did not go away. Try again.",
+            title: "Unable to remove keybinding",
+            ...userErrorToastFields(error),
             type: "error",
           });
         }

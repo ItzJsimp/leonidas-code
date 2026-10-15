@@ -33,6 +33,7 @@ import {
 } from "../../lib/desktopSnapShot";
 import { readFileAsDataUrl } from "../ChatView.logic";
 import { stackedThreadToast, toastManager } from "../ui/toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type CaptureTarget = DraftId | ScopedThreadRef;
 
@@ -318,7 +319,7 @@ export function SnapShotCoordinator() {
           stackedThreadToast({
             type: "error",
             title: "Could not take the snapshot",
-            description: error instanceof Error ? error.message : "Take the snapshot again.",
+            ...userErrorToastFields(error),
           }),
         );
       })

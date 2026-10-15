@@ -211,6 +211,7 @@ import {
 } from "../browser/openFileInPreview";
 import { resolveLinkTarget } from "../browser/browserLinkTarget";
 import { PullRequestLinkPreview } from "./pullRequest/PullRequestLinkPreview";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface ChatMarkdownProps {
   text: string;
@@ -1969,7 +1970,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       } catch (cause) {
@@ -1981,7 +1982,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file",
-            description: cause instanceof Error ? cause.message : "Try again.",
+            ...userErrorToastFields(cause),
           }),
         );
       }
@@ -2019,7 +2020,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file in browser",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       } catch (cause) {
@@ -2031,7 +2032,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file in browser",
-            description: cause instanceof Error ? cause.message : "Try again.",
+            ...userErrorToastFields(cause),
           }),
         );
       }
@@ -2057,7 +2058,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to reveal file",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       } catch (cause) {
@@ -2069,7 +2070,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to reveal file",
-            description: cause instanceof Error ? cause.message : "Try again.",
+            ...userErrorToastFields(cause),
           }),
         );
       }
@@ -2106,7 +2107,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
             stackedThreadToast({
               type: "error",
               title: `Failed to copy ${title.toLowerCase()}`,
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         },
@@ -2381,10 +2382,7 @@ function useChatMarkdownState({
             stackedThreadToast({
               type: "error",
               title: "Media unavailable",
-              description:
-                error instanceof Error
-                  ? error.message
-                  : "The file could not be loaded. It may have been moved or deleted.",
+              ...userErrorToastFields(error),
             }),
           );
         },
@@ -2549,7 +2547,7 @@ function useChatMarkdownState({
               stackedThreadToast({
                 type: "error",
                 title: "Unable to open link in browser",
-                description: error.message,
+                ...userErrorToastFields(error),
               }),
             );
           }
@@ -3103,7 +3101,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
                         operation === "link-pull-request-to-thread"
                           ? "Unable to link pull request"
                           : "Unable to unlink pull request",
-                      description: cause instanceof Error ? cause.message : "The request failed.",
+                      ...userErrorToastFields(cause),
                     }),
                   );
                 }

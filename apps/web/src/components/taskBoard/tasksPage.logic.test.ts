@@ -134,7 +134,8 @@ describe("parseTasksPrefs", () => {
     expect(prefs.section).toBe("leonidas-code");
     expect(prefs.statuses).toEqual(["todo"]);
     expect(prefs.priorities).toBeNull();
-    expect(prefs.mine).toBe(true);
+    // An old "Mine" toggle becomes the Mine owner lens.
+    expect(prefs.owner).toBe("mine");
     expect(prefs.sort).toBe("priority");
     expect(prefs.groupBy).toBe("status");
   });
@@ -148,9 +149,9 @@ describe("toTaskFilters", () => {
 
   it("counts only the filters that narrow the list", () => {
     expect(activeFilterCount(DEFAULT_TASKS_PREFS, "  ")).toBe(0);
-    expect(activeFilterCount({ ...DEFAULT_TASKS_PREFS, mine: true, statuses: ["todo"] }, "x")).toBe(
-      3,
-    );
+    expect(
+      activeFilterCount({ ...DEFAULT_TASKS_PREFS, sharedOnly: true, statuses: ["todo"] }, "x"),
+    ).toBe(3);
   });
 });
 

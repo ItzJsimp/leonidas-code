@@ -293,6 +293,7 @@ import {
   type ComposerThreadDraftState,
   type DraftSessionState,
 } from "../composerDraftStore";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 // Settled-tail paging: recent history is the common lookup; the deep tail
 // stays behind an explicit Show more.
@@ -2563,7 +2564,7 @@ export default function Sidebar() {
         stackedThreadToast({
           type: "error",
           title: "Could not copy path",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -2582,7 +2583,7 @@ export default function Sidebar() {
         stackedThreadToast({
           type: "error",
           title: "Could not copy branch",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -2600,7 +2601,7 @@ export default function Sidebar() {
         stackedThreadToast({
           type: "error",
           title: "Could not copy chat ID",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -3421,7 +3422,7 @@ export default function Sidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not rename chat",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3504,7 +3505,7 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: "Could not mark the chat as done",
-                  description: error instanceof Error ? error.message : "Try again.",
+                  ...userErrorToastFields(error),
                 }),
               );
             }
@@ -3556,7 +3557,7 @@ export default function Sidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not mark the chat as not done",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3574,7 +3575,7 @@ export default function Sidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not bring the chat back",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3861,7 +3862,7 @@ export default function Sidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not pin chat",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3879,7 +3880,7 @@ export default function Sidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not unpin chat",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -4217,7 +4218,7 @@ export default function Sidebar() {
               stackedThreadToast({
                 type: "error",
                 title,
-                description: error instanceof Error ? error.message : "Try again.",
+                ...userErrorToastFields(error),
               }),
             );
           }
@@ -4567,7 +4568,7 @@ export default function Sidebar() {
               stackedThreadToast({
                 type: "error",
                 title: "Could not regenerate chat titles",
-                description: error instanceof Error ? error.message : "Try again.",
+                ...userErrorToastFields(error),
               }),
             );
           }
@@ -4631,7 +4632,7 @@ export default function Sidebar() {
           stackedThreadToast({
             type: "error",
             title: "Could not delete chats",
-            description: firstError instanceof Error ? firstError.message : "Try again.",
+            ...userErrorToastFields(firstError),
           }),
         );
       }
@@ -4828,7 +4829,7 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: "Could not create chat",
-                  description: error instanceof Error ? error.message : "Try again.",
+                  ...userErrorToastFields(error),
                 }),
               );
             }
@@ -4861,7 +4862,7 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: "Could not change the setting. Try again.",
-                  description: error instanceof Error ? error.message : "Try again.",
+                  ...userErrorToastFields(error),
                 }),
               );
             }
@@ -4882,7 +4883,7 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: "Could not regenerate chat title",
-                  description: error instanceof Error ? error.message : "Try again.",
+                  ...userErrorToastFields(error),
                 }),
               );
             }
@@ -4931,9 +4932,9 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: didArchive
-                    ? "Chat archived, but navigation failed"
-                    : "Could not archive chat",
-                  description: error instanceof Error ? error.message : "Try again.",
+                    ? "Thread archived, but navigation failed"
+                    : "Failed to archive thread",
+                  ...userErrorToastFields(error),
                 }),
               );
               return;
@@ -4960,7 +4961,7 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: "Could not delete chat",
-                  description: error instanceof Error ? error.message : "Try again.",
+                  ...userErrorToastFields(error),
                 }),
               );
               return;

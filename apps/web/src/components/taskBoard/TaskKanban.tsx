@@ -1,4 +1,4 @@
-import type { TaskBoardTaskStatus } from "@t3tools/contracts";
+import type { TaskBoardTeamMember, TaskBoardTaskStatus } from "@t3tools/contracts";
 import { BotIcon, EllipsisIcon, KanbanIcon } from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState, type DragEvent } from "react";
 
@@ -22,7 +22,7 @@ import {
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { DueChip, PriorityBadge, SharedBadge, ChecklistBar } from "./TaskBadges";
-import { ClaimedBy, ProjectChip, useLatest } from "./TaskRowParts";
+import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import { groupByStatus, statusLabel, type TaskView } from "./taskBoard.logic";
 import type { TaskActions, TaskContext } from "./taskBoard.types";
 import {
@@ -42,6 +42,7 @@ type KanbanCardProps = {
   readonly dragging: boolean;
   readonly now: number;
   readonly projectName: string | null;
+  readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly canSend: boolean;
   readonly onSelect: (task: TaskView) => void;
   readonly onMove: (task: TaskView, status: TaskBoardTaskStatus) => void;
@@ -57,6 +58,7 @@ const KanbanCard = memo(function KanbanCard({
   dragging,
   now,
   projectName,
+  team,
   canSend,
   onSelect,
   onMove,
@@ -150,7 +152,7 @@ const KanbanCard = memo(function KanbanCard({
         <ProjectChip name={projectName} />
       </div>
       <ChecklistBar checklist={task.checklist} />
-      <ClaimedBy agent={task.claimedAgent} name={task.claimedBy} />
+      <OwnerCell task={task} team={team} />
     </article>
   );
 });
@@ -164,6 +166,7 @@ type ColumnProps = {
   readonly draggingId: string | null;
   readonly now: number;
   readonly projectNames: ReadonlyMap<string, string>;
+  readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly isBusy: (taskId: string) => boolean;
   readonly canSend: (task: TaskView) => boolean;
   readonly onShowMore: () => void;
@@ -185,6 +188,7 @@ function KanbanColumn({
   draggingId,
   now,
   projectNames,
+  team,
   isBusy,
   canSend,
   onShowMore,
@@ -226,6 +230,7 @@ function KanbanColumn({
               dragging={draggingId === task.id}
               now={now}
               projectName={projectNameFor(task, projectNames)}
+              team={team}
               selected={selectedId === task.id}
               task={task}
               {...card}
@@ -371,6 +376,7 @@ export function TaskKanbanView(props: {
           onColumnDrop={columnDrop}
           onShowMore={showMoreDone}
           projectNames={projectNames}
+          team={context.team}
           selectedId={selectedId}
           status={column.status}
           tasks={column.tasks}

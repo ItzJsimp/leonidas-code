@@ -3,6 +3,7 @@ name: git-advanced-workflows
 description: "Advanced Git: interactive rebase, cherry-pick, bisect, worktrees and reflog recovery. Use for messy histories, feature-branch collaboration and repo repair."
 category: code
 scope: structural
+distribution: template
 type: skill
 id: skill-git-advanced-workflows
 title: "Git Advanced Workflows"
@@ -11,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/wshobson/agents (plugins/developer-essentials/skills/git-advanced-workflows, MIT, commit 46891e7)"
+disable-model-invocation: true
 ---
 
 # Git Advanced Workflows

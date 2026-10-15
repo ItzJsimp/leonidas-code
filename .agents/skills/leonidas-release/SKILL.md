@@ -1,6 +1,9 @@
 ---
 name: leonidas-release
-description: Write plain-language patch notes, illustrated update stories, and release trailers for user-visible Leonidas changes; choose versions and verify publication when preparing or shipping Code or Scribe updates.
+description: "Write plain-language patch notes, illustrated update stories, and release trailers for user-visible Leonidas changes; choose versions and verify publication when preparing or shipping Code or Scribe updates."
+category: code
+scope: structural
+distribution: private
 ---
 
 # Leonidas releases
@@ -15,7 +18,7 @@ Read the app's current release and publisher before choosing a version. Leonidas
 
 Scribe's AIOS publisher is `scripts/Sync-ScribeDistro.ps1`; it defaults to `-ReleaseKind auto` and generates notes from Scribe commits since the previous source commit. Override with patch/minor/major only when the classification needs correction. Use `-ReleaseKind launch` explicitly for public launch. `scripts/LeonidasReleasePolicy.ps1` owns its version calculation. Scribe already stores past notes in release-history.json.
 
-Publishing needs the user's authorization. Run scoped checks and build first. For Code, confirm a complete installer, blockmap, and latest.yml are published for the same source commit. Do not restart a user's live app as verification.
+Publishing needs the user's authorization. Run scoped checks and build first. The release workflow runs `scripts/smoke.mjs`, which boots the server on a fresh home and fails on a hang; after a layer change in `server.ts`, run it locally before a push (`node scripts/smoke.mjs --runtime <Leonidas Code.exe> --entry <server.asar>/apps/server/dist/bin.mjs` works without an install). For Code, confirm a complete installer, blockmap, and latest.yml are published for the same source commit. Do not restart a user's live app as verification.
 
 Code's first development release is 0.2.0. Existing legacy 1.0.x installations need a one-time installer migration because automatic updaters reject lower versions. Preserve app identity and user data. Subsequent 0.x releases update normally.
 

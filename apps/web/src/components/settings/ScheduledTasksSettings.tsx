@@ -101,6 +101,7 @@ import {
   SETTINGS_PICKER_TRIGGER_CLASSNAME,
   useRelativeTimeTick,
 } from "./settingsLayout";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /** JS day-of-week (0 = Sunday) rendered Monday-first, matching how people read a week. */
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -848,7 +849,7 @@ function ScheduledTaskEditorDialog({
       stackedThreadToast({
         type: "error",
         title,
-        description: error instanceof Error ? error.message : String(error),
+        ...userErrorToastFields(error),
       }),
     );
   };

@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { SettingsRow } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /**
  * Settings → `t3` command: puts the desktop app's bundled CLI on PATH, or takes
@@ -41,7 +42,7 @@ export function CliCommandSettingsRow() {
             stackedThreadToast({
               type: "error",
               title: action === "install" ? "Could not install t3" : "Could not remove t3",
-              description: error instanceof Error ? error.message : "Something went wrong.",
+              ...userErrorToastFields(error),
             }),
           );
         })

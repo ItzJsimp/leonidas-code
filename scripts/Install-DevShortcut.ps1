@@ -29,8 +29,9 @@ if (-not ((Test-Path -LiteralPath $envFile) -and (Select-String -LiteralPath $en
     Add-Content -LiteralPath $envFile -Value "T3CODE_DEV_AUTH_TOKEN=$([Convert]::ToHexString($bytes).ToLower())"
 }
 
-$serverAction = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $repoRoot `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$(Join-Path $PSScriptRoot 'Run-LeonidasDevServer.ps1')`""
+$runRoot = if (Test-Path -LiteralPath 'C:/lcw/dev-live/node_modules/.bin/vp.cmd') { 'C:/lcw/dev-live' } else { $repoRoot }
+$serverAction = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $runRoot `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$(Join-Path $runRoot 'scripts/Run-LeonidasDevServer.ps1')`""
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
 Register-ScheduledTask -TaskName $taskName -Force -Settings $settings -Action $serverAction `

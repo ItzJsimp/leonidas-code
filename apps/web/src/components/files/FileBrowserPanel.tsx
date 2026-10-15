@@ -28,6 +28,7 @@ import { areAllDirectoriesExpanded, setAllDirectoriesExpanded } from "./fileTree
 import { buildFileTreePathUpdates } from "./fileTreePathReconciliation";
 import { useDirectoryEntries } from "./useDirectoryEntries";
 import { useProjectPathSearch } from "~/state/queries";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface FileBrowserPanelProps {
   environmentId: EnvironmentId;
@@ -207,7 +208,7 @@ export default function FileBrowserPanel({
           toastManager.add({
             type: "error",
             title: "Could not copy the mention",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           });
         }
         return;

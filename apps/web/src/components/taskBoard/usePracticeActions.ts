@@ -84,6 +84,11 @@ export function usePracticeActions(): PracticeState {
       setMilestone: (task, milestone) => patch([task.id], { milestone }),
       claim: (task) => patch([task.id], { claimedBy: ACTOR, status: "in_progress", note: "Taken" }),
       release: (task) => patch([task.id], { claimedBy: null, note: "Given back" }),
+      setAssignee: (task, assignee) =>
+        patch([task.id], {
+          assignee,
+          note: assignee ? `Assigned to ${assignee}` : "Made available to anyone",
+        }),
       linkProject: () =>
         toastManager.add({
           type: "info",

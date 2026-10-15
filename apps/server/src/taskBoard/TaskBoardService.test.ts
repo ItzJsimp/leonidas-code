@@ -3,6 +3,7 @@ import { expect, it } from "@effect/vitest";
 import type { Project, TaskBoardTask } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
@@ -533,6 +534,32 @@ it.effect("claims a card in place, refuses a second claimant, and lets the holde
       );
       expect(released.claimedBy).toBeNull();
       expect(released.status).toBe("todo");
+    }),
+  ).pipe(Effect.provide(boardLayer(noGithub))),
+);
+
+it.effect("announces each move to done once, with the task title and actor", () =>
+  withAios({ "one.md": cardFile("task-one", "First card") }, (_root, project) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const recent = () =>
+        board.completions.pipe(
+          Stream.runHead,
+          Effect.map((value) => (value._tag === "Some" ? value.value : [])),
+        );
+      expect(yield* recent()).toEqual([]);
+
+      yield* board.cardUpdate({ taskId: "task-one", actor: "Jake", status: "done" }, [project]);
+      yield* board.cardUpdate({ taskId: "task-one", actor: "Jake", priority: "high" }, [project]);
+      expect(yield* recent()).toEqual([
+        expect.objectContaining({ taskId: "task-one", title: "First card", actor: "Jake" }),
+      ]);
+
+      yield* board.cardUpdate({ taskId: "task-one", actor: "Jake", status: "todo" }, [project]);
+      yield* board.cardUpdate({ taskId: "task-one", actor: "Jake", status: "done" }, [project]);
+      const twice = yield* recent();
+      expect(twice).toHaveLength(2);
+      expect(new Set(twice.map((completion) => completion.id)).size).toBe(2);
     }),
   ).pipe(Effect.provide(boardLayer(noGithub))),
 );

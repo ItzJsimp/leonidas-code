@@ -8,6 +8,7 @@ import {
 } from "./desktopUpdate.logic";
 import { toastManager } from "./ui/toast";
 import { playUpdateReadySound } from "./desktop/updateReadySound";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type DesktopUpdateShell = Pick<DesktopBridge, "openExternal">;
 
@@ -62,7 +63,7 @@ export function showDesktopUpdateDownloadedToast(
   const idleFirst = (actions.runningCount ?? 0) > 0;
   const restart = { label: "Restart now", run: actions.onRestartNow };
   const idle = {
-    label: "Update when the AI is done",
+    label: idleFirst ? "Update when the AI is done" : "Update when it is safe",
     run: actions.onUpdateWhenSafe,
   };
   const [primary, secondary] = idleFirst ? [idle, restart] : [restart, idle];
@@ -131,7 +132,7 @@ export async function checkForDesktopUpdateWithFeedback(
       toastManager.add({
         type: "error",
         title: "Could not check for updates",
-        description: state.message ?? "Check your internet connection, then try again.",
+        ...userErrorToastFields(state.message ?? "Update check failed.", { area: "update" }),
       });
     }
   };

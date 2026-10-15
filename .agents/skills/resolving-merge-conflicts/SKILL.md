@@ -3,6 +3,7 @@ name: resolving-merge-conflicts
 description: "Use when you need to resolve an in-progress git merge/rebase conflict."
 category: code
 scope: structural
+distribution: template
 type: skill
 id: skill-resolving-merge-conflicts
 title: "Resolving Merge Conflicts"
@@ -11,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/mattpocock/skills (skills/engineering/resolving-merge-conflicts, MIT, last version before upstream removed it, commit daa01d8^)"
+disable-model-invocation: true
 ---
 
 1. **See the current state** of the merge/rebase. Check git history, and the conflicting files.

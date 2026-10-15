@@ -2,6 +2,28 @@ import "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
 import * as NodeURL from "node:url";
 
+/**
+ * Windows cmd.exe escaping makes each path longer than its raw text, so the
+ * built-in 8191 character split is not enough. Keep each batch well under it.
+ */
+const STAGED_BATCH_CHARS = 3000;
+
+function stagedFormatCommands(files: readonly string[]): string[] {
+  const base = "vp fmt --no-error-on-unmatched-pattern";
+  const commands: string[] = [];
+  let batch = base;
+  for (const file of files) {
+    const arg = JSON.stringify(file);
+    if (batch !== base && batch.length + arg.length + 1 > STAGED_BATCH_CHARS) {
+      commands.push(batch);
+      batch = base;
+    }
+    batch += ` ${arg}`;
+  }
+  if (batch !== base) commands.push(batch);
+  return commands;
+}
+
 /** Import restrictions every file keeps, including the one module exempt from the glyph rule. */
 const RESTRICTED_IMPORT_PATHS = [
   {
@@ -79,7 +101,7 @@ export default defineConfig({
   },
   staged: {
     // Formatter only for now — no lint or typecheck on commit.
-    "*": "vp fmt --no-error-on-unmatched-pattern",
+    "*": stagedFormatCommands,
   },
   fmt: {
     ignorePatterns: [

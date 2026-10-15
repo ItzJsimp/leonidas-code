@@ -322,6 +322,7 @@ import {
 import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 import { useSplitPane } from "./split/splitPaneContext";
+import { subscribeThreadAction, type ThreadAction } from "./chat/threadActionBus";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { useUpdateWhenSafeStore } from "../state/desktopUpdate";
 import {
@@ -508,6 +509,8 @@ import { useLinkedThreadPullRequest } from "./ThreadStatusIndicators";
 import type { ComposerBannerStackItem } from "./chat/ComposerBannerStack";
 import { ThreadStatusLine } from "./chat/ThreadStatusLine";
 import { ContextHandoffNudge } from "./chat/ContextHandoffNudge";
+import { countHandoffTurns, useTurnHandoffBanner } from "./chat/turnHandoff";
+import { readHandoffPrompt } from "./chat/readHandoffPrompt";
 import { formatRelativeTimeLabel, formatRelativeTimeUntilLabel } from "../timestampFormat";
 import { ComposerSurface } from "./chat/ComposerSurface";
 import { resolveThreadSyncPhase } from "../threadSync";
@@ -637,6 +640,7 @@ const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PROVIDER_MODELS: ServerProvider["models"] = [];
 const EMPTY_USAGE_LIMIT_SOURCES: UsageLimitSourceSnapshots = [];
 import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplates";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const TIMELINE_SCROLL_CANCEL_SENTINEL = Object.freeze({});
 const EMPTY_FEEDBACK_SUBMISSIONS: ReadonlyArray<CodexFeedbackSubmission> = [];
@@ -2555,7 +2559,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title,
-            ...friendlyErrorToastFields(error),
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -2760,7 +2764,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not reconnect computer",
-            description: error instanceof Error ? error.message : "Could not reconnect.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -2788,7 +2792,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Could not disconnect from the computer",
-              description: error instanceof Error ? error.message : "Could not disconnect.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3820,7 +3824,7 @@ export default function ChatView(props: ChatViewProps) {
         toastManager.add({
           type: "error",
           title: "Could not download " + attachment.name,
-          description: error instanceof Error ? error.message : "The attachment is unavailable.",
+          ...userErrorToastFields(error),
         });
       }
     },
@@ -4676,6 +4680,10 @@ export default function ChatView(props: ChatViewProps) {
     }
   }, [activeThread, environmentId, interruptThreadTurn, setThreadError]);
   useEffect(() => subscribeSnapShotComposerFocus(focusComposer), [focusComposer]);
+  const interruptFromAction = useEffectEvent((action: ThreadAction) => {
+    if (action === "stop" && paneActiveRef.current && canInterruptRunningThread) void onInterrupt();
+  });
+  useEffect(() => subscribeThreadAction(interruptFromAction), []);
   const scheduleComposerFocus = useCallback(() => {
     window.requestAnimationFrame(() => {
       focusComposer();
@@ -5149,7 +5157,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Could not open preview",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -5424,7 +5432,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not delete action",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -5504,7 +5512,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Could not open browser",
-              description: error.message,
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -6376,7 +6384,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not copy path",
-            ...friendlyErrorToastFields(error),
+            ...userErrorToastFields(error),
           }),
         );
       },
@@ -7268,7 +7276,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: target.failureTitle,
-            ...friendlyErrorToastFields(error),
+            ...userErrorToastFields(error),
           }),
         );
       },
@@ -7380,7 +7388,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not mark the chat as not done",
-            ...friendlyErrorToastFields(error),
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -7426,7 +7434,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not bring the chat back",
-            ...friendlyErrorToastFields(error),
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -7622,9 +7630,9 @@ export default function ChatView(props: ChatViewProps) {
   // and its attachments stay local.
   const sendStandaloneCommand = useCallback(
     async (text: string, failureMessage: string) => {
-      if (!activeThread || !clientSettingsHydrated || sendInFlightRef.current) return;
+      if (!activeThread || !clientSettingsHydrated || sendInFlightRef.current) return false;
       const context = composerRef.current?.getSendContext();
-      if (!context?.providerAvailable) return;
+      if (!context?.providerAvailable) return false;
 
       const threadId = activeThread.id;
       const messageId = newMessageId();
@@ -7681,6 +7689,7 @@ export default function ChatView(props: ChatViewProps) {
         } else {
           clearUsageLimitsFor(routeThreadKey);
         }
+        return result._tag !== "Failure";
       } finally {
         sendInFlightRef.current = false;
       }
@@ -8210,12 +8219,31 @@ export default function ChatView(props: ChatViewProps) {
           },
         })
       : null;
+  const handoffTurnCount = useMemo(
+    () => countHandoffTurns(serverProjection?.runs ?? []),
+    [serverProjection?.runs],
+  );
+  const handleTurnHandoff = useCallback(
+    async (stillCurrent: () => boolean) => {
+      const prompt = await readHandoffPrompt(environmentId);
+      if (!stillCurrent()) return false;
+      return sendStandaloneCommand(prompt, "Failed to start the handoff.");
+    },
+    [environmentId, sendStandaloneCommand],
+  );
+  const turnHandoffBanner = useTurnHandoffBanner({
+    chatKey: routeThreadKey,
+    turnCount: isServerThread ? handoffTurnCount : 0,
+    disabled: !canOperateThread || isWorking || isSendBusy || activeEnvironmentUnavailable,
+    onHandoff: handleTurnHandoff,
+  });
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
     // A stopped turn outranks a warning about the next one, so the pre-flight only fills an empty slot.
     const limitRecoveryItems = [
       limitRecoveryBanner ?? quotaPreflightBanner ?? usageWarningBanner ?? uiVerificationBanner,
     ].filter((item) => item !== null);
     const backgroundWorkItems = [
+      turnHandoffBanner,
       childInputBannerItem,
       goalBannerItem,
       backgroundWorkBannerItem,
@@ -8283,6 +8311,7 @@ export default function ChatView(props: ChatViewProps) {
       },
     ];
   }, [
+    turnHandoffBanner,
     activeBranchMismatchKey,
     activeThreadShell,
     serverRuntime?.usageLimitResetAt,
@@ -8468,7 +8497,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Could not mark the chat as done",
-              ...friendlyErrorToastFields(error),
+              ...userErrorToastFields(error),
             }),
           );
         });
@@ -8488,8 +8517,8 @@ export default function ChatView(props: ChatViewProps) {
             toastManager.add(
               stackedThreadToast({
                 type: "error",
-                title: pinned ? "Could not unpin chat" : "Could not pin chat",
-                ...friendlyErrorToastFields(error),
+                title: pinned ? "Failed to unpin thread" : "Failed to pin thread",
+                ...userErrorToastFields(error),
               }),
             );
           },
@@ -10110,7 +10139,7 @@ export default function ChatView(props: ChatViewProps) {
                 stackedThreadToast({
                   type: "error",
                   title: `Could not start ${target.selection.model}`,
-                  description: error instanceof Error ? error.message : "Could not send message.",
+                  ...userErrorToastFields(error),
                   ...(retainedThreadId
                     ? {
                         timeout: 0,
@@ -10504,7 +10533,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "warning",
               title: "Could not open a new message box",
-              description: error instanceof Error ? error.message : undefined,
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -10621,7 +10650,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Background task failed",
-              description: error instanceof Error ? error.message : "Could not send message.",
+              ...userErrorToastFields(error),
               actionProps: {
                 children: "Open draft",
                 onClick: () => {
@@ -11180,8 +11209,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not start implementation chat",
-            description:
-              error instanceof Error ? error.message : "Could not create the new chat. Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }

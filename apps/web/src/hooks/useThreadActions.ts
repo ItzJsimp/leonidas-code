@@ -61,6 +61,7 @@ import { showThreadUndoNotice } from "./showThreadUndoNotice";
 import { useAtomCommand } from "../state/use-atom-command";
 import { useOrchestrationCommand } from "../state/use-orchestration-command";
 import { useAtomQueryRunner } from "../state/use-atom-query-runner";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 export class ThreadArchiveBlockedError extends Schema.TaggedError<ThreadArchiveBlockedError>()(
   "ThreadArchiveBlockedError",
@@ -196,7 +197,7 @@ export async function navigateAfterThreadDeletion(navigate: () => Promise<void>)
       stackedThreadToast({
         type: "error",
         title: "Chat deleted, but the app could not open the next page",
-        description: error instanceof Error ? error.message : "An error occurred.",
+        ...userErrorToastFields(error),
       }),
     );
   }

@@ -124,6 +124,7 @@ import {
   resolveRemoteOperateAccess,
   resolveSelectedProviderEnvironmentId,
 } from "./ProviderSettingsPanel.logic";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function modelListChanges(current: ReadonlyArray<string>, next: ReadonlyArray<string>) {
   const currentSet = new Set(current);
@@ -608,10 +609,7 @@ export function EnvironmentProviderSettings({
           toastManager.add({
             type: "error",
             title: "Could not continue sign-in",
-            description:
-              error instanceof Error
-                ? error.message
-                : "The sign-in request ran out of time. Start the sign-in again.",
+            ...userErrorToastFields(error),
           });
         }
       });
@@ -704,10 +702,7 @@ export function EnvironmentProviderSettings({
           stackedThreadToast({
             type: "error",
             title: `Could not update ${PROVIDER_DISPLAY_NAMES[candidate.driver] ?? candidate.driver}`,
-            description:
-              error instanceof Error
-                ? error.message
-                : "The update command did not start. Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -827,9 +822,8 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         type: "error",
-        title: "Could not update the AI account",
-        description:
-          error instanceof Error ? error.message : "The settings did not save. Try again.",
+        title: "Could not update provider instance",
+        ...userErrorToastFields(error),
       });
     }
   };
@@ -843,9 +837,8 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(updateResult);
       toastManager.add({
         type: "error",
-        title: "Could not delete the AI account",
-        description:
-          error instanceof Error ? error.message : "The settings did not save. Try again.",
+        title: "Could not delete provider instance",
+        ...userErrorToastFields(error),
       });
       return;
     }
@@ -866,11 +859,8 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(uninstallResult);
       toastManager.add({
         type: "warning",
-        title: "AI account deleted, but some files remain",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Leonidas Code could not delete the downloaded files. Delete them by hand.",
+        title: "Provider deleted, but managed files remain",
+        ...userErrorToastFields(error),
       });
     }
   };
@@ -884,9 +874,8 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         type: "error",
-        title: "Could not reset the AI account",
-        description:
-          error instanceof Error ? error.message : "The settings did not save. Try again.",
+        title: "Could not reset provider instance",
+        ...userErrorToastFields(error),
       });
     }
   };

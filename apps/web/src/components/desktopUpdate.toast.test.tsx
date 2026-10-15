@@ -90,7 +90,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     expect(toast.title).toBe("Update ready");
     expect(toast.timeout).toBe(0);
     expect(toast.actionProps.children).toBe("Restart now");
-    expect(toast.data.secondaryActionProps.children).toBe("Update when the AI is done");
+    expect(toast.data.secondaryActionProps.children).toBe("Update when it is safe");
     toast.actionProps.onClick();
     toast.data.secondaryActionProps.onClick();
     expect(onRestartNow).toHaveBeenCalledTimes(1);
@@ -218,7 +218,9 @@ describe("manual desktop update feedback", () => {
       expect.objectContaining({
         type: "error",
         title: "Could not check for updates",
-        description: "Network unavailable",
+        description: "Leonidas Code could not get the update from the update server.",
+        actionProps: expect.objectContaining({ children: "Download installer" }),
+        data: expect.objectContaining({ copyText: "Network unavailable" }),
       }),
     );
     expect(unsubscribe).toHaveBeenCalledOnce();

@@ -28,6 +28,7 @@ import { useAtomQueryRunner } from "../../state/use-atom-query-runner";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { downloadMedia, readMediaPng } from "./mediaContent";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 export interface MediaActionSource {
   readonly kind: "image" | "video";
@@ -192,7 +193,7 @@ export function MediaActions({
       const toast = stackedThreadToast({
         type: "error",
         title: failureTitle,
-        description: error instanceof Error ? error.message : "The action failed. Try again.",
+        ...userErrorToastFields(error),
       });
       if (progressToast) toastManager.update(progressToast, toast);
       else toastManager.add(toast);

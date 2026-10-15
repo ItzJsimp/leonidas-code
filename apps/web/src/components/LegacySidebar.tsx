@@ -227,6 +227,7 @@ import {
   type SidebarProjectSnapshot,
 } from "../sidebarProjectGrouping";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 const SIDEBAR_SORT_LABELS: Record<SidebarProjectSortOrder, string> = {
   updated_at: "Last user message",
   created_at: "Created at",
@@ -479,8 +480,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           stackedThreadToast({
             type: "error",
             title: "Could not open preview",
-            description:
-              error instanceof Error ? error.message : "The preview could not be opened.",
+            ...userErrorToastFields(error),
           }),
         );
       })();
@@ -588,7 +588,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               stackedThreadToast({
                 type: "error",
                 title: "Chat action failed",
-                description: error instanceof Error ? error.message : "Try again.",
+                ...userErrorToastFields(error),
               }),
             );
           }
@@ -612,7 +612,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             stackedThreadToast({
               type: "error",
               title: "Chat action failed",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -1283,7 +1283,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         stackedThreadToast({
           type: "error",
           title: "Could not copy chat ID",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -1303,7 +1303,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         stackedThreadToast({
           type: "error",
           title: "Could not copy path",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -1678,10 +1678,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                       stackedThreadToast({
                         type: "error",
                         title: `Could not remove "${member.title}"`,
-                        description:
-                          error instanceof Error
-                            ? error.message
-                            : "Unknown error removing project.",
+                        ...userErrorToastFields(error),
                       }),
                     );
                   }
@@ -2029,7 +2026,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             stackedThreadToast({
               type: "error",
               title: "Chat archived, but navigation failed",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -2041,7 +2038,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               stackedThreadToast({
                 type: "error",
                 title: "Could not archive chats",
-                description: error instanceof Error ? error.message : "Try again.",
+                ...userErrorToastFields(error),
               }),
             );
           }
@@ -2082,7 +2079,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           stackedThreadToast({
             type: "error",
             title: "Could not delete chats",
-            description: firstError instanceof Error ? firstError.message : "Try again.",
+            ...userErrorToastFields(firstError),
           }),
         );
       }
@@ -2121,7 +2118,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             stackedThreadToast({
               type: "error",
               title: "Could not create chat",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -2163,7 +2160,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             stackedThreadToast({
               type: "error",
               title: "Could not choose computer",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
           return;
@@ -2194,7 +2191,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           stackedThreadToast({
             type: "error",
             title: "Could not archive chat",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -2252,7 +2249,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           stackedThreadToast({
             type: "error",
             title: "Could not rename chat",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -2300,7 +2297,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         stackedThreadToast({
           type: "error",
           title: "Could not rename project",
-          description: error instanceof Error ? error.message : "Try again.",
+          ...userErrorToastFields(error),
         }),
       );
     }
@@ -2400,7 +2397,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             stackedThreadToast({
               type: "error",
               title: "Could not create chat",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -2456,7 +2453,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           stackedThreadToast({
             type: "error",
             title: "Could not delete chat",
-            description: error instanceof Error ? error.message : "Try again.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -3810,7 +3807,7 @@ export default function LegacySidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not start update download",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -3830,7 +3827,7 @@ export default function LegacySidebar() {
           stackedThreadToast({
             type: "error",
             title: "Could not confirm update",
-            description: error instanceof Error ? error.message : "Update confirmation failed.",
+            ...userErrorToastFields(error),
           }),
         );
         return;
@@ -3858,7 +3855,7 @@ export default function LegacySidebar() {
             stackedThreadToast({
               type: "error",
               title: "Could not install update",
-              description: error instanceof Error ? error.message : "Try again.",
+              ...userErrorToastFields(error),
             }),
           );
         })

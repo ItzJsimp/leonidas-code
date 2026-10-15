@@ -87,6 +87,11 @@ jobs:
       - name: Check the web bundle boots
         run: node scripts/check-web-boot.mjs
 
+      # 0.62.0 bound its port but never answered: boot the built server on a
+      # fresh home and send one live orchestration command, fail on a hang.
+      - name: Check the server boots and answers
+        run: node scripts/smoke.mjs --entry apps/server/dist/bin.mjs
+
       - name: Build Windows installer
         env:
           T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: ${{ steps.monitor.outputs.cache-hit == 'true' && 'true' || 'false' }}

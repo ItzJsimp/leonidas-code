@@ -59,6 +59,7 @@ function Repair-PatchedPackages {
     Add-Content -LiteralPath $log -Value "[supervisor] $($bad.Count) patched package copies are missing their patch; rebuilding: $(($bad | Split-Path -Leaf) -join ', ')"
     foreach ($d in $bad) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
     $env:CI = 'true'
+    $env:LEONIDAS_ALLOW_MAIN_INSTALL = '1'   # this repair is the one approved install in the main checkout
     & npx --yes pnpm@11.10.0 install --frozen-lockfile --prefer-offline *>> $log
 }
 

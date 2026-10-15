@@ -2,6 +2,7 @@ import type {
   EnvironmentId,
   ProjectId,
   TaskBoardTask,
+  TaskBoardTeamMember,
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 import { useCallback, useMemo, useState } from "react";
@@ -12,12 +13,20 @@ import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardWorkspaceQuery } from "~/state/taskBoard";
 import { PRACTICE_SLUG } from "./practice.logic";
 import { useSharedBoards } from "./useSharedBoards";
+import {
+  canonicalName,
+  isAgentRun,
+  matchesOwnerLens,
+  ownerLensOptions,
+  type OwnerLensOption,
+} from "./owner.logic";
 import type { RoadmapPlan } from "./taskRoadmap.logic";
 
 import {
   buildDashboard,
   filterTasks,
   groupBySection,
+  isOpen,
   mergeTasks,
   sortTasks,
   type TaskDashboard,
@@ -39,10 +48,14 @@ const WORKSPACE_REFRESH_MS = 5_000;
 const SHARED_REFRESH_MS = 30_000;
 
 const NO_PROJECTS: ReadonlyArray<TaskBoardWorkspaceProject> = [];
+const NO_TEAM: ReadonlyArray<TaskBoardTeamMember> = [];
 
 export type TaskBoardState = {
   readonly environmentId: EnvironmentId | null;
   readonly member: string;
+  /** The viewer as the team knows them ("Jake" for the login "ItzJsimp"). */
+  readonly viewer: string;
+  readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly aiosRoot: string | null;
   /** False once the server has answered and found no AIOS task folder. */
   readonly aiosConnected: boolean;
@@ -50,7 +63,11 @@ export type TaskBoardState = {
   readonly roadmaps: ReadonlyArray<RoadmapPlan>;
   /** Every task, merged with the selected project's shared board. */
   readonly allTasks: ReadonlyArray<TaskView>;
-  /** The tasks in the selected section, before the toolbar filters. */
+  /** Every task except agent-run records: what the rail and daily counts measure. */
+  readonly backlogTasks: ReadonlyArray<TaskView>;
+  /** The owner lenses for the selected section, with open counts. */
+  readonly ownerOptions: ReadonlyArray<OwnerLensOption>;
+  /** The tasks in the selected section and owner lens, before the toolbar filters. */
   readonly scopedTasks: ReadonlyArray<TaskView>;
   /** The selected section's tasks after filters and sorting. */
   readonly visibleTasks: ReadonlyArray<TaskView>;
@@ -86,7 +103,10 @@ export function useTaskBoard(input: {
   );
   const data = workspace.data;
   const projects = data?.projects ?? NO_PROJECTS;
+  const team = data?.team ?? NO_TEAM;
+  // Actions sign with the raw member name so existing claims still match; views use the team name.
   const member = data?.member ?? "Unknown";
+  const viewer = canonicalName(member, team) ?? member;
 
   // Every repository-backed project's shared board is read, selected or not, so a project a
   // collaborator shares (a shared Leonidas Code repo) shows up on its own.
@@ -134,7 +154,8 @@ export function useTaskBoard(input: {
   const [openedAt] = useState(() => Date.now());
   const now = workspace.dataUpdatedAt || openedAt;
 
-  const scopedTasks = useMemo(
+  const backlogTasks = useMemo(() => allTasks.filter((task) => !isAgentRun(task)), [allTasks]);
+  const focusedTasks = useMemo(
     () =>
       tasksInFocus(
         tasksInSection(allTasks, selectedSlug),
@@ -144,9 +165,17 @@ export function useTaskBoard(input: {
       ),
     [allTasks, selectedSlug, prefs.focus, prefs.includeClosed, prefs.view, now],
   );
+  const ownerOptions = useMemo(
+    () => ownerLensOptions(focusedTasks.filter(isOpen), viewer, team),
+    [focusedTasks, viewer, team],
+  );
+  const scopedTasks = useMemo(
+    () => focusedTasks.filter((task) => matchesOwnerLens(task, prefs.owner, viewer, team)),
+    [focusedTasks, prefs.owner, viewer, team],
+  );
   const visibleTasks = useMemo(
-    () => sortTasks(filterTasks(scopedTasks, toTaskFilters(prefs, query), member), prefs.sort),
-    [member, prefs, query, scopedTasks],
+    () => sortTasks(filterTasks(scopedTasks, toTaskFilters(prefs, query)), prefs.sort),
+    [prefs, query, scopedTasks],
   );
   const sections = useMemo(
     () => groupBySection(visibleTasks, projects, { hideEmpty: true }),
@@ -154,18 +183,22 @@ export function useTaskBoard(input: {
   );
   const rail = useMemo(() => buildRailEntries(realTasks, projects), [realTasks, projects]);
   const dashboard = useMemo(
-    () => buildDashboard(scopedTasks, now, member),
-    [member, now, scopedTasks],
+    () => buildDashboard(scopedTasks, now, viewer, team),
+    [viewer, now, scopedTasks, team],
   );
 
   return {
     environmentId,
     member,
+    viewer,
+    team,
     aiosRoot: data?.aiosRoot ?? null,
     aiosConnected: data?.aiosConnected ?? true,
     projects,
     roadmaps: data?.roadmaps ?? [],
     allTasks,
+    backlogTasks,
+    ownerOptions,
     scopedTasks,
     visibleTasks,
     sections,

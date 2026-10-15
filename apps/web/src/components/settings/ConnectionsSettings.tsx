@@ -203,6 +203,7 @@ import {
   threadJumpCommandForIndex,
   threadJumpIndexFromCommand,
 } from "../../keybindings";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const DEFAULT_TAILSCALE_SERVE_PORT = 443;
 const EMPTY_ADVERTISED_ENDPOINTS: ReadonlyArray<AdvertisedEndpoint> = [];
@@ -1522,7 +1523,7 @@ function SavedBackendListRow({
         stackedThreadToast({
           type: "error",
           title: "Could not copy trace ID",
-          description: error.message,
+          ...userErrorToastFields(error),
         }),
       );
     },
@@ -1547,7 +1548,7 @@ function SavedBackendListRow({
         stackedThreadToast({
           type: "error",
           title: "Could not copy the tools link",
-          description: error.message,
+          ...userErrorToastFields(error),
         }),
       );
     },

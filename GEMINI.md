@@ -42,7 +42,7 @@ This project lives inside its builder's AI operating system at `../../`. If `../
 
 - **Code:** `apps/server` (orchestration, providers), `apps/web`, `apps/desktop`, `apps/mobile`, `packages/contracts`, `packages/shared`, `packages/client-runtime`.
 - **Tasks:** the AIOS `tasks/` folder is the only write path; `tasks/` here is a generated view.
-- **Skills:** `.agents/skills/`. Project-only skills are committed; core AIOS skills are linked per machine and git-excluded.
+- **Skills:** `.agents/skills/` holds the one committed copy of every shared skill, so each contributor gets them with git pull. Jake's AIOS links to these folders, so an edit in either place is the same file. Private AIOS skills stay out; a few personal core skills are linked per machine and git-excluded.
 - **Instruction adapters:** `CLAUDE.md`, `GEMINI.md` and `.cursor/rules/leonidas.mdc` are generated from this file by `scripts/Build-AgentAdapters.ps1`. Edit this file, then run it.
 
 # Leonidas Code: the shared team brief

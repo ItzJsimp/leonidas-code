@@ -54,6 +54,7 @@ import { ProviderWizardAuthenticationStep } from "./ProviderWizardAuthentication
 import { resolveOfficialAcpRegistryIconUrl } from "./AcpRegistryIcon";
 import { AddManagedCodexAccountDialog } from "./CodexSetupSection";
 import { ProviderEnvironmentSection } from "./ProviderInstanceCard";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /**
  * Normalize a user-provided label into a slug suffix for the instance id.
@@ -343,9 +344,8 @@ export function AddProviderInstanceDialog({
       setIsSaving(false);
       toastManager.add({
         type: "error",
-        title: "Could not add the AI account",
-        description:
-          error instanceof Error ? error.message : "The settings did not save. Try again.",
+        title: "Could not add provider instance",
+        ...userErrorToastFields(error),
       });
       return;
     }

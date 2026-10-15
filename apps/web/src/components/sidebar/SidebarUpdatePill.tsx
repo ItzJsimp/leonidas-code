@@ -31,6 +31,7 @@ import {
   shouldShowDesktopUpdateCheckIcon,
 } from "./DesktopUpdateStatusIcon";
 import { SidebarUpdateReleaseNotes } from "./SidebarUpdateReleaseNotes";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type SidebarUpdatePopoverChangeDetails = Parameters<
   NonNullable<ComponentProps<typeof Popover>["onOpenChange"]>
@@ -218,11 +219,8 @@ function SidebarUpdateControl() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Could not start the download",
-              description:
-                error instanceof Error
-                  ? error.message
-                  : "Check your internet connection, then try again.",
+              title: "Could not start update download",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -241,9 +239,8 @@ function SidebarUpdateControl() {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Could not confirm the update",
-            description:
-              error instanceof Error ? error.message : "Could not confirm the update. Try again.",
+            title: "Could not confirm update",
+            ...userErrorToastFields(error),
           }),
         );
         return;
@@ -271,10 +268,7 @@ function SidebarUpdateControl() {
             stackedThreadToast({
               type: "error",
               title: "Could not install the update",
-              description:
-                error instanceof Error
-                  ? error.message
-                  : "Check your internet connection, then try again.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -303,10 +297,7 @@ function SidebarUpdateControl() {
           stackedThreadToast({
             type: "error",
             title: "Could not check for updates",
-            description:
-              error instanceof Error
-                ? error.message
-                : "Check your internet connection, then try again.",
+            ...userErrorToastFields(error),
           }),
         );
       })

@@ -1,0 +1,4 @@
+interface:
+  display_name: "NBJ Write Clearly"
+  short_description: "Clear technical and product documentation"
+  default_prompt: "Use $nbj-write-clearly to revise this draft for clarity without changing its meaning."

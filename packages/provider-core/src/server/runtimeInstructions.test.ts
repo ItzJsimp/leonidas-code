@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
 import { buildRuntimeInstructions } from "./runtimeInstructions.ts";
+import { MAX_SKILLS_PER_TASK, SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.ts";
 
 describe("buildRuntimeInstructions", () => {
   it("requires explicit registration of every PR and stack layer", () => {
@@ -67,6 +68,18 @@ describe("efficient work rules", () => {
       expect(buildRuntimeInstructions({ harness })).toContain("<efficient_work>");
     }
     expect(Math.ceil(EFFICIENT_AGENT_RULES.length / 4)).toBeLessThanOrEqual(400);
+  });
+});
+
+describe("skill routing", () => {
+  it("reaches every harness, caps skills per task and stays under 200 tokens", () => {
+    for (const harness of ["Codex", "Claude Code", "Cursor"]) {
+      const instructions = buildRuntimeInstructions({ harness });
+      expect(instructions).toContain("<skill_routing>");
+      expect(instructions).toContain(`at most ${MAX_SKILLS_PER_TASK} skills`);
+      expect(instructions).toContain("Using <skill>: <reason");
+    }
+    expect(Math.ceil(SKILL_ROUTING_INSTRUCTIONS.length / 4)).toBeLessThanOrEqual(200);
   });
 });
 

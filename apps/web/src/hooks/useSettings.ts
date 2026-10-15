@@ -72,6 +72,7 @@ import {
   persistClientSettingsPatch,
   type ClientSettingsHydrationStatus,
 } from "./clientSettingsPersistence";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type UnifiedSettingsPatch = ServerSettingsPatch & ClientSettingsPatch;
 export {
@@ -490,8 +491,8 @@ function useUpdateSettingsTarget(environmentId: EnvironmentId | null) {
         const error = squashAtomCommandFailure(result);
         toastManager.add({
           type: "error",
-          title: "Setting not saved",
-          description: `Could not save on ${label}: ${error instanceof Error ? error.message : "The save failed. Try reconnecting and saving again."}`,
+          title: `Setting not saved on ${label}`,
+          ...userErrorToastFields(error),
         });
       }
       return result;

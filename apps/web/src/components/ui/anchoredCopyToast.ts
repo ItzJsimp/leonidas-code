@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { anchoredToastManager } from "./toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 export const ANCHORED_COPY_TOAST_TIMEOUT_MS = 1000;
 
@@ -28,6 +29,6 @@ export function showAnchoredCopyErrorToast(ref: RefObject<HTMLButtonElement | nu
     },
     timeout: ANCHORED_COPY_TOAST_TIMEOUT_MS,
     title: "Could not copy",
-    description: error.message,
+    description: userErrorToastFields(error).description,
   });
 }

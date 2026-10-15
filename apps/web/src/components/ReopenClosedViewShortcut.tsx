@@ -42,6 +42,7 @@ import {
   resolveThreadRouteTarget,
 } from "../threadRoutes";
 import { toastManager } from "./ui/toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /** Layout commands a focused desktop browser page hands back to the app. */
 const PREVIEW_FORWARDED_LAYOUT_COMMANDS = [
@@ -140,7 +141,7 @@ export function ReopenClosedViewShortcut() {
         toastManager.add({
           type: "error",
           title: "Could not reopen view",
-          description: error instanceof Error ? error.message : String(error),
+          ...userErrorToastFields(error),
         });
       });
   });

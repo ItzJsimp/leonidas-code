@@ -58,6 +58,7 @@ import {
   visibleResourceTelemetryProcesses,
 } from "./ResourceTelemetryDiagnostics.logic";
 import { SettingsSection, useRelativeTimeTick } from "./settingsLayout";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const HISTORY_WINDOWS = [
   { label: "5m", windowMs: 5 * 60_000, bucketMs: 15_000 },
@@ -877,9 +878,8 @@ export function ResourceTelemetryDiagnostics({
           clearSignaling();
           toastManager.add({
             type: "error",
-            title: "Could not confirm the signal",
-            description:
-              error instanceof Error ? error.message : `Could not send ${signal}. Try again.`,
+            title: "Could not confirm signal",
+            ...userErrorToastFields(error),
           });
           return;
         }
@@ -922,8 +922,7 @@ export function ResourceTelemetryDiagnostics({
           toastManager.add({
             type: "error",
             title: `Could not send ${signal}`,
-            description:
-              error instanceof Error ? error.message : `Could not send ${signal}. Try again.`,
+            ...userErrorToastFields(error),
           });
         })
         .finally(() => {
@@ -946,10 +945,7 @@ export function ResourceTelemetryDiagnostics({
         toastManager.add({
           type: "error",
           title: "Could not restart resource monitor",
-          description:
-            error instanceof Error
-              ? error.message
-              : "The resource monitor did not restart. Try again.",
+          ...userErrorToastFields(error),
         });
       })
       .finally(() => {

@@ -17,6 +17,7 @@ import {
 import { useProjectFilePickerQuery } from "../files/projectFilesQueryState";
 import { CommandDialog, CommandDialogPopup, CommandFooterAction } from "../ui/command";
 import { toastManager } from "../ui/toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function emptyMessage(query: string, error: string | null, isPending: boolean): string {
   if (error) return error;
@@ -97,10 +98,7 @@ export function ProjectFaviconPickerDialog(props: {
                         toastManager.add({
                           type: "error",
                           title: "Could not open image picker",
-                          description:
-                            error instanceof Error
-                              ? error.message
-                              : "Something went wrong. Try again.",
+                          ...userErrorToastFields(error),
                         });
                       })
                       .finally(() => setIsPickingExternal(false));
