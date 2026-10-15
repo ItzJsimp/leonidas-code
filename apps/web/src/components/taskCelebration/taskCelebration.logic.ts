@@ -12,12 +12,13 @@ export function takeFreshCompletions(
   list: ReadonlyArray<TaskBoardCompletion>,
   now: number,
 ): { readonly seen: ReadonlySet<string>; readonly fresh: ReadonlyArray<TaskBoardCompletion> } {
-  const next = new Set(seen ?? []);
+  // Only ids still in the list are kept: the server caps the list, so this set stays small too.
+  const next = new Set<string>();
   const fresh: TaskBoardCompletion[] = [];
   for (const completion of list) {
-    if (next.has(completion.id)) continue;
     next.add(completion.id);
-    if (seen !== null && now - completion.completedAt <= CELEBRATION_MAX_AGE_MS) {
+    if (seen === null || seen.has(completion.id)) continue;
+    if (now - completion.completedAt <= CELEBRATION_MAX_AGE_MS) {
       fresh.push(completion);
     }
   }

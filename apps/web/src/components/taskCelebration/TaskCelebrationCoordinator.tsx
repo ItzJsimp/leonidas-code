@@ -22,7 +22,6 @@ function EnvironmentCelebrations({ environmentId }: { environmentId: Environment
     taskBoardCompletionsLive({ environmentId, input: {} }),
   ).data;
   const seen = useRef<ReadonlySet<string> | null>(null);
-  const pick = useRef(Math.floor(Math.random() * 3));
 
   useEffect(() => {
     if (completions === null) return;
@@ -31,7 +30,7 @@ function EnvironmentCelebrations({ environmentId }: { environmentId: Environment
     for (const completion of fresh) {
       toastManager.add({
         type: "success",
-        title: celebrationMessage(completion, pick.current++),
+        title: celebrationMessage(completion, completion.completedAt),
         timeout: 2_500,
         data: {
           hideCopyButton: true,

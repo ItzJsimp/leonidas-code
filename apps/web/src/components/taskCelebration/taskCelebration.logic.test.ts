@@ -42,6 +42,12 @@ describe("takeFreshCompletions", () => {
     expect(next.fresh.map((item) => item.id)).toEqual(["new"]);
     expect(next.seen.has("old")).toBe(true);
   });
+  it("forgets ids the server list no longer holds, so memory stays bounded", () => {
+    const first = takeFreshCompletions(null, [completion("a"), completion("b")], NOW);
+    const next = takeFreshCompletions(first.seen, [completion("b"), completion("c")], NOW);
+    expect([...next.seen].sort()).toEqual(["b", "c"]);
+    expect(next.fresh.map((item) => item.id)).toEqual(["c"]);
+  });
 });
 
 describe("celebrationMessage", () => {
