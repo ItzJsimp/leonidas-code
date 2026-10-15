@@ -398,7 +398,7 @@ const formatSeconds = (seconds: number) =>
   seconds < 60 ? `${Math.round(seconds)}s` : `${(seconds / 60).toFixed(1).replace(/\.0$/, "")}m`;
 
 function quotaText(quota: BenchmarkQuota): string {
-  if (quota.kind === "metered") return "Pay per use";
+  if (quota.kind === "metered") return "Pay as you use";
   if (quota.kind === "unknown") return "Unknown";
   if (quota.leftPercent > 0) return `${quota.leftPercent}% left`;
   return quota.resetsAt ? `Out until ${formatRelativeTimeLabel(quota.resetsAt)}` : "Out";
@@ -463,7 +463,9 @@ function ArenaPanel({
       );
       setPrompt("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not start the blind test.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not start the blind test. Try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -475,8 +477,8 @@ function ArenaPanel({
     <div className="flex flex-col gap-3 text-xs">
       <div className="flex flex-col gap-2 rounded-xl border border-border/60 p-3">
         <p className="text-muted-foreground">
-          Send one prompt to 2 to 4 of your models. Each gets its own chat in plan mode, labelled A,
-          B, C so you judge the answer, not the name. Vote here and your personal rating updates.
+          Send one message to 2 to 4 of your models. Each gets its own chat in plan mode, named A,
+          B, C so you judge the answer, not the name. Vote here and your own rating changes.
         </p>
         <div className="flex flex-wrap gap-1">
           {runnable.map((entry) => {
@@ -509,7 +511,7 @@ function ArenaPanel({
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           placeholder="A real task you care about, e.g. a bug report or a design question"
-          aria-label="Blind test prompt"
+          aria-label="Message for the blind test"
           rows={3}
         />
         <div className="flex items-center gap-2">
@@ -759,7 +761,7 @@ function ExplorerBody({
   });
   const quotaColumn: Column = {
     key: "quota",
-    label: "Quota now",
+    label: "Usage left now",
     value: (entry) => {
       const candidate = connected.get(entry.sourceModelKey);
       return candidate ? quotaRank(candidate.quota) : undefined;
@@ -868,7 +870,7 @@ function ExplorerBody({
             <Spinner className="size-3.5" /> Loading benchmarks
           </>
         ) : (
-          (catalogQuery.error ?? "Benchmarks are unavailable.")
+          (catalogQuery.error ?? "Benchmarks are not available now. Try again later.")
         )}
       </p>
     );

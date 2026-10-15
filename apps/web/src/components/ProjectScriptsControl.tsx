@@ -162,7 +162,7 @@ export default function ProjectScriptsControl({
       setEditorRequest({
         scriptId: null,
         initial: payload,
-        error: error instanceof Error ? error.message : "Failed to import action.",
+        error: error instanceof Error ? error.message : "Could not import the action. Try again.",
       });
     }
   };
@@ -245,7 +245,7 @@ export default function ProjectScriptsControl({
       {importMenuItems}
       <MenuItem density={presentation === "menu" ? "touch" : "default"} onClick={openAddDialog}>
         <PlusIcon className="size-4" />
-        <MenuItemLabel>{isPanel ? "Add project script" : "Add action"}</MenuItemLabel>
+        <MenuItemLabel>{isPanel ? "Add project action" : "Add action"}</MenuItemLabel>
       </MenuItem>
     </>
   );
@@ -293,7 +293,7 @@ export default function ProjectScriptsControl({
       ) : primaryScript ? (
         <ActionGroup
           role="group"
-          aria-label="Project scripts"
+          aria-label="Project actions"
           {...(isPanel
             ? { className: THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS, ref: panelAnchorRef }
             : {})}
@@ -332,7 +332,7 @@ export default function ProjectScriptsControl({
             <TooltipPopup side="top">
               {onRunScript
                 ? `Run ${primaryScript.name}`
-                : "Pair this client again with permission to run terminal commands."}
+                : "Connect this device again with permission to run terminal commands."}
             </TooltipPopup>
           </Tooltip>
           {isPanel ? (
@@ -353,7 +353,7 @@ export default function ProjectScriptsControl({
                   variant={isPanel ? "ghost" : "outline"}
                   part="secondary"
                   panel={isPanel}
-                  aria-label="Script actions"
+                  aria-label="Action options"
                 />
               }
             >
@@ -447,7 +447,7 @@ export default function ProjectScriptsControl({
                 part="row"
                 panel={isPanel}
                 className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
-                aria-label={isPanel ? "Add project script" : "Add action"}
+                aria-label={isPanel ? "Add project action" : "Add action"}
                 // The tooltip wrapper replaces data-slot="button", so themed
                 // toolbar styling needs its own hook.
                 data-toolbar-control=""
@@ -462,10 +462,10 @@ export default function ProjectScriptsControl({
                 isPanel && cn("not-sr-only ml-0.5", THREAD_DETAILS_PANEL_LABEL_CLASS),
               )}
             >
-              {isPanel ? "Add project script" : "Add action"}
+              {isPanel ? "Add project action" : "Add action"}
             </span>
           </TooltipTrigger>
-          <TooltipPopup side="top">{isPanel ? "Add project script" : "Add action"}</TooltipPopup>
+          <TooltipPopup side="top">{isPanel ? "Add project action" : "Add action"}</TooltipPopup>
         </Tooltip>
       )}
 

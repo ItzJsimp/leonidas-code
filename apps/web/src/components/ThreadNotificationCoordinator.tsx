@@ -157,13 +157,13 @@ function EnvironmentNotifications({
       if (!kind) continue;
       const title =
         kind === "completion"
-          ? "Thread completed"
+          ? "Chat completed"
           : status === "approval"
-            ? "Approval needed"
+            ? "Permission needed"
             : status === "limited"
               ? "Usage limit reached"
               : status === "failed"
-                ? "Thread failed"
+                ? "Chat failed"
                 : "Input needed";
       const quiet = isInNotificationQuietHours(getClientSettings());
       if (hasNotificationSound(mode) && !quiet) {
@@ -199,7 +199,7 @@ function EnvironmentNotifications({
               ),
           },
           actionProps: {
-            children: "Open thread",
+            children: "Open chat",
             onClick: () => {
               toastManager.close(toastId);
               void navigate({

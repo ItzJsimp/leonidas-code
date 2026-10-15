@@ -58,7 +58,7 @@ class TestNotification extends EventTarget {
 
 const thread = {
   id: "thread",
-  title: "Test thread",
+  title: "Test chat",
   archivedAt: null as string | null,
   hasPendingApprovals: false,
   hasPendingUserInput: false,
@@ -175,7 +175,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-it("counts notifying threads across environments, replaces repeat alerts, and clears on focus", async () => {
+it("counts notifying chats across computers, replaces repeat alerts, and clears on focus", async () => {
   await render();
   complete();
   await render();
@@ -208,7 +208,7 @@ it("does not badge old completions on first load or reconnect", async () => {
   expect(state.badge.mock.calls.every(([count]) => count === 0)).toBe(true);
 });
 
-it("removes alerts only from environments that leave the client", async () => {
+it("removes alerts only from computers that leave the client", async () => {
   await render();
   complete("one");
   complete("two");
@@ -311,7 +311,7 @@ it("badges background failures with in-app notifications enabled", async () => {
   await render();
   state.shells.set("one", shell({ latestTurn: { ...thread.latestTurn, state: "error" } }));
   await render();
-  expect(TestNotification.sent[0]?.title).toBe("Thread failed");
+  expect(TestNotification.sent[0]?.title).toBe("Chat failed");
   expect(state.badge).toHaveBeenLastCalledWith(1);
   expect(state.toast).not.toHaveBeenCalled();
 });

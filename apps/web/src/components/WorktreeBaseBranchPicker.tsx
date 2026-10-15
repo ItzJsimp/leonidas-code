@@ -66,11 +66,11 @@ export function WorktreeBaseBranchPicker({
   const statusText =
     branches.error ??
     (branches.isPending && branches.data === null
-      ? "Loading refs..."
+      ? "Loading branches..."
       : branches.isFetchingNextPage
-        ? "Loading more refs..."
+        ? "Loading more branches..."
         : hasNextPage
-          ? `Showing ${branches.refs.length} of ${branches.data?.totalCount} refs`
+          ? `Showing ${branches.refs.length} of ${branches.data?.totalCount} branches`
           : null);
   const handleOpenChange = (next: boolean) => {
     setOpen(next);

@@ -28,12 +28,12 @@ export function feedbackBannerItem(
           size="xs"
           variant="ghost"
           onClick={() => {
-            void writeTextToClipboard(submission.feedbackId, "Codex feedback thread ID").catch(
+            void writeTextToClipboard(submission.feedbackId, "Codex feedback chat ID").catch(
               (error: unknown) => {
                 toastManager.add({
                   type: "error",
-                  title: "Could not copy thread ID",
-                  description: error instanceof Error ? error.message : "An error occurred.",
+                  title: "Could not copy the chat ID",
+                  description: error instanceof Error ? error.message : "Something went wrong.",
                 });
               },
             );
@@ -43,7 +43,7 @@ export function feedbackBannerItem(
         </Button>
       ) : undefined,
     ...(submission.status !== "uploading"
-      ? { dismissLabel: "Dismiss feedback notice", onDismiss }
+      ? { dismissLabel: "Close this feedback notice", onDismiss }
       : {}),
   };
 }

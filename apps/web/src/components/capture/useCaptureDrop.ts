@@ -40,13 +40,13 @@ export function useCaptureDrop() {
           ok: false,
           error: isAtomCommandInterrupted(result)
             ? null
-            : failureText(squashAtomCommandFailure(result), "Could not save the drop."),
+            : failureText(squashAtomCommandFailure(result), "Could not save your note. Try again."),
         };
       }
       const id = result.value.id;
       const toastId = toastManager.add({
         type: "success",
-        title: result.value.kind === "task" ? "Added to your tasks" : "Saved to inbox",
+        title: result.value.kind === "task" ? "Added to your tasks" : "Saved to your inbox",
         ...(result.value.filedTask ? { description: result.value.filedTask } : {}),
         timeout: 4000,
         actionProps: {

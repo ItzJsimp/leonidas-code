@@ -263,7 +263,7 @@ describe("ServerUpdateAction", () => {
       />,
     );
 
-    expect(markup).toContain("Update the desktop app on that machine to update this server.");
+    expect(markup).toContain("Update the desktop app on that computer to update it.");
     expect(markup).not.toContain("<button");
   });
 

@@ -239,7 +239,7 @@ function AccessSection({
   if (!active) {
     return (
       <p className="text-xs text-muted-foreground">
-        Skills, AIOS files and project files show up here as the agent uses them.
+        Skills, AIOS files and project files show here when the AI uses them.
       </p>
     );
   }
@@ -251,7 +251,7 @@ function AccessSection({
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <div role="tablist" aria-label="What the agent used" className="flex flex-wrap gap-1">
+      <div role="tablist" aria-label="What the AI used" className="flex flex-wrap gap-1">
         {visible.map(({ id, label, Icon, count }) => (
           <button
             key={id}
@@ -348,7 +348,7 @@ export function ActivityDetails({
       {feed.length > 0 ? (
         <section aria-label="Recent actions" className="flex flex-col gap-0.5">
           <div className="flex items-center justify-between px-1.5 pb-1 text-2xs font-medium text-muted-foreground">
-            <span>Recent actions</span>
+            <span>Recent steps</span>
             <span className="tabular-nums">{activity.actionCount} this run</span>
           </div>
           {feed.map((event) => {
@@ -391,7 +391,7 @@ export function ActivityDetails({
           })}
         </section>
       ) : null}
-      <section aria-label="Used by the agent" className="flex flex-col gap-1">
+      <section aria-label="Used by the AI" className="flex flex-col gap-1">
         <span className="px-1.5 text-2xs font-medium text-muted-foreground">Used so far</span>
         <AccessSection activity={activity} onOpenFile={onOpenFile} />
       </section>

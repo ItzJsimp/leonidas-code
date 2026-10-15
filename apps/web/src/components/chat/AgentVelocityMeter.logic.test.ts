@@ -473,7 +473,7 @@ describe("AgentVelocityMeter.logic", () => {
 
     it("states tool wait as time and share of the turn", () => {
       expect(formatToolWait({ toolWaitMs: 12_400, turnDurationMs: 40_000 })).toBe(
-        "12.4s (31% of turn)",
+        "12.4s (31% of the reply)",
       );
       expect(formatToolWait({ toolWaitMs: null, turnDurationMs: 40_000 })).toBe("--");
       expect(formatToolWait({ toolWaitMs: 0, turnDurationMs: 0 })).toBe("--");
@@ -494,7 +494,7 @@ describe("formatCacheBreak", () => {
     expect(
       formatCacheBreak({ previousRate: 0.9, currentRate: 0.05, rewrittenTokens: 30_000 }),
     ).toBe(
-      "The cache restarted: hits fell from 90% to 5% and 30,000 tokens were written again. Something at the start of the prompt changed.",
+      "The AI had to read the chat again: saved reads fell from 90% to 5% and 30,000 tokens were saved again. Something at the start of the chat changed.",
     );
   });
 });

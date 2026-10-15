@@ -59,15 +59,15 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Quick capture</DialogTitle>
+        <DialogTitle>Quick note</DialogTitle>
         <DialogDescription>
-          A note, idea or task. Just write it; clear tasks land on your list.
+          Write a note, idea or task. Clear tasks go to your task list.
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>
         <Textarea
           autoFocus
-          aria-label="Capture"
+          aria-label="Note"
           placeholder="What's on your mind?"
           rows={4}
           value={text}
@@ -78,7 +78,7 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
       </DialogPanel>
       <DialogFooter>
         <span className="mr-auto text-muted-foreground text-xs">
-          Enter saves · Shift+Enter adds a line
+          Press Enter to save. Press Shift+Enter to add a line.
         </span>
         <Button disabled={!canSave} onClick={() => void save()}>
           {busy ? <Spinner /> : null}

@@ -45,7 +45,7 @@ export function serverUpdateStageLabel(stage: ServerUpdateStage): string {
 }
 
 function updateFailureMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Server update failed.";
+  return error instanceof Error ? error.message : "The update failed. Try again.";
 }
 
 export interface ServerUpdateTarget {
@@ -67,7 +67,7 @@ type UpdateButtonProps = Pick<ComponentProps<typeof Button>, "variant" | "size" 
 
 function useServerUpdate() {
   const updateServer = useAtomCommand(serverEnvironment.updateServer, { reportFailure: false });
-  return async (target: ServerUpdateTarget, failureTitle = "Server update failed") => {
+  return async (target: ServerUpdateTarget, failureTitle = "The update failed") => {
     const { environmentId, serverLabel, selfUpdate, targetVersion } = target;
     if (
       !canUpdateServer(appAtomRegistry.get(environmentSession.sessionStateAtom(environmentId))) ||
@@ -139,7 +139,7 @@ export function ServerUpdatesAction({
       if (desktopTargets.length > 0) {
         const confirmed =
           (await requestConfirmDialog(
-            `Update the Leonidas Code desktop apps on ${desktopTargets.map((target) => target.serverLabel).join(", ")}? They will close and relaunch on those machines.`,
+            `Update the Leonidas Code desktop apps on ${desktopTargets.map((target) => target.serverLabel).join(", ")}? They will close and relaunch on those computers.`,
           )) ?? true;
         if (!confirmed) return;
       }
@@ -264,7 +264,7 @@ export function ServerUpdateAction({
       // remote machine installs without asking anyone there.
       const confirmed =
         (await requestConfirmDialog(
-          `Update the Leonidas Code desktop app that runs the ${serverLabel}? It will close and relaunch on that machine.`,
+          `Update the Leonidas Code desktop app that runs the ${serverLabel}? It will close and open again on that computer.`,
         )) ?? true;
       if (!confirmed) {
         return;
@@ -285,7 +285,7 @@ export function ServerUpdateAction({
   if (selfUpdate === "desktop-managed" && !desktopAppUpdate) {
     return (
       <span className="text-muted-foreground text-xs">
-        Update the desktop app on that machine to update this server.
+        Update the desktop app on that computer to update it.
       </span>
     );
   }
@@ -377,7 +377,7 @@ export function OutdatedServerUpdateAction({
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: "Server update failed",
+        title: "The update failed",
         description: updateFailureMessage(error),
       });
     } finally {
