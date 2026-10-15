@@ -1001,7 +1001,7 @@ export function ThemeEditorPanel({
       <div>
         <h3 className="text-sm font-medium">Colors</h3>
         {isAdvanced ? null : (
-          <p className="text-xs text-muted-foreground">Two colors, rest derived</p>
+          <p className="text-xs text-muted-foreground">Pick two colors. The rest follow.</p>
         )}
       </div>
       <div className="flex min-w-0 items-start gap-3">

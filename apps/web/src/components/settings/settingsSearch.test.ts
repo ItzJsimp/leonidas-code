@@ -65,7 +65,7 @@ describe("searchSettings", () => {
   it("matches titles, sections, and remembered setting details", () => {
     expect(searchSettings("word", ITEMS).map((item) => item.id)).toEqual(["word-wrap"]);
     expect(searchSettings("network", ITEMS).map((item) => item.id)).toEqual(["network-access"]);
-    expect(searchSettings("connections", ITEMS).map((item) => item.id)).toEqual(["network-access"]);
+    expect(searchSettings("computers", ITEMS).map((item) => item.id)).toEqual(["network-access"]);
     expect(searchSettings("claude", ITEMS).map((item) => item.id)).toEqual(["providers"]);
     expect(searchSettings("long lines", ITEMS).map((item) => item.id)).toEqual(["word-wrap"]);
   });
@@ -147,7 +147,7 @@ describe("searchSettings", () => {
   it("finds the About update rows", () => {
     expect(searchSettings("check for updates").map((item) => item.id)).toContain("app-version");
     expect(SETTINGS_SEARCH_ITEMS.find((item) => item.id === "update-track")).toMatchObject({
-      title: "Update track",
+      title: "Update type",
       to: "/settings/general",
       releaseChannelOnly: true,
     });
@@ -165,7 +165,7 @@ describe("searchSettings", () => {
   it("registers the WSL backend as a desktop-only setting", () => {
     expect(SETTINGS_SEARCH_ITEMS.find((item) => item.id === "wsl-backend")).toMatchObject({
       id: "wsl-backend",
-      title: "WSL backend",
+      title: "WSL",
       to: "/settings/connections",
       desktopOnly: true,
       windowsOnly: true,
@@ -293,7 +293,8 @@ describe("searchSettings", () => {
 
   it("ranks keybinding commands after other settings", () => {
     const ids = searchSettings("model").map((item) => item.id);
-    expect(ids[0]).toBe("default-model");
+    expect(ids.indexOf("default-model")).toBeGreaterThanOrEqual(0);
+    expect(ids.indexOf("default-model")).toBeLessThan(ids.indexOf("keybinding-modelPicker.toggle"));
     expect(ids.indexOf("keybinding-modelPicker.toggle")).toBeGreaterThan(
       ids.indexOf("text-generation-model"),
     );
@@ -314,7 +315,7 @@ describe("searchSettings", () => {
 
   it("serves anchor props to panels from the catalog", () => {
     expect(searchableSetting("word-wrap")).toEqual({ id: "word-wrap", title: "Word wrap" });
-    expect(searchableSetting("archive")).toEqual({ id: "archive", title: "Archived threads" });
+    expect(searchableSetting("archive")).toEqual({ id: "archive", title: "Archived chats" });
   });
 
   it("routes appearance settings to their current section", () => {

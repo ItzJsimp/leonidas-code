@@ -240,7 +240,7 @@ export function SystemCarePage() {
                 onClick={() => void actions.preparePrompt("checkup")}
               >
                 {actions.busy ? <Spinner /> : <ClipboardCopyIcon />}
-                Get a checkup prompt
+                Get a checkup message
               </Button>
               <p className="text-xs text-muted-foreground">
                 Fills a new chat for you. Nothing is sent until you press send.
@@ -252,7 +252,7 @@ export function SystemCarePage() {
         {live.error ? <p className="text-sm text-destructive">{live.error}</p> : null}
         {!supported ? (
           <p className="text-sm text-muted-foreground">
-            System Care is not available on this machine yet.
+            System Care is not available on this computer yet.
           </p>
         ) : null}
 
@@ -270,7 +270,7 @@ export function SystemCarePage() {
                     formatValue(sample.cpu.packageTempC ?? sample.cpu.maxCoreTempC, "°C"),
                     formatValue(sample.cpu.clockMhz, "MHz"),
                     sample.cpu.powerW !== null ? formatValue(sample.cpu.powerW, "W") : "",
-                  ].filter((line) => line !== "" && line !== "—")
+                  ].filter((line) => line !== "" && line !== "-")
                 : ["Waiting for data"]
             }
             trend={live.samples.map((s) => s.cpu.loadPct)}
@@ -288,7 +288,7 @@ export function SystemCarePage() {
                     formatValue(gpu.tempC, "°C"),
                     `${formatBytes(gpu.vramUsedBytes, 1)} video memory`,
                     gpu.powerW !== null ? formatValue(gpu.powerW, "W") : "",
-                  ].filter((line) => line !== "" && line !== "—")
+                  ].filter((line) => line !== "" && line !== "-")
                 : ["No graphics reading"]
             }
             trend={live.samples.map((s) => s.gpus[0]?.loadPct ?? null)}
@@ -326,7 +326,7 @@ export function SystemCarePage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card
             title="Alerts"
-            hint="Investigate fills a new chat with a prompt. Nothing is sent."
+            hint="Investigate fills a new chat with a message. Nothing is sent until you press send."
             className="lg:col-span-2"
           >
             {alerts.length === 0 ? (

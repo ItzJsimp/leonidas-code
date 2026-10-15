@@ -29,7 +29,7 @@ interface InheritanceLayer {
 }
 
 const WRITING_STYLE_LABELS: Record<string, string> = {
-  repo_conventions: "Repository conventions",
+  repo_conventions: "Follow the project style",
   conventional_commits: "Conventional Commits",
   custom: "Custom instructions",
 };
@@ -44,7 +44,7 @@ function formatValue(key: keyof ServerSettings, value: unknown): string {
         : key === "defaultModelSelection"
           ? "Automatic"
           : key === "sourceControlWriterModelSelection"
-            ? "Text generation model"
+            ? "Model for writing text"
             : key === "defaultThreadEnvMode" || key === "worktreeSubmodules"
               ? "Inherit"
               : "Not set";
@@ -249,7 +249,7 @@ export function SettingInheritance({
                         layer.effective ? "font-medium text-foreground" : "text-muted-foreground",
                       )}
                     >
-                      {layer.key === "environment" ? "Environment" : layer.label}
+                      {layer.key === "environment" ? "Computer" : layer.label}
                     </span>
                     <span
                       className={cn(

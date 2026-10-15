@@ -36,27 +36,30 @@ export type ProviderStatusKey = keyof typeof PROVIDER_STATUS_STYLES;
 export function getProviderSummary(provider: ServerProvider | undefined) {
   if (!provider) {
     return {
-      headline: "Checking provider status",
-      detail: "Waiting for the server to report installation and authentication details.",
+      headline: "Checking the AI service",
+      detail: "Waiting for the install and sign-in status.",
     };
   }
   if (!provider.enabled || provider.status === "disabled") {
     return {
-      headline: "Disabled",
+      headline: "Off",
       detail:
-        provider.message ?? "This provider is installed but disabled for new sessions in Leonidas Code.",
+        provider.message ??
+        "This AI service is installed but turned off in Leonidas Code. Turn it on to use it.",
     };
   }
   if (!provider.installed) {
     return {
       headline: "Not found",
-      detail: provider.message ?? "CLI not detected on PATH.",
+      detail:
+        provider.message ??
+        "Leonidas Code did not find this program on the computer. Install it, then refresh.",
     };
   }
   if (provider.auth.status === "unauthenticated") {
     const authLabel = provider.auth.label ?? provider.auth.type;
     return {
-      headline: authLabel ? `Not authenticated · ${authLabel}` : "Not authenticated",
+      headline: authLabel ? `Not signed in · ${authLabel}` : "Not signed in",
       detail: provider.message ?? null,
     };
   }
@@ -64,19 +67,21 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
     return {
       headline: "Needs attention",
       detail:
-        provider.message ?? "The provider is installed, but the server could not fully verify it.",
+        provider.message ??
+        "The AI service is installed, but Leonidas Code could not check it fully.",
     };
   }
   if (provider.status === "error") {
     return {
       headline: "Unavailable",
-      detail: provider.message ?? "The provider failed its startup checks.",
+      detail:
+        provider.message ?? "The AI service did not pass its start checks. Check its settings.",
     };
   }
   if (provider.auth.status === "authenticated") {
     const authLabel = provider.auth.label ?? provider.auth.type;
     return {
-      headline: authLabel ? `Authenticated · ${authLabel}` : "Authenticated",
+      headline: authLabel ? `Signed in · ${authLabel}` : "Signed in",
       detail: provider.message ?? null,
     };
   }
@@ -107,7 +112,7 @@ export function getProviderVersionLabel(version: string | null | undefined) {
 const COMPATIBILITY_TITLES = {
   graceful: "Limited support",
   unsupported: "Unsupported version",
-  broken: "Known broken version",
+  broken: "Version with known problems",
 } as const;
 
 /** Compatibility guidance shares the version popover, with safe install actions. */
@@ -164,7 +169,7 @@ export function getProviderVersionAdvisoryPresentation(
       advisory.message ??
       (versionLabel
         ? `${label}: install ${versionLabel}.`
-        : `${label}: install the latest provider version.`),
+        : `${label}: install the latest version.`),
     updateCommand: advisory.updateCommand,
     emphasis: "normal" as const,
     targetVersion: null,

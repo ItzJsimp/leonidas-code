@@ -124,7 +124,7 @@ function EnvironmentScopeMenu({
   );
   return (
     <ScopeMenu
-      ariaLabel="Environment scope"
+      ariaLabel="Computer scope"
       icon={
         selected ? (
           <EnvironmentMachineIcon
@@ -138,10 +138,10 @@ function EnvironmentScopeMenu({
         selected
           ? settingsScopeEnvironmentLabel(selected, environments)
           : environmentValue !== ALL_ENVIRONMENTS_VALUE
-            ? "Unavailable environment"
+            ? "Computer not available"
             : singleEnvironment
-              ? "No environments"
-              : "All environments"
+              ? "No computers"
+              : "All computers"
       }
     >
       <MenuRadioGroup
@@ -195,7 +195,7 @@ function ProjectScopeMenu({ value, groups, onChange }: SettingsScopeMenuProps) {
     <ScopeMenu
       ariaLabel="Project scope"
       icon={selected ? <ProjectFavicon project={selected} className="size-3.5 shrink-0" /> : null}
-      label={selected?.displayName ?? (value.project ? "Unavailable project" : "All projects")}
+      label={selected?.displayName ?? (value.project ? "Project not available" : "All projects")}
     >
       <MenuRadioGroup
         value={projectAxisValue(value)}

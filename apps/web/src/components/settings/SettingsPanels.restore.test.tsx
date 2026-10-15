@@ -83,7 +83,7 @@ describe("restoring V2 settings", () => {
     };
     hooks.beginRender();
     const restore = useSettingsRestore();
-    expect(restore.changedSettingLabels).toContain("Prediction source and budget");
+    expect(restore.changedSettingLabels).toContain("Prediction source and limit");
     await restore.restoreDefaults();
     expect(state.update.mock.calls[0]?.[0]).toMatchObject({
       promptPredictionMode: "local",
@@ -93,9 +93,9 @@ describe("restoring V2 settings", () => {
     });
   });
   it.each([
-    ["persistComposerContextStrip", "Composer context"],
-    ["autoResumeLimitedThreads", "Auto-resume limited threads"],
-    ["snoozeLimitedThreads", "Snooze limited threads"],
+    ["persistComposerContextStrip", "Message box context"],
+    ["autoResumeLimitedThreads", "Continue paused chats when the limit ends"],
+    ["snoozeLimitedThreads", "Pause chats that reach a usage limit"],
   ] as const)("restores %s when it is the only changed setting", async (key, label) => {
     state.settings = { ...PRISTINE_SETTINGS, [key]: true };
     hooks.beginRender();
@@ -117,7 +117,7 @@ describe("restoring V2 settings", () => {
     hooks.beginRender();
     const restore = useSettingsRestore();
 
-    expect(restore.changedSettingLabels).toContain("Continue threads after restarts");
+    expect(restore.changedSettingLabels).toContain("Continue chats after restarts");
     await restore.restoreDefaults();
 
     expect(state.update.mock.calls[0]?.[0].continueThreadsAfterServerUpdate).toBe(

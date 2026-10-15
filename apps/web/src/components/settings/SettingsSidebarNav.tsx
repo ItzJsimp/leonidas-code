@@ -340,7 +340,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                 role="status"
                 className="px-2 py-6 text-center text-xs text-sidebar-muted-foreground"
               >
-                No settings found
+                No settings found. Try other words.
               </p>
             ) : null}
             {isSearching ? (

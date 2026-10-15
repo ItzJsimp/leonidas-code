@@ -88,7 +88,7 @@ describe("shared color controls in settings", () => {
         <ProviderAccentColorPicker displayName="Codex" value="#ff0000" onCommit={onCommit} />,
       );
     });
-    const hue = "Accent color hue";
+    const hue = "Color shade";
     const saturation = "Accent color saturation";
     const brightness = "Accent color brightness";
     expect(await key(hue, "ArrowLeft")).toHaveBeenCalledOnce();
@@ -243,7 +243,7 @@ describe("shared color controls in settings", () => {
       );
     expect(onCommit).not.toHaveBeenCalled();
     expect(clearButtons()).toHaveLength(0);
-    await key("Accent color hue", "ArrowRight", true);
+    await key("Color shade", "ArrowRight", true);
     expect(onCommit).toHaveBeenCalledOnce();
     expect(clearButtons()).toHaveLength(1);
     await act(async () => clearButtons()[0]!.props.onClick());
@@ -264,7 +264,7 @@ describe("shared color controls in settings", () => {
         />,
       );
     });
-    const hue = "Accent color hue";
+    const hue = "Color shade";
     await key(hue, "ArrowRight", true);
     await key(hue, "ArrowRight", true);
     expect(onCommit).not.toHaveBeenCalled();

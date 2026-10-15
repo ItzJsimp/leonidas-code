@@ -92,7 +92,7 @@ describe("SidebarUpdateReleaseNotes", () => {
       "https://github.com/ItzJsimp/leonidas-code/releases/tag/v0.0.36-nightly.1",
     ]);
     expect(anchors.map(({ props }) => textContent(props.children))).toEqual([
-      "View release on GitHub",
+      "View update notes on GitHub",
       "1 more change on GitHub",
       "2 more changes on GitHub",
     ]);
@@ -145,7 +145,7 @@ describe("SidebarUpdateReleaseNotes", () => {
       );
       expect(testState.addToast).toHaveBeenCalledWith({
         type: "error",
-        title: "Unable to open release notes",
+        title: "Could not open the update notes. Try again.",
       });
     });
   });

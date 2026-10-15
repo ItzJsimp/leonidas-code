@@ -131,7 +131,7 @@ describe("mixed source control instructions", () => {
       customInstructions,
     }));
 
-    act(() => button("Reset change request templates").props.onClick());
+    act(() => button("Reset pull request templates").props.onClick());
 
     expect(state.updateSettings).toHaveBeenCalledTimes(1);
     expect(state.styles.map((style) => style.followChangeRequestTemplates)).toEqual([

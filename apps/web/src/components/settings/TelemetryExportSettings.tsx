@@ -47,7 +47,7 @@ export function TelemetryExportSettings() {
     return (
       <SettingsSection title="OpenTelemetry export" id="telemetry-export">
         <SettingsScopeNotice target="environment">
-          Choose one environment to configure its telemetry exports.
+          Choose one computer to set up its telemetry export.
         </SettingsScopeNotice>
       </SettingsSection>
     );
@@ -139,7 +139,7 @@ function TelemetryExportForm() {
             });
             if (result._tag === "Success") {
               setDraft({});
-              setMessage("Saved. Restart the server to apply.");
+              setMessage("Saved. Restart Leonidas Code to use it.");
             }
           } finally {
             setSaving(false);
@@ -147,13 +147,13 @@ function TelemetryExportForm() {
         }}
       >
         <p className="text-xs text-muted-foreground">
-          Send traces, metrics, and logs to an OTLP HTTP receiver. Restart the server to apply.
-          Environment variables override these settings.
+          Send traces, metrics, and logs to an OTLP HTTP receiver. Restart Leonidas Code to use the
+          change. Settings from environment variables win over these settings.
         </p>
         {!canEdit && (
           <p className="text-xs text-muted-foreground">
             This connection lacks permission to change settings on{" "}
-            {environment?.label ?? "the selected environment"}.
+            {environment?.label ?? "the chosen computer"}.
           </p>
         )}
         {SIGNALS.map(({ key, label, signal }) => {
@@ -174,7 +174,7 @@ function TelemetryExportForm() {
                   size="sm"
                   type="url"
                   pattern="[Hh][Tt][Tt][Pp][Ss]?://.*"
-                  title="Enter an HTTP or HTTPS endpoint, or leave empty to disable export."
+                  title="Enter an HTTP or HTTPS address, or leave empty to turn export off."
                   placeholder={`http://localhost:4318/v1/${signal}`}
                   value={values[key]}
                   disabled={saving || !canEdit}

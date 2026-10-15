@@ -41,8 +41,8 @@ function reportScriptFailure(result: AtomCommandResult<unknown, unknown>) {
     const error = squashAtomCommandFailure(result);
     toastManager.add({
       type: "error",
-      title: "Failed to save project actions",
-      description: error instanceof Error ? error.message : "An error occurred.",
+      title: "Could not save the project actions",
+      description: error instanceof Error ? error.message : "Something went wrong. Try again.",
     });
   }
   return mapAtomCommandResult(result, () => undefined);
@@ -93,7 +93,8 @@ export function useProjectScriptSettings(
           Cause.fail(
             new EnvironmentAuthorizationError({
               requiredScope: AuthSettingsWriteScope,
-              message: "This connection cannot change environment settings.",
+              message:
+                "This connection cannot change settings of this computer. Use a connection with more permissions.",
             }),
           ),
         ),
