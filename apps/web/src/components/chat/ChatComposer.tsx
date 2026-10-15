@@ -1,4 +1,5 @@
 import { useBenchmarkRouteProfiles } from "../../lib/useBenchmarkRouteProfiles";
+import { ThreadPresetPicker } from "./ThreadPresetPicker";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { usePromptPrediction } from "./usePromptPrediction";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
@@ -5775,6 +5776,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }}
         onOpenProviderSetup={onOpenProviderSetup}
       />
+
+      {routeKind === "draft" ? (
+        <ThreadPresetPicker
+          candidates={autoRouteCandidates}
+          disabled={providerCatalogPending || isSendBusy}
+          onSelect={(selection) => {
+            setMultipleModelSelections(null);
+            if (autoRoutePreference !== null) {
+              void updateClientSettings({ composerAutoRoutePreference: null });
+            }
+            useComposerDraftStore.getState().setModelSelection(composerDraftTarget, selection, {
+              explicit: true,
+              replaceOptions: true,
+            });
+            scheduleComposerFocus();
+          }}
+        />
+      ) : null}
 
       <>
         {restingBlockDefs.map((def, index) => {
