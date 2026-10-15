@@ -59,7 +59,8 @@ export function ContextHandoffNudge({
   if (contextWindow?.maxTokens != null && contextWindow.maxTokens > 0) return null;
   return (
     <p className="px-4 py-1 text-2xs text-muted-foreground">
-      This provider has not reported its context window size. Handoff reminders are unavailable.
+      This provider has not reported its context window size. Context usage reminders are
+      unavailable.
     </p>
   );
 }

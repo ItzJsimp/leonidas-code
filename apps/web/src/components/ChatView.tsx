@@ -507,6 +507,8 @@ import { useLinkedThreadPullRequest } from "./ThreadStatusIndicators";
 import type { ComposerBannerStackItem } from "./chat/ComposerBannerStack";
 import { ThreadStatusLine } from "./chat/ThreadStatusLine";
 import { ContextHandoffNudge } from "./chat/ContextHandoffNudge";
+import { countHandoffTurns, useTurnHandoffBanner } from "./chat/turnHandoff";
+import { readHandoffPrompt } from "./chat/readHandoffPrompt";
 import { formatRelativeTimeLabel, formatRelativeTimeUntilLabel } from "../timestampFormat";
 import { ComposerSurface } from "./chat/ComposerSurface";
 import { resolveThreadSyncPhase } from "../threadSync";
@@ -7621,9 +7623,9 @@ export default function ChatView(props: ChatViewProps) {
   // and its attachments stay local.
   const sendStandaloneCommand = useCallback(
     async (text: string, failureMessage: string) => {
-      if (!activeThread || !clientSettingsHydrated || sendInFlightRef.current) return;
+      if (!activeThread || !clientSettingsHydrated || sendInFlightRef.current) return false;
       const context = composerRef.current?.getSendContext();
-      if (!context?.providerAvailable) return;
+      if (!context?.providerAvailable) return false;
 
       const threadId = activeThread.id;
       const messageId = newMessageId();
@@ -7680,6 +7682,7 @@ export default function ChatView(props: ChatViewProps) {
         } else {
           clearUsageLimitsFor(routeThreadKey);
         }
+        return result._tag !== "Failure";
       } finally {
         sendInFlightRef.current = false;
       }
@@ -8209,12 +8212,31 @@ export default function ChatView(props: ChatViewProps) {
           },
         })
       : null;
+  const handoffTurnCount = useMemo(
+    () => countHandoffTurns(serverProjection?.runs ?? []),
+    [serverProjection?.runs],
+  );
+  const handleTurnHandoff = useCallback(
+    async (stillCurrent: () => boolean) => {
+      const prompt = await readHandoffPrompt(environmentId);
+      if (!stillCurrent()) return false;
+      return sendStandaloneCommand(prompt, "Failed to start the handoff.");
+    },
+    [environmentId, sendStandaloneCommand],
+  );
+  const turnHandoffBanner = useTurnHandoffBanner({
+    chatKey: routeThreadKey,
+    turnCount: isServerThread ? handoffTurnCount : 0,
+    disabled: !canOperateThread || isWorking || isSendBusy || activeEnvironmentUnavailable,
+    onHandoff: handleTurnHandoff,
+  });
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
     // A stopped turn outranks a warning about the next one, so the pre-flight only fills an empty slot.
     const limitRecoveryItems = [
       limitRecoveryBanner ?? quotaPreflightBanner ?? usageWarningBanner ?? uiVerificationBanner,
     ].filter((item) => item !== null);
     const backgroundWorkItems = [
+      turnHandoffBanner,
       childInputBannerItem,
       goalBannerItem,
       backgroundWorkBannerItem,
@@ -8280,6 +8302,7 @@ export default function ChatView(props: ChatViewProps) {
       },
     ];
   }, [
+    turnHandoffBanner,
     activeBranchMismatchKey,
     activeThreadShell,
     serverRuntime?.usageLimitResetAt,
