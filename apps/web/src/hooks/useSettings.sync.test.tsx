@@ -137,7 +137,7 @@ describe("shared settings writes", () => {
     await act(async () => finishRemote());
     expect(state.toast).toHaveBeenCalledExactlyOnceWith({
       type: "error",
-      title: "Setting saved on some environments",
+      title: "Setting saved on some computers",
       description: "Could not save on primary: Permission denied\nSaved on remote.",
     });
   });
@@ -165,7 +165,7 @@ describe("shared settings writes", () => {
     await act(async () => saveSharedSettings());
     expect(state.toast).toHaveBeenCalledExactlyOnceWith({
       type: "error",
-      title: "Setting saved on some environments",
+      title: "Setting saved on some computers",
       description: "Could not save on remote: Permission denied\nSaved on primary.",
     });
   });

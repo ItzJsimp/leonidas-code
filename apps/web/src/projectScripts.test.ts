@@ -157,7 +157,7 @@ describe("projectScripts helpers", () => {
     };
     expect(projectScriptMenuLabel(script)).toBe("Both (setup)");
     expect(projectScriptMenuLabel({ ...script, runOnSettle: true })).toBe(
-      "Both (setup, on settle)",
+      "Both (setup, when done)",
     );
     expect(projectScriptMenuLabel({ ...script, runOnWorktreeCreate: false })).toBe("Both");
   });

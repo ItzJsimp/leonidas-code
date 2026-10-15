@@ -112,7 +112,7 @@ it("shows a confirmed denial and a connection failure separately", () => {
   state.phase = "offline";
   expect(useComposerPathSearch(target)).toMatchObject({
     entries: [],
-    error: "This environment is not connected.",
+    error: "This computer is not connected.",
     isPending: false,
   });
 });
@@ -234,7 +234,7 @@ it("keeps inactive content search idle and reports a disconnected target without
   expect(result).toMatchObject({
     canReadFiles: false,
     matches: [],
-    error: "This environment is not connected.",
+    error: "This computer is not connected.",
     isPending: false,
   });
   expect(state.contentRequests).not.toHaveBeenCalled();

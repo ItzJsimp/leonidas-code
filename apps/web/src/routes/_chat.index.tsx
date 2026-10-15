@@ -102,7 +102,7 @@ function DraftStartError({ onRetry }: { readonly onRetry: () => void }) {
       {isElectron ? <WorkspacePageHeader electron /> : null}
       <Empty className="flex-1">
         <EmptyHeader className="max-w-md">
-          <EmptyTitle>Couldn’t start a new thread</EmptyTitle>
+          <EmptyTitle>Could not start a new chat</EmptyTitle>
           <EmptyDescription>
             The project is still available. Try opening the draft again.
           </EmptyDescription>
@@ -130,10 +130,10 @@ function HostedStaticOnboardingState() {
   const cloudEnabled = hasCloudPublicConfig();
   const localEnvironmentOff = isLocalEnvironmentDisabled();
   const description = localEnvironmentOff
-    ? "The local environment is turned off. Connect a remote environment, or turn the local environment back on in Connections."
+    ? "This computer is turned off in Leonidas Code. Connect another computer, or turn this one back on in Connections."
     : cloudEnabled
-      ? "Enable T3 Connect on that machine, then open Connections here to sign in with the same account. You can also add the machine using a pairing link."
-      : "Open Connections and add that machine using its pairing link. This app must be able to reach it.";
+      ? "Turn on remote access on that computer. Then open Connections here and sign in with the same account. You can also add the computer with a connection link."
+      : "Open Connections and add that computer with its connection link. This app must be able to reach it.";
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">

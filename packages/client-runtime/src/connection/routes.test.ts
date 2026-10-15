@@ -62,7 +62,7 @@ describe("connection routes", () => {
     expect(connectionRouteKind(direct("lo", "http://127.0.0.1:3773/"))).toBe("loopback");
     expect(connectionRouteKind(direct("ts6", "http://[fd7a:115c:a1e0::1]:3773/"))).toBe("tailnet");
     expect(connectionRouteLabel(TAILNET)).toBe("Tailscale");
-    expect(connectionRouteLabel(RELAY)).toBe("T3 Connect");
+    expect(connectionRouteLabel(RELAY)).toBe("Remote access");
   });
 
   it("places a new route after faster kinds and ahead of T3 Connect", () => {
@@ -167,7 +167,7 @@ describe("learned routes", () => {
       reported: [tailscale, mesh],
       allowInsecure: true,
     })!;
-    expect(first.map(connectionRouteLabel)).toEqual(["Tailscale", "VPN", "T3 Connect"]);
+    expect(first.map(connectionRouteLabel)).toEqual(["Tailscale", "VPN", "Remote access"]);
 
     // The server later finds the address is not on its Tailscale interface.
     const corrected = mergeLearnedRoutes({
@@ -177,7 +177,7 @@ describe("learned routes", () => {
       allowInsecure: true,
     })!;
     expect(ids(corrected)).toEqual(ids(first));
-    expect(corrected.map(connectionRouteLabel)).toEqual(["VPN", "VPN", "T3 Connect"]);
+    expect(corrected.map(connectionRouteLabel)).toEqual(["VPN", "VPN", "Remote access"]);
     expect(
       mergeLearnedRoutes({
         entry: entryWithRoutes(relayOnly, corrected),
@@ -201,7 +201,7 @@ describe("learned routes", () => {
     })!;
     // Same routes in the same order; only the label of the confirmed one changes.
     expect(ids(confirmed)).toEqual(["paired", "other", "relay"]);
-    expect(confirmed.map(connectionRouteLabel)).toEqual(["Tailscale", "VPN", "T3 Connect"]);
+    expect(confirmed.map(connectionRouteLabel)).toEqual(["Tailscale", "VPN", "Remote access"]);
   });
 
   it("leaves user routes alone and does not learn an address already saved", () => {

@@ -17,7 +17,7 @@ describe("relayProtectedErrorMessage", () => {
     });
 
     expect(relayProtectedErrorMessage(error)).toBe(
-      `Relay rejected the DPoP proof. ${DPOP_UNKNOWN_HINT}`,
+      `Remote access did not accept this device. ${DPOP_UNKNOWN_HINT}`,
     );
   });
 
@@ -41,7 +41,7 @@ describe("relayProtectedErrorMessage", () => {
     });
 
     expect(relayProtectedErrorMessage(error)).toBe(
-      `Relay rejected the DPoP proof. ${DPOP_RETRY_HINT}`,
+      `Remote access did not accept this device. ${DPOP_RETRY_HINT}`,
     );
   });
 
@@ -52,6 +52,8 @@ describe("relayProtectedErrorMessage", () => {
       traceId: "trace-1",
     });
 
-    expect(relayProtectedErrorMessage(error)).toBe("Relay rejected the cloud session token.");
+    expect(relayProtectedErrorMessage(error)).toBe(
+      "Remote access did not accept your sign-in. Sign in again.",
+    );
   });
 });

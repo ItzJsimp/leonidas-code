@@ -171,7 +171,7 @@ describe("add project shared logic", () => {
       }),
     ).toEqual({
       ok: false,
-      error: "Windows-style paths are only supported on Windows environments.",
+      error: "Windows-style paths are only supported on Windows computers.",
     });
   });
 

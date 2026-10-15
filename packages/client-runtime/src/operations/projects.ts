@@ -140,7 +140,7 @@ export function sortAddProjectProviderSources(
 const READY: AddProjectRemoteSourceReadinessEntry = { ready: true, hint: null };
 const UNAVAILABLE: AddProjectRemoteSourceReadinessEntry = {
   ready: false,
-  hint: "Provider status unavailable. Open Source Control settings and rescan.",
+  hint: "This code service status is not available. Open Source control settings and scan again.",
 };
 
 export function buildAddProjectRemoteSourceReadiness(
@@ -159,7 +159,7 @@ export function buildAddProjectRemoteSourceReadiness(
         ready: false,
         hint:
           Option.getOrNull(provider.auth.detail) ??
-          `${provider.label} is not authenticated. Open Source Control settings for setup guidance.`,
+          `${provider.label} is not signed in. Open Source control settings to set it up.`,
       };
     }
     return READY;
@@ -304,10 +304,10 @@ export function resolveAddProjectPath(input: {
     return { ok: false, error: "Enter a project path." };
   }
   if (isUnsupportedWindowsProjectPath(rawPath, input.platform)) {
-    return { ok: false, error: "Windows-style paths are only supported on Windows environments." };
+    return { ok: false, error: "Windows-style paths are only supported on Windows computers." };
   }
   if (isExplicitRelativeProjectPath(rawPath) && !input.currentProjectCwd) {
-    return { ok: false, error: "Relative paths require an active project in this environment." };
+    return { ok: false, error: "Relative paths require an active project in this computer." };
   }
   const path = resolveProjectPathForDispatch(rawPath, input.currentProjectCwd);
   return path.length === 0 ? { ok: false, error: "Enter a project path." } : { ok: true, path };

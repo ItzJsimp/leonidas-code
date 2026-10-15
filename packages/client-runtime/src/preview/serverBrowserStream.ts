@@ -35,7 +35,7 @@ export const previewStreamControlLabel = (control: PreviewStreamControl | null):
       : control.controller === "you"
         ? "You have control"
         : control.controller === "agent"
-          ? "Agent has control"
+          ? "AI has control"
           : control.controller === "another-viewer"
             ? "Another viewer has control"
             : "Watching";

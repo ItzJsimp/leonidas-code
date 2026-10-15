@@ -303,7 +303,7 @@ describe("RemoteEnvironmentAuthorization", () => {
         expect.objectContaining({
           _tag: "ConnectionBlockedError",
           reason: "configuration",
-          detail: `Connected environment ${reassignedEnvironmentId} does not match ${ENVIRONMENT_ID}.`,
+          detail: `Connected computer ${reassignedEnvironmentId} does not match ${ENVIRONMENT_ID}.`,
         }),
       );
       expect(
@@ -626,7 +626,7 @@ describe("RemoteEnvironmentAuthorization", () => {
       expect(failure).toMatchObject({
         _tag: "ConnectionBlockedError",
         reason: "authentication",
-        detail: `The environment credential is invalid. ${DPOP_UNKNOWN_HINT}`,
+        detail: `The computer did not accept your sign-in. Connect it again. ${DPOP_UNKNOWN_HINT}`,
         traceId: "trace-auth-invalid",
       });
     }),

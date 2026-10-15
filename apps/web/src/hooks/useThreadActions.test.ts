@@ -21,7 +21,7 @@ describe("navigateAfterThreadDeletion", () => {
     expect(addToast).toHaveBeenCalledOnce();
     expect(addToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Thread deleted, but navigation failed",
+        title: "Chat deleted, but the app could not open the next page",
         description: "route unavailable",
       }),
     );
@@ -47,7 +47,7 @@ describe("ThreadArchiveBlockedError", () => {
       environmentId: "environment-1",
       threadId: "thread-1",
     });
-    expect(error.message).toBe("Cannot archive while the provider is active.");
+    expect(error.message).toBe("Cannot archive while the AI is working.");
   });
 });
 
@@ -89,7 +89,7 @@ describe("requestThreadUnpinConfirmation", () => {
     });
 
     expect(message).toBe(
-      'Unpin thread "Release prep"?\nThis will move the thread out of your pinned section.',
+      'Unpin chat "Release prep"?\nThis moves the chat out of your pinned chats.',
     );
     expect(result).toMatchObject({ _tag: "Success", value: false });
   });
