@@ -29,6 +29,30 @@ describe("nested game repo cards", () => {
     expect(statusFromCard("cut")).toBe("retired");
     expect(statusFromCard("todo")).toBe("todo");
   });
+  it("writes status and priority back in game words and finds the nested file", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-game-wb-"));
+    const dir = NodePath.join(root, "projects", "rent-due-games", "clean-the-goo");
+    try {
+      NodeFS.mkdirSync(NodePath.join(dir, ".git"), { recursive: true });
+      NodeFS.mkdirSync(NodePath.join(dir, "tasks"));
+      NodeFS.mkdirSync(NodePath.join(root, "tasks"));
+      const file = NodePath.join(dir, "tasks", "GB-005-x.md");
+      NodeFS.writeFileSync(file, gb("GB-005", "todo", "P2"));
+      expect(findCardFile(root, "GB-005-x.md")?.toLowerCase()).toBe(file.toLowerCase());
+      const next = applyCardPatch(
+        NodeFS.readFileSync(file, "utf8"),
+        { actor: "Jake", status: "in_progress", priority: "critical" },
+        NOW,
+      );
+      expect(next).toMatch(/^status: doing$/m);
+      expect(next).toMatch(/^priority: P0$/m);
+      expect(applyCardPatch(next, { actor: "Jake", status: "retired" }, NOW)).toMatch(
+        /^status: cut$/m,
+      );
+    } finally {
+      NodeFS.rmSync(root, { recursive: true, force: true });
+    }
+  });
   it("reads cards from a child repo that has its own .git, and nothing deeper", () => {
     const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-game-"));
     const put = (rel: string, text: string) => {

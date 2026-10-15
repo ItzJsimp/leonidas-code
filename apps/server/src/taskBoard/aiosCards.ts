@@ -277,6 +277,23 @@ export function statusToCard(status: TaskBoardTaskStatus): string {
   return CARD_STATUS[status];
 }
 
+const GAME_STATUS: Record<TaskBoardTaskStatus, string> = {
+  todo: "todo",
+  in_progress: "doing",
+  review: "review",
+  blocked: "blocked",
+  done: "done",
+  parked: "later",
+  retired: "cut",
+};
+
+const GAME_PRIORITY: Record<TaskBoardTaskPriority, string> = {
+  critical: "P0",
+  high: "P1",
+  medium: "P2",
+  low: "P3",
+};
+
 function priorityFromCard(value: string | undefined): TaskBoardTaskPriority {
   switch (value?.trim().toLowerCase()) {
     case "critical":
@@ -646,7 +663,11 @@ export function findCardFile(root: string, sourceFile: string): string | null {
       withFileTypes: true,
     })) {
       if (!entry.name.startsWith("_") && !entry.name.startsWith(".")) {
-        candidates.push(NodePath.join(root, "projects", entry.name, "tasks", sourceFile));
+        const projectDir = NodePath.join(root, "projects", entry.name);
+        candidates.push(NodePath.join(projectDir, "tasks", sourceFile));
+        for (const child of nestedRepoDirs(projectDir)) {
+          candidates.push(NodePath.join(child, "tasks", sourceFile));
+        }
       }
     }
   } catch {
@@ -682,6 +703,8 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   const parsed = parseFrontmatter(text);
   if (!span || !parsed) throw new Error("invalid_card");
   const { fields } = parsed;
+  // Game-repo cards (`owner` + `system`) keep their own words: `doing`, `P0`, unquoted.
+  const game = "owner" in fields && "system" in fields;
   const eol = text[text.indexOf("\n") - 1] === "\r" ? "\r\n" : "\n";
   const lines = text
     .slice(span.headerStart, span.headerEnd)
@@ -751,8 +774,8 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   }
 
   if (patch.status !== undefined && patch.status !== was.status) {
-    const card = statusToCard(patch.status);
-    setKey("status", quote(card));
+    const card = game ? GAME_STATUS[patch.status] : statusToCard(patch.status);
+    setKey("status", game ? card : quote(card));
     if (patch.status === "done") {
       setKey("completed_date", localDate(now));
       lifecycle.push("completed");
@@ -776,8 +799,9 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   }
 
   if (patch.priority !== undefined && patch.priority !== was.priority) {
-    setKey("priority", quote(priorityToCard(patch.priority)));
-    other.push(`priority → ${priorityToCard(patch.priority)}`);
+    const priority = game ? GAME_PRIORITY[patch.priority] : priorityToCard(patch.priority);
+    setKey("priority", game ? priority : quote(priority));
+    other.push(`priority → ${priority}`);
     changed = true;
   }
 
