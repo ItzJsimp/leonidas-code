@@ -26,6 +26,8 @@ export interface AiosCardPatch {
   readonly milestone?: string | null | undefined;
   readonly projectSlug?: string | null | undefined;
   readonly claimedBy?: string | null | undefined;
+  /** The owner's name; `null` makes the card available to anyone. */
+  readonly assignee?: string | null | undefined;
   readonly effort?: string | null | undefined;
   /** Replaces the card's `tags`. */
   readonly labels?: ReadonlyArray<string> | undefined;
@@ -445,6 +447,8 @@ export function cardToTask(input: {
   const verify = field(fields, "verify");
   const shared = field(fields, "shared").toLowerCase() === "true";
   const sharedBy = shared ? field(fields, "shared_by") : "";
+  const assignee = field(fields, "assignee") || assigneeFromLane(buildLane);
+  const kind = cardKind(field(fields, "kind"), history);
   const sharedSync = shared ? field(fields, "shared_sync") : "";
 
   return {
@@ -485,11 +489,39 @@ export function cardToTask(input: {
     shared,
     ...(sharedBy ? { sharedBy } : {}),
     ...(sharedSync === "pending" || sharedSync === "failed" ? { sharedSync } : {}),
+    assignee: assignee || null,
+    ...(kind === "agent_run" ? { kind } : {}),
+    ...(field(fields, "private").toLowerCase() === "true"
+      ? { labels: [...labels, "private"] }
+      : {}),
     sourceId: declaredId || stem,
     sourceFile: NodePath.basename(input.fileName),
     issueUrl: null,
     history,
   };
+}
+
+/**
+ * The owner a card's `build_lane` names, for cards written before `assignee` existed:
+ * "Mob" and "Mob after Jake go" are Mob's, "Jake" is Jake's. Other lanes name no person.
+ */
+export function assigneeFromLane(lane: string): string {
+  const person = /^(mob|jake)\b/i.exec(lane.trim())?.[1];
+  return person ? person[0]!.toUpperCase() + person.slice(1).toLowerCase() : "";
+}
+
+/** Marker the chat auto-log writes when it files a request; older agent-run cards carry only this. */
+const AGENT_RUN_NOTE = "Agent started on this request.";
+
+/** `agent_run` for a card the app filed from a chat request, otherwise a normal task. */
+export function cardKind(
+  declared: string,
+  history: ReadonlyArray<TaskBoardHistoryEntry>,
+): "task" | "agent_run" {
+  const value = declared.trim().toLowerCase().replace(/-/g, "_");
+  if (value === "agent_run") return "agent_run";
+  if (value === "task") return "task";
+  return history.some((entry) => entry.note?.includes(AGENT_RUN_NOTE)) ? "agent_run" : "task";
 }
 
 const keyFor = (path: string) => (NodePath.sep === "\\" ? path.toLowerCase() : path);
@@ -654,6 +686,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     title: field(fields, "name") || field(fields, "title"),
     project: normalizeProjectSlug(field(fields, "project")),
     claimedBy: field(fields, "claimed_by"),
+    assignee: field(fields, "assignee"),
     threadId: field(fields, "thread_id"),
     shared: field(fields, "shared").toLowerCase() === "true",
     sharedBy: field(fields, "shared_by"),
@@ -674,6 +707,13 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     claim.push("released");
   }
   changed ||= claimed || released;
+
+  const assignee = patch.assignee === undefined ? undefined : patch.assignee?.trim() || null;
+  if (assignee !== undefined && (assignee ?? "") !== was.assignee) {
+    setKey("assignee", assignee === null ? null : quote(assignee));
+    other.push(assignee === null ? "made available to anyone" : `assigned to ${assignee}`);
+    changed = true;
+  }
 
   // Releasing a card also drops the thread that held it, unless the caller says otherwise.
   const threadId =
@@ -802,6 +842,8 @@ export function createCardFile(
     description?: string | undefined;
     priority?: string | undefined;
     projectSlug?: string | null | undefined;
+    assignee?: string | null | undefined;
+    kind?: "task" | "agent_run" | undefined;
     actor: string;
   },
   now: number,
@@ -831,6 +873,8 @@ export function createCardFile(
         ...(projectSlug ? [`project: ${quote(projectSlug)}`] : []),
         ...(input.due ? [`due: ${quote(input.due)}`] : []),
         ...(input.milestone ? [`milestone: ${quote(input.milestone)}`] : []),
+        ...(input.assignee?.trim() ? [`assignee: ${quote(oneLine(input.assignee))}`] : []),
+        ...(input.kind === "agent_run" ? ["kind: agent_run"] : []),
         "---",
         `# ${title}`,
         "",

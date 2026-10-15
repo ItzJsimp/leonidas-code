@@ -131,6 +131,7 @@ export type PracticePatch = {
   readonly due?: string | null;
   readonly milestone?: string | null;
   readonly claimedBy?: string | null;
+  readonly assignee?: string | null;
   readonly effort?: string | null;
   readonly labels?: ReadonlyArray<string>;
   readonly note?: string;
@@ -153,6 +154,7 @@ export function applyPracticePatch(
     ...(fields.claimedBy !== undefined
       ? { claimedBy: fields.claimedBy, claimedAt: fields.claimedBy ? now : null }
       : {}),
+    ...(fields.assignee !== undefined ? { assignee: fields.assignee } : {}),
     ...(fields.effort !== undefined ? { effort: fields.effort } : {}),
     ...(fields.labels !== undefined ? { labels: fields.labels } : {}),
     updatedAt: now,

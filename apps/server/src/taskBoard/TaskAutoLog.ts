@@ -123,6 +123,7 @@ export const makeAutoLog = (deps: {
       const task = yield* taskBoard.cardCreate(
         {
           idempotencyKey: `task-auto-log:${message.threadId}`,
+          kind: "agent_run",
           title: titleFromRequest(message.text),
           description: `${message.text.trim()}\n\nThread: ${message.threadId}`,
           projectSlug: project ? aiosSlugFor(project) : null,

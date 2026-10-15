@@ -5,6 +5,7 @@ import {
   TaskBoardProjectDatabase,
   TaskBoardReadError,
   TaskBoardRoadmap,
+  TaskBoardTeamMember,
   type TaskBoardAgent,
   type TaskBoardClaimInput,
   type TaskBoardCompleteInput,
@@ -60,11 +61,13 @@ import {
   type AiosCardCache,
   type AiosCardPatch,
 } from "./aiosCards.ts";
+import { planSharedSync, publicCopy } from "./sharedSync.ts";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 const LIMIT = 200;
+const SYNC_INTERVAL_MS = 60_000;
 const DATABASE_VERSION = 1;
 // Clients poll the board every 10 s. A successful read is shared for 5 s, so
 // concurrent pollers of one project cost one gh round. Failures back off
@@ -231,6 +234,7 @@ function buildWorkspace(input: {
   readonly discovered: ReadonlyArray<{ readonly slug: string; readonly name: string }>;
   readonly tasks: ReadonlyArray<TaskBoardTask>;
   readonly roadmaps?: ReadonlyArray<TaskBoardRoadmapType>;
+  readonly team?: ReadonlyArray<TaskBoardTeamMember>;
 }): TaskBoardWorkspaceSnapshot {
   const sections = new Map<string, { slug: string; name: string; project: Project | null }>();
   for (const found of input.discovered) {
@@ -244,7 +248,7 @@ function buildWorkspace(input: {
     if (!sections.has(slug)) sections.set(slug, { slug, name: titleCase(slug), project: null });
     const count = counts.get(slug) ?? { total: 0, open: 0 };
     count.total++;
-    if (isOpen(task)) count.open++;
+    if (isOpen(task) && task.kind !== "agent_run") count.open++;
     counts.set(slug, count);
   }
   for (const project of input.projects) {
@@ -285,6 +289,7 @@ function buildWorkspace(input: {
     projects,
     tasks,
     ...(input.roadmaps === undefined ? {} : { roadmaps: input.roadmaps }),
+    ...(input.team === undefined ? {} : { team: input.team }),
   };
 }
 
@@ -303,6 +308,34 @@ function readProjectRoadmaps(projects: ReadonlyArray<Project>): Array<TaskBoardR
       return [];
     }
   });
+}
+
+const decodeTeam = Schema.decodeUnknownSync(
+  Schema.fromJsonString(Schema.Struct({ members: Schema.Array(TaskBoardTeamMember) })),
+);
+
+/**
+ * The collaborators every project folder names in `leonidas.team.json`, merged by name. It is a
+ * committed file, so adding a person to a project is one pull request.
+ */
+export function readProjectTeams(projects: ReadonlyArray<Project>): Array<TaskBoardTeamMember> {
+  const byName = new Map<string, Set<string>>();
+  for (const root of new Set(projects.map((project) => project.workspaceRoot))) {
+    let members: ReadonlyArray<TaskBoardTeamMember>;
+    try {
+      members = decodeTeam(
+        NodeFS.readFileSync(NodePath.join(root, "leonidas.team.json"), "utf8"),
+      ).members;
+    } catch {
+      continue;
+    }
+    for (const member of members) {
+      const aliases = byName.get(member.name) ?? new Set<string>();
+      for (const alias of member.aliases) aliases.add(alias);
+      byName.set(member.name, aliases);
+    }
+  }
+  return [...byName].map(([name, aliases]) => ({ name, aliases: [...aliases] }));
 }
 
 /** A claim held by someone else may only be taken over or released by that person. */
@@ -345,6 +378,13 @@ function cardPatchFor(input: TaskBoardCardUpdateInput, card: TaskBoardTask): Aio
     milestone: input.milestone,
     projectSlug: input.projectSlug,
     claimedBy: input.claimedBy,
+    // Claiming a task that belongs to nobody makes the claimer its owner.
+    assignee:
+      input.assignee !== undefined
+        ? input.assignee
+        : typeof input.claimedBy === "string" && !card.assignee
+          ? input.claimedBy
+          : undefined,
     effort: input.effort,
     labels: input.labels,
     note: input.note,
@@ -359,16 +399,6 @@ const staleRevision = () =>
     message: "This task changed since you opened it. Review the latest version and try again.",
   });
 
-/** Both activity logs, oldest first, so a mirror never drops a collaborator's entries. */
-function mergeHistory(
-  shared: ReadonlyArray<TaskBoardHistoryEntry>,
-  local: ReadonlyArray<TaskBoardHistoryEntry>,
-): ReadonlyArray<TaskBoardHistoryEntry> {
-  const byId = new Map(shared.map((entry) => [entry.id, entry] as const));
-  for (const entry of local) byId.set(entry.id, entry);
-  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp);
-}
-
 /**
  * The shared copy after a local edit. When a collaborator changed the copy after the card's
  * previous local version, their fields stay and only the fields this edit set are taken from the
@@ -382,7 +412,7 @@ function mirrorCard(
 ): TaskBoardTask {
   const base = copy.updatedAt > localBefore ? copy : card;
   const statusTouched = input.status !== undefined || input.claimedBy !== undefined;
-  return {
+  const merged: TaskBoardTask = {
     ...base,
     ...(input.title !== undefined ? { title: card.title } : {}),
     ...(input.due !== undefined ? { due: card.due } : {}),
@@ -400,13 +430,44 @@ function mirrorCard(
     ...(input.claimedBy !== undefined
       ? { claimedBy: card.claimedBy, claimedAt: card.claimedAt, claimedAgent: card.claimedAgent }
       : {}),
+    ...(input.assignee !== undefined || input.claimedBy !== undefined
+      ? { assignee: card.assignee ?? null }
+      : {}),
     project: copy.project,
     shared: true,
     sharedBy: copy.sharedBy ?? card.sharedBy ?? null,
     sharedSync: undefined,
     sourceRoot: undefined,
     updatedAt: Math.max(copy.updatedAt, card.updatedAt),
-    history: mergeHistory(copy.history, card.history),
+    history: copy.history,
+  };
+  // The board may be public: only planning fields leave the machine (see `publicCopy`). This edit
+  // still shows in the copy's activity, as who and when, without the local note or agent.
+  // Each edit appends exactly one activity line to the card, so the newest entry is this edit.
+  const latest = card.history.at(-1);
+  const seen = (entry: TaskBoardHistoryEntry) =>
+    copy.history.some(
+      (other) =>
+        other.actor === entry.actor &&
+        other.action === entry.action &&
+        other.timestamp === entry.timestamp,
+    );
+  const edit =
+    latest && !seen(latest)
+      ? [
+          {
+            id: latest.id,
+            taskId: latest.taskId,
+            action: latest.action,
+            actor: latest.actor,
+            timestamp: latest.timestamp,
+            note: null,
+          },
+        ]
+      : [];
+  return {
+    ...publicCopy(merged, copy, { projectName: copy.project, actor: copy.sharedBy ?? "" }),
+    history: [...copy.history, ...edit],
   };
 }
 
@@ -808,6 +869,42 @@ const make = Effect.gen(function* () {
   const list = (projectInput: Project) =>
     projectContext(projectInput).pipe(
       Effect.flatMap((project) => Cache.get(boardCache, new BoardProjectKey(project))),
+      Effect.tap((snapshot) => scheduleSync(projectInput, snapshot.tasks)),
+    );
+
+  // Each read of a shared board checks, at most once a minute per project, that this machine's
+  // cards are on it. The write runs in the background, so a read never waits for GitHub.
+  const lastSync = new Map<string, number>();
+  const scheduleSync = (projectInput: Project, board: ReadonlyArray<TaskBoardTask>) =>
+    Effect.gen(function* () {
+      const now = yield* Clock.currentTimeMillis;
+      if (now - (lastSync.get(projectInput.id) ?? 0) < SYNC_INTERVAL_MS) return;
+      lastSync.set(projectInput.id, now);
+      const slug = aiosSlugFor(projectInput);
+      const local = (yield* readLocalCards([projectInput], now)).filter(
+        (card) => card.projectSlug?.toLowerCase() === slug,
+      );
+      const actor = resolveMember();
+      const boardProject = yield* projectContext(projectInput);
+      if (planSharedSync({ local, board, projectName: boardProject.name, actor }) === null) return;
+      const outcome = yield* persist(boardProject, (tasks) => {
+        const plan = planSharedSync({ local, board: tasks, projectName: boardProject.name, actor });
+        return plan === null ? { tasks, result: null } : { tasks: plan.tasks, result: plan };
+      });
+      if (outcome) {
+        yield* Effect.logInfo("Synced cards to the shared task board", {
+          project: slug,
+          published: outcome.published,
+          refreshed: outcome.refreshed,
+          withdrawn: outcome.withdrawn,
+        });
+      }
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.logWarning("Could not sync cards to the shared task board", { cause }),
+      ),
+      Effect.forkDetach,
+      Effect.asVoid,
     );
 
   const persist = <A>(
@@ -1120,6 +1217,7 @@ const make = Effect.gen(function* () {
         discovered: root ? discoverProjects(root) : [],
         tasks,
         roadmaps: readProjectRoadmaps(projects),
+        team: readProjectTeams(projects),
       });
     });
 
@@ -1223,6 +1321,12 @@ const make = Effect.gen(function* () {
           claimedBy: claimed ? input.claimedBy! : released ? null : existing.claimedBy,
           claimedAt: claimed ? now : released ? null : existing.claimedAt,
           claimedAgent: claimed ? (input.agent ?? null) : released ? null : existing.claimedAgent,
+          assignee:
+            input.assignee !== undefined
+              ? input.assignee
+              : claimed && !existing.assignee
+                ? input.claimedBy!
+                : (existing.assignee ?? null),
           ...(completing
             ? { completedBy: input.actor, completedAt: now, completionSummary: input.note ?? null }
             : reopened
@@ -1471,20 +1575,16 @@ const make = Effect.gen(function* () {
         yield* persist(project, (tasks) => {
           const ids = new Set(cards.map((card) => card.id));
           const rest = tasks.filter((task) => !ids.has(task.id));
+          // Re-sharing retries a failed mirror; a reviewed copy keeps its text and activity, and
+          // only planning fields leave the machine (see `publicCopy`).
           const published = input.shared
-            ? cards.map((card): TaskBoardTask => ({
-                ...card,
-                sourceRoot: undefined,
-                sharedSync: undefined,
-                project: project.name,
-                shared: true,
-                sharedBy: input.actor,
-                // Re-sharing retries a failed mirror; a collaborator's activity on the copy stays.
-                history: mergeHistory(
-                  tasks.find((task) => task.id === card.id)?.history ?? [],
-                  card.history,
+            ? cards.map((card) =>
+                publicCopy(
+                  card,
+                  tasks.find((task) => task.id === card.id),
+                  { projectName: project.name, actor: input.actor },
                 ),
-              }))
+              )
             : [];
           return { tasks: [...rest, ...published], result: undefined };
         });

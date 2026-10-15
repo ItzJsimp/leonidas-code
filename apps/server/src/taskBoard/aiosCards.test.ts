@@ -662,3 +662,35 @@ describe("real AIOS", () => {
     expect(performance.now() - warmStarted).toBeLessThan(150);
   });
 });
+
+describe("task owners and agent runs", () => {
+  const read = (raw: string) => cardToTask({ fileName: "own.md", raw, mtimeMs: NOW, now: NOW });
+
+  it("takes the owner from assignee, then from a person's build lane", () => {
+    expect(read(card('id: task-a\nname: "A"\nassignee: "Mob"'))?.assignee).toBe("Mob");
+    expect(read(card('id: task-b\nname: "B"\nbuild_lane: Mob after Jake go'))?.assignee).toBe(
+      "Mob",
+    );
+    expect(read(card('id: task-c\nname: "C"\nbuild_lane: grill'))?.assignee).toBeNull();
+  });
+
+  it("sets and clears the owner with an activity line", () => {
+    const raw = card('id: task-d\nname: "D"');
+    const owned = applyCardPatch(raw, { actor: "Jake", assignee: "Jake" }, NOW);
+    expect(read(owned)?.assignee).toBe("Jake");
+    expect(owned).toContain("assigned to Jake");
+    const freed = applyCardPatch(owned, { actor: "Jake", assignee: null }, NOW);
+    expect(read(freed)?.assignee).toBeNull();
+    expect(freed).toContain("made available to anyone");
+  });
+
+  it("marks chat requests as agent runs, declared or from the auto-log note", () => {
+    expect(read(card('id: task-e\nname: "E"\nkind: agent_run'))?.kind).toBe("agent_run");
+    const legacy = card(
+      'id: task-f\nname: "F"',
+      "# F\n\n## Activity\n\n- 2026-10-14 02:32 Leonidas: status → In progress — Agent started on this request. [message m1]\n",
+    );
+    expect(read(legacy)?.kind).toBe("agent_run");
+    expect(read(card('id: task-g\nname: "G"'))?.kind).toBeUndefined();
+  });
+});

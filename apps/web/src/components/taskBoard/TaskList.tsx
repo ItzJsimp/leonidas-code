@@ -6,6 +6,7 @@ import {
   EllipsisIcon,
   ListIcon,
 } from "lucide-react";
+import type { TaskBoardTeamMember } from "@t3tools/contracts";
 import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -20,7 +21,7 @@ import {
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { cn } from "~/lib/utils";
 import { ChecklistBar, DueChip, PriorityBadge, SharedBadge, StatusBadge } from "./TaskBadges";
-import { ClaimedBy, LaneChip, ProjectChip, useLatest } from "./TaskRowParts";
+import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import {
   isOpen,
   relativeTime,
@@ -54,6 +55,7 @@ type RowProps = {
   readonly showStatusBadge: boolean;
   readonly canSend: boolean;
   readonly mine: boolean;
+  readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly onSelect: (task: TaskView) => void;
   readonly onAction: (task: TaskView, action: RowAction) => void;
 };
@@ -68,6 +70,7 @@ const TaskRow = memo(function TaskRow({
   showStatusBadge,
   canSend,
   mine,
+  team,
   onSelect,
   onAction,
 }: RowProps) {
@@ -114,17 +117,18 @@ const TaskRow = memo(function TaskRow({
         </span>
         <span className="hidden shrink-0 items-center gap-1.5 @min-[36rem]:flex">
           {showStatusBadge ? <StatusBadge status={task.status} /> : null}
-          <LaneChip labels={task.labels} />
           <ProjectChip name={projectName} />
-          <PriorityBadge priority={task.priority} />
+          {task.priority === "critical" || task.priority === "high" ? (
+            <PriorityBadge priority={task.priority} />
+          ) : null}
           {done ? null : <DueChip due={task.due} now={now} />}
           <SharedBadge task={task} />
         </span>
         <span className="hidden shrink-0 items-center @min-[52rem]:flex">
           <ChecklistBar checklist={task.checklist} />
         </span>
-        <span className="hidden w-32 shrink-0 @min-[52rem]:flex">
-          <ClaimedBy agent={task.claimedAgent} name={task.claimedBy} />
+        <span className="hidden w-28 shrink-0 @min-[30rem]:flex">
+          <OwnerCell task={task} team={team} />
         </span>
         <span className="hidden w-16 shrink-0 text-right text-muted-foreground text-xs tabular-nums @min-[36rem]:block">
           {relativeTime(task.updatedAt, now)}
@@ -203,7 +207,7 @@ function GroupHeader({
 export function TaskListView(props: {
   tasks: ReadonlyArray<TaskView>;
   sections: ReadonlyArray<TaskSectionGroup>;
-  groupBy: "project" | "status" | "none";
+  groupBy: "owner" | "project" | "status" | "none";
   context: TaskContext;
   actions: TaskActions;
   selectedId: string | null;
@@ -216,8 +220,8 @@ export function TaskListView(props: {
   const [overrides, setOverrides] = useState<Readonly<Record<string, boolean>>>({});
 
   const groups = useMemo(
-    () => buildListGroups({ tasks, sections, groupBy }),
-    [tasks, sections, groupBy],
+    () => buildListGroups({ tasks, sections, groupBy, team: context.team }),
+    [tasks, sections, groupBy, context.team],
   );
   const projectNames = useMemo(() => projectNameIndex(context.projects), [context.projects]);
   // Inside a single project the chip on every row only repeats the page title.
@@ -304,6 +308,7 @@ export function TaskListView(props: {
                     busy={actions.isBusy(task.id)}
                     canSend={actions.canSendToAgent(task)}
                     mine={sameMember(task.claimedBy, context.member)}
+                    team={context.team}
                     now={context.now}
                     onAction={runAction}
                     onSelect={select}

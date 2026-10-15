@@ -317,6 +317,8 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
           "Could not claim the task",
         ),
       release: (task) => void patchAction(task, { claimedBy: null }, "Could not release the task"),
+      setAssignee: (task, assignee) =>
+        void patchAction(task, { assignee }, "Could not change the owner"),
       linkProject: (task, slug) =>
         void patchAction(task, { projectSlug: slug }, "Could not change the project"),
       setShared: (task, shared) => void setShared(task, shared),
