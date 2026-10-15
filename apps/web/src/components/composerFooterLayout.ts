@@ -58,6 +58,30 @@ export function shouldUseRestingComposerLayout(input: {
 }
 
 /**
+ * A long draft can fill half the window and hide the reply the user wants to
+ * read before sending. The resting layout never clamps a multiline draft, so
+ * the same scroll gesture instead shrinks the editor to a short preview. It
+ * grows back when the timeline reaches the end or the composer gets focus.
+ */
+export function shouldCompactLongComposerDraft(input: {
+  isExistingThread: boolean;
+  isMobileViewport: boolean;
+  isScrollCollapsed: boolean;
+  hasExpandedChrome: boolean;
+  hasMultilinePrompt: boolean;
+  timelineOverflows: boolean;
+}): boolean {
+  return (
+    input.isExistingThread &&
+    !input.isMobileViewport &&
+    input.timelineOverflows &&
+    input.isScrollCollapsed &&
+    input.hasMultilinePrompt &&
+    !input.hasExpandedChrome
+  );
+}
+
+/**
  * How much taller the empty expanded composer is than its resting row on
  * desktop widths, from the layout classes in ChatComposer: the body loses
  * 8px of top padding, the prompt clamps from min-h-17.5 (70px) to 32px, and
