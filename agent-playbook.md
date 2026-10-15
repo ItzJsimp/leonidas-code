@@ -71,6 +71,8 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 ## 7. Session notes
 
+- **2026-10-15:** Task board reader (`readAiosTasks`, `aiosCards.ts`) also reads `projects/<slug>/<child>/tasks` when `<child>` has its own `.git` (Goo Busters GB cards). GB words `doing`, `later`, `cut` and priority `P0` to `P3` map in `statusFromCard` and `priorityFromCard`. GB cards are read-only on the board: `findCardFile` does not search the game repo, so an edit fails with `task_not_found`. Open: write-back in GB words.
+
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
 - 2026-10-15: boot smoke gate `scripts/smoke.mjs` added to `team-release.yml`; proved on the original 0.62.0 `server.asar` (fails, "request hung") and the current build (passes, 7.6 s). `project add` falls back to offline silently; the smoke checks `server-runtime.json` still exists to prove the live path.

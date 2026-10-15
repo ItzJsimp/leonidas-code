@@ -20,6 +20,46 @@ import {
 
 const NOW = new Date(2026, 9, 11, 14, 30).getTime();
 
+describe("nested game repo cards", () => {
+  const gb = (id: string, status: string, priority = "P1") =>
+    `---\nid: ${id}\ntitle: "${id} card"\nowner: mob\nsystem: Pipeline\nstatus: ${status}\npriority: ${priority}\ndepends: []\ndue: 2026-10-20\n---\n\n## Goal\nShip it.\n`;
+  it("maps game words to board statuses", () => {
+    expect(statusFromCard("doing")).toBe("in_progress");
+    expect(statusFromCard("later")).toBe("parked");
+    expect(statusFromCard("cut")).toBe("retired");
+    expect(statusFromCard("todo")).toBe("todo");
+  });
+  it("reads cards from a child repo that has its own .git, and nothing deeper", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-game-"));
+    const put = (rel: string, text: string) => {
+      const file = NodePath.join(root, rel);
+      NodeFS.mkdirSync(NodePath.dirname(file), { recursive: true });
+      NodeFS.writeFileSync(file, text);
+    };
+    try {
+      put("projects/rent-due-games/clean-the-goo/.git/HEAD", "ref: refs/heads/main\n");
+      put("projects/rent-due-games/clean-the-goo/tasks/GB-001-a.md", gb("GB-001", "doing", "P0"));
+      put("projects/rent-due-games/clean-the-goo/tasks/GB-002-b.md", gb("GB-002", "later"));
+      put("projects/rent-due-games/clean-the-goo/tasks/GB-003-c.md", gb("GB-003", "cut", "P3"));
+      put("projects/rent-due-games/loose/tasks/GB-009-x.md", gb("GB-009", "todo"));
+      put("projects/rent-due-games/clean-the-goo/deeper/.git/HEAD", "x\n");
+      put("projects/rent-due-games/clean-the-goo/deeper/tasks/GB-010-y.md", gb("GB-010", "todo"));
+      const tasks = readAiosTasks(root, { now: NOW });
+      expect(tasks.map((task) => task.id).sort()).toEqual(["GB-001", "GB-002", "GB-003"]);
+      const byId = new Map(tasks.map((task) => [task.id, task]));
+      expect(byId.get("GB-001")).toMatchObject({
+        projectSlug: "rent-due-games",
+        status: "in_progress",
+        priority: "critical",
+      });
+      expect(byId.get("GB-002")?.status).toBe("parked");
+      expect(byId.get("GB-003")).toMatchObject({ status: "retired", priority: "low" });
+    } finally {
+      NodeFS.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("editable due dates", () => {
   it.each(["\n", "\r\n"])("sets and clears dates without damaging the card (%j)", (eol) => {
     const raw = card('id: task-date\nname: "Café"\ncustom: keep', "# Café\n\nDetails.\n", eol);

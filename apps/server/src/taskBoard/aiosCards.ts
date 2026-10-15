@@ -239,6 +239,7 @@ export function statusFromCard(value: string | undefined): TaskBoardTaskStatus {
       .replace(/[\s_-]+/g, " ")
   ) {
     case "in progress":
+    case "doing":
     case "active":
       return "in_progress";
     case "awaiting review":
@@ -252,8 +253,10 @@ export function statusFromCard(value: string | undefined): TaskBoardTaskStatus {
       return "done";
     case "dormant":
     case "parked":
+    case "later":
       return "parked";
     case "retired":
+    case "cut":
       return "retired";
     default:
       return "todo";
@@ -277,10 +280,13 @@ export function statusToCard(status: TaskBoardTaskStatus): string {
 function priorityFromCard(value: string | undefined): TaskBoardTaskPriority {
   switch (value?.trim().toLowerCase()) {
     case "critical":
+    case "p0":
       return "critical";
     case "high":
+    case "p1":
       return "high";
     case "low":
+    case "p3":
       return "low";
     default:
       return "medium";
@@ -526,6 +532,21 @@ export function cardKind(
 
 const keyFor = (path: string) => (NodePath.sep === "\\" ? path.toLowerCase() : path);
 
+function nestedRepoDirs(projectDir: string): string[] {
+  try {
+    return NodeFS.readdirSync(projectDir, { withFileTypes: true })
+      .filter(
+        (child) =>
+          child.isDirectory() &&
+          !child.name.startsWith(".") &&
+          NodeFS.existsSync(NodePath.join(projectDir, child.name, ".git")),
+      )
+      .map((child) => NodePath.join(projectDir, child.name));
+  } catch {
+    return [];
+  }
+}
+
 /** Reads every task card under `<root>/tasks` and `<root>/projects/<slug>/tasks`. Never throws per card. */
 export function readAiosTasks(
   root: string,
@@ -602,7 +623,13 @@ export function readAiosTasks(
       withFileTypes: true,
     })) {
       if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
-      visit(NodePath.join(root, "projects", entry.name, "tasks"), entry.name, false);
+      const projectDir = NodePath.join(root, "projects", entry.name);
+      visit(NodePath.join(projectDir, "tasks"), entry.name, false);
+      // A child folder with its own .git is a separate repo (a game) that keeps its own cards.
+      // Read-only here: write-back looks only in the AIOS task folders.
+      for (const child of nestedRepoDirs(projectDir)) {
+        visit(NodePath.join(child, "tasks"), entry.name, false);
+      }
     }
   } catch {
     // No projects folder: only the global cards exist.
