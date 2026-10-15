@@ -9,3 +9,15 @@ One entry per benchmark run, newest last. Data: [benchmarks.jsonl](./benchmarks.
 - Noise: an earlier run the same hour had typecheck_server 30715 ms and build_web 82334 ms. Other agents load this machine; expect up to 2x swings.
 - Biggest targets: build_web (about 50% of total time) and the 2925 KB chunk.
 - Next idea: find what is in the largest JS chunk and lazy-load it.
+
+## 2026-10-15: scheduled run (commit 22f0224229)
+
+- Merge: origin/main merge into perf/harness stopped. The vp pre-commit hook ran `vp fmt` on 125 staged files and failed with "The command line is too long". The hook was not bypassed. The merge was discarded with `git reset --hard HEAD`. Nothing was lost: the staged content came from origin/main.
+- Result: this run measured the perf/harness tip (22f0224229), not the latest origin/main.
+- Steps (before in the 14:45 baseline -> now): typecheck_web 2648 -> 1017 ms, typecheck_server 58786 -> 18947 ms (both runs: 19 known errors, same failure), test_web 10387 -> 9313 ms (47 pass), test_desktop 4562 -> 3088 ms (21 pass), build_web 89393 -> 49422 ms, boot_web 13956 -> 13600 ms. Total 180110 -> 95557 ms.
+- Bundle: unchanged (dist 123058 KB, JS 28884 KB, largest JS chunk 2925 KB).
+- Regressions: none. Every step is faster. The drop is load noise, not a code change.
+- Largest chunk: heic-to (2925 KB) is already a dynamic import (imageCompression.ts). It does not load at boot. Not a target.
+- Change tried: none. No clear static import of a heavy library in the 1307 KB _chat chunk was found in one pass. The commit blocker also stops larger changes for now.
+- Kept or reverted: nothing to keep or revert.
+- Next idea: fix the pre-commit hook for Windows (batch `vp fmt` files, or skip it for bench files). Then merge origin/main. Then map the modules in the _chat chunk (for example with a bundle visualizer) and lazy-load the largest one that is not used at boot.
