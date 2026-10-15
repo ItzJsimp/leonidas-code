@@ -89,6 +89,7 @@ import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
+import { ConnectAccountDialog } from "./ConnectAccountDialog";
 import { ExpandableText } from "./ExpandableText";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
 import { sharedLoginPeerNames, sharedLoginWarning } from "../chat/signInAgain";
@@ -581,6 +582,7 @@ export function EnvironmentProviderSettings({
   });
   const [isRefreshingProviders, setIsRefreshingProviders] = useState(false);
   const [isAddInstanceDialogOpen, setIsAddInstanceDialogOpen] = useState(false);
+  const [isAdvancedAddOpen, setIsAdvancedAddOpen] = useState(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | null>(
     targetInstanceId ?? null,
   );
@@ -1091,13 +1093,13 @@ export function EnvironmentProviderSettings({
                     size="icon-xs"
                     variant="ghost-muted"
                     onClick={() => setIsAddInstanceDialogOpen(true)}
-                    aria-label="Add AI account"
+                    aria-label="Connect an account"
                   >
                     <PlusIcon />
                   </Button>
                 }
               />
-              <TooltipPopup side="top">Add AI account</TooltipPopup>
+              <TooltipPopup side="top">Connect an account</TooltipPopup>
             </Tooltip>
           ) : null
         }
@@ -1164,7 +1166,7 @@ export function EnvironmentProviderSettings({
                     onClick={() => setIsAddInstanceDialogOpen(true)}
                   >
                     <PlusIcon className="size-4 shrink-0" />
-                    Add AI account
+                    Connect an account
                   </button>
                 ) : null}
               </div>
@@ -1272,11 +1274,23 @@ export function EnvironmentProviderSettings({
       </SettingsSection>
 
       {isAddInstanceDialogOpen && !readOnly ? (
+        <ConnectAccountDialog
+          environmentId={environmentId}
+          environmentLabel={environmentLabel}
+          onOpenChange={setIsAddInstanceDialogOpen}
+          onCreated={setSelectedInstanceId}
+          onAdvanced={() => {
+            setIsAddInstanceDialogOpen(false);
+            setIsAdvancedAddOpen(true);
+          }}
+        />
+      ) : null}
+      {isAdvancedAddOpen && !readOnly ? (
         <AddProviderInstanceDialog
           open
           environmentId={environmentId}
           environmentLabel={environmentLabel}
-          onOpenChange={setIsAddInstanceDialogOpen}
+          onOpenChange={setIsAdvancedAddOpen}
           onCreated={setSelectedInstanceId}
         />
       ) : null}

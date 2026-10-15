@@ -1186,14 +1186,20 @@ export function ProviderInstanceCard({
           </FoldedSettingsSection>
         </div>
       ) : !driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
-        <SettingsSection
-          title="Program"
+        <div
           inert={readOnly}
           aria-disabled={readOnly || undefined}
           className={readOnly ? "opacity-50 select-none" : undefined}
         >
-          {runtimeFields}
-        </SettingsSection>
+          <FoldedSettingsSection
+            key={instanceId}
+            id={`provider-instance-${instanceId}-runtime`}
+            title="Advanced"
+            headerPlacement="outside"
+          >
+            {runtimeFields}
+          </FoldedSettingsSection>
+        </div>
       ) : null}
 
       <SettingsSection
