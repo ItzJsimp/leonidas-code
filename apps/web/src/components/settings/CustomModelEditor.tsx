@@ -207,7 +207,7 @@ export function CustomModelEditor({
             value={idSelectValue(descriptor)}
             onValueChange={(value) => applyPresetId(descriptor, value)}
           >
-            <SelectTrigger size="compact" className="w-40" aria-label="Option id">
+            <SelectTrigger size="compact" className="w-40" aria-label="Option ID">
               <SelectValue>
                 {idSelectValue(descriptor) === CUSTOM_ID_VALUE ? "Custom…" : descriptor.id}
               </SelectValue>
@@ -234,7 +234,7 @@ export function CustomModelEditor({
             font="mono"
             className="w-36"
             spellCheck={false}
-            aria-label="Option id"
+            aria-label="Option ID"
           />
         ) : null}
         <Input
@@ -340,7 +340,7 @@ export function CustomModelEditor({
         </div>
         {draft.descriptors.length === 0 ? (
           <p className="text-xs text-muted-foreground/70">
-            No custom options. The composer uses the provider's default options.
+            No custom options. The message box uses the default options of the AI service.
           </p>
         ) : null}
         {draft.descriptors.map(renderDescriptor)}

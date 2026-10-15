@@ -38,21 +38,27 @@ function linkedAtLabel(value: string): string {
 
 function endpointLabel(environment: RelayClientEnvironmentRecord): string {
   return environment.endpoint.providerKind === "cloudflare_tunnel"
-    ? "Managed tunnel"
+    ? "Remote access connection"
     : "Activity publishing only";
 }
 
 function confirmDeregister(environment: RelayClientEnvironmentRecord, onConfirm: () => void) {
-  const title = "Deregister server?";
-  const message = `“${environment.label}” will be removed from this account. T3 Connect access will be revoked, any managed tunnel will be removed, and a host space will become available. Local connections on your devices are not changed.`;
+  const title = "Remove computer?";
+  const message = `“${environment.label}” will be removed from this account. Remote access will stop. Its remote access connection will be removed. Local connections on your devices will stay.`;
   if (process.env.EXPO_OS === "ios") {
     Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
-      { text: "Deregister", style: "destructive", onPress: onConfirm },
+      { text: "Remove", style: "destructive", onPress: onConfirm },
     ]);
     return;
   }
-  showConfirmDialog({ title, message, confirmText: "Deregister", destructive: true, onConfirm });
+  showConfirmDialog({
+    title,
+    message,
+    confirmText: "Remove computer",
+    destructive: true,
+    onConfirm,
+  });
 }
 
 /**
@@ -101,7 +107,8 @@ export function T3ConnectProfilePage() {
     if (isAtomCommandInterrupted(result)) return;
 
     const cause = squashAtomCommandFailure(result);
-    const message = cause instanceof Error ? cause.message : "Could not deregister the server.";
+    const message =
+      cause instanceof Error ? cause.message : "Could not remove the computer. Try again.";
     const traceId = findErrorTraceId(cause);
     console.error("[t3-connect] Could not deregister environment", {
       environmentId: environment.environmentId,
@@ -110,7 +117,7 @@ export function T3ConnectProfilePage() {
       cause,
     });
     Alert.alert(
-      "Could not deregister server",
+      "Could not remove computer",
       traceId ? `${message}\n\nTrace ID: ${traceId}` : message,
       traceId
         ? [
@@ -148,12 +155,12 @@ export function T3ConnectProfilePage() {
         />
       }
     >
-      <ClerkSectionHeader>Registered servers</ClerkSectionHeader>
+      <ClerkSectionHeader>Registered computers</ClerkSectionHeader>
 
       {environmentsState.error ? (
         <>
           <ClerkRow
-            title="Could not load T3 Connect environments"
+            title="Could not load remote-access computers"
             subtitle={environmentsState.error}
           />
           {errorTraceId ? (
@@ -168,7 +175,7 @@ export function T3ConnectProfilePage() {
       ) : isInitialLoad ? (
         <View className="flex-row items-center gap-3 px-6 py-4">
           <ActivityIndicator colorClassName={"accent-clerk-foreground-muted"} size="small" />
-          <Text className="text-base text-clerk-foreground-muted">Loading environments</Text>
+          <Text className="text-base text-clerk-foreground-muted">Loading computers</Text>
         </View>
       ) : environments.length > 0 ? (
         environments.map((environment) => (
@@ -209,8 +216,8 @@ export function T3ConnectProfilePage() {
         ))
       ) : (
         <ClerkRow
-          title="No servers registered"
-          subtitle="Link a server from its local Settings to reach it through T3 Connect."
+          title="No computers added"
+          subtitle="Add a computer in its local Settings to use remote access."
         />
       )}
 
@@ -222,7 +229,7 @@ export function T3ConnectProfilePage() {
 }
 
 const ENVIRONMENT_MENU_ACTIONS = [
-  { id: "deregister", title: "Deregister", image: "trash", attributes: { destructive: true } },
+  { id: "deregister", title: "Remove computer", image: "trash", attributes: { destructive: true } },
 ] satisfies MenuAction[];
 
 // Layout primitives that mirror clerk-ios ClerkKitUI's profile rows so a custom

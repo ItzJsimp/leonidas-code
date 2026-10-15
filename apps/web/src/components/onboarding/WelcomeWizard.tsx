@@ -121,7 +121,7 @@ const STEP_ORDER: readonly WizardStep[] = [
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const ONBOARDING_STAGES = ["Welcome", "Connect", "Agents", "Skills", "Projects", "AIOS"] as const;
+const ONBOARDING_STAGES = ["Welcome", "Connect", "AI", "Skills", "Projects", "AIOS"] as const;
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 export function WelcomeWizard({
@@ -204,14 +204,14 @@ export function WelcomeWizard({
           if (importWarning) {
             toastManager.add({
               type: "warning",
-              title: "Some history was not imported",
+              title: "Some chat history was not imported",
               description: importWarning,
               timeout: 0,
             });
           } else if (importedThreadCount > 0) {
             toastManager.add({
               type: "success",
-              title: `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}`,
+              title: `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "chat" : "chats"}`,
             });
           }
           return true;
@@ -220,7 +220,7 @@ export function WelcomeWizard({
           const errorToast = {
             type: "error",
             title: "Could not finish setup",
-            description: "Your settings could not be saved. Try again.",
+            description: "Leonidas Code could not save your settings. Try again.",
           } as const;
           if (completionErrorToastIdRef.current === null) {
             completionErrorToastIdRef.current = toastManager.add(errorToast);
@@ -418,7 +418,7 @@ function ConnectionStep({
         Connect your computers
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Choose one or more computers. We’ll set up agents and projects on each.
+        Choose one or more computers. We will set up AI accounts and projects on each one.
       </p>
       {directEnvironments.length > 0 ? (
         <fieldset className="mt-5 space-y-2">
@@ -606,7 +606,7 @@ function ConnectAccountOption({
             </p>
             <CommandBlock command="npx t3 connect" className="mt-3" />
             <p className="mt-3 text-xs text-muted-foreground">
-              Keep Leonidas Code running. Select the computers you want to set up above.
+              Keep Leonidas Code open. Then select the computers you want to set up above.
             </p>
           </div>
         </CollapsiblePanel>
@@ -654,7 +654,9 @@ function PairingForm({
     }
     if (isAtomCommandInterrupted(result)) return;
     const cause = squashAtomCommandFailure(result);
-    setErrorMessage(cause instanceof Error ? cause.message : "Pairing failed.");
+    setErrorMessage(
+      cause instanceof Error ? cause.message : "Could not connect. Check the link and try again.",
+    );
   };
 
   return (
@@ -668,7 +670,7 @@ function PairingForm({
       >
         <div>
           <label className="block text-sm text-muted-foreground" htmlFor="onboarding-pairing-url">
-            Pairing link
+            Connection link
           </label>
           <Input
             id="onboarding-pairing-url"
@@ -708,20 +710,21 @@ function PairingForm({
               className="group flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
               <ChevronRightIcon className="size-3.5 group-data-panel-open:rotate-90" />
-              Need a pairing link?
+              Need a connection link?
             </CollapsibleTrigger>
             <Button type="submit" disabled={isPairing || pairingUrl.trim().length === 0}>
-              {isPairing ? "Pairing..." : "Pair"}
+              {isPairing ? "Connecting..." : "Connect"}
             </Button>
           </div>
           <CollapsiblePanel>
             <p className="pt-3 text-sm text-muted-foreground">
-              Run this on the computer with your code.
+              Run this on the computer that has your project.
             </p>
             <CommandBlock command="npx t3 pair" className="mt-2" />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start Leonidas Code first, or run <code className="font-mono">npx t3 serve</code>. Add{" "}
-              <code className="font-mono">--tailscale</code> to use your tailnet.
+              Start Leonidas Code on that computer first, or run{" "}
+              <code className="font-mono">npx t3 serve</code>. Add{" "}
+              <code className="font-mono">--tailscale</code> to use your Tailscale network.
             </p>
           </CollapsiblePanel>
         </Collapsible>
@@ -770,8 +773,8 @@ function AgentsStep({
   const continueCopy = describeAgentsStepContinue(hasReadyAgent);
   return (
     <StepShell
-      title="Connect your agents"
-      description="You only need one agent to start. You can add more later."
+      title="Add your AI accounts"
+      description="You only need one AI account to start. You can add more later."
     >
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-5 pr-3">
@@ -868,7 +871,7 @@ function ConnectedAgentsStep({
       <h2 className="mb-2 text-sm font-medium">{machineLabel}</h2>
       {!canOperateTerminal ? (
         <p className="mb-2 text-sm text-muted-foreground">
-          This connection cannot control terminals.
+          This connection cannot use the terminal. Connect to a different computer.
         </p>
       ) : null}
       <div className="space-y-1.5">
@@ -1126,7 +1129,7 @@ function AgentCard({
       <div className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-foreground">{displayName}</span>
         <p className="mt-0.5 text-xs leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">
-          {providerState === "ready" ? "Ready to code." : summary.headline}
+          {providerState === "ready" ? "Ready to use." : summary.headline}
           {providerState !== "ready" && summary.detail ? ` · ${summary.detail}` : ""}
         </p>
       </div>
@@ -1139,7 +1142,7 @@ function AgentCard({
         ) : providerState === "checking" ? (
           <span className="text-xs text-muted-foreground">Checking...</span>
         ) : providerState === "disabled" ? (
-          <span className="text-xs text-muted-foreground">Disabled</span>
+          <span className="text-xs text-muted-foreground">Turned off</span>
         ) : providerState === "attention" ? (
           <span className="text-xs text-muted-foreground">{summary.headline}</span>
         ) : (
@@ -1273,18 +1276,18 @@ function AgentInstallTerminal({
       <div className="flex items-center justify-between border-b border-border/60 bg-background/60 px-3 py-1.5">
         <span className="text-2xs font-medium text-muted-foreground">
           {!canOperateTerminal ? (
-            "This connection cannot control terminals."
+            "This connection cannot use the terminal. Connect to a different computer."
           ) : setupState === "writeFailed" ? (
             <>
               Run <code className="rounded bg-muted px-1 font-mono">{command}</code> in this
               terminal.
             </>
           ) : setupState === "ready" ? (
-            "Press Enter to run this command. Nothing runs until you do."
+            "Press Enter to run this command. Nothing runs until you press Enter."
           ) : setupState === "openFailed" ? (
-            "Could not open the setup terminal."
+            "Could not open the setup terminal. Close this step and open it again."
           ) : (
-            "Preparing command..."
+            "Getting the command ready..."
           )}
         </span>
         <div className="flex items-center gap-1">
@@ -1333,7 +1336,7 @@ function AgentInstallTerminal({
 
 // ── Step 4: import ───────────────────────────────────────────
 
-const IMPORT_PERMISSION_MESSAGE = "This connection cannot import projects or thread history.";
+const IMPORT_PERMISSION_MESSAGE = "This connection cannot import projects or chat history.";
 
 function ImportStep({
   scans,
@@ -1572,13 +1575,13 @@ function ImportStep({
     importedThreadCountRef.current = importedThreadCount;
     if (importedProjectsCount < selection.length) {
       if (importedThreadCount > 0 && skippedThreadCount > 0) {
-        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}. ${skippedThreadCount} ${skippedThreadCount === 1 ? "thread" : "threads"} could not be imported.`;
+        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "chat" : "chats"}. ${skippedThreadCount} ${skippedThreadCount === 1 ? "chat" : "chats"} could not be imported.`;
       } else if (skippedThreadCount > 0) {
-        importWarningRef.current = `${skippedThreadCount} ${skippedThreadCount === 1 ? "thread could" : "threads could"} not be imported.`;
+        importWarningRef.current = `${skippedThreadCount} ${skippedThreadCount === 1 ? "chat" : "chats"} could not be imported.`;
       } else if (importedThreadCount > 0) {
-        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "thread" : "threads"}. Some thread history could not be imported.`;
+        importWarningRef.current = `Imported ${importedThreadCount} ${importedThreadCount === 1 ? "chat" : "chats"}. Some chat history could not be imported.`;
       } else {
-        importWarningRef.current = "Could not import thread history.";
+        importWarningRef.current = "Could not import chat history. Try again later.";
       }
     }
     finishAfterImport();
@@ -1596,7 +1599,7 @@ function ImportStep({
         </div>
         <div className="flex justify-end">
           <Button variant="ghost-muted" onClick={() => void onDone()}>
-            Do not import projects
+            Skip importing projects
           </Button>
         </div>
       </div>
@@ -1606,7 +1609,7 @@ function ImportStep({
   return (
     <StepShell
       title="Import your projects"
-      description="Import projects and conversations from Claude Code and Codex on your selected computers."
+      description="Import projects and chats from Claude Code and Codex on your selected computers."
     >
       {candidates.length > 0 ? (
         <div className="mt-5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -1668,7 +1671,8 @@ function ImportStep({
                   </div>
                 ) : scanCandidates.length === 0 ? (
                   <p className="py-2 text-sm text-muted-foreground">
-                    No existing Claude Code or Codex projects found.
+                    No Claude Code or Codex projects found. Select "Skip importing projects" to
+                    continue.
                   </p>
                 ) : null}
                 {scan.data?.truncated ? (
@@ -1691,7 +1695,7 @@ function ImportStep({
       ) : null}
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         <Button variant="ghost-muted" disabled={isImporting} onClick={finishAfterImport}>
-          Do not import projects
+          Skip importing projects
         </Button>
         <Button
           autoFocus

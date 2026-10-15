@@ -31,7 +31,8 @@ export function SettingsBackupSettings() {
       toastManager.add({
         type: "error",
         title: "Not a settings file",
-        description: "Choose a file exported from Leonidas Code.",
+        description:
+          "This is not a settings file. Choose a file that you saved from Leonidas Code.",
       });
       return;
     }
@@ -49,7 +50,7 @@ export function SettingsBackupSettings() {
   return (
     <SettingsRow
       {...searchableSetting("settings-backup")}
-      description="Save this device's preferences to a file, or load a file from another machine. Accounts, tokens and folder paths are never included."
+      description="Save the settings of this device to a file, or load a file from another computer. The file never has accounts, tokens or folder paths."
       control={
         <div className="flex items-center gap-2">
           <Button type="button" size="compact" onClick={handleExport}>

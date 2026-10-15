@@ -123,7 +123,7 @@ describe("branch sheet operation completion", () => {
     control("feature/mobile-thread").onChangeText?.("feature/worktree");
   });
 
-  it.each(["Create & checkout", "Create worktree", "checkout"])(
+  it.each(["Create and switch", "Create separate copy", "checkout"])(
     "keeps the sheet and its input when %s cannot complete",
     async (operation) => {
       const result = deferred<null>();
@@ -143,7 +143,7 @@ describe("branch sheet operation completion", () => {
     },
   );
 
-  it.each(["Create & checkout", "Create worktree", "checkout"])(
+  it.each(["Create and switch", "Create separate copy", "checkout"])(
     "dismisses after accepted %s completion even if the source grant changes",
     async (operation) => {
       const result = deferred<unknown>();
@@ -153,7 +153,7 @@ describe("branch sheet operation completion", () => {
       const completion = press();
       state.canChangeThreadBranch = false;
       result.resolve(
-        operation === "Create worktree"
+        operation === "Create separate copy"
           ? { worktree: { path: "/repo-worktree", refName: "feature/worktree" } }
           : { refName: operation === "checkout" ? "main" : "feature/branch" },
       );
@@ -162,10 +162,10 @@ describe("branch sheet operation completion", () => {
 
       expect(state.navigations).toBe(1);
       expect(control("feature/mobile-polish").value).toBe(
-        operation === "Create & checkout" ? "" : "feature/branch",
+        operation === "Create and switch" ? "" : "feature/branch",
       );
       expect(control("feature/mobile-thread").value).toBe(
-        operation === "Create worktree" ? "" : "feature/worktree",
+        operation === "Create separate copy" ? "" : "feature/worktree",
       );
     },
   );

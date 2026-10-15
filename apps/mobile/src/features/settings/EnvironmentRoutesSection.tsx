@@ -176,8 +176,8 @@ export function EnvironmentRoutesSection({
             </>
           ) : (
             <Text className="text-sm text-foreground-muted">
-              Permissions not checked. Connect to this environment to view this session’s
-              permissions.
+              Permissions not checked. Connect to this computer to view the permissions for this
+              chat.
             </Text>
           )}
         </View>

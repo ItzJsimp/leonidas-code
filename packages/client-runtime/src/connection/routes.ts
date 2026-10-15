@@ -179,11 +179,11 @@ function routeAddressKey(route: ConnectionRoute): string | null {
   }
 }
 
-/** Short user-facing route description: "LAN", "Tailscale", "VPN", "T3 Connect", a URL, or an SSH host. */
+/** Short user-facing route description: "LAN", "Tailscale", "VPN", "Remote access", a URL, or an SSH host. */
 export function connectionRouteLabel(route: ConnectionRoute): string {
   switch (connectionRouteKind(route)) {
     case "relay":
-      return "T3 Connect";
+      return "Remote access";
     case "loopback":
       return "This device";
     case "lan":

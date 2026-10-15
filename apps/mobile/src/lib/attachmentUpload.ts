@@ -62,10 +62,11 @@ export function validateDraftFileAttachments(input: {
 }): string | null {
   const files = input.attachments.filter((attachment) => attachment.type === "file");
   if (files.length === 0) return null;
-  if (input.serverConfig === null) return "Server attachment support is still loading.";
+  if (input.serverConfig === null)
+    return "Checking if this computer accepts files. Try again soon.";
   const capabilities = input.serverConfig.environment.capabilities;
   if (capabilities.attachmentUploads !== true || capabilities.fileAttachments === undefined) {
-    return "This server does not support file attachments.";
+    return "This computer does not support file attachments.";
   }
   const maxBytes = clampFileAttachmentUploadBytes(capabilities.fileAttachments.maxUploadBytes);
   const oversized = files.find((attachment) => attachment.sizeBytes > maxBytes);
@@ -370,7 +371,7 @@ export async function prepareTurnAttachments(input: {
     environmentSession.preparedConnectionValueAtom(environmentId),
   );
   if (Option.isNone(connection)) {
-    throw new Error("The environment is not connected.");
+    throw new Error("The computer is not connected. Reconnect and try again.");
   }
 
   const uploadedAttachments: UploadedMobileAttachment[] = [];

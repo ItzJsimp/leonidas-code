@@ -28,7 +28,7 @@ export function SettingsProviderAccountsRouteScreen() {
   return (
     <>
       <SettingsEnvironmentFilterHeader />
-      <SettingsScreen title="Provider accounts" trailing={<AndroidSettingsEnvironmentFilter />}>
+      <SettingsScreen title="AI accounts" trailing={<AndroidSettingsEnvironmentFilter />}>
         <ScreenScrollView
           className="flex-1"
           contentInsetAdjustmentBehavior="automatic"
@@ -36,7 +36,7 @@ export function SettingsProviderAccountsRouteScreen() {
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}
         >
           {selectedTargets.length === 0 ? (
-            <Text className="text-foreground-muted">Select a connected environment.</Text>
+            <Text className="text-foreground-muted">Select a connected computer.</Text>
           ) : (
             selectedTargets.map((environment) => (
               <SettingsSection key={environment.environmentId} title={environment.label}>
@@ -59,7 +59,7 @@ export function SettingsProviderAccountsRouteScreen() {
                     (provider.driver === "acpRegistry" && provider.installed),
                 ) ? (
                   <Text className="p-4 text-foreground-muted">
-                    Configure a provider with in-app sign-in in web or desktop Settings.
+                    Add this AI account in Settings on the web or desktop app.
                   </Text>
                 ) : null}
               </SettingsSection>
@@ -129,10 +129,14 @@ function ProviderAccount({
       if (result._tag === "Success") succeeded = true;
       else if (!isAtomCommandInterrupted(result)) {
         const failure = squashAtomCommandFailure(result);
-        setError(failure instanceof Error ? failure.message : "Could not update provider sign-in.");
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "Could not update the AI account sign-in. Try again.",
+        );
       }
     } catch {
-      setError("Could not update provider sign-in.");
+      setError("Could not update the AI account sign-in. Try again.");
     }
     pendingRef.current = false;
     setPending(false);
@@ -186,8 +190,8 @@ function ProviderAccount({
               : isDiscovering
                 ? "Discovering sign-in methods…"
                 : needsExternalSetup
-                  ? "No in-app sign-in advertised. Follow the provider's docs to finish setup."
-                  : "Connect this provider."}
+                  ? "No in-app sign-in advertised. Follow the docs of the AI service to finish setup."
+                  : "Connect this AI service."}
         </Text>
         {signedIn && !active && provider.auth.email?.trim() ? (
           <ProviderAccountEmail key={provider.auth.email} email={provider.auth.email} />
@@ -304,7 +308,7 @@ function ProviderAccount({
           label="Open docs"
           onPress={() => {
             void Linking.openURL(provider.setup!.documentationUrl!).catch(() =>
-              setError("Could not open the provider docs."),
+              setError("Could not open the docs of the AI service."),
             );
           }}
         />
@@ -335,7 +339,7 @@ function ProviderAccount({
           onPress={() =>
             Alert.alert(
               "Sign out?",
-              `Running threads sharing this sign-in on ${environment.label} will stop. Thread history is kept.`,
+              `Running chats that use this sign-in on ${environment.label} will stop. Chat history is kept.`,
               [
                 { text: "Cancel", style: "cancel" },
                 {

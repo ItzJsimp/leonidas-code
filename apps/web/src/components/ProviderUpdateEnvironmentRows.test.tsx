@@ -149,7 +149,7 @@ function provider(updateStatus?: "succeeded"): ServerProvider {
           status: updateStatus,
           startedAt: "2026-06-26T12:00:00.000Z",
           finishedAt: "2026-06-26T12:00:01.000Z",
-          message: "Provider updated.",
+          message: "AI service updated.",
           output: null,
         },
       }

@@ -24,7 +24,7 @@ export function NotificationSettings() {
       {...searchableSetting("thread-notifications")}
       description={
         permissionMessage ??
-        "System alerts when a thread finishes, fails, or needs input or approval. Applies to this device while Leonidas Code is open."
+        "System alerts when a chat finishes, fails, or needs your answer or approval. Applies to this device while Leonidas Code is open."
       }
       control={
         <Select
@@ -43,7 +43,7 @@ export function NotificationSettings() {
             if (hasDesktopNotifications(value)) {
               if (typeof Notification === "undefined" || !window.isSecureContext) {
                 setPermissionMessage(
-                  "Notifications need a supported browser over HTTPS, or the desktop app. Sound only is still available.",
+                  "Notifications need a supported browser with HTTPS, or the desktop app. You can still choose Sound only.",
                 );
                 return;
               }
@@ -52,13 +52,13 @@ export function NotificationSettings() {
                 const permission = await Notification.requestPermission();
                 if (permission !== "granted") {
                   setPermissionMessage(
-                    "Allow notifications in your browser or system settings, then choose this option again. Sound only is still available.",
+                    "Allow notifications in your browser or system settings, then choose this option again. You can still choose Sound only.",
                   );
                   return;
                 }
               } catch {
                 setPermissionMessage(
-                  "Notifications are unavailable in this browser. Sound only is still available.",
+                  "This browser cannot show notifications. You can still choose Sound only.",
                 );
                 return;
               } finally {
@@ -68,7 +68,7 @@ export function NotificationSettings() {
             updateSettings({ notificationMode: value });
           }}
         >
-          <SelectTrigger size="sm" className="w-full sm:w-56" aria-label="Thread notifications">
+          <SelectTrigger size="sm" className="w-full sm:w-56" aria-label="Chat notifications">
             <SelectValue>{NOTIFICATION_MODE_LABELS[mode]}</SelectValue>
           </SelectTrigger>
           <SelectPopup align="end" alignItemWithTrigger={false}>
@@ -155,7 +155,7 @@ export function UsageWarningSettings() {
   return (
     <SettingsRow
       {...searchableSetting("usage-warning")}
-      description="Show a notice above the composer when your active account's busiest usage window reaches this level."
+      description="Show a notice above the message box when the busiest usage limit of your current AI account reaches this level."
       control={
         <Select
           value={value}

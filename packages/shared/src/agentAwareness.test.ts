@@ -52,7 +52,7 @@ describe("projectThreadAwarenessV2", () => {
         project,
         thread: v2Thread(),
       }),
-    ).toMatchObject({ phase: "running", headline: "Agent is working" });
+    ).toMatchObject({ phase: "running", headline: "AI is working" });
   });
 
   it.each(["running", "completed", "failed"] as const)(
@@ -82,7 +82,7 @@ describe("projectThreadAwarenessV2", () => {
         project,
         thread: v2Thread({ status: "cancelled", activityRunStatus: "running" }),
       }),
-    ).toMatchObject({ phase: "running", headline: "Agent is working" });
+    ).toMatchObject({ phase: "running", headline: "AI is working" });
   });
 
   it.each([
@@ -119,7 +119,7 @@ describe("projectThreadAwarenessV2", () => {
           },
         }),
       }),
-    ).toMatchObject({ phase: "waiting_for_input", headline: "Waiting for input" });
+    ).toMatchObject({ phase: "waiting_for_input", headline: "Waiting for your answer" });
   });
 
   it("does not present authentication refreshes as user approvals", () => {
@@ -135,6 +135,6 @@ describe("projectThreadAwarenessV2", () => {
           },
         }),
       }),
-    ).toMatchObject({ phase: "running", headline: "Agent is working" });
+    ).toMatchObject({ phase: "running", headline: "AI is working" });
   });
 });

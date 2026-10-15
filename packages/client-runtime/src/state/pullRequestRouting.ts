@@ -67,7 +67,7 @@ const readTimeout = (environmentId: EnvironmentId) =>
       Effect.fail(
         new EnvironmentRpcUnavailableError({
           environmentId,
-          message: "The environment did not respond to the PR request.",
+          message: "The computer did not respond to the PR request.",
         }),
       ),
   });
@@ -397,7 +397,7 @@ export function createPullRequestRouter() {
           isUnregistered(error)
             ? new EnvironmentRpcUnavailableError({
                 environmentId: id,
-                message: "The environment was removed.",
+                message: "The computer was removed.",
               })
             : error,
         ),

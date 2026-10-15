@@ -29,9 +29,9 @@ import { buildThreadRouteParams } from "../threadRoutes";
 import { cn } from "../lib/utils";
 
 const STATUS_LABELS: Record<CommandCenterStatus, string> = {
-  approval: "Approval needed",
-  input: "Reply needed",
-  limited: "Subscription limit",
+  approval: "Needs permission",
+  input: "Needs your answer",
+  limited: "Usage limit reached",
   working: "Working",
   waiting: "Waiting for background work",
 };
@@ -39,24 +39,24 @@ const SECTIONS = [
   {
     key: "attention",
     title: "Needs attention",
-    description: "Approvals and questions waiting for you.",
-    empty: "No pending approvals or questions.",
+    description: "Chats that wait for your permission or your answer.",
+    empty: "Nothing needs you right now.",
     Icon: ShieldQuestionIcon,
     tone: "text-warning",
   },
   {
     key: "limited",
     title: "Limited",
-    description: "Threads paused by a subscription limit.",
-    empty: "No threads stopped by subscription limits.",
+    description: "Chats that stopped because you reached a usage limit.",
+    empty: "No chat has reached a usage limit.",
     Icon: CirclePauseIcon,
     tone: "text-destructive",
   },
   {
     key: "running",
     title: "Running",
-    description: "Active turns and background work.",
-    empty: "No agents working right now.",
+    description: "Chats that work now, and background work.",
+    empty: "No AI is working right now.",
     Icon: ActivityIcon,
     tone: "text-primary",
   },
@@ -96,10 +96,9 @@ function CommandCenterPage() {
       <main className="min-h-0 flex-1 overflow-y-auto">
         <WorkspacePageContainer width="wide">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Your agents, at a glance</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Your AI work, at a glance</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Live status across connected environments. Open a thread to review or continue its
-              work.
+              Live status across your connected computers. Open a chat to see or continue its work.
             </p>
           </div>
           <AiosHomeCard />
@@ -109,7 +108,7 @@ function CommandCenterPage() {
               role="status"
               className="rounded-lg border border-warning/30 bg-warning/5 p-4 text-sm"
             >
-              <p className="font-medium">Some environments are disconnected</p>
+              <p className="font-medium">Some computers are not connected</p>
               <p className="mt-1 text-muted-foreground">
                 {disconnected.map((environment) => environment.label).join(", ")}. Their saved
                 statuses may be out of date.
@@ -118,7 +117,7 @@ function CommandCenterPage() {
                 to="/settings/connections"
                 className="mt-2 inline-block rounded-sm text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
-                Open Connections
+                Open connections
               </Link>
             </div>
           ) : null}
@@ -137,7 +136,7 @@ function CommandCenterPage() {
               role="status"
               className="flex items-center gap-2 py-12 text-sm text-muted-foreground"
             >
-              <Spinner /> Loading thread statuses...
+              <Spinner /> Loading chat statuses…
             </div>
           ) : (
             <>
@@ -151,8 +150,8 @@ function CommandCenterPage() {
                     </EmptyTitle>
                     <EmptyDescription>
                       {environments.length === 0
-                        ? "Connect an environment to see its agents here."
-                        : "Active work, approvals and subscription limits will appear here automatically."}
+                        ? "Connect a computer to see its AI work here."
+                        : "Active work, permission requests and usage limits appear here by themselves."}
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -191,7 +190,7 @@ function CommandCenterPage() {
                             >
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">
-                                  {thread.title || "Untitled thread"}
+                                  {thread.title || "Untitled chat"}
                                 </p>
                                 <p className="mt-1 truncate text-xs text-muted-foreground">
                                   {projectNames.get(

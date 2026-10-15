@@ -135,15 +135,16 @@ export function ProjectSettingsPanel({
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
         {groups.length === 0
-          ? "Add a project from the sidebar to configure it here."
-          : "This project is no longer available."}
+          ? "No projects yet. Add a project from the sidebar, then change its settings here."
+          : "This project is not available any more. Choose another project from the sidebar."}
       </div>
     );
   }
   if (members.length === 0)
     return (
       <p className="p-8 text-sm text-muted-foreground">
-        This checkout is no longer available in the selected project and environment.
+        This folder is not available any more for the chosen project and computer. Choose another
+        one.
       </p>
     );
   const scopedGroup = {
@@ -225,7 +226,7 @@ function ProjectDetail({
       const result = AsyncResult.failure<void, Error>(
         Cause.fail(
           new Error(
-            `This connection cannot change projects in ${denied.environmentLabel ?? "this environment"}.`,
+            `This connection cannot change projects in ${denied.environmentLabel ?? "this computer"}.`,
           ),
         ),
       );
@@ -254,7 +255,7 @@ function ProjectDetail({
       });
       if (unavailable) {
         const error = new Error(
-          `Connect ${unavailable.environmentLabel ?? "the selected environment"} and try again.`,
+          `Connect ${unavailable.environmentLabel ?? "the chosen computer"} and try again.`,
         );
         const result: AtomCommandResult<void, unknown> = AsyncResult.failure(Cause.fail(error));
         reportFailure(failureTitle, result);
@@ -275,7 +276,7 @@ function ProjectDetail({
           // write. Name the environment so the user knows where it stopped.
           reportFailure(
             group.memberProjects.length > 1
-              ? `${failureTitle} on ${member.environmentLabel ?? "the current environment"}`
+              ? `${failureTitle} on ${member.environmentLabel ?? "the current computer"}`
               : failureTitle,
             result,
           );
@@ -291,7 +292,10 @@ function ProjectDetail({
     async (nextTitle: string, wasEdited: boolean) => {
       const title = nextTitle.trim();
       if (!title) {
-        toastManager.add({ type: "warning", title: "Project title cannot be empty" });
+        toastManager.add({
+          type: "warning",
+          title: "The project name cannot be empty. Type a name.",
+        });
         return;
       }
       if (
@@ -303,7 +307,7 @@ function ProjectDetail({
       ) {
         return;
       }
-      await updateAllMembers({ title }, "Failed to rename project");
+      await updateAllMembers({ title }, "Could not rename the project");
     },
     [group.memberProjects, updateAllMembers],
   );
@@ -319,7 +323,7 @@ function ProjectDetail({
       savingFaviconRef.current = true;
       setIsSavingFavicon(true);
       try {
-        await updateAllMembers(input, "Failed to update project icon");
+        await updateAllMembers(input, "Could not change the project icon");
       } finally {
         savingFaviconRef.current = false;
         setIsSavingFavicon(false);
@@ -332,7 +336,7 @@ function ProjectDetail({
 
   const removeMembers = useCallback(
     async (members: ReadonlyArray<SidebarProjectGroupMember>) => {
-      if (checkProjectAccess(members, "Failed to remove project")) return;
+      if (checkProjectAccess(members, "Could not remove the project")) return;
       const api = readLocalApi();
       if (!api) return;
 
@@ -341,42 +345,40 @@ function ProjectDetail({
         memberKeys.has(`${thread.environmentId}:${thread.projectId}`),
       );
       const isWholeGroup = members.length === group.memberProjects.length;
-      const targetKind = hasOtherMembers || !isWholeGroup ? "checkout" : "project";
+      const targetKind = hasOtherMembers || !isWholeGroup ? "folder" : "project";
       const singleMember = members.length === 1 ? members[0]! : null;
       const targetLabel = singleMember?.title ?? group.displayName;
       const confirmed = await settlePromise(() =>
         api.dialogs.confirm(
           [
             projectThreads.length > 0
-              ? `Remove ${targetKind} "${targetLabel}" and delete its ${projectThreads.length} thread${projectThreads.length === 1 ? "" : "s"}?`
+              ? `Remove ${targetKind} "${targetLabel}" and delete its ${projectThreads.length} chat${projectThreads.length === 1 ? "" : "s"}?`
               : `Remove ${targetKind} "${targetLabel}"?`,
             ...(singleMember
               ? [
                   `Path: ${singleMember.workspaceRoot}`,
                   ...(singleMember.environmentLabel
-                    ? [`Environment: ${singleMember.environmentLabel}`]
+                    ? [`Computer: ${singleMember.environmentLabel}`]
                     : []),
                 ]
               : [`This removes ${members.length} grouped project entries.`]),
             ...(projectThreads.length > 0
-              ? [
-                  "This permanently clears conversation history for those threads and any archived threads.",
-                ]
-              : ["This permanently clears any archived conversation history."]),
+              ? ["This deletes the history of those chats and of any archived chats for good."]
+              : ["This deletes the history of any archived chats for good."]),
             isWholeGroup && !hasOtherMembers
-              ? "This removes only the project entries, not the files on disk."
+              ? "This removes only the project entries. It does not delete files from your computer."
               : "Other entries in this grouped project are unaffected.",
-            "This action cannot be undone.",
+            "You cannot undo this.",
           ].join("\n"),
           { variant: "destructive" },
         ),
       );
       if (confirmed._tag === "Failure" || !confirmed.value) return;
-      if (checkProjectAccess(members, "Failed to remove project")) return;
+      if (checkProjectAccess(members, "Could not remove the project")) return;
 
       const draftStore = useComposerDraftStore.getState();
       for (const member of members) {
-        if (checkProjectAccess([member], "Failed to remove project")) return;
+        if (checkProjectAccess([member], "Could not remove the project")) return;
         const memberThreads = projectThreads.filter(
           (thread) =>
             thread.environmentId === member.environmentId && thread.projectId === member.id,
@@ -392,7 +394,7 @@ function ProjectDetail({
           () => undefined,
         );
         if (result._tag === "Failure") {
-          reportFailure(`Failed to remove "${member.title}"`, result);
+          reportFailure(`Could not remove "${member.title}"`, result);
           return;
         }
         const projectRef = scopeProjectRef(member.environmentId, member.id);
@@ -424,11 +426,11 @@ function ProjectDetail({
   );
 
   const checkoutChoices = (
-    <SettingsSection title="Checkouts">
+    <SettingsSection title="Project folders">
       {group.memberProjects.map((member) => (
         <SettingsRow
           key={member.physicalProjectKey}
-          title={member.environmentLabel ?? "Environment"}
+          title={member.environmentLabel ?? "Computer"}
           description={member.workspaceRoot}
           control={
             <Button
@@ -436,7 +438,7 @@ function ProjectDetail({
               variant="outline"
               disabled={!editableIds.has(member.environmentId)}
               onClick={() => void removeMembers([member])}
-              aria-label={`Remove checkout ${member.workspaceRoot}`}
+              aria-label={`Remove folder ${member.workspaceRoot}`}
             >
               Remove
             </Button>
@@ -452,20 +454,21 @@ function ProjectDetail({
         <Alert variant="info">
           <InfoIcon aria-hidden />
           <AlertDescription>
-            Can't find a setting? Keep this project picked above and hop to any other settings page.
+            Cannot find a setting? Keep this project chosen above. Then open any other settings
+            page.
           </AlertDescription>
         </Alert>
         <SettingsSection id="project-overview" title="Project" hideTitle>
           {!canEditGroup ? (
             <p className="px-3 py-2 text-sm text-muted-foreground sm:px-4">
               {group.memberProjects.length > 1
-                ? "Shared settings require permission to change every checkout in this group."
+                ? "To change shared settings, you need permission for every folder in this group."
                 : "This connection cannot change this project."}
             </p>
           ) : null}
           <SettingsRow
             title="Name"
-            description="The shared name for this project group in the sidebar and thread lists."
+            description="The shared name for this project group in the sidebar and in the chat lists."
             control={
               <Input
                 key={`${group.projectKey}:${group.displayName}`}
@@ -544,17 +547,17 @@ function ProjectDetail({
           <SettingsRow
             title={
               hasOtherMembers
-                ? "Remove checkout"
+                ? "Remove folder"
                 : group.memberProjects.length > 1
                   ? "Remove this project everywhere"
                   : "Remove project"
             }
             description={
               hasOtherMembers
-                ? "Deletes the selected machine's checkout entries and their threads. Other machines and files on disk are not touched."
+                ? "Deletes the folder entries of the chosen computer, and their chats. Other computers and your files stay as they are."
                 : group.memberProjects.length > 1
-                  ? `Deletes all ${group.memberProjects.length} checkout entries and their threads on every machine. Files on disk are not touched.`
-                  : "Deletes the project entry and its threads. Files on disk are not touched."
+                  ? `Deletes all ${group.memberProjects.length} folder entries, and their chats, on every computer. Your files stay as they are.`
+                  : "Deletes the project entry and its chats. Your files stay as they are."
             }
             control={
               <Button
@@ -565,7 +568,7 @@ function ProjectDetail({
               >
                 <Trash2Icon />
                 {hasOtherMembers
-                  ? "Remove checkout"
+                  ? "Remove folder"
                   : group.memberProjects.length > 1
                     ? "Remove all entries"
                     : "Remove project"}

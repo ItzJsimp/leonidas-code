@@ -178,12 +178,12 @@ export function shouldOpenDefaultBrowserProfileFromMenuClick(
 
 const SURFACE_DISABLED_REASONS = {
   browser: "Browser previews are only available in the Leonidas Code desktop app.",
-  terminal: "Terminal surfaces are only available from a project thread.",
+  terminal: "The terminal is only available in a chat that has a project.",
   files: "Files are only available when a project is open.",
-  diff: "Diff is only available for server threads in Git repositories.",
-  pullRequest: "This thread's branch has no pull request yet.",
-  pullRequests: "No linked pull requests are available for this thread.",
-  device: "Devices are only available from a thread.",
+  diff: "Changes are only available for chats in Git projects.",
+  pullRequest: "This chat's branch has no pull request yet.",
+  pullRequests: "No linked pull requests are available for this chat.",
+  device: "Devices are only available in a chat.",
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */
@@ -203,10 +203,10 @@ const SURFACE_UNAVAILABLE_HINTS = {
   browser: "Only available in the desktop app.",
   terminal: "Available when a project is open.",
   files: "Available when a project is open.",
-  diff: "Available for Git repositories.",
+  diff: "Available for Git projects.",
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
-  device: "Available from a thread.",
+  device: "Available from a chat.",
 } as const;
 
 type TabContextMenuAction =
@@ -388,7 +388,7 @@ function RightPanelEmptyState(props: {
       onClick: props.onAddFiles,
     },
     {
-      label: "Diff",
+      label: "Changes",
       icon: FileDiff,
       shortcut: "D",
       available: props.diffAvailable,
@@ -994,7 +994,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       onClick: props.onAddFiles,
     },
     {
-      label: "Diff",
+      label: "Changes",
       icon: FileDiff,
       shortcut: "D",
       available: props.diffAvailable,
@@ -1565,7 +1565,7 @@ function DeviceTabTooltip(props: {
       <span>{props.title}</span>
       {target ? (
         <span className="text-muted-foreground">
-          {host?.label ?? "Device host"} ·{" "}
+          {host?.label ?? "Device computer"} ·{" "}
           {device?.version ?? (target.platform === "ios" ? "iOS" : "Android")}
         </span>
       ) : null}

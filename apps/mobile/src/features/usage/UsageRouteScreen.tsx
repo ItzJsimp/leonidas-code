@@ -207,7 +207,7 @@ export function UsageRouteScreen() {
     () => [
       {
         id: "all",
-        title: "All environments",
+        title: "All computers",
         subtitle: undefined,
         state: selectedEnvironmentIds === null ? ("on" as const) : ("off" as const),
       },
@@ -240,14 +240,14 @@ export function UsageRouteScreen() {
         <ControlPillMenu
           accessible
           accessibilityRole="button"
-          accessibilityLabel="Filter usage environments"
-          title="Environments"
+          accessibilityLabel="Filter usage computers"
+          title="Computers"
           actions={environmentActions}
           onPressAction={({ nativeEvent }) => selectEnvironment(nativeEvent.event)}
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Filter usage environments"
+            accessibilityLabel="Filter usage computers"
             className={cn(
               "items-center justify-center rounded-full",
               Platform.OS === "ios" ? "size-[28px]" : "size-[44px]",
@@ -332,13 +332,13 @@ export function UsageRouteScreen() {
               ) : null}
               {isPending ? (
                 <Text className="py-16 text-center text-base text-foreground-muted">
-                  Scanning provider transcripts…
+                  Scanning AI service chats…
                 </Text>
               ) : selectedEnvironments.length === 0 ? (
                 <Text className="py-16 text-center text-base text-foreground-muted">
                   {environments.length === 0
-                    ? "Connect an environment to see usage."
-                    : "Select an environment to see usage."}
+                    ? "Connect a computer to see usage."
+                    : "Select a computer to see usage."}
                 </Text>
               ) : !canReadDiagnostics ? (
                 // Each environment explains itself: a denied grant and a failed
@@ -571,7 +571,7 @@ function ChartCard(props: {
         <Text className="text-sm text-foreground-muted">
           {metric === "cost"
             ? "* if billed at full API rate"
-            : `Across ${formatCount(merged.sessions)} sessions`}
+            : `Across ${formatCount(merged.sessions)} chats`}
         </Text>
       </View>
 
@@ -652,7 +652,7 @@ function ProviderSection(props: {
   );
 
   return (
-    <SettingsSection title="Providers">
+    <SettingsSection title="AI services">
       {rows.map((row, index) => {
         if (row.kind === "enable") {
           return (

@@ -260,7 +260,7 @@ export async function continueWithProvider(input: {
     (matched.modelSelection.model !== target.modelSelection.model &&
       !matched.availableModels.some((m) => m.slug === target.modelSelection.model))
   ) {
-    throw new Error("This provider is no longer available. Choose another provider.");
+    throw new Error("This AI account is not available now. Choose another AI account.");
   }
   input.pending.current = true;
   try {

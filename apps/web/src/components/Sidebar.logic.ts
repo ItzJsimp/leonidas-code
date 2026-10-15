@@ -628,7 +628,7 @@ export interface ThreadStatusPill {
     | "Working"
     | "Connecting"
     | "Completed"
-    | "Pending Approval"
+    | "Needs permission"
     | "Awaiting Input"
     | "Waiting"
     | "Plan Ready";
@@ -638,7 +638,7 @@ export interface ThreadStatusPill {
 }
 
 const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> = {
-  "Pending Approval": 5,
+  "Needs permission": 5,
   "Awaiting Input": 4,
   Working: 3,
   Connecting: 3,
@@ -1200,7 +1200,7 @@ export function resolveThreadStatusPill(input: {
 
   if (thread.hasPendingApprovals) {
     return {
-      label: "Pending Approval",
+      label: "Needs permission",
       colorClass: "text-amber-600 dark:text-amber-300/90",
       dotClass: "bg-amber-500 dark:bg-amber-300/90",
       pulse: false,

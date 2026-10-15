@@ -362,8 +362,8 @@ export function SettingsScheduledTasksRouteScreen() {
           ) : (
             <Text className="px-2 text-base text-foreground-muted">
               {availableTargets.length === 0
-                ? "Connect an environment to view and create scheduled tasks."
-                : "No environments match these filters. Change the filter above."}
+                ? "Connect a computer to view and create scheduled tasks."
+                : "No computers match these filters. Change the filter above."}
             </Text>
           )}
         </ScrollView>
@@ -544,8 +544,8 @@ function SettingsScheduledTaskEditorScreen({ title }: { readonly title: string }
         ) : (
           <Text className="px-2 text-base text-foreground-muted">
             {availableTargets.length === 0
-              ? "Connect an environment to create a scheduled task."
-              : "No environments match the current filters. Change the filters to create a task."}
+              ? "Connect a computer to create a scheduled task."
+              : "No computers match the current filters. Change the filters to create a task."}
           </Text>
         )}
       </ScrollView>
@@ -646,12 +646,12 @@ function TaskForm({
     ) {
       Alert.alert(
         "Incomplete task",
-        "Add a name, prompt, project, model, valid schedule, and checkout path if needed.",
+        "Add a name, message, project, model, valid schedule, and folder path if needed.",
       );
       return;
     }
     if (!projects.some((project) => project.id === draft.projectId)) {
-      Alert.alert("Project unavailable", "Choose a project in this environment.");
+      Alert.alert("Project unavailable", "Choose a project on this computer.");
       return;
     }
     const input: ScheduledTaskUpsertInput = {
@@ -703,7 +703,7 @@ function TaskForm({
 
       {environmentUnavailable ? (
         <Text className="px-1 text-base text-danger-foreground">
-          This environment is disconnected. Reconnect before saving.
+          This computer is disconnected. Reconnect before saving.
         </Text>
       ) : null}
       <SettingsSection>
@@ -786,30 +786,30 @@ function TaskForm({
         />
       </SettingsSection>
 
-      <SettingsSection title="Workspace">
+      <SettingsSection title="Project folder">
         <SelectRow
           label="Run in"
           value={
             draft.workspace === "worktree"
-              ? "New worktree"
+              ? "New separate copy"
               : draft.workspace === "root"
-                ? "Project checkout"
-                : "Specific checkout"
+                ? "Main folder"
+                : "Specific folder"
           }
           actions={[
             {
               id: "worktree",
-              title: "New worktree",
+              title: "New separate copy",
               state: draft.workspace === "worktree" ? "on" : undefined,
             },
             {
               id: "root",
-              title: "Project checkout",
+              title: "Main folder",
               state: draft.workspace === "root" ? "on" : undefined,
             },
             {
               id: "existing_worktree",
-              title: "Specific checkout",
+              title: "Specific folder",
               state: draft.workspace === "existing_worktree" ? "on" : undefined,
             },
           ]}
@@ -833,7 +833,7 @@ function TaskForm({
         ) : null}
         {draft.workspace === "existing_worktree" ? (
           <FormField
-            label="Checkout path"
+            label="Folder path"
             disabled={saving}
             value={draft.checkoutPath}
             borderTop
@@ -1001,7 +1001,7 @@ function TaskForm({
       </SettingsSection>
       {draft.schedule.mode === "fixed_time" ? (
         <Text className="px-2 text-sm text-foreground-muted">
-          Time uses the environment's time zone, which may differ from your phone's.
+          Time uses the time zone of the computer, which may differ from your phone's.
         </Text>
       ) : null}
       <Pressable
@@ -1049,7 +1049,7 @@ function WebhookScheduleDetails({
     <View className="gap-2 border-t border-border-subtle px-4 py-3">
       <Text className="text-sm text-foreground-muted">
         {
-          "The prompt can use {{body.a.b}}, {{headers.name}}, {{query.name}}, {{body}} and {{request}}. The filled-in prompt is all the agent sees."
+          "The message can use {{body.a.b}}, {{headers.name}}, {{query.name}}, {{body}} and {{request}}. The filled-in message is all the AI sees."
         }
       </Text>
       {task === null || resolved === null ? (

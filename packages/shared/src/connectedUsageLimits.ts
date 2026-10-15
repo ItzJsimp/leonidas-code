@@ -88,7 +88,7 @@ export function collectConnectedUsageLimits(
             message:
               provider.driver === "antigravity"
                 ? "Could not read Antigravity quota."
-                : "Connected. This provider does not report usage limits.",
+                : "Connected. This AI service does not show usage limits.",
           },
         },
       });

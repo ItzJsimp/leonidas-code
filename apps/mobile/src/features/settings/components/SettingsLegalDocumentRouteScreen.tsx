@@ -168,7 +168,7 @@ export function SettingsLegalDocumentRouteScreen({
         onHttpError={(event) => {
           if (!isLegalDocumentUrl(event.nativeEvent.url)) return;
           setLoadProgress(0);
-          setLoadError(`The server returned status ${event.nativeEvent.statusCode}.`);
+          setLoadError(`The website returned status ${event.nativeEvent.statusCode}.`);
         }}
         renderLoading={() => (
           <View className="absolute inset-0 items-center justify-center bg-sheet">

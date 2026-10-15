@@ -32,8 +32,8 @@ describe("deriveThreadTitleSeed", () => {
     ).toBe("Terminal 1");
   });
 
-  it("falls back to New thread", () => {
-    expect(deriveThreadTitleSeed({ text: "", attachments: [] })).toBe("New thread");
+  it("falls back to New chat", () => {
+    expect(deriveThreadTitleSeed({ text: "", attachments: [] })).toBe("New chat");
   });
 
   it("applies the shared title truncation", () => {

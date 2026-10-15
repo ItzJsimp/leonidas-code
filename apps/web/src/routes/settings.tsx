@@ -68,8 +68,8 @@ function SettingsScopeBoundary({ pathname, children }: { pathname: string; child
         eligibleEnvironmentIds={autoSettlementAvailability.eligibleEnvironmentIds}
       >
         {autoSettlementAvailability.eligibleEnvironmentIds.length > 0
-          ? `${searchTarget.title} requires a supporting environment. Choose one to continue.`
-          : `${searchTarget.title} requires a supporting environment. Connect or update an environment to continue.`}
+          ? `${searchTarget.title} requires a supporting computer. Choose one to continue.`
+          : `${searchTarget.title} requires a supporting computer. Connect or update a computer to continue.`}
       </SettingsScopeNotice>
     );
   }

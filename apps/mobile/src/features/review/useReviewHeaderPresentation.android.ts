@@ -5,12 +5,12 @@ export function useReviewHeaderPresentation(
 ): ReturnType<typeof useIosReviewHeaderPresentation> {
   return {
     title: "Review changes",
-    subtitle: props.androidSubtitle || "Select a diff",
+    subtitle: props.androidSubtitle || "Select changes",
     gitMenu: null,
     menuIcon: "ellipsis.circle",
     refreshAction: {
       id: "refresh",
-      title: "Refresh current diff",
+      title: "Refresh changes",
       disabled: !props.selectedSection || props.selectedSection.isLoading,
       onPress: () => {
         void props.onRefresh();

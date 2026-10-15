@@ -165,7 +165,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
   const contentsLabel = showingAccessibilityDetails
     ? "Show screenshot"
     : accessibilityDetails?.format === "json"
-      ? "Show accessibility JSON"
+      ? "Show accessibility data"
       : "Show extracted text";
 
   return (
@@ -228,8 +228,8 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
               <ExpandedMediaFailure>
                 <p>
                   {openOriginalLink
-                    ? "This image could not be loaded."
-                    : "Image unavailable. The file may have been moved or deleted."}
+                    ? "This image could not be loaded. Close it and open it again."
+                    : "The image is gone. The file may be moved or deleted."}
                 </p>
                 {openOriginalLink}
               </ExpandedMediaFailure>

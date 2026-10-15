@@ -23,9 +23,10 @@ function formatRemainingSeconds(seconds: number): string {
 }
 
 function getPromptErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : "SSH password prompt failed.";
+  const message =
+    error instanceof Error ? error.message : "Could not send the SSH password. Try again.";
   return message.includes("expired") || message.includes("no longer pending")
-    ? "This SSH password prompt expired. Try connecting again."
+    ? "This SSH password request expired. Try connecting again."
     : message;
 }
 
@@ -95,7 +96,7 @@ function ActiveSshPasswordPrompt({
   const remainingLabel =
     remainingSeconds === null ? null : formatRemainingSeconds(remainingSeconds);
   const visibleResponseError = isExpired
-    ? "This SSH password prompt expired. Try connecting again."
+    ? "This SSH password request expired. Try connecting again."
     : responseError;
 
   const respond = async (nextPassword: string | null) => {
@@ -105,7 +106,7 @@ function ActiveSshPasswordPrompt({
 
     const requestId = request.requestId;
     if (nextPassword !== null && isExpired) {
-      setResponseError("This SSH password prompt expired. Try connecting again.");
+      setResponseError("This SSH password request expired. Try connecting again.");
       return;
     }
 
@@ -152,11 +153,11 @@ function ActiveSshPasswordPrompt({
     >
       <DialogPopup className="max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>SSH Password Required</DialogTitle>
+          <DialogTitle>Enter your SSH password</DialogTitle>
           <DialogDescription>
-            Leonidas needs your SSH password to connect to <code>{target}</code>. The password is
-            passed to the local SSH process for this connection attempt and is not saved by Leonidas
-            Code.
+            Leonidas Code needs your SSH password to connect to <code>{target}</code>. It sends the
+            password to SSH on this computer for this connection only. It does not save the
+            password.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel scrollFade={false}>
@@ -197,7 +198,7 @@ function ActiveSshPasswordPrompt({
               <p className="text-sm text-destructive">{visibleResponseError}</p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Use SSH keys to avoid repeated password prompts on new SSH sessions.
+                Set up SSH keys to stop this password request.
               </p>
             )}
           </form>

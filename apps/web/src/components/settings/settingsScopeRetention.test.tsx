@@ -49,6 +49,7 @@ vi.mock("./SettingsScopeContext", async () => {
 vi.mock("../../state/environments", () => ({ useEnvironments: () => ({ environments: [] }) }));
 vi.mock("../ui/sidebar", () => ({
   SidebarInset: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  useSidebar: () => ({ open: true, isMobile: false }),
 }));
 vi.mock("../WorkspacePageHeader", () => ({
   WorkspacePageHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,

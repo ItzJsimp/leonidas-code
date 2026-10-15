@@ -184,7 +184,9 @@ const NextUpPanel = memo(function NextUpPanel(props: {
     >
       {props.tasks.length === 0 ? (
         <div className="flex flex-col items-center gap-3 px-4 py-8">
-          <p className="text-sm text-muted-foreground">Nothing open to pick up right now.</p>
+          <p className="text-sm text-muted-foreground">
+            No open tasks to pick up. Add a task to start.
+          </p>
           <Button variant="outline" size="sm" onClick={props.onCreate}>
             <PlusIcon />
             Add a task
@@ -223,10 +225,10 @@ const NextUpPanel = memo(function NextUpPanel(props: {
                     size="sm"
                     disabled={busy}
                     onClick={() => props.actions.sendToAgent(task)}
-                    aria-label={`Send ${task.title} to an agent`}
+                    aria-label={`Send ${task.title} to the AI`}
                   >
                     <SendIcon />
-                    Send to agent
+                    Send to AI
                   </Button>
                 ) : null}
               </li>
@@ -250,7 +252,7 @@ const QuickBatchPanel = memo(function QuickBatchPanel(props: {
     <Panel
       title="Quick wins"
       icon={<ZapIcon />}
-      meta="Small tasks, one agent"
+      meta="Small tasks, one chat"
       {...(props.className ? { className: props.className } : {})}
     >
       <ul className="divide-y divide-border">
@@ -277,7 +279,7 @@ const QuickBatchPanel = memo(function QuickBatchPanel(props: {
                   onClick={() => props.actions.sendBatchToAgent(batch.tasks)}
                 >
                   <SendIcon />
-                  Send all to one agent
+                  Send all to one chat
                 </Button>
               ) : null}
             </li>
@@ -313,7 +315,8 @@ const OrganizePanel = memo(function OrganizePanel(props: {
       <div className="flex items-center gap-3 px-4 py-3">
         <p className="min-w-0 flex-1 text-sm text-muted-foreground">
           {changes.length} open {changes.length === 1 ? "task has" : "tasks have"} no effort or
-          topic labels. Fill them in from each task&apos;s title, description and checklist.
+          topic labels. Leonidas Code can fill them in from the title, description and checklist of
+          each task.
         </p>
         <Button size="sm" disabled={busy} onClick={() => props.actions.organize(changes)}>
           <TagsIcon />
@@ -407,7 +410,7 @@ const PriorityMixPanel = memo(function PriorityMixPanel(props: {
       {...(props.className ? { className: props.className } : {})}
     >
       {total === 0 ? (
-        <PanelEmpty>No open tasks.</PanelEmpty>
+        <PanelEmpty>No open tasks. Add a task to start.</PanelEmpty>
       ) : (
         <div className="flex flex-col gap-4 p-4">
           <div
@@ -503,7 +506,7 @@ const ProjectsPanel = memo(function ProjectsPanel(props: {
       {...(props.className ? { className: props.className } : {})}
     >
       {rows.length === 0 ? (
-        <PanelEmpty>No project has tasks yet.</PanelEmpty>
+        <PanelEmpty>No project has tasks yet. Add a task to a project.</PanelEmpty>
       ) : (
         <>
           <ul className="divide-y divide-border">
@@ -576,7 +579,7 @@ function buildAttention(
   }
   for (const task of stale) {
     const days = Math.max(1, Math.floor((now - task.updatedAt) / DAY_MS));
-    add(task, { kind: "stale", label: `Untouched ${days}d` });
+    add(task, { kind: "stale", label: `No change for ${days} days` });
   }
   return [...items.values()];
 }
@@ -604,7 +607,7 @@ const AttentionPanel = memo(function AttentionPanel(props: {
       {...(props.className ? { className: props.className } : {})}
     >
       {items.length === 0 ? (
-        <PanelEmpty>Nothing is overdue, blocked or going stale.</PanelEmpty>
+        <PanelEmpty>Nothing is late, blocked or old.</PanelEmpty>
       ) : (
         <>
           <ul className="divide-y divide-border">
@@ -654,7 +657,7 @@ const ActivityPanel = memo(function ActivityPanel(props: {
       {...(props.className ? { className: props.className } : {})}
     >
       {props.activity.length === 0 ? (
-        <PanelEmpty>Activity on your tasks will show up here.</PanelEmpty>
+        <PanelEmpty>Changes to your tasks show here.</PanelEmpty>
       ) : (
         <ul className="relative m-4 ml-5 flex flex-col border-l border-border">
           {props.activity.map((entry) => (
@@ -718,8 +721,8 @@ export function TaskDashboardView(props: TaskDashboardViewProps) {
           </EmptyMedia>
           <EmptyTitle>No tasks yet</EmptyTitle>
           <EmptyDescription>
-            Tasks come from the cards in your AIOS task folder automatically. Add a card there, or
-            create one here, and it shows up on this page.
+            Tasks come from the files in your AIOS task folder. Add a file there, or create a task
+            here. It shows on this page.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>

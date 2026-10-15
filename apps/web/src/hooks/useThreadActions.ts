@@ -71,7 +71,7 @@ export class ThreadArchiveBlockedError extends Schema.TaggedError<ThreadArchiveB
   },
 ) {
   override get message(): string {
-    return "Cannot archive while the provider is active.";
+    return "Cannot archive while the AI is working.";
   }
 }
 
@@ -83,7 +83,7 @@ export class ThreadSettlementUnsupportedError extends Schema.TaggedError<ThreadS
   },
 ) {
   override get message(): string {
-    return "This environment's server does not support settling yet. Update the server to use Settle.";
+    return "This computer cannot mark chats as done yet. Update Leonidas Code on that computer to use it.";
   }
 }
 
@@ -95,7 +95,7 @@ export class ThreadSnoozeUnsupportedError extends Schema.TaggedError<ThreadSnooz
   },
 ) {
   override get message(): string {
-    return "This environment's server does not support snoozing yet. Update the server to use Snooze.";
+    return "This computer cannot snooze chats yet. Update Leonidas Code on that computer to use it.";
   }
 }
 
@@ -107,7 +107,7 @@ export class ThreadSnoozeBlockedError extends Schema.TaggedError<ThreadSnoozeBlo
   },
 ) {
   override get message(): string {
-    return "This thread is waiting on you. Respond to the pending request before snoozing it.";
+    return "This chat is waiting for you. Answer its question before you snooze it.";
   }
 }
 
@@ -131,7 +131,7 @@ export class ThreadAutoSettleOptOutUnsupportedError extends Schema.TaggedError<T
   },
 ) {
   override get message(): string {
-    return "This environment's server does not support turning auto-settle off per thread yet. Update the server to use it.";
+    return "This computer cannot turn off “Mark as done by itself” for one chat yet. Update Leonidas Code on that computer to use it.";
   }
 }
 
@@ -143,7 +143,7 @@ export class ThreadPinningUnsupportedError extends Schema.TaggedError<ThreadPinn
   },
 ) {
   override get message(): string {
-    return "This environment's server does not support pinning yet. Update the server to use Pin.";
+    return "This computer cannot pin chats yet. Update Leonidas Code on that computer to use it.";
   }
 }
 
@@ -155,7 +155,7 @@ export class ThreadPinReorderUnsupportedError extends Schema.TaggedError<ThreadP
   },
 ) {
   override get message(): string {
-    return "This environment's server does not support reordering pinned threads yet. Update the server to reorder pins.";
+    return "This computer cannot change the order of pinned chats yet. Update Leonidas Code on that computer to do it.";
   }
 }
 
@@ -167,7 +167,7 @@ export class ThreadActiveReorderUnsupportedError extends Schema.TaggedError<Thre
   },
 ) {
   override get message(): string {
-    return "Update this environment's server to reorder active threads.";
+    return "Update Leonidas Code on this computer to change the order of chats.";
   }
 }
 
@@ -183,10 +183,7 @@ export async function requestThreadUnpinConfirmation(input: {
 
   return settlePromise(() =>
     confirm(
-      [
-        `Unpin thread "${input.title}"?`,
-        "This will move the thread out of your pinned section.",
-      ].join("\n"),
+      [`Unpin chat "${input.title}"?`, "This moves the chat out of your pinned chats."].join("\n"),
     ),
   );
 }
@@ -199,7 +196,7 @@ export async function navigateAfterThreadDeletion(navigate: () => Promise<void>)
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: "Thread deleted, but navigation failed",
+        title: "Chat deleted, but the app could not open the next page",
         ...userErrorToastFields(error),
       }),
     );
@@ -262,7 +259,7 @@ function threadOperationFailure(target: ScopedThreadRef) {
     : AsyncResult.failure(
         Cause.fail(
           new EnvironmentAuthorizationError({
-            message: "This connection cannot change threads.",
+            message: "This connection cannot change chats.",
             requiredScope: AuthOrchestrationOperateScope,
           }),
         ),
@@ -511,10 +508,10 @@ export function useThreadActions() {
         const confirmationResult = await settlePromise(() =>
           localApi.dialogs.confirm(
             [
-              "This thread is the only one linked to this worktree:",
+              "This chat is the only one that uses this separate copy:",
               displayWorktreePath ?? orphanedWorktreePath,
               "",
-              "Delete the worktree too?",
+              "Delete the separate copy too?",
             ].join("\n"),
             { variant: "destructive" },
           ),
@@ -596,7 +593,8 @@ export function useThreadActions() {
         : AsyncResult.failure(
             Cause.fail(
               new EnvironmentAuthorizationError({
-                message: "This connection can no longer remove worktrees.",
+                message:
+                  "This connection cannot remove separate copies. Delete the copy from your project folder yourself.",
                 requiredScope: AuthSourceControlWriteScope,
               }),
             ),
@@ -628,8 +626,8 @@ export function useThreadActions() {
           stackedThreadToast({
             type: "error",
             title: removalFailed
-              ? "Failed to delete worktree"
-              : "Worktree deleted, but Git status refresh failed",
+              ? "Could not delete the separate copy"
+              : "Separate copy deleted, but the app could not refresh its Git status",
             description: removalFailed
               ? `Could not remove ${displayWorktreePath ?? orphanedWorktreePath}. ${message}`
               : message,
@@ -808,7 +806,7 @@ export function useThreadActions() {
         markThreadVisited(scopedThreadKey(target), wokeAt);
       }
       showThreadUndoNotice({
-        action: "Settled",
+        action: "Marked as done",
         claim: action,
         undo: async () => {
           const unsettled = await unsettleThread(target);
@@ -828,7 +826,7 @@ export function useThreadActions() {
           }
           return unsettled;
         },
-        failureTitle: "Failed to undo settle",
+        failureTitle: "Could not undo marking the chat as done",
       });
       return result;
     },
@@ -850,7 +848,7 @@ export function useThreadActions() {
       const resolved = resolveThreadTarget(target);
       const confirmationResult = await requestThreadUnpinConfirmation({
         enabled: confirmThreadUnpin,
-        title: resolved?.thread.title ?? "this thread",
+        title: resolved?.thread.title ?? "this chat",
         confirm: localApi ? (message) => localApi.dialogs.confirm(message) : null,
       });
       if (confirmationResult._tag === "Failure") {
@@ -970,7 +968,7 @@ export function useThreadActions() {
         action: "Snoozed",
         claim: action,
         undo: () => unsnoozeThread(target),
-        failureTitle: "Failed to wake thread",
+        failureTitle: "Could not bring the chat back",
       });
       return result;
     },
@@ -985,13 +983,12 @@ export function useThreadActions() {
       const resolved = resolveThreadTarget(target);
 
       if (confirmThreadDelete && localApi) {
-        const title = resolved?.thread.title ?? "this thread";
+        const title = resolved?.thread.title ?? "this chat";
         const confirmationResult = await settlePromise(() =>
           localApi.dialogs.confirm(
-            [
-              `Delete thread "${title}"?`,
-              "This permanently clears conversation history for this thread.",
-            ].join("\n"),
+            [`Delete chat "${title}"?`, "This permanently deletes the messages in this chat."].join(
+              "\n",
+            ),
             { variant: "destructive" },
           ),
         );

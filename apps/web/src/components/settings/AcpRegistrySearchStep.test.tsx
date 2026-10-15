@@ -155,7 +155,7 @@ describe("AcpRegistrySearchStep", () => {
       input: { query: "" },
     });
 
-    const input = findByAriaLabel(initial, "Search ACP Registry");
+    const input = findByAriaLabel(initial, "Search the AI service list");
     expect(input.props.size).toBe("sm");
     (input.props.onChange as ((event: { currentTarget: { value: string } }) => void) | undefined)?.(
       { currentTarget: { value: "  Gemini  " } },
@@ -190,7 +190,10 @@ describe("AcpRegistrySearchStep", () => {
   it("renders deterministic loading, error, and empty states", () => {
     state.isPending = true;
     expect(
-      visitElements(render(), (element) => element.props.children === "Searching the registry..."),
+      visitElements(
+        render(),
+        (element) => element.props.children === "Searching the AI service list...",
+      ),
     ).not.toBeNull();
 
     state.isPending = false;
@@ -202,13 +205,16 @@ describe("AcpRegistrySearchStep", () => {
     state.error = null;
     state.result = { agents: [] };
     expect(
-      visitElements(render(), (element) => element.props.children === "No compatible agents found"),
+      visitElements(
+        render(),
+        (element) => element.props.children === "No compatible AI services found",
+      ),
     ).not.toBeNull();
   });
 
   it("keeps same-query refreshes visible and announced while retaining results", () => {
     const first = render();
-    const input = findByAriaLabel(first, "Search ACP Registry");
+    const input = findByAriaLabel(first, "Search the AI service list");
     (input.props.onChange as ((event: { currentTarget: { value: string } }) => void) | undefined)?.(
       {
         currentTarget: { value: "Codex" },
@@ -241,7 +247,7 @@ describe("AcpRegistrySearchStep", () => {
         refreshingTree,
         (element) =>
           element.props.role === "status" &&
-          element.props.children === "Refreshing ACP Registry results.",
+          element.props.children === "Refreshing the AI service list.",
       ),
     ).not.toBeNull();
     expect(findByAriaLabel(refreshingTree, "Add Gemini CLI")).not.toBeNull();

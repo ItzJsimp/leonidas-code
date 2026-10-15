@@ -24,9 +24,9 @@ interface ComposerPendingApprovalActionsProps {
 }
 
 const DEFAULT_APPROVAL_OPTIONS = [
-  { decision: "cancel", label: "Cancel" },
+  { decision: "cancel", label: "Cancel request" },
   { decision: "decline", label: "Decline" },
-  { decision: "acceptForSession", label: "Always allow this session" },
+  { decision: "acceptForSession", label: "Always allow in this chat" },
   { decision: "accept", label: "Approve" },
 ] satisfies ReadonlyArray<ProviderApprovalOption>;
 
@@ -84,7 +84,7 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
         <Menu>
           <MenuTrigger
             disabled={disabled || isResponding}
-            render={<Button size="icon-xs" variant="outline" aria-label="More approval options" />}
+            render={<Button size="icon-xs" variant="outline" aria-label="More ways to answer" />}
           >
             <EllipsisIcon />
           </MenuTrigger>

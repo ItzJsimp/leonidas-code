@@ -1264,7 +1264,7 @@ describe("thread outbox", () => {
         fileAttachments: [{ name: "report.pdf", sizeBytes: 42 }],
         serverConfig: { maxFileUploadBytes: undefined },
       }),
-    ).toEqual({ step: "restore", reason: "This server does not support file attachments." });
+    ).toEqual({ step: "restore", reason: "This computer does not support file attachments." });
     expect(
       resolveThreadOutboxDispatchStep({
         deliveryAction: "send",

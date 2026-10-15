@@ -145,7 +145,7 @@ export async function clearBrowserProfileData(
   const desktopEnvironmentIds = bridge === null ? [] : environmentIds;
   const serverEnvironmentIds = server?.environmentIds ?? [];
   if (desktopEnvironmentIds.length === 0 && serverEnvironmentIds.length === 0) {
-    throw new Error("Browser profile data is not available to clear.");
+    throw new Error("No data to clear for this browser profile.");
   }
   await Promise.all([
     ...desktopEnvironmentIds.flatMap((environmentId) => [
@@ -190,7 +190,7 @@ const zoomLabel = (zoomFactor: number) => `${Math.round(zoomFactor * 100)}%`;
 /** Thrown from the post-import settings updater when the cap was hit meanwhile. */
 class ProfileLimitReachedError extends Error {
   constructor() {
-    super("Browser profile limit reached.");
+    super("You have reached the browser profile limit. Remove a profile, then try again.");
     this.name = "ProfileLimitReachedError";
   }
 }
@@ -297,7 +297,7 @@ function BrowserViewportSetting({ disabled }: { readonly disabled: boolean }) {
   return (
     <SettingsRow
       {...searchableSetting("browser-default-viewport")}
-      description="Tab size for you and agents. Fill fits the panel; other sizes show the device toolbar."
+      description="Tab size for you and the AI. “Fill” fits the panel. Other sizes show the device toolbar."
       resetAction={
         !disabled && viewport._tag !== DEFAULT_BROWSER_VIEWPORT._tag ? (
           <SettingResetButton
@@ -449,7 +449,7 @@ function BrowserAppearanceSetting({ disabled }: { readonly disabled: boolean }) 
   return (
     <SettingsRow
       {...searchableSetting("browser-default-appearance")}
-      description="The color scheme pages are told to prefer. System follows your OS setting."
+      description="The color scheme that web pages use. “System” follows the setting of your computer."
       resetAction={
         !disabled && appearance !== DEFAULT_PREVIEW_APPEARANCE ? (
           <SettingResetButton
@@ -496,7 +496,7 @@ function BrowserRecordingInputSettings({ disabled }: { readonly disabled: boolea
     <>
       <SettingsRow
         {...searchableSetting("browser-recording-key-presses")}
-        description="Show pressed keys and shortcuts in new recordings. Password fields are excluded."
+        description="Show the keys you press in new recordings. Password fields are not shown."
         control={
           <Switch
             disabled={disabled}
@@ -510,7 +510,7 @@ function BrowserRecordingInputSettings({ disabled }: { readonly disabled: boolea
       />
       <SettingsRow
         {...searchableSetting("browser-recording-mouse-presses")}
-        description="Highlight mouse presses and held buttons in new recordings."
+        description="Show mouse clicks and held buttons in new recordings."
         control={
           <Switch
             disabled={disabled}
@@ -533,7 +533,7 @@ function BrowserRecordingFrameRateSetting({ disabled }: { readonly disabled: boo
   return (
     <SettingsRow
       {...searchableSetting("browser-recording-frame-rate")}
-      description="Maximum recording rate. 30 fps saves CPU and storage; 60 fps is smoother."
+      description="Top recording speed. 30 fps uses less CPU and storage. 60 fps looks smoother."
       resetAction={
         !disabled && frameRate !== DEFAULT_BROWSER_RECORDING_FRAME_RATE ? (
           <SettingResetButton
@@ -587,7 +587,7 @@ function BrowserLinkTargetSetting({ disabled }: { readonly disabled: boolean }) 
   return (
     <SettingsRow
       {...searchableSetting("browser-link-target")}
-      description="Where links in the chat and terminal open. Hold ⌘ or Ctrl while clicking a link to open it in your default browser either way."
+      description="Where links in the chat and terminal open. To open a link in your default browser, hold ⌘ or Ctrl and click it."
       resetAction={
         !disabled && linkTarget !== DEFAULT_BROWSER_LINK_TARGET ? (
           <SettingResetButton
@@ -688,10 +688,12 @@ function DeviceIntegrationControls({
       const results = await Promise.allSettled(
         environments.map(async (environment) => {
           if (environment.connection.phase !== "connected" || !environment.serverConfig) {
-            throw new Error("Environment disconnected");
+            throw new Error("The computer is not connected. Connect it and try again.");
           }
           if (!readEnvironmentScope(environment.environmentId, AuthSettingsWriteScope)) {
-            throw new Error("This connection cannot change device settings.");
+            throw new Error(
+              "This connection cannot change device settings. Use a connection with more permissions.",
+            );
           }
           return configure({
             environmentId: environment.environmentId,
@@ -706,7 +708,7 @@ function DeviceIntegrationControls({
       if (failed.length > 0) {
         toastManager.add({
           type: "error",
-          title: "Device settings not saved on all environments",
+          title: "Device settings not saved on all computers",
           description: `Could not update ${failed.map((environment) => environment.label).join(", ")}.`,
         });
       }
@@ -739,7 +741,7 @@ function DeviceIntegrationControls({
                       setUpdateError({
                         tool,
                         message:
-                          "Update failed. Check this host's network connection and try again.",
+                          "The update did not work. Check the network connection of this computer and try again.",
                       });
                   })
                   .finally(() => setPending(null));
@@ -817,7 +819,7 @@ function DeviceIntegrationControls({
             {...searchableSetting("device-platform-support")}
             description={
               connectedEnvironments.length > 1
-                ? `Status for ${connectedEnvironments.find((environment) => environment.environmentId === environmentId)?.label}. Select an environment to inspect its simulator support.`
+                ? `Status for ${connectedEnvironments.find((environment) => environment.environmentId === environmentId)?.label}. Choose a computer to see its simulator support.`
                 : undefined
             }
             status={
@@ -869,7 +871,7 @@ function DeviceIntegrationControls({
                 (!projectScope && (!loaded || !anyHubEnabled || busy)) ||
                 pending !== null
               }
-              aria-label="Agent device access"
+              aria-label="AI device access"
               onCheckedChange={(checked) =>
                 projectScope
                   ? updateSettings({ enableAgentDeviceAccess: Boolean(checked) })
@@ -897,7 +899,7 @@ function BrowserAutoShowFloatingPreviewSetting({ disabled }: { readonly disabled
   return (
     <SettingsRow
       {...searchableSetting("browser-auto-show-floating-preview")}
-      description="Show the floating preview when an agent opens a browser or device unless the agent says otherwise."
+      description="Show the floating preview when the AI opens a browser or device. The AI can choose not to."
       resetAction={
         !disabled && autoShow !== DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW ? (
           <SettingResetButton
@@ -1025,7 +1027,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
       toastManager.add({
         type: "error",
         title: `Could not clear ${name}'s data`,
-        description: "You're not connected to a server yet.",
+        description: "Leonidas Code is not connected to a computer yet. Connect one and try again.",
       });
       return;
     }
@@ -1046,7 +1048,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
   const removeProfile = async (id: string) => {
     if (!settingsHydrated || importInFlightRef.current) return;
     if (!removalAvailable) {
-      setProfileRemovalError("Connect to an environment before removing this profile.");
+      setProfileRemovalError("Connect a computer before you remove this profile.");
       return;
     }
     setProfileRemovalError(null);
@@ -1181,7 +1183,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
             // token form `importFailureReason` recovers from a bridge error.
             const reason =
               cause instanceof ProfileLimitReachedError ? "profileLimitReached" : "profileNotSaved";
-            throw new Error(`Importing cookies from ${source.id} failed: ${reason}.`, { cause });
+            throw new Error(`Could not import cookies from ${source.id}: ${reason}.`, { cause });
           }
         } else {
           targetName = source.name;
@@ -1224,7 +1226,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
   return (
     <SettingsRow
       {...searchableSetting("browser-profiles")}
-      description="Profiles separate cookies and logins. Incognito data is cleared when the app closes."
+      description="Profiles keep cookies and logins apart. Incognito data is deleted when you close the app."
       control={
         <Menu onOpenChange={(open) => open && loadSources()}>
           <MenuTrigger
@@ -1282,7 +1284,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
                     </MenuItem>
                   ))}
                   {primaryEnvironment == null ? (
-                    <MenuItem disabled>Connect to an environment to import cookies</MenuItem>
+                    <MenuItem disabled>Connect a computer to import cookies</MenuItem>
                   ) : null}
                 </>
               )}
@@ -1392,8 +1394,8 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
                       <MenuSeparator />
                       <MenuItem disabled>
                         {environmentsReady
-                          ? "Connect to an environment to clear profile data"
-                          : "Checking environments…"}
+                          ? "Connect a computer to clear profile data"
+                          : "Checking computers…"}
                       </MenuItem>
                     </>
                   ) : null}
@@ -1416,8 +1418,8 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove “{profilePendingRemoval?.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              Its cookies and logins are deleted. Desktop tabs already open in this profile stay
-              open until you close them; server browser tabs close now.
+              Leonidas Code deletes its cookies and logins. Desktop tabs that are open in this
+              profile stay open until you close them. Browser tabs on the computer close now.
             </AlertDialogDescription>
             {profileRemovalError ? (
               <p aria-live="polite" className="text-sm text-destructive">
@@ -1426,7 +1428,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
             ) : null}
             {!removalAvailable ? (
               <p className="text-sm text-muted-foreground">
-                Connect to an environment to remove this profile and its data.
+                Connect a computer to remove this profile and its data.
               </p>
             ) : null}
           </AlertDialogHeader>
@@ -1463,7 +1465,8 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
               Clear “{profilePendingClear?.name}”’s cookies and cache?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              You are signed out of its sites. Server browser tabs open in this profile close now.
+              You are signed out of its sites. Browser tabs on the computer that use this profile
+              close now.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1505,7 +1508,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
                 toastManager.add({
                   type: "error",
                   title: "Could not open System Settings",
-                  description: "Open Privacy & Security → Full Disk Access manually.",
+                  description: "Open Privacy & Security, then Full Disk Access, by hand.",
                 });
               });
           }}
@@ -1539,7 +1542,7 @@ export function IntegrationsSettingsPanel() {
       <ProjectDefaultsSettings category="integrations" />
       <SettingsSection id="browser" title="Browser">
         {previewDefaultsDisabled ? (
-          <SettingsUnavailableGroup message="Only available in the desktop app.">
+          <SettingsUnavailableGroup message="Available only in the desktop app. Open Leonidas Code on your computer to use this.">
             {previewDefaults}
           </SettingsUnavailableGroup>
         ) : (

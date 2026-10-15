@@ -256,14 +256,14 @@ export function threadPullRequestPanelTarget(thread: {
 export function pullRequestHandoffLabels(inThisThread: boolean) {
   return inThisThread
     ? {
-        fixFinding: "Fix in this thread",
-        fixCheck: "Fix in this thread",
-        fixFindings: "Fix findings in this thread",
+        fixFinding: "Fix in this chat",
+        fixCheck: "Fix in this chat",
+        fixFindings: "Fix findings in this chat",
       }
     : {
-        fixFinding: "Fix in a thread",
+        fixFinding: "Fix in a chat",
         fixCheck: "Fix",
-        fixFindings: "Fix findings in a thread",
+        fixFindings: "Fix findings in a chat",
       };
 }
 

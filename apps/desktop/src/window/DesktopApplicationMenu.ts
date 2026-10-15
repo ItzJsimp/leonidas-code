@@ -73,8 +73,8 @@ const checkForUpdatesFromMenu = Effect.gen(function* () {
   if (updateState.status === "up-to-date") {
     yield* electronDialog.showMessageBox({
       type: "info",
-      title: "You're up to date!",
-      message: `Leonidas Code ${updateState.currentVersion} is currently the newest version available.`,
+      title: "You have the latest update",
+      message: `Leonidas Code ${updateState.currentVersion} is the latest version.`,
       buttons: ["OK"],
     });
   } else if (updateState.status === "error") {
@@ -82,7 +82,7 @@ const checkForUpdatesFromMenu = Effect.gen(function* () {
       type: "warning",
       title: "Update check failed",
       message: "Could not check for updates.",
-      detail: updateState.message ?? "An unknown error occurred. Please try again later.",
+      detail: updateState.message ?? "Try again later.",
       buttons: ["OK"],
     });
   }
@@ -99,7 +99,7 @@ const handleCheckForUpdatesMenuClick = Effect.gen(function* () {
     yield* electronDialog.showMessageBox({
       type: "info",
       title: "Updates unavailable",
-      message: "Automatic updates are not available right now.",
+      message: "Automatic updates are not available now. Check again later.",
       detail: disabledReason.value,
       buttons: ["OK"],
     });

@@ -87,12 +87,12 @@ export function useMediaActions(source: MediaActionSource) {
     }
     const { environmentId, resource } = source.asset;
     const connection = readPreparedConnection(environmentId);
-    if (!connection) throw new Error("Reconnect to this environment and try again.");
+    if (!connection) throw new Error("Reconnect to this computer and try again.");
     const result = await createAssetUrl({ environmentId, input: { resource } });
     if (result._tag === "Failure") throw squashAtomCommandFailure(result);
     assertCanReadMedia();
     const url = resolveAssetUrl(connection.httpBaseUrl, result.value.relativeUrl);
-    if (!url) throw new Error("The environment returned an invalid media URL.");
+    if (!url) throw new Error("The computer returned an invalid media URL.");
     return url;
   }, [source, createAssetUrl, assertCanReadMedia]);
   const save = useCallback(async () => {
@@ -101,9 +101,7 @@ export function useMediaActions(source: MediaActionSource) {
   const copyImage = useCallback(async () => {
     assertCanReadMedia();
     if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
-      throw new Error(
-        "Image copying is unavailable. Use a secure browser connection or save the image.",
-      );
+      throw new Error("Copying images does not work here. Save the image instead.");
     }
     // Start the clipboard write in the user gesture; fetching/decoding may finish later.
     await navigator.clipboard.write([
@@ -150,7 +148,7 @@ export function MediaActions({
         items.push({ id: "copy-url", label: "Copy URL" });
       }
       if (source.onOpenFile)
-        items.push({ id: "open-file", label: "Open in file viewer", disabled: !canReadMedia });
+        items.push({ id: "open-file", label: "Open in the file viewer", disabled: !canReadMedia });
       items.push({ id: "save", label: `Save ${noun}`, disabled: unavailable });
       if (source.kind === "image") {
         items.push({

@@ -185,7 +185,9 @@ export function UsageGlanceCard(props: {
               </Text>
             </Pressable>
             {accounts.length === 0 ? (
-              <Text className="text-xs text-foreground-muted">No connected accounts reported.</Text>
+              <Text className="text-xs text-foreground-muted">
+                No connected AI accounts reported.
+              </Text>
             ) : null}
           </View>
         ) : null}

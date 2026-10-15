@@ -117,7 +117,9 @@ export function useRemoteConnections() {
       if (AsyncResult.isFailure(result)) {
         const error = Cause.squash(result.cause);
         const message =
-          error instanceof Error ? error.message : "Failed to pair with the environment.";
+          error instanceof Error
+            ? error.message
+            : "Could not connect to the computer. Check the code and try again.";
         if (
           error !== null &&
           typeof error === "object" &&
@@ -173,11 +175,11 @@ export function useRemoteConnections() {
       if (environment.isRelayManaged) {
         Alert.alert(
           "Remove from this device?",
-          `Forget ${environment.environmentLabel} and its cached threads on this device.\n\nIt stays on your T3 Connect account and keeps its host space. Deregister it under T3 Account → T3 Connect to free it.`,
+          `Forget ${environment.environmentLabel} and its saved chats on this device.\n\nIt stays in your remote access account. To free its space, remove it under Remote access account → Remote access.`,
           [
             { text: "Cancel", style: "cancel" },
             {
-              text: "Open T3 Account",
+              text: "Open remote access account",
               onPress: () => navigation.navigate("SettingsSheet", { screen: "SettingsAuth" }),
             },
             remove,
@@ -187,7 +189,7 @@ export function useRemoteConnections() {
       }
       Alert.alert(
         "Remove from this device?",
-        `Forget ${environment.environmentLabel} and its cached threads on this device. Switch it off instead to keep it saved.`,
+        `Forget ${environment.environmentLabel} and its saved chats on this device. Switch it off instead to keep it saved.`,
         [{ text: "Cancel", style: "cancel" }, remove],
       );
     },

@@ -41,12 +41,12 @@ export function buildHomeListFilterMenu(props: {
 
   items.push({
     type: "submenu",
-    title: "Environment",
+    title: "Computer",
     items: [
       {
         type: "action",
-        title: "All environments",
-        subtitle: "Show threads from every environment",
+        title: "All computers",
+        subtitle: "Show chats from every computer",
         state: props.selectedEnvironmentId === null ? "on" : "off",
         onPress: () => props.onEnvironmentChange(null),
       },
@@ -70,7 +70,7 @@ export function buildHomeListFilterMenu(props: {
         {
           type: "action",
           title: "All projects",
-          subtitle: "Show threads from every project",
+          subtitle: "Show chats from every project",
           state: props.selectedProjectKey === null ? "on" : "off",
           onPress: () => props.onProjectChange(null),
         },
@@ -85,7 +85,7 @@ export function buildHomeListFilterMenu(props: {
   }
 
   return {
-    title: "Thread list options",
+    title: "Chat list options",
     items,
   };
 }

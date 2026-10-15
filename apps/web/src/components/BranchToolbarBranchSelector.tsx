@@ -94,7 +94,7 @@ interface BranchToolbarBranchSelectorProps {
 }
 
 function toBranchActionErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "An error occurred.";
+  return error instanceof Error ? error.message : "Try again.";
 }
 
 export function BranchToolbarBranchSelector({
@@ -120,7 +120,7 @@ export function BranchToolbarBranchSelector({
   const stopThreadSession = useAtomCommand(threadEnvironment.stopSession, "thread session stop");
   const updateThreadMetadata = useAtomCommand(
     threadEnvironment.updateMetadata,
-    "thread metadata update",
+    "chat metadata update",
   );
   // An automatic default loses to any launch that lands first; that rejection is expected.
   const updateEmptyThreadMetadata = useAtomCommand(threadEnvironment.updateMetadata, {
@@ -366,11 +366,11 @@ export function BranchToolbarBranchSelector({
   const [isBranchActionPending, startBranchActionTransition] = useTransition();
   const totalBranchCount = branchRefState.data?.totalCount ?? 0;
   const branchStatusText = isInitialBranchesLoadPending
-    ? "Loading refs..."
+    ? "Loading branches..."
     : isFetchingNextPage
-      ? "Loading more refs..."
+      ? "Loading more branches..."
       : hasNextPage
-        ? `Showing ${refs.length} of ${totalBranchCount} refs`
+        ? `Showing ${refs.length} of ${totalBranchCount} branches`
         : null;
 
   // ---------------------------------------------------------------------------
@@ -390,7 +390,7 @@ export function BranchToolbarBranchSelector({
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to copy branch name",
+            title: "Could not copy the branch name",
             description: toBranchActionErrorMessage(error),
           }),
         );
@@ -424,8 +424,9 @@ export function BranchToolbarBranchSelector({
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Action unavailable",
-          description: "This connection cannot change the thread's branch.",
+          title: "Cannot change the branch",
+          description:
+            "This connection cannot change the branch of this chat. Open the chat on the computer that runs it.",
         }),
       );
       return;
@@ -490,7 +491,7 @@ export function BranchToolbarBranchSelector({
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Could not switch branch.",
+            title: "Could not switch branch",
             description: toBranchActionErrorMessage(squashAtomCommandFailure(checkoutResult)),
           }),
         );
@@ -527,7 +528,7 @@ export function BranchToolbarBranchSelector({
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to create and switch ref.",
+            title: "Could not create and switch to the branch",
             description: toBranchActionErrorMessage(squashAtomCommandFailure(createBranchResult)),
           }),
         );
@@ -678,7 +679,7 @@ export function BranchToolbarBranchSelector({
           value={itemValue}
           onClick={() => selectPickerItem(itemValue)}
         >
-          <span className="truncate">Create new ref &quot;{newRefName}&quot;</span>
+          <span className="truncate">Create new branch &quot;{newRefName}&quot;</span>
         </ComboboxItem>
       );
     }

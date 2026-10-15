@@ -972,7 +972,7 @@ export const make = Effect.gen(function* () {
     resolvePrimaryLabel: Effect.gen(function* () {
       const { useWsl, distro } = yield* describePrimary;
       if (!useWsl) {
-        return environment.platform === "win32" ? "Windows" : "Local environment";
+        return environment.platform === "win32" ? "Windows" : "This computer";
       }
       return distro ? `WSL (${distro})` : "WSL";
     }).pipe(Effect.withSpan("desktop.backendConfiguration.resolvePrimaryLabel")),

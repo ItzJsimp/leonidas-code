@@ -157,9 +157,14 @@ export function ComposerSavedItems(props: Props) {
     <>
       <ComposerBanner.Root density="comfortable" width="content" data-tour="saved-items">
         <div className="flex items-center gap-1">
-          <Button size="xs" variant="ghost" onClick={() => setOpen(true)} aria-label="Open Prompts">
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => setOpen(true)}
+            aria-label="Open saved messages"
+          >
             <BookmarkPlusIcon />
-            Prompts
+            Saved messages
           </Button>
           {draft?.prompt.trim() ? (
             <div className="flex items-center">
@@ -178,16 +183,16 @@ export function ComposerSavedItems(props: Props) {
                       size="icon-xs"
                       variant="ghost"
                       disabled={disabled}
-                      aria-label="Choose saved item kind"
+                      aria-label="Choose what to save it as"
                     />
                   }
                 >
                   <ChevronDownIcon />
                 </MenuTrigger>
                 <MenuPopup>
-                  <MenuItem onClick={() => void save("prompt")}>Save as Prompt</MenuItem>
-                  <MenuItem onClick={() => void save("task")}>Save as Task</MenuItem>
-                  <MenuItem onClick={() => void save("note")}>Save as Note</MenuItem>
+                  <MenuItem onClick={() => void save("prompt")}>Save as message</MenuItem>
+                  <MenuItem onClick={() => void save("task")}>Save as task</MenuItem>
+                  <MenuItem onClick={() => void save("note")}>Save as note</MenuItem>
                 </MenuPopup>
               </Menu>
             </div>
@@ -205,17 +210,17 @@ export function ComposerSavedItems(props: Props) {
         ) : null}
         {hasContext && draft?.prompt.trim() ? (
           <p className="max-w-64 text-xs text-muted-foreground">
-            Remove attachments and context to save text, or use Stash.
+            To save the text only, remove the files and attached items. Or save a draft instead.
           </p>
         ) : null}
       </ComposerBanner.Root>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetPopup>
           <SheetHeader>
-            <SheetTitle>Prompts</SheetTitle>
+            <SheetTitle>Saved messages</SheetTitle>
             <SheetDescription>
-              Keep ideas for later. Edit them, queue them behind your running work, or launch them
-              when you are ready.
+              Keep ideas for later. Edit them, add them to the waiting messages, or start them in a
+              new chat when you are ready.
             </SheetDescription>
           </SheetHeader>
           {open ? (
@@ -255,7 +260,7 @@ function FilterMenu<T extends string>(props: {
 type StatusFilter = SavedItemStatus | "all";
 const STATUS_TABS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
   { value: "queued", label: "Ready" },
-  { value: "launched", label: "Launched" },
+  { value: "launched", label: "Started" },
   { value: "done", label: "Done" },
   { value: "archived", label: "Removed" },
   { value: "all", label: "All" },
@@ -265,23 +270,24 @@ const STATUS_BADGE: Record<
   { label: string; variant: "info" | "success" | "secondary" | "outline" }
 > = {
   queued: { label: "Ready", variant: "info" },
-  launched: { label: "Launched", variant: "success" },
+  launched: { label: "Started", variant: "success" },
   done: { label: "Done", variant: "secondary" },
   archived: { label: "Removed", variant: "outline" },
 };
+const kindLabel = (kind: string) => (kind === "prompt" ? "message" : kind);
 const EMPTY_COPY: Record<StatusFilter, string> = {
   queued: "Nothing ready to run",
-  launched: "Nothing launched yet",
+  launched: "Nothing started yet",
   done: "Nothing marked done",
   archived: "Nothing removed",
-  all: "No prompts here yet",
+  all: "Nothing saved here yet",
 };
 
 function StatusTabs(props: { value: StatusFilter; onChange: (value: StatusFilter) => void }) {
   return (
     <div
       role="group"
-      aria-label="Saved status filter"
+      aria-label="Filter saved messages by status"
       className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-muted p-0.5"
     >
       {STATUS_TABS.map((tab) => (
@@ -308,7 +314,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
   const [scope, setScope] = useState<"This project" | "No project" | "All projects">(
     props.projectId ? "This project" : "No project",
   );
-  const [kind, setKind] = useState<"All kinds" | "prompt" | "note">("All kinds");
+  const [kind, setKind] = useState<"All types" | "prompt" | "note">("All types");
   const [status, setStatus] = useState<StatusFilter>("queued");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<{
@@ -331,7 +337,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
       environmentId: props.environmentId,
       input: {
         ...(scope === "All projects" ? {} : { projectId }),
-        ...(kind === "All kinds" ? {} : { kind }),
+        ...(kind === "All types" ? {} : { kind }),
         ...(status === "all" ? {} : { status }),
       },
     }),
@@ -395,7 +401,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
         setConfirmDelete(null);
         setSelectedId(null);
       },
-      "Deleted for good",
+      "Deleted",
     );
   const executionInput = (item: SavedItem, commandId: CommandId) => ({
     commandId,
@@ -449,7 +455,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
           }),
         );
       },
-      "Queued in this thread. Reorder or cancel it from the thread's queue.",
+      "Added to the waiting messages of this chat. You can move or cancel it there.",
     );
   };
   const importMarkdown = () =>
@@ -465,7 +471,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
         setImportOpen(false);
         setMarkdown("");
         setStatus("queued");
-        setKind("All kinds");
+        setKind("All types");
       },
       "Imported",
     );
@@ -489,7 +495,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
           <Button
             size="icon-sm"
             variant="ghost-muted"
-            aria-label="Refresh prompts"
+            aria-label="Reload saved messages"
             onClick={query.refresh}
           >
             <RefreshCwIcon />
@@ -507,7 +513,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
       </div>
       <div className="flex flex-wrap gap-2">
         <FilterMenu
-          label="Saved project filter"
+          label="Filter by project"
           value={scope}
           values={
             props.projectId
@@ -517,10 +523,12 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
           onChange={setScope}
         />
         <FilterMenu
-          label="Saved kind filter"
+          label="Filter by type"
           value={kind}
-          values={["All kinds", "prompt", "note"] as const}
-          display={(value) => (value === "prompt" ? "Prompts" : value === "note" ? "Notes" : value)}
+          values={["All types", "prompt", "note"] as const}
+          display={(value) =>
+            value === "prompt" ? "Messages" : value === "note" ? "Notes" : value
+          }
           onChange={setKind}
         />
       </div>
@@ -559,7 +567,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
               </EmptyMedia>
               <EmptyTitle>{EMPTY_COPY[status]}</EmptyTitle>
               <EmptyDescription>
-                Write something in the composer and press Save, or paste exported Markdown here to
+                Type something in the message box and press Save. Or paste Markdown you exported to
                 import it.
               </EmptyDescription>
             </EmptyHeader>
@@ -624,12 +632,12 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                 {open ? (
                   <section
                     className="space-y-4 border-t border-border px-3 pt-3 pb-3"
-                    aria-label="Saved item details"
+                    aria-label="Saved message details"
                   >
                     {isEditing ? (
                       <div className="space-y-2">
                         <Input
-                          aria-label="Prompt title"
+                          aria-label="Message title"
                           placeholder="Title"
                           value={editing.title}
                           onChange={(event) =>
@@ -637,7 +645,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                           }
                         />
                         <Textarea
-                          aria-label="Prompt text"
+                          aria-label="Message text"
                           className="min-h-32"
                           value={editing.body}
                           onChange={(event) => setEditing({ ...editing, body: event.target.value })}
@@ -683,7 +691,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                                 onClick={() => queueInThread(item)}
                               >
                                 <ListPlusIcon />
-                                Queue in this thread
+                                Add to waiting messages
                               </Button>
                             ) : null}
                             <Button
@@ -700,12 +708,12 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                                         input: executionInput(item, commandId),
                                       }),
                                     ),
-                                  "Launched in a new thread. Open the Launched tab to find it.",
+                                  "Started in a new chat. Open the Started tab to find it.",
                                 )
                               }
                             >
                               <PlayIcon />
-                              Launch in new thread
+                              Start in a new chat
                             </Button>
                             {!isEditing ? (
                               <Button
@@ -722,14 +730,15 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {props.threadId
-                              ? "Queued prompts run after the thread's current work, in the order you add them. "
-                              : "Open a started thread to queue prompts behind its work. "}
-                            New threads use the composer's model and modes, in the project root.
-                            {needsProject(item) ? " Select a project before launching." : ""}
+                              ? "Waiting messages go out after the AI stops, in the order you add them. "
+                              : "Open a chat that has started to add messages to its waiting messages. "}
+                            A new chat uses the model and permission from the message box, in the
+                            main folder.
+                            {needsProject(item) ? " Select a project before you start." : ""}
                           </p>
                           <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border/70 p-2">
                             <label className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground">
-                              <span>Run once at (your local time)</span>
+                              <span>Send once at (your local time)</span>
                               <Input
                                 type="datetime-local"
                                 value={runAt}
@@ -811,7 +820,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                             }}
                           >
                             <ExternalLinkIcon />
-                            Open thread
+                            Open chat
                           </Button>
                         ) : null}
                         {item.scheduledTaskId ? (
@@ -844,11 +853,11 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                                       input: { commandId, id: item.id },
                                     }),
                                   ),
-                                "Moved to Tasks",
+                                "Moved to the task board",
                               )
                             }
                           >
-                            Move to Tasks
+                            Move to the task board
                           </Button>
                         ) : null}
                         <span className="ml-auto flex flex-wrap items-center gap-1">
@@ -899,8 +908,8 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                             disabled={deleteBlocked}
                             title={
                               deleteBlocked
-                                ? "Disable its schedule before deleting"
-                                : "Delete permanently"
+                                ? "Turn off its schedule before you delete it"
+                                : "Delete for good"
                             }
                             onClick={() => setConfirmDelete(item)}
                           >
@@ -911,7 +920,8 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                       </div>
                       {scheduleOpen ? (
                         <p className="text-xs text-muted-foreground">
-                          Removing keeps its schedule active. Use Manage schedule to disable it.
+                          Removing it does not stop its schedule. Use Manage schedule to turn the
+                          schedule off.
                         </p>
                       ) : null}
                     </fieldset>
@@ -932,7 +942,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
           <AlertDialogHeader>
             <AlertDialogTitle>Delete "{confirmDelete?.title || "Untitled"}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes it for good and cannot be undone. Use Remove instead if you might want it
+              This deletes it for good. You cannot undo this. Use Remove instead if you may want it
               back.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -946,7 +956,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
               disabled={busy}
               onClick={() => confirmDelete && deleteItem(confirmDelete)}
             >
-              Delete permanently
+              Delete for good
             </Button>
           </AlertDialogFooter>
         </AlertDialogPopup>
@@ -956,7 +966,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
           <DialogHeader>
             <DialogTitle>Import saved Markdown</DialogTitle>
             <DialogDescription>
-              Paste an exported prompt or note. It will be queued in{" "}
+              Paste a message or note you exported. It will be saved in{" "}
               {projectId ? "this project" : "No project"}.
             </DialogDescription>
           </DialogHeader>
@@ -973,7 +983,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
             ) : null}
             {parsed.ok ? (
               <p className="text-sm">
-                {parsed.item.title || "Untitled"} · {parsed.item.kind}
+                {parsed.item.title || "Untitled"} · {kindLabel(parsed.item.kind)}
               </p>
             ) : null}
             {error ? (
@@ -987,7 +997,9 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
               Cancel
             </Button>
             <Button disabled={!parsed.ok || busy || !props.canOperate} onClick={importMarkdown}>
-              {busy ? "Importing…" : `Import as ${parsed.ok ? parsed.item.kind : "saved item"}`}
+              {busy
+                ? "Importing…"
+                : `Import as ${parsed.ok ? kindLabel(parsed.item.kind) : "saved message"}`}
             </Button>
           </DialogFooter>
         </DialogPopup>

@@ -183,7 +183,7 @@ export function ReviewCommentComposerSheet(props: ReviewCommentComposerSheetProp
             <View className="rounded-[22px] border border-border bg-card px-4 py-5">
               <Text className="text-base font-t3-bold text-foreground">No selection</Text>
               <Text className="mt-1 text-sm leading-normal text-foreground-muted">
-                Select a diff line or range first.
+                Select a changed line or a range of lines first.
               </Text>
             </View>
           ) : (

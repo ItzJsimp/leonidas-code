@@ -89,7 +89,7 @@ export function buildProjectThreadStartTurnInput(spec: ProjectThreadStartTurnSpe
 export function deriveThreadTitleFromPrompt(value: string): string {
   const trimmed = assistantCitationsToPlainText(value).trim();
   if (trimmed.length === 0) {
-    return "New thread";
+    return "New chat";
   }
 
   const compact = trimmed.replace(/\s+/g, " ");

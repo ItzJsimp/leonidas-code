@@ -86,7 +86,10 @@ const resolvePairingTarget = Effect.fn("clientRuntime.connection.onboarding.reso
       catch: (cause) =>
         new ConnectionBlockedError({
           reason: "configuration",
-          detail: cause instanceof Error ? cause.message : "The pairing details are invalid.",
+          detail:
+            cause instanceof Error
+              ? cause.message
+              : "The connection details are not valid. Check them and try again.",
         }),
     });
   },
@@ -104,7 +107,7 @@ function bearerConnectionId(environmentId: EnvironmentId, httpBaseUrl: string): 
 function differentMachineError(label: string) {
   return new ConnectionBlockedError({
     reason: "configuration",
-    detail: `That address reaches ${label}, a different machine. Add it as its own environment instead.`,
+    detail: `That address reaches ${label}, a different computer. Add it as its own computer instead.`,
   });
 }
 
@@ -209,7 +212,7 @@ export const prepareBearerConnectionUpdate = Effect.fn(
   ) {
     return yield* new ConnectionBlockedError({
       reason: "configuration",
-      detail: "Only saved bearer environments can be edited.",
+      detail: "Only computers that you connected with a connection code can be edited.",
     });
   }
 
@@ -225,7 +228,7 @@ export const prepareBearerConnectionUpdate = Effect.fn(
   if (label === "") {
     return yield* new ConnectionBlockedError({
       reason: "configuration",
-      detail: "Environment label cannot be empty.",
+      detail: "The computer name cannot be empty.",
     });
   }
   const httpBaseUrl = yield* Effect.try({
@@ -233,7 +236,7 @@ export const prepareBearerConnectionUpdate = Effect.fn(
     catch: (cause) =>
       new ConnectionBlockedError({
         reason: "configuration",
-        detail: cause instanceof Error ? cause.message : "The environment URL is invalid.",
+        detail: cause instanceof Error ? cause.message : "The computer URL is invalid.",
       }),
   });
   const connectionId = entry.target.connectionId;

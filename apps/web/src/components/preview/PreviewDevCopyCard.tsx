@@ -65,7 +65,7 @@ export function PreviewDevCopyCard({ threadRef, onOpenUrl }: Props) {
       if (result._tag !== "Success") {
         toastManager.add({
           type: "error",
-          title: "Preview copy failed",
+          title: "Could not start the preview copy",
           description: "Try again.",
         });
       }

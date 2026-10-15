@@ -40,7 +40,7 @@ export function WorktreeSetupSheet({ children, height, onClose }: WorktreeSetupS
           >
             {children}
             <NativeHeader
-              title="Worktree setup"
+              title="Separate copy setup"
               titleColorClassName="accent-foreground"
               tintColorClassName="accent-foreground"
               backgroundColorClassName="bg-sheet-solid"

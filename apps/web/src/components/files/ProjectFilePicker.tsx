@@ -46,7 +46,7 @@ function HighlightedFuzzyText(props: {
 function getEmptyStateMessage(query: string, error: string | null, isPending: boolean): string {
   if (error) return error;
   const isSearching = query.trim().length > 0;
-  if (isPending) return isSearching ? "Searching workspace files…" : "Indexing workspace files…";
+  if (isPending) return isSearching ? "Searching project files…" : "Reading project files…";
   return isSearching ? "No matching files." : "No files found.";
 }
 

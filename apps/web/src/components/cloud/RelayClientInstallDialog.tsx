@@ -22,13 +22,13 @@ const installSteps: ReadonlyArray<{
   readonly stage: RelayClientInstallProgressStage;
   readonly label: string;
 }> = [
-  { stage: "checking", label: "Checking current installation" },
+  { stage: "checking", label: "Checking the current installation" },
   { stage: "waiting_for_lock", label: "Waiting for installer" },
-  { stage: "downloading", label: "Downloading relay client" },
+  { stage: "downloading", label: "Downloading the remote access tool" },
   { stage: "verifying", label: "Verifying download" },
-  { stage: "installing", label: "Installing relay client" },
-  { stage: "validating", label: "Validating executable" },
-  { stage: "activating", label: "Activating installation" },
+  { stage: "installing", label: "Installing the remote access tool" },
+  { stage: "validating", label: "Checking the program" },
+  { stage: "activating", label: "Finishing the installation" },
 ];
 
 export function RelayClientInstallDialog() {
@@ -65,12 +65,12 @@ export function RelayClientInstallDialog() {
             <DownloadIcon aria-hidden className="size-4.5 text-muted-foreground" />
           </div>
           <DialogTitle>
-            {isInstalling ? "Installing relay client" : "Install relay client?"}
+            {isInstalling ? "Installing the remote access tool" : "Install the remote access tool?"}
           </DialogTitle>
           <DialogDescription>
             {isInstalling
-              ? "Leonidas Code is preparing this environment for secure access through T3 Connect."
-              : "Leonidas Code needs the relay client to make this environment available through T3 Connect."}
+              ? "Leonidas Code is getting this computer ready for safe remote access."
+              : "Leonidas Code needs the remote access tool to let your other devices use this computer."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel scrollFade={false}>
@@ -85,21 +85,21 @@ export function RelayClientInstallDialog() {
                 </p>
               </div>
               <progress
-                aria-label="Relay client installation progress"
+                aria-label="Installation progress"
                 className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary"
                 max={installSteps.length}
                 value={activeStepIndex + 1}
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Keep Leonidas Code open while the relay client is installed.
+                Keep Leonidas Code open while it installs the remote access tool.
               </p>
             </div>
           ) : (
             <div className="rounded-xl border border-border/70 bg-muted/35 p-3">
-              <p className="text-sm font-medium text-foreground">Managed relay client</p>
+              <p className="text-sm font-medium text-foreground">Remote access tool</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Leonidas Code will download and install version{" "}
-                {view.status === "confirming" ? view.version : ""} locally.
+                {view.status === "confirming" ? view.version : ""} on this computer.
               </p>
             </div>
           )}

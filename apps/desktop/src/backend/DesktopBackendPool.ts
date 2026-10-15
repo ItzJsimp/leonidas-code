@@ -244,8 +244,8 @@ export const layer = Layer.effect(
             { reason },
           );
           yield* electronDialog.showErrorBox(
-            "WSL backend is still unavailable",
-            `${reason}\n\nLeonidas Code will use the Windows backend for this launch and retry WSL the next time the app starts.`,
+            "WSL is still unavailable",
+            `${reason}\n\nLeonidas Code will use Windows for now. Restart Leonidas Code after WSL works again.`,
           );
           yield* appSettings.applyWslWindowsFallbackInMemory;
           return true;
@@ -255,8 +255,8 @@ export const layer = Layer.effect(
           reason,
         });
         yield* electronDialog.showErrorBox(
-          "WSL backend couldn't start",
-          `${reason}\n\nFalling back to the Windows backend so Leonidas Code can open. Re-enable the WSL backend from Settings > Connections once the WSL distro is fixed.`,
+          "WSL could not start",
+          `${reason}\n\nLeonidas Code will use Windows so it can open. Change Settings after WSL works again.`,
         );
         // Fully disable the WSL backend — both flags, matching the "Switch to
         // Windows" recovery path — so the manager's next restart re-resolves the

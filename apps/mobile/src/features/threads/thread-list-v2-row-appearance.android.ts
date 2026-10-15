@@ -13,7 +13,7 @@ export const selectedThreadRowColors = {
 };
 
 export function getThreadListV2NewBranchMenuTitle(branch: string) {
-  return `New thread on ${branch}`;
+  return `New chat on ${branch}`;
 }
 
 export function getThreadListV2RowAppearance(

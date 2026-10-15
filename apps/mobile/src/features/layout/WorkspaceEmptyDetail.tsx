@@ -21,12 +21,12 @@ export function WorkspaceEmptyDetail(props: {
       {props.onAddConnection ? (
         <View className="w-full max-w-[430px]">
           <EmptyState
-            title="No environments connected"
-            detail="Add an environment to load projects and start coding sessions."
+            title="No computers connected"
+            detail="Add a computer to load projects and start chats."
             variant="plain"
             action={
               <MaterialFloatingActionButton
-                label="Add environment"
+                label="Add computer"
                 icon="plus"
                 variant="extended"
                 tone="primary"
@@ -43,11 +43,11 @@ export function WorkspaceEmptyDetail(props: {
             tintColorClassName="accent-icon-subtle"
             type="hierarchical"
           />
-          <Text className="text-center text-xl font-t3-bold">Select a thread</Text>
+          <Text className="text-center text-xl font-t3-bold">Select a chat</Text>
           <Text className="text-center text-base text-foreground-muted">
             {Platform.OS === "android"
-              ? "Choose a thread from the sidebar or start a new thread."
-              : "Choose a thread from the sidebar or start a new task."}
+              ? "Choose a chat from the sidebar or start a new chat."
+              : "Choose a chat from the sidebar or start a new task."}
           </Text>
           {props.onStartNewTask ? (
             Platform.OS === "android" ? (
@@ -58,7 +58,7 @@ export function WorkspaceEmptyDetail(props: {
                 className="mt-2 flex-row items-center gap-2 rounded-full bg-primary px-5 py-3 active:opacity-70"
                 onPress={props.onStartNewTask}
               >
-                <Text className="text-base font-t3-bold text-primary-foreground">New Task</Text>
+                <Text className="text-base font-t3-bold text-primary-foreground">Start chat</Text>
               </Pressable>
             )
           ) : null}

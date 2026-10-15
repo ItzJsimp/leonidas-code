@@ -197,10 +197,10 @@ export function ConnectionsNewRouteScreen({
   return (
     <SettingsScreen
       formSheet={routeName === "ConnectionsNew"}
-      title="Add environment"
+      title="Add computer"
       actions={[
         {
-          accessibilityLabel: isSubmitting ? "Connecting" : "Add environment",
+          accessibilityLabel: isSubmitting ? "Connecting" : "Add computer",
           loading: isSubmitting,
           icon: "checkmark",
           tintColor: headerIconColor,
@@ -232,7 +232,9 @@ export function ConnectionsNewRouteScreen({
           />
 
           <View collapsable={false} className="gap-2">
-            <Text className="px-4 text-sm font-t3-medium text-foreground-muted">Or enter it</Text>
+            <Text className="px-4 text-sm font-t3-medium text-foreground-muted">
+              Or enter the code
+            </Text>
             <View
               collapsable={false}
               className={cn(
@@ -250,7 +252,7 @@ export function ConnectionsNewRouteScreen({
               <View className="ml-4 border-t border-border-subtle" />
               <PairingInputRow
                 label="Code"
-                placeholder="Pairing code"
+                placeholder="Connection code"
                 returnKeyType="go"
                 value={codeInput}
                 onChangeText={handleCodeChange}
@@ -267,7 +269,7 @@ export function ConnectionsNewRouteScreen({
               )}
             >
               {pairingConnectionError ??
-                "For machines on your local network or tailnet. The machine keeps its own provider credentials."}
+                "Use a computer on your local network or tailnet. The computer keeps its AI accounts."}
             </Text>
           </View>
 
@@ -368,7 +370,7 @@ function PairingScanCard(props: {
           )}
         </View>
         <Text className={cn("text-center text-sm", light ? "text-black/70" : "text-white/80")}>
-          Scan the code from t3 pair or desktop Connections settings
+          Scan a code from Leonidas Code on your computer.
         </Text>
       </View>
     </Pressable>
@@ -393,7 +395,7 @@ function T3ConnectSection() {
   return (
     <View collapsable={false} className="gap-2">
       <Text className="px-4 text-sm font-t3-medium text-foreground-muted">
-        Or use the managed relay
+        Or use remote access
       </Text>
       {isSignedIn ? (
         <CloudEnvironmentRows
@@ -410,9 +412,9 @@ function T3ConnectSection() {
           className="min-h-13 flex-row items-center gap-3 rounded-[26px] border-continuous bg-grouped-card px-4 active:opacity-70"
         >
           <View className="min-w-0 flex-1 py-3">
-            <Text className="text-base text-foreground">Sign in to T3 Connect</Text>
+            <Text className="text-base text-foreground">Sign in for remote access</Text>
             <Text className="text-sm text-foreground-muted">
-              Reach your machines from anywhere, no network setup.
+              Use your computers from anywhere. No network setup is needed.
             </Text>
           </View>
           <SymbolView

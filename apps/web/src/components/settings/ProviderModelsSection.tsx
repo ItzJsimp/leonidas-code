@@ -236,15 +236,15 @@ export function ProviderModelsSection({
     if (!canManageCustomModels || driverKind === "antigravity") return;
     const normalized = normalizeCustomModelSlug(input);
     if (!normalized) {
-      setError("Enter a model slug.");
+      setError("Enter a model name.");
       return;
     }
     if (models.some((model) => !model.isCustom && model.slug === normalized)) {
-      setError("That model is already built in.");
+      setError("That model is already in the list.");
       return;
     }
     if (normalized.length > MAX_CUSTOM_MODEL_LENGTH) {
-      setError(`Model slugs must be ${MAX_CUSTOM_MODEL_LENGTH} characters or less.`);
+      setError(`Model names must be ${MAX_CUSTOM_MODEL_LENGTH} characters or fewer.`);
       return;
     }
     if (customModels.some((entry) => entry.slug === normalized)) {
@@ -431,10 +431,10 @@ export function ProviderModelsSection({
 
   const pickerTooltip = (model: DisplayModel, isHidden: boolean) =>
     model.isCustom
-      ? "Custom models are always shown in the picker"
+      ? "Custom models always show in the model list"
       : isHidden
-        ? "Hidden from picker"
-        : "Shown in picker";
+        ? "Hidden from the model list"
+        : "Shown in the model list";
 
   // The trigger is a wrapper span: a disabled switch gets no pointer events,
   // so it could not open the tooltip itself.
@@ -446,7 +446,7 @@ export function ProviderModelsSection({
           checked={!isHidden}
           disabled={!canWritePreferences || model.isCustom}
           onCheckedChange={(checked) => setHidden(model.slug, !checked)}
-          aria-label={`Show ${model.name} in the model picker`}
+          aria-label={`Show ${model.name} in the model list`}
         />
       </TooltipTrigger>
       <TooltipPopup side="top">{pickerTooltip(model, isHidden)}</TooltipPopup>
@@ -541,7 +541,7 @@ export function ProviderModelsSection({
                 )
               }
             >
-              {allBuiltInModelsHidden ? "Enable all" : "Disable all"}
+              {allBuiltInModelsHidden ? "Show all" : "Hide all"}
             </Button>
           ) : null}
           <span className="text-xs text-muted-foreground">
@@ -571,7 +571,9 @@ export function ProviderModelsSection({
       >
         {visibleModels.length === 0 ? (
           <p className="px-2 py-2 text-xs text-muted-foreground">
-            {isFiltering ? "No models match." : "No models reported for this provider yet."}
+            {isFiltering
+              ? "No models match. Try other words."
+              : "This AI service has not listed any models yet. Sign in, then refresh."}
           </p>
         ) : null}
         {visibleModels.map((model, index) => {
@@ -591,7 +593,7 @@ export function ProviderModelsSection({
                 ? groupLabel("All", index === 0)
                 : null}
               {startsGroup && group === "hidden"
-                ? groupLabel("Hidden from picker", index === 0)
+                ? groupLabel("Hidden from the model list", index === 0)
                 : null}
               {renderRow(model)}
               {editingEntry ? (

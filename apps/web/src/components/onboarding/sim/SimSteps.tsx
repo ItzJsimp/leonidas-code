@@ -36,8 +36,7 @@ export function SimWelcomeStep({
     <>
       <h1 className={H1}>Welcome to Leonidas Code</h1>
       <p className={LEDE}>
-        What will you mostly use it for? Pick any that fit. We will tailor skills and setup to
-        match.
+        What will you mostly use it for? Pick all that fit. We will pick skills and setup to match.
       </p>
       <ScrollArea scrollFade className={SCROLL}>
         <div className="grid grid-cols-1 gap-1 pr-3 sm:grid-cols-2">
@@ -59,8 +58,8 @@ export function SimWelcomeStep({
         </div>
       </ScrollArea>
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        Leonidas Code collects anonymous usage data to help us improve it. To read more about how
-        your data is used and how to opt out, see our{" "}
+        Leonidas Code collects anonymous usage data to help us improve it. To learn how we use your
+        data and how to opt out, read our{" "}
         <a
           className="underline underline-offset-2"
           href={PRIVACY_POLICY_URL}
@@ -88,7 +87,7 @@ export function SimConnectStep({ onContinue }: { readonly onContinue: () => void
     <>
       <h1 className={H1}>Connect your computers</h1>
       <p className={LEDE}>
-        Choose one or more computers. We’ll set up agents and projects on each.
+        Choose one or more computers. We will set up AI accounts and projects on each one.
       </p>
       <fieldset className="mt-5 space-y-2">
         <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-background px-3 py-3">
@@ -114,7 +113,7 @@ export function SimConnectStep({ onContinue }: { readonly onContinue: () => void
             <span className="flex-1 text-left">Add a computer</span>
           </CollapsibleTrigger>
           <CollapsiblePanel>
-            <p className="px-3 pb-3 text-sm text-muted-foreground">Paste a pairing link.</p>
+            <p className="px-3 pb-3 text-sm text-muted-foreground">Paste a connection link.</p>
           </CollapsiblePanel>
         </Collapsible>
       </div>
@@ -161,8 +160,8 @@ export function SimAiosStep({
     <>
       <h1 className={H1}>Give your AI a memory</h1>
       <p className={LEDE}>
-        Optional. Your AI starts every session knowing who you are and what you work on, because it
-        reads a few plain text files first (an “AIOS”). Leonidas can build them with you.
+        This step is optional. Your AI starts every chat knowing who you are and what you work on.
+        It reads a few plain text files first (an “AIOS”). Leonidas Code can build them with you.
       </p>
       <ScrollArea scrollFade className={SCROLL}>
         <div className="space-y-4 pr-3">
@@ -181,7 +180,7 @@ export function SimAiosStep({
               </pre>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
-                  Paste it into the AI you already use.
+                  Paste this message into the AI you already use.
                 </p>
                 <Button size="compact" variant="outline" onClick={() => setCopied(true)}>
                   {copied ? <CheckIcon /> : <CopyIcon />}
@@ -194,25 +193,25 @@ export function SimAiosStep({
             <div className="space-y-2">
               <label className="block space-y-1.5">
                 <span className="text-xs text-muted-foreground">
-                  AIOS folder (created if missing)
+                  AIOS folder (Leonidas Code creates it if missing)
                 </span>
                 <Input value={folder} onChange={(event) => setFolder(event.target.value)} />
               </label>
               <div className="flex items-center gap-3">
                 <Button
-                  onClick={() => onLeave("Started the “Set up my AIOS” chat (leaves the wizard)")}
+                  onClick={() =>
+                    onLeave("Started the “Set up my AI memory” chat (leaves the wizard)")
+                  }
                 >
-                  Start setup chat
+                  Start the setup chat
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Your connected agent builds the folder with you.
-                </p>
+                <p className="text-xs text-muted-foreground">Your AI builds the folder with you.</p>
               </div>
             </div>
           ) : null}
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              Prefer no chat? Paste this into PowerShell to create the same folders.
+              Do you not want a chat? Paste this into PowerShell to create the same folders.
             </p>
             <div className="flex items-start justify-between gap-3">
               <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
@@ -229,7 +228,7 @@ export function SimAiosStep({
             variant="ghost-muted"
             onClick={() => setMode(mode === "run" ? "prompt" : "run")}
           >
-            {mode === "run" ? "Rather use another AI? Copy the prompt" : "Back to running it here"}
+            {mode === "run" ? "Copy the setup message for another AI" : "Go back to the setup chat"}
           </Button>
         </div>
       </ScrollArea>
@@ -259,8 +258,8 @@ export function SimSkillsStep({
     <>
       <h1 className={H1}>Add skills for what you build</h1>
       <p className={LEDE}>
-        A starter set, plus skills that match the goals you picked. They install into your AIOS
-        folder so your AI loads them in every session.
+        You get a starter set, plus skills that match the goals you picked. Leonidas Code saves them
+        in your AIOS folder. Your AI loads them in every chat.
       </p>
       <ScrollArea scrollFade className={SCROLL}>
         <div className="space-y-4 pr-3">
@@ -299,7 +298,7 @@ export function SimSkillsStep({
             <span className="text-xs font-medium">AIOS folder</span>
             <Input value={folder} onChange={(event) => setFolder(event.target.value)} />
             <span className="block text-xs text-muted-foreground">
-              Created if it does not exist.
+              Leonidas Code creates the folder if it is missing.
             </span>
           </label>
         </div>
@@ -372,7 +371,7 @@ export function SimImportStep({
         </div>
         <div className="flex justify-end">
           <Button variant="ghost-muted" onClick={onDone}>
-            Do not import projects
+            Skip importing projects
           </Button>
         </div>
       </div>
@@ -382,7 +381,7 @@ export function SimImportStep({
     <>
       <h1 className={H1}>Import your projects</h1>
       <p className={LEDE}>
-        Import projects and conversations from Claude Code and Codex on your selected computers.
+        Import projects and chats from Claude Code and Codex on your selected computers.
       </p>
       {projects.length > 0 ? (
         <div className="mt-5 flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -410,7 +409,7 @@ export function SimImportStep({
         </div>
       ) : (
         <p className="mt-5 py-2 text-sm text-muted-foreground">
-          No existing Claude Code or Codex projects found.
+          No Claude Code or Codex projects found. Select "Skip importing projects" to continue.
         </p>
       )}
       <div className="mt-2 space-y-0.5">
@@ -439,7 +438,7 @@ export function SimImportStep({
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         <Button variant="ghost-muted" disabled={importing} onClick={onDone}>
-          Do not import projects
+          Skip importing projects
         </Button>
         <Button
           autoFocus

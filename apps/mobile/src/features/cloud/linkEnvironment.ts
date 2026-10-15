@@ -115,7 +115,11 @@ function requireRelayUrl(): Effect.Effect<string, CloudEnvironmentLinkError> {
   const relayUrl = readRelayUrl();
   return relayUrl
     ? Effect.succeed(relayUrl)
-    : Effect.fail(new CloudEnvironmentLinkError({ message: "Relay URL is not configured." }));
+    : Effect.fail(
+        new CloudEnvironmentLinkError({
+          message: "Remote access is not set up in this build. Update the app and try again.",
+        }),
+      );
 }
 
 function endpointOrigin(httpBaseUrl: string) {
@@ -133,12 +137,12 @@ function ensureLinkedEnvironmentMatches(input: {
 }): Effect.Effect<void, CloudEnvironmentLinkError> {
   if (input.link.environmentId !== input.expectedEnvironmentId) {
     return new CloudEnvironmentLinkError({
-      message: "Relay returned credentials for a different environment.",
+      message: "Remote access returned sign-in details for a different computer. Try again.",
     });
   }
   if (input.link.endpoint.providerKind !== input.expectedProviderKind) {
     return new CloudEnvironmentLinkError({
-      message: "Relay returned credentials for a different endpoint provider.",
+      message: "Remote access returned sign-in details for a different service. Try again.",
     });
   }
   return Effect.void;
@@ -160,7 +164,7 @@ export function linkEnvironmentToCloudWithPreference(
   return Effect.gen(function* () {
     if (!input.connection.bearerToken) {
       return yield* new CloudEnvironmentLinkError({
-        message: "Only a locally paired bearer connection can be linked to the cloud.",
+        message: "Only a computer that you connected with a connection code can use remote access.",
       });
     }
     const localBearerToken = input.connection.bearerToken;
@@ -200,7 +204,7 @@ export function linkEnvironmentToCloudWithPreference(
           origin: endpointOrigin(input.connection.httpBaseUrl),
         },
       })
-      .pipe(Effect.mapError(cloudEnvironmentLinkError("Could not obtain environment link proof.")));
+      .pipe(Effect.mapError(cloudEnvironmentLinkError("Could not link this computer")));
     const link = yield* relayClient
       .linkEnvironment({
         clerkToken: input.clerkToken,
@@ -234,7 +238,9 @@ export function linkEnvironmentToCloudWithPreference(
         },
       })
       .pipe(
-        Effect.mapError(cloudEnvironmentLinkError("Could not configure environment relay access.")),
+        Effect.mapError(
+          cloudEnvironmentLinkError("Could not set up remote access for this computer"),
+        ),
       );
   });
 }

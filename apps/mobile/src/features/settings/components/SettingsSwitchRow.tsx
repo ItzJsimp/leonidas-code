@@ -20,7 +20,7 @@ export function SettingsSwitchRow(
     >
       {props.value === null ? (
         <Pressable
-          accessibilityLabel={`Set ${props.label} on for selected environments`}
+          accessibilityLabel={`Set ${props.label} on for selected computers`}
           accessibilityRole="button"
           disabled={props.disabled}
           className="rounded-full bg-subtle px-3 py-2 active:opacity-70"

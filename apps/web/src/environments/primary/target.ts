@@ -55,7 +55,7 @@ export class DesktopEnvironmentBootstrapIncompleteError extends Schema.TaggedErr
       ...(this.hasHttpBaseUrl ? [] : ["httpBaseUrl"]),
       ...(this.hasWsBaseUrl ? [] : ["wsBaseUrl"]),
     ];
-    return `Desktop bootstrap is missing ${missing.join(" and ")} for the local environment.`;
+    return `Desktop bootstrap is missing ${missing.join(" and ")} for this computer.`;
   }
 }
 
@@ -64,7 +64,7 @@ export class PrimaryEnvironmentDisabledError extends Schema.TaggedError<PrimaryE
   {},
 ) {
   override get message(): string {
-    return "The local environment is disabled.";
+    return "This computer is turned off in Leonidas Code. Turn it on in Connections.";
   }
 }
 

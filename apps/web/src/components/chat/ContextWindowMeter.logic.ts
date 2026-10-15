@@ -106,11 +106,11 @@ export function formatContextWindowCompactionMessage(
   autoCompactThreshold?: number | null,
 ): string {
   if (typeof autoCompactThreshold === "number" && autoCompactThreshold > 0) {
-    return `Compacts automatically at ${autoCompactThreshold.toLocaleString("en-US")} tokens.`;
+    return `The AI shortens the history at ${autoCompactThreshold.toLocaleString("en-US")} tokens.`;
   }
   return modelDisplayName
-    ? `Context for ${modelDisplayName} compacts automatically when needed.`
-    : "Context compacts automatically when needed.";
+    ? `The AI shortens the history for ${modelDisplayName} when it needs to.`
+    : "The AI shortens the history when it needs to.";
 }
 
 export function formatContextWindowCost(cost: {

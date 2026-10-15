@@ -32,13 +32,13 @@ async function fetchLicenseManifest(): Promise<ThirdPartyLicenseManifest> {
     );
     if (!response.ok) {
       throw new Error(
-        `The license manifest request failed with status ${String(response.status)}.`,
+        `The license list did not load (status ${String(response.status)}). Try again.`,
       );
     }
     return decodeThirdPartyLicenseManifest((await response.json()) as unknown);
   } catch (error) {
     if (signal.aborted) {
-      throw new Error("The license manifest took too long to load.", { cause: error });
+      throw new Error("The license list took too long to load. Try again.", { cause: error });
     }
     throw error;
   }
@@ -228,7 +228,8 @@ export function OpenSourceLicensesPanel() {
         if (cancelled) return;
         setState({
           status: "error",
-          message: error instanceof Error ? error.message : "The license manifest could not load.",
+          message:
+            error instanceof Error ? error.message : "The license list did not load. Try again.",
         });
       },
     );
@@ -277,7 +278,7 @@ export function OpenSourceLicensesPanel() {
               })
             ) : (
               <p className="px-3 py-8 text-center text-sm/6 text-muted-foreground sm:px-4">
-                No licenses match that search.
+                No licenses match that search. Try other words.
               </p>
             )}
           </div>

@@ -77,8 +77,8 @@ function ProjectPicker(props: {
         <DialogTitle>Start task</DialogTitle>
         <DialogDescription>
           {detected
-            ? "We selected the project for this chat. Select a different project if you need to."
-            : "Select a project. We will prepare a prompt from its open tasks."}
+            ? "We chose the project for this chat. Select a different project if you need to."
+            : "Select a project. We will write a message from its open tasks."}
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>
@@ -123,13 +123,13 @@ function ProjectPicker(props: {
             </>
           ) : null}
           {workspace.isSuccess && projects.length === 0 ? (
-            <p>No projects found. Add a project to your task workspace.</p>
+            <p>No projects found. Add a project to your task board.</p>
           ) : null}
           {project && !pending && !error ? (
             <p>
               {openCount === 0
-                ? "This project has no open tasks. Add a task on the Tasks page."
-                : `${openCount} open tasks. The prompt lists the top ${Math.min(openCount, START_TASK_CANDIDATE_LIMIT)}, and the agent selects one.`}
+                ? "This project has no open tasks. Add a task on the task board."
+                : `${openCount} open tasks. The prompt lists the top ${Math.min(openCount, START_TASK_CANDIDATE_LIMIT)}, and the AI picks one.`}
             </p>
           ) : null}
           <Button
@@ -140,7 +140,7 @@ function ProjectPicker(props: {
               if (project) props.onFill(buildStartTaskPrompt(project, tasks));
             }}
           >
-            Prepare prompt
+            Write message
           </Button>
         </div>
       </DialogPanel>

@@ -29,13 +29,13 @@ export function resolveEnvironmentIconPickerLock(input: {
   readonly operateAccess: "granted" | "denied" | "pending";
 }): string | null {
   if (input.serverConfig === null) {
-    return "Connect to this environment to change its icon.";
+    return "Connect to this computer to change its icon.";
   }
   if (input.serverConfig.environment.capabilities.environmentIcon !== true) {
-    return "This environment's server is too old to keep an icon. Update it to choose one.";
+    return "Leonidas Code on this computer is too old to keep an icon. Update it, then choose an icon.";
   }
   if (input.operateAccess !== "granted") {
-    return "Your session on this environment cannot change its settings.";
+    return "You cannot change the settings of this computer with this connection.";
   }
   return null;
 }

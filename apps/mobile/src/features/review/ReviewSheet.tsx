@@ -121,7 +121,7 @@ function ReviewHeader(
         ...(props.showSectionToolbar
           ? [
               {
-                title: "Select diff",
+                title: "Select changes",
                 icon: presentation.menuIcon,
                 items: [
                   {
@@ -130,14 +130,14 @@ function ReviewHeader(
                     items: [
                       sectionAction(props.sectionMenu.branchChanges, "Changes"),
                       sectionAction(props.sectionMenu.workingTree, "Uncommitted"),
-                      sectionAction(props.sectionMenu.latestTurn, "Latest turn"),
+                      sectionAction(props.sectionMenu.latestTurn, "Latest reply"),
                     ],
                   },
                   ...(props.sectionMenu.turns.length > 0
                     ? [
                         {
                           id: "turns",
-                          title: "Turn",
+                          title: "Reply",
                           items: props.sectionMenu.turns.map((section) => ({
                             id: `section:${section.id}`,
                             title: section.title,
@@ -168,7 +168,7 @@ const ReviewNotice = memo(function ReviewNotice(props: { readonly notice: string
         Platform.OS === "android" ? "m-2 rounded-[20px]" : "border-b border-warning-border",
       )}
     >
-      <Text className="text-xs font-t3-bold uppercase text-warning-foreground">Partial diff</Text>
+      <Text className="text-xs font-t3-bold uppercase text-warning-foreground">Some changes</Text>
       <Text className="text-xs leading-normal text-warning-foreground">{props.notice}</Text>
     </View>
   );
@@ -743,7 +743,7 @@ export function ReviewSheet(props: ReviewSheetProps) {
           {showConnectionNotice ? (
             <View className="flex-1" style={{ paddingTop: topContentInset }}>
               <EnvironmentConnectionNotice
-                environmentLabel={environment.presentation?.entry.target.label ?? "Environment"}
+                environmentLabel={environment.presentation?.entry.target.label ?? "Computer"}
                 connection={
                   environment.presentation?.connection ?? {
                     phase: "available",
@@ -837,14 +837,16 @@ export function ReviewSheet(props: ReviewSheetProps) {
                         : "border-b border-border bg-card px-4 py-5"
                     }
                   >
-                    <Text className="text-sm font-t3-bold text-foreground">No review diffs</Text>
+                    <Text className="text-sm font-t3-bold text-foreground">
+                      No changes to review
+                    </Text>
                     <Text
                       className={cn(
                         "text-xs leading-normal text-foreground-muted",
                         Platform.OS === "android" && "mt-2 text-center",
                       )}
                     >
-                      This thread has no ready turn diffs and the worktree diff is empty.
+                      This chat has no changes per reply yet, and its separate copy has no changes.
                     </Text>
                   </View>
                 )
@@ -856,7 +858,7 @@ export function ReviewSheet(props: ReviewSheetProps) {
                   )}
                 >
                   <ActivityIndicator size="small" />
-                  <Text className="text-xs text-foreground-muted">Loading diff…</Text>
+                  <Text className="text-xs text-foreground-muted">Loading changes…</Text>
                 </View>
               ) : parsedDiff.kind === "empty" ? (
                 <View
@@ -873,7 +875,7 @@ export function ReviewSheet(props: ReviewSheetProps) {
                       Platform.OS === "android" && "mt-2 text-center",
                     )}
                   >
-                    {selectedSection.subtitle ?? "This diff is empty."}
+                    {selectedSection.subtitle ?? "These changes are empty."}
                   </Text>
                 </View>
               ) : parsedDiff.kind === "raw" ? (
@@ -902,7 +904,7 @@ export function ReviewSheet(props: ReviewSheetProps) {
                   )}
                 >
                   <Text className="text-xs leading-normal text-foreground-muted">
-                    Native diff view unavailable. Showing the raw patch.
+                    The changes viewer is unavailable. Showing the raw text of the changes.
                   </Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} bounces={false}>
                     <Text selectable className="font-mono text-xs leading-relaxed text-foreground">

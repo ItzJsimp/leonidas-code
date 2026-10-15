@@ -345,7 +345,7 @@ function AssistantForkButton(props: {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Fork from this response"
+      accessibilityLabel="Copy chat from this reply"
       disabled={busy}
       onPress={() => {
         const targetThreadId = ThreadId.make(uuidv4());
@@ -357,7 +357,7 @@ function AssistantForkButton(props: {
             sourceThreadId: props.projectedItem.sourceThreadId,
             targetThreadId,
             runId,
-            title: `${props.sourceTitle} fork`,
+            title: `${props.sourceTitle} (copy)`,
             creationSource: "mobile",
           },
         })
@@ -366,8 +366,8 @@ function AssistantForkButton(props: {
             const targetThreadReady = await waitForThreadShell(props.environmentId, targetThreadId);
             if (!targetThreadReady) {
               Alert.alert(
-                "Fork created",
-                "Its thread data did not reach this client. Reconnect and try opening it from the thread list.",
+                "Copied chat created",
+                "Its chat data did not reach this phone. Reconnect and try opening it from the chat list.",
               );
               return;
             }
@@ -1492,13 +1492,13 @@ function AgentMessageAttribution(props: {
   const senderThreadId = props.senderThreadId;
   const label = (
     <Text className="mb-1 pr-1 font-t3-medium text-2xs text-foreground-muted opacity-60">
-      Sent by another agent
+      Sent by another AI
     </Text>
   );
   return senderThreadId ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Open sending thread"
+      accessibilityLabel="Open sending chat"
       hitSlop={4}
       onPress={() =>
         navigation.navigate("Thread", {
@@ -3283,7 +3283,7 @@ export const ThreadFeed = memo(function ThreadFeed(props: ThreadFeedProps) {
           >
             <ThreadFeedPlaceholder
               title="No conversation yet"
-              detail="Ask the agent to inspect the repo, run a command, or continue the active thread."
+              detail="Ask the AI to look at the project, run a command, or continue this chat."
               topInset={topContentInset}
               bottomInset={bottomContentInset}
               horizontalPadding={horizontalPadding}

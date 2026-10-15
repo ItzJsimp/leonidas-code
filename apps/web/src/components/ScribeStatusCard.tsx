@@ -40,14 +40,14 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
       : scribeStatusLabel(connected, result);
   const available = connected && !readFailed && result?.status === "available";
   const description = !connected
-    ? "Reconnect this environment in Settings > Connections."
+    ? "Reconnect this computer in Settings, then Connections."
     : readFailed
-      ? "Status unavailable. Check environment access and update Leonidas if needed."
+      ? "Status unavailable. Check computer access and update Leonidas Code if needed."
       : result?.status === "unavailable"
         ? "Scribe is not running. Start it from the tray, or install it."
         : available && result.snapshot.state === "mic_error"
-          ? "Check the microphone in Scribe on this environment's machine."
-          : "Voice dictation status on this environment's machine.";
+          ? "Check the microphone in Scribe on this computer."
+          : "Dictation status on this computer.";
   return (
     <div className="rounded-lg border border-border/70 bg-card/35 p-4">
       <div className="flex items-center gap-2">

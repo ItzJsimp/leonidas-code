@@ -166,7 +166,7 @@ it.each(["direct", "gnome-extension", "kde"] as const)(
       return control.props;
     };
     if (backend !== "direct") {
-      expect(recorder(tree)["aria-label"]).toBe("Record snapshot shortcut, currently Ctrl+Shift+2");
+      expect(recorder(tree)["aria-label"]).toBe("Record capture shortcut, currently Ctrl+Shift+2");
       const keycaps = visitElements(tree, (element) => element.type === SnapShotShortcutKeys);
       expect(keycaps?.props.shortcut).toMatchObject({ key: "2", ctrlKey: true, shiftKey: true });
       expect(
@@ -188,7 +188,7 @@ it.each(["direct", "gnome-extension", "kde"] as const)(
     });
     await finish(bridge.checkSnapShotShortcut.mock.results[0]!.value);
     expect(recorder(render()).size).toBe("xs");
-    expect(recorder(render())["aria-label"]).toBe("Record snapshot shortcut, currently Ctrl+Alt+Y");
+    expect(recorder(render())["aria-label"]).toBe("Record capture shortcut, currently Ctrl+Alt+Y");
     button(render(), "Save").onClick();
     await finish(settingsStore.update.mock.results[0]!.value);
     expect(settingsStore.update).toHaveBeenCalledWith({
@@ -205,7 +205,7 @@ it("turns capture on directly on Windows without opening setup", async () => {
   const tree = await mount();
   const toggle = visitElements(
     tree,
-    (element) => element.props["aria-label"] === "Enable snapshots",
+    (element) => element.props["aria-label"] === "Turn on snapshots",
   );
   if (!toggle) throw new Error("Missing capture toggle");
   (toggle.props.onCheckedChange as (checked: boolean) => void)(true);
@@ -236,7 +236,7 @@ it("keeps the approved desktop shortcut when recording is cancelled in setup", a
     if (!input) throw new Error("Missing setup shortcut recorder");
     return input.props;
   };
-  expect(shortcut()["aria-label"]).toBe("Record snapshot shortcut, currently Ctrl+Alt+8");
+  expect(shortcut()["aria-label"]).toBe("Record capture shortcut, currently Ctrl+Alt+8");
   (shortcut().onClick as () => void)();
   await finish(bridge.setSnapShotShortcutSuppressed.mock.results.at(-1)!.value);
   expect(shortcut().children).toBe("Press shortcut…");
@@ -245,7 +245,7 @@ it("keeps the approved desktop shortcut when recording is cancelled in setup", a
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
   });
-  expect(shortcut()["aria-label"]).toBe("Record snapshot shortcut, currently Ctrl+Alt+8");
+  expect(shortcut()["aria-label"]).toBe("Record capture shortcut, currently Ctrl+Alt+8");
   expect(settingsStore.update).not.toHaveBeenCalled();
   expect(bridge.checkSnapShotShortcut).not.toHaveBeenCalled();
 });
@@ -369,7 +369,7 @@ it.each([false, true])(
     const tree = await mount();
     const toggle = visitElements(
       tree,
-      (element) => element.props["aria-label"] === "Enable snapshots",
+      (element) => element.props["aria-label"] === "Turn on snapshots",
     );
     (toggle!.props.onCheckedChange as (checked: boolean) => void)(true);
     await finish(bridge.getSnapShotState.mock.results[1]!.value);
@@ -407,7 +407,7 @@ it("requires a successful macOS test capture before enabling and allows retry", 
   const tree = await mount();
   const toggle = visitElements(
     tree,
-    (element) => element.props["aria-label"] === "Enable snapshots",
+    (element) => element.props["aria-label"] === "Turn on snapshots",
   );
   (toggle!.props.onCheckedChange as (checked: boolean) => void)(true);
   await finish(bridge.getSnapShotState.mock.results[1]!.value);

@@ -28,7 +28,7 @@ export function ProjectsSettings() {
         </SettingsPageContainer>
       ) : (
         <SettingsScopeNotice target="project">
-          Choose a project to manage its name, icon, checkouts and actions.
+          Choose a project to change its name, icon, folders and actions.
         </SettingsScopeNotice>
       )}
     </div>

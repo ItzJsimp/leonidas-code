@@ -80,7 +80,7 @@ export function UsageProviderSettings({
           <SettingsRow
             id="cursor-keychain-usage"
             title="Cursor account usage"
-            description="Read your existing Cursor CLI login from macOS Keychain to show account history and monthly limits. macOS may ask you to allow access."
+            description="Read your Cursor login from the macOS Keychain. Then Leonidas Code shows the history and the monthly limits of the account. macOS may ask you to allow access."
             control={
               <Switch
                 aria-label="Cursor account usage"
@@ -92,7 +92,10 @@ export function UsageProviderSettings({
           />
         ) : null}
         {entries.length === 0 ? (
-          <SettingsRow title="No hubs configured." />
+          <SettingsRow
+            title="No hubs yet."
+            description="Click Add hub to show the usage of more AI accounts."
+          />
         ) : (
           entries.map(([id, source]) => {
             const label = source.label?.trim() || source.url;
@@ -150,9 +153,9 @@ function RemoveUsageProviderButton({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {label}?</AlertDialogTitle>
             <AlertDialogDescription>
-              The hub's management key is deleted from this server. Its accounts leave the Limits
-              view; the hub itself is untouched. Add it again with the URL and key to bring them
-              back.
+              Leonidas Code deletes the management key of the hub from this computer. Its accounts
+              leave the Limits view. The hub itself stays as it is. To bring them back, add the hub
+              again with its URL and key.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1459,10 +1459,10 @@ const ConversationTimeline = memo(function ConversationTimeline({
         <div className="messages-timeline-row-frame">
           <div className="chat-content-lane pt-1 sm:pt-2">
             <TimelineSystemDivider
-              label="Subagent of"
+              label="Helper in"
               detail={parentThreadLink.title}
               icon={BotIcon}
-              actionLabel="Open parent thread"
+              actionLabel="Open main chat"
               onAction={() => onOpenThread(parentThreadLink.threadId)}
             />
           </div>
@@ -1596,7 +1596,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground/30">
-          Send a message to start the conversation.
+          No messages yet. Type a message below to start.
         </p>
       </div>
     );
@@ -1697,11 +1697,11 @@ function TimelineHistoryControl(props: MessagesTimelineHistoryControls) {
           <button
             type="button"
             disabled={props.loading}
-            aria-label="Load earlier turns"
+            aria-label="Show earlier replies"
             onClick={() => props.onLoadEarlier()}
             className="w-full py-1.5 text-xs text-muted-foreground/60 hover:text-foreground disabled:cursor-default"
           >
-            {props.loading ? "Loading earlier turns…" : "Load earlier turns"}
+            {props.loading ? "Loading earlier replies…" : "Show earlier replies"}
           </button>
         ) : null}
         {props.error !== null ? (
@@ -2000,7 +2000,7 @@ function TimelineMinimapNavigationButton({
   onClick: () => void;
 }) {
   const previous = direction === "previous";
-  const label = previous ? "Previous turn" : "Next turn";
+  const label = previous ? "Previous reply" : "Next reply";
   const Icon = previous ? ChevronUpIcon : ChevronDownIcon;
 
   return (
@@ -2431,12 +2431,12 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
             <InlineButton
               onClick={() => ctx.onOpenThread(senderThreadId)}
               tone="muted"
-              aria-label="Open sending thread"
+              aria-label="Open the chat that sent this"
             >
-              Sent by another agent
+              Sent by another AI
             </InlineButton>
           ) : (
-            "Sent by another agent"
+            "Sent by another AI"
           )}
         </p>
       ) : null}
@@ -2620,16 +2620,16 @@ function UserMessageIntentMarker({
   const presentation =
     intent === "queued_turn"
       ? {
-          label: "Queued",
+          label: "Waiting",
           icon: null,
         }
       : intent === "promoted_queued_to_steer"
         ? {
-            label: "Steer",
+            label: "Sent now",
             icon: Redo2Icon,
           }
         : {
-            label: "Steer",
+            label: "Sent now",
             icon: Redo2Icon,
           };
   const IntentIcon = presentation.icon;
@@ -2648,10 +2648,10 @@ function UserMessageIntentMarker({
       </TooltipTrigger>
       <TooltipPopup side="top">
         {intent === "queued_turn"
-          ? "Queued behind the active turn"
+          ? "This message waited until the AI stopped"
           : intent === "promoted_queued_to_steer"
-            ? "Originally queued, then promoted to steer the active turn"
-            : "Steered the active turn"}
+            ? "This message waited first. Then you sent it now, while the AI worked."
+            : "You sent this message while the AI worked"}
       </TooltipPopup>
     </Tooltip>
   );
@@ -2699,15 +2699,17 @@ function RevertUserMessageButton({
             variant="ghost"
             disabled={activity.isRevertingCheckpoint || activity.isWorking}
             onClick={() => ctx.onRevertToTurnCount(turnCount, messageId)}
-            aria-label="Rewind to here"
+            aria-label="Go back to here"
           />
         }
       >
         <Undo2Icon className="size-3" />
       </TooltipTrigger>
       <TooltipPopup side="top">
-        <div className="font-medium">Rewind to here</div>
-        <div className="text-muted-foreground">Removes this message and everything after it</div>
+        <div className="font-medium">Go back to here</div>
+        <div className="text-muted-foreground">
+          Your files go back to how they were here. This removes this message and all after it.
+        </div>
       </TooltipPopup>
     </Tooltip>
   );
@@ -2794,7 +2796,7 @@ function AttemptFoldTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "at
         icon={row.expanded ? ChevronDown : ChevronRight}
       />
       <span className="text-xs font-medium text-foreground/80">{row.label}</span>
-      <span className="text-2xs text-muted-foreground">Cut off by a steer</span>
+      <span className="text-2xs text-muted-foreground">Cut off when you sent a message now</span>
     </button>
   );
 }
@@ -2884,13 +2886,13 @@ function AssistantForkButton({
                 .onForkFromRun({ sourceThreadId: projectedItem.sourceThreadId, runId })
                 .finally(() => setBusy(false));
             }}
-            aria-label="Fork from this response"
+            aria-label="Start a new chat from this reply"
           />
         }
       >
         <GitForkIcon className={cn("size-3", busy && "animate-pulse")} />
       </TooltipTrigger>
-      <TooltipPopup side="top">Fork from this response</TooltipPopup>
+      <TooltipPopup side="top">Start a new chat from this reply</TooltipPopup>
     </Tooltip>
   );
 }
@@ -3090,21 +3092,21 @@ function v2EventPresentation(item: OrchestrationV2TurnItem): {
     }
     case "run_interrupt_request":
       return {
-        label: "Interrupt requested",
+        label: "Stop requested",
         detail: item.message,
         tone: "warning",
         icon: CircleAlertIcon,
       };
     case "run_interrupt_result":
       return {
-        label: "Run interrupted",
+        label: "Reply stopped",
         detail: item.message,
         tone: "danger",
         icon: XIcon,
       };
     case "handoff":
       return {
-        label: "Context handoff",
+        label: "Chat moved to another AI account",
         detail:
           item.summary ??
           `${item.fromProviderInstanceIds.join(", ")} → ${item.toProviderInstanceId}`,
@@ -3113,8 +3115,8 @@ function v2EventPresentation(item: OrchestrationV2TurnItem): {
       };
     case "fork":
       return {
-        label: "Conversation fork",
-        detail: `Continues in ${item.targetThreadId}`,
+        label: "New chat started from here",
+        detail: `The new chat is ${item.targetThreadId}`,
         tone: "muted",
         icon: GitForkIcon,
       };
@@ -3124,7 +3126,7 @@ function v2EventPresentation(item: OrchestrationV2TurnItem): {
           ? null
           : `${item.beforeTokenCount ?? "?"} → ${item.afterTokenCount ?? "?"} tokens`;
       return {
-        label: "Context compacted",
+        label: "History shortened",
         detail: item.summary ?? tokenSummary,
         tone: item.status === "failed" ? "danger" : "muted",
         icon: MinusIcon,
@@ -3133,7 +3135,7 @@ function v2EventPresentation(item: OrchestrationV2TurnItem): {
     case "todo_list": {
       const steps = item.steps.map((step) => `${step.status}: ${step.text}`).join("\n");
       return {
-        label: "Plan updated",
+        label: "Plan changed",
         detail: [item.explanation, steps].filter(Boolean).join("\n\n") || null,
         tone: item.status === "failed" ? "danger" : "success",
         icon: CheckIcon,
@@ -3225,7 +3227,7 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
           ) : null}
           {visibility !== "local" ? (
             <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground">
-              {visibility === "inherited" ? "Inherited" : "Synthetic"}
+              {visibility === "inherited" ? "From an earlier chat" : "Added by the app"}
             </span>
           ) : null}
           <ChevronDownIcon className="size-3 shrink-0 text-muted-foreground/60 transition-transform group-open:rotate-180" />
@@ -3245,7 +3247,7 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
           {signInCommand !== null ? (
             <div className="mt-2 grid gap-1.5 text-xs">
               <p className="font-medium text-foreground/90">
-                Sign in again in a terminal, then send your message again.
+                Sign in again in a terminal. Then send your message again.
               </p>
               <div className="flex min-w-0 items-center gap-1.5">
                 <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded bg-muted px-2 py-1 font-mono text-3xs">
@@ -3315,7 +3317,7 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
             ) : null}
             {visibility !== "local" ? (
               <span className="rounded-full bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground">
-                {visibility === "inherited" ? "Inherited" : "Synthetic"}
+                {visibility === "inherited" ? "From an earlier chat" : "Added by the app"}
               </span>
             ) : null}
           </div>
@@ -3420,7 +3422,7 @@ const V2SubagentGroup = memo(function V2SubagentGroup({
     };
   });
   const summary = subagentGroupSummary(agents);
-  const label = `${members.length} ${members.length === 1 ? "subagent" : "subagents"}`;
+  const label = `${members.length} ${members.length === 1 ? "helper" : "helpers"}`;
   const statusSummary = summarizeSubagentStatuses(agents.map(({ status }) => status));
   const toggleExpanded = (open: boolean) => {
     ctx.onToggleWorkEntry(row.id, expanded);
@@ -3755,7 +3757,7 @@ function ExpandedWorkGroupEntries({
           onItemSizeChanged={updateExpandedContentHeight}
           tabIndex={0}
           role="region"
-          aria-label="Tool calls"
+          aria-label="Tools used"
           data-tool-group-scroll
           style={{ maxHeight: `calc(min(18rem, 50dvh) + ${expandedContentHeight}px)` }}
           className={cn(
@@ -3801,7 +3803,7 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
   // place instead of remounting the row.
   const shimmer = isPreparingWorktree || isCompacting;
   const label = isPreparingWorktree ? (
-    "Setting up worktree…"
+    "Making a separate copy…"
   ) : isCompacting ? (
     <CompactingLabel />
   ) : row.createdAt ? (
@@ -3842,7 +3844,7 @@ function BackgroundWorktreeSetupChip({ snapshot }: { snapshot: WorktreeSetupSnap
     () => (openTerminal && terminalId ? () => openTerminal(terminalId) : null),
     [openTerminal, terminalId],
   );
-  const scriptName = snapshot.setupScript?.name ?? "Setup script";
+  const scriptName = snapshot.setupScript?.name ?? "Setup steps";
   return (
     <Popover>
       <PopoverTrigger
@@ -3973,7 +3975,7 @@ function LiveActivityContent({
                   : "text-icon-muted",
             )}
             role={announceFailure ? "img" : undefined}
-            aria-label={announceFailure ? "Tool call failed" : undefined}
+            aria-label={announceFailure ? "Tool failed" : undefined}
           >
             <ToolActivityIconView
               icon={toolIcon}
@@ -4440,12 +4442,12 @@ function UserMessagePreviewAnnotationDetails(props: {
         </button>
       ) : (
         <div className="border-b border-border/70 bg-muted/40 px-3 py-2 text-secondary-label text-xs">
-          Screenshot unavailable
+          No screenshot to show
         </div>
       )}
       <div className="min-w-0 px-3 py-2.5">
         <div className="text-message-foreground text-xs font-medium">
-          {props.record.pageTitle?.trim() || props.record.pageUrl || "Preview annotation"}
+          {props.record.pageTitle?.trim() || props.record.pageUrl || "Note on the preview"}
         </div>
         {props.record.comment ? (
           <div className="mt-1 whitespace-pre-wrap wrap-break-word text-sm">
@@ -4560,7 +4562,7 @@ function UnavailableUserMessageContextChip(props: UserMessageContextRenderContex
     <UnresolvedChip
       label={props.reference.label}
       copyMarkdown={props.copyMarkdown}
-      tooltip="This context is no longer available."
+      tooltip="This item is gone. Add it again if you need it."
     />
   );
 }
@@ -4697,7 +4699,7 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
         record.kind === "element" ? (
           <UserMessageContextPopover
             copyMarkdown={context.copyMarkdown}
-            accessibleLabel={`Browser element, ${record.label}`}
+            accessibleLabel={`Browser item, ${record.label}`}
             kind="element"
             icon={<MousePointerClickIcon />}
             label={record.label}
@@ -4717,7 +4719,7 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
         }
         const isPullRequest = isPullRequestSummaryContext(record);
         const label = reviewCommentContextLabel(record);
-        const kindLabel = isPullRequest ? pullRequestContextKindLabel(record) : "Review comment";
+        const kindLabel = isPullRequest ? pullRequestContextKindLabel(record) : "Review note";
         const pullRequestState = pullRequestContextDisplayState(record) ?? "unknown";
         if (isPullRequest && record.pullRequest !== undefined) {
           return (
@@ -4764,7 +4766,7 @@ const userMessageContextPresentationRegistry = createContextPresentationRegistry
         record.kind === "preview-annotation" ? (
           <UserMessageContextPopover
             copyMarkdown={context.copyMarkdown}
-            accessibleLabel={`Preview annotation, ${record.label}`}
+            accessibleLabel={`Note on the preview, ${record.label}`}
             kind="preview-annotation"
             icon={<MousePointerClickIcon />}
             label={record.label}
@@ -4873,7 +4875,7 @@ const CollapsibleUserMessageBody = memo(function CollapsibleUserMessageBody(prop
               onClick={() => setExpanded((value) => !value)}
               className="-ml-1"
             >
-              {expanded ? "Show less" : "Show full message"}
+              {expanded ? "Show less" : "Show the whole message"}
             </Button>
           ) : null}
           {props.footer ? (
@@ -5551,7 +5553,7 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
     const resetAt = failureItem.failure.resetAt;
     const resetTime = resetAt ? formatUpcomingTimestamp(resetAt, timestampFormat) : null;
     const label = warning
-      ? `Usage limit reached.${resetTime ? ` Retry after ${resetTime}.` : ""}`
+      ? `You used all of your AI account limit.${resetTime ? ` Try again after ${resetTime}.` : ""}`
       : workEntry.label;
     const retryRunId =
       failureItem.runId !== null &&
@@ -5749,7 +5751,7 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
         <span
           className={iconWrapperClass}
           role={showFailedIndicator ? "img" : undefined}
-          aria-label={showFailedIndicator ? "Tool call failed" : undefined}
+          aria-label={showFailedIndicator ? "Tool failed" : undefined}
         >
           <ToolActivityIconView
             icon={entryToolIcon}
@@ -5810,7 +5812,7 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
             <button
               type="button"
               className="shrink-0 rounded-sm text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-              aria-label={`Open ${createdThread.title ?? "created thread"}`}
+              aria-label={`Open ${createdThread.title ?? "new chat"}`}
               onClick={(event) => {
                 event.stopPropagation();
                 ctx.onOpenThread(createdThread.targetThreadId);
@@ -5822,14 +5824,14 @@ function WorkEntryLogRow(props: WorkEntryRowProps) {
           ) : null}
           {notifiedSubagentThreadId ? (
             <InlineButton
-              aria-label="Open subagent thread"
+              aria-label="Open the helper chat"
               onClick={(event) => {
                 event.stopPropagation();
                 ctx.onOpenThread(notifiedSubagentThreadId);
               }}
               onKeyDown={stopRowToggle}
             >
-              Open subagent
+              Open helper
             </InlineButton>
           ) : null}
           {showFailedIndicator &&

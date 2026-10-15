@@ -56,9 +56,9 @@ describe("onboarding simulation run", () => {
     expect(totalKeys(run)).toBe(3);
     expect(report).toContain("**2 clicks, 3 keystrokes, 10s of active use");
     expect(report).toContain("Ended: Started the AIOS chat");
-    expect(report).toContain("[Agents, after click 2] Sign-in needs fewer steps");
-    expect(report).toContain("- [Agents] ChatGPT sign-in page");
-    expect(report).toContain("2. [Agents] Continue with ChatGPT");
+    expect(report).toContain("[AI, after click 2] Sign-in needs fewer steps");
+    expect(report).toContain("- [AI] ChatGPT sign-in page");
+    expect(report).toContain("2. [AI] Continue with ChatGPT");
   });
 
   it("counts typing and Enter but not shortcuts or navigation keys", () => {

@@ -100,7 +100,7 @@ it("updates a visible warning on revocation and blocks its retained action until
   expect(state.run).not.toHaveBeenCalled();
   expect(state.toast).toHaveBeenCalledWith(
     expect.objectContaining({
-      title: "Unable to open keybindings file",
+      title: "Could not open the shortcuts file",
     }),
   );
 

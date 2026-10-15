@@ -146,7 +146,7 @@ export function describeAgentsStepContinue(hasReadyAgent: boolean): {
   return hasReadyAgent
     ? { label: "Continue", note: null }
     : {
-        label: "Continue without an agent",
-        note: "No agent is ready yet. You can continue, but chats and the AIOS setup need one agent.",
+        label: "Continue without an AI",
+        note: "No AI is ready yet. You can continue, but chats and the AIOS setup need one AI.",
       };
 }

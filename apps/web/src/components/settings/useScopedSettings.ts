@@ -85,7 +85,8 @@ function useRunScopedPlan() {
               Cause.fail(
                 new EnvironmentAuthorizationError({
                   requiredScope: missing,
-                  message: "This connection lacks permission to change these settings.",
+                  message:
+                    "This connection cannot change these settings. Ask the owner of the computer for access.",
                 }),
               ),
             );
@@ -97,7 +98,7 @@ function useRunScopedPlan() {
         toastManager.add({
           type: "error",
           title:
-            savedEnvironmentCount > 0 ? "Setting saved on some environments" : "Setting not saved",
+            savedEnvironmentCount > 0 ? "Setting saved on some computers" : "Setting not saved",
           description: [
             ...failedEnvironments.map(
               ({ label, message }) => `Could not save on ${label}: ${message}`,

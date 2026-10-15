@@ -148,7 +148,7 @@ vi.mock("./PullRequestCodeTab", () => ({
           })
         }
       >
-        Add to agent
+        Add to the AI message
       </button>
     </div>
   ),
@@ -256,9 +256,9 @@ const actions = [
   "Resolve conflicts",
   "Ask a question",
   "Explain this PR",
-  "Fix findings in this thread",
+  "Fix findings in this chat",
   "Fix check",
-  "Add to agent",
+  "Add to the AI message",
 ];
 
 // The surface ChatView opens for `detail`, and the thread states it can be opened beside. The
@@ -319,22 +319,22 @@ describe.each([
     await act(async () => render());
     const checkout = renderer.root
       .findAllByType("button")
-      .filter((node) => node.props["aria-label"] === "Check out");
+      .filter((node) => node.props["aria-label"] === "Open branch");
     expect(checkout).toHaveLength(thread === stackThread ? 0 : 1);
   });
 
   it.each(actions)("%s writes to the correct composer", async (action) => {
     if (target) useComposerDraftStore.getState().setPrompt(target, "Keep my draft");
     await act(async () => render());
-    if (action === "Add to agent") await click("Code");
-    await click(target ? action : action.replace("in this thread", "in a thread"));
+    if (action === "Add to the AI message") await click("Code");
+    await click(target ? action : action.replace("in this chat", "in a chat"));
     const draft = useComposerDraftStore.getState().getComposerDraft(target ?? newDraftId);
     if (action === "Resolve conflicts") expect(draft?.prompt).toContain("resolve every conflict");
     else if (action === "Fix check") expect(draft?.prompt).toContain("Fix the failing check");
     else if (action.startsWith("Fix findings"))
       expect(draft?.prompt).toContain("Fix the actionable findings");
     else expect(draft?.reviewComments?.length).toBeGreaterThan(0);
-    if (action === "Add to agent") {
+    if (action === "Add to the AI message") {
       expect(draft?.prompt).toContain("Fix this line");
       expect(draft?.reviewComments).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: "note-1", diff: "+broken()" })]),

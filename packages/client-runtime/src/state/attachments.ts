@@ -193,7 +193,7 @@ export async function runAttachmentUploadCycle<E, RE>(input: {
       status: "failed",
       step: "resolve-url",
       attachmentId,
-      error: new Error("The environment is not connected."),
+      error: new Error("The computer is not connected."),
     };
   }
 

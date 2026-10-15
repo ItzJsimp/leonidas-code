@@ -190,9 +190,11 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
     >
       {workflow?.isHeld && queuedRuns.length > 0 ? (
         <View className="gap-2 py-3">
-          <Text className="text-sm text-foreground-muted">Queue held after restart</Text>
+          <Text className="text-sm text-foreground-muted">
+            Waiting messages paused after restart
+          </Text>
           <MaterialButton
-            label="Resume queue"
+            label="Resume waiting messages"
             disabled={resuming || busyRunId !== null}
             onPress={async () => {
               if (busyRef.current) return;
@@ -210,7 +212,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
       ) : null}
       {queuedRuns.length === 0 ? (
         <Text className="pt-6 text-center text-sm text-foreground-muted">
-          No messages waiting in this queue.
+          No waiting messages. Send a message to add one.
         </Text>
       ) : null}
       {queuedRuns.map(({ run, text, attachments }, index) => {
@@ -232,7 +234,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
           text,
         });
         const title =
-          controls.displayText || (attachments.length > 0 ? "Attachments" : "Queued message");
+          controls.displayText || (attachments.length > 0 ? "Attachments" : "Waiting message");
         return (
           <QueueShiftedRow
             key={run.id}
@@ -328,14 +330,14 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                 onRemove={() => void act(run.id, "remove")}
               >
                 <ControlPillMenu
-                  accessibilityLabel={`Actions for queued message ${index + 1}`}
+                  accessibilityLabel={`Actions for waiting message ${index + 1}`}
                   shouldOpenOnLongPress
                   actions={[
                     ...(workflow?.canPromoteToSteer
                       ? [
                           {
                             id: "steer",
-                            title: "Steer now",
+                            title: "Send now",
                             attributes: { disabled: !controls.canSteer },
                             image: Platform.OS === "ios" ? "arrow.turn.left.up" : "arrow_upward",
                           },
@@ -366,7 +368,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={title}
-                    accessibilityHint="Opens this message in the composer for editing"
+                    accessibilityHint="Opens this message in the message box for editing"
                     disabled={!controls.canEdit}
                     onPress={() => void act(run.id, "edit")}
                     className="min-h-14 flex-row items-center gap-2.5 py-2.5 active:opacity-70"
@@ -393,7 +395,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                     {workflow?.canPromoteToSteer ? (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`Steer with message ${index + 1} now`}
+                        accessibilityLabel={`Send message ${index + 1} now`}
                         disabled={!controls.canSteer}
                         onPress={() => void act(run.id, "steer")}
                         className="h-8 shrink-0 justify-center rounded-full bg-primary px-3 active:opacity-70 disabled:opacity-40"
@@ -434,7 +436,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                 color={theme["--color-foreground"]}
                 hideBackButton
                 hideShadow={false}
-                title="Queued"
+                title="Waiting messages"
                 titleColor={theme["--color-foreground"]}
                 titleFontSize={18}
                 titleFontWeight="800"
@@ -451,7 +453,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View collapsable={false} className="flex-1 bg-sheet">
         <NativeStackScreenOptions options={{ sheetCornerRadius: 28 }} />
-        <AndroidSheetHeader title="Queued" onBack={() => navigation.goBack()} />
+        <AndroidSheetHeader title="Waiting messages" onBack={() => navigation.goBack()} />
         <MaterialScreenContent insetHorizontal={layout.usesSplitView}>
           {content}
         </MaterialScreenContent>

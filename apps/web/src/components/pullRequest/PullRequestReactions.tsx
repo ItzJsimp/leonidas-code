@@ -83,7 +83,7 @@ export function PullRequestReactionBar({
         next.delete(content);
         return { signature: current.signature, values: next };
       });
-      toastManager.add({ type: "error", title: "The reaction could not be saved" });
+      toastManager.add({ type: "error", title: "Could not save the reaction. Try again." });
       return;
     }
     onRefresh();

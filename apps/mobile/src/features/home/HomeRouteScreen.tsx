@@ -153,7 +153,7 @@ export function HomeRouteScreen() {
             />
           </NativeHeaderToolbar>
         ) : null}
-        {Platform.OS === "android" ? <AndroidScreenHeader title="Threads" /> : null}
+        {Platform.OS === "android" ? <AndroidScreenHeader title="Chats" /> : null}
         <WorkspaceEmptyDetail
           onAddConnection={
             Platform.OS === "android" && !catalogState.hasConnections

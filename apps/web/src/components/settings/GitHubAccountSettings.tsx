@@ -83,7 +83,7 @@ export function GitHubAccountSettings({
     return (
       <p className="text-xs text-muted-foreground">
         Sign in with <code className="rounded bg-muted px-1 py-px text-2xs">gh auth login</code> on
-        the server host, then rescan to choose accounts here.
+        the computer that runs Leonidas Code. Then scan again to choose accounts here.
       </p>
     );
   }
@@ -93,7 +93,7 @@ export function GitHubAccountSettings({
       <div className="flex items-center justify-between gap-3">
         <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
           Choose which <code className="rounded bg-muted px-1 py-px text-2xs">gh</code> login each
-          GitHub host uses, or turn a host off.
+          GitHub site uses, or turn a site off.
         </p>
         <Button
           size="icon-xs"
@@ -149,7 +149,7 @@ export function GitHubAccountSettings({
                         {(value: string) =>
                           value === ACTIVE_ACCOUNT ? (
                             <span className="flex min-w-0 items-center gap-1">
-                              Active gh account
+                              Current gh account
                               {group.activeAccount ? (
                                 <>
                                   (
@@ -170,7 +170,7 @@ export function GitHubAccountSettings({
                     <SelectPopup align="end" alignItemWithTrigger={false}>
                       <SelectItem value={ACTIVE_ACCOUNT}>
                         <span className="flex min-w-0 items-center gap-1">
-                          Active gh account
+                          Current gh account
                           {group.activeAccount ? (
                             <>
                               (<RedactedLogin revealed={revealed} account={group.activeAccount} />)
@@ -195,7 +195,8 @@ export function GitHubAccountSettings({
             {stalePin ? (
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-warning">
-                  The chosen login is no longer signed in, so the active gh login is used.
+                  The login you chose is no longer signed in. Leonidas Code uses the current gh
+                  login.
                 </p>
                 <Button
                   size="xs"
@@ -203,7 +204,7 @@ export function GitHubAccountSettings({
                   disabled={saving}
                   onClick={() => void save(group.host, { account: null })}
                 >
-                  Use active login
+                  Use current login
                 </Button>
               </div>
             ) : null}
@@ -213,13 +214,15 @@ export function GitHubAccountSettings({
                 className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground/70"
               >
                 <RedactedLogin revealed={revealed} account={entry.account} />
-                <span>can't be used: {entry.error ?? "gh reports this login as invalid."}</span>
+                <span>
+                  cannot be used: {entry.error ?? "gh says this login is not valid. Sign in again."}
+                </span>
               </p>
             ))}
             {group.environmentVariable ? (
               <p className="text-xs text-warning">
-                {group.environmentVariable} is set on the server, so it overrides the account chosen
-                here until it is unset.
+                {group.environmentVariable} is set on the computer. It overrides the account you
+                chose. Remove it to use your choice.
               </p>
             ) : null}
           </div>

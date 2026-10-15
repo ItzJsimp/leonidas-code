@@ -14,14 +14,14 @@ export const SIM_STEPS: readonly SimStep[] = [
 export const SIM_STEP_LABELS: Readonly<Record<SimStep, string>> = {
   welcome: "Welcome",
   connect: "Connect",
-  agents: "Agents",
+  agents: "AI",
   aios: "AIOS",
   skills: "Skills",
   import: "Projects",
 };
 
 export const PERSONA_LABELS: Readonly<Record<SimPersona, string>> = {
-  fresh: "Brand-new computer: no agents installed, no projects",
+  fresh: "Brand-new computer: no AI installed, no projects",
   veteran: "Already uses Claude Code and Codex, with projects",
 };
 

@@ -68,7 +68,7 @@ export function PromptPredictionSettings() {
   const labels = {
     local: "History only",
     "local-model": "Local model (Ollama)",
-    cloud: "Cloud model",
+    cloud: "Online model",
   };
 
   return (
@@ -77,7 +77,7 @@ export function PromptPredictionSettings() {
         serverScoped
         settingKeys={["promptPredictionMode"]}
         {...searchableSetting("prompt-prediction-source")}
-        description="History only makes no model calls. Local model runs on the host. Cloud model uses the selected account's quota or API billing."
+        description="History only does not call a model. Local model runs on this computer. Online model uses the usage limit or the API bill of the chosen AI account."
         resetAction={
           settings.promptPredictionMode !== "local" ? (
             <SettingResetButton
@@ -113,7 +113,7 @@ export function PromptPredictionSettings() {
           serverScoped
           settingKeys={["promptPredictionLocalModel"]}
           {...searchableSetting("prompt-prediction-local-model")}
-          description="Enter a model already installed in Ollama on this environment's host. An unavailable local model falls back to history only."
+          description="Enter the name of a model that is installed in Ollama on this computer. If the model is not available, Leonidas Code uses history only."
           resetAction={
             settings.promptPredictionLocalModel ? (
               <SettingResetButton
@@ -143,8 +143,8 @@ export function PromptPredictionSettings() {
             {...searchableSetting("prompt-prediction-cloud-model")}
             description={
               settings.promptPredictionModelSelection
-                ? "Dedicated model for prompt suggestions. Its account pays for each generated suggestion, including unused ones."
-                : "Currently uses the Text generation model. Choose a smaller dedicated model to control prediction usage."
+                ? "A model only for message suggestions. Its AI account pays for each suggestion, also the ones you do not use."
+                : "Now uses the model for writing text. Choose a smaller model to use less."
             }
             resetAction={
               settings.promptPredictionModelSelection ? (
@@ -164,7 +164,7 @@ export function PromptPredictionSettings() {
                 modelOptionsByInstance={options}
                 disabled={!writable || !entries.some((entry) => entry.enabled && entry.isAvailable)}
                 triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
-                triggerAriaLabel="Cloud prediction model"
+                triggerAriaLabel="Online prediction model"
                 {...(mixedCloudModel ? { triggerLabel: "Mixed" } : {})}
                 getModelDisabledReason={disabledReason}
                 onInstanceModelChange={(instanceId, model) => {
@@ -188,12 +188,12 @@ export function PromptPredictionSettings() {
             serverScoped
             settingKeys={["promptPredictionCloudRequestLimit"]}
             {...searchableSetting("prompt-prediction-cloud-limit")}
-            description="Maximum cloud generation attempts per hour across connected devices. Zero disables cloud calls. The counter resets when the server restarts."
+            description="Most online predictions per hour for all connected devices. Zero turns online predictions off. The count starts again when Leonidas Code restarts."
             resetAction={
               settings.promptPredictionCloudRequestLimit !==
               DEFAULT_UNIFIED_SETTINGS.promptPredictionCloudRequestLimit ? (
                 <SettingResetButton
-                  label="cloud prediction limit"
+                  label="online prediction limit"
                   onClick={() =>
                     update({
                       promptPredictionCloudRequestLimit:
@@ -217,9 +217,9 @@ export function PromptPredictionSettings() {
                 }}
               >
                 <NumberFieldGroup>
-                  <NumberFieldDecrement aria-label="Decrease cloud prediction limit" />
-                  <NumberFieldInput aria-label="Cloud predictions per hour" />
-                  <NumberFieldIncrement aria-label="Increase cloud prediction limit" />
+                  <NumberFieldDecrement aria-label="Decrease online prediction limit" />
+                  <NumberFieldInput aria-label="Online predictions per hour" />
+                  <NumberFieldIncrement aria-label="Increase online prediction limit" />
                 </NumberFieldGroup>
               </NumberField>
             }

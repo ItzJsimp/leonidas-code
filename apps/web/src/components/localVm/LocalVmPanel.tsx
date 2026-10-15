@@ -130,30 +130,32 @@ function GuestViewer({
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold">AI Desktop</h2>
-          <p className="text-xs text-muted-foreground">Local VirtualBox guest</p>
+          <p className="text-xs text-muted-foreground">
+            A virtual Windows computer on this computer
+          </p>
         </div>
         <Button variant="ghost" size="icon" aria-label="Hide AI Desktop" onClick={onClose}>
           <X />
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Connect a running Windows VM to grant this thread guest control. Your host mouse stays
-        yours. Hiding this viewer keeps the connection active.
+        Connect a running virtual Windows computer. Then the AI can control it for this chat. Your
+        own mouse stays yours. If you hide this window, the connection stays on.
       </p>
-      {!state && !error && <p role="status">Checking local VirtualBox...</p>}
+      {!state && !error && <p role="status">Looking for VirtualBox on this computer…</p>}
       {state && !state.available && <p role="status">{state.reason}</p>}
       {state?.available && !session && (
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs">
-            Virtual machine
+            Virtual computer
             <select
-              aria-label="Virtual machine"
+              aria-label="Virtual computer"
               className="rounded-md border border-input bg-background p-2 text-sm"
               value={selected}
               onChange={(e) => setSelected(e.target.value)}
               disabled={busy}
             >
-              <option value="">Select a running VM</option>
+              <option value="">Choose a running virtual computer</option>
               {state.vms.map((vm) => (
                 <option
                   key={vm.id}
@@ -178,15 +180,15 @@ function GuestViewer({
             disabled={busy || !selected || !canConnect}
             onClick={() => void mutate("connect")}
           >
-            Connect and grant control
+            Connect and let the AI control it
           </Button>
         </div>
       )}
       {session && (
         <div className="flex flex-wrap items-center gap-2">
           <p className="min-w-0 flex-1 text-sm" role="status">
-            {state?.vms.find((v) => v.id === session.vmId)?.name ?? "Connected VM"}:{" "}
-            {session.paused ? "AI input paused" : "AI control active"}
+            {state?.vms.find((v) => v.id === session.vmId)?.name ?? "Virtual computer"}:{" "}
+            {session.paused ? "AI control paused" : "AI control on"}
           </p>
           <Button
             variant="outline"
@@ -194,7 +196,7 @@ function GuestViewer({
             disabled={busy || !canPause}
             onClick={() => void mutate("pause")}
           >
-            {session.paused ? "Resume AI input" : "Pause AI input"}
+            {session.paused ? "Resume AI control" : "Pause AI control"}
           </Button>
           <Button
             variant="outline"
@@ -202,7 +204,7 @@ function GuestViewer({
             disabled={busy || !canRelease}
             onClick={() => void mutate("release")}
           >
-            Release
+            Disconnect
           </Button>
         </div>
       )}
@@ -216,20 +218,20 @@ function GuestViewer({
           <img
             className="min-h-0 w-full flex-1 object-contain"
             src={`data:image/png;base64,${shot.screenshot.data}`}
-            alt="Current VirtualBox guest screen"
+            alt="Current screen of the virtual computer"
           />
           <p className="text-xs text-muted-foreground">
-            {shot.screenshot.width} x {shot.screenshot.height}. Snapshot refreshes every 2 seconds
-            while visible.
+            {shot.screenshot.width} x {shot.screenshot.height}. The picture updates every 2 seconds
+            while you can see it.
           </p>
         </div>
       )}
       {state?.available && state.vms.length === 0 && (
-        <p>No VMs registered. Create and start a Windows VM in VirtualBox first.</p>
+        <p>No virtual computers found. In VirtualBox, create a Windows one and start it first.</p>
       )}
       <p className="text-xs text-muted-foreground">
-        Requires VirtualBox and your own Windows installation and license. Automatic provisioning is
-        not included.
+        You need VirtualBox and your own copy of Windows with a license. Leonidas Code does not set
+        it up for you.
       </p>
     </aside>
   );

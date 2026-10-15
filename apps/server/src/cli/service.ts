@@ -194,7 +194,9 @@ const serviceUninstallCommand = Command.make("uninstall", projectLocationFlags).
         const service = yield* BootService.BootService;
         const removed = yield* service.uninstall;
         yield* Console.log(
-          removed ? "Removed the Leonidas Code service." : "Leonidas Code service is not installed.",
+          removed
+            ? "Removed the Leonidas Code service."
+            : "Leonidas Code service is not installed.",
         );
       }),
     ),
@@ -248,9 +250,9 @@ export const offerServiceDuringOnboarding = Effect.gen(function* () {
         ? "The installed Leonidas Code service needs an update or repair. Update it now?"
         : platform === "darwin"
           ? "Run Leonidas Code in the background whenever you log in to this Mac? " +
-            "It stays reachable through T3 Connect while you are logged in."
+            "Remote access stays available while you are logged in."
           : "Run Leonidas Code in the background whenever this machine boots? " +
-            "It stays reachable through T3 Connect even after you log out.",
+            "Remote access stays available after you log out.",
       initial: true,
     }),
   );

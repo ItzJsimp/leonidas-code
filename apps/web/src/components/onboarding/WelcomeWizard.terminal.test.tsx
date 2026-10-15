@@ -323,9 +323,11 @@ describe("welcome agent terminal setup", () => {
     await enterRemoteAgents();
     expect(button("Install").props.disabled).toBe(true);
     expect(button("Sign in").props.disabled).toBe(true);
-    expect(text(renderer!.root)).toContain("This connection cannot control terminals.");
-    expect(text(renderer!.root)).toContain("No agent is ready yet.");
-    expect(button("Continue without an agent")).toBeDefined();
+    expect(text(renderer!.root)).toContain(
+      "This connection cannot use the terminal. Connect to a different computer.",
+    );
+    expect(text(renderer!.root)).toContain("No AI is ready yet.");
+    expect(button("Continue without an AI")).toBeDefined();
     await act(async () => {
       button("Install").props.onClick();
       button("Sign in").props.onClick();
@@ -333,9 +335,9 @@ describe("welcome agent terminal setup", () => {
     expect(state.open).not.toHaveBeenCalled();
     expect(state.write).not.toHaveBeenCalled();
     expect(state.close).not.toHaveBeenCalled();
-    await click("Continue without an agent");
+    await click("Continue without an AI");
     await click("Skip skills");
-    await click("Do not import projects");
+    await click("Skip importing projects");
     await click("Skip for now");
     expect(state.complete).toHaveBeenCalledOnce();
     expect(state.done).toHaveBeenCalledExactlyOnceWith(undefined);
@@ -405,7 +407,7 @@ describe("welcome agent terminal setup", () => {
       },
     });
     expect(text(renderer!.root)).toContain(
-      "Press Enter to run this command. Nothing runs until you do.",
+      "Press Enter to run this command. Nothing runs until you press Enter.",
     );
   });
 
@@ -444,7 +446,9 @@ describe("welcome agent terminal setup", () => {
     expect(state.write).not.toHaveBeenCalled();
     expect(state.close).not.toHaveBeenCalled();
     expect(hasViewport()).toBe(true);
-    expect(text(renderer!.root)).toContain("This connection cannot control terminals.");
+    expect(text(renderer!.root)).toContain(
+      "This connection cannot use the terminal. Connect to a different computer.",
+    );
     await act(async () => setAccess(remoteId, true));
     expect(state.open).toHaveBeenCalledOnce();
     expect(state.write).not.toHaveBeenCalled();
@@ -455,7 +459,7 @@ describe("welcome agent terminal setup", () => {
     await click("Close");
     expect(hasViewport()).toBe(false);
     expect(state.close).not.toHaveBeenCalled();
-    await click("Continue without an agent");
+    await click("Continue without an AI");
     await click("Skip skills");
     expect(text(renderer!.root)).toContain("Import your projects");
   });
@@ -474,7 +478,7 @@ describe("welcome agent terminal setup", () => {
     expect(hasViewport()).toBe(true);
     await act(async () => setAccess(remoteId, true));
     expect(text(renderer!.root)).toContain(
-      "Press Enter to run this command. Nothing runs until you do.",
+      "Press Enter to run this command. Nothing runs until you press Enter.",
     );
     expect(state.open).toHaveBeenCalledOnce();
     expect(state.write).toHaveBeenCalledOnce();

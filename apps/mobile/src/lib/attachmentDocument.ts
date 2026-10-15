@@ -81,7 +81,7 @@ export function useAttachmentDocument(input: {
     void refresh()
       .then((url) => {
         if (cancelled) return;
-        if (!url) throw new Error("Reconnect to this environment and try again.");
+        if (!url) throw new Error("Reconnect to this computer and try again.");
         textReadUrl.current = { uri: url, authorizedAt: Date.now() };
         setRemoteUri(url);
       })
@@ -139,7 +139,7 @@ export function useAttachmentDocument(input: {
           let target = authorized?.uri ?? uri;
           if (!authorized || Date.now() - authorized.authorizedAt > STALE_URL_MS) {
             const refreshed = await refresh();
-            if (!refreshed) throw new Error("Reconnect to this environment and try again.");
+            if (!refreshed) throw new Error("Reconnect to this computer and try again.");
             target = refreshed;
             if (!controller.signal.aborted) {
               // Keep the source-read URL and its age together without restarting active media.

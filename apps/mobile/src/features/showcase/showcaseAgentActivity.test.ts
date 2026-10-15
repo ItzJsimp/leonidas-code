@@ -81,7 +81,7 @@ it("encodes the Android Live Update and its alert like a relay push", () => {
 
   assert.strictEqual(data.active, "true");
   assert.strictEqual(data.activity_chip, "Review");
-  assert.strictEqual(data.activity_title, "3 active agents · 2 need attention");
+  assert.strictEqual(data.activity_title, "3 active AI chats · 2 need attention");
   assert.strictEqual(
     data.activity_line_0,
     "Approval\tPut the command center in your pocket\tLeonidas Code",

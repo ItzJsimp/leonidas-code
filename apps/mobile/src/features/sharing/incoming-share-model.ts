@@ -124,7 +124,9 @@ export function selectIncomingShareAttachments(input: {
       continue;
     }
     if (input.maxFileAttachmentBytes === null) {
-      warnings.push(`'${attachment.name}' was skipped because this server does not support files.`);
+      warnings.push(
+        `'${attachment.name}' was skipped because this computer does not support files.`,
+      );
       continue;
     }
     const maxFileAttachmentBytes = clampFileAttachmentUploadBytes(input.maxFileAttachmentBytes);

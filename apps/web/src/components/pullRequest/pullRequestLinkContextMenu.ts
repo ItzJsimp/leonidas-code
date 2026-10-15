@@ -13,7 +13,7 @@ export type PullRequestLinkContextMenuAction = "copy-link" | "open-external";
 
 /** Named for the host rather than "externally": the point is where you will land. */
 export const openOnHostLabel = (host: SourceControlClientDefinition): string =>
-  host === UNKNOWN_SOURCE_CONTROL_CLIENT ? "Open on host" : `Open on ${host.label}`;
+  host === UNKNOWN_SOURCE_CONTROL_CLIENT ? "Open on the website" : `Open on ${host.label}`;
 
 /** Copy first: it is the reason to right-click a number rather than click it. */
 function pullRequestLinkContextMenuItems(
@@ -59,7 +59,10 @@ export async function showPullRequestLinkContextMenu({
   } catch {
     toastManager.add({
       type: "error",
-      title: action === "copy-link" ? "Could not copy the link" : "Could not open the link",
+      title:
+        action === "copy-link"
+          ? "Could not copy the link. Try again."
+          : "Could not open the link. Try again.",
     });
   }
 }

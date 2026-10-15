@@ -82,7 +82,7 @@ export function AutoRouterPickerSection(props: {
         </span>
       </div>
       <ToggleGroup
-        aria-label="Autorouter goal"
+        aria-label="What the autorouter should favor"
         className="w-full *:flex-1"
         value={[preference ?? "off"]}
         onValueChange={(next) => {

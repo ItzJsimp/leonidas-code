@@ -18,7 +18,7 @@ export function subagentGroupSummary(
     ({ status }) => status === "pending" || status === "running" || status === "waiting",
   );
   return {
-    label: `${active ? "Kicked off" : "Ran"} ${members.length} ${members.length === 1 ? "subagent" : "subagents"}`,
+    label: `${active ? "Working with" : "Used"} ${members.length} ${members.length === 1 ? "helper" : "helpers"}`,
     active,
     failed: members.some(({ status }) => status === "failed"),
   };
@@ -41,7 +41,7 @@ export function summarizeSubagentStatuses(
   }
   return (Object.keys(counts) as Array<keyof typeof counts>)
     .filter((key) => counts[key] > 0)
-    .map((key) => `${counts[key]} ${key}`)
+    .map((key) => `${counts[key]} ${key === "idle" ? "waiting" : key}`)
     .join(" · ");
 }
 
@@ -109,7 +109,7 @@ export function resolveSubagentMetadata(input: {
             label: input.childThread?.branch
               ? "Branch"
               : input.childThread?.worktreePath
-                ? "Worktree"
+                ? "Separate copy"
                 : "Workspace",
             value: input.childThread?.branch ?? fileBasename(childWorkspace),
           },

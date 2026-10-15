@@ -2696,7 +2696,7 @@ function PullRequestsColumn({
               {sortMenu}
               {filtersMenu}
               <CompactFilterMenu
-                label="Filter by provider"
+                label="Filter by code service"
                 outlined
                 iconOnly={host !== undefined}
                 triggerIcon={<Plug2Icon aria-hidden className="size-4" />}

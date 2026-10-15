@@ -155,7 +155,7 @@ export function PullRequestStackMenu({
         <MenuPopup align="start">
           <MenuGroup>
             <PullRequestStackHeader number={stack.number} notice={notice} stale={!!onRetry} />
-            {onRetry ? <MenuItem onClick={onRetry}>Retry stack refresh</MenuItem> : null}
+            {onRetry ? <MenuItem onClick={onRetry}>Try the stack refresh again</MenuItem> : null}
             <PullRequestStackLayers
               stack={stack}
               reference={reference}
@@ -190,7 +190,7 @@ export function PullRequestStackMenu({
               ) : null}
               {mergeHasClosed || mergeLayers.some((layer) => layer.isDraft) ? (
                 <p className="px-2 py-1 text-xs text-muted-foreground">
-                  Every layer being merged must be open and ready for review.
+                  Every layer you merge must be open and ready for review.
                 </p>
               ) : null}
             </>

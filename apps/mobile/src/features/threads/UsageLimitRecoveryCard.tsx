@@ -84,7 +84,9 @@ export function UsageLimitRecoveryCard({
       });
       if (result._tag === "Failure") throw squashAtomCommandFailure(result);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not switch providers.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not change the AI account. Try again.",
+      );
     } finally {
       setPending(false);
     }
@@ -92,7 +94,7 @@ export function UsageLimitRecoveryCard({
   async function toggle(action: "resume" | "snooze") {
     if (!resetAt || !runId || !canSchedule) return;
     if (action === "snooze" && !snoozed && Date.parse(resetAt) <= Date.now()) {
-      setError("The reset time has passed. Retry the thread manually.");
+      setError("The reset time has passed. Send a new message to try again.");
       return;
     }
     setPending(true);
@@ -111,7 +113,9 @@ export function UsageLimitRecoveryCard({
       });
       if (result._tag === "Failure") throw squashAtomCommandFailure(result);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not change limit recovery.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not change this setting. Try again.",
+      );
     } finally {
       setPending(false);
     }
@@ -121,7 +125,7 @@ export function UsageLimitRecoveryCard({
       <Text className="text-sm text-warning-foreground">
         {resetAt
           ? `Usage limit resets ${DateTime.toDateUtc(DateTime.makeUnsafe(resetAt)).toLocaleString()}.`
-          : "The provider did not report a reset time. Retry manually when your limit is available."}
+          : "The AI service did not give a reset time. Send a new message when your usage is available."}
       </Text>
       {failoverTargets.length > 0 ? (
         <View className="flex-row flex-wrap gap-2">
@@ -142,7 +146,7 @@ export function UsageLimitRecoveryCard({
         </View>
       ) : canSwitchProvider ? (
         <Text className="text-sm text-muted-foreground">
-          No other Claude or Codex subscription is ready to take over.
+          No other Claude or Codex AI account is ready to continue this chat.
         </Text>
       ) : null}
       {canSchedule ? (
@@ -164,7 +168,7 @@ export function UsageLimitRecoveryCard({
             className="self-start rounded-lg bg-subtle px-3 py-2 active:opacity-70"
           >
             <Text className="text-sm text-foreground">
-              {snoozed ? "Wake now" : "Snooze until reset"}
+              {snoozed ? "Bring back now" : "Snooze until reset"}
             </Text>
           </Pressable>
         </View>

@@ -79,14 +79,14 @@ it("shows a confirmed denial and a connection failure separately", () => {
   state.session = { authenticated: true, scopes: [] };
   expect(useComposerPathSearch(target)).toMatchObject({
     entries: [],
-    error: "This connection cannot search host files.",
+    error: "This connection cannot search files on the computer.",
     isPending: false,
   });
   state.session = null;
   state.phase = "offline";
   expect(useComposerPathSearch(target)).toMatchObject({
     entries: [],
-    error: "This environment is not connected.",
+    error: "This computer is not connected.",
     isPending: false,
   });
 });

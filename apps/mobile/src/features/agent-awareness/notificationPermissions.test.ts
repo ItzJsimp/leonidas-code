@@ -23,7 +23,7 @@ describe("agent notification permission", () => {
     Effect.gen(function* () {
       expect(yield* requestAgentNotificationPermission).toEqual({ type: "granted" });
       expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith("agent-alerts", {
-        name: "Agent alerts",
+        name: "AI alerts",
         importance: 4,
       });
       expect(

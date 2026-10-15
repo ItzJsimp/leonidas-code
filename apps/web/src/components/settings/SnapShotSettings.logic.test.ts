@@ -277,7 +277,7 @@ it("reports pending, denied, and assigned shortcuts without inferring consent fr
     message: null,
   };
   expect(snapShotStatus(state, true)).toContain("Waiting for shortcut permission");
-  expect(snapShotShortcutStatus(state)).toContain("Approve the shortcut permission prompt");
+  expect(snapShotShortcutStatus(state)).toContain("Approve the shortcut permission request");
   const denied = { ...state, shortcutPending: false, shortcutMessage: "Permission wasn't granted" };
   expect(snapShotShortcutStatus(denied)).toBe("Permission wasn't granted");
   const approved = {
@@ -289,7 +289,7 @@ it("reports pending, denied, and assigned shortcuts without inferring consent fr
   expect(snapShotStatus(approved, true)).toBe("Ready to capture");
   expect(snapShotShortcutStatus(approved)).toBeNull();
   expect(snapShotShortcutStatus({ ...approved, shortcutPending: true })).toContain(
-    "Approve the shortcut permission prompt",
+    "Approve the shortcut permission request",
   );
   expect(
     snapShotShortcutStatus({

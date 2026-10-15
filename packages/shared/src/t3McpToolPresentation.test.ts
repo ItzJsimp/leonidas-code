@@ -25,21 +25,21 @@ describe("resolveT3McpToolPresentation", () => {
   });
   it("pretty prints Claude and Cursor T3 MCP tool names", () => {
     expect(resolveT3McpToolPresentation("mcp__t3-code__t3_thread_read")).toEqual({
-      displayName: "Read a Leonidas thread",
+      displayName: "Read a chat",
       logo: "t3-code",
     });
   });
 
   it("pretty prints Codex T3 MCP tool names", () => {
     expect(resolveT3McpToolPresentation("t3-code.create_threads")).toEqual({
-      displayName: "Create Leonidas threads",
+      displayName: "Create chats",
       logo: "t3-code",
     });
   });
 
   it("pretty prints thread metadata updates", () => {
     expect(resolveT3McpToolPresentation("mcp__t3-code__t3_thread_update")).toEqual({
-      displayName: "Update Leonidas thread metadata",
+      displayName: "Update chat details",
       logo: "t3-code",
     });
   });
@@ -53,11 +53,11 @@ describe("resolveT3McpToolPresentation", () => {
 
   it("pretty prints worktree T3 MCP tool names", () => {
     expect(resolveT3McpToolPresentation("mcp__t3-code__t3_worktree_handoff")).toEqual({
-      displayName: "Hand off thread to a git worktree",
+      displayName: "Hand off chat to a separate copy",
       logo: "t3-code",
     });
     expect(resolveT3McpToolPresentation("t3-code.t3_worktree_status")).toEqual({
-      displayName: "Get thread worktree status",
+      displayName: "Get separate copy status",
       logo: "t3-code",
     });
   });
@@ -81,14 +81,14 @@ describe("resolveT3McpToolPresentation", () => {
       "t3-code delegate_task",
       "t3-code__delegate_task",
     ]) {
-      expect(resolveT3McpToolPresentation(name)?.displayName).toBe("Delegate a child task");
+      expect(resolveT3McpToolPresentation(name)?.displayName).toBe("Start a helper");
     }
   });
 
   it("matches OpenCode 2's per-thread server names, whose thread ids hold underscores", () => {
     expect(
       resolveT3McpToolPresentation("t3-code-thread_opencode2-adapter_delegate_task")?.displayName,
-    ).toBe("Delegate a child task");
+    ).toBe("Start a helper");
     expect(resolveT3McpToolPresentation("t3-code-thread_opencode2-adapter_not_a_tool")).toBeNull();
   });
 

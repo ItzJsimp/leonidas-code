@@ -272,8 +272,8 @@ function PersonaPicker({
       <h1 className="text-2xl font-semibold tracking-tight">New-user simulation</h1>
       <p className="text-sm leading-relaxed text-muted-foreground">
         Walks the first-run setup exactly as someone who just installed Leonidas Code would see it.
-        Agents, sign-ins and projects are all fake, so nothing touches a real account, folder or
-        project. Counting starts on the first screen, and each finished run is saved.
+        AI accounts, sign-ins and projects are all fake, so nothing touches a real account, folder
+        or project. Counting starts on the first screen, and each finished run is saved.
       </p>
       <div className="space-y-2">
         {(Object.keys(PERSONA_LABELS) as SimPersona[]).map((id) => (

@@ -73,7 +73,7 @@ function provider(input: {
       status: input.advisoryStatus ?? "behind_latest",
       currentVersion: input.version ?? "1.0.0",
       latestVersion: "latestVersion" in input ? input.latestVersion : "1.1.0",
-      updateCommand: "updateCommand" in input ? input.updateCommand : "npm install -g provider",
+      updateCommand: "updateCommand" in input ? input.updateCommand : "npm install -g AI service",
       canUpdate: input.canUpdate ?? true,
       checkedAt,
       message: "Update available.",
@@ -91,8 +91,8 @@ function updateCandidate(input: Parameters<typeof provider>[0]): ProviderUpdateC
   return provider(input) as ProviderUpdateCandidate;
 }
 
-describe("provider update launch notification logic", () => {
-  it("detects enabled providers with a latest-version advisory", () => {
+describe("AI service update launch notification logic", () => {
+  it("detects enabled AI services with a latest-version advisory", () => {
     expect(isProviderUpdateCandidate(provider({ driver: driver("codex") }))).toBe(true);
     expect(isProviderUpdateCandidate(provider({ driver: driver("codex"), enabled: false }))).toBe(
       false,
@@ -107,7 +107,7 @@ describe("provider update launch notification logic", () => {
     ).toBe(false);
   });
 
-  it("deduplicates multi-instance provider candidates by driver", () => {
+  it("deduplicates multi-instance AI service candidates by driver", () => {
     expect(
       collectProviderUpdateCandidates([
         provider({
@@ -125,7 +125,7 @@ describe("provider update launch notification logic", () => {
     ).toHaveLength(2);
   });
 
-  it("disables one-click updates when provider instances disagree on the update command", () => {
+  it("disables one-click updates when AI service instances disagree on the update command", () => {
     const candidate = updateCandidate({
       driver: driver("claudeAgent"),
       instanceId: instanceId("claude_personal"),
@@ -184,14 +184,14 @@ describe("provider update launch notification logic", () => {
     ).toBe(true);
   });
 
-  it("keeps the inline update action available while a provider update is already running", () => {
+  it("keeps the inline update action available while a AI service update is already running", () => {
     const candidate = updateCandidate({
       driver: driver("codex"),
       updateState: {
         status: "running",
         startedAt: checkedAt,
         finishedAt: null,
-        message: "Updating provider.",
+        message: "Updating AI service.",
         output: null,
       },
     });
@@ -200,7 +200,7 @@ describe("provider update launch notification logic", () => {
     expect(canOneClickUpdateProviderCandidate(candidate, [candidate])).toBe(false);
   });
 
-  it("builds a notification key from provider latest versions", () => {
+  it("builds a notification key from AI service latest versions", () => {
     const codex = updateCandidate({
       driver: driver("codex"),
       version: "1.0.0",
@@ -239,7 +239,7 @@ describe("provider update launch notification logic", () => {
     );
   });
 
-  it("tracks updated provider snapshots by instance instead of collapsing to a sibling driver", () => {
+  it("tracks updated AI service snapshots by instance instead of collapsing to a sibling driver", () => {
     const targetInstanceId = instanceId("codex_personal");
     const siblingInstanceId = instanceId("codex");
     const updatedPersonal = provider({
@@ -252,7 +252,7 @@ describe("provider update launch notification logic", () => {
         status: "succeeded",
         startedAt: checkedAt,
         finishedAt: checkedAt,
-        message: "Provider updated.",
+        message: "AI service updated.",
         output: null,
       },
     });
@@ -287,7 +287,7 @@ describe("provider update launch notification logic", () => {
       phase: "initial",
       type: "warning",
       title: "Update Available: Codex v1.1.0",
-      description: "Install the update now or review provider settings.",
+      description: "Install the update now or review AI service settings.",
     });
   });
 
@@ -300,7 +300,7 @@ describe("provider update launch notification logic", () => {
       oneClickProviders: [],
     });
 
-    expect(view.description).toBe("Codex and Cursor can be updated from provider settings.");
+    expect(view.description).toBe("Codex and Cursor can be updated from AI service settings.");
   });
 
   it("uses server update state for running progress", () => {
@@ -312,7 +312,7 @@ describe("provider update launch notification logic", () => {
             status: "running",
             startedAt: checkedAt,
             finishedAt: null,
-            message: "Updating provider.",
+            message: "Updating AI service.",
             output: null,
           },
         }),
@@ -323,12 +323,12 @@ describe("provider update launch notification logic", () => {
     expect(view).toMatchObject({
       phase: "running",
       type: "loading",
-      title: "Updating provider",
+      title: "Updating AI service",
     });
     expect(shouldShowPrimaryProviderUpdateToast(view)).toBe(false);
   });
 
-  it("keeps the initial prompt and terminal outcomes visible as toasts", () => {
+  it("keeps the initial message and terminal outcomes visible as toasts", () => {
     expect(
       shouldShowPrimaryProviderUpdateToast(
         getProviderUpdateInitialToastView({
@@ -362,12 +362,12 @@ describe("provider update launch notification logic", () => {
     expect(view).toMatchObject({
       phase: "failed",
       type: "error",
-      title: "Provider update failed",
+      title: "AI service update failed",
       description: "command failed",
     });
   });
 
-  it("keeps unchanged providers actionable from settings", () => {
+  it("keeps unchanged AI services actionable from settings", () => {
     const view = getProviderUpdateProgressToastView({
       providers: [
         provider({
@@ -387,12 +387,12 @@ describe("provider update launch notification logic", () => {
     expect(view).toMatchObject({
       phase: "unchanged",
       type: "warning",
-      title: "Provider still needs an update",
-      description: "Cursor still appears outdated. Check provider settings for details.",
+      title: "AI service still needs an update",
+      description: "Cursor still appears outdated. Check AI service settings for details.",
     });
   });
 
-  it("marks progress succeeded once every attempted provider is no longer outdated", () => {
+  it("marks progress succeeded once every attempted AI service is no longer outdated", () => {
     const view = getProviderUpdateProgressToastView({
       providers: [
         provider({
@@ -404,7 +404,7 @@ describe("provider update launch notification logic", () => {
             status: "succeeded",
             startedAt: checkedAt,
             finishedAt: checkedAt,
-            message: "Provider updated.",
+            message: "AI service updated.",
             output: null,
           },
         }),
@@ -415,8 +415,8 @@ describe("provider update launch notification logic", () => {
     expect(view).toMatchObject({
       phase: "succeeded",
       type: "success",
-      title: "Provider updated",
-      description: "New sessions will use the updated provider.",
+      title: "AI service updated",
+      description: "New chats will use the updated AI service.",
       dismissAfterVisibleMs: 3_000,
     });
   });
@@ -427,12 +427,12 @@ describe("provider update launch notification logic", () => {
     expect(firstFailedProviderUpdateMessage(results)).toBe("WebSocket closed");
     expect(getProviderUpdateRejectedToastView(2, "WebSocket closed")).toMatchObject({
       phase: "failed",
-      title: "Provider updates failed",
+      title: "AI service updates failed",
       description: "WebSocket closed",
     });
   });
 
-  it("collects only attempted provider snapshots from update responses", () => {
+  it("collects only attempted AI service snapshots from update responses", () => {
     const codex = provider({ driver: driver("codex") });
     const cursor = provider({ driver: driver("cursor") });
     const results = [AsyncResult.success({ providers: [codex, cursor] })];
@@ -445,7 +445,7 @@ describe("provider update launch notification logic", () => {
     ).toEqual([cursor]);
   });
 
-  it("summarizes active provider updates for the sidebar pill", () => {
+  it("summarizes active AI service updates for the sidebar pill", () => {
     const view = getProviderUpdateSidebarPillView([
       provider({
         driver: driver("codex"),
@@ -453,7 +453,7 @@ describe("provider update launch notification logic", () => {
           status: "running",
           startedAt: checkedAt,
           finishedAt: null,
-          message: "Updating provider.",
+          message: "Updating AI service.",
           output: null,
         },
       }),
@@ -463,7 +463,7 @@ describe("provider update launch notification logic", () => {
           status: "queued",
           startedAt: null,
           finishedAt: null,
-          message: "Waiting for another provider update to finish.",
+          message: "Waiting for another AI service update to finish.",
           output: null,
         },
       }),
@@ -471,12 +471,12 @@ describe("provider update launch notification logic", () => {
 
     expect(view).toMatchObject({
       tone: "loading",
-      title: "Updating 2 providers",
+      title: "Updating 2 AI services",
       description: "Codex and Cursor updates are in progress.",
     });
   });
 
-  it("uses the provider name for single active sidebar pill updates", () => {
+  it("uses the AI service name for single active sidebar pill updates", () => {
     const view = getProviderUpdateSidebarPillView([
       provider({
         driver: driver("codex"),
@@ -484,7 +484,7 @@ describe("provider update launch notification logic", () => {
           status: "running",
           startedAt: checkedAt,
           finishedAt: null,
-          message: "Updating provider.",
+          message: "Updating AI service.",
           output: null,
         },
       }),
@@ -498,7 +498,7 @@ describe("provider update launch notification logic", () => {
     });
   });
 
-  it("uses the provider name for single failed sidebar pill updates", () => {
+  it("uses the AI service name for single failed sidebar pill updates", () => {
     const view = getProviderUpdateSidebarPillView(
       [
         provider({
@@ -524,7 +524,7 @@ describe("provider update launch notification logic", () => {
     });
   });
 
-  it("shows a short-lived success sidebar pill after a single provider update succeeds", () => {
+  it("shows a short-lived success sidebar pill after a single AI service update succeeds", () => {
     const view = getProviderUpdateSidebarPillView(
       [
         provider({
@@ -536,7 +536,7 @@ describe("provider update launch notification logic", () => {
             status: "succeeded",
             startedAt: checkedAt,
             finishedAt: checkedAt,
-            message: "Provider updated.",
+            message: "AI service updated.",
             output: null,
           },
         }),
@@ -545,10 +545,10 @@ describe("provider update launch notification logic", () => {
     );
 
     expect(view).toMatchObject({
-      key: "succeeded:codex:2026-04-23T10:00:00.000Z:Provider updated.",
+      key: "succeeded:codex:2026-04-23T10:00:00.000Z:AI service updated.",
       tone: "success",
       title: "Codex updated: v1.1.0",
-      description: "New sessions will use the updated provider.",
+      description: "New chats will use the updated AI service.",
       dismissAfterVisibleMs: 3_000,
     });
   });
@@ -619,7 +619,7 @@ describe("provider update launch notification logic", () => {
           status: "succeeded",
           startedAt: laterCheckedAt,
           finishedAt: laterCheckedAt,
-          message: "Provider updated.",
+          message: "AI service updated.",
           output: null,
         },
       }),
@@ -629,14 +629,14 @@ describe("provider update launch notification logic", () => {
       visibleAfterIso: sessionStartedAt,
     });
     expect(successView).toMatchObject({
-      key: "succeeded:codex:2026-04-23T10:01:00.000Z:Provider updated.",
+      key: "succeeded:codex:2026-04-23T10:01:00.000Z:AI service updated.",
       tone: "success",
       title: "Codex updated: v1.2.0",
     });
 
     const failureView = getProviderUpdateSidebarPillView(providers, {
       visibleAfterIso: sessionStartedAt,
-      dismissedKeys: new Set(["succeeded:codex:2026-04-23T10:01:00.000Z:Provider updated."]),
+      dismissedKeys: new Set(["succeeded:codex:2026-04-23T10:01:00.000Z:AI service updated."]),
     });
     expect(failureView).toMatchObject({
       key: "failed:claudeAgent:2026-04-23T10:00:00.000Z:Update command exited with code 1.",
@@ -687,7 +687,7 @@ describe("provider update launch notification logic", () => {
           true,
           provider({
             driver: driver("codex"),
-            updateState: terminalState("succeeded", "Provider updated."),
+            updateState: terminalState("succeeded", "AI service updated."),
           }),
         ),
         fulfilledOutcome(
@@ -712,7 +712,7 @@ describe("provider update launch notification logic", () => {
           true,
           provider({
             driver: driver("codex"),
-            updateState: terminalState("succeeded", "Provider updated."),
+            updateState: terminalState("succeeded", "AI service updated."),
           }),
         ),
         fulfilledOutcome(
@@ -736,14 +736,14 @@ describe("provider update launch notification logic", () => {
           true,
           provider({
             driver: driver("codex"),
-            updateState: terminalState("succeeded", "Provider updated."),
+            updateState: terminalState("succeeded", "AI service updated."),
           }),
         ),
         fulfilledOutcome(
           false,
           provider({
             driver: driver("codex"),
-            updateState: terminalState("succeeded", "Provider updated."),
+            updateState: terminalState("succeeded", "AI service updated."),
           }),
         ),
       ]);
@@ -756,7 +756,7 @@ describe("provider update launch notification logic", () => {
     it("ignores backends that did not return the targeted instance", () => {
       const primary = provider({
         driver: driver("codex"),
-        updateState: terminalState("succeeded", "Provider updated."),
+        updateState: terminalState("succeeded", "AI service updated."),
       });
       const snapshots = collectProviderUpdateOutcomeSnapshots([
         fulfilledOutcome(true, primary),
@@ -769,7 +769,7 @@ describe("provider update launch notification logic", () => {
     it("treats a rejected dispatch as not contributing a snapshot", () => {
       const primary = provider({
         driver: driver("codex"),
-        updateState: terminalState("succeeded", "Provider updated."),
+        updateState: terminalState("succeeded", "AI service updated."),
       });
       const results: PromiseSettledResult<LocalProviderUpdateOutcome>[] = [
         fulfilledOutcome(true, primary),
@@ -795,7 +795,7 @@ describe("provider update launch notification logic", () => {
       providers: input.providers,
     });
 
-    it("groups each environment's outdated one-click candidates", () => {
+    it("groups each computer's outdated one-click candidates", () => {
       const result = buildLocalEnvironmentUpdateGroups([
         environment({
           environmentId: "env-windows",
@@ -832,7 +832,7 @@ describe("provider update launch notification logic", () => {
       ).toBe(true);
     });
 
-    it("keeps only environments that have a one-click update on offer", () => {
+    it("keeps only computers that have a one-click update on offer", () => {
       const { groups } = buildLocalEnvironmentUpdateGroups([
         environment({
           environmentId: "env-windows",
@@ -852,7 +852,7 @@ describe("provider update launch notification logic", () => {
       ]);
     });
 
-    it("keys the notification by environment, driver and latest version", () => {
+    it("keys the notification by computer, driver and latest version", () => {
       const noUpdates = buildLocalEnvironmentUpdateGroups([
         environment({
           environmentId: "env-windows",
@@ -880,7 +880,7 @@ describe("provider update launch notification logic", () => {
       expect(key).toContain("env-wsl=codex:1.1.0");
     });
 
-    it("labels environments by platform so they are distinguishable", () => {
+    it("labels computers by platform so they are distinguishable", () => {
       expect(
         deriveEnvironmentDisplayLabel({
           isWsl: false,
@@ -947,20 +947,20 @@ describe("provider update launch notification logic", () => {
     const runningResult: ProviderUpdateToastView = {
       phase: "running",
       type: "loading",
-      title: "Updating providers",
-      description: "Running provider update command.",
+      title: "Updating AI services",
+      description: "Running AI service update command.",
     };
     const succeededResult: ProviderUpdateToastView = {
       phase: "succeeded",
       type: "success",
-      title: "Provider updated",
-      description: "New sessions will use the updated provider.",
+      title: "AI service updated",
+      description: "New chats will use the updated AI service.",
     };
     const successPill: ProviderUpdateSidebarPillView = {
       key: "succeeded:codex",
       tone: "success",
       title: "Codex updated",
-      description: "New sessions will use the updated provider.",
+      description: "New chats will use the updated AI service.",
     };
 
     it("prefers a transport error", () => {
@@ -1027,7 +1027,7 @@ describe("provider update launch notification logic", () => {
       ).toMatchObject({ kind: "loading" });
     });
 
-    it("lists the providers when idle", () => {
+    it("lists the AI services when idle", () => {
       expect(
         resolveEnvironmentUpdateRowStatus({
           group,
@@ -1091,7 +1091,7 @@ describe("getProviderUpdateRunToastView", () => {
           providers: [
             provider({
               driver: driver("codex"),
-              updateState: updateState("succeeded", "Provider updated."),
+              updateState: updateState("succeeded", "AI service updated."),
             }),
           ],
         }),
@@ -1114,7 +1114,7 @@ describe("getProviderUpdateRunToastView", () => {
 
     expect(view).toEqual({
       type: "error",
-      title: "2 of 3 provider updates failed",
+      title: "2 of 3 AI service updates failed",
       description: "Mac Studio · Claude: npm exited with code 1.\nLaptop · Codex: WebSocket closed",
     });
   });
@@ -1124,7 +1124,7 @@ describe("getProviderUpdateRunToastView", () => {
       providers: [
         provider({
           driver: driver("codex"),
-          updateState: updateState("succeeded", "Provider updated."),
+          updateState: updateState("succeeded", "AI service updated."),
         }),
       ],
     });
@@ -1136,8 +1136,8 @@ describe("getProviderUpdateRunToastView", () => {
       ]),
     ).toEqual({
       type: "success",
-      title: "2 providers updated",
-      description: "New sessions will use the updated providers.",
+      title: "2 AI services updated",
+      description: "New chats will use the updated AI services.",
     });
     expect(
       getProviderUpdateRunToastView([

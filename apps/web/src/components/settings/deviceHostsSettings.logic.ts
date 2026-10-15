@@ -15,7 +15,7 @@ export function updateDeviceHosts(
     const matches = hosts.filter((candidate) => sameDestination(candidate, destination));
     if (matches.length > 1) {
       throw new Error(
-        "Multiple hosts match this SSH destination. Select the environment to edit its hosts.",
+        "Multiple hosts match this SSH destination. Choose the computer to edit its entries.",
       );
     }
     return matches[0];

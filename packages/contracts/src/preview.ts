@@ -448,7 +448,7 @@ export class PreviewClearProfileError extends Schema.TaggedError<PreviewClearPro
   { profileId: Schema.String, cause: Schema.Defect() },
 ) {
   override get message() {
-    return "The environment could not delete this browser profile's data.";
+    return "The computer could not delete this browser profile's data.";
   }
 }
 

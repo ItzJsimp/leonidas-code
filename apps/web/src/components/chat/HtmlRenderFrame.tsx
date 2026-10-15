@@ -105,7 +105,7 @@ export function HtmlRenderFrame(props: {
               <TooltipTrigger
                 render={
                   <Button
-                    aria-label="Open in panel"
+                    aria-label="Open in side panel"
                     size="icon-xs"
                     variant="glass"
                     onClick={() =>
@@ -124,7 +124,7 @@ export function HtmlRenderFrame(props: {
               >
                 <Maximize2Icon className="size-3.5" />
               </TooltipTrigger>
-              <TooltipPopup side="left">Open in panel</TooltipPopup>
+              <TooltipPopup side="left">Open in side panel</TooltipPopup>
             </Tooltip>
           </div>
         </>

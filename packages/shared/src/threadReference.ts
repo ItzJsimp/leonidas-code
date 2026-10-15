@@ -33,8 +33,8 @@ export function resolveThreadReferenceCopyTarget(input: {
     : {
         kind: "thread",
         value: input.threadId,
-        clipboardTarget: "thread ID",
-        successTitle: "Thread ID copied",
-        failureTitle: "Failed to copy thread ID",
+        clipboardTarget: "chat ID",
+        successTitle: "Chat ID copied",
+        failureTitle: "Could not copy the chat ID",
       };
 }

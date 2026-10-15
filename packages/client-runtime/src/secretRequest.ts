@@ -6,7 +6,7 @@ export type SecretRequestItem = Extract<
 >;
 
 /** Shown under the field: the one promise the card makes about the value. */
-export const SECRET_REQUEST_PRIVACY_NOTE = "Stored securely, never shown to the agent";
+export const SECRET_REQUEST_PRIVACY_NOTE = "Stored securely, never shown to the AI";
 export const SECRET_REQUEST_DEFAULT_PLACEHOLDER = "Paste the secret";
 
 /** What a secret request card shows: the form while pending, otherwise a one-line outcome. */
@@ -37,7 +37,7 @@ const ENDED_DISPLAY: SecretRequestDisplay = {
 const PENDING_DISPLAY: SecretRequestDisplay = { kind: "pending" };
 const PENDING_ELSEWHERE_DISPLAY: SecretRequestDisplay = {
   kind: "pending-elsewhere",
-  label: "Waiting for an answer in the original thread",
+  label: "Waiting for an answer in the original chat",
 };
 
 /**

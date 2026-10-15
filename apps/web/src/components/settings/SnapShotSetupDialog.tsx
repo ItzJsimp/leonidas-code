@@ -196,7 +196,7 @@ export function SnapShotSetupDialog({
                         ? macPermissionsReady
                           ? "Test a snapshot of the current window. If macOS asks to bypass its window picker, choose Allow. The test image is discarded."
                           : "Allow each permission, then continue."
-                        : "Allow access when prompted to start capturing windows.",
+                        : "Allow access when the system asks. Then you can capture windows.",
                 };
   const title = step === "access" ? accessCopy.title : "Choose your shortcut";
   const description =
@@ -205,7 +205,7 @@ export function SnapShotSetupDialog({
       : configShortcut
         ? "Click the shortcut, then press the keys you want."
         : state.mode === "portal"
-          ? "Choose your keys, then approve the permission prompt if asked."
+          ? "Choose your keys. If the system asks, approve the permission request."
           : "Use both Shift keys, or record a different shortcut.";
   const stepIndex = SETUP_STEPS.findIndex(({ id }) => id === step);
   const details = [

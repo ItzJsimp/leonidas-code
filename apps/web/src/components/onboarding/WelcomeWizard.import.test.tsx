@@ -171,7 +171,7 @@ import { WelcomeWizard } from "./WelcomeWizard";
 
 const primaryId = EnvironmentId.make("primary");
 const remoteId = EnvironmentId.make("remote");
-const permissionMessage = "This connection cannot import projects or thread history.";
+const permissionMessage = "This connection cannot import projects or chat history.";
 let renderer: ReactTestRenderer | undefined;
 
 function session(scopes: ReadonlyArray<AuthEnvironmentScope>): AuthSessionState {
@@ -247,7 +247,7 @@ async function mountImport(remote = false) {
     );
   });
   await click("Continue");
-  await click("Continue without an agent");
+  await click("Continue without an AI");
   await click("Skip skills");
   expect(text(renderer!.root)).toContain("Import your projects");
 }
@@ -297,7 +297,7 @@ it("keeps scanning, choosing and skipping available to a paired read-only enviro
   expect(text(renderer!.root)).toContain("/projects/first");
   expect(button("Import 2 projects").props.disabled).toBe(true);
   expect(text(renderer!.root)).toContain(permissionMessage);
-  await click("Do not import projects");
+  await click("Skip importing projects");
   await click("Skip for now");
   expect(state.createProject).not.toHaveBeenCalled();
   expect(state.importThreads).not.toHaveBeenCalled();

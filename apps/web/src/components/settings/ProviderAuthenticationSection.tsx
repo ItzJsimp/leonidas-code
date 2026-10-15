@@ -82,14 +82,14 @@ export function ProviderAuthenticationSection({
         : interaction?.type === "terminal"
           ? "Complete sign-in in the terminal below."
           : interaction?.type === "credentials"
-            ? "Enter your credentials below."
-            : "Finish signing in in your browser."
+            ? "Enter your sign-in details below."
+            : "Finish sign-in in your browser."
     : signedIn
       ? "Signed in."
       : isDiscovering
-        ? "Discovering sign-in methods…"
+        ? "Looking for sign-in methods…"
         : needsExternalSetup
-          ? "No in-app sign-in advertised. Follow the provider's docs to finish setup."
+          ? "This AI service has no sign-in in Leonidas Code. Follow its help pages to finish setup."
           : `Sign in on ${environmentLabel}.`;
   const statusMessage = auth?.phase === "failed" ? auth.message : null;
   const disabled = readOnly || pending || query.error !== null || isDiscovering;
@@ -111,12 +111,10 @@ export function ProviderAuthenticationSection({
       if (result._tag === "Success") succeeded = true;
       else if (!isAtomCommandInterrupted(result)) {
         const failure = squashAtomCommandFailure(result);
-        setError(
-          failure instanceof Error ? failure.message : "Provider sign-in failed. Try again.",
-        );
+        setError(failure instanceof Error ? failure.message : "Sign-in failed. Try again.");
       }
     } catch {
-      setError("Provider sign-in failed. Try again.");
+      setError("Sign-in failed. Try again.");
     }
     pendingRef.current = false;
     setPending(false);
@@ -197,11 +195,11 @@ export function ProviderAuthenticationSection({
               <SelectTrigger size="sm" aria-label="Sign-in method" className="w-44">
                 <SelectValue>
                   {auth?.methods?.find((method) => method.id === methodId)?.name ??
-                    "Provider default"}
+                    "AI service default"}
                 </SelectValue>
               </SelectTrigger>
               <SelectPopup>
-                <SelectItem value="">Provider default</SelectItem>
+                <SelectItem value="">AI service default</SelectItem>
                 {auth?.methods?.map((method) => (
                   <SelectItem key={method.id} value={method.id}>
                     {method.name}
@@ -218,7 +216,7 @@ export function ProviderAuthenticationSection({
                 disabled={disabled}
                 onClick={() => void openBrowser()}
               >
-                Open browser
+                Open the browser
               </Button>
               <Tooltip>
                 <TooltipTrigger
@@ -231,7 +229,7 @@ export function ProviderAuthenticationSection({
                       onClick={() => {
                         // Copy inside the click so the clipboard keeps the user
                         // activation; the link only works once consent is recorded.
-                        const copied = writeTextToClipboard(url, "Provider sign-in link");
+                        const copied = writeTextToClipboard(url, "Sign-in link");
                         void (async () => {
                           await copied;
                           if (interaction?.type === "browser" && interaction.requiresConsent)
@@ -256,7 +254,7 @@ export function ProviderAuthenticationSection({
                   <a href={provider.setup.documentationUrl} target="_blank" rel="noreferrer" />
                 }
               >
-                Open docs
+                Open the help pages
               </Button>
             ) : active && auth?.flowId ? (
               <Button
@@ -294,7 +292,7 @@ export function ProviderAuthenticationSection({
                 {signedIn
                   ? "Change account"
                   : auth?.phase === "failed" || auth?.phase === "cancelled"
-                    ? "Retry sign-in"
+                    ? "Try sign-in again"
                     : "Sign in"}
               </Button>
             ) : null}
@@ -306,7 +304,7 @@ export function ProviderAuthenticationSection({
                 onClick={() => {
                   void ensureLocalApi()
                     .dialogs.confirm(
-                      `Sign out of ${provider.displayName ?? provider.driver} on ${environmentLabel}? This stops running threads that share this sign-in. Thread history is kept.`,
+                      `Sign out of ${provider.displayName ?? provider.driver} on ${environmentLabel}? This stops the chats that use this sign-in. Your chat history stays.`,
                     )
                     .then((confirmed) => {
                       if (confirmed) void run(() => logout(target));
@@ -329,7 +327,7 @@ export function ProviderAuthenticationSection({
         <>
           {interaction?.type === "deviceCode" ? (
             <p className="py-2 text-sm text-muted-foreground">
-              Enter code{" "}
+              Enter the code{" "}
               <code className="select-all font-mono text-foreground">{interaction.userCode}</code>{" "}
               in your browser.
             </p>
@@ -371,14 +369,16 @@ export function ProviderAuthenticationSection({
                         if (result._tag !== "Success") {
                           terminalQueue.current = [];
                           if (!isAtomCommandInterrupted(result))
-                            setError("The provider sign-in terminal is no longer available.");
+                            setError(
+                              "The sign-in terminal is not available any more. Start the sign-in again.",
+                            );
                           break;
                         }
                       }
                     })()
                       .catch(() => {
                         terminalQueue.current = [];
-                        setError("Could not send input to the provider sign-in terminal.");
+                        setError("Could not send your text to the sign-in terminal. Try again.");
                       })
                       .finally(() => {
                         terminalSending.current = false;
@@ -440,7 +440,7 @@ export function ProviderAuthenticationSection({
               }}
             >
               <label className="grid gap-1">
-                If the final localhost page does not load, paste its full URL here.
+                If the last page (localhost) does not load, paste its full web address here.
                 <Input
                   size="sm"
                   id={`provider-callback-${instanceId}`}

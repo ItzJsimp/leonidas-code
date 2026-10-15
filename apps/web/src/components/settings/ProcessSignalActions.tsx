@@ -18,7 +18,7 @@ export function ProcessSignalActions({
           render={
             <InlineButton
               disabled={disabled}
-              aria-label="Send SIGINT"
+              aria-label="Ask the process to stop (SIGINT)"
               tone="muted"
               onClick={() => onSignal("SIGINT")}
             >
@@ -26,14 +26,14 @@ export function ProcessSignalActions({
             </InlineButton>
           }
         />
-        <TooltipPopup side="top">Send SIGINT</TooltipPopup>
+        <TooltipPopup side="top">Ask the process to stop (SIGINT)</TooltipPopup>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger
           render={
             <InlineButton
               disabled={disabled}
-              aria-label="Send SIGKILL"
+              aria-label="Force the process to stop (SIGKILL)"
               tone="destructive"
               onClick={() => onSignal("SIGKILL")}
             >
@@ -41,7 +41,7 @@ export function ProcessSignalActions({
             </InlineButton>
           }
         />
-        <TooltipPopup side="top">Send SIGKILL</TooltipPopup>
+        <TooltipPopup side="top">Force the process to stop (SIGKILL)</TooltipPopup>
       </Tooltip>
     </div>
   );

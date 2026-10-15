@@ -64,8 +64,8 @@ export function useThreadFind({
     if (!enabled) {
       toastManager.add({
         id: "thread-find-unavailable",
-        title: "Thread search is unavailable on this server.",
-        description: "Update the server to enable it.",
+        title: "You cannot search in a chat on this computer yet.",
+        description: "Update Leonidas Code on this computer to turn it on.",
       });
       return;
     }

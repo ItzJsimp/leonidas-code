@@ -44,7 +44,7 @@ export default function ProviderAuthTerminal({
         if (/^https?:\/\//i.test(url))
           void ensureLocalApi()
             .shell.openExternal(url)
-            .catch(() => setError("Could not open the provider link."));
+            .catch(() => setError("Could not open the sign-in link."));
       },
     })
       .then((terminal) => {
@@ -67,7 +67,7 @@ export default function ProviderAuthTerminal({
     <>
       <div
         ref={mount}
-        aria-label="Provider sign-in terminal"
+        aria-label="AI service sign-in terminal"
         className="relative h-64 overflow-hidden rounded-md border border-border"
       />
       {error ? (

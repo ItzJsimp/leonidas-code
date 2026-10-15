@@ -47,7 +47,7 @@ describe("connectionFloatingStatus", () => {
 
   it("falls back to a generic name when the environment has no label", () => {
     expect(status("error", { environmentLabel: null })).toMatchObject({
-      label: "Failed to connect to Environment",
+      label: "Failed to connect to Computer",
     });
   });
 

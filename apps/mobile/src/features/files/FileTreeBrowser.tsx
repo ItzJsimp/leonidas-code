@@ -303,7 +303,7 @@ export function FileTreeBrowser(props: {
               <Text className="mt-1 text-xs leading-normal text-foreground-muted">
                 {props.searchQuery.trim().length > 0
                   ? "Try a different search."
-                  : "The workspace is empty."}
+                  : "This project has no files. Add a file, then try again."}
               </Text>
             </>
           )}

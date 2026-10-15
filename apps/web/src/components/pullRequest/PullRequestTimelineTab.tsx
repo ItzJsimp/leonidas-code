@@ -166,7 +166,7 @@ function OpenOnHostButton({ url, onOpen }: { url: string | null; onOpen: (url: s
       size="icon-xs"
       variant="ghost-muted"
       className="-mr-1 -mt-1 shrink-0"
-      aria-label="Open activity on host"
+      aria-label="Open activity on the website"
       onClick={() => onOpen(url)}
     >
       <ExternalLinkIcon className="size-3" />
@@ -205,7 +205,7 @@ function ConversationCard({
     });
     setSaving(false);
     if (result._tag === "Failure") {
-      toastManager.add({ type: "error", title: "Could not save the comment" });
+      toastManager.add({ type: "error", title: "Could not save the comment. Try again." });
       return;
     }
     setEditing(false);

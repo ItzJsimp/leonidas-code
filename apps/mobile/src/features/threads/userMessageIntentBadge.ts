@@ -12,20 +12,20 @@ export function resolveUserMessageIntentBadge(
   switch (intent) {
     case "queued_turn":
       return {
-        label: "queued",
-        accessibilityLabel: "Queued behind the active turn",
+        label: "waiting",
+        accessibilityLabel: "Waiting behind the active reply",
         tone: "queued",
       };
     case "steer":
       return {
-        label: "steer",
-        accessibilityLabel: "Steered the active turn",
+        label: "send now",
+        accessibilityLabel: "Sent during the active reply",
         tone: "steer",
       };
     case "promoted_queued_to_steer":
       return {
-        label: "queued → steer",
-        accessibilityLabel: "Originally queued, then promoted to steer the active turn",
+        label: "waiting → send now",
+        accessibilityLabel: "Saved as waiting, then sent during the active reply",
         tone: "steer",
       };
     case "turn_start":

@@ -24,7 +24,7 @@ export function ComposerServerUpdateIcon({
 /** One text line, clipped at the end so the error detail never squeezes its title. */
 export function ComposerServerUpdateStatus({
   state,
-  serverLabel = "server",
+  serverLabel = "computer",
 }: {
   readonly state: Exclude<ServerUpdateState, { status: "idle" }>;
   readonly serverLabel?: string;

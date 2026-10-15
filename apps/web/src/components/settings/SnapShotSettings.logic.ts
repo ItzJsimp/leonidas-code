@@ -44,7 +44,7 @@ export function snapShotSetupSummary(state: DesktopSnapShotState, enabled: boole
 export function snapShotShortcutStatus(state: DesktopSnapShotState | null): string | null {
   if (!state) return null;
   if (state.linuxBackend === "hyprland") return state.shortcutMessage;
-  if (state.shortcutPending) return "Approve the shortcut permission prompt to continue.";
+  if (state.shortcutPending) return "Approve the shortcut permission request to continue.";
   if (state.shortcutRegistered) return state.mode === "portal" ? null : "Shortcut saved.";
   return state.shortcutMessage;
 }

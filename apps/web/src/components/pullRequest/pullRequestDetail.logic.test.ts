@@ -1043,7 +1043,7 @@ describe("one finding handed over on its own", () => {
 });
 
 describe("what to say when an action fails", () => {
-  const hint = "The host refused the merge. Check that you have write access.";
+  const hint = "The service refused the merge. Check that you have write access.";
 
   it("says the host's own reason, without the operation it arrived wrapped in", () => {
     expect(

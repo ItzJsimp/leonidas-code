@@ -104,7 +104,7 @@ function SidebarUpdateArchitectureWarningContent() {
   return (
     <Alert variant="warning">
       <TriangleAlertIcon />
-      <AlertTitle>Intel build on Apple Silicon</AlertTitle>
+      <AlertTitle>Intel version on Apple Silicon</AlertTitle>
       <AlertDescription>{description}</AlertDescription>
     </Alert>
   );
@@ -155,11 +155,11 @@ function SidebarUpdateControl() {
     : showUpdateDetails
       ? state
         ? getDesktopUpdateButtonTooltip(state)
-        : "Update available"
+        : "An update is available"
       : showCheckIcon
         ? "Checking for updates…"
         : state?.status === "up-to-date"
-          ? "Up to date. Click to check again."
+          ? "Leonidas Code is up to date. Click to check again."
           : "Check for updates";
   const tooltip = state
     ? `${actionTooltip} · Leonidas Code ${state.currentVersion}`
@@ -210,7 +210,7 @@ function SidebarUpdateControl() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Could not download update",
+              title: "Could not download the update",
               description: actionError,
             }),
           );
@@ -258,7 +258,7 @@ function SidebarUpdateControl() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Could not install update",
+              title: "Could not install the update",
               description: actionError,
             }),
           );
@@ -267,7 +267,7 @@ function SidebarUpdateControl() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Could not install update",
+              title: "Could not install the update",
               ...userErrorToastFields(error),
             }),
           );
@@ -288,7 +288,7 @@ function SidebarUpdateControl() {
             type: "error",
             title: "Could not check for updates",
             description:
-              result.state.message ?? "Automatic updates are not available in this build.",
+              result.state.message ?? "Updates are not available in this copy of Leonidas Code.",
           }),
         );
       })
@@ -417,7 +417,7 @@ function SidebarUpdateControl() {
         {showReleaseNotesPopover && state ? (
           <PopoverPopup
             align="center"
-            aria-label="Nightly update release notes"
+            aria-label="What changed in this update"
             initialFocus={false}
             onKeyDownCapture={(event) => {
               if (

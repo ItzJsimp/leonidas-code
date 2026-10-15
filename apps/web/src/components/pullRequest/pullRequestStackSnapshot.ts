@@ -69,7 +69,7 @@ export function pullRequestStackView(
       data === null
         ? null
         : query.error
-          ? "Stack data may be stale. We couldn’t refresh it."
+          ? "The stack data may be old. Leonidas Code could not refresh it. Try again."
           : !query.isSuccess || query.isPending
             ? "Refreshing stack… Showing saved data."
             : null,

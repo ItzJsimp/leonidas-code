@@ -68,7 +68,7 @@ export function projectThreadAwarenessV2(
     phase === "completed"
       ? "Review the completed task."
       : phase === "failed"
-        ? "The agent run failed."
+        ? "The AI reply failed."
         : undefined;
   return {
     environmentId,
@@ -122,17 +122,17 @@ function resolveThreadAwarenessPhaseV2(
 function headlineForPhase(phase: AgentAwarenessPhase): string {
   switch (phase) {
     case "starting":
-      return "Starting agent";
+      return "Starting the AI";
     case "running":
-      return "Agent is working";
+      return "AI is working";
     case "waiting_for_approval":
-      return "Approval needed";
+      return "Needs permission";
     case "waiting_for_input":
-      return "Waiting for input";
+      return "Waiting for your answer";
     case "completed":
-      return "Agent finished";
+      return "AI finished";
     case "failed":
-      return "Agent failed";
+      return "AI failed";
     case "stale":
       return "Update delayed";
   }

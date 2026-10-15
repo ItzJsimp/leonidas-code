@@ -78,7 +78,7 @@ export function setupProjectScript(scripts: readonly ProjectScript[]): ProjectSc
 export function projectScriptMenuLabel(script: ProjectScript): string {
   const roles = [
     ...(script.runOnWorktreeCreate ? ["setup"] : []),
-    ...(script.runOnSettle ? ["on settle"] : []),
+    ...(script.runOnSettle ? ["when done"] : []),
   ];
   return roles.length === 0 ? script.name : `${script.name} (${roles.join(", ")})`;
 }

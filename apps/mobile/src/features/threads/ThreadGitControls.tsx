@@ -46,7 +46,7 @@ function compactMenuStatus(gitStatus: VcsStatusResult | null): string {
     return "Checking status";
   }
   if (!gitStatus.isRepo) {
-    return "Not a repo";
+    return "Not a Git project";
   }
 
   const parts: string[] = [];
@@ -135,7 +135,7 @@ function useThreadGitControlModel(props: ThreadGitMenuProps) {
         label: "Git unavailable",
         disabled: true,
         kind: "show_hint" as const,
-        hint: "This workspace is not a git repository.",
+        hint: "This project is not a Git repository.",
       };
     }
     const action = resolveQuickAction(gitStatus, busy, isDefaultRef, hasPrimaryRemote);
@@ -322,7 +322,7 @@ function useThreadGitHeaderActionItems(props: ThreadGitControlsProps): ThreadGit
               type: "action" as const,
             })),
             {
-              description: "Start another shell for this thread",
+              description: "Start another shell for this chat",
               disabled: !props.canOperateTerminal,
               icon: { name: "plus", type: "sfSymbol" },
               label: "Open new terminal",
@@ -374,7 +374,7 @@ function useThreadGitHeaderActionItems(props: ThreadGitControlsProps): ThreadGit
               type: "action",
             },
             {
-              description: "Turn diffs and worktree changes",
+              description: "Reply changes and separate copy changes",
               disabled: !model.isRepo,
               icon: { name: "text.bubble", type: "sfSymbol" },
               label: "Review changes",
@@ -384,7 +384,7 @@ function useThreadGitHeaderActionItems(props: ThreadGitControlsProps): ThreadGit
             ...(props.onMergeBack
               ? [
                   {
-                    description: "Bring this thread's latest turn into its source",
+                    description: "Bring this chat's latest reply into its source",
                     icon: { name: "arrow.triangle.merge", type: "sfSymbol" as const },
                     label: "Merge back to source",
                     onPress: props.onMergeBack,
@@ -519,7 +519,7 @@ export function ThreadGitControls(props: ThreadGitControlsProps) {
             icon="plus"
             disabled={!props.canOperateTerminal}
             onPress={props.onOpenNewTerminal}
-            subtitle="Start another shell for this thread"
+            subtitle="Start another shell for this chat"
           >
             <NativeHeaderToolbar.Label>Open new terminal</NativeHeaderToolbar.Label>
           </NativeHeaderToolbar.MenuAction>
@@ -586,7 +586,7 @@ function threadGitMenuDefinition(
         title: "Review changes",
         icon: "text.bubble",
         disabled: !model.isRepo,
-        subtitle: "Turn diffs and worktree changes",
+        subtitle: "Reply changes and separate copy changes",
         onPress: model.openReview,
       },
       {

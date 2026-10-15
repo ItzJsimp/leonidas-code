@@ -148,7 +148,7 @@ export const makeGitHubRoutingPermissions = Effect.fn("makeGitHubRoutingPermissi
           return Effect.fail(
             new ConnectionBlockedError({
               reason: "configuration",
-              detail: "This environment does not have a saved connection endpoint.",
+              detail: "This computer does not have a saved connection endpoint.",
             }),
           );
         return update((current) => [

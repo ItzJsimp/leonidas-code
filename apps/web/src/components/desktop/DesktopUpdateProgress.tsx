@@ -40,7 +40,7 @@ export function DesktopUpdateProgress({ state }: { state: DesktopUpdateState | n
     >
       <p role="status" className="text-sm font-semibold">
         {failed
-          ? "Update download failed"
+          ? "The update download failed"
           : `Downloading Leonidas Code ${state.availableVersion ?? "update"}`}
       </p>
       {failed ? (
@@ -62,7 +62,7 @@ export function DesktopUpdateProgress({ state }: { state: DesktopUpdateState | n
                   });
                 }}
               >
-                Retry download
+                Try download again
               </Button>
             </div>
           ) : null}

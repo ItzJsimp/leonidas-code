@@ -56,7 +56,7 @@ function RefreshFilesButton(props: { isPending: boolean; onRefresh: () => void }
             type="button"
             variant="ghost"
             size="icon-xs"
-            aria-label="Refresh workspace files"
+            aria-label="Refresh project files"
             onClick={props.onRefresh}
           />
         }
@@ -207,7 +207,7 @@ export default function FileBrowserPanel({
         } catch (error) {
           toastManager.add({
             type: "error",
-            title: "Failed to copy mention",
+            title: "Could not copy the mention",
             ...userErrorToastFields(error),
           });
         }
@@ -218,7 +218,7 @@ export default function FileBrowserPanel({
         if (!composer) {
           toastManager.add({
             type: "error",
-            title: "Unable to add to chat",
+            title: "Could not add to the chat",
             description: "Open a chat for this project and try again.",
           });
           return;
@@ -227,8 +227,8 @@ export default function FileBrowserPanel({
         if (!inserted) {
           toastManager.add({
             type: "error",
-            title: "Unable to add to chat",
-            description: "The chat isn't ready to accept input right now.",
+            title: "Could not add to the chat",
+            description: "The chat is not ready for a message yet. Wait a moment and try again.",
           });
         }
       }
@@ -556,7 +556,7 @@ export default function FileBrowserPanel({
       ) : null}
       {query.trim() && pathSearch.truncated && !pathSearch.isPending ? (
         <div className="px-3 py-1 text-xs text-muted-foreground">
-          More matches available. Refine your search.
+          There are more matches. Type more words to narrow your search.
         </div>
       ) : null}
       {(!ready || pathSearch.isPending) && (

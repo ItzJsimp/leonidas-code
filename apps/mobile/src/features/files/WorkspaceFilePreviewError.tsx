@@ -31,7 +31,7 @@ export function WorkspaceFilePreviewError(props: {
     return (
       <View className="flex-1 bg-sheet">
         <EnvironmentConnectionNotice
-          environmentLabel={environment.presentation?.entry.target.label ?? "Environment"}
+          environmentLabel={environment.presentation?.entry.target.label ?? "Computer"}
           connection={
             environment.presentation?.connection ?? {
               phase: "available",
@@ -50,7 +50,7 @@ export function WorkspaceFilePreviewError(props: {
     <View className="flex-1 items-center justify-center bg-sheet px-6">
       <EmptyState
         title="Preview unavailable"
-        detail="This file may be missing, unsupported, or unavailable on this environment."
+        detail="This file may be missing, unsupported, or unavailable on this computer."
         actionLabel="Try again"
         onAction={props.onRetry}
       />

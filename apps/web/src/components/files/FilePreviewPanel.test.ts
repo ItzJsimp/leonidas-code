@@ -21,13 +21,19 @@ const decodeReadError = Schema.decodeSync(ProjectReadFileError);
 
 describe("file preview read errors", () => {
   it.each([
-    ["path_not_file", "The path is a directory or special file, not a regular file."],
-    ["binary_file", "The file is binary and cannot be displayed as text."],
-    ["workspace_path_outside_root", "The requested path is outside the workspace."],
-    ["resolved_path_outside_root", "The path resolves to a location outside the workspace."],
+    ["path_not_file", "This path is a folder or a special file, not a normal file. Pick a file."],
+    ["binary_file", "This file is not text, so Leonidas Code cannot show it."],
+    [
+      "workspace_path_outside_root",
+      "This path is outside the project. Pick a file in the project.",
+    ],
+    [
+      "resolved_path_outside_root",
+      "This path leads outside the project. Pick a file in the project.",
+    ],
     [
       "operation_failed",
-      "The file could not be accessed or read. It may be missing or inaccessible.",
+      "Leonidas Code cannot open this file. The file may be missing. Check the path and try again.",
     ],
   ] as const)("describes %s without revealing the platform cause", (failure, message) => {
     const error = new ProjectReadFileError({
@@ -49,7 +55,9 @@ describe("file preview read errors", () => {
       operation: "realpath-workspace-root",
       operationPath: "/workspace",
     });
-    expect(filePreviewReadErrorMessage(error)).toBe("The workspace folder could not be accessed.");
+    expect(filePreviewReadErrorMessage(error)).toBe(
+      "Leonidas Code cannot open the project folder. Check that the folder exists.",
+    );
   });
 
   it("preserves the public message from older servers", () => {

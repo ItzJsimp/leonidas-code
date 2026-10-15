@@ -83,14 +83,14 @@ export function CodexSetupSection(props: CodexSetupSectionProps) {
                 .
               </>
             ) : (
-              "Connected with your Codex CLI."
+              "Connected to the Codex on this computer."
             )
           ) : existingChecking ? (
-            "Checking your Codex CLI..."
+            "Checking the Codex on this computer..."
           ) : props.provider?.installed ? (
             existingSummary.headline
           ) : (
-            "Code with your ChatGPT subscription."
+            "Use your ChatGPT plan to code."
           )
         }
         control={
@@ -119,7 +119,7 @@ export function CodexSetupSection(props: CodexSetupSectionProps) {
         secondaryControl={
           !existingAuthenticated && !existingReady && !existingChecking ? (
             <Button size="sm" variant="ghost-muted" onClick={() => props.onModeChange("existing")}>
-              Use existing CLI
+              Use Codex on this computer
             </Button>
           ) : null
         }
@@ -131,7 +131,7 @@ export function CodexSetupSection(props: CodexSetupSectionProps) {
           description={<CodexSignInDescription />}
           control={
             <Button size="sm" variant="outline" className="min-w-44" disabled>
-              Open sign-in page
+              Open the sign-in page
             </Button>
           }
           secondaryControl={
@@ -334,14 +334,16 @@ function ManagedCodexSetup({
         if (result._tag === "Failure") {
           if (!isAtomCommandInterrupted(result)) {
             const failure = squashAtomCommandFailure(result);
-            setError(failure instanceof Error ? failure.message : "Codex setup failed. Try again.");
+            setError(
+              failure instanceof Error ? failure.message : "Codex did not set up. Try again.",
+            );
           }
         } else {
           succeeded = true;
           onSuccess?.(result.value);
         }
       } catch {
-        setError("Codex setup failed. Try again.");
+        setError("Codex did not set up. Try again.");
       }
       pendingRef.current = false;
       setPending(false);
@@ -384,7 +386,7 @@ function ManagedCodexSetup({
       setError(
         handoffQuery.data?.phase === "auth"
           ? (handoffQuery.data.state.message ?? "ChatGPT sign-in could not finish. Try again.")
-          : "ChatGPT sign-in on the primary environment was interrupted. Try again.",
+          : "ChatGPT sign-in on the main computer stopped. Try again.",
       );
       setHandoff(null);
     }
@@ -540,7 +542,7 @@ function ManagedCodexSetup({
         }
       } catch {
         setError(
-          "Could not finish sign-in on this computer. Try again or paste the redirect URL below.",
+          "Sign-in did not finish on this computer. Try again, or paste the redirect URL below.",
         );
       }
     },
@@ -577,8 +579,9 @@ function ManagedCodexSetup({
         : installation?.phase === "verifying"
           ? "Checking Codex."
           : installed
-            ? `${installation?.source === "local" ? "Using your installed Codex" : "Managed by Leonidas Code"}${installation?.installedVersion ? ` · v${installation.installedVersion}` : ""}.`
-            : (installation?.message ?? "Leonidas Code downloads and manages Codex for you.");
+            ? `${installation?.source === "local" ? "Using the Codex on this computer" : "Managed by Leonidas Code"}${installation?.installedVersion ? ` · v${installation.installedVersion}` : ""}.`
+            : (installation?.message ??
+              "Leonidas Code downloads Codex and keeps it up to date for you.");
   const accountDescription = finishingSignIn ? (
     "Finishing sign-in..."
   ) : installActive ? (
@@ -587,7 +590,7 @@ function ManagedCodexSetup({
     auth?.phase === "waiting" && requestedAccountEmail ? (
       `Continue as ${requestedAccountEmail} on OpenAI.`
     ) : (
-      (auth?.message ?? "Finish signing in in your browser.")
+      (auth?.message ?? "Finish sign-in in your browser.")
     )
   ) : authenticated ? (
     provider?.auth.email?.trim() ? (
@@ -605,7 +608,7 @@ function ManagedCodexSetup({
       "Signed in with ChatGPT."
     )
   ) : (
-    (reconnectEmail ?? "Use your ChatGPT subscription.")
+    (reconnectEmail ?? "Use your ChatGPT plan.")
   );
 
   const handoffUrl =
@@ -641,7 +644,7 @@ function ManagedCodexSetup({
         ? "Finishing sign-in..."
         : handoffQuery.data?.phase === "finished"
           ? transferFailed
-            ? "Retry connection"
+            ? "Try to connect again"
             : "Finishing sign-in..."
           : auth?.phase === "waiting"
             ? remoteWeb
@@ -655,7 +658,9 @@ function ManagedCodexSetup({
   const callbackCompletion =
     !handoff && auth?.phase === "waiting" && url ? (
       <div className="flex w-full flex-col gap-3 text-xs leading-relaxed text-muted-foreground">
-        <p>If sign-in doesn't return to Leonidas Code, paste the URL from the final localhost page.</p>
+        <p>
+          If sign-in doesn't return to Leonidas Code, paste the URL from the final localhost page.
+        </p>
         <form
           className="flex flex-col gap-2 sm:flex-row sm:items-center"
           onSubmit={(event) => {
@@ -702,7 +707,7 @@ function ManagedCodexSetup({
               variant="ghost-muted"
               onClick={() => void ensureLocalApi().shell.openExternal(url)}
             >
-              Try sign-in in your browser
+              Sign in with your browser
               <ExternalLinkIcon className="size-3.5" />
             </Button>
           </div>
@@ -711,7 +716,7 @@ function ManagedCodexSetup({
           <details>
             <summary className="cursor-pointer">Other ways to connect</summary>
             <Button className="mt-2" size="sm" variant="outline" render={<a href={handoffUrl} />}>
-              Use Leonidas desktop for automatic return
+              Return to the Leonidas Code app
             </Button>
           </details>
         ) : null}
@@ -761,7 +766,7 @@ function ManagedCodexSetup({
       logoutWarning ??
       error ??
       (authQuery.error || installQuery.error
-        ? "Could not read setup status. Reconnect and try again."
+        ? "Could not read the setup status. Connect the account again and try."
         : installation?.phase === "failed"
           ? installation.message
           : null);
@@ -804,7 +809,7 @@ function ManagedCodexSetup({
             ) : authActive || auth?.phase === "failed" || auth?.phase === "cancelled" ? (
               accountDescription
             ) : (
-              "Code with your ChatGPT subscription."
+              "Use your ChatGPT plan to code."
             )
           }
           control={
@@ -831,7 +836,7 @@ function ManagedCodexSetup({
                 {installActive || pending
                   ? "Setting up..."
                   : hasSavedAccount
-                    ? "Reconnect account"
+                    ? "Connect account again"
                     : "Continue with ChatGPT"}
               </ChatGptConnectionButton>
             )
@@ -873,7 +878,7 @@ function ManagedCodexSetup({
                 disabled={readOnly || busy}
                 onClick={() => onModeChange("existing")}
               >
-                Use existing CLI
+                Use Codex on this computer
               </Button>
             ) : null
           }
@@ -970,7 +975,7 @@ function ManagedCodexSetup({
                   {pending
                     ? "Setting up..."
                     : hasSavedAccount
-                      ? "Reconnect account"
+                      ? "Connect account again"
                       : "Continue with ChatGPT"}
                 </ChatGptConnectionButton>
                 {hasSavedAccount ? (
@@ -1004,7 +1009,7 @@ function ManagedCodexSetup({
           {error ??
             (installation?.phase === "failed"
               ? installation.message
-              : "Could not read Codex setup status. Reconnect and try again.")}
+              : "Could not read the Codex setup status. Connect the account again and try.")}
         </p>
       ) : null}
     </section>
@@ -1031,27 +1036,29 @@ export function CodexManagedRuntimeFields({
   return (
     <>
       <SettingsRow
-        title="Binary path"
-        description="Selected by Leonidas Code."
+        title="Codex file location"
+        description="Leonidas Code chose this file."
         control={
           <div className="w-full sm:w-80">
             <Input
-              aria-label="Codex binary path"
+              aria-label="Codex file location"
               value={executablePath}
               title={executablePath}
-              placeholder={installation.error ? "Could not read runtime path" : "Not installed"}
+              placeholder={
+                installation.error ? "Could not read the file location" : "Not installed"
+              }
               disabled
             />
           </div>
         }
       />
       <SettingsRow
-        title="CODEX_HOME path"
-        description="Shared Codex config, sessions, and state."
+        title="Codex data folder"
+        description="Codex keeps shared settings and chats here. The setting name is CODEX_HOME."
         control={
           <div className="w-full sm:w-80">
             <Input
-              aria-label="Codex home path"
+              aria-label="Codex data folder"
               value={provider?.runtimePaths?.homePath ?? ""}
               title={provider?.runtimePaths?.homePath}
               placeholder="Unavailable"
@@ -1061,16 +1068,16 @@ export function CodexManagedRuntimeFields({
         }
       />
       <SettingsRow
-        title="Shadow home path"
+        title="AI account data folder"
         description={
           provider?.runtimePaths?.shadowHomePath
-            ? "Account-specific home sharing the Codex state above."
-            : "This instance uses the shared Codex home directly."
+            ? "A folder for this AI account. It shares the data in the folder above."
+            : "This AI account uses the shared folder above."
         }
         control={
           <div className="w-full sm:w-80">
             <Input
-              aria-label="Codex shadow home path"
+              aria-label="AI account data folder"
               value={provider?.runtimePaths?.shadowHomePath ?? ""}
               title={provider?.runtimePaths?.shadowHomePath ?? undefined}
               placeholder={provider?.runtimePaths ? "Not used" : "Unavailable"}

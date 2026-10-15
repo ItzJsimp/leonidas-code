@@ -133,7 +133,7 @@ export function LeonidasVaultPanel({
     const newTitle = `Untitled Note ${notes.length + 1}`;
     const newId = normalizeNoteId(newTitle);
     const newPath = `.leonidas/vault/${newId}.md`;
-    const newContent = `# ${newTitle}\n\nWrite your thoughts here. Link to notes using [[Note Title]] or add #tags.`;
+    const newContent = `# ${newTitle}\n\nWrite your note here. Link to another note with [[Note Title]]. Add a #tag to group notes.`;
     const newNote = parseVaultNote(newPath, newContent);
 
     setNotes((prev) => [newNote, ...prev]);
@@ -173,10 +173,10 @@ export function LeonidasVaultPanel({
             type="button"
             onClick={handleCreateNote}
             className="flex items-center gap-1 px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs transition"
-            title="Create Note"
+            title="Add a note"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>New</span>
+            <span>New note</span>
           </button>
         </div>
 
@@ -186,7 +186,7 @@ export function LeonidasVaultPanel({
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search notes..."
+              placeholder="Search notes…"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="w-full bg-transparent text-gray-200 placeholder-slate-500 focus:outline-none"
@@ -269,7 +269,7 @@ export function LeonidasVaultPanel({
                     handleDeleteNote(note.id);
                   }}
                   className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 rounded transition"
-                  title="Delete Note"
+                  title="Delete note"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -316,7 +316,7 @@ export function LeonidasVaultPanel({
             }`}
           >
             <Network className="w-3.5 h-3.5" />
-            <span>3D Graph</span>
+            <span>Note map</span>
           </button>
         </div>
       </div>
@@ -333,7 +333,7 @@ export function LeonidasVaultPanel({
                 value={activeNote.title}
                 onChange={(e) => handleUpdateTitle(e.target.value)}
                 className="bg-transparent text-base font-bold text-slate-100 focus:outline-none focus:border-b border-cyan-500 w-2/3"
-                placeholder="Note Title"
+                placeholder="Note title"
               />
 
               <div className="flex items-center gap-1 bg-slate-900 rounded p-1 border border-slate-800 text-xs">
@@ -382,7 +382,7 @@ export function LeonidasVaultPanel({
 
               <div className="flex items-center gap-1">
                 <LinkIcon className="w-3 h-3 text-cyan-400" />
-                <span>Links ({activeNote.outgoingLinks.length}):</span>
+                <span>Links to other notes ({activeNote.outgoingLinks.length}):</span>
                 {activeNote.outgoingLinks.map((target) => (
                   <button
                     key={target}
@@ -402,7 +402,7 @@ export function LeonidasVaultPanel({
                 <textarea
                   value={activeNote.content}
                   onChange={(e) => handleUpdateContent(e.target.value)}
-                  placeholder="Type markdown content with [[WikiLinks]] and #tags..."
+                  placeholder="Type your note. Use [[Note Title]] to link to another note. Use #tags to group notes."
                   className="w-full h-full bg-transparent text-slate-200 resize-none focus:outline-none placeholder-slate-600 font-sans text-sm leading-relaxed"
                 />
               ) : (
@@ -416,7 +416,7 @@ export function LeonidasVaultPanel({
             <div className="p-3 border-t border-slate-800 bg-[#090c12]">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-2">
                 <LinkIcon className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Backlinks ({activeBacklinks.length})</span>
+                <span>Notes that link here ({activeBacklinks.length})</span>
               </div>
               {activeBacklinks.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -433,7 +433,10 @@ export function LeonidasVaultPanel({
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-slate-500 italic">No notes link to this note yet.</div>
+                <div className="text-xs text-slate-500 italic">
+                  No notes link to this note yet. Add [[this note title]] in another note to link
+                  it.
+                </div>
               )}
             </div>
           </div>

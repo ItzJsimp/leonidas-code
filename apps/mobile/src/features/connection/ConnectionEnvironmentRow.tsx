@@ -71,8 +71,8 @@ export function ConnectionEnvironmentRow(props: {
     }
     const error = Cause.squash(result.cause);
     Alert.alert(
-      "Could not update environment",
-      error instanceof Error ? error.message : "The environment could not be updated.",
+      "Could not update computer",
+      error instanceof Error ? error.message : "The computer could not be updated. Try again.",
     );
   }, [label, url, props]);
 
@@ -156,7 +156,7 @@ export function ConnectionEnvironmentRow(props: {
         >
           {props.environment.isRelayManaged ? (
             <Text className="text-sm text-foreground-muted">
-              Managed by T3 Connect. Tunnel details update automatically.
+              Managed by remote access. Tunnel details update automatically.
             </Text>
           ) : (
             <>
@@ -196,14 +196,14 @@ export function ConnectionEnvironmentRow(props: {
                 </View>
               )}
               <MaterialIconButton
-                accessibilityLabel="Reconnect environment"
+                accessibilityLabel="Reconnect computer"
                 icon="arrow.clockwise"
                 variant="tonal"
                 disabled={!enabled}
                 onPress={() => props.onReconnect(props.environment.environmentId)}
               />
               <MaterialIconButton
-                accessibilityLabel="Remove environment"
+                accessibilityLabel="Remove computer"
                 icon="trash"
                 variant="danger"
                 onPress={() => props.onRemove(props.environment.environmentId)}

@@ -30,7 +30,7 @@ const accessConfig: Record<
 > = {
   "read-only": {
     label: "Read only",
-    description: "Read projects and threads. Cannot start, message or change anything.",
+    description: "Read projects and chats. Cannot start chats, send messages or change anything.",
     icon: EyeIcon,
   },
   ...runtimeModeConfig,
@@ -46,7 +46,7 @@ type Loaded =
   | { readonly status: "invalid"; readonly message: string }
   | { readonly status: "ready"; readonly details: AuthMcpApprovalDetails };
 
-const UNREACHABLE = "Could not reach this environment. Try again.";
+const UNREACHABLE = "Could not reach this computer. Try again.";
 const isApprovalError = Schema.is(AuthMcpApprovalError);
 
 type Answer<A> =
@@ -160,7 +160,7 @@ export function ConnectAgentSurface() {
       <AuthSurfaceShell>
         <ConnectAgentHeading
           title="Checking the sign-in request"
-          description="One moment while this environment verifies the agent's request."
+          description="One moment while this computer checks the request from the AI app."
         />
         <Spinner className="mt-6" size="lg" tone="muted" />
       </AuthSurfaceShell>
@@ -172,7 +172,7 @@ export function ConnectAgentSurface() {
       <AuthSurfaceShell>
         <ConnectAgentHeading title="This sign-in cannot continue" description={loaded.message} />
         <p className="mt-4 text-sm text-muted-foreground">
-          Close this page and start the sign-in again from your agent.
+          Close this page. Then start the sign-in again from your AI app.
         </p>
       </AuthSurfaceShell>
     );
@@ -188,7 +188,7 @@ export function ConnectAgentSurface() {
         title={`Connect ${details.clientName}`}
         description={
           <>
-            This agent wants to use the threads in every project on{" "}
+            This AI app wants to use the chats in every project on{" "}
             <span className="font-medium text-foreground">{details.environmentHost}</span>.
           </>
         }
@@ -196,12 +196,12 @@ export function ConnectAgentSurface() {
       <p className="mt-2 text-xs text-muted-foreground">
         {redirectsToThisComputer(details.redirectHost) ? (
           <>
-            The name is chosen by the agent. Approval returns to {details.redirectHost} on the
-            computer that opened this page. Only approve a sign-in you just started.
+            The AI app chose this name. Approval returns to {details.redirectHost} on the computer
+            that opened this page. Only approve a sign-in you just started.
           </>
         ) : (
           <>
-            The name is chosen by the agent. Approval gives access to whoever runs{" "}
+            The AI app chose this name. Approval gives access to whoever runs{" "}
             <span className="font-medium text-foreground">{details.redirectHost}</span>. Only
             approve a sign-in you just started there.
           </>
@@ -229,15 +229,15 @@ export function ConnectAgentSurface() {
             ))}
           </RadioGroup>
           <p className="text-xs text-muted-foreground">
-            Beyond read only, it can start, message and stop threads, and none of them can run with
-            more than the mode you pick.
+            Beyond read only, it can start chats, send messages and stop chats. No chat can use more
+            permission than the mode you pick.
           </p>
         </div>
 
         {oneClick ? null : (
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="connect-agent-pairing-code">
-              Pairing code
+              Connection code
             </label>
             <Input
               id="connect-agent-pairing-code"
@@ -247,13 +247,13 @@ export function ConnectAgentSurface() {
               disabled={pending !== null}
               nativeInput
               onChange={(event) => setPairingCode(event.currentTarget.value)}
-              placeholder="Paste a one-time pairing code"
+              placeholder="Paste a one-time connection code"
               spellCheck={false}
               value={pairingCode}
             />
             <p className="text-xs text-muted-foreground">
               Create one in Settings → Connections, or run <code>t3 auth pairing create</code> on
-              this machine.
+              this computer.
             </p>
           </div>
         )}
@@ -291,7 +291,9 @@ function ConnectAgentHeading({
 }) {
   return (
     <>
-      <p className="text-3xs font-semibold tracking-widest text-primary uppercase">Agent sign-in</p>
+      <p className="text-3xs font-semibold tracking-widest text-primary uppercase">
+        AI app sign-in
+      </p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
     </>

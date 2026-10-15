@@ -331,7 +331,7 @@ describe("durable snapshot delivery", () => {
           void store.syncPersistedAttachments(target, [capture]);
         }
         await expect(deliverSnapShot(bridge, capture, target)).rejects.toThrow(
-          "could not be saved",
+          "Could not add the snapshot",
         );
         expect(acknowledgeSnapShot).not.toHaveBeenCalled();
         expect(

@@ -74,7 +74,7 @@ async function renderBadge(activeProjectId: string | null, cwd: string | null = 
 }
 
 const prepareButton = () =>
-  [...document.querySelectorAll("button")].find((item) => item.textContent === "Prepare prompt")!;
+  [...document.querySelectorAll("button")].find((item) => item.textContent === "Write message")!;
 
 afterEach(async () => {
   await act(() => root.unmount());
@@ -97,7 +97,7 @@ it("loads only when opened, selects a project, and fills without sending", async
   await click("Start task");
   await click("Project One");
   expect(state.shared).toHaveBeenLastCalledWith("env", [{ slug: "one", projectId: "one" }]);
-  await click("Prepare prompt");
+  await click("Write message");
   expect(fill).toHaveBeenCalledTimes(1);
   expect(fill.mock.calls[0]![0]).toContain("local-one");
   expect(fill.mock.calls[0]![0]).toContain("shared-one");
@@ -116,7 +116,7 @@ it("keeps preparation disabled when a board fails", async () => {
   await click("Project One");
   expect(document.querySelector('[role="alert"]')?.textContent).toBe("Board unavailable");
   const prepare = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Prepare prompt",
+    (item) => item.textContent === "Write message",
   )!;
   expect(prepare.disabled).toBe(true);
   expect(fill).not.toHaveBeenCalled();
@@ -127,7 +127,7 @@ it("waits for the selected shared board before preparing", async () => {
   await click("Start task");
   await click("Project One");
   const prepare = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Prepare prompt",
+    (item) => item.textContent === "Write message",
   )!;
   expect(prepare.disabled).toBe(true);
   expect(document.querySelector('[role="status"]')?.textContent).toBe("Loading tasks...");
@@ -151,7 +151,7 @@ it("explains empty projects and does not create a prompt", async () => {
   await click("Empty project");
   expect(document.body.textContent).toContain("This project has no open tasks");
   const prepare = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Prepare prompt",
+    (item) => item.textContent === "Write message",
   )!;
   expect(prepare.disabled).toBe(true);
   expect(fill).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ it("selects the project for the current chat without a click", async () => {
   await click("Start task");
   expect(document.body.textContent).toContain("This chat");
   expect(prepareButton().disabled).toBe(false);
-  await click("Prepare prompt");
+  await click("Write message");
   expect(fill.mock.calls[0]![0]).toContain("local-one");
   expect(fill.mock.calls[0]![0]).not.toContain("other-project");
 });
@@ -171,7 +171,7 @@ it("detects the project from the working directory and lets the user change it",
   await renderBadge(null, "D:/Work Space/projects/two/src");
   await click("Start task");
   await click("Project One");
-  await click("Prepare prompt");
+  await click("Write message");
   expect(fill.mock.calls[0]![0]).toContain("local-one");
 });
 

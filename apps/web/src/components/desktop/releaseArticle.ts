@@ -33,7 +33,7 @@ export function parseReleaseArticle(body: string, version: string) {
     hasIntroduction: intro !== undefined,
     summary:
       (intro ?? firstNote)?.replace(/\s+/g, " ").slice(0, 240) ??
-      "No patch notes were published for this release.",
+      "No notes were published for this update.",
     image: image ? { src: releaseArticleUrl(image[2]!), alt: image[1]! } : null,
     markdown: content,
   };

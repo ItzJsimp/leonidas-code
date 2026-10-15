@@ -69,7 +69,7 @@ export function PendingReviewCommentCard({
     >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <MessageSquareIcon className="size-3.5" />
-        <span>Pending — sent when you submit the review</span>
+        <span>Pending. We send it when you submit the review</span>
         <Button
           size="icon-xs"
           variant="ghost"
@@ -96,7 +96,7 @@ export function ReviewThreadCard({
   reference,
   pending,
   fixPending,
-  fixLabel = "Fix in a thread",
+  fixLabel = "Fix in a chat",
   onFix,
   onReply,
   onLoadMore,

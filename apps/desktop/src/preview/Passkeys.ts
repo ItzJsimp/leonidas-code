@@ -85,7 +85,7 @@ const chooseAccount = async (details: Electron.SelectWebauthnAccountDetails) => 
   if (details.accounts.length === 1) return onlyAccount?.credentialId;
   const options: Electron.MessageBoxOptions = {
     type: "none",
-    message: "Choose a passkey",
+    message: "Choose a passkey to continue",
     detail: details.relyingPartyId,
     buttons: [...details.accounts.map(accountLabel), "Cancel"],
     cancelId: details.accounts.length,

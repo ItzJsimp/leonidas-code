@@ -28,7 +28,9 @@ export function useHostConnectionChecks(targets: ReadonlyArray<DeviceHostCheckTa
         host,
         async (environmentId, input) => {
           if (!readEnvironmentScope(environmentId, AuthSettingsWriteScope)) {
-            throw new Error("This connection cannot test device hosts.");
+            throw new Error(
+              "This connection cannot test the connection. Use a connection with more permissions.",
+            );
           }
           const result = await test({ environmentId, input });
           if (result._tag === "Failure") throw new Error(Cause.pretty(result.cause));

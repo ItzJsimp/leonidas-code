@@ -16,7 +16,7 @@ export class CloudDraftArchiveError extends Schema.TaggedError<CloudDraftArchive
   },
 ) {
   override get message(): string {
-    return `Could not preserve local drafts for ${this.environmentCount} cloud environments before sign-out.`;
+    return `Could not keep local drafts for ${this.environmentCount} cloud computers before sign-out.`;
   }
 }
 

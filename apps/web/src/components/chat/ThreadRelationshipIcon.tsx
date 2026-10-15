@@ -14,7 +14,7 @@ export function threadRelationshipStatusLabel(status: string | null): string {
       return "Running";
     case "pending":
     case "queued":
-      return "Queued";
+      return "Waiting";
     case "waiting":
     case "blocked":
       return "Waiting";
@@ -27,15 +27,15 @@ export function threadRelationshipStatusLabel(status: string | null): string {
     case "interrupted":
       return "Stopped";
     case "rolled_back":
-      return "Reverted";
+      return "Went back";
     case "resolved_native":
-      return "Resolved (native)";
+      return "Done";
     case "resolved_portable":
-      return "Resolved (portable)";
+      return "Done";
     case "consumed":
-      return "Consumed";
+      return "Used";
     case "superseded":
-      return "Superseded";
+      return "Replaced";
     case "idle":
       return "Idle";
     default:

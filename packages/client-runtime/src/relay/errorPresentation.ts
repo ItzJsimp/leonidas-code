@@ -2,14 +2,15 @@ import type { DpopFailureReason } from "@t3tools/contracts";
 import type { RelayEnvironmentStatusResponse, RelayProtectedError } from "@t3tools/contracts/relay";
 
 export const DPOP_CLOCK_HINT =
-  "Hint: Check that automatic date and time is enabled on both devices, then try again.";
+  "Hint: Turn on automatic date and time on both devices. Then try again.";
 
 /** Older servers omit the DPoP category, but newer servers can also omit it for
  * a credential failure that happens after proof verification. */
 export const DPOP_UNKNOWN_HINT =
-  "Hint: Try again. If it still fails, clock skew may be the cause; check that automatic date and time is enabled on both devices.";
+  "Hint: Try again. If it still fails, the clocks of the two devices may differ. Turn on automatic date and time on both devices.";
 
-export const DPOP_RETRY_HINT = "Hint: Try again. If the problem continues, copy the trace ID.";
+export const DPOP_RETRY_HINT =
+  "Hint: Try again. If the problem continues, copy the trace ID and send it to us.";
 
 function dpopFailureHint(reason: DpopFailureReason | undefined): string {
   if (reason === "time_window") return DPOP_CLOCK_HINT;
@@ -27,44 +28,47 @@ export function relayProtectedErrorMessage(error: RelayProtectedError): string {
       switch (error.reason) {
         case "missing_bearer":
         case "invalid_bearer":
-          return "Relay rejected the cloud session token.";
+          return "Remote access did not accept your sign-in. Sign in again.";
         case "invalid_dpop":
-          return dpopFailureMessage("Relay rejected the DPoP proof.", error.dpopFailureReason);
+          return dpopFailureMessage(
+            "Remote access did not accept this device.",
+            error.dpopFailureReason,
+          );
         case "not_authorized":
-          return "Relay rejected the authenticated request.";
+          return "Remote access did not allow this request.";
       }
     case "RelayEnvironmentLinkProofExpiredError":
-      return "Relay rejected an expired environment link proof.";
+      return "The link to this computer ran out of time. Link the computer again.";
     case "RelayEnvironmentLinkProofInvalidError":
-      return `Relay rejected the environment link proof (${error.reason}).`;
+      return `Remote access did not accept the link to this computer (${error.reason}). Link the computer again.`;
     case "RelayEnvironmentConnectNotAuthorizedError":
       // "Not authorized" covers non-auth causes too; surface the reason so a
       // missing link does not read as a credential problem.
       if (error.reason === "environment_link_not_found") {
-        return "Relay has no active link for this environment. The environment server may not have re-established its link yet.";
+        return "Remote access has no link to this computer yet. Wait a moment, then try again.";
       }
       if (error.reason === "managed_endpoint_allocation_not_ready") {
-        return "The environment's T3 Connect tunnel is still being set up.";
+        return "Remote access is still being set up. Wait a moment, then try again.";
       }
       return error.reason
-        ? `Relay rejected the environment connection request (${error.reason}).`
-        : "Relay rejected the environment connection request.";
+        ? `Remote access did not accept the request to connect to this computer (${error.reason}).`
+        : "Remote access did not accept the request to connect to this computer.";
     case "RelayEnvironmentEndpointUnavailableError":
-      return `Relay could not reach the environment endpoint (${error.reason}).`;
+      return `Remote access could not reach this computer (${error.reason}). Check that it is on.`;
     case "RelayEnvironmentEndpointTimedOutError":
-      return "Relay timed out while contacting the environment endpoint.";
+      return "Remote access waited too long for this computer. Check that it is on, then try again.";
     case "RelayEnvironmentLinkFailedError":
-      return `Relay could not link the environment (${error.reason}).`;
+      return `Remote access could not link this computer (${error.reason}). Try again.`;
     case "RelayEnvironmentLinkUnavailableError":
-      return `Relay cannot provision the managed endpoint (${error.reason}).`;
+      return `Remote access cannot set up the connection (${error.reason}). Try again later.`;
     case "RelayEnvironmentLinkLimitExceededError":
-      return `Relay refused the link: this account already has its maximum of ${error.maxTunnels} managed tunnels. Unlink an environment to free one up.`;
+      return `This account already has ${error.maxTunnels} remote access connections. That is the most it can have. Remove a computer to make room.`;
     case "RelayAgentActivityPublishProofExpiredError":
-      return "Relay rejected an expired agent activity publish proof.";
+      return "Remote access did not accept an expired activity update. Try again.";
     case "RelayAgentActivityPublishProofInvalidError":
-      return `Relay rejected the agent activity publish proof (${error.reason}).`;
+      return `Remote access did not accept the activity update (${error.reason}). Try again.`;
     case "RelayInternalError":
-      return `Relay encountered an internal error (${error.reason}).`;
+      return `Remote access had an error (${error.reason}). Try again later.`;
   }
 }
 
@@ -72,7 +76,7 @@ export function relayProtectedErrorMessage(error: RelayProtectedError): string {
 // coming back, which clears this reason. While it is still reported, the host
 // is either still off or running a build too old to do that.
 export const RELAY_TUNNEL_RELEASED_MESSAGE =
-  "Offline for a while, so its T3 Connect tunnel was removed. Start Leonidas Code on that computer and update it to the latest version to reconnect.";
+  "This computer was offline for a while, so remote access was removed. Start Leonidas Code there and update it to reconnect.";
 
 /** User-facing text for an offline status, or null when the relay gave no known reason. */
 export function relayOfflineReasonMessage(

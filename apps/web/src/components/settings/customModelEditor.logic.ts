@@ -109,7 +109,7 @@ export const DESCRIPTOR_PRESETS_BY_KIND: Partial<
     { id: "variant", label: "Reasoning", type: "select", choices: EFFORT_CHOICES },
     {
       id: "agent",
-      label: "Agent",
+      label: "AI mode",
       type: "select",
       choices: [
         { id: "build", label: "Build", isDefault: true },

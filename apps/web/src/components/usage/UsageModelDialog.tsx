@@ -68,10 +68,10 @@ export function UsageModelDialog({
   const hitRate = cacheHitRate(model);
   const perMillion = costPerMillionTokens(model);
   const stats = [
-    { label: "Cost", value: costUnknown ? "Unpriced" : formatUsd(model.costUsd) },
-    { label: "Tokens", value: formatTokens(model.totalTokens) },
+    { label: "Cost", value: costUnknown ? "No price" : formatUsd(model.costUsd) },
+    { label: "Text used", value: formatTokens(model.totalTokens) },
     perMillion === null ? null : { label: "Per 1M tokens", value: formatUsd(perMillion) },
-    hitRate === null ? null : { label: "Cache hit", value: formatPercent(hitRate) },
+    hitRate === null ? null : { label: "Reused text", value: formatPercent(hitRate) },
   ].filter((stat) => stat !== null);
 
   return (
@@ -130,7 +130,7 @@ export function UsageModelDialog({
                 />
               )}
               <UsageShareBar
-                label="Tokens by type"
+                label="Text by type"
                 segments={tokenTypeSegments(model.tokens)}
                 format={formatTokens}
               />

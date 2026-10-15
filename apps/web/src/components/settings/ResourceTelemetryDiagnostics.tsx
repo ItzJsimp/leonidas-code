@@ -115,7 +115,7 @@ function categoryLabel(category: ResourceTelemetryProcessCategory): string {
     case "server-child":
       return "Backend child";
     case "provider-root":
-      return "Provider";
+      return "AI service";
     case "terminal-root":
       return "Terminal";
     case "electron-main":
@@ -314,7 +314,7 @@ function HealthSource({ label, health }: { label: string; health: ResourceTeleme
         <div className="text-sm font-medium text-foreground">{label}</div>
         <div className="mt-1 text-2xs leading-relaxed text-muted-foreground/65">
           {expectedInBrowser
-            ? "Available when this page runs inside the desktop app."
+            ? "Available only in the Leonidas Code desktop app."
             : Option.match(health.lastError, {
                 onNone: () => "No reported errors",
                 onSome: (error) => error,
@@ -603,7 +603,7 @@ function ProcessTable({
             {visible.length === 0 ? (
               <tr>
                 <td colSpan={11} className="px-4 py-5 text-xs text-muted-foreground sm:px-5">
-                  Waiting for the native process monitor.
+                  Waiting for the process monitor to start.
                 </td>
               </tr>
             ) : null}
@@ -705,7 +705,7 @@ function HistoryProcessTable({
             {processes.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-5 text-xs text-muted-foreground sm:px-5">
-                  No retained process samples in this window.
+                  No process samples in this time window. Choose a longer time window.
                 </td>
               </tr>
             ) : null}
@@ -784,7 +784,8 @@ function AttributionTable({ entries }: { entries: ReadonlyArray<ResourceAttribut
           {entries.length === 0 ? (
             <tr>
               <td colSpan={6} className="px-4 py-5 text-xs text-muted-foreground sm:px-5">
-                No instrumented application I/O has been recorded yet.
+                No read or write activity recorded yet. Use Leonidas Code for a while, then check
+                again.
               </td>
             </tr>
           ) : null}
@@ -870,7 +871,7 @@ export function ResourceTelemetryDiagnostics({
         let confirmed = false;
         try {
           confirmed = await ensureLocalApi().dialogs.confirm(
-            `Send SIGKILL to process ${process.identity.pid}? This cannot be handled by the process.`,
+            `Force process ${process.identity.pid} to stop (SIGKILL)? The process cannot refuse or save its work.`,
             { variant: "destructive" },
           );
         } catch (error) {
@@ -913,7 +914,7 @@ export function ResourceTelemetryDiagnostics({
             title: `Could not send ${signal}`,
             description: Option.getOrElse(
               result.value.message,
-              () => `Failed to send ${signal} to process ${process.identity.pid}.`,
+              () => `Could not send ${signal} to process ${process.identity.pid}. Try again.`,
             ),
           });
         })
@@ -1002,8 +1003,8 @@ export function ResourceTelemetryDiagnostics({
                 Leonidas system footprint
               </div>
               <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
-                Live native counters for the server, providers, terminals, desktop processes, and
-                the monitor itself.
+                Live counts for Leonidas Code, the AI services, terminals, the app window, and the
+                monitor itself.
               </p>
             </div>
             <div className="flex items-center gap-2 text-3xs text-muted-foreground/65">
@@ -1072,7 +1073,7 @@ export function ResourceTelemetryDiagnostics({
           {snapshot ? (
             <div className="grid border-t border-border/60 bg-muted/10 md:grid-cols-3">
               <AggregateCard
-                label="Backend + agents"
+                label="Background service + AI"
                 accentClass="bg-success/80"
                 aggregate={snapshot.groups.backend}
               />
@@ -1109,7 +1110,7 @@ export function ResourceTelemetryDiagnostics({
               <span className="flex size-6 items-center justify-center rounded-md bg-muted/60">
                 <BatteryIcon className="size-3.5" />
               </span>
-              Host state
+              Computer state
             </div>
             {hasHostPowerSignal && snapshot ? (
               <>
@@ -1163,11 +1164,11 @@ export function ResourceTelemetryDiagnostics({
             ) : (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-5">
                 <div className="text-sm font-medium text-foreground">
-                  Desktop host signals not connected
+                  Desktop signals not connected
                 </div>
                 <p className="mt-1.5 max-w-sm text-2xs leading-relaxed text-muted-foreground/70">
-                  Power, idle, lock, and thermal state are supplied by the desktop host. Process
-                  telemetry remains fully active in this browser session.
+                  The desktop app supplies power, idle, lock, and heat state. Process data still
+                  works in this browser.
                 </p>
               </div>
             )}
@@ -1215,7 +1216,7 @@ export function ResourceTelemetryDiagnostics({
               </>
             ) : (
               <div className="py-4 text-xs text-muted-foreground">
-                Waiting for collector health.
+                Waiting for the monitor status.
               </div>
             )}
           </div>
@@ -1282,9 +1283,8 @@ export function ResourceTelemetryDiagnostics({
       >
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xs/5">
           <div className="bg-muted/15 px-4 py-3 text-2xs leading-relaxed text-muted-foreground sm:px-5">
-            Native counters identify which process is reading or writing. These application-level
-            counters identify known Leonidas operations so process spikes can be correlated with
-            specific persistence and logging paths.
+            Process counters show which process reads or writes. These app counters show which
+            Leonidas Code actions read or write. Use both to find the cause of a spike.
           </div>
           <AttributionTable entries={snapshot?.attribution.entries ?? []} />
         </div>

@@ -399,7 +399,7 @@ export function providerErrorPresentation(
       label:
         item.failure.class === "usage_limit"
           ? "Usage limit reached"
-          : item.title?.trim() || "Provider error",
+          : item.title?.trim() || "AI service error",
       detail: item.failure.message,
     };
   }
@@ -409,12 +409,12 @@ export function providerErrorPresentation(
       : `${item.retry.attempt}/${item.retry.maxAttempts}`;
   const label =
     item.status === "running"
-      ? `Retrying provider (${progress})`
+      ? `Trying the AI service again (${progress})`
       : item.status === "completed"
-        ? `Provider recovered (${progress} retries)`
+        ? `AI service recovered (${progress} tries)`
         : item.status === "failed"
-          ? `${item.failure.class === "usage_limit" ? "Usage limit reached" : "Provider error"} after ${progress} retries`
-          : `Provider retry stopped (${progress})`;
+          ? `${item.failure.class === "usage_limit" ? "Usage limit reached" : "AI service error"} after ${progress} tries`
+          : `AI service retry stopped (${progress})`;
   const retryDelay =
     item.status === "running" && item.retry.retryDelayMs !== null && item.retry.retryDelayMs > 0
       ? item.retry.retryDelayMs < 1_000
@@ -446,7 +446,7 @@ function projectedWorkEntry(row: OrchestrationV2ProjectedTurnItem): WorkLogEntry
     case "thread_created":
       return {
         ...common,
-        label: "Created thread",
+        label: "Created chat",
       };
     case "compaction":
       return {
@@ -502,7 +502,7 @@ function projectedWorkEntry(row: OrchestrationV2ProjectedTurnItem): WorkLogEntry
     case "checkpoint":
       return {
         ...common,
-        label: title ?? "Checkpoint captured",
+        label: title ?? "Save point added",
         changedFiles: item.files.map((file) => file.path),
         toolData: item,
       };
@@ -547,14 +547,14 @@ function projectedWorkEntry(row: OrchestrationV2ProjectedTurnItem): WorkLogEntry
     case "approval_request":
       return {
         ...common,
-        label: title ?? "Approval requested",
+        label: title ?? "Needs permission",
         detail: item.prompt ?? item.requestKind,
         toolData: item,
       };
     case "user_input_request":
       return {
         ...common,
-        label: title ?? (item.questionAnswer ? "Answered questions" : "Input requested"),
+        label: title ?? (item.questionAnswer ? "Answered questions" : "Needs your answer"),
         ...(item.questionAnswer ? { questionAnswer: item.questionAnswer } : {}),
         toolData: item,
       };

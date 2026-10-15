@@ -223,7 +223,7 @@ describe("connection onboarding", () => {
         Effect.flip,
       );
       expect(error).toMatchObject({ reason: "configuration" });
-      expect(error.message).toContain("different machine");
+      expect(error.message).toContain("different computer");
       expect(calls.map((call) => call.url)).toEqual([
         "https://remote.example.test/.well-known/t3/environment",
       ]);

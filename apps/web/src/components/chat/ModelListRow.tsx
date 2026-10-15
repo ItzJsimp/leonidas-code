@@ -42,7 +42,7 @@ function ModelStatChips(props: { stats: PickerModelStats }) {
               <span
                 key={chip.label}
                 className="rounded border border-border/60 px-1 py-px leading-none"
-                aria-label={`${chip.label}: ${chip.value ?? "no data"}`}
+                aria-label={`${chip.label}: ${chip.value ?? "no data yet"}`}
               >
                 {chip.value ?? "-"}
               </span>

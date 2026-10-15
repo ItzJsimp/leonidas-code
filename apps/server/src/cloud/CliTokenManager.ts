@@ -48,7 +48,7 @@ const boldTerminalText = (value: string): string => `\u001b[1m${value}\u001b[22m
 
 function formatLoopbackAuthorizationPrompt(authorizationUrl: string): string {
   return [
-    "Open this URL to authorize T3 Connect:",
+    "Open this URL to sign in for remote access:",
     `  ${authorizationUrl}`,
     "",
     `Press ${boldTerminalText("Enter")} to open it in your browser.`,
@@ -185,7 +185,7 @@ export class CloudCliCredentialRemovalError extends Schema.TaggedError<CloudCliC
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Could not remove the stored T3 Connect CLI credential.";
+    return "Could not remove the saved remote access sign-in. Try again.";
   }
 }
 
@@ -194,7 +194,7 @@ export class CloudCliCredentialRefreshError extends Schema.TaggedError<CloudCliC
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Could not refresh the T3 Connect CLI credential.";
+    return "Could not refresh the remote access sign-in. Sign in again.";
   }
 }
 
@@ -203,7 +203,7 @@ export class CloudCliCredentialReadError extends Schema.TaggedError<CloudCliCred
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Could not read the stored T3 Connect CLI credential.";
+    return "Could not read the saved remote access sign-in. Try again.";
   }
 }
 
@@ -212,7 +212,7 @@ export class CloudCliAuthorizationError extends Schema.TaggedError<CloudCliAutho
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Could not authorize the T3 Connect CLI.";
+    return "Could not sign in for remote access. Try again.";
   }
 }
 
@@ -221,7 +221,7 @@ export class CloudCliAuthorizationTimeoutError extends Schema.TaggedError<CloudC
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Timed out waiting for T3 Connect authorization.";
+    return "Remote access sign-in timed out. Try again.";
   }
 }
 
@@ -230,7 +230,7 @@ export class CloudCliAuthorizationDeniedError extends Schema.TaggedError<CloudCl
   {},
 ) {
   override get message(): string {
-    return "T3 Connect authorization was denied in the browser.";
+    return "Remote access sign-in was denied in the browser. Try again.";
   }
 }
 
@@ -469,9 +469,12 @@ export const make = Effect.gen(function* () {
         const url = new URL(request.originalUrl, metadata.redirectUri);
         const code = url.searchParams.get("code");
         if (url.searchParams.get("state") !== state || !code) {
-          return HttpServerResponse.text("Invalid T3 Connect authorization callback.", {
-            status: 400,
-          });
+          return HttpServerResponse.text(
+            "Remote access sign-in could not be verified. Try again.",
+            {
+              status: 400,
+            },
+          );
         }
         yield* Deferred.succeed(callback, code);
         return HttpServerResponse.html(renderLoopbackAuthorizationCompleteHtml());

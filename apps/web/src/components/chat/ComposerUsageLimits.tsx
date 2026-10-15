@@ -32,9 +32,9 @@ function AccountSummary({ account }: { readonly account: UsageLimitsReport["acco
         <RedactedSensitiveText
           key={label}
           value={label}
-          ariaLabel="Toggle account label visibility"
-          revealTooltip="Click to reveal account"
-          hideTooltip="Click to hide account"
+          ariaLabel="Show or hide the account name"
+          revealTooltip="Click to show the account name"
+          hideTooltip="Click to hide the account name"
           className="max-w-full truncate align-bottom font-sans text-xs leading-normal"
         />
       ) : (
@@ -67,9 +67,9 @@ export function usageLimitsBannerItem(
     variant: "info",
     priority: "notice",
     icon: <GaugeIcon />,
-    title: "Usage limits",
+    title: "Usage",
     description: <UsageLimitsSummary report={report} />,
-    dismissLabel: "Dismiss usage limits",
+    dismissLabel: "Close usage",
     onDismiss,
     children: <UsageLimitsBannerBody report={report} environmentId={environmentId} />,
   };
@@ -138,7 +138,7 @@ function UsageLimitsAccounts({
                 className="self-start"
                 onClick={() => void ensureLocalApi().shell.openExternal(externalUsage.url)}
               >
-                Manage usage
+                Open usage page
               </Button>
             ) : null}
             {!redeemable && account.limits.resetCredits?.availableCount ? (

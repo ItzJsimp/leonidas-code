@@ -19,13 +19,13 @@ const FOLLOW_UP_OPTIONS: ReadonlyArray<{
 }> = [
   {
     behavior: "queue",
-    label: "Queue",
-    description: "Your message waits and runs after the current turn finishes.",
+    label: "Waiting messages",
+    description: "Your message waits and runs after the current reply finishes.",
   },
   {
     behavior: "steer",
-    label: "Steer",
-    description: "Your message reaches the agent right away, changing what it is working on.",
+    label: "Send now",
+    description: "Your message reaches the AI right away and changes what it is working on.",
   },
 ];
 
@@ -54,7 +54,7 @@ export function SettingsFollowUpRouteScreen() {
         contentContainerClassName="gap-3 px-5 pt-4"
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}
       >
-        <SettingsSection title="While the agent is running">
+        <SettingsSection title="While the AI works">
           {FOLLOW_UP_OPTIONS.map((option, index) => (
             <SettingsChoiceRow
               key={option.behavior}

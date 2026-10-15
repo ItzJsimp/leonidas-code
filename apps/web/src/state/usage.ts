@@ -79,7 +79,7 @@ const usageByWindowAtom = Atom.family((windowKey: string) =>
         isPending: result.waiting,
         canReadDiagnostics: true,
         isConnected,
-        error: result._tag === "Failure" ? "This environment could not report usage." : null,
+        error: result._tag === "Failure" ? "This computer could not report usage." : null,
         summary,
         needsCursorKeychainAccess: needsCursorKeychainAccess(
           summary,

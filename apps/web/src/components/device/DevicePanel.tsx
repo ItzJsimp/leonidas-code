@@ -204,7 +204,8 @@ export function DevicePanel(props: {
             environmentId={environmentId}
             device={activeDevice}
             hostLabel={
-              state.hosts.find((host) => host.id === activeDevice.hostId)?.label ?? "Device host"
+              state.hosts.find((host) => host.id === activeDevice.hostId)?.label ??
+              "Device computer"
             }
             hostDiagnostics={state.hostStatusDetail}
             visible={props.visible}
@@ -217,7 +218,7 @@ export function DevicePanel(props: {
             name={pendingDevice?.name ?? "Devices"}
             description={
               pendingDevice
-                ? `${state.hosts.find((host) => host.id === pendingDevice.hostId)?.label ?? "Device host"} · ${pendingDevice.version}`
+                ? `${state.hosts.find((host) => host.id === pendingDevice.hostId)?.label ?? "Device computer"} · ${pendingDevice.version}`
                 : ""
             }
             stage="opening"
@@ -244,8 +245,9 @@ export function DevicePanel(props: {
                   <Smartphone className="size-6 opacity-60" />
                   <p className="max-w-sm">
                     {state.hostStatus === "failed"
-                      ? (state.hostStatusDetail ?? "The device hub failed to start.")
-                      : "No simulators or emulators were found on this environment."}
+                      ? (state.hostStatusDetail ??
+                        "Device support did not start. Select Refresh devices to try again.")
+                      : "No simulators or emulators were found on this computer. Install one, then refresh."}
                   </p>
                 </>
               ) : null}

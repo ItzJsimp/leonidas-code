@@ -613,7 +613,7 @@ export function formatResetsIn(window: ServerProviderUsageWindow, now: number): 
 /** Limit commands are served by T3 from the same snapshots as Usage → Limits. */
 export const USAGE_LIMITS_COMMAND = {
   name: "usage-limits",
-  description: "Show this provider's usage limits",
+  description: "Show the usage limits of this AI service",
 } satisfies ServerProviderSlashCommand;
 
 /** Handled by the client without sending a turn; anything with arguments stays an ordinary prompt. */

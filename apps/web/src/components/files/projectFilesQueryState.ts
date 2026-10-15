@@ -182,7 +182,7 @@ function failureCause<A>(result: AsyncResult.AsyncResult<A, unknown>): unknown {
 
 function errorMessage(cause: unknown): string | null {
   if (cause === null) return null;
-  return cause instanceof Error ? cause.message : "Workspace query failed.";
+  return cause instanceof Error ? cause.message : "Could not read the project files. Try again.";
 }
 
 const isProjectReadFileError = Schema.is(ProjectReadFileError);
@@ -206,7 +206,8 @@ export function useProjectEntriesQuery(
       ? null
       : canReadFiles
         ? errorMessage(failureCause(result))
-        : (fileAccess.error ?? "This connection cannot read host files."),
+        : (fileAccess.error ??
+          "This connection cannot read files. Connect to a different computer."),
     isPending: fileAccess.isPending || result.waiting,
     refresh,
   };
@@ -280,7 +281,8 @@ export function useProjectFileQuery(
         ? null
         : canReadFiles
           ? errorMessage(cause)
-          : (fileAccess.error ?? "This connection cannot read host files."),
+          : (fileAccess.error ??
+            "This connection cannot read files. Connect to a different computer."),
     isPending: isQueryEnabled && (fileAccess.isPending || result.waiting),
     readError,
     isNotFile: readError?.failure === "path_not_file",

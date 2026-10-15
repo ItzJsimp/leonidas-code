@@ -76,8 +76,8 @@ function getCachedReviewFile(
       : {
           notice:
             patch?._tag === "Failure"
-              ? "Could not load diff. Select the file to retry."
-              : "Loading diff…",
+              ? "Could not load the changes. Select the file to try again."
+              : "Loading changes…",
         }),
   };
   if (patch) normalizedFiles.set(patch, { stat, diffHash, file });

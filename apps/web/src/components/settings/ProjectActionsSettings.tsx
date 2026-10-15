@@ -126,7 +126,7 @@ export function ProjectActionsSettings() {
         setRequest({
           scriptId: null,
           initial: payload,
-          error: error instanceof Error ? error.message : "Failed to import action.",
+          error: error instanceof Error ? error.message : "Could not import the action. Try again.",
         });
       }
     },
@@ -140,7 +140,7 @@ export function ProjectActionsSettings() {
         settingKeys={["defaultProjectScripts"]}
         mixed={mixed}
         title="Actions"
-        description="Commands that run in this project's checkout or its worktree, with optional shortcuts."
+        description="Commands that run in the main folder of this project or in a separate copy. You can add shortcuts."
         onResetOverride={() => void persist(() => null)}
         control={
           <div className="flex flex-wrap items-center gap-1.5">
@@ -164,7 +164,7 @@ export function ProjectActionsSettings() {
                   <MenuGroup>
                     <MenuGroupLabel>Import from t3.json</MenuGroupLabel>
                     <p className="px-2 pb-2 text-pretty text-sm text-muted-foreground">
-                      Add actions declared by this checkout without editing them first.
+                      Add the actions that this folder lists. You do not need to edit them first.
                     </p>
                   </MenuGroup>
                   <MenuSeparator />
@@ -199,8 +199,8 @@ export function ProjectActionsSettings() {
       />
       {mixed ? (
         <SettingsRow
-          title="Different actions across environments"
-          description="Choose one environment to edit its list. Adding an action here adds it on every selected environment."
+          title="Different actions on different computers"
+          description="Choose one computer to edit its list. An action you add here is added on every chosen computer."
         />
       ) : (
         <ProjectActionsList
@@ -213,7 +213,7 @@ export function ProjectActionsSettings() {
       {t3File.status === "invalid" ? (
         <SettingsRow
           title="t3.json is invalid"
-          description="A t3.json exists in this checkout but fails to parse, so every action and icon it declares is ignored. Check the JSON syntax and icon values."
+          description="A t3.json file exists in this folder, but Leonidas Code cannot read it. It ignores every action and icon in it. Check the JSON text and the icon names."
           className="text-warning"
         />
       ) : null}

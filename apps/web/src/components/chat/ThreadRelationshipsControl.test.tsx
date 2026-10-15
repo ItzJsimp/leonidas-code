@@ -40,7 +40,7 @@ describe("thread lineage row list", () => {
     const markup = renderRowList(6);
     const list = /<ul([^>]*)>/.exec(markup)?.[1] ?? "";
 
-    expect(list).toContain('aria-label="Related threads"');
+    expect(list).toContain('aria-label="Related chats"');
     expect(list).toContain("max-h-[13.5rem]");
     expect(list).toContain("overflow-y-auto");
     expect(list).toContain("overscroll-contain");
