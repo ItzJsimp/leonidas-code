@@ -441,28 +441,39 @@ export const SKILL_PACKS: Readonly<Record<string, readonly BundledSkill[]>> = {
 };
 
 /**
- * Installed for everyone, whatever goals they picked: the two habits that make
+ * Installed for everyone, whatever goals they picked: the habits that make
  * every other session better (get the plan right first, then hand off cleanly).
+ * The grill pair follows mattpocock/skills: grilling does the interview,
+ * grill-me is the short command that starts it.
  */
 export const CORE_SKILLS: readonly BundledSkill[] = [
   {
-    name: "grill-me",
+    name: "grilling",
     description:
-      "Use before building anything unclear: interview the user one question at a time until the plan is settled, then summarize it.",
+      "Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.",
+    body: lines(
+      "# Grilling",
+      "",
+      "Interview the user until you both understand the plan the same way. Every decision can open more decisions that depend on it.",
+      "",
+      "1. Find facts yourself first (files, code, settings). Ask the user only for decisions: goal, priority, taste and risk.",
+      "2. Work in rounds. A round asks every open question that does not depend on another unanswered question.",
+      "3. Ask each round with your question tool (Claude: AskUserQuestion; Codex: request_user_input), so the user picks from a popup. Use chat text only when no such tool exists.",
+      "4. Give each question 2 to 4 real options. Put your recommended option first, end its label with (Recommended), and say what would change your pick.",
+      "5. The tool takes at most 4 questions at a time. If more are open, ask the 4 that unblock the most first.",
+      "6. After each round, work out which questions the answers opened, and ask the next round.",
+      "7. Stop when no open decision is left. Give a short summary: what we decided, the tradeoffs we accepted, and the first step to build.",
+      "",
+      "Done looks like: the user confirms the summary, and only then does building start.",
+    ),
+  },
+  {
+    name: "grill-me",
+    description: "A relentless interview to sharpen a plan or design.",
     body: lines(
       "# Grill me",
       "",
-      'Use this when the user says "grill me", or hands over a plan, idea or request that still has open questions.',
-      "",
-      "1. Read the files first. If the code or notes already answer a question, do not ask it.",
-      "2. Ask exactly one question at a time, in plain words, and wait for the answer.",
-      "3. With each question, give your own recommended answer and the one thing that would change it.",
-      "4. Start with the decisions that block everything else (goal, who it is for, what must never happen), then go into details.",
-      "5. When an answer opens a new question, follow it before moving on.",
-      "6. Stop when the main decisions are settled. Do not invent questions to look thorough.",
-      "7. Finish with a short summary: what we decided, what is still open, and the first step to build.",
-      "",
-      "Done looks like: the user could hand the summary to anyone and they would build the same thing.",
+      'Load the "grilling" skill and follow it. If you cannot load skills by name, read ../grilling/SKILL.md.',
     ),
   },
   {
