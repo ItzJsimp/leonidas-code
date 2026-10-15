@@ -28,8 +28,7 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
         Welcome to Leonidas Code
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        What will you mostly use it for? Pick any that fit. We will tailor skills and setup to
-        match.
+        What will you mostly use it for? Pick all that fit. We will pick skills and setup to match.
       </p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="grid grid-cols-1 gap-1 pr-3 sm:grid-cols-2">
@@ -56,8 +55,8 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
         ) : null}
       </ScrollArea>
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        Leonidas Code collects anonymous usage data to help us improve it. To read more about how
-        your data is used and how to opt out, see our{" "}
+        Leonidas Code collects anonymous usage data to help us improve it. To learn how we use your
+        data and how to opt out, read our{" "}
         <a
           className="underline underline-offset-2 hover:text-foreground"
           href={PRIVACY_POLICY_URL}

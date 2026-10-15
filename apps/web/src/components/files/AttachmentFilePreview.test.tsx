@@ -92,7 +92,7 @@ describe("attachment HTML preview recovery", () => {
     await toggleMode("Show HTML source");
     expect(fetch).not.toHaveBeenCalled();
     expect(renderer.root.findByProps({ role: "alert" }).children).toEqual([
-      "Reconnect to the environment and try again.",
+      "Reconnect to the computer and try again.",
     ]);
 
     await toggleMode("Show rendered page");

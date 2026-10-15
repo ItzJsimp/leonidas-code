@@ -32,15 +32,15 @@ export function DeviceHostUpdates({
               <p className="whitespace-pre-wrap break-words text-muted-foreground">
                 {status.detail ??
                   (failed
-                    ? "Device support could not start."
+                    ? "Device support could not start. Check your internet connection and try again."
                     : status.status === "installing"
                       ? "Installing device tools…"
                       : "Starting device tools…")}
               </p>
               {failed ? (
                 <p className="mt-1 text-muted-foreground">
-                  Check the host connection and network access, then retry. Your device settings are
-                  saved.
+                  Check the connection to the computer and your internet, then try again. Your
+                  device settings are saved.
                 </p>
               ) : null}
             </div>

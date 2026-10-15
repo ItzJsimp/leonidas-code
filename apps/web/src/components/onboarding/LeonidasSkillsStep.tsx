@@ -123,7 +123,7 @@ export function LeonidasSkillsStep({
             const error = squashAtomCommandFailure(result);
             setState({
               status: "error",
-              message: `Could not write ${file.relativePath}. ${
+              message: `Could not save ${file.relativePath}. ${
                 error instanceof Error ? error.message : "Try again."
               }`,
             });
@@ -153,7 +153,7 @@ export function LeonidasSkillsStep({
               <span className="font-mono text-xs">{root}</span>
             </span>
           ))}
-          . Find them any time with the Skills button above the prompt box.
+          . Find them any time with the Skills button above the message box.
         </p>
         <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
           <ul className="space-y-1 pr-3">
@@ -180,8 +180,8 @@ export function LeonidasSkillsStep({
         Add skills for what you build
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        A starter set, plus skills that match the goals you picked. They install into your AIOS
-        folder so your AI loads them in every session.
+        You get a starter set, plus skills that match the goals you picked. Leonidas Code saves them
+        in your AIOS folder. Your AI loads them in every chat.
       </p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-4 pr-3">
@@ -215,7 +215,7 @@ export function LeonidasSkillsStep({
               spellCheck={false}
             />
             <span className="block text-xs text-muted-foreground">
-              Created if it does not exist.
+              Leonidas Code creates the folder if it is missing.
             </span>
           </label>
           {pendingLines ? (
@@ -230,11 +230,12 @@ export function LeonidasSkillsStep({
           ) : null}
           {!canOperate ? (
             <p className="text-xs text-muted-foreground">
-              Connect to an environment to install skills.
+              Connect to a computer to install skills.
             </p>
           ) : !canWriteFiles ? (
             <p className="text-xs text-muted-foreground">
-              This connection cannot write files, so skills cannot be installed.
+              This connection cannot save files, so it cannot install skills. Connect to a different
+              computer.
             </p>
           ) : null}
           {state.status === "error" ? (

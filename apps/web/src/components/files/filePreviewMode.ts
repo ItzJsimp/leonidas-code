@@ -13,18 +13,18 @@ export const isMarkdownPreviewFile = (path: string): boolean => /\.(?:md|mdx)$/i
 export function filePreviewReadErrorMessage(error: ProjectReadFileError): string {
   switch (error.failure) {
     case "path_not_file":
-      return "The path is a directory or special file, not a regular file.";
+      return "This path is a folder or a special file, not a normal file. Pick a file.";
     case "binary_file":
-      return "The file is binary and cannot be displayed as text.";
+      return "This file is not text, so Leonidas Code cannot show it.";
     case "workspace_path_outside_root":
-      return "The requested path is outside the workspace.";
+      return "This path is outside the project. Pick a file in the project.";
     case "resolved_path_outside_root":
-      return "The path resolves to a location outside the workspace.";
+      return "This path leads outside the project. Pick a file in the project.";
     case "operation_failed":
       // A realpath failure can mean a missing path, permissions, or another I/O error.
       return error.operation === "realpath-workspace-root"
-        ? "The workspace folder could not be accessed."
-        : "The file could not be accessed or read. It may be missing or inaccessible.";
+        ? "Leonidas Code cannot open the project folder. Check that the folder exists."
+        : "Leonidas Code cannot open this file. The file may be missing. Check the path and try again.";
     default:
       return error.message;
   }

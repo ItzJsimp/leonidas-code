@@ -99,7 +99,7 @@ function CodexRow({
           state === "ready"
             ? "Connected to ChatGPT."
             : state === "waiting"
-              ? "Finish signing in in your browser."
+              ? "Finish signing in with your browser."
               : state === "setting-up"
                 ? "Setting up Codex…"
                 : "Code with your ChatGPT subscription."
@@ -196,12 +196,12 @@ function ClaudeRow({
         name="Claude Code"
         detail={
           state === "ready"
-            ? "Ready to code."
+            ? "Ready to use."
             : state === "waiting"
-              ? "Finish signing in in your browser."
+              ? "Finish signing in with your browser."
               : state === "needs-signin"
                 ? "Sign in to use your Claude plan."
-                : "Claude Code is not installed"
+                : "Claude Code is not installed. Select Install."
         }
         control={
           state === "ready" ? (
@@ -272,7 +272,7 @@ function ClaudeRow({
           <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
             <span className="text-2xs font-medium text-muted-foreground">
               {ran
-                ? "Command running."
+                ? "The command is running."
                 : "Run this command when you are ready. Nothing runs until you do."}
             </span>
             <div className="flex items-center gap-1">
@@ -335,9 +335,11 @@ export function SimAgentsStep({
   const veteran = persona === "veteran";
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Connect your agents</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        Add your AI accounts
+      </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        You only need one agent to start. You can add more later.
+        You only need one AI account to start. You can add more later.
       </p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-1.5 pr-3">

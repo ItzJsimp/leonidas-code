@@ -229,12 +229,12 @@ function FirstRunRecovery({
     <main className="flex h-dvh min-h-0 items-center justify-center bg-background px-6 text-foreground">
       <div className="flex max-w-sm flex-col items-center text-center">
         <h1 className="text-lg font-semibold">
-          {settingsReadFailed ? "Could not read settings" : "Still connecting"}
+          {settingsReadFailed ? "Could not read your settings" : "Still connecting"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {settingsReadFailed
-            ? "Your saved settings could not be loaded."
-            : "Leonidas Code could not confirm this workspace."}
+            ? "Leonidas Code could not load your saved settings. Select Retry."
+            : "Leonidas Code could not reach this computer. Select Reload."}
         </p>
         <Button
           className="mt-5"

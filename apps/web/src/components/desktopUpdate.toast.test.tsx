@@ -90,7 +90,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     expect(toast.title).toBe("Update ready");
     expect(toast.timeout).toBe(0);
     expect(toast.actionProps.children).toBe("Restart now");
-    expect(toast.data.secondaryActionProps.children).toBe("Update when safe");
+    expect(toast.data.secondaryActionProps.children).toBe("Update when the AI is done");
     toast.actionProps.onClick();
     toast.data.secondaryActionProps.onClick();
     expect(onRestartNow).toHaveBeenCalledTimes(1);
@@ -150,7 +150,7 @@ describe("showDesktopUpdateDownloadedToast", () => {
     await vi.waitFor(() => {
       expect(testState.addToast).toHaveBeenLastCalledWith({
         type: "error",
-        title: "Unable to open release notes",
+        title: "Could not open the update notes. Try again.",
       });
     });
   });
@@ -177,7 +177,7 @@ describe("manual desktop update feedback", () => {
       expect.objectContaining({
         type: "success",
         title: "You're up to date",
-        description: "Leonidas Code 1.0.7 is the latest version on the latest channel.",
+        description: "Leonidas Code 1.0.7 is the newest version.",
       }),
     );
     expect(unsubscribe).toHaveBeenCalledOnce();

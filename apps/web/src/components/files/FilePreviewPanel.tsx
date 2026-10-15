@@ -185,7 +185,7 @@ function WorkspaceImagePreview(props: {
     return (
       <MediaActions source={actionsSource}>
         <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs leading-relaxed text-destructive">
-          Unable to load workspace image.
+          Could not load the image. Try again.
         </div>
       </MediaActions>
     );
@@ -248,7 +248,7 @@ function WorkspaceBrowserPreview(props: {
   if (assetUrl._tag === "Failure") {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs leading-relaxed text-destructive">
-        Unable to load file preview.
+        Could not load the file preview. Try again.
       </div>
     );
   }
@@ -366,7 +366,7 @@ function WorkspaceAudioPreview(props: {
   if (assetUrl._tag === "Failure" || (url !== null && failedUrl === url)) {
     return (
       <FileSurfaceFailure
-        message="Unable to load audio."
+        message="Could not load the audio. Try again."
         onRetry={() => {
           setFailedUrl(null);
           void refreshAssetUrl().catch(() => undefined);
@@ -1216,8 +1216,8 @@ export default function FilePreviewPanel({
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Unable to open file in browser",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          title: "Could not open the file in the browser",
+          description: error instanceof Error ? error.message : "Try again.",
         }),
       );
     })();
@@ -1243,7 +1243,7 @@ export default function FilePreviewPanel({
     }
     return (
       <div className="p-4 text-sm text-muted-foreground">
-        {fileAccess.error ?? "This connection cannot read host files."}
+        {fileAccess.error ?? "This connection cannot read files. Connect to a different computer."}
       </div>
     );
   }
@@ -1303,7 +1303,7 @@ export default function FilePreviewPanel({
           ) : null}
           {showsRawText ? (
             <FileSurfaceAction
-              label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
+              label={wordWrap ? "Turn off word wrap" : "Turn on word wrap"}
               pressed={wordWrap}
               onPress={() => updateClientSettings({ wordWrap: !wordWrap })}
             >
@@ -1328,7 +1328,7 @@ export default function FilePreviewPanel({
       ) : null}
       {relativePath && !attachment && !isHostFile && !canWriteFiles && !fileAccess.isPending ? (
         <div className="shrink-0 border-b px-3 py-1.5 text-2xs text-muted-foreground">
-          Read-only connection. Unsaved edits are kept until write access returns.
+          This connection can only read files. Your unsaved changes stay until you can save again.
         </div>
       ) : null}
       {previewPath &&
@@ -1337,7 +1337,7 @@ export default function FilePreviewPanel({
       !renderBrowserFile &&
       file.data?.truncated ? (
         <div className="shrink-0 border-b border-warning/20 bg-warning-surface px-3 py-1.5 text-2xs text-warning-foreground">
-          Preview limited to the first 1 MB of a {file.data.byteLength.toLocaleString()} byte file.
+          Preview shows only the first 1 MB of a {file.data.byteLength.toLocaleString()} byte file.
         </div>
       ) : null}
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -1408,7 +1408,7 @@ export default function FilePreviewPanel({
                 </p>
                 {attemptedPath ? (
                   <p className="text-muted-foreground">
-                    Attempted path
+                    Path that failed
                     <code className="block break-all font-mono text-foreground select-all">
                       {attemptedPath}
                     </code>

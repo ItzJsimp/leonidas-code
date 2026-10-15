@@ -81,10 +81,10 @@ export function DeviceAndroidFoldControls(props: {
           props.onFoldAngle(fold.hingeAngle ?? (fold.posture === "closed" ? 0 : 180));
           setError(
             controller.signal.aborted
-              ? "Fold command timed out."
+              ? "The fold command took too long. Try again."
               : cause instanceof Error
                 ? cause.message
-                : "Could not change fold posture.",
+                : "Could not fold or unfold the device. Try again.",
           );
         }
       })
