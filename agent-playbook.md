@@ -47,6 +47,9 @@ verified: 2026-10-11
 
 ## 5. Gotchas (the ones that bite first)
 
+- **Voice keys:** `VoiceKeyStore.ts` uses the OS credential vault. `ServerSecretStore` does not encrypt file bytes.
+- **Capture paths:** web dictation lives in `components/voice/`; iOS uses `packages/client-runtime/src/voice-input/controller.ts`. Check both before adding capture logic.
+
 Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.md). Search it before touching updater, release, rebrand, worktree, build-preflight or quota code.
 
 - **`gh` defaults to upstream in this fork:** `gh release list` with no `-R` reads `pingdotgg/t3code`. Always pass `-R ItzJsimp/leonidas-code`.
@@ -70,6 +73,8 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 - **Thin rebrand layer:** every branding touch makes `upstream/main` merges harder. Card: [`t3-code-rebrand`](../../tasks/t3-code-rebrand.md).
 
 ## 7. Session notes
+
+- **2026-10-15 (voice):** Composer dictation and the Voice wizard step are in `6528b9c958`. Ten synthetic takes reached the real composer. Real audio, embedded Groq browsing, AI levels, and the coach remain open. See [voice input](./docs/internals/voice-input.md).
 
 - **2026-10-15:** Task board reader (`readAiosTasks`, `aiosCards.ts`) also reads `projects/<slug>/<child>/tasks` when `<child>` has its own `.git` (Goo Busters GB cards). GB words `doing`, `later`, `cut` and priority `P0` to `P3` map in `statusFromCard` and `priorityFromCard`. `findCardFile` searches the game repo, and `applyCardPatch` writes GB words (`doing`, `P0`, unquoted) for cards with `owner` and `system`.
 

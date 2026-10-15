@@ -2,8 +2,23 @@
 
 Transcription edits a composer draft. It does not submit an agent turn. Audio is
 temporary client input, and only normal message submission sends the resulting
-text. The current implementation transcribes locally on supported iOS devices;
-environment-backed transcription is not implemented.
+text. Supported iOS devices transcribe locally through the shared controller.
+Web and desktop composer dictation use environment-backed Groq transcription.
+
+The web capture path lives in `apps/web/src/components/voice/`. Its server service
+is `apps/server/src/scribe/VoiceDictation.ts`. RPC contracts live in
+`packages/contracts/src/voice.ts`. The Voice wizard step follows AI account setup.
+It includes key setup, a spoken test, and an explicit skip.
+
+`VoiceKeyStore.ts` uses the OS credential vault, scoped to the host state directory.
+It has no plaintext fallback. `ServerSecretStore` stores file bytes and does not
+provide encryption. Audio is capped at 8 MiB and ten minutes. Groq Whisper produces
+the transcript; a separate cleanup call uses `openai/gpt-oss-20b`. Cleanup failures
+keep the raw transcript. Model availability must be checked before a release.
+
+In-window capture does not replace the always-on Scribe engine or its global hotkey.
+The web capture path currently owns its lifecycle separately from the shared iOS
+controller. Review both paths before extending draft ownership or cancellation.
 
 The [shared controller](../../packages/client-runtime/src/voice-input/controller.ts)
 owns the operation while the client supplies capture and transcription. Preparation
