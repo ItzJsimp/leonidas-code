@@ -209,7 +209,7 @@ export function OnboardingSimulation() {
               }}
             />
           </WizardHeader>
-          <WizardPanel>
+          <WizardPanel stableHeight>
             {run.step === "welcome" ? (
               <SimWelcomeStep goals={goals} onGoals={setGoals} onContinue={() => go("agents")} />
             ) : run.step === "connect" ? (
