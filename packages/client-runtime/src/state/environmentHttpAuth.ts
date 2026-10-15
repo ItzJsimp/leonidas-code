@@ -78,7 +78,7 @@ const buildEnvironmentAuthHeaders = (
     }
     if (Option.isNone(signer)) {
       return yield* new RemoteEnvironmentAuthFetchError({
-        message: "No DPoP signer is available to authorize the environment request.",
+        message: "No DPoP signer is available to authorize the computer request.",
         cause: authorization._tag,
       });
     }
@@ -88,7 +88,7 @@ const buildEnvironmentAuthHeaders = (
         Effect.mapError(
           (cause) =>
             new RemoteEnvironmentAuthFetchError({
-              message: "Could not create the environment request authorization proof.",
+              message: "Could not create the computer request authorization proof.",
               cause,
             }),
         ),
@@ -162,7 +162,7 @@ const executeEnvironmentRequest = Effect.fnUntraced(function* <
         const remote = input.remoteAuthorization;
         if (remote === undefined || Option.isNone(remote)) {
           return yield* new RemoteEnvironmentAuthFetchError({
-            message: "No relay authorization service is available for the environment request.",
+            message: "No relay authorization service is available for the computer request.",
             cause: input.prepared.target._tag,
           });
         }
@@ -175,7 +175,7 @@ const executeEnvironmentRequest = Effect.fnUntraced(function* <
             Effect.mapError(
               (cause) =>
                 new RemoteEnvironmentAuthFetchError({
-                  message: "Could not authorize the environment request.",
+                  message: "Could not authorize the computer request.",
                   cause,
                 }),
             ),
@@ -223,7 +223,7 @@ const executeEnvironmentRequest = Effect.fnUntraced(function* <
           continue;
         }
         return yield* new RemoteEnvironmentAuthFetchError({
-          message: "The environment rejected the renewed session authorization.",
+          message: "The computer rejected the renewed session authorization.",
           cause: result.success,
         });
       }

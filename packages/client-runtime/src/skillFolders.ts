@@ -40,7 +40,7 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   code: "Code & engineering",
   planning: "Planning & specs",
   flow: "Daily flow",
-  agents: "Agents & prompts",
+  agents: "AI helpers & messages",
   research: "Research & learning",
   knowledge: "Knowledge & wiki",
   system: "AIOS system",

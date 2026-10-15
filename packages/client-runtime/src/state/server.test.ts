@@ -225,7 +225,7 @@ describe("update restart reconnect nudges", () => {
             phase: "blocked",
             lastFailure: {
               reason: "authentication",
-              detail: "The environment credential is invalid.",
+              detail: "The computer did not accept your sign-in. Connect it again.",
             },
           },
           { phase: "blocked", lastFailure: { reason: "configuration" } },

@@ -14,26 +14,26 @@ describe("summarizeT3ToolCalls", () => {
         completed({}, { id: "project-1" }),
         completed({}, { id: "project-2" }),
       ]).label,
-    ).toBe("Registered 2 projects");
+    ).toBe("Added 2 projects");
     expect(
       summarizeT3ToolCalls("project-clone", [
         completed({}, { cwd: "/tmp/first" }),
         completed({}, { cwd: "/tmp/second" }),
       ]).label,
-    ).toBe("Cloned 2 repositories");
+    ).toBe("Cloned 2 projects");
     expect(
       summarizeT3ToolCalls("thread-create", [
         completed({}, { threadId: "launched-thread", status: "preparing" }),
       ]).label,
-    ).toBe("Created 1 thread");
+    ).toBe("Created 1 chat");
   });
 
   it.each([
-    ["queue-read", "Read 1 queued message"],
-    ["queue-edit", "Edited 1 queued message"],
-    ["queue-cancel", "Requested cancellation of 1 queued run"],
-    ["queue-reorder", "Reordered 1 queued run"],
-    ["queue-steer", "Requested steering with 1 queued message"],
+    ["queue-read", "Read 1 waiting message"],
+    ["queue-edit", "Edited 1 waiting message"],
+    ["queue-cancel", "Requested cancellation of 1 waiting message"],
+    ["queue-reorder", "Reordered 1 waiting message"],
+    ["queue-steer", "Requested send now for 1 waiting message"],
   ] as const)("deduplicates the queued run target for %s", (action, label) => {
     expect(
       summarizeT3ToolCalls(action, [
@@ -51,7 +51,7 @@ describe("summarizeT3ToolCalls", () => {
         completed({ requestId: "request-1" }),
         completed({ requestId: "request-2" }),
       ]).label,
-    ).toBe("Answered 2 pending question requests");
+    ).toBe("Answered 2 questions");
   });
 
   it("counts attachments in distinct messages and falls back when attachment counts are missing", () => {
@@ -64,12 +64,12 @@ describe("summarizeT3ToolCalls", () => {
       { messageId: "message-2", threadId: "thread-2" },
     );
     expect(summarizeT3ToolCalls("attachment-send", [first, first, second])).toEqual({
-      label: "Sent 3 attachments to 2 threads",
+      label: "Sent 3 attachments to 2 chats",
       failedCount: 0,
     });
     expect(
       summarizeT3ToolCalls("attachment-send", [first, completed({ threadId: "thread-1" })]).label,
-    ).toBe("Sent attachments to 1 thread 2 times");
+    ).toBe("Sent attachments to 1 chat 2 times");
   });
 
   it("keeps repeated manual runs separate and describes asynchronous controls as requests", () => {
@@ -82,12 +82,12 @@ describe("summarizeT3ToolCalls", () => {
     expect(
       summarizeT3ToolCalls("thread-fork", [completed({}, { targetThreadId: "fork", sequence: 3 })])
         .label,
-    ).toBe("Requested 1 thread fork");
+    ).toBe("Requested 1 copied chat");
     expect(
       summarizeT3ToolCalls("thread-merge", [
         completed({ targetThreadId: "parent" }, { sequence: 4 }),
       ]).label,
-    ).toBe("Requested 1 context merge");
+    ).toBe("Requested 1 merge of a copied chat");
   });
 
   it.each([
@@ -115,7 +115,7 @@ describe("summarizeT3ToolCalls", () => {
       ),
     );
     expect(summarizeT3ToolCalls("thread-send", [...calls, calls[0]!])).toEqual({
-      label: "Sent 5 messages to 2 threads",
+      label: "Sent 5 messages to 2 chats",
       failedCount: 0,
     });
   });
@@ -139,13 +139,13 @@ describe("summarizeT3ToolCalls", () => {
         output,
       ),
     );
-    expect(summarizeT3ToolCalls("thread-send", calls).label).toBe("Sent 1 message to 1 thread");
+    expect(summarizeT3ToolCalls("thread-send", calls).label).toBe("Sent 1 message to 1 chat");
     expect(
       summarizeT3ToolCalls("thread-send", [
         completed({ toolName: "t3_thread_send", args: { threadId: "input-thread" } }),
         completed({ threadId: "input-thread" }),
       ]).label,
-    ).toBe("Sent 2 messages to 1 thread");
+    ).toBe("Sent 2 messages to 1 chat");
   });
 
   it("falls back to message counts when a destination is missing or a result is malformed", () => {
@@ -171,12 +171,12 @@ describe("summarizeT3ToolCalls", () => {
         ),
         completed({}, { threadId: "thread-0", status: "running" }),
       ]).label,
-    ).toBe("Created 4 threads");
+    ).toBe("Created 4 chats");
     expect(
       summarizeT3ToolCalls("thread-create", [
         completed({ threads: [{ title: "Requested, not confirmed" }] }),
       ]).label,
-    ).toBe("Requested thread creation 1 time");
+    ).toBe("Requested chat creation 1 time");
   });
 
   it("excludes failed and unfinished sends even if the provider reports completed", () => {
@@ -192,11 +192,11 @@ describe("summarizeT3ToolCalls", () => {
       { input: { threadId: "cancelled" }, output: undefined, outcome: "unfinished" },
     ];
     expect(summarizeT3ToolCalls("thread-send", calls)).toEqual({
-      label: "Sent 1 message to 1 thread",
+      label: "Sent 1 message to 1 chat",
       failedCount: 2,
     });
     expect(summarizeT3ToolCalls("thread-send", [calls[1]!])).toEqual({
-      label: "Tried to send 1 message to 1 thread",
+      label: "Tried to send 1 message to 1 chat",
       failedCount: 1,
     });
   });
@@ -206,7 +206,7 @@ describe("summarizeT3ToolCalls", () => {
     expect(
       summarizeT3ToolCalls("delegate", [completed({}, failedChild), completed({}, failedChild)]),
     ).toEqual({
-      label: "Delegated 1 task",
+      label: "Started 1 helper",
       failedCount: 0,
     });
     expect(
@@ -220,7 +220,7 @@ describe("summarizeT3ToolCalls", () => {
         completed({ threadId: "thread-1" }, { threadId: "thread-1", timedOut: true }),
       ]),
     ).toEqual({
-      label: "Waited on 1 thread",
+      label: "Waited on 1 chat",
       failedCount: 0,
     });
   });
@@ -233,7 +233,7 @@ describe("summarizeT3ToolCalls", () => {
           { threadId: "thread-1", status: "interrupt_requested" },
         ),
       ]).label,
-    ).toBe("Requested interrupts for 1 thread");
+    ).toBe("Requested stop for 1 chat");
     expect(
       summarizeT3ToolCalls("task-cancel", [
         completed({ taskId: "task-1" }, { taskId: "task-1", status: "cancel_requested" }),
@@ -259,9 +259,9 @@ describe("summarizeT3ToolCalls", () => {
         completed({ threadId: "parent", subagentId: "workflow-2" }, {}),
         failed,
       ]),
-    ).toEqual({ label: "Requested stops for 2 workflows", failedCount: 1 });
+    ).toEqual({ label: "Requested stop for 2 helper groups", failedCount: 1 });
     expect(summarizeT3ToolCalls("workflow-stop", [failed])).toEqual({
-      label: "Tried to stop 1 workflow",
+      label: "Tried to stop 1 helper group",
       failedCount: 1,
     });
   });

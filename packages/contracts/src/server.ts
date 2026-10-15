@@ -993,7 +993,7 @@ export class ServerProviderUpdateError extends Schema.TaggedError<ServerProvider
   },
 ) {
   override get message(): string {
-    return `Provider update failed for ${this.provider}: ${this.reason}`;
+    return `The update of the AI service ${this.provider} failed: ${this.reason}`;
   }
 }
 

@@ -35,7 +35,7 @@ describe("filesystem read access", () => {
     ).toEqual({
       canReadFiles: false,
       isPending: false,
-      error: "This environment is not connected.",
+      error: "This computer is not connected.",
     });
   });
 
@@ -52,7 +52,7 @@ describe("filesystem read access", () => {
       ).toEqual({
         canReadFiles: false,
         isPending: false,
-        error: "This environment is not connected.",
+        error: "This computer is not connected.",
       });
     },
   );

@@ -175,17 +175,17 @@ export function evaluatePredictiveQuota(input: PredictiveQuotaInput): Predictive
     exhaustionRisk = "imminent";
     shouldPreemptivelyHandoff = true;
     reason = nextTurnMayExceedQuota
-      ? "The measured quota estimate is smaller than a typical upcoming turn."
-      : `Quota usage is ${Math.round(currentUsed)}%; switch before starting more background work.`;
+      ? "The usage left is probably less than a typical next reply needs."
+      : `You used ${Math.round(currentUsed)}% of your limit. Switch AI accounts before you start more background work.`;
   } else if (
     currentUsed !== undefined &&
     (currentUsed >= elevatedThreshold || predictedTurns === 1)
   ) {
     exhaustionRisk = "elevated";
-    reason = `Quota usage is ${Math.round(currentUsed)}%${
+    reason = `You used ${Math.round(currentUsed)}% of your limit${
       predictedTurns === undefined
         ? ""
-        : `, with about ${predictedTurns} measured turn(s) remaining`
+        : `, enough for about ${predictedTurns} more ${predictedTurns === 1 ? "reply" : "replies"}`
     }.`;
   }
 

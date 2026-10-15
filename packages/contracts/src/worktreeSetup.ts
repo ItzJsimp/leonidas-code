@@ -111,14 +111,14 @@ export const WORKTREE_SETUP_STAGE_ORDER: ReadonlyArray<WorktreeSetupStageId> = [
 export function worktreeSetupStageLabel(id: WorktreeSetupStageId): string {
   switch (id) {
     case "fetch":
-      return "Fetch base branch";
+      return "Get the base branch";
     case "checkout":
-      return "Check out files";
+      return "Copy the project files";
     case "submodules":
-      return "Init submodules";
+      return "Set up linked code folders";
     case "setup-script":
-      return "Run setup script";
+      return "Run the setup steps";
     case "agent":
-      return "Start agent";
+      return "Start the AI";
   }
 }

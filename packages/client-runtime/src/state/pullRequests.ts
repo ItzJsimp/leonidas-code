@@ -271,7 +271,7 @@ export function createPullRequestEnvironmentAtoms<R, E>(
           const prepared = yield* SubscriptionRef.get(supervisor.prepared);
           if (Option.isNone(prepared)) {
             return yield* new EnvironmentHttpConnectionNotReadyError({
-              message: "The environment HTTP connection is not ready.",
+              message: "The computer HTTP connection is not ready.",
             });
           }
           return yield* loader.load(prepared.value, input);
