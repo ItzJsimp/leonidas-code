@@ -504,7 +504,10 @@ describe("AIOS folder reading", () => {
       "projects/beta/project.md",
       '---\ntype: project\nname: "Frontmatter Name"\n---\n# Beta Project\n',
     );
-    write("projects/leonidas-code/project.md", "# nothing here\n");
+    write(
+      "projects/leonidas-code/project.md",
+      '---\ntype: project\nname: "Leonidas Code"\n---\n# Leonidas Code: project ledger\n',
+    );
     write("projects/projects-index.md", "# index\n");
     write("projects/_archive/x/project.md", "# no\n");
     try {
@@ -587,7 +590,7 @@ describe("AIOS folder reading", () => {
   it("discovers projects with names from project.md or the slug", () => {
     const projects = discoverProjects(root);
     expect(projects.map((project) => project.slug).sort()).toEqual(["beta", "leonidas-code"]);
-    expect(projects.find((project) => project.slug === "beta")?.name).toBe("Beta Project");
+    expect(projects.find((project) => project.slug === "beta")?.name).toBe("Frontmatter Name");
     expect(projects.find((project) => project.slug === "leonidas-code")?.name).toBe(
       "Leonidas Code",
     );

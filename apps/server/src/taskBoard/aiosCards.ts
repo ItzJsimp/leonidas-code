@@ -863,7 +863,7 @@ const titleCase = (slug: string) =>
     .map((word) => word[0]!.toUpperCase() + word.slice(1))
     .join(" ");
 
-/** Lists every folder in `<root>/projects` with its display name. */
+/** Lists every folder in `<root>/projects`, named by frontmatter `name`, then `# ` heading, then slug. */
 export function discoverProjects(
   root: string,
 ): ReadonlyArray<{ slug: string; name: string; dir: string | null }> {
@@ -881,10 +881,14 @@ export function discoverProjects(
     if (!hasDir(dir)) continue;
     let name = "";
     try {
-      const body = parseFrontmatter(
+      const parsed = parseFrontmatter(
         NodeFS.readFileSync(NodePath.join(dir, "project.md"), "utf8"),
-      )?.body;
-      name = (body ?? "").match(/^# +(.+?)\s*$/m)?.[1] ?? "";
+      );
+      // The frontmatter name is the display name; the heading is a document title.
+      const field = parsed?.fields.name;
+      name =
+        (typeof field === "string" ? field.trim() : "") ||
+        ((parsed?.body ?? "").match(/^# +(.+?)\s*$/m)?.[1] ?? "");
     } catch {
       // No readable project.md: fall back to the folder name.
     }

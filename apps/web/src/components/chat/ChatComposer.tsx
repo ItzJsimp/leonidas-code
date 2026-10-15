@@ -7147,6 +7147,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     <ComposerNextActionBadge
                       alignRight={false}
                       environmentId={environmentId}
+                      activeProjectId={savedItemsProjectId}
+                      cwd={gitCwd}
                       onFill={(nextPrompt) => {
                         setPrompt(nextPrompt);
                         requestAnimationFrame(focusComposer);

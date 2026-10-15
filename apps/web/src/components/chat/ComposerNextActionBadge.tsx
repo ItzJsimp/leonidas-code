@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, TaskBoardWorkspaceProject } from "@t3tools/contracts";
 import { PlayIcon } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 
@@ -17,15 +17,34 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { ComposerBanner } from "./ComposerBanner";
-import { buildStartTaskPrompt } from "./startTaskPrompt";
+import {
+  buildStartTaskPrompt,
+  detectStartTaskProject,
+  rankStartTaskCandidates,
+  START_TASK_CANDIDATE_LIMIT,
+} from "./startTaskPrompt";
 
-function ProjectPicker(props: { environmentId: EnvironmentId; onFill: (prompt: string) => void }) {
+const EMPTY_PROJECTS: ReadonlyArray<TaskBoardWorkspaceProject> = [];
+
+function ProjectPicker(props: {
+  environmentId: EnvironmentId;
+  activeProjectId: string | null;
+  cwd: string | null;
+  onFill: (prompt: string) => void;
+}) {
   const workspace = useEnvironmentQuery(
     taskBoardWorkspaceQuery({ environmentId: props.environmentId, input: {} }),
   );
-  const [slug, setSlug] = useState<string | null>(null);
+  // null means "use the detected project" until the user picks one.
+  const [picked, setPicked] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const project = workspace.data?.projects.find((item) => item.slug === slug);
+  const projects = workspace.data?.projects ?? EMPTY_PROJECTS;
+  const detected = useMemo(
+    () => detectStartTaskProject(projects, { projectId: props.activeProjectId, cwd: props.cwd }),
+    [projects, props.activeProjectId, props.cwd],
+  );
+  const slug = picked ?? detected?.slug ?? null;
+  const project = projects.find((item) => item.slug === slug);
   const targets = useMemo(
     () =>
       project?.projectId && project.repository
@@ -39,6 +58,16 @@ function ProjectPicker(props: { environmentId: EnvironmentId; onFill: (prompt: s
       mergeTasks(workspace.data?.tasks ?? [], shared.tasks).filter((task) => task.section === slug),
     [workspace.data?.tasks, shared.tasks, slug],
   );
+  const openCount = useMemo(() => rankStartTaskCandidates(tasks).length, [tasks]);
+  const visibleProjects = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const matches = projects.filter((item) => item.name.toLowerCase().includes(needle));
+    // The detected project first, then projects with the most open work.
+    return matches.toSorted(
+      (a, b) =>
+        Number(b.slug === detected?.slug) - Number(a.slug === detected?.slug) || b.open - a.open,
+    );
+  }, [projects, query, detected?.slug]);
   const error = workspace.error ?? shared.error;
   const pending = workspace.isPending || shared.isPending;
 
@@ -47,7 +76,9 @@ function ProjectPicker(props: { environmentId: EnvironmentId; onFill: (prompt: s
       <DialogHeader>
         <DialogTitle>Start task</DialogTitle>
         <DialogDescription>
-          Select a project. We will prepare a prompt from its tasks.
+          {detected
+            ? "We selected the project for this chat. Select a different project if you need to."
+            : "Select a project. We will prepare a prompt from its open tasks."}
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>
@@ -60,18 +91,21 @@ function ProjectPicker(props: { environmentId: EnvironmentId; onFill: (prompt: s
             onChange={(event) => setQuery(event.target.value)}
           />
           <div className="flex max-h-64 flex-col gap-1 overflow-y-auto" aria-label="Projects">
-            {workspace.data?.projects
-              .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
-              .map((item) => (
-                <Button
-                  key={item.slug}
-                  variant={slug === item.slug ? "secondary" : "ghost"}
-                  onClick={() => setSlug(item.slug)}
-                  aria-pressed={slug === item.slug}
-                >
-                  {item.name}
-                </Button>
-              ))}
+            {visibleProjects.map((item) => (
+              <Button
+                key={item.slug}
+                variant={slug === item.slug ? "secondary" : "ghost"}
+                className="justify-between"
+                onClick={() => setPicked(item.slug)}
+                aria-pressed={slug === item.slug}
+              >
+                <span className="truncate">{item.name}</span>
+                <span className="text-muted-foreground text-xs">
+                  {item.slug === detected?.slug ? "This chat · " : ""}
+                  {item.open} open
+                </span>
+              </Button>
+            ))}
           </div>
           {pending ? <p role="status">Loading tasks...</p> : null}
           {error ? (
@@ -88,19 +122,19 @@ function ProjectPicker(props: { environmentId: EnvironmentId; onFill: (prompt: s
               </Button>
             </>
           ) : null}
-          {workspace.data?.projects.length === 0 ? (
+          {workspace.isSuccess && projects.length === 0 ? (
             <p>No projects found. Add a project to your task workspace.</p>
           ) : null}
           {project && !pending && !error ? (
             <p>
-              {tasks.length === 0
-                ? "This project has no tasks. Add a task on the Tasks page."
-                : `${tasks.length} tasks loaded. The agent will select an available task.`}
+              {openCount === 0
+                ? "This project has no open tasks. Add a task on the Tasks page."
+                : `${openCount} open tasks. The prompt lists the top ${Math.min(openCount, START_TASK_CANDIDATE_LIMIT)}, and the agent selects one.`}
             </p>
           ) : null}
           <Button
             disabled={
-              !project || !workspace.isSuccess || pending || error !== null || tasks.length === 0
+              !project || !workspace.isSuccess || pending || error !== null || openCount === 0
             }
             onClick={() => {
               if (project) props.onFill(buildStartTaskPrompt(project, tasks));
@@ -117,6 +151,8 @@ function ProjectPicker(props: { environmentId: EnvironmentId; onFill: (prompt: s
 export const ComposerNextActionBadge = memo(function ComposerNextActionBadge(props: {
   alignRight: boolean;
   environmentId: EnvironmentId;
+  activeProjectId: string | null;
+  cwd: string | null;
   onFill: (prompt: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -147,6 +183,8 @@ export const ComposerNextActionBadge = memo(function ComposerNextActionBadge(pro
           {open ? (
             <ProjectPicker
               environmentId={props.environmentId}
+              activeProjectId={props.activeProjectId}
+              cwd={props.cwd}
               onFill={(prompt) => {
                 setOpen(false);
                 props.onFill(prompt);
