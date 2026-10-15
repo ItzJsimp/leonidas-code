@@ -13,6 +13,7 @@ import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
 
 import * as ServerSettings from "../serverSettings.ts";
+import * as ClaudeInstallation from "./ClaudeInstallation.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
 import * as AntigravityInstallation from "./AntigravityInstallation.ts";
 import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
@@ -78,6 +79,7 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
               return [];
             }),
         }),
+        Layer.mock(ClaudeInstallation.ClaudeInstallation)({}),
         Layer.mock(CodexInstallation.CodexInstallation)({
           managedDirectory: "/unused-managed-codex",
           start: Effect.sync(() => {

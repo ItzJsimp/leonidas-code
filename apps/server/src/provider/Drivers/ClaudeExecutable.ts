@@ -95,3 +95,36 @@ export const resolveClaudeSdkExecutablePath = Effect.fn("resolveClaudeSdkExecuta
     return binaryPath;
   },
 );
+
+/**
+ * Folder where the official Claude installer puts the `claude` program on
+ * every platform. The installer adds it to the user PATH, but a server that
+ * was already running keeps its old PATH.
+ */
+export const claudeUserBinDirectory = (home: string, platform: NodeJS.Platform): string =>
+  (platform === "win32" ? NodePath.win32 : NodePath.posix).join(home, ".local", "bin");
+
+/**
+ * Return `env` with the official Claude install folder at the end of PATH, so
+ * a Claude installed after server start is found without a restart. Keeps the
+ * existing PATH key spelling (`Path` on Windows).
+ */
+export const withClaudeUserBinOnPath = (
+  env: NodeJS.ProcessEnv,
+  home: string,
+  platform: NodeJS.Platform,
+): NodeJS.ProcessEnv => {
+  const directory = claudeUserBinDirectory(home, platform);
+  const key =
+    Object.keys(env).find((name) => name.toUpperCase() === "PATH") ??
+    (platform === "win32" ? "Path" : "PATH");
+  const separator = platform === "win32" ? ";" : ":";
+  const current = env[key] ?? "";
+  const entries = current.split(separator).filter((entry) => entry.length > 0);
+  const same = (entry: string) =>
+    platform === "win32"
+      ? entry.replace(/[\\/]+$/u, "").toLowerCase() === directory.toLowerCase()
+      : entry.replace(/\/+$/u, "") === directory;
+  if (entries.some(same)) return env;
+  return { ...env, [key]: [...entries, directory].join(separator) };
+};

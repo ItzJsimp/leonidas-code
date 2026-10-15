@@ -3,7 +3,11 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 import { SpawnExecutableResolution } from "@t3tools/shared/shell";
 import * as Effect from "effect/Effect";
 
-import { ClaudeExecutableFileCheck, resolveClaudeSdkExecutablePath } from "./ClaudeExecutable.ts";
+import {
+  ClaudeExecutableFileCheck,
+  resolveClaudeSdkExecutablePath,
+  withClaudeUserBinOnPath,
+} from "./ClaudeExecutable.ts";
 
 const NPM_DIR = "C:\\Users\\dev\\AppData\\Roaming\\npm";
 const NPM_SHIM = `${NPM_DIR}\\claude.cmd`;
@@ -121,4 +125,26 @@ describe("resolveClaudeSdkExecutablePath", () => {
       ).toBe("claude");
     }),
   );
+});
+
+describe("withClaudeUserBinOnPath", () => {
+  it("adds the install folder to the Windows Path key", () => {
+    const next = withClaudeUserBinOnPath({ Path: "C:\\Windows" }, "C:\\Users\\gavin", "win32");
+    expect(next.Path).toBe("C:\\Windows;C:\\Users\\gavin\\.local\\bin");
+    expect(next.PATH).toBeUndefined();
+  });
+
+  it("keeps env unchanged when the folder is already on PATH", () => {
+    const env = { PATH: "/usr/bin:/home/g/.local/bin/" };
+    expect(withClaudeUserBinOnPath(env, "/home/g", "linux")).toBe(env);
+  });
+
+  it("matches Windows entries without case or trailing slash", () => {
+    const env = { Path: "c:\\users\\gavin\\.local\\bin\\" };
+    expect(withClaudeUserBinOnPath(env, "C:\\Users\\gavin", "win32")).toBe(env);
+  });
+
+  it("creates PATH when it is missing", () => {
+    expect(withClaudeUserBinOnPath({}, "/home/g", "darwin").PATH).toBe("/home/g/.local/bin");
+  });
 });
