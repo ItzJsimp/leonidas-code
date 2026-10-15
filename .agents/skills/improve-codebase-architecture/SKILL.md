@@ -3,6 +3,7 @@ name: improve-codebase-architecture
 description: "Analyze module boundaries, dependency coupling, and circular imports with visual refactoring plans."
 category: code
 scope: structural
+source: "https://github.com/mattpocock/skills (skills/engineering/improve-codebase-architecture, MIT, adapted for the AIOS)"
 distribution: core
 type: skill
 id: skill-improve-codebase-architecture
@@ -50,4 +51,3 @@ Inspects repository code organization, directory hierarchies, module boundaries,
   - Mermaid Architecture Diagram (Current vs Proposed)
   - Ranked Refactoring Targets (File, Issue, Recommended Fix)
   - Phased Execution Checklist
-
