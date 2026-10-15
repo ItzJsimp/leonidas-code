@@ -99,6 +99,8 @@ interface Props {
   tabId?: string | null;
   configuredUrls?: ReadonlyArray<string> | undefined;
   visible: boolean;
+  /** Setup flows can accept copied text without local clipboard permissions. */
+  onClipboard?: (text: string) => void;
   onSendAnnotation?: (
     annotation: PreviewAnnotationPayload,
     image: ComposerImageAttachment | null,
@@ -148,6 +150,7 @@ export function PreviewView({
   tabId: requestedTabId,
   configuredUrls,
   visible,
+  onClipboard,
   onSendAnnotation,
 }: Props) {
   const [focusUrlNonce, setFocusUrlNonce] = useState<number | undefined>(undefined);
@@ -1078,6 +1081,7 @@ export function PreviewView({
                 threadId={threadRef.threadId}
                 tabId={snapshot.tabId}
                 visible={visible}
+                onClipboard={onClipboard}
                 onFirstFrame={() => setServerFrameTabId(runtimeTabId)}
                 onControl={(control) =>
                   setServerControlledTabId(control?.controller === "you" ? runtimeTabId : null)

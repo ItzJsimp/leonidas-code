@@ -157,6 +157,7 @@ export function ServerBrowserSurface(props: {
   readonly onControl?: (control: PreviewStreamControl | null) => void;
   /** The page opened a new tab from this viewer's click; the viewer should switch to it. */
   readonly onPopup?: (tabId: string) => void;
+  readonly onClipboard?: ((text: string) => void) | undefined;
   readonly className?: string;
   readonly ref?: Ref<ServerBrowserHandle>;
 }) {
@@ -171,6 +172,7 @@ export function ServerBrowserSurface(props: {
     onViewport,
     onControl,
     onPopup,
+    onClipboard,
     className,
     ref,
   } = props;
@@ -224,6 +226,10 @@ export function ServerBrowserSurface(props: {
   );
   const controlChanged = useEffectEvent((next: PreviewStreamControl | null) => onControl?.(next));
   const popupOpened = useEffectEvent((popupTabId: string) => onPopup?.(popupTabId));
+  const pageCopied = useEffectEvent((text: string) => {
+    onClipboard?.(text);
+    void copyPageText(text);
+  });
   // Frame cap in device px, fixed per socket. It grows with the surface and
   // never shrinks, so only outgrowing it reconnects.
   const [cap, setCap] = useState<{ width: number; height: number } | null>(null);
@@ -413,7 +419,7 @@ export function ServerBrowserSurface(props: {
           const placed = placeAgentCursor(pointer, canvasRef.current, viewportRef.current);
           if (placed) setAgentCursor(placed);
         },
-        onClipboard: (text) => void copyPageText(text),
+        onClipboard: pageCopied,
         onDownload: offerDownload,
         onPopup: popupOpened,
         onFileChooser: setFileChooser,
