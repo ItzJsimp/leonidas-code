@@ -9,6 +9,7 @@ kind: "procedure"
 load: "on-demand"
 owner: "shared"
 scope: "structural"
+source: "https://github.com/mattpocock/skills (skills/engineering/implement, MIT, adapted for the AIOS)"
 distribution: core
 verified: "2026-10-08"
 related: ["skills-index", "tdd", "execution-standard", "complete-slice", "codebase-design"]
@@ -56,7 +57,8 @@ Translates an approved plan, task checklist, or technical specification into tes
    - Clean up formatting, streamline logic, and adhere to workspace coding standards.
    - **3-Strike Rollback Invariant:** If an implementation or refactor attempt fails 3 consecutive times, stop editing immediately. Revert dirty changes to the slice start via `git checkout` / `git stash`, drop back to M1 root-cause diagnosis, and resolve the underlying blocker before re-attempting. Never thrash edits in a failing state.
 
-7. **Reconcile, Micro-Telemetry & Commit Slice:**
+7. **Performance Gate, then Reconcile, Micro-Telemetry & Commit Slice:**
+   - Before committing code, run [`performance-gate`](../performance-gate/SKILL.md) on the slice diff (Fast lane for small slices) and fix any FAIL. A slice with a FAIL verdict is not done.
    - Run `pwsh -File scripts/Complete-Slice.ps1 -Paths <files...> -Message "<type>(<scope>): <summary>"` to verify zero em dashes, check drift, log slice telemetry to `logs/slice-telemetry.jsonl`, and execute an atomic git commit per [ADR-0010](../../../decisions/0010-git-history-replaces-the-master-log.md).
    - Reconcile task state by marking the slice item complete (`[x]`) in the active task file under [`tasks/`](../../../tasks/tasks-index.md).
 
@@ -79,7 +81,7 @@ Translates an approved plan, task checklist, or technical specification into tes
 
 ## Done When
 
-The implementation task is complete when all six are true:
+The implementation task is complete when all seven are true:
 
 1. **Every Slice Check Green:** All acceptance criteria in the intake plan have an automated check that passes green.
 2. **Adversarial Chaos Survived:** Touched code survives spaces in paths, nulls, and subprocess error trapping.
@@ -87,3 +89,4 @@ The implementation task is complete when all six are true:
 4. **Punctuation Clean:** `scripts/Find-EmDashes.ps1` reports zero em dashes in touched files.
 5. **Atomic Git Log & Telemetry:** Every slice corresponds to a distinct git commit and is logged to `logs/slice-telemetry.jsonl`.
 6. **Task Progress Reconciled:** The source task checklist or file in [`tasks/`](../../../tasks/tasks-index.md) reflects updated `[x]` completion states.
+7. **Performance Gate Passed:** every code slice carries a `Performance Gate: PASS` (or an owner-accepted PASS-WITH-RISK) verdict.
