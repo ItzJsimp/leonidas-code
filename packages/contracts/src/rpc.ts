@@ -30,6 +30,7 @@ import {
   TaskBoardClaimInput,
   TaskBoardReleaseInput,
   TaskBoardCompleteInput,
+  TaskBoardCompletions,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
   TaskBoardWorkspaceInput,
@@ -475,6 +476,7 @@ export const WS_METHODS = {
   taskBoardClaim: "taskBoard.claim",
   taskBoardRelease: "taskBoard.release",
   taskBoardComplete: "taskBoard.complete",
+  taskBoardSubscribeCompletions: "taskBoard.subscribeCompletions",
   taskBoardUpdate: "taskBoard.update",
   taskBoardWorkspace: "taskBoard.workspace",
   taskBoardCardUpdate: "taskBoard.cardUpdate",
@@ -1407,6 +1409,13 @@ const WsTaskBoardCompleteRpc = Rpc.make(WS_METHODS.taskBoardComplete, {
   payload: TaskBoardCompleteInput,
   success: TaskBoardTask,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardSubscribeCompletionsRpc = Rpc.make(WS_METHODS.taskBoardSubscribeCompletions, {
+  payload: Schema.Struct({}),
+  success: TaskBoardCompletions,
+  error: EnvironmentAuthorizationError,
+  stream: true,
 });
 
 const WsTaskBoardUpdateRpc = Rpc.make(WS_METHODS.taskBoardUpdate, {
@@ -2461,6 +2470,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardClaimRpc,
   WsTaskBoardReleaseRpc,
   WsTaskBoardCompleteRpc,
+  WsTaskBoardSubscribeCompletionsRpc,
   WsTaskBoardUpdateRpc,
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,

@@ -9,6 +9,8 @@ import {
   type TaskBoardAgent,
   type TaskBoardClaimInput,
   type TaskBoardCompleteInput,
+  type TaskBoardCompletion,
+  type TaskBoardCompletions,
   type TaskBoardCreateInput,
   type TaskBoardHistoryEntry,
   type InboxDrop,
@@ -42,6 +44,8 @@ import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
+import * as Stream from "effect/Stream";
+import * as SubscriptionRef from "effect/SubscriptionRef";
 import { ServerConfig } from "../config.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
@@ -173,6 +177,8 @@ function githubRepository(project: Project): string | null {
 }
 
 /** The slug cards use for a Leonidas project: its folder under `projects/`, else its slugified title. */
+const MAX_RECENT_COMPLETIONS = 20;
+
 export function aiosSlugFor(project: Project): string {
   const root = project.workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
   const inProjects = NodePath.posix.basename(NodePath.posix.dirname(root)) === "projects";
@@ -545,6 +551,8 @@ export class TaskBoardService extends Context.Service<
       input: InboxUndoInput,
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<{ readonly removed: boolean }, TaskBoardOperationError>;
+    /** The latest task completions made through this server: the current list, then each change. */
+    readonly completions: Stream.Stream<TaskBoardCompletions>;
   }
 >()("t3/taskBoard/TaskBoardService") {}
 
@@ -561,6 +569,42 @@ const make = Effect.gen(function* () {
     const current = yield* settings.value.getSettings.pipe(Effect.option);
     confirmedRoot = Option.isSome(current) ? current.value.aiosRoot || undefined : undefined;
   }
+  // Kept short: a client compares ids against what it already saw, so it only needs recent ones.
+  const recentCompletions = yield* SubscriptionRef.make<TaskBoardCompletions>([]);
+  const announce = (task: TaskBoardTask, actor: string, byAgent: boolean, at: number) =>
+    SubscriptionRef.update(recentCompletions, (list) => {
+      const completion: TaskBoardCompletion = {
+        id: NodeCrypto.randomUUID(),
+        taskId: task.id,
+        title: task.title,
+        projectSlug: task.projectSlug ?? null,
+        actor,
+        byAgent,
+        completedAt: at,
+      };
+      return [...list, completion].slice(-MAX_RECENT_COMPLETIONS);
+    });
+  const announceTransitions = (
+    before: ReadonlyArray<TaskBoardTask>,
+    after: ReadonlyArray<TaskBoardTask>,
+  ) =>
+    Effect.forEach(
+      after.filter(
+        (task) =>
+          task.status === "done" && before.find((prior) => prior.id === task.id)?.status !== "done",
+      ),
+      (task) => {
+        const last = task.history.at(-1);
+        return announce(
+          task,
+          task.completedBy ?? last?.actor ?? task.claimedBy ?? "unknown",
+          last?.agent !== undefined,
+          task.completedAt ?? task.updatedAt,
+        );
+      },
+      { discard: true },
+    );
+
   const rootsFor = (projects: ReadonlyArray<Project>) => [
     ...new Set(
       [nativeRoot, aiosRootFor(projects, confirmedRoot)].filter(
@@ -927,7 +971,10 @@ const make = Effect.gen(function* () {
               : new TaskBoardOperationError({ reason: "invalid_data", message: String(cause) }),
         });
         if (outcome.tasks === existingTasks) return outcome.result;
-        if (yield* writeDatabase(project, outcome.tasks, database.sha)) return outcome.result;
+        if (yield* writeDatabase(project, outcome.tasks, database.sha)) {
+          yield* announceTransitions(existingTasks, outcome.tasks);
+          return outcome.result;
+        }
       }
       return yield* new TaskBoardReadError({
         reason: "request_failed",
@@ -1417,7 +1464,12 @@ const make = Effect.gen(function* () {
             (candidate) => candidate.id === card.id,
           );
           return updated
-            ? { file, before: current.updatedAt, updated: { ...updated, sourceRoot: root } }
+            ? {
+                file,
+                before: current.updatedAt,
+                wasDone: current.status === "done",
+                updated: { ...updated, sourceRoot: root },
+              }
             : undefined;
         },
         catch: cardWriteFailure,
@@ -1428,7 +1480,10 @@ const make = Effect.gen(function* () {
           message: "Task not found after the update.",
         });
       }
-      const { file, before, updated } = written;
+      const { file, before, wasDone, updated } = written;
+      if (!wasDone && updated.status === "done") {
+        yield* announce(updated, input.actor, input.agent !== undefined, now);
+      }
       const project = updated.shared === true ? mirrorTarget(projects, updated.projectSlug) : null;
       if (!project) {
         return updated.sharedSync === "pending"
@@ -1670,6 +1725,7 @@ const make = Effect.gen(function* () {
     inboxDrop,
     inboxUndo,
     share,
+    completions: SubscriptionRef.changes(recentCompletions),
   });
 });
 

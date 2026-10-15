@@ -2792,6 +2792,7 @@ const layerWsRpc = (
           withTaskBoardProject(input.projectId, (project) => taskBoard.complete(project, input)),
         [WS_METHODS.taskBoardUpdate]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.update(project, input)),
+        [WS_METHODS.taskBoardSubscribeCompletions]: () => taskBoard.completions,
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
         [WS_METHODS.devPreviewStart]: (input) =>
