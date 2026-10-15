@@ -4,6 +4,7 @@ import { resolveCommandPath, resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
+import type * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
@@ -21,6 +22,9 @@ import { withClaudeUserBinOnPath } from "./Drivers/ClaudeExecutable.ts";
 
 const DRIVER = ProviderDriverKind.make("claudeAgent");
 const MESSAGE_TAIL = 400;
+const VERSION_TIMEOUT = "20 seconds";
+const INSTALL_TIMEOUT = "3 minutes";
+const OUTPUT_GRACE = "2 seconds";
 
 export class ClaudeInstallationError extends Schema.TaggedError<ClaudeInstallationError>()(
   "ClaudeInstallationError",
@@ -113,7 +117,7 @@ export const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(functi
    * launcher cannot start without a shell, so resolve it first. Spawn
    * defects become failures, so callers can show a plain message.
    */
-  const run = (command: string, args: ReadonlyArray<string>) =>
+  const run = (command: string, args: ReadonlyArray<string>, limit: Duration.Input) =>
     Effect.scoped(
       Effect.gen(function* () {
         const resolved = yield* resolveSpawnCommand(command, args, { env }).pipe(
@@ -123,17 +127,33 @@ export const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(functi
           Effect.provideService(Path.Path, path),
         );
         const child = yield* spawner.spawn(
-          ChildProcess.make(resolved.command, resolved.args, { env, shell: resolved.shell }),
+          ChildProcess.make(resolved.command, resolved.args, {
+            env,
+            shell: resolved.shell,
+            stdin: "ignore",
+          }),
         );
-        const [stdout, stderr, exitCode] = yield* Effect.all(
-          [
-            child.stdout.pipe(Stream.decodeText(), Stream.mkString),
-            child.stderr.pipe(Stream.decodeText(), Stream.mkString),
-            child.exitCode,
-          ],
-          { concurrency: "unbounded" },
-        );
-        return { stdout, stderr, exitCode: Number(exitCode) };
+        const collect = (stream: Stream.Stream<Uint8Array, unknown>) =>
+          stream.pipe(
+            Stream.decodeText(),
+            Stream.mkString,
+            Effect.orElseSucceed(() => ""),
+          );
+        const stdout = yield* Effect.forkScoped(collect(child.stdout));
+        const stderr = yield* Effect.forkScoped(collect(child.stderr));
+        const exitCode = yield* child.exitCode.pipe(Effect.timeout(limit));
+        // A helper the installer leaves running can keep the pipes open, so
+        // wait for the output only briefly after the process has exited.
+        const drain = (fiber: Fiber.Fiber<string>) =>
+          Fiber.join(fiber).pipe(
+            Effect.timeout(OUTPUT_GRACE),
+            Effect.orElseSucceed(() => ""),
+          );
+        return {
+          stdout: yield* drain(stdout),
+          stderr: yield* drain(stderr),
+          exitCode: Number(exitCode),
+        };
       }),
     ).pipe(
       Effect.catchCause(() => Effect.fail(installationError("run", `Could not start ${command}.`))),
@@ -147,18 +167,29 @@ export const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(functi
       Effect.orElseSucceed(() => null),
     );
     if (!executablePath) return null;
-    const result = yield* run(executablePath, ["--version"]).pipe(Effect.orElseSucceed(() => null));
+    const result = yield* run(executablePath, ["--version"], VERSION_TIMEOUT).pipe(
+      Effect.orElseSucceed(() => null),
+    );
     const version = result?.exitCode === 0 ? parseClaudeVersion(result.stdout) : null;
     return version ? { executablePath, version } : null;
   });
 
   const install = Effect.fn("ClaudeInstallation.install")(function* (operationId: string) {
     const installer = claudeInstallerCommand(platform);
-    const result = yield* run(installer.command, installer.args).pipe(
-      Effect.mapError(() =>
-        installationError(
-          "install",
-          "Could not start the Claude installer. Check your internet connection, then try again.",
+    const result = yield* run(installer.command, installer.args, INSTALL_TIMEOUT).pipe(
+      Effect.catch(() =>
+        // The installer may finish its work and still not exit. Trust the result.
+        detect.pipe(
+          Effect.flatMap((found) =>
+            found
+              ? Effect.succeed({ stdout: "", stderr: "", exitCode: 0 })
+              : Effect.fail(
+                  installationError(
+                    "install",
+                    "The Claude installer took too long. Check your internet connection, then try again.",
+                  ),
+                ),
+          ),
         ),
       ),
     );
