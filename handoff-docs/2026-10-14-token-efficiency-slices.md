@@ -13,7 +13,7 @@ Resume from `handoff-docs/2026-10-14-token-efficiency-slices.md`. Read it fully,
 
 Tested and typechecked, but not yet seen in the live app. Look when a chat shows the case:
 
-1. [ ] **Trim MCP rows** (usage card): each server should show its share of the provider's loaded "MCP tools" total with `~` (about 3.3k for `t3-code`, 1.9k for `claude_ai_Gmail` in the screenshot chat), not the full schema size. Needs a chat where the breakdown has a provider split (source `provider` or `mixed`).
+1. [x] (seen live 2026-10-14: `MCP t3-code ~3.9k` against 6.9k MCP tools) **Trim MCP rows** (usage card): each server should show its share of the provider's loaded "MCP tools" total with `~` (about 3.3k for `t3-code`, 1.9k for `claude_ai_Gmail` in the screenshot chat), not the full schema size. Needs a chat where the breakdown has a provider split (source `provider` or `mixed`).
 2. **Waste list** (usage card): shows after a file is read 3 or more times, a tool result of 20,000 or more tokens, or the same call failing 3 or more times.
 3. **Cache-break warning** (token popover): shows when hits fall 40 points or more from a prior turn above 50%, on 5,000 or more input tokens.
 
