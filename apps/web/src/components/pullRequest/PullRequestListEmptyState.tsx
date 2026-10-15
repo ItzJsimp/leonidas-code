@@ -103,9 +103,9 @@ export function PullRequestListEmptyState({
       <Empty>
         <BranchMark joined={false} />
         <EmptyHeader>
-          <EmptyTitle>No projects in this workspace</EmptyTitle>
+          <EmptyTitle>No projects yet</EmptyTitle>
           <EmptyDescription>
-            Add a project, and the pull requests from its repository appear here.
+            Add a project. The pull requests of its repository show here.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
@@ -124,7 +124,7 @@ export function PullRequestListEmptyState({
     return (
       <PullRequestListGhost
         rows={5}
-        caption={`Searching every host for “${query.length > 48 ? `${query.slice(0, 48)}…` : query}”`}
+        caption={`Searching every code service for “${query.length > 48 ? `${query.slice(0, 48)}…` : query}”`}
       />
     );
   }
@@ -139,7 +139,8 @@ export function PullRequestListEmptyState({
             Nothing matches “{query.length > 48 ? `${query.slice(0, 48)}…` : query}”
           </EmptyTitle>
           <EmptyDescription>
-            The hosts were searched for it. Try fewer words, or search by number, author or branch.
+            Leonidas Code searched your code services. Try fewer words, or search by number, author
+            or branch.
           </EmptyDescription>
         </EmptyHeader>
         <div className="flex flex-wrap justify-center gap-2">
@@ -162,11 +163,11 @@ export function PullRequestListEmptyState({
     <Empty>
       <BranchMark joined={false} />
       <EmptyHeader>
-        <EmptyTitle>{filtered ? "Nothing under these filters" : "No pull requests"}</EmptyTitle>
+        <EmptyTitle>{filtered ? "Nothing matches these filters" : "No pull requests"}</EmptyTitle>
         <EmptyDescription>
           {filtered
-            ? "Widen the state, involvement or project filter to see more."
-            : "Pull requests from every project in this workspace appear here."}
+            ? "Change the state, involvement or project filter to see more."
+            : "Pull requests from all your projects show here."}
         </EmptyDescription>
       </EmptyHeader>
       <div className="flex flex-wrap justify-center gap-2">

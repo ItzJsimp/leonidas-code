@@ -28,7 +28,7 @@ import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 function errorMessage(error: unknown): string {
   return error instanceof Error && error.message.trim()
     ? error.message
-    : "The ACP could not be prepared.";
+    : "Could not set up this AI service. Try again.";
 }
 
 interface AcpRegistrySearchStepProps {
@@ -139,7 +139,7 @@ export function AcpRegistrySearchStep({
   return (
     <section className="grid gap-3" aria-labelledby="acp-registry-search-heading">
       <h3 className="sr-only" id="acp-registry-search-heading">
-        Choose an agent
+        Choose an AI service
       </h3>
 
       <form className="flex flex-wrap items-center gap-2" onSubmit={handleSearch}>
@@ -148,7 +148,7 @@ export function AcpRegistrySearchStep({
             <SearchIcon />
           </InputGroupAddon>
           <InputGroupInput
-            aria-label="Search ACP Registry"
+            aria-label="Search the AI service list"
             disabled={preparingId !== null}
             onChange={(event) => {
               const nextQuery = event.currentTarget.value;
@@ -160,7 +160,7 @@ export function AcpRegistrySearchStep({
                 setSubmittedQuery(nextQuery.trim());
               }, 300);
             }}
-            placeholder="Search agents…"
+            placeholder="Search AI services…"
             size="sm"
             type="search"
             value={query}
@@ -173,7 +173,7 @@ export function AcpRegistrySearchStep({
           type="button"
           variant="ghost-muted"
         >
-          Enter manually
+          Enter details by hand
         </Button>
         {onLocalConfiguration ? (
           <Button
@@ -183,18 +183,18 @@ export function AcpRegistrySearchStep({
             type="button"
             variant="outline"
           >
-            Local ACP command
+            Use a command on this computer
           </Button>
         ) : null}
       </form>
 
       <div className="sr-only" role="status">
         {isInitialSearch
-          ? "Searching the ACP Registry."
+          ? "Searching the AI service list."
           : isRefreshing
-            ? "Refreshing ACP Registry results."
+            ? "Refreshing the AI service list."
             : results
-              ? `${resultCount} compatible ${resultCount === 1 ? "agent" : "agents"} found.`
+              ? `${resultCount} compatible ${resultCount === 1 ? "AI service" : "AI services"} found.`
               : ""}
       </div>
 
@@ -206,15 +206,15 @@ export function AcpRegistrySearchStep({
 
       {isInitialSearch ? (
         <div className="flex min-h-20 items-center justify-center text-sm text-muted-foreground">
-          Searching the registry...
+          Searching the AI service list...
         </div>
       ) : null}
 
       {results ? (
         results.length === 0 ? (
           <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed px-4 text-center">
-            <p className="text-sm font-medium">No compatible agents found</p>
-            <p className="mt-1 text-xs text-muted-foreground">Try a broader search.</p>
+            <p className="text-sm font-medium">No compatible AI services found</p>
+            <p className="mt-1 text-xs text-muted-foreground">Try a shorter search word.</p>
           </div>
         ) : (
           <ScrollArea scrollFade className="max-h-64">

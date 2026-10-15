@@ -77,7 +77,7 @@ describe("saved stack navigation", () => {
     });
     expect(
       pullRequestStackView({ ...query, isPending: false, error: "Rate limited" }, saved),
-    ).toMatchObject({ data: saved, isFresh: false, notice: expect.stringContaining("stale") });
+    ).toMatchObject({ data: saved, isFresh: false, notice: expect.stringContaining("old") });
   });
   it("prefers refreshed data and honors a successful absence", () => {
     const saved = savedPullRequestStack([link], reference);

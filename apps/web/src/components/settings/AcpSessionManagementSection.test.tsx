@@ -197,7 +197,7 @@ beforeEach(() => {
 describe("AcpSessionManagementSection", () => {
   it("lists and imports native sessions through the owning environment", async () => {
     const initial = render();
-    (findByLabel(initial, "List sessions").props.onClick as (() => void) | undefined)?.();
+    (findByLabel(initial, "Show chats").props.onClick as (() => void) | undefined)?.();
     await flushPromises();
 
     expect(commands.list).toHaveBeenCalledWith({
@@ -224,7 +224,7 @@ describe("AcpSessionManagementSection", () => {
 
   it("logs out the provider instance through the owning environment", async () => {
     const tree = render();
-    (findByLabel(tree, "Log out").props.onClick as (() => void) | undefined)?.();
+    (findByLabel(tree, "Sign out").props.onClick as (() => void) | undefined)?.();
     await flushPromises();
 
     expect(commands.logout).toHaveBeenCalledWith({
@@ -234,7 +234,7 @@ describe("AcpSessionManagementSection", () => {
   });
 
   it("deletes unimported native sessions after destructive confirmation", async () => {
-    (findByLabel(render(), "List sessions").props.onClick as (() => void) | undefined)?.();
+    (findByLabel(render(), "Show chats").props.onClick as (() => void) | undefined)?.();
     await flushPromises();
     (findByLabel(render(), "Delete").props.onClick as (() => void) | undefined)?.();
     await flushPromises();
@@ -256,7 +256,7 @@ describe("AcpSessionManagementSection", () => {
         resolveProviders = resolve;
       }),
     );
-    (findByLabel(render(), "List providers").props.onClick as (() => void) | undefined)?.();
+    (findByLabel(render(), "Show AI services").props.onClick as (() => void) | undefined)?.();
 
     const projectSelect = visitElements(
       render(),
@@ -269,7 +269,7 @@ describe("AcpSessionManagementSection", () => {
   });
 
   it("lists, saves, and disables configurable ACP providers", async () => {
-    (findByLabel(render(), "List providers").props.onClick as (() => void) | undefined)?.();
+    (findByLabel(render(), "Show AI services").props.onClick as (() => void) | undefined)?.();
     await flushPromises();
 
     expect(commands.listProviders).toHaveBeenCalledWith({
@@ -291,7 +291,7 @@ describe("AcpSessionManagementSection", () => {
       },
     });
 
-    (findByLabel(render(), "Disable").props.onClick as (() => void) | undefined)?.();
+    (findByLabel(render(), "Turn off").props.onClick as (() => void) | undefined)?.();
     await flushPromises();
     expect(commands.disableProvider).toHaveBeenCalledWith({
       environmentId,
@@ -302,7 +302,7 @@ describe("AcpSessionManagementSection", () => {
 
 it("imports with task access even when provider configuration is read-only", async () => {
   grants.scopes.delete("providers:manage");
-  (findByLabel(render(true), "List sessions").props.onClick as () => void)();
+  (findByLabel(render(true), "Show chats").props.onClick as () => void)();
   await flushPromises();
   (findByLabel(render(true), "Import").props.onClick as () => void)();
   await flushPromises();
@@ -311,7 +311,7 @@ it("imports with task access even when provider configuration is read-only", asy
 
 it("does not import with provider management alone", async () => {
   grants.scopes.delete("orchestration:operate");
-  (findByLabel(render(), "List sessions").props.onClick as () => void)();
+  (findByLabel(render(), "Show chats").props.onClick as () => void)();
   await flushPromises();
   (findByLabel(render(), "Import").props.onClick as () => void)();
   await flushPromises();
@@ -319,7 +319,7 @@ it("does not import with provider management alone", async () => {
 });
 
 it("rechecks task access after confirming deletion", async () => {
-  (findByLabel(render(), "List sessions").props.onClick as () => void)();
+  (findByLabel(render(), "Show chats").props.onClick as () => void)();
   await flushPromises();
   dialogs.confirm.mockImplementationOnce(async () => {
     grants.scopes.delete("orchestration:operate");

@@ -177,7 +177,7 @@ export function PreviewView({
     : null;
   const open = useAtomCommand(previewEnvironment.open);
   const closePreview = useAtomCommand(previewEnvironment.close, "preview close");
-  const environmentLabel = useEnvironment(threadRef.environmentId)?.label ?? "the environment";
+  const environmentLabel = useEnvironment(threadRef.environmentId)?.label ?? "the computer";
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const serverBrowser = useEnvironmentSupportsServerBrowser(threadRef.environmentId);
   const resize = useAtomCommand(previewEnvironment.resize, "preview viewport resize");
@@ -283,7 +283,7 @@ export function PreviewView({
         if (error instanceof BrowserSettingsReadError) {
           toastManager.add({
             type: "error",
-            title: "Unable to open browser",
+            title: "Could not open browser",
             description: error.message,
           });
         }
@@ -342,8 +342,8 @@ export function PreviewView({
         const error = squashAtomCommandFailure(result);
         toastManager.add({
           type: "error",
-          title: "Unable to change the browser tab",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          title: "Could not change the browser tab",
+          description: error instanceof Error ? error.message : "Try again.",
         });
         return;
       }
@@ -400,8 +400,8 @@ export function PreviewView({
         const error = squashAtomCommandFailure(result);
         toastManager.add({
           type: "error",
-          title: "Unable to resize browser viewport",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          title: "Could not resize browser viewport",
+          description: error instanceof Error ? error.message : "Try again.",
         });
         throw error;
       }
@@ -480,8 +480,8 @@ export function PreviewView({
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         type: "error",
-        title: "Unable to move the browser tab",
-        description: error instanceof Error ? error.message : "An error occurred.",
+        title: "Could not move the browser tab",
+        description: error instanceof Error ? error.message : "Try again.",
       });
       return;
     }
@@ -554,8 +554,8 @@ export function PreviewView({
     void operation(runtimeTabId).catch((error) => {
       toastManager.add({
         type: "error",
-        title: "Unable to update popped-out preview",
-        description: error instanceof Error ? error.message : "An error occurred.",
+        title: "Could not update popped-out preview",
+        description: error instanceof Error ? error.message : "Try again.",
       });
     });
   }, [desktopOverlay?.pictureInPicture, runtimeTabId]);
@@ -577,8 +577,8 @@ export function PreviewView({
                   toastId,
                   stackedThreadToast({
                     type: "error",
-                    title: "Unable to copy recording path",
-                    description: "Clipboard API unavailable.",
+                    title: "Could not copy recording path",
+                    description: "Your computer blocked copying. Try again.",
                     actionProps: revealAction,
                   }),
                 );
@@ -599,8 +599,8 @@ export function PreviewView({
                     toastId,
                     stackedThreadToast({
                       type: "error",
-                      title: "Unable to copy recording path",
-                      description: error instanceof Error ? error.message : "An error occurred.",
+                      title: "Could not copy recording path",
+                      description: error instanceof Error ? error.message : "Try again.",
                       actionProps: revealAction,
                     }),
                   );
@@ -649,8 +649,8 @@ export function PreviewView({
           (error) => {
             toastManager.add({
               type: "error",
-              title: "Unable to stop recording",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              title: "Could not stop recording",
+              description: error instanceof Error ? error.message : "Try again.",
             });
           },
         );
@@ -658,11 +658,11 @@ export function PreviewView({
       }
       if (record) {
         void startBrowserRecording(runtimeTabId, threadRef, tabId).catch((error) => {
-          const description = error instanceof Error ? error.message : "An error occurred.";
+          const description = error instanceof Error ? error.message : "Try again.";
           if (isBrowserRecordingStartCancelledError(error)) return;
           toastManager.add({
             type: "error",
-            title: "Unable to start recording",
+            title: "Could not start recording",
             description,
           });
         });
@@ -718,8 +718,8 @@ export function PreviewView({
             if (!navigator.clipboard?.writeText) {
               updateScreenshotToast(
                 "error",
-                "Unable to copy screenshot path",
-                "Clipboard API unavailable.",
+                "Could not copy screenshot path",
+                "Your computer blocked copying. Try again.",
               );
               return;
             }
@@ -736,8 +736,8 @@ export function PreviewView({
               (error) => {
                 updateScreenshotToast(
                   "error",
-                  "Unable to copy screenshot path",
-                  error instanceof Error ? error.message : "An error occurred.",
+                  "Could not copy screenshot path",
+                  error instanceof Error ? error.message : "Try again.",
                 );
               },
             );
@@ -756,8 +756,8 @@ export function PreviewView({
               (error) => {
                 updateScreenshotToast(
                   "error",
-                  "Unable to copy screenshot",
-                  error instanceof Error ? error.message : "An error occurred.",
+                  "Could not copy screenshot",
+                  error instanceof Error ? error.message : "Try again.",
                 );
               },
             );
@@ -792,8 +792,8 @@ export function PreviewView({
         (error) => {
           toastManager.add({
             type: "error",
-            title: "Unable to capture screenshot",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            title: "Could not capture screenshot",
+            description: error instanceof Error ? error.message : "Try again.",
           });
         },
       );
@@ -853,10 +853,10 @@ export function PreviewView({
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Could not capture the picked element",
+              title: "Could not capture the element you picked",
               // The send path reports its own outcome, so only say what this
               // handler knows: the crop was dropped.
-              description: "The annotation was kept without the screenshot.",
+              description: "We kept the note, but without the screenshot.",
             }),
           );
         }
@@ -998,7 +998,9 @@ export function PreviewView({
         // user wouldn't be able to actually click anything underneath).
         pickDisabled={!tabId || isUnreachable}
         pickDisabledReason={
-          isUnreachable ? "Page didn't load — pick unavailable until the page renders" : undefined
+          isUnreachable
+            ? "The page did not load. You cannot pick an element until the page loads."
+            : undefined
         }
         leadingActions={
           // Only when it differs from the default: labelling every tab

@@ -107,21 +107,22 @@ const ACTION_FAILURE_LABELS: Record<PullRequestAction, string> = {
 /** What to try, for the times the host says only that it refused. */
 const ACTION_FAILURE_HINTS: Record<PullRequestAction, string> = {
   merge:
-    "The host refused the merge. Check that you have write access, that the checks it requires have passed, and that the branch is not conflicting.",
-  ready: "The host refused it. Check that you have write access to this repository.",
-  draft: "The host refused it. Check that you have write access to this repository.",
-  close: "The host refused it. Check that you have write access, or that you opened it.",
+    "The service refused the merge. Check that you have write access, that the checks it requires have passed, and that the branch is not conflicting.",
+  ready: "The service refused it. Check that you have write access to this repository.",
+  draft: "The service refused it. Check that you have write access to this repository.",
+  close: "The service refused it. Check that you have write access, or that you opened it.",
   reopen:
-    "The host refused it. Check that you have write access, and that the branch still exists.",
+    "The service refused it. Check that you have write access, and that the branch still exists.",
   "update-branch":
-    "The host refused it. Check that you have write access, and that the base branch has not diverged in a way the host cannot merge.",
+    "The service refused it. Check that you have write access, and that the base branch has not diverged in a way the service cannot merge.",
   "enable-auto-merge":
-    "The host refused it. Check that auto-merge is enabled for this repository and that you have write access.",
-  "disable-auto-merge": "The host refused it. Check that you have write access to this repository.",
+    "The service refused it. Check that auto-merge is enabled for this repository and that you have write access.",
+  "disable-auto-merge":
+    "The service refused it. Check that you have write access to this repository.",
   revert:
-    "The host refused it. Check that you have write access and that this pull request was merged on the host.",
+    "The service refused it. Check that you have write access and that this pull request was merged on the code service.",
   "approve-workflows":
-    "The host refused it. Check that you have Actions write access and that these workflow runs are still awaiting approval.",
+    "The service refused it. Check that you have Actions write access and that these workflow runs are still awaiting approval.",
 };
 
 /**
@@ -329,20 +330,20 @@ export function usePullRequestHandoffs({
     if (opened === null) {
       toastManager.add({
         type: "error",
-        title: "Could not open a thread",
-        description: "Try again from the project, or open a thread first.",
+        title: "Could not open a chat",
+        description: "Open a chat in the project first. Then try again.",
       });
       return;
     }
     toastManager.add({
       type: "success",
-      title: "Asked in a thread",
+      title: "Asked in a chat",
       // "Ask" leaves the composer empty on purpose, so saying the question is in it would send
       // the reader looking for something that is not there. The chips are what landed.
       description:
         task.prompt.length > 0
-          ? "The question is in the composer — read it over, then send."
-          : "The pull request is in the composer — type your question, then send.",
+          ? "The question is in the message box. Read it, then send it."
+          : "The pull request is in the message box. Type your question, then send it.",
     });
   };
 
@@ -364,7 +365,7 @@ export function usePullRequestHandoffs({
     // never expires, and an explicit one would survive the update and pin the result on screen.
     const toastId = toastManager.add({
       type: "loading",
-      title: "Preparing the pull request checkout...",
+      title: "Getting the pull request branch ready...",
     });
     const projectRef = scopeProjectRef(environmentId, detail.projectId);
     // The thread is opened before the checkout rather than after it, because the project's setup
@@ -381,8 +382,8 @@ export function usePullRequestHandoffs({
       // working tree than to prepare a worktree nobody asked for.
       toastManager.update(toastId, {
         type: "error",
-        title: "Could not open a thread for the checkout",
-        description: "Try again from the project, or open a thread first.",
+        title: "Could not open a chat for the branch",
+        description: "Open a chat in the project first. Then try again.",
       });
       return;
     }
@@ -399,7 +400,7 @@ export function usePullRequestHandoffs({
         prepareThread.error instanceof Error ? prepareThread.error.message : null;
       toastManager.update(toastId, {
         type: "error",
-        title: "Could not prepare the pull request checkout",
+        title: "Could not get the pull request branch ready",
         ...(detailMessage ? { description: detailMessage } : {}),
       });
       return;
@@ -421,8 +422,8 @@ export function usePullRequestHandoffs({
       // outcome worth stopping for, since it reads as success and is not.
       toastManager.update(toastId, {
         type: "error",
-        title: "Checked out, but the thread stayed where it was",
-        description: `The checkout is ready on \`${prepared.value.branch}\`. Point a thread at it from the branch picker, then ask again.`,
+        title: "Branch ready, but the chat did not switch to it",
+        description: `The branch \`${prepared.value.branch}\` is ready. Switch the chat to it with the branch picker, then ask again.`,
       });
       return;
     }
@@ -434,9 +435,9 @@ export function usePullRequestHandoffs({
     // success, because everything else about the handoff did happen.
     const staleCheckoutToast = {
       type: "warning",
-      title: "Checked out, but not on the latest commits",
+      title: "Branch ready, but not on the latest commits",
       description:
-        "The checkout could not be moved onto the pull request's latest commits, so the code there is older than the pull request. Uncommitted work or local commits keep it where it is.",
+        "Leonidas Code could not update the branch to the latest commits of the pull request. The code there is older than the pull request. Unsaved work or local commits stop the update.",
     } as const;
     if (task === null) {
       toastManager.update(
@@ -444,11 +445,11 @@ export function usePullRequestHandoffs({
         prepared.value.isOnPullRequestHead
           ? {
               type: "success",
-              title: mode === "local" ? "Checked out here" : "Checked out",
+              title: mode === "local" ? "Branch ready here" : "Branch ready",
               description:
                 mode === "local"
-                  ? "This repository is on the pull request's branch, with a thread open on it."
-                  : "The pull request is in its own worktree, with a thread open on it.",
+                  ? "This project folder is on the branch of the pull request, with a chat open on it."
+                  : "The pull request is in its own separate copy, with a chat open on it.",
             }
           : staleCheckoutToast,
       );
@@ -460,8 +461,8 @@ export function usePullRequestHandoffs({
       prepared.value.isOnPullRequestHead
         ? {
             type: "success",
-            title: "Checkout ready",
-            description: "The task is in the composer — read it over, then send.",
+            title: "Branch ready",
+            description: "The task is in the message box. Read it, then send it.",
           }
         : staleCheckoutToast,
     );

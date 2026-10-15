@@ -81,7 +81,9 @@ function EnabledPullRequestThreadLinks({
     } catch (error) {
       toastManager.add({
         type: "error",
-        title: remove ? "Could not unlink the pull request" : "Could not link the pull request",
+        title: remove
+          ? "Could not unlink the pull request. Try again."
+          : "Could not link the pull request. Try again.",
         description: error instanceof Error ? error.message : String(error),
       });
       return;
@@ -104,8 +106,8 @@ function EnabledPullRequestThreadLinks({
     linking.mode === "multiple" ? ((relations.data ?? lastRelations)?.threads ?? []) : [];
   const linkedThreadsLabel =
     linkedThreads.length > 0
-      ? `Linked from ${linkedThreads.length} ${linkedThreads.length === 1 ? "thread" : "threads"}`
-      : "Linked threads";
+      ? `Linked from ${linkedThreads.length} ${linkedThreads.length === 1 ? "chat" : "chats"}`
+      : "Linked chats";
   return (
     <>
       {display === "count" && (linkedThreads.length > 0 || relations.error !== null) ? (
@@ -150,16 +152,16 @@ function EnabledPullRequestThreadLinks({
             <PullRequestGlyph.link aria-hidden className="size-3.5" />
           )}
           {linkedHere
-            ? "Unlink from this thread"
+            ? "Unlink from this chat"
             : currentThreadRef
-              ? "Link to this thread"
-              : "Link to thread"}
+              ? "Link to this chat"
+              : "Link to chat"}
         </MenuItem>
       ) : null}
       {display === "picker" ? (
         <Dialog open onOpenChange={onPickerOpenChange}>
           <DialogPopup className="max-w-md" showCloseButton={false}>
-            <DialogTitle className="sr-only">Link pull request to a thread</DialogTitle>
+            <DialogTitle className="sr-only">Link pull request to a chat</DialogTitle>
             <ThreadPicker
               environmentId={environmentId}
               url={url}
@@ -205,12 +207,12 @@ function ThreadPicker({
     )
     .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
-    <Command mode="none" value={query} onValueChange={setQuery} aria-label="Choose a thread">
-      <CommandInput placeholder="Search threads or projects..." disabled={pending} />
+    <Command mode="none" value={query} onValueChange={setQuery} aria-label="Choose a chat">
+      <CommandInput placeholder="Search chats or projects..." disabled={pending} />
       <CommandList className="max-h-80 overflow-y-auto">
         {candidates.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-            No active threads found.
+            No active chats found. Start a chat first.
           </div>
         ) : (
           candidates.map((thread) => {

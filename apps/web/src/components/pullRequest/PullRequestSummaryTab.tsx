@@ -385,7 +385,7 @@ export function PullRequestSummaryTab({
   checksStale = false,
   activityError,
   pendingFinding,
-  fixFindingLabel = "Fix in a thread",
+  fixFindingLabel = "Fix in a chat",
   fixCheckLabel = "Fix",
   onFixFinding,
   onRefresh,
@@ -498,7 +498,7 @@ export function PullRequestSummaryTab({
   const openCheck = (url: string) => {
     void openLink(url).catch((error: unknown) => {
       console.error(error);
-      toastManager.add({ type: "error", title: "Unable to open check details" });
+      toastManager.add({ type: "error", title: "Could not open the check details" });
     });
   };
 
@@ -527,7 +527,7 @@ export function PullRequestSummaryTab({
     const result = await update({ environmentId, input: { ...reference, body } });
     setBodySaving(false);
     if (result._tag === "Failure") {
-      toastManager.add({ type: "error", title: "Could not save the description" });
+      toastManager.add({ type: "error", title: "Could not save the description. Try again." });
       return;
     }
     setBodyScope(null);
@@ -554,7 +554,7 @@ export function PullRequestSummaryTab({
       });
       setCommentSaving(false);
       if (result._tag === "Failure") {
-        toastManager.add({ type: "error", title: "Could not save the comment" });
+        toastManager.add({ type: "error", title: "Could not save the comment. Try again." });
         return;
       }
       setCommentScope(null);
@@ -717,7 +717,7 @@ export function PullRequestSummaryTab({
                         </TooltipTrigger>
                         <TooltipPopup side="bottom">
                           {entry.outcome
-                            ? `${named} — ${
+                            ? `${named}: ${
                                 entry.stale
                                   ? pullRequestReviewOutcomeStaleLabel(entry.outcome)
                                   : pullRequestReviewOutcomeLabel(entry.outcome)

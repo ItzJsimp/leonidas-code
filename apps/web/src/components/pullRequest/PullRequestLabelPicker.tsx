@@ -73,7 +73,7 @@ export function PullRequestLabelPicker({
           : `Could not put ${candidate.name} on`,
         description: readableFailure(
           squashAtomCommandFailure(result),
-          "The host refused it. Check that you have triage access on this repository.",
+          "The service refused it. Check that you have triage access on this repository.",
         ),
       });
       return;
@@ -96,9 +96,9 @@ export function PullRequestLabelPicker({
       candidates={candidates}
       emptyLabel="This repository has no labels."
       noMatchLabel="No label matches that."
-      errorLabel="The labels could not be read."
+      errorLabel="Could not load the labels. Try again."
       truncated={candidatesQuery.data?.truncated === true}
-      truncatedLabel="This repository has more labels than are listed here. Apply the rest on the host."
+      truncatedLabel="This repository has more labels than are listed here. Apply the rest on the website of the service."
       candidateKey={(candidate) => candidate.name}
       disabled={pending !== null}
       onSelect={(candidate) => void toggle(candidate)}
