@@ -5,6 +5,7 @@ import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 
+import type { DesktopServerExposureMode } from "@t3tools/contracts";
 import * as NetService from "@t3tools/shared/Net";
 import * as Crypto from "effect/Crypto";
 import * as Electron from "electron";
@@ -41,7 +42,17 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 
 const DEFAULT_DESKTOP_BACKEND_PORT = 3773;
 const MAX_TCP_PORT = 65_535;
-const DESKTOP_BACKEND_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::"] as const;
+// Probing 0.0.0.0 or :: opens a listener on every interface, which makes Windows
+// show its Firewall prompt on first launch. Local-only mode probes loopback only.
+const DESKTOP_LOCAL_PORT_PROBE_HOSTS = ["127.0.0.1"] as const;
+const DESKTOP_NETWORK_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::"] as const;
+
+export const resolveDesktopBackendPortProbeHosts = (
+  exposureMode: DesktopServerExposureMode,
+): readonly string[] =>
+  exposureMode === "network-accessible"
+    ? DESKTOP_NETWORK_PORT_PROBE_HOSTS
+    : DESKTOP_LOCAL_PORT_PROBE_HOSTS;
 
 const makeDesktopRunId = Crypto.Crypto.pipe(
   Effect.flatMap((crypto) => crypto.randomUUIDv4),
@@ -78,6 +89,7 @@ const { logInfo: logStartupInfo, logError: logStartupError } =
 
 const resolveDesktopBackendPort = Effect.fn("resolveDesktopBackendPort")(function* (
   configuredPort: Option.Option<number>,
+  probeHosts: readonly string[],
 ) {
   if (Option.isSome(configuredPort)) {
     return {
@@ -90,7 +102,7 @@ const resolveDesktopBackendPort = Effect.fn("resolveDesktopBackendPort")(functio
   for (let port = DEFAULT_DESKTOP_BACKEND_PORT; port <= MAX_TCP_PORT; port += 1) {
     let availableOnEveryHost = true;
 
-    for (const host of DESKTOP_BACKEND_PORT_PROBE_HOSTS) {
+    for (const host of probeHosts) {
       if (!(yield* net.canListenOnHost(port, host))) {
         availableOnEveryHost = false;
         break;
@@ -108,7 +120,7 @@ const resolveDesktopBackendPort = Effect.fn("resolveDesktopBackendPort")(functio
   return yield* new DesktopBackendPortUnavailableError({
     startPort: DEFAULT_DESKTOP_BACKEND_PORT,
     maxPort: MAX_TCP_PORT,
-    hosts: DESKTOP_BACKEND_PORT_PROBE_HOSTS,
+    hosts: probeHosts,
   });
 });
 
@@ -218,7 +230,10 @@ const bootstrap = Effect.gen(function* () {
     return yield* new DesktopDevelopmentBackendPortRequiredError();
   }
 
-  const backendPortSelection = yield* resolveDesktopBackendPort(environment.configuredBackendPort);
+  const backendPortSelection = yield* resolveDesktopBackendPort(
+    environment.configuredBackendPort,
+    resolveDesktopBackendPortProbeHosts(settings.serverExposureMode),
+  );
   const backendPort = backendPortSelection.port;
   yield* logBootstrapInfo(
     backendPortSelection.selectedByScan
