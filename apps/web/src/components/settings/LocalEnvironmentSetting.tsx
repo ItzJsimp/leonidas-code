@@ -32,7 +32,9 @@ export function LocalEnvironmentSetting() {
     try {
       await setEnabled(!enabled);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Couldn't change this setting.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not change this setting. Try again.",
+      );
       setIsUpdating(false);
     }
   };
@@ -43,15 +45,15 @@ export function LocalEnvironmentSetting() {
         {...searchableSetting("local-environment")}
         description={
           enabled
-            ? "Run agents on this computer. Turn off to use Leonidas Code only with remote environments."
-            : "Turned off. Agents only run in remote environments."
+            ? "Run AI work on this computer. Turn this off to use Leonidas Code only with other computers."
+            : "Turned off. AI work runs only on other computers."
         }
         control={
           <Switch
             checked={enabled}
             disabled={isUpdating}
             onCheckedChange={() => setConfirmOpen(true)}
-            aria-label="Local environment"
+            aria-label="This computer"
           />
         }
       />
@@ -66,12 +68,12 @@ export function LocalEnvironmentSetting() {
         <AlertDialogPopup>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {enabled ? "Turn off local environment?" : "Turn on local environment?"}
+              {enabled ? "Turn off AI work on this computer?" : "Turn on AI work on this computer?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {enabled
-                ? "Leonidas Code will restart without running a server on this computer. Any agents and terminals running here will stop, and other devices will no longer be able to connect to this computer. Your projects, history, and remote environments are unaffected."
-                : "Leonidas Code will restart and start running a server on this computer again."}
+                ? "Leonidas Code will restart and stop AI work on this computer. Chats and terminals that run here will stop. Other devices cannot connect to this computer. Your projects, history, and other computers stay as they are."
+                : "Leonidas Code will restart and run AI work on this computer again."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error ? <p className="px-6 pb-4 text-sm text-destructive">{error}</p> : null}

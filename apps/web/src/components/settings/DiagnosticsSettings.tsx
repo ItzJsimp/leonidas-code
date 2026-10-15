@@ -253,7 +253,7 @@ function formatProcessName(command: string): string {
 
 function formatProcessType(process: ServerProcessDiagnosticsEntry): string {
   if (process.depth > 0) return "Subprocess";
-  if (/\b(codex|claude|opencode|cursor)\b/i.test(process.command)) return "Agent";
+  if (/\b(codex|claude|opencode|cursor)\b/i.test(process.command)) return "AI";
   return "Process";
 }
 
@@ -378,7 +378,7 @@ function ProcessDiagnosticsTable({
             {visibleProcesses.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-4 text-xs text-muted-foreground sm:px-5">
-                  {emptyLabel ?? "No live descendant processes found."}
+                  {emptyLabel ?? "No running helper processes. Click Refresh to check again."}
                 </td>
               </tr>
             ) : null}
@@ -804,7 +804,9 @@ export function DiagnosticsSettingsPanel() {
       if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
         const error = squashAtomCommandFailure(result);
         setOpenLogsDirectoryError(
-          error instanceof Error ? error.message : "Unable to open logs folder.",
+          error instanceof Error
+            ? error.message
+            : "Could not open the logs folder. Check that the folder exists and try again.",
         );
       }
     })();
@@ -847,15 +849,16 @@ export function DiagnosticsSettingsPanel() {
         let confirmed = false;
         try {
           confirmed = await ensureLocalApi().dialogs.confirm(
-            `Send SIGKILL to process ${pid}? This cannot be handled by the process.`,
+            `Force process ${pid} to stop (SIGKILL)? The process cannot refuse or save its work.`,
             { variant: "destructive" },
           );
         } catch (error) {
           clearSignaling();
           toastManager.add({
             type: "error",
-            title: "Could not confirm signal",
-            description: error instanceof Error ? error.message : `Failed to send ${signal}.`,
+            title: "Could not confirm the signal",
+            description:
+              error instanceof Error ? error.message : `Could not send ${signal}. Try again.`,
           });
           return;
         }
@@ -892,7 +895,8 @@ export function DiagnosticsSettingsPanel() {
             toastManager.add({
               type: "error",
               title: `Could not send ${signal}`,
-              description: error instanceof Error ? error.message : `Failed to send ${signal}.`,
+              description:
+                error instanceof Error ? error.message : `Could not send ${signal}. Try again.`,
             });
           }
           return;
@@ -905,7 +909,7 @@ export function DiagnosticsSettingsPanel() {
               type: "info",
               title: "Process already exited",
               description:
-                "The process is not a child of the Leonidas Server. It might already have exited.",
+                "This process does not belong to Leonidas Code. It may have stopped already.",
             });
             return;
           }
@@ -913,7 +917,7 @@ export function DiagnosticsSettingsPanel() {
           toastManager.add({
             type: "error",
             title: `Could not send ${signal}`,
-            description: message ?? `Failed to send ${signal}.`,
+            description: message ?? `Could not send ${signal}. Try again.`,
           });
           return;
         }
@@ -937,7 +941,7 @@ export function DiagnosticsSettingsPanel() {
       <SettingsPageContainer>
         <p className="text-sm text-muted-foreground">
           {environmentId === null
-            ? "Connect an environment to see diagnostics."
+            ? "Connect a computer to see diagnostics."
             : diagnosticsAccess.isPending
               ? "Checking diagnostics access…"
               : diagnosticsAccess.error}
@@ -951,7 +955,7 @@ export function DiagnosticsSettingsPanel() {
       <ResourceTelemetryDiagnostics environmentId={environmentId} />
 
       <SettingsSection
-        title="Live Processes"
+        title="Running processes"
         headerAction={
           <div className="flex items-center gap-1.5">
             <DiagnosticsLastChecked checkedAt={processData?.readAt ?? null} />
@@ -965,21 +969,21 @@ export function DiagnosticsSettingsPanel() {
       >
         <StatsGrid>
           <StatBlock
-            label="Child Processes"
+            label="Helper processes"
             value={processData ? formatCount(processData.processCount) : "..."}
           />
           <StatBlock
             label="CPU"
             value={processData ? `${processData.totalCpuPercent.toFixed(1)}%` : "..."}
-            tooltip="Total CPU across live child processes of the current server process. The desktop shell and other parent processes are not included."
+            tooltip="Total CPU use of the processes that Leonidas Code started. The app window and other parent processes are not included."
           />
           <StatBlock
             label="Memory"
             value={processData ? formatBytes(processData.totalRssBytes) : "..."}
-            tooltip="Total resident memory across live child processes of the current server process. The desktop shell and other parent processes are not included."
+            tooltip="Total memory use of the processes that Leonidas Code started. The app window and other parent processes are not included."
           />
           <StatBlock
-            label="Server PID"
+            label="Leonidas Code process ID"
             value={processData ? String(processData.serverPid) : "..."}
           />
         </StatsGrid>
@@ -1007,13 +1011,13 @@ export function DiagnosticsSettingsPanel() {
           emptyLabel={
             isProcessInitialLoading
               ? "Loading live processes..."
-              : "No live descendant processes found."
+              : "No running helper processes. Click Refresh to check again."
           }
         />
       </SettingsSection>
 
       <SettingsSection
-        title="Resource History"
+        title="Resource history"
         headerAction={
           <div className="flex items-center gap-1.5">
             <ResourceHistoryWindowSelector
@@ -1033,12 +1037,12 @@ export function DiagnosticsSettingsPanel() {
           <StatBlock
             label="CPU Time"
             value={resourceData ? formatCpuTime(resourceData.totalCpuSecondsApprox) : "..."}
-            tooltip="Approximate active CPU time for the Leonidas server root process and its descendants during the selected window. It grows only while sampled processes use CPU and older samples leave as the window moves."
+            tooltip="Approximate CPU time for Leonidas Code and the processes it started, in the chosen time window. It grows only while sampled processes use CPU and older samples leave as the window moves."
           />
           <StatBlock
             label="Samples"
             value={resourceData ? formatCount(resourceData.retainedSampleCount) : "..."}
-            tooltip="In-memory process samples retained by the server. This resets when the server restarts."
+            tooltip="Process samples that Leonidas Code keeps in memory. They reset when Leonidas Code restarts."
           />
           <StatBlock
             label="Interval"
@@ -1071,13 +1075,13 @@ export function DiagnosticsSettingsPanel() {
           emptyLabel={
             isResourceInitialLoading
               ? "Collecting process resource samples..."
-              : "No process resource samples found for this window."
+              : "No samples for this time window. Choose a longer time window."
           }
         />
       </SettingsSection>
 
       <SettingsSection
-        title="Trace Diagnostics"
+        title="Trace diagnostics"
         headerAction={
           <div className="flex items-center gap-1.5">
             <DiagnosticsLastChecked checkedAt={data?.readAt ?? null} />
@@ -1122,7 +1126,7 @@ export function DiagnosticsSettingsPanel() {
             tooltip={
               data
                 ? `Spans with a duration of ${formatDuration(data.slowSpanThresholdMs)} or longer.`
-                : "Spans at or above the configured slow-span threshold."
+                : "Spans at or above the slow-span limit."
             }
             tone={data && data.slowSpanCount > 0 ? "warning" : "default"}
           />
@@ -1186,7 +1190,9 @@ export function DiagnosticsSettingsPanel() {
             ))}
           </DiagnosticsTable>
         ) : (
-          <EmptyRows label={isInitialLoading ? "Loading failures..." : "No failed spans found."} />
+          <EmptyRows
+            label={isInitialLoading ? "Loading failures..." : "No failed spans. Nothing to fix."}
+          />
         )}
       </SettingsSection>
 
@@ -1215,7 +1221,11 @@ export function DiagnosticsSettingsPanel() {
           </DiagnosticsTable>
         ) : (
           <EmptyRows
-            label={isInitialLoading ? "Loading failure groups..." : "No repeated failures found."}
+            label={
+              isInitialLoading
+                ? "Loading failure groups..."
+                : "No repeated failures. Nothing to fix."
+            }
           />
         )}
       </SettingsSection>
@@ -1309,7 +1319,9 @@ export function DiagnosticsSettingsPanel() {
           </ScrollArea>
         ) : (
           <EmptyRows
-            label={isInitialLoading ? "Loading recent logs..." : "No warnings or errors found."}
+            label={
+              isInitialLoading ? "Loading recent logs..." : "No warnings or errors. Nothing to fix."
+            }
           />
         )}
       </SettingsSection>

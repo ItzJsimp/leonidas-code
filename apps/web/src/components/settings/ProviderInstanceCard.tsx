@@ -274,7 +274,7 @@ function ProviderEnvironmentFieldRow(props: {
   const inputId = `${props.idPrefix}-environment-${props.field.name}`;
   const value = props.variable?.valueRedacted ? "" : (props.variable?.value ?? "");
   const placeholder = props.variable?.valueRedacted
-    ? "Stored secret - enter a new value to replace"
+    ? "Saved. Type a new value to replace it."
     : props.field.placeholder;
 
   return (
@@ -395,7 +395,7 @@ export function ProviderEnvironmentSection(props: {
   return (
     <SettingsRow
       title="Variables"
-      description="API keys, base URLs, and other per-instance CLI settings."
+      description="API keys, web addresses, and other settings for this AI account."
       control={
         <Button type="button" size="sm" variant="outline" onClick={addVariable}>
           <PlusIcon className="size-3" />
@@ -415,7 +415,7 @@ export function ProviderEnvironmentSection(props: {
                 onCommit={(name) => updateVariable(variable.id, { name: name.trim() })}
                 placeholder="VARIABLE_NAME"
                 spellCheck={false}
-                aria-label={`Environment variable name ${index + 1}`}
+                aria-label={`Variable name ${index + 1}`}
               />
               <span className="hidden text-xs text-muted-foreground sm:inline" aria-hidden>
                 =
@@ -429,10 +429,10 @@ export function ProviderEnvironmentSection(props: {
                 type={variable.sensitive ? "password" : undefined}
                 autoComplete="off"
                 placeholder={
-                  variable.valueRedacted ? "Stored secret, enter a new value to replace" : "value"
+                  variable.valueRedacted ? "Saved. Type a new value to replace it." : "value"
                 }
                 spellCheck={false}
-                aria-label={`Environment variable value ${index + 1}`}
+                aria-label={`Variable value ${index + 1}`}
               />
               <Tooltip>
                 <TooltipTrigger
@@ -451,7 +451,7 @@ export function ProviderEnvironmentSection(props: {
                         });
                       }}
                       aria-pressed={variable.sensitive}
-                      aria-label={`Mark environment variable ${variable.name || index + 1} as sensitive`}
+                      aria-label={`Mark variable ${variable.name || index + 1} as secret`}
                     >
                       <MorphIcon
                         className="size-3"
@@ -461,7 +461,7 @@ export function ProviderEnvironmentSection(props: {
                   }
                 />
                 <TooltipPopup side="top">
-                  {variable.sensitive ? "Sensitive, stored separately" : "Plain text"}
+                  {variable.sensitive ? "Secret, saved apart" : "Plain text"}
                 </TooltipPopup>
               </Tooltip>
               <Button
@@ -476,7 +476,7 @@ export function ProviderEnvironmentSection(props: {
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
-            Sensitive values are stored separately and never returned to the app.
+            Secret values are saved apart. Leonidas Code never shows them again.
           </p>
         </div>
       ) : null}
@@ -601,7 +601,7 @@ export function ProviderInstanceCard({
   const statusStyle = PROVIDER_STATUS_STYLES[statusKey];
   const summary = enabled
     ? getProviderSummary(liveProvider)
-    : { headline: needsApiKey ? "Needs an API key" : "Disabled", detail: null };
+    : { headline: needsApiKey ? "Needs an API key" : "Off", detail: null };
   const authEmail = liveProvider?.auth.email?.trim();
   const isAuthenticated = enabled && liveProvider?.auth.status === "authenticated";
   const authLabel =
@@ -621,7 +621,7 @@ export function ProviderInstanceCard({
   const updateProgress = isUpdating
     ? ((updateState?.status === "queued" || updateState?.status === "running"
         ? updateState.message
-        : null) ?? "Starting update")
+        : null) ?? "Starting the update")
     : null;
   const updateProblem =
     !isUpdating && (updateState?.status === "failed" || updateState?.status === "unchanged")
@@ -645,15 +645,15 @@ export function ProviderInstanceCard({
     onCopy: ({ providerName }) => {
       toastManager.add({
         type: "success",
-        title: `${providerName} update command copied`,
-        description: "Run it in a terminal when you are ready to update.",
+        title: `Update command for ${providerName} copied`,
+        description: "Paste it in a terminal when you want to update.",
       });
     },
     onError: (error, { providerName }) => {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: `Could not copy ${providerName} update command`,
+          title: `Could not copy the update command for ${providerName}`,
           description: error.message,
         }),
       );
@@ -800,7 +800,7 @@ export function ProviderInstanceCard({
     isAuthenticated && authEmail ? (
       <>
         {needsAttention ? statusDotNode : null}
-        <span>Authenticated as</span>
+        <span>Signed in as</span>
         <ProviderAuthEmail email={authEmail} />
         {authLabel ? <span>· {authLabel}</span> : null}
         {inlineStatusDetail ? (
@@ -828,7 +828,7 @@ export function ProviderInstanceCard({
                   size={mode === "list" ? "icon-micro" : "icon-xs"}
                   variant="ghost-muted"
                   className={mode === "list" ? "pointer-events-auto relative shrink-0" : undefined}
-                  aria-label={`${updateProgress ? "Updating" : versionAdvisory.title} — view details`}
+                  aria-label={`${updateProgress ? "Updating" : versionAdvisory.title}. View details`}
                 >
                   {updateProgress ? (
                     <Spinner tone="muted" {...(mode === "list" ? { size: "sm" as const } : {})} />
@@ -895,8 +895,7 @@ export function ProviderInstanceCard({
           {onRunVersionAction && updateCommand ? (
             <div className="flex items-center gap-2 text-3xs font-medium uppercase tracking-wider text-muted-foreground">
               <span aria-hidden className="h-px flex-1 bg-border" />
-              or, update manually using
-              <span aria-hidden className="h-px flex-1 bg-border" />
+              or update by hand with <span aria-hidden className="h-px flex-1 bg-border" />
             </div>
           ) : null}
           {updateCommand ? (
@@ -913,7 +912,7 @@ export function ProviderInstanceCard({
                       variant="ghost-muted"
                       className="shrink-0"
                       onClick={() => copyToClipboard(updateCommand, { providerName: displayName })}
-                      aria-label="Copy update command"
+                      aria-label="Copy the update command"
                     >
                       <CopyIcon className="size-3" />
                     </Button>
@@ -998,7 +997,7 @@ export function ProviderInstanceCard({
             checked={enabled}
             disabled={readOnly || needsApiKey}
             onCheckedChange={(checked) => updateEnabled(Boolean(checked))}
-            aria-label={`Enable ${displayName}`}
+            aria-label={`Turn on ${displayName}`}
           />
         </span>
       </div>
@@ -1027,7 +1026,7 @@ export function ProviderInstanceCard({
             variant="ghost-destructive"
             disabled={readOnly}
             onClick={onDelete}
-            aria-label={`Delete instance ${instanceId}`}
+            aria-label={`Delete AI account ${instanceId}`}
           >
             <Trash2Icon />
           </Button>
@@ -1046,11 +1045,11 @@ export function ProviderInstanceCard({
     />
   ) : (
     <SettingsRow
-      title="Driver"
+      title="AI service"
       description={
         <span>
-          This instance uses <code className="text-foreground">{String(instance.driver)}</code>,
-          which is not available in this build. Its configuration is preserved.
+          This AI account uses <code className="text-foreground">{String(instance.driver)}</code>,
+          which this version of Leonidas Code does not have. Its settings stay saved.
         </span>
       }
     />
@@ -1093,7 +1092,7 @@ export function ProviderInstanceCard({
                     disabled={readOnly}
                   >
                     <ExternalLinkIcon />
-                    Continue authentication
+                    Continue sign-in
                   </Button>
                 </div>
               ) : null}
@@ -1121,7 +1120,7 @@ export function ProviderInstanceCard({
                 className="min-w-0 flex-1 @min-[32rem]/settings-row:w-56"
                 value={instance.displayName ?? ""}
                 onCommit={updateDisplayName}
-                placeholder={driverOption?.label ?? "Instance label"}
+                placeholder={driverOption?.label ?? "Account name"}
                 spellCheck={false}
               />
             </div>
@@ -1187,7 +1186,7 @@ export function ProviderInstanceCard({
         </div>
       ) : !driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (
         <SettingsSection
-          title="Runtime"
+          title="Program"
           inert={readOnly}
           aria-disabled={readOnly || undefined}
           className={readOnly ? "opacity-50 select-none" : undefined}
@@ -1197,7 +1196,7 @@ export function ProviderInstanceCard({
       ) : null}
 
       <SettingsSection
-        title="Environment"
+        title="Extra settings"
         inert={readOnly}
         aria-disabled={readOnly || undefined}
         className={readOnly ? "opacity-50 select-none" : undefined}
@@ -1221,8 +1220,8 @@ export function ProviderInstanceCard({
         <SettingsSection title="Models">
           <div className="px-3 py-3 sm:px-4">
             <p className="mb-3 text-xs text-muted-foreground">
-              Model preferences and custom models are saved on the selected environment and shared
-              across connected devices.
+              Model choices and custom models are saved on the chosen computer. All connected
+              devices share them.
             </p>
             <ProviderModelsSection
               canManageCustomModels={!readOnly}

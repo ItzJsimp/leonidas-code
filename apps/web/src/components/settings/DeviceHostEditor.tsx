@@ -64,12 +64,14 @@ export function DeviceHostEditor({
         }
       >
         <DialogHeader>
-          <DialogTitle>{isNew ? "Add device host" : "Edit device host"}</DialogTitle>
+          <DialogTitle>
+            {isNew ? "Add computer for devices" : "Edit computer for devices"}
+          </DialogTitle>
           <DialogDescription>
             {targets.length === 1
               ? `Connect from ${targets[0]?.label}.`
-              : `Connect from ${targets.length} selected environments.`}{" "}
-            Hosts on the same machine are skipped.
+              : `Connect from ${targets.length} selected computers.`}{" "}
+            Computers that are the same computer are skipped.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -91,7 +93,7 @@ export function DeviceHostEditor({
               value={draft.target}
               disabled={busy}
               onChange={(event) => setDraft({ ...draft, target: event.target.value })}
-              placeholder="user@host or SSH alias"
+              placeholder="user@address or SSH alias"
             />
           </label>
           <details
@@ -133,19 +135,19 @@ export function DeviceHostEditor({
               </label>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Optional. Resolved separately on each environment.
+              Optional. Each computer finds it on its own.
             </p>
           </details>
           <div className="rounded-lg border border-border/60">
             <div className="flex items-center justify-between gap-3 px-3 py-2.5">
               <p role="status" className="text-xs text-muted-foreground">
                 {checking
-                  ? "Checking environments…"
+                  ? "Checking computers…"
                   : results
                     ? failed
                       ? `${failed} of ${targets.length} failed`
                       : "Connection checks passed"
-                    : "Check access before saving"}
+                    : "Check the connection before you save"}
               </p>
               <Button
                 type="button"

@@ -116,7 +116,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
         entry.driverKind !== sourceEntry?.driverKind ||
         !options?.some((option) => option.slug === model && !option.isUnavailable)
       ) {
-        return `This model is unavailable on ${environment?.label ?? "a selected environment"}. Select that environment to choose its model separately.`;
+        return `This model is unavailable on ${environment?.label ?? "a chosen computer"}. Choose that computer to pick its model on its own.`;
       }
     }
     return null;
@@ -140,8 +140,8 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
       title="Model"
       description={
         isProjectScope
-          ? "Model for new threads in this project."
-          : "Default model for new threads. Projects can override it."
+          ? "Model for new chats in this project."
+          : "Default model for new chats. A project can use a different one."
       }
       status={
         unavailable || mixedModel || modelSource === "project"
@@ -208,16 +208,16 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
       settingKeys={["defaultThreadEnvMode"]}
       mixed={mixedWorkspace}
       id={searchableSetting("new-threads").id}
-      title="Workspace"
+      title="Folder"
       description={
         isProjectScope
-          ? "Where new threads in this project start."
-          : "Where new threads start. Projects and their t3.json can override it."
+          ? "Where new chats in this project start."
+          : "Where new chats start. A project or its t3.json can use a different one."
       }
       resetAction={
         !isProjectScope && settings.defaultThreadEnvMode !== null ? (
           <SettingResetButton
-            label="default workspace"
+            label="default folder"
             onClick={() => updateSettings({ defaultThreadEnvMode: null })}
           />
         ) : null
@@ -230,7 +230,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
               updateSettings({ defaultThreadEnvMode: value });
           }}
         >
-          <SelectTrigger size="sm" aria-label="Default workspace">
+          <SelectTrigger size="sm" aria-label="Default folder">
             <SelectValue>
               {(value: string | null) =>
                 value === "local" || value === "worktree"
@@ -261,10 +261,10 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
       }
       title={
         category === "general" || category === "project"
-          ? "New threads"
+          ? "New chats"
           : category === "integrations"
             ? "Browser"
-            : "Repositories"
+            : "Git projects"
       }
     >
       {category === "project" ? (
@@ -282,8 +282,8 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             {...searchableSetting("default-permissions")}
             description={
               isProjectScope
-                ? "Permissions for new threads in this project."
-                : "Default permissions for new threads. Projects can override them."
+                ? "Permissions for new chats in this project."
+                : "Default permissions for new chats. A project can use different ones."
             }
             resetAction={
               settings.defaultRuntimeMode !== DEFAULT_SERVER_SETTINGS.defaultRuntimeMode ? (
@@ -344,13 +344,13 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             {...searchableSetting("worktree-submodules")}
             description={
               isProjectScope
-                ? "How new worktrees in this project populate git submodules."
-                : "How new worktrees populate git submodules. Projects and their t3.json can override it."
+                ? "How new separate copies in this project fill in git submodules."
+                : "How new separate copies fill in git submodules. A project or its t3.json can use a different one."
             }
             resetAction={
               !isProjectScope && settings.worktreeSubmodules !== null ? (
                 <SettingResetButton
-                  label="worktree submodules"
+                  label="submodules for separate copies"
                   onClick={() => updateSettings({ worktreeSubmodules: null })}
                 />
               ) : null
@@ -362,7 +362,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
                   if (isWorktreeSubmodules(value)) updateSettings({ worktreeSubmodules: value });
                 }}
               >
-                <SelectTrigger size="sm" aria-label="Worktree submodules">
+                <SelectTrigger size="sm" aria-label="Submodules for separate copies">
                   <SelectValue>
                     {(value: string | null) =>
                       isWorktreeSubmodules(value)
@@ -394,8 +394,8 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             title="Automatically pull"
             description={
               isProjectScope
-                ? "Keeps this project's default branch current when the checkout has no local changes or commits."
-                : "Keeps the default branch current when the checkout has no local changes or commits. Projects can override it."
+                ? "Keeps the default branch of this project up to date when the folder has no changes or commits."
+                : "Keeps the default branch up to date when the folder has no changes or commits. A project can use a different setting."
             }
             resetAction={
               settings.defaultAutoPull ? (
@@ -420,19 +420,19 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             settingKeys={["removeAgentCreditsOnMerge"]}
             mixed={mixedAgentCredits}
             {...searchableSetting("remove-agent-credits-on-merge")}
-            description="Remove recognized agent credit lines from GitHub merge and squash messages, keeping human co-authors. Includes auto-merge. Excludes merge queues, stack merges, and existing commits."
+            description="Remove the AI credit lines from GitHub merge and squash messages. People who helped stay listed. This includes auto-merge. It does not include merge queues, stack merges, or existing commits."
             resetAction={
               settings.removeAgentCreditsOnMerge ? (
                 <SettingResetButton
-                  label="agent credit removal"
-                  tooltip="Keep agent credits"
+                  label="AI credit removal"
+                  tooltip="Keep AI credit lines"
                   onClick={() => updateSettings({ removeAgentCreditsOnMerge: false })}
                 />
               ) : null
             }
             control={
               <Switch
-                aria-label="Remove agent credits when merging"
+                aria-label="Remove AI credit lines when merging"
                 mixed={mixedAgentCredits}
                 checked={mixedAgentCredits ? false : settings.removeAgentCreditsOnMerge}
                 onCheckedChange={(enabled) =>
@@ -449,7 +449,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             description={
               isProjectScope
                 ? "Pull requests in this project start with this method."
-                : "Pull requests start with this method. Last selected reuses whatever you chose most recently on this device."
+                : "Pull requests start with this method. Last selected uses the method you chose most recently on this device."
             }
             resetAction={
               settings.pullRequestMergeMethod !== null ? (
@@ -497,11 +497,11 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             settingKeys={["enableAgentBrowserAccess"]}
             mixed={mixedBrowser}
             id={searchableSetting("agent-browser-access").id}
-            title="Agent browser access"
+            title="AI browser access"
             description={
               isProjectScope
-                ? "Allow agents in this project to use the shared browser. Applies when the agent session next starts."
-                : "Allow agents to use the shared browser. Projects can override it."
+                ? "Let the AI in this project use the shared browser. This starts to work at the next reply."
+                : "Let the AI use the shared browser. A project can use a different setting."
             }
             resetAction={
               settings.enableAgentBrowserAccess !==
@@ -518,7 +518,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             }
             control={
               <Switch
-                aria-label="Agent browser access"
+                aria-label="AI browser access"
                 mixed={mixedBrowser}
                 checked={mixedBrowser ? false : settings.enableAgentBrowserAccess}
                 onCheckedChange={(enabled) => updateSettings({ enableAgentBrowserAccess: enabled })}

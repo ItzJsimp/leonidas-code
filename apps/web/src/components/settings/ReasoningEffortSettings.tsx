@@ -18,7 +18,7 @@ export function ReasoningEffortSettings() {
   return (
     <SettingsRow
       {...searchableSetting("default-reasoning-effort")}
-      description="How hard new chats think before answering. Models that do not offer the level keep their own default, and a level you pick in the composer wins."
+      description="How hard the AI thinks before it answers in new chats. A model that does not have the level you choose uses its own default. A level you pick in the message box wins."
       control={
         <Select
           value={value}

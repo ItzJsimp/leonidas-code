@@ -380,15 +380,15 @@ describe("project settings permissions", () => {
     expect(state.update.mock.calls[0]![0].environmentId).toBe(primaryId);
   });
 
-  it("disables removal for a checkout whose project grant is missing", async () => {
+  it("disables removal for a folder whose project grant is missing", async () => {
     await grant(remoteId, AsyncResult.success(session([])));
     const root = await mountPanel();
-    const denied = root.findByProps({ "aria-label": "Remove checkout /work/remote" });
+    const denied = root.findByProps({ "aria-label": "Remove folder /work/remote" });
     expect(denied.props.disabled).toBe(true);
     await act(async () => denied.props.onClick());
     expect(state.confirm).not.toHaveBeenCalled();
     expect(state.delete).not.toHaveBeenCalled();
-    expect(root.findByProps({ "aria-label": "Remove checkout /work/primary" }).props.disabled).toBe(
+    expect(root.findByProps({ "aria-label": "Remove folder /work/primary" }).props.disabled).toBe(
       false,
     );
   });
@@ -400,7 +400,7 @@ describe("project settings permissions", () => {
     expect(state.confirm).not.toHaveBeenCalled();
     expect(state.delete).not.toHaveBeenCalled();
     await act(async () =>
-      renderer!.root.findByProps({ "aria-label": "Remove checkout /work/primary" }).props.onClick(),
+      renderer!.root.findByProps({ "aria-label": "Remove folder /work/primary" }).props.onClick(),
     );
     expect(state.delete).toHaveBeenCalledExactlyOnceWith({
       environmentId: primaryId,

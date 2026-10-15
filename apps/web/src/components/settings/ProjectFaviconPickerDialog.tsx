@@ -21,7 +21,9 @@ import { toastManager } from "../ui/toast";
 function emptyMessage(query: string, error: string | null, isPending: boolean): string {
   if (error) return error;
   if (isPending) return query.trim() ? "Searching project files…" : "Indexing project files…";
-  return query.trim() ? "No matching image files." : "No image files found.";
+  return query.trim()
+    ? "No matching image files. Try other words."
+    : "No image files found. Add an image to the project folder.";
 }
 export function canPickExternalProjectFavicon(cwd: string, platform: string): boolean {
   return !isWindowsPlatform(platform) || isWindowsAbsolutePath(cwd);
@@ -96,7 +98,9 @@ export function ProjectFaviconPickerDialog(props: {
                           type: "error",
                           title: "Could not open image picker",
                           description:
-                            error instanceof Error ? error.message : "An error occurred.",
+                            error instanceof Error
+                              ? error.message
+                              : "Something went wrong. Try again.",
                         });
                       })
                       .finally(() => setIsPickingExternal(false));

@@ -118,10 +118,10 @@ export function deriveProviderSettingsFields(
           control: formAnnotation.control ?? "text",
           label:
             isLocalAcp && key === "commandPath"
-              ? "Executable"
+              ? "Program"
               : (annotatedTitle ?? titleizeFieldKey(key)),
           ...(isLocalAcp && key === "commandPath"
-            ? { description: "Executable name or path on this environment." }
+            ? { description: "Program name or file path on this computer." }
             : annotatedDescription !== undefined
               ? { description: annotatedDescription }
               : {}),
@@ -199,7 +199,7 @@ function ProviderCommandArguments({
   return (
     <SettingsRow
       title="Arguments"
-      description="One literal argument per row, in launch order."
+      description="One argument per row, in the order the program uses them."
       control={
         <Button
           type="button"
@@ -264,7 +264,7 @@ function secretFieldInputProps(field: ProviderSettingsFieldModel, config: unknow
   if (!field.secret) return { value: saved, placeholder: field.placeholder };
   return {
     value: "",
-    placeholder: saved.length > 0 ? "Stored secret, enter a new value to replace" : "Not set",
+    placeholder: saved.length > 0 ? "Saved. Type a new value to replace it." : "Not set",
   };
 }
 

@@ -18,11 +18,11 @@ import { searchableSetting } from "./settingsSearch";
 
 const options: ReadonlyArray<{ value: GitHubRoutingPermission; label: string }> = [
   { value: "off", label: "Off" },
-  { value: "read", label: "Read PRs" },
-  { value: "read-write", label: "Read and act" },
+  { value: "read", label: "Read pull requests" },
+  { value: "read-write", label: "Read and change" },
 ];
 
-const summaryLabels = { "read-write": "read and act", read: "read PRs" } as const;
+const summaryLabels = { "read-write": "read and change", read: "read pull requests" } as const;
 
 /**
  * Closed-header summary: the machines that share, grouped by permission.
@@ -73,9 +73,9 @@ export function GitHubRoutingSettings({
       }
     >
       <p className="px-3 py-2.5 text-xs text-muted-foreground sm:px-4">
-        Machines you trust here can read PR data through each other's GitHub access. Enable both
-        machines. Read and act may use broader permissions than the machine that owns them. This
-        applies only to this device.
+        Computers you trust here can read pull request data through the GitHub access of each other.
+        Turn this on for both computers. "Read and change" can use more permissions than the
+        computer that owns them. This applies only to this device.
       </p>
       {environments.map((environment) => (
         <EnvironmentRow
@@ -99,7 +99,7 @@ export function GitHubRoutingSettings({
                   if (result._tag === "Failure")
                     toastManager.add({
                       type: "error",
-                      title: "Could not save GitHub routing permission",
+                      title: "Could not save the GitHub sharing permission",
                     });
                 },
               );

@@ -42,15 +42,15 @@ describe("KeybindingsSettings.logic", () => {
       });
     }
   });
-  it("finds the editable shortcut for sending the first queued message", () => {
-    expect(buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, "first queued")).toContainEqual(
+  it("finds the editable shortcut for sending the first waiting message", () => {
+    expect(buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, "send the first one")).toContainEqual(
       expect.objectContaining({
         command: "thread.steerQueuedMessage",
         key: "mod+shift+enter",
       }),
     );
   });
-  it.each(["pu", "pull request", "copy link", "thread id"])(
+  it.each(["pu", "pull request", "copy link", "chat id"])(
     "finds the copy link shortcut with %s",
     (query) => {
       const rows = buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, query);
@@ -63,10 +63,10 @@ describe("KeybindingsSettings.logic", () => {
     const groups = groupKeybindingRows(buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, ""));
     expect(groups.map((group) => group.title)).toEqual([
       "Navigation",
-      "Threads",
-      "Composer",
+      "Chats",
+      "Message box",
       "Terminal",
-      "Preview & diff",
+      "Preview and changes",
       "Appearance",
       "Other",
     ]);
@@ -251,7 +251,7 @@ describe("KeybindingsSettings.logic", () => {
     });
     expect(parseWhenExpressionDraft("editorFocus &&")).toEqual({
       ok: false,
-      message: "Use variables with !, &&, ||, and parentheses.",
+      message: "Use names with !, &&, ||, and parentheses. Fix the text and try again.",
     });
 
     expect(parseWhenExpressionDraft("!(terminalFocus || modelPickerOpen)")).toEqual({

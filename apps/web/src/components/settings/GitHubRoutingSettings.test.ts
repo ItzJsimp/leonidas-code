@@ -7,7 +7,7 @@ describe("summarizeGitHubRouting", () => {
     expect(summarizeGitHubRouting([{ label: "alvin", permission: "off" }])).toBeNull();
   });
 
-  it("groups sharing machines by permission, read and act first", () => {
+  it("groups sharing machines by permission, read and change first", () => {
     expect(
       summarizeGitHubRouting([
         { label: "alvin", permission: "read" },
@@ -15,6 +15,6 @@ describe("summarizeGitHubRouting", () => {
         { label: "cup2", permission: "off" },
         { label: "Theo's MacBook Pro", permission: "read-write" },
       ]),
-    ).toBe("bb-1, Theo's MacBook Pro read and act · alvin read PRs");
+    ).toBe("bb-1, Theo's MacBook Pro read and change · alvin read pull requests");
   });
 });
