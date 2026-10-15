@@ -98,6 +98,31 @@ function Remove-EmptySkillDir([string]$Path) {
         Remove-Item -LiteralPath $Path -Force
     }
 }
+# Shared skills: a skill committed in the Leonidas Code clone is the one copy; the AIOS gets a junction to it
+# (Share-SkillToLeonidasCode.ps1 moves a skill there). This recreates missing junctions after a pull or on a new machine.
+$sharedLinked = 0
+$sharedRoot = Join-Path $repo 'projects/leonidas-code/.agents/skills'
+if (-not $ProjectPath -and (Test-Path -LiteralPath $sharedRoot)) {
+    foreach ($dir in Get-ChildItem -LiteralPath $sharedRoot -Directory | Where-Object { -not $_.LinkType -and (Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md')) }) {
+        $aiosLink = Join-Path $repo ".agents/skills/$($dir.Name)"
+        $item = Get-Item -LiteralPath $aiosLink -Force -ErrorAction SilentlyContinue
+        # A pull that untracked a shared skill leaves only ignored caches behind; clear them so the link is made.
+        if ($item -and -not $item.LinkType -and -not (Test-Path -LiteralPath (Join-Path $aiosLink 'SKILL.md')) -and
+            -not (Get-ChildItem -LiteralPath $aiosLink -Recurse -File -Force | Where-Object { $_.FullName -notmatch '__pycache__' }) -and
+            $PSCmdlet.ShouldProcess($aiosLink, 'Remove cache-only folder blocking a shared skill link')) {
+            Remove-Item -LiteralPath $aiosLink -Recurse -Force; $item = $null
+        }
+        if (-not $item -and $PSCmdlet.ShouldProcess($aiosLink, 'Link shared skill from Leonidas Code')) { New-SkillLink $aiosLink $dir.FullName; $sharedLinked++ }
+        # Skills that started in Leonidas Code are not in .agents/skills/.gitignore; keep their links out of AIOS git too.
+        if (-not $WhatIfPreference -and (Get-Item -LiteralPath $aiosLink -Force -ErrorAction SilentlyContinue).LinkType) { Add-LocalExclude $repo ".agents/skills/$($dir.Name)" }
+        $adapter = Join-Path $repo ".claude/skills/$($dir.Name)"
+        $adapterRoot = Get-Item -LiteralPath (Join-Path $repo '.claude/skills') -Force -ErrorAction SilentlyContinue
+        if ($adapterRoot -and -not $adapterRoot.LinkType -and -not (Get-Item -LiteralPath $adapter -Force -ErrorAction SilentlyContinue) -and
+            (Test-Path -LiteralPath $aiosLink) -and $PSCmdlet.ShouldProcess($adapter, 'Make shared skill discoverable to the Claude provider')) {
+            New-SkillLink $adapter $aiosLink; $sharedLinked++
+        }
+    }
+}
 foreach ($name in $canonCore) {
     $canon = Join-Path $repo ".agents/skills/$name"
     foreach ($target in $targets | Select-Object -Unique) {
@@ -109,7 +134,8 @@ foreach ($name in $canonCore) {
                 New-SkillLink $link $canon
                 $linked++
             }
-            if (-not $WhatIfPreference -and (Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue)) { Add-LocalExclude $target ".agents/skills/$name" }
+            # Exclude links only: a real folder with this name is committed project content, and an exclude would hide its new files.
+            if (-not $WhatIfPreference -and (Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue).LinkType) { Add-LocalExclude $target ".agents/skills/$name" }
         }
         # A provider folder that is itself a link already exposes every skill in .agents/skills.
         $adapterRoot = Join-Path $target '.claude/skills'
@@ -125,7 +151,7 @@ foreach ($name in $canonCore) {
             New-SkillLink $adapter $link
             $linked++
         }
-        if (-not $WhatIfPreference -and (Get-Item -LiteralPath $adapter -Force -ErrorAction SilentlyContinue)) { Add-LocalExclude $target ".claude/skills/$name" }
+        if (-not $WhatIfPreference -and (Get-Item -LiteralPath $adapter -Force -ErrorAction SilentlyContinue).LinkType) { Add-LocalExclude $target ".claude/skills/$name" }
     }
 }
 if (-not $WhatIfPreference) {
@@ -137,3 +163,4 @@ if (-not $WhatIfPreference) {
     }
 }Write-Host "[OK] Updated $updated default skill files across $($targets.Count) workspace(s)."
 Write-Host "[OK] Core skills: $linked link(s) created across $($targets.Count) workspace(s)."
+Write-Host "[OK] Shared skills: $sharedLinked link(s) created from Leonidas Code."
