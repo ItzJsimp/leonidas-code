@@ -8,7 +8,7 @@ import {
   type EnvironmentId,
   type ProviderInstanceConfig,
 } from "@t3tools/contracts";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   useEnvironmentSettings,
@@ -49,7 +49,7 @@ function StepDots({ step }: { readonly step: number }) {
         >
           <span
             className={cn(
-              "grid size-5 place-items-center rounded-full border border-border text-[11px]",
+              "grid size-5 place-items-center rounded-full border border-border text-2xs",
               index <= step && "border-foreground/40 bg-foreground/10",
             )}
           >
@@ -77,7 +77,7 @@ export function ConnectAccountDialog({
 }: {
   readonly environmentId: EnvironmentId;
   readonly environmentLabel: string;
-  readonly initialChoice?: ConnectChoice;
+  readonly initialChoice?: ConnectChoice | undefined;
   readonly onOpenChange: (open: boolean) => void;
   readonly onCreated?: (instanceId: ProviderInstanceId) => void;
   readonly onAdvanced: () => void;
@@ -152,6 +152,17 @@ export function ConnectAccountDialog({
     void refreshProviders({ environmentId, input: {} });
   };
 
+  // A tile on the page already chose the service: start right away.
+  const autoConnected = useRef(false);
+  useEffect(() => {
+    if (autoConnected.current || !initialChoice || initialChoice === "chatgpt" || !canManage) {
+      return;
+    }
+    autoConnected.current = true;
+    void connect(initialChoice);
+    // `connect` reads current settings; the ref keeps this to one run on open.
+  }, [initialChoice, canManage, connect]);
+
   if (chatGpt) {
     return (
       <AddManagedCodexAccountDialog
@@ -179,7 +190,7 @@ export function ConnectAccountDialog({
                   type="button"
                   disabled={!canManage || busy !== null}
                   onClick={() => void connect(choice.id)}
-                  className="flex cursor-pointer flex-col items-start gap-1 rounded-xl border border-border bg-card p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
+                  className="flex cursor-pointer flex-col items-start gap-1 rounded-xl border border-border bg-card p-4 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default disabled:opacity-60"
                 >
                   <span className="text-sm font-medium text-foreground">
                     {busy === choice.id ? "Connecting…" : choice.title}

@@ -43,7 +43,6 @@ import { Button } from "../ui/button";
 import { MorphIcon } from "~/components/MorphIcon";
 import { DraftInput } from "../ui/draft-input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type {
@@ -58,8 +57,6 @@ import { RedactedSensitiveText } from "./RedactedSensitiveText";
 import { SettingsRow, SettingsSection } from "./settingsLayout";
 import { AcpSessionManagementSection } from "./AcpSessionManagementSection";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
-import { ActiveAgentsBadge } from "../chat/ActiveAgentsBadge";
-import { useActiveAgentCounts } from "../../hooks/useActiveAgentCounts";
 import { readCodexSetupMode } from "./CodexSetupSection.logic";
 import {
   getProviderVersionAdvisoryPresentation,
@@ -490,9 +487,6 @@ interface ProviderInstanceCardProps {
   readonly instance: ProviderInstanceConfig;
   readonly driverOption: ProviderClientDefinition | undefined;
   readonly liveProvider: ServerProvider | undefined;
-  readonly mode: "list" | "editor";
-  readonly selected?: boolean | undefined;
-  readonly onSelect?: (() => void) | undefined;
   readonly readOnly?: boolean | undefined;
   readonly canWriteSettings?: boolean;
   readonly onUpdate: (nextInstance: ProviderInstanceConfig) => void;
@@ -554,7 +548,7 @@ const EMPTY_ACP_PROJECTS: NonNullable<ProviderInstanceCardProps["acpProjects"]> 
  *   - Unknown drivers (`driverOption === undefined`) get a read-only
  *     notice instead of editable fields, so fork instances round-trip
  *     without accidentally destroying their config.
- *   - The enabled Switch writes to the envelope's `instance.enabled`
+ *   - The account menu (Turn off, Turn on) writes to the envelope's `instance.enabled`
  *     field, which is the single enabled flag: the server folds any legacy
  *     driver-specific `config.enabled` into the envelope on load and both
  *     sides resolve through `resolveProviderInstanceEnabled` (an explicit
@@ -565,9 +559,6 @@ export function ProviderInstanceCard({
   instance,
   driverOption,
   liveProvider,
-  mode,
-  selected = false,
-  onSelect,
   readOnly = false,
   canWriteSettings = true,
   onUpdate,
@@ -590,7 +581,6 @@ export function ProviderInstanceCard({
   sharedLoginWarning,
   acpProjects = EMPTY_ACP_PROJECTS,
 }: ProviderInstanceCardProps) {
-  const activeAgentCount = useActiveAgentCounts();
   const needsApiKey = providerInstanceNeedsApiKey(instance);
   const enabled = !needsApiKey && resolveProviderInstanceEnabled(instance);
   const compatibility = enabled ? liveProvider?.compatibilityAdvisory : undefined;
@@ -685,10 +675,6 @@ export function ProviderInstanceCard({
         ? ({ ...rest, displayName: trimmed } as ProviderInstanceConfig)
         : (rest as ProviderInstanceConfig),
     );
-  };
-
-  const updateEnabled = (value: boolean) => {
-    onUpdate({ ...instance, enabled: value });
   };
 
   const updateAccentColor = (value: string) => {
@@ -826,19 +812,15 @@ export function ProviderInstanceCard({
               render={
                 <Button
                   type="button"
-                  size={mode === "list" ? "icon-micro" : "icon-xs"}
+                  size="icon-xs"
                   variant="ghost-muted"
-                  className={mode === "list" ? "pointer-events-auto relative shrink-0" : undefined}
                   aria-label={`${updateProgress ? "Updating" : versionAdvisory.title}. View details`}
                 >
                   {updateProgress ? (
-                    <Spinner tone="muted" {...(mode === "list" ? { size: "sm" as const } : {})} />
+                    <Spinner tone="muted" />
                   ) : (
                     <VersionAdvisoryIcon
-                      className={cn(
-                        mode === "list" && "size-3.5",
-                        hasCompatibilityWarning && "text-warning",
-                      )}
+                      className={cn(hasCompatibilityWarning && "text-warning")}
                     />
                   )}
                 </Button>
@@ -927,83 +909,6 @@ export function ProviderInstanceCard({
       </PopoverPopup>
     </Popover>
   ) : null;
-
-  if (mode === "list") {
-    return (
-      <div
-        data-slot="settings-row"
-        className={cn(
-          "group flex min-h-18 items-center gap-3 px-3 py-3 transition-colors sm:px-4",
-          selected ? "bg-muted/45" : "hover:bg-muted/25",
-        )}
-      >
-        <div
-          className={cn(
-            "pointer-events-none relative flex min-w-0 flex-1 items-start gap-3 rounded-md text-left transition-opacity",
-            !enabled && !selected && "opacity-60 group-hover:opacity-100",
-          )}
-        >
-          <button
-            type="button"
-            className="pointer-events-auto absolute inset-0 cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            onClick={onSelect}
-            aria-label={`Select ${displayName}`}
-            aria-pressed={selected}
-          />
-          {titleIconNode}
-          <span className="min-w-0 flex-1">
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm font-medium text-foreground">{displayName}</span>
-              {environmentId !== undefined ? (
-                <ActiveAgentsBadge count={activeAgentCount(`${environmentId}:${instanceId}`)} />
-              ) : null}
-              {versionLabel ? (
-                <code className="max-w-24 shrink-0 truncate text-xs text-muted-foreground">
-                  {versionLabel}
-                </code>
-              ) : null}
-              {versionAdvisoryNode}
-            </span>
-            <span className="mt-0.5 flex items-start gap-1.5 text-xs leading-normal text-muted-foreground/80">
-              {/* The dot describes provider health, not the update in progress. */}
-              {statusDotNode && !updateProgress ? (
-                <span className="flex h-[1.45em] shrink-0 items-center">{statusDotNode}</span>
-              ) : null}
-              <ProviderStatusDiagnostic detail={statusDiagnostic}>
-                <span
-                  tabIndex={statusDiagnostic ? 0 : undefined}
-                  aria-live="polite"
-                  className="pointer-events-auto line-clamp-2 [overflow-wrap:anywhere]"
-                >
-                  {updateProgress ? (
-                    `Updating · ${updateProgress}`
-                  ) : (
-                    <>
-                      {summary.headline}
-                      {needsAttention && inlineStatusDetail ? ` · ${inlineStatusDetail}` : null}
-                    </>
-                  )}
-                </span>
-              </ProviderStatusDiagnostic>
-            </span>
-          </span>
-        </div>
-        <span className="flex h-5 shrink-0 items-center gap-2">
-          {needsApiKey ? (
-            <Button type="button" size="xs" variant="outline" onClick={onSelect}>
-              Set API key
-            </Button>
-          ) : null}
-          <Switch
-            checked={enabled}
-            disabled={readOnly || needsApiKey}
-            onCheckedChange={(checked) => updateEnabled(Boolean(checked))}
-            aria-label={`Turn on ${displayName}`}
-          />
-        </span>
-      </div>
-    );
-  }
 
   const editorHeaderAction = (
     <div className="flex shrink-0 items-center gap-1.5">

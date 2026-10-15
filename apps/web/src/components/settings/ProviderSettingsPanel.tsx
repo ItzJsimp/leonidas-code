@@ -84,14 +84,28 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from "../ui/number-field";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { ScrollArea } from "../ui/scroll-area";
+import { Sheet, SheetDescription, SheetHeader, SheetPopup, SheetTitle } from "../ui/sheet";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
 import { ConnectAccountDialog } from "./ConnectAccountDialog";
+import { CONNECT_CHOICES, type ConnectChoice } from "./ConnectAccountDialog.logic";
+import { ClaudeSignInDialog, ConnectTiles, TextValueDialog } from "./ProviderAccountDialogs";
+import { ProviderAccountGroups, type AccountRowView } from "./ProviderAccountGroups";
+import { accountUsage, describeAccount, groupAccountRows } from "./providerAccounts.logic";
 import { ExpandableText } from "./ExpandableText";
-import { ProviderInstanceCard } from "./ProviderInstanceCard";
+import { ProviderInstanceCard, providerInstanceNeedsApiKey } from "./ProviderInstanceCard";
 import { sharedLoginPeerNames, sharedLoginWarning } from "../chat/signInAgain";
 import { UsageProviderSettings } from "./UsageProviderSettings";
 import { ProviderSetupSection, readAntigravityAuthMethod } from "./ProviderSetupSection";
@@ -583,9 +597,12 @@ export function EnvironmentProviderSettings({
   const [isRefreshingProviders, setIsRefreshingProviders] = useState(false);
   const [isAddInstanceDialogOpen, setIsAddInstanceDialogOpen] = useState(false);
   const [isAdvancedAddOpen, setIsAdvancedAddOpen] = useState(false);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | null>(
-    targetInstanceId ?? null,
-  );
+  const [connectChoice, setConnectChoice] = useState<ConnectChoice | undefined>(undefined);
+  // One account dialog or sheet at a time, keyed by the account it acts on.
+  const [accountPanel, setAccountPanel] = useState<{
+    readonly kind: "settings" | "rename" | "apiKey" | "signIn" | "remove";
+    readonly instanceId: ProviderInstanceId;
+  } | null>(targetInstanceId ? { kind: "settings", instanceId: targetInstanceId } : null);
   const [updatingProviderInstanceIds, setUpdatingProviderInstanceIds] = useState<
     ReadonlySet<ProviderInstanceId>
   >(() => new Set());
@@ -793,14 +810,6 @@ export function EnvironmentProviderSettings({
     }
   }
 
-  const targetInstanceMissing =
-    targetInstanceId !== undefined &&
-    selectedInstanceId === targetInstanceId &&
-    !rows.some((row) => row.instanceId === targetInstanceId);
-  const selectedRow =
-    rows.find((row) => row.instanceId === selectedInstanceId) ??
-    (targetInstanceMissing ? null : (rows[0] ?? null));
-
   const updateProviderInstance = async (
     row: InstanceRow,
     next: ProviderInstanceConfig,
@@ -828,6 +837,23 @@ export function EnvironmentProviderSettings({
         ...userErrorToastFields(error),
       });
     }
+  };
+
+  /** Save an account change. Turning off the account that writes titles resets that choice. */
+  const applyInstanceUpdate = (row: InstanceRow, next: ProviderInstanceConfig) => {
+    const wasEnabled = resolveProviderInstanceEnabled(row.instance);
+    const isDisabling = next.enabled === false && wasEnabled;
+    const shouldClearTextGen =
+      isDisabling &&
+      textGenInstanceId === row.instanceId &&
+      readEnvironmentScope(environmentId, AuthSettingsWriteScope);
+    void updateProviderInstance(
+      row,
+      next,
+      shouldClearTextGen
+        ? { textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection }
+        : undefined,
+    );
   };
 
   const deleteProviderInstance = async (row: InstanceRow) => {
@@ -882,7 +908,7 @@ export function EnvironmentProviderSettings({
     }
   };
 
-  const renderProviderInstance = (row: InstanceRow, mode: "list" | "editor") => {
+  const renderProviderInstance = (row: InstanceRow) => {
     const driverOption = providerClients.get(row.driver);
     const liveProvider = serverProviders.find(
       (candidate) => candidate.instanceId === row.instanceId,
@@ -917,14 +943,9 @@ export function EnvironmentProviderSettings({
         instance={row.instance}
         driverOption={driverOption}
         liveProvider={liveProvider}
-        mode={mode}
-        selected={mode === "list" && selectedRow?.instanceId === row.instanceId}
-        onSelect={mode === "list" ? () => setSelectedInstanceId(row.instanceId) : undefined}
         readOnly={readOnly}
         runtime={
-          mode === "editor" &&
-          row.driver === "codex" &&
-          readCodexSetupMode(row.instance.config) === "managed" ? (
+          row.driver === "codex" && readCodexSetupMode(row.instance.config) === "managed" ? (
             <CodexManagedRuntimeFields
               environmentId={environmentId}
               instanceId={row.instanceId}
@@ -934,7 +955,7 @@ export function EnvironmentProviderSettings({
         }
         canWriteSettings={canWriteSettings}
         setup={
-          mode === "editor" && row.driver === "antigravity" ? (
+          row.driver === "antigravity" ? (
             <ProviderSetupSection
               environmentId={environmentId}
               environmentLabel={environmentLabel}
@@ -946,9 +967,7 @@ export function EnvironmentProviderSettings({
               readOnly={readOnly}
               onEnable={() => updateProviderInstance(row, { ...row.instance, enabled: true })}
             />
-          ) : mode === "editor" &&
-            row.driver === "codex" &&
-            readCodexSetupMode(row.instance.config) === "managed" ? (
+          ) : row.driver === "codex" && readCodexSetupMode(row.instance.config) === "managed" ? (
             <CodexSetupSection
               environmentId={environmentId}
               instanceId={row.instanceId}
@@ -970,8 +989,7 @@ export function EnvironmentProviderSettings({
                 })
               }
             />
-          ) : mode === "editor" &&
-            !readOnly &&
+          ) : !readOnly &&
             liveProvider &&
             (liveProvider.setup?.canAuthenticate ||
               liveProvider.driver === "claudeAgent" ||
@@ -984,8 +1002,7 @@ export function EnvironmentProviderSettings({
               provider={liveProvider}
               readOnly={readOnly}
             />
-          ) : mode === "editor" &&
-            !readOnly &&
+          ) : !readOnly &&
             row.driver === "cursor" &&
             liveProvider?.setup?.canAuthenticate === false ? (
             <SettingsRow
@@ -994,29 +1011,10 @@ export function EnvironmentProviderSettings({
             />
           ) : null
         }
-        onUpdate={(next) => {
-          const wasEnabled = resolveProviderInstanceEnabled(row.instance);
-          const isDisabling = next.enabled === false && wasEnabled;
-          const shouldClearTextGen =
-            isDisabling &&
-            textGenInstanceId === row.instanceId &&
-            readEnvironmentScope(environmentId, AuthSettingsWriteScope);
-          updateProviderInstance(
-            row,
-            next,
-            shouldClearTextGen
-              ? {
-                  textGenerationModelSelection:
-                    DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
-                }
-              : undefined,
-          );
-        }}
-        onDelete={
-          mode === "editor" && !row.isDefault ? () => deleteProviderInstance(row) : undefined
-        }
+        onUpdate={(next) => applyInstanceUpdate(row, next)}
+        onDelete={!row.isDefault ? () => deleteProviderInstance(row) : undefined}
         headerAction={
-          mode === "editor" && row.isDefault && row.isDirty ? (
+          row.isDefault && row.isDirty ? (
             <SettingResetButton
               label={`${resetLabel} settings`}
               onClick={() => resetDefaultInstance(row.driver)}
@@ -1079,6 +1077,66 @@ export function EnvironmentProviderSettings({
     );
   };
 
+  const rowById = new Map(rows.map((row) => [row.instanceId, row]));
+  // Group headings use the names on the Connect tiles, not internal program names.
+  const tileLabelByDriver = new Map<string, string>(
+    CONNECT_CHOICES.map((choice) => [choice.driver, choice.title]),
+  );
+  const labelForDriver = (driver: string) =>
+    tileLabelByDriver.get(driver) ??
+    providerClients.get(driver as ProviderDriverKind)?.label ??
+    driver;
+  const connectChoiceForDriver: Record<string, ConnectChoice> = {
+    claudeAgent: "claude",
+    codex: "chatgpt",
+    antigravity: "google",
+  };
+  const accountGroups = groupAccountRows(rows, labelForDriver).map((group) => {
+    const choice = connectChoiceForDriver[group.driver];
+    return {
+      driver: group.driver,
+      label: labelForDriver(group.driver),
+      onAdd: choice
+        ? () => {
+            setConnectChoice(choice);
+            setIsAddInstanceDialogOpen(true);
+          }
+        : () => setIsAdvancedAddOpen(true),
+      rows: group.rows.map((row): AccountRowView => {
+        const liveProvider = serverProviders.find(
+          (candidate) => candidate.instanceId === row.instanceId,
+        );
+        const enabled = resolveProviderInstanceEnabled(row.instance);
+        return {
+          instanceId: row.instanceId,
+          driver: row.driver,
+          displayName:
+            row.instance.displayName ?? liveProvider?.displayName ?? labelForDriver(row.driver),
+          accentColor: row.instance.accentColor,
+          enabled,
+          status: describeAccount({
+            driver: row.driver,
+            enabled,
+            needsApiKey: providerInstanceNeedsApiKey(row.instance),
+            provider: liveProvider,
+          }),
+          usage: accountUsage(liveProvider),
+          canRemove: !row.isDefault,
+        };
+      }),
+    };
+  });
+  const panelRow = accountPanel ? rowById.get(accountPanel.instanceId) : undefined;
+  const panelProvider = panelRow
+    ? serverProviders.find((candidate) => candidate.instanceId === panelRow.instanceId)
+    : undefined;
+  const panelName = panelRow
+    ? (panelRow.instance.displayName ??
+      panelProvider?.displayName ??
+      labelForDriver(panelRow.driver))
+    : "";
+  const closeAccountPanel = () => setAccountPanel(null);
+
   return (
     <>
       <SettingsSection
@@ -1092,7 +1150,10 @@ export function EnvironmentProviderSettings({
                   <Button
                     size="icon-xs"
                     variant="ghost-muted"
-                    onClick={() => setIsAddInstanceDialogOpen(true)}
+                    onClick={() => {
+                      setConnectChoice(undefined);
+                      setIsAddInstanceDialogOpen(true);
+                    }}
                     aria-label="Connect an account"
                   >
                     <PlusIcon />
@@ -1144,49 +1205,53 @@ export function EnvironmentProviderSettings({
             />
           </SettingsGroup>
         ) : null}
-        <SettingsGroup
-          divided={false}
-          className={cn(
-            providerCardHeightClassName,
-            "overflow-hidden @min-[48rem]/providers:grid @min-[48rem]/providers:grid-cols-[17rem_minmax(0,1fr)]",
+        <div className="@container/providers space-y-5 px-3 pt-1 pb-2 sm:px-4">
+          <ConnectTiles
+            disabled={readOnly}
+            onConnect={(choice) => {
+              setConnectChoice(choice);
+              setIsAddInstanceDialogOpen(true);
+            }}
+            onMore={() => setIsAdvancedAddOpen(true)}
+          />
+          {accountGroups.length > 0 ? (
+            <ProviderAccountGroups
+              groups={accountGroups}
+              readOnly={readOnly}
+              onAction={(account, action) => {
+                const row = rowById.get(account.instanceId);
+                if (!row) return;
+                if (action === "addKey") {
+                  setAccountPanel({ kind: "apiKey", instanceId: row.instanceId });
+                } else if (
+                  (action === "install" || action === "signIn") &&
+                  row.driver === "claudeAgent"
+                ) {
+                  setAccountPanel({ kind: "signIn", instanceId: row.instanceId });
+                } else {
+                  setAccountPanel({ kind: "settings", instanceId: row.instanceId });
+                }
+              }}
+              onRename={(account) =>
+                setAccountPanel({ kind: "rename", instanceId: account.instanceId })
+              }
+              onToggle={(account, enabled) => {
+                const row = rowById.get(account.instanceId);
+                if (row) applyInstanceUpdate(row, { ...row.instance, enabled });
+              }}
+              onRemove={(account) =>
+                setAccountPanel({ kind: "remove", instanceId: account.instanceId })
+              }
+              onSettings={(account) =>
+                setAccountPanel({ kind: "settings", instanceId: account.instanceId })
+              }
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Connect an account to start. Use the plan you already pay for.
+            </p>
           )}
-        >
-          <div className="border-b border-border/60 bg-muted/10 @min-[48rem]/providers:flex @min-[48rem]/providers:min-h-0 @min-[48rem]/providers:flex-col @min-[48rem]/providers:border-r @min-[48rem]/providers:border-b-0">
-            <ScrollArea
-              scrollFade
-              chainVerticalScroll
-              className="@min-[48rem]/providers:min-h-0 @min-[48rem]/providers:flex-1"
-            >
-              <div className="divide-y divide-border/50">
-                {rows.map((row) => renderProviderInstance(row, "list"))}
-                {!readOnly ? (
-                  <button
-                    type="button"
-                    className="flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/25 hover:text-foreground focus-visible:bg-muted/25 focus-visible:text-foreground sm:px-4"
-                    onClick={() => setIsAddInstanceDialogOpen(true)}
-                  >
-                    <PlusIcon className="size-4 shrink-0" />
-                    Connect an account
-                  </button>
-                ) : null}
-              </div>
-            </ScrollArea>
-          </div>
-
-          <div className="min-w-0 @min-[48rem]/providers:min-h-0">
-            {selectedRow ? (
-              <ScrollArea scrollFade chainVerticalScroll className="@min-[48rem]/providers:h-full">
-                <div className="space-y-6 p-4">{renderProviderInstance(selectedRow, "editor")}</div>
-              </ScrollArea>
-            ) : (
-              <div className="p-6 text-sm text-muted-foreground">
-                {targetInstanceMissing
-                  ? "This AI account is not available any more on this device. Choose another one."
-                  : "No AI accounts yet. Click Add AI account to add one."}
-              </div>
-            )}
-          </div>
-        </SettingsGroup>
+        </div>
       </SettingsSection>
 
       <UsageProviderSettings
@@ -1277,8 +1342,8 @@ export function EnvironmentProviderSettings({
         <ConnectAccountDialog
           environmentId={environmentId}
           environmentLabel={environmentLabel}
+          initialChoice={connectChoice}
           onOpenChange={setIsAddInstanceDialogOpen}
-          onCreated={setSelectedInstanceId}
           onAdvanced={() => {
             setIsAddInstanceDialogOpen(false);
             setIsAdvancedAddOpen(true);
@@ -1291,9 +1356,96 @@ export function EnvironmentProviderSettings({
           environmentId={environmentId}
           environmentLabel={environmentLabel}
           onOpenChange={setIsAdvancedAddOpen}
-          onCreated={setSelectedInstanceId}
         />
       ) : null}
+      <Sheet
+        open={accountPanel?.kind === "settings" && panelRow !== undefined}
+        onOpenChange={(open) => (open ? undefined : closeAccountPanel())}
+      >
+        <SheetPopup className="w-full max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>{panelName} settings</SheetTitle>
+            <SheetDescription>
+              Sign-in, models, and advanced options for this account. Most people never need these.
+            </SheetDescription>
+          </SheetHeader>
+          {accountPanel?.kind === "settings" && panelRow ? (
+            <ScrollArea scrollFade className="min-h-0 flex-1">
+              <div className="space-y-6 px-4 pb-6 sm:px-6">{renderProviderInstance(panelRow)}</div>
+            </ScrollArea>
+          ) : null}
+        </SheetPopup>
+      </Sheet>
+      {accountPanel?.kind === "rename" && panelRow ? (
+        <TextValueDialog
+          title="Rename account"
+          description="Pick a name you will know in the model picker, for example Personal or Work."
+          label="Name"
+          initialValue={panelName}
+          submitLabel="Save"
+          onSave={(displayName) =>
+            applyInstanceUpdate(panelRow, { ...panelRow.instance, displayName })
+          }
+          onClose={closeAccountPanel}
+        />
+      ) : null}
+      {accountPanel?.kind === "apiKey" && panelRow ? (
+        <TextValueDialog
+          title={`Add your ${labelForDriver(panelRow.driver)} API key`}
+          description="Create a key on your account page, then paste it here. It stays on this computer."
+          label="API key"
+          initialValue=""
+          secret
+          submitLabel="Save and turn on"
+          onSave={(apiKey) =>
+            applyInstanceUpdate(panelRow, {
+              ...panelRow.instance,
+              enabled: true,
+              config: {
+                ...(panelRow.instance.config !== null &&
+                typeof panelRow.instance.config === "object"
+                  ? panelRow.instance.config
+                  : {}),
+                apiKey,
+              },
+            })
+          }
+          onClose={closeAccountPanel}
+        />
+      ) : null}
+      {accountPanel?.kind === "signIn" && panelProvider ? (
+        <ClaudeSignInDialog
+          environmentId={environmentId}
+          provider={panelProvider}
+          onClose={closeAccountPanel}
+        />
+      ) : null}
+      <AlertDialog
+        open={accountPanel?.kind === "remove" && panelRow !== undefined}
+        onOpenChange={(open) => (open ? undefined : closeAccountPanel())}
+      >
+        <AlertDialogPopup>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {panelName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Leonidas Code stops using this account. Your plan and your chats stay. You can connect
+              it again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (panelRow) void deleteProviderInstance(panelRow);
+                closeAccountPanel();
+              }}
+            >
+              Remove
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogPopup>
+      </AlertDialog>
     </>
   );
 }

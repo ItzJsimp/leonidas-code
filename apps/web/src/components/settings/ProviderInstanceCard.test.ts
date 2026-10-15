@@ -112,7 +112,6 @@ describe("deriveProviderModelsForDisplay", () => {
         instance: { driver },
         driverOption: undefined,
         liveProvider,
-        mode: "editor",
         onUpdate: () => undefined,
         hiddenModels: [],
         favoriteModels: [],
@@ -163,11 +162,9 @@ describe("deriveProviderModelsForDisplay", () => {
       onModelOrderChange: () => undefined,
     } as const;
 
-    for (const mode of ["list", "editor"] as const) {
-      const markup = renderToStaticMarkup(createElement(ProviderInstanceCard, { ...props, mode }));
-      expect(markup).toContain("Unavailable");
-      expect(markup).toContain("is not a symlink");
-    }
+    const markup = renderToStaticMarkup(createElement(ProviderInstanceCard, props));
+    expect(markup).toContain("Unavailable");
+    expect(markup).toContain("is not a symlink");
   });
 });
 

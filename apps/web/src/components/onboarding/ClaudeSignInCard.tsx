@@ -9,6 +9,7 @@ import { ensureLocalApi } from "../../localApi";
 import {
   CLAUDE_FINISHING_MESSAGE,
   CLAUDE_INSTALL_PROMPT,
+  CLAUDE_INSTALLED_ELSEWHERE_MESSAGE,
   CLAUDE_INSTALLING_MESSAGE,
   CLAUDE_WAITING_MESSAGE,
   getClaudeInstallView,
@@ -66,6 +67,8 @@ export function ClaudeSignInCard({
   const cancelInstall = useAtomCommand(serverEnvironment.cancelProviderInstall, options);
   const [requested, setRequested] = useState(false);
   const [installRequested, setInstallRequested] = useState(false);
+  // True after the post-install probe returned; Claude may still be missing then.
+  const [installProbed, setInstallProbed] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingRef = useRef(false);
@@ -137,7 +140,7 @@ export function ClaudeSignInCard({
   useEffect(() => {
     if (provider.installed || installView.kind !== "installed" || refreshedInstall.current) return;
     refreshedInstall.current = true;
-    void refreshProviders({ environmentId, input: {} });
+    void refreshProviders({ environmentId, input: {} }).finally(() => setInstallProbed(true));
   }, [provider.installed, installView.kind, refreshProviders, environmentId]);
 
   // Installed from this card: continue into sign-in without another click.
@@ -168,13 +171,17 @@ export function ClaudeSignInCard({
   }, [auth?.phase, auth?.flowId, refreshProviders, environmentId]);
 
   const needsInstall = !provider.installed;
+  const installedElsewhere = needsInstall && installView.kind === "installed" && installProbed;
   const installing =
-    needsInstall && (installView.kind === "installing" || installView.kind === "installed");
+    needsInstall &&
+    (installView.kind === "installing" || (installView.kind === "installed" && !installProbed));
   const busy = pending || installing || view.kind === "waiting" || view.kind === "finishing";
   const detail = needsInstall
     ? installing
       ? CLAUDE_INSTALLING_MESSAGE
-      : (error ?? (installView.kind === "failed" ? installView.message : CLAUDE_INSTALL_PROMPT))
+      : installedElsewhere
+        ? CLAUDE_INSTALLED_ELSEWHERE_MESSAGE
+        : (error ?? (installView.kind === "failed" ? installView.message : CLAUDE_INSTALL_PROMPT))
     : view.kind === "waiting"
       ? CLAUDE_WAITING_MESSAGE
       : view.kind === "finishing"

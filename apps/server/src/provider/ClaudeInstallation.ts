@@ -1,6 +1,6 @@
 import { ProviderDriverKind, type ProviderInstallState } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
-import { resolveCommandPath } from "@t3tools/shared/shell";
+import { resolveCommandPath, resolveSpawnCommand } from "@t3tools/shared/shell";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -108,10 +108,23 @@ export const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(functi
     message: null,
   });
 
+  /**
+   * Run a command and collect its output. On Windows an npm `claude.cmd`
+   * launcher cannot start without a shell, so resolve it first. Spawn
+   * defects become failures, so callers can show a plain message.
+   */
   const run = (command: string, args: ReadonlyArray<string>) =>
     Effect.scoped(
       Effect.gen(function* () {
-        const child = yield* spawner.spawn(ChildProcess.make(command, [...args], { env }));
+        const resolved = yield* resolveSpawnCommand(command, args, { env }).pipe(
+          Effect.provideService(HostProcess.Platform, platform),
+          Effect.provideService(HostProcess.Environment, environment),
+          Effect.provideService(FileSystem.FileSystem, fileSystem),
+          Effect.provideService(Path.Path, path),
+        );
+        const child = yield* spawner.spawn(
+          ChildProcess.make(resolved.command, resolved.args, { env, shell: resolved.shell }),
+        );
         const [stdout, stderr, exitCode] = yield* Effect.all(
           [
             child.stdout.pipe(Stream.decodeText(), Stream.mkString),
@@ -122,6 +135,8 @@ export const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(functi
         );
         return { stdout, stderr, exitCode: Number(exitCode) };
       }),
+    ).pipe(
+      Effect.catchCause(() => Effect.fail(installationError("run", `Could not start ${command}.`))),
     );
 
   /** Find an installed Claude and read its version. `null` when none works. */
