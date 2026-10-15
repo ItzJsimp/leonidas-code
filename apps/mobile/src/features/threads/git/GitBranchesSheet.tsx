@@ -77,7 +77,7 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
       ) : null}
       {Platform.OS === "android" ? (
         <AndroidSheetHeader
-          title="Branches & worktrees"
+          title="Branches & separate copies"
           onBack={() => navigation.goBack()}
           hideBottomBorder
         />
@@ -108,7 +108,7 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
             />
             <SheetActionButton
               icon="plus"
-              label="Create & checkout"
+              label="Create and switch"
               tone="primary"
               disabled={!canChangeThreadBranch || busy || newBranchName.trim().length === 0}
               onPress={() => {
@@ -125,7 +125,7 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
 
           <View className="bg-card android:gap-3 android:rounded-[20px] android:p-4 ios:gap-2 ios:rounded-[18px] ios:border ios:border-border ios:px-4 ios:py-4">
             <Text className="android:text-foreground android:text-base android:font-t3-medium ios:text-foreground-secondary ios:text-2xs ios:font-t3-bold ios:tracking-[1px] ios:uppercase">
-              New worktree
+              New separate copy
             </Text>
             {Platform.OS === "android" ? (
               <Text className="text-foreground-secondary text-sm">Base branch</Text>
@@ -134,7 +134,7 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
               value={worktreeBaseBranch}
               onChangeText={setWorktreeBaseBranch}
               placeholder="main"
-              accessibilityLabel="Worktree base branch"
+              accessibilityLabel="Separate copy base branch"
               className="android:rounded-xl android:bg-sheet-solid ios:rounded-[18px]"
             />
             {Platform.OS === "android" ? (
@@ -144,12 +144,12 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
               value={worktreeBranchName}
               onChangeText={setWorktreeBranchName}
               placeholder="feature/mobile-thread"
-              accessibilityLabel="Worktree branch name"
+              accessibilityLabel="Separate copy branch name"
               className="android:rounded-xl android:bg-sheet-solid ios:rounded-[18px]"
             />
             <SheetActionButton
               icon="square.split.2x1"
-              label="Create worktree"
+              label="Create separate copy"
               tone="primary"
               disabled={
                 !canChangeThreadBranch ||
@@ -190,8 +190,8 @@ export function GitBranchesSheet(_props: GitBranchesSheetProps) {
               const disabled = disabledExistingBranches.has(branch.name);
               const subtitle = branch.worktreePath
                 ? branch.worktreePath === currentWorktreePath
-                  ? "Checked out in this thread"
-                  : "Checked out in another worktree"
+                  ? "In use by this chat"
+                  : "In use by another separate copy"
                 : branch.isDefault
                   ? "Default branch"
                   : "Local branch";

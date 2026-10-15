@@ -381,7 +381,7 @@ export function ThreadArrangementSheet(props: { onClose: () => void }) {
           style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
         >
           <View className="flex-row items-center justify-between gap-3 px-5 py-3">
-            <Text className="flex-1 text-xl font-t3-semibold">Arrange threads</Text>
+            <Text className="flex-1 text-xl font-t3-semibold">Arrange chats</Text>
             <Pressable
               accessibilityRole="button"
               onPress={props.onClose}
@@ -391,7 +391,7 @@ export function ThreadArrangementSheet(props: { onClose: () => void }) {
             </Pressable>
           </View>
           <Text className="px-5 pb-3 text-sm text-foreground-muted">
-            Drag to reorder, pin, or settle. Changes save when you drop.
+            Drag to reorder, pin, or mark as done. Changes save when you drop.
           </Text>
           <View
             onLayout={(event) => {

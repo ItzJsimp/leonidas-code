@@ -104,7 +104,7 @@ function firstRouteParam(value: string | string[] | undefined): string | null {
 }
 
 function OpeningThreadLoadingScreen() {
-  return <LoadingScreen message="Opening thread…" messagePlacement="above-spinner" />;
+  return <LoadingScreen message="Opening chat…" messagePlacement="above-spinner" />;
 }
 
 type ThreadRouteScreenRouteProps = StaticScreenProps<{
@@ -134,8 +134,8 @@ function ThreadUnavailableScreen(props: {
       className="bg-screen flex-1"
     >
       <EmptyState
-        title="Thread unavailable"
-        detail="This thread is not available in the current mobile snapshot."
+        title="Chat unavailable"
+        detail="This chat is not available on this phone yet. Reconnect and try again."
         actionLabel={props.actionLabel}
         onAction={props.onAction}
       />
@@ -195,9 +195,7 @@ export function ThreadRouteScreen(props: ThreadRouteScreenProps) {
 
   return (
     <ThreadUnavailableScreen
-      actionLabel={
-        routeEnvironmentRuntime === null ? "Manage environments" : "Reconnect environment"
-      }
+      actionLabel={routeEnvironmentRuntime === null ? "Manage computers" : "Reconnect computer"}
       onAction={() => {
         if (routeEnvironmentRuntime !== null) {
           onReconnectEnvironment(environmentId);
@@ -250,7 +248,7 @@ function ThreadRouteContent(
   const requests = useSelectedThreadRequests();
   const interruptThreadTurn = useAtomCommand(threadEnvironment.interruptTurn, "thread interrupt");
   const loadEarlierHistory = useAtomCommand(threadEnvironment.loadEarlierHistory, {
-    label: "load earlier thread history",
+    label: "load earlier chat history",
     reportFailure: false,
   });
   const historyControls = useMemo(() => {

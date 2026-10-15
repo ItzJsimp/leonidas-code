@@ -45,16 +45,16 @@ function deriveProjectEmptyState(catalogState: WorkspaceState): {
 } {
   if (catalogState.isLoadingConnections) {
     return {
-      title: "Loading environments",
-      detail: "Checking saved environments on this device.",
+      title: "Loading computers",
+      detail: "Checking saved computers on this device.",
       loading: true,
     };
   }
 
   if (!catalogState.hasConnections) {
     return {
-      title: "No environments connected",
-      detail: "Add an environment before creating a task.",
+      title: "No computers connected",
+      detail: "Add a computer before creating a task.",
       loading: false,
     };
   }
@@ -66,10 +66,10 @@ function deriveProjectEmptyState(catalogState: WorkspaceState): {
     !catalogState.hasLoadedShellSnapshot
   ) {
     return {
-      title: "Environment unavailable",
+      title: "Computer unavailable",
       detail:
         catalogState.connectionError ??
-        "The saved environment is offline. Check the URL or start the environment, then retry.",
+        "The saved computer is offline. Check the URL or start the computer, then try again.",
       loading: false,
     };
   }
@@ -80,15 +80,15 @@ function deriveProjectEmptyState(catalogState: WorkspaceState): {
     catalogState.connectionError === null
   ) {
     return {
-      title: "Connecting to environment",
-      detail: "Loading projects from the saved environment.",
+      title: "Connecting to computer",
+      detail: "Loading projects from the saved computer.",
       loading: true,
     };
   }
 
   return {
     title: "No projects found",
-    detail: "The connected environment did not report any projects.",
+    detail: "The connected computer did not report any projects.",
     loading: false,
   };
 }
@@ -242,7 +242,7 @@ export function NewTaskRouteScreen({ route }: StaticScreenProps<NewTaskRoutePara
             "Could not start without a project",
             error instanceof Error
               ? error.message
-              : "The folder for threads without a project could not be created.",
+              : "The folder for chats without a project could not be created.",
           );
         }
         return;
@@ -380,7 +380,7 @@ export function NewTaskRouteScreen({ route }: StaticScreenProps<NewTaskRoutePara
               {Platform.OS === "android" ? (
                 <>
                   <MaterialButton
-                    label={catalogState.hasReadyEnvironment ? "Add new project" : "Add environment"}
+                    label={catalogState.hasReadyEnvironment ? "Add project" : "Add computer"}
                     tone="primary"
                     onPress={() =>
                       catalogState.hasReadyEnvironment
@@ -401,9 +401,7 @@ export function NewTaskRouteScreen({ route }: StaticScreenProps<NewTaskRoutePara
                   className="mt-1 rounded-full bg-primary px-4 py-2.5 active:opacity-70"
                   onPress={() => navigation.navigate("ConnectionsNew")}
                 >
-                  <Text className="text-sm font-t3-bold text-primary-foreground">
-                    Add environment
-                  </Text>
+                  <Text className="text-sm font-t3-bold text-primary-foreground">Add computer</Text>
                 </Pressable>
               ) : (
                 <>
@@ -434,7 +432,7 @@ export function NewTaskRouteScreen({ route }: StaticScreenProps<NewTaskRoutePara
                 No matching projects
               </Text>
               <Text className="text-center text-sm leading-normal text-foreground-muted">
-                Try a different project name or workspace path.
+                Try a different project name or folder path.
               </Text>
             </View>
           ) : (
@@ -460,7 +458,7 @@ export function NewTaskRouteScreen({ route }: StaticScreenProps<NewTaskRoutePara
                       title={scope.title}
                       subtitle={
                         hasMultipleProjects
-                          ? `${scope.projects.length} workspaces`
+                          ? `${scope.projects.length} projects`
                           : selectionTarget.workspaceRoot
                       }
                       subtitleNumberOfLines={1}
@@ -512,7 +510,7 @@ export function NewTaskRouteScreen({ route }: StaticScreenProps<NewTaskRoutePara
                           numberOfLines={1}
                         >
                           {hasMultipleProjects
-                            ? `${scope.projects.length} workspaces`
+                            ? `${scope.projects.length} projects`
                             : selectionTarget.workspaceRoot}
                         </Text>
                       </View>

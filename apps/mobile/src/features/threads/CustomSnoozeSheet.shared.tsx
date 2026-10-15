@@ -44,7 +44,7 @@ export function CustomSnoozeSheet(props: {
             Custom snooze
           </AppText>
           <AppText className="text-base text-foreground-secondary">
-            Choose when snoozed threads return to your inbox.
+            Choose when snoozed chats return to your inbox.
           </AppText>
           <SegmentedControl
             options={

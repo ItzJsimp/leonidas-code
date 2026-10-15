@@ -513,7 +513,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
       if (props.worktreeSetup) return null;
       return {
         kind: "preparing",
-        label: props.creationState.preparingWorktree ? "Setting up worktree…" : "Starting…",
+        label: props.creationState.preparingWorktree ? "Setting up separate copy…" : "Starting…",
       };
     }
     if (props.creationState?.kind === "failed") {
@@ -528,8 +528,8 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
         kind: "child-input",
         label:
           childThreadInputs.length === 1
-            ? "Subagent needs input"
-            : `${childThreadInputs.length} subagents need input`,
+            ? "Helper needs input"
+            : `${childThreadInputs.length} helpers need input`,
         accessibilityLabel: `Open question from ${childInput.title}`,
         onPress: () => {
           Keyboard.dismiss();
@@ -1459,7 +1459,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                         editorRef={composerEditorRef}
                         draftMessage={props.draftMessage}
                         draftAttachments={props.draftAttachments}
-                        placeholder="Ask the repo agent, or run a command…"
+                        placeholder="Ask the AI about this project, or run a command…"
                         contentMaxWidth={contentMaxWidth}
                         connectionState={props.connectionStateLabel}
                         environmentLabel={props.environmentLabel}

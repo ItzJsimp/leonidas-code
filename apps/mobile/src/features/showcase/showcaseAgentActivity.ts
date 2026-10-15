@@ -75,7 +75,7 @@ export function buildShowcaseAgentActivity(
   }
   return {
     title: "Leonidas Code",
-    subtitle: "Agent work in progress",
+    subtitle: "AI work in progress",
     activeCount: rows.filter((row) => ACTIVE_PHASES.has(row.phase)).length,
     updatedAt: new Date(now).toISOString(),
     activities: rows,
@@ -113,7 +113,7 @@ export function showcaseAndroidActivityData(
     updated_at: String(now),
     active: String(activity.activeCount > 0),
     activity_chip: attentionCount > 0 ? "Review" : "Active",
-    activity_title: `${activity.activeCount} active agents · ${attentionCount} need attention`,
+    activity_title: `${activity.activeCount} active AI chats · ${attentionCount} need attention`,
     activity_phase: hero?.phase ?? "",
     activity_active_count: String(activity.activeCount),
     activity_attention_count: String(attentionCount),

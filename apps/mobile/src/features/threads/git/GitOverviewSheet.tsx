@@ -320,7 +320,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         <SheetListRow
           icon="text.bubble"
           title="Review changes"
-          subtitle="Inspect changes, uncommitted edits, and turn diffs"
+          subtitle="Inspect changes and unsaved edits"
           disabled={busy || !isRepo}
           onPress={() => {
             const params = { environmentId, threadId };
@@ -334,11 +334,11 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         {Platform.OS !== "android" ? <View className="ml-12 h-px bg-border" /> : null}
         <SheetListRow
           icon="point.topleft.down.curvedto.point.bottomright.up"
-          title="Branches & worktrees"
+          title="Branches & separate copies"
           subtitle={
             canChangeThreadBranch
-              ? "Switch branch, create branch, or move to a worktree"
-              : "View branches and worktrees"
+              ? "Switch branch, create branch, or move to a separate copy"
+              : "View branches and separate copies"
           }
           disabled={busy || !isRepo}
           onPress={() =>
@@ -396,7 +396,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         </View>
       ) : null}
 
-      {currentWorktreePath ? <MetaCard label="Worktree" value={currentWorktreePath} /> : null}
+      {currentWorktreePath ? <MetaCard label="Separate copy" value={currentWorktreePath} /> : null}
     </ScrollView>
   );
 
@@ -469,11 +469,11 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
 
   const refreshMenu = (
     <AndroidAnchoredMenu
-      title="Repository options"
+      title="Project options"
       actions={[
         {
           id: "refresh",
-          title: "Refresh repository status",
+          title: "Refresh project status",
           attributes: { disabled: busy || isPullRefreshing },
         },
       ]}
@@ -483,7 +483,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
     >
       {(open) => (
         <AndroidHeaderIconButton
-          accessibilityLabel="Repository options"
+          accessibilityLabel="Project options"
           icon="ellipsis"
           onPress={open}
         />
@@ -559,7 +559,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
               ? undefined
               : [
                   {
-                    accessibilityLabel: "Refresh repository status",
+                    accessibilityLabel: "Refresh project status",
                     disabled: busy,
                     icon: "arrow.clockwise",
                     onPress: () => void gitActions.refreshSelectedThreadGitStatus(),
