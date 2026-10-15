@@ -49,19 +49,19 @@ describe("UsageLimitRecoveryBanner", () => {
     expect(item.id).toBe("usage-limit-recovery:run_123");
     expect(item.variant).toBe("warning");
     expect(item.priority).toBe("urgent");
-    expect(item.title).toBe("Usage limit reached");
+    expect(item.title).toBe("You used all of your AI account limit");
     expect(item.description).toContain("Resets");
   });
 
   it("handles missing reset time in description", () => {
     const item = usageLimitRecoveryBannerItem({ ...defaultProps, resetAt: null });
-    expect(item.description).toBe("Reset time unavailable; retry manually");
+    expect(item.description).toBe("The reset time is not known. Try again later.");
   });
 
-  it("shows 'No other accounts available to continue' when failoverTargets is empty", () => {
+  it("shows 'No other AI account is ready. Add one in Settings.' when failoverTargets is empty", () => {
     const item = usageLimitRecoveryBannerItem(defaultProps);
     const html = renderToStaticMarkup(item.actions as any);
-    expect(html).toContain("No other accounts available to continue");
+    expect(html).toContain("No other AI account is ready. Add one in Settings.");
   });
 
   it("renders Continue with button and model menu when failover targets have multiple models", () => {
@@ -87,7 +87,7 @@ describe("UsageLimitRecoveryBanner", () => {
     });
     const html = renderToStaticMarkup(item.actions as any);
 
-    expect(html).not.toContain("No other accounts available to continue");
+    expect(html).not.toContain("No other AI account is ready. Add one in Settings.");
     expect(html).toContain("Continue with Claude (Jake)");
     expect(html).toContain('data-slot="menu-trigger"');
     expect(html).toContain("Claude Sonnet 5.5");
@@ -120,7 +120,7 @@ describe("UsageLimitRecoveryBanner", () => {
   it("renders auto-resume and snooze controls when canSchedule is true", () => {
     const item = usageLimitRecoveryBannerItem(defaultProps);
     const html = renderToStaticMarkup(item.actions as any);
-    expect(html).toContain("Resume at reset");
-    expect(html).toContain("Snooze until reset");
+    expect(html).toContain("Restart when the limit resets");
+    expect(html).toContain("Wait until the limit resets");
   });
 });

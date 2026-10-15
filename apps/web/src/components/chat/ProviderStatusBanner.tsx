@@ -73,21 +73,21 @@ export function getProviderStatusMessage(status: ServerProvider): string {
   if (status.message) return status.message;
   const providerName = status.displayName?.trim() || formatProviderDriverKindLabel(status.driver);
   if (!status.installed && hasProviderSetup(status)) {
-    return `Open provider setup to install ${formatProviderDriverKindLabel(status.driver)} on this environment.`;
+    return `Open AI account setup to install ${formatProviderDriverKindLabel(status.driver)} on this computer.`;
   }
   if (status.auth.status === "unauthenticated") {
     if (hasProviderSetup(status)) {
       return status.driver === "antigravity"
-        ? "Open provider setup to sign in with Google."
-        : "Open provider setup to sign in.";
+        ? "Open AI account setup to sign in with Google."
+        : "Open AI account setup to sign in.";
     }
-    return "Sign in via the CLI to authenticate again.";
+    return "Sign in again in a terminal.";
   }
   return status.status === "ready"
-    ? "No models are available for this provider."
+    ? "This AI account has no models. Open its settings to check it."
     : status.status === "error"
-      ? `${providerName} provider is unavailable.`
-      : `${providerName} provider has limited availability.`;
+      ? `${providerName} is not available. Open its settings to check it.`
+      : `${providerName} works only in part. Open its settings to check it.`;
 }
 
 export const ProviderStatusBanner = memo(function ProviderStatusBanner({
@@ -107,10 +107,10 @@ export const ProviderStatusBanner = memo(function ProviderStatusBanner({
   const isUnauthenticated = status.status === "error" && status.auth.status === "unauthenticated";
   const incompatible = getIncompatibleVersion(status);
   const title = isUnauthenticated
-    ? `${providerName} is unauthenticated`
+    ? `${providerName} is not signed in`
     : incompatible
-      ? `${providerName} ${status.version ?? ""} is ${incompatible.status === "broken" ? "known to be broken" : "unsupported"}`
-      : `${providerName} provider status`;
+      ? `${providerName} ${status.version ?? ""} is ${incompatible.status === "broken" ? "broken" : "not supported"}`
+      : `${providerName} needs your attention`;
   const message = incompatible?.message ?? getProviderStatusMessage(status);
   const isWarning =
     incompatible?.status !== "broken" && (status.status === "warning" || incompatible !== null);
@@ -138,13 +138,13 @@ export const ProviderStatusBanner = memo(function ProviderStatusBanner({
                 ? "Install"
                 : status.auth.status === "unauthenticated"
                   ? "Sign in"
-                  : "Open provider setup"}
+                  : "Open AI account setup"}
             </InlineButton>
           ) : null}
         </AlertDescription>
         <AlertAction>
           <Button
-            aria-label={`Dismiss ${providerName} provider ${status.status}`}
+            aria-label={`Dismiss ${providerName} ${status.status}`}
             onClick={onDismiss}
             size="icon-xs"
             variant="ghost-muted"

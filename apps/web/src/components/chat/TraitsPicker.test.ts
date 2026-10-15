@@ -272,7 +272,7 @@ describe("buildUnavailableModelOptionDescriptors", () => {
       },
       {
         id: "agent",
-        label: "Agent",
+        label: "AI mode",
         type: "select",
         options: [{ id: "build", label: "build" }],
         currentValue: "build",

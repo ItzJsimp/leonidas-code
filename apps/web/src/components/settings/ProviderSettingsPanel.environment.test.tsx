@@ -199,13 +199,13 @@ function isRefreshButton(element: ReactElement<Record<string, unknown>>): boolea
         child !== null &&
         (child as ReactElement<Record<string, unknown>>).props?.className === "sr-only" &&
         (child as ReactElement<Record<string, unknown>>).props?.children ===
-          "Refresh provider status",
+          "Refresh AI service status",
     )
   );
 }
 
 function isAddProviderButton(element: ReactElement<Record<string, unknown>>): boolean {
-  return element.props["aria-label"] === "Add provider";
+  return element.props["aria-label"] === "Add AI account";
 }
 
 async function flushPromises(): Promise<void> {
@@ -432,7 +432,7 @@ describe("EnvironmentProviderSettings routing", () => {
   it("removes an open add-instance dialog when the provider grant is revoked", () => {
     let panel = renderPanel();
     const add = visitElements(panel, isAddProviderButton);
-    if (!add) throw new Error("Missing Add provider action.");
+    if (!add) throw new Error("Missing Add AI account action.");
     (add.props.onClick as () => void)();
     panel = renderPanel();
     expect(

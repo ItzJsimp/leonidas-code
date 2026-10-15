@@ -253,7 +253,7 @@ describe("environmentBootstrap", () => {
     expect(error).toMatchObject({
       hasHttpBaseUrl: true,
       hasWsBaseUrl: false,
-      message: "Desktop bootstrap is missing wsBaseUrl for the local environment.",
+      message: "Desktop bootstrap is missing wsBaseUrl for this computer.",
     });
   });
 
@@ -269,7 +269,7 @@ describe("environmentBootstrap", () => {
     expect(readPrimaryEnvironmentTarget()).toBeNull();
     expect(getPrimaryKnownEnvironment()).toBeNull();
     expect(() => resolvePrimaryEnvironmentHttpUrl("/api/auth/session")).toThrow(
-      "The local environment is disabled.",
+      "This computer is turned off in Leonidas Code. Turn it on in Connections.",
     );
   });
 

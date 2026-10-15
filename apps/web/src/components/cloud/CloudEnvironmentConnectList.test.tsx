@@ -172,7 +172,7 @@ describe("cloud environment offline reasons", () => {
 
     discovery.listEnvironments.mockResolvedValue(new Map([[newMachineId, offlineEntry()]]));
     await mount();
-    expect(rowText()).toContain("T3 Connect · Not added · Relay offline");
+    expect(rowText()).toContain("Remote access · Not added · Offline");
 
     await act(async () => {
       publish({
@@ -269,7 +269,7 @@ describe("cloud onboarding discovery", () => {
     expect(renderer!.root.findByType("input").props.checked).toBe(false);
     expect(renderer!.root.findByType("input").props.disabled).toBe(true);
     expect(renderer!.root.findAllByType("span").flatMap((span) => span.children)).toContain(
-      "Client not supported",
+      "Not supported",
     );
     await act(async () => {
       await renderer!.root.findByType("input").props.onChange({ target: { checked: true } });

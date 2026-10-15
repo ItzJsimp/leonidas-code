@@ -218,7 +218,7 @@ function getPublishProviderReadiness(input: {
   if (!discovered) {
     return {
       ready: false,
-      hint: "Provider status unavailable. Open Settings -> Source Control and rescan.",
+      hint: "The status of the code service is not available. Open Settings, then Source Control, and scan again.",
     };
   }
   if (discovered.status !== "available") {
@@ -229,7 +229,7 @@ function getPublishProviderReadiness(input: {
       ready: false,
       hint:
         Option.getOrNull(discovered.auth.detail) ??
-        `${discovered.label} is not authenticated. Open Settings -> Source Control for setup guidance.`,
+        `${discovered.label} is not authenticated. Open Settings, then Source Control, to set it up.`,
     };
   }
   return { ready: true, hint: null };
@@ -258,7 +258,7 @@ function getMenuActionDisabledReason({
 
   if (item.id === "commit") {
     if (!hasChanges) {
-      return "Worktree is clean. Make changes before committing.";
+      return "Separate copy is clean. Make changes before committing.";
     }
     return "Commit is currently unavailable.";
   }
@@ -556,7 +556,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
   );
   const publishPathPlaceholder = currentPublishProvider.pathPlaceholder;
   const publishProviderLabel = currentPublishProvider.label;
-  const publishWizardSteps = ["Provider", "Repository", "Summary"] as const;
+  const publishWizardSteps = ["Code service", "Repository", "Summary"] as const;
   const publishWizardStepSummaries = [
     publishProviderLabel,
     publishResult?.repository.nameWithOwner ?? null,
@@ -597,7 +597,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
       if (result._tag === "Failure") {
         if (!isAtomCommandInterrupted(result)) {
           const error = squashAtomCommandFailure(result);
-          setPublishError(error instanceof Error ? error.message : "An error occurred.");
+          setPublishError(error instanceof Error ? error.message : "Try again.");
         }
         return;
       }
@@ -648,7 +648,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
       <WizardPopup>
         <WizardHeader
           title="Publish repository"
-          description="Pick where to host it, then point us at a repo to push to."
+          description="Pick where to keep it online. Then pick a repository to push to."
         >
           <WizardSteps
             steps={publishWizardSteps}
@@ -709,7 +709,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                         />
                         <TooltipPopup side="top" align="end">
                           {readiness.hint ??
-                            "Open Settings -> Source Control to configure this provider."}
+                            "Open Settings, then Source Control, to set up this code service."}
                         </TooltipPopup>
                       </Tooltip>
                     </div>
@@ -1005,7 +1005,7 @@ export default function GitActionsControl({
   const panelAnchorRef = useRef<HTMLDivElement | null>(null);
   const updateThreadMetadata = useAtomCommand(
     threadEnvironment.updateMetadata,
-    "thread branch metadata update",
+    "chat branch metadata update",
   );
   const activeEnvironmentId = activeThreadRef?.environmentId ?? null;
   const successScopeKey = `${activeEnvironmentId ?? ""}\u0000${gitCwd ?? ""}`;
@@ -1570,7 +1570,7 @@ export default function GitActionsControl({
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Unable to open file",
+            title: "Could not open the file",
             ...userErrorToastFields(error),
             ...(threadToastData !== undefined ? { data: threadToastData } : {}),
           }),

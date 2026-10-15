@@ -105,15 +105,15 @@ export function SettingsEnvironmentsRouteScreen() {
 
   return (
     <SettingsScreen
-      title="Environments"
+      title="Computers"
       trailing={
         Platform.OS === "android" && relaySession ? (
           <AndroidAnchoredMenu
-            title="Environment options"
+            title="Computer options"
             actions={[
               {
                 id: "refresh",
-                title: "Refresh cloud environments",
+                title: "Refresh remote computers",
                 attributes: { disabled: isRefreshingCloud },
               },
             ]}
@@ -123,7 +123,7 @@ export function SettingsEnvironmentsRouteScreen() {
           >
             {(open) => (
               <AndroidHeaderIconButton
-                accessibilityLabel="Environment options"
+                accessibilityLabel="Computer options"
                 icon="ellipsis"
                 onPress={open}
               />
@@ -133,7 +133,7 @@ export function SettingsEnvironmentsRouteScreen() {
       }
       actions={[
         {
-          accessibilityLabel: "Add environment",
+          accessibilityLabel: "Add computer",
           icon: "plus",
           tintColor: headerIconColor,
           onPress: () =>

@@ -552,7 +552,7 @@ function ThreadSettingsSessionProvider(
       if (!canCommitPendingModel(pendingModel, props.providerGroups)) {
         Alert.alert(
           "Model unavailable",
-          "Set up this provider on web or desktop, or select another model.",
+          "Set up this AI service on web or desktop, or select another model.",
         );
         return false;
       }
@@ -1269,7 +1269,7 @@ function ThreadSettingsModelsScreen() {
   }, [presentation, session]);
   const providerFilters = useMemo(
     () => [
-      { id: "all-providers", title: "All providers", value: null },
+      { id: "all-providers", title: "All AI services", value: null },
       { id: "favorites", title: "Favorites", value: FAVORITES_PROVIDER_FILTER },
       ...session.providerGroups.map((group) => ({
         id: `provider:${group.providerKey}`,
@@ -1285,7 +1285,7 @@ function ThreadSettingsModelsScreen() {
       items: [
         {
           type: "submenu" as const,
-          title: "Provider",
+          title: "AI service",
           items: providerFilters.map((filter) => ({
             type: "action" as const,
             title: filter.title,
@@ -1318,7 +1318,7 @@ function ThreadSettingsModelsScreen() {
                 title="Model filters"
                 actions={[
                   {
-                    title: "Provider",
+                    title: "AI service",
                     subactions: providerFilters.map((filter) => ({
                       id: filter.id,
                       title: filter.title,
@@ -1360,7 +1360,7 @@ function ThreadSettingsModelsScreen() {
             </View>
           }
           onBack={presentation.onClose}
-          title="Thread settings"
+          title="Chat settings"
           hideBottomBorder
         />
       ) : null}
@@ -1415,14 +1415,14 @@ function ThreadSettingsModelsScreen() {
       </MaterialScreenContent>
       <NativeHeaderToolbar placement="left">
         <NativeHeaderToolbar.Button
-          accessibilityLabel="Cancel thread settings"
+          accessibilityLabel="Cancel chat settings"
           label="Cancel"
           onPress={presentation.onClose}
         />
       </NativeHeaderToolbar>
       <NativeHeaderToolbar placement="right">
         <NativeHeaderToolbar.Button
-          accessibilityLabel={session.pendingModel ? "Save thread settings" : "Done"}
+          accessibilityLabel={session.pendingModel ? "Save chat settings" : "Done"}
           label={session.pendingModel ? "Save" : "Done"}
           onPress={commitAndClose}
         />
@@ -1439,13 +1439,13 @@ function ThreadSettingsModelsScreen() {
             separateBackground
             title="Model filters"
           >
-            <NativeHeaderToolbar.Menu title="Provider">
-              <NativeHeaderToolbar.Label>Provider</NativeHeaderToolbar.Label>
+            <NativeHeaderToolbar.Menu title="AI service">
+              <NativeHeaderToolbar.Label>AI service</NativeHeaderToolbar.Label>
               <NativeHeaderToolbar.MenuAction
                 isOn={session.providerFilter === null}
                 onPress={() => session.setProviderFilter(null)}
               >
-                All providers
+                All AI services
               </NativeHeaderToolbar.MenuAction>
               <NativeHeaderToolbar.MenuAction
                 isOn={session.providerFilter === FAVORITES_PROVIDER_FILTER}
@@ -1539,7 +1539,7 @@ function ThreadSettingsPickerNavigator(props: ThreadSettingsPickerPresentation) 
         <ThreadSettingsPickerStack.Screen
           name="ThreadSettingsModels"
           component={ThreadSettingsModelsScreen}
-          options={{ headerBackVisible: false, title: "Thread settings" }}
+          options={{ headerBackVisible: false, title: "Chat settings" }}
         />
         <ThreadSettingsPickerStack.Screen
           name="ThreadSettingsChoice"

@@ -6,8 +6,8 @@ export const ActiveAgentsBadge = memo(function ActiveAgentsBadge(props: { count:
   return (
     <span
       className="inline-flex h-4 min-w-4 items-center justify-center gap-0.5 rounded-full bg-primary/15 px-1 text-3xs font-medium text-primary tabular-nums"
-      title={`${props.count} active ${props.count === 1 ? "agent" : "agents"}`}
-      aria-label={`${props.count} active ${props.count === 1 ? "agent" : "agents"}`}
+      title={`${props.count} active ${props.count === 1 ? "helper" : "helpers"}`}
+      aria-label={`${props.count} active ${props.count === 1 ? "helper" : "helpers"}`}
     >
       <span aria-hidden className="size-1 rounded-full bg-primary" />
       {props.count}
@@ -24,7 +24,7 @@ const MAX_ACTIVE_DOTS = 3;
  */
 export const ActiveAgentsOverlay = memo(function ActiveAgentsOverlay(props: { count: number }) {
   if (props.count <= 0) return null;
-  const label = `${props.count} active ${props.count === 1 ? "agent" : "agents"}`;
+  const label = `${props.count} active ${props.count === 1 ? "helper" : "helpers"}`;
   const dots = Math.min(props.count, MAX_ACTIVE_DOTS);
   const extra = props.count - dots;
   return (

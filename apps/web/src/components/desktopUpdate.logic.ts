@@ -57,22 +57,22 @@ export function isDesktopUpdateButtonDisabled(state: DesktopUpdateState | null):
 
 export function getArm64IntelBuildWarningDescription(state: DesktopUpdateState): string {
   if (!shouldShowArm64IntelBuildWarning(state)) {
-    return "This install is using the correct architecture.";
+    return "This install uses the correct version for your Mac.";
   }
 
   const action = resolveDesktopUpdateButtonAction(state);
   if (action === "download") {
-    return "This Mac has Apple Silicon, but Leonidas Code is still running the Intel build under Rosetta. Download the available update to switch to the native Apple Silicon build.";
+    return "This Mac has Apple Silicon, but Leonidas Code uses the Intel build. Download the available update to switch to the Apple Silicon build.";
   }
   if (action === "install") {
-    return "This Mac has Apple Silicon, but Leonidas Code is still running the Intel build under Rosetta. Restart to install the downloaded Apple Silicon build.";
+    return "This Mac has Apple Silicon, but Leonidas Code uses the Intel build. Restart to install the downloaded Apple Silicon build.";
   }
-  return "This Mac has Apple Silicon, but Leonidas Code is still running the Intel build under Rosetta. The next app update will replace it with the native Apple Silicon build.";
+  return "This Mac has Apple Silicon, but Leonidas Code uses the Intel build. The next update will switch it to the Apple Silicon build.";
 }
 
 export function getDesktopUpdateButtonTooltip(state: DesktopUpdateState): string {
   if (state.status === "available") {
-    return `Update ${state.availableVersion ?? "available"} ready to download`;
+    return `Update ${state.availableVersion ?? "available"} is ready to download`;
   }
   if (state.status === "downloading") {
     const progress =
@@ -92,7 +92,7 @@ export function getDesktopUpdateButtonTooltip(state: DesktopUpdateState): string
     if (state.downloadedVersion) {
       return `Update ${state.downloadedVersion} downloaded. Click to restart and install.`;
     }
-    return state.message ?? "Update failed";
+    return state.message ?? "The update failed. Click to try again.";
   }
   return "Up to date";
 }
@@ -108,16 +108,16 @@ export function getDesktopUpdateInstallConfirmationMessage(
       runningChatCount === 1
         ? "1 chat is running and will stop."
         : `${runningChatCount} chats are running and will stop.`;
-    return `${head}\n\n${chats} To keep them running, choose Cancel, then choose "Update when idle".`;
+    return `${head}\n\n${chats} To keep them running, choose Cancel. Then choose "Update when the AI is done".`;
   }
-  return `${head}\n\nAny running tasks will be interrupted. Make sure you're ready before continuing.`;
+  return `${head}\n\nAny running chat will stop. Check that you are ready, then continue.`;
 }
 
-export const UPDATE_WHEN_SAFE_WAITING_LABEL = "Will update when agents finish";
+export const UPDATE_WHEN_SAFE_WAITING_LABEL = "Will update when the AI is done";
 
 export type UpdateWhenSafeAction = "none" | "wait" | "install";
 
-/** "Update when safe" waits for running agents, then installs the moment none are left. */
+/** "Update when the AI is done" waits for running replies, then installs the moment none are left. */
 export function resolveUpdateWhenSafeAction(
   runningCount: number,
   updateWhenSafe: boolean,

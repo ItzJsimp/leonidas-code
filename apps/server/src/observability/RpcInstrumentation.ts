@@ -168,6 +168,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.hardwareGetInventory]: "server",
   [WS_METHODS.hardwareGetHistory]: "server",
   [WS_METHODS.hardwareGetLimits]: "server",
+  [WS_METHODS.hardwareGetStatus]: "server",
   [WS_METHODS.hardwareSetLimit]: "server",
   [WS_METHODS.hardwareAcknowledgeAlert]: "server",
   [WS_METHODS.hardwareSetDeepSensors]: "server",

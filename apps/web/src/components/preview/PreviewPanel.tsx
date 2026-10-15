@@ -42,7 +42,7 @@ export function PreviewPanel({
           <p className="max-w-sm text-sm text-muted-foreground">
             {canOperatePreview
               ? "Preview is only available in the Leonidas Code desktop app."
-              : "Pair this client again with preview access to control browser previews."}
+              : "Connect this device again with preview access to control browser previews."}
           </p>
         </div>
       </PreviewPanelShell>

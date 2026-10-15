@@ -71,7 +71,7 @@ export function SettingsKeyboardRouteScreen() {
           ))}
         </SettingsSection>
         <Text className="px-2 text-sm text-foreground-muted">
-          Applies to the composer when a hardware keyboard is connected.
+          These shortcuts work in the message box when a keyboard is connected.
         </Text>
       </ScrollView>
     </View>

@@ -67,14 +67,14 @@ function WorktreesDirectoryRow() {
     <SettingsRow
       {...searchableSetting("storage-worktrees-location")}
       description={
-        "Folder where new worktrees are created, on any drive, such as D:\\worktrees or ~/worktrees. Existing worktrees stay where they are. Leave empty to use the T3 home folder."
+        "Folder where Leonidas Code makes new separate copies. It can be on any drive, for example D:\\worktrees or ~/worktrees. Existing separate copies stay where they are. Leave empty to use the home folder of Leonidas Code."
       }
       serverScoped
       settingKeys={["worktreesDirectory"]}
       resetAction={
         mixed || settings.worktreesDirectory !== "" ? (
           <SettingResetButton
-            label="worktree location"
+            label="separate copy location"
             onClick={() => updateSettings({ worktreesDirectory: "" })}
           />
         ) : null
@@ -82,7 +82,7 @@ function WorktreesDirectoryRow() {
       control={
         <Input
           key={`${scopeKey}:${mixed}:${settings.worktreesDirectory}`}
-          aria-label="Worktree location"
+          aria-label="Separate copy location"
           autoCapitalize="none"
           spellCheck={false}
           placeholder={mixed ? "Mixed" : "Default"}
@@ -164,9 +164,9 @@ function RetentionControl({
 }
 
 const KEEP_WHEN_LABELS = {
-  "any-local-files": "Any local files",
+  "any-local-files": "Any files on this computer",
   "uncommitted-changes": "Uncommitted changes",
-  "tracked-changes": "Edited tracked files",
+  "tracked-changes": "Edited files that Git tracks",
 } as const;
 
 function CleanupResults({
@@ -181,9 +181,9 @@ function CleanupResults({
       {report.entries.map((entry, index) => {
         const name =
           entry.kind === "worktree"
-            ? (entry.path?.split(/[\\/]/).findLast(Boolean) ?? "Worktrees")
+            ? (entry.path?.split(/[\\/]/).findLast(Boolean) ?? "Separate copy")
             : entry.kind === "logs"
-              ? "Rotated logs"
+              ? "Old log files"
               : "Browser artifacts";
         return (
           <SettingsRow
@@ -292,12 +292,12 @@ function CleanupSection() {
       environment,
       report,
       description: report
-        ? `Last run ${formatRelativeTimeLabel(report.finishedAt)}. ${formatBytes(report.bytesFreed)} recovered.${report.counts.failed > 0 ? ` ${report.counts.failed} ${report.counts.failed === 1 ? "item" : "items"} couldn't be removed.` : ""}`
+        ? `Last run ${formatRelativeTimeLabel(report.finishedAt)}. ${formatBytes(report.bytesFreed)} recovered.${report.counts.failed > 0 ? ` ${report.counts.failed} ${report.counts.failed === 1 ? "item" : "items"} could not be removed.` : ""}`
         : query?.failed
-          ? "Could not load the last run."
+          ? "Could not load the last run. Try again."
           : query?.loading
             ? "Loading last run…"
-            : "Cleanup hasn't run yet.",
+            : "Cleanup has not run yet. Click Delete now to run it.",
     };
   });
   const deleteNow = async () => {
@@ -419,7 +419,7 @@ export function StorageSettingsPanel() {
           key
         ] !== settings[key],
     )
-      ? "Mixed across selected machines"
+      ? "Different on the chosen computers"
       : undefined;
   const update = (patch: Partial<StorageCleanupSettings>) =>
     updateSettings({ storageCleanup: patch });
@@ -437,7 +437,7 @@ export function StorageSettingsPanel() {
   ) {
     return (
       <SettingsScopeNotice target="all">
-        Update the selected machines to configure project worktree cleanup.
+        Update Leonidas Code on the chosen computers to set up cleanup of separate copies.
       </SettingsScopeNotice>
     );
   }
@@ -457,25 +457,25 @@ export function StorageSettingsPanel() {
           )
           .map((environment) => environment.environmentId)}
       >
-        Update the selected environments to use storage cleanup, or choose a machine that supports
-        it.
+        Update Leonidas Code on the chosen computers to use storage cleanup, or choose a computer
+        that supports it.
       </SettingsScopeNotice>
     );
   }
 
   return (
     <SettingsPageContainer>
-      <SettingsSection id="storage-worktrees" title="Worktrees">
+      <SettingsSection id="storage-worktrees" title="Separate copies">
         {!isProjectScope && <WorktreesDirectoryRow />}
         {isProjectScope && (
           <SettingsRow
-            title="Automatic worktree cleanup"
+            title="Automatic cleanup of separate copies"
             description={
               mode === "off"
-                ? "Keep this project's worktrees until you delete them manually."
+                ? "Keep the separate copies of this project until you delete them."
                 : mode === "custom"
                   ? "Use these rules for this project."
-                  : "Use each machine's worktree cleanup settings."
+                  : "Use the cleanup settings of each computer."
             }
             serverScoped
             settingKeys={["worktreeCleanup"]}
@@ -490,7 +490,7 @@ export function StorageSettingsPanel() {
                     updateSettings({ worktreeCleanup: { mode: "custom", rules: {} } });
                 }}
               >
-                <SelectTrigger size="sm" aria-label="Automatic worktree cleanup">
+                <SelectTrigger size="sm" aria-label="Automatic cleanup of separate copies">
                   <SelectValue>
                     {mixedModes
                       ? "Mixed"
@@ -513,52 +513,52 @@ export function StorageSettingsPanel() {
         {(!isProjectScope || (!mixedModes && mode === "custom")) && (
           <>
             <SettingsRow
-              title="Delete worktrees with deleted threads"
+              title="Delete separate copies with deleted chats"
               status={ruleStatus("worktreeOnDelete")}
-              description="Remove unused worktrees when active or archived threads are deleted. Worktrees with local changes are kept."
+              description="Remove unused separate copies when active or archived chats are deleted. Separate copies that have changes stay."
               serverScoped={!isProjectScope}
               control={
                 <Switch
-                  aria-label="Delete worktrees with deleted threads"
+                  aria-label="Delete separate copies with deleted chats"
                   checked={settings.worktreeOnDelete}
                   onCheckedChange={(worktreeOnDelete) => updateWorktree({ worktreeOnDelete })}
                 />
               }
             />
             <SettingsRow
-              title="Delete inactive worktrees"
+              title="Delete inactive separate copies"
               status={ruleStatus("worktreeAfterDays")}
-              description="Remove worktrees after their threads have been inactive for this many days. Branches and thread history are kept."
+              description="Remove separate copies when their chats have had no activity for this many days. Branches and chat history stay."
               serverScoped={!isProjectScope}
               control={
                 <RetentionControl
-                  label="Delete inactive worktrees"
+                  label="Delete inactive separate copies"
                   value={settings.worktreeAfterDays}
                   onChange={(worktreeAfterDays) => updateWorktree({ worktreeAfterDays })}
                 />
               }
             />
             <SettingsRow
-              title="Delete merged worktrees"
+              title="Delete merged separate copies"
               status={ruleStatus("worktreeOnMerge")}
-              description="Remove worktrees whose pull request is merged and whose commits are included in the default branch."
+              description="Remove separate copies when their pull request is merged and the default branch has all their commits."
               serverScoped={!isProjectScope}
               control={
                 <Switch
-                  aria-label="Delete merged worktrees"
+                  aria-label="Delete merged separate copies"
                   checked={settings.worktreeOnMerge}
                   onCheckedChange={(worktreeOnMerge) => updateWorktree({ worktreeOnMerge })}
                 />
               }
             />
             <SettingsRow
-              title="Delete unchanged worktrees"
+              title="Delete unchanged separate copies"
               status={ruleStatus("worktreeUnchanged")}
-              description="Remove worktrees with no commits beyond the default branch."
+              description="Remove separate copies that have no commits that the default branch does not have."
               serverScoped={!isProjectScope}
               control={
                 <Switch
-                  aria-label="Delete unchanged worktrees"
+                  aria-label="Delete unchanged separate copies"
                   checked={settings.worktreeUnchanged}
                   onCheckedChange={(worktreeUnchanged) => updateWorktree({ worktreeUnchanged })}
                 />
@@ -591,7 +591,7 @@ export function StorageSettingsPanel() {
                         updateWorktree({ worktreeKeepWhen: next });
                     }}
                   >
-                    <SelectTrigger size="sm" aria-label="Keep worktrees with local changes">
+                    <SelectTrigger size="sm" aria-label="Keep separate copies that have changes">
                       <SelectValue>
                         {ruleStatus("worktreeKeepWhen")
                           ? "Mixed"
@@ -616,7 +616,7 @@ export function StorageSettingsPanel() {
           <SettingsRow
             title="Delete old browser artifacts"
             status={ruleStatus("browserArtifactsAfterDays")}
-            description="Delete saved browser captures after this many days. Older capture links will no longer open."
+            description="Delete saved browser captures after this many days. Old capture links stop working."
             serverScoped
             control={
               <RetentionControl
@@ -627,13 +627,13 @@ export function StorageSettingsPanel() {
             }
           />
           <SettingsRow
-            title="Delete old rotated logs"
+            title="Delete old log files"
             status={ruleStatus("logsAfterDays")}
-            description="Delete inactive rotated log files after this many days. Current logs are kept."
+            description="Delete old log files after this many days. The current logs stay."
             serverScoped
             control={
               <RetentionControl
-                label="Delete old rotated logs"
+                label="Delete old log files"
                 value={settings.logsAfterDays}
                 onChange={(logsAfterDays) => update({ logsAfterDays })}
               />

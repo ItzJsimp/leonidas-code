@@ -79,14 +79,14 @@ function ConfiguredSettingsRouteScreen() {
         <SettingsSection title="Connections">
           <SettingsRow
             icon="person.crop.circle"
-            label="T3 Account"
+            label="Remote access account"
             value={accountLabel}
             disabled={!isLoaded}
             onPress={() => navigation.navigate("SettingsSheet", { screen: "SettingsAuth" })}
           />
           <SettingsRow
             icon="desktopcomputer"
-            label="Environments"
+            label="Computers"
             value={`${Object.keys(savedConnectionsById).length}`}
             valuePosition="trailing"
             target="SettingsEnvironments"
@@ -119,7 +119,7 @@ function LocalSettingsRouteScreen() {
         <SettingsSection title="Connections">
           <SettingsRow
             icon="desktopcomputer"
-            label="Environments"
+            label="Computers"
             value={`${environmentCount}`}
             valuePosition="trailing"
             target="SettingsEnvironments"
@@ -166,7 +166,7 @@ function SettingsIndexSections() {
         <SettingsRow icon="clock" label="Scheduled tasks" target="SettingsScheduledTasks" />
       </SettingsSection>
 
-      <SettingsSection title="Projects & threads">
+      <SettingsSection title="Projects and chats">
         {selectedProjectKey !== null ? (
           <SettingsRow
             icon="folder"
@@ -176,21 +176,21 @@ function SettingsIndexSections() {
           />
         ) : null}
         <SettingsRow icon="folder" label="Organization" target="SettingsOrganization" />
-        <SettingsRow icon="text.bubble" label="Thread behavior" target="SettingsThreads" />
+        <SettingsRow icon="text.bubble" label="Chat behavior" target="SettingsThreads" />
         <SettingsRow icon="arrow.turn.left.up" label="Follow-ups" target="SettingsFollowUp" />
-        <SettingsRow icon="archivebox" label="Archived Threads" target="SettingsArchive" />
+        <SettingsRow icon="archivebox" label="Archived chats" target="SettingsArchive" />
       </SettingsSection>
 
-      <SettingsSection title="Server settings">
+      <SettingsSection title="Computer settings">
         <SettingsRow
           icon="person.crop.circle"
-          label="Provider accounts"
+          label="AI accounts"
           target="SettingsProviderAccounts"
           disabled={noServerTargets}
         />
         <SettingsRow
           icon="text.bubble"
-          label="New threads"
+          label="New chats"
           target="SettingsEnvironmentNewThreads"
           disabled={noServerTargets}
         />
@@ -202,7 +202,7 @@ function SettingsIndexSections() {
         />
         <SettingsRow
           icon="text.alignleft"
-          label="Agent behavior"
+          label="AI behavior"
           target="SettingsEnvironmentAgentBehavior"
           disabled={noServerTargets}
         />

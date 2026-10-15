@@ -52,8 +52,8 @@ import { PullRequestSpeedActions } from "./PullRequestSpeedActions";
 
 const SOURCE_LABELS: Record<ThreadPullRequestLink["source"], string> = {
   manual: "Linked by you",
-  created: "Created from this thread",
-  agent: "Linked by the agent",
+  created: "Created in this chat",
+  agent: "Linked by the AI",
   stack: "Found in the stack",
   "stack-dismissed": "Dismissed",
 };
@@ -145,7 +145,7 @@ function LinkRow({
       {depth > 0 ? <span aria-hidden className="-ml-2 h-6 w-px shrink-0 bg-border/70" /> : null}
       {snapshot === null ? (
         <PullRequestGlyph.pullRequest
-          aria-label="Waiting for host state"
+          aria-label="Waiting for the service"
           className="size-4 shrink-0 text-muted-foreground"
         />
       ) : (
@@ -182,8 +182,8 @@ function LinkRow({
                       <EyeIcon role="img" aria-label="Watching" className="size-3.5" />
                     </TooltipTrigger>
                     <TooltipPopup>
-                      Watching: the agent wakes when checks finish, someone comments, or the branch
-                      conflicts
+                      Watching: the AI starts again when checks finish, someone comments, or the
+                      branch conflicts
                     </TooltipPopup>
                   </Tooltip>
                 ) : null}
@@ -317,7 +317,7 @@ function LinkRow({
             ) : null}
             <MenuItem onClick={() => onUnlink(link)}>
               <PullRequestGlyph.unlink className="size-3.5" />
-              {link.source === "stack" ? "Dismiss from thread" : "Unlink from thread"}
+              {link.source === "stack" ? "Remove from this chat" : "Unlink from this chat"}
             </MenuItem>
           </MenuPopup>
         </Menu>
@@ -332,7 +332,7 @@ export function ThreadPullRequestsPanel({ threadRef }: { threadRef: ScopedThread
     return (
       <PullRequestsUnavailableState
         title="Linked pull requests unavailable"
-        error="This environment does not support multiple linked pull requests."
+        error="This computer does not support more than one linked pull request. Update Leonidas Code on that computer."
       />
     );
   }
@@ -409,8 +409,8 @@ function EnabledThreadPullRequestsPanel({ threadRef }: { threadRef: ScopedThread
         <PullRequestGlyph.link aria-hidden className="size-6 text-muted-foreground/60" />
         <p className="text-sm font-medium">No linked pull requests</p>
         <p className="max-w-60 text-xs text-muted-foreground">
-          Pull requests the agent opens from this thread land here. Link one yourself from a URL or
-          a number.
+          Pull requests that the AI opens in this chat show here. You can also link one with a URL
+          or a number.
         </p>
         <Button size="sm" variant="outline" onClick={openLinkDialog}>
           <PlusIcon className="size-3.5" />

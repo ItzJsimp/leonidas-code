@@ -98,7 +98,7 @@ function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
     if (item.type === "command_execution" && event.kind === "command") {
       waiting.push({ ...entry, kind: "shell", source: commandShell(item.input) });
     } else if (event.kind === "agent") {
-      waiting.push({ ...entry, kind: "subagent", source: "Subagent" });
+      waiting.push({ ...entry, kind: "subagent", source: "Helper" });
     } else if (event.kind === "web") {
       waiting.push({ ...entry, kind: "web", source: "Web" });
     } else if (event.kind === "tool") {
@@ -123,9 +123,9 @@ function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
 export type AgentStartPhase = "checkpoint" | "preparing" | "starting";
 
 const START_PHASE_TEXT: Record<AgentStartPhase, string> = {
-  checkpoint: "Saving the last turn's checkpoint",
-  preparing: "Preparing the workspace",
-  starting: "Starting the agent",
+  checkpoint: "Saving a save point for the last reply",
+  preparing: "Getting the project ready",
+  starting: "Starting the AI",
 };
 
 export function deriveAgentActivity(input: {

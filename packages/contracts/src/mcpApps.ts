@@ -96,19 +96,19 @@ export class McpAppRequestError extends Schema.TaggedError<McpAppRequestError>()
   override get message(): string {
     switch (this.reason) {
       case "not-an-app":
-        return "This tool call has no MCP app.";
+        return "This tool call has no app.";
       case "provider-unsupported":
-        return "This thread's provider cannot run MCP app requests.";
+        return "The AI service for this chat cannot run app requests.";
       case "session-stopped":
         // A forked thread shows its source's apps, so this names the thread
         // that made the app rather than the one on screen.
-        return "The app's thread is not running. Send a message in the thread that created it to use the app again.";
+        return "The chat that made this app is not running. Send a message in that chat to use the app again.";
       case "tool-not-callable":
         return "This app cannot call that tool.";
       case "unsupported-content":
         return "Only text and structured content are supported.";
       case "request-failed":
-        return "The app's MCP server request failed.";
+        return "The app request failed. Try again.";
     }
   }
 }

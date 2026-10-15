@@ -327,8 +327,8 @@ function checkThreadOperations(
   if (canOperateThreads(threads)) return true;
   toastManager.add({
     type: "error",
-    title: "Thread action unavailable",
-    description: "This connection cannot change one or more selected threads.",
+    title: "Chat action unavailable",
+    description: "This connection cannot change one or more selected chats.",
   });
   return false;
 }
@@ -609,7 +609,7 @@ function SnoozeMenuButton(props: {
               render={
                 <button
                   type="button"
-                  aria-label="Snooze thread"
+                  aria-label="Snooze chat"
                   onClick={(event) => event.stopPropagation()}
                   onDoubleClick={(event) => event.stopPropagation()}
                   className="inline-flex h-full cursor-pointer items-center gap-0.5 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground hover:text-foreground"
@@ -620,7 +620,7 @@ function SnoozeMenuButton(props: {
         >
           <ClockIcon className="size-3" />
         </TooltipTrigger>
-        <TooltipPopup>Snooze thread</TooltipPopup>
+        <TooltipPopup>Snooze chat</TooltipPopup>
       </Tooltip>
       <MenuPopup side="bottom" align="end">
         {presets.map((preset) => (
@@ -1101,19 +1101,19 @@ const dropVerbBadge: Record<SidebarDropVerb, ReactNode> = {
   settle: (
     <>
       <CircleCheckIcon aria-hidden className="size-3" />
-      Settle
+      Mark as done
     </>
   ),
   unsettle: (
     <>
       <Undo2Icon aria-hidden className="size-3" />
-      Un-settle
+      Mark as not done
     </>
   ),
   wake: (
     <>
       <AlarmClockOffIcon aria-hidden className="size-3" />
-      Wake
+      Bring back
     </>
   ),
 };
@@ -1329,7 +1329,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           }
         : status === "approval"
           ? {
-              label: "Approval",
+              label: "Needs permission",
               icon: "approval" as const,
               className: "text-warning-foreground",
             }
@@ -1692,7 +1692,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       <input
         autoFocus
         value={renamingTitle}
-        aria-label="Thread title"
+        aria-label="Chat title"
         onChange={(event) => onRenameTitleChange(event.target.value)}
         onFocus={(event) => event.currentTarget.select()}
         onKeyDown={handleRenameKeyDown}
@@ -1805,7 +1805,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           render={
             <button
               type="button"
-              aria-label="Unpin thread"
+              aria-label="Unpin chat"
               onClick={handleUnpinClick}
               className="group/unpin inline-flex cursor-pointer items-center rounded-sm text-muted-foreground/65 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             />
@@ -1822,7 +1822,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             className="hidden size-3 shrink-0 group-hover/unpin:block group-focus-visible/unpin:block"
           />
         </TooltipTrigger>
-        <TooltipPopup>Unpin thread</TooltipPopup>
+        <TooltipPopup>Unpin chat</TooltipPopup>
       </Tooltip>
     ) : (
       <PinIcon
@@ -1945,7 +1945,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   !props.snoozeSupported ? null : (
                     <button
                       type="button"
-                      aria-label="Wake thread now"
+                      aria-label="Bring chat back now"
                       onClick={handleUnsnoozeClick}
                       onPointerDown={handleActionPointerDown}
                       className={cn(
@@ -1962,7 +1962,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       render={
                         <button
                           type="button"
-                          aria-label="Un-settle thread"
+                          aria-label="Mark chat as not done"
                           onClick={handleUnsettleClick}
                           onPointerDown={handleActionPointerDown}
                           className={cn(
@@ -1974,12 +1974,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                     >
                       <Undo2Icon className="mb-px size-3.5" />
                     </TooltipTrigger>
-                    <TooltipPopup side="top">Un-settle thread</TooltipPopup>
+                    <TooltipPopup side="top">Mark chat as not done</TooltipPopup>
                   </Tooltip>
                 ) : (
                   <button
                     type="button"
-                    aria-label="Settle thread"
+                    aria-label="Mark chat as done"
                     onClick={handleSettleClick}
                     onPointerDown={handleActionPointerDown}
                     className={cn(
@@ -2184,7 +2184,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                             render={
                               <button
                                 type="button"
-                                aria-label="Settle thread"
+                                aria-label="Mark chat as done"
                                 onClick={handleSettleClick}
                                 onPointerDown={handleActionPointerDown}
                                 className="-mr-1 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground hover:text-foreground"
@@ -2192,9 +2192,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                             }
                           >
                             <CheckIcon className="size-3.5" />
-                            Settle
+                            Mark as done
                           </TooltipTrigger>
-                          <TooltipPopup>Settle thread</TooltipPopup>
+                          <TooltipPopup>Mark chat as done</TooltipPopup>
                         </Tooltip>
                       ) : null}
                     </span>
@@ -2255,15 +2255,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       <MiddleTruncate value={thread.branch} showTitle={false} />
                       {branchMismatch ? (
                         <TriangleAlertIcon
-                          aria-label="Checkout is on another branch"
+                          aria-label="The main folder is on another branch"
                           className="size-3 shrink-0"
                         />
                       ) : null}
                     </TooltipTrigger>
                     <TooltipPopup side="top">
                       {branchMismatch
-                        ? `Chat branch: ${thread.branch}. Checkout now: ${visibleGitStatus?.refName}. Local chats share this checkout.`
-                        : `${thread.worktreePath ? "Isolated worktree" : "Shared checkout"}: ${thread.branch}`}
+                        ? `Chat branch: ${thread.branch}. The main folder is on: ${visibleGitStatus?.refName}. Chats in the main folder share it.`
+                        : `${thread.worktreePath ? "Separate copy" : "Main folder"}: ${thread.branch}`}
                     </TooltipPopup>
                   </Tooltip>
                 </>
@@ -2563,7 +2563,7 @@ export default function Sidebar() {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Failed to copy path",
+          title: "Could not copy path",
           ...userErrorToastFields(error),
         }),
       );
@@ -2582,7 +2582,7 @@ export default function Sidebar() {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Failed to copy branch",
+          title: "Could not copy branch",
           ...userErrorToastFields(error),
         }),
       );
@@ -2592,7 +2592,7 @@ export default function Sidebar() {
     onCopy: ({ threadId }) => {
       toastManager.add({
         type: "success",
-        title: "Thread ID copied",
+        title: "Chat ID copied",
         description: threadId,
       });
     },
@@ -2600,7 +2600,7 @@ export default function Sidebar() {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Failed to copy thread ID",
+          title: "Could not copy chat ID",
           ...userErrorToastFields(error),
         }),
       );
@@ -3408,7 +3408,7 @@ export default function Sidebar() {
         const trimmed = title.trim();
         setRenamingThreadKey(null);
         if (trimmed.length === 0) {
-          toastManager.add({ type: "warning", title: "Thread title cannot be empty" });
+          toastManager.add({ type: "warning", title: "Chat title cannot be empty" });
           return;
         }
         if (trimmed === originalTitle) return;
@@ -3421,7 +3421,7 @@ export default function Sidebar() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to rename thread",
+              title: "Could not rename chat",
               ...userErrorToastFields(error),
             }),
           );
@@ -3504,7 +3504,7 @@ export default function Sidebar() {
               toastManager.add(
                 stackedThreadToast({
                   type: "error",
-                  title: "Failed to settle thread",
+                  title: "Could not mark the chat as done",
                   ...userErrorToastFields(error),
                 }),
               );
@@ -3556,7 +3556,7 @@ export default function Sidebar() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to un-settle thread",
+              title: "Could not mark the chat as not done",
               ...userErrorToastFields(error),
             }),
           );
@@ -3574,7 +3574,7 @@ export default function Sidebar() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to wake thread",
+              title: "Could not bring the chat back",
               ...userErrorToastFields(error),
             }),
           );
@@ -3656,7 +3656,7 @@ export default function Sidebar() {
       }
       const threads = contextDragThreads();
       const title =
-        threadByKeyRef.current.get(contextDragKeyRef.current ?? "")?.title.trim() || "Thread";
+        threadByKeyRef.current.get(contextDragKeyRef.current ?? "")?.title.trim() || "Chat";
       moveThreadContextDragGhost(point, { title, count: threads.length });
       return true;
     },
@@ -3861,7 +3861,7 @@ export default function Sidebar() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to pin thread",
+              title: "Could not pin chat",
               ...userErrorToastFields(error),
             }),
           );
@@ -3879,7 +3879,7 @@ export default function Sidebar() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to unpin thread",
+              title: "Could not unpin chat",
               ...userErrorToastFields(error),
             }),
           );
@@ -4228,9 +4228,10 @@ export default function Sidebar() {
           case "settle": {
             settlingThreadKeysRef.current.add(activeKey);
             const navigateAfterSettle = planForwardNavigation(activeKey);
-            const settled = await run(settleThread(threadRef), "Failed to settle thread").finally(
-              () => settlingThreadKeysRef.current.delete(activeKey),
-            );
+            const settled = await run(
+              settleThread(threadRef),
+              "Could not mark the chat as done",
+            ).finally(() => settlingThreadKeysRef.current.delete(activeKey));
             if (
               settled &&
               shouldNavigateAfterThreadPark({
@@ -4246,14 +4247,16 @@ export default function Sidebar() {
           }
           case "move-active":
             // The drag expresses unpin intent; button/menu confirmation is unchanged.
-            if (plan.unpin && !(await run(unpinThread(threadRef), "Failed to unpin thread")))
-              return;
+            if (plan.unpin && !(await run(unpinThread(threadRef), "Could not unpin chat"))) return;
             if (
               plan.unsettle &&
-              !(await run(unsettleThread(threadRef), "Failed to un-settle thread"))
+              !(await run(unsettleThread(threadRef), "Could not mark the chat as not done"))
             )
               return;
-            if (plan.unsnooze && !(await run(unsnoozeThread(threadRef), "Failed to wake thread")))
+            if (
+              plan.unsnooze &&
+              !(await run(unsnoozeThread(threadRef), "Could not bring the chat back"))
+            )
               return;
             break;
           case "pin":
@@ -4263,7 +4266,7 @@ export default function Sidebar() {
                   threadRef,
                   plan.orderKey === undefined ? {} : { orderKey: plan.orderKey },
                 ),
-                "Failed to pin thread",
+                "Could not pin chat",
               ))
             )
               return;
@@ -4283,8 +4286,8 @@ export default function Sidebar() {
                 assignment.orderKey,
               ),
               plan.kind === "move-active"
-                ? "Failed to reorder active threads"
-                : "Failed to reorder pinned threads",
+                ? "Could not reorder active chats"
+                : "Could not reorder pinned chats",
             ))
           )
             return;
@@ -4369,9 +4372,8 @@ export default function Sidebar() {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to snooze thread",
-              description:
-                outcome.error instanceof Error ? outcome.error.message : "An error occurred.",
+              title: "Could not snooze chat",
+              description: outcome.error instanceof Error ? outcome.error.message : "Try again.",
             }),
           );
           return;
@@ -4443,7 +4445,7 @@ export default function Sidebar() {
               : []),
             {
               id: "settle",
-              label: `Settle (${count})`,
+              label: `Mark as done (${count})`,
               disabled: settlingThreads.length === 0 || !canOperateThreads(settlingThreads),
             },
             ...(canSnoozeSelection
@@ -4536,10 +4538,9 @@ export default function Sidebar() {
                 type: "error",
                 title:
                   snoozedThreadRefs.length > 0
-                    ? `Failed to snooze ${failures.length} thread${failures.length === 1 ? "" : "s"}`
-                    : "Failed to snooze threads",
-                description:
-                  firstError instanceof Error ? firstError.message : "An error occurred.",
+                    ? `Could not snooze ${failures.length} chat${failures.length === 1 ? "" : "s"}`
+                    : "Could not snooze chats",
+                description: firstError instanceof Error ? firstError.message : "Try again.",
               }),
             );
           }
@@ -4566,7 +4567,7 @@ export default function Sidebar() {
             toastManager.add(
               stackedThreadToast({
                 type: "error",
-                title: "Failed to regenerate thread titles",
+                title: "Could not regenerate chat titles",
                 ...userErrorToastFields(error),
               }),
             );
@@ -4599,7 +4600,7 @@ export default function Sidebar() {
           api.dialogs.confirm(
             [
               `Delete ${count} thread${count === 1 ? "" : "s"}?`,
-              "This permanently clears conversation history for these threads.",
+              "This permanently clears conversation history for these chats.",
             ].join("\n"),
             { variant: "destructive" },
           ),
@@ -4630,7 +4631,7 @@ export default function Sidebar() {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to delete threads",
+            title: "Could not delete chats",
             ...userErrorToastFields(firstError),
           }),
         );
@@ -4827,7 +4828,7 @@ export default function Sidebar() {
               toastManager.add(
                 stackedThreadToast({
                   type: "error",
-                  title: "Could not create thread",
+                  title: "Could not create chat",
                   ...userErrorToastFields(error),
                 }),
               );
@@ -4860,7 +4861,7 @@ export default function Sidebar() {
               toastManager.add(
                 stackedThreadToast({
                   type: "error",
-                  title: "Failed to update auto-settle",
+                  title: "Could not change the setting. Try again.",
                   ...userErrorToastFields(error),
                 }),
               );
@@ -4881,7 +4882,7 @@ export default function Sidebar() {
               toastManager.add(
                 stackedThreadToast({
                   type: "error",
-                  title: "Failed to regenerate thread title",
+                  title: "Could not regenerate chat title",
                   ...userErrorToastFields(error),
                 }),
               );
@@ -4897,7 +4898,7 @@ export default function Sidebar() {
                 stackedThreadToast({
                   type: "error",
                   title: "Path unavailable",
-                  description: "This thread does not have a workspace path to copy.",
+                  description: "This chat has no project folder path to copy.",
                 }),
               );
               return;
@@ -4915,7 +4916,7 @@ export default function Sidebar() {
           case "archive": {
             if (confirmThreadArchive) {
               const confirmed = await settlePromise(() =>
-                api.dialogs.confirm(`Archive thread "${thread.title}"?`),
+                api.dialogs.confirm(`Archive chat "${thread.title}"?`),
               );
               if (confirmed._tag === "Failure" || !confirmed.value) return;
             }
@@ -4945,8 +4946,8 @@ export default function Sidebar() {
               const confirmed = await settlePromise(() =>
                 api.dialogs.confirm(
                   [
-                    `Delete thread "${thread.title}"?`,
-                    "This permanently clears conversation history for this thread.",
+                    `Delete chat "${thread.title}"?`,
+                    "This permanently clears conversation history for this chat.",
                   ].join("\n"),
                   { variant: "destructive" },
                 ),
@@ -4959,7 +4960,7 @@ export default function Sidebar() {
               toastManager.add(
                 stackedThreadToast({
                   type: "error",
-                  title: "Failed to delete thread",
+                  title: "Could not delete chat",
                   ...userErrorToastFields(error),
                 }),
               );
@@ -5160,8 +5161,8 @@ export default function Sidebar() {
                       <SidebarHeaderIconButton
                         label={
                           scopedProjectGroup
-                            ? `Filter threads by project: ${scopedProjectGroup.displayName}`
-                            : "Filter threads by project"
+                            ? `Filter chats by project: ${scopedProjectGroup.displayName}`
+                            : "Filter chats by project"
                         }
                       />
                     }
@@ -5295,7 +5296,7 @@ export default function Sidebar() {
                 <ul
                   id="sidebar-thread-search-results"
                   role="listbox"
-                  aria-label="Thread search results"
+                  aria-label="Chat search results"
                   className="flex flex-col gap-px"
                 >
                   {threadSearchResults.map((thread, index) => {
@@ -5348,7 +5349,7 @@ export default function Sidebar() {
                 role="status"
                 className="px-2 py-6 text-center text-xs text-sidebar-muted-foreground"
               >
-                {threadSearch.isPending ? "Searching thread messages…" : "No threads found"}
+                {threadSearch.isPending ? "Searching chat messages…" : "No chats found"}
               </p>
             )
           ) : null}
@@ -5636,9 +5637,7 @@ export default function Sidebar() {
                                   workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
                                 )}
                                 label={
-                                  settledShelfExpanded
-                                    ? "Settled"
-                                    : `Settled (${settledThreads.length})`
+                                  settledShelfExpanded ? "Done" : `Done (${settledThreads.length})`
                                 }
                                 dragging={from !== null}
                                 isDropTarget={dragTargetSection === "settled"}
@@ -5654,7 +5653,7 @@ export default function Sidebar() {
                               <SidebarSectionPlaceholder
                                 key="settled-placeholder"
                                 marker="settled-placeholder"
-                                label="Settled"
+                                label="Done"
                                 showHint={
                                   from !== null &&
                                   (renderedSettledThreads.length === 0 ||
@@ -5710,9 +5709,9 @@ export default function Sidebar() {
                   </button>
                 </>
               ) : scopedProjectGroup ? (
-                `No threads in ${scopedProjectGroup.displayName} yet`
+                `No chats in ${scopedProjectGroup.displayName} yet`
               ) : (
-                "No threads yet"
+                "No chats yet"
               )}
             </div>
           ) : null}

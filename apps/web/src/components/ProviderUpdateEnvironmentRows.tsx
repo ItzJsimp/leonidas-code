@@ -70,7 +70,7 @@ function toProviderUpdateOutcome(input: {
     const error = squashAtomCommandFailure(input.result);
     return {
       status: "rejected",
-      reason: error instanceof Error ? error : new Error("Provider update failed."),
+      reason: error instanceof Error ? error : new Error("AI service update failed."),
     };
   }
 
@@ -153,7 +153,7 @@ function EnvironmentUpdateRow({
         <span className={cn("truncate text-xs", rowToneClass(status.kind))}>{status.text}</span>
         {!canManageProviders ? (
           <span className="text-xs text-muted-foreground">
-            This connection cannot manage provider accounts.
+            This connection cannot manage AI accounts.
           </span>
         ) : null}
       </div>
@@ -273,7 +273,7 @@ export function ProviderUpdateEnvironmentRows({
         inFlightEnvironmentsRef.current.delete(environmentId);
         clearPending(environmentId);
         setErrorByEnvironment((previous) =>
-          new Map(previous).set(environmentId, "Update timed out — try again."),
+          new Map(previous).set(environmentId, "The update took too long. Try again."),
         );
       }, PENDING_EXPIRY_MS);
       try {
@@ -295,7 +295,7 @@ export function ProviderUpdateEnvironmentRows({
             } catch (error) {
               return {
                 status: "rejected",
-                reason: error instanceof Error ? error : new Error("Provider update failed."),
+                reason: error instanceof Error ? error : new Error("AI service update failed."),
               };
             }
           }),
@@ -320,7 +320,7 @@ export function ProviderUpdateEnvironmentRows({
           setErrorByEnvironment((previous) =>
             new Map(previous).set(
               environmentId,
-              "This environment isn’t connected — try again once it reconnects.",
+              "This computer is not connected. Try again when it is connected.",
             ),
           );
           return;
@@ -353,7 +353,7 @@ export function ProviderUpdateEnvironmentRows({
           setErrorByEnvironment((previous) =>
             new Map(previous).set(
               environmentId,
-              error instanceof Error ? error.message : "Provider update failed.",
+              error instanceof Error ? error.message : "AI service update failed.",
             ),
           );
         }

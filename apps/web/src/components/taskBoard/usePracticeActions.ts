@@ -52,7 +52,7 @@ export function usePracticeActions(): PracticeState {
         {
           status: "in_progress",
           claimedBy: ACTOR,
-          note: "Practice: sent to an agent (dry run, nothing was started)",
+          note: "Practice: sent to the AI (dry run, nothing started)",
         },
       );
       setDryRun({ tasks: sent, prompt });
@@ -64,13 +64,13 @@ export function usePracticeActions(): PracticeState {
     const ids = dryRun?.tasks.map((task) => task.id) ?? [];
     patch(ids, {
       status: "review",
-      note: "Run completed. Moved to review because the agent did not mark it done.",
+      note: "The reply ended. Moved to review because the AI did not mark it done.",
     });
     setDryRun(null);
     toastManager.add({
       type: "success",
-      title: "Practice: the agent finished",
-      description: "Its tasks moved to Review by themselves. Nobody had to update them.",
+      title: "Practice: the AI finished",
+      description: "Its tasks moved to Review by themselves. You did not need to update them.",
     });
   }, [dryRun, patch]);
 
@@ -82,9 +82,8 @@ export function usePracticeActions(): PracticeState {
       setDue: (task, due) =>
         patch([task.id], { due, note: due ? `Due ${due}` : "Due date removed" }),
       setMilestone: (task, milestone) => patch([task.id], { milestone }),
-      claim: (task) =>
-        patch([task.id], { claimedBy: ACTOR, status: "in_progress", note: "Claimed" }),
-      release: (task) => patch([task.id], { claimedBy: null, note: "Released" }),
+      claim: (task) => patch([task.id], { claimedBy: ACTOR, status: "in_progress", note: "Taken" }),
+      release: (task) => patch([task.id], { claimedBy: null, note: "Given back" }),
       setAssignee: (task, assignee) =>
         patch([task.id], {
           assignee,
@@ -94,13 +93,13 @@ export function usePracticeActions(): PracticeState {
         toastManager.add({
           type: "info",
           title: "Practice project",
-          description: "Moving tasks between projects is turned off here.",
+          description: "You cannot move tasks between projects in the practice project.",
         }),
       setShared: () =>
         toastManager.add({
           type: "info",
           title: "Practice: nothing was shared",
-          description: "In a real project this would publish the task to its GitHub board.",
+          description: "In a real project this would share the task on its GitHub board.",
         }),
       sendToAgent: (task) => send([task]),
       sendBatchToAgent: (batch) => {

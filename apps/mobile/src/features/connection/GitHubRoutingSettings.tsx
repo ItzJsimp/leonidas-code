@@ -19,16 +19,16 @@ const options: ReadonlyArray<{
   label: string;
   description: string;
 }> = [
-  { value: "off", label: "Off", description: "Keep GitHub requests on this environment." },
+  { value: "off", label: "Off", description: "Keep GitHub requests on this computer." },
   {
     value: "read",
     label: "Read PRs",
-    description: "Share PR data with other enabled environments.",
+    description: "Share PR data with other enabled computers.",
   },
   {
     value: "read-write",
     label: "Read and act",
-    description: "Actions may use broader GitHub permissions than the original environment.",
+    description: "Actions may use broader GitHub permissions than the original computer.",
   },
 ];
 
@@ -61,7 +61,7 @@ export function GitHubRoutingSettings() {
                     {entry.target.label}
                   </Text>
                   <Text className="text-xs text-foreground-muted" numberOfLines={1}>
-                    {connectionCatalogDisplayUrl(entry) ?? "T3 Connect"}
+                    {connectionCatalogDisplayUrl(entry) ?? "Remote access"}
                   </Text>
                 </View>
                 <Text className="text-sm text-foreground-muted">
@@ -115,8 +115,8 @@ export function GitHubRoutingSettings() {
         })}
       </SettingsSection>
       <Text className="px-2 text-sm text-foreground-muted">
-        Choose environments you trust to share PR data and use each other's GitHub access. Enable
-        both environments. This applies only to this client.
+        Choose computers you trust to share PR data and use each other's GitHub access. Enable both
+        computers. This applies only to this client.
       </Text>
     </View>
   );

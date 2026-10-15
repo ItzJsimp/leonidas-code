@@ -1,6 +1,6 @@
 import type { EnvironmentId, RunId, ThreadId } from "@t3tools/contracts";
 
-export const REMOVE_QUEUED_MESSAGE_ACCESSIBILITY_LABEL = "Remove queued message";
+export const REMOVE_QUEUED_MESSAGE_ACCESSIBILITY_LABEL = "Remove waiting message";
 
 export interface ThreadQueueRowControls {
   readonly canDismiss: boolean;

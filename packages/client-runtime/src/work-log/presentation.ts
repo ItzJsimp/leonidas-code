@@ -55,11 +55,11 @@ export function contextCompactionLabel(
     "status" | "beforeTokenCount" | "afterTokenCount"
   >,
 ): string {
-  if (item.status === "running") return "Compacting context";
+  if (item.status === "running") return "Shortening chat history";
   if (item.beforeTokenCount !== undefined && item.afterTokenCount !== undefined) {
-    return `Context compacted ${formatTokens(item.beforeTokenCount)} → ${formatTokens(item.afterTokenCount)} tokens`;
+    return `Chat history shortened from ${formatTokens(item.beforeTokenCount)} to ${formatTokens(item.afterTokenCount)}`;
   }
-  return "Context compacted";
+  return "Chat history shortened";
 }
 
 export interface WorkLogPresentationEntry {
@@ -561,7 +561,7 @@ function toolGroupActionLabel(action: ToolGroupAction, count: number): string {
     case "command":
       return `Ran ${count} ${count === 1 ? "command" : "commands"}`;
     case "thread-create":
-      return `Created ${count} ${count === 1 ? "thread" : "threads"}`;
+      return `Created ${count} ${count === 1 ? "chat" : "chats"}`;
     case "device":
       return `Used device controls ${count} ${count === 1 ? "time" : "times"}`;
     case "browser":
@@ -573,7 +573,7 @@ function toolGroupActionLabel(action: ToolGroupAction, count: number): string {
     case "other":
       return `Used ${count} ${count === 1 ? "tool" : "tools"}`;
     case "update":
-      return `Received ${count} ${count === 1 ? "update" : "updates"}`;
+      return `Got ${count} ${count === 1 ? "notice" : "notices"}`;
   }
 }
 
@@ -715,7 +715,7 @@ export function summarizeToolGroup(entries: ReadonlyArray<WorkLogPresentationEnt
           : `${sourceNames.slice(0, -1).join(", ")}, and ${sourceNames.at(-1)}`;
     const allIntegrations = sourceValues.every((source) => source.kind === "integration");
     labels.unshift(
-      `Used ${formattedNames}${allIntegrations ? ` ${sources.size === 1 ? "integration" : "integrations"}` : ""}`,
+      `Used ${formattedNames}${allIntegrations ? ` ${sources.size === 1 ? "tool" : "tools"}` : ""}`,
     );
   }
   const sourcedCount = entries.filter(

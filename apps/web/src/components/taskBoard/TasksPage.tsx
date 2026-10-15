@@ -297,10 +297,10 @@ export function TasksPage() {
     ) : (
       <Empty>
         <EmptyHeader>
-          <EmptyTitle>No release plan yet</EmptyTitle>
+          <EmptyTitle>No update plan yet</EmptyTitle>
           <EmptyDescription>
-            Ask your agent to define the current version, target release and intermediate milestones
-            in this project’s project-roadmap.json. Assign tasks to versions in their details.
+            Ask your AI to define the current version, the goal version and the steps between in
+            this project’s project-roadmap.json. Assign tasks to versions in their details.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -472,7 +472,7 @@ export function TasksPage() {
             <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
               <span className="min-w-0 flex-1">
                 Practice project: sample tasks to try things on. Nothing here touches your real
-                tasks, GitHub or agents.
+                tasks, GitHub or AI.
               </span>
               <Button size="sm" variant="outline" onClick={practice.reset}>
                 Reset
@@ -495,7 +495,7 @@ export function TasksPage() {
               role="status"
               className="border-b border-border px-3 py-2 text-xs text-warning-foreground"
             >
-              The shared board could not be read, so only this machine&apos;s tasks are shown.
+              The shared board could not be read, so only the tasks on this computer show.
             </p>
           ) : null}
 

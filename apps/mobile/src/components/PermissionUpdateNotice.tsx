@@ -75,7 +75,7 @@ export function PermissionUpdateNotice() {
     };
     Alert.alert(
       `Permissions have changed for ${environment.label}`,
-      "This connection still uses the old permissions, so some actions may no longer be available. Pair again using a new link with the permissions you need.",
+      "This connection still uses the old permissions, so some actions may no longer be available. Connect again with a new connection link that has the permissions you need.",
       [{ text: "Got it", onPress: dismiss }],
       { cancelable: false },
     );

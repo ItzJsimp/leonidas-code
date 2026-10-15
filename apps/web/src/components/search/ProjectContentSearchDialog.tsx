@@ -242,7 +242,9 @@ function OpenContentSearchDialog(props: {
           ) : search.error ? (
             <span className="text-destructive">{search.error}</span>
           ) : search.invalidRegex ? (
-            <span className="text-destructive">Invalid regular expression</span>
+            <span className="text-destructive">
+              That search pattern is not valid. Fix it, or turn off “Use regular expression”.
+            </span>
           ) : (
             `${matches.length.toLocaleString()}${search.truncated ? "+" : ""} results in ${fileCount.toLocaleString()} files`
           )}
@@ -256,7 +258,7 @@ function OpenContentSearchDialog(props: {
             : !search.canReadFiles
               ? search.error
               : search.hasQuery && !search.isPending && !search.error
-                ? "No results found."
+                ? "No results. Try different words."
                 : "Type to search across your project."}
         </div>
       ) : (

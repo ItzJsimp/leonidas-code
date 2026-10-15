@@ -877,7 +877,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
               ? {
                   disabledInstanceIds: lockedDisabledInstanceIds,
                   getDisabledInstanceTooltip: (entry: ProviderInstanceEntry) =>
-                    `${entry.displayName} is unavailable in this thread. Start a new thread to switch providers.`,
+                    `${entry.displayName} does not work in this chat. Start a new chat to use another AI service.`,
                 }
               : {})}
           />
@@ -1106,13 +1106,13 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                     >
                       {providerSetupEntries.length > 1
                         ? `Set up ${entry.displayName}`
-                        : "Open provider setup"}
+                        : "Open AI account setup"}
                     </InlineButton>
                   </div>
                 ))}
               </div>
             ) : (
-              <ComboboxEmpty className="empty:h-0">No models found</ComboboxEmpty>
+              <ComboboxEmpty className="empty:h-0">No models found. Try other words.</ComboboxEmpty>
             )}
             {updateRequiredNotices.map(({ instanceId, notice }) => (
               <p
@@ -1126,7 +1126,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                     void navigate({ to: "/settings/providers" });
                   }}
                 >
-                  Provider settings
+                  Open AI account settings
                 </InlineButton>
               </p>
             ))}

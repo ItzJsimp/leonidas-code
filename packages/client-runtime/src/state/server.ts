@@ -1263,6 +1263,11 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "hardware:deep-sensors",
       tag: WS_METHODS.hardwareSetDeepSensors,
     }),
+    hardwareStatus: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hardware:status",
+      tag: WS_METHODS.hardwareGetStatus,
+      staleTimeMs: 30_000,
+    }),
     hardwarePrepareAgent: createEnvironmentRpcCommand(runtime, {
       label: "hardware:prepare-agent",
       tag: WS_METHODS.hardwarePrepareAgent,

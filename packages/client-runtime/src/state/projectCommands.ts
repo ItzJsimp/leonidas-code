@@ -76,7 +76,7 @@ export class ScratchProjectNotLoadedError extends Schema.TaggedError<ScratchProj
   { projectId: ProjectId },
 ) {
   override get message(): string {
-    return "The folder for threads without a project has not reached this device yet. Try again.";
+    return "The folder for chats without a project is not on this device yet. Try again.";
   }
 }
 

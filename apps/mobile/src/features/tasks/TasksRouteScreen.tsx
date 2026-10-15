@@ -131,8 +131,8 @@ export function TasksRouteScreen() {
           ) : (
             <Text className="px-2 text-base text-foreground-muted">
               {availableTargets.length === 0
-                ? "Connect an environment to plan your tasks."
-                : "No environments match these filters. Change the filter above."}
+                ? "Connect a computer to plan your tasks."
+                : "No computers match these filters. Change the filter above."}
             </Text>
           )}
         </ScrollView>
@@ -274,7 +274,7 @@ function EnvironmentDailyTasks(props: {
         <Text className="p-4 text-base text-foreground-muted">Loading tasks…</Text>
       ) : !data.aiosConnected && data.tasks.length === 0 ? (
         <Text className="p-4 text-base text-foreground-muted">
-          This environment has no task folder yet. Add a task to start one.
+          This computer has no task folder yet. Add a task to start one.
         </Text>
       ) : tasks.length === 0 ? (
         <Text className="p-4 text-base text-foreground-muted">

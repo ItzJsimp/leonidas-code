@@ -60,10 +60,10 @@ export function ProviderWizardAuthenticationStep({
               title="Account"
               description={
                 isDiscovering
-                  ? "Discovering sign-in methods…"
+                  ? "Looking for sign-in methods…"
                   : (query.error ??
                     auth?.message ??
-                    "No in-app sign-in advertised. Follow the provider's docs to finish setup.")
+                    "This AI service has no sign-in in Leonidas Code. Follow its help pages to finish setup.")
               }
               control={
                 isDiscovering ? (
@@ -78,7 +78,7 @@ export function ProviderWizardAuthenticationStep({
                       <a href={provider.setup.documentationUrl} target="_blank" rel="noreferrer" />
                     }
                   >
-                    Open docs
+                    Open the help pages
                   </Button>
                 ) : undefined
               }

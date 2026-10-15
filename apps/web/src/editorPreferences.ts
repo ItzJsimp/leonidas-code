@@ -28,7 +28,7 @@ export class PreferredEditorEnvironmentRequiredError extends Schema.TaggedError<
   },
 ) {
   override get message(): string {
-    return `Cannot open ${this.targetPath} because no environment is selected.`;
+    return `Cannot open ${this.targetPath} because no computer is selected.`;
   }
 }
 
@@ -100,7 +100,7 @@ export function useOpenInPreferredEditor(
           Cause.fail(
             new EnvironmentAuthorizationError({
               requiredScope: AuthOrchestrationOperateScope,
-              message: "This connection cannot open an editor on this environment.",
+              message: "This connection cannot open an editor on this computer.",
             }),
           ),
         );

@@ -42,9 +42,15 @@ import { UsageLimitsPooled } from "./UsageLimitsPooled";
 import { PROVIDER_PRESENTATION } from "./usageProviders";
 
 const PACE: Record<LimitPace, { readonly label: string; readonly icon: typeof GaugeIcon }> = {
-  ahead: { label: "Ahead of pace: spending faster than the window elapses", icon: TrendingUpIcon },
-  on: { label: "On pace with the window", icon: GaugeIcon },
-  under: { label: "Under pace: headroom left for the rest of the window", icon: TrendingDownIcon },
+  ahead: {
+    label: "Ahead of pace: you use your limit faster than time passes",
+    icon: TrendingUpIcon,
+  },
+  on: { label: "On pace: you use your limit as fast as time passes", icon: GaugeIcon },
+  under: {
+    label: "Under pace: you have room left for the rest of the period",
+    icon: TrendingDownIcon,
+  },
 };
 
 /** The series colour the cost chart uses for this driver, so the two views read as one. */
@@ -107,7 +113,7 @@ function WindowBar({
     ? formatUpcomingTimestamp(window.resetsAt, timestampFormat, now)
     : null;
   const summary = `${window.label}: ${limitText(window.usedPercent, view)}${
-    timeLeft === null ? "" : `, ${timeLeft}% of the window left`
+    timeLeft === null ? "" : `, ${timeLeft}% of the period left`
   }${resetsIn ? `, ${resetsIn}` : ""}`;
 
   return (
@@ -141,10 +147,10 @@ function WindowBar({
         <div className="flex flex-col gap-0.5">
           <span className="text-foreground">
             {limitText(window.usedPercent, view)}
-            {timeLeft !== null ? ` · ${timeLeft}% of the window left` : ""}
+            {timeLeft !== null ? ` · ${timeLeft}% of the period left` : ""}
           </span>
           {timeLeft !== null ? (
-            <span className="text-muted-foreground">The line is where even spending would be.</span>
+            <span className="text-muted-foreground">The line shows where steady use would be.</span>
           ) : null}
           {resetsAt ? (
             <span className="text-muted-foreground">
@@ -207,10 +213,10 @@ export function LimitWindows({
 }
 
 const OUTCOME_TEXT: Record<ProviderConsumeResetCreditOutcome, string> = {
-  reset: "Reset applied. Your windows have cleared.",
-  nothingToReset: "Nothing to reset right now.",
-  noCredit: "No reset credit left.",
-  alreadyRedeemed: "That credit was already redeemed.",
+  reset: "Reset done. Your limits are clear.",
+  nothingToReset: "There is nothing to reset now.",
+  noCredit: "You have no reset credit left.",
+  alreadyRedeemed: "You already used that credit.",
 };
 
 /** Everything a redeem needs: where to send it and what to say afterwards. */
@@ -238,7 +244,7 @@ export function useResetCredit(
     setStatus(
       "error" in result.cause && result.cause.error instanceof Error
         ? result.cause.error.message
-        : "Could not use the reset credit.",
+        : "Could not use the reset credit. Try again.",
     );
   };
 
@@ -268,8 +274,8 @@ export function ResetCreditDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Use a reset credit?</AlertDialogTitle>
           <AlertDialogDescription>
-            This redeems one credit on your account and clears the current rate-limit windows. It
-            cannot be undone.
+            This uses one credit on your account and clears your current limits. You cannot undo
+            this.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -33,10 +33,26 @@ export function auditPrompt(prompt: string, kind?: "tune"): PromptAuditResult {
   const tune: ReadonlyArray<readonly [name: string, ok: boolean, points: number]> =
     kind === "tune"
       ? [
-          ["benchmarks before the first check", /\nChecks [^\n]*\n1\. Benchmark before: [^\n]*-Label before/.test(prompt), 10],
-          ["benchmarks again after the fixes", /-Label after[^\n]*Before \| After/.test(prompt), 10],
-          ["researches the exact parts with sources", /Research: [^\n]*Cite the source/.test(prompt), 10],
-          ["saves specs and strategy to notes", /Save: write [^\n]*strategy and why/.test(prompt), 10],
+          [
+            "benchmarks before the first check",
+            /\nChecks [^\n]*\n1\. Benchmark before: [^\n]*-Label before/.test(prompt),
+            10,
+          ],
+          [
+            "benchmarks again after the fixes",
+            /-Label after[^\n]*Before \| After/.test(prompt),
+            10,
+          ],
+          [
+            "researches the exact parts with sources",
+            /Research: [^\n]*Cite the source/.test(prompt),
+            10,
+          ],
+          [
+            "saves specs and strategy to notes",
+            /Save: write [^\n]*strategy and why/.test(prompt),
+            10,
+          ],
         ]
       : [];
   const checks = [...base, ...tune];

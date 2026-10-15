@@ -197,26 +197,26 @@ const ACTION_FAILURE_LABELS: Record<PullRequestAction, string> = {
 /** What to try, for the times the host says only that it refused. */
 const ACTION_FAILURE_HINTS: Record<PullRequestAction, string> = {
   merge:
-    "The host refused the merge. Check that you have write access, that the checks it requires have passed, and that the branch is not conflicting.",
-  ready: "The host refused it. Check that you have write access to this repository.",
-  draft: "The host refused it. Check that you have write access to this repository.",
-  close: "The host refused it. Check that you have write access, or that you opened it.",
+    "The service refused the merge. Check that you have write access, that the checks it requires have passed, and that the branch is not conflicting.",
+  ready: "The service refused it. Check that you have write access to this repository.",
+  draft: "The service refused it. Check that you have write access to this repository.",
+  close: "The service refused it. Check that you have write access, or that you opened it.",
   reopen:
-    "The host refused it. Check that you have write access, and that the branch still exists.",
+    "The service refused it. Check that you have write access, and that the branch still exists.",
   // Said for the merge commit, which is what an update is unless a rebase was asked for. The
   // rebase has its own reasons to fail and its own sentence below.
   "update-branch":
-    "The host refused it. Check that you have write access to the branch — one from a fork also needs its author to allow edits from maintainers — and that it does not conflict with the base.",
+    "The service refused it. Check that you have write access to the branch. A branch from a fork also needs the author to allow edits from maintainers. Check that it does not conflict with the base.",
   // The one refusal that is usually a repository setting rather than anything about this branch:
   // GitHub will not arm an auto-merge at all unless the repository has the feature switched on.
   "enable-auto-merge":
-    "The host refused it. Check that this repository allows auto-merge, that you have write access, and that there is something left for it to wait on.",
+    "The service refused it. Check that this repository allows auto-merge, that you have write access, and that there is something left for it to wait on.",
   "disable-auto-merge":
-    "The host refused it. Check that you have write access, and that the merge has not already happened.",
+    "The service refused it. Check that you have write access, and that the merge has not already happened.",
   revert:
-    "The host refused it. Check that you have write access and that this pull request was merged on the host.",
+    "The service refused it. Check that you have write access and that this pull request was merged on the code service.",
   "approve-workflows":
-    "The host refused it. Check that you have Actions write access and that these workflow runs are still awaiting approval.",
+    "The service refused it. Check that you have Actions write access and that these workflow runs are still awaiting approval.",
 };
 
 /**
@@ -225,7 +225,7 @@ const ACTION_FAILURE_HINTS: Record<PullRequestAction, string> = {
  * Offering the merge commit only makes sense to somebody who did not already choose it.
  */
 const UPDATE_BRANCH_REBASE_FAILURE_HINT =
-  "The host refused it. A rebase stops at the first commit that does not apply cleanly; updating with a merge commit may still work.";
+  "The service refused it. A rebase stops at the first commit that does not apply cleanly; updating with a merge commit may still work.";
 
 const TABS: ReadonlyArray<{ value: DetailTab; label: string }> = [
   { value: "summary", label: "Summary" },
@@ -369,7 +369,7 @@ function PullRequestBaseFreshnessWarning({
       </PopoverTrigger>
       <PopoverPopup align="start" side="bottom" className="max-w-80" padding="compact">
         <p className="text-xs text-foreground">{summary}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">Changes can be cleanly merged.</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Changes can merge with no conflicts.</p>
         {/* Each way the host offers and this reader may take, as its own button: a split button
             would need a menu inside a popover, and two buttons say the same thing in one layer. */}
         {freshness.methods.length > 0 ? (
@@ -737,7 +737,7 @@ export function PullRequestDetailPanel({
     onError: (error, label) =>
       toastManager.add({
         type: "error",
-        title: `Failed to copy ${label}`,
+        title: `Could not copy ${label}`,
         ...userErrorToastFields(error),
       }),
   });
@@ -785,7 +785,7 @@ export function PullRequestDetailPanel({
   const onCheckoutCommandError = useCallback((error: Error) => {
     toastManager.add({
       type: "error",
-      title: "Could not copy checkout command",
+      title: "Could not copy the command",
       ...userErrorToastFields(error),
     });
   }, []);
@@ -1025,7 +1025,7 @@ export function PullRequestDetailPanel({
     });
     if (commentResult._tag === "Failure") {
       setPendingAction(null);
-      toastManager.add({ type: "error", title: "Could not post the comment" });
+      toastManager.add({ type: "error", title: "Could not post the comment. Try again." });
       return { commentPosted: false };
     }
     const actionSucceeded = await finishAction(action);
@@ -1050,10 +1050,10 @@ export function PullRequestDetailPanel({
       // rewritten is the one thing a failed save must not cost them.
       toastManager.add({
         type: "error",
-        title: "The title could not be saved",
+        title: "Could not save the title. Try again.",
         description: readableFailure(
           squashAtomCommandFailure(result),
-          "The host refused the new title.",
+          "The service refused the new title.",
         ),
       });
       return;
@@ -1144,11 +1144,11 @@ export function PullRequestDetailPanel({
       writeTaskToComposer(attachTarget, task);
       toastManager.add({
         type: "success",
-        title: "Added to the composer",
+        title: "Added to your message",
         description:
           task.prompt.length > 0
-            ? "The question is in the composer — read it over, then send."
-            : "The pull request is in the composer — type your question, then send.",
+            ? "The question is in the message box. Read it, then send it."
+            : "The pull request is in the message box. Type your question, then send it.",
       });
       return;
     }
@@ -1159,20 +1159,20 @@ export function PullRequestDetailPanel({
     if (opened === null) {
       toastManager.add({
         type: "error",
-        title: "Could not open a thread",
-        description: "Try again from the project, or open a thread first.",
+        title: "Could not open a chat",
+        description: "Open a chat in the project first. Then try again.",
       });
       return;
     }
     toastManager.add({
       type: "success",
-      title: "Asked in a thread",
+      title: "Asked in a chat",
       // "Ask" leaves the composer empty on purpose, so saying the question is in it would send
       // the reader looking for something that is not there. The chips are what landed.
       description:
         task.prompt.length > 0
-          ? "The question is in the composer — read it over, then send."
-          : "The pull request is in the composer — type your question, then send.",
+          ? "The question is in the message box. Read it, then send it."
+          : "The pull request is in the message box. Type your question, then send it.",
     });
   };
 
@@ -1192,8 +1192,8 @@ export function PullRequestDetailPanel({
       writeTaskToComposer(attachTarget, task);
       toastManager.add({
         type: "success",
-        title: "Added to the composer",
-        description: "The task is in the composer — read it over, then send.",
+        title: "Added to your message",
+        description: "The task is in the message box. Read it, then send it.",
       });
       return;
     }
@@ -1216,7 +1216,7 @@ export function PullRequestDetailPanel({
     // never expires, and an explicit one would survive the update and pin the result on screen.
     const toastId = toastManager.add({
       type: "loading",
-      title: "Preparing the pull request checkout...",
+      title: "Getting the pull request branch ready...",
     });
     // Wherever the reader chose to act: the thread, the checkout it is pointed at and the composer
     // the task lands in are all one server's, and picking another one moves all three.
@@ -1238,8 +1238,8 @@ export function PullRequestDetailPanel({
       // working tree than to prepare a worktree nobody asked for.
       toastManager.update(toastId, {
         type: "error",
-        title: "Could not open a thread for the checkout",
-        description: "Try again from the project, or open a thread first.",
+        title: "Could not open a chat for the branch",
+        description: "Open a chat in the project first. Then try again.",
       });
       return;
     }
@@ -1256,7 +1256,7 @@ export function PullRequestDetailPanel({
         prepareThread.error instanceof Error ? prepareThread.error.message : null;
       toastManager.update(toastId, {
         type: "error",
-        title: "Could not prepare the pull request checkout",
+        title: "Could not get the pull request branch ready",
         ...(detailMessage ? { description: detailMessage } : {}),
       });
       return;
@@ -1278,8 +1278,8 @@ export function PullRequestDetailPanel({
       // outcome worth stopping for, since it reads as success and is not.
       toastManager.update(toastId, {
         type: "error",
-        title: "Checked out, but the thread stayed where it was",
-        description: `The checkout is ready on \`${prepared.value.branch}\`. Point a thread at it from the branch picker, then ask again.`,
+        title: "Branch ready, but the chat did not switch to it",
+        description: `The branch \`${prepared.value.branch}\` is ready. Switch the chat to it with the branch picker, then ask again.`,
       });
       return;
     }
@@ -1291,9 +1291,9 @@ export function PullRequestDetailPanel({
     // success, because everything else about the handoff did happen.
     const staleCheckoutToast = {
       type: "warning",
-      title: "Checked out, but not on the latest commits",
+      title: "Branch ready, but not on the latest commits",
       description:
-        "The checkout could not be moved onto the pull request's latest commits, so the code there is older than the pull request. Uncommitted work or local commits keep it where it is.",
+        "Leonidas Code could not update the branch to the latest commits of the pull request. The code there is older than the pull request. Unsaved work or local commits stop the update.",
     } as const;
     if (task === null) {
       toastManager.update(
@@ -1301,11 +1301,11 @@ export function PullRequestDetailPanel({
         prepared.value.isOnPullRequestHead
           ? {
               type: "success",
-              title: mode === "local" ? "Checked out here" : "Checked out",
+              title: mode === "local" ? "Branch ready here" : "Branch ready",
               description:
                 mode === "local"
-                  ? "This repository is on the pull request's branch, with a thread open on it."
-                  : "The pull request is in its own worktree, with a thread open on it.",
+                  ? "This project folder is on the branch of the pull request, with a chat open on it."
+                  : "The pull request is in its own separate copy, with a chat open on it.",
             }
           : staleCheckoutToast,
       );
@@ -1317,8 +1317,8 @@ export function PullRequestDetailPanel({
       prepared.value.isOnPullRequestHead
         ? {
             type: "success",
-            title: "Checkout ready",
-            description: "The task is in the composer — read it over, then send.",
+            title: "Branch ready",
+            description: "The task is in the message box. Read it, then send it.",
           }
         : staleCheckoutToast,
     );
@@ -1565,11 +1565,13 @@ export function PullRequestDetailPanel({
                   <Button
                     size="xs"
                     variant="outline"
-                    aria-label={handoff?.startsWith("checkout") ? "Checking out..." : "Check out"}
+                    aria-label={
+                      handoff?.startsWith("checkout") ? "Opening branch..." : "Open branch"
+                    }
                   >
                     <GitBranchIcon aria-hidden className="size-3.5" />
                     <span className="@max-[35rem]/pr-header:hidden">
-                      {handoff?.startsWith("checkout") ? "Checking out..." : "Check out"}
+                      {handoff?.startsWith("checkout") ? "Opening branch..." : "Open branch"}
                     </span>
                     <ChevronDownIcon aria-hidden className="size-3.5 text-muted-foreground" />
                   </Button>
@@ -1577,24 +1579,24 @@ export function PullRequestDetailPanel({
               />
             }
           />
-          <TooltipPopup>Check out this pull request</TooltipPopup>
+          <TooltipPopup>Open the branch of this pull request</TooltipPopup>
         </Tooltip>
         <MenuPopup align="end" side="bottom">
           <MenuItem disabled={!canPrepareWorktree} onClick={() => startCheckout("worktree")}>
             <GitBranchIcon className="mt-1 size-3.5 shrink-0 self-start" />
             <span className="flex min-w-0 flex-col">
-              <span>In a separate worktree</span>
+              <span>In a separate copy</span>
               <span className="text-xs text-muted-foreground">
-                Its own folder and thread. Nothing you have open moves.
+                Its own folder and chat. Nothing you have open changes.
               </span>
             </span>
           </MenuItem>
           <MenuItem disabled={!prepareThread.isAllowed} onClick={() => startCheckout("local")}>
             <FolderGit2Icon className="mt-1 size-3.5 shrink-0 self-start" />
             <span className="flex min-w-0 flex-col">
-              <span>In this repository</span>
+              <span>In this project folder</span>
               <span className="text-xs text-muted-foreground">
-                Switches the branch you are working in, like `gh pr checkout`.
+                Switches the branch you work in now, like `gh pr checkout`.
               </span>
             </span>
           </MenuItem>
@@ -1706,7 +1708,7 @@ export function PullRequestDetailPanel({
                           variant="ghost-muted"
                           onClick={onBack}
                           className="-ml-1.5"
-                          aria-label="Back to this thread's pull requests"
+                          aria-label="Back to the pull requests of this chat"
                         >
                           <ArrowLeftIcon aria-hidden className="size-3.5" />
                         </Button>
@@ -1748,7 +1750,7 @@ export function PullRequestDetailPanel({
                           "inline-flex shrink-0 cursor-pointer items-center gap-0.5 font-medium underline-offset-2 hover:underline",
                           statePresentation.toneClassName,
                         )}
-                        aria-label={`Open pull request #${detail.number} on host`}
+                        aria-label={`Open pull request #${detail.number} on the website`}
                       >
                         #{detail.number}
                         <ExternalLinkIcon aria-hidden className="size-2.5" />
@@ -1782,7 +1784,7 @@ export function PullRequestDetailPanel({
                           tabIndex={condensed ? 0 : -1}
                           onClick={onBack}
                           className="-ml-1.5"
-                          aria-label="Back to this thread's pull requests"
+                          aria-label="Back to the pull requests of this chat"
                         >
                           <ArrowLeftIcon aria-hidden className="size-3.5" />
                         </Button>
@@ -1803,7 +1805,7 @@ export function PullRequestDetailPanel({
                           "inline-flex shrink-0 cursor-pointer items-center gap-0.5 font-medium underline-offset-2 hover:underline",
                           statePresentation.toneClassName,
                         )}
-                        aria-label={`Open pull request #${detail.number} on host`}
+                        aria-label={`Open pull request #${detail.number} on the website`}
                       >
                         #{detail.number}
                         <ExternalLinkIcon aria-hidden className="size-2.5" />
@@ -1831,7 +1833,7 @@ export function PullRequestDetailPanel({
             <TooltipProvider delay={150} closeDelay={150} timeout={400}>
               {!nativeStack && supportsStackActions && nativeStackQuery.error ? (
                 <Button variant="ghost" size="xs" onClick={nativeStackQuery.refresh}>
-                  Retry stack lookup
+                  Try the stack lookup again
                 </Button>
               ) : null}
               {nativeStack ? (
@@ -1888,7 +1890,7 @@ export function PullRequestDetailPanel({
                     }
                   />
                   <TooltipPopup side="top">
-                    {armedAutoMergeLabel}: the host will merge this on its own once its requirements
+                    {armedAutoMergeLabel}: the service will merge this by itself when all its rules
                     are met
                   </TooltipPopup>
                 </Tooltip>
@@ -1980,7 +1982,7 @@ export function PullRequestDetailPanel({
                     }
                   />
                   <TooltipPopup side="top">
-                    {armedAutoMergeLabel}: the host will merge this on its own once its requirements
+                    {armedAutoMergeLabel}: the service will merge this by itself when all its rules
                     are met
                   </TooltipPopup>
                 </Tooltip>
@@ -2097,8 +2099,8 @@ export function PullRequestDetailPanel({
                       <span>{handoff === "ask" ? "Opening..." : "Ask a question"}</span>
                       <span className="text-xs text-muted-foreground">
                         {attachTarget !== null
-                          ? "Adds the pull request to this thread's composer."
-                          : "Opens a thread that knows which pull request you mean."}
+                          ? "Adds the pull request to the message of this chat."
+                          : "Opens a chat that knows which pull request you mean."}
                       </span>
                     </span>
                   </MenuItem>
@@ -2107,7 +2109,7 @@ export function PullRequestDetailPanel({
                     <span className="flex min-w-0 flex-col">
                       <span>{handoff === "explain" ? "Opening..." : "Explain this PR"}</span>
                       <span className="text-xs text-muted-foreground">
-                        A walk through the diff and what to read closely.
+                        A walk through the changes and what to read with care.
                       </span>
                     </span>
                   </MenuItem>
@@ -2527,9 +2529,9 @@ export function PullRequestDetailPanel({
                     <PullRequestCopyableCode
                       key={checkoutCommand}
                       value={checkoutCommand}
-                      target="pull request checkout command"
-                      copyLabel="Copy checkout command"
-                      copiedLabel="Checkout command copied"
+                      target="command to open the branch"
+                      copyLabel="Copy command to open this branch"
+                      copiedLabel="Command copied"
                       className="ml-auto font-mono"
                       tooltipSide="bottom"
                       onError={onCheckoutCommandError}
@@ -2703,7 +2705,7 @@ export function PullRequestDetailPanel({
                   >
                     <MessageSquareIcon aria-hidden className="size-3" />
                     {activityError
-                      ? "—"
+                      ? "-"
                       : activityPending
                         ? "…"
                         : detail.commentCount.toLocaleString()}
@@ -2720,7 +2722,7 @@ export function PullRequestDetailPanel({
                   >
                     <GitCommitHorizontalIcon aria-hidden className="size-3" />
                     {activityError
-                      ? "—"
+                      ? "-"
                       : activityPending
                         ? "…"
                         : detail.commits.length.toLocaleString()}
@@ -2848,7 +2850,11 @@ export function PullRequestDetailPanel({
             ) : null}
             {mountedTabs.has("code") ? (
               <div className={cn("absolute inset-0", tab !== "code" && "invisible")}>
-                <Suspense fallback={<DiffPanelLoadingState label="Loading pull request diff..." />}>
+                <Suspense
+                  fallback={
+                    <DiffPanelLoadingState label="Loading the changes of the pull request..." />
+                  }
+                >
                   <PullRequestCodeTab
                     scrollerRef={scrollerRefs.code}
                     onAddToAgentSelection={addSelectionToAgent}

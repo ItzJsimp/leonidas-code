@@ -9,6 +9,7 @@ import {
   parseWindowsInventory,
   parseWindowsVolumes,
   type HostBasics,
+  wmiDate,
 } from "./parsers.ts";
 import { auditPrompt } from "./promptAudit.ts";
 import { BENCHMARK_SCRIPT, buildAgentPrompt, machineSummary } from "./SystemCare.ts";
@@ -270,6 +271,14 @@ describe("history files", () => {
   });
 });
 
+describe("wmiDate", () => {
+  it("turns the Windows /Date(ms)/ form and ISO text into a day", () => {
+    expect(wmiDate("/Date(1734048000000)/")).toBe("2024-12-13");
+    expect(wmiDate("2025-03-01T00:00:00")).toBe("2025-03-01");
+    expect(wmiDate(null)).toBeNull();
+  });
+});
+
 describe("PC Tuning prompts", () => {
   it("summarizes the machine and points the agent at its evidence", () => {
     const inventory = parseWindowsInventory(inventoryJson, host, 1);
@@ -353,6 +362,8 @@ describe("PC Tuning prompts", () => {
 
   it("keeps the benchmark script plain ASCII with one JSON line out", () => {
     expect(/^[\x09\x0a\x0d\x20-\x7e]*$/.test(BENCHMARK_SCRIPT)).toBe(true);
-    expect(BENCHMARK_SCRIPT).toContain('Add-Content -Path (Join-Path $PSScriptRoot "benchmarks.jsonl")');
+    expect(BENCHMARK_SCRIPT).toContain(
+      'Add-Content -Path (Join-Path $PSScriptRoot "benchmarks.jsonl")',
+    );
   });
 });

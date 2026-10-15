@@ -65,7 +65,7 @@ function MobileClientRow({ device }: { readonly device: RelayClientDeviceRecord 
 
 function MobileClientsSkeleton() {
   return (
-    <div aria-label="Loading mobile clients" className="divide-y border-t" role="status">
+    <div aria-label="Loading phones" className="divide-y border-t" role="status">
       {MOBILE_CLIENT_SKELETON_ROWS.map((row) => (
         <div key={row} className="py-4">
           <div className="flex gap-3">
@@ -92,10 +92,10 @@ function EmptyMobileClients() {
         <SmartphoneIcon />
       </EmptyMedia>
       <EmptyHeader>
-        <EmptyTitle>No mobile clients</EmptyTitle>
+        <EmptyTitle>No phones yet</EmptyTitle>
         <EmptyDescription>
-          Install Leonidas Code on your phone and sign in to T3 Connect to get push notifications and Live
-          Activities.
+          Install Leonidas Code on your phone and sign in for remote access. Then you get push
+          notifications and Live Activities.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -111,8 +111,8 @@ export function MobileClientsUserProfilePage() {
 
   return (
     <ClerkUserProfilePage
-      title="Mobile clients"
-      description="Mobile devices that get notifications from your environments."
+      title="Phones"
+      description="Phones that get notifications from your computers."
       action={
         <ClerkUserProfileRefreshButton
           isPending={devicesState.isPending}
@@ -128,7 +128,7 @@ export function MobileClientsUserProfilePage() {
           >
             <div>
               <p className="font-medium text-destructive-foreground">
-                Could not load mobile clients
+                Could not load your phones. Select Try again.
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">{devicesState.error}</p>
             </div>

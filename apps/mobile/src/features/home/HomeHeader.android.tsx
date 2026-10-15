@@ -20,11 +20,11 @@ export function HomeHeader(props: HomeHeaderProps) {
     () => [
       {
         id: "environment",
-        title: "Environment",
+        title: "Computer",
         subactions: [
           {
             id: "environment:all",
-            title: "All environments",
+            title: "All computers",
             state: checkedMenuState(props.selectedEnvironmentId === null),
           },
           ...props.environments.map((environment) => ({

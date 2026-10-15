@@ -78,7 +78,7 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
           <Button size="icon-xs" variant="ghost" onClick={onBack} aria-label="Go back">
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <span className="text-sm font-semibold">Context Breakdown</span>
+          <span className="text-sm font-semibold">Chat memory</span>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
           Failed to load context breakdown: {query.error}
@@ -98,9 +98,9 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
           <Button size="icon-xs" variant="ghost" onClick={onBack} aria-label="Go back">
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <span className="text-sm font-semibold">Context Breakdown</span>
+          <span className="text-sm font-semibold">Chat memory</span>
         </div>
-        <span>No context data reported yet for this thread.</span>
+        <span>No memory data for this chat yet.</span>
       </div>
     );
   }
@@ -115,14 +115,14 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
           <Button size="icon-xs" variant="ghost" onClick={onBack} aria-label="Go back to overview">
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <span className="text-sm font-semibold tracking-tight">Context breakdown</span>
+          <span className="text-sm font-semibold tracking-tight">Chat memory</span>
         </div>
         <span className="pe-1 text-2xs text-muted-foreground">
           {breakdown.source === "provider"
-            ? "Reported by provider"
+            ? "Reported by the AI service"
             : breakdown.source === "estimated"
               ? "Estimated"
-              : "Reported + estimated"}
+              : "Reported and estimated"}
         </span>
       </div>
 
@@ -189,8 +189,8 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter files, tools, skills..."
-            aria-label="Filter context breakdown"
+            placeholder="Search files, tools, skills..."
+            aria-label="Search chat memory"
             size="compact"
             className="h-8"
           />
@@ -228,7 +228,7 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
         {sections.toolCalls.length > 0 ? (
           <SectionContainer
             icon={TerminalIcon}
-            title="Tool calls"
+            title="Tool use"
             count={sections.toolCalls.length}
             tokens={sections.toolCalls.reduce((s, g) => s + g.tokens, 0)}
             maxTokens={breakdown.maxTokens}
@@ -284,7 +284,7 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
         {sections.memory.length > 0 ? (
           <SectionContainer
             icon={LayersIcon}
-            title="System & Memory"
+            title="System and notes"
             count={sections.memory.length}
             tokens={sectionTokens(sections.memory)}
             maxTokens={breakdown.maxTokens}
@@ -301,7 +301,7 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
         {sections.mcpTools.length > 0 ? (
           <SectionContainer
             icon={WrenchIcon}
-            title="MCP Tools"
+            title="Tools you added"
             count={sections.mcpTools.length}
             tokens={sectionTokens(sections.mcpTools)}
             maxTokens={breakdown.maxTokens}
@@ -335,7 +335,7 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
         {sections.agents.length > 0 ? (
           <SectionContainer
             icon={FileTextIcon}
-            title="Subagents"
+            title="Helpers"
             count={sections.agents.length}
             tokens={sectionTokens(sections.agents)}
             maxTokens={breakdown.maxTokens}

@@ -171,7 +171,7 @@ export function PullRequestThreadDialog({
           setPrepareErrorMessage(
             error instanceof Error
               ? error.message
-              : `Failed to prepare ${terminology.singular} thread.`,
+              : `Could not prepare ${terminology.singular} chat.`,
           );
         }
         return;
@@ -198,9 +198,9 @@ export function PullRequestThreadDialog({
   const validationMessage = !referenceDirty
     ? null
     : reference.trim().length === 0
-      ? `Paste a ${terminology.singular} URL, checkout command, or enter 123 / #123.`
+      ? `Paste a ${terminology.singular} URL, branch command, or enter 123 / #123.`
       : parsedReference === null
-        ? `Use a ${terminology.singular} URL, checkout command, 123, or #123.`
+        ? `Use a ${terminology.singular} URL, branch command, 123, or #123.`
         : null;
   const errorMessage =
     validationMessage ??
@@ -210,7 +210,7 @@ export function PullRequestThreadDialog({
       : preparePullRequestThreadAction.error instanceof Error
         ? preparePullRequestThreadAction.error.message
         : preparePullRequestThreadAction.error
-          ? `Failed to prepare ${terminology.singular} thread.`
+          ? `Could not prepare ${terminology.singular} chat.`
           : null);
 
   return (
@@ -226,11 +226,11 @@ export function PullRequestThreadDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <SourceControlIcon className="me-2 size-4" />
-            Checkout {terminology.singular}
+            Open {terminology.singular} in a chat
           </DialogTitle>
           <DialogDescription>
             Resolve a {sourceControlPresentation.providerName} {terminology.singular}, then create
-            the draft thread in the main repo or in a dedicated worktree.
+            the draft chat in the main folder or in a separate copy.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -240,7 +240,7 @@ export function PullRequestThreadDialog({
             </span>
             <Input
               ref={referenceInputRef}
-              placeholder={`${terminology.shortLabel} URL, checkout command, or #42`}
+              placeholder={`${terminology.shortLabel} URL, branch command, or #42`}
               value={reference}
               onChange={(event) => {
                 setReferenceDirty(true);
@@ -310,7 +310,7 @@ export function PullRequestThreadDialog({
               preparePullRequestThreadAction.isPending
             }
           >
-            {preparingMode === "local" ? "Preparing local..." : "Local"}
+            {preparingMode === "local" ? "Preparing main folder..." : "Main folder"}
           </Button>
           <Button
             type="button"
@@ -325,7 +325,7 @@ export function PullRequestThreadDialog({
               preparePullRequestThreadAction.isPending
             }
           >
-            {preparingMode === "worktree" ? "Preparing worktree..." : "Worktree"}
+            {preparingMode === "worktree" ? "Preparing separate copy..." : "Separate copy"}
           </Button>
         </DialogFooter>
       </DialogPopup>

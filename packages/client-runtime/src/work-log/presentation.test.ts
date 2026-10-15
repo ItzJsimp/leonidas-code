@@ -235,7 +235,7 @@ describe("summarizeToolGroup", () => {
           label: "Created thread",
         }),
       ]).summary,
-    ).toBe("Ran 1 command and created 1 thread");
+    ).toBe("Ran 1 command and created 1 chat");
   });
 
   it("deduplicates named sources ahead of ordinary actions", () => {
@@ -250,7 +250,7 @@ describe("summarizeToolGroup", () => {
           command: "git status",
         }),
       ]).summary,
-    ).toBe("Used Chrome integration and ran 1 command");
+    ).toBe("Used Chrome tool and ran 1 command");
   });
 
   it("omits the integration suffix for special browser and computer sources", () => {
@@ -292,23 +292,23 @@ describe("resolveWorkEntryToolPresentation", () => {
       expect(resolveWorkEntryToolPresentation(failed)?.displayName, tool).toMatch(/^Failed to /);
       expect(summarizeToolGroup([failed]).hasFailure, tool).toBe(true);
       expect(summarizeToolGroup([failed]).summary, tool).toMatch(
-        /^(?:Tried to |Requested thread creation)/,
+        /^(?:Tried to |Requested chat creation)/,
       );
     }
   });
 
   it.each([
     ["t3_project_list", "Listing projects", "Listed projects"],
-    ["t3_project_clone", "Cloning a repository", "Cloned a repository"],
-    ["t3_project_create", "Registering a project", "Registered a project"],
-    ["t3_thread_launch", "Launching a project thread", "Launched a project thread"],
-    ["t3_queue_edit", "Editing a queued message", "Edited a queued message"],
-    ["t3_pending_request_respond", "Answering pending questions", "Answered pending questions"],
-    ["t3_thread_configure", "Setting thread model", "Set thread model"],
-    ["t3_thread_fork", "Forking this thread", "Requested a fork of this thread"],
+    ["t3_project_clone", "Cloning a project", "Cloned a project"],
+    ["t3_project_create", "Adding a project", "Added a project"],
+    ["t3_thread_launch", "Launching a chat for a project", "Launched a chat for a project"],
+    ["t3_queue_edit", "Editing a waiting message", "Edited a waiting message"],
+    ["t3_pending_request_respond", "Answering questions", "Answered questions"],
+    ["t3_thread_configure", "Setting chat model", "Set chat model"],
+    ["t3_thread_fork", "Copying this chat", "Requested a copy of this chat"],
     ["t3_thread_send_attachments", "Sending attachments", "Sent attachments"],
     ["run_scheduled_task_now", "Running a scheduled task", "Requested a run of a scheduled task"],
-    ["t3_workflow_stop", "Stopping a workflow", "Requested a stop for a workflow"],
+    ["t3_workflow_stop", "Stopping a helper group", "Requested a stop for a helper group"],
   ])("labels %s through its lifecycle", (tool, running, completed) => {
     expect(resolveWorkEntryToolPresentation({ label: `T3-code.${tool}` })?.displayName).toBe(
       running,
@@ -357,7 +357,7 @@ describe("resolveWorkEntryToolPresentation", () => {
         },
       ]),
     ).toEqual({
-      summary: "Requested stops for 2 workflows and requested interrupts for 1 thread",
+      summary: "Requested stop for 2 helper groups and requested stop for 1 chat",
       hasFailure: false,
     });
   });
@@ -379,7 +379,7 @@ describe("resolveWorkEntryToolPresentation", () => {
     };
     const list = { ...entry, toolData: { server: "t3-code", tool: "t3_project_list" } };
     expect(summarizeToolGroup([list, entry])).toEqual({
-      summary: "Listed projects 1 time and cloned 1 repository",
+      summary: "Listed projects 1 time and cloned 1 project",
       hasFailure: false,
     });
     const failed = {
@@ -387,7 +387,7 @@ describe("resolveWorkEntryToolPresentation", () => {
       toolData: { toolName: "T3-code.t3_project_clone", rawOutput: { isError: true } },
     };
     expect(summarizeToolGroup([entry, failed])).toEqual({
-      summary: "Cloned 1 repository",
+      summary: "Cloned 1 project",
       hasFailure: true,
     });
   });
@@ -414,9 +414,7 @@ describe("resolveWorkEntryToolPresentation", () => {
       itemType: "dynamic_tool",
       toolData: { output: { isError: true } },
     };
-    expect(resolveWorkEntryToolPresentation(entry)?.displayName).toBe(
-      "Failed to clone a repository",
-    );
+    expect(resolveWorkEntryToolPresentation(entry)?.displayName).toBe("Failed to clone a project");
     expect(workEntryDisplayIndicatesToolFailure(entry)).toBe(true);
     expect(workEntryIndicatesToolSuccess(entry)).toBe(false);
     const childFailure = {
@@ -517,12 +515,12 @@ describe("resolveWorkEntryToolPresentation", () => {
       "Stopping recording the preview browser",
       "Stopped recording the preview browser",
     ],
-    ["t3_thread_read", "Reading a Leonidas thread", "Read a Leonidas thread"],
-    ["t3_thread_send", "Sending to a Leonidas thread", "Sent to a Leonidas thread"],
+    ["t3_thread_read", "Reading a chat", "Read a chat"],
+    ["t3_thread_send", "Sending to a chat", "Sent to a chat"],
     [
       "t3_worktree_handoff",
-      "Handing off thread to a git worktree",
-      "Handed off thread to a git worktree",
+      "Handing off chat to a separate copy",
+      "Handed off chat to a separate copy",
     ],
   ])("preserves verb forms and the rest of %s's label", (tool, running, completed) => {
     const entry = { label: `t3-code.${tool}` };
@@ -541,7 +539,7 @@ describe("resolveWorkEntryToolPresentation", () => {
         label: "mcp__t3_code__task_status",
         toolTitle: "Check the child task",
       }),
-    ).toEqual({ displayName: "Getting delegated task status", icon: "t3-code" });
+    ).toEqual({ displayName: "Getting helper status", icon: "t3-code" });
   });
 
   it("does not brand unknown tools or another server's matching tool name", () => {

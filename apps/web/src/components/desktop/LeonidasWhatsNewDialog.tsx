@@ -56,13 +56,13 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
           <DialogTitle>
             <span className="flex items-center gap-2">
               <SparklesIcon aria-hidden className="size-4 text-muted-foreground" />
-              {entry ? entry.article.title : `What's new${version ? ` in ${version}` : ""}`}
+              {entry ? entry.article.title : `What is new${version ? ` in ${version}` : ""}`}
             </span>
           </DialogTitle>
           <DialogDescription>
             {onRestartNow
-              ? "Your update is ready. Restart to install, or wait until your agents finish."
-              : "The latest improvements and fixes in Leonidas Code."}
+              ? "Your update is ready. Restart to install it, or wait until the AI is done."
+              : "The newest changes and fixes in Leonidas Code."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel className="max-h-[55dvh]">
@@ -82,7 +82,7 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
             <p className="text-sm leading-relaxed text-muted-foreground">{entry.article.summary}</p>
           ) : null}
           {fullNotes && entry ? (
-            <Suspense fallback={<p role="status">Loading article…</p>}>
+            <Suspense fallback={<p role="status">Loading the notes…</p>}>
               <ReleaseArticle entry={entry} />
             </Suspense>
           ) : (
@@ -104,15 +104,14 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
                 }
               />
               <TooltipPopup>
-                {fullNotes
-                  ? "Return to the update highlights"
-                  : "Read the complete release article"}
+                {fullNotes ? "Go back to the highlights" : "Read the full update notes"}
               </TooltipPopup>
             </Tooltip>
           ) : articleError ? (
             <div className="flex flex-wrap items-center gap-3">
               <p role="status" className="text-xs text-muted-foreground">
-                Full notes are unavailable. The downloaded highlights are shown above.
+                The full notes are not available. The highlights are shown above. Select Retry to
+                load them again.
               </p>
               <Button
                 size="sm"
@@ -147,7 +146,7 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
                   onClose();
                 }}
               >
-                Update when safe
+                Update when the AI is done
               </Button>
             ) : null}
             {onRestartNow ? (

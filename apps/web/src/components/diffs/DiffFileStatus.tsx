@@ -19,7 +19,7 @@ export function DiffFileStatus({
           <Button
             size="icon-micro"
             variant="ghost-muted"
-            aria-label={error ? "Retry loading diff" : "Partial diff preview"}
+            aria-label={error ? "Try loading the changes again" : "Partial preview of the changes"}
             onClick={(event) => {
               event.stopPropagation();
               if (error) retry();
@@ -31,7 +31,7 @@ export function DiffFileStatus({
       </TooltipTrigger>
       <TooltipPopup>
         {error
-          ? "Retry loading diff"
+          ? "Try loading the changes again"
           : "This file is too large to show in full. Counts include all changes."}
       </TooltipPopup>
     </Tooltip>

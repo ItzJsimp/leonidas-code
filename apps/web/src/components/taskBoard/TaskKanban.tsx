@@ -102,7 +102,7 @@ const KanbanCard = memo(function KanbanCard({
               <TooltipTrigger
                 render={
                   <Button
-                    aria-label={`Send ${task.title} to an agent`}
+                    aria-label={`Send ${task.title} to the AI`}
                     disabled={busy}
                     onClick={() => onSend(task)}
                     size="icon-xs"
@@ -112,7 +112,7 @@ const KanbanCard = memo(function KanbanCard({
               >
                 <BotIcon />
               </TooltipTrigger>
-              <TooltipPopup>Send to agent</TooltipPopup>
+              <TooltipPopup>Send to AI</TooltipPopup>
             </Tooltip>
           ) : null}
           <Menu>
@@ -351,7 +351,8 @@ export function TaskKanbanView(props: {
           </EmptyMedia>
           <EmptyTitle>No tasks to show</EmptyTitle>
           <EmptyDescription>
-            Tasks from your AIOS task cards appear here as soon as one matches the filters.
+            Tasks from your AIOS task folder show here when they match the filters. Clear the
+            filters to see all tasks.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

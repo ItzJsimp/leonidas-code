@@ -94,8 +94,8 @@ export function AddUsageLimitSourceDialog({
         <DialogHeader>
           <DialogTitle>Add a CLIProxyAPI hub</DialogTitle>
           <DialogDescription>
-            Show the quota of every account the hub pools, next to the providers on{" "}
-            {environmentLabel}. The key stays on that server.
+            Show the usage of every account the hub pools, next to the AI services on{" "}
+            {environmentLabel}. The key stays on that computer.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -130,7 +130,7 @@ export function AddUsageLimitSourceDialog({
               <Label htmlFor="usage-source-label">Label (optional)</Label>
               <Input
                 id="usage-source-label"
-                placeholder="Defaults to the hub's host name"
+                placeholder="Leave empty to use the hub name"
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
               />

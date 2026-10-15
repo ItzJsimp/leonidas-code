@@ -44,7 +44,7 @@ function NativeVideoPreview(props: {
   const loadError =
     resource !== null && playbackUrl === null
       ? preparedConnection._tag === "None"
-        ? "Reconnect to this environment and open the video again."
+        ? "Reconnect to this computer and open the video again."
         : assetUrl._tag === "Failure"
           ? "Could not load this video. Check the connection and try again."
           : null

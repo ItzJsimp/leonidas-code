@@ -18,10 +18,10 @@ export function uiVerificationBannerItem(input: {
     priority: "notice",
     icon: <MonitorIcon />,
     title: "Check the screens you changed",
-    description: `${names.slice(0, 3).join(", ")}${extra} changed in your last turn.`,
+    description: `${names.slice(0, 3).join(", ")}${extra} changed in the last reply.`,
     actions: (
       <Button size="xs" variant="ghost" onClick={onVerify}>
-        Verify in preview
+        Check in preview
       </Button>
     ),
     dismissLabel: "Dismiss",

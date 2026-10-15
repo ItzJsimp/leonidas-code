@@ -82,12 +82,12 @@ describe("ComposerPrimaryActions", () => {
     expect(markup).toContain('aria-label="Sending feedback"');
   });
 
-  it("offers Stop generation while a running turn is waiting for user input", () => {
-    expect(renderPendingActions(true)).toContain('aria-label="Stop generation"');
+  it("offers Stop reply while a running turn is waiting for user input", () => {
+    expect(renderPendingActions(true)).toContain('aria-label="Stop reply"');
   });
 
-  it("does not offer Stop generation for a pending request without a running turn", () => {
-    expect(renderPendingActions(false)).not.toContain('aria-label="Stop generation"');
+  it("does not offer Stop reply for a pending request without a running turn", () => {
+    expect(renderPendingActions(false)).not.toContain('aria-label="Stop reply"');
   });
 
   it("renders stage artwork inside the send button when artwork identification is active", () => {

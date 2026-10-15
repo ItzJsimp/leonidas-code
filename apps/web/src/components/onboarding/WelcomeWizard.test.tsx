@@ -165,7 +165,7 @@ it("enters the workspace after a partial import and warns after navigation finis
   const onDone = vi.fn(() => navigation);
   await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
   await click("Continue");
-  await click("Continue without an agent");
+  await click("Continue without an AI");
   await click("Skip skills");
   await click("Import 1 project");
   await click("Skip for now");
@@ -178,7 +178,7 @@ it("enters the workspace after a partial import and warns after navigation finis
   expect(mocks.toast).toHaveBeenCalledWith(
     expect.objectContaining({
       type: "warning",
-      description: "Imported 28 threads. 1 thread could not be imported.",
+      description: "Imported 28 chats. 1 chat could not be imported.",
     }),
   );
   expect(mocks.toast.mock.invocationCallOrder[0]).toBeGreaterThan(
@@ -190,8 +190,8 @@ it.each([
   [0, 0, null],
   [29, 0, null],
   [1, 0, null],
-  [0, 1, "1 thread could not be imported."],
-  [0, 2, "2 threads could not be imported."],
+  [0, 1, "1 chat could not be imported."],
+  [0, 2, "2 chats could not be imported."],
 ] as const)(
   "finishes setup with %i imported and %i skipped threads",
   async (importedCount, skippedCount, warning) => {
@@ -202,7 +202,7 @@ it.each([
     const onDone = vi.fn();
     await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
     await click("Continue");
-    await click("Continue without an agent");
+    await click("Continue without an AI");
     await click("Skip skills");
     await click("Import 1 project");
     await click("Skip for now");
@@ -210,7 +210,7 @@ it.each([
     if (warning === null && importedCount > 0) {
       expect(mocks.toast).toHaveBeenCalledWith({
         type: "success",
-        title: `Imported ${importedCount} ${importedCount === 1 ? "thread" : "threads"}`,
+        title: `Imported ${importedCount} ${importedCount === 1 ? "chat" : "chats"}`,
       });
     } else if (warning === null) {
       expect(mocks.toast).not.toHaveBeenCalled();
@@ -227,7 +227,7 @@ it("keeps setup open when saving completion fails and preserves the import warni
   const onDone = vi.fn();
   await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
   await click("Continue");
-  await click("Continue without an agent");
+  await click("Continue without an AI");
   await click("Skip skills");
   await click("Import 1 project");
   await click("Skip for now");
@@ -241,7 +241,7 @@ it("keeps setup open when saving completion fails and preserves the import warni
   expect(mocks.toast).toHaveBeenLastCalledWith(
     expect.objectContaining({
       type: "warning",
-      description: "Imported 28 threads. 1 thread could not be imported.",
+      description: "Imported 28 chats. 1 chat could not be imported.",
     }),
   );
 });

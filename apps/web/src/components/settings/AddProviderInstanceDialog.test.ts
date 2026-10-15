@@ -10,7 +10,7 @@ import {
 } from "./AddProviderInstanceDialog.logic";
 
 describe("resolveWizardNavigation", () => {
-  const invalidId = { instanceIdError: "Instance ID is required." };
+  const invalidId = { instanceIdError: "Enter an account ID." };
   const validId = { instanceIdError: null };
 
   it("allows moving from Driver to Identity before the instance id is valid", () => {
@@ -21,7 +21,7 @@ describe("resolveWizardNavigation", () => {
     expect(resolveWizardNavigation(1, 2, 3, invalidId)).toEqual({
       kind: "blocked",
       step: 1,
-      error: "Instance ID is required.",
+      error: "Enter an account ID.",
     });
   });
 
@@ -29,7 +29,7 @@ describe("resolveWizardNavigation", () => {
     expect(resolveWizardNavigation(0, 2, 3, invalidId)).toEqual({
       kind: "blocked",
       step: 1,
-      error: "Instance ID is required.",
+      error: "Enter an account ID.",
     });
   });
 

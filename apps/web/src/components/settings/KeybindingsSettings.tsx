@@ -139,8 +139,8 @@ function KeybindingsSearchInput({
           if (query.length > 0) onChange("");
           else event.currentTarget.blur();
         }}
-        placeholder="Search keybindings"
-        aria-label="Search keybindings"
+        placeholder="Search keyboard shortcuts"
+        aria-label="Search keyboard shortcuts"
         size="sm"
       />
     </InputGroup>
@@ -258,8 +258,7 @@ function UnknownWhenVariableWarning({
 
   return (
     <WarningTooltipIcon label={label} focusable={focusable} className="size-4.5">
-      Leonidas Code does not recognize this condition yet. It can still be saved, but it may not
-      match unless the runtime provides it.
+      Leonidas Code does not know this condition yet. You can still save it, but it may never match.
     </WarningTooltipIcon>
   );
 }
@@ -632,7 +631,7 @@ function WhenExpressionBuilder({
             onChange={(event) => updateExpressionDraft(event.currentTarget.value)}
             placeholder="Always"
             aria-invalid={Boolean(parseError)}
-            aria-label="When expression"
+            aria-label="Condition"
             size="compact"
             font="mono"
           />
@@ -674,7 +673,7 @@ function WhenExpressionBuilder({
         )}
         {parseError ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg border border-destructive/30 bg-background/75 p-4 text-center text-xs text-destructive backdrop-blur-xs">
-            Fix the expression above to continue editing visually.
+            Fix the condition above to keep editing with the buttons.
           </div>
         ) : null}
       </div>
@@ -828,7 +827,7 @@ function KeybindingKeyControl({
         <Input
           data-keybinding-capture=""
           autoFocus={isRecording}
-          aria-label={`Keybinding for ${commandLabel(row.command)}`}
+          aria-label={`Keyboard shortcut for ${commandLabel(row.command)}`}
           value={isRecording ? "" : keyDraft}
           placeholder={isRecording ? "Press shortcut" : "Unassigned"}
           size="sm"
@@ -870,7 +869,7 @@ function WhenClauseControl({
             className="min-w-0 shrink"
           />
         }
-        aria-label={`Edit when clause for ${label}`}
+        aria-label={`Edit condition for ${label}`}
       >
         <span className="truncate font-mono">{expression || "Always"}</span>
         <ChevronDownIcon className="size-3.5 shrink-0 opacity-60" />
@@ -1139,7 +1138,7 @@ function NewKeybindingKeyInput({
     <Input
       data-keybinding-capture=""
       autoFocus={autoFocus}
-      aria-label={`Keybinding for ${draft.commandLabelText}`}
+      aria-label={`Keyboard shortcut for ${draft.commandLabelText}`}
       value={draft.isRecording ? "" : draft.keyDraft}
       placeholder={draft.isRecording ? "Press shortcut" : "Unassigned"}
       size="sm"
@@ -1188,7 +1187,7 @@ function NewKeybindingCancelIcon({
             variant="ghost-muted"
             size="icon-sm"
             disabled={isSaving}
-            aria-label="Cancel new keybinding"
+            aria-label="Cancel new keyboard shortcut"
             onClick={onCancel}
           />
         }
@@ -1208,7 +1207,7 @@ function NewKeybindingSettingsRow(props: NewKeybindingProps) {
   return (
     <SettingsRow
       className="bg-muted/15"
-      title="New keybinding"
+      title="New keyboard shortcut"
       description={
         <span className="flex h-6 items-center gap-1.5">
           <span className="text-xs leading-none text-muted-foreground/70">When</span>
@@ -1354,7 +1353,7 @@ export function KeybindingsSettingsPanel() {
       }
       const error = squashAtomCommandFailure(result);
       toastManager.add({
-        title: "Unable to open keybindings file",
+        title: "Could not open the shortcuts file",
         ...userErrorToastFields(error),
         type: "error",
       });
@@ -1478,7 +1477,7 @@ export function KeybindingsSettingsPanel() {
             onClick={() => setIsAddingBinding(true)}
           >
             <PlusIcon aria-hidden className="size-4" />
-            Add keybinding
+            Add keyboard shortcut
           </Button>
           <Tooltip>
             <TooltipTrigger
@@ -1502,7 +1501,7 @@ export function KeybindingsSettingsPanel() {
 
       {!canWriteSettings ? (
         <p className="text-xs text-muted-foreground">
-          This connection can view keybindings but cannot change them.
+          This connection can show keyboard shortcuts but cannot change them.
         </p>
       ) : null}
       <div inert={!canWriteSettings} className="flex flex-col gap-8">
@@ -1529,7 +1528,7 @@ export function KeybindingsSettingsPanel() {
         ) : (
           <SettingsGroup>
             <div className="px-4 py-12 text-center text-sm text-muted-foreground">
-              No keybindings match your search.
+              No keyboard shortcuts match your search. Try other words.
             </div>
           </SettingsGroup>
         )}

@@ -20,18 +20,18 @@ const GROUPING_OPTIONS: ReadonlyArray<{
 }> = [
   {
     mode: "repository",
-    label: "Group by repository",
-    description: "Matching repositories appear as one project.",
+    label: "Group by project name",
+    description: "Projects with the same name appear together.",
   },
   {
     mode: "repository_path",
-    label: "Group by repository path",
-    description: "Keep monorepo paths separate.",
+    label: "Group by project folder",
+    description: "Keep project folders separate.",
   },
   {
     mode: "separate",
     label: "Keep separate",
-    description: "Show every workspace as its own project.",
+    description: "Show each project folder as its own project.",
   },
 ];
 

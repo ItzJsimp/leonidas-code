@@ -76,10 +76,10 @@ export function TaskRoadmapMap(props: {
   }, [props.stages]);
 
   return (
-    <section aria-label="Connected release map" className="space-y-3">
+    <section aria-label="Connected update map" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Follow the arrows down through versions. Branches show the work for each release.
+          Follow the arrows down through versions. Branches show the work for each update.
         </p>
         <div className="flex items-center gap-1" aria-label="Map zoom">
           <Button
@@ -154,7 +154,7 @@ export function TaskRoadmapMap(props: {
               <p className="font-mono text-base font-semibold">V{props.currentVersion}</p>
             </div>
             <p className="self-center text-xs leading-relaxed text-muted-foreground">
-              Version nodes connect in release order.
+              Versions connect in the order of the updates.
               <br />
               Select a task node to inspect its brief and actions.
             </p>
@@ -176,7 +176,7 @@ export function TaskRoadmapMap(props: {
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">Step {index + 1}</span>
                   {stage.complete ? (
-                    <CheckIcon aria-label="Gate complete" className="size-4 text-primary" />
+                    <CheckIcon aria-label="Step done" className="size-4 text-primary" />
                   ) : index === props.stages.length - 1 ? (
                     <FlagIcon aria-hidden className="size-4 text-muted-foreground" />
                   ) : null}
@@ -233,7 +233,7 @@ export function TaskRoadmapMap(props: {
                 ))}
                 {stage.total === 0 ? (
                   <li className="col-span-full text-xs text-muted-foreground">
-                    Assign tasks to scope this release gate.
+                    Assign tasks to this step.
                   </li>
                 ) : null}
               </ul>

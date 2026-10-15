@@ -23,7 +23,7 @@ export class PairingQrPayloadEmptyError extends Schema.TaggedError<PairingQrPayl
   {},
 ) {
   override get message(): string {
-    return "Scanned QR code did not contain a pairing URL.";
+    return "This QR code is not from Leonidas Code. Scan the code on your computer and try again.";
   }
 }
 

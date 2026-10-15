@@ -212,15 +212,11 @@ export function NewTaskEnvironmentPickerRouteScreen() {
       <NativeStackScreenOptions
         options={{
           headerShown: Platform.OS !== "android",
-          title: "Environment",
+          title: "Computer",
         }}
       />
       {Platform.OS === "android" ? (
-        <AndroidScreenHeader
-          title="Environment"
-          hideBottomBorder
-          onBack={() => navigation.goBack()}
-        />
+        <AndroidScreenHeader title="Computer" hideBottomBorder onBack={() => navigation.goBack()} />
       ) : null}
       <MaterialScreenContent>
         <ScrollView

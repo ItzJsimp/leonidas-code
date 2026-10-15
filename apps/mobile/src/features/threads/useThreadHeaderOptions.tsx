@@ -53,15 +53,13 @@ export function useThreadHeaderOptions(props: {
         : []),
       withNativeGlassHeaderItem({
         axisBehavior: usesNativeWorkspaceColumns ? "horizontalOnly" : undefined,
-        accessibilityLabel: panes.primarySidebarVisible
-          ? "Maximize content"
-          : "Show thread sidebar",
+        accessibilityLabel: panes.primarySidebarVisible ? "Maximize content" : "Show chat list",
         icon: {
           name: panes.primarySidebarVisible ? "arrow.up.left.and.arrow.down.right" : "sidebar.left",
           type: "sfSymbol" as const,
         },
         identifier: "thread-left-sidebar",
-        label: panes.primarySidebarVisible ? "Maximize content" : "Show thread sidebar",
+        label: panes.primarySidebarVisible ? "Maximize content" : "Show chat sidebar",
         onPress: togglePrimarySidebar,
         type: "button" as const,
       }),
@@ -94,7 +92,7 @@ export function useThreadHeaderOptions(props: {
   const compactHomeHeaderItems = useMemo<NativeHeaderItems>(
     () => [
       withNativeGlassHeaderItem({
-        accessibilityLabel: "Go to threads list",
+        accessibilityLabel: "Go to chats list",
         icon: { name: "list.bullet", type: "sfSymbol" as const },
         identifier: "thread-left-home",
         onPress: () => navigation.dispatch(StackActions.replace("Home")),
@@ -117,8 +115,8 @@ export function useThreadHeaderOptions(props: {
               type: "button" as const,
               axisBehavior: "verticalPreferred",
               identifier: "thread-right-search",
-              label: "Search threads",
-              accessibilityLabel: "Search threads",
+              label: "Search chats",
+              accessibilityLabel: "Search chats",
               icon: { name: "magnifyingglass", type: "sfSymbol" as const },
               onPress: () => {
                 dispatchHardwareKeyboardCommand("focusSearch");

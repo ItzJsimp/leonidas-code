@@ -458,7 +458,7 @@ export function useThreadComposerState() {
     setThreadComposerError(
       selectedThreadKey,
       keepable
-        ? "That message already started. Your edit is back in the composer."
+        ? "That message already started. Your edit is back in the message box."
         : "That message already started, so the edit was discarded.",
     );
   }, [editedRunId, selectedThreadKey, selectedThreadRuns]);
@@ -491,7 +491,7 @@ export function useThreadComposerState() {
     const text = draft.text.trim();
     if (text.length === 0) {
       // The server rejects an empty queued message, attachments or not.
-      Alert.alert("Add a message", "A queued message cannot be left empty.");
+      Alert.alert("Add a message", "A waiting message cannot be empty.");
       return;
     }
     if (
@@ -535,8 +535,8 @@ export function useThreadComposerState() {
       });
       if (result._tag !== "Success") {
         Alert.alert(
-          "Could not save the queued message",
-          "It may have already started. Your edit is still in the composer.",
+          "Could not save the waiting message",
+          "It may have already started. Your edit is still in the message box.",
         );
         return;
       }
@@ -635,7 +635,7 @@ export function useThreadComposerState() {
         if (!readEnvironmentScope(selectedThreadShell.environmentId, AuthOrchestrationOperateScope))
           return null;
         if (thread.activeProviderThreadId === null) {
-          Alert.alert("Start a Codex thread first", "Send a message before you submit feedback.");
+          Alert.alert("Start a Codex chat first", "Send a message before you submit feedback.");
           return null;
         }
         const metadata = makeQueuedMessageMetadata();
@@ -734,7 +734,9 @@ export function useThreadComposerState() {
           appendComposerDraftAttachments(threadKey, attachments, { allowOverflow: true });
           setThreadComposerError(
             threadKey,
-            error instanceof Error ? error.message : "Failed to save the queued message.",
+            error instanceof Error
+              ? error.message
+              : "Could not save the waiting message. Try again.",
           );
         },
       );
@@ -805,7 +807,7 @@ export function useThreadComposerState() {
       selectedEnvironmentRuntime?.serverConfig?.environment.capabilities.fileAttachments
         ?.maxUploadBytes;
     if (maxBytes === undefined) {
-      Alert.alert("Could not attach file", "This server does not support file attachments.");
+      Alert.alert("Could not attach file", "This computer does not support file attachments.");
       return;
     }
 

@@ -22,7 +22,7 @@ export function AiosHomeCard() {
   if (data === null && error !== null) {
     return (
       <section role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm">
-        <p className="font-medium">Could not read your AIOS</p>
+        <p className="font-medium">Could not read your AIOS folder</p>
         <p className="mt-1 text-muted-foreground">{error}</p>
         <Button size="sm" variant="outline" className="mt-3" onClick={refresh}>
           <RefreshCwIcon aria-hidden /> Try again
@@ -33,7 +33,7 @@ export function AiosHomeCard() {
   if (data === null) {
     return (
       <div role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-        <Spinner /> Reading your AIOS...
+        <Spinner /> Reading your AIOS folder...
       </div>
     );
   }
@@ -42,11 +42,11 @@ export function AiosHomeCard() {
       <section className="rounded-lg border border-dashed p-4 text-sm">
         <div className="flex items-center gap-2 font-medium">
           <FolderSearchIcon aria-hidden className="size-4 text-muted-foreground" />
-          No AIOS connected yet
+          No AIOS folder connected yet
         </div>
         <p className="mt-1 text-muted-foreground">
-          Your AIOS is your personal knowledge folder. Pick it on the Tasks page and your daily
-          focus shows up here.
+          Your AIOS is the folder with your notes and tasks. Pick it on the Tasks page. Then your
+          daily focus shows here.
         </p>
         <Link
           to="/tasks"
@@ -105,7 +105,7 @@ export function AiosHomeCard() {
         </div>
         {brief === null ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            No daily brief yet. Briefs saved in logs/briefings show up here.
+            No daily brief yet. Briefs saved in logs/briefings show here.
           </p>
         ) : (
           <>

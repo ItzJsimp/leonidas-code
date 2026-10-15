@@ -81,7 +81,7 @@ function fileRow(file: BreakdownFile): BreakdownRow {
   return {
     key: `file:${file.path}`,
     name: file.path,
-    detail: `${verb} ${plural(file.readCount, "time", "times")} · last in turn ${file.lastTurnIndex}`,
+    detail: `${verb} ${plural(file.readCount, "time", "times")} · last in reply ${file.lastTurnIndex}`,
     tokens: file.tokens,
     estimated: file.estimated,
   };

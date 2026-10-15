@@ -675,7 +675,7 @@ describe("buildThreadFeed", () => {
     );
 
     expect(activities).toHaveLength(1);
-    expect(activities[0]?.summary).toBe("Run interrupted");
+    expect(activities[0]?.summary).toBe("Reply stopped");
     expect(activities[0]?.detail).toBe("Run interrupted before provider start");
     expect(
       deriveThreadFeedPresentation(
@@ -1445,9 +1445,9 @@ describe("buildThreadFeed", () => {
     const feed = buildThreadFeed([projected(toolItem, 0)]);
     const activity = feed[0]?.type === "activity-group" ? feed[0].activities[0] : null;
 
-    expect(activity?.summary).toBe("Read a T3 thread");
+    expect(activity?.summary).toBe("Read a chat");
     expect(activity?.logo).toBe("t3-code");
-    expect(activity?.getCopyText().split("\n")[0]).toBe("Read a T3 thread");
+    expect(activity?.getCopyText().split("\n")[0]).toBe("Read a chat");
   });
 
   it("uses the CUA action title in the mobile feed", () => {
@@ -1497,7 +1497,7 @@ describe("buildThreadFeed", () => {
     expect(presented).toMatchObject([
       {
         type: "work-toggle",
-        summary: "Ran 2 commands and sent messages to 3 threads",
+        summary: "Ran 2 commands and sent messages to 3 chats",
         hiddenCount: 5,
         hasFailure: false,
       },
@@ -1536,8 +1536,8 @@ describe("buildThreadFeed", () => {
       entry.type === "activity-group" ? entry.activities : [],
     );
     expect(workEntryRowLabel(activities[0]!.workEntry)).toBe("Listed projects");
-    expect(workEntryRowLabel(activities[1]!.workEntry)).toBe("Cloned a repository");
-    expect(workEntryRowLabel(activities[2]!.workEntry)).toBe("Failed to clone a repository");
+    expect(workEntryRowLabel(activities[1]!.workEntry)).toBe("Cloned a project");
+    expect(workEntryRowLabel(activities[2]!.workEntry)).toBe("Failed to clone a project");
     expect(activities.every((activity) => activity.logo === "t3-code")).toBe(true);
     const presented = deriveThreadFeedPresentation(
       feed,
@@ -1545,7 +1545,7 @@ describe("buildThreadFeed", () => {
       new Set(),
     );
     expect(presented.find((entry) => entry.type === "work-toggle")).toMatchObject({
-      summary: "Listed projects 1 time and cloned 1 repository",
+      summary: "Listed projects 1 time and cloned 1 project",
       hasFailure: true,
     });
   });
@@ -1627,10 +1627,10 @@ describe("retained v2 feed presentation", () => {
           {
             summary:
               status === "running"
-                ? "Compacting context"
+                ? "Shortening chat history"
                 : status === "completed"
-                  ? "Context compacted 899K → 19K tokens"
-                  : "Context compacted",
+                  ? "Chat history shortened from 899K to 19K"
+                  : "Chat history shortened",
           },
         ],
       });
@@ -1716,7 +1716,7 @@ describe("retained v2 feed presentation", () => {
           entry.type === "activity-group" &&
           entry.activities[0]?.projectedItem.item.type === "compaction",
       ),
-    ).toMatchObject({ activities: [{ summary: "Context compacted" }] });
+    ).toMatchObject({ activities: [{ summary: "Chat history shortened" }] });
   });
 
   it("retains assistant image attachments from the wire", () => {

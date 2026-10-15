@@ -469,7 +469,7 @@ export function UsagePage() {
   const toolbar = (
     <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-x-3 gap-y-2 bg-background/95 px-1 py-2 backdrop-blur">
       <ToggleGroup
-        aria-label="Usage metric"
+        aria-label="What to show"
         variant="segmented"
         value={[metric]}
         onValueChange={(next) => {
@@ -487,7 +487,7 @@ export function UsagePage() {
           unmounting them would shift the metric tabs. */}
       <div className="min-w-0 max-w-full overflow-x-auto">
         <ToggleGroup
-          aria-label="Usage period"
+          aria-label="Time period"
           variant="segmented"
           value={[rangeId]}
           disabled={showingLimits}
@@ -527,8 +527,8 @@ export function UsagePage() {
             {selectedEnvironments.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {environments.length === 0
-                  ? `Connect an environment to see ${showingLimits ? "limits" : "usage"}.`
-                  : `Select an environment to see ${showingLimits ? "limits" : "usage"}.`}
+                  ? `Connect to a computer to see ${showingLimits ? "limits" : "usage"}.`
+                  : `Select a computer to see ${showingLimits ? "limits" : "usage"}.`}
               </p>
             ) : showingLimits ? (
               <UsageLimitsSection
@@ -583,14 +583,14 @@ export function UsagePage() {
                         title={metric === "cost" ? API_COST_NOTE : CACHE_READ_NOTE}
                       >
                         {metric === "cost"
-                          ? "API-equivalent cost"
-                          : "Processed tokens (incl. cache reads)"}
+                          ? "Cost at public prices"
+                          : "Text processed (includes reused text)"}
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <span className={figureClass(loading.partial)}>
-                          {formatCount(merged.sessions)} sessions
+                          {formatCount(merged.sessions)} chats
                           {metric === "tokens" && merged.totalTokens > 0
-                            ? ` · ${formatTokens(freshTokens(merged))} fresh`
+                            ? ` · ${formatTokens(freshTokens(merged))} new`
                             : null}
                         </span>
                         {metric === "cost" && merged.costQuality.unpricedShare > 0 && (
@@ -598,13 +598,14 @@ export function UsagePage() {
                             <PopoverTrigger
                               openOnHover
                               render={<InlineButton tone="muted" />}
-                              aria-label="Unpriced usage details"
+                              aria-label="Details about usage without a price"
                             >
                               <InfoIcon className="size-3" aria-hidden />
                             </PopoverTrigger>
                             <PopoverPopup side="top" tooltipStyle>
-                              API estimate excludes{" "}
-                              {formatPercent(merged.costQuality.unpricedShare)} unpriced records.
+                              This estimate leaves out{" "}
+                              {formatPercent(merged.costQuality.unpricedShare)} of the usage,
+                              because it has no price.
                             </PopoverPopup>
                           </Popover>
                         )}
@@ -682,7 +683,7 @@ export function UsagePage() {
                               )}
                             >
                               {awaitingData
-                                ? "—"
+                                ? "-"
                                 : metric === "cost"
                                   ? formatUsd(totals?.costUsd ?? 0)
                                   : formatTokens(totals?.totalTokens ?? 0)}
@@ -731,40 +732,40 @@ export function UsagePage() {
                   <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-4">
                     <Metric
                       loading={loading.partial}
-                      label="Processed tokens (incl. cache reads)"
+                      label="Text processed (includes reused text)"
                       title={CACHE_READ_NOTE}
                       value={formatTokens(merged.totalTokens)}
                     />
                     <Metric
                       loading={loading.partial}
-                      label="Fresh tokens"
-                      title="Uncached input + cache writes + output. Tracks real work and quota use better than processed tokens."
+                      label="New text"
+                      title="New text sent + text saved for reuse + text the AI wrote. This shows real work and your limit better than all text processed. These are tokens."
                       value={formatTokens(freshTokens(merged))}
                     />
                     <Metric
                       loading={loading.partial}
-                      label="Cached input"
+                      label="Reused text sent"
                       value={formatTokens(merged.cachedInputTokens)}
                     />
                     <Metric
                       loading={loading.partial}
-                      label="Uncached input"
+                      label="New text sent"
                       value={formatTokens(merged.uncachedInputTokens)}
                     />
                     <Metric
                       loading={loading.partial}
-                      label="Output"
+                      label="Text the AI wrote"
                       value={formatTokens(merged.outputTokens)}
                     />
                     <Metric
                       loading={loading.partial}
                       label="Thinking"
-                      title="Reasoning tokens, already counted inside output."
+                      title="Text the AI used to think. It is already counted in the text the AI wrote."
                       value={formatTokens(merged.reasoningTokens)}
                     />
                     <Metric
                       loading={loading.partial}
-                      label="Cache savings (API-equivalent)"
+                      label="Money saved by reusing text (public prices)"
                       title={API_COST_NOTE}
                       value={formatUsd(merged.costQuality.cacheSavingsUsd)}
                     />
@@ -806,7 +807,7 @@ export function UsagePage() {
                   >
                     {metric === "tokens" ? (
                       <UsageShareBar
-                        label="Tokens by type"
+                        label="Text by type"
                         segments={tokenTypeSegments(merged)}
                         format={formatTokens}
                       />
@@ -851,8 +852,8 @@ export function UsagePage() {
                       {(
                         [
                           { value: "model", label: "Model" },
-                          { value: "provider", label: "Provider" },
-                          { value: "account", label: "Account" },
+                          { value: "provider", label: "AI service" },
+                          { value: "account", label: "AI account" },
                           {
                             value: "time",
                             label: shownHourly ? (shownMinutes ? "Time" : "Hour") : "Day",
@@ -876,16 +877,26 @@ export function UsagePage() {
                             Cost
                           </th>
                           <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
-                          <th className="hidden py-2 pl-6 font-normal md:table-cell">Cache hit</th>
+                          <th
+                            className="hidden py-2 pl-6 font-normal md:table-cell"
+                            title="How much of the text the AI reused from its cache."
+                          >
+                            Reused
+                          </th>
                           <th className="hidden py-2 pl-6 font-normal md:table-cell">Thinking</th>
-                          <th className="py-2 pl-6 font-normal">Tokens</th>
+                          <th
+                            className="py-2 pl-6 font-normal"
+                            title="Tokens: the units of text the AI reads and writes."
+                          >
+                            Text used
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {breakdownModels.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="py-6 text-center text-muted-foreground">
-                              No activity in this window.
+                              No activity in this time period. Pick a longer period.
                             </td>
                           </tr>
                         ) : (
@@ -951,7 +962,7 @@ export function UsagePage() {
                                 </td>
                                 <td className={cn("py-2.5 pl-6 text-foreground", rowFigures)}>
                                   {freeModelKind(model.model) !== null ? (
-                                    <span title="No cost: this model is free or runs on this machine">
+                                    <span title="No cost: this model is free or runs on this computer">
                                       $0 ·{" "}
                                       <span className="text-muted-foreground">
                                         {freeModelKind(model.model) === "local"
@@ -960,7 +971,7 @@ export function UsagePage() {
                                       </span>
                                     </span>
                                   ) : isModelCostUnknown(model) ? (
-                                    <span className="text-muted-foreground">Unpriced</span>
+                                    <span className="text-muted-foreground">No price</span>
                                   ) : (
                                     formatUsd(model.costUsd)
                                   )}
@@ -989,20 +1000,25 @@ export function UsagePage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border text-right text-xs text-muted-foreground">
-                          <th className="w-full py-2 text-left font-normal">Provider</th>
+                          <th className="w-full py-2 text-left font-normal">AI service</th>
                           <th className="py-2 pl-6 font-normal" title={API_COST_NOTE}>
                             Cost
                           </th>
                           <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
-                          <th className="py-2 pl-6 font-normal">Sessions</th>
-                          <th className="py-2 pl-6 font-normal">Tokens</th>
+                          <th className="py-2 pl-6 font-normal">Chats</th>
+                          <th
+                            className="py-2 pl-6 font-normal"
+                            title="Tokens: the units of text the AI reads and writes."
+                          >
+                            Text used
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {merged.providers.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                              No activity in this window.
+                              No activity in this time period. Pick a longer period.
                             </td>
                           </tr>
                         ) : (
@@ -1079,20 +1095,25 @@ export function UsagePage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border text-right text-xs text-muted-foreground">
-                          <th className="w-full py-2 text-left font-normal">Account</th>
+                          <th className="w-full py-2 text-left font-normal">AI account</th>
                           <th className="py-2 pl-6 font-normal" title={API_COST_NOTE}>
                             Cost
                           </th>
                           <th className="hidden py-2 pl-6 font-normal sm:table-cell">Share</th>
-                          <th className="py-2 pl-6 font-normal">Sessions</th>
-                          <th className="py-2 pl-6 font-normal">Tokens</th>
+                          <th className="py-2 pl-6 font-normal">Chats</th>
+                          <th
+                            className="py-2 pl-6 font-normal"
+                            title="Tokens: the units of text the AI reads and writes."
+                          >
+                            Text used
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {accountRows.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                              No activity in this window.
+                              No activity in this time period. Pick a longer period.
                             </td>
                           </tr>
                         ) : (
@@ -1155,7 +1176,12 @@ export function UsagePage() {
                             </th>
                           ))}
                           <th className="py-2 text-right font-normal">Total</th>
-                          <th className="py-2 text-right font-normal">Tokens</th>
+                          <th
+                            className="py-2 text-right font-normal"
+                            title="Tokens: the units of text the AI reads and writes."
+                          >
+                            Text used
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1165,7 +1191,7 @@ export function UsagePage() {
                               colSpan={activeProviders.length + 3}
                               className="py-6 text-center text-muted-foreground"
                             >
-                              No activity in this window.
+                              No activity in this time period. Pick a longer period.
                             </td>
                           </tr>
                         ) : (
@@ -1256,14 +1282,14 @@ export function UsagePage() {
   );
 }
 
-const CURSOR_KEYCHAIN_COPY = "Requires access to your Cursor login in macOS Keychain.";
+const CURSOR_KEYCHAIN_COPY = "Needs access to your Cursor sign-in in the macOS Keychain.";
 
 function CursorEnableButton({
   environmentId,
   label,
   onEnabled,
   tooltip,
-  buttonText = "Enable",
+  buttonText = "Turn on",
 }: {
   readonly environmentId: EnvironmentId;
   readonly label: string;
@@ -1291,7 +1317,7 @@ function CursorEnableButton({
     <InlineButton
       disabled={pending}
       aria-busy={pending}
-      aria-label={`Enable Cursor usage from ${label}`}
+      aria-label={`Turn on Cursor usage from ${label}`}
       onClick={() => void enable()}
     >
       {buttonText}
@@ -1302,7 +1328,7 @@ function CursorEnableButton({
       variant="outline"
       disabled={pending}
       aria-busy={pending}
-      aria-label={`Enable Cursor usage from ${label}`}
+      aria-label={`Turn on Cursor usage from ${label}`}
       onClick={() => void enable()}
     >
       {buttonText}
@@ -1376,7 +1402,7 @@ function CursorEnableLimits({
               key={environment.environmentId}
               environmentId={environment.environmentId}
               label={environment.label}
-              buttonText={environments.length > 1 ? `Enable on ${environment.label}` : "Enable"}
+              buttonText={environments.length > 1 ? `Turn on for ${environment.label}` : "Turn on"}
               onEnabled={onEnabled}
               tooltip={false}
             />
@@ -1472,8 +1498,7 @@ function UsageCoverageNotice({
       ))}
       {duplicateSources.length > 0 ? (
         <span>
-          Counted once across environments sharing a transcript directory:{" "}
-          {duplicateSources.join(", ")}
+          Counted one time when computers share the same chat folder: {duplicateSources.join(", ")}
         </span>
       ) : null}
     </div>
@@ -1506,10 +1531,10 @@ function UsageEnvironmentFilter({
 }) {
   const allSelected = selectedEnvironmentIds === null;
   const label = allSelected
-    ? "All environments"
+    ? "All computers"
     : selectedEnvironments.length === 1
       ? selectedEnvironments[0]!.label
-      : `${selectedEnvironments.length} environments`;
+      : `${selectedEnvironments.length} computers`;
   const hasIssue =
     selectedEnvironments.some((environment) => environment.error !== null) ||
     contractMismatches.length > 0;
@@ -1522,7 +1547,7 @@ function UsageEnvironmentFilter({
           {showUsageStatus && hasIssue ? (
             <CircleAlertIcon
               className="size-3.5 text-warning-foreground"
-              aria-label="Some environments could not report usage"
+              aria-label="Some computers could not report usage"
             />
           ) : (
             <ChevronDownIcon
@@ -1538,7 +1563,7 @@ function UsageEnvironmentFilter({
           closeOnClick={false}
           onCheckedChange={(checked) => onSelectionChange(checked ? null : new Set())}
         >
-          All environments
+          All computers
         </MenuCheckboxItem>
         <MenuSeparator />
         {environments.map((environment) => {
@@ -1548,13 +1573,13 @@ function UsageEnvironmentFilter({
           const progress = usageEnvironmentProgress(environment, refreshing);
           const status =
             environment.error !== null
-              ? "Unavailable"
+              ? "Not available"
               : environment.summary !== null &&
                   !isCompatibleUsageContractVersion(
                     environment.summary.contractVersion,
                     USAGE_CONTRACT_VERSION,
                   )
-                ? "Update required"
+                ? "Update needed"
                 : !environment.isConnected
                   ? "Connecting…"
                   : progress.phase === "loading"
@@ -1593,11 +1618,13 @@ function UsageEnvironmentFilter({
           );
         })}
         {environments.length === 0 ? (
-          <p className="px-2 py-2 text-xs text-muted-foreground">No environments connected.</p>
+          <p className="px-2 py-2 text-xs text-muted-foreground">
+            No computers connected. Connect a computer to see usage.
+          </p>
         ) : null}
         {showUsageStatus && isPartial ? (
           <p className="px-2 py-2 text-xs text-muted-foreground">
-            Totals are partial while selected environments scan.
+            Totals are not complete while the selected computers scan.
           </p>
         ) : null}
         {showUsageStatus ? (
@@ -1628,12 +1655,12 @@ function UsageProviderFilter({
   const visible = PROVIDER_ORDER.filter((provider) => !hiddenProviders.has(provider));
   const label =
     visible.length === PROVIDER_ORDER.length
-      ? "All providers"
+      ? "All AI services"
       : visible.length === 0
-        ? "No providers"
+        ? "No AI services"
         : visible.length === 1
           ? PROVIDER_PRESENTATION[visible[0]!].label
-          : `${visible.length} providers`;
+          : `${visible.length} AI services`;
 
   return (
     <Menu>
@@ -1650,7 +1677,7 @@ function UsageProviderFilter({
           closeOnClick={false}
           onCheckedChange={(checked) => onChange(checked ? [] : PROVIDER_ORDER)}
         >
-          All providers
+          All AI services
         </MenuCheckboxItem>
         <MenuSeparator />
         {PROVIDER_ORDER.map((provider) => (
@@ -1719,13 +1746,13 @@ function UsageSkeleton() {
         <h2 className="text-sm font-medium text-foreground">Totals</h2>
         <MetricSkeletons
           labels={[
-            "Processed tokens (incl. cache reads)",
-            "Fresh tokens",
-            "Cached input",
-            "Uncached input",
-            "Output",
+            "Text processed (includes reused text)",
+            "New text",
+            "Reused text sent",
+            "New text sent",
+            "Text the AI wrote",
             "Thinking",
-            "Cache savings (API-equivalent)",
+            "Money saved by reusing text (public prices)",
           ]}
         />
       </section>

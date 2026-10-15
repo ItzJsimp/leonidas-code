@@ -13,7 +13,7 @@ describe("subagentGroupSummary", () => {
     "keeps a mixed group live while a member is %s",
     (status) => {
       expect(subagentGroupSummary([{ status: "completed" }, { status }])).toEqual({
-        label: "Kicked off 2 subagents",
+        label: "Working with 2 helpers",
         active: true,
         failed: false,
       });
@@ -28,7 +28,7 @@ describe("subagentGroupSummary", () => {
       "interrupted",
     ];
     expect(subagentGroupSummary(statuses.map((status) => ({ status })))).toEqual({
-      label: "Ran 4 subagents",
+      label: "Used 4 helpers",
       active: false,
       failed: true,
     });
@@ -36,7 +36,7 @@ describe("subagentGroupSummary", () => {
 
   it("uses a singular label for one idle member", () => {
     expect(subagentGroupSummary([{ status: "idle" }])).toEqual({
-      label: "Ran 1 subagent",
+      label: "Used 1 helper",
       active: false,
       failed: false,
     });
@@ -123,7 +123,7 @@ describe("resolveSubagentMetadata", () => {
         parentProject,
         childThread: { branch: null, worktreePath: "/worktrees/agents" },
       }).workspace,
-    ).toEqual([{ label: "Worktree", value: "agents" }]);
+    ).toEqual([{ label: "Separate copy", value: "agents" }]);
     expect(
       resolveSubagentMetadata({
         model: null,

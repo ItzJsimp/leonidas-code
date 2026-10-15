@@ -332,8 +332,8 @@ function localDayKey(date: Date): string {
 
 const HISTORY_VERBS: Record<TaskBoardHistoryEntry["action"], string> = {
   created: "Created",
-  claimed: "Claimed",
-  released: "Released",
+  claimed: "Taken",
+  released: "Given back",
   updated: "Updated",
   blocked: "Blocked",
   completed: "Completed",

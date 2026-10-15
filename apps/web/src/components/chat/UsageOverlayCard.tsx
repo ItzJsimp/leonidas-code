@@ -51,11 +51,11 @@ const LIMITS_REFRESH_MS = 5 * 60_000;
 const MAX_CONTEXT_SEGMENTS = 8;
 const MAX_TRIM_ROWS = 3;
 const TRIM_KIND_LABEL = {
-  mcp: "MCP",
+  mcp: "Tool",
   skill: "Skill",
-  agent: "Agent",
+  agent: "Helper",
   memory: "File",
-  "tool-results": "Compact:",
+  "tool-results": "Shorten:",
 } as const;
 const sumTokens = (rows: ReadonlyArray<{ readonly tokens: number }> | undefined) =>
   rows?.reduce((total, row) => total + row.tokens, 0) ?? 0;
@@ -97,14 +97,15 @@ function ContextSegments({
   const top = used.slice(0, MAX_CONTEXT_SEGMENTS);
   // Skills, MCP tools and agents are not always their own provider category.
   const named = new Set(top.map((segment) => segment.name.toLowerCase()));
-  const extras: Array<{ name: string; title?: string; tokens: number }> = [
+  const extras: Array<{ name: string; label?: string; title?: string; tokens: number }> = [
     { name: "Skills", tokens: sumTokens(query.data?.skills) },
     {
       name: "Connected tools",
-      title: "MCP tools",
+      label: "Tools",
+      title: "Tools",
       tokens: sumTokens(query.data?.mcpTools),
     },
-    { name: "Agents", tokens: sumTokens(query.data?.agents) },
+    { name: "Agents", label: "Helpers", tokens: sumTokens(query.data?.agents) },
   ].filter(
     (extra) =>
       extra.tokens > 0 &&
@@ -136,8 +137,11 @@ function ContextSegments({
         {extras.map((extra) => (
           <li key={extra.name} className="flex min-w-0 items-center gap-1.5">
             <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-            <span className="min-w-0 flex-1 truncate" title={extra.title}>
-              {extra.name}
+            <span
+              className="min-w-0 flex-1 truncate"
+              title={extra.title === "MCP tools" ? "These use MCP servers." : extra.title}
+            >
+              {extra.label ?? extra.name}
             </span>
             <span className="tabular-nums text-foreground">{formatTokenCount(extra.tokens)}</span>
           </li>
@@ -182,7 +186,7 @@ function ContextSegments({
         onClick={onOpenDetails}
         className="cursor-pointer self-start text-2xs text-muted-foreground transition-colors hover:text-foreground"
       >
-        See detailed breakdown
+        See the full list
       </button>
     </div>
   );
@@ -232,7 +236,7 @@ function AccountLimits({
                   className="flex items-center justify-between text-2xs text-muted-foreground"
                 >
                   <span>{row.label}</span>
-                  <span>Not reported</span>
+                  <span>Not shown</span>
                 </div>
               );
             }
@@ -335,8 +339,8 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
     figures.state === "reported"
       ? `${formatTokenCount(figures.usedTokens)} / ${figures.maxTokens ? formatTokenCount(figures.maxTokens) : "unlimited"}`
       : figures.state === "pending"
-        ? `Not reported / ${formatTokenCount(figures.maxTokens)}`
-        : "Not reported yet";
+        ? `Not shown / ${formatTokenCount(figures.maxTokens)}`
+        : "Not shown yet";
   const leftLine =
     figures.state === "reported" && figures.maxTokens
       ? `${formatTokenCount(Math.max(0, figures.maxTokens - figures.usedTokens))} left`
@@ -352,7 +356,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          aria-label="Show context and accounts"
+          aria-label="Show memory and accounts"
           className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-background/90 py-1 pr-3 pl-1.5 text-xs shadow-sm backdrop-blur transition-colors hover:bg-muted/60 @7xl:hidden"
         >
           <UsageRing
@@ -377,7 +381,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
       ) : null}
 
       <section
-        aria-label="Context and accounts"
+        aria-label="Memory and accounts"
         className={cn(
           "pointer-events-auto w-80 max-w-full max-h-[calc(100dvh-10rem)] [scrollbar-width:thin] overflow-y-auto flex-col gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-md backdrop-blur",
           expanded ? "flex" : "hidden @7xl:flex",
@@ -402,13 +406,13 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
               </span>
               <span className="truncate text-2xs text-muted-foreground">
                 {effortLabel ? `${effortLabel} · ` : ""}
-                Context window
+                Chat memory
               </span>
             </div>
             <Button
               size="icon-xs"
               variant="ghost"
-              aria-label="Hide card"
+              aria-label="Hide this card"
               className={cn("@7xl:hidden", expanded ? "" : "hidden")}
               onClick={() => setExpanded(false)}
             >
@@ -419,7 +423,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             <UsageBar
               fill="used"
               usedPercent={percent ?? 0}
-              label={`Context: ${percent ?? 0}% used`}
+              label={`Chat memory: ${percent ?? 0}% used`}
             />
           )}
           <div className="flex items-center justify-between text-2xs tabular-nums text-muted-foreground">
@@ -451,7 +455,8 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           </div>
         ) : (
           <p className="rounded-lg border border-dashed border-border/60 p-2.5 text-2xs text-muted-foreground">
-            No subscription account is linked to this chat's provider.
+            This chat uses an AI service with no AI account signed in. Add an AI account in
+            Settings.
           </p>
         )}
 
@@ -479,7 +484,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             onClick={() => void navigate({ to: "/usage" })}
             className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
           >
-            Full usage overview
+            See all usage
           </button>
           <button
             type="button"
@@ -492,7 +497,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           <Button
             size="icon-xs"
             variant="ghost"
-            aria-label="Turn off glance card"
+            aria-label="Turn off this card"
             onClick={() => void updateSettings({ usageOverlayEnabled: false })}
           >
             <XIcon aria-hidden />

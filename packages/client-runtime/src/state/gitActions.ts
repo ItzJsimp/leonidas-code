@@ -261,7 +261,7 @@ export function getGitActionDisabledReason(input: {
 
   if (item.id === "commit") {
     if (!hasChanges) {
-      return "Worktree is clean. Make changes before committing.";
+      return "There are no changes to commit. Make changes first.";
     }
     return "Commit is currently unavailable.";
   }

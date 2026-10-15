@@ -118,7 +118,7 @@ function button(dialog: unknown, label: string) {
 
 function prepareInstance() {
   let dialog = renderDialog();
-  (button(dialog, "Configure manually").props.onClick as () => void)();
+  (button(dialog, "Enter settings by hand").props.onClick as () => void)();
   dialog = renderDialog();
   const label = visitElements(dialog, (entry) => entry.props.placeholder === "e.g. Work");
   if (!label) throw new Error("Missing instance label input.");
@@ -153,7 +153,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
     tree = render();
     (findByChildren(tree, "Next").props.onClick as () => void)();
     tree = render();
-    (findByChildren(tree, "Add instance").props.onClick as () => void)();
+    (findByChildren(tree, "Add AI account").props.onClick as () => void)();
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
       operation: "create",
@@ -170,11 +170,11 @@ describe("AddProviderInstanceDialog environment routing", () => {
     });
     let tree = render();
     // Codex offers ChatGPT sign-in first; manual setup keeps the existing CLI flow.
-    (findByChildren(tree, "Configure manually").props.onClick as () => void)();
+    (findByChildren(tree, "Enter settings by hand").props.onClick as () => void)();
     tree = render();
     (findByChildren(tree, "Next").props.onClick as () => void)();
     tree = render();
-    (findByChildren(tree, "Add instance").props.onClick as () => void)();
+    (findByChildren(tree, "Add AI account").props.onClick as () => void)();
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
       operation: "create",
@@ -303,7 +303,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
     tree = render(onOpenChange);
     (findByChildren(tree, "Next").props.onClick as () => void)();
     tree = render(onOpenChange);
-    expect(findByChildren(tree, "Executable is required.")).not.toBeNull();
+    expect(findByChildren(tree, "Enter the command to run.")).not.toBeNull();
     expect(settingsHooks.mutate).not.toHaveBeenCalled();
 
     const configuration = visitElements(
@@ -331,7 +331,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
       target: { value: "Deepseek Harness" },
     });
     tree = render(onOpenChange);
-    (findByChildren(tree, "Add instance").props.onClick as () => void)();
+    (findByChildren(tree, "Add AI account").props.onClick as () => void)();
     await Promise.resolve();
     await Promise.resolve();
 
@@ -376,7 +376,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
 
   it("adds an instance with the selected environment's provider grant alone", async () => {
     const dialog = prepareInstance();
-    (button(dialog, "Add instance").props.onClick as () => void)();
+    (button(dialog, "Add AI account").props.onClick as () => void)();
 
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledWith({
@@ -390,34 +390,34 @@ describe("AddProviderInstanceDialog environment routing", () => {
       },
     });
     expect(actions.toast).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "success", title: "Provider instance added" }),
+      expect.objectContaining({ type: "success", title: "AI account added" }),
     );
     expect(actions.onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("rejects a queued save after the provider grant is revoked", () => {
     const dialog = prepareInstance();
-    const save = button(dialog, "Add instance").props.onClick as () => void;
+    const save = button(dialog, "Add AI account").props.onClick as () => void;
     actions.canManageProviders = false;
     save();
 
     expect(settingsHooks.mutate).not.toHaveBeenCalled();
     expect(actions.toast).not.toHaveBeenCalled();
     expect(actions.onOpenChange).not.toHaveBeenCalled();
-    expect(button(renderDialog(), "Add instance").props.disabled).toBe(true);
+    expect(button(renderDialog(), "Add AI account").props.disabled).toBe(true);
   });
 
   it("keeps a denied draft available when the provider grant arrives", async () => {
     actions.canManageProviders = false;
     let dialog = prepareInstance();
-    (button(dialog, "Add instance").props.onClick as () => void)();
+    (button(dialog, "Add AI account").props.onClick as () => void)();
     expect(settingsHooks.mutate).not.toHaveBeenCalled();
     expect(actions.toast).not.toHaveBeenCalled();
 
     actions.canManageProviders = true;
     dialog = renderDialog();
-    expect(button(dialog, "Add instance").props.disabled).toBe(false);
-    (button(dialog, "Add instance").props.onClick as () => void)();
+    expect(button(dialog, "Add AI account").props.disabled).toBe(false);
+    (button(dialog, "Add AI account").props.onClick as () => void)();
     await Promise.resolve();
     expect(settingsHooks.mutate).toHaveBeenCalledOnce();
     expect(actions.onOpenChange).toHaveBeenCalledWith(false);

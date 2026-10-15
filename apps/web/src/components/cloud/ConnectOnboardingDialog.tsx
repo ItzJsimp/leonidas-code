@@ -220,10 +220,10 @@ function ConfiguredConnectOnboardingDialog() {
     if (!ok) return;
     toastManager.add({
       type: "success",
-      title: "T3 Connect enabled",
+      title: "Remote access is on",
       description: exposeEnvironment
-        ? "This environment is available to your other devices through T3 Connect."
-        : "This environment publishes agent activity to your mobile clients.",
+        ? "Your other devices can now use this computer with remote access."
+        : "This computer now sends AI activity to your phones.",
     });
     setStep("devices");
   };
@@ -239,12 +239,9 @@ function ConfiguredConnectOnboardingDialog() {
     >
       <WizardPopup>
         <WizardHeader
-          title="Set up T3 Connect"
+          title="Set up remote access"
           description={
-            <>
-              Mesh your devices together — publish this environment and connect the rest, all in one
-              place.
-            </>
+            <>Connect your devices. Share this computer and connect the others, all in one place.</>
           }
         >
           {steps.length > 1 ? (
@@ -301,7 +298,7 @@ function ConfiguredConnectOnboardingDialog() {
                 checked={dontShowAgain}
                 onCheckedChange={(checked) => setDontShowAgain(checked === true)}
               />
-              Don&apos;t show this again
+              Do not show this again
             </label>
           }
         >
@@ -329,7 +326,7 @@ function ConfiguredConnectOnboardingDialog() {
 }
 
 const STEP_LABELS: Record<OnboardingStep, string> = {
-  publish: "Publish",
+  publish: "Share",
   devices: "Connect devices",
 };
 
@@ -352,15 +349,15 @@ function PublishStep({
     <div className="space-y-3">
       <div className="rounded-lg border">
         <OnboardingToggleRow
-          title="Publish this environment"
-          description="Make this environment available to your other devices through T3 Connect."
+          title="Share this computer"
+          description="Let your other devices use this computer with remote access."
           checked={exposeEnvironment}
           disabled={disabled}
           onCheckedChange={onExposeEnvironmentChange}
         />
         <OnboardingToggleRow
-          title="Publish agent activity"
-          description="Send activity from this environment to your mobile clients for push notifications and Live Activities."
+          title="Share AI activity"
+          description="Send activity from this computer to your phones for push notifications and Live Activities."
           checked={publishAgentActivity}
           disabled={disabled}
           onCheckedChange={onPublishAgentActivityChange}
@@ -415,8 +412,8 @@ function DevicesStep() {
         showSavedEnvironments
         empty={
           <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-            No other environments are published to your account yet. Publish one from another device
-            and it will show up here.
+            No other computers share remote access with your account yet. Turn on remote access on
+            another computer. Then it shows here.
           </p>
         }
       />

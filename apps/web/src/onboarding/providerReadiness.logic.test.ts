@@ -360,7 +360,7 @@ describe("describeAgentsStepContinue", () => {
 
   it("warns and relabels the button when no agent is ready", () => {
     const copy = describeAgentsStepContinue(false);
-    expect(copy.label).toBe("Continue without an agent");
-    expect(copy.note).toContain("No agent is ready yet");
+    expect(copy.label).toBe("Continue without an AI");
+    expect(copy.note).toContain("No AI is ready yet");
   });
 });

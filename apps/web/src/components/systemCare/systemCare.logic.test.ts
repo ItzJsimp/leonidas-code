@@ -50,7 +50,7 @@ describe("formatting", () => {
   it("formats readings in their units", () => {
     expect(formatBytes(12282 * 1024 * 1024)).toBe("12.0 GB");
     expect(formatValue(4620, "MHz")).toBe("4.62 GHz");
-    expect(formatValue(null, "°C")).toBe("—");
+    expect(formatValue(null, "°C")).toBe("-");
     expect(formatValue(1_048_576, "B/s")).toBe("1.0 MB/s");
   });
 });

@@ -65,7 +65,7 @@ export function DeviceWorkspace(props: {
           if (cause instanceof DeviceScreenshotError && cause.status === 401)
             refreshDeviceHubAccess(props.environmentId);
           setScreenshotError(
-            cause instanceof Error ? cause.message : "Screenshot capture failed. Try again.",
+            cause instanceof Error ? cause.message : "Could not take the screenshot. Try again.",
           );
         }
       })

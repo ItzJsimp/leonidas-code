@@ -37,10 +37,10 @@ export function BranchNamingSettings() {
         serverScoped
         settingKeys={["branchNamingMode"]}
         {...searchableSetting("worktree-branch-naming")}
-        description="Choose how new worktree branches are named from your first message."
+        description="Choose how Leonidas Code names the branch of a new separate copy. It uses your first message."
         status={
           !modeMixed && settings.branchNamingMode === "semantic"
-            ? "The model chooses a prefix that describes the work, such as feat/add-search, fix/login-timeout, or refactor/auth."
+            ? "The model picks a prefix that describes the work, for example feat/add-search, fix/login-timeout, or refactor/auth."
             : undefined
         }
         resetAction={
@@ -65,7 +65,7 @@ export function BranchNamingSettings() {
               }
             }}
           >
-            <SelectTrigger size="sm" aria-label="Worktree branch naming">
+            <SelectTrigger size="sm" aria-label="Branch naming for separate copies">
               <SelectValue>
                 {(value: BranchNamingMode | null) => (value === null ? "Mixed" : MODES[value])}
               </SelectValue>
@@ -125,7 +125,7 @@ export function BranchNamingSettings() {
           serverScoped
           settingKeys={["branchNameInstructions"]}
           title="Branch naming instructions"
-          description="Appended to the naming prompt. The model returns the complete branch name; no prefix or suffix is added."
+          description="Added to the instructions for naming. The model gives the full branch name. Leonidas Code adds no prefix or suffix."
           resetAction={
             instructionsMixed || settings.branchNameInstructions !== "" ? (
               <SettingResetButton
@@ -146,7 +146,7 @@ export function BranchNamingSettings() {
               defaultValue={instructionsMixed ? "" : settings.branchNameInstructions}
               placeholder={
                 instructionsMixed
-                  ? "Mixed. Enter instructions to apply to all selected targets."
+                  ? "Mixed. Enter instructions to use for all selected places."
                   : "Use julius/ followed by the issue ID and a short description."
               }
               onBlur={(event) => {

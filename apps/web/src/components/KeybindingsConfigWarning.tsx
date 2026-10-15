@@ -41,7 +41,7 @@ export function KeybindingsConfigWarning({
             toastManager.add(
               stackedThreadToast({
                 type: "error",
-                title: "Unable to open keybindings file",
+                title: "Could not open the shortcuts file",
                 ...userErrorToastFields(error),
               }),
             );

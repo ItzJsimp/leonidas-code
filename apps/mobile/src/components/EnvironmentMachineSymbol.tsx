@@ -12,7 +12,7 @@ export const ENVIRONMENT_MACHINE_SYMBOLS = {
 } as const satisfies Record<EnvironmentMachineKind, AppSymbolName>;
 
 export const ENVIRONMENT_MACHINE_KIND_LABELS: Record<EnvironmentMachineKind, string> = {
-  server: "Server",
+  server: "Computer",
   cloud: "Cloud VM",
   linux: "Linux/WSL",
   desktop: "Desktop",

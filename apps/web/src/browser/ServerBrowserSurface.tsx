@@ -195,7 +195,7 @@ export function ServerBrowserSurface(props: {
     void uploadPreviewStreamFiles(chooser, files).catch((cause: unknown) =>
       toastManager.add({
         type: "error",
-        title: "Could not send the files to the page",
+        title: "Could not send the files. Try again.",
         ...userErrorToastFields(cause),
       }),
     );
@@ -785,8 +785,8 @@ export function ServerBrowserSurface(props: {
           scrolls the surface; 16px keeps iOS from zooming the app on focus. */}
         <textarea
           ref={inputRef}
-          aria-label="Browser page"
-          aria-description="Press Shift+Escape to leave the browser page."
+          aria-label="Web page"
+          aria-description="Press Shift+Escape to leave the web page."
           autoCapitalize="off"
           autoComplete="off"
           autoCorrect="off"
@@ -817,7 +817,7 @@ export function ServerBrowserSurface(props: {
           <div
             className="absolute inset-x-2 top-2 z-10 flex flex-col gap-2 rounded-lg border border-border bg-background p-3 shadow-lg"
             role="dialog"
-            aria-label="Choose files for the page"
+            aria-label="Choose files"
           >
             <p className="text-sm">
               The page asks for {fileChooser.multiple ? "files" : "a file"}.
@@ -848,14 +848,14 @@ export function ServerBrowserSurface(props: {
           <div
             className="absolute inset-x-2 top-2 z-10 flex flex-col gap-2 rounded-lg border border-border bg-background p-3 shadow-lg"
             role="dialog"
-            aria-label="Browser dialog"
+            aria-label="Web page message"
           >
             <p className="break-words text-sm">{control.dialog.message}</p>
             {control.controller === "you" ? (
               <>
                 {control.dialog.type === "prompt" ? (
                   <Input
-                    aria-label="Dialog response"
+                    aria-label="Type your reply"
                     value={promptText}
                     onChange={(event) => setPromptText(event.target.value)}
                   />

@@ -217,13 +217,13 @@ describe("thread notifications", () => {
     expect(state.notification).toHaveBeenCalledOnce();
   });
 
-  it("alerts once with system alerts off and opens the completed thread", async () => {
+  it("alerts once with system alerts off and opens the completed chat", async () => {
     await render();
     await complete();
     await render();
     expect(state.add).toHaveBeenCalledTimes(1);
     const toast = state.add.mock.calls[0]?.[0];
-    expect(toast?.title).toBe("Thread completed");
+    expect(toast?.title).toBe("Chat completed");
     expect(toast?.description).toBe("Fix the login form");
     toast?.actionProps.onClick();
     expect(state.close).toHaveBeenCalledWith("toast-1");
@@ -235,7 +235,7 @@ describe("thread notifications", () => {
   });
 
   it.each(["active", "blurred", "hidden", "archived", "disabled"])(
-    "does not show a completion toast for %s threads",
+    "does not show a completion toast for %s chats",
     async (condition) => {
       await render();
       if (condition === "active") state.active.threadId = "thread-1";
@@ -250,9 +250,9 @@ describe("thread notifications", () => {
 
   it.each([
     ["input", "Input needed"],
-    ["approval", "Approval needed"],
-    ["sessionError", "Thread failed"],
-    ["turnError", "Thread failed"],
+    ["approval", "Permission needed"],
+    ["sessionError", "Chat failed"],
+    ["turnError", "Chat failed"],
     ["limited", "Usage limit reached"],
   ] as const)("uses the same %s event for in-app and desktop alerts", async (event, title) => {
     state.mode = "notifications-and-sound";
@@ -289,7 +289,7 @@ describe("thread notifications", () => {
     await render();
     expect(state.add).toHaveBeenCalledTimes(1);
     expect(state.add).toHaveBeenLastCalledWith(
-      expect.objectContaining({ title: "Thread completed" }),
+      expect.objectContaining({ title: "Chat completed" }),
     );
   });
 
@@ -315,14 +315,14 @@ describe("thread notifications", () => {
     expect(state.add).not.toHaveBeenCalled();
   });
 
-  it("compares the environment as well as the thread", async () => {
+  it("compares the computer as well as the chat", async () => {
     state.active = { environmentId: "env-2", threadId: "thread-1" };
     await render();
     await complete();
     expect(state.add).toHaveBeenCalledTimes(1);
   });
 
-  it("does not replay completed threads on first load or reconnect", async () => {
+  it("does not replay completed chats on first load or reconnect", async () => {
     await complete();
     state.live = false;
     await render();
@@ -346,7 +346,7 @@ describe("thread notifications", () => {
     await render();
     await complete();
     expect(state.add).not.toHaveBeenCalled();
-    expect(state.notification).toHaveBeenCalledWith("Thread completed", {
+    expect(state.notification).toHaveBeenCalledWith("Chat completed", {
       body: "Fix the login form",
       tag: "env-1:thread-1",
       silent: true,

@@ -21,7 +21,7 @@ export async function openDesktopUpdateReleaseNotes(
   } catch {
     // Surface rejected IPC calls through the same user-visible fallback.
   }
-  toastManager.add({ type: "error", title: "Unable to open release notes" });
+  toastManager.add({ type: "error", title: "Could not open the update notes. Try again." });
 }
 
 function ReleaseNotesLink({
@@ -39,7 +39,7 @@ function ReleaseNotesLink({
       }}
       type="button"
     >
-      Read more
+      Read the update notes
       <ArrowRightIcon
         aria-hidden
         className="ml-1 inline size-3 -rotate-45 align-[-0.125em]"
@@ -63,7 +63,7 @@ export function showDesktopUpdateDownloadedToast(
   const idleFirst = (actions.runningCount ?? 0) > 0;
   const restart = { label: "Restart now", run: actions.onRestartNow };
   const idle = {
-    label: idleFirst ? "Update when idle" : "Update when safe",
+    label: idleFirst ? "Update when the AI is done" : "Update when it is safe",
     run: actions.onUpdateWhenSafe,
   };
   const [primary, secondary] = idleFirst ? [idle, restart] : [restart, idle];
@@ -100,7 +100,7 @@ export function showDesktopUpdateDownloadedToast(
 }
 
 /**
- * Shown once while "Update when safe" waits on running agents; returns the id so the caller can
+ * Shown once while the update waits on running replies; returns the id so the caller can
  * close it. It auto-dismisses because the sidebar update pill carries the lasting waiting state.
  */
 export function showDesktopUpdateWaitingToast(onCancel: () => void, cancelLabel = "Cancel") {
@@ -126,7 +126,7 @@ export async function checkForDesktopUpdateWithFeedback(
       toastManager.add({
         type: "success",
         title: "You're up to date",
-        description: `Leonidas Code ${state.currentVersion} is the latest version on the ${state.channel} channel.`,
+        description: `Leonidas Code ${state.currentVersion} is the newest version.`,
       });
     } else if (state.status === "error") {
       toastManager.add({

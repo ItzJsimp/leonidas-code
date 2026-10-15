@@ -63,7 +63,7 @@ export async function handleDesktopAppActivationRequest(
     return failure(
       request.requestId,
       "environment-unavailable",
-      "The desktop app's primary local environment is not connected.",
+      "The main computer of the desktop app is not connected. Connect it and try again.",
     );
   }
 
@@ -72,7 +72,7 @@ export async function handleDesktopAppActivationRequest(
     return failure(
       request.requestId,
       "platform-mismatch",
-      `The command path is for ${requestPlatform}, but the desktop app's primary environment uses ${target.platform}. Cross-platform path mapping is not supported.`,
+      `The command path is for ${requestPlatform}, but the desktop app's main computer uses ${target.platform}. Cross-platform path mapping is not supported.`,
     );
   }
 
@@ -99,7 +99,7 @@ export async function handleDesktopAppActivationRequest(
       return failure(
         request.requestId,
         "thread-open-failed",
-        "Leonidas Code could not open a new thread for the project.",
+        "Leonidas Code could not open a new chat for the project.",
       );
     }
     return {
@@ -113,7 +113,7 @@ export async function handleDesktopAppActivationRequest(
     return failure(
       request.requestId,
       "thread-open-failed",
-      errorMessage(error, "Leonidas Code could not open a new thread for the project."),
+      errorMessage(error, "Leonidas Code could not open a new chat for the project."),
     );
   }
 }

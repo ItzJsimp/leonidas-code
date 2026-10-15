@@ -218,14 +218,14 @@ export function PreviewChromeRow({
                         variant="ghost"
                         size="icon-xs"
                         onClick={onOpenInBrowser}
-                        aria-label="Open in system browser"
+                        aria-label="Open in your web browser"
                         type="button"
                       />
                     }
                   >
                     <ExternalLink />
                   </TooltipTrigger>
-                  <TooltipPopup>Open in system browser</TooltipPopup>
+                  <TooltipPopup>Open in your web browser</TooltipPopup>
                 </Tooltip>
               </span>
             </InputGroupAddon>
@@ -256,7 +256,7 @@ export function PreviewChromeRow({
                   size="icon-xs"
                   onClick={onPickElement}
                   disabled={pickDisabled}
-                  aria-label={pickActive ? "Cancel annotation" : "Annotate preview"}
+                  aria-label={pickActive ? "Cancel the note" : "Add a note to the preview"}
                   aria-pressed={pickActive ? "true" : "false"}
                   type="button"
                 />
@@ -268,8 +268,8 @@ export function PreviewChromeRow({
               {pickDisabled && pickDisabledReason
                 ? pickDisabledReason
                 : pickActive
-                  ? "Cancel annotation (Esc)"
-                  : "Annotate elements, regions, and drawings"}
+                  ? "Cancel the note (Esc)"
+                  : "Add a note to an element, an area or a drawing"}
             </TooltipPopup>
           </Tooltip>
         ) : null}

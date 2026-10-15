@@ -63,6 +63,7 @@ import {
   HardwareSetLimitInput,
   HardwarePrepareAgentInput,
   HardwarePrepareAgentResult,
+  HardwarePcStatus,
   HardwareWatchError,
   HardwareWatchStatus,
 } from "./hardwareWatch.ts";
@@ -494,6 +495,7 @@ export const WS_METHODS = {
   hardwareAcknowledgeAlert: "hardware.acknowledgeAlert",
   hardwareSetDeepSensors: "hardware.setDeepSensors",
   hardwarePrepareAgent: "hardware.prepareAgent",
+  hardwareGetStatus: "hardware.getStatus",
   inboxDrop: "inbox.drop",
   inboxUndo: "inbox.undo",
   devPreviewStatus: "devPreview.status",
@@ -1552,6 +1554,12 @@ const WsHardwarePrepareAgentRpc = Rpc.make(WS_METHODS.hardwarePrepareAgent, {
   error: HardwareRpcError,
 });
 
+const WsHardwareGetStatusRpc = Rpc.make(WS_METHODS.hardwareGetStatus, {
+  payload: Schema.Struct({}),
+  success: HardwarePcStatus,
+  error: HardwareRpcError,
+});
+
 /** Status and alerts; `live` adds samples and raises sampling to once a second while subscribed. */
 const WsSubscribeHardwareRpc = Rpc.make(WS_METHODS.subscribeHardware, {
   payload: Schema.Struct({ live: Schema.Boolean }),
@@ -2488,6 +2496,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsHardwareAcknowledgeAlertRpc,
   WsHardwareSetDeepSensorsRpc,
   WsHardwarePrepareAgentRpc,
+  WsHardwareGetStatusRpc,
   WsSubscribeHardwareRpc,
   WsInboxDropRpc,
   WsInboxUndoRpc,

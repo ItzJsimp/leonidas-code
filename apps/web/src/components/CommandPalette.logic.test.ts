@@ -18,8 +18,8 @@ import {
   type CommandPaletteGroup,
 } from "./CommandPalette.logic";
 
-describe("linked pull request thread navigation", () => {
-  it("keeps archived relations searchable and routes them through the PR environment", async () => {
+describe("linked pull request chat navigation", () => {
+  it("keeps archived relations searchable and routes them through the PR computer", async () => {
     const environmentId = EnvironmentId.make("remote");
     const id = ThreadId.make("archived-thread");
     const runThread = vi.fn(async () => {});
@@ -54,7 +54,7 @@ describe("linked pull request thread navigation", () => {
       threadSearchItems: items,
     });
     expect(groups.flatMap((group) => group.items)).toEqual(items);
-    expect(items[0]?.description).toBe("Archived thread");
+    expect(items[0]?.description).toBe("Archived chat");
     await items[0]?.run();
     expect(runThread).toHaveBeenCalledWith({ environmentId, id });
   });
@@ -71,7 +71,7 @@ describe("buildCommandPaletteProjectMetadata", () => {
     ],
   ]);
 
-  it("makes every member environment and path searchable", () => {
+  it("makes every member computer and path searchable", () => {
     const metadata = buildCommandPaletteProjectMetadata({
       projects: [
         {
@@ -117,7 +117,7 @@ describe("buildCommandPaletteProjectMetadata", () => {
     expect(filteredGroup?.items).toHaveLength(1);
   });
 
-  it("deduplicates grouped checkouts by environment", () => {
+  it("deduplicates grouped checkouts by computer", () => {
     const metadata = buildCommandPaletteProjectMetadata({
       projects: [
         {
@@ -127,7 +127,7 @@ describe("buildCommandPaletteProjectMetadata", () => {
         },
         {
           environmentId: remoteEnvironmentId,
-          title: "Leonidas Code worktree",
+          title: "Leonidas Code separate copy",
           workspaceRoot: "/srv/t3code-feature",
         },
       ],
@@ -137,7 +137,7 @@ describe("buildCommandPaletteProjectMetadata", () => {
     expect(metadata.environmentLabels).toEqual(["Build box"]);
   });
 
-  it("deduplicates distinct environments with the same label", () => {
+  it("deduplicates distinct computers with the same label", () => {
     const secondRemoteEnvironmentId = EnvironmentId.make("environment-build-box-2");
     const metadata = buildCommandPaletteProjectMetadata({
       projects: [
@@ -324,7 +324,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     id: ThreadId.make("thread-1"),
     environmentId: LOCAL_ENVIRONMENT_ID,
     projectId: PROJECT_ID,
-    title: "Thread",
+    title: "Chat",
     modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5" },
     runtimeMode: "full-access",
     interactionMode: "default",
@@ -367,7 +367,7 @@ describe("buildProjectActionItems", () => {
 });
 
 describe("buildThreadActionItems", () => {
-  it("orders threads by most recent activity and formats timestamps from updatedAt", () => {
+  it("orders chats by most recent activity and formats timestamps from updatedAt", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-25T12:00:00.000Z"));
 
@@ -376,12 +376,12 @@ describe("buildThreadActionItems", () => {
         threads: [
           makeThread({
             id: ThreadId.make("thread-older"),
-            title: "Older thread",
+            title: "Older chat",
             updatedAt: "2026-03-24T12:00:00.000Z",
           }),
           makeThread({
             id: ThreadId.make("thread-newer"),
-            title: "Newer thread",
+            title: "Newer chat",
             createdAt: "2026-03-20T00:00:00.000Z",
             updatedAt: "2026-03-20T00:00:00.000Z",
           }),
@@ -403,7 +403,7 @@ describe("buildThreadActionItems", () => {
     }
   });
 
-  it("ranks thread title matches ahead of contextual project-name matches", () => {
+  it("ranks chat title matches ahead of contextual project-name matches", () => {
     const threadItems = buildThreadActionItems({
       threads: [
         makeThread({
@@ -444,7 +444,7 @@ describe("buildThreadActionItems", () => {
     const threads = [
       makeThread({
         id: ThreadId.make("old-prefix"),
-        title: "Convex InvalidCursor in Convex threads query",
+        title: "Convex InvalidCursor in Convex chats query",
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-02T00:00:00.000Z",
       }),
@@ -488,10 +488,10 @@ describe("buildThreadActionItems", () => {
     ]);
   });
 
-  it("preserves thread project-name matches when there is no stronger title match", () => {
+  it("preserves chat project-name matches when there is no stronger title match", () => {
     const group: CommandPaletteGroup = {
       value: "threads-search",
-      label: "Threads",
+      label: "Chats",
       items: [
         {
           kind: "action",
@@ -609,7 +609,7 @@ describe("buildThreadActionItems", () => {
     }
   });
 
-  it("keeps message excerpts searchable without replacing thread metadata", () => {
+  it("keeps message excerpts searchable without replacing chat metadata", () => {
     const [item] = buildThreadActionItems({
       threads: [makeThread({ branch: "feat/search" })],
       projectTitleById: new Map([[PROJECT_ID, "Leonidas Code"]]),
@@ -632,7 +632,7 @@ describe("buildThreadActionItems", () => {
     expect(item?.description).toBe("Leonidas Code · #feat/search");
   });
 
-  it("surfaces threads when the query is their ID, without outranking title matches", () => {
+  it("surfaces chats when the query is their ID, without outranking title matches", () => {
     const idThread = makeThread({
       id: ThreadId.make("thread-alpha-1234"),
       title: "Unrelated work",
@@ -680,18 +680,18 @@ describe("buildThreadActionItems", () => {
     expect(item?.description).toBe("Leonidas Code:feat/search:wt");
   });
 
-  it("filters archived threads out of thread search items", () => {
+  it("filters archived chats out of chat search items", () => {
     const items = buildThreadActionItems({
       threads: [
         makeThread({
           id: ThreadId.make("thread-active"),
-          title: "Active thread",
+          title: "Active chat",
           createdAt: "2026-03-02T00:00:00.000Z",
           updatedAt: "2026-03-19T00:00:00.000Z",
         }),
         makeThread({
           id: ThreadId.make("thread-archived"),
-          title: "Archived thread",
+          title: "Archived chat",
           archivedAt: "2026-03-20T00:00:00.000Z",
           updatedAt: "2026-03-20T00:00:00.000Z",
         }),
@@ -785,7 +785,7 @@ it.each([
   "10839",
   "pingdotgg/t3code#10839",
   "https://github.com/pingdotgg/t3code/pull/10839",
-])("finds linked threads from PR query %s", (query) => {
+])("finds linked chats from PR query %s", (query) => {
   const items = buildThreadActionItems({
     threads: [
       makeThread({
@@ -864,7 +864,7 @@ describe("virtualized command palette rows", () => {
   });
   const groups: CommandPaletteGroup[] = [
     { value: "actions", label: "Actions", items: [action("new-thread"), action("offline", true)] },
-    { value: "threads", label: "Threads", items: [action("thread-a"), action("thread-b")] },
+    { value: "threads", label: "Chats", items: [action("thread-a"), action("thread-b")] },
   ];
 
   it("keeps group order and headings while indexing only enabled items", () => {
@@ -874,7 +874,7 @@ describe("virtualized command palette rows", () => {
       "# Actions",
       "actions:new-thread",
       "actions:offline",
-      "# Threads",
+      "# Chats",
       "threads:thread-a",
       "threads:thread-b",
     ]);

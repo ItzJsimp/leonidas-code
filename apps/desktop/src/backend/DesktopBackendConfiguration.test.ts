@@ -1535,7 +1535,7 @@ describe("DesktopBackendConfiguration", () => {
       Effect.gen(function* () {
         const configuration = yield* DesktopBackendConfiguration.DesktopBackendConfiguration;
         const label = yield* configuration.resolvePrimaryLabel;
-        assert.equal(label, "Local environment");
+        assert.equal(label, "This computer");
       }),
     ),
   );

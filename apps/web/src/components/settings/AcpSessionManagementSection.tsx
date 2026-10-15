@@ -122,7 +122,7 @@ export function AcpSessionManagementSection(props: {
       setNextCursor(result.value.nextCursor);
       return;
     }
-    reportFailure("Could not list ACP sessions", result);
+    reportFailure("Could not load the chats. Try again.", result);
   };
 
   const importNativeSession = async (session: AcpRegistrySession) => {
@@ -154,18 +154,18 @@ export function AcpSessionManagementSection(props: {
       );
       toastManager.add({
         type: "success",
-        title: result.value.imported ? "ACP session imported" : "ACP session already imported",
+        title: result.value.imported ? "Chat imported" : "Chat already imported",
       });
       return;
     }
-    reportFailure("Could not import ACP session", result);
+    reportFailure("Could not import the chat. Try again.", result);
   };
 
   const deleteNativeSession = async (session: AcpRegistrySession) => {
     if (projectId === null || deletingSessionId !== null || session.importedThreadId !== null)
       return;
     const confirmed = await ensureLocalApi().dialogs.confirm(
-      `Permanently delete native ACP session "${session.title ?? session.sessionId}"?`,
+      `Delete the chat "${session.title ?? session.sessionId}" for good? You cannot undo this.`,
       { variant: "destructive" },
     );
     if (!confirmed || !readEnvironmentScope(props.environmentId, AuthOrchestrationOperateScope))
@@ -180,10 +180,10 @@ export function AcpSessionManagementSection(props: {
       setSessions((current) =>
         current.filter((candidate) => candidate.sessionId !== session.sessionId),
       );
-      toastManager.add({ type: "success", title: "ACP session deleted" });
+      toastManager.add({ type: "success", title: "Chat deleted" });
       return;
     }
-    reportFailure("Could not delete ACP session", result);
+    reportFailure("Could not delete the chat. Try again.", result);
   };
 
   const loadProviders = async () => {
@@ -210,7 +210,7 @@ export function AcpSessionManagementSection(props: {
       );
       return;
     }
-    reportFailure("Could not list ACP providers", result);
+    reportFailure("Could not load the AI services. Try again.", result);
   };
 
   const saveProvider = async (provider: AcpRegistryConfigurableProvider) => {
@@ -232,7 +232,7 @@ export function AcpSessionManagementSection(props: {
           Array.isArray(parsed) ||
           !Object.values(parsed).every((value) => typeof value === "string")
         ) {
-          throw new Error("Headers must be a JSON object with string values.");
+          throw new Error("Headers must be a JSON object with text values.");
         }
         headers = parsed as Record<string, string>;
       } catch (error) {
@@ -258,17 +258,17 @@ export function AcpSessionManagementSection(props: {
     });
     setSavingProviderId(null);
     if (result._tag === "Success") {
-      toastManager.add({ type: "success", title: "ACP provider configured" });
+      toastManager.add({ type: "success", title: "AI service saved" });
       await loadProviders();
       return;
     }
-    reportFailure("Could not configure ACP provider", result);
+    reportFailure("Could not save the AI service. Try again.", result);
   };
 
   const disableConfiguredProvider = async (provider: AcpRegistryConfigurableProvider) => {
     if (projectId === null || savingProviderId !== null || provider.required) return;
     const confirmed = await ensureLocalApi().dialogs.confirm(
-      `Disable ACP provider "${provider.providerId}"?`,
+      `Turn off the AI service "${provider.providerId}"?`,
       { variant: "destructive" },
     );
     if (!confirmed || !readEnvironmentScope(props.environmentId, AuthProvidersManageScope)) return;
@@ -279,11 +279,11 @@ export function AcpSessionManagementSection(props: {
     });
     setSavingProviderId(null);
     if (result._tag === "Success") {
-      toastManager.add({ type: "success", title: "ACP provider disabled" });
+      toastManager.add({ type: "success", title: "AI service turned off" });
       await loadProviders();
       return;
     }
-    reportFailure("Could not disable ACP provider", result);
+    reportFailure("Could not turn off the AI service. Try again.", result);
   };
 
   const logoutProvider = async () => {
@@ -297,20 +297,20 @@ export function AcpSessionManagementSection(props: {
     if (result._tag === "Success") {
       setSessions([]);
       setNextCursor(null);
-      toastManager.add({ type: "success", title: "Logged out of ACP agent" });
+      toastManager.add({ type: "success", title: "Signed out of the AI service" });
       return;
     }
-    reportFailure("Could not log out of ACP agent", result);
+    reportFailure("Could not sign out of the AI service. Try again.", result);
   };
 
   return (
     <div className="grid gap-3">
       <SettingsRow
-        title="Native sessions"
-        description="Resume agent-owned conversations as Leonidas threads."
+        title="Chats from the AI service"
+        description="Continue chats that the AI service started. They open as Leonidas Code chats."
         status={
           canList && props.projects.length === 0
-            ? "Add a project before importing sessions."
+            ? "No projects yet. Add a project, then import chats."
             : undefined
         }
         control={
@@ -323,7 +323,7 @@ export function AcpSessionManagementSection(props: {
                 disabled={props.readOnly || loggingOut}
                 onClick={() => void logoutProvider()}
               >
-                {loggingOut ? "Logging out" : "Log out"}
+                {loggingOut ? "Signing out" : "Sign out"}
               </Button>
             ) : null}
             {canList && props.projects.length > 0 ? (
@@ -340,7 +340,7 @@ export function AcpSessionManagementSection(props: {
                     setProviderDrafts({});
                   }}
                 >
-                  <SelectTrigger aria-label="Project for ACP sessions" className="w-40" size="sm">
+                  <SelectTrigger aria-label="Project for the chats" className="w-40" size="sm">
                     <SelectValue>
                       {props.projects.find((project) => project.id === projectId)?.title}
                     </SelectValue>
@@ -360,7 +360,7 @@ export function AcpSessionManagementSection(props: {
                   disabled={!canRead || loading || projectId === null}
                   onClick={() => void loadSessions()}
                 >
-                  {loading ? "Loading" : sessions.length === 0 ? "List sessions" : "Refresh"}
+                  {loading ? "Loading" : sessions.length === 0 ? "Show chats" : "Refresh chats"}
                 </Button>
               </>
             ) : null}
@@ -433,7 +433,7 @@ export function AcpSessionManagementSection(props: {
                 disabled={!canRead || loading}
                 onClick={() => void loadSessions(nextCursor)}
               >
-                {loading ? "Loading" : "Load more"}
+                {loading ? "Loading" : "Show more chats"}
               </Button>
             ) : null}
           </>
@@ -444,9 +444,9 @@ export function AcpSessionManagementSection(props: {
         <div className="grid gap-3 border-t border-border/60 px-3 py-3 sm:px-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-medium text-foreground">Agent providers</p>
+              <p className="text-xs font-medium text-foreground">AI services</p>
               <p className="text-xs text-muted-foreground">
-                Configure non-secret routing. Headers are write-only.
+                Set the address for each AI service. You can type headers but not read them back.
               </p>
             </div>
             <Button
@@ -456,7 +456,11 @@ export function AcpSessionManagementSection(props: {
               disabled={!canRead || loadingProviders || projectId === null}
               onClick={() => void loadProviders()}
             >
-              {loadingProviders ? "Loading" : providers.length === 0 ? "List providers" : "Refresh"}
+              {loadingProviders
+                ? "Loading"
+                : providers.length === 0
+                  ? "Show AI services"
+                  : "Refresh AI services"}
             </Button>
           </div>
 
@@ -471,7 +475,11 @@ export function AcpSessionManagementSection(props: {
                 setProviderDrafts({});
               }}
             >
-              <SelectTrigger aria-label="Project for ACP providers" className="min-w-48" size="xs">
+              <SelectTrigger
+                aria-label="Project for the AI services"
+                className="min-w-48"
+                size="xs"
+              >
                 <SelectValue>
                   {props.projects.find((project) => project.id === projectId)?.title}
                 </SelectValue>
@@ -507,7 +515,7 @@ export function AcpSessionManagementSection(props: {
                           {provider.providerId}
                         </p>
                         <p className="text-3xs text-muted-foreground">
-                          {provider.current === null ? "Disabled" : "Configured"}
+                          {provider.current === null ? "Off" : "Set up"}
                           {provider.required ? " · Required" : ""}
                         </p>
                       </div>
@@ -534,7 +542,7 @@ export function AcpSessionManagementSection(props: {
                             disabled={props.readOnly || savingProviderId !== null}
                             onClick={() => void disableConfiguredProvider(provider)}
                           >
-                            Disable
+                            Turn off
                           </Button>
                         ) : null}
                       </div>
@@ -561,7 +569,7 @@ export function AcpSessionManagementSection(props: {
                       <Input
                         size="sm"
                         type="url"
-                        aria-label={`${provider.providerId} base URL`}
+                        aria-label={`${provider.providerId} address`}
                         placeholder="https://api.example.com"
                         value={draft.baseUrl}
                         disabled={props.readOnly || savingProviderId !== null}
@@ -571,8 +579,8 @@ export function AcpSessionManagementSection(props: {
                     <Input
                       size="sm"
                       type="password"
-                      aria-label={`${provider.providerId} write-only headers JSON`}
-                      placeholder='Write-only headers JSON, e.g. {"Authorization":"Bearer …"}'
+                      aria-label={`${provider.providerId} headers (JSON, hidden)`}
+                      placeholder='Headers as JSON, for example {"Authorization":"Bearer …"}'
                       value={draft.headers}
                       disabled={props.readOnly || savingProviderId !== null}
                       onValueChange={(value) => updateDraft({ headers: value })}

@@ -136,7 +136,7 @@ function BreadcrumbMenuContent(props: {
         ) : children.length === 0 ? (
           <MenuItem disabled>
             {entriesTruncated
-              ? "No entries from this folder are available in the partial workspace index."
+              ? "This folder has no files to show yet. Some project files are still loading."
               : "This folder is empty."}
           </MenuItem>
         ) : (
@@ -199,14 +199,14 @@ function BreadcrumbMenuContent(props: {
           <MenuSeparator />
           <MenuItem closeOnClick={false} onClick={entriesQuery.refresh}>
             <RefreshIcon refreshing={entriesQuery.isPending} />
-            Refresh failed — retry
+            Refresh failed. Try again
           </MenuItem>
         </>
       ) : null}
       {entriesTruncated ? (
         <>
           <MenuSeparator />
-          <MenuItem disabled>Some workspace entries are not shown.</MenuItem>
+          <MenuItem disabled>Some project files are not shown.</MenuItem>
         </>
       ) : null}
     </MenuPopup>

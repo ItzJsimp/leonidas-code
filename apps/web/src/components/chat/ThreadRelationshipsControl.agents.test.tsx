@@ -136,7 +136,7 @@ it("stops the entire native workflow through its parent without changing state b
     renderer.root.findByProps({ "aria-label": "Expand Checkout review" }).props.onClick(),
   );
   const stopButton = () =>
-    renderer.root.findByProps({ "aria-label": "Stop workflow Checkout review" });
+    renderer.root.findByProps({ "aria-label": "Stop teamwork Checkout review" });
   expect(
     renderer.root.findAll(
       (node) => node.type === "button" && String(node.props["aria-label"]).startsWith("Stop "),
@@ -159,23 +159,23 @@ it("stops the entire native workflow through its parent without changing state b
   expect(state.command).not.toHaveBeenCalled();
   expect(state.navigate).not.toHaveBeenCalled();
   expect(stopButton().props.disabled).toBe(true);
-  expect(renderer.root.findByProps({ "aria-label": "Stop subagent Worker" }).props.disabled).toBe(
+  expect(renderer.root.findByProps({ "aria-label": "Stop helper Worker" }).props.disabled).toBe(
     true,
   );
   expect(renderer.root.findByProps({ "aria-label": "Open Checker chat" })).toBeDefined();
-  expect(renderer.root.findByType("h3").children).toEqual(["Lineage · 2 running"]);
+  expect(renderer.root.findByType("h3").children).toEqual(["Related chats · 2 running"]);
   await act(async () => {
     acknowledge({ _tag: "Success" });
   });
   expect(stopButton().props.disabled).toBe(false);
-  expect(renderer.root.findByType("h3").children).toEqual(["Lineage · 2 running"]);
+  expect(renderer.root.findByType("h3").children).toEqual(["Related chats · 2 running"]);
   state.workflowCommand.mockResolvedValueOnce({ _tag: "Failure" });
   await act(async () => {
     stopButton().props.onClick();
   });
   expect(state.toast).toHaveBeenCalledExactlyOnceWith({
     type: "error",
-    title: "Could not stop workflow",
+    title: "Could not stop the teamwork. Try again.",
   });
   expect(stopButton().props.disabled).toBe(false);
   expect(state.command).not.toHaveBeenCalled();
@@ -228,7 +228,7 @@ it.each([
   if (previousAgents.length > 0) await act(async () => previousAgents[0]!.props.onClick());
   expect(renderer.root.findByProps({ "aria-label": "Expand Checkout review" })).toBeDefined();
   expect(
-    renderer.root.findAllByProps({ "aria-label": "Stop workflow Checkout review" }),
+    renderer.root.findAllByProps({ "aria-label": "Stop teamwork Checkout review" }),
   ).toHaveLength(0);
   expect(state.workflowCommand).not.toHaveBeenCalled();
 });
@@ -358,7 +358,7 @@ it("opens the correct chat for every workflow phase and unphased member", async 
   for (const phase of phases) expect(rendered).toContain(phase.title);
   // The closed row leaves phase progress to the tree.
   expect(rendered).not.toContain(" phases");
-  expect(rendered).toContain('"1","/","2"," ","agents"');
+  expect(rendered).toContain('"1","/","2"," ","helpers"');
   expect(rendered).toContain("Running");
   // The phase holding the running member reports itself as the active one.
   expect(rendered).toContain("running");
@@ -447,14 +447,14 @@ it("groups and counts a workflow by its run status instead of its coordinator ch
       .findAll((node) => typeof node.type === "string")
       .flatMap((node) => node.children.filter((child) => typeof child === "string"))
       .join("");
-  expect(renderer.root.findByType("h3").children).toEqual(["Lineage · 1 running"]);
+  expect(renderer.root.findByType("h3").children).toEqual(["Related chats · 1 running"]);
   await act(async () =>
     renderer.root.findByProps({ "aria-label": "Expand Checkout review" }).props.onClick(),
   );
   expect(renderer.root.findByProps({ "aria-label": "Open Checker chat" })).toBeDefined();
   state.shells = [{ environmentId: "test", source: { ...child, activityRunStatus: "waiting" } }];
   await act(async () => renderer.update(cloneElement(panel)));
-  expect(renderer.root.findByType("h3").children).toEqual(["Lineage · 1 running"]);
+  expect(renderer.root.findByType("h3").children).toEqual(["Related chats · 1 running"]);
   expect(text()).toContain("Inspecting the checkout workflow");
   state.projection = {
     ...projection,
@@ -467,8 +467,8 @@ it("groups and counts a workflow by its run status instead of its coordinator ch
     ],
   };
   await act(async () => renderer.update(cloneElement(panel)));
-  expect(renderer.root.findByType("h3").children).toEqual(["Lineage"]);
-  expect(text()).toContain("Previous agents");
+  expect(renderer.root.findByType("h3").children).toEqual(["Related chats"]);
+  expect(text()).toContain("Earlier helpers");
   expect(renderer.root.findAllByProps({ "aria-label": "Open Checker chat" })).toHaveLength(0);
   await act(async () =>
     renderer.root.findByProps({ type: "button", "aria-expanded": false }).props.onClick(),
@@ -536,12 +536,10 @@ it.each([
       renderer = create(panel);
     });
     if (!canStop) {
-      expect(renderer.root.findAllByProps({ "aria-label": "Stop subagent Worker" })).toHaveLength(
-        0,
-      );
+      expect(renderer.root.findAllByProps({ "aria-label": "Stop helper Worker" })).toHaveLength(0);
       return;
     }
-    const stopButton = () => renderer.root.findByProps({ "aria-label": "Stop subagent Worker" });
+    const stopButton = () => renderer.root.findByProps({ "aria-label": "Stop helper Worker" });
     await act(async () => stopButton().props.onClick());
     expect(state.command).toHaveBeenCalledWith({
       environmentId: "test",
@@ -569,13 +567,11 @@ it.each([
         subagents: [{ ...agent, origin: "provider_native", status: "completed" }],
       };
       await act(async () => renderer.update(cloneElement(panel)));
-      expect(renderer.root.findAllByProps({ "aria-label": "Stop subagent Worker" })).toHaveLength(
-        0,
-      );
+      expect(renderer.root.findAllByProps({ "aria-label": "Stop helper Worker" })).toHaveLength(0);
       state.projection = { ...projection, subagents: [{ ...agent, status: "completed" }] };
       await act(async () => renderer.update(cloneElement(panel)));
       if (origin === "provider_native") {
-        expect(renderer.root.findAllByProps({ "aria-label": "Stop subagent Worker" })).toHaveLength(
+        expect(renderer.root.findAllByProps({ "aria-label": "Stop helper Worker" })).toHaveLength(
           0,
         );
         continue;
@@ -591,19 +587,17 @@ it.each([
     for (const status of ["completed", "failed", "interrupted"]) {
       state.projection = { ...projection, subagents: [{ ...agent, status }] };
       await act(async () => renderer.update(cloneElement(panel)));
-      expect(renderer.root.findAllByProps({ "aria-label": "Stop subagent Worker" })).toHaveLength(
-        0,
-      );
+      expect(renderer.root.findAllByProps({ "aria-label": "Stop helper Worker" })).toHaveLength(0);
     }
     state.projection = { ...projection, subagents: [{ ...agent, startedAt: null }] };
     await act(async () => renderer.update(cloneElement(panel)));
-    expect(renderer.root.findAllByProps({ "aria-label": "Stop subagent Worker" })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ "aria-label": "Stop helper Worker" })).toHaveLength(0);
     state.projection = {
       ...projection,
       subagents: [{ ...agent, origin: "provider_native", driver: "codex" }],
     };
     await act(async () => renderer.update(cloneElement(panel)));
-    expect(renderer.root.findAllByProps({ "aria-label": "Stop subagent Worker" })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ "aria-label": "Stop helper Worker" })).toHaveLength(0);
   },
 );
 
@@ -657,7 +651,7 @@ it("shows the matching child agent details and refreshes them when the agent set
       .join(" ")
       .replace(/\s+/g, " ");
   expect(text()).toContain("Checker");
-  expect(text()).toContain("Lineage · 3 running");
+  expect(text()).toContain("Related chats · 3 running");
   expect(text()).toContain("running");
   expect(text()).not.toContain("gpt-5.4");
   expect(text()).not.toContain("gpt-5.3");
@@ -679,8 +673,8 @@ it("shows the matching child agent details and refreshes them when the agent set
     ],
   };
   await act(async () => renderer.update(cloneElement(panel)));
-  expect(renderer.root.findByType("h3").children).toEqual(["Lineage"]);
-  expect(text()).toContain("Previous agents (1)");
+  expect(renderer.root.findByType("h3").children).toEqual(["Related chats"]);
+  expect(text()).toContain("Earlier helpers (1)");
   expect(text()).not.toContain("Checker");
   await act(async () =>
     renderer.root.findByProps({ type: "button", "aria-expanded": false }).props.onClick(),
@@ -696,7 +690,7 @@ it("shows the matching child agent details and refreshes them when the agent set
     renderer.root.findByProps({ type: "button", "aria-expanded": true }).props.onClick(),
   );
   expect(text()).not.toContain("Checker");
-  expect(text()).toContain("Previous agents (1)");
+  expect(text()).toContain("Earlier helpers (1)");
   await act(async () =>
     renderer.root.findByProps({ type: "button", "aria-expanded": false }).props.onClick(),
   );
@@ -711,7 +705,7 @@ it("shows the matching child agent details and refreshes them when the agent set
     })),
   };
   await act(async () => renderer.update(cloneElement(panel)));
-  expect(text()).toContain("Lineage · 8 running");
+  expect(text()).toContain("Related chats · 8 running");
 
   state.projection = {
     ...projection,
@@ -741,7 +735,7 @@ it("shows the matching child agent details and refreshes them when the agent set
     subagents: [{ ...agent, childThreadId: null }],
   };
   await act(async () => renderer.update(cloneElement(panel)));
-  expect(text()).toContain("Lineage · 1 running");
+  expect(text()).toContain("Related chats · 1 running");
 });
 
 it("shows readable models and only differing workspace details in agent tooltips", async () => {
@@ -848,7 +842,7 @@ it("shows readable models and only differing workspace details in agent tooltips
   expect(text()).not.toContain("Tokens");
   expect(text()).not.toContain("Open subagent");
   expect(text()).not.toContain("Project");
-  expect(text()).not.toContain("Worktree");
+  expect(text()).not.toContain("Separate copy");
   expect(text()).not.toContain("Workspace");
 
   for (const [model, expected] of [
@@ -1113,7 +1107,7 @@ it("shows readable models and only differing workspace details in agent tooltips
 
   child.worktreePath = "/main/worktrees/checker";
   await rerender();
-  expect(text()).toContain("Worktree");
+  expect(text()).toContain("Separate copy");
   expect(text()).toContain("checker");
   expect(text()).not.toContain("/main/worktrees");
   expect(text()).not.toContain("Project");
@@ -1122,7 +1116,7 @@ it("shows readable models and only differing workspace details in agent tooltips
   await rerender();
   expect(text()).toContain("Branch");
   expect(text()).toContain("fix/checker");
-  expect(text()).not.toContain("Worktree");
+  expect(text()).not.toContain("Separate copy");
   expect(text()).not.toContain("/main/worktrees");
 
   child.projectId = "other";
@@ -1134,7 +1128,7 @@ it("shows readable models and only differing workspace details in agent tooltips
   expect(text()).toContain("other");
   expect(text()).not.toContain("/other");
   expect(text()).not.toContain("Wrong environment");
-  expect(text()).not.toContain("Worktree");
+  expect(text()).not.toContain("Separate copy");
 
   state.shells = [];
   state.configs.clear();
@@ -1230,12 +1224,12 @@ it.each(["source", "target"])(
     }));
     state.shells = threads.map((source) => ({ environmentId, source }));
     const labels: Record<OrchestrationV2ContextTransfer["status"], string> = {
-      pending: "Queued",
-      resolved_native: "Resolved (native)",
-      resolved_portable: "Resolved (portable)",
+      pending: "Waiting",
+      resolved_native: "Done",
+      resolved_portable: "Done",
       failed: "Failed",
-      consumed: "Consumed",
-      superseded: "Superseded",
+      consumed: "Used",
+      superseded: "Replaced",
     };
     const panel = (
       <ThreadRelationshipsPanel

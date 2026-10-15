@@ -168,7 +168,7 @@ const layerCapabilities = Layer.effectContext(
           if (session === null) {
             return yield* new ConnectionBlockedError({
               reason: "authentication",
-              detail: "Sign in to T3 Connect to connect this environment.",
+              detail: "Sign in for remote access to connect this computer.",
             });
           }
           const token = yield* session.readClerkToken().pipe(
@@ -183,7 +183,7 @@ const layerCapabilities = Layer.effectContext(
           if (token === null) {
             return yield* new ConnectionBlockedError({
               reason: "authentication",
-              detail: "The T3 Connect session is unavailable.",
+              detail: "Remote access is not available. Sign in again.",
             });
           }
           return token;
@@ -224,14 +224,14 @@ const layerCapabilities = Layer.effectContext(
             Effect.fail(
               new ConnectionBlockedError({
                 reason: "unsupported",
-                detail: "SSH environments are only available in the desktop app.",
+                detail: "SSH computers are only available in the desktop app.",
               }),
             ),
           prepare: () =>
             Effect.fail(
               new ConnectionBlockedError({
                 reason: "unsupported",
-                detail: "SSH environments are only available in the desktop app.",
+                detail: "SSH computers are only available in the desktop app.",
               }),
             ),
           disconnect: () => Effect.void,

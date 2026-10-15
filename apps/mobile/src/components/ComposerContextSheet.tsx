@@ -353,7 +353,7 @@ export function ComposerContextSheet(props: {
                 ) : null}
                 {record.kind === "thread" ? (
                   <View className="gap-3">
-                    <ContextField label="Thread" value={record.title} />
+                    <ContextField label="Chat" value={record.title} />
                     {props.onOpenThread ? (
                       <Pressable
                         accessibilityRole="button"
@@ -365,7 +365,7 @@ export function ComposerContextSheet(props: {
                         }
                         className="rounded-xl bg-subtle p-4"
                       >
-                        <Text className="text-foreground">Open thread</Text>
+                        <Text className="text-foreground">Open chat</Text>
                       </Pressable>
                     ) : null}
                   </View>

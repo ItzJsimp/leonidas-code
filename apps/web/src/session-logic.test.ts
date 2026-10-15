@@ -146,7 +146,7 @@ describe("V2 session presentation", () => {
         status: "failed",
         failure: { ...retryItem.failure, class: "usage_limit" },
       }),
-    ).toMatchObject({ label: "Usage limit reached after 2/10 retries" });
+    ).toMatchObject({ label: "Usage limit reached after 2/10 tries" });
     const recoveredLimit = {
       ...retryItem,
       status: "completed" as const,
@@ -166,11 +166,11 @@ describe("V2 session presentation", () => {
       optimisticMessages: [],
     });
     if (recoveredEntry?.kind !== "work") throw new Error("Expected recovered provider work");
-    expect(recoveredEntry.entry.label).toBe("Provider recovered (2/10 retries)");
+    expect(recoveredEntry.entry.label).toBe("AI service recovered (2/10 tries)");
     expect(recoveredEntry.entry.sourceActivityKind).not.toBe("runtime.warning");
     expect(workEntryDisplayIndicatesToolFailure(recoveredEntry.entry)).toBe(false);
     expect(providerErrorPresentation(retryItem)).toEqual({
-      label: "Retrying provider (2/10)",
+      label: "Trying the AI service again (2/10)",
       detail: "Claude API overloaded. Retrying in 1.5s.",
     });
     expect(
@@ -179,7 +179,7 @@ describe("V2 session presentation", () => {
         status: "completed",
         completedAt: now,
       }),
-    ).toMatchObject({ label: "Provider recovered (2/10 retries)" });
+    ).toMatchObject({ label: "AI service recovered (2/10 tries)" });
     expect(
       providerErrorPresentation({
         ...retryItem,
@@ -187,7 +187,7 @@ describe("V2 session presentation", () => {
         retry: { ...retryItem.retry, attempt: 10 },
         completedAt: now,
       }),
-    ).toMatchObject({ label: "Provider error after 10/10 retries" });
+    ).toMatchObject({ label: "AI service error after 10/10 tries" });
   });
 
   it("selects the latest proposed plan for a run", () => {
@@ -436,7 +436,7 @@ describe("V2 session presentation", () => {
     expect(errorEntry?.kind).toBe("work");
     if (errorEntry?.kind === "work") {
       expect(errorEntry.entry.projectedItem).toBe(visibleTurnItems[5]);
-      expect(errorEntry.entry.label).toBe("Provider error");
+      expect(errorEntry.entry.label).toBe("AI service error");
       expect(errorEntry.entry.detail).toBe("Invalid reasoning effort.");
       expect(errorEntry.entry.tone).toBe("info");
       expect(errorEntry.entry.toolLifecycleStatus).toBe("failed");

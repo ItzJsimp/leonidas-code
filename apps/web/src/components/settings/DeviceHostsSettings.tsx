@@ -43,10 +43,12 @@ export function DeviceHostsSettings(props: { environmentId: EnvironmentId | null
       const results = await Promise.allSettled(
         environments.map(async (environment) => {
           if (environment.connection.phase !== "connected" || !environment.serverConfig) {
-            throw new Error("Environment disconnected");
+            throw new Error("The computer is not connected. Connect it and try again.");
           }
           if (!readEnvironmentScope(environment.environmentId, AuthSettingsWriteScope)) {
-            throw new Error("This connection cannot change device settings.");
+            throw new Error(
+              "This connection cannot change device settings. Use a connection with more permissions.",
+            );
           }
           return update({
             environmentId: environment.environmentId,
@@ -72,7 +74,7 @@ export function DeviceHostsSettings(props: { environmentId: EnvironmentId | null
       } else {
         toastManager.add({
           type: "error",
-          title: "Device hosts not saved on all environments",
+          title: "Computers for devices not saved on all computers",
           description: `Could not update ${failed.map((environment) => environment.label).join(", ")}.`,
         });
       }
@@ -83,10 +85,10 @@ export function DeviceHostsSettings(props: { environmentId: EnvironmentId | null
   return (
     <SettingsRow
       id="device-hosts"
-      title="Device hosts"
+      title="Computers that run devices"
       serverScoped
       settingKeys={["deviceHosts"]}
-      description="Add remote machines with simulator or emulator runtimes installed, and the selected environments will connect over SSH and set up device tools automatically."
+      description="Add remote computers that have a phone simulator or emulator. The chosen computers connect over SSH and set up the device tools for you."
       control={
         <Button
           size="sm"
@@ -105,9 +107,7 @@ export function DeviceHostsSettings(props: { environmentId: EnvironmentId | null
     >
       <div className="pt-3 pb-2">
         {!props.environmentId ? (
-          <p className="text-sm text-muted-foreground">
-            Connect a selected environment to manage device hosts.
-          </p>
+          <p className="text-sm text-muted-foreground">Connect a computer to manage its devices.</p>
         ) : (
           <>
             {connectedEnvironments.map((environment) => (
@@ -132,11 +132,11 @@ export function DeviceHostsSettings(props: { environmentId: EnvironmentId | null
                     toastManager.add({
                       type: failed.length ? "error" : "success",
                       title: failed.length
-                        ? `${host.label}: ${failed.length} of ${targets.length} environments failed`
+                        ? `${host.label}: ${failed.length} of ${targets.length} computers failed`
                         : `${host.label}: connection checks passed`,
                       description: failed.length
                         ? `Could not connect from ${failed.map((target) => target.label).join(", ")}.`
-                        : "Connected or already available locally on each selected environment.",
+                        : "Connected, or already on each chosen computer.",
                     });
                     return results;
                   }}

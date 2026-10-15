@@ -82,7 +82,7 @@ export function PullRequestReviewerPicker({
           : `Could not ask ${candidate.login} for a review`,
         description: readableFailure(
           squashAtomCommandFailure(result),
-          "The host refused it. Check that you have write access on this repository, and that they still have access to it.",
+          "The service refused it. Check that you have write access on this repository, and that they still have access to it.",
         ),
       });
       return;
@@ -111,9 +111,9 @@ export function PullRequestReviewerPicker({
       candidates={candidates}
       emptyLabel="Nobody else has access to this repository."
       noMatchLabel="Nobody with access matches that."
-      errorLabel="The people with access could not be read."
+      errorLabel="Could not load the people. Try again."
       truncated={candidatesQuery.data?.truncated === true}
-      truncatedLabel="This repository has more people with access than are listed here. Ask for the rest on the host."
+      truncatedLabel="This repository has more people with access than are listed here. Ask for the rest on the website of the service."
       candidateKey={(candidate) => `${candidate.kind}:${candidate.id}`}
       disabled={pending !== null}
       onSelect={(candidate) => void toggle(candidate)}

@@ -95,13 +95,13 @@ export type ReviewParsedDiff =
     };
 
 function checkpointTitle(checkpoint: ThreadCheckpointSummary): string {
-  return `Turn ${checkpoint.checkpointTurnCount}`;
+  return `Reply ${checkpoint.checkpointTurnCount}`;
 }
 
 function checkpointSubtitle(checkpoint: ThreadCheckpointSummary): string {
   const fileCount = checkpoint.files.length;
   if (checkpoint.status !== "ready") {
-    return `Diff ${checkpoint.status}`;
+    return `Changes ${checkpoint.status}`;
   }
   return `${fileCount} file${fileCount === 1 ? "" : "s"} changed`;
 }
@@ -252,7 +252,7 @@ export function getReviewFilePreviewState(file: ReviewRenderableFile): ReviewFil
       kind: "suppressed",
       reason: "non-text",
       title: "Non-text file",
-      message: "Diff preview is not available for this file format.",
+      message: "Changes preview is not available for this file type. Open the file to view it.",
       actionLabel: null,
     };
   }
@@ -263,9 +263,9 @@ export function getReviewFilePreviewState(file: ReviewRenderableFile): ReviewFil
     return {
       kind: "suppressed",
       reason: "large",
-      title: "Large diff",
-      message: "Large diffs are not rendered by default.",
-      actionLabel: "Load diff",
+      title: "Large changes",
+      message: "Large changes do not load by default.",
+      actionLabel: "Load changes",
     };
   }
 
@@ -483,9 +483,7 @@ export function buildReviewParsedDiff(
     return { kind: "empty" };
   }
 
-  const notice = truncated
-    ? "Diff output hit the server size cap. Showing the available excerpt."
-    : null;
+  const notice = truncated ? "The changes are too large. Showing part of them." : null;
 
   try {
     const parsedPatches = runDiffParserSilently(() =>
@@ -502,8 +500,8 @@ export function buildReviewParsedDiff(
         kind: "raw",
         text,
         reason: truncated
-          ? "Diff was truncated before it could be parsed completely. Showing the raw excerpt."
-          : "Unsupported diff format. Showing raw patch.",
+          ? "The changes were cut short before they could be read in full. Showing the raw text."
+          : "Unsupported format. Showing the raw text of the changes.",
         notice,
       };
     }
@@ -521,8 +519,8 @@ export function buildReviewParsedDiff(
       kind: "raw",
       text,
       reason: truncated
-        ? "Diff was truncated before it could be parsed completely. Showing the raw excerpt."
-        : "Failed to parse patch. Showing raw patch.",
+        ? "The changes were cut short before they could be read in full. Showing the raw text."
+        : "Could not read the changes. Showing the raw text.",
       notice,
     };
   }

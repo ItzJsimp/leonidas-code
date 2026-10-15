@@ -26,7 +26,7 @@ export interface EnvironmentOption {
 export const EnvMode = Schema.Literals(["local", "worktree"]);
 export type EnvMode = typeof EnvMode.Type;
 
-const GENERIC_LOCAL_ENVIRONMENT_LABELS = new Set(["local", "local environment"]);
+const GENERIC_LOCAL_ENVIRONMENT_LABELS = new Set(["local", "local environment", "this computer"]);
 
 function normalizeDisplayLabel(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -47,7 +47,7 @@ export function resolveEnvironmentOptionLabel(input: {
       if (!label) return false;
       return !GENERIC_LOCAL_ENVIRONMENT_LABELS.has(label.toLowerCase());
     });
-    return preferredLocalLabel ?? "This device";
+    return preferredLocalLabel ?? "This computer";
   }
 
   return runtimeLabel ?? savedLabel ?? input.environmentId;
@@ -95,17 +95,17 @@ export function resolveContextStripLabelsCompact(input: {
 }
 
 export function resolveEnvModeLabel(mode: EnvMode): string {
-  return mode === "worktree" ? "New separate copy" : "Current checkout";
+  return mode === "worktree" ? "New separate copy" : "Main folder";
 }
 
 export const WORKTREE_SUBMODULES_LABELS: Record<WorktreeSubmodules, string> = {
-  recursive: "Recursive",
-  "top-level": "Top level only",
+  recursive: "All levels",
+  "top-level": "First level only",
   none: "Skip",
 };
 
 export function resolveCurrentWorkspaceLabel(activeWorktreePath: string | null): string {
-  return activeWorktreePath ? "Current worktree" : resolveEnvModeLabel("local");
+  return activeWorktreePath ? "Separate copy" : resolveEnvModeLabel("local");
 }
 
 // A locked thread in worktree mode with no path is still creating its
@@ -114,8 +114,8 @@ export function resolveLockedWorkspaceLabel(
   activeWorktreePath: string | null,
   effectiveEnvMode: EnvMode,
 ): string {
-  if (activeWorktreePath) return "Worktree";
-  return effectiveEnvMode === "worktree" ? resolveEnvModeLabel("worktree") : "Local checkout";
+  if (activeWorktreePath) return "Separate copy";
+  return effectiveEnvMode === "worktree" ? resolveEnvModeLabel("worktree") : "Main folder";
 }
 
 export interface PreviousWorktreeSeed {
@@ -162,7 +162,7 @@ export function resolvePreviousWorktreeSeed(input: {
 }
 
 export function resolvePreviousWorktreeLabel(seed: PreviousWorktreeSeed): string {
-  return seed.branch ? `Previous worktree (${seed.branch})` : "Previous worktree";
+  return seed.branch ? `Previous separate copy (${seed.branch})` : "Previous separate copy";
 }
 
 export function resolveEffectiveEnvMode(input: {
@@ -228,7 +228,7 @@ export function resolveBranchTriggerLabel(input: {
     startFromOrigin,
   } = input;
   if (!resolvedActiveBranch) {
-    return "Select ref";
+    return "Select branch";
   }
   if (effectiveEnvMode === "worktree" && !activeWorktreePath) {
     const baseRef =

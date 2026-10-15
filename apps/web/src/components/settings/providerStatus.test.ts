@@ -60,13 +60,13 @@ describe("getProviderSummary", () => {
         message: "Run codex login.",
       }),
     ).toEqual({
-      headline: "Not authenticated",
+      headline: "Not signed in",
       detail: "Run codex login.",
     });
   });
 
   it("treats a disabled provider status as disabled even before its enabled flag updates", () => {
-    expect(getProviderSummary({ ...provider, status: "disabled" }).headline).toBe("Disabled");
+    expect(getProviderSummary({ ...provider, status: "disabled" }).headline).toBe("Off");
   });
 });
 
@@ -117,7 +117,7 @@ it("shows compatibility in the version popover even when the installed version i
     recommendedVersion: "1.9.0",
   };
   expect(getProviderVersionAdvisoryPresentation(advisory, compatibility)).toEqual({
-    title: "Known broken version",
+    title: "Version with known problems",
     detail: compatibility.message,
     updateCommand: null,
     emphasis: "strong",
@@ -151,7 +151,7 @@ describe("provider status copy", () => {
     } as ServerProvider;
 
     expect(getProviderSummary(provider)).toEqual({
-      headline: "Not authenticated · Company login",
+      headline: "Not signed in · Company login",
       detail: "Complete this authentication method on the server.",
     });
   });

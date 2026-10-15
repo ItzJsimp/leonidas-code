@@ -55,7 +55,7 @@ export function SettingsEnvironmentFilterHeader(props: {
         unstable_headerRightItems: () => [
           withNativeGlassHeaderItem({
             axisBehavior: "horizontalOnly",
-            accessibilityLabel: "Filter settings environments and projects",
+            accessibilityLabel: "Filter settings computers and projects",
             icon: { name: filterIcon, type: "sfSymbol" },
             label: "",
             type: "menu",
@@ -66,12 +66,12 @@ export function SettingsEnvironmentFilterHeader(props: {
                   type: "submenu",
                   label:
                     selectedIds === null
-                      ? "All environments"
-                      : `${selectedTargets.length} ${selectedTargets.length === 1 ? "environment" : "environments"}`,
+                      ? "All computers"
+                      : `${selectedTargets.length} ${selectedTargets.length === 1 ? "computer" : "computers"}`,
                   items: [
                     {
                       type: "action",
-                      label: "All connected environments",
+                      label: "All connected computers",
                       state: selectedIds === null ? "on" : undefined,
                       onPress: selectAll,
                     },
@@ -156,17 +156,17 @@ export function AndroidSettingsEnvironmentFilter() {
     <ControlPillMenu
       accessible
       accessibilityRole="button"
-      accessibilityLabel="Filter settings environments and projects"
+      accessibilityLabel="Filter settings computers and projects"
       title="Settings scope"
       actions={[
         {
           id: "all",
-          title: "All connected environments",
+          title: "All connected computers",
           state: selectedIds === null ? ("on" as const) : ("off" as const),
         },
         ...availableTargets.map((entry) => ({
           id: `environment:${entry.environmentId}`,
-          title: `Environment · ${entry.label}`,
+          title: `Computer · ${entry.label}`,
           image: ENVIRONMENT_MACHINE_SYMBOLS[resolveEnvironmentMachineKind(entry.serverConfig)],
           subtitle: entry.displayUrl ?? undefined,
           state:
@@ -203,7 +203,7 @@ export function AndroidSettingsEnvironmentFilter() {
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Filter settings environments and projects"
+        accessibilityLabel="Filter settings computers and projects"
         className="size-11 items-center justify-center rounded-full"
       >
         <SymbolView name={filterIcon} size={22} tintColorClassName="accent-icon" />

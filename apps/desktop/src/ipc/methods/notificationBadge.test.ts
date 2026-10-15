@@ -53,7 +53,7 @@ it("sets and clears the Windows taskbar overlay", () => {
   applyNotificationBadge("win32", badge);
   expect(native.setOverlayIcon).toHaveBeenLastCalledWith(
     native.image,
-    "2 threads with new notifications",
+    "2 chats with new notifications",
   );
   applyNotificationBadge("win32", { count: 0, image: null });
   expect(native.setOverlayIcon).toHaveBeenLastCalledWith(null, "");

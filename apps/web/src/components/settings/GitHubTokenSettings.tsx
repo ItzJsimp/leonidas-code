@@ -75,7 +75,8 @@ export function GitHubTokenSettings({
           A token saved here is used before{" "}
           <code className="rounded bg-muted px-1 py-px text-2xs">GH_TOKEN</code> and the{" "}
           <code className="rounded bg-muted px-1 py-px text-2xs">gh</code> login, so GitHub works
-          without the GitHub CLI. Give it read and write access to pull requests and contents.{" "}
+          without the GitHub CLI. Give the token read and write access to pull requests and
+          contents.{" "}
           <InlineButton
             render={
               <a
@@ -91,7 +92,7 @@ export function GitHubTokenSettings({
         </p>
         <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
           <div className="grid gap-1.5">
-            <Label htmlFor={`github-token-host-${environmentId}`}>Host</Label>
+            <Label htmlFor={`github-token-host-${environmentId}`}>GitHub site</Label>
             <Input
               id={`github-token-host-${environmentId}`}
               autoComplete="off"
@@ -108,7 +109,7 @@ export function GitHubTokenSettings({
               type="password"
               autoComplete="off"
               size="sm"
-              placeholder={isSaved ? "Stored secret, enter a new value to replace" : "Not set"}
+              placeholder={isSaved ? "Saved. Type a new token to replace it." : "Not set"}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
             />
@@ -117,7 +118,7 @@ export function GitHubTokenSettings({
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {savedHosts.length === 0
-              ? "No token saved; the server uses GH_TOKEN or the gh login."
+              ? "No token saved. Leonidas Code uses GH_TOKEN or the gh login."
               : `Saved for ${savedHosts.join(", ")}.`}
           </p>
           <div className="flex shrink-0 gap-2">

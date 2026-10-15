@@ -8,7 +8,7 @@ import {
 } from "./new-task-context-presentation";
 
 describe("resolveNewTaskLocalWorkspaceSelection", () => {
-  it("waits for refs instead of carrying a worktree base into Current checkout", () => {
+  it("waits for refs instead of carrying a worktree base into Main folder", () => {
     expect(
       resolveNewTaskLocalWorkspaceSelection({
         branches: [],
@@ -55,7 +55,7 @@ describe("resolveNewTaskLocalWorkspaceSelection", () => {
 });
 
 describe("resolveNewTaskBranchWorktreePath", () => {
-  it("moves Current checkout to the selected existing worktree", () => {
+  it("moves Main folder to the selected existing worktree", () => {
     expect(
       resolveNewTaskBranchWorktreePath({
         workspaceMode: "local",

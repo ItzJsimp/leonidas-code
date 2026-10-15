@@ -109,9 +109,7 @@ export class IncomingShareInbox {
         // would otherwise reopen the project picker on every foreground.
         await this.cleanup(built.cleanup);
         this.clearNativePayloads();
-        throw new Error(
-          draft.warnings[0] ?? "The shared content is not supported by the composer.",
-        );
+        throw new Error(draft.warnings[0] ?? "The message box cannot use the shared content.");
       }
 
       // The durable inbox write is the transaction boundary. Never clear the

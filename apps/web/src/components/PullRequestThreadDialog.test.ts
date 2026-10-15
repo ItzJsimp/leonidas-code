@@ -142,7 +142,7 @@ function renderDialog() {
   });
 }
 
-function prepareAction(label: "Local" | "Worktree") {
+function prepareAction(label: "Main folder" | "Separate copy") {
   const action = findAction(renderDialog(), label);
   if (!action) throw new Error(`${label} action missing`);
   return action;
@@ -180,7 +180,7 @@ describe("pull request worktree permissions", () => {
   });
 
   it("does not prepare a worktree or run setup with only source-control permission", async () => {
-    await prepareAction("Worktree")();
+    await prepareAction("Separate copy")();
 
     expect(state.checkouts).toEqual([]);
     expect(state.setupScripts).toBe(0);
@@ -189,7 +189,7 @@ describe("pull request worktree permissions", () => {
 
   it("prepares the worktree and thread when task permission is also granted", async () => {
     state.canOperate = true;
-    await prepareAction("Worktree")();
+    await prepareAction("Separate copy")();
 
     expect(state.checkouts).toEqual(["worktree"]);
     expect(state.setupScripts).toBe(1);
@@ -198,7 +198,7 @@ describe("pull request worktree permissions", () => {
 
   it("rechecks task permission before invoking a retained worktree action", async () => {
     state.canOperate = true;
-    const prepare = prepareAction("Worktree");
+    const prepare = prepareAction("Separate copy");
     state.canOperate = false;
     await prepare();
 
@@ -207,14 +207,14 @@ describe("pull request worktree permissions", () => {
   });
 
   it("keeps local checkout available without task permission", async () => {
-    await prepareAction("Local")();
+    await prepareAction("Main folder")();
 
     expect(state.checkouts).toEqual(["local"]);
     expect(state.setupScripts).toBe(0);
     expect(state.prepared).toEqual([{ branch: "feature/pr", worktreePath: null }]);
   });
 
-  it.each(["Local", "Worktree"] as const)(
+  it.each(["Main folder", "Separate copy"] as const)(
     "shows the returned scope denial for a retained %s callback without starting a checkout",
     async (label) => {
       state.canOperate = true;
@@ -237,7 +237,7 @@ describe("pull request worktree permissions", () => {
   );
 
   it("clears a returned error when a newly authorized retry starts, then completes normally", async () => {
-    const prepare = prepareAction("Local");
+    const prepare = prepareAction("Main folder");
     state.canWriteSourceControl = false;
     await prepare();
     expect(visibleText(renderDialog())).toContain("This connection cannot change source control.");
@@ -245,7 +245,7 @@ describe("pull request worktree permissions", () => {
     state.canWriteSourceControl = true;
     const response = deferred<void>();
     state.pendingResponse = response.promise;
-    const completion = prepareAction("Local")();
+    const completion = prepareAction("Main folder")();
 
     expect(visibleText(renderDialog())).not.toContain(
       "This connection cannot change source control.",
@@ -263,7 +263,7 @@ describe("pull request worktree permissions", () => {
     state.interrupted = true;
     const before = visibleText(renderDialog());
 
-    await prepareAction("Local")();
+    await prepareAction("Main folder")();
 
     expect(visibleText(renderDialog())).toBe(before);
     expect(state.resets).toBe(1);

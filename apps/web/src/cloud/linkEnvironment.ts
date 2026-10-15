@@ -59,7 +59,7 @@ function ensureRelayClientAvailable(
     if (status.status === "available") return;
     if (status.status === "unsupported") {
       return yield* new CloudEnvironmentLinkError({
-        message: `Leonidas Code cannot install the relay client automatically on ${status.platform}-${status.arch}.`,
+        message: `Leonidas Code cannot install remote access on ${status.platform}-${status.arch}. Install it yourself, then try again.`,
       });
     }
 
@@ -69,7 +69,7 @@ function ensureRelayClientAvailable(
     });
     if (!confirmed) {
       return yield* new CloudEnvironmentLinkError({
-        message: "Relay client installation was cancelled.",
+        message: "Remote access setup was cancelled. Start it again when you are ready.",
       });
     }
 
@@ -87,7 +87,7 @@ function ensureRelayClientAvailable(
       );
     if (Option.isNone(installed) || installed.value.type !== "complete") {
       return yield* new CloudEnvironmentLinkError({
-        message: "The relay client install completed without a final status.",
+        message: "Remote access setup did not finish. Try again.",
       });
     }
     const installedStatus = installed.value.status;
@@ -95,8 +95,8 @@ function ensureRelayClientAvailable(
       return yield* new CloudEnvironmentLinkError({
         message:
           installedStatus.status === "unsupported"
-            ? `Leonidas Code cannot install the relay client automatically on ${installedStatus.platform}-${installedStatus.arch}.`
-            : "The relay client is still unavailable after installation.",
+            ? `Leonidas Code cannot install remote access on ${installedStatus.platform}-${installedStatus.arch}. Install it yourself, then try again.`
+            : "Remote access is still unavailable. Try again.",
       });
     }
   });
@@ -165,12 +165,12 @@ function ensureLinkedEnvironmentMatches(input: {
 }): Effect.Effect<void, CloudEnvironmentLinkError> {
   if (input.link.environmentId !== input.expectedEnvironmentId) {
     return new CloudEnvironmentLinkError({
-      message: "Relay returned credentials for a different environment.",
+      message: "Remote access returned details for another computer. Try again.",
     });
   }
   if (input.link.endpoint.providerKind !== input.expectedProviderKind) {
     return new CloudEnvironmentLinkError({
-      message: "Relay returned credentials for a different endpoint provider.",
+      message: "Remote access returned the wrong connection details. Try again.",
     });
   }
   return Effect.void;
@@ -192,7 +192,11 @@ export function readPrimaryCloudLinkState(input: {
     const client = yield* makeEnvironmentHttpApiClient(input.target.httpBaseUrl);
     return yield* client.connect
       .linkState({ headers: {} })
-      .pipe(Effect.mapError(environmentApiError("Could not read environment cloud link state.")));
+      .pipe(
+        Effect.mapError(
+          environmentApiError("Could not read the remote access state of this computer."),
+        ),
+      );
   }).pipe(Effect.provide(PrimaryEnvironmentHttpLayer.layer));
 }
 
@@ -210,7 +214,9 @@ export function updatePrimaryCloudPreferences(input: {
         payload,
       })
       .pipe(
-        Effect.mapError(environmentApiError("Could not update environment cloud preferences.")),
+        Effect.mapError(
+          environmentApiError("Could not update remote access settings for this computer."),
+        ),
       );
   }).pipe(Effect.provide(PrimaryEnvironmentHttpLayer.layer));
 }
@@ -227,7 +233,9 @@ export function unlinkPrimaryEnvironmentFromCloud(input: {
     const client = yield* makeEnvironmentHttpApiClient(input.target.httpBaseUrl);
     yield* client.connect
       .unlink({ headers: {} })
-      .pipe(Effect.mapError(environmentApiError("Could not unlink the environment from cloud.")));
+      .pipe(
+        Effect.mapError(environmentApiError("Could not remove this computer from remote access.")),
+      );
 
     const configuredRelayUrl = relayUrl();
     if (configuredRelayUrl && input.clerkToken) {
@@ -311,7 +319,9 @@ export function linkPrimaryEnvironmentToCloud(input: {
           origin: endpointOrigin(input.target.httpBaseUrl),
         },
       })
-      .pipe(Effect.mapError(environmentApiError("Could not obtain environment link proof.")));
+      .pipe(
+        Effect.mapError(environmentApiError("Could not get the link proof from this computer.")),
+      );
     const link = yield* relayClient
       .linkEnvironment({
         clerkToken: input.clerkToken,
@@ -345,6 +355,8 @@ export function linkPrimaryEnvironmentToCloud(input: {
           endpointRuntime: link.endpointRuntime,
         },
       })
-      .pipe(Effect.mapError(environmentApiError("Could not configure environment relay access.")));
+      .pipe(
+        Effect.mapError(environmentApiError("Could not set up remote access on this computer.")),
+      );
   }).pipe(Effect.provide(PrimaryEnvironmentHttpLayer.layer));
 }

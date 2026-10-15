@@ -130,7 +130,7 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
           ? undefined
           : getDefaultProviderInstanceModel(providers, provider.instanceId);
       if (provider === undefined || model === undefined) {
-        return { ok: false, message: "Connect an agent first." };
+        return { ok: false, message: "Connect an AI first." };
       }
       const modelSelection = createModelSelection(provider.instanceId, model);
       const threadId = newThreadId();

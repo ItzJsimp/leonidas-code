@@ -484,7 +484,7 @@ describe("incoming native shares", () => {
       }),
     ).toEqual({
       attachments: [image],
-      warnings: ["'report.pdf' was skipped because this server does not support files."],
+      warnings: ["'report.pdf' was skipped because this computer does not support files."],
     });
   });
 

@@ -36,15 +36,15 @@ describe("thread undo notice", () => {
     const { add, undo, options } = setup();
     showThreadUndoNotice({
       ...options,
-      action: "Settled",
+      action: "Marked as done",
       claim: ThreadUndo.begin("settle", "env/a"),
     });
     showThreadUndoNotice({
       ...options,
-      action: "Settled",
+      action: "Marked as done",
       claim: ThreadUndo.begin("settle", "env/b"),
     });
-    expect(notice()).toMatchObject({ action: "Settled", count: 2 });
+    expect(notice()).toMatchObject({ action: "Marked as done", count: 2 });
     expect(add).not.toHaveBeenCalled();
     const group = notice();
     await group.undo();
@@ -99,7 +99,11 @@ describe("thread undo notice", () => {
     });
     await notice().undo();
     expect(add).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: "error", title: "Restore failed", description: "offline" }),
+      expect.objectContaining({
+        type: "error",
+        title: "Restore failed",
+        data: expect.objectContaining({ copyText: expect.stringContaining("offline") }),
+      }),
     );
     expect(claim.isCurrent()).toBe(false);
   });
@@ -114,7 +118,10 @@ describe("thread undo notice", () => {
     });
     await notice().undo();
     expect(add).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: "error", description: "disconnected" }),
+      expect.objectContaining({
+        type: "error",
+        data: expect.objectContaining({ copyText: expect.stringContaining("disconnected") }),
+      }),
     );
   });
 
@@ -131,7 +138,7 @@ describe("thread undo notice", () => {
     const newer = vi.fn(async () => AsyncResult.success(undefined));
     showThreadUndoNotice({
       ...options,
-      action: "Settled",
+      action: "Marked as done",
       undo: older,
       claim: ThreadUndo.begin("settle", "env/a"),
     });
@@ -144,7 +151,7 @@ describe("thread undo notice", () => {
     expect(undoLatestThreadAction()).toBe(true);
     expect(newer).toHaveBeenCalledOnce();
     expect(older).not.toHaveBeenCalled();
-    expect(notice().action).toBe("Settled");
+    expect(notice().action).toBe("Marked as done");
     await notice().undo();
     expect(older).toHaveBeenCalledOnce();
     expect(undoLatestThreadAction()).toBe(false);

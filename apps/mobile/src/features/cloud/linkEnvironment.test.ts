@@ -173,7 +173,7 @@ describe("mobile cloud link environment client", () => {
         ).pipe(Effect.flip);
         expect(error).toMatchObject({
           _tag: "CloudEnvironmentLinkError",
-          message: "Relay returned credentials for a different environment.",
+          message: "Remote access returned sign-in details for a different computer. Try again.",
         });
         expect(fetchMock).toHaveBeenCalledTimes(3);
       }),
@@ -206,7 +206,7 @@ describe("mobile cloud link environment client", () => {
       ).pipe(Effect.flip);
       expect(error._tag).toBe("CloudEnvironmentLinkError");
       expect(error.message).toBe(
-        "Could not obtain environment link proof: Invalid environment bearer session.",
+        "Could not link this computer: Invalid environment bearer session.",
       );
       expect(fetchMock).toHaveBeenCalledTimes(2);
     }),
@@ -245,7 +245,7 @@ describe("mobile cloud link environment client", () => {
       expect(error).toMatchObject({
         _tag: "CloudEnvironmentLinkError",
         message:
-          "https://relay.example.test/v1/client/environment-links failed: Relay rejected the environment link proof (origin_not_allowed).",
+          "https://relay.example.test/v1/client/environment-links failed: Remote access did not accept the link to this computer (origin_not_allowed). Link the computer again.",
         traceId: "trace-test",
       });
       expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -282,7 +282,7 @@ describe("mobile cloud link environment client", () => {
       ).pipe(Effect.flip);
       expect(error).toMatchObject({
         _tag: "CloudEnvironmentLinkError",
-        message: "Relay returned credentials for a different endpoint provider.",
+        message: "Remote access returned sign-in details for a different service. Try again.",
       });
       expect(fetchMock).toHaveBeenCalledTimes(3);
     }),

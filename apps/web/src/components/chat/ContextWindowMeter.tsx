@@ -70,11 +70,11 @@ export function ContextWindowMeter(props: {
             onClick={() => void updateSettings({ usageOverlayEnabled: !cardOpen })}
             aria-label={`${
               usage === null
-                ? "Context window not reported yet"
+                ? "Chat memory use not known yet"
                 : usage.maxTokens !== null && usedPercentage
-                  ? `Context window ${usedPercentage} used`
-                  : `Context window ${formatContextWindowTokens(usage.usedTokens)} tokens used`
-            }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last turn ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. ${cardOpen ? "Hide" : "Show"} usage card`}
+                  ? `Chat memory ${usedPercentage} used`
+                  : `Chat memory: ${formatContextWindowTokens(usage.usedTokens)} tokens used`
+            }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last reply ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. ${cardOpen ? "Hide" : "Show"} usage card`}
           >
             <span className="relative flex size-4 items-center justify-center">
               <svg
@@ -143,7 +143,7 @@ export function ContextWindowMeter(props: {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(normalizedPercentage)}
-              aria-label="Context window usage"
+              aria-label="Chat memory use"
             >
               <div
                 className="h-full rounded-full transition-[width,background-color] duration-500 ease-out motion-reduce:transition-none"
@@ -191,7 +191,7 @@ export function ContextWindowMeter(props: {
                 onClick={onCompact}
               >
                 <Minimize2Icon aria-hidden="true" />
-                Compact context
+                Shorten history
               </Button>
               {compactDisabled && compactDisabledReason ? (
                 <div className="text-pretty text-secondary-label text-2xs">

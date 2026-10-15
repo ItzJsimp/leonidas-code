@@ -103,7 +103,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     id: threadId,
     environmentId,
     projectId,
-    title: "Thread",
+    title: "Chat",
     modelSelection: {
       instanceId: ProviderInstanceId.make("codex"),
       model: "gpt-5.4",
@@ -168,7 +168,7 @@ describe("resolveDraftPromotionNavigationTarget", () => {
     ).toBeNull();
   });
 
-  it("promotes a persisted send while its worktree is still preparing", () => {
+  it("promotes a persisted send while its separate copy is still preparing", () => {
     const serverThread = makeThread({ latestRun: preparingRun, latestUserMessageAt: now });
     expect(
       resolveDraftPromotionNavigationTarget({
@@ -244,7 +244,7 @@ describe("resolveThreadMetadataUpdateForNextTurn", () => {
     model: "gpt-5.4",
   };
 
-  it("updates a stale local thread branch to the active checkout", () => {
+  it("updates a stale local chat branch to the active checkout", () => {
     expect(
       resolveThreadMetadataUpdateForNextTurn({
         currentModelSelection: modelSelection,
@@ -363,7 +363,7 @@ describe("getStartedThreadModelChangeBlockReason", () => {
     },
   ];
 
-  it("allows model changes before a provider session has started", () => {
+  it("allows model changes before a AI service session has started", () => {
     expect(
       getStartedThreadModelChangeBlockReason({
         providers,
@@ -380,7 +380,7 @@ describe("getStartedThreadModelChangeBlockReason", () => {
     ).toBeNull();
   });
 
-  it("allows unchanged model selections for restricted providers", () => {
+  it("allows unchanged model selections for restricted AI services", () => {
     expect(
       getStartedThreadModelChangeBlockReason({
         providers,
@@ -397,7 +397,7 @@ describe("getStartedThreadModelChangeBlockReason", () => {
     ).toBeNull();
   });
 
-  it("blocks started-session model changes for providers that require a new thread", () => {
+  it("blocks started-session model changes for AI services that require a new chat", () => {
     expect(
       getStartedThreadModelChangeBlockReason({
         providers,
@@ -414,26 +414,26 @@ describe("getStartedThreadModelChangeBlockReason", () => {
     ).toEqual({
       title: "Start a new chat to change models",
       description:
-        "This provider does not allow switching models after a conversation has started.",
+        "This AI service does not allow switching models after a conversation has started.",
     });
   });
 });
 
 describe("resolveSendEnvMode", () => {
-  it("keeps worktree mode only for git repositories", () => {
+  it("keeps separate copy mode only for git repositories", () => {
     expect(resolveSendEnvMode({ requestedEnvMode: "worktree", isGitRepo: true })).toBe("worktree");
     expect(resolveSendEnvMode({ requestedEnvMode: "worktree", isGitRepo: false })).toBe("local");
   });
 });
 
 describe("branchMismatchKey", () => {
-  it("builds a key from thread id and both branches", () => {
+  it("builds a key from chat id and both branches", () => {
     expect(branchMismatchKey("thread-1", { threadBranch: "feat/a", currentBranch: "feat/b" })).toBe(
       "thread-1:feat/a:feat/b",
     );
   });
 
-  it("returns null without a thread or mismatch", () => {
+  it("returns null without a chat or mismatch", () => {
     expect(branchMismatchKey(null, { threadBranch: "a", currentBranch: "b" })).toBeNull();
     expect(branchMismatchKey("thread-1", null)).toBeNull();
   });
@@ -507,7 +507,7 @@ describe("session branch mismatch dismissal", () => {
 });
 
 describe("reconcileMountedTerminalThreadIds", () => {
-  it("keeps open threads and makes the active thread most recent", () => {
+  it("keeps open chats and makes the active chat most recent", () => {
     expect(
       reconcileMountedTerminalThreadIds({
         currentThreadIds: ["thread-a", "thread-b", "thread-c"],
@@ -519,7 +519,7 @@ describe("reconcileMountedTerminalThreadIds", () => {
     ).toEqual(["thread-b", "thread-c", "thread-a"]);
   });
 
-  it("drops closed threads and enforces the hidden mounted cap", () => {
+  it("drops closed chats and enforces the hidden mounted cap", () => {
     const ids = Array.from(
       { length: MAX_HIDDEN_MOUNTED_TERMINAL_THREADS + 2 },
       (_, index) => `thread-${index}`,
@@ -536,7 +536,7 @@ describe("reconcileMountedTerminalThreadIds", () => {
 });
 
 describe("shouldWriteThreadErrorToCurrentServerThread", () => {
-  it("requires the environment, route thread, and target thread to match", () => {
+  it("requires the computer, route chat, and target chat to match", () => {
     const routeThreadRef = { environmentId, threadId };
 
     expect(
@@ -557,7 +557,7 @@ describe("shouldWriteThreadErrorToCurrentServerThread", () => {
 });
 
 describe("startNewThreadForProject", () => {
-  it("starts a thread through the supplied shared handler for the active project", () => {
+  it("starts a chat through the supplied shared handler for the active project", () => {
     const calls: Array<{ environmentId: EnvironmentId; projectId: ProjectId }> = [];
     const projectRef = { environmentId, projectId };
 
@@ -628,7 +628,7 @@ describe("hasServerAcknowledgedLocalDispatch", () => {
     ).toBe(true);
   });
 
-  it("holds a first send while the thread shell still reports a preparing run", () => {
+  it("holds a first send while the chat shell still reports a preparing run", () => {
     // The draft had no run. The server thread's shell shows the new run before
     // the detail projection behind `phase` loads.
     const localDispatch = createLocalDispatchSnapshot(makeThread());
@@ -866,8 +866,8 @@ describe("agent browser close confirmation", () => {
       }),
     ).toBe(
       [
-        "Close browser while the agent is using it?",
-        "The agent is actively controlling this browser. Closing it may interrupt the current browser action.",
+        "Close the browser while the AI is using it?",
+        "The AI is using this browser now. If you close it, the AI may stop what it is doing.",
       ].join("\n"),
     );
   });
@@ -922,7 +922,7 @@ describe("proactive panels", () => {
     expect(shouldOpenProactivePullRequest("project:repo:42", null)).toBe(false);
   });
 
-  it("opens a completed diff on entry or when the observed running turn settles", () => {
+  it("opens a completed changes on entry or when the observed running turn settles", () => {
     const turnId = RunId.make("turn-1");
     expect(
       shouldOpenProactiveTurnDiff({
@@ -960,7 +960,7 @@ describe("proactive panels", () => {
 });
 
 describe("artifact template composer insertion", () => {
-  it("does not insert an already-present prompt", () => {
+  it("does not insert an already-present message", () => {
     const prompt = "Create a document using this $artifact-template-hello-world about…";
 
     expect(codexArtifactTemplatePromptToAppend(prompt, helloWorldTemplate)).toBeNull();
@@ -978,7 +978,7 @@ describe("draft hero submission transition", () => {
     ).toBe(false);
   });
 
-  it("leaves the hero layout while a worktree setup card is on the timeline", () => {
+  it("leaves the hero layout while a separate copy setup card is on the timeline", () => {
     expect(
       resolveDraftHeroState({
         isLocalDraftThread: true,
@@ -1032,7 +1032,7 @@ describe("resolveThreadSwitchTimeline", () => {
 
   const held = { threadKey: "env-1:thread-a", entries: ["a1", "a2"] };
 
-  it("keeps the previous thread's entries while the next thread is loading", () => {
+  it("keeps the previous chat's entries while the next chat is loading", () => {
     expect(
       resolveThreadSwitchTimeline({
         loading: true,
@@ -1043,7 +1043,7 @@ describe("resolveThreadSwitchTimeline", () => {
     ).toEqual({ entries: ["a1", "a2"], displayThreadKey: "env-1:thread-a" });
   });
 
-  it("shows the new thread once its detail is ready", () => {
+  it("shows the new chat once its detail is ready", () => {
     expect(
       resolveThreadSwitchTimeline({
         loading: false,
@@ -1054,7 +1054,7 @@ describe("resolveThreadSwitchTimeline", () => {
     ).toEqual({ entries: ["b1"], displayThreadKey: "env-1:thread-b" });
   });
 
-  it("does not invent a timeline on the first open of a thread", () => {
+  it("does not invent a timeline on the first open of a chat", () => {
     expect(
       resolveThreadSwitchTimeline({
         loading: true,
@@ -1065,7 +1065,7 @@ describe("resolveThreadSwitchTimeline", () => {
     ).toEqual({ entries: [], displayThreadKey: "env-1:thread-a" });
   });
 
-  it("keeps the held thread workspace cwd with the snapshot", () => {
+  it("keeps the held chat workspace cwd with the snapshot", () => {
     rememberReadyThreadTimeline({
       ...held,
       markdownCwd: "/repo/a",
@@ -1090,7 +1090,7 @@ describe("resolveThreadSwitchTimeline", () => {
     ).toEqual({ entries: ["a1", "a2"], displayThreadKey: "env-1:thread-a" });
   });
 
-  it("paints a remembered destination instead of the last-viewed thread", () => {
+  it("paints a remembered destination instead of the last-viewed chat", () => {
     rememberReadyThreadTimeline(held);
     rememberReadyThreadTimeline({ threadKey: "env-1:thread-b", entries: ["b1", "b2"] });
     expect(peekRememberedThreadTimeline<string[]>("env-1:thread-a")).toEqual(["a1", "a2"]);
@@ -1114,7 +1114,7 @@ describe("resolveThreadSwitchTimeline", () => {
     ).toEqual({ entries: ["fresh-b"], displayThreadKey: "env-1:thread-b" });
   });
 
-  it("does not keep a remembered snapshot on a resolved empty thread", () => {
+  it("does not keep a remembered snapshot on a resolved empty chat", () => {
     rememberReadyThreadTimeline(held);
     expect(
       resolveThreadSwitchTimeline({
@@ -1125,7 +1125,7 @@ describe("resolveThreadSwitchTimeline", () => {
     ).toEqual({ entries: [], displayThreadKey: "env-1:thread-a" });
   });
 
-  it("does not hold another environment's timeline across a jump", () => {
+  it("does not hold another computer's timeline across a jump", () => {
     expect(threadKeysShareEnvironment("env-1:thread-a", "env-2:thread-b")).toBe(false);
     expect(
       resolveThreadSwitchTimeline({
@@ -1280,7 +1280,7 @@ describe("shouldReleaseTimelineAnchorForToolActivity", () => {
               id: "error-entry",
               createdAt: now,
               runId: activeTurnId,
-              label: "Provider error",
+              label: "AI service error",
               tone: "error",
             },
           },
@@ -1306,7 +1306,7 @@ describe("shouldReleaseTimelineAnchorForToolActivity", () => {
   });
 });
 
-describe("environment reconnect warning grace", () => {
+describe("computer reconnect warning grace", () => {
   afterEach(() => vi.useRealTimers());
 
   it("shows a persistent reconnect after the grace period", () => {
@@ -1332,7 +1332,7 @@ describe("environment reconnect warning grace", () => {
     expect(showWarning).not.toHaveBeenCalled();
   });
 
-  it("does not reuse elapsed grace from another environment", () => {
+  it("does not reuse elapsed grace from another computer", () => {
     const anotherEnvironmentId = EnvironmentId.make("environment-remote");
 
     expect(hasEnvironmentReconnectWarningGraceElapsed(environmentId, environmentId)).toBe(true);
@@ -1487,7 +1487,7 @@ describe("resolveComposerProviderSelection", () => {
     ).toEqual({ enabled: false, interactionMode: "default" });
   });
 
-  it("uses the fallback provider's plan capability after the draft's instance is disabled", () => {
+  it("uses the fallback AI service's plan capability after the draft's instance is disabled", () => {
     const disabledEntry = entry("antigravity", "antigravity", {
       enabled: false,
       showInteractionModeToggle: false,
@@ -1510,7 +1510,7 @@ describe("resolveComposerProviderSelection", () => {
     ).toEqual({ enabled: true, interactionMode: "plan" });
   });
 
-  it("keeps a signed-out selection instead of silently switching providers", () => {
+  it("keeps a signed-out selection instead of silently switching AI services", () => {
     const signedOutEntry = entry("antigravity", "google_work", {
       status: "error",
       auth: { status: "unauthenticated" },
@@ -1526,7 +1526,7 @@ describe("resolveComposerProviderSelection", () => {
     expect(selection.selectedProviderEntry?.instanceId).toBe(signedOutEntry.instanceId);
     expect(
       getAntigravitySendBlockReason(selection.selectedProviderEntry?.snapshot, "gemini-pro"),
-    ).toBe("Sign in to Antigravity in provider settings before sending.");
+    ).toBe("Sign in to Antigravity in AI service settings before sending.");
   });
 
   it("blocks sends until the selected Antigravity profile is installed", () => {
@@ -1536,7 +1536,7 @@ describe("resolveComposerProviderSelection", () => {
     }).snapshot;
 
     expect(getAntigravitySendBlockReason(provider, "gemini-pro")).toBe(
-      "Install Antigravity in provider settings before sending.",
+      "Install Antigravity in AI service settings before sending.",
     );
   });
 
@@ -1559,7 +1559,7 @@ describe("resolveComposerProviderSelection", () => {
 
   it("blocks saved model sends until Antigravity loads its account catalog", () => {
     expect(getAntigravitySendBlockReason(entry("antigravity").snapshot, "gemini-pro")).toBe(
-      "Refresh Antigravity models in provider settings before sending.",
+      "Refresh Antigravity models in AI service settings before sending.",
     );
   });
 
@@ -1583,7 +1583,7 @@ describe("resolveComposerProviderSelection", () => {
     expect(getAntigravitySendBlockReason(provider, "gemini-pro")).toBeNull();
   });
 
-  it("allows a saved native model to retry after a provider error without changing it", () => {
+  it("allows a saved native model to retry after a AI service error without changing it", () => {
     const provider = entry("antigravity", "google_work", {
       status: "error",
       models: catalogModels,
@@ -1594,7 +1594,7 @@ describe("resolveComposerProviderSelection", () => {
     ).toBeNull();
   });
 
-  it("keeps existing send behavior for other providers", () => {
+  it("keeps existing send behavior for other AI services", () => {
     const provider = entry("codex", "codex", {
       installed: false,
       auth: { status: "unknown" },
@@ -1604,7 +1604,7 @@ describe("resolveComposerProviderSelection", () => {
     expect(getAntigravitySendBlockReason(provider, "gpt-model")).toBeNull();
   });
 
-  it("does not continue an existing Antigravity thread in another profile after deletion", () => {
+  it("does not continue an existing Antigravity chat in another profile after deletion", () => {
     const missingInstanceId = ProviderInstanceId.make("google_work");
     const selection = resolveComposerProviderSelection({
       entries: [entry("antigravity")],
@@ -1617,7 +1617,7 @@ describe("resolveComposerProviderSelection", () => {
     expect(selection.unavailableProviderInstanceId).toBe(missingInstanceId);
   });
 
-  it("does not treat the empty draft placeholder as a provider setup target", () => {
+  it("does not treat the empty draft placeholder as a AI service setup target", () => {
     const selection = resolveComposerProviderSelection({
       entries: [entry("antigravity", "antigravity", { enabled: false })],
       candidateInstanceIds: [NO_PROVIDER_MODEL_SELECTION.instanceId],
@@ -1659,7 +1659,7 @@ describe("resolveComposerInteractionMode", () => {
     ).toEqual({ enabled: false, interactionMode: "default" });
   });
 
-  it("keeps legacy plan behavior for providers that omit the capability", () => {
+  it("keeps legacy plan behavior for AI services that omit the capability", () => {
     expect(
       resolveComposerInteractionMode({
         planModeEnabled: true,
@@ -1679,7 +1679,7 @@ describe("resolveComposerInteractionMode", () => {
     ).toEqual({ enabled: false, interactionMode: "default" });
   });
 
-  it("disables plan mode until the selected provider is available", () => {
+  it("disables plan mode until the selected AI service is available", () => {
     expect(
       resolveComposerInteractionMode({
         planModeEnabled: true,
@@ -1691,7 +1691,7 @@ describe("resolveComposerInteractionMode", () => {
 });
 
 describe("resolveBackgroundDraftWorkspaceOptions", () => {
-  it("keeps New worktree selected without reusing the launched worktree", () => {
+  it("keeps New separate copy selected without reusing the launched separate copy", () => {
     expect(
       resolveBackgroundDraftWorkspaceOptions({
         envMode: "worktree",
@@ -1707,7 +1707,7 @@ describe("resolveBackgroundDraftWorkspaceOptions", () => {
   });
 });
 
-describe("proactive completed diff guard", () => {
+describe("proactive completed changes guard", () => {
   it.each([
     { files: 0, additions: 0, deletions: 0, action: "ignore" },
     { files: 1, additions: 1, deletions: 0, action: "ignore" },
@@ -1717,7 +1717,7 @@ describe("proactive completed diff guard", () => {
     { files: 1, additions: 0, deletions: 50, action: "open" },
     { files: 3, additions: 1, deletions: 0, action: "open" },
   ])(
-    "uses change size for automatic diffs: $files files, +$additions/-$deletions",
+    "uses change size for automatic changes: $files files, +$additions/-$deletions",
     ({ files, additions, deletions, action }) => {
       const changedCheckpoint = {
         status: "ready",
@@ -1772,7 +1772,7 @@ describe("proactive completed diff guard", () => {
     ).toBe("defer");
   });
 
-  it("keeps an active pull request above a completed turn diff", () => {
+  it("keeps an active pull request above a completed turn changes", () => {
     const changedCheckpoint = {
       status: "ready",
       files: [{ path: "src/app.ts", kind: "modified", additions: 1, deletions: 0 }],
@@ -1787,7 +1787,7 @@ describe("proactive completed diff guard", () => {
     ).toBe("ignore");
   });
 
-  it("leaves an already open diff and its chosen scope alone", () => {
+  it("leaves an already open changes and its chosen scope alone", () => {
     const largeCheckpoint = {
       status: "ready",
       files: Array.from({ length: 3 }, (_, index) => ({
@@ -1867,27 +1867,27 @@ describe("checkout Git memory", () => {
     expect(recallCheckoutIsRepo(environmentId, null)).toBeUndefined();
   });
 
-  it("keeps environments apart", () => {
+  it("keeps computers apart", () => {
     rememberCheckoutIsRepo(environmentId, "/repo/shared-path", false);
     expect(
       recallCheckoutIsRepo(EnvironmentId.make("env-other"), "/repo/shared-path"),
     ).toBeUndefined();
   });
 
-  it("does not confuse an environment id containing the separator with a path", () => {
+  it("does not confuse an computer id containing the separator with a path", () => {
     rememberCheckoutIsRepo(EnvironmentId.make("env"), "a:b", false);
     expect(recallCheckoutIsRepo(EnvironmentId.make("env:a"), "b")).toBeUndefined();
   });
 });
 
 describe("threadShellHasStarted", () => {
-  it("counts a thread that has a user message but no latest turn", () => {
+  it("counts a chat that has a user message but no latest turn", () => {
     expect(
       threadShellHasStarted({ latestRun: null, latestUserMessageAt: now, runtime: null }),
     ).toBe(true);
   });
 
-  it("counts a thread with a live runtime and nothing else", () => {
+  it("counts a chat with a live runtime and nothing else", () => {
     expect(
       threadShellHasStarted({
         latestRun: null,
@@ -1904,7 +1904,7 @@ describe("threadShellHasStarted", () => {
     ).toBe(true);
   });
 
-  it("does not count a thread that never sent anything", () => {
+  it("does not count a chat that never sent anything", () => {
     expect(
       threadShellHasStarted({ latestRun: null, latestUserMessageAt: null, runtime: null }),
     ).toBe(false);
@@ -1946,7 +1946,7 @@ it("follows a changed server PR link without replacing an unrelated open panel",
   ).toBe(false);
 });
 
-describe("worktree setup visibility", () => {
+describe("separate copy setup visibility", () => {
   const stage = (
     id: "fetch" | "checkout" | "submodules" | "setup-script" | "agent",
     status: "done" | "running" | "failed" | "pending",
@@ -1979,7 +1979,7 @@ describe("worktree setup visibility", () => {
     stages: [stage("checkout", "done"), stage("setup-script", "done"), stage("agent", "done")],
   };
 
-  it("keeps setup presentation continuous until the provider handoff", () => {
+  it("keeps setup presentation continuous until the AI service handoff", () => {
     const progress = (
       localPreparing: boolean,
       runStatus: NonNullable<Thread["latestRun"]>["status"] | undefined,
@@ -2037,7 +2037,7 @@ describe("worktree setup visibility", () => {
     },
   );
 
-  it("reads the settled snapshot back from the thread's activities", () => {
+  it("reads the settled snapshot back from the chat's activities", () => {
     const activities = [
       { kind: "setup-script.started", payload: {} },
       { kind: "worktree-setup", payload: settledDone },
@@ -2153,19 +2153,19 @@ describe("waitForRevertedMessage", () => {
         ...projection,
         thread: {
           ...projection.thread,
-          rollbackFailure: { requestId, message: "The provider could not roll back." },
+          rollbackFailure: { requestId, message: "The AI service could not roll back." },
         },
       }),
     });
 
-    await expect(waiting).rejects.toThrow("The provider could not roll back.");
+    await expect(waiting).rejects.toThrow("The AI service could not roll back.");
   });
 
   it("ignores a failure recorded for an earlier rollback", async () => {
     vi.useFakeTimers();
     const { state, projection } = projectionAtom();
     const waiting = waitForRevertedMessage(threadRef, messageId, 1, requestId, async () => {}, 50);
-    const settled = expect(waiting).rejects.toThrow("Timed out waiting for the thread to rewind.");
+    const settled = expect(waiting).rejects.toThrow("Timed out waiting for the chat to go back.");
     appAtomRegistry.set(state, {
       data: Option.some({
         ...projection,

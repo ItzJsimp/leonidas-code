@@ -325,14 +325,14 @@ describe("Antigravity setup", () => {
       ...setup.installation!,
       operationId: "install-1",
       phase: "verifying",
-      message: "Checking the downloaded runtime.",
+      message: "Checking the downloaded program.",
     };
 
     const view = renderSetup();
     expect(
       countElements(
         view,
-        (element) => element.props.children === "Checking the downloaded runtime.",
+        (element) => element.props.children === "Checking the downloaded program.",
       ),
     ).toBe(1);
   });
@@ -346,12 +346,12 @@ describe("Antigravity setup", () => {
       installedVersion: null,
     };
     const view = renderSetup();
-    click(view, "Remove downloaded runtime");
+    click(view, "Remove the downloaded program");
     await flushPromises();
     expect(setup.removeInstall).not.toHaveBeenCalled();
 
     setup.confirm.mockResolvedValue(true);
-    click(view, "Remove downloaded runtime");
+    click(view, "Remove the downloaded program");
     await flushPromises();
     expect(setup.removeInstall).toHaveBeenCalledWith({ environmentId, input: { instanceId } });
   });

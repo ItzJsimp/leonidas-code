@@ -84,7 +84,7 @@ export function useSelectedThreadGitActions() {
           Cause.fail(
             new EnvironmentAuthorizationError({
               requiredScope: AuthOrchestrationOperateScope,
-              message: "This connection cannot update the thread's branch.",
+              message: "This connection cannot update the branch of this chat.",
             }),
           ),
         );
@@ -324,7 +324,7 @@ export function useSelectedThreadGitActions() {
     async (nextWorktree: { readonly baseBranch: string; readonly newBranch: string }) => {
       return runSelectedThreadGitMutation(
         "create_worktree",
-        "Creating worktree",
+        "Creating separate copy",
         async ({ thread, project }) => {
           const result = await createWorktree({
             environmentId: thread.environmentId,

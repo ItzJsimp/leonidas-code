@@ -1333,7 +1333,7 @@ export class OrchestrationV2CheckpointUnavailableError extends Schema.TaggedErro
   },
 ) {
   override get message(): string {
-    return `Rollback target ${this.target} is unavailable for thread ${this.threadId}.`;
+    return `The save point ${this.target} is not available for chat ${this.threadId}.`;
   }
 }
 
@@ -3598,9 +3598,9 @@ export class OrchestrationV2StopWorkflowError extends Schema.TaggedError<Orchest
       case "not-running":
         return "This workflow is no longer running.";
       case "unsupported":
-        return "This provider cannot stop a workflow.";
+        return "This AI service cannot stop a helper group.";
       case "unavailable":
-        return "This workflow has no live provider task.";
+        return "This helper group has nothing running.";
       case "stop-failed":
         return "Failed to stop the workflow.";
     }
@@ -3770,7 +3770,7 @@ export class OrchestrationV2SearchThreadError extends Schema.TaggedError<Orchest
   { cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return "Could not search this thread. Please retry.";
+    return "Could not search this chat. Try again.";
   }
 }
 

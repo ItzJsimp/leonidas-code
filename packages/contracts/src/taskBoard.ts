@@ -492,13 +492,13 @@ export class TaskBoardReadError extends Schema.TaggedError<TaskBoardReadError>()
       case "unavailable":
         return "GitHub CLI is unavailable on this server. Install gh and authenticate with repository access.";
       case "project_not_found":
-        return "The selected project is not available in this environment.";
+        return "The selected project is not available in this computer.";
       case "repository_not_supported":
         return "Connect this project to a GitHub repository to enable its shared task board.";
       case "write_access_required":
         return "This GitHub account needs repository Contents write access to create shared task records.";
       case "aios_not_found":
-        return "Could not find this environment's AIOS tasks folder. Set LEONIDAS_AIOS_ROOT to your AIOS root.";
+        return "Could not find this computer's AIOS tasks folder. Set LEONIDAS_AIOS_ROOT to your AIOS root.";
       case "invalid_response":
         return "GitHub returned an unreadable task board. Retry the request.";
       case "request_failed":

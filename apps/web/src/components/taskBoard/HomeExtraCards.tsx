@@ -70,7 +70,7 @@ export function HomeExtraCards() {
       ) : null}
       {!extras.weather || !extras.news ? (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>Optional cards:</span>
+          <span>Extra cards you can add:</span>
           {!extras.weather ? (
             <Button size="xs" variant="outline" onClick={() => update({ weather: true })}>
               <PlusIcon aria-hidden /> Weather
@@ -168,13 +168,13 @@ function WeatherCard(props: {
     <CardShell label="Weather" onHide={props.onHide}>
       {weather === null ? (
         <p className="text-sm text-muted-foreground">
-          {query.error ? "Weather unavailable right now." : "Loading weather..."}
+          {query.error ? "Weather is not available now. Try again later." : "Loading weather..."}
         </p>
       ) : weather.status === "unavailable" ? (
         <p className="text-sm text-muted-foreground">
           {weather.reason === "place_not_found"
             ? `Could not find "${props.place}". Try another spelling.`
-            : "Weather unavailable right now."}
+            : "Weather is not available now. Try again later."}
         </p>
       ) : (
         <WeatherReading weather={weather} />
@@ -225,10 +225,12 @@ function NewsCard(props: {
     <CardShell label="In AI today" onHide={props.onHide}>
       {items === null ? (
         <p className="text-sm text-muted-foreground">
-          {query.error ? "News unavailable right now." : "Loading headlines..."}
+          {query.error ? "News is not available now. Try again later." : "Loading headlines..."}
         </p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No AI headlines reachable right now.</p>
+        <p className="text-sm text-muted-foreground">
+          Could not load AI headlines. Try again later.
+        </p>
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {items.map((item) => (

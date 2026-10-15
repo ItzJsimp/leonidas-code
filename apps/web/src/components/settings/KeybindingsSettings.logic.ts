@@ -130,7 +130,7 @@ export function parseWhenExpressionDraft(
   if (!ast) {
     return {
       ok: false,
-      message: "Use variables with !, &&, ||, and parentheses.",
+      message: "Use names with !, &&, ||, and parentheses. Fix the text and try again.",
     };
   }
 
@@ -214,10 +214,10 @@ const KEYBINDING_GROUPS = [
     title: "Navigation",
     prefixes: ["sidebar", "rightPanel", "commandPalette", "filePicker", "projectSearch", "editor"],
   },
-  { id: "threads", title: "Threads", prefixes: ["thread", "chat", "pullRequest"] },
-  { id: "composer", title: "Composer", prefixes: ["composer", "modelPicker"] },
+  { id: "threads", title: "Chats", prefixes: ["thread", "chat", "pullRequest"] },
+  { id: "composer", title: "Message box", prefixes: ["composer", "modelPicker"] },
   { id: "terminal", title: "Terminal", prefixes: ["terminal"] },
-  { id: "preview", title: "Preview & diff", prefixes: ["preview", "diff"] },
+  { id: "preview", title: "Preview and changes", prefixes: ["preview", "diff"] },
   { id: "appearance", title: "Appearance", prefixes: ["theme", "appearance", "themeEditor"] },
   { id: "scripts", title: "Project scripts", prefixes: ["script"] },
 ] as const;
@@ -359,12 +359,13 @@ export function buildKeybindingCommandOptions(
 }
 
 export function commandLabel(command: KeybindingCommand): string {
-  if (command === "composer.sendAlternate") return "Composer: Opposite Queue or Steer Action";
-  if (command === "composer.sendBackground") return "Composer: Start in Background";
-  if (command === "composer.sendAndNewThread") return "Composer: Send and Start New Thread";
-  if (command === "thread.steerQueuedMessage") return "Queue: Send First Queued Message as Steer";
-  if (command === "thread.editQueuedMessage") return "Queue: Edit Last Queued Message";
-  if (command === "thread.copyReference") return "Pull Request: Copy Link or Thread ID";
+  if (command === "composer.sendAlternate")
+    return "Message box: Do the other waiting or send-now action";
+  if (command === "composer.sendBackground") return "Message box: Start in the background";
+  if (command === "composer.sendAndNewThread") return "Message box: Send and start a new chat";
+  if (command === "thread.steerQueuedMessage") return "Waiting messages: Send the first one now";
+  if (command === "thread.editQueuedMessage") return "Waiting messages: Edit the last one";
+  if (command === "thread.copyReference") return "Pull request: Copy link or chat ID";
   const usageMetric = METRIC_OPTIONS.find((option) => option.command === command);
   if (usageMetric) return `Usage: ${usageMetric.label}`;
   const usagePeriod = WINDOW_OPTIONS.find((option) => option.command === command);
@@ -377,11 +378,29 @@ export function commandLabel(command: KeybindingCommand): string {
   return raw.split(".").map(titleCaseCommandSegment).join(": ");
 }
 
+/** Plain words for the code names that show up in a shortcut name. */
+const COMMAND_WORD_LABELS: Readonly<Record<string, string>> = {
+  thread: "Chat",
+  threads: "Chats",
+  composer: "Message box",
+  worktree: "Separate copy",
+  provider: "AI service",
+  checkpoint: "Save point",
+  settle: "Mark as done",
+  unsettle: "Bring back",
+  queue: "Waiting messages",
+  queued: "Waiting",
+  steer: "Send now",
+  interrupt: "Stop",
+};
+
 function titleCaseCommandSegment(segment: string): string {
   const words: Array<string> = [];
   for (const part of segment.replace(/([a-z0-9])([A-Z])/g, "$1 $2").split(/[-_\s]+/)) {
     if (part.length > 0) {
-      words.push(part.slice(0, 1).toUpperCase() + part.slice(1));
+      words.push(
+        COMMAND_WORD_LABELS[part.toLowerCase()] ?? part.slice(0, 1).toUpperCase() + part.slice(1),
+      );
     }
   }
   return words.join(" ");

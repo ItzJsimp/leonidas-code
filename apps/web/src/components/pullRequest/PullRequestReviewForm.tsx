@@ -101,7 +101,7 @@ export function PullRequestReviewForm({
     onPendingChange(false);
     if (result._tag === "Failure") {
       // The draft is kept: whatever went wrong, retyping the review is not the answer.
-      toastManager.add({ type: "error", title: "The review could not be submitted" });
+      toastManager.add({ type: "error", title: "Could not submit the review. Try again." });
       return;
     }
     // More remarks may have been added while the host was accepting this snapshot. Leave those,

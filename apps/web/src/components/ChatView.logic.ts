@@ -85,13 +85,13 @@ export function agentControlledBrowserCloseConfirmation(
   if (activeBrowserCount === 0) return null;
   if (activeBrowserCount === 1) {
     return [
-      "Close browser while the agent is using it?",
-      "The agent is actively controlling this browser. Closing it may interrupt the current browser action.",
+      "Close the browser while the AI is using it?",
+      "The AI is using this browser now. If you close it, the AI may stop what it is doing.",
     ].join("\n");
   }
   return [
-    `Close ${activeBrowserCount} browsers while the agent is using them?`,
-    "The agent is actively controlling these browsers. Closing them may interrupt the current browser actions.",
+    `Close ${activeBrowserCount} browsers while the AI is using them?`,
+    "The AI is using these browsers now. If you close them, the AI may stop what it is doing.",
   ].join("\n");
 }
 
@@ -517,7 +517,7 @@ export function buildLocalDraftThread(
   return presentThreadShell(draftThread.environmentId, {
     id: threadId,
     projectId: draftThread.projectId,
-    title: "New thread",
+    title: "New chat",
     providerInstanceId: fallbackModelSelection.instanceId,
     modelSelection: fallbackModelSelection,
     runtimeMode: draftThread.runtimeMode,
@@ -647,10 +647,10 @@ export function getAntigravitySendBlockReason(
 ): string | null {
   if (provider?.driver !== "antigravity") return null;
   if (!provider.installed) {
-    return "Install Antigravity in provider settings before sending.";
+    return "Install Antigravity in AI service settings before sending.";
   }
   if (provider.auth.status === "unauthenticated") {
-    return "Sign in to Antigravity in provider settings before sending.";
+    return "Sign in to Antigravity in AI service settings before sending.";
   }
   const slug = model.trim();
   if (slug.length === 0) return "Choose an Antigravity model before sending.";
@@ -658,7 +658,7 @@ export function getAntigravitySendBlockReason(
   // saved credentials and validates the model before sending the prompt.
   if (provider.auth.status === "unknown") return null;
   if (provider.models.length === 0) {
-    return "Refresh Antigravity models in provider settings before sending.";
+    return "Refresh Antigravity models in AI service settings before sending.";
   }
   // A saved model that left the catalog is kept in the picker as unavailable
   // so the user sees what the thread used. The server rejects it at turn
@@ -736,7 +736,7 @@ export async function resolveFileAttachmentUrl(input: {
   });
   if (result._tag === "Failure") throw squashAtomCommandFailure(result);
   const url = resolveAssetUrl(input.httpBaseUrl, result.value.relativeUrl);
-  if (url === null) throw new Error("The environment returned an invalid attachment URL.");
+  if (url === null) throw new Error("The computer returned an invalid attachment URL.");
   return url;
 }
 
@@ -764,7 +764,7 @@ export async function prepareRevertedMessageAttachments(input: {
       });
       if (result._tag === "Failure") throw squashAtomCommandFailure(result);
       const url = resolveAssetUrl(input.httpBaseUrl, result.value.relativeUrl);
-      if (url === null) throw new Error("The environment returned an invalid attachment URL.");
+      if (url === null) throw new Error("The computer returned an invalid attachment URL.");
       const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
       if (!response.ok) throw new Error(`Could not restore attachment: ${attachment.name}`);
       return new File([await response.blob()], attachment.name, { type: attachment.mimeType });
@@ -1069,8 +1069,8 @@ export function getStartedThreadModelChangeBlockReason(input: {
       return null;
     }
     return {
-      title: "Start a new chat to switch providers",
-      description: "This thread does not support switching providers after it has started.",
+      title: "Start a new chat to switch AI services",
+      description: "This chat does not support switching AI services after it has started.",
     };
   }
   const currentProvider = input.providers.find(
@@ -1087,7 +1087,8 @@ export function getStartedThreadModelChangeBlockReason(input: {
   }
   return {
     title: "Start a new chat to change models",
-    description: "This provider does not allow switching models after a conversation has started.",
+    description:
+      "This AI service does not allow switching models after a conversation has started.",
   };
 }
 
@@ -1121,7 +1122,7 @@ export async function waitForRevertedMessage(
   const readProjection = () => Option.getOrNull(appAtomRegistry.get(threadAtom).data);
   const initial = readProjection();
   if (!initial?.messages.some((message) => message.id === messageId)) {
-    throw new Error("The message to rewind is no longer available.");
+    throw new Error("The message to go back to is no longer available.");
   }
   const messageRunId = initial.messages.find((message) => message.id === messageId)?.runId;
   return new Promise<void>((resolve, reject) => {
@@ -1156,7 +1157,7 @@ export async function waitForRevertedMessage(
     };
     unsubscribe = appAtomRegistry.subscribe(threadAtom, inspect);
     timeout = globalThis.setTimeout(() => {
-      finish(new Error("Timed out waiting for the thread to rewind."));
+      finish(new Error("Timed out waiting for the chat to go back."));
     }, timeoutMs);
     Promise.resolve()
       .then(revert)

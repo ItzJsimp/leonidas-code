@@ -37,7 +37,7 @@ export function codexFeedbackNotice(submission: CodexFeedbackSubmission) {
     case "sent":
       return {
         title: "Feedback sent to OpenAI",
-        description: `Thread ID: ${submission.feedbackId}`,
+        description: `Feedback ID: ${submission.feedbackId}`,
       };
     case "failed":
       return { title: "Could not send feedback to OpenAI", description: submission.errorMessage };

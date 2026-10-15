@@ -93,14 +93,15 @@ export class LocalVmError extends Schema.TaggedError<LocalVmError>()("LocalVmErr
 }) {
   override get message(): string {
     const messages = {
-      unavailable: "Local AI Desktop requires VirtualBox on a Windows server host.",
-      "not-running": "Start the selected VM in VirtualBox before connecting.",
-      owned: "This VM is controlled by another thread. Release it there first.",
-      "not-connected": "Connect a VM to this thread in AI Desktop first.",
-      paused: "AI input is paused. The user must resume it in AI Desktop.",
-      bounds: "Coordinates must be inside the current guest screenshot.",
-      "invalid-input": "Use a supported guest key or printable ASCII text.",
-      "operation-failed": "VirtualBox guest operation failed. Check the VM and reconnect.",
+      unavailable: "AI Desktop needs VirtualBox on a Windows computer.",
+      "not-running": "Start the virtual computer in VirtualBox. Then connect again.",
+      owned: "Another chat controls this virtual computer. Disconnect it there first.",
+      "not-connected": "Connect a virtual computer to this chat in AI Desktop first.",
+      paused: "AI control is paused. Resume it in AI Desktop.",
+      bounds: "Pick a point inside the current screen of the virtual computer.",
+      "invalid-input": "Use a key the virtual computer supports, or plain text.",
+      "operation-failed":
+        "The virtual computer did not respond. Check it in VirtualBox, then connect again.",
     };
     return messages[this.reason];
   }

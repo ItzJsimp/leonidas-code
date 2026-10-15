@@ -114,7 +114,7 @@ describe("resolveSubagentPillSegment", () => {
 
     expect(resolveSubagentPillSegment(turn)).toEqual({
       label: "2/3",
-      accessibilityLabel: "2 of 3 agents working",
+      accessibilityLabel: "2 of 3 helpers working",
     });
   });
 
@@ -126,7 +126,7 @@ describe("resolveSubagentPillSegment", () => {
 
     expect(resolveSubagentPillSegment(turn)).toEqual({
       label: "1 done",
-      accessibilityLabel: "1 agent done",
+      accessibilityLabel: "1 helper done",
     });
   });
 

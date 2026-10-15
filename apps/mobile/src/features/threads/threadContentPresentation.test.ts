@@ -36,7 +36,7 @@ describe("thread content presentation", () => {
     ).toEqual({
       kind: "unavailable",
       title: "Messages not cached",
-      detail: "Reconnect this environment to load the conversation.",
+      detail: "Reconnect this computer to load the chat.",
     });
   });
 

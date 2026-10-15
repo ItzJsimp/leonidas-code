@@ -5,11 +5,11 @@ type WorkspaceMode = "local" | "worktree";
 export function resolveNewTaskWorkspaceLabel(input: {
   readonly workspaceMode: WorkspaceMode;
   readonly worktreePath: string | null;
-}): "Current checkout" | "Current worktree" | "New worktree" {
+}): "Main folder" | "Current separate copy" | "New separate copy" {
   if (input.workspaceMode === "worktree") {
-    return "New worktree";
+    return "New separate copy";
   }
-  return input.worktreePath ? "Current worktree" : "Current checkout";
+  return input.worktreePath ? "Current separate copy" : "Main folder";
 }
 
 export function resolveNewTaskBranchWorktreePath(input: {

@@ -33,7 +33,7 @@ export function CompactBrandTitle(
   return (
     <View
       aria-level={1}
-      accessibilityLabel="Leonidas Code, Threads"
+      accessibilityLabel="Leonidas Code, chats"
       accessible
       role="heading"
       className="flex-row items-center gap-1.5"
@@ -77,7 +77,7 @@ export function getCompactBrandHeaderOptions(
   return {
     headerTitle: renderCompactBrandTitle,
     headerTitleStyle: fallbackTitleStyle,
-    title: "Threads",
+    title: "Chats",
     unstable_headerLeftItems: undefined,
   };
 }

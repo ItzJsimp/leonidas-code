@@ -203,7 +203,7 @@ function PullRequestCodeTab({
   selectedCommitOid,
   onSelectedCommitChange,
   pendingFinding,
-  fixFindingLabel = "Fix in a thread",
+  fixFindingLabel = "Fix in a chat",
   onFixFinding,
   onAddToAgentSelection,
   onRefresh,
@@ -786,7 +786,7 @@ function PullRequestCodeTab({
         >
           {diffQuery.error !== null ? (
             <>
-              <span>The rest of this diff could not be loaded.</span>
+              <span>The rest of these changes could not be loaded.</span>
               <Button size="xs" variant="outline" onClick={() => diffQuery.refresh()}>
                 Retry
               </Button>
@@ -809,7 +809,7 @@ function PullRequestCodeTab({
           size="icon-micro"
           variant="ghost-muted"
           aria-expanded={!collapsed}
-          aria-label={collapsed ? "Expand diff" : "Collapse diff"}
+          aria-label={collapsed ? "Expand changes" : "Collapse changes"}
           className="mr-1"
           onClick={(event) => {
             event.stopPropagation();
@@ -952,14 +952,14 @@ function PullRequestCodeTab({
           if (result._tag === "Failure") {
             toastManager.add({
               type: "error",
-              title: "More comments could not be loaded",
+              title: "Could not load more comments. Try again.",
             });
             return null;
           }
           return result.value;
         }}
         onReply={(body) =>
-          runThreadCommand("Reply could not be posted", () =>
+          runThreadCommand("Could not post the reply. Try again.", () =>
             replyToThread({
               environmentId,
               input: { ...reference, threadId: thread.id, body },
@@ -975,7 +975,7 @@ function PullRequestCodeTab({
           })
         }
         onEditComment={(commentId, body) =>
-          runThreadCommand("The comment could not be saved", () =>
+          runThreadCommand("Could not save the comment. Try again.", () =>
             updateComment({
               environmentId,
               input: { ...reference, commentId, kind: "review-comment", body },
@@ -1032,7 +1032,7 @@ function PullRequestCodeTab({
             {...(onAddToAgentSelection
               ? {
                   secondaryAction: {
-                    label: "Add to agent",
+                    label: "Add to the AI message",
                     onAction: (text: string) =>
                       finishSelection(draft, text, (comment) =>
                         onAddToAgentSelection({ comment, request: text }),
@@ -1099,7 +1099,7 @@ function PullRequestCodeTab({
             <DropdownMenuTrigger
               render={<Button size="xs" variant="secondary" />}
               className="min-w-0 max-w-64"
-              aria-label={`Diff scope: ${scopeLabel}`}
+              aria-label={`Changes shown: ${scopeLabel}`}
             >
               <span className="truncate">{scopeLabel}</span>
               <ChevronDownIcon className="size-3.5 shrink-0 opacity-70" />
@@ -1167,14 +1167,14 @@ function PullRequestCodeTab({
                 <Tooltip>
                   <TooltipTrigger render={<span className="flex shrink-0 items-center" />}>
                     <InfoIcon
-                      aria-label="These ticks are kept here, not on the host"
+                      aria-label="These ticks are saved here, not on the code service"
                       className="text-muted-foreground size-3.5"
                     />
                   </TooltipTrigger>
                   <TooltipPopup side="bottom">
-                    This host keeps no shared record of which files you have read, so these ticks
-                    are kept by this environment. They follow you between the apps connected to it,
-                    but the host's own web UI will not show them.
+                    The code service does not save which files you have read, so Leonidas Code saves
+                    these ticks on this computer. They show in every app connected to this computer,
+                    but the website of the code service will not show them.
                   </TooltipPopup>
                 </Tooltip>
               ) : null}
@@ -1201,8 +1201,8 @@ function PullRequestCodeTab({
                     />
                   </TooltipTrigger>
                   <TooltipPopup side="bottom">
-                    This change has more files than the host will report ticks for in one read, so
-                    the count is short and some boxes below start empty.
+                    This change has more files than the code service can report ticks for at one
+                    time. So the count is too low and some boxes below start empty.
                   </TooltipPopup>
                 </Tooltip>
               ) : null}
@@ -1212,13 +1212,13 @@ function PullRequestCodeTab({
             <Tooltip>
               <TooltipTrigger render={<span className="flex shrink-0 items-center" />}>
                 <TriangleAlertIcon
-                  aria-label="Some of this diff was not shown"
+                  aria-label="Some of these changes were not shown"
                   className="size-3.5 text-warning-foreground"
                 />
               </TooltipTrigger>
               <TooltipPopup side="bottom">
-                The host withheld part of this diff — a binary file, or a change too large to
-                inline.
+                The code service did not send part of these changes. It is a binary file, or a
+                change that is too large.
               </TooltipPopup>
             </Tooltip>
           ) : null}
@@ -1226,12 +1226,12 @@ function PullRequestCodeTab({
             <Tooltip>
               <TooltipTrigger render={<span className="flex shrink-0 items-center" />}>
                 <MessageSquareOffIcon
-                  aria-label="Line comments are written from the whole change"
+                  aria-label="Write line comments from the whole change"
                   className="size-3.5"
                 />
               </TooltipTrigger>
               <TooltipPopup side="bottom">
-                A comment is anchored to the whole change, so switch to All commits to write one.
+                A comment belongs to the whole change. Switch to All commits to write one.
               </TooltipPopup>
             </Tooltip>
           ) : null}
@@ -1245,13 +1245,13 @@ function PullRequestCodeTab({
                 <DropdownMenuTrigger
                   render={<Button size="icon-sm" variant="ghost" />}
                   className="@lg:hidden"
-                  aria-label="Diff options"
+                  aria-label="Change options"
                 />
               }
             >
               <Settings2Icon className="size-3.5" />
             </TooltipTrigger>
-            <TooltipPopup side="top">Diff options</TooltipPopup>
+            <TooltipPopup side="top">Change options</TooltipPopup>
           </Tooltip>
           <DropdownMenuContent align="end">
             <DropdownMenuCheckboxItem
@@ -1306,7 +1306,7 @@ function PullRequestCodeTab({
             </TooltipPopup>
           </Tooltip>
           <ToggleGroup
-            aria-label="Diff layout"
+            aria-label="Layout of the changes"
             className="shrink-0"
             variant="segmented"
             value={[diffLayout]}
@@ -1317,10 +1317,10 @@ function PullRequestCodeTab({
               }
             }}
           >
-            <Toggle aria-label="Stacked diff view" value="stacked">
+            <Toggle aria-label="Stacked view of the changes" value="stacked">
               <Rows3Icon className="size-3.5" />
             </Toggle>
-            <Toggle aria-label="Split diff view" value="split">
+            <Toggle aria-label="Side-by-side view of the changes" value="split">
               <Columns2Icon className="size-3.5" />
             </Toggle>
           </ToggleGroup>
@@ -1328,7 +1328,7 @@ function PullRequestCodeTab({
             <TooltipTrigger
               render={
                 <Toggle
-                  aria-label={wordWrap ? "Disable diff line wrapping" : "Enable diff line wrapping"}
+                  aria-label={wordWrap ? "Turn off line wrapping" : "Turn on line wrapping"}
                   variant="ghost"
                   size="sm"
                   pressed={wordWrap}
@@ -1341,7 +1341,7 @@ function PullRequestCodeTab({
               <TextWrapIcon className="size-3.5" />
             </TooltipTrigger>
             <TooltipPopup side="top">
-              {wordWrap ? "Disable line wrapping" : "Enable line wrapping"}
+              {wordWrap ? "Turn off line wrapping" : "Turn on line wrapping"}
             </TooltipPopup>
           </Tooltip>
         </div>
@@ -1405,7 +1405,9 @@ function PullRequestCodeTab({
   // Under the toolbar rather than in place of it, so choosing a commit does not take the
   // dropdown that was just used off the screen while its diff loads.
   if (diffQuery.isPending && loadedSlices.length === 0) {
-    return withToolbar(<DiffPanelLoadingState label="Loading pull request diff..." />);
+    return withToolbar(
+      <DiffPanelLoadingState label="Loading the changes of the pull request..." />,
+    );
   }
 
   // A slice that fails once there are files on screen is reported at the end of them instead:
@@ -1488,8 +1490,8 @@ function PullRequestCodeTab({
                     that has not landed yet, which is not the same as being off the diff. */}
                 <span>
                   {nextCursor === null
-                    ? "Conversations not on the current diff"
-                    : "Conversations not on the diff loaded so far"}
+                    ? "Conversations not on the changes shown"
+                    : "Conversations not on the changes loaded so far"}
                 </span>
                 <ChevronRightIcon
                   aria-hidden

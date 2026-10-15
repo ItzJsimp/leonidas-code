@@ -67,7 +67,7 @@ export function TaskRoadmapView(props: {
             setError(
               failureText(
                 squashAtomCommandFailure(result),
-                "Could not add roadmap tasks. Retry adds only missing tasks.",
+                "Could not add roadmap tasks. Select Add again. It adds only the missing tasks.",
               ),
             );
           break;
@@ -75,7 +75,12 @@ export function TaskRoadmapView(props: {
         setImportedKeys((keys) => new Set(keys).add(task.key));
       }
     } catch (cause) {
-      setError(failureText(cause, "Could not add roadmap tasks. Retry adds only missing tasks."));
+      setError(
+        failureText(
+          cause,
+          "Could not add roadmap tasks. Select Add again. It adds only the missing tasks.",
+        ),
+      );
     } finally {
       setImporting(false);
       props.onRefresh();
@@ -84,7 +89,7 @@ export function TaskRoadmapView(props: {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8 px-4 py-6 sm:px-6" data-tour="tasks-roadmap">
-      <section aria-label="Release destination" className="space-y-3 border-b border-border pb-6">
+      <section aria-label="Update goal" className="space-y-3 border-b border-border pb-6">
         <div className="flex flex-wrap items-center gap-2 text-sm font-medium tabular-nums">
           <span className="text-muted-foreground">
             V{plan.currentVersion} · Last accepted milestone
@@ -93,7 +98,7 @@ export function TaskRoadmapView(props: {
             →
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <FlagIcon aria-hidden className="size-4" />V{plan.targetVersion} · Target release
+            <FlagIcon aria-hidden className="size-4" />V{plan.targetVersion} · Goal update
           </span>
         </div>
         <h3 className="text-2xl font-semibold tracking-tight">The path to V{plan.targetVersion}</h3>
@@ -106,7 +111,7 @@ export function TaskRoadmapView(props: {
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <p className="text-sm tabular-nums">
             {done} / {total} tasks complete · {stages.filter((stage) => stage.complete).length} /{" "}
-            {stages.length} release gates
+            {stages.length} steps
           </p>
           {pending.length > 0 ? (
             <Button
@@ -120,8 +125,8 @@ export function TaskRoadmapView(props: {
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          Versions describe planned scope, not promised dates or published builds. Each gate follows
-          the previous one; starting an agent always requires an explicit action.
+          Versions show planned work. They do not promise dates. Each step follows the step before.
+          The AI never starts until you choose to start it.
         </p>
         {error ? (
           <p role="alert" className="text-sm text-destructive">
@@ -178,9 +183,9 @@ export function TaskRoadmapView(props: {
                   </h4>
                   <span className="text-xs text-muted-foreground">
                     {stage.complete
-                      ? "Gate complete"
+                      ? "Step done"
                       : stage.version === nextVersion
-                        ? "Next release gate"
+                        ? "Next step"
                         : "Planned"}{" "}
                     · {stage.done}/{stage.total}
                   </span>
@@ -263,7 +268,7 @@ export function TaskRoadmapView(props: {
         <section aria-label="Unscheduled tasks" className="space-y-2 border-t border-border pt-5">
           <h3 className="font-semibold">Unscheduled · {unscheduled.length}</h3>
           <p className="text-sm text-muted-foreground">
-            Open a task and assign a version milestone to include it in the release path.
+            Open a task and assign a version milestone to include it in the update plan.
           </p>
           <ul>
             {unscheduled.map((task) => (

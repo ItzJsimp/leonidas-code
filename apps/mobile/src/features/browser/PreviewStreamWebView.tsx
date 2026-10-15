@@ -378,7 +378,7 @@ function PreviewStreamDocumentView({
               return;
             case "unauthorized":
               if (!onUnauthorized()) {
-                fail("This session can't open the browser stream. Reconnect to try again.");
+                fail("This connection can't open the browser stream. Reconnect to try again.");
               }
               return;
             case "gone":

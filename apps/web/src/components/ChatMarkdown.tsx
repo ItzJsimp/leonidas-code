@@ -1068,7 +1068,7 @@ function MarkdownMermaidCodeBlock({
           <Suspense
             fallback={
               <div className="flex min-h-36 items-center justify-center text-xs text-muted-foreground">
-                Rendering diagram
+                Drawing the diagram…
               </div>
             }
           >
@@ -2419,7 +2419,7 @@ function useChatMarkdownState({
       if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) {
         return Promise.resolve(
           AsyncResult.failure<void, Error>(
-            Cause.fail(new Error("This connection cannot reveal files on this environment.")),
+            Cause.fail(new Error("This connection cannot reveal files on this computer.")),
           ),
         );
       }
@@ -2564,7 +2564,7 @@ function useChatMarkdownState({
           AsyncResult.failure<void, BrowserPreviewUnavailableError>(
             Cause.fail(
               new BrowserPreviewUnavailableError({
-                message: "Environment is not connected.",
+                message: "Computer is not connected.",
               }),
             ),
           ),

@@ -109,9 +109,9 @@ const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as cons
 const WEEKDAY_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 
 const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
-  worktree: "Create a new worktree",
-  root: "Use the project checkout",
-  existing_worktree: "Use a specific checkout",
+  worktree: "Make a new separate copy",
+  root: "Use the main folder",
+  existing_worktree: "Use a folder I choose",
 };
 
 const EMPTY_DRAFT: DraftState = {
@@ -216,9 +216,9 @@ export function relativeLabel(value: string | null): string {
 const DELIVERY_OUTCOME_LABELS: Record<ScheduledTaskWebhookDeliveryOutcome, string> = {
   accepted: "Ran",
   dispatch_failed: "Run failed",
-  rejected_signature: "Bad signature",
+  rejected_signature: "Wrong signature",
   disabled: "Task paused",
-  rate_limited: "Rate limited",
+  rate_limited: "Too many requests",
   expired: "Too old",
 };
 
@@ -274,7 +274,7 @@ export function ScheduledTasksSettings(target: {
         }
       >
         {scope.kind === "unavailable" ? (
-          <SettingsSection title="Unavailable selection">
+          <SettingsSection title="Choice not available">
             <SettingsRow title={scope.message} />
           </SettingsSection>
         ) : environments.length === 0 ? (
@@ -283,8 +283,8 @@ export function ScheduledTasksSettings(target: {
               <EmptyMedia variant="icon">
                 <Clock3Icon />
               </EmptyMedia>
-              <EmptyTitle>No environments available</EmptyTitle>
-              <EmptyDescription>Connect an environment to manage scheduled tasks.</EmptyDescription>
+              <EmptyTitle>No computers available</EmptyTitle>
+              <EmptyDescription>Connect a computer to manage scheduled tasks.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
@@ -365,8 +365,8 @@ function ScheduledTaskEnvironmentSection({
     >
       {!connected ? (
         <SettingsRow
-          title="Environment disconnected"
-          description={`Reconnect ${environment.label} to view its scheduled tasks.`}
+          title="Computer not connected"
+          description={`Connect ${environment.label} again to see its scheduled tasks.`}
         />
       ) : tasksQuery.error ? (
         <SettingsRow title="Could not load scheduled tasks" description={tasksQuery.error} />
@@ -377,14 +377,14 @@ function ScheduledTaskEnvironmentSection({
           {taskId && !linkedTask ? (
             <SettingsRow
               title="Task unavailable"
-              description="This task no longer exists or is outside the selected project scope."
+              description="This task does not exist any more, or it is outside the chosen project. Choose another task."
               role="status"
             />
           ) : null}
           {tasks.length === 0 ? (
             <SettingsRow
               title="No scheduled tasks"
-              description="No tasks match this environment and project selection."
+              description="No tasks match this computer and project. Click New task to make one."
             />
           ) : (
             tasks.map((task) => (
@@ -584,8 +584,8 @@ function WebhookDeliveriesDialog({
                 ) : null}
               </div>
               {selected.error ? <p className="text-sm text-destructive">{selected.error}</p> : null}
-              <DeliveryBlock title="Prompt sent to the agent">
-                {selected.renderedPrompt ?? "No run was started for this request."}
+              <DeliveryBlock title="Message sent to the AI">
+                {selected.renderedPrompt ?? "This request did not start any work."}
               </DeliveryBlock>
               {selected.missingFields.length > 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -694,12 +694,12 @@ function WebhookEndpointField({
   const { address: url, copyable, note } = webhookAddress(endpoint, httpBaseUrl);
   const rotateUrl = async () => {
     const confirmed =
-      (await requestConfirmDialog("Rotate this webhook URL?\nThe current URL stops working.", {
+      (await requestConfirmDialog("Make a new webhook URL?\nThe current URL stops working.", {
         variant: "destructive",
       })) ??
       // No themed dialog host is mounted; fall back to the native prompt
       // rather than rotating unasked.
-      window.confirm("Rotate this webhook URL? The current URL stops working.");
+      window.confirm("Make a new webhook URL? The current URL stops working.");
     if (!confirmed) return;
     setRotating(true);
     const result = await rotate({ environmentId, input: { id: task.id } });
@@ -708,7 +708,7 @@ function WebhookEndpointField({
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Could not rotate webhook URL",
+          title: "Could not make a new webhook URL",
           description: String(squashAtomCommandFailure(result)),
         }),
       );
@@ -761,8 +761,8 @@ function WebhookDeliveryMode({ environmentId }: { readonly environmentId: Enviro
   return (
     <p className="text-xs text-muted-foreground">
       {cloudLink.data.holdWebhooksWhileOffline
-        ? "Held for up to 24 hours while this environment is offline. "
-        : "Forwarded live. Requests fail while this environment is offline. "}
+        ? "Kept for up to 24 hours while this computer is offline. "
+        : "Sent at once. Requests fail while this computer is offline. "}
       <Link to="/settings/connections" className="underline underline-offset-2">
         Change in Connections
       </Link>
@@ -871,13 +871,16 @@ function ScheduledTaskEditorDialog({
       !projects.some((project) => project.id === selectedProjectId) ||
       selection === null
     ) {
-      reportFailure("Scheduled task is incomplete", "Add a title, prompt, project, and model.");
+      reportFailure(
+        "The scheduled task is not complete",
+        "Add a title, a message, a project, and a model.",
+      );
       return;
     }
     const schedule = scheduleFromDraft(draft);
     if (schedule === null) {
       reportFailure(
-        "Invalid age limit",
+        "The age limit is not valid",
         `Enter whole minutes from 1 to ${MAX_WEBHOOK_DELIVERY_AGE_MINUTES}, or leave it blank.`,
       );
       return;
@@ -889,18 +892,18 @@ function ScheduledTaskEditorDialog({
         (!schedule.signature.secret &&
           !(liveTask?.schedule.type === "webhook" && liveTask.webhook?.hasSecret)))
     ) {
-      reportFailure("Signing secret is required", "Enter the signature header and secret.");
+      reportFailure("Enter a signing secret", "Enter the signature header and the secret.");
       return;
     }
     if (
       schedule.type === "interval" &&
       (!Number.isSafeInteger(schedule.everyMs) || schedule.everyMs < MIN_SCHEDULED_TASK_INTERVAL_MS)
     ) {
-      reportFailure("Invalid interval", "Enter an interval of at least one minute.");
+      reportFailure("The interval is not valid", "Enter an interval of at least one minute.");
       return;
     }
     if (draft.workspaceMode === "existing_worktree" && !draft.existingWorktreePath.trim()) {
-      reportFailure("Checkout path is required", "Enter the path of the checkout to run in.");
+      reportFailure("Folder path is needed", "Enter the path of the folder to run in.");
       return;
     }
     // Keep the original selection object (with provider options) when the
@@ -997,7 +1000,7 @@ function ScheduledTaskEditorDialog({
                         kind={resolveEnvironmentMachineKind(environment?.serverConfig ?? null)}
                         className="size-4"
                       />
-                      {environment?.label ?? "Unavailable environment"}
+                      {environment?.label ?? "Computer not available"}
                     </span>
                   </SelectValue>
                 </SelectTrigger>
@@ -1058,7 +1061,7 @@ function ScheduledTaskEditorDialog({
                 </Select>
               </Field>
 
-              <Field label="Workspace" htmlFor="scheduled-task-workspace">
+              <Field label="Folder" htmlFor="scheduled-task-workspace">
                 <Select
                   value={draft.workspaceMode}
                   onValueChange={(value) =>
@@ -1069,9 +1072,9 @@ function ScheduledTaskEditorDialog({
                     <SelectValue>{WORKSPACE_MODE_LABELS[draft.workspaceMode]}</SelectValue>
                   </SelectTrigger>
                   <SelectPopup>
-                    <SelectItem value="worktree">Create a new worktree</SelectItem>
-                    <SelectItem value="root">Use the project checkout</SelectItem>
-                    <SelectItem value="existing_worktree">Use a specific checkout</SelectItem>
+                    <SelectItem value="worktree">Make a new separate copy</SelectItem>
+                    <SelectItem value="root">Use the main folder</SelectItem>
+                    <SelectItem value="existing_worktree">Use a folder I choose</SelectItem>
                   </SelectPopup>
                 </Select>
               </Field>
@@ -1095,7 +1098,7 @@ function ScheduledTaskEditorDialog({
               </Field>
             ) : null}
             {draft.workspaceMode === "existing_worktree" ? (
-              <Field label="Checkout path" htmlFor="scheduled-task-checkout">
+              <Field label="Folder path" htmlFor="scheduled-task-checkout">
                 <Input
                   id="scheduled-task-checkout"
                   value={draft.existingWorktreePath}
@@ -1110,11 +1113,11 @@ function ScheduledTaskEditorDialog({
               </Field>
             ) : null}
 
-            <Field label="Prompt" htmlFor="scheduled-task-prompt">
+            <Field label="Message" htmlFor="scheduled-task-prompt">
               <Textarea
                 id="scheduled-task-prompt"
                 className="max-h-64 overflow-y-auto"
-                placeholder="What should the agent do each time this runs?"
+                placeholder="What should the AI do each time this runs?"
                 value={draft.prompt}
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, prompt: event.target.value }))
@@ -1143,8 +1146,8 @@ function ScheduledTaskEditorDialog({
               {task?.schedule.type === "interval" &&
               task.schedule.everyMs < MIN_SCHEDULED_TASK_INTERVAL_MS ? (
                 <p className="text-sm text-muted-foreground" role="status">
-                  This task uses a legacy interval below one minute. Saving updates it to at least
-                  one minute.
+                  This task runs more than once a minute. When you save, it will run at most once a
+                  minute.
                 </p>
               ) : null}
               <div className="flex items-center justify-between gap-2">
@@ -1181,7 +1184,7 @@ function ScheduledTaskEditorDialog({
                   <WebhookEndpointField environmentId={environmentId} task={liveTask} />
                   <p className="text-xs text-muted-foreground">
                     {
-                      "Each request runs the prompt. Use {{body.path}}, {{headers.name}}, {{query.name}}, {{body}} or {{request}} in the prompt; only what it names reaches the agent."
+                      "Each request runs the message. Use {{body.path}}, {{headers.name}}, {{query.name}}, {{body}} or {{request}} in the message. The AI gets only what you name."
                     }
                   </p>
                   <Field
@@ -1209,7 +1212,7 @@ function ScheduledTaskEditorDialog({
                     <div className="min-w-0 space-y-1">
                       <Label htmlFor="scheduled-task-signature">Require signature</Label>
                       <p className="text-sm text-muted-foreground">
-                        Reject requests without a valid HMAC-SHA256 signature of the body.
+                        Refuse requests that have no valid HMAC-SHA256 signature of the body.
                       </p>
                     </div>
                     <Switch

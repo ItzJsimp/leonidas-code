@@ -166,7 +166,7 @@ function TerminalHeader(props: {
                     disabled: !props.canOperateTerminal,
                     title: "Open new terminal",
                     icon: "plus",
-                    subtitle: `Start another shell in ${basename(props.workspaceRoot) ?? "this workspace"}`,
+                    subtitle: `Start another shell in ${basename(props.workspaceRoot) ?? "this project"}`,
                     onPress: props.onOpenNewTerminal,
                   },
                 ],
@@ -1138,10 +1138,7 @@ export function ThreadTerminalRouteScreen(props: ThreadTerminalRouteScreenProps)
 
     return (
       <View className="flex-1 bg-screen">
-        <EmptyState
-          title="Thread unavailable"
-          detail="This terminal route needs an active thread and workspace."
-        />
+        <EmptyState title="Chat unavailable" detail="Open a chat in a project, then try again." />
       </View>
     );
   }
@@ -1151,7 +1148,7 @@ export function ThreadTerminalRouteScreen(props: ThreadTerminalRouteScreenProps)
       <View className="flex-1 bg-screen">
         <EmptyState
           title="Terminal unavailable"
-          detail="This thread does not have a workspace root yet, so there is nowhere to open a shell."
+          detail="This chat has no project folder yet, so there is nowhere to open a terminal."
         />
       </View>
     );
@@ -1217,7 +1214,7 @@ export function ThreadTerminalRouteScreen(props: ThreadTerminalRouteScreenProps)
               environmentLabel={
                 environment.presentation?.entry.target.label ??
                 selectedEnvironmentConnection?.environmentLabel ??
-                "Environment"
+                "Computer"
               }
               connection={
                 environment.presentation?.connection ?? {
@@ -1247,12 +1244,12 @@ export function ThreadTerminalRouteScreen(props: ThreadTerminalRouteScreenProps)
               }
             />
           ) : !canOperateTerminal && !hasTerminalTarget && sessionsPending ? (
-            <EmptyState title="Loading terminals" detail="Reading existing terminal sessions." />
+            <EmptyState title="Loading terminals" detail="Reading terminals." />
           ) : !canOperateTerminal && !hasTerminalTarget && sessionsError !== null ? (
-            <EmptyState title="Could not load terminals" detail={sessionsError} />
+            <EmptyState title="Could not load terminals" detail={`${sessionsError} Try again.`} />
           ) : !canOperateTerminal && !hasTerminalTarget ? (
             <EmptyState
-              title="No terminal sessions"
+              title="No terminals"
               detail="Existing terminals will appear here when another client opens one."
             />
           ) : !canOperateTerminal && terminal.error !== null ? (

@@ -158,12 +158,16 @@ describe("project query refresh", () => {
       const query = useProjectFileQuery(environmentId, "/repo", "src/preview.ts");
       expect(projectMocks.readFile).not.toHaveBeenCalled();
       expect(query.data).toBeNull();
-      expect(query.error).toBe("This connection cannot read host files.");
+      expect(query.error).toBe(
+        "This connection cannot read files. Connect to a different computer.",
+      );
       expect(query.isPending).toBe(false);
       const entries = useProjectEntriesQuery(environmentId, "/repo");
       expect(projectMocks.listEntries).not.toHaveBeenCalled();
       expect(entries.data).toBeNull();
-      expect(entries.error).toBe("This connection cannot read host files.");
+      expect(entries.error).toBe(
+        "This connection cannot read files. Connect to a different computer.",
+      );
       expect(entries.isPending).toBe(false);
     } finally {
       registry.dispose();
@@ -275,7 +279,7 @@ describe("project query refresh", () => {
       try {
         const unavailable = {
           data: null,
-          error: sessionError ?? "This environment is not connected.",
+          error: sessionError ?? "This computer is not connected.",
           isPending: false,
         };
         expect(useProjectFileQuery(environmentId, "/repo", "src/preview.ts")).toMatchObject(

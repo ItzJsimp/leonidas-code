@@ -100,7 +100,7 @@ function TaskSummary({
       </ComposerBanner.Icon>
       <ComposerBanner.Content>
         <span className={cn("shrink-0", waiting ? "text-warning" : "text-muted-foreground")}>
-          {waiting ? "Waiting on" : "Activity"}
+          {waiting ? "Waiting for" : "Activity"}
         </span>
         <span
           className="min-w-0 flex-1 truncate text-left font-medium text-foreground/80"
@@ -160,7 +160,7 @@ export const ComposerTasksBadge = memo(function ComposerTasksBadge({
     <ComposerBanner.Row
       render={<button type="button" />}
       aria-expanded={expanded}
-      aria-label={`${expanded ? "Collapse activity" : "Expand activity"}. ${progress.totalSteps > 0 ? `${progress.completedSteps} of ${progress.totalSteps} complete.` : "No plan published."} Current task: ${progress.step}`}
+      aria-label={`${expanded ? "Hide activity" : "Show activity"}. ${progress.totalSteps > 0 ? `${progress.completedSteps} of ${progress.totalSteps} complete.` : "No plan yet."} Current task: ${progress.step}`}
       data-composer-tasks-badge="true"
       onClick={onToggle}
       onPointerDown={(event) => event.preventDefault()}

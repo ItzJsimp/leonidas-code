@@ -851,7 +851,7 @@ export function NewTaskDraftScreen(props: {
         ),
       });
       if (selectedAttachments.status === "pending") {
-        throw new Error("Server attachment support is still loading.");
+        throw new Error("Checking if this computer accepts files. Try again soon.");
       }
       needsDraftRestore = true;
       const { skippedAttachmentCount } = await mergeComposerDraftContent(draftKey, {
@@ -1012,7 +1012,7 @@ export function NewTaskDraftScreen(props: {
   const selectedEnvironmentLabel =
     flow.environments.find(
       (environment) => environment.environmentId === flow.selectedEnvironmentId,
-    )?.environmentLabel ?? "Environment";
+    )?.environmentLabel ?? "Computer";
   const availableCurrentBranchName =
     flow.availableBranches.find((branch) => branch.current)?.name ??
     flow.availableBranches.find((branch) => branch.isDefault)?.name ??
@@ -1071,7 +1071,7 @@ export function NewTaskDraftScreen(props: {
     const maxBytes =
       selectedEnvironmentServerConfig?.environment.capabilities.fileAttachments?.maxUploadBytes;
     if (maxBytes === undefined) {
-      Alert.alert("File attachments are not available on this server.");
+      Alert.alert("File attachments are not available on this computer.");
       return;
     }
     const insertion = flow.draftKey ? captureComposerDraftInsertion(flow.draftKey) : undefined;
@@ -1271,7 +1271,7 @@ export function NewTaskDraftScreen(props: {
     ) {
       Alert.alert(
         "Usage limits",
-        "Send /usage-limits inside a thread, or open Settings → Usage → Limits.",
+        "Send /usage-limits inside a chat, or open Settings → Usage → Limits.",
       );
       return;
     }
@@ -1338,7 +1338,7 @@ export function NewTaskDraftScreen(props: {
       await enqueueThreadOutboxMessage(message);
     } catch (error) {
       Alert.alert(
-        "Could not queue task",
+        "Could not save task",
         error instanceof Error ? error.message : "The task could not be saved to the outbox.",
       );
       return;
@@ -1377,7 +1377,7 @@ export function NewTaskDraftScreen(props: {
           <>
             <NativeStackScreenOptions options={{ headerShown: false }} />
             <AndroidScreenHeader
-              title="New thread"
+              title="New chat"
               hideBottomBorder
               onBack={() => navigation.goBack()}
             />
@@ -1504,7 +1504,7 @@ export function NewTaskDraftScreen(props: {
 
   const environmentControl = (
     <ComposerInlineControl
-      accessibilityLabel={`Environment: ${selectedEnvironmentLabel}`}
+      accessibilityLabel={`Computer: ${selectedEnvironmentLabel}`}
       chevronDirection="right"
       disabled={isComposerInteractionLocked || voiceInput.isBusy}
       renderIcon={(size) => (
@@ -1601,7 +1601,7 @@ export function NewTaskDraftScreen(props: {
   const workspaceControls = (
     <View className="flex-row items-center gap-1 px-2">
       <ComposerInlineControl
-        accessibilityHint={`Switches to ${flow.workspaceMode === "local" ? "a new worktree" : "the current checkout"}`}
+        accessibilityHint={`Switches to ${flow.workspaceMode === "local" ? "a new separate copy" : "the main folder"}`}
         accessibilityLabel={workspaceLabel}
         disabled={isComposerInteractionLocked || voiceInput.isBusy}
         renderIcon={(size) => (
@@ -1831,10 +1831,10 @@ export function NewTaskDraftScreen(props: {
                         : flow.submitting
                           ? "Starting task"
                           : attachmentsUploading
-                            ? "Queue task, sends when uploads finish"
+                            ? "Save task, sends when uploads finish"
                             : environmentConnected
                               ? "Start task"
-                              : "Queue task")
+                              : "Save task")
                   }
                   disabled={!canStart}
                   icon={queuesInsteadOfStarting ? "tray.and.arrow.up" : "arrow.up"}
@@ -1855,7 +1855,7 @@ export function NewTaskDraftScreen(props: {
     return (
       <View className="flex-1 bg-sheet" collapsable={false}>
         <NativeStackScreenOptions options={{ headerShown: false }} />
-        <AndroidScreenHeader title="New thread" hideBottomBorder onBack={closeNewTask} />
+        <AndroidScreenHeader title="New chat" hideBottomBorder onBack={closeNewTask} />
         <MaterialScreenContent>
           {heroViewport}
 

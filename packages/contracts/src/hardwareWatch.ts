@@ -280,3 +280,61 @@ export class HardwareWatchError extends Schema.TaggedError<HardwareWatchError>()
     return `System Care failed (${this.reason})${this.detail ? `: ${this.detail}` : ""}.`;
   }
 }
+
+/** Slow-changing PC facts for PC Tuning: apps, power plan, startup, updates, battery, network. */
+export const HardwarePcStatus = Schema.Struct({
+  at: NonNegativeInt,
+  topApps: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      cpuPct: Schema.Number,
+      memoryBytes: Schema.Number,
+      processes: NonNegativeInt,
+    }),
+  ),
+  powerPlan: NullableString,
+  startupApps: Schema.Array(Schema.String),
+  updates: Schema.Struct({
+    rebootPending: Schema.Boolean,
+    lastInstalledOn: NullableString,
+  }),
+  battery: Schema.NullOr(Schema.Struct({ chargePct: Schema.Number, charging: Schema.Boolean })),
+  network: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      linkMbps: NullableNumber,
+      receiveBytesPerSec: NullableNumber,
+      sendBytesPerSec: NullableNumber,
+    }),
+  ),
+  /** Which part filled up first while each app was the busiest one, over the last 7 days. */
+  bottlenecks: Schema.Array(
+    Schema.Struct({
+      app: Schema.String,
+      resource: Schema.String,
+      fullMinutes: NonNegativeInt,
+      activeMinutes: NonNegativeInt,
+    }),
+  ),
+  benchmarks: Schema.Array(
+    Schema.Struct({
+      at: Schema.String,
+      label: Schema.String,
+      cpuSingleScore: NullableNumber,
+      cpuMultiScore: NullableNumber,
+      memoryCopyGBs: NullableNumber,
+      diskWriteMBs: NullableNumber,
+      lastBootMs: NullableNumber,
+    }),
+  ),
+  /** Rated speeds a Tune agent found for these exact parts; null until a Tune run saves them. */
+  expected: Schema.NullOr(
+    Schema.Struct({
+      cpuMaxBoostMhz: NullableNumber,
+      memoryRatedMts: NullableNumber,
+      gpuBoostClockMhz: NullableNumber,
+      source: NullableString,
+    }),
+  ),
+});
+export type HardwarePcStatus = typeof HardwarePcStatus.Type;

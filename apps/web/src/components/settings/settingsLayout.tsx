@@ -398,15 +398,15 @@ export function SettingsRow({
                   ? context.connectedEnvironments
                       .filter((target) => !writableIds.has(target.environmentId))
                       .map((target) => target.label)
-                      .join(", ") || "the selected environment"
-                  : (primaryEnvironment?.label ?? "the primary environment")
+                      .join(", ") || "the chosen computer"
+                  : (primaryEnvironment?.label ?? "the main computer")
               }.`
             : context
-              ? "Reconnect the selected environment to change this setting."
+              ? "Connect the chosen computer again to change this setting."
               : PRIMARY_SETTINGS_UNAVAILABLE_MESSAGE,
         )
       : environmentWide && control
-        ? inertControl("Environment-wide setting. Select an environment to change it.")
+        ? inertControl("This setting is for a whole computer. Choose a computer to change it.")
         : control;
   // Server rows get an indicator beside the title that opens the resolution
   // chain per target at every scope; client rows keep a plain status only.
@@ -422,15 +422,15 @@ export function SettingsRow({
       }),
     );
   const inheritance: { state: SettingInheritanceState; summary: string } = mixed
-    ? { state: "mixed", summary: "Mixed across selected environments" }
+    ? { state: "mixed", summary: "Different on the chosen computers" }
     : source === "project"
-      ? { state: "overridden", summary: "Overridden for this project" }
+      ? { state: "overridden", summary: "Changed for this project" }
       : source === "t3.json"
-        ? { state: "inherited", summary: "Inherited from the repository's t3.json" }
+        ? { state: "inherited", summary: "Taken from the t3.json file of the project" }
         : source === "environment" && scopedKeys.length > 0
           ? { state: "inherited", summary: `Inherited from ${inheritedFrom}` }
           : customized
-            ? { state: "environment", summary: "Set on the environment" }
+            ? { state: "environment", summary: "Set on the computer" }
             : { state: "default", summary: "Built-in default" };
   const renderedInheritance =
     context && serverScoped && settingKeys.length > 0 ? (
@@ -532,6 +532,20 @@ export function SettingResetButton({
         }
       />
       <TooltipPopup side="top">{tooltip}</TooltipPopup>
+    </Tooltip>
+  );
+}
+
+/** A plain word with a short tooltip that names the technical term behind it. */
+export function TermHint({ children, hint }: { children: ReactNode; hint: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<span className="cursor-help underline decoration-dotted underline-offset-2" />}
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipPopup side="top">{hint}</TooltipPopup>
     </Tooltip>
   );
 }

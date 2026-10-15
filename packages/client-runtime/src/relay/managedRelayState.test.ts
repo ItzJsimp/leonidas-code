@@ -442,7 +442,7 @@ describe("createManagedRelayQueryManager", () => {
     registry.get(atom);
     await vi.waitFor(() => {
       expect(readManagedRelaySnapshotState(registry.get(atom)).error).toBe(
-        `Relay rejected the DPoP proof. ${DPOP_UNKNOWN_HINT}`,
+        `Remote access did not accept this device. ${DPOP_UNKNOWN_HINT}`,
       );
     });
   });

@@ -130,7 +130,9 @@ function TaskCreateForm(props: {
       return;
     }
     if (!isAtomCommandInterrupted(result)) {
-      setError(failureText(squashAtomCommandFailure(result), "Could not create the task."));
+      setError(
+        failureText(squashAtomCommandFailure(result), "Could not create the task. Try again."),
+      );
     }
   };
 
@@ -150,7 +152,7 @@ function TaskCreateForm(props: {
       <DialogHeader>
         <DialogTitle>New task</DialogTitle>
         <DialogDescription>
-          Capture work for yourself or your agents. Press Ctrl+Enter to create it.
+          Add work for yourself or your AI. Press Ctrl+Enter to create it.
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>

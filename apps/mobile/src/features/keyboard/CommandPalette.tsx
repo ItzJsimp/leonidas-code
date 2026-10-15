@@ -182,7 +182,7 @@ export function CommandPalette(props: {
       {
         key: "newTask",
         kind: "action",
-        title: "New thread in…",
+        title: "Start chat in…",
         searchTerms: ["new task", "chat", "create", "project"],
         run: () => navigation.navigate("NewTaskSheet", { screen: "NewTask" }),
       },
@@ -218,7 +218,7 @@ export function CommandPalette(props: {
       {
         key: "environments",
         kind: "action",
-        title: "Manage environments",
+        title: "Manage computers",
         searchTerms: ["connections", "server", "remote"],
         run: () =>
           navigation.navigate("SettingsSheet", {
@@ -262,7 +262,7 @@ export function CommandPalette(props: {
       {
         key: "archive",
         kind: "action",
-        title: "Archived threads",
+        title: "Archived chats",
         searchTerms: ["restore", "history"],
         run: () =>
           navigation.navigate("SettingsSheet", {
@@ -281,7 +281,7 @@ export function CommandPalette(props: {
       actions.unshift({
         key: "newThread",
         kind: "action",
-        title: `New thread in ${activeProject.title}`,
+        title: `Start chat in ${activeProject.title}`,
         searchTerms: ["new task", "chat", "create"],
         run: () =>
           navigation.navigate("NewTaskSheet", {
@@ -299,7 +299,7 @@ export function CommandPalette(props: {
         ["files", "Go to file", ["open", "files", "browse", "search"]],
         ["terminal", "Open terminal", ["shell", "console"]],
         ["review", "Review changes", ["diff", "git", "pull request"]],
-        ["copyThreadReference", "Copy PR link or thread ID", ["reference", "clipboard"]],
+        ["copyThreadReference", "Copy PR link or chat ID", ["reference", "clipboard"]],
       ] as const;
       actions.push(
         ...threadActions.map(([command, title, searchTerms]) => ({
@@ -315,7 +315,7 @@ export function CommandPalette(props: {
       key: `project:${scopedProjectKey(project.environmentId, project.id)}`,
       kind: "project",
       title: project.title,
-      detail: `New thread · ${savedConnectionsById[project.environmentId]?.environmentLabel ?? project.environmentId}`,
+      detail: `Start chat · ${savedConnectionsById[project.environmentId]?.environmentLabel ?? project.environmentId}`,
       searchTerms: [project.workspaceRoot, "new thread", "project"],
       run: () =>
         navigation.navigate("NewTaskSheet", {
@@ -341,7 +341,7 @@ export function CommandPalette(props: {
         return {
           key: scopedThreadKey(thread.environmentId, thread.id),
           kind: "thread",
-          title: thread.title || "Untitled thread",
+          title: thread.title || "Untitled chat",
           detail: [project?.title, environment].filter(Boolean).join(" · "),
           searchTerms: [
             project?.title ?? "",
@@ -461,8 +461,8 @@ export function CommandPalette(props: {
                   />
                   <TextInput
                     ref={inputRef}
-                    accessibilityLabel="Search commands, projects, and threads"
-                    placeholder="Search commands, projects, and threads…"
+                    accessibilityLabel="Search commands, projects, and chats"
+                    placeholder="Search commands, projects, and chats…"
                     placeholderTextColorClassName="accent-placeholder"
                     autoCorrect={false}
                     autoCapitalize="none"

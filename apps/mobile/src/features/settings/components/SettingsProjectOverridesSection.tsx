@@ -20,7 +20,7 @@ export function SettingsProjectOverridesSection(props: {
         {!props.pending && props.supportsOverrides && props.hasOverrides ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Use environment defaults"
+            accessibilityLabel="Use computer defaults"
             disabled={props.disabled}
             onPress={props.onClear}
             className="px-2 py-2 active:opacity-70"
@@ -31,7 +31,7 @@ export function SettingsProjectOverridesSection(props: {
       </View>
       {!props.supportsOverrides ? (
         <Text className="px-4 pb-3 text-sm text-foreground-muted">
-          Update the selected environments to edit project overrides.
+          Update the selected computers to edit project overrides.
         </Text>
       ) : null}
     </SettingsSection>

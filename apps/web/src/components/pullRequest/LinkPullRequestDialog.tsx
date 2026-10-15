@@ -89,7 +89,7 @@ export function resolveLinkPullRequestInput(input: {
   const url = parseChangeRequestUrl(parsed);
   if (url !== null) {
     if (!input.hasProject({ ...url, url: parsed })) {
-      return { error: `No project in this environment can read ${url.host}/${url.repository}.` };
+      return { error: `No project on this computer can read ${url.host}/${url.repository}.` };
     }
     return {
       link: { host: url.host, repository: url.repository, number: url.number, url: parsed },
@@ -178,7 +178,11 @@ function LinkPullRequestDialog({
     try {
       await linking.changeLink(threadRef, resolved.link.url, true);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Could not link the pull request.");
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Could not link the pull request. Check the URL and try again.",
+      );
       return;
     } finally {
       setPending(false);
@@ -202,8 +206,8 @@ function LinkPullRequestDialog({
         <DialogHeader>
           <DialogTitle>Link pull request</DialogTitle>
           <DialogDescription>
-            Attach a pull request to this thread by its URL, or by its number for this thread's
-            repository.
+            Link a pull request to this chat with its URL, or with its number in the repository of
+            this chat.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>

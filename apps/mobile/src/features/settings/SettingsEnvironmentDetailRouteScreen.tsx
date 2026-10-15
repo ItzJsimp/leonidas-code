@@ -112,8 +112,8 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
     if (disabled || !targetVersion || !capabilities || !supportsEnvironmentUpdate(capabilities))
       return;
     Alert.alert(
-      `Update ${environment?.environmentLabel ?? "environment"}?`,
-      `Install Leonidas Code ${targetVersion}. ${capabilities.serverSelfUpdate === "desktop-managed" ? "The desktop app will close and relaunch." : "The server will restart and reconnect."} Running threads may be interrupted.`,
+      `Update ${environment?.environmentLabel ?? "computer"}?`,
+      `Install Leonidas Code ${targetVersion}. ${capabilities.serverSelfUpdate === "desktop-managed" ? "The desktop app will close and relaunch." : "Leonidas Code will restart and reconnect."} Running chats may stop.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -169,7 +169,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
   }
 
   return (
-    <SettingsScreen title={environment?.environmentLabel ?? "Environment"}>
+    <SettingsScreen title={environment?.environmentLabel ?? "Computer"}>
       <ScreenScrollView
         contentInsetAdjustmentBehavior="automatic"
         className="flex-1"
@@ -178,7 +178,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
       >
         {!environment ? (
           <Text className="text-base text-foreground-muted">
-            This environment is no longer saved on this device.
+            This computer is no longer saved on this device.
           </Text>
         ) : (
           <>
@@ -208,7 +208,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
             />
             {!connected ? (
               <Text className="px-2 text-sm text-foreground-muted">
-                Connect this environment to manage it.
+                Connect this computer to manage it.
               </Text>
             ) : !allowed ? (
               <Text className="px-2 text-sm text-foreground-muted">
@@ -216,7 +216,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
                   ? "Could not verify your permissions. Reconnect to try again."
                   : session === null
                     ? "Checking permissions…"
-                    : "This connection does not have permission to manage the environment."}
+                    : "This connection does not have permission to manage the computer."}
               </Text>
             ) : null}
             {error ? (
@@ -294,10 +294,10 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
                     />
                   ) : null}
                 </SettingsSection>
-                <SettingsSection title="Providers">
+                <SettingsSection title="AI services">
                   <SettingsActionRow
                     icon="arrow.clockwise"
-                    label="Refresh providers"
+                    label="Refresh AI services"
                     disabled={busy || !canRead}
                     loading={pending === "refresh"}
                     onPress={() => {
@@ -307,7 +307,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
                           return;
                         const result = await refreshProviders({ environmentId, input: {} });
                         if (AsyncResult.isFailure(result)) throw squashAtomCommandFailure(result);
-                        setNotice("Provider status refreshed.");
+                        setNotice("AI service status refreshed.");
                       });
                     }}
                   />
@@ -356,7 +356,7 @@ function EnvironmentDetail({ environmentId }: { readonly environmentId: Environm
                           {provider.versionAdvisory?.status === "behind_latest" &&
                           !provider.versionAdvisory.canUpdate ? (
                             <Text className="text-sm text-foreground-muted">
-                              Update this provider on the environment's machine.
+                              Update this AI service on the computer.
                             </Text>
                           ) : null}
                         </View>

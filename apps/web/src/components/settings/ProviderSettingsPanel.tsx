@@ -178,7 +178,7 @@ function ProviderLastChecked({ lastCheckedAt }: { lastCheckedAt: string | null }
 
 function providerEnvironmentDetail(environment: EnvironmentPresentation): string {
   if (environment.entry.target._tag === "PrimaryConnectionTarget") return "Primary device";
-  if (environment.relayManaged) return "T3 Connect";
+  if (environment.relayManaged) return "Remote access";
   if (environment.entry.target._tag === "SshConnectionTarget") return "SSH";
   if (isDesktopLocalConnectionTarget(environment.entry.target)) return "Local device";
   return environment.displayUrl ?? "Remote device";
@@ -242,16 +242,16 @@ function EnvironmentUnavailablePlaceholder({
 }) {
   const isLoading = access.kind === "loading";
   const title = isLoading
-    ? "Loading provider settings"
+    ? "Loading AI service settings"
     : access.kind === "error"
-      ? "Could not connect to this device"
-      : "Provider settings are unavailable";
+      ? "Could not connect to this device. Check the connection and try again."
+      : "AI service settings are not available";
   // Keep the description to a short status; the raw failure can be a
   // multi-paragraph CLI dump, so it goes below, clamped and expandable.
   const description = isLoading
     ? access.reason === "permissions"
-      ? "Checking what this session is allowed to change."
-      : `Waiting for ${environment.label}'s configuration.`
+      ? "Checking what you are allowed to change."
+      : `Waiting for the settings of ${environment.label}.`
     : connectionStatusTitle(environment.connection);
   const error = isLoading ? null : environment.connection.error;
   // No spinner: this state can persist indefinitely for a wedged device, and a
@@ -426,7 +426,7 @@ function ProviderSettingsPanelContent(target: ProviderSettingsTarget) {
           deviceTabs={deviceTabs}
           icon={<EnvironmentMachineIcon kind={resolveEnvironmentMachineKind(null)} />}
           title="Device unavailable"
-          description="Reconnect this device to set up its provider, or select another device."
+          description="Connect this device again to set up its AI services, or choose another device."
         />
       ) : null}
       {options.length === 0 && !targetEnvironmentMissing ? (
@@ -435,8 +435,8 @@ function ProviderSettingsPanelContent(target: ProviderSettingsTarget) {
           title={isReady ? "No connected devices" : "Loading devices"}
           description={
             isReady
-              ? "Connect an execution environment before configuring providers."
-              : "Reading connected execution environments."
+              ? "Connect a computer, then set up AI services."
+              : "Reading the connected computers."
           }
         />
       ) : null}
@@ -599,8 +599,8 @@ export function EnvironmentProviderSettings({
         if (result._tag === "Success" && !result.value.accepted) {
           toastManager.add({
             type: "warning",
-            title: "Authentication request expired",
-            description: "Refresh the provider and start the authentication flow again.",
+            title: "The sign-in request ran out of time",
+            description: "Refresh the AI service and start the sign-in again.",
           });
           return;
         }
@@ -608,7 +608,7 @@ export function EnvironmentProviderSettings({
           const error = squashAtomCommandFailure(result);
           toastManager.add({
             type: "error",
-            title: "Could not continue authentication",
+            title: "Could not continue sign-in",
             ...userErrorToastFields(error),
           });
         }
@@ -988,7 +988,7 @@ export function EnvironmentProviderSettings({
             liveProvider?.setup?.canAuthenticate === false ? (
             <SettingsRow
               title="Cursor account"
-              description="Using CURSOR_API_KEY. Remove it from this provider's environment to use browser sign-in."
+              description="Using CURSOR_API_KEY. Remove it from the variables of this AI service to sign in with the browser."
             />
           ) : null
         }
@@ -1016,7 +1016,7 @@ export function EnvironmentProviderSettings({
         headerAction={
           mode === "editor" && row.isDefault && row.isDirty ? (
             <SettingResetButton
-              label={`${resetLabel} provider settings`}
+              label={`${resetLabel} settings`}
               onClick={() => resetDefaultInstance(row.driver)}
             />
           ) : null
@@ -1091,13 +1091,13 @@ export function EnvironmentProviderSettings({
                     size="icon-xs"
                     variant="ghost-muted"
                     onClick={() => setIsAddInstanceDialogOpen(true)}
-                    aria-label="Add provider"
+                    aria-label="Add AI account"
                   >
                     <PlusIcon />
                   </Button>
                 }
               />
-              <TooltipPopup side="top">Add provider</TooltipPopup>
+              <TooltipPopup side="top">Add AI account</TooltipPopup>
             </Tooltip>
           ) : null
         }
@@ -1115,10 +1115,10 @@ export function EnvironmentProviderSettings({
                     onClick={() => void refreshProviders()}
                   >
                     <RefreshIcon refreshing={isRefreshingProviders} />
-                    <span className="sr-only">Refresh provider status</span>
+                    <span className="sr-only">Refresh AI service status</span>
                     <span className="hidden min-w-0 truncate sm:inline">
                       {isRefreshingProviders ? (
-                        "Refreshing providers"
+                        "Refreshing AI services"
                       ) : (
                         <ProviderLastChecked lastCheckedAt={lastCheckedAt} />
                       )}
@@ -1126,7 +1126,7 @@ export function EnvironmentProviderSettings({
                   </Button>
                 }
               />
-              <TooltipPopup side="top">Refresh provider status</TooltipPopup>
+              <TooltipPopup side="top">Refresh AI service status</TooltipPopup>
             </Tooltip>
           </div>
         }
@@ -1138,7 +1138,7 @@ export function EnvironmentProviderSettings({
           <SettingsGroup divided={false} className="overflow-hidden">
             <SettingsRow
               title="Limited permissions"
-              description={`This session can view ${environmentLabel}'s providers but can't change their settings.`}
+              description={`You can see the AI services on ${environmentLabel}, but you cannot change their settings.`}
             />
           </SettingsGroup>
         ) : null}
@@ -1164,7 +1164,7 @@ export function EnvironmentProviderSettings({
                     onClick={() => setIsAddInstanceDialogOpen(true)}
                   >
                     <PlusIcon className="size-4 shrink-0" />
-                    Add provider
+                    Add AI account
                   </button>
                 ) : null}
               </div>
@@ -1179,8 +1179,8 @@ export function EnvironmentProviderSettings({
             ) : (
               <div className="p-6 text-sm text-muted-foreground">
                 {targetInstanceMissing
-                  ? "This provider instance is no longer available on this device."
-                  : "No providers configured."}
+                  ? "This AI account is not available any more on this device. Choose another one."
+                  : "No AI accounts yet. Click Add AI account to add one."}
               </div>
             )}
           </div>
@@ -1203,13 +1203,12 @@ export function EnvironmentProviderSettings({
             <span className="inline-flex items-center gap-1.5">
               {searchableSetting("provider-health-check-interval").title}
               <PolicyTooltip>
-                This interval is configured here, then the shared Background activity policy decides
-                whether provider probes may run when the timer fires. Custom intervals appear as
-                Advanced in General settings.
+                You set the time here. Then the Background activity setting decides whether the
+                check can run. Custom times show as Advanced in General settings.
               </PolicyTooltip>
             </span>
           }
-          description="Refresh provider status, versions, and models in the background. Set to 0 to disable."
+          description="Update the status, versions, and models of the AI services in the background. Set to 0 to turn this off."
           resetAction={
             providerHealthRefreshIntervalSeconds !== defaultProviderHealthRefreshIntervalSeconds ? (
               <span
@@ -1217,7 +1216,7 @@ export function EnvironmentProviderSettings({
                 className={!canWriteSettings ? "opacity-50" : undefined}
               >
                 <SettingResetButton
-                  label="provider health check interval"
+                  label="status check interval"
                   onClick={() =>
                     updateSettings(
                       backgroundActivityOverrideSettings(
@@ -1261,9 +1260,9 @@ export function EnvironmentProviderSettings({
                 }
               >
                 <NumberFieldGroup>
-                  <NumberFieldDecrement aria-label="Decrease provider health check interval" />
-                  <NumberFieldInput aria-label="Provider health check interval in seconds" />
-                  <NumberFieldIncrement aria-label="Increase provider health check interval" />
+                  <NumberFieldDecrement aria-label="Decrease status check interval" />
+                  <NumberFieldInput aria-label="Status check interval in seconds" />
+                  <NumberFieldIncrement aria-label="Increase status check interval" />
                 </NumberFieldGroup>
               </NumberField>
               <span className="text-xs text-muted-foreground">seconds</span>

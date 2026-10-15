@@ -162,7 +162,7 @@ export function PullRequestDetailGhost({
                 variant="ghost-muted"
                 className="-ml-1.5"
                 onClick={onBack}
-                aria-label="Back to this thread's pull requests"
+                aria-label="Back to the pull requests of this chat"
               >
                 <ArrowLeftIcon aria-hidden className="size-3.5" />
               </Button>
@@ -172,7 +172,7 @@ export function PullRequestDetailGhost({
                 <span className="min-w-0 truncate font-medium">{seed.repository}</span>
                 <InlineButton
                   onClick={() => void readLocalApi()?.shell.openExternal(seed.url)}
-                  aria-label={`Open pull request #${seed.number} on host`}
+                  aria-label={`Open pull request #${seed.number} on the website`}
                 >
                   <span className={statePresentation?.toneClassName}>#{seed.number}</span>
                   <ExternalLinkIcon aria-hidden className="size-2.5" />
@@ -237,9 +237,9 @@ export function PullRequestDetailGhost({
                   <PullRequestCopyableCode
                     key={checkout}
                     value={checkout}
-                    target="pull request checkout command"
-                    copyLabel="Copy checkout command"
-                    copiedLabel="Checkout command copied"
+                    target="command to open the branch"
+                    copyLabel="Copy command to open this branch"
+                    copiedLabel="Command copied"
                     className="ml-auto font-mono"
                     tooltipSide="bottom"
                     {...(onCheckoutError ? { onError: onCheckoutError } : {})}

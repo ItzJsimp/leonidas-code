@@ -46,18 +46,17 @@ export function ScribeTeamFeedDialog({
       <DialogPopup className="h-[min(85dvh,46rem)] max-w-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <DialogTitle>Scribe Team Dictation Feed</DialogTitle>
+            <DialogTitle>Team dictations</DialogTitle>
             <Badge
               variant="outline"
               className="gap-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]"
             >
               <RadioIcon className="size-2.5 animate-pulse" />
-              Live Sync (10s)
+              Updates every 10 seconds
             </Badge>
           </div>
           <DialogDescription>
-            Collaborative voice stream for your team. Transcripts broadcasted by team members sync
-            here automatically.
+            Dictations that your team shares appear here by themselves.
           </DialogDescription>
         </DialogHeader>
 
@@ -80,14 +79,14 @@ export function ScribeTeamFeedPanel() {
               size="sm"
               className="gap-1.5 text-xs font-medium"
               onClick={() => setOpen(true)}
-              aria-label="Scribe Team Feed"
+              aria-label="Team dictations"
             >
               <MicIcon className="size-3.5 text-primary" />
-              <span>Team Feed</span>
+              <span>Team dictations</span>
             </Button>
           }
         />
-        <TooltipPopup side="bottom">Scribe Collaborative Feed</TooltipPopup>
+        <TooltipPopup side="bottom">Dictations that your team shares</TooltipPopup>
       </Tooltip>
 
       <ScribeTeamFeedDialog open={open} onOpenChange={setOpen} />
@@ -142,7 +141,7 @@ function FeedContents() {
       await navigator.clipboard.writeText(command);
       setCopiedCli(true);
       setTimeout(() => setCopiedCli(false), 2500);
-      setBroadcastFeedback("Copied gh command! Paste into terminal to broadcast.");
+      setBroadcastFeedback("Copied the command. Paste it in a terminal to share your dictation.");
     } catch {
       // Ignore
     }
@@ -162,7 +161,7 @@ function FeedContents() {
       // Prompt user or copy CLI command fallback
       handleCopyCliCommand();
       setBroadcastFeedback(
-        "Copied gh command to clipboard! (Set a GitHub PAT in settings or paste in terminal to publish)",
+        "Copied the command. To share from here, add a GitHub token in settings. Or paste the command in a terminal.",
       );
       setIsSubmitting(false);
       return;
@@ -177,10 +176,10 @@ function FeedContents() {
     if (res.ok) {
       setText("");
       setShowBroadcastForm(false);
-      setBroadcastFeedback("Broadcast published!");
+      setBroadcastFeedback("Dictation shared.");
       refresh();
     } else {
-      setBroadcastFeedback(res.error ?? "Failed to publish comment.");
+      setBroadcastFeedback(res.error ?? "Could not share the dictation. Try again.");
     }
   };
 
@@ -194,9 +193,9 @@ function FeedContents() {
             size="sm"
             className="h-7 text-xs"
             render={<a href={ISSUE_URL} target="_blank" rel="noreferrer" />}
-            title="Open #scribe-feed issue thread on GitHub"
+            title="Open the team dictations page on GitHub"
           >
-            <ExternalLinkIcon className="size-3 mr-1" /> #{SCRIBE_FEED_ISSUE} on GitHub
+            <ExternalLinkIcon className="size-3 mr-1" /> Open on GitHub (#{SCRIBE_FEED_ISSUE})
           </Button>
 
           <Button
@@ -206,7 +205,7 @@ function FeedContents() {
             onClick={() => setShowBroadcastForm(!showBroadcastForm)}
           >
             <PlusIcon className="size-3" />
-            <span>{showBroadcastForm ? "Hide Form" : "Add Broadcast"}</span>
+            <span>{showBroadcastForm ? "Hide form" : "Share a dictation"}</span>
             {showBroadcastForm ? (
               <ChevronUpIcon className="size-3 ml-0.5" />
             ) : (
@@ -223,7 +222,7 @@ function FeedContents() {
                   className="size-7"
                   onClick={() => refresh()}
                   disabled={loading}
-                  aria-label="Refresh feed"
+                  aria-label="Refresh list"
                 >
                   <RefreshCwIcon
                     className={`size-3.5 ${loading ? "animate-spin text-primary" : ""}`}
@@ -234,13 +233,13 @@ function FeedContents() {
             <TooltipPopup side="top">
               {lastRefreshedAt
                 ? `Last checked ${new Date(lastRefreshedAt).toLocaleTimeString()}`
-                : "Refresh feed"}
+                : "Refresh list"}
             </TooltipPopup>
           </Tooltip>
         </div>
 
         <span className="text-[11px] text-muted-foreground">
-          {items.length} {items.length === 1 ? "transcript" : "transcripts"} &bull; $0 serverless
+          {items.length} {items.length === 1 ? "dictation" : "dictations"}
         </span>
       </div>
 
@@ -253,7 +252,7 @@ function FeedContents() {
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <SendIcon className="size-3 text-primary" />
-              New Voice / Text Broadcast
+              Share a dictation
             </span>
 
             <input
@@ -268,7 +267,7 @@ function FeedContents() {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Type a test transcript or dictation note from ${author || "you"}...`}
+            placeholder={`Type a dictation to share, from ${author || "you"}…`}
             className="text-xs min-h-16"
             size="sm"
           />
@@ -286,7 +285,7 @@ function FeedContents() {
                 className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
                 onClick={handleCopyCliCommand}
                 disabled={!text.trim()}
-                title="Copy ready-to-run gh command"
+                title="Copy a command that shares this dictation on GitHub"
               >
                 {copiedCli ? (
                   <>
@@ -296,7 +295,7 @@ function FeedContents() {
                 ) : (
                   <>
                     <TerminalIcon className="size-3" />
-                    <span>Copy gh Command</span>
+                    <span>Copy command</span>
                   </>
                 )}
               </Button>
@@ -308,7 +307,7 @@ function FeedContents() {
                 disabled={!text.trim() || isSubmitting}
               >
                 <SendIcon className="size-3" />
-                <span>{isSubmitting ? "Broadcasting..." : "Broadcast"}</span>
+                <span>{isSubmitting ? "Sharing…" : "Share"}</span>
               </Button>
             </div>
           </div>
@@ -321,7 +320,7 @@ function FeedContents() {
 
       {error ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-          Error loading team feed: {error}
+          Could not load the team dictations: {error}. Select Refresh to try again.
         </div>
       ) : null}
 
@@ -330,8 +329,8 @@ function FeedContents() {
         {items.length === 0 && !loading ? (
           <div className="flex flex-1 flex-col items-center justify-center py-12 text-center text-muted-foreground">
             <MicIcon className="size-8 opacity-40 mb-2" />
-            <p className="text-sm font-medium">No shared transcripts yet</p>
-            <p className="text-xs">Broadcast dictations from Scribe to share them with the team.</p>
+            <p className="text-sm font-medium">No shared dictations yet</p>
+            <p className="text-xs">Share a dictation from Scribe. Your team will see it here.</p>
           </div>
         ) : (
           items.map((item) => {
@@ -366,7 +365,7 @@ function FeedContents() {
 
                 <div className="flex items-center justify-between pt-1 border-t border-border/30 text-[10px] text-muted-foreground">
                   <div className="flex items-center gap-2">
-                    {item.latencyMs ? <span>Latency: {item.latencyMs}ms</span> : null}
+                    {item.latencyMs ? <span>Took {item.latencyMs}ms</span> : null}
                   </div>
 
                   <Button

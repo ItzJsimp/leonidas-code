@@ -203,8 +203,8 @@ function WorkspaceColumns(
                               {
                                 type: "button" as const,
                                 axisBehavior: "verticalPreferred" as const,
-                                accessibilityLabel: "Search threads",
-                                label: "Search threads",
+                                accessibilityLabel: "Search chats",
+                                label: "Search chats",
                                 icon: {
                                   type: "sfSymbol" as const,
                                   name: "magnifyingglass" as const,

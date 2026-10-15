@@ -247,7 +247,7 @@ export function ProviderUpdatePrimaryNotification() {
               addProviderUpdateToast({
                 view: getProviderUpdateRejectedToastView(
                   providerCount,
-                  "This connection cannot manage provider accounts.",
+                  "This connection cannot manage AI accounts.",
                 ),
                 openSettings: openProviderSettings,
               });
@@ -301,7 +301,7 @@ export function ProviderUpdatePrimaryNotification() {
       title: initialView.title,
       description: canManageProviders
         ? initialView.description
-        : "This connection cannot manage provider accounts. View provider settings for update details.",
+        : "This connection cannot manage AI accounts. View AI service settings for update details.",
       timeout: 0,
       actionProps:
         oneClickProviders.length > 0

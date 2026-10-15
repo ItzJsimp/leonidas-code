@@ -92,14 +92,17 @@ export function AddCodexAccountDialog({
       <WizardPopup size="wide">
         <WizardHeader
           title={instanceId ? displayName : "Add ChatGPT account"}
-          description="Each account has its own Codex instance and sign-in. Choose the other account on the sign-in page."
+          description="Each ChatGPT account has its own sign-in. On the sign-in page, choose the account you want to add."
         />
         <WizardPanel>
           {instanceId ? (
             provider?.setup ? (
               renderSetup(instanceId, provider)
             ) : (
-              <SettingsRow title="Codex runtime" description="Preparing managed setup." />
+              <SettingsRow
+                title="Codex"
+                description="Leonidas Code is getting Codex ready. Wait a moment."
+              />
             )
           ) : (
             <form
@@ -111,7 +114,7 @@ export function AddCodexAccountDialog({
             >
               <SettingsRow
                 title="Account name"
-                description="Shown in the provider list and model picker."
+                description="Shown in the list of AI accounts and in the model list."
                 control={
                   <Input
                     aria-label="Account name"
@@ -140,7 +143,7 @@ export function AddCodexAccountDialog({
                 form="add-codex-account"
                 disabled={pending || !name.trim() || !canManageProviders}
               >
-                {pending ? "Adding account…" : "Continue"}
+                {pending ? "Adding account…" : "Continue to sign-in"}
               </Button>
             </>
           )}

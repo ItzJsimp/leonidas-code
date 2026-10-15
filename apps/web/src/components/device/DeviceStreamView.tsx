@@ -545,7 +545,11 @@ export function DeviceStreamView(props: {
               name={props.deviceName ?? "Device"}
               description={props.deviceDescription ?? ""}
               stage="stream"
-              message={status === "error" ? (detail ?? "Stream failed.") : "Connecting video…"}
+              message={
+                status === "error"
+                  ? (detail ?? "The video stopped. Close the device and open it again.")
+                  : "Connecting video…"
+              }
               error={status === "error"}
             >
               {status === "error" ? (

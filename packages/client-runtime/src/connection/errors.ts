@@ -30,7 +30,7 @@ export function environmentMismatchError(input: {
 }): ConnectionBlockedError {
   return new ConnectionBlockedError({
     reason: "configuration",
-    detail: `Connected environment ${input.actual} does not match ${input.expected}.`,
+    detail: `Connected computer ${input.actual} does not match ${input.expected}.`,
   });
 }
 
@@ -135,20 +135,20 @@ export function mapRemoteEnvironmentError(
     case "EnvironmentAuthInvalidError":
       return new ConnectionBlockedError({
         reason: "authentication",
-        detail: "The environment credential is invalid.",
+        detail: "The computer did not accept your sign-in. Connect it again.",
         traceId: error.traceId,
       });
     case "EnvironmentScopeRequiredError":
     case "EnvironmentOperationForbiddenError":
       return new ConnectionBlockedError({
         reason: "permission",
-        detail: "The environment credential does not grant the required access.",
+        detail: "Your sign-in has no permission for this. Ask for access, or connect again.",
         traceId: error.traceId,
       });
     case "EnvironmentRequestInvalidError":
       return new ConnectionBlockedError({
         reason: "configuration",
-        detail: "The environment rejected the authentication request.",
+        detail: "The computer did not accept the sign-in request. Try again.",
         traceId: error.traceId,
       });
     case "EnvironmentResourceNotFoundError":
@@ -157,7 +157,7 @@ export function mapRemoteEnvironmentError(
       // snapshot). Treat it as a configuration issue with the endpoint.
       return new ConnectionBlockedError({
         reason: "configuration",
-        detail: "The environment endpoint could not be found.",
+        detail: "Leonidas Code could not find the computer at that address.",
         traceId: error.traceId,
       });
     case "RemoteEnvironmentAuthTimeoutError":
@@ -173,7 +173,7 @@ export function mapRemoteEnvironmentError(
     case "EnvironmentInternalError":
       return new ConnectionTransientError({
         reason: "remote-unavailable",
-        detail: "The environment could not authorize the connection.",
+        detail: "The computer could not allow the connection. Try again later.",
         traceId: error.traceId,
       });
     case "RemoteEnvironmentAuthInvalidJsonError":
@@ -198,7 +198,10 @@ export function mapRemoteDpopEnvironmentError(
   if (error._tag === "EnvironmentAuthInvalidError" && error.reason === "invalid_credential") {
     return new ConnectionBlockedError({
       reason: "authentication",
-      detail: dpopFailureMessage("The environment credential is invalid.", error.dpopFailureReason),
+      detail: dpopFailureMessage(
+        "The computer did not accept your sign-in. Connect it again.",
+        error.dpopFailureReason,
+      ),
       traceId: error.traceId,
     });
   }

@@ -39,7 +39,7 @@ export const ComposerSkillsButton = memo(function ComposerSkillsButton(props: {
       >
         <PopoverTrigger
           render={<ComposerBanner.Row render={<button type="button" />} />}
-          aria-label="Skills: add a skill to the start of the prompt"
+          aria-label="Skills: add a skill to the start of your message"
           className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
           onPointerDown={(event) => event.preventDefault()}
         >

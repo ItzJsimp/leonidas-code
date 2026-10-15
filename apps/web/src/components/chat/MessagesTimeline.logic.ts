@@ -190,7 +190,7 @@ export function threadReadTargetId(entry: Pick<WorkLogEntry, "structuredPayload"
   return typeof threadId === "string" && threadId.trim().length > 0 ? threadId.trim() : null;
 }
 
-const THREAD_READ_OBJECT = " a Leonidas thread";
+const THREAD_READ_OBJECT = " a chat";
 
 export function threadReadTargetTitle(
   shell: Pick<ThreadShell, "title" | "archivedAt" | "deletedAt"> | null,
@@ -200,12 +200,12 @@ export function threadReadTargetTitle(
 }
 
 /**
- * Names the read thread in place of the generic object ("Read a T3 thread" becomes
- * `Read thread “Title”`), keeping the label's tense. Null keeps the generic label.
+ * Names the read thread in place of the generic object ("Read a chat" becomes
+ * `Read chat “Title”`), keeping the label's tense. Null keeps the generic label.
  */
 export function threadReadLabelPrefix(label: string) {
   return label.endsWith(THREAD_READ_OBJECT)
-    ? `${label.slice(0, -THREAD_READ_OBJECT.length)} thread`
+    ? `${label.slice(0, -THREAD_READ_OBJECT.length)} chat`
     : null;
 }
 
@@ -1183,7 +1183,7 @@ function deriveTurnFolds(input: {
     const label = isLatestInterruptedTurn
       ? duration
         ? `You stopped after ${duration}`
-        : "You stopped this response"
+        : "You stopped this reply"
       : duration
         ? `Worked for ${duration}`
         : "Worked";
@@ -1619,7 +1619,7 @@ export function deriveMessagesTimelineRows(input: {
         createdAt: supersededFold.createdAt,
         runId: supersededFold.runId,
         attemptId: supersededFold.attemptId,
-        label: "Superseded attempt",
+        label: "Earlier try",
         expanded: input.expandedAttemptIds?.has(supersededFold.attemptId) ?? false,
       });
     }

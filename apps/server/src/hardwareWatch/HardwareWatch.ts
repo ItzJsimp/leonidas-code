@@ -105,6 +105,8 @@ export class HardwareWatch extends Context.Service<
       alertId: string | undefined,
     ) => Effect.Effect<AgentContext, HardwareWatchError>;
     readonly linkThread: (alertId: string, threadId: ThreadId) => Effect.Effect<void>;
+    /** The newest reading, or null before the first one. */
+    readonly latestSample: Effect.Effect<HardwareSample | null>;
     readonly systemCareProjectId: Effect.Effect<string | null>;
     readonly setSystemCareProjectId: (projectId: string) => Effect.Effect<void>;
   }
@@ -782,6 +784,7 @@ const make = Effect.gen(function* () {
       updateAlert(alertId, (alert) => ({ ...alert, threadId, acknowledged: true })).pipe(
         Effect.ignore,
       ),
+    latestSample: Ref.get(latest),
     systemCareProjectId: Effect.map(Ref.get(settings), (value) => value.systemCareProjectId),
     setSystemCareProjectId: (projectId) =>
       Ref.update(settings, (value) => ({ ...value, systemCareProjectId: projectId })).pipe(

@@ -108,7 +108,7 @@ export function LeonidasAiosStep({
     }
     const chat = await startChat({
       projectId: project.projectId,
-      title: "Set up my AIOS",
+      title: "Set up my AI memory",
       prompt: buildAiosSetupPrompt(normalizeGoalIds(stored), { inCurrentFolder: true }),
     });
     if (!chat.ok) {
@@ -129,8 +129,8 @@ export function LeonidasAiosStep({
         Give your AI a memory
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Optional. Your AI starts every session knowing who you are and what you work on, because it
-        reads a few plain text files first (an “AIOS”). Leonidas can build them with you.
+        This step is optional. Your AI starts every chat knowing who you are and what you work on.
+        It reads a few plain text files first (an “AIOS”). Leonidas Code can build them with you.
       </p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-4 pr-3">
@@ -149,7 +149,7 @@ export function LeonidasAiosStep({
               </pre>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
-                  Paste it into the AI you already use.
+                  Paste this message into the AI you already use.
                 </p>
                 <Button
                   size="compact"
@@ -166,7 +166,7 @@ export function LeonidasAiosStep({
             <div className="space-y-2">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1.5">
-                  <span className="text-xs text-muted-foreground">Where to put it</span>
+                  <span className="text-xs text-muted-foreground">Folder location</span>
                   <Input
                     value={parts.location}
                     onChange={(event) => updateParts({ ...parts, location: event.target.value })}
@@ -183,8 +183,8 @@ export function LeonidasAiosStep({
               </div>
               <p className="text-xs text-muted-foreground">
                 {folder === null
-                  ? "Enter a location and a name."
-                  : `Leonidas creates ${folder} if it is missing. ~ means your user folder.`}
+                  ? "Enter a folder location and a folder name."
+                  : `Leonidas Code creates ${folder} if it is missing. ~ means your user folder.`}
               </p>
               <div className="flex items-center gap-3">
                 <Button
@@ -192,12 +192,12 @@ export function LeonidasAiosStep({
                   onClick={() => void checkThenStart()}
                 >
                   {starting ? <Spinner /> : null}
-                  Start setup chat
+                  Start the setup chat
                 </Button>
                 <p className="text-xs text-muted-foreground">
                   {canOperate
-                    ? "Your connected agent builds the folder with you."
-                    : "Connect an agent first, then come back."}
+                    ? "Your AI builds the folder with you."
+                    : "Add an AI account first, then come back."}
                 </p>
               </div>
               {folderNotice ? (
@@ -220,7 +220,7 @@ export function LeonidasAiosStep({
           ) : null}
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              Prefer no chat? Paste this into PowerShell to create the same folders.
+              Do you not want a chat? Paste this into PowerShell to create the same folders.
             </p>
             <div className="flex items-start justify-between gap-3">
               <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
@@ -241,7 +241,7 @@ export function LeonidasAiosStep({
             variant="ghost-muted"
             onClick={() => setMode(mode === "run" ? "prompt" : "run")}
           >
-            {mode === "run" ? "Rather use another AI? Copy the prompt" : "Back to running it here"}
+            {mode === "run" ? "Copy the setup message for another AI" : "Go back to the setup chat"}
           </Button>
         </div>
       </ScrollArea>

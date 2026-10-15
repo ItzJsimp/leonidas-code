@@ -8,7 +8,7 @@ import type {
 export type SystemHealth = "good" | "warning" | "critical" | "unknown";
 
 export function formatBytes(bytes: number | null | undefined, digits = 1): string {
-  if (bytes === null || bytes === undefined || !Number.isFinite(bytes)) return "—";
+  if (bytes === null || bytes === undefined || !Number.isFinite(bytes)) return "-";
   const units = ["B", "KB", "MB", "GB", "TB"];
   let value = bytes;
   let unit = 0;
@@ -20,10 +20,10 @@ export function formatBytes(bytes: number | null | undefined, digits = 1): strin
 }
 
 const formatRate = (bytesPerSec: number | null | undefined) =>
-  bytesPerSec === null || bytesPerSec === undefined ? "—" : `${formatBytes(bytesPerSec)}/s`;
+  bytesPerSec === null || bytesPerSec === undefined ? "-" : `${formatBytes(bytesPerSec)}/s`;
 
 export function formatValue(value: number | null | undefined, unit: string): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  if (value === null || value === undefined || !Number.isFinite(value)) return "-";
   if (unit === "B/s") return formatRate(value);
   if (unit === "%") return `${Math.round(value)}%`;
   if (unit === "°C") return `${Math.round(value)} °C`;

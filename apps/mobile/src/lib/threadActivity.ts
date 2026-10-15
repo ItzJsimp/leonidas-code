@@ -600,7 +600,7 @@ function itemSummary(
   const title =
     (item.type === "dynamic_tool" ? dynamicToolTitle(item.toolName, item.input) : undefined) ??
     item.title?.trim();
-  if (item.type === "subagent") return formatSubagentDisplayTitle(title || "Subagent");
+  if (item.type === "subagent") return formatSubagentDisplayTitle(title || "Helper");
   if (title) return toolPresentation?.displayName ?? capitalizePhrase(title);
   switch (item.type) {
     case "reasoning":
@@ -616,23 +616,23 @@ function itemSummary(
     case "web_search":
       return "Searched the web";
     case "approval_request":
-      return "Approval requested";
+      return "Needs permission";
     case "user_input_request":
-      return "Input requested";
+      return "Needs your answer";
     case "checkpoint":
-      return "Checkpoint captured";
+      return "Save point added";
     case "run_interrupt_request":
-      return "Interrupt requested";
+      return "Stop requested";
     case "run_interrupt_result":
-      return "Run interrupted";
+      return "Reply stopped";
     case "error":
-      return item.failure.class === "usage_limit" ? "Usage limit reached" : "Provider error";
+      return item.failure.class === "usage_limit" ? "Usage limit reached" : "AI service error";
     case "handoff":
-      return "Context handed off";
+      return "Chat memory handed off";
     case "fork":
-      return "Thread forked";
+      return "Copied chat created";
     case "thread_created":
-      return "Thread created";
+      return "Chat created";
     case "secret_request":
       return item.label;
     case "dynamic_tool": {

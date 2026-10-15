@@ -123,13 +123,17 @@ export function AttachmentFilePreview(props: {
     void refresh()
       .then((url) => {
         if (cancelled) return;
-        if (!url) throw new Error("Reconnect to the environment and try again.");
+        if (!url) throw new Error("Reconnect to the computer and try again.");
         authorizedAt.current = Date.now();
         setRemoteUrl(url);
       })
       .catch((cause: unknown) => {
         if (!cancelled)
-          setError(cause instanceof Error ? cause.message : "The attachment is unavailable.");
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "The attachment is not available. Add it again.",
+          );
       });
     return () => {
       cancelled = true;
@@ -151,7 +155,7 @@ export function AttachmentFilePreview(props: {
       if (!file && Date.now() - authorizedAt.current > STALE_URL_MS) {
         const target = await refresh();
         if (controller.signal.aborted) return;
-        if (!target) throw new Error("Reconnect to the environment and try again.");
+        if (!target) throw new Error("Reconnect to the computer and try again.");
         authorizedAt.current = Date.now();
         if (target !== url) {
           setRemoteUrl(target);
@@ -172,7 +176,9 @@ export function AttachmentFilePreview(props: {
       if (!controller.signal.aborted) setContent(result);
     })().catch((cause: unknown) => {
       if (!controller.signal.aborted)
-        setContentError(cause instanceof Error ? cause.message : "Could not load this file.");
+        setContentError(
+          cause instanceof Error ? cause.message : "Could not load this file. Try again.",
+        );
     });
     return () => controller.abort();
   }, [url, needsText, revision, props.sizeBytes, props.file, refresh]);
@@ -195,7 +201,7 @@ export function AttachmentFilePreview(props: {
         let file = props.file;
         if (!file) {
           const target = await prepareDownload();
-          if (!target) throw new Error("Reconnect to the environment and try again.");
+          if (!target) throw new Error("Reconnect to the computer and try again.");
           const response = await fetch(target);
           if (!response.ok) throw new Error("The file could not be loaded. Try again.");
           file = await response.blob();
@@ -214,7 +220,7 @@ export function AttachmentFilePreview(props: {
       } catch (cause) {
         toastManager.add({
           type: "error",
-          title: "Could not save file",
+          title: "Could not save the file",
           ...userErrorToastFields(cause),
         });
       } finally {
@@ -253,7 +259,11 @@ export function AttachmentFilePreview(props: {
       htmlRender={props.htmlRender === true}
     />
   ) : kind === "audio" ? (
-    <AudioPreview src={url} name={props.name} onError={() => setError("Unable to load audio.")} />
+    <AudioPreview
+      src={url}
+      name={props.name}
+      onError={() => setError("Could not load the audio. Try again.")}
+    />
   ) : kind === "video" ? (
     <div className="flex min-h-0 flex-1 items-center justify-center bg-black">
       <video
@@ -262,7 +272,7 @@ export function AttachmentFilePreview(props: {
         src={url}
         aria-label={props.name}
         className="max-h-full max-w-full"
-        onError={() => setError("Unable to load video.")}
+        onError={() => setError("Could not load the video. Try again.")}
       />
     </div>
   ) : kind === "image" ? (
@@ -272,7 +282,7 @@ export function AttachmentFilePreview(props: {
         src={url}
         alt={props.name}
         className="max-h-full max-w-full object-contain"
-        onError={() => setError("Unable to load image.")}
+        onError={() => setError("Could not load the image. Try again.")}
       />
     </div>
   ) : (
@@ -316,7 +326,7 @@ export function AttachmentFilePreview(props: {
         ) : null}
         {showsRawText ? (
           <FileSurfaceAction
-            label={wordWrap ? "Disable word wrap" : "Enable word wrap"}
+            label={wordWrap ? "Turn off word wrap" : "Turn on word wrap"}
             pressed={wordWrap}
             onPress={() => updateClientSettings({ wordWrap: !wordWrap })}
           >
@@ -353,9 +363,9 @@ export function AttachmentFilePreview(props: {
       </div>
       {content?.truncated ? (
         <FileSurfaceNotice>
-          Preview limited to the first 1 MB
+          Preview shows only the first 1 MB
           {props.sizeBytes > 0 ? ` of a ${props.sizeBytes.toLocaleString()} byte file` : ""}. Save
-          the file to read it in full.
+          the file to read all of it.
         </FileSurfaceNotice>
       ) : null}
       {body}

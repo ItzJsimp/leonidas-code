@@ -141,7 +141,7 @@ export class EnvironmentRequestInvalidError extends Schema.TaggedError<Environme
   }
 
   override get message(): string {
-    return `The environment rejected the request (${this.reason}).`;
+    return `The computer rejected the request (${this.reason}).`;
   }
 }
 
@@ -161,7 +161,7 @@ export class EnvironmentAuthInvalidError extends Schema.TaggedError<EnvironmentA
   }
 
   override get message(): string {
-    return `The environment rejected this client's credentials (${this.reason}).`;
+    return `The computer rejected this client's credentials (${this.reason}).`;
   }
 }
 
@@ -198,7 +198,7 @@ export class EnvironmentOperationForbiddenError extends Schema.TaggedError<Envir
   }
 
   override get message(): string {
-    return `The environment refused this operation (${this.reason}).`;
+    return `The computer refused this operation (${this.reason}).`;
   }
 }
 
@@ -216,7 +216,7 @@ export class EnvironmentInternalError extends Schema.TaggedError<EnvironmentInte
   }
 
   override get message(): string {
-    return `The environment failed to answer this request (${this.reason}).`;
+    return `The computer failed to answer this request (${this.reason}).`;
   }
 }
 
@@ -237,7 +237,7 @@ export class EnvironmentResourceNotFoundError extends Schema.TaggedError<Environ
   }
 
   override get message(): string {
-    return `The environment could not find what this request named (${this.reason}).`;
+    return `The computer could not find what this request named (${this.reason}).`;
   }
 }
 

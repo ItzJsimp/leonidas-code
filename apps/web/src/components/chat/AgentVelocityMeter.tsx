@@ -28,7 +28,7 @@ export function SpeedSection({ summary }: { summary: VelocitySummary }) {
       <div className="flex items-center justify-between gap-3">
         <div className="font-medium text-muted-foreground text-xs">Speed</div>
         <div className="text-secondary-label text-2xs">
-          {summary.isLive ? "Current turn" : "Last turn"}
+          {summary.isLive ? "Current reply" : "Last reply"}
         </div>
       </div>
       <div className="flex items-baseline justify-between gap-3 tabular-nums">
@@ -52,13 +52,14 @@ export function SpeedSection({ summary }: { summary: VelocitySummary }) {
         })}
       </div>
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-2xs leading-4 tabular-nums">
-        <Row label="Output" value={summary.outputTokens?.toLocaleString() ?? "Not reported"} />
-        <Row label="Thinking" value={summary.reasoningTokens?.toLocaleString() ?? "Not reported"} />
-        <Row label="Tool wait" value={formatToolWait(summary)} />
+        <Row label="Output" value={summary.outputTokens?.toLocaleString() ?? "Not shown"} />
+        <Row label="Thinking" value={summary.reasoningTokens?.toLocaleString() ?? "Not shown"} />
+        <Row label="Waiting for tools" value={formatToolWait(summary)} />
         <Row label="First output" value={formatToolDuration(summary.firstOutputMs)} />
       </dl>
       <p className="text-pretty text-muted-foreground/70 text-2xs leading-4">
-        Approximate. Headline pace skips tool waits; output includes thinking.
+        These numbers are a guess. The speed leaves out time spent on tools. The output count
+        includes thinking.
       </p>
     </section>
   );
@@ -95,10 +96,10 @@ export function InputLedger({
       </div>
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-2xs leading-4 tabular-nums">
         <Row
-          label="Cache reads"
+          label="Saved reads"
           value={`${ledger.cacheReadTokens.toLocaleString()} (${formatCacheHitRate(ledger.cacheHitRate)})`}
         />
-        <Row label="Cache writes" value={ledger.cacheWriteTokens.toLocaleString()} />
+        <Row label="Saved writes" value={ledger.cacheWriteTokens.toLocaleString()} />
         <Row label="Fresh" value={ledger.freshInputTokens.toLocaleString()} />
         <OverheadRows threadTarget={threadTarget} contextTokens={contextTokens} />
       </dl>
@@ -133,8 +134,8 @@ function OverheadRows({
   if (split === null) return null;
   return (
     <>
-      <Row label="Setup in context (estimate)" value={split.fixed.toLocaleString()} />
-      <Row label="Chat in context (estimate)" value={split.conversation.toLocaleString()} />
+      <Row label="Setup in memory (estimate)" value={split.fixed.toLocaleString()} />
+      <Row label="Chat in memory (estimate)" value={split.conversation.toLocaleString()} />
     </>
   );
 }

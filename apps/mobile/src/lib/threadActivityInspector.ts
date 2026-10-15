@@ -103,12 +103,12 @@ export function buildThreadActivityInspector(
   }
   if (support.providerThread) {
     fields.push({
-      label: "Provider thread",
+      label: "AI service chat",
       value: `${support.providerThread.providerInstanceId} · ${support.providerThread.status}`,
     });
   }
   if (support.providerTurn) {
-    fields.push({ label: "Provider turn", value: support.providerTurn.status });
+    fields.push({ label: "AI service reply", value: support.providerTurn.status });
   }
   if (support.providerSession) {
     fields.push({

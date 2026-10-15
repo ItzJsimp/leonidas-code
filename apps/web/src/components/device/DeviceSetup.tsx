@@ -19,9 +19,9 @@ import { cn } from "~/lib/utils";
 const platformName = (platform: DevicePlatform) => (platform === "ios" ? "iOS" : "Android");
 
 export const deviceHubDescription =
-  "Enable this environment to open simulators and emulators, whether they run here or on a remote device host.";
+  "Turn this on to open simulators and emulators on this computer, or on another computer you connect to.";
 export const agentDeviceDescription =
-  "Allow new agent sessions in this environment to start and control local and remote devices, with required tools set up automatically.";
+  "Let the AI in new chats on this computer start and control devices. Leonidas Code sets up the tools it needs.";
 
 export function platformSetupStatus(state: DeviceServiceState, platform: DevicePlatform) {
   const availability = state.hosts
@@ -88,10 +88,10 @@ export function DeviceSetup(props: {
     <>
       <WizardHeader
         title="Set up devices"
-        description="Review what runs on this environment before using simulators and emulators."
+        description="Check what runs on this computer before you use simulators and emulators."
       >
         <WizardSteps
-          steps={["Device hub", "Simulators", "Agent access"]}
+          steps={["Device support", "Simulators", "AI access"]}
           currentStep={step}
           onStepChange={setStep}
           isStepDisabled={(requested) => busy || pending !== null || requested > step}
@@ -102,13 +102,13 @@ export function DeviceSetup(props: {
         <DeviceHostUpdates state={props.state} environmentId={props.environmentId} />
         {step === 0 ? (
           <section className="space-y-3 text-sm">
-            <h3 className="font-medium">Enable the device hub</h3>
+            <h3 className="font-medium">Turn on device support</h3>
             <div className="flex items-start justify-between gap-4">
               <p className="text-muted-foreground">{deviceHubDescription}</p>
               <Switch
                 checked={enabled}
                 disabled={!canConfigure || busy || pending !== null}
-                aria-label="Enable device hub"
+                aria-label="Turn on device support"
                 onCheckedChange={(checked) =>
                   void update("hub", {
                     enabled: Boolean(checked),
@@ -143,13 +143,13 @@ export function DeviceSetup(props: {
 
         {step === 2 ? (
           <section className="space-y-3 text-sm">
-            <h3 className="font-medium">Allow agent control</h3>
+            <h3 className="font-medium">Let the AI control devices</h3>
             <div className="flex items-start justify-between gap-4">
               <p className="text-muted-foreground">{agentDeviceDescription}</p>
               <Switch
                 checked={props.state.agentAccessEnabled}
                 disabled={!canConfigure || !enabled || busy || pending !== null}
-                aria-label="Allow agents to control devices"
+                aria-label="Let the AI control devices"
                 onCheckedChange={(checked) =>
                   void update("agent", { agentAccessEnabled: Boolean(checked) })
                 }
@@ -157,7 +157,7 @@ export function DeviceSetup(props: {
             </div>
             <AgentDeviceSetupStatus state={props.state} pending={pending === "agent"} />
             <p className="text-xs text-muted-foreground">
-              Leave this off to keep manual device controls without giving agents access.
+              Keep this off to control devices yourself, without the AI.
             </p>
           </section>
         ) : null}
@@ -217,15 +217,15 @@ export function DeviceHubSetupStatus({
         ? state.hostStatus === "installing"
           ? compact
             ? "Installing…"
-            : "Installing device hub…"
+            : "Installing device support…"
           : state.hostStatus === "starting"
             ? compact
               ? "Starting…"
-              : "Starting device hub…"
+              : "Starting device support…"
             : compact
               ? "Updating…"
-              : "Updating device hub…"
-        : "Device hub is ready."}
+              : "Updating device support…"
+        : "Device support is ready."}
     </p>
   );
 }
@@ -261,14 +261,14 @@ export function AgentDeviceSetupStatus(props: {
       props.state.hostStatus === "installing"
         ? props.compact
           ? "Installing…"
-          : "Installing agent tools…"
+          : "Installing AI tools…"
         : props.state.hostStatus === "starting"
           ? props.compact
             ? "Starting…"
-            : "Starting agent tools…"
+            : "Starting AI tools…"
           : props.compact
             ? "Updating…"
-            : "Updating agent access…";
+            : "Updating AI access…";
     return (
       <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
         <Spinner size="xs" />
@@ -284,7 +284,7 @@ export function AgentDeviceSetupStatus(props: {
     return (
       <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
         <Check className="size-3 text-success" />
-        Agent tools are ready.
+        AI tools are ready.
       </p>
     );
   }

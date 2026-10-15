@@ -497,146 +497,91 @@ export function project3DTo2D(
 }
 
 /**
- * Curated starter notes demonstrating the full power of Leonidas Vault & Knowledge Graph.
+ * Starter notes that show how the vault and the note map work.
  */
 export const STARTER_VAULT_NOTES: ReadonlyArray<VaultNote> = [
   {
-    id: "leonidas-aios-architecture",
-    title: "Leonidas AIOS Architecture",
-    path: ".leonidas/vault/leonidas-aios-architecture.md",
-    tags: ["architecture", "aios", "core"],
-    outgoingLinks: [
-      "agent-velocity-engine",
-      "openrouter-integration",
-      "3d-knowledge-graph",
-      "subagent-swarm",
-    ],
+    id: "how-leonidas-works",
+    title: "How Leonidas works",
+    path: ".leonidas/vault/how-leonidas-works.md",
+    tags: ["start", "overview"],
+    outgoingLinks: ["chat-speed", "model-access", "note-map", "helpers"],
     updatedAt: Date.now(),
     createdAt: Date.now(),
-    content: `# Leonidas AIOS Architecture
+    content: `# How Leonidas works
 
-The unified autonomous AI operating system bridging frontier model cognition with local machine execution.
+Leonidas Code lets AI work on your computer and on your projects.
 
-## Core Pillars
-- [[Agent Velocity Engine]]: Real-time TPS and token velocity measurement.
-- [[OpenRouter Integration]]: First-class routing and model access.
-- [[3D Knowledge Graph]]: Futuristic interactive network visualization replacing Obsidian.
-- [[Subagent Swarm]]: Distributed subagents executing tasks asynchronously.
+## What to read next
+- [[Chat speed]]: How fast the AI writes its reply.
+- [[Model access]]: How you reach more AI models.
+- [[Note map]]: A picture of how your notes link to each other.
+- [[Helpers]]: Extra AIs that work at the same time.
 
-#architecture #aios #core
+#start #overview
 `,
   },
   {
-    id: "agent-velocity-engine",
-    title: "Agent Velocity Engine",
-    path: ".leonidas/vault/agent-velocity-engine.md",
-    tags: ["performance", "tokens", "velocity"],
-    outgoingLinks: ["leonidas-aios-architecture", "openrouter-integration"],
+    id: "chat-speed",
+    title: "Chat speed",
+    path: ".leonidas/vault/chat-speed.md",
+    tags: ["speed", "chat"],
+    outgoingLinks: ["how-leonidas-works", "model-access"],
     updatedAt: Date.now(),
     createdAt: Date.now(),
-    content: `# Agent Velocity Engine
+    content: `# Chat speed
 
-Calculates live token generation velocity (TPS) across sliding windows of 5, 10, and 20 turns.
+Leonidas Code shows how fast the AI writes while it works. It looks at the last 5, 10 and 20 replies.
 
-Features:
-- Instantaneous token rate calculation
-- Rolling cadence averages
-- Tool call latency tracking
-- Visual sparkline with speed badges
+- A high number means a fast reply
+- A low number means a slow reply
+- A model can be fast on one reply and slow on the next
 
-Works directly with [[OpenRouter Integration]] and all provider drivers.
+See also [[How Leonidas works]] and [[Model access]].
 
-#performance #tokens #velocity
-`,
-  },
-  {
-    id: "openrouter-integration",
-    title: "OpenRouter Integration",
-    path: ".leonidas/vault/openrouter-integration.md",
-    tags: ["routing", "models", "openrouter"],
-    outgoingLinks: ["leonidas-aios-architecture", "agent-velocity-engine"],
-    updatedAt: Date.now(),
-    createdAt: Date.now(),
-    content: `# OpenRouter Integration
-
-First-class provider driver and model router embedded into Leonidas Code.
-
-Allows instant access to:
-- Claude 3.7 Sonnet & 3.5 Sonnet
-- DeepSeek R1 & V3
-- GPT-4o & GPT-4.5 Preview
-- Gemini 2.0 Flash
-- Llama 3.3 70B & Qwen 2.5 Coder
-
-Connected with [[Agent Velocity Engine]] for benchmarking throughput.
-
-#routing #models #openrouter
-`,
-  },
-  {
-    id: "3d-knowledge-graph",
-    title: "3D Knowledge Graph",
-    path: ".leonidas/vault/3d-knowledge-graph.md",
-    tags: ["graph", "visualization", "vault"],
-    outgoingLinks: ["leonidas-aios-architecture", "obsidian-migration", "subagent-swarm"],
-    updatedAt: Date.now(),
-    createdAt: Date.now(),
-    content: `# 3D Knowledge Graph
-
-A next-generation, WebGL/Canvas-rendered 3D interactive knowledge graph replacing Obsidian.
-
-Capabilities:
-- 3D Spherical Orbit Camera (rotate, zoom, pan)
-- Real-time 3D Force-Directed physics
-- Neon cyberpunk glow aesthetics with pulsing link lasers
-- Bidirectional backlinks calculation
-- Interactive node focus & editor sync
-
-See also [[Obsidian Migration]] and [[Leonidas AIOS Architecture]].
-
-#graph #visualization #vault
+#speed #chat
 `,
   },
   {
     id: "obsidian-migration",
-    title: "Obsidian Migration",
+    title: "Move from Obsidian",
     path: ".leonidas/vault/obsidian-migration.md",
     tags: ["vault", "notes", "markdown"],
-    outgoingLinks: ["3d-knowledge-graph", "leonidas-aios-architecture"],
+    outgoingLinks: ["note-map", "how-leonidas-works"],
     updatedAt: Date.now(),
     createdAt: Date.now(),
-    content: `# Obsidian Migration
+    content: `# Move from Obsidian
 
-Transitioning from external Obsidian vaults into the integrated Leonidas Vault.
+You can bring your Obsidian notes into the Leonidas Vault.
 
-Native support for:
-- Wiki-links syntax: \`[[Note Title]]\` and \`[[Note Title|Alias]]\`
-- Frontmatter YAML tags and inline \`#tags\`
-- Backlinks aggregation
-- Real-time 3D visualization via [[3D Knowledge Graph]]
+The vault understands:
+- Links between notes: \`[[Note Title]]\` and \`[[Note Title|Alias]]\`
+- Tags at the top of a note and \`#tags\` inside it
+- Lists of notes that link to a note
+- A live picture of your notes on the [[Note map]]
 
 #vault #notes #markdown
 `,
   },
   {
-    id: "subagent-swarm",
-    title: "Subagent Swarm",
-    path: ".leonidas/vault/subagent-swarm.md",
-    tags: ["agents", "orchestration", "parallel"],
-    outgoingLinks: ["leonidas-aios-architecture", "agent-velocity-engine"],
+    id: "helpers",
+    title: "Helpers",
+    path: ".leonidas/vault/helpers.md",
+    tags: ["helpers", "teamwork"],
+    outgoingLinks: ["how-leonidas-works", "chat-speed"],
     updatedAt: Date.now(),
     createdAt: Date.now(),
-    content: `# Subagent Swarm
+    content: `# Helpers
 
-High-concurrency parallel agent execution engine.
+A helper is a second AI that does one part of the work for your chat. Many helpers can work at the same time.
 
-Enables:
-- Deep research delegation
-- Automated test and build pipelines
-- Background task completion with reactive wakeup
-- Velocity metrics streamed to [[Agent Velocity Engine]]
+Helpers can:
+- Research a question for you
+- Run tests and builds
+- Finish a task in the background and tell you when it is done
+- Show how fast they work in [[Chat speed]]
 
-#agents #orchestration #parallel
+#helpers #teamwork
 `,
   },
 ];

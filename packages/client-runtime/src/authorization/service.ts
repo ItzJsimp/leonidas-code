@@ -251,7 +251,7 @@ export const make = Effect.gen(function* () {
   const sessionChanged = () =>
     new ConnectionBlockedError({
       reason: "authentication",
-      detail: "Your cloud sign-in changed. Sign in again to authorize the environment.",
+      detail: "Your cloud sign-in changed. Sign in again to authorize the computer.",
     });
 
   const assertSession = Effect.fnUntraced(function* (
@@ -332,7 +332,7 @@ export const make = Effect.gen(function* () {
             () =>
               new ConnectionBlockedError({
                 reason: "configuration",
-                detail: "Could not create the environment authorization proof.",
+                detail: "Could not create the computer authorization proof.",
               }),
           ),
         );
@@ -373,7 +373,7 @@ export const make = Effect.gen(function* () {
         () =>
           new ConnectionBlockedError({
             reason: "configuration",
-            detail: "Could not load the environment authorization key.",
+            detail: "Could not load the computer authorization key.",
           }),
       ),
       Effect.withSpan("environment.authorization.dpopKey.resolve"),
@@ -444,7 +444,7 @@ export const make = Effect.gen(function* () {
               Effect.fail(
                 new ConnectionTransientError({
                   reason: "timeout",
-                  detail: "Timed out renewing the environment credential.",
+                  detail: "Timed out renewing the computer credential.",
                 }),
               ),
           }),

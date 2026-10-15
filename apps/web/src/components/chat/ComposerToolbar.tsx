@@ -87,8 +87,8 @@ export const ComposerToolbar = memo(function ComposerToolbar(props: {
           <ComposerBanner.Root density="comfortable" width="content" data-composer-shoulder-tab>
             <ComposerBanner.Row
               render={<button type="button" />}
-              aria-label={props.collapsed ? "Expand button bar" : "Collapse button bar"}
-              title={props.collapsed ? "Expand button bar" : "Collapse button bar"}
+              aria-label={props.collapsed ? "Show button bar" : "Hide button bar"}
+              title={props.collapsed ? "Show button bar" : "Hide button bar"}
               className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
               onPointerDown={(event) => event.preventDefault()}
               onClick={() => props.onCollapsedChange(!props.collapsed)}
@@ -214,8 +214,8 @@ function CustomizePopover(props: {
             />
             <Input
               value={prompt}
-              placeholder="Prompt it fills in"
-              aria-label="Prompt the new button fills in"
+              placeholder="Message it writes"
+              aria-label="Message the new button writes"
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") addCustom();

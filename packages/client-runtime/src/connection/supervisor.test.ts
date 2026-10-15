@@ -1713,7 +1713,7 @@ describe("EnvironmentSupervisor routes", () => {
         checkRoute: () => Effect.succeed("answered"),
         prepare: (_attempt, target) =>
           target._tag === "BearerConnectionTarget"
-            ? Effect.fail(blocked("The environment credential is invalid."))
+            ? Effect.fail(blocked("The computer did not accept your sign-in. Connect it again."))
             : Effect.succeed(preparedFor(target)),
       });
       const supervisor = yield* EnvironmentSupervisor.make(LAN_THEN_RELAY_ENTRY, {

@@ -403,7 +403,7 @@ export function deriveVelocitySummary(
 /** "75%"; a turn that sent no input has no rate. */
 /** One plain sentence for the popover when the cache restarted. */
 export function formatCacheBreak(cacheBreak: CacheBreak): string {
-  return `The cache restarted: hits fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)} and ${cacheBreak.rewrittenTokens.toLocaleString()} tokens were written again. Something at the start of the prompt changed.`;
+  return `The AI had to read the chat again: saved reads fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)} and ${cacheBreak.rewrittenTokens.toLocaleString()} tokens were saved again. Something at the start of the chat changed.`;
 }
 
 export function formatCacheHitRate(rate: number | null): string {
@@ -428,7 +428,7 @@ export function formatToolWait(
 ): string {
   const { toolWaitMs, turnDurationMs } = summary;
   if (toolWaitMs === null || turnDurationMs === null || turnDurationMs <= 0) return "--";
-  return `${formatToolDuration(toolWaitMs)} (${Math.round((toolWaitMs / turnDurationMs) * 100)}% of turn)`;
+  return `${formatToolDuration(toolWaitMs)} (${Math.round((toolWaitMs / turnDurationMs) * 100)}% of the reply)`;
 }
 
 export function formatToolDuration(ms: number | null): string {

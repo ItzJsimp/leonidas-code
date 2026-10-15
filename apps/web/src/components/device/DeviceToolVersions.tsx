@@ -24,7 +24,7 @@ export function DeviceToolVersions({
       : selected?.installedVersions
           .toSorted((a, b) => a.localeCompare(b, undefined, { numeric: true }))
           .at(-1));
-  const label = kind === "hub" ? "Device hub" : "Agent device";
+  const label = kind === "hub" ? "Device support" : "AI device tools";
   return (
     <Popover>
       <PopoverTrigger
@@ -51,8 +51,8 @@ export function DeviceToolVersions({
           <div className="mt-4 divide-y divide-border/50">
             {(
               [
-                ["Device hub", tools.hub],
-                ["Agent device", tools.agent],
+                ["Device support", tools.hub],
+                ["AI device tools", tools.agent],
               ] as const
             )
               .filter(([name]) => !kind || name === label)
@@ -76,7 +76,8 @@ export function DeviceToolVersions({
           <p className="mt-3 text-xs text-muted-foreground">Versions have not been checked.</p>
         )}
         <p className="mt-4 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-          {owner ? `Managed by ${owner}. ` : ""}Tools update automatically on this host when needed.
+          {owner ? `Managed by ${owner}. ` : ""}Tools update by themselves on this computer when
+          needed.
         </p>
         {error ? (
           <p role="status" className="mt-2 text-xs text-destructive">

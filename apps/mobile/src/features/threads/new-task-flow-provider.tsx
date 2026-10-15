@@ -880,7 +880,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
             "Could not switch machine",
             error instanceof Error
               ? error.message
-              : "The folder for threads without a project could not be created.",
+              : "The folder for chats without a project could not be created.",
           );
         }
         return false;

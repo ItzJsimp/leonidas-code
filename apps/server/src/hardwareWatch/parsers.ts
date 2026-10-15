@@ -1,3 +1,5 @@
+// @effect-diagnostics globalDate:off
+// Windows sends dates as text; they are plain values here, not clock reads.
 import type {
   HardwareGpuSample,
   HardwareInventory,
@@ -28,6 +30,15 @@ export interface VolumeRef {
 }
 
 /** Fixed local drives from the inventory pass; space is sampled live with statfs. */
+/** Windows dates arrive as ISO text or as `/Date(ms)/`; both become `YYYY-MM-DD`. */
+export function wmiDate(value: unknown): string | null {
+  const text = typeof value === "string" ? value.trim() : null;
+  if (!text) return null;
+  const wmi = /\/Date\((-?\d+)/.exec(text);
+  if (wmi) return new Date(Number(wmi[1])).toISOString().slice(0, 10);
+  return text.slice(0, 10);
+}
+
 export function parseWindowsVolumes(raw: string): VolumeRef[] {
   try {
     return asArray((JSON.parse(raw) as Json).vol).flatMap((row) => {
@@ -171,7 +182,7 @@ export function parseWindowsInventory(
       name: str(gpu.Name) ?? "Unknown display adapter",
       vendor: str(gpu.AdapterCompatibility),
       driverVersion: str(gpu.DriverVersion),
-      driverDate: str(gpu.DriverDate)?.slice(0, 10) ?? null,
+      driverDate: wmiDate(gpu.DriverDate),
       // AdapterRAM is a 32-bit field and caps at 4 GiB; live samples carry the real total.
       vramBytes: num(gpu.AdapterRAM),
     })),
@@ -206,7 +217,7 @@ export function parseWindowsInventory(
       manufacturer: str(board.Manufacturer),
       product: str(board.Product),
       biosVersion: str(bios.SMBIOSBIOSVersion),
-      biosDate: str(bios.ReleaseDate)?.slice(0, 10) ?? null,
+      biosDate: wmiDate(bios.ReleaseDate),
     },
   };
 }

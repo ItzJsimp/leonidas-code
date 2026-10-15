@@ -280,20 +280,20 @@ describe("desktop update UI helpers", () => {
         downloadedVersion: "1.1.0",
       }),
     ).toBe(
-      "Install update 1.1.0 and restart Leonidas Code?\n\nAny running tasks will be interrupted. Make sure you're ready before continuing.",
+      "Install update 1.1.0 and restart Leonidas Code?\n\nAny running chat will stop. Check that you are ready, then continue.",
     );
   });
 });
 
 describe("getDesktopUpdateInstallConfirmationMessage with running chats", () => {
-  it("says how many chats will stop and points to Update when idle", () => {
+  it("says how many chats will stop and points to Update when the AI is done", () => {
     const state = { availableVersion: "1.1.0", downloadedVersion: "1.1.0" };
     expect(getDesktopUpdateInstallConfirmationMessage(state, 1)).toContain(
       "1 chat is running and will stop.",
     );
     const many = getDesktopUpdateInstallConfirmationMessage(state, 3);
     expect(many).toContain("3 chats are running and will stop.");
-    expect(many).toContain("Update when idle");
+    expect(many).toContain("Update when the AI is done");
   });
 });
 

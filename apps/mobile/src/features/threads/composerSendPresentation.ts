@@ -17,8 +17,8 @@ export interface ComposerSendPresentation {
 }
 
 const ACTION_LABEL: Record<ActiveTurnComposerAction, string> = {
-  queue: "Queue",
-  steer: "Steer",
+  queue: "Save as waiting message",
+  steer: "Send now",
   restart: "Restart",
 };
 
@@ -37,7 +37,7 @@ export function resolveComposerSendPresentation(input: {
 }): ComposerSendPresentation {
   if (input.editingQueuedMessage) {
     return {
-      label: "Update queued message",
+      label: "Update waiting message",
       icon: "checkmark",
       action: null,
       alternate: null,
@@ -46,7 +46,7 @@ export function resolveComposerSendPresentation(input: {
   }
   if (!input.running) {
     return {
-      label: input.deliveryDeferred ? "Queue" : "Send",
+      label: input.deliveryDeferred ? "Save as waiting message" : "Send",
       icon: "arrow.up",
       action: null,
       alternate: null,

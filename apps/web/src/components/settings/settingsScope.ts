@@ -72,24 +72,31 @@ export function resolveSettingsScope(
   ): ResolvedSettingsScope => ({
     kind: "unavailable",
     reason,
-    label: "Unavailable selection",
+    label: "Choice not available",
     message,
     members: [],
     environmentIds: [],
   });
 
   if (search.checkout && !search.project) {
-    return unavailable("project-required", "Select a project to choose one of its checkouts.");
+    return unavailable("project-required", "Choose a project, then choose one of its folders.");
   }
 
   const environment = environments.find((candidate) => candidate.environmentId === search.machine);
   if (search.machine && !environment) {
-    return unavailable("environment-missing", "This environment is no longer available.");
+    return unavailable(
+      "environment-missing",
+      "This computer is not available any more. Choose another computer.",
+    );
   }
 
   if (search.project) {
     const group = groups.find((candidate) => candidate.projectKey === search.project);
-    if (!group) return unavailable("project-missing", "This project is no longer available.");
+    if (!group)
+      return unavailable(
+        "project-missing",
+        "This project is not available any more. Choose another project.",
+      );
     const members = group.memberProjects.filter(
       (member) =>
         (search.machine === undefined || member.environmentId === search.machine) &&
@@ -99,8 +106,8 @@ export function resolveSettingsScope(
       return unavailable(
         "checkout-missing",
         search.checkout
-          ? "This checkout is no longer available in the selected project and environment."
-          : "This project has no checkout on this environment.",
+          ? "This folder is not available any more for the chosen project and computer. Choose another one."
+          : "This project has no folder on this computer. Choose another computer.",
       );
     }
     if (search.checkout) {
@@ -111,7 +118,7 @@ export function resolveSettingsScope(
       if (!checkoutEnvironment) {
         return unavailable(
           "environment-missing",
-          "This checkout's environment is no longer available.",
+          "The computer of this folder is not available any more. Choose another one.",
         );
       }
       const sharesEnvironment = group.memberProjects.some(
@@ -133,7 +140,7 @@ export function resolveSettingsScope(
       kind: "project",
       group,
       environmentId: environment?.environmentId ?? null,
-      label: `${group.displayName} / ${environment?.label ?? "All checkouts"}`,
+      label: `${group.displayName} / ${environment?.label ?? "All folders"}`,
       members,
       environmentIds: [...new Set(members.map((member) => member.environmentId))],
     };
@@ -149,7 +156,7 @@ export function resolveSettingsScope(
   }
   return {
     kind: "all",
-    label: "All environments",
+    label: "All computers",
     members: [],
     environmentIds: environments.map((candidate) => candidate.environmentId),
   };
