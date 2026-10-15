@@ -9,6 +9,7 @@ import { releaseProjectDraftUploads } from "../lib/composerDraftUploads";
 import { projectEnvironment } from "../state/projects";
 import { useAtomCommand } from "../state/use-atom-command";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /**
  * Removes a project whose clone never landed. The server clears the empty
@@ -36,7 +37,7 @@ export function useRemoveClonedProject() {
           stackedThreadToast({
             type: "error",
             title: "Failed to remove project",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
         return false;

@@ -176,6 +176,7 @@ import {
 } from "./pullRequestPresentation";
 import { PullRequestGlyph } from "./pullRequestIcons";
 import { useInlineActionConfirm } from "./useInlineActionConfirm";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type DetailTab = "summary" | "timeline" | "code";
 
@@ -737,7 +738,7 @@ export function PullRequestDetailPanel({
       toastManager.add({
         type: "error",
         title: `Failed to copy ${label}`,
-        description: error.message,
+        ...userErrorToastFields(error),
       }),
   });
   const copyFromShortcut = useEffectEvent((event: KeyboardEvent) => {
@@ -785,7 +786,7 @@ export function PullRequestDetailPanel({
     toastManager.add({
       type: "error",
       title: "Could not copy checkout command",
-      description: error.message,
+      ...userErrorToastFields(error),
     });
   }, []);
   const branchRefsQuery = useEnvironmentQuery(

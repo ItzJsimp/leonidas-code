@@ -95,6 +95,7 @@ import {
   resolveTerminalFontSizePreference,
   TYPOGRAPHY_ADVANCED_STORAGE_KEY,
 } from "../appearanceFonts";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const MIN_DRAWER_HEIGHT = 180;
 const MAX_DRAWER_HEIGHT_RATIO = 0.75;
@@ -890,7 +891,7 @@ export function TerminalViewport({
               stackedThreadToast({
                 type: "error",
                 title: "Unable to open link",
-                description: error instanceof Error ? error.message : "An error occurred.",
+                ...userErrorToastFields(error),
               }),
             );
           });

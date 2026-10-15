@@ -92,6 +92,7 @@ import {
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { observeResize } from "~/lib/observeResize";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface Props {
   threadRef: ScopedThreadRef;
@@ -284,7 +285,7 @@ export function PreviewView({
           toastManager.add({
             type: "error",
             title: "Unable to open browser",
-            description: error.message,
+            ...userErrorToastFields(error),
           });
         }
       }
@@ -343,7 +344,7 @@ export function PreviewView({
         toastManager.add({
           type: "error",
           title: "Unable to change the browser tab",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          ...userErrorToastFields(error),
         });
         return;
       }
@@ -401,7 +402,7 @@ export function PreviewView({
         toastManager.add({
           type: "error",
           title: "Unable to resize browser viewport",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          ...userErrorToastFields(error),
         });
         throw error;
       }
@@ -481,7 +482,7 @@ export function PreviewView({
       toastManager.add({
         type: "error",
         title: "Unable to move the browser tab",
-        description: error instanceof Error ? error.message : "An error occurred.",
+        ...userErrorToastFields(error),
       });
       return;
     }
@@ -555,7 +556,7 @@ export function PreviewView({
       toastManager.add({
         type: "error",
         title: "Unable to update popped-out preview",
-        description: error instanceof Error ? error.message : "An error occurred.",
+        ...userErrorToastFields(error),
       });
     });
   }, [desktopOverlay?.pictureInPicture, runtimeTabId]);
@@ -600,7 +601,7 @@ export function PreviewView({
                     stackedThreadToast({
                       type: "error",
                       title: "Unable to copy recording path",
-                      description: error instanceof Error ? error.message : "An error occurred.",
+                      ...userErrorToastFields(error),
                       actionProps: revealAction,
                     }),
                   );
@@ -650,7 +651,7 @@ export function PreviewView({
             toastManager.add({
               type: "error",
               title: "Unable to stop recording",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              ...userErrorToastFields(error),
             });
           },
         );
@@ -793,7 +794,7 @@ export function PreviewView({
           toastManager.add({
             type: "error",
             title: "Unable to capture screenshot",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           });
         },
       );

@@ -39,6 +39,8 @@ export type ThreadToastData = {
   onClose?: (() => void) | undefined;
   dismissAfterVisibleMs?: number;
   hideCopyButton?: boolean;
+  /** Full error text for the copy button when the description is only the short form. */
+  copyText?: string;
   additionalActions?: ReadonlyArray<{
     id: string;
     props: ComponentPropsWithoutRef<"button">;
@@ -285,7 +287,7 @@ function deriveToastBodyDescriptor(toast: {
     toast.data?.secondaryActionVariant ?? "outline";
   const copyErrorText =
     toast.type === "error" && typeof toast.description === "string" && !toast.data?.hideCopyButton
-      ? toast.description
+      ? (toast.data?.copyText ?? toast.description)
       : null;
   const hasAdditionalActions = (toast.data?.additionalActions?.length ?? 0) > 0;
   const hasSecondaryAction = toast.data?.secondaryActionProps !== undefined;

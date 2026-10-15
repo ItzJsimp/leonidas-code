@@ -23,6 +23,7 @@ import { useAtomCommand } from "../state/use-atom-command";
 import { type DraftId, useComposerDraftStore } from "../composerDraftStore";
 import { toastManager } from "./ui/toast";
 import { stackedThreadToast } from "./ui/toastHelpers";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /**
  * One toast per clone in flight, on every environment. The palette that
@@ -72,7 +73,7 @@ function EnvironmentCloneToasts({ environmentId }: { environmentId: EnvironmentI
           stackedThreadToast({
             type: "error",
             title,
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       }

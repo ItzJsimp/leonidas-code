@@ -39,6 +39,7 @@ import { SettingsPageContainer, SettingsSection, useRelativeTimeTick } from "./s
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { TelemetryExportSettings } from "./TelemetryExportSettings";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const NUMBER_FORMAT = new Intl.NumberFormat();
 
@@ -855,7 +856,7 @@ export function DiagnosticsSettingsPanel() {
           toastManager.add({
             type: "error",
             title: "Could not confirm signal",
-            description: error instanceof Error ? error.message : `Failed to send ${signal}.`,
+            ...userErrorToastFields(error),
           });
           return;
         }
@@ -892,7 +893,7 @@ export function DiagnosticsSettingsPanel() {
             toastManager.add({
               type: "error",
               title: `Could not send ${signal}`,
-              description: error instanceof Error ? error.message : `Failed to send ${signal}.`,
+              ...userErrorToastFields(error),
             });
           }
           return;

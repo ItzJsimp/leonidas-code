@@ -189,6 +189,7 @@ import {
 import { searchableSetting } from "./settingsSearch";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
   artwork: "Artwork",
@@ -330,7 +331,7 @@ function AboutVersionSection() {
             stackedThreadToast({
               type: "error",
               title: "Could not change update track",
-              description: error instanceof Error ? error.message : "Update track change failed.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -353,7 +354,7 @@ function AboutVersionSection() {
           stackedThreadToast({
             type: "error",
             title: "Could not download update",
-            description: error instanceof Error ? error.message : "Download failed.",
+            ...userErrorToastFields(error),
           }),
         );
       });
@@ -376,7 +377,7 @@ function AboutVersionSection() {
           stackedThreadToast({
             type: "error",
             title: "Could not confirm update",
-            description: error instanceof Error ? error.message : "Update confirmation failed.",
+            ...userErrorToastFields(error),
           }),
         );
         return;
@@ -392,7 +393,7 @@ function AboutVersionSection() {
             stackedThreadToast({
               type: "error",
               title: "Could not install update",
-              description: error instanceof Error ? error.message : "Install failed.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -419,7 +420,7 @@ function AboutVersionSection() {
           stackedThreadToast({
             type: "error",
             title: "Could not check for updates",
-            description: error instanceof Error ? error.message : "Update check failed.",
+            ...userErrorToastFields(error),
           }),
         );
       });
@@ -3749,7 +3750,7 @@ export function ArchivedThreadsPanel() {
             stackedThreadToast({
               type: "error",
               title: "Failed to unarchive thread",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3766,7 +3767,7 @@ export function ArchivedThreadsPanel() {
             stackedThreadToast({
               type: "error",
               title: "Failed to delete thread",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3833,8 +3834,7 @@ export function ArchivedThreadsPanel() {
                         stackedThreadToast({
                           type: "error",
                           title: "Archived thread action failed",
-                          description:
-                            error instanceof Error ? error.message : "An error occurred.",
+                          ...userErrorToastFields(error),
                         }),
                       );
                     }
@@ -3869,8 +3869,7 @@ export function ArchivedThreadsPanel() {
                             stackedThreadToast({
                               type: "error",
                               title: "Failed to unarchive thread",
-                              description:
-                                error instanceof Error ? error.message : "An error occurred.",
+                              ...userErrorToastFields(error),
                             }),
                           );
                         }

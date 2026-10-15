@@ -70,6 +70,7 @@ import { measureRestingComposerControls } from "./chat/restingComposerControlsMe
 import { resolveRestingComposerControlsNaturalWidth } from "./composerFooterLayout";
 import { cn } from "~/lib/utils";
 import { observeResize } from "~/lib/observeResize";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 export interface BranchToolbarHandle {
   openBranchPicker: () => void;
@@ -130,7 +131,7 @@ function showWorkspaceContextMenu(event: ReactMouseEvent, workspacePath: string)
             stackedThreadToast({
               type: "error",
               title: "Failed to copy path",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         },

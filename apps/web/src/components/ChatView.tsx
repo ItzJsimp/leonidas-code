@@ -638,6 +638,7 @@ const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PROVIDER_MODELS: ServerProvider["models"] = [];
 const EMPTY_USAGE_LIMIT_SOURCES: UsageLimitSourceSnapshots = [];
 import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplates";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const TIMELINE_SCROLL_CANCEL_SENTINEL = Object.freeze({});
 const EMPTY_FEEDBACK_SUBMISSIONS: ReadonlyArray<CodexFeedbackSubmission> = [];
@@ -2556,7 +2557,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title,
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -2761,7 +2762,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not reconnect environment",
-            description: error instanceof Error ? error.message : "Failed to reconnect.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -2789,7 +2790,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Could not disconnect server",
-              description: error instanceof Error ? error.message : "Failed to disconnect.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -3821,7 +3822,7 @@ export default function ChatView(props: ChatViewProps) {
         toastManager.add({
           type: "error",
           title: "Could not download " + attachment.name,
-          description: error instanceof Error ? error.message : "The attachment is unavailable.",
+          ...userErrorToastFields(error),
         });
       }
     },
@@ -5150,7 +5151,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Could not open preview",
-              description: error instanceof Error ? error.message : "An unexpected error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -5425,7 +5426,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not delete action",
-            description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -5505,7 +5506,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Unable to open browser",
-              description: error.message,
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -6377,7 +6378,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Failed to copy path",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       },
@@ -7269,7 +7270,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: target.failureTitle,
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       },
@@ -7381,7 +7382,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Failed to un-settle thread",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -7427,7 +7428,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Failed to wake thread",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -8488,7 +8489,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Failed to settle thread",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         });
@@ -8509,7 +8510,7 @@ export default function ChatView(props: ChatViewProps) {
               stackedThreadToast({
                 type: "error",
                 title: pinned ? "Failed to unpin thread" : "Failed to pin thread",
-                description: error instanceof Error ? error.message : "An error occurred.",
+                ...userErrorToastFields(error),
               }),
             );
           },
@@ -10121,7 +10122,7 @@ export default function ChatView(props: ChatViewProps) {
                 stackedThreadToast({
                   type: "error",
                   title: `Could not start ${target.selection.model}`,
-                  description: error instanceof Error ? error.message : "Failed to send message.",
+                  ...userErrorToastFields(error),
                   ...(retainedThreadId
                     ? {
                         timeout: 0,
@@ -10515,7 +10516,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "warning",
               title: "Could not open a fresh composer",
-              description: error instanceof Error ? error.message : undefined,
+              ...userErrorToastFields(error),
             }),
           );
         }
@@ -10632,7 +10633,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Background task failed",
-              description: error instanceof Error ? error.message : "Failed to send message.",
+              ...userErrorToastFields(error),
               actionProps: {
                 children: "Open draft",
                 onClick: () => {
@@ -11191,10 +11192,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Could not start implementation thread",
-            description:
-              error instanceof Error
-                ? error.message
-                : "An error occurred while creating the new thread.",
+            ...userErrorToastFields(error),
           }),
         );
       }

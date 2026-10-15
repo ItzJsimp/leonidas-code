@@ -1,5 +1,6 @@
 import type { OrchestrationV2ProviderFailureClass } from "@t3tools/contracts";
-import { memo, useEffect } from "react";
+import { describeUserError } from "@t3tools/shared/userError";
+import { memo, useEffect, useMemo } from "react";
 import { writeTextToClipboard } from "../../hooks/useCopyToClipboard";
 import { toastManager } from "../ui/toast";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
@@ -7,9 +8,9 @@ import { recordFeedbackError } from "../feedback/feedbackContext";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { CircleAlertIcon, XIcon } from "lucide-react";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { OpenAI } from "../Icons";
 import { ChatGptUsageButton } from "../settings/ChatGptUsageButton";
+import { runUserErrorAction, userErrorToastFields } from "~/lib/userErrorToast";
 
 export function getThreadErrorBannerKey(threadKey: string, error: string | null): string | null {
   return error === null ? null : `${threadKey}\u0000${error}`;
@@ -32,7 +33,7 @@ function splitErrorCauseChain(error: string): string[] {
 
 function ThreadErrorDetails({ error }: { error: string }) {
   const chain = splitErrorCauseChain(error);
-  if (chain.length === 0) return null;
+  const lines = chain.length === 0 ? [error] : chain;
   return (
     <Collapsible className="mt-1">
       <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground">
@@ -44,7 +45,7 @@ function ThreadErrorDetails({ error }: { error: string }) {
             data-testid="thread-error-details"
             className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs"
           >
-            {chain.map((line, index) => (index === 0 ? line : `Caused by: ${line}`)).join("\n")}
+            {lines.map((line, index) => (index === 0 ? line : `Caused by: ${line}`)).join("\n")}
           </pre>
           <Button
             variant="ghost"
@@ -54,8 +55,7 @@ function ThreadErrorDetails({ error }: { error: string }) {
                 toastManager.add({
                   type: "error",
                   title: "Could not copy error details",
-                  description:
-                    copyError instanceof Error ? copyError.message : "An error occurred.",
+                  ...userErrorToastFields(copyError),
                 });
               });
             }}
@@ -99,7 +99,11 @@ export const ThreadErrorBanner = memo(function ThreadErrorBanner({
   useEffect(() => {
     if (error) recordFeedbackError(error);
   }, [error]);
-  if (!error) return null;
+  const userError = useMemo(
+    () => (error ? describeUserError(error, { providerClass: errorClass ?? null }) : null),
+    [error, errorClass],
+  );
+  if (!error || !userError) return null;
   const variant = errorClass === "usage_limit" ? "warning" : "error";
   return (
     <div
@@ -119,25 +123,32 @@ export const ThreadErrorBanner = memo(function ThreadErrorBanner({
               <p>Review your usage settings in ChatGPT to continue.</p>
             </div>
           ) : (
-            <Tooltip>
-              <TooltipTrigger render={<div className="line-clamp-3" />}>{error}</TooltipTrigger>
-              <TooltipPopup side="top" className="whitespace-pre-wrap">
-                {error}
-              </TooltipPopup>
-            </Tooltip>
+            <div className="space-y-1" data-testid="thread-error-summary">
+              <p className="font-medium">{userError.title}</p>
+              <p>{userError.reason}</p>
+            </div>
           )}
           {chatGptUsageLimit ? null : <ThreadErrorDetails error={error} />}
         </AlertDescription>
-        {(chatGptUsageLimit || onDismiss) && (
-          <AlertAction>
-            {chatGptUsageLimit ? <ChatGptUsageButton variant="default" size="sm" /> : null}
-            {onDismiss ? (
-              <Button variant="ghost" size="icon-xs" aria-label="Dismiss error" onClick={onDismiss}>
-                <XIcon />
-              </Button>
-            ) : null}
-          </AlertAction>
-        )}
+        <AlertAction>
+          {chatGptUsageLimit ? (
+            <ChatGptUsageButton variant="default" size="sm" />
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="thread-error-action"
+              onClick={() => runUserErrorAction(userError)}
+            >
+              {userError.action.label}
+            </Button>
+          )}
+          {onDismiss ? (
+            <Button variant="ghost" size="icon-xs" aria-label="Dismiss error" onClick={onDismiss}>
+              <XIcon />
+            </Button>
+          ) : null}
+        </AlertAction>
       </Alert>
     </div>
   );

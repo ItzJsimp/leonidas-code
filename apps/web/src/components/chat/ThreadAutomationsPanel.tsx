@@ -29,6 +29,7 @@ import {
   THREAD_DETAILS_PANEL_ICON_CLASS,
   THREAD_DETAILS_PANEL_ROW_CONTENT_CLASS,
 } from "./threadDetailsPanelStyles";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const STATUS_DOT_CLASS: Record<ScheduledTask["lastRunStatus"], string> = {
   never: "bg-muted-foreground/40",
@@ -75,7 +76,7 @@ export function ThreadAutomationsPanel(props: {
       stackedThreadToast({
         type: "error",
         title,
-        description: error instanceof Error ? error.message : String(error),
+        ...userErrorToastFields(error),
       }),
     );
   };

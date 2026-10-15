@@ -29,9 +29,21 @@ afterEach(() => {
   copy.mockClear();
 });
 
-it("shows no Details expander when the error has no cause chain", async () => {
-  const { container, root } = await mount("Provider turn failed.");
-  expect(trigger(container)).toBeUndefined();
+it("shows the plain summary and one action, with the raw error only under Details", async () => {
+  const { container, root } = await mount("Claude usage limit reached. Resets at 5pm.");
+  const summary = container.querySelector("[data-testid=thread-error-summary]");
+  expect(summary?.textContent).toBe(
+    "The provider usage limit is reached.This account used all of its allowance for now.",
+  );
+  expect(container.querySelector("[data-testid=thread-error-action]")?.textContent).toBe(
+    "View usage",
+  );
+  expect(container.querySelector("[data-testid=thread-error-details]")).toBeNull();
+
+  await act(async () => trigger(container)?.click());
+  expect(container.querySelector("[data-testid=thread-error-details]")?.textContent).toBe(
+    "Claude usage limit reached. Resets at 5pm.",
+  );
   await act(async () => root.unmount());
 });
 

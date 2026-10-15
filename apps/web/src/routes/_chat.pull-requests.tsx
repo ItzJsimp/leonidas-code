@@ -165,6 +165,7 @@ import { Separator } from "~/components/ui/separator";
 import { primaryServerKeybindingsAtom } from "~/state/server";
 import { getSourceControlPresentationForKind } from "~/sourceControlPresentation";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function getShortcutContext() {
   return {
@@ -2181,7 +2182,7 @@ function PullRequestsRouteView() {
         toastManager.add({
           type: "error",
           title: "Failed to copy PR link",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          ...userErrorToastFields(error),
         });
       },
     );

@@ -31,6 +31,7 @@ import {
   shouldShowDesktopUpdateCheckIcon,
 } from "./DesktopUpdateStatusIcon";
 import { SidebarUpdateReleaseNotes } from "./SidebarUpdateReleaseNotes";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type SidebarUpdatePopoverChangeDetails = Parameters<
   NonNullable<ComponentProps<typeof Popover>["onOpenChange"]>
@@ -219,7 +220,7 @@ function SidebarUpdateControl() {
             stackedThreadToast({
               type: "error",
               title: "Could not start update download",
-              description: error instanceof Error ? error.message : "An unexpected error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -239,7 +240,7 @@ function SidebarUpdateControl() {
           stackedThreadToast({
             type: "error",
             title: "Could not confirm update",
-            description: error instanceof Error ? error.message : "Update confirmation failed.",
+            ...userErrorToastFields(error),
           }),
         );
         return;
@@ -267,7 +268,7 @@ function SidebarUpdateControl() {
             stackedThreadToast({
               type: "error",
               title: "Could not install update",
-              description: error instanceof Error ? error.message : "An unexpected error occurred.",
+              ...userErrorToastFields(error),
             }),
           );
         })
@@ -296,7 +297,7 @@ function SidebarUpdateControl() {
           stackedThreadToast({
             type: "error",
             title: "Could not check for updates",
-            description: error instanceof Error ? error.message : "Update check failed.",
+            ...userErrorToastFields(error),
           }),
         );
       })

@@ -41,6 +41,7 @@ import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 import { useClientSettings } from "../../hooks/useSettings";
 import { LocalVmPanel } from "../localVm/LocalVmPanel";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface ChatHeaderProps {
   goalControls?: ReactNode;
@@ -199,7 +200,7 @@ export const ChatHeader = memo(function ChatHeader({
           toastManager.add({
             type: "error",
             title: "Failed to rename thread",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...userErrorToastFields(error),
           });
         }
       });

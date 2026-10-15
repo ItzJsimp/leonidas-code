@@ -76,6 +76,7 @@ import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsL
 import { keybindingSearchAnchorId, searchableSetting } from "./settingsSearch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function KeybindingPill({ value }: { value: string }) {
   // Keys dedupe repeated parts; a literal "+" in a shortcut splits into empty strings.
@@ -257,8 +258,8 @@ function UnknownWhenVariableWarning({
 
   return (
     <WarningTooltipIcon label={label} focusable={focusable} className="size-4.5">
-      Leonidas Code does not recognize this condition yet. It can still be saved, but it may not match
-      unless the runtime provides it.
+      Leonidas Code does not recognize this condition yet. It can still be saved, but it may not
+      match unless the runtime provides it.
     </WarningTooltipIcon>
   );
 }
@@ -1354,8 +1355,7 @@ export function KeybindingsSettingsPanel() {
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         title: "Unable to open keybindings file",
-        description:
-          error instanceof Error ? error.message : "The keybindings file was not opened.",
+        ...userErrorToastFields(error),
         type: "error",
       });
     })();
@@ -1393,7 +1393,7 @@ export function KeybindingsSettingsPanel() {
           const error = squashAtomCommandFailure(failed);
           toastManager.add({
             title: "Unable to save keybinding",
-            description: error instanceof Error ? error.message : "The keybinding was not saved.",
+            ...userErrorToastFields(error),
             type: "error",
           });
         }
@@ -1427,7 +1427,7 @@ export function KeybindingsSettingsPanel() {
           const error = squashAtomCommandFailure(result);
           toastManager.add({
             title: "Unable to remove keybinding",
-            description: error instanceof Error ? error.message : "The keybinding was not removed.",
+            ...userErrorToastFields(error),
             type: "error",
           });
         }

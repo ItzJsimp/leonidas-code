@@ -8,6 +8,7 @@ import {
 } from "./desktopUpdate.logic";
 import { toastManager } from "./ui/toast";
 import { playUpdateReadySound } from "./desktop/updateReadySound";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 type DesktopUpdateShell = Pick<DesktopBridge, "openExternal">;
 
@@ -119,7 +120,7 @@ export async function checkForDesktopUpdateWithFeedback(
       toastManager.add({
         type: "error",
         title: "Could not check for updates",
-        description: state.message ?? "Update check failed.",
+        ...userErrorToastFields(state.message ?? "Update check failed.", { area: "update" }),
       });
     }
   };

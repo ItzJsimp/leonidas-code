@@ -35,6 +35,7 @@ import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
 import type { NewProjectScriptInput } from "../projectScriptEditor";
 import { toastManager } from "../ui/toast";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function reportScriptFailure(result: AtomCommandResult<unknown, unknown>) {
   if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
@@ -42,7 +43,7 @@ function reportScriptFailure(result: AtomCommandResult<unknown, unknown>) {
     toastManager.add({
       type: "error",
       title: "Failed to save project actions",
-      description: error instanceof Error ? error.message : "An error occurred.",
+      ...userErrorToastFields(error),
     });
   }
   return mapAtomCommandResult(result, () => undefined);

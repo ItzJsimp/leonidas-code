@@ -542,6 +542,10 @@
     "./usageForecast": {
       "types": "./src/usageForecast.ts",
       "import": "./src/usageForecast.ts"
+    },
+    "./userError": {
+      "types": "./src/userError.ts",
+      "import": "./src/userError.ts"
     }
   },
   "scripts": {

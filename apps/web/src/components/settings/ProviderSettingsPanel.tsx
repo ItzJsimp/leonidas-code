@@ -124,6 +124,7 @@ import {
   resolveRemoteOperateAccess,
   resolveSelectedProviderEnvironmentId,
 } from "./ProviderSettingsPanel.logic";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function modelListChanges(current: ReadonlyArray<string>, next: ReadonlyArray<string>) {
   const currentSet = new Set(current);
@@ -608,8 +609,7 @@ export function EnvironmentProviderSettings({
           toastManager.add({
             type: "error",
             title: "Could not continue authentication",
-            description:
-              error instanceof Error ? error.message : "The authentication request expired.",
+            ...userErrorToastFields(error),
           });
         }
       });
@@ -702,10 +702,7 @@ export function EnvironmentProviderSettings({
           stackedThreadToast({
             type: "error",
             title: `Could not update ${PROVIDER_DISPLAY_NAMES[candidate.driver] ?? candidate.driver}`,
-            description:
-              error instanceof Error
-                ? error.message
-                : "The provider update command could not be started.",
+            ...userErrorToastFields(error),
           }),
         );
       }
@@ -826,7 +823,7 @@ export function EnvironmentProviderSettings({
       toastManager.add({
         type: "error",
         title: "Could not update provider instance",
-        description: error instanceof Error ? error.message : "The settings update failed.",
+        ...userErrorToastFields(error),
       });
     }
   };
@@ -841,7 +838,7 @@ export function EnvironmentProviderSettings({
       toastManager.add({
         type: "error",
         title: "Could not delete provider instance",
-        description: error instanceof Error ? error.message : "The settings update failed.",
+        ...userErrorToastFields(error),
       });
       return;
     }
@@ -863,7 +860,7 @@ export function EnvironmentProviderSettings({
       toastManager.add({
         type: "warning",
         title: "Provider deleted, but managed files remain",
-        description: error instanceof Error ? error.message : "Managed binary cleanup failed.",
+        ...userErrorToastFields(error),
       });
     }
   };
@@ -878,7 +875,7 @@ export function EnvironmentProviderSettings({
       toastManager.add({
         type: "error",
         title: "Could not reset provider instance",
-        description: error instanceof Error ? error.message : "The settings update failed.",
+        ...userErrorToastFields(error),
       });
     }
   };

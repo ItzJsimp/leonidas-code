@@ -68,6 +68,7 @@ import {
   getProviderVersionLabel,
   type ProviderStatusKey,
 } from "./providerStatus";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const ENVIRONMENT_VARIABLE_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -643,7 +644,7 @@ export function ProviderInstanceCard({
         stackedThreadToast({
           type: "error",
           title: `Could not copy ${providerName} update command`,
-          description: error.message,
+          ...userErrorToastFields(error),
         }),
       );
     },

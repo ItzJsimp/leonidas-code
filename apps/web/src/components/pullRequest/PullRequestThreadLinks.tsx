@@ -19,6 +19,7 @@ import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { MenuItem } from "../ui/menu";
 import { toastManager } from "../ui/toast";
 import { PullRequestGlyph } from "./pullRequestIcons";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface PullRequestThreadLinksProps {
   environmentId: EnvironmentId;
@@ -82,7 +83,7 @@ function EnabledPullRequestThreadLinks({
       toastManager.add({
         type: "error",
         title: remove ? "Could not unlink the pull request" : "Could not link the pull request",
-        description: error instanceof Error ? error.message : String(error),
+        ...userErrorToastFields(error),
       });
       return;
     } finally {

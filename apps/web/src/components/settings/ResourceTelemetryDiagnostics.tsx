@@ -58,6 +58,7 @@ import {
   visibleResourceTelemetryProcesses,
 } from "./ResourceTelemetryDiagnostics.logic";
 import { SettingsSection, useRelativeTimeTick } from "./settingsLayout";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const HISTORY_WINDOWS = [
   { label: "5m", windowMs: 5 * 60_000, bucketMs: 15_000 },
@@ -877,7 +878,7 @@ export function ResourceTelemetryDiagnostics({
           toastManager.add({
             type: "error",
             title: "Could not confirm signal",
-            description: error instanceof Error ? error.message : `Failed to send ${signal}.`,
+            ...userErrorToastFields(error),
           });
           return;
         }
@@ -920,7 +921,7 @@ export function ResourceTelemetryDiagnostics({
           toastManager.add({
             type: "error",
             title: `Could not send ${signal}`,
-            description: error instanceof Error ? error.message : `Failed to send ${signal}.`,
+            ...userErrorToastFields(error),
           });
         })
         .finally(() => {
@@ -943,8 +944,7 @@ export function ResourceTelemetryDiagnostics({
         toastManager.add({
           type: "error",
           title: "Could not restart resource monitor",
-          description:
-            error instanceof Error ? error.message : "The resource monitor retry failed.",
+          ...userErrorToastFields(error),
         });
       })
       .finally(() => {
@@ -1283,8 +1283,8 @@ export function ResourceTelemetryDiagnostics({
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xs/5">
           <div className="bg-muted/15 px-4 py-3 text-2xs leading-relaxed text-muted-foreground sm:px-5">
             Native counters identify which process is reading or writing. These application-level
-            counters identify known Leonidas operations so process spikes can be correlated with specific
-            persistence and logging paths.
+            counters identify known Leonidas operations so process spikes can be correlated with
+            specific persistence and logging paths.
           </div>
           <AttributionTable entries={snapshot?.attribution.entries ?? []} />
         </div>

@@ -26,6 +26,7 @@ import {
   FileSurfaceLoading,
   FileSurfaceNotice,
 } from "./fileSurfaceChrome";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 const SourcePreview = lazy(() => import("./ReadOnlySourcePreview"));
 
@@ -214,7 +215,7 @@ export function AttachmentFilePreview(props: {
         toastManager.add({
           type: "error",
           title: "Could not save file",
-          description: cause instanceof Error ? cause.message : "Please try again.",
+          ...userErrorToastFields(cause),
         });
       } finally {
         setSaving(false);

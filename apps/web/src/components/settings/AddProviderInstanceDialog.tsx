@@ -54,6 +54,7 @@ import { ProviderWizardAuthenticationStep } from "./ProviderWizardAuthentication
 import { resolveOfficialAcpRegistryIconUrl } from "./AcpRegistryIcon";
 import { AddManagedCodexAccountDialog } from "./CodexSetupSection";
 import { ProviderEnvironmentSection } from "./ProviderInstanceCard";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 /**
  * Normalize a user-provided label into a slug suffix for the instance id.
@@ -343,7 +344,7 @@ export function AddProviderInstanceDialog({
       toastManager.add({
         type: "error",
         title: "Could not add provider instance",
-        description: error instanceof Error ? error.message : "The settings update failed.",
+        ...userErrorToastFields(error),
       });
       return;
     }

@@ -13,13 +13,14 @@ import { useEnvironments } from "~/state/environments";
 import { projectEnvironment } from "~/state/projects";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { useNewThreadHandler } from "./useHandleNewThread";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 function reportScratchFailure(title: string, error: unknown) {
   toastManager.add(
     stackedThreadToast({
       type: "error",
       title,
-      description: error instanceof Error ? error.message : "An error occurred.",
+      ...userErrorToastFields(error),
     }),
   );
 }

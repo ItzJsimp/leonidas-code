@@ -27,6 +27,7 @@ import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { toastManager } from "../ui/toast";
 import { SettingsRow } from "./settingsLayout";
+import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface AcpSessionProject {
   readonly id: ProjectId;
@@ -40,7 +41,7 @@ function reportFailure(title: string, result: AtomCommandResult<unknown, unknown
   toastManager.add({
     type: "error",
     title,
-    description: error instanceof Error ? error.message : "The ACP operation failed.",
+    ...userErrorToastFields(error),
   });
 }
 
@@ -238,7 +239,7 @@ export function AcpSessionManagementSection(props: {
         toastManager.add({
           type: "error",
           title: "Invalid provider headers",
-          description: error instanceof Error ? error.message : "Headers must be valid JSON.",
+          ...userErrorToastFields(error),
         });
         return;
       }
