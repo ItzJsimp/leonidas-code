@@ -1,6 +1,14 @@
 import { assert, it } from "@effect/vitest";
 
-import { applyPreferredCodexDefaultModel, mapCodexModelCapabilities } from "./CodexProvider.ts";
+import * as Effect from "effect/Effect";
+import * as NodeFSP from "node:fs/promises";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
+import {
+  applyPreferredCodexDefaultModel,
+  mapCodexModelCapabilities,
+  withCodexSkillGrouping,
+} from "./CodexProvider.ts";
 
 it("maps current Codex model capability fields", () => {
   const capabilities = mapCodexModelCapabilities({
@@ -171,3 +179,37 @@ it("ignores custom models that shadow a preferred slug", () => {
 
   assert.deepStrictEqual(models.find((model) => model.isDefault)?.slug, "gpt-5.4");
 });
+
+it.effect("adds category and source from SKILL.md and keeps an unreadable skill as listed", () =>
+  Effect.gen(function* () {
+    const dir = yield* Effect.promise(() =>
+      NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "codex-skill-")),
+    );
+    const path = NodePath.join(dir, "SKILL.md");
+    yield* Effect.promise(() =>
+      NodeFSP.writeFile(
+        path,
+        [
+          "---",
+          "name: tdd",
+          "category: code",
+          "source: https://github.com/mattpocock/skills",
+          "---",
+          "body",
+        ].join("\n"),
+      ),
+    );
+    const skills = yield* withCodexSkillGrouping([
+      { name: "tdd", path, enabled: true },
+      { name: "gone", path: NodePath.join(dir, "missing.md"), enabled: true },
+    ]);
+    assert.strictEqual(skills[0]?.category, "code");
+    assert.strictEqual(skills[0]?.source, "https://github.com/mattpocock/skills");
+    assert.deepEqual(skills[1], {
+      name: "gone",
+      path: NodePath.join(dir, "missing.md"),
+      enabled: true,
+    });
+    yield* Effect.promise(() => NodeFSP.rm(dir, { recursive: true, force: true }));
+  }),
+);

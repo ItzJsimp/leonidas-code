@@ -121,6 +121,19 @@ function parseSkillFrontmatter(contents: string): SkillFrontmatter {
   };
 }
 
+/** The `category` and `source` frontmatter of a SKILL.md text, for providers that list skills without them. */
+export function readSkillGrouping(contents: string): {
+  readonly category?: string;
+  readonly source?: string;
+} {
+  const frontmatter = parseSkillFrontmatter(contents);
+  if (frontmatter.kind !== "parsed") return {};
+  return {
+    ...(frontmatter.category ? { category: frontmatter.category } : {}),
+    ...(frontmatter.source ? { source: frontmatter.source } : {}),
+  };
+}
+
 /**
  * Where an administrator installs the policy file whose settings outrank every
  * user and project one. Absent on almost every machine, which is why a missing

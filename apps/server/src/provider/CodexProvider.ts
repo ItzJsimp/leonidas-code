@@ -8,6 +8,7 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Types from "effect/Types";
+import * as NodeFSP from "node:fs/promises";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import * as CodexClient from "effect-codex-app-server/client";
@@ -33,6 +34,7 @@ import {
   readCustomModelEntries,
 } from "@t3tools/shared/model";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import { readSkillGrouping } from "./Drivers/ClaudeSkills.ts";
 import { codexAppServerArgs, resolveCodexLaunchArgs } from "./codexLaunchArgs.ts";
 import {
   AUTH_PROBE_TIMEOUT_MS,
@@ -299,6 +301,26 @@ function appendCustomCodexModels(
   return customEntries.length === 0 ? models : [...models, ...customEntries];
 }
 
+/**
+ * Codex lists skills without their `category` and `source` frontmatter, so the slash menu could not
+ * group them. Read each SKILL.md once per probe. A file that cannot be read keeps the skill as listed.
+ */
+export const withCodexSkillGrouping = (
+  skills: ReadonlyArray<ServerProviderSkill>,
+): Effect.Effect<ReadonlyArray<ServerProviderSkill>> =>
+  Effect.forEach(
+    skills,
+    (skill) =>
+      Effect.tryPromise(() => NodeFSP.readFile(skill.path, "utf8")).pipe(
+        Effect.map((contents): ServerProviderSkill => ({
+          ...skill,
+          ...readSkillGrouping(contents),
+        })),
+        Effect.orElseSucceed(() => skill),
+      ),
+    { concurrency: 16 },
+  );
+
 export function parseCodexSkillsListResponse(
   response: CodexSchema.V2SkillsListResponse,
   cwd: string,
@@ -489,7 +511,7 @@ const probeCodexAppServerProvider = Effect.fn("probeCodexAppServerProvider")(fun
     models: applyPreferredCodexDefaultModel(
       appendCustomCodexModels(models, input.customModels ?? []),
     ),
-    skills: parseCodexSkillsListResponse(skillsResponse, input.cwd),
+    skills: yield* withCodexSkillGrouping(parseCodexSkillsListResponse(skillsResponse, input.cwd)),
   } satisfies CodexAppServerProviderSnapshot;
 });
 
@@ -506,7 +528,9 @@ export const probeCodexSkillsForCwd = Effect.fn("probeCodexSkillsForCwd")(functi
   }
   const { client } = yield* withCodexAppServerClient(input);
   const skillsResponse = yield* client.request("skills/list", { cwds: [input.cwd] });
-  const skills = parseCodexSkillsListResponse(skillsResponse, input.cwd);
+  const skills = yield* withCodexSkillGrouping(
+    parseCodexSkillsListResponse(skillsResponse, input.cwd),
+  );
   codexSkillsProbeCache.set(input.cwd, {
     expiresAt: (yield* Clock.currentTimeMillis) + CODEX_SKILLS_PROBE_CACHE_TTL_MS,
     skills,
