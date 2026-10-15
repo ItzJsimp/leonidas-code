@@ -121,6 +121,40 @@ describe("T3 orchestration provider instructions", () => {
     assert.notInclude(withoutMcp, "T3_ACP_MCP_NODE");
   });
 
+  it("injects the browser block only when browser tools are live", () => {
+    const build = (hasBrowserTools: boolean) =>
+      t3AcpPromptWithInstructions({
+        prompt: "x",
+        state: { interactionMode: "default", hasT3Mcp: true, hasBrowserTools },
+      });
+    assert.include(build(true), "Leonidas Code collaborative browser");
+    assert.notInclude(build(false), "Leonidas Code collaborative browser");
+    assert.include(build(false), "Leonidas Code orchestration");
+  });
+
+  it("injects the ACP fallback block only when the node bridge is available", () => {
+    const build = (hasAcpFallback: boolean) =>
+      t3AcpPromptWithInstructions({
+        prompt: "x",
+        state: { interactionMode: "default", hasT3Mcp: true, hasAcpFallback },
+      });
+    assert.include(build(true), "ACP fallback:");
+    assert.notInclude(build(false), "ACP fallback:");
+    assert.include(build(false), "Leonidas Code orchestration");
+  });
+
+  it("reinjects when only browser or fallback availability changes", () => {
+    const previousState = { interactionMode: "default", hasT3Mcp: true } as const;
+    assert.include(
+      t3AcpPromptWithInstructions({
+        prompt: "x",
+        state: { ...previousState, hasBrowserTools: false },
+        previousState,
+      }),
+      "<t3_code_instructions>",
+    );
+  });
+
   it("reinjects ACP guidance only when mode or tool availability changes", () => {
     const prompt = "Continue.";
     const defaultState = { interactionMode: "default", hasT3Mcp: true } as const;
@@ -167,5 +201,29 @@ describe("injected instruction budget", () => {
   it("stays inside the character budget", () => {
     const total = blocks.reduce((sum, block) => sum + block.length, 0);
     assert.isAtMost(total, 14_903);
+  });
+
+  it("keeps a thread without browser or ACP fallback below the full budget", () => {
+    const plain = t3AcpPromptWithInstructions({
+      prompt: "",
+      state: {
+        interactionMode: "default",
+        hasT3Mcp: true,
+        hasBrowserTools: false,
+        hasAcpFallback: false,
+      },
+    });
+    const full = t3AcpPromptWithInstructions({
+      prompt: "",
+      state: { interactionMode: "default", hasT3Mcp: true },
+    });
+    assert.isAtMost(
+      plain.length + LEONIDAS_OUTPUT_STANDARD.length,
+      14_903 - T3_CODE_BROWSER_TOOL_INSTRUCTIONS.length - T3_ACP_FALLBACK_INSTRUCTIONS.length + 600,
+    );
+    assert.isAbove(
+      full.length - plain.length,
+      T3_CODE_BROWSER_TOOL_INSTRUCTIONS.length + T3_ACP_FALLBACK_INSTRUCTIONS.length - 10,
+    );
   });
 });

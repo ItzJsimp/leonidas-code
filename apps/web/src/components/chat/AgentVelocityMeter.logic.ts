@@ -1,5 +1,10 @@
 import type { OrchestrationV2ProviderTurn, OrchestrationV2TurnItem } from "@t3tools/contracts";
-import { buildTurnLedger, type TurnLedger } from "@t3tools/shared/turnLedger";
+import {
+  buildTurnLedger,
+  detectCacheBreak,
+  type CacheBreak,
+  type TurnLedger,
+} from "@t3tools/shared/turnLedger";
 import * as DateTime from "effect/DateTime";
 
 export interface ToolStepSummary {
@@ -13,6 +18,8 @@ export interface ToolStepSummary {
 export interface VelocitySummary {
   /** Where the latest reporting turn's tokens went; null until a turn reports input. */
   readonly ledger: TurnLedger | null;
+  /** Set when the prompt prefix changed and the cache restarted; null otherwise. */
+  readonly cacheBreak: CacheBreak | null;
   readonly outputTokens: number | null;
   readonly reasoningTokens: number | null;
   readonly isLive: boolean;
@@ -250,24 +257,32 @@ function measureTurnTiming(
   };
 }
 
+/** Uses the newest turns that reported input, so a fresh live turn does not blank the ledger. */
+function deriveLedgers(turns: ReadonlyArray<OrchestrationV2ProviderTurn>): {
+  readonly ledger: TurnLedger | null;
+  readonly cacheBreak: CacheBreak | null;
+} {
+  const ledgers: TurnLedger[] = [];
+  for (let index = turns.length - 1; index >= 0 && ledgers.length < 2; index -= 1) {
+    const usage = turns[index]?.turnTokenUsage;
+    if (usage?.inputTokens === undefined) continue;
+    ledgers.push(
+      buildTurnLedger({
+        inputTokens: usage.inputTokens,
+        cachedInputTokens: usage.cachedInputTokens ?? 0,
+        cacheCreationTokens: usage.cacheCreationTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        reasoningOutputTokens: usage.reasoningTokens ?? 0,
+      }),
+    );
+  }
+  const [ledger = null, previous = null] = ledgers;
+  return { ledger, cacheBreak: ledger ? detectCacheBreak(ledger, previous) : null };
+}
+
 /**
  * Builds the complete multi-window VelocitySummary from live provider turns & turn items.
  */
-/** Uses the newest turn that reported input, so a fresh live turn does not blank the ledger. */
-function deriveLedger(turns: ReadonlyArray<OrchestrationV2ProviderTurn>): TurnLedger | null {
-  const usage = turns.findLast(
-    (turn) => turn.turnTokenUsage?.inputTokens !== undefined,
-  )?.turnTokenUsage;
-  if (usage?.inputTokens === undefined) return null;
-  return buildTurnLedger({
-    inputTokens: usage.inputTokens,
-    cachedInputTokens: usage.cachedInputTokens ?? 0,
-    cacheCreationTokens: usage.cacheCreationTokens ?? 0,
-    outputTokens: usage.outputTokens ?? 0,
-    reasoningOutputTokens: usage.reasoningTokens ?? 0,
-  });
-}
-
 export function deriveVelocitySummary(
   turns: ReadonlyArray<OrchestrationV2ProviderTurn> | undefined,
   turnItems: ReadonlyArray<OrchestrationV2TurnItem> | undefined,
@@ -276,6 +291,7 @@ export function deriveVelocitySummary(
     const { avgToolDurationMs, recentTools, totalTools } = analyzeToolCallCadence(turnItems);
     return {
       ledger: null,
+      cacheBreak: null,
       outputTokens: null,
       reasoningTokens: null,
       isLive: false,
@@ -364,7 +380,7 @@ export function deriveVelocitySummary(
   const { avgToolDurationMs, recentTools, totalTools } = analyzeToolCallCadence(turnItems);
 
   return {
-    ledger: deriveLedger(turns),
+    ...deriveLedgers(turns),
     outputTokens,
     reasoningTokens,
     isLive,
@@ -385,6 +401,11 @@ export function deriveVelocitySummary(
 }
 
 /** "75%"; a turn that sent no input has no rate. */
+/** One plain sentence for the popover when the cache restarted. */
+export function formatCacheBreak(cacheBreak: CacheBreak): string {
+  return `The cache restarted: hits fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)} and ${cacheBreak.rewrittenTokens.toLocaleString()} tokens were written again. Something at the start of the prompt changed.`;
+}
+
 export function formatCacheHitRate(rate: number | null): string {
   if (rate === null || !Number.isFinite(rate)) return "--";
   return `${Math.round(rate * 100)}%`;

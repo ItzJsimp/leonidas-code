@@ -1,5 +1,9 @@
-import type { TurnLedger } from "@t3tools/shared/turnLedger";
+import { useThreadContextBreakdown } from "../../state/queries";
+import { estimateFixedOverheadTokens, splitInputByOverhead } from "./ContextTrim.logic";
+import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import type { CacheBreak, TurnLedger } from "@t3tools/shared/turnLedger";
 import {
+  formatCacheBreak,
   formatCacheHitRate,
   formatRollingFill,
   formatToolDuration,
@@ -64,7 +68,18 @@ export function SpeedSection({ summary }: { summary: VelocitySummary }) {
  * Where the latest reporting turn's input went. Cache reads are the cheap part; a low hit rate
  * with high writes means the prompt prefix changed and the cache restarted.
  */
-export function InputLedger({ ledger }: { ledger: TurnLedger }) {
+export function InputLedger({
+  ledger,
+  cacheBreak,
+  threadTarget = null,
+  contextTokens = null,
+}: {
+  ledger: TurnLedger;
+  cacheBreak: CacheBreak | null;
+  threadTarget?: ThreadTarget | null;
+  /** Tokens now in the context window. Turn input adds up every model call, so it is no base. */
+  contextTokens?: number | null;
+}) {
   const input = ledger.cacheReadTokens + ledger.cacheWriteTokens + ledger.freshInputTokens;
   const share = (tokens: number) => `${input > 0 ? (tokens / input) * 100 : 0}%`;
   return (
@@ -85,8 +100,42 @@ export function InputLedger({ ledger }: { ledger: TurnLedger }) {
         />
         <Row label="Cache writes" value={ledger.cacheWriteTokens.toLocaleString()} />
         <Row label="Fresh" value={ledger.freshInputTokens.toLocaleString()} />
+        <OverheadRows threadTarget={threadTarget} contextTokens={contextTokens} />
       </dl>
+      {cacheBreak ? (
+        <p className="text-pretty text-2xs text-warning-foreground leading-4" role="status">
+          {formatCacheBreak(cacheBreak)}
+        </p>
+      ) : null}
     </section>
+  );
+}
+
+export interface ThreadTarget {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+}
+
+/** Fixed overhead against conversation. Reads the thread breakdown only while the popover is open. */
+function OverheadRows({
+  threadTarget,
+  contextTokens,
+}: {
+  threadTarget: ThreadTarget | null;
+  contextTokens: number | null;
+}) {
+  const query = useThreadContextBreakdown(threadTarget);
+  const split = query.data
+    ? contextTokens === null
+      ? null
+      : splitInputByOverhead(contextTokens, estimateFixedOverheadTokens(query.data))
+    : null;
+  if (split === null) return null;
+  return (
+    <>
+      <Row label="Setup in context (estimate)" value={split.fixed.toLocaleString()} />
+      <Row label="Chat in context (estimate)" value={split.conversation.toLocaleString()} />
+    </>
   );
 }
 

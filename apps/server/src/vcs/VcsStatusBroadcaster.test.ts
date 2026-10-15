@@ -953,6 +953,122 @@ describe("VcsStatusBroadcaster", () => {
     }).pipe(Effect.provide(layerTestFor(state)));
   });
 
+  describe("refreshStatus single-flight", () => {
+    const makeFlightLayer = (control: {
+      invalidations: Array<string>;
+      gate: Deferred.Deferred<void>;
+      failNext: boolean;
+    }) =>
+      VcsStatusBroadcaster.layer.pipe(
+        Layer.provide(FileSystem.layerNoop({ realPath: (path) => Effect.succeed(path) })),
+        Layer.provideMerge(NodeServices.layer),
+        Layer.provide(layerBackgroundPolicy(() => true)),
+        Layer.provide(
+          Layer.mock(GitWorkflowService.GitWorkflowService)({
+            localStatus: () => Effect.succeed(baseLocalStatus),
+            remoteStatus: () =>
+              Deferred.await(control.gate).pipe(
+                Effect.andThen(
+                  Effect.suspend(() =>
+                    control.failNext
+                      ? Effect.fail(
+                          new GitManagerError({ operation: "test", cwd: "/repo", detail: "boom" }),
+                        )
+                      : Effect.succeed(baseRemoteStatus),
+                  ),
+                ),
+              ),
+            invalidateStatus: (cwd) =>
+              Effect.sync(() => {
+                control.invalidations.push(cwd);
+              }),
+          }),
+        ),
+      );
+
+    it.effect("shares one trailing run between calls that arrive during a run", () => {
+      const control = {
+        invalidations: [] as Array<string>,
+        gate: Deferred.makeUnsafe<void>(),
+        failNext: false,
+      };
+      return Effect.gen(function* () {
+        const broadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+        const fibers = yield* Effect.forEach(
+          [1, 2, 3, 4, 5],
+          () => broadcaster.refreshStatus("/repo").pipe(Effect.forkScoped),
+          { concurrency: "unbounded" },
+        );
+        yield* TestClock.adjust(Duration.zero);
+        yield* Deferred.succeed(control.gate, undefined);
+        const results = yield* Effect.forEach(fibers, Fiber.join);
+        // One run for the first call, one trailing run shared by the other four.
+        assert.equal(control.invalidations.length, 2);
+        for (const result of results) assert.deepStrictEqual(result, results[0]);
+      }).pipe(Effect.provide(makeFlightLayer(control)), Effect.scoped);
+    });
+
+    it.effect("does not share a run between different directories", () => {
+      const control = {
+        invalidations: [] as Array<string>,
+        gate: Deferred.makeUnsafe<void>(),
+        failNext: false,
+      };
+      return Effect.gen(function* () {
+        const broadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+        const a = yield* broadcaster.refreshStatus("/repo-a").pipe(Effect.forkScoped);
+        const b = yield* broadcaster.refreshStatus("/repo-b").pipe(Effect.forkScoped);
+        yield* TestClock.adjust(Duration.zero);
+        yield* Deferred.succeed(control.gate, undefined);
+        yield* Fiber.join(a);
+        yield* Fiber.join(b);
+        assert.deepStrictEqual([...control.invalidations].toSorted(), ["/repo-a", "/repo-b"]);
+      }).pipe(Effect.provide(makeFlightLayer(control)), Effect.scoped);
+    });
+
+    it.effect("runs again for a call after the first run finished", () => {
+      const control = {
+        invalidations: [] as Array<string>,
+        gate: Deferred.makeUnsafe<void>(),
+        failNext: false,
+      };
+      return Effect.gen(function* () {
+        const broadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+        yield* Deferred.succeed(control.gate, undefined);
+        yield* broadcaster.refreshStatus("/repo");
+        yield* broadcaster.refreshStatus("/repo");
+        assert.equal(control.invalidations.length, 2);
+      }).pipe(Effect.provide(makeFlightLayer(control)), Effect.scoped);
+    });
+
+    it.effect("a failed run backs off briefly and does not poison later calls", () => {
+      const control = {
+        invalidations: [] as Array<string>,
+        gate: Deferred.makeUnsafe<void>(),
+        failNext: true,
+      };
+      return Effect.gen(function* () {
+        const broadcaster = yield* VcsStatusBroadcaster.VcsStatusBroadcaster;
+        yield* Deferred.succeed(control.gate, undefined);
+        const first = yield* broadcaster.refreshStatus("/repo").pipe(Effect.exit);
+        assert.isTrue(Exit.isFailure(first));
+        // Inside the backoff window the failure is reused and nothing re-runs.
+        const repeat = yield* broadcaster.refreshStatus("/repo").pipe(Effect.exit);
+        assert.isTrue(Exit.isFailure(repeat));
+        assert.equal(control.invalidations.length, 1);
+        // After the window a new call runs and can succeed.
+        control.failNext = false;
+        yield* TestClock.adjust(Duration.seconds(3));
+        const later = yield* broadcaster.refreshStatus("/repo");
+        assert.deepStrictEqual(later, baseStatus);
+        assert.equal(control.invalidations.length, 2);
+      }).pipe(
+        Effect.provide(Layer.merge(makeFlightLayer(control), TestClock.layer())),
+        Effect.scoped,
+      );
+    });
+  });
+
   it("backs off remote refresh failures exponentially and honors larger configured intervals", () => {
     assert.equal(
       Duration.toMillis(VcsStatusBroadcaster.remoteRefreshFailureDelay(1, Duration.seconds(1))),

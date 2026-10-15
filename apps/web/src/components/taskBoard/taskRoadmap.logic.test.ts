@@ -36,20 +36,22 @@ describe("release roadmap", () => {
       plan.milestones.map((stage) => stage.version),
     );
     expect(result[0]?.complete).toBe(false);
-    expect(result[0]?.missing).toHaveLength(2);
-    expect(missingRoadmapTasks(plan, [])).toHaveLength(20);
+    const total = plan.milestones.reduce((sum, stage) => sum + stage.tasks.length, 0);
+    expect(result[0]?.missing).toHaveLength(plan.milestones[0]!.tasks.length);
+    expect(missingRoadmapTasks(plan, [])).toHaveLength(total);
   });
   it("does not reimport a task moved to a different milestone", () => {
+    const total = plan.milestones.reduce((sum, stage) => sum + stage.tasks.length, 0);
     const task = {
       id: "one",
       section: "leonidas-code",
       title: "Renamed",
-      description: "Roadmap key: daily-task-parity",
-      milestone: "0.23.0",
+      description: `Roadmap key: ${plan.milestones[0]!.tasks[0]!.key}`,
+      milestone: plan.milestones[1]!.version,
       status: "done" as const,
     };
     const result = buildRoadmap(plan, [task]);
-    expect(missingRoadmapTasks(plan, [task])).toHaveLength(19);
+    expect(missingRoadmapTasks(plan, [task])).toHaveLength(total - 1);
     expect(result[0]?.tasks).toHaveLength(0);
     expect(result[1]?.tasks.map((item) => item.id)).toEqual(["one"]);
     expect(result[1]?.done).toBe(1);

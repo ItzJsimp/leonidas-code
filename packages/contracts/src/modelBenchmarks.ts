@@ -10,11 +10,17 @@ import { IsoDateTime, TrimmedNonEmptyString } from "./baseSchemas.ts";
 const ModelBenchmarkSourceId = Schema.Literals(["benchLm"]);
 export type ModelBenchmarkSourceId = typeof ModelBenchmarkSourceId.Type;
 
-/** `unavailable` means the last fetch failed and no earlier copy exists. */
+/**
+ * `ready` means the copy is fresh. `stale` means the last refresh failed and the
+ * copy is older than an hour; its scores are still the last good ones.
+ * `unavailable` means the last fetch failed and no earlier copy exists.
+ */
 const ModelBenchmarkSourceStatus = Schema.Struct({
   source: ModelBenchmarkSourceId,
-  state: Schema.Literals(["ready", "unavailable"]),
+  state: Schema.Literals(["ready", "stale", "unavailable"]),
   fetchedAt: Schema.optional(IsoDateTime),
+  /** When the latest refresh failed; absent after a refresh succeeds. */
+  refreshFailedAt: Schema.optional(IsoDateTime),
   /** Credit line the source requires wherever its numbers are shown. */
   attribution: TrimmedNonEmptyString,
   url: TrimmedNonEmptyString,

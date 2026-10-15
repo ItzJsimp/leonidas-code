@@ -134,13 +134,22 @@ export function WizardSteps({
   );
 }
 
+const WIZARD_STABLE_CONTENT_CLASS =
+  "flex min-h-[35rem] flex-col [&>:last-child]:mt-auto [&>:last-child]:pt-6";
+
 export function WizardPanel({
   children,
   holdHeight = false,
+  stableHeight = false,
   className,
 }: {
   readonly children: ReactNode;
   readonly holdHeight?: boolean;
+  /**
+   * Give every step the same minimum height and pin its last child (the button row) to the
+   * bottom, so a centred dialog keeps one top edge and one button position across steps.
+   */
+  readonly stableHeight?: boolean;
   readonly className?: string;
 }) {
   return (
@@ -151,7 +160,15 @@ export function WizardPanel({
         className,
       )}
     >
-      <AnimatedHeight holdHeight={holdHeight}>{children}</AnimatedHeight>
+      <AnimatedHeight holdHeight={holdHeight}>
+        {stableHeight ? (
+          <div data-slot="wizard-stable-content" className={WIZARD_STABLE_CONTENT_CLASS}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
+      </AnimatedHeight>
     </div>
   );
 }

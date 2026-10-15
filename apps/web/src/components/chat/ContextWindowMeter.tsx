@@ -10,7 +10,7 @@ import {
 import { Minimize2Icon } from "lucide-react";
 import { formatTpsLabel } from "./AgentVelocityMeter.logic";
 import { composerFloatingLayerProps } from "./composerEventScope";
-import { InputLedger, SpeedSection } from "./AgentVelocityMeter";
+import { InputLedger, SpeedSection, type ThreadTarget } from "./AgentVelocityMeter";
 import type { VelocitySummary } from "./AgentVelocityMeter.logic";
 
 const SEVERITY_COLOR = {
@@ -41,6 +41,7 @@ export function ContextWindowMeter(props: {
   onCompact?: (() => void) | undefined;
   compactDisabled?: boolean | undefined;
   compactDisabledReason?: string | null | undefined;
+  threadTarget?: ThreadTarget | null | undefined;
 }) {
   const { modelDisplayName, onCompact, compactDisabled, compactDisabledReason } = props;
   const { usage, velocity } = props;
@@ -172,7 +173,14 @@ export function ContextWindowMeter(props: {
             </div>
           ) : null}
           {velocity ? <SpeedSection summary={velocity} /> : null}
-          {velocity?.ledger ? <InputLedger ledger={velocity.ledger} /> : null}
+          {velocity?.ledger ? (
+            <InputLedger
+              ledger={velocity.ledger}
+              cacheBreak={velocity.cacheBreak}
+              threadTarget={props.threadTarget ?? null}
+              contextTokens={usage?.usedTokens ?? null}
+            />
+          ) : null}
           {onCompact ? (
             <>
               <Button

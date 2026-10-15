@@ -1,5 +1,8 @@
 import type { OrchestrationV2ProviderFailureClass } from "@t3tools/contracts";
 import { memo, useEffect } from "react";
+import { writeTextToClipboard } from "../../hooks/useCopyToClipboard";
+import { toastManager } from "../ui/toast";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { recordFeedbackError } from "../feedback/feedbackContext";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -18,6 +21,51 @@ export function shouldShowThreadErrorBanner(
   isDismissed: boolean,
 ): boolean {
   return getThreadErrorBannerKey(threadKey, error) !== null && !isDismissed;
+}
+
+const CAUSE_SEPARATOR = " Caused by: ";
+
+/** The server joins the nested causes of a failure with "Caused by:"; one line per link. */
+function splitErrorCauseChain(error: string): string[] {
+  return error.includes(CAUSE_SEPARATOR) ? error.split(CAUSE_SEPARATOR) : [];
+}
+
+function ThreadErrorDetails({ error }: { error: string }) {
+  const chain = splitErrorCauseChain(error);
+  if (chain.length === 0) return null;
+  return (
+    <Collapsible className="mt-1">
+      <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground">
+        Details
+      </CollapsibleTrigger>
+      <CollapsiblePanel>
+        <div className="mt-1 flex items-start gap-2">
+          <pre
+            data-testid="thread-error-details"
+            className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs"
+          >
+            {chain.map((line, index) => (index === 0 ? line : `Caused by: ${line}`)).join("\n")}
+          </pre>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              void writeTextToClipboard(error, "Error details").catch((copyError: unknown) => {
+                toastManager.add({
+                  type: "error",
+                  title: "Could not copy error details",
+                  description:
+                    copyError instanceof Error ? copyError.message : "An error occurred.",
+                });
+              });
+            }}
+          >
+            Copy
+          </Button>
+        </div>
+      </CollapsiblePanel>
+    </Collapsible>
+  );
 }
 
 // Session-scoped (module-level so it survives ChatView remounts, e.g. route
@@ -78,6 +126,7 @@ export const ThreadErrorBanner = memo(function ThreadErrorBanner({
               </TooltipPopup>
             </Tooltip>
           )}
+          {chatGptUsageLimit ? null : <ThreadErrorDetails error={error} />}
         </AlertDescription>
         {(chatGptUsageLimit || onDismiss) && (
           <AlertAction>

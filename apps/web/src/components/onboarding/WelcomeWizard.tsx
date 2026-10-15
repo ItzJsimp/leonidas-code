@@ -310,7 +310,7 @@ export function WelcomeWizard({
           />
         </WizardHeader>
 
-        <WizardPanel holdHeight={isLoadingProjects}>
+        <WizardPanel holdHeight={isLoadingProjects} stableHeight>
           {step === "welcome" ? (
             <LeonidasGoalsStep
               onContinue={() =>

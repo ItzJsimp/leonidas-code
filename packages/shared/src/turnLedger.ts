@@ -90,3 +90,36 @@ export function sumTurnLedgers(ledgers: ReadonlyArray<TurnLedger>): TurnLedger {
     conversationTokens: hasSplit ? conversation : null,
   };
 }
+
+const CACHE_BREAK_MIN_INPUT_TOKENS = 5_000;
+const CACHE_BREAK_PREVIOUS_RATE = 0.5;
+const CACHE_BREAK_DROP = 0.4;
+
+export interface CacheBreak {
+  readonly previousRate: number;
+  readonly currentRate: number;
+  /** Tokens written to the cache again this turn. */
+  readonly rewrittenTokens: number;
+}
+
+/**
+ * Spots a prompt prefix that changed: the previous turn was well cached, this one is not, and the
+ * prompt is large enough to cost real money. Quiet on a first turn or a small prompt.
+ */
+export function detectCacheBreak(
+  current: TurnLedger,
+  previous: TurnLedger | null,
+): CacheBreak | null {
+  if (previous === null || current.cacheHitRate === null || previous.cacheHitRate === null) {
+    return null;
+  }
+  const input = current.cacheReadTokens + current.cacheWriteTokens + current.freshInputTokens;
+  if (input < CACHE_BREAK_MIN_INPUT_TOKENS) return null;
+  if (previous.cacheHitRate < CACHE_BREAK_PREVIOUS_RATE) return null;
+  if (previous.cacheHitRate - current.cacheHitRate < CACHE_BREAK_DROP) return null;
+  return {
+    previousRate: previous.cacheHitRate,
+    currentRate: current.cacheHitRate,
+    rewrittenTokens: current.cacheWriteTokens,
+  };
+}

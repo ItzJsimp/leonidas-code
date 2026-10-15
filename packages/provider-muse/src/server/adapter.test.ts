@@ -1,3 +1,6 @@
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { MspError } from "@muse-code/sdk";
@@ -533,6 +536,35 @@ describe("MuseAdapterV2", () => {
       Effect.scoped,
       Effect.provide(testLayer),
     ),
+  );
+
+  it.effect("inlines a mentioned workspace skill into the native prompt", () =>
+    Effect.gen(function* () {
+      const cwd = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "muse-skill-"));
+      const skillDir = NodePath.join(cwd, ".agents", "skills", "tdd");
+      NodeFS.mkdirSync(skillDir, { recursive: true });
+      NodeFS.writeFileSync(NodePath.join(skillDir, "SKILL.md"), "Write the failing test first.\n");
+      const fake = yield* makeFakeMuse();
+      const policy = ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({ ...runtimePolicy, cwd });
+      const harness = yield* makeHarness(
+        fake,
+        INSTANCE_ID,
+        undefined,
+        undefined,
+        undefined,
+        policy,
+      );
+      const base = yield* turnInput(harness.providerThread, 1, harness.policy);
+      yield* harness.runtime.startTurn({
+        ...base,
+        message: { ...base.message, text: "please $tdd the parser and open /src/index.ts" },
+      });
+      const call = yield* fake.takeCall("turn/start");
+      const sent = JSON.stringify(call.params.input);
+      assert.include(sent, '<skill name=\\"tdd\\"/>');
+      assert.include(sent, "Write the failing test first.");
+      assert.include(sent, "/src/index.ts");
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 
   it.effect("skips an unreadable usage notification without ending the turn", () =>
