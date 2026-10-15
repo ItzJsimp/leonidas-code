@@ -139,6 +139,30 @@ describe("estimateFixedOverheadTokens", () => {
   });
 });
 
+describe("estimateFixedOverheadTokens on an estimated breakdown", () => {
+  it("reports nothing when the provider gave no split, instead of calling transcript rows setup", () => {
+    const used = (name: string, tokens: number) => ({
+      name,
+      kind: "used" as const,
+      tokens,
+      estimated: true,
+    });
+    expect(
+      estimateFixedOverheadTokens({
+        categories: [
+          used("Messages", 8_100),
+          used("Tool calls", 52_600),
+          used("Other / unattributed", 118_700),
+        ],
+        mcpTools: [],
+        skills: [],
+        agents: [],
+        files: [],
+      }),
+    ).toBe(0);
+  });
+});
+
 describe("splitInputByOverhead", () => {
   it("keeps the two parts equal to the input", () => {
     expect(splitInputByOverhead(20_000, 6_000)).toEqual({ fixed: 6_000, conversation: 14_000 });

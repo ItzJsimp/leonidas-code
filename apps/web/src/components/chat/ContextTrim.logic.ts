@@ -118,7 +118,8 @@ const sumTokens = (items: ReadonlyArray<{ readonly tokens: number }>) =>
 /**
  * Tokens the provider carries on every turn before the conversation starts. When the provider
  * names its conversation category ("Messages"), everything else it counts as used is setup; that
- * skips deferred tools, which are not in context. Otherwise add up what the breakdown lists.
+ * skips deferred tools, which are not in context. Without a provider split, setup is unknown (0).
+ * Otherwise add up what the breakdown lists.
  */
 export function estimateFixedOverheadTokens(
   breakdown: Pick<
@@ -127,6 +128,8 @@ export function estimateFixedOverheadTokens(
   >,
 ): number {
   const used = breakdown.categories.filter((category) => category.kind === "used");
+  // Without a provider split the categories are transcript estimates, so none of them is setup.
+  if (used.some((category) => category.estimated)) return 0;
   if (used.some((category) => category.name.toLowerCase() === "messages")) {
     return sumTokens(used.filter((category) => category.name.toLowerCase() !== "messages"));
   }
