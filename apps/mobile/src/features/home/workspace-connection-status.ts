@@ -22,11 +22,11 @@ function workspaceConnectionStatusLabel(state: WorkspaceState): string {
     return `Reconnecting to ${state.connectingEnvironments[0]!.environmentLabel}`;
   }
   if (state.connectingEnvironments.length > 1) {
-    return `Reconnecting ${state.connectingEnvironments.length} environments`;
+    return `Reconnecting ${state.connectingEnvironments.length} computers`;
   }
   if (state.connectionError !== null) return state.connectionError;
   if (state.hasPendingShellSnapshot) {
-    return state.hasLoadedShellSnapshot ? "Syncing threads..." : "Loading threads...";
+    return state.hasLoadedShellSnapshot ? "Syncing chats..." : "Loading chats...";
   }
   return "Not connected";
 }

@@ -209,7 +209,7 @@ export function useReviewSections(input: {
       activeTurnDiff.error ??
       reviewCache.asyncState.error ??
       (selectedSection === null && !fileAccess.isPending && !canReadFiles
-        ? (fileAccess.error ?? "This connection cannot read local diffs.")
+        ? (fileAccess.error ?? "This connection cannot read local changes.")
         : null),
     isSelectedSectionPending:
       selectedSection?.kind === "turn" ? activeTurnDiff.isPending : diffPreview.isPending,

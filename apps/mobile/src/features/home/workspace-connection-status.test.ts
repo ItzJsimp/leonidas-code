@@ -75,7 +75,7 @@ describe("workspace connection status", () => {
     const state = workspaceState({ hasPendingShellSnapshot: true });
 
     expect(workspaceConnectionStatusPresentation(state)).toEqual({
-      label: "Syncing threads...",
+      label: "Syncing chats...",
       showsProgress: true,
     });
   });
@@ -87,7 +87,7 @@ describe("workspace connection status", () => {
     });
 
     expect(workspaceConnectionStatusPresentation(state)).toEqual({
-      label: "Loading threads...",
+      label: "Loading chats...",
       showsProgress: true,
     });
   });

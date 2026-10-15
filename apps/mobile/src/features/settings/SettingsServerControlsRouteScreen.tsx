@@ -42,9 +42,9 @@ import {
 type SettingsPage = "new-threads" | "source-control" | "agent-behavior" | "maintenance";
 
 const PAGE_TITLES: Record<SettingsPage, string> = {
-  "new-threads": "New threads",
+  "new-threads": "New chats",
   "source-control": "Source control",
-  "agent-behavior": "Agent behavior",
+  "agent-behavior": "AI behavior",
   maintenance: "Maintenance",
 };
 
@@ -71,7 +71,7 @@ const SUBMODULE_CHOICES: ReadonlyArray<{
   {
     mode: null,
     label: "Inherit",
-    description: "Use the repository's t3.json, or initialize recursively.",
+    description: "Use the project's t3.json, or set up all project folders.",
   },
   { mode: "recursive", label: "Recursive", description: "Initialize nested submodules too." },
   {
@@ -91,17 +91,17 @@ const WORKSPACE_CHOICES: ReadonlyArray<{
   {
     mode: null,
     label: "Inherit",
-    description: "Use the repository's t3.json, or the current checkout.",
+    description: "Use the project's t3.json, or the main folder.",
   },
   {
     mode: "local",
-    label: "Current checkout",
-    description: "Start new threads in the existing workspace.",
+    label: "Main folder",
+    description: "Start new chats in the main folder.",
   },
   {
     mode: "worktree",
-    label: "New worktree",
-    description: "Give each new thread a separate checkout.",
+    label: "New separate copy",
+    description: "Start each new chat in a separate copy.",
   },
 ];
 
@@ -112,8 +112,8 @@ const STREAMING_CHOICES: ReadonlyArray<{
 }> = [
   {
     mode: "turn",
-    label: "After the turn",
-    description: "Show the answer when the agent finishes.",
+    label: "After the reply",
+    description: "Show the answer when the AI finishes.",
   },
   {
     mode: "paragraph",
@@ -167,7 +167,7 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
     reference === null ||
     displayTargets.some((entry) => entry.settings[key] !== reference.settings[key]);
   const updateSettings = useAtomCommand(serverEnvironment.updateSettings, {
-    label: "environment settings update",
+    label: "computer settings update",
     reportFailure: true,
   });
   const write = (patch: ServerSettingsPatch) => {
@@ -254,8 +254,8 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
           {!hasConnectedSelection || reference === null ? (
             <Text className="px-2 text-base text-foreground-muted">
               {projectSelected
-                ? "Select a project with a checkout on a connected environment."
-                : "Use the filter above to select a connected environment."}
+                ? "Select a project with a folder on a connected computer."
+                : "Use the filter above to select a connected computer."}
             </Text>
           ) : (
             <>
@@ -274,7 +274,7 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
               {props.page === "new-threads" ? (
                 <>
                   <SettingsSection
-                    title="Default workspace"
+                    title="Default project folder"
                     trailing={
                       pendingWrites === 0 && isMixed("defaultThreadEnvMode") ? (
                         <MixedValuesLabel projectSelected={projectSelected} />
@@ -299,7 +299,7 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                     ))}
                   </SettingsSection>
                   <SettingsSection
-                    title="Worktree submodules"
+                    title="Separate copy submodules"
                     trailing={
                       pendingWrites === 0 && isMixed("worktreeSubmodules") ? (
                         <MixedValuesLabel projectSelected={projectSelected} />
@@ -361,8 +361,8 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                   <SettingsSection title="Pull requests">
                     <SettingsSwitchRow
                       icon="arrow.triangle.merge"
-                      label="Remove agent credits when merging"
-                      subtitle="Remove recognized agent credits from GitHub merge and squash messages, keeping human co-authors. Includes auto-merge. Excludes merge queues, stack merges, and existing commits."
+                      label="Remove AI credit lines when merging"
+                      subtitle="Remove the lines that credit an AI from GitHub merge and squash messages. Credits for people stay. Includes auto-merge. Excludes merge queues, stack merges, and existing commits."
                       value={uniform("removeAgentCreditsOnMerge")}
                       disabled={disabledFor("removeAgentCreditsOnMerge")}
                       onValueChange={(value) => write({ removeAgentCreditsOnMerge: value })}
@@ -378,11 +378,11 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                       onValueChange={(value) => write({ defaultAutoPull: value })}
                     />
                   </SettingsSection>
-                  <SettingsSection title="Worktrees">
+                  <SettingsSection title="Separate copies">
                     <SettingsSwitchRow
                       icon="arrow.triangle.branch"
                       label="Start from origin"
-                      subtitle="Base new worktrees on the remote branch."
+                      subtitle="Start new separate copies from the remote branch."
                       value={uniform("newWorktreesStartFromOrigin")}
                       disabled={disabledFor("newWorktreesStartFromOrigin")}
                       onValueChange={(value) => write({ newWorktreesStartFromOrigin: value })}
@@ -416,8 +416,8 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                   <SettingsSection title="Preview browser">
                     <SettingsSwitchRow
                       icon="globe"
-                      label="Agent browser access"
-                      subtitle="Allow agents to use the in-app preview browser."
+                      label="AI browser access"
+                      subtitle="Let the AI use the preview browser in the app."
                       value={uniform("enableAgentBrowserAccess")}
                       disabled={disabledFor("enableAgentBrowserAccess")}
                       onValueChange={(value) => write({ enableAgentBrowserAccess: value })}
@@ -429,13 +429,13 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
               {props.page === "maintenance" ? (
                 <>
                   {!projectSelected ? (
-                    <SettingsSection title="Manage environments">
+                    <SettingsSection title="Manage computers">
                       {selectedTargets.map((target) => (
                         <SettingsRow
                           key={target.environmentId}
                           icon="server.rack"
                           label={target.label}
-                          value="Server and provider updates"
+                          value="Updates for Leonidas Code and AI services"
                           onPress={() =>
                             navigation.navigate("SettingsSheet", {
                               screen: "SettingsContent",
@@ -452,11 +452,11 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                   <SettingsSection title="Updates">
                     <SettingsSwitchRow
                       icon="arrow.clockwise"
-                      label="Check provider updates"
+                      label="Check AI service updates"
                       subtitle={
                         projectSelected
-                          ? "Environment-wide setting. Select All projects to change it."
-                          : "Check installed provider CLIs for newer versions."
+                          ? "This setting covers the whole computer. Select All projects to change it."
+                          : "Check the installed AI service tools for newer versions."
                       }
                       value={uniform("enableProviderUpdateChecks")}
                       disabled={disabledFor("enableProviderUpdateChecks")}
@@ -468,8 +468,8 @@ function ServerSettingsDetail(props: { readonly page: SettingsPage }) {
                         label="Continue after restart"
                         subtitle={
                           supportsContinuation
-                            ? "Resume interrupted threads after an update or restart."
-                            : "Update older servers to control restart continuation."
+                            ? "Resume stopped chats after an update or restart."
+                            : "Update Leonidas Code on older computers to control this."
                         }
                         value={uniform("continueThreadsAfterServerUpdate")}
                         disabled={
@@ -496,8 +496,8 @@ function MixedValuesLabel(props: { readonly projectSelected: boolean }) {
     <Text
       accessibilityLabel={
         props.projectSelected
-          ? "Selected project checkouts use different values"
-          : "Selected environments use different values"
+          ? "Selected project folders use different values"
+          : "Selected computers use different values"
       }
       className="px-2 text-sm text-foreground-muted android:px-4"
     >

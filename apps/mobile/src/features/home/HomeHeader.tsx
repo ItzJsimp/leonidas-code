@@ -147,23 +147,23 @@ export function HomeHeader(props: HomeHeaderProps) {
       {sidebarHeader || usesNativeMailSearchToolbar ? null : (
         <NativeHeaderToolbar placement="bottom">
           <NativeHeaderToolbar.Menu
-            accessibilityLabel="Filter threads"
+            accessibilityLabel="Filter chats"
             icon={
               hasCustomListOptions
                 ? "line.3.horizontal.decrease.circle.fill"
                 : "line.3.horizontal.decrease.circle"
             }
-            title="Thread list options"
+            title="Chat list options"
             separateBackground
           >
-            <NativeHeaderToolbar.Menu title="Environment">
-              <NativeHeaderToolbar.Label>Environment</NativeHeaderToolbar.Label>
+            <NativeHeaderToolbar.Menu title="Computer">
+              <NativeHeaderToolbar.Label>Computer</NativeHeaderToolbar.Label>
               <NativeHeaderToolbar.MenuAction
                 isOn={props.selectedEnvironmentId === null}
                 onPress={() => props.onEnvironmentChange(null)}
-                subtitle="Show threads from every environment"
+                subtitle="Show chats from every computer"
               >
-                <NativeHeaderToolbar.Label>All environments</NativeHeaderToolbar.Label>
+                <NativeHeaderToolbar.Label>All computers</NativeHeaderToolbar.Label>
               </NativeHeaderToolbar.MenuAction>
               {props.environments.map((environment) => (
                 <NativeHeaderToolbar.MenuAction
@@ -182,7 +182,7 @@ export function HomeHeader(props: HomeHeaderProps) {
                 <NativeHeaderToolbar.MenuAction
                   isOn={props.selectedProjectKey === null}
                   onPress={() => props.onProjectChange(null)}
-                  subtitle="Show threads from every project"
+                  subtitle="Show chats from every project"
                 >
                   <NativeHeaderToolbar.Label>All projects</NativeHeaderToolbar.Label>
                 </NativeHeaderToolbar.MenuAction>

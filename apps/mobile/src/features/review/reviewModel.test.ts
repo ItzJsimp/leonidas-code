@@ -265,7 +265,7 @@ describe("buildReviewParsedDiff", () => {
       return;
     }
 
-    expect(parsed.notice).toContain("server size cap");
+    expect(parsed.notice).toContain("too large");
     expect(parsed.fileCount).toBe(1);
     expect(parsed.files[0]?.rows[0]).toMatchObject({
       kind: "hunk",
@@ -309,8 +309,8 @@ describe("buildReviewParsedDiff", () => {
     expect(preview).toMatchObject({
       kind: "suppressed",
       reason: "large",
-      title: "Large diff",
-      actionLabel: "Load diff",
+      title: "Large changes",
+      actionLabel: "Load changes",
     });
   });
 });

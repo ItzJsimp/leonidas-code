@@ -382,7 +382,7 @@ function useThreadFilesWorkspace(params: {
 }
 
 function FilesUnavailable({
-  detail = "This thread does not have an active workspace path.",
+  detail = "This chat has no project folder yet.",
 }: {
   detail?: string;
 }) {
@@ -537,7 +537,9 @@ export function ThreadFilesTreeScreen(props: ThreadFilesRouteScreenProps) {
       return <LoadingScreen message="Checking file access..." messagePlacement="above-spinner" />;
     }
     return (
-      <FilesUnavailable detail={fileAccess.error ?? "This connection cannot read host files."} />
+      <FilesUnavailable
+        detail={fileAccess.error ?? "This connection cannot read files on the computer."}
+      />
     );
   }
   if (cwd === null) {
@@ -919,7 +921,9 @@ export function ThreadFileScreen(props: ThreadFileRouteScreenProps) {
       return <LoadingScreen message="Checking file access..." messagePlacement="above-spinner" />;
     }
     return (
-      <FilesUnavailable detail={fileAccess.error ?? "This connection cannot read host files."} />
+      <FilesUnavailable
+        detail={fileAccess.error ?? "This connection cannot read files on the computer."}
+      />
     );
   }
   if (cwd === null) {

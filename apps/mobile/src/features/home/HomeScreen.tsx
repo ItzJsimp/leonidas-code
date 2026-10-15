@@ -164,16 +164,16 @@ function deriveEmptyState(props: {
   const { catalogState } = props;
   if (catalogState.isLoadingConnections) {
     return {
-      title: "Loading environments",
-      detail: "Checking saved environments on this device.",
+      title: "Loading computers",
+      detail: "Checking saved computers on this device.",
       loading: true,
     };
   }
 
   if (!catalogState.hasConnections) {
     return {
-      title: "No environments connected",
-      detail: "Add an environment to load projects and start coding sessions.",
+      title: "No computers connected",
+      detail: "Add a computer to load projects and start chats.",
       loading: false,
     };
   }
@@ -189,10 +189,10 @@ function deriveEmptyState(props: {
       title:
         catalogState.connectionState === "unsupported"
           ? "Client not supported"
-          : "Environment unavailable",
+          : "Computer unavailable",
       detail:
         catalogState.connectionError ??
-        "The saved environment is offline. Check the URL or start the environment, then retry.",
+        "The saved computer is offline. Check the URL or start the computer, then try again.",
       loading: false,
     };
   }
@@ -203,8 +203,8 @@ function deriveEmptyState(props: {
     catalogState.connectionError === null
   ) {
     return {
-      title: "Connecting to environment",
-      detail: "Loading projects and threads from the saved environment.",
+      title: "Connecting to computer",
+      detail: "Loading projects and chats from the saved computer.",
       loading: true,
     };
   }
@@ -212,13 +212,13 @@ function deriveEmptyState(props: {
   if (props.projectCount === 0 && catalogState.hasLoadedShellSnapshot) {
     return {
       title: "No projects found",
-      detail: "The connected environment did not report any projects.",
+      detail: "The connected computer did not report any projects.",
       loading: false,
     };
   }
 
   return {
-    title: "No threads yet",
+    title: "No chats yet",
     detail: "Create a task to start a new coding runtime in one of your connected projects.",
     loading: false,
   };
@@ -896,7 +896,7 @@ export function HomeScreen(props: HomeScreenProps) {
     props.selectedEnvironmentId === null
       ? null
       : (props.savedConnectionsById[props.selectedEnvironmentId]?.environmentLabel ??
-        "this environment");
+        "this computer");
   // Connection state surfaces in the header title slot
   // (WorkspaceConnectionTitle) — nothing renders inside the list, so
   // reconnects never shift the rows.
@@ -925,12 +925,12 @@ export function HomeScreen(props: HomeScreenProps) {
             <EmptyState
               title={emptyState.title}
               detail={emptyState.detail}
-              actionLabel={!props.catalogState.hasReadyEnvironment ? "Add environment" : undefined}
+              actionLabel={!props.catalogState.hasReadyEnvironment ? "Add computer" : undefined}
               onAction={!props.catalogState.hasReadyEnvironment ? props.onAddConnection : undefined}
               action={
                 Platform.OS === "android" && !props.catalogState.hasReadyEnvironment ? (
                   <MaterialFloatingActionButton
-                    label="Add environment"
+                    label="Add computer"
                     icon="plus"
                     variant="extended"
                     tone="primary"
@@ -963,25 +963,25 @@ export function HomeScreen(props: HomeScreenProps) {
     hasSearchQuery && threadSearch.isPending ? undefined : hasSearchQuery ? (
       <EmptyState
         title="No results"
-        detail={`No threads matching "${props.searchQuery}".`}
+        detail={`No chats matching "${props.searchQuery}".`}
         variant={Platform.OS === "android" ? "plain" : undefined}
       />
     ) : v2ScopedProjectGroup !== null ? (
       <EmptyState
-        title={`No threads in ${v2ScopedProjectGroup.title}`}
+        title={`No chats in ${v2ScopedProjectGroup.title}`}
         detail="Choose another project or create a new task."
         variant={Platform.OS === "android" ? "plain" : undefined}
       />
     ) : selectedEnvironmentLabel ? (
       <EmptyState
-        title={`No threads in ${selectedEnvironmentLabel}`}
-        detail="Choose another environment or create a new task."
+        title={`No chats in ${selectedEnvironmentLabel}`}
+        detail="Choose another computer or create a new task."
         variant={Platform.OS === "android" ? "plain" : undefined}
       />
     ) : (
       <EmptyState
-        title="No threads yet"
-        detail="Create a task to start a new coding session."
+        title="No chats yet"
+        detail="Create a task to start a new chat."
         variant={Platform.OS === "android" ? "plain" : undefined}
       />
     );

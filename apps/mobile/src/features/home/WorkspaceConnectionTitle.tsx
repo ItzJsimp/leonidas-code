@@ -94,7 +94,7 @@ function StatusFadeIn(props: {
 export function WorkspaceConnectionTitle(props: {
   /** Content shown while connected (brand lockup or a screen title). */
   readonly brand: ReactNode;
-  /** Opens environment settings. Status is not pressable when omitted. */
+  /** Opens computer settings. Status is not pressable when omitted. */
   readonly onPress?: () => void;
   /** Fill the available row width (in-flow headers) instead of hugging content (native title slots). */
   readonly grow?: boolean;
@@ -121,7 +121,7 @@ export function WorkspaceConnectionTitle(props: {
   return (
     <StatusFadeIn grow={props.grow} maxWidth={props.maxWidth}>
       <Pressable
-        accessibilityHint="Opens environment settings"
+        accessibilityHint="Opens computer settings"
         accessibilityLabel={status.label}
         accessibilityRole="button"
         disabled={props.onPress === undefined}

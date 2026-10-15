@@ -67,7 +67,7 @@ export function SettingsNotificationsRouteScreen() {
           contentContainerClassName="px-5 pt-4"
         >
           <Text className="text-base text-foreground-muted">
-            Notifications require T3 Connect in this app build.
+            Notifications need remote access. This app version does not have it.
           </Text>
         </ScrollView>
       </SettingsScreen>
@@ -174,11 +174,11 @@ function ConfiguredSettingsNotificationsRouteScreen() {
       // Permission alone is not enough: the switch stays off until the relay
       // registration succeeds, so tell the user the truth about which happened.
       if (getAgentAwarenessRegistrationStatus() === "registered") {
-        Alert.alert("Notifications enabled", "Agent notifications are enabled for this device.");
+        Alert.alert("Notifications enabled", "AI notifications are on for this device.");
       } else {
         Alert.alert(
           "Couldn't finish enabling notifications",
-          "Notification access was granted, but this device could not be registered with T3 Connect. Notifications will start once registration succeeds.",
+          "Notification access was granted, but this device could not connect to remote access. Notifications will start after it connects.",
         );
       }
       return;
@@ -187,7 +187,7 @@ function ConfiguredSettingsNotificationsRouteScreen() {
       setNotificationStatus("unsupported");
       Alert.alert(
         "Notifications unavailable",
-        "Agent notifications are unavailable on this platform.",
+        "AI notifications are not available on this device.",
       );
       return;
     }
@@ -208,8 +208,8 @@ function ConfiguredSettingsNotificationsRouteScreen() {
 
   const promptSignIn = useCallback(() => {
     Alert.alert(
-      "Sign in to T3 Connect",
-      "Live Activity updates require T3 Connect so relay can deliver updates to this device.",
+      "Sign in for remote access",
+      "Live Activity updates need remote access to reach this device.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -236,7 +236,7 @@ function ConfiguredSettingsNotificationsRouteScreen() {
         const error = squashAtomCommandFailure(permission);
         Alert.alert(
           "Ongoing activity unavailable",
-          error instanceof Error ? error.message : "Could not enable agent notifications.",
+          error instanceof Error ? error.message : "Could not turn on AI notifications. Try again.",
         );
         return;
       }
@@ -244,7 +244,7 @@ function ConfiguredSettingsNotificationsRouteScreen() {
         setLiveActivityStatus("disabled");
         Alert.alert(
           "Notification permission needed",
-          "Enable notifications in system Settings to show ongoing agent activity.",
+          "Enable notifications in system Settings to show ongoing AI activity.",
           [
             { text: "Cancel", style: "cancel" },
             { text: "Open Settings", onPress: () => void Linking.openSettings() },
@@ -260,7 +260,9 @@ function ConfiguredSettingsNotificationsRouteScreen() {
       const error = squashAtomCommandFailure(tokenResult);
       Alert.alert(
         Platform.OS === "android" ? "Ongoing activity unavailable" : "Live Activities unavailable",
-        error instanceof Error ? error.message : "Could not enable agent activity updates.",
+        error instanceof Error
+          ? error.message
+          : "Could not turn on AI activity updates. Try again.",
       );
       return;
     }
@@ -290,7 +292,9 @@ function ConfiguredSettingsNotificationsRouteScreen() {
           Platform.OS === "android"
             ? "Ongoing activity unavailable"
             : "Live Activities unavailable",
-          error instanceof Error ? error.message : "Could not enable agent activity updates.",
+          error instanceof Error
+            ? error.message
+            : "Could not turn on AI activity updates. Try again.",
         );
       }
       return;
@@ -306,13 +310,13 @@ function ConfiguredSettingsNotificationsRouteScreen() {
       Alert.alert(
         Platform.OS === "android" ? "Ongoing activity enabled" : "Live Activities enabled",
         environmentCount > 0
-          ? "Agent activity updates are enabled for environments this connection can configure."
-          : "Agent activity updates are enabled. Add an environment to start receiving updates.",
+          ? "AI activity updates are on for the computers this connection can set up."
+          : "AI activity updates are on. Add a computer to start getting updates.",
       );
     } else {
       Alert.alert(
         "Couldn't finish enabling activity updates",
-        "This device could not be registered with T3 Connect, so activity updates won't appear yet. They'll start once registration succeeds.",
+        "This device could not connect to remote access, so activity updates will not appear yet. They will start after it connects.",
       );
     }
   }, [
@@ -432,7 +436,7 @@ function ConfiguredSettingsNotificationsRouteScreen() {
           paddingBottom: Math.max(insets.bottom, 18) + 18,
         }}
       >
-        <SettingsSection title="Agent activity">
+        <SettingsSection title="AI activity">
           <SettingsSwitchRow
             icon="bell.badge"
             label="Device Notifications"
@@ -463,8 +467,8 @@ function ConfiguredSettingsNotificationsRouteScreen() {
             label={
               Platform.OS === "android"
                 ? supportsAndroidLiveUpdateSettings()
-                  ? "Agent Live Updates"
-                  : "Ongoing Agent Activity"
+                  ? "AI live updates"
+                  : "Ongoing AI activity"
                 : "Live Activity Updates"
             }
             subtitle={agentAwarenessSubtitle}

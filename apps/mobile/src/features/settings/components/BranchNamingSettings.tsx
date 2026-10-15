@@ -29,7 +29,7 @@ export function BranchNamingSettings(props: {
   const instructionsEdited = useRef(false);
   return (
     <SettingsSection
-      title="Worktree branch naming"
+      title="Separate copy branch names"
       trailing={
         props.mode === null ? <Text className="text-xs text-foreground-muted">Mixed</Text> : null
       }
@@ -78,7 +78,7 @@ export function BranchNamingSettings(props: {
       {props.mode === "custom" ? (
         <View className="gap-2 px-4 py-3">
           <Text className="text-sm text-foreground-muted">
-            Append instructions to the naming prompt.
+            Add instructions for the AI that names branches.
           </Text>
           <AppTextInput
             key={props.instructions}

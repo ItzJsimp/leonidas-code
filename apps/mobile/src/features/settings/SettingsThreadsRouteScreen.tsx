@@ -38,7 +38,7 @@ export function SettingsThreadsRouteScreen() {
   return (
     <>
       <SettingsEnvironmentFilterHeader />
-      <SettingsScreen title="Thread behavior" trailing={<AndroidSettingsEnvironmentFilter />}>
+      <SettingsScreen title="Chat behavior" trailing={<AndroidSettingsEnvironmentFilter />}>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
@@ -71,7 +71,7 @@ function AutoSettleSettingsRows() {
     readonly ScopedMobileSettingsTarget[] | null
   >(null);
   const updateSettings = useAtomCommand(serverEnvironment.updateSettings, {
-    label: "server settings update",
+    label: "computer settings update",
     reportFailure: true,
   });
 
@@ -193,31 +193,31 @@ function AutoSettleSettingsRows() {
         <SettingsSection title="Usage limits">
           <SettingsSwitchRow
             icon="clock"
-            label="Auto-resume limited threads"
+            label="Auto-resume limited chats"
             value={uniformMobileSetting(displayTargets, "autoResumeLimitedThreads")}
             disabled={disabled}
             onValueChange={(value) => writeToAll({ autoResumeLimitedThreads: value })}
           />
           <SettingsSwitchRow
             icon="clock"
-            label="Snooze limited threads"
+            label="Snooze limited chats"
             value={uniformMobileSetting(displayTargets, "snoozeLimitedThreads")}
             disabled={disabled}
             onValueChange={(value) => writeToAll({ snoozeLimitedThreads: value })}
           />
         </SettingsSection>
       ) : null}
-      <SettingsSection title="Auto-settle">
+      <SettingsSection title="Mark as done by itself">
         <SettingsSwitchRow
           icon="arrow.triangle.branch"
-          label="Auto-settle merged threads"
+          label="Mark merged chats as done"
           value={referenceSettings.sidebarAutoSettleOnMerge}
           disabled={disabled}
           onValueChange={(value) => writeToAll({ sidebarAutoSettleOnMerge: value })}
         />
         <SettingsSwitchRow
           icon="clock"
-          label="Auto-settle inactive threads"
+          label="Mark inactive chats as done"
           value={afterDays !== null}
           disabled={disabled}
           onValueChange={(value) =>
@@ -237,7 +237,7 @@ function AutoSettleSettingsRows() {
         ) : null}
       </SettingsSection>
       {pendingWrites === 0 && mismatches.length > 0 ? (
-        <SettingsSection title="Across environments">
+        <SettingsSection title="Across computers">
           <View className="gap-3 p-4">
             <Text className="text-base text-foreground">Auto-settle defaults differ</Text>
             <Text className="text-sm text-foreground-muted">
@@ -250,7 +250,7 @@ function AutoSettleSettingsRows() {
               className="self-start rounded-full bg-subtle px-4 py-2 active:opacity-70"
             >
               <Text className="text-sm font-t3-medium text-foreground">
-                Apply auto-settle defaults
+                Use these settings on all chats
               </Text>
             </Pressable>
           </View>
@@ -281,8 +281,8 @@ function BetaSettingsSection() {
         />
       </SettingsSection>
       <Text className="px-2 text-sm text-foreground-muted">
-        Fold working and monitoring threads into a Working section. They return to the top of the
-        list when they need you. While this is on, active threads are ordered by time and cannot be
+        Fold working and monitoring chats into a Working section. They return to the top of the list
+        when they need you. While this is on, active threads are ordered by time and cannot be
         moved.
       </Text>
     </View>

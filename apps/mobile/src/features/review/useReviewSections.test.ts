@@ -199,7 +199,7 @@ it("reports denied file access when no checkpoint can replace the local review",
   expect(denied.selectedSection).toBeNull();
   expect(denied.reviewSections).toEqual([]);
   expect(denied.loadingGitDiffs).toBe(false);
-  expect(denied.error).toBe("This connection cannot read local diffs.");
+  expect(denied.error).toBe("This connection cannot read local changes.");
 });
 
 it("keeps a cached checkpoint available when the filesystem access check fails", () => {
