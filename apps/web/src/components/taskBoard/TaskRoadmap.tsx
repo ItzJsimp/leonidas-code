@@ -86,7 +86,9 @@ export function TaskRoadmapView(props: {
     <div className="mx-auto w-full max-w-4xl space-y-8 px-4 py-6 sm:px-6" data-tour="tasks-roadmap">
       <section aria-label="Release destination" className="space-y-3 border-b border-border pb-6">
         <div className="flex flex-wrap items-center gap-2 text-sm font-medium tabular-nums">
-          <span className="text-muted-foreground">V{plan.currentVersion} · Current baseline</span>
+          <span className="text-muted-foreground">
+            V{plan.currentVersion} · Last accepted milestone
+          </span>
           <span aria-hidden className="text-muted-foreground">
             →
           </span>

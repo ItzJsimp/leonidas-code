@@ -150,7 +150,7 @@ export function TaskRoadmapMap(props: {
               data-roadmap-node="baseline"
               className="rounded-lg border border-primary/40 bg-background px-3 py-2"
             >
-              <p className="text-xs text-muted-foreground">Start here · Current baseline</p>
+              <p className="text-xs text-muted-foreground">Start here · Last accepted milestone</p>
               <p className="font-mono text-base font-semibold">V{props.currentVersion}</p>
             </div>
             <p className="self-center text-xs leading-relaxed text-muted-foreground">
