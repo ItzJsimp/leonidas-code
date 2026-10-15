@@ -137,7 +137,7 @@ export function useSystemCareActions() {
    * the person reads it and presses send themselves.
    */
   const preparePrompt = useCallback(
-    (kind: "investigate" | "checkup", alertId?: string) =>
+    (kind: "investigate" | "checkup" | "tune", alertId?: string) =>
       run("Could not prepare the prompt", async () => {
         if (environmentId === null || starting.current) return;
         starting.current = true;
@@ -149,7 +149,7 @@ export function useSystemCareActions() {
               input: { kind, ...(alertId ? { alertId } : {}) },
             }),
           );
-          const copied = await writeTextToClipboard(result.prompt, "System Care prompt").then(
+          const copied = await writeTextToClipboard(result.prompt, "PC Tuning prompt").then(
             () => true,
             () => false,
           );
@@ -162,7 +162,7 @@ export function useSystemCareActions() {
             title: opened ? "Prompt ready, not sent" : "Prompt copied, not sent",
             description: opened
               ? `${copied ? "It is also copied. " : ""}Read it, then press send when you are ready.`
-              : "Open a new thread in the System Care project and paste it.",
+              : "Open a new thread in the PC Tuning project and paste it.",
           });
         } finally {
           starting.current = false;

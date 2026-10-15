@@ -11,7 +11,7 @@ import {
   type HostBasics,
 } from "./parsers.ts";
 import { auditPrompt } from "./promptAudit.ts";
-import { buildAgentPrompt, machineSummary } from "./SystemCare.ts";
+import { BENCHMARK_SCRIPT, buildAgentPrompt, machineSummary } from "./SystemCare.ts";
 
 const host: HostBasics = {
   platform: "win32",
@@ -270,7 +270,7 @@ describe("history files", () => {
   });
 });
 
-describe("System Care prompts", () => {
+describe("PC Tuning prompts", () => {
   it("summarizes the machine and points the agent at its evidence", () => {
     const inventory = parseWindowsInventory(inventoryJson, host, 1);
     expect(machineSummary(inventory)).toContain(
@@ -330,5 +330,29 @@ describe("System Care prompts", () => {
       expect(auditPrompt(prompt)).toEqual({ score: 100, failures: [] });
     }
     expect(auditPrompt("Be thorough and fix the PC.").score).toBeLessThan(60);
+  });
+
+  it("makes the tune prompt measure, research, save and measure again", () => {
+    const inventory = parseWindowsInventory(inventoryJson, host, 1);
+    const context = {
+      inventory,
+      sample: null,
+      limits: [],
+      alerts: [],
+      alert: null,
+      history: { range: "24h" as const, resolutionMs: 1, points: [] },
+      historyDir: "/state/hardware/history",
+    };
+    const prompt = buildAgentPrompt("tune", context, "incidents/x.json", "/aios/domains/pc/pc.md");
+    expect(auditPrompt(prompt, "tune")).toEqual({ score: 100, failures: [] });
+    expect(prompt).toContain("Save: write /aios/domains/pc/pc.md");
+    expect(prompt).toContain("- No file, setting or process was modified before my yes.");
+    const checkup = buildAgentPrompt("checkup", context, "incidents/x.json");
+    expect(auditPrompt(checkup, "tune").failures).toContain("benchmarks again after the fixes");
+  });
+
+  it("keeps the benchmark script plain ASCII with one JSON line out", () => {
+    expect(/^[\x09\x0a\x0d\x20-\x7e]*$/.test(BENCHMARK_SCRIPT)).toBe(true);
+    expect(BENCHMARK_SCRIPT).toContain('Add-Content -Path (Join-Path $PSScriptRoot "benchmarks.jsonl")');
   });
 });

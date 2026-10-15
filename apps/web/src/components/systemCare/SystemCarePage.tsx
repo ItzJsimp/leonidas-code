@@ -212,7 +212,7 @@ export function SystemCarePage() {
               <span className={cn("relative size-5 rounded-full", HEALTH_DOT[health])} />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-semibold tracking-tight">System Care</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">PC Tuning</h1>
               <p className="text-sm text-muted-foreground">
                 {HEALTH_LABEL[health]}
                 {alerts.length > 0 ? ` · ${alerts.length} open` : ""}
@@ -235,15 +235,25 @@ export function SystemCarePage() {
               ) : null}
             </div>
             <div className="flex flex-col items-start gap-1.5 sm:items-end">
-              <Button
-                disabled={actions.busy || !supported}
-                onClick={() => void actions.preparePrompt("checkup")}
-              >
-                {actions.busy ? <Spinner /> : <ClipboardCopyIcon />}
-                Get a checkup prompt
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Fills a new chat for you. Nothing is sent until you press send.
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <Button
+                  disabled={actions.busy || !supported}
+                  onClick={() => void actions.preparePrompt("tune")}
+                >
+                  {actions.busy ? <Spinner /> : <ClipboardCopyIcon />}
+                  Tune my PC
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={actions.busy || !supported}
+                  onClick={() => void actions.preparePrompt("checkup")}
+                >
+                  Get a checkup
+                </Button>
+              </div>
+              <p className="max-w-xs text-xs text-muted-foreground sm:text-right">
+                Tune measures speed, researches your parts and asks before each change. Fills a new
+                chat for you; nothing is sent until you press send.
               </p>
             </div>
           </div>
@@ -252,7 +262,7 @@ export function SystemCarePage() {
         {live.error ? <p className="text-sm text-destructive">{live.error}</p> : null}
         {!supported ? (
           <p className="text-sm text-muted-foreground">
-            System Care is not available on this machine yet.
+            PC Tuning is not available on this machine yet.
           </p>
         ) : null}
 
@@ -491,7 +501,7 @@ export function SystemCarePage() {
             <p className="rounded-xl bg-muted/50 px-4 py-8 text-center text-sm text-muted-foreground">
               {history.isPending
                 ? "Loading history..."
-                : "History fills in as System Care keeps watching."}
+                : "History fills in as PC Tuning keeps watching."}
             </p>
           )}
         </Card>

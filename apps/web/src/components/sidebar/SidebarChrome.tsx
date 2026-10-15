@@ -329,7 +329,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           />
           <SidebarUtilityItem
             icon={<ActivityIcon />}
-            label="System Care"
+            label="PC Tuning"
             onClick={handleSystemCareClick}
           />
           <SidebarUtilityItem
