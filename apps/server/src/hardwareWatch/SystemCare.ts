@@ -352,7 +352,12 @@ const make = Effect.gen(function* () {
         projectId,
         workspaceRoot: root,
         title,
-        prompt: buildAgentPrompt(input.kind, context, incident, yield* notesPath(context.inventory)),
+        prompt: buildAgentPrompt(
+          input.kind,
+          context,
+          incident,
+          yield* notesPath(context.inventory),
+        ),
       };
     }).pipe(
       Effect.mapError((cause) =>
