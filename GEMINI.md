@@ -29,6 +29,7 @@ This project lives inside its builder's AI operating system at `../../`. If `../
 | Any code change: principles, surfaces, dev servers, test data, verifying, PRs, docs, architecture, taste | [engineering](./.agents/rules/engineering.md)                     |
 | Pushing, branching, roadmap lanes, versions, release notes, dev copy                                     | [team-workflow](./.agents/rules/team-workflow.md)                 |
 | Starting or closing work, task cards                                                                     | [task-driven-work](./.agents/rules/task-driven-work.md)           |
+| Hooks, skills, config, or how Claude, Codex and the app layer together                                   | [harness-layers](./.agents/rules/harness-layers.md)               |
 | Delegating to another model                                                                              | [tiered-models](./.agents/rules/tiered-models.md)                 |
 | Reply format additions (pushed-to-main banner)                                                           | [output-standard](./.agents/rules/output-standard.md)             |
 | Module map, data sources, cheap verify loop                                                              | [agent-playbook](./agent-playbook.md)                             |
