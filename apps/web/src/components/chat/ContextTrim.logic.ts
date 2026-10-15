@@ -108,10 +108,21 @@ export function deriveTrimSuggestions(
 const sumTokens = (items: ReadonlyArray<{ readonly tokens: number }>) =>
   items.reduce((total, item) => total + item.tokens, 0);
 
-/** Estimated tokens the provider carries on every turn before the conversation starts. */
+/**
+ * Tokens the provider carries on every turn before the conversation starts. When the provider
+ * names its conversation category ("Messages"), everything else it counts as used is setup; that
+ * skips deferred tools, which are not in context. Otherwise add up what the breakdown lists.
+ */
 export function estimateFixedOverheadTokens(
-  breakdown: Pick<ThreadContextBreakdown, "mcpTools" | "skills" | "agents" | "files">,
+  breakdown: Pick<
+    ThreadContextBreakdown,
+    "categories" | "mcpTools" | "skills" | "agents" | "files"
+  >,
 ): number {
+  const used = breakdown.categories.filter((category) => category.kind === "used");
+  if (used.some((category) => category.name.toLowerCase() === "messages")) {
+    return sumTokens(used.filter((category) => category.name.toLowerCase() !== "messages"));
+  }
   return (
     sumTokens(breakdown.mcpTools) +
     sumTokens(breakdown.skills) +

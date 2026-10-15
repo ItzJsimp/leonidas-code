@@ -92,23 +92,50 @@ describe("deriveTrimSuggestions", () => {
 });
 
 describe("estimateFixedOverheadTokens", () => {
+  const file = (origin: "memory" | "read", tokens: number) => ({
+    path: `${origin}.md`,
+    tokens,
+    estimated: true,
+    readCount: 1,
+    lastTurnIndex: null,
+    origin,
+  });
+  const category = (name: string, tokens: number, kind: "used" | "free" | "deferred" = "used") => ({
+    name,
+    kind,
+    tokens,
+    estimated: false,
+  });
+
   it("adds MCP schemas, skills, agents and memory files, but not files the agent read", () => {
-    const file = (origin: "memory" | "read", tokens: number) => ({
-      path: `${origin}.md`,
-      tokens,
-      estimated: true,
-      readCount: 1,
-      lastTurnIndex: null,
-      origin,
-    });
     expect(
       estimateFixedOverheadTokens({
+        categories: [],
         mcpTools: [{ name: "a", server: "docs", tokens: 100 }],
         skills: [{ name: "s", source: "user", tokens: 20 }],
         agents: [{ name: "g", source: "user", tokens: 3 }],
         files: [file("memory", 4_000), file("read", 9_000)],
       }),
     ).toBe(4_123);
+  });
+
+  it("trusts the provider split when it names the conversation, so deferred tools are not counted", () => {
+    expect(
+      estimateFixedOverheadTokens({
+        categories: [
+          category("Messages", 127_400),
+          category("System prompt", 8_200),
+          category("MCP tools", 5_200),
+          category("Memory files", 10_800),
+          category("Free space", 832_000, "free"),
+          category("MCP tools (deferred)", 70_000, "deferred"),
+        ],
+        mcpTools: [{ name: "a", server: "docs", tokens: 70_000 }],
+        skills: [],
+        agents: [],
+        files: [],
+      }),
+    ).toBe(24_200);
   });
 });
 
