@@ -195,3 +195,32 @@ describe("deriveTrimSuggestions unused MCP servers", () => {
     expect(result.every((s) => s.unused === false)).toBe(true);
   });
 });
+
+describe("deriveTrimSuggestions with a provider MCP total", () => {
+  it("scales server sizes to the MCP tokens actually loaded, since deferred schemas cost nothing", () => {
+    const result = deriveTrimSuggestions({
+      ...base,
+      categories: [
+        { name: "MCP tools", kind: "used", tokens: 6_000, estimated: false },
+        { name: "MCP tools (deferred)", kind: "deferred", tokens: 64_000, estimated: false },
+      ],
+      mcpTools: [
+        { name: "a", server: "big", tokens: 45_000 },
+        { name: "b", server: "small", tokens: 15_000 },
+      ],
+    });
+    expect(result.map((s) => [s.label, s.tokens, s.estimated])).toEqual([
+      ["big", 4_500, true],
+      ["small", 1_500, true],
+    ]);
+  });
+
+  it("keeps full schema sizes when the provider gives no MCP total", () => {
+    const result = deriveTrimSuggestions({
+      ...base,
+      categories: [],
+      mcpTools: [{ name: "a", server: "big", tokens: 45_000 }],
+    });
+    expect(result.map((s) => [s.tokens, s.estimated])).toEqual([[45_000, false]]);
+  });
+});

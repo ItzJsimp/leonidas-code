@@ -43,20 +43,27 @@ function findUnusedServers(
  */
 export function deriveTrimSuggestions(
   breakdown: Pick<ThreadContextBreakdown, "mcpTools" | "skills" | "agents" | "files"> &
-    Partial<Pick<ThreadContextBreakdown, "toolCalls">>,
+    Partial<Pick<ThreadContextBreakdown, "toolCalls" | "categories">>,
 ): ReadonlyArray<TrimSuggestion> {
   const servers = new Map<string, number>();
   for (const tool of breakdown.mcpTools) {
     servers.set(tool.server, (servers.get(tool.server) ?? 0) + tool.tokens);
   }
+  // Deferred tools are not in context, so full schema sizes overstate what a server costs. When
+  // the provider reports the MCP tokens actually loaded, share that total by schema size.
+  const loadedMcp = (breakdown.categories ?? []).find(
+    (category) => category.kind === "used" && category.name.toLowerCase() === "mcp tools",
+  )?.tokens;
+  const schemaTotal = [...servers.values()].reduce((total, tokens) => total + tokens, 0);
+  const scaleToLoaded = loadedMcp !== undefined && schemaTotal > loadedMcp;
   const unusedServers = findUnusedServers(servers.keys(), breakdown.toolCalls ?? []);
   const all: TrimSuggestion[] = [
     ...[...servers].map(([server, tokens]) => ({
       key: `mcp:${server}`,
       kind: "mcp" as const,
       label: server,
-      tokens,
-      estimated: false,
+      tokens: scaleToLoaded ? Math.round((tokens / schemaTotal) * loadedMcp) : tokens,
+      estimated: scaleToLoaded,
       unused: unusedServers.has(server),
     })),
     ...breakdown.skills.map((skill) => ({
