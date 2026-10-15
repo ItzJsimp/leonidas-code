@@ -68,7 +68,7 @@ foreach ($target in $targets | Select-Object -Unique) {
 # Core skills (standards/project-standard.md section 11). Every workspace links these from this AIOS
 # canon and never copies them, so one canonical edit reaches every workspace. A workspace's own folder
 # with the same name wins. A name the canon lacks is reported, never invented.
-$coreSkills = @('session-handoff', 'chat-sync', 'chat-closeout', 'recap', 'daily-briefing', 'daily-closeout', 'find-skills', 'ask-leonidas', 'implement', 'grill-me', 'grill-with-docs', 'domain-modeling', 'diagnosing-bugs', 'to-spec', 'to-tickets', 'wayfinder', 'retro', 'wizard', 'wait-what', 'writing-for-agents', 'pr', 'review-two-axis')
+$coreSkills = @('session-handoff', 'chat-sync', 'chat-closeout', 'recap', 'daily-briefing', 'daily-closeout', 'find-skills', 'ask-leonidas', 'implement', 'grilling', 'grill-me', 'grill-with-docs', 'domain-modeling', 'diagnosing-bugs', 'to-spec', 'to-tickets', 'wayfinder', 'retro', 'wizard', 'wait-what', 'writing-for-agents', 'pr', 'review-two-axis')
 $canonCore = @($coreSkills | Where-Object { Test-Path -LiteralPath (Join-Path $repo ".agents/skills/$_/SKILL.md") })
 $absentCore = @($coreSkills | Where-Object { $_ -notin $canonCore })
 if ($absentCore) { Write-Warning "Core skills missing from ${repo}: $($absentCore -join ', ')" }

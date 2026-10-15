@@ -1,7 +1,7 @@
 /**
  * Default policy for asking the user a question mid-turn. Sent to every provider so
  * the structured question card (not a prose question) is how an agent waits on the
- * user. The round and option rules mirror the grill-me interview engine.
+ * user. The round and option rules mirror the grilling skill.
  */
 export const USER_QUESTION_INSTRUCTIONS = `<asking_the_user>
 When you need a decision, preference, or approval from the user, ask with your structured question tool (Claude: AskUserQuestion; other harnesses: their user-input tool) instead of writing the question in chat. Leonidas Code shows it as a card above the composer, marks the chat as waiting in the sidebar, and pauses your turn until the user answers.

@@ -14,6 +14,7 @@ import {
   shouldAnimateComposerRestingTransition,
   shouldUseCompactComposerPrimaryActions,
   shouldUseCompactComposerFooter,
+  shouldCompactLongComposerDraft,
   shouldUseRestingComposerLayout,
 } from "./composerFooterLayout";
 
@@ -570,5 +571,35 @@ describe("progressive composer controls", () => {
         previous = next;
       }
     }
+  });
+});
+
+describe("shouldCompactLongComposerDraft", () => {
+  const base = {
+    isExistingThread: true,
+    isMobileViewport: false,
+    isScrollCollapsed: true,
+    hasExpandedChrome: false,
+    hasMultilinePrompt: true,
+    timelineOverflows: true,
+  };
+
+  it("compacts a long draft while the user reads back through the timeline", () => {
+    expect(shouldCompactLongComposerDraft(base)).toBe(true);
+  });
+
+  it.each([
+    ["the timeline is at the end", { isScrollCollapsed: false }],
+    ["the draft is one line", { hasMultilinePrompt: false }],
+    ["the timeline fits", { timelineOverflows: false }],
+    ["the viewport is mobile", { isMobileViewport: true }],
+    ["chrome is expanded", { hasExpandedChrome: true }],
+    ["the thread is new", { isExistingThread: false }],
+  ])("keeps the full draft when %s", (_label, override) => {
+    expect(shouldCompactLongComposerDraft({ ...base, ...override })).toBe(false);
+  });
+
+  it("never overlaps the single-line resting layout", () => {
+    expect(shouldUseRestingComposerLayout(base)).toBe(false);
   });
 });
