@@ -814,3 +814,134 @@ describe("task owners and agent runs", () => {
     expect(read(card('id: task-g\nname: "G"'))?.kind).toBeUndefined();
   });
 });
+
+describe("game card board fields", () => {
+  const game = (extra: string, owner = "jake") =>
+    `---\nid: GB-020\ntitle: "Tune prices"\nowner: ${owner}\nsystem: Economy\nstatus: todo\npriority: P2\ndepends: []\ndue: 2026-10-20\n${extra}---\n\n## Goal\nTune it.\n`;
+  const read = (raw: string) =>
+    cardToTask({
+      fileName: "GB-020-x.md",
+      raw,
+      mtimeMs: NOW,
+      now: NOW,
+      projectHint: "rent-due-games",
+    });
+
+  it("maps owner to the board assignee", () => {
+    expect(read(game(""))?.assignee).toBe("Jake");
+    expect(read(game("", "mob"))?.assignee).toBe("Mob");
+    expect(read(game("", "Mob"))?.assignee).toBe("Mob");
+    expect(read(game("", "either"))?.assignee).toBeNull();
+  });
+
+  it("maps system to a system label and keeps due", () => {
+    const task = read(game(""));
+    expect(task?.labels).toContain("system:Economy");
+    expect(task?.due).toBe("2026-10-20");
+  });
+
+  it("does not add game fields to a card without owner and system", () => {
+    const task = read('---\nid: task-a\nname: "A"\nowner: leonidas\nstatus: todo\n---\n');
+    expect(task?.assignee).toBeNull();
+    expect(task?.labels).toEqual([]);
+  });
+
+  it("reads depends as blockedBy and drops dependencies that are done", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "task-board-game-dep-"));
+    try {
+      const dir = NodePath.join(root, "projects", "rent-due-games", "clean-the-goo");
+      NodeFS.mkdirSync(NodePath.join(dir, ".git"), { recursive: true });
+      NodeFS.mkdirSync(NodePath.join(dir, "tasks"));
+      NodeFS.mkdirSync(NodePath.join(root, "tasks"));
+      const card = (id: string, status: string, depends: string) =>
+        `---\nid: ${id}\ntitle: "${id}"\nowner: mob\nsystem: Pipeline\nstatus: ${status}\npriority: P1\ndepends: ${depends}\n---\n`;
+      NodeFS.writeFileSync(
+        NodePath.join(dir, "tasks", "GB-001-a.md"),
+        card("GB-001", "done", "[]"),
+      );
+      NodeFS.writeFileSync(
+        NodePath.join(dir, "tasks", "GB-002-b.md"),
+        card("GB-002", "doing", "[]"),
+      );
+      NodeFS.writeFileSync(
+        NodePath.join(dir, "tasks", "GB-003-c.md"),
+        card("GB-003", "todo", "[GB-001, GB-002, GB-404]"),
+      );
+      NodeFS.writeFileSync(
+        NodePath.join(dir, "tasks", "GB-004-d.md"),
+        card("GB-004", "todo", "\n  - GB-002"),
+      );
+      const cache: AiosCardCache = new Map();
+      for (let pass = 0; pass < 2; pass++) {
+        const byId = new Map(readAiosTasks(root, { now: NOW, cache }).map((t) => [t.id, t]));
+        expect(byId.get("GB-003")?.blockedBy).toEqual(["GB-002", "GB-404"]);
+        expect(byId.get("GB-004")?.blockedBy).toEqual(["GB-002"]);
+        expect(byId.get("GB-001")?.blockedBy).toEqual([]);
+      }
+    } finally {
+      NodeFS.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  const changedLines = (before: string, after: string) => {
+    const a = before.split("\n");
+    const b = after.split("\n");
+    expect(b.length).toBe(a.length);
+    return a.flatMap((line, i) => (line === b[i] ? [] : [[line, b[i]!]]));
+  };
+
+  it("changes exactly one line when the status changes", () => {
+    const before = game("");
+    const after = applyCardPatch(before, { actor: "Jake", status: "in_progress" }, NOW);
+    expect(changedLines(before, after)).toEqual([["status: todo", "status: doing"]]);
+  });
+
+  it("changes exactly one line when the priority changes", () => {
+    const before = game("");
+    const after = applyCardPatch(before, { actor: "Jake", priority: "critical" }, NOW);
+    expect(changedLines(before, after)).toEqual([["priority: P2", "priority: P0"]]);
+  });
+
+  it("writes an owner change back to the owner line", () => {
+    const before = game("");
+    expect(
+      changedLines(before, applyCardPatch(before, { actor: "J", assignee: "Mob" }, NOW)),
+    ).toEqual([["owner: jake", "owner: mob"]]);
+    expect(
+      changedLines(before, applyCardPatch(before, { actor: "J", assignee: null }, NOW)),
+    ).toEqual([["owner: jake", "owner: either"]]);
+  });
+
+  it("writes no last_touched, completed_date or Activity section", () => {
+    const after = applyCardPatch(game(""), { actor: "Jake", status: "done", note: "x" }, NOW);
+    expect(after).not.toMatch(/last_touched|completed_date|## Activity/);
+    expect(after).toMatch(/^status: done$/m);
+  });
+
+  it("returns the card untouched when only a note is given", () => {
+    const before = game("");
+    expect(applyCardPatch(before, { actor: "Jake", note: "hello" }, NOW)).toBe(before);
+  });
+
+  it("keeps CRLF endings, the BOM and the field order", () => {
+    const before =
+      "\uFEFF" + game("files:\r\n  - a.lua\r\n").replace(/\n/g, "\r\n").replace(/\r\r/g, "\r");
+    const after = applyCardPatch(
+      before,
+      { actor: "Jake", status: "in_progress", priority: "high" },
+      NOW,
+    );
+    expect(after.charCodeAt(0)).toBe(0xfeff);
+    expect(after.replace(/\r\n/g, "")).not.toMatch(/[\r\n]/);
+    expect(after).toBe(
+      before.replace("status: todo", "status: doing").replace("priority: P2", "priority: P1"),
+    );
+  });
+
+  it("keeps a card that ends right after the closing fence", () => {
+    const before = "---\nid: GB-021\nowner: mob\nsystem: UI\nstatus: todo\npriority: P1\n---";
+    expect(applyCardPatch(before, { actor: "J", status: "in_progress" }, NOW)).toBe(
+      before.replace("status: todo", "status: doing"),
+    );
+  });
+});

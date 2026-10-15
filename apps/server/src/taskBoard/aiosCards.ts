@@ -329,6 +329,19 @@ function normalizeProjectSlug(value: string | undefined): string | null {
   return slug || null;
 }
 
+/** Game-repo cards (`owner` + `system` frontmatter) keep their own words and are edited byte-clean. */
+const isGameCard = (fields: FrontmatterFields) => "owner" in fields && "system" in fields;
+
+/** The board owner a game card's `owner` names: jake and mob are people, `either` is anyone. */
+function gameOwner(value: string): string | null {
+  const owner = value.trim();
+  if (!owner || owner.toLowerCase() === "either") return null;
+  return owner[0]!.toUpperCase() + owner.slice(1).toLowerCase();
+}
+
+// Game tasks whose `blockedBy` still lists every `depends` id; readAiosTasks drops the finished ones.
+const gameTasks = new WeakSet<TaskBoardTask>();
+
 const field = (fields: FrontmatterFields, key: string): string => {
   const value = fields[key];
   return (Array.isArray(value) ? value.join(", ") : ((value as string | undefined) ?? "")).trim();
@@ -463,11 +476,14 @@ export function cardToTask(input: {
   // `build_lane` says who builds the card ("Mob", "Jake", "Mob after Jake go"); it becomes a
   // `lane:` label so every client can show and search it.
   const buildLane = field(fields, "build_lane");
+  const game = isGameCard(fields);
+  const system = game ? field(fields, "system") : "";
   const labels = [
     ...new Set(
       [
         ...listField(fields, "tags"),
         field(fields, "lane"),
+        system ? `system:${system}` : "",
         buildLane ? `lane:${buildLane.toLowerCase().replace(/\s+/g, "-")}` : "",
       ].filter(Boolean),
     ),
@@ -476,11 +492,13 @@ export function cardToTask(input: {
   const verify = field(fields, "verify");
   const shared = field(fields, "shared").toLowerCase() === "true";
   const sharedBy = shared ? field(fields, "shared_by") : "";
-  const assignee = field(fields, "assignee") || assigneeFromLane(buildLane);
+  const assignee = game
+    ? (gameOwner(field(fields, "owner")) ?? "")
+    : field(fields, "assignee") || assigneeFromLane(buildLane);
   const kind = cardKind(field(fields, "kind"), history);
   const sharedSync = shared ? field(fields, "shared_sync") : "";
 
-  return {
+  const task: TaskBoardTask = {
     id,
     project: projectSlug ?? "general",
     title: name || stem.replace(/-/g, " "),
@@ -493,8 +511,9 @@ export function cardToTask(input: {
     completedBy: completed
       ? (lastCompletion?.actor ??
         (claimedBy ||
-          field(fields, "accountable") ||
-          field(fields, "owner") ||
+          (game
+            ? gameOwner(field(fields, "owner"))
+            : field(fields, "accountable") || field(fields, "owner")) ||
           input.member ||
           "Unknown"))
       : null,
@@ -513,7 +532,7 @@ export function cardToTask(input: {
       : null,
     verify: verify || null,
     startFiles: listField(fields, "start_files"),
-    blockedBy: listField(fields, "blocked_by"),
+    blockedBy: listField(fields, game ? "depends" : "blocked_by"),
     ...(checklist ? { checklist } : {}),
     shared,
     ...(sharedBy ? { sharedBy } : {}),
@@ -528,6 +547,8 @@ export function cardToTask(input: {
     issueUrl: null,
     history,
   };
+  if (game) gameTasks.add(task);
+  return task;
 }
 
 /**
@@ -710,7 +731,19 @@ export function readAiosTasks(
   };
 
   for (const folder of aiosTaskFolders(root)) visit(folder.dir, folder.projectHint, folder.global);
-  return [...byId.values()].map((found) => found.task);
+  const tasks = [...byId.values()].map((found) => found.task);
+  // A game card's `depends` blocks it only while the card it names is not done.
+  let done: Set<string> | undefined;
+  return tasks.map((task) => {
+    if (task.blockedBy?.length && gameTasks.has(task)) {
+      const finished = (done ??= new Set(
+        tasks.filter((other) => other.status === "done").map((other) => other.id),
+      ));
+      const open = task.blockedBy.filter((id) => !finished.has(id));
+      if (open.length !== task.blockedBy.length) return { ...task, blockedBy: open };
+    }
+    return task;
+  });
 }
 
 /** Finds a card file by its `sourceFile`: global tasks first, then project task folders. */
@@ -748,7 +781,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   if (!span || !parsed) throw new Error("invalid_card");
   const { fields } = parsed;
   // Game-repo cards (`owner` + `system`) keep their own words: `doing`, `P0`, unquoted.
-  const game = "owner" in fields && "system" in fields;
+  const game = isGameCard(fields);
   const eol = text[text.indexOf("\n") - 1] === "\r" ? "\r\n" : "\n";
   const lines = text
     .slice(span.headerStart, span.headerEnd)
@@ -780,7 +813,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     title: field(fields, "name") || field(fields, "title"),
     project: normalizeProjectSlug(field(fields, "project")),
     claimedBy: field(fields, "claimed_by"),
-    assignee: field(fields, "assignee"),
+    assignee: game ? (gameOwner(field(fields, "owner")) ?? "") : field(fields, "assignee"),
     threadId: field(fields, "thread_id"),
     shared: field(fields, "shared").toLowerCase() === "true",
     sharedBy: field(fields, "shared_by"),
@@ -804,7 +837,9 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
 
   const assignee = patch.assignee === undefined ? undefined : patch.assignee?.trim() || null;
   if (assignee !== undefined && (assignee ?? "") !== was.assignee) {
-    setKey("assignee", assignee === null ? null : quote(assignee));
+    // A game card keeps its owner in `owner`, in lower case: jake, mob or either.
+    if (game) setKey("owner", assignee === null ? "either" : assignee.toLowerCase());
+    else setKey("assignee", assignee === null ? null : quote(assignee));
     other.push(assignee === null ? "made available to anyone" : `assigned to ${assignee}`);
     changed = true;
   }
@@ -820,7 +855,9 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   if (patch.status !== undefined && patch.status !== was.status) {
     const card = game ? GAME_STATUS[patch.status] : statusToCard(patch.status);
     setKey("status", game ? card : quote(card));
-    if (patch.status === "done") {
+    if (game) {
+      // Game cards change only the field that moved: no completed_date, no activity line.
+    } else if (patch.status === "done") {
       setKey("completed_date", localDate(now));
       lifecycle.push("completed");
     } else {
@@ -866,7 +903,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   }
 
   if (patch.due !== undefined && (patch.due ?? "") !== field(fields, "due")) {
-    setKey("due", patch.due === null ? null : quote(patch.due));
+    setKey("due", patch.due === null ? null : game ? patch.due : quote(patch.due));
     other.push(patch.due === null ? "removed due date" : `due → ${patch.due}`);
     changed = true;
   }
@@ -911,8 +948,12 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   if (syncChanged) setKey("shared_sync", sharedSync);
 
   let closing = text.slice(span.headerEnd, span.bodyStart);
-  if (!closing.endsWith("\n")) closing += eol;
+  if (!game && !closing.endsWith("\n")) closing += eol;
   const header = () => bom + text.slice(0, span.headerStart) + lines.join("") + closing;
+
+  // Game cards are edited byte-clean: only the changed lines differ, with no last_touched bump
+  // and no Activity section.
+  if (game) return changed || syncChanged ? header() + text.slice(span.bodyStart) : raw;
 
   const note = patch.note === undefined ? "" : oneLine(patch.note);
   if (!changed && !note) return syncChanged ? header() + text.slice(span.bodyStart) : raw;
