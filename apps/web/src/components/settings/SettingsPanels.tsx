@@ -1,5 +1,6 @@
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { SkillFoldersEditor } from "./SkillFoldersEditor";
+import { useSkillFoldersMirror } from "./useSkillFoldersMirror";
 import { ResetSectionButton } from "./ResetSectionButton";
 import { LoginItemSettings } from "./LoginItemSettings";
 import { ReasoningEffortSettings } from "./ReasoningEffortSettings";
@@ -2318,6 +2319,7 @@ export function GeneralSettingsPanel() {
   // is written. Per-machine tuning (background activity overrides) still
   // needs exactly one environment.
   const environmentId = environment?.environmentId ?? null;
+  const mirrorSkillFolders = useSkillFoldersMirror(environmentId, settings.aiosRoot);
   const isEnvironmentScope = scope.environmentIds.length === 1 && environmentId !== null;
   const hasServerTargets = connectedEnvironments.length > 0;
   const [backgroundActivityDialogOpen, setBackgroundActivityDialogOpen] = useState(false);
@@ -3489,7 +3491,10 @@ export function GeneralSettingsPanel() {
           <SkillFoldersEditor
             prefs={settings.skillFolders}
             availableSkills={serverProviders.flatMap((provider) => provider.skills)}
-            onChange={(skillFolders) => updateSettings({ skillFolders })}
+            onChange={(skillFolders) => {
+              updateSettings({ skillFolders });
+              mirrorSkillFolders(skillFolders);
+            }}
           />
         </SettingsRow>
         <SettingsRow
