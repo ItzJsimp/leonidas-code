@@ -1,4 +1,4 @@
-# Session Handoff: Leonidas token-efficiency programme (25 ideas, slices 1 to 5 done)
+# Session Handoff: Leonidas token-efficiency programme (25 ideas; ideas 2, 3, 5 and 10 shipped to v0.59.3)
 
 **Date:** 2026-10-14 | **Operator:** Jake | **Status:** Checkpoint (5 of about 25 slices done, nothing pushed)
 **Saved to:** `handoff-docs/2026-10-14-token-efficiency-slices.md`
@@ -8,6 +8,16 @@
 ```text
 Resume from `handoff-docs/2026-10-14-token-efficiency-slices.md`. Read it fully, then the files its §2 lists. Verify git state matches §2 and do not redo anything marked done. Present §5, then start step 1 unless it needs my input.
 ```
+
+## 0. Open live checks (carried from 2026-10-14, shipped in v0.59.3)
+
+Tested and typechecked, but not yet seen in the live app. Look when a chat shows the case:
+
+1. [ ] **Trim MCP rows** (usage card): each server should show its share of the provider's loaded "MCP tools" total with `~` (about 3.3k for `t3-code`, 1.9k for `claude_ai_Gmail` in the screenshot chat), not the full schema size. Needs a chat where the breakdown has a provider split (source `provider` or `mixed`).
+2. **Waste list** (usage card): shows after a file is read 3 or more times, a tool result of 20,000 or more tokens, or the same call failing 3 or more times.
+3. **Cache-break warning** (token popover): shows when hits fall 40 points or more from a prior turn above 50%, on 5,000 or more input tokens.
+
+Seen live already: setup and chat rows (39,633 + 134,772 = 174k context), and the "(not used in this chat)" tag. Idea 5 is partial (no unused-subagent output); idea 10 is per-thread only (the 14-day rule needs a server usage ledger shared with idea 17); idea 12 was checked and not built.
 
 ## 1. Goal & Focus
 
