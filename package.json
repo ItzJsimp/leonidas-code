@@ -7,6 +7,7 @@
     "dev": "node scripts/dev-runner.ts dev",
     "dev:share": "node scripts/dev-runner.ts dev --share",
     "dev:server": "node scripts/dev-runner.ts dev:server",
+    "smoke": "node scripts/smoke.mjs",
     "dev:web": "node scripts/dev-runner.ts dev:web",
     "dev:marketing": "vp run --filter @t3tools/marketing dev",
     "dev:desktop": "node scripts/dev-runner.ts dev:desktop",

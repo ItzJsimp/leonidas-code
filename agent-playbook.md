@@ -43,6 +43,7 @@ verified: 2026-10-11
 4. First-run starter skills: `node scripts/verify-starter-skills.ts --live` installs all of them into a fresh temp folder and checks both roots plus Claude Code and Codex loading (about 8 s, one haiku call). `--list <folder>` audits any AIOS folder.
 5. Which skills Codex sees in a folder, free and with no model call: `codex debug prompt-input` run there (skills are listed as `(file: rN/<name>/SKILL.md)`).
 6. Web typecheck: from `apps/web`, `../../node_modules/.bin/vp run typecheck` (about 13 s). `npx tsgo` and a local `tsc` bin do not exist.
+7. Server boot smoke, no install needed: `node scripts/smoke.mjs --runtime "<install>/Leonidas Code.exe" --entry "<install>/resources/server.asar/apps/server/dist/bin.mjs"` (about 8 s, fresh temp home). With an install, plain `node scripts/smoke.mjs`. It fails on a hung server (the 0.62.0 bug).
 
 ## 5. Gotchas (the ones that bite first)
 
@@ -57,6 +58,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 - **Fresh worktrees need an install first:** `pnpm install --frozen-lockfile` (about 7.5 minutes) before any check. Worktrees on D: stall; use `C:/lcw`.
 - **A commit that hangs is usually the hook:** let `vp fmt` finish; never bypass it.
 - **MCP service test fixtures are partial records:** `OrchestratorMcpService.test.ts` casts runs without `startedAt`/`completedAt`. New code that reads run or turn fields must guard with `== null`, or 7 unrelated tests fail.
+- **The main checkout cannot commit when its install is partial:** the `vp` pre-commit hook fails (code 127, or vite.config cannot load `vitest`). Commit from an installed worktree under `C:/lcw`; a PATH borrow of another worktree's `vp` does not work.
 - **Server typecheck has existing errors** in unrelated test files (`aiosDetect.test.ts`, `relativeImportExtensions.test.ts`). Filter the output to your changed paths instead of reading the total.
 
 ## 6. Why it is this way
@@ -71,6 +73,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
+- 2026-10-15: boot smoke gate `scripts/smoke.mjs` added to `team-release.yml`; proved on the original 0.62.0 `server.asar` (fails, "request hung") and the current build (passes, 7.6 s). `project add` falls back to offline silently; the smoke checks `server-runtime.json` still exists to prove the live path.
 - 2026-10-14: fixed-name `Leonidas-Setup.exe` added to every release (`team-release.yml`, commit `5de80b185c`) as the one beginner download link; Scribe still has 0 releases, so dictation is not installable from a link.
 - 2026-10-14: skill folders in the `/` menu (`packages/client-runtime/src/skillFolders.ts`, `apps/web/src/components/chat/composerSkillFolders.logic.ts`, `settings/SkillFoldersEditor.tsx`), commits `e518535038` and `b0e9835b08`; checked live in Claude, 97 flat rows became 9 folders. Open: AIOS mirror file, category and source for Codex skills.
 - 2026-10-14: delegated task status returns a provider-reported `usage` block (`apps/server/src/mcp/delegatedTaskUsage.ts`, commit `c0efa878cf`); harness-gates card 1 of 4. Cards 2 to 4 build on it.
