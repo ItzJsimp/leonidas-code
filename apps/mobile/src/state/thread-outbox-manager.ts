@@ -90,7 +90,7 @@ export function createThreadOutboxManager(options: ThreadOutboxManagerOptions) {
       // current objects also keeps retries from restarting the drain.
       if (recovered.length > 0) setMessages([...recovered, ...current]);
       if (result.errors.length > 0) {
-        throw new AggregateError(result.errors, "Some queued messages could not be read.");
+        throw new AggregateError(result.errors, "Some waiting messages could not be read.");
       }
       return true;
     }).catch((cause) => {
@@ -289,7 +289,7 @@ export function createThreadOutboxManager(options: ThreadOutboxManagerOptions) {
         .load()
         .then((result) => {
           if (result.errors.length > 0) {
-            throw new AggregateError(result.errors, "Some queued messages could not be read.");
+            throw new AggregateError(result.errors, "Some waiting messages could not be read.");
           }
           return result.messages;
         })

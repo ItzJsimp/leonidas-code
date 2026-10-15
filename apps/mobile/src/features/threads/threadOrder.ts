@@ -331,10 +331,10 @@ export type ThreadDragSection = "pinned" | "active" | "snoozed" | "settled";
 /** The action shown during hover describes the lifecycle change made on drop. */
 export function threadDragAction(source: ThreadDragSection, destination: ThreadDragSection) {
   if (destination === "snoozed") return null;
-  if (destination === "settled") return source === "settled" ? null : "Settle";
+  if (destination === "settled") return source === "settled" ? null : "Mark as done";
   if (source === destination) return "Reorder";
   if (destination === "pinned") return "Pin";
   if (source === "pinned") return "Unpin";
-  if (source === "settled") return "Unsettle";
-  return "Unsnooze";
+  if (source === "settled") return "Bring back";
+  return "Bring back";
 }

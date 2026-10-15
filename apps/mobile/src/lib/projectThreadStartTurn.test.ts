@@ -16,7 +16,7 @@ import {
 describe("project thread title", () => {
   it("keeps ordinary titles and the empty-prompt fallback", () => {
     expect(deriveThreadTitleFromPrompt("  Fix\n the parser  ")).toBe("Fix the parser");
-    expect(deriveThreadTitleFromPrompt(" \n ")).toBe("New thread");
+    expect(deriveThreadTitleFromPrompt(" \n ")).toBe("New chat");
   });
 
   it("derives attachment-only titles from prepared image metadata", () => {

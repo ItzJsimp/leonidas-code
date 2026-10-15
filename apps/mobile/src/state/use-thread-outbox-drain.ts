@@ -751,7 +751,7 @@ export function useThreadOutboxDrain(): void {
     const load = async () => {
       if ((await threadOutboxManager.load()) || !mounted) return;
       Alert.alert(
-        "Some queued messages could not be loaded",
+        "Some waiting messages could not be loaded",
         "Unreadable records and attachment files are still saved. Other messages can still be sent.",
         [
           { text: "Dismiss", style: "cancel" },

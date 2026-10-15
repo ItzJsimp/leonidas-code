@@ -812,7 +812,7 @@ function WorkspacePreparationRetryButton(props: {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Retry workspace preparation"
+      accessibilityLabel="Retry project folder setup"
       disabled={busy}
       onPress={() => {
         setBusy(true);
@@ -1006,7 +1006,7 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
         accessibilityLabel={failed ? `${accessiblePreview}, tool call failed` : accessiblePreview}
         accessibilityHint={
           notifiedSubagentThreadId !== undefined
-            ? "Opens this agent's thread. Long press to copy."
+            ? "Opens this helper's chat. Long press to copy."
             : canExpand
               ? `Double tap to ${expanded ? "hide" : "show"} full details. Long press to copy.`
               : "Long press to copy."
@@ -1330,7 +1330,7 @@ export const ThreadAgentSpawnCard = memo(function ThreadAgentSpawnCard(props: {
         accessibilityLabel={`${summary.title}, ${summary.status}`}
         accessibilityHint={
           canExpand
-            ? `Double tap to ${expanded ? "hide" : "show"} ${memberCount} ${memberCount === 1 ? "subagent" : "subagents"}. Long press to copy.`
+            ? `Double tap to ${expanded ? "hide" : "show"} ${memberCount} ${memberCount === 1 ? "helper" : "helpers"}. Long press to copy.`
             : "Long press to copy."
         }
         hitSlop={4}

@@ -95,7 +95,7 @@ describe("AgentActivity widget layout", () => {
       { ...environment, isStale: true } as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("Agent status out of date");
+    expect(banner).toContain("AI status is out of date");
     expect(banner).toContain("Out of date");
     expect(banner).not.toContain("#7dd3fc"); // sky-300: running
     expect(banner).toContain("Done");
@@ -158,7 +158,7 @@ describe("AgentActivity widget layout", () => {
       environment as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("3 active agents");
+    expect(banner).toContain("3 active AI chats");
     expect(banner).toContain("1 needs attention");
   });
 
@@ -231,7 +231,7 @@ describe("AgentActivity widget layout", () => {
       environment as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("Agent work completed");
+    expect(banner).toContain("AI work finished");
     expect(banner).not.toContain("0 active");
     expect(banner).toContain("#6ee7b7"); // emerald-300 header tint
     expect(JSON.stringify(layout.compactTrailing)).toContain("Done");
@@ -252,7 +252,7 @@ describe("AgentActivity widget layout", () => {
       environment as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("Agent work failed");
+    expect(banner).toContain("AI work failed");
     expect(banner).toContain("#fca5a5"); // red-300 header tint
     expect(JSON.stringify(layout.compactTrailing)).toContain("Failed");
     expect(JSON.stringify(layout.expandedLeading)).toContain("Failed");
@@ -276,8 +276,8 @@ describe("AgentActivity widget layout", () => {
       environment as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("Agent work failed");
-    expect(banner).not.toContain("Agent work completed");
+    expect(banner).toContain("AI work failed");
+    expect(banner).not.toContain("AI work finished");
     expect(banner).toContain("#fca5a5"); // red-300 header tint
     expect(JSON.stringify(layout.compactTrailing)).toContain("Failed");
     expect(JSON.stringify(layout.expandedLeading)).toContain("Failed");

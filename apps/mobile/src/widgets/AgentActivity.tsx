@@ -145,16 +145,16 @@ export function AgentActivity(
   // newer success.
   const allDone = props.activeCount === 0;
   const doneLabel = failedRow ? "Failed" : "Done";
-  const outcomeLabel = failedRow ? "Agent work failed" : "Agent work completed";
+  const outcomeLabel = failedRow ? "AI work failed" : "AI work finished";
 
   // Header copy: "5 active agents" + (", 1 needs attention"). The banner renders
   // the two parts in-line so the attention half can carry the accent color;
   // `summary` is the short form for tight spots (expanded center, watch card).
-  const agentWord = props.activeCount === 1 ? "agent" : "agents";
+  const agentWord = props.activeCount === 1 ? "AI chat" : "AI chats";
   const agentsLabel = allDone
     ? outcomeLabel
     : environment.isStale
-      ? "Agent status out of date"
+      ? "AI status is out of date"
       : `${props.activeCount} active ${agentWord}`;
   const attentionSuffix =
     attentionRows.length > 0

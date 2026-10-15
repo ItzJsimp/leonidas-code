@@ -320,7 +320,7 @@ export interface ThreadListV2ThreadListItem {
       a neighbour change (e.g. the queued block appearing) updates the row
       through recycled-list equality instead of leaving a stale divider. */
   readonly showTrailingDivider: boolean;
-  /** A message for this thread is waiting in the outbox. Carried on the item
+  /** A message for this chat is waiting in the outbox. Carried on the item
       so an outbox write (which never touches the thread shell) reaches the
       row through recycled-list equality instead of leaving a stale icon. */
   readonly hasQueuedMessages: boolean;
