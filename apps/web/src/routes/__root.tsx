@@ -12,6 +12,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { Check, Copy } from "lucide";
+import { resolveRootErrorHint } from "../lib/rootErrorHint.logic";
 import { isChunkLoadError, reloadOnceForChunkLoadError } from "../lib/chunkReloadGuard";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
@@ -450,7 +451,8 @@ function HostedStaticEnvironmentBootstrap() {
 
 function RootRouteErrorView({ error }: ErrorComponentProps) {
   const router = useRouter();
-  const message = errorMessage(error);
+  const hint = useMemo(() => resolveRootErrorHint(error), [error]);
+  const message = hint?.description ?? errorMessage(error);
   // Router pathname rather than window.location: desktop uses hash history, where the window path is always "/".
   const pathname = useLocation({ select: (location) => location.pathname });
   const report = useMemo(() => errorReport(error, pathname), [error, pathname]);
@@ -460,11 +462,19 @@ function RootRouteErrorView({ error }: ErrorComponentProps) {
     if (isChunkLoadError(error)) reloadOnceForChunkLoadError();
   }, [error]);
 
+  // A down server comes back on its own; retry until it answers.
+  const autoRetry = hint?.autoRetry === true;
+  useEffect(() => {
+    if (!autoRetry) return;
+    const timer = window.setInterval(() => void router.invalidate(), 3_000);
+    return () => window.clearInterval(timer);
+  }, [autoRetry, router]);
+
   return (
     <StandalonePage tone="error">
       <StandalonePageHeader
         eyebrow={APP_DISPLAY_NAME}
-        title="Something went wrong."
+        title={hint?.title ?? "Something went wrong."}
         description={message}
       />
 

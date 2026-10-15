@@ -160,6 +160,10 @@ function devCompressionPlugin(): Plugin {
       // node http objects Connect actually passes — safe to narrow.
       server.middlewares.use(
         compression({
+          // Proxied API and event-stream responses are small or streamed; buffering them stalls clients.
+          filter: (req, res) =>
+            !DEV_PROXIED_PATH_PREFIXES.some((prefix) => req.url?.startsWith(prefix)) &&
+            compression.filter(req, res),
           brotli: { params: { [NodeZlib.constants.BROTLI_PARAM_QUALITY]: 5 } },
         }) as unknown as Connect.NextHandleFunction,
       );
@@ -179,6 +183,9 @@ const allowedHosts = [".ts.net", ...configuredAllowedHosts];
 
 export default defineConfig(() => {
   return {
+    // One dependency cache per dev port. Agents run several Vite servers from one checkout, and
+    // a shared cache lets them rewrite each other's optimized deps and stall mid-request.
+    cacheDir: `node_modules/.vite-${port}`,
     assetsInclude: ["**/*.wasm"],
     plugins: [
       devCompressionPlugin(),
