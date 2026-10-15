@@ -1,6 +1,6 @@
 // Root `preinstall` guard. A `pnpm install` in the main checkout deletes node_modules, and the
 // always-on dev server then fails until the install finishes (20+ minutes on a slow disk).
-// Refuse that install when a working one exists. Set LEONIDAS_ALLOW_MAIN_INSTALL=1 to allow it.
+// Refuse that install when a working one exists (never in CI, where the cache restores node_modules). Set LEONIDAS_ALLOW_MAIN_INSTALL=1 to allow it.
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -10,7 +10,12 @@ const gitPath = join(root, ".git");
 const isMainCheckout = existsSync(gitPath) && statSync(gitPath).isDirectory();
 const hasWorkingInstall = existsSync(join(root, "node_modules", ".modules.yaml"));
 
-if (isMainCheckout && hasWorkingInstall && process.env.LEONIDAS_ALLOW_MAIN_INSTALL !== "1") {
+if (
+  isMainCheckout &&
+  hasWorkingInstall &&
+  !process.env.CI &&
+  process.env.LEONIDAS_ALLOW_MAIN_INSTALL !== "1"
+) {
   console.error(
     [
       "",
