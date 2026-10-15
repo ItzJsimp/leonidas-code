@@ -212,6 +212,42 @@ const cardFile = (id: string, name: string, extra = "") =>
 
 const noGithub = boardRunner(() => {});
 
+it.effect("shares fork tasks with the origin repository instead of upstream", () =>
+  withAios({ "one.md": cardFile("task-one", "First card") }, (_root, project) => {
+    const fork = {
+      ...project,
+      repositoryIdentity: {
+        ...project.repositoryIdentity!,
+        owner: "pingdotgg",
+        name: "t3code",
+        canonicalKey: "github.com/pingdotgg/t3code",
+        origin: { canonicalKey: "github.com/ItzJsimp/leonidas-code" },
+      },
+    };
+    const writes: ReadonlyArray<string>[] = [];
+    return Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const workspace = yield* board.workspace([fork]);
+      expect(workspace.projects.find((entry) => entry.slug === "leonidas-code")?.repository).toBe(
+        "ItzJsimp/leonidas-code",
+      );
+      yield* board.share(fork, { projectId: fork.id, shared: true, actor: "Jake" });
+      expect(writes.some((args) => args.includes("PUT"))).toBe(true);
+      expect(writes.every((args) => !args.some((arg) => arg.includes("pingdotgg")))).toBe(true);
+    }).pipe(
+      Effect.provide(
+        boardLayer(
+          boardRunner(
+            () => {},
+            output("[]"),
+            (args) => writes.push(args),
+          ),
+        ),
+      ),
+    );
+  }),
+);
+
 it.effect("replays a saved-item task conversion without creating another task file", () =>
   withAios({}, (_root, project) =>
     Effect.gen(function* () {

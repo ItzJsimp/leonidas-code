@@ -30,6 +30,7 @@ import {
   type TaskBoardWorkspaceSnapshot,
   type Project,
 } from "@t3tools/contracts";
+import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -110,18 +111,19 @@ function slugify(value: string): string {
 }
 
 function toBoardProject(project: Project): BoardProject {
-  const identity = project.repositoryIdentity;
-  if (!identity || identity.provider !== "github" || !identity.owner || !identity.name) {
+  const repository = githubRepository(project);
+  if (!repository) {
     throw new TaskBoardReadError({ reason: "repository_not_supported", cause: project.id });
   }
+  const [owner, repo] = repository.split("/");
   return {
     projectId: project.id,
     name: project.title,
     slug: slugify(project.title),
     workspaceRoot: project.workspaceRoot,
-    repository: `${identity.owner}/${identity.name}`,
-    owner: identity.owner,
-    repo: identity.name,
+    repository,
+    owner: owner!,
+    repo: repo!,
   };
 }
 
@@ -156,6 +158,12 @@ const isOpen = (task: TaskBoardTask) => OPEN_STATUSES.includes(task.status);
 
 function githubRepository(project: Project): string | null {
   const identity = project.repositoryIdentity;
+  // Fork collaboration belongs to origin. The canonical identity can describe upstream.
+  if (identity?.origin) {
+    return parseGitHubRepositoryNameWithOwnerFromRemoteUrl(
+      `https://${identity.origin.canonicalKey}`,
+    );
+  }
   return identity && identity.provider === "github" && identity.owner && identity.name
     ? `${identity.owner}/${identity.name}`
     : null;
