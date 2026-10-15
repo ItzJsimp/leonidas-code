@@ -14,7 +14,7 @@ export function MaterialNewThreadButton(props: {
 }) {
   return (
     <Pressable
-      accessibilityLabel="New thread"
+      accessibilityLabel="Start chat"
       accessibilityRole="button"
       onPress={props.onPress}
       className={cn(
@@ -33,7 +33,7 @@ export function MaterialNewThreadButton(props: {
         type="monochrome"
       />
       {props.extended && props.expanded !== false ? (
-        <AppText className="text-[16px] font-t3-medium text-primary-foreground">New thread</AppText>
+        <AppText className="text-[16px] font-t3-medium text-primary-foreground">Start chat</AppText>
       ) : null}
     </Pressable>
   );

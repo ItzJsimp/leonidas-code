@@ -56,31 +56,31 @@ function ArchivedThreadsHeader(props: {
   const hasCustomFilter = props.selectedEnvironmentId !== null || props.sortOrder !== "newest";
   return (
     <ScreenHeader
-      title="Archived threads"
+      title="Archived chats"
       sidebar={false}
       onBack={() => navigation.goBack()}
       search={{
         value: props.searchQuery,
         onChangeText: props.onSearchQueryChange,
-        placeholder: "Search archived threads",
+        placeholder: "Search archived chats",
         compactPlaceholder: "Search",
         mode: "inline",
         compactToolbar: width < 700,
       }}
       menus={[
         {
-          title: "Archived thread options",
+          title: "Archived chat options",
           icon: hasCustomFilter
             ? "line.3.horizontal.decrease.circle.fill"
             : "line.3.horizontal.decrease.circle",
           items: [
             {
               id: "environment",
-              title: "Environment",
+              title: "Computer",
               items: [
                 {
                   id: "environment:all",
-                  title: "All environments",
+                  title: "All computers",
                   selected: props.selectedEnvironmentId === null,
                   onPress: () => props.onEnvironmentChange(null),
                 },
@@ -114,7 +114,7 @@ function ArchivedThreadsHeader(props: {
               ? [
                   {
                     id: "refresh",
-                    title: "Refresh archived threads",
+                    title: "Refresh archived chats",
                     onPress: props.onRefresh,
                   },
                 ]
@@ -407,12 +407,8 @@ export function ArchivedThreadsScreen(props: {
 
     return (
       <EmptyState
-        detail={
-          isFiltered
-            ? "Try another search or environment."
-            : "Threads you archive will appear here."
-        }
-        title={isFiltered ? "No matching threads" : "No archived threads"}
+        detail={isFiltered ? "Try another search or computer." : "Archived chats appear here."}
+        title={isFiltered ? "No matching chats" : "No archived chats"}
       />
     );
   }, [isFiltered, isInitialLoad]);

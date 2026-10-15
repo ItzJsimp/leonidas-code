@@ -21,7 +21,7 @@ export class NativeReviewDiffHighlighterUnavailableError extends Schema.TaggedEr
   {},
 ) {
   override get message(): string {
-    return "The native review diff highlighter is unavailable in this build.";
+    return "The changes viewer is unavailable in this build.";
   }
 }
 

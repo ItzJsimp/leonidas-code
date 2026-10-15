@@ -250,7 +250,7 @@ export const make = Effect.gen(function* BrowserSessionMake() {
             defaultId: 0,
             cancelId: 1,
             message: `Open this ${new URL(url).protocol.slice(0, -1)} link?`,
-            detail: `A page in the browser wants to open another application:\n\n${shownUrl}`,
+            detail: `This web page wants to open another app:\n\n${shownUrl}`,
           },
           previewHostWindow(requester),
         )

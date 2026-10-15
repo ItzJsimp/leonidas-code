@@ -73,7 +73,7 @@ export function ComposerContextAttachment(props: {
         }
       } else {
         const url = await refresh();
-        if (!url) throw new Error("Reconnect to the environment and try again.");
+        if (!url) throw new Error("Reconnect to the computer and try again.");
         await downloadAndShareAttachment({
           url,
           attachment: record,

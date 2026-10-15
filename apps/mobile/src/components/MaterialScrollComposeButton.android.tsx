@@ -78,7 +78,7 @@ export function MaterialScrollComposeButton(props: {
                     fontWeight: "500",
                   }}
                 >
-                  New thread
+                  Start chat
                 </Text>
               </ExtendedFloatingActionButton.Text>
             </ExtendedFloatingActionButton>
@@ -89,7 +89,7 @@ export function MaterialScrollComposeButton(props: {
       <Pressable
         onPress={props.onPress}
         accessibilityRole="button"
-        accessibilityLabel="New thread"
+        accessibilityLabel="Start chat"
         android_ripple={{ foreground: true }}
         style={{
           position: "absolute",

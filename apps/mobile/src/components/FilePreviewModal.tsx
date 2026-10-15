@@ -37,14 +37,14 @@ function ResolvedFilePreview(props: {
     void refreshAssetUrl()
       .then((url) => {
         if (cancelled) return;
-        if (!url) throw new Error("Reconnect to this environment and try again.");
+        if (!url) throw new Error("Reconnect to this computer and try again.");
         setUri(url + (source.srcFragment ?? ""));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         onResolutionError(
           error,
-          "Reconnect to this environment and try again. The file may have been moved or deleted.",
+          "Reconnect to this computer and try again. The file may have moved or been deleted.",
         );
       });
     return () => {

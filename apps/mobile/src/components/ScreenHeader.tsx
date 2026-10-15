@@ -127,9 +127,7 @@ export function ScreenHeader(props: ScreenHeaderProps) {
             <ScreenHeaderButton
               axisBehavior={usesNativeWorkspaceColumns ? "horizontalOnly" : undefined}
               accessibilityLabel={
-                panes.primarySidebarVisible
-                  ? `Maximize ${props.title.toLowerCase()}`
-                  : "Show threads"
+                panes.primarySidebarVisible ? `Maximize ${props.title.toLowerCase()}` : "Show chats"
               }
               icon={
                 panes.primarySidebarVisible ? "arrow.up.left.and.arrow.down.right" : "sidebar.left"
