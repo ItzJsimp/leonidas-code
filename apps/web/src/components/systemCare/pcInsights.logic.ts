@@ -5,6 +5,8 @@ import type {
   HardwareSample,
 } from "@t3tools/contracts";
 
+import { isDiscreteGpu } from "@t3tools/shared/hardwareWatch";
+
 import { formatBytes, limitLevel, openAlerts } from "./systemCare.logic";
 
 const DAY_MS = 24 * 60 * 60_000;
@@ -104,7 +106,10 @@ export function quickWins(
         impact: "high",
       });
     }
-    for (const gpu of inventory.gpus) {
+    const realGpus = inventory.gpus.some(isDiscreteGpu)
+      ? inventory.gpus.filter(isDiscreteGpu)
+      : inventory.gpus;
+    for (const gpu of realGpus) {
       const at = parseDriverDate(gpu.driverDate);
       if (at !== null && now - at > 180 * DAY_MS)
         wins.push({
