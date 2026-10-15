@@ -175,17 +175,46 @@ afterEach(async () => {
 });
 
 describe("thread notifications", () => {
-  it.each([true, false])("keeps subagents silent with focus=%s", async (focused) => {
-    state.subagent = true;
-    state.focused = focused;
+  it.each([true, false])(
+    "alerts once when a delegated child completes with focus=%s",
+    async (focused) => {
+      state.subagent = true;
+      state.focused = focused;
+      state.mode = "notifications-and-sound";
+      await render();
+      await complete();
+      await render();
+      expect(state.sound).toHaveBeenCalledTimes(1);
+      if (focused) {
+        expect(state.add).toHaveBeenCalledWith(
+          expect.objectContaining({ title: "Delegated task completed" }),
+        );
+      } else {
+        expect(state.notification).toHaveBeenCalledWith(
+          "Delegated task completed",
+          expect.any(Object),
+        );
+      }
+      vi.clearAllMocks();
+      state.input = true;
+      await render();
+      expect(state.sound).not.toHaveBeenCalled();
+      expect(state.add).not.toHaveBeenCalled();
+      expect(state.notification).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps short parent turns silent but reports a long turn", async () => {
     state.mode = "notifications-and-sound";
+    state.focused = false;
     await render();
-    await complete();
-    state.input = true;
+    state.completedAt = "2026-09-13T09:01:59.000Z";
     await render();
-    expect(state.sound).not.toHaveBeenCalled();
-    expect(state.add).not.toHaveBeenCalled();
     expect(state.notification).not.toHaveBeenCalled();
+    expect(state.sound).not.toHaveBeenCalled();
+    state.completedAt = "2026-09-13T09:02:00.000Z";
+    await render();
+    expect(state.notification).toHaveBeenCalledOnce();
   });
 
   it("alerts once with system alerts off and opens the completed thread", async () => {
@@ -233,7 +262,7 @@ describe("thread notifications", () => {
     await render();
     expect(state.add).toHaveBeenCalledTimes(1);
     expect(state.add).toHaveBeenLastCalledWith(expect.objectContaining({ title }));
-    expect(state.sound).toHaveBeenCalledWith("input", expect.any(Function));
+    expect(state.sound).toHaveBeenCalledWith("input", expect.any(Function), undefined);
     expect(state.notification).not.toHaveBeenCalled();
 
     state[event] = false;
@@ -306,7 +335,7 @@ describe("thread notifications", () => {
     state.mode = "notifications-and-sound";
     await render();
     await complete();
-    expect(state.sound).toHaveBeenCalledWith("completion", expect.any(Function));
+    expect(state.sound).toHaveBeenCalledWith("completion", expect.any(Function), undefined);
     expect(state.add).toHaveBeenCalledTimes(1);
     expect(state.notification).not.toHaveBeenCalled();
   });

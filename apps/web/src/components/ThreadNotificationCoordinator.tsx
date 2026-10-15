@@ -124,7 +124,7 @@ function EnvironmentNotifications({
     }
     const next = new Map<ThreadId, NotificationState>();
     for (const rawThread of threads) {
-      if (rawThread.lineage.relationshipToParent === "subagent") continue;
+      const isDelegatedChild = rawThread.lineage.relationshipToParent === "subagent";
       const prior = previous.current.get(rawThread.id);
       // The same object cannot produce a new notification.
       if (prior?.raw === rawThread) {
@@ -155,9 +155,20 @@ function EnvironmentNotifications({
             ? "completion"
             : null;
       if (!kind) continue;
+      // Children report completion; their parent owns approval and input requests.
+      if (isDelegatedChild && kind !== "completion") continue;
+      const startedAt = Date.parse(thread.latestRun?.startedAt ?? "");
+      if (
+        kind === "completion" &&
+        !isDelegatedChild &&
+        (!Number.isFinite(startedAt) || completedAt - startedAt < 120_000)
+      )
+        continue;
       const title =
         kind === "completion"
-          ? "Thread completed"
+          ? isDelegatedChild
+            ? "Delegated task completed"
+            : "Thread completed"
           : status === "approval"
             ? "Approval needed"
             : status === "limited"
