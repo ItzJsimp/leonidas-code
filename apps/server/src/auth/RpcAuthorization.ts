@@ -174,6 +174,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.hardwareGetInventory]: AuthDiagnosticsReadScope,
   [WS_METHODS.hardwareGetHistory]: AuthDiagnosticsReadScope,
   [WS_METHODS.hardwareGetLimits]: AuthDiagnosticsReadScope,
+  [WS_METHODS.hardwareGetStatus]: AuthDiagnosticsReadScope,
   [WS_METHODS.hardwareSetLimit]: AuthSettingsWriteScope,
   [WS_METHODS.hardwareAcknowledgeAlert]: AuthOrchestrationOperateScope,
   [WS_METHODS.hardwareSetDeepSensors]: AuthSettingsWriteScope,

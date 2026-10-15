@@ -39,9 +39,11 @@ export function SpeedReachedCard(props: {
         <span className="pb-1 text-sm text-muted-foreground">
           {props.overall === null
             ? "of top speed"
-            : props.overall >= 95
-              ? "of top speed. Nothing is holding it back."
-              : "of top speed. Tuning can unlock the rest."}
+            : props.rows.some((row) => row.pct === null)
+              ? `of top speed for the ${props.rows.filter((row) => row.pct !== null).length === 1 ? "part" : "parts"} checked so far.`
+              : props.overall >= 95
+                ? "of top speed. Nothing is holding it back."
+                : "of top speed. Tuning can unlock the rest."}
         </span>
       </div>
       <ul className="flex flex-col gap-3">
