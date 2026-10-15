@@ -22,7 +22,6 @@ export function VoiceSetup({
   const [clipboardHelp, setClipboardHelp] = useState("");
   const pending = useRef(false);
   const active = useRef(true);
-  const openButton = useRef<HTMLButtonElement>(null);
   const allowed = useAtomValue(serverEnvironment.setVoiceKey.permissionAtom(environmentId));
   const browserAvailable = usePreviewAvailable(environmentId);
   const save = useAtomCommand(serverEnvironment.setVoiceKey, { reportFailure: false });
@@ -117,34 +116,26 @@ export function VoiceSetup({
             <li>Leonidas checks and saves the key. Then test one sentence.</li>
           </ol>
           <Button
-            ref={openButton}
             type="button"
             variant="outline"
             disabled={!allowed || busy}
-            title="Open Groq and start key capture for this setup only"
+            title={
+              watchClipboard
+                ? "Close Groq and stop key capture"
+                : "Open Groq and start key capture for this setup only"
+            }
             onClick={() => {
-              setWatchClipboard(true);
+              setWatchClipboard((watching) => !watching);
               setClipboardHelp("");
             }}
           >
-            Open Groq
+            {watchClipboard ? "Close Groq" : "Open Groq"}
           </Button>
           {watchClipboard && allowed && (
             <>
               <p role="status" className="text-sm text-muted-foreground">
-                Key capture is on for this setup. Close Groq to stop it.
+                Copy your key. Capture stops when you close Groq.
               </p>
-              <Button
-                type="button"
-                variant="ghost"
-                title="Close the setup browser and stop clipboard capture"
-                onClick={() => {
-                  openButton.current?.focus();
-                  setWatchClipboard(false);
-                }}
-              >
-                Close Groq
-              </Button>
               <a
                 href="https://console.groq.com/keys"
                 target="_blank"

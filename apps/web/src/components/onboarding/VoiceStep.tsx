@@ -3,6 +3,8 @@ import { useState } from "react";
 import { ComposerVoiceButton } from "../voice/ComposerVoiceButton";
 import { VoiceSetup } from "../voice/VoiceSetup";
 import { Button } from "../ui/button";
+import { useEnvironmentQuery } from "../../state/query";
+import { serverEnvironment } from "../../state/server";
 
 export function VoiceStep({
   environmentId,
@@ -13,8 +15,19 @@ export function VoiceStep({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const [ready, setReady] = useState(false);
-  const [transcript, setTranscript] = useState("");
+  const [configuredFor, setConfiguredFor] = useState<EnvironmentId | null>(null);
+  const [spokenTest, setSpokenTest] = useState<{
+    environmentId: EnvironmentId;
+    text: string;
+  } | null>(null);
+  const status = useEnvironmentQuery(
+    environmentId ? serverEnvironment.voiceStatus({ environmentId, input: {} }) : null,
+  );
+  const ready =
+    environmentId !== undefined &&
+    (configuredFor === environmentId || status.data?.keyConfigured === true);
+  const transcript =
+    spokenTest && spokenTest.environmentId === environmentId ? spokenTest.text : "";
   return (
     <div className="space-y-5">
       <div>
@@ -25,7 +38,13 @@ export function VoiceStep({
       </div>
       {environmentId ? (
         <>
-          {!ready && <VoiceSetup environmentId={environmentId} onReady={() => setReady(true)} />}
+          {!ready && (
+            <VoiceSetup
+              key={environmentId}
+              environmentId={environmentId}
+              onReady={() => setConfiguredFor(environmentId)}
+            />
+          )}
           <div className="rounded-lg border bg-card p-4">
             <h2 className="text-sm font-medium">Try one sentence</h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -34,10 +53,9 @@ export function VoiceStep({
             <div className="mt-3 flex items-center gap-3">
               <ComposerVoiceButton
                 environmentId={environmentId}
-                disabled={false}
+                disabled={!ready}
                 onText={(text) => {
-                  setTranscript(text);
-                  setReady(true);
+                  setSpokenTest({ environmentId, text });
                   return true;
                 }}
               />
@@ -46,6 +64,18 @@ export function VoiceStep({
               </p>
             </div>
           </div>
+          {!ready && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {status.isPending
+                ? "Checking saved voice setup..."
+                : "Add your Groq key above to enable the spoken test."}
+            </p>
+          )}
+          {status.error && !ready && (
+            <Button type="button" variant="outline" onClick={status.refresh}>
+              Check voice status
+            </Button>
+          )}
         </>
       ) : (
         <p role="status">Connect a computer before you set up voice.</p>
