@@ -339,7 +339,7 @@ function errorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
-  return "An error occurred.";
+  return "Try again.";
 }
 
 const OVERLAY_MODE_BY_COMMAND = {
@@ -706,7 +706,7 @@ function OpenCommandPaletteDialog(props: {
         stackedThreadToast({
           type: "error",
           title: target.failureTitle,
-          description: error instanceof Error ? error.message : "An error occurred.",
+          description: error instanceof Error ? error.message : "Try again.",
         }),
       );
     }
@@ -834,9 +834,9 @@ function OpenCommandPaletteDialog(props: {
             {
               kind: isLocal ? "local" : "remote",
               label: isPrimary
-                ? "Local"
+                ? "This computer"
                 : isLocal
-                  ? `${environment.label} (Local)`
+                  ? `${environment.label} (this computer)`
                   : environment.label,
               machine: resolveEnvironmentMachineKind(environment.serverConfig),
             },
@@ -1109,7 +1109,8 @@ function OpenCommandPaletteDialog(props: {
   const isBrowsePending = hasBrowseTarget && (browseAccess.isPending || browseQuery.isPending);
   const browseAccessError =
     hasBrowseTarget && !browseAccess.isPending && !browseAccess.canReadFiles
-      ? (browseAccess.error ?? "This connection cannot browse host folders.")
+      ? (browseAccess.error ??
+        "This connection cannot browse folders on this computer. Connect to a different computer.")
       : null;
   const browseEntries = browseResult?.entries ?? EMPTY_BROWSE_ENTRIES;
   const { visibleEntries: visibleBrowseEntries, exactEntry: exactBrowseEntry } = useMemo(
@@ -1229,7 +1230,7 @@ function OpenCommandPaletteDialog(props: {
           });
           const location = projectEnvironmentLocationById.get(project.environmentId) ?? {
             kind: "remote" as const,
-            label: "Remote",
+            label: "Another computer",
             machine: "server" as const,
           };
           return (
@@ -1272,7 +1273,7 @@ function OpenCommandPaletteDialog(props: {
         renderDescription: (project) => {
           const location = projectEnvironmentLocationById.get(project.environmentId) ?? {
             kind: "remote",
-            label: "Remote",
+            label: "Another computer",
             machine: "server" as const,
           };
           return (
@@ -1372,7 +1373,8 @@ function OpenCommandPaletteDialog(props: {
               project={projectByKey.get(`${thread.environmentId}:${thread.projectId}`) ?? null}
               projectTitle={projectTitle ?? null}
               environmentLabel={
-                projectEnvironmentLocationById.get(thread.environmentId)?.label ?? "Remote"
+                projectEnvironmentLocationById.get(thread.environmentId)?.label ??
+                "Another computer"
               }
               branch={thread.branch}
               worktreePath={thread.worktreePath}
@@ -1615,7 +1617,7 @@ function OpenCommandPaletteDialog(props: {
                 }
               />
               <TooltipPopup align="end" side="left">
-                {disabledHint ?? "Open Settings -> Source Control to configure this provider."}
+                {disabledHint ?? "Open Settings, then Source Control, to set up this code service."}
               </TooltipPopup>
             </Tooltip>
           </span>
@@ -1671,8 +1673,8 @@ function OpenCommandPaletteDialog(props: {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Environment unavailable",
-            description: `${environment?.label ?? "The selected environment"} is not connected.`,
+            title: "Computer unavailable",
+            description: `${environment?.label ?? "The selected computer"} is not connected.`,
           }),
         );
         return;
@@ -1709,7 +1711,7 @@ function OpenCommandPaletteDialog(props: {
     title: option.label,
     description: option.isConnected
       ? option.isPrimary
-        ? "This device"
+        ? "This computer"
         : option.environmentId
       : option.status,
     disabled: !option.isConnected,
@@ -1734,7 +1736,7 @@ function OpenCommandPaletteDialog(props: {
     () => [
       {
         value: "environments",
-        label: "Environments",
+        label: "Computers",
         items: addProjectEnvironmentItems,
       },
     ],
@@ -1825,7 +1827,7 @@ function OpenCommandPaletteDialog(props: {
       actionItems.push({
         kind: "action",
         value: "action:new-thread",
-        searchTerms: ["new thread", "chat", "create", "draft"],
+        searchTerms: ["new chat", "new thread", "chat", "create", "draft"],
         title: (
           <>
             New thread in <span className="font-semibold">{activeProjectTitle}</span>
@@ -1847,8 +1849,8 @@ function OpenCommandPaletteDialog(props: {
     actionItems.push({
       kind: "submenu",
       value: "action:new-thread-in",
-      searchTerms: ["new thread", "project", "pick", "choose", "select"],
-      title: "New thread in...",
+      searchTerms: ["new chat", "new thread", "project", "pick", "choose", "select"],
+      title: "New chat in...",
       icon: <SquarePenIcon className={ITEM_ICON_CLASS} />,
       addonIcon: <SquarePenIcon className={ADDON_ICON_CLASS} />,
       groups: [{ value: "projects", label: "Projects", items: projectThreadItems }],
@@ -1859,8 +1861,8 @@ function OpenCommandPaletteDialog(props: {
     actionItems.push({
       kind: "action",
       value: "action:new-thread-without-project",
-      searchTerms: ["new thread", "no project", "without project", "none", "chat"],
-      title: "New thread without a project",
+      searchTerms: ["new chat", "new thread", "no project", "without project", "none", "chat"],
+      title: "New chat without a project",
       icon: <MessageSquareDashedIcon className={ITEM_ICON_CLASS} />,
       shortcutCommand: "chat.newWithoutProject",
       run: () => startScratchThread(scratchTargetEnvironmentId),
@@ -1871,7 +1873,7 @@ function OpenCommandPaletteDialog(props: {
     actionItems.push({
       kind: "action",
       value: "find-current-thread",
-      title: "Find in current thread",
+      title: "Find in current chat",
       searchTerms: ["find", "search", "messages", "plans"],
       icon: <TextSearchIcon className={ITEM_ICON_CLASS} />,
       shortcutCommand: "chat.find",
@@ -1885,9 +1887,9 @@ function OpenCommandPaletteDialog(props: {
     actionItems.push({
       kind: "action",
       value: "action:copy-thread-reference",
-      searchTerms: ["copy", "pull request", "pr link", "thread id", "reference"],
+      searchTerms: ["copy", "pull request", "pr link", "chat id", "thread id", "reference"],
       title:
-        activeThreadReferenceCopyTarget.kind === "pull-request" ? "Copy PR link" : "Copy thread ID",
+        activeThreadReferenceCopyTarget.kind === "pull-request" ? "Copy PR link" : "Copy chat ID",
       description: activeThreadReferenceCopyTarget.value,
       icon: <LinkIcon className={ITEM_ICON_CLASS} />,
       shortcutCommand: "thread.copyReference",
@@ -1904,7 +1906,7 @@ function OpenCommandPaletteDialog(props: {
       kind: "action",
       value: "action:link-pull-request",
       searchTerms: ["link", "pull request", "pr", "attach", "stack"],
-      title: "Link pull request to thread",
+      title: "Link pull request to chat",
       icon: <PullRequestGlyph.link className={ITEM_ICON_CLASS} />,
       run: async () => {
         openLinkPullRequestDialog(threadRef);
@@ -1931,7 +1933,7 @@ function OpenCommandPaletteDialog(props: {
       kind: "action",
       value: "action:restart-agent-session",
       searchTerms: ["restart", "reset", "reload", "agent", "session", "skills", "plugins", "mcp"],
-      title: "Restart agent session",
+      title: "Restart the AI in this chat",
       icon: <RotateCcwIcon className={ITEM_ICON_CLASS} />,
       // Stopping the provider process keeps the conversation: the next message
       // spawns a fresh one that resumes it and reloads skills, plugins, and MCP
@@ -1950,8 +1952,8 @@ function OpenCommandPaletteDialog(props: {
         // stop shows in the thread.
         toastManager.add({
           type: "success",
-          title: "Agent session will restart",
-          description: "Your next message starts a fresh session.",
+          title: "The AI will restart",
+          description: "Your next message starts the AI again from the start of its session.",
         });
         const project = projectByKey.get(`${environmentId}:${thread.projectId}`);
         if (!project) return;
@@ -2392,8 +2394,8 @@ function OpenCommandPaletteDialog(props: {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Environment unavailable",
-            description: `${environment?.label ?? "The selected environment"} is not connected.`,
+            title: "Computer unavailable",
+            description: `${environment?.label ?? "The selected computer"} is not connected.`,
           }),
         );
         return;
@@ -2404,7 +2406,7 @@ function OpenCommandPaletteDialog(props: {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to add project",
+            title: "Could not add project",
             description: "Windows-style paths are only supported on Windows.",
           }),
         );
@@ -2415,7 +2417,7 @@ function OpenCommandPaletteDialog(props: {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to add project",
+            title: "Could not add project",
             description: "Relative paths require an active project.",
           }),
         );
@@ -2451,8 +2453,8 @@ function OpenCommandPaletteDialog(props: {
             toastManager.add(
               stackedThreadToast({
                 type: "error",
-                title: "Failed to open project",
-                description: error instanceof Error ? error.message : "An error occurred.",
+                title: "Could not open project",
+                description: error instanceof Error ? error.message : "Try again.",
               }),
             );
             return;
@@ -2489,8 +2491,8 @@ function OpenCommandPaletteDialog(props: {
           toastManager.add(
             stackedThreadToast({
               type: "error",
-              title: "Failed to add project",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              title: "Could not add project",
+              description: error instanceof Error ? error.message : "Try again.",
             }),
           );
         }
@@ -2505,8 +2507,8 @@ function OpenCommandPaletteDialog(props: {
         toastManager.add(
           stackedThreadToast({
             type: "error",
-            title: "Failed to add project",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            title: "Could not add project",
+            description: error instanceof Error ? error.message : "Try again.",
           }),
         );
         return;
@@ -2589,8 +2591,8 @@ function OpenCommandPaletteDialog(props: {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Environment unavailable",
-          description: `${browseEnvironment?.label ?? "The selected environment"} is not connected.`,
+          title: "Computer unavailable",
+          description: `${browseEnvironment?.label ?? "The selected computer"} is not connected.`,
         }),
       );
       return;
@@ -2779,8 +2781,8 @@ function OpenCommandPaletteDialog(props: {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Failed to open project",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          title: "Could not open project",
+          description: error instanceof Error ? error.message : "Try again.",
         }),
       );
     }
@@ -2918,7 +2920,7 @@ function OpenCommandPaletteDialog(props: {
       ? null
       : {
           value: "new-project-machines",
-          label: "Environments",
+          label: "Computers",
           items: newProjectEnvironmentOptions.map((option) => ({
             ...buildEnvironmentItem(
               option,
@@ -3010,7 +3012,7 @@ function OpenCommandPaletteDialog(props: {
                           <SelectTrigger
                             size="xs"
                             variant="ghost"
-                            aria-label="Host for the new repository"
+                            aria-label="Where to keep the new repository online"
                           >
                             <SelectValue>
                               {(kind: SourceControlProviderKind) =>
@@ -3292,8 +3294,8 @@ function OpenCommandPaletteDialog(props: {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Unable to run command",
-          description: error instanceof Error ? error.message : "An unexpected error occurred.",
+          title: "Could not run command",
+          description: error instanceof Error ? error.message : "Try again.",
         }),
       );
     });
@@ -3657,7 +3659,7 @@ function OpenCommandPaletteDialog(props: {
                     emptyStateMessage: "Press Enter to create this folder and add it as a project.",
                   }
                 : threadSearch.isPending
-                  ? { emptyStateMessage: "Searching thread messages…" }
+                  ? { emptyStateMessage: "Searching chat messages…" }
                   : {})}
       />
     </CommandPaletteContent>

@@ -139,9 +139,9 @@ describe("agent activity", () => {
   it("names the start phase before the agent sends anything", () => {
     const phased = (startPhase: "checkpoint" | "preparing" | "starting") =>
       deriveAgentActivity({ runId: base.runId, items: [], plan: null, startPhase }).now.text;
-    expect(phased("checkpoint")).toBe("Saving the last turn's checkpoint");
-    expect(phased("preparing")).toBe("Preparing the workspace");
-    expect(phased("starting")).toBe("Starting the agent");
+    expect(phased("checkpoint")).toBe("Saving a save point for the last reply");
+    expect(phased("preparing")).toBe("Getting the project ready");
+    expect(phased("starting")).toBe("Starting the AI");
     expect(deriveAgentActivity({ runId: base.runId, items: [], plan: null }).now.text).toBe(
       "Getting started",
     );

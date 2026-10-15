@@ -1067,7 +1067,7 @@ function MarkdownMermaidCodeBlock({
           <Suspense
             fallback={
               <div className="flex min-h-36 items-center justify-center text-xs text-muted-foreground">
-                Rendering diagram
+                Drawing the diagram…
               </div>
             }
           >
@@ -1969,7 +1969,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            description: error instanceof Error ? error.message : "Try again.",
           }),
         );
       } catch (cause) {
@@ -1981,7 +1981,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file",
-            description: cause instanceof Error ? cause.message : "An error occurred.",
+            description: cause instanceof Error ? cause.message : "Try again.",
           }),
         );
       }
@@ -2019,7 +2019,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file in browser",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            description: error instanceof Error ? error.message : "Try again.",
           }),
         );
       } catch (cause) {
@@ -2031,7 +2031,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to open file in browser",
-            description: cause instanceof Error ? cause.message : "An error occurred.",
+            description: cause instanceof Error ? cause.message : "Try again.",
           }),
         );
       }
@@ -2057,7 +2057,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to reveal file",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            description: error instanceof Error ? error.message : "Try again.",
           }),
         );
       } catch (cause) {
@@ -2069,7 +2069,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
           stackedThreadToast({
             type: "error",
             title: "Unable to reveal file",
-            description: cause instanceof Error ? cause.message : "An error occurred.",
+            description: cause instanceof Error ? cause.message : "Try again.",
           }),
         );
       }
@@ -2106,7 +2106,7 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
             stackedThreadToast({
               type: "error",
               title: `Failed to copy ${title.toLowerCase()}`,
-              description: error instanceof Error ? error.message : "An error occurred.",
+              description: error instanceof Error ? error.message : "Try again.",
             }),
           );
         },
@@ -2421,7 +2421,7 @@ function useChatMarkdownState({
       if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) {
         return Promise.resolve(
           AsyncResult.failure<void, Error>(
-            Cause.fail(new Error("This connection cannot reveal files on this environment.")),
+            Cause.fail(new Error("This connection cannot reveal files on this computer.")),
           ),
         );
       }
@@ -2566,7 +2566,7 @@ function useChatMarkdownState({
           AsyncResult.failure<void, BrowserPreviewUnavailableError>(
             Cause.fail(
               new BrowserPreviewUnavailableError({
-                message: "Environment is not connected.",
+                message: "Computer is not connected.",
               }),
             ),
           ),

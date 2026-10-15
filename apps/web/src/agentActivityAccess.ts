@@ -156,7 +156,7 @@ const LABELS: Record<ActivityKind, readonly [running: string, done: string]> = {
   skill: ["Loading skill", "Loaded skill"],
   memory: ["Checking memory", "Checked memory"],
   tool: ["Using", "Used"],
-  agent: ["Delegating", "Delegated"],
+  agent: ["Starting helper", "Started helper"],
 };
 
 const WRITE_TOOLS = new Set(["edit", "write", "multiedit", "notebookedit", "applypatch"]);
@@ -249,7 +249,7 @@ export function classifyActivityItem(item: OrchestrationV2TurnItem): ClassifiedI
       return {
         ...NONE,
         event: make("agent", clip(item.title ?? item.prompt, 60)),
-        tool: "Subagent",
+        tool: "Helper",
       };
     case "command_execution": {
       // The workspace-preparation step is setup, not something the agent chose to do.
@@ -315,11 +315,8 @@ export function classifyActivityItem(item: OrchestrationV2TurnItem): ClassifiedI
       if (AGENT_TOOLS.has(key)) {
         return {
           ...NONE,
-          event: make(
-            "agent",
-            clip(str(input.description) ?? str(input.prompt) ?? "a subagent", 60),
-          ),
-          tool: "Subagent",
+          event: make("agent", clip(str(input.description) ?? str(input.prompt) ?? "a helper", 60)),
+          tool: "Helper",
         };
       }
       const mcp = splitMcpToolName(toolName);
