@@ -1,0 +1,180 @@
+components/BrandMark.tsx:39: Mobile control surface for your live coding environments
+components/ComposerEditor.tsx:119: "Reconnect to the source environment and copy them again. References without their files are marked unavailable.",
+components/PermissionUpdateNotice.tsx:77: `Permissions have changed for ${environment.label}`,
+components/ScreenHeader.tsx:132: : "Show threads"
+components/VideoPreviewModal.ios.tsx:47: ? "Reconnect to this environment and open the video again."
+features/agent-awareness/liveActivityPreferences.ts:67: `Could not restore Live Activity preference for environment ${connection.environmentId}.`,
+features/agent-awareness/remoteRegistration.ts:156: logRegistrationDebug("relay registration skipped; relay config missing");
+features/agent-awareness/remoteRegistration.ts:231: enqueueDeviceRegistration({}, "device registration retry after cloud session refresh failed");
+features/agent-awareness/remoteRegistration.ts:354: logRegistrationDebug("device registration cancelled before relay request", {
+features/agent-awareness/remoteRegistration.ts:376: logRegistrationDebug("relay device registration skipped; user is not signed in");
+features/agent-awareness/remoteRegistration.ts:417: logRegistrationDebug("relay device registration skipped; already registered for account", {
+features/agent-awareness/remoteRegistration.ts:424: logRegistrationDebug("relay device registration request started", {
+features/agent-awareness/remoteRegistration.ts:451: logRegistrationDebug("relay device registration request completed", {
+features/agent-awareness/remoteRegistration.ts:472: logRegistrationDebug("relay device unregistration skipped; user is not signed in");
+features/agent-awareness/remoteRegistration.ts:511: logRegistrationDebug("live activity arming skipped; environment does not publish", {
+features/agent-awareness/remoteRegistration.ts:602: logRegistrationDebug("relay live activity registration skipped; user is not signed in");
+features/agent-awareness/remoteRegistration.ts:878: "active live activity registration after environment connection failed",
+features/browser/PreviewStreamWebView.tsx:381: fail("This session can't open the browser stream. Reconnect to try again.");
+features/cloud/cloud-drafts.ts:19: return `Could not preserve local drafts for ${this.environmentCount} cloud environments before sign-out.`;
+features/cloud/cloudEnvironmentPresentation.ts:38: statusText: "Available · Relay online",
+features/cloud/cloudEnvironmentPresentation.ts:44: relayOfflineReasonMessage(input.status) ?? input.status.error ?? "Relay is offline.";
+features/cloud/cloudEnvironmentPresentation.ts:67: ? "Available · Checking relay status..."
+features/cloud/cloudEnvironmentPresentation.ts:68: : "Available · Relay status unknown",
+features/cloud/linkEnvironment.ts:118: : Effect.fail(new CloudEnvironmentLinkError({ message: "Relay URL is not configured." }));
+features/cloud/linkEnvironment.ts:136: message: "Relay returned credentials for a different environment.",
+features/cloud/linkEnvironment.ts:141: message: "Relay returned credentials for a different endpoint provider.",
+features/cloud/linkEnvironment.ts:185: decodedRelayClientError(`${relayUrl}/v1/client/environment-link-challenges failed`),
+features/cloud/linkEnvironment.ts:203: .pipe(Effect.mapError(cloudEnvironmentLinkError("Could not obtain environment link proof.")));
+features/cloud/linkEnvironment.ts:216: Effect.mapError(decodedRelayClientError(`${relayUrl}/v1/client/environment-links failed`)),
+features/cloud/linkEnvironment.ts:237: Effect.mapError(cloudEnvironmentLinkError("Could not configure environment relay access.")),
+features/cloud/managedRelayState.ts:58: console.error("[t3-cloud] Relay environment listing failed", {
+features/cloud/managedRelayTokenStore.ts:42: return `Managed relay token store operation "${this.operation}" failed for key "${this.storageKey}".`;
+features/cloud/managedRelayTokenStore.ts:47: return Effect.logWarning("Managed relay token store operation failed.", {
+features/connection/ConnectionsRouteScreen.tsx:37: accessibilityLabel: "Add environment",
+features/connection/EnvironmentConnectionNotice.tsx:44: return `The ${resourceName} will load as soon as the environment is ready.`;
+features/connection/EnvironmentConnectionNotice.tsx:46: return "Use compatible versions of the app and server to connect.";
+features/connection/EnvironmentConnectionNotice.tsx:49: return `Reconnect the environment to load the ${resourceName}.`;
+features/connection/pairing.ts:26: return "Scanned QR code did not contain a pairing URL.";
+features/connection/useConnectionController.ts:39: const registerEnvironment = useAtomCommand(environmentCatalog.register, "environment register");
+features/connection/useConnectionController.ts:40: const removeEnvironmentMutation = useAtomCommand(environmentCatalog.remove, "environment remove");
+features/connection/useConnectionController.ts:41: const retryEnvironmentMutation = useAtomCommand(environmentCatalog.retryNow, "environment retry");
+features/connection/useConnectionController.ts:44: "environment toggle",
+features/connection/useConnectionController.ts:48: "relay environment refresh",
+features/devices/DevicePreviewRouteScreen.tsx:163: title: `Retry ${host.label}`,
+features/diffs/nativeReviewDiffHighlighter.ts:24: return "The native review diff highlighter is unavailable in this build.";
+features/diffs/nativeReviewDiffHighlighter.ts:41: return `Failed to initialize the ${this.attemptedEngine} review diff highlighter requested as ${this.requestedEngine}.`;
+features/diffs/nativeReviewDiffHighlighter.ts:323: console.warn("[debug-native-diff] native highlighter unavailable", {
+features/diffs/nativeReviewDiffHighlighter.ts:336: "Native and JavaScript review diff highlighter initialization failed.",
+features/diffs/nativeReviewDiffSurface.ts:226: console.error(`[native-review-diff] ${method} failed`, error);
+features/files/preload-workspace-file.ts:55: label: "workspace file preload",
+features/files/preload-workspace-file.ts:72: label: "workspace source highlight preload",
+features/files/thread-file-navigator-pane.tsx:97: : (fileAccess.error ?? "This connection cannot read host files.")
+features/files/ThreadFilesRouteScreen.tsx:385: detail = "This thread does not have an active workspace path.",
+features/files/ThreadFilesRouteScreen.tsx:540: <FilesUnavailable detail={fileAccess.error ?? "This connection cannot read host files."} />
+features/files/ThreadFilesRouteScreen.tsx:922: <FilesUnavailable detail={fileAccess.error ?? "This connection cannot read host files."} />
+features/home/workspace-connection-status.ts:25: return `Reconnecting ${state.connectingEnvironments.length} environments`;
+features/home/workspace-connection-status.ts:29: return state.hasLoadedShellSnapshot ? "Syncing threads..." : "Loading threads...";
+features/home/WorkspaceConnectionTitle.tsx:124: accessibilityHint="Opens environment settings"
+features/layout/workspace-sidebar-toolbar.tsx:13: accessibilityLabel={panes.primarySidebarVisible ? "Maximize content" : "Show thread sidebar"}
+features/projects/AddProjectScreen.tsx:456: <Text className="text-center text-lg font-t3-bold">Environment unavailable</Text>
+features/projects/AddProjectScreen.tsx:458: Start or reconnect an environment before adding a project.
+features/projects/AddProjectScreen.tsx:464: <Text className="text-sm font-t3-bold text-primary-foreground">Add environment</Text>
+features/projects/AddProjectScreen.tsx:556: <SectionTitle>Environments</SectionTitle>
+features/projects/AddProjectScreen.tsx:915: <ErrorBanner message={fileAccess.error ?? "This connection cannot browse host folders."} />
+features/projects/AddProjectScreen.tsx:1135: : `Goes in ${environment.newProjectsRoot}`}
+features/projects/AddProjectScreen.tsx:1136: {showMachines ? ` on ${environment.label}` : null}
+features/review/nativeReviewDiffAdapter.ts:285: createNoticeRow(file.id, "non-text", "Unsupported format. Diff contents are not available."),
+features/review/ReviewCommentCard.tsx:253: if (diff.startsWith("diff --git ")) {
+features/review/ReviewCommentCard.tsx:259: `diff --git a/${normalizedPath} b/${normalizedPath}`,
+features/review/ReviewCommentComposerSheet.tsx:186: Select a diff line or range first.
+features/review/reviewDiffBridgeKeys.ts:16: return `${diff.length}:${(hash >>> 0).toString(36)}`;
+features/review/useReviewDiffData.ts:79: ? "Could not load diff. Select the file to retry."
+features/review/useReviewDiffData.ts:80: : "Loading diff…",
+features/review/useReviewDiffData.ts:294: logReviewDiffDiagnostic("parsed diff files", {
+features/review/useReviewSections.ts:212: ? (fileAccess.error ?? "This connection cannot read local diffs.")
+features/settings/components/ScheduledTaskPromptField.tsx:30: <Text className="text-sm text-foreground-muted">Prompt</Text>
+features/settings/components/SettingsLegalDocumentRouteScreen.tsx:171: setLoadError(`The server returned status ${event.nativeEvent.statusCode}.`);
+features/settings/EnvironmentRoutesSection.tsx:179: Permissions not checked. Connect to this environment to view this session’s
+features/settings/scheduled-task-editor.tsx:84: const voiceOwnerKey = `scheduled-task:${session?.id ?? 0}`;
+features/settings/scheduled-task-editor.tsx:132: if (!context) throw new Error("Scheduled task editor provider is missing.");
+features/settings/scheduled-task-editor-state.ts:53: if (`scheduled-task:${session?.id ?? 0}` !== voiceOwnerKey) return null;
+features/settings/settings-environment-filter.tsx:98: if (filter === null) throw new Error("Settings environment filter provider is missing.");
+features/settings/SettingsMicrophoneRouteScreen.tsx:168: : "Microphone access is off for Leonidas Code. Turn it on in Settings to use voice input."}
+features/sharing/incoming-share-model.ts:127: warnings.push(`'${attachment.name}' was skipped because this server does not support files.`);
+features/shortcuts/useAppShortcuts.ts:92: console.warn("[app-shortcuts] failed to load recent threads", error);
+features/shortcuts/useAppShortcuts.ts:134: console.warn("[app-shortcuts] failed to persist recent threads", error);
+features/showcase/ShowcaseCaptureCoordinator.tsx:304: ? "fixture threads not loaded"
+features/showcase/showcasePendingTasks.ts:24: text: "Polish the Suspense handoff for the train tunnel 🚇",
+features/tasks/TasksRouteScreen.tsx:134: ? "Connect an environment to plan your tasks."
+features/tasks/TasksRouteScreen.tsx:135: : "No environments match these filters. Change the filter above."}
+features/tasks/TasksRouteScreen.tsx:277: This environment has no task folder yet. Add a task to start one.
+features/threads/ComposerFeedback.tsx:53: copyTextWithHaptic(submission.feedbackId, { target: "Codex feedback thread ID" })
+features/threads/CustomSnoozeSheet.shared.tsx:47: Choose when snoozed threads return to your inbox.
+features/threads/McpAppWebView.tsx:335: `Allow ${app.server} to run ${info.value.title ?? name}?`,
+features/threads/McpAppWebView.tsx:361: if (!(await confirm(`Open a link from ${app.server}?`, url, "Open"))) {
+features/threads/McpAppWebView.tsx:369: if (!(await confirm(`Send this message from ${app.server}?`, text, "Send"))) {
+features/threads/McpAppWebView.tsx:437: if (!(await confirm(`Save a file from ${app.server}?`, names, "Save"))) {
+features/threads/McpAppWebView.tsx:562: accessibilityLabel={`${app.server} app`}
+features/threads/new-task-context-presentation.ts:8: }): "Current checkout" | "Current worktree" | "New worktree" {
+features/threads/new-task-context-presentation.ts:10: return "New worktree";
+features/threads/new-task-context-presentation.ts:12: return input.worktreePath ? "Current worktree" : "Current checkout";
+features/threads/new-task-flow-provider.tsx:883: : "The folder for threads without a project could not be created.",
+features/threads/PendingApprovalCard.tsx:24: { decision: "acceptForSession", label: "Allow session" },
+features/threads/PendingApprovalCard.tsx:51: The provider process for this request is no longer available. Interrupt or restart the run
+features/threads/PendingUserInputCard.tsx:270: The provider process for this request is no longer available. Interrupt or restart the
+features/threads/projectThreadCreationValidation.ts:13: return "Enter a task before starting the thread.";
+features/threads/projectThreadCreationValidation.ts:25: return "Select a base branch before creating a worktree.";
+features/threads/SubagentRow.tsx:129: {provider ? `${resolveProviderInstanceDisplayName(provider)} · ` : ""}
+features/threads/threadAgentsPresentation.ts:29: ? `${prompt.slice(0, PROMPT_TITLE_LIMIT - 3)}...`
+features/threads/ThreadAgentsSheet.tsx:68: No agents in this turn.
+features/threads/ThreadAgentsSheet.tsx:150: accessibilityHint="Provider-managed agent. Its work appears in the transcript."
+features/threads/ThreadAgentsSheet.tsx:160: accessibilityHint="Opens this agent's thread"
+features/threads/thread-handoff-row.tsx:94: accessibilityHint="Show provider account"
+features/threads/thread-list-v2-row-appearance.android.ts:16: return `New thread on ${branch}`;
+features/threads/thread-list-v2-row-appearance.ts:16: return "New thread on branch";
+features/threads/threadOrder.ts:268: if (orderedIds === null) throw new Error("Cannot begin an invalid thread move");
+features/threads/thread-provider-instance.ts:61: const cacheKey = `${thread.environmentId}|${instanceId ?? ""}`;
+features/threads/useFileChipShare.ts:40: if (httpBaseUrl === null) throw new Error("Reconnect to the environment and try again.");
+features/usage/UsageLimitsPooled.tsx:249: ? "Select an environment to see limits."
+features/usage/UsageLimitsPooled.tsx:250: : "No provider on the selected environments reports subscription limits."}
+features/usage/UsageLimitsPooled.tsx:375: This account is no longer reporting limits on the selected environments.
+features/usage/UsageLimitsSection.tsx:287: This connection cannot manage provider accounts.
+features/voice-input/VoiceInputProvider.tsx:97: if (!context) throw new Error("Voice input provider is missing.");
+lib/attachmentDocument.ts:84: if (!url) throw new Error("Reconnect to this environment and try again.");
+lib/attachmentDocument.ts:142: if (!refreshed) throw new Error("Reconnect to this environment and try again.");
+lib/attachmentUpload.ts:65: if (input.serverConfig === null) return "Server attachment support is still loading.";
+lib/attachmentUpload.ts:68: return "This server does not support file attachments.";
+lib/attachmentUpload.ts:373: throw new Error("The environment is not connected.");
+lib/composerContextClipboard.ts:148: if (Option.isNone(connection)) throw new Error("Reconnect to the source environment");
+lib/projectThreadStartTurn.ts:92: return "New thread";
+lib/threadActivity.ts:623: return "Checkpoint captured";
+lib/threadActivity.ts:629: return item.failure.class === "usage_limit" ? "Usage limit reached" : "Provider error";
+lib/threadActivity.ts:633: return "Thread forked";
+lib/threadActivity.ts:635: return "Thread created";
+lib/threadActivityInspector.ts:106: label: "Provider thread",
+lib/threadActivityInspector.ts:111: fields.push({ label: "Provider turn", value: support.providerTurn.status });
+lib/threadActivityInspector.ts:224: value: `${support.subagent.origin.replaceAll("_", " ")} · ${support.subagent.status}`,
+state/queries.ts:353: : (fileAccess.error ?? "This connection cannot search host files."),
+state/query.ts:21: : "The environment request failed.";
+state/thread-outbox-manager.ts:30: return `Thread outbox operation ${this.operation} failed for environment ${this.environmentId ?? "unknown"}, thread ${this.threadId ?? "unknown"}, message ${this.messageId ?? "unknown"}.`;
+state/thread-outbox-manager.ts:93: throw new AggregateError(result.errors, "Some queued messages could not be read.");
+state/thread-outbox-manager.ts:99: "[thread-outbox] failed to load persisted messages",
+state/thread-outbox-manager.ts:292: throw new AggregateError(result.errors, "Some queued messages could not be read.");
+state/thread-outbox-manager.ts:328: "[thread-outbox] failed to clear persisted message",
+state/thread-outbox-manager.ts:361: "[thread-outbox] failed to restore message retained during environment clear",
+state/thread-outbox-model.ts:231: return { step: "restore", reason: "This server does not support file attachments." };
+state/thread-outbox-removal.ts:52: console.warn("[thread-outbox] failed to clean up removed pending task drafts", error);
+state/thread-outbox-storage.ts:43: return `Thread outbox storage operation ${this.operation} failed for environment ${this.environmentId ?? "unknown"}, thread ${this.threadId ?? "unknown"}, message ${this.messageId ?? "unknown"}, file 
+state/usage.ts:82: error: result._tag === "Failure" ? "This environment could not report usage." : null,
+state/use-composer-drafts.ts:1097: if (!(await threadOutboxManager.load())) throw new Error("Could not preserve queued messages.");
+state/use-composer-drafts.ts:1229: if (!(await threadOutboxManager.load())) throw new Error("Could not restore queued messages.");
+state/use-selected-thread-git-actions.ts:87: message: "This connection cannot update the thread's branch.",
+state/use-selected-thread-git-actions.ts:327: "Creating worktree",
+state/use-selected-thread-requests.ts:87: "thread approval response",
+state/use-selected-thread-requests.ts:91: "thread user input response",
+state/use-selected-thread-requests.ts:95: "thread user input dismissal",
+state/use-thread-composer-state.ts:198: label: "edit queued message",
+state/use-thread-composer-state.ts:494: Alert.alert("Add a message", "A queued message cannot be left empty.");
+state/use-thread-composer-state.ts:538: "Could not save the queued message",
+state/use-thread-composer-state.ts:638: Alert.alert("Start a Codex thread first", "Send a message before you submit feedback.");
+state/use-thread-composer-state.ts:737: error instanceof Error ? error.message : "Failed to save the queued message.",
+state/use-thread-composer-state.ts:808: Alert.alert("Could not attach file", "This server does not support file attachments.");
+state/use-thread-outbox-drain.ts:153: threadOutboxDebug.log("queued message delivery failed", details);
+state/use-thread-outbox-drain.ts:155: console.warn("[thread-outbox] queued message delivery failed", details);
+state/use-thread-outbox-drain.ts:170: console.warn("[thread-outbox] failed to upload attachments", { ...context, error });
+state/use-thread-outbox-drain.ts:296: console.warn("[thread-outbox] could not update sign-out snapshot after delivery", {
+state/use-thread-outbox-drain.ts:328: console.warn("[thread-outbox] failed to remove delivered queued message", {
+state/use-thread-outbox-drain.ts:345: console.warn("[thread-outbox] could not update sign-out snapshot after delivery", {
+state/use-thread-outbox-drain.ts:356: console.warn("[thread-outbox] failed to remove acknowledged queued message", {
+state/use-thread-outbox-drain.ts:426: console.warn("[thread-outbox] could not hand an edited pending task to the composer", error);
+state/use-thread-outbox-drain.ts:439: console.warn("[thread-outbox] could not remove recovered pending task", error);
+state/use-thread-outbox-drain.ts:583: console.warn("[thread-outbox] failed to persist a recovery rollback", undoError);
+state/use-thread-outbox-drain.ts:587: console.warn("[thread-outbox] failed to restore an undeliverable message", error);
+state/use-thread-outbox-drain.ts:754: "Some queued messages could not be loaded",
+state/use-thread-outbox-drain.ts:1342: : removeQueuedMessage("[thread-outbox] failed to remove message for a missing thread")
+state/use-thread-outbox-drain.ts:1346: : removeQueuedMessage("[thread-outbox] dropped pending task for a missing project")
+widgets/SubscriptionUsage.tsx:95: ? `${provider.name}, ${tightest.label}, ${tightest.remaining} percent remaining. ${tightest.reset}. ${provider.detail}.`
+widgets/SubscriptionUsage.tsx:96: : `${provider.name}. ${detail}.`,
+widgets/SubscriptionUsage.tsx:171: `${provider.name}, ${window.label}, ${window.remaining} percent remaining. ${window.reset}. ${provider.detail}.`,
+widgets/subscriptionUsageSnapshot.ts:163: provider.windows.length > 0 && provider.expiresAt <= date
