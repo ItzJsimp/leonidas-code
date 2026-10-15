@@ -124,6 +124,7 @@ import { EMPTY_SERVER_PROVIDERS } from "../../state/server";
 import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { Button } from "../ui/button";
+import { setOnboardingSimActive } from "../onboarding/sim/onboardingSim.flag";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import {
   Dialog,
@@ -296,6 +297,27 @@ function AboutVersionTitle() {
       <span>Version</span>
       <code className="text-2xs font-medium text-muted-foreground">{APP_VERSION_LABEL}</code>
     </span>
+  );
+}
+
+/** Dev only: replay first-run setup as a brand-new user with one click. */
+function NewUserSetupPreviewRow() {
+  const navigate = useNavigate();
+  return (
+    <SettingsRow
+      title="Preview new-user setup"
+      description="Walk through the full first-run setup as a new user. Dev builds only."
+      control={
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setOnboardingSimActive(true)}>
+            Guided test
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void navigate({ to: "/welcome" })}>
+            Real wizard
+          </Button>
+        </div>
+      }
+    />
   );
 }
 
@@ -481,6 +503,7 @@ function AboutVersionSection() {
           </Button>
         }
       />
+      {import.meta.env.DEV ? <NewUserSetupPreviewRow /> : null}
       {hasDesktopBridge ? (
         <SettingsRow
           title="Install updates when the AI finishes"
