@@ -1,5 +1,3 @@
-import { Debouncer } from "@tanstack/react-pacer";
-
 export interface StateStorage<R = unknown> {
   getItem: (name: string) => string | null | Promise<string | null>;
   setItem: (name: string, value: string) => R;
@@ -42,33 +40,48 @@ export function resolveStorage(storage: Partial<StateStorage> | null | undefined
   return isStateStorage(storage) ? storage : createMemoryStorage();
 }
 
-/** Keep the latest value and serialize it when the debounce fires or `flush` runs. */
+// Longest a value may wait unwritten while writes keep arriving. A pure debounce never fires
+// during continuous typing, so a crash would lose everything since the last pause.
+const DEFERRED_STORAGE_MAX_WAIT_MS = 1000;
+
+/** Keep the latest value and serialize it when the debounce fires, the max wait passes, or `flush` runs. */
 export function createDeferredStorage<TValue>(
   baseStorage: Partial<StateStorage> | null | undefined,
   serialize: (value: TValue) => string,
   debounceMs: number = 300,
+  maxWaitMs: number = DEFERRED_STORAGE_MAX_WAIT_MS,
 ): DeferredStorage<TValue> {
   const resolvedStorage = resolveStorage(baseStorage);
-  const debouncedSetItem = new Debouncer(
-    (name: string, value: TValue) => {
-      resolvedStorage.setItem(name, serialize(value));
-    },
-    { wait: debounceMs },
-  );
+  let pending: { readonly name: string; readonly value: TValue } | null = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const clearTimers = () => {
+    if (debounceTimer !== null) clearTimeout(debounceTimer);
+    if (maxWaitTimer !== null) clearTimeout(maxWaitTimer);
+    debounceTimer = null;
+    maxWaitTimer = null;
+  };
+  const write = () => {
+    clearTimers();
+    const next = pending;
+    pending = null;
+    if (next) resolvedStorage.setItem(next.name, serialize(next.value));
+  };
 
   return {
     getItem: (name) => resolvedStorage.getItem(name),
     setItem: (name, value) => {
-      debouncedSetItem.maybeExecute(name, value);
+      pending = { name, value };
+      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(write, debounceMs);
+      maxWaitTimer ??= setTimeout(write, maxWaitMs);
     },
     removeItem: (name) => {
-      debouncedSetItem.cancel();
-      // cancel() leaves the captured value in Pacer's lastArgs.
-      debouncedSetItem.reset();
+      clearTimers();
+      pending = null;
       resolvedStorage.removeItem(name);
     },
-    flush: () => {
-      debouncedSetItem.flush();
-    },
+    flush: write,
   };
 }
