@@ -1,12 +1,5 @@
 import type { TaskBoardTaskPriority, TaskBoardTaskStatus } from "@t3tools/contracts";
-import {
-  ArrowUpDownIcon,
-  FlagIcon,
-  GroupIcon,
-  SearchIcon,
-  UserIcon,
-  UsersIcon,
-} from "lucide-react";
+import { ArrowUpDownIcon, GroupIcon, ListFilterIcon, SearchIcon, XIcon } from "lucide-react";
 import { memo, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -14,12 +7,14 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/in
 import {
   Menu,
   MenuCheckboxItem,
+  MenuGroup,
+  MenuGroupLabel,
   MenuPopup,
   MenuRadioGroup,
   MenuRadioItem,
+  MenuSeparator,
   MenuTrigger,
 } from "~/components/ui/menu";
-import { Toggle } from "~/components/ui/toggle";
 
 import { priorityLabel, statusLabel, type TaskSort } from "./taskBoard.logic";
 import { activeFilterCount, type TaskListGroupBy, type TasksPrefs } from "./tasksPage.logic";
@@ -39,6 +34,7 @@ const SORT_LABELS: Record<TaskSort, string> = {
   title: "Title",
 };
 const GROUP_LABELS: Record<TaskListGroupBy, string> = {
+  owner: "Owner",
   project: "Project",
   status: "Status",
   none: "None",
@@ -49,7 +45,10 @@ function toggled<T>(list: ReadonlyArray<T> | null, value: T, on: boolean): T[] |
   return next.length > 0 ? next : null;
 }
 
-/** The search box, status chips and filter menus above the Board and List views. */
+/**
+ * The view bar's tools, in one row: search, one Filter menu (status, priority, sharing, closed
+ * work), Sort and Group. Filters live in a menu so the row stays one line at every width.
+ */
 export const TaskFilterBar = memo(function TaskFilterBar(props: {
   readonly prefs: TasksPrefs;
   readonly query: string;
@@ -64,57 +63,59 @@ export const TaskFilterBar = memo(function TaskFilterBar(props: {
 }) {
   const { prefs, query, onPrefsChange } = props;
   const activeCount = activeFilterCount(prefs, query);
+  const menuCount =
+    (prefs.statuses?.length ?? 0) +
+    (prefs.priorities?.length ?? 0) +
+    Number(prefs.sharedOnly) +
+    Number(props.showClosedToggle && prefs.includeClosed);
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {props.leading}
-        <InputGroup className="min-w-40 max-w-80 flex-1">
-          <InputGroupAddon>
-            <SearchIcon aria-hidden className="size-3.5 text-muted-foreground" />
-          </InputGroupAddon>
-          <InputGroupInput
-            type="search"
-            size="sm"
-            aria-label="Search tasks"
-            placeholder="Search tasks"
-            value={query}
-            onChange={(event) => props.onQueryChange(event.target.value)}
-          />
-        </InputGroup>
-        <Toggle
-          variant="outline"
-          size="compact"
-          pressed={prefs.mine}
-          onPressedChange={(mine) => onPrefsChange({ mine })}
+    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
+      {props.leading}
+      <InputGroup className="min-w-24 flex-1 sm:w-44 sm:flex-none">
+        <InputGroupAddon>
+          <SearchIcon aria-hidden className="size-3.5 text-muted-foreground" />
+        </InputGroupAddon>
+        <InputGroupInput
+          type="search"
+          size="sm"
+          aria-label="Search tasks"
+          placeholder="Search"
+          value={query}
+          onChange={(event) => props.onQueryChange(event.target.value)}
+        />
+      </InputGroup>
+      <Menu>
+        <MenuTrigger
+          render={
+            <Button
+              variant={menuCount > 0 ? "secondary" : "ghost"}
+              size="compact"
+              aria-label={menuCount > 0 ? `Filter, ${menuCount} active` : "Filter"}
+            />
+          }
         >
-          <UserIcon />
-          Mine
-        </Toggle>
-        <Toggle
-          variant="outline"
-          size="compact"
-          pressed={prefs.sharedOnly}
-          onPressedChange={(sharedOnly) => onPrefsChange({ sharedOnly })}
-        >
-          <UsersIcon />
-          Shared
-        </Toggle>
-        {props.showClosedToggle ? (
-          <Toggle
-            variant="outline"
-            size="compact"
-            pressed={prefs.includeClosed}
-            onPressedChange={(includeClosed) => onPrefsChange({ includeClosed })}
-          >
-            Show closed
-          </Toggle>
-        ) : null}
-        <Menu>
-          <MenuTrigger render={<Button variant="outline" size="compact" />}>
-            <FlagIcon />
-            {prefs.priorities ? `Priority (${prefs.priorities.length})` : "Priority"}
-          </MenuTrigger>
-          <MenuPopup align="start">
+          <ListFilterIcon />
+          <span className="hidden sm:inline">Filter</span>
+          {menuCount > 0 ? <span className="tabular-nums">{menuCount}</span> : null}
+        </MenuTrigger>
+        <MenuPopup align="end" className="min-w-52">
+          <MenuGroup>
+            <MenuGroupLabel>Status</MenuGroupLabel>
+            {STATUS_CHIPS.map((status) => (
+              <MenuCheckboxItem
+                key={status}
+                checked={prefs.statuses?.includes(status) ?? false}
+                onCheckedChange={(on) =>
+                  onPrefsChange({ statuses: toggled(prefs.statuses, status, on) })
+                }
+              >
+                {statusLabel(status)}
+              </MenuCheckboxItem>
+            ))}
+          </MenuGroup>
+          <MenuSeparator />
+          <MenuGroup>
+            <MenuGroupLabel>Priority</MenuGroupLabel>
             {PRIORITIES.map((priority) => (
               <MenuCheckboxItem
                 key={priority}
@@ -126,14 +127,32 @@ export const TaskFilterBar = memo(function TaskFilterBar(props: {
                 {priorityLabel(priority)}
               </MenuCheckboxItem>
             ))}
-          </MenuPopup>
-        </Menu>
-        <Menu>
-          <MenuTrigger render={<Button variant="outline" size="compact" />}>
-            <ArrowUpDownIcon />
-            {SORT_LABELS[prefs.sort]}
-          </MenuTrigger>
-          <MenuPopup align="start">
+          </MenuGroup>
+          <MenuSeparator />
+          <MenuCheckboxItem
+            checked={prefs.sharedOnly}
+            onCheckedChange={(sharedOnly) => onPrefsChange({ sharedOnly })}
+          >
+            Only shared with collaborators
+          </MenuCheckboxItem>
+          {props.showClosedToggle ? (
+            <MenuCheckboxItem
+              checked={prefs.includeClosed}
+              onCheckedChange={(includeClosed) => onPrefsChange({ includeClosed })}
+            >
+              Show closed tasks
+            </MenuCheckboxItem>
+          ) : null}
+        </MenuPopup>
+      </Menu>
+      <Menu>
+        <MenuTrigger render={<Button variant="ghost" size="compact" aria-label="Sort" />}>
+          <ArrowUpDownIcon />
+          <span className="hidden sm:inline">{SORT_LABELS[prefs.sort]}</span>
+        </MenuTrigger>
+        <MenuPopup align="end">
+          <MenuGroup>
+            <MenuGroupLabel>Sort by</MenuGroupLabel>
             <MenuRadioGroup
               value={prefs.sort}
               onValueChange={(value) => {
@@ -146,15 +165,20 @@ export const TaskFilterBar = memo(function TaskFilterBar(props: {
                 </MenuRadioItem>
               ))}
             </MenuRadioGroup>
-          </MenuPopup>
-        </Menu>
-        {props.showGroupBy ? (
-          <Menu>
-            <MenuTrigger render={<Button variant="outline" size="compact" />}>
-              <GroupIcon />
-              {`Group: ${GROUP_LABELS[prefs.groupBy]}`}
-            </MenuTrigger>
-            <MenuPopup align="start">
+          </MenuGroup>
+        </MenuPopup>
+      </Menu>
+      {props.showGroupBy ? (
+        <Menu>
+          <MenuTrigger render={<Button variant="ghost" size="compact" aria-label="Group" />}>
+            <GroupIcon />
+            <span className="hidden sm:inline">
+              {prefs.groupBy === "none" ? "Group" : GROUP_LABELS[prefs.groupBy]}
+            </span>
+          </MenuTrigger>
+          <MenuPopup align="end">
+            <MenuGroup>
+              <MenuGroupLabel>Group by</MenuGroupLabel>
               <MenuRadioGroup
                 value={prefs.groupBy}
                 onValueChange={(value) => {
@@ -167,37 +191,23 @@ export const TaskFilterBar = memo(function TaskFilterBar(props: {
                   </MenuRadioItem>
                 ))}
               </MenuRadioGroup>
-            </MenuPopup>
-          </Menu>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {STATUS_CHIPS.map((status) => (
-          <Toggle
-            key={status}
-            variant="outline"
-            size="compact"
-            pressed={prefs.statuses?.includes(status) ?? false}
-            onPressedChange={(on) =>
-              onPrefsChange({ statuses: toggled(prefs.statuses, status, on) })
-            }
-          >
-            {statusLabel(status)}
-          </Toggle>
-        ))}
-        {activeCount > 0 ? (
-          <Button
-            variant="ghost"
-            size="compact"
-            onClick={() => {
-              props.onQueryChange("");
-              onPrefsChange({ statuses: null, priorities: null, mine: false, sharedOnly: false });
-            }}
-          >
-            Clear filters
-          </Button>
-        ) : null}
-      </div>
+            </MenuGroup>
+          </MenuPopup>
+        </Menu>
+      ) : null}
+      {activeCount > 0 ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Clear filters"
+          onClick={() => {
+            props.onQueryChange("");
+            onPrefsChange({ statuses: null, priorities: null, sharedOnly: false });
+          }}
+        >
+          <XIcon />
+        </Button>
+      ) : null}
     </div>
   );
 });

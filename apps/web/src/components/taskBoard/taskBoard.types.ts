@@ -1,6 +1,7 @@
 import type {
   TaskBoardTaskPriority,
   TaskBoardTaskStatus,
+  TaskBoardTeamMember,
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 
@@ -9,6 +10,9 @@ import type { TaskView, TriageSuggestion } from "./taskBoard.logic";
 /** Everything the Tasks views need to render and act on tasks, supplied by `TasksPage`. */
 export type TaskContext = {
   readonly member: string;
+  /** The viewer's team name, and the roster that maps logins to names. */
+  readonly viewer: string;
+  readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly now: number;
   readonly aiosRoot: string | null;
   readonly projects: ReadonlyArray<TaskBoardWorkspaceProject>;
@@ -24,6 +28,8 @@ export type TaskActions = {
   /** Claims the task for the current member and moves it to in progress. */
   readonly claim: (task: TaskView) => void;
   readonly release: (task: TaskView) => void;
+  /** Gives the task to a teammate; `null` makes it available to anyone. */
+  readonly setAssignee: (task: TaskView, assignee: string | null) => void;
   /** `null` unlinks the task from its project. */
   readonly linkProject: (task: TaskView, slug: string | null) => void;
   /** Publishes the task to (or withdraws it from) its project's shared board. */

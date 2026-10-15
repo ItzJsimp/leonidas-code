@@ -7,6 +7,8 @@ import type {
 
 import { inDailyFocus } from "@t3tools/client-runtime/task-board/daily-planning";
 
+import { DEFAULT_OWNER_LENS, parseOwnerLens, type OwnerLens } from "./owner.logic";
+
 import {
   groupBySection,
   shareableOpenCount,
@@ -17,7 +19,7 @@ import {
 
 export type TasksView = "dashboard" | "board" | "list" | "roadmap";
 export type TaskFocus = "all" | "inbox" | "today" | "upcoming";
-export type TaskListGroupBy = "project" | "status" | "none";
+export type TaskListGroupBy = "owner" | "project" | "status" | "none";
 
 /** What the Tasks page remembers between visits. The search text is deliberately not kept. */
 export type TasksPrefs = {
@@ -27,7 +29,8 @@ export type TasksPrefs = {
   focus: TaskFocus;
   statuses: TaskBoardTaskStatus[] | null;
   priorities: TaskBoardTaskPriority[] | null;
-  mine: boolean;
+  /** Whose tasks the page shows; see `OwnerLens`. */
+  owner: OwnerLens;
   sharedOnly: boolean;
   includeClosed: boolean;
   sort: TaskSort;
@@ -55,7 +58,7 @@ export const DEFAULT_TASKS_PREFS: TasksPrefs = {
   focus: "inbox",
   statuses: null,
   priorities: null,
-  mine: false,
+  owner: DEFAULT_OWNER_LENS,
   sharedOnly: false,
   includeClosed: false,
   sort: "priority",
@@ -63,7 +66,7 @@ export const DEFAULT_TASKS_PREFS: TasksPrefs = {
 };
 
 const VIEWS: ReadonlyArray<TasksView> = ["dashboard", "board", "list", "roadmap"];
-const GROUP_BYS: ReadonlyArray<TaskListGroupBy> = ["project", "status", "none"];
+const GROUP_BYS: ReadonlyArray<TaskListGroupBy> = ["owner", "project", "status", "none"];
 const SORTS: ReadonlyArray<TaskSort> = ["priority", "updated", "due", "title"];
 const STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
   "todo",
@@ -109,7 +112,9 @@ export function parseTasksPrefs(raw: string | null): TasksPrefs {
     focus: pick(["all", "inbox", "today", "upcoming"] as const, record.focus, "all"),
     statuses: pickList(STATUSES, record.statuses),
     priorities: pickList(PRIORITIES, record.priorities),
-    mine: record.mine === true,
+    // Older saves kept a "Mine" toggle instead of an owner lens.
+    owner:
+      record.owner === undefined && record.mine === true ? "mine" : parseOwnerLens(record.owner),
     sharedOnly: record.sharedOnly === true,
     includeClosed: record.includeClosed === true,
     sort: pick(SORTS, record.sort, DEFAULT_TASKS_PREFS.sort),
@@ -126,7 +131,6 @@ export function toTaskFilters(prefs: TasksPrefs, query: string): TaskFilters {
     query,
     statuses: prefs.statuses ? new Set(prefs.statuses) : null,
     priorities: prefs.priorities ? new Set(prefs.priorities) : null,
-    mine: prefs.mine,
     sharedOnly: prefs.sharedOnly,
     includeClosed: prefs.view === "board" ? true : prefs.includeClosed,
   };
@@ -138,7 +142,6 @@ export function activeFilterCount(prefs: TasksPrefs, query: string): number {
     Number(query.trim().length > 0) +
     Number(prefs.statuses !== null) +
     Number(prefs.priorities !== null) +
-    Number(prefs.mine) +
     Number(prefs.sharedOnly)
   );
 }

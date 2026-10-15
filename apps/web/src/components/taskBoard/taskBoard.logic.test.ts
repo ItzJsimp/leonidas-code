@@ -156,8 +156,8 @@ describe("filterTasks", () => {
   const ids = (list: ReadonlyArray<TaskView>) => list.map((item) => item.id);
 
   it("hides closed tasks by default", () => {
-    expect(ids(filterTasks(tasks, DEFAULT_FILTERS, "Jake"))).toEqual(["a", "b", "e"]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, includeClosed: true }, "Jake"))).toEqual([
+    expect(ids(filterTasks(tasks, DEFAULT_FILTERS))).toEqual(["a", "b", "e"]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, includeClosed: true }))).toEqual([
       "a",
       "b",
       "c",
@@ -167,8 +167,7 @@ describe("filterTasks", () => {
   });
 
   it("matches the query against title, description, labels, assignee and id", () => {
-    const search = (query: string) =>
-      ids(filterTasks(tasks, { ...DEFAULT_FILTERS, query }, "Jake"));
+    const search = (query: string) => ids(filterTasks(tasks, { ...DEFAULT_FILTERS, query }));
     expect(search("login")).toEqual(["a", "b"]);
     expect(search("AUTH")).toEqual(["a"]);
     expect(search("mob")).toEqual(["e"]);
@@ -177,16 +176,14 @@ describe("filterTasks", () => {
 
   it("honours explicit status filters even for closed statuses", () => {
     const statuses = new Set(["done" as const]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, statuses }, "Jake"))).toEqual(["c"]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, statuses }))).toEqual(["c"]);
   });
 
-  it("filters by priority, mine and shared", () => {
+  it("filters by priority and shared", () => {
     const priorities = new Set(["high" as const]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, priorities }, "Jake"))).toEqual(["a"]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, mine: true }, "JAKE"))).toEqual(["a"]);
-    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, mine: true }, "Mob"))).toEqual(["e"]);
+    expect(ids(filterTasks(tasks, { ...DEFAULT_FILTERS, priorities }))).toEqual(["a"]);
     expect(
-      ids(filterTasks(tasks, { ...DEFAULT_FILTERS, sharedOnly: true, includeClosed: true }, "x")),
+      ids(filterTasks(tasks, { ...DEFAULT_FILTERS, sharedOnly: true, includeClosed: true })),
     ).toEqual(["d", "e"]);
   });
 });

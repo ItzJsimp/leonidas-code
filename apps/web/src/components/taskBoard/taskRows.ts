@@ -1,9 +1,11 @@
 import type {
   TaskBoardAgent,
   TaskBoardTaskStatus,
+  TaskBoardTeamMember,
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 
+import { ownerOf } from "./owner.logic";
 import {
   groupByStatus,
   isOpen,
@@ -78,6 +80,9 @@ export function projectNameFor(
   return task.section === "general" ? null : task.project;
 }
 
+/** How the board names work nobody owns yet. */
+export const ANYONE_LABEL = "Anyone";
+
 export function agentLabel(agent: TaskBoardAgent | null | undefined): string | null {
   return agent?.model ?? agent?.providerInstanceId ?? null;
 }
@@ -106,9 +111,32 @@ export type ListGroup = {
 export function buildListGroups(input: {
   tasks: ReadonlyArray<TaskView>;
   sections: ReadonlyArray<TaskSectionGroup>;
-  groupBy: "project" | "status" | "none";
+  groupBy: "owner" | "project" | "status" | "none";
+  /** Needed to group by owner: maps logins to team names. */
+  team?: ReadonlyArray<TaskBoardTeamMember>;
 }): ListGroup[] {
   const { tasks, sections, groupBy } = input;
+  if (groupBy === "owner") {
+    // Teammates in roster order, then other owners as they appear, then unowned work last.
+    const team = input.team ?? [];
+    const byOwner = new Map<string, TaskView[]>(team.map((member) => [member.name, []] as const));
+    const anyone: TaskView[] = [];
+    for (const task of tasks) {
+      const owner = ownerOf(task, team);
+      if (owner === null) anyone.push(task);
+      else byOwner.set(owner, [...(byOwner.get(owner) ?? []), task]);
+    }
+    return [...byOwner, [ANYONE_LABEL, anyone] as const]
+      .filter(([, members]) => members.length > 0)
+      .map(([name, members]) => ({
+        key: `owner:${name}`,
+        label: name,
+        count: members.length,
+        openCount: members.filter(isOpen).length,
+        tasks: members,
+        defaultOpen: true,
+      }));
+  }
   if (groupBy === "none") {
     return tasks.length === 0
       ? []

@@ -4,11 +4,13 @@ import type {
   TaskBoardTask,
   TaskBoardTaskPriority,
   TaskBoardTaskStatus,
+  TaskBoardTeamMember,
   TaskBoardWorkspaceProject,
 } from "@t3tools/contracts";
 import { daysUntilDue, dueSortKey } from "@t3tools/client-runtime/task-board/daily-planning";
 
 export { daysUntilDue, formatDue } from "@t3tools/client-runtime/task-board/daily-planning";
+import { ownerOf } from "./owner.logic";
 
 export type TaskView = TaskBoardTask & {
   origin: "local" | "shared" | "both";
@@ -130,8 +132,27 @@ export function mergeTasks(
     const section = task.projectSlug?.trim() || (twin ? sharedSection(twin) : GENERAL_SECTION);
     if (twin && key !== null) {
       matched.add(key);
+      // A collaborator's newer edit on the shared copy (a claim, a status) shows here too; the
+      // card's own file fields stay so edits still reach the file.
+      const theirs =
+        twin.updatedAt > task.updatedAt
+          ? {
+              title: twin.title,
+              status: twin.status,
+              priority: twin.priority,
+              assignee: twin.assignee ?? task.assignee ?? null,
+              claimedBy: twin.claimedBy,
+              claimedAt: twin.claimedAt,
+              claimedAgent: twin.claimedAgent,
+              completedBy: twin.completedBy,
+              completedAt: twin.completedAt,
+              completionSummary: twin.completionSummary,
+              updatedAt: twin.updatedAt,
+            }
+          : {};
       views.push({
         ...task,
+        ...theirs,
         shared: true,
         sharedBy: twin.sharedBy ?? task.sharedBy ?? null,
         origin: "both",
@@ -156,7 +177,6 @@ export type TaskFilters = {
   query: string;
   statuses: ReadonlySet<TaskBoardTaskStatus> | null;
   priorities: ReadonlySet<TaskBoardTaskPriority> | null;
-  mine: boolean;
   sharedOnly: boolean;
   includeClosed: boolean;
 };
@@ -165,7 +185,6 @@ export const DEFAULT_FILTERS: TaskFilters = {
   query: "",
   statuses: null,
   priorities: null,
-  mine: false,
   sharedOnly: false,
   includeClosed: false,
 };
@@ -181,7 +200,6 @@ function sameName(a: string | null | undefined, b: string): boolean {
 export function filterTasks<T extends TaskView>(
   tasks: ReadonlyArray<T>,
   filters: TaskFilters,
-  member: string,
 ): T[] {
   const query = filters.query.trim().toLowerCase();
   return tasks.filter((task) => {
@@ -191,10 +209,16 @@ export function filterTasks<T extends TaskView>(
       return false;
     }
     if (filters.priorities !== null && !filters.priorities.has(task.priority)) return false;
-    if (filters.mine && !sameName(task.claimedBy, member)) return false;
     if (filters.sharedOnly && task.origin === "local") return false;
     if (query.length === 0) return true;
-    const haystack = [task.title, task.description, task.claimedBy ?? "", task.id, ...task.labels];
+    const haystack = [
+      task.title,
+      task.description,
+      task.claimedBy ?? "",
+      task.assignee ?? "",
+      task.id,
+      ...task.labels,
+    ];
     return haystack.some((part) => part.toLowerCase().includes(query));
   });
 }
@@ -265,7 +289,8 @@ export function groupBySection(
       projectId,
       repository,
       tasks: members,
-      open: members.filter(isOpen).length,
+      // Agent-run records are history, not backlog, so they never count as open work.
+      open: members.filter((task) => isOpen(task) && task.kind !== "agent_run").length,
     };
   };
 
@@ -359,6 +384,7 @@ export function buildDashboard(
   tasks: ReadonlyArray<TaskView>,
   now: number,
   member: string,
+  team: ReadonlyArray<TaskBoardTeamMember> = [],
 ): TaskDashboard {
   const openTasks = tasks.filter(isOpen);
   const weekAgo = now - 7 * DAY_MS;
@@ -446,8 +472,8 @@ export function buildDashboard(
       const days = dueDays(task);
       return days !== null && days >= 0 && days <= 7;
     }).length,
-    unassigned: openTasks.filter((task) => !task.claimedBy).length,
-    mine: openTasks.filter((task) => sameName(task.claimedBy, member)).length,
+    unassigned: openTasks.filter((task) => ownerOf(task, team) === null).length,
+    mine: openTasks.filter((task) => sameName(ownerOf(task, team), member)).length,
     sharedOpen: openTasks.filter((task) => task.origin !== "local").length,
     byPriority,
     bySection: [...sections.values()],

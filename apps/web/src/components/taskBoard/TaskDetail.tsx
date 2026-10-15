@@ -16,6 +16,7 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react";
+import { ownerOf } from "./owner.logic";
 import { lazy, memo, Suspense, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -58,6 +59,7 @@ const EDITABLE_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
   "parked",
 ];
 const PRIORITIES: ReadonlyArray<TaskBoardTaskPriority> = ["critical", "high", "medium", "low"];
+const ANYONE_VALUE = "__anyone__";
 
 const HISTORY_VERBS: Record<TaskBoardHistoryEntry["action"], string> = {
   created: "created this",
@@ -177,6 +179,12 @@ function TaskDetailBody(props: {
   const busy = actions.isBusy(task.id);
   const closed = task.status === "done" || task.status === "parked" || task.status === "retired";
   const mine = sameName(task.claimedBy, context.member);
+  const owner = ownerOf(task, context.team);
+  const ownerItems = [
+    ...new Set([...context.team.map((member) => member.name), ...(owner ? [owner] : [])]),
+  ]
+    .map((name) => ({ value: name, label: name }))
+    .concat({ value: ANYONE_VALUE, label: "Anyone (available to take)" });
   const canSend = actions.canSendToAgent(task);
   const canShare = actions.canShare(task);
   const linkedSlug = task.section === "general" ? null : task.section;
@@ -396,6 +404,28 @@ function TaskDetailBody(props: {
               </SelectPopup>
             </Select>
           </Property>
+          <Property label="Owner">
+            <Select
+              value={owner ?? ANYONE_VALUE}
+              items={ownerItems}
+              onValueChange={(value) => {
+                if (!value) return;
+                const next = value === ANYONE_VALUE ? null : value;
+                if (next !== owner) actions.setAssignee(task, next);
+              }}
+            >
+              <SelectTrigger size="sm" aria-label="Owner" disabled={busy || !actions.canEdit}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectPopup>
+                {ownerItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </Property>
           <Property label="Claimed by">
             {task.claimedBy ? (
               <div className="flex min-w-0 flex-col gap-0.5">
@@ -422,7 +452,7 @@ function TaskDetailBody(props: {
                 ) : null}
               </div>
             ) : (
-              <span className="text-muted-foreground">Unassigned</span>
+              <span className="text-muted-foreground">Nobody yet</span>
             )}
           </Property>
           <Property label="Milestone">
