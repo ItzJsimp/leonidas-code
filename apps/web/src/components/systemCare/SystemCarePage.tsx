@@ -10,7 +10,14 @@ import { Spinner } from "../ui/spinner";
 import { SidebarInset } from "../ui/sidebar";
 import { Switch } from "../ui/switch";
 import { CoreGrid, PartsCard, QuickWinsCard, ScoreRing, SectionNav } from "./PcInsights";
-import { healthScore, quickWins, uptimeText } from "./pcInsights.logic";
+import { healthScore, quickWins, speedReached, uptimeText } from "./pcInsights.logic";
+import {
+  BottleneckCard,
+  SpeedReachedCard,
+  SpeedTestsCard,
+  SystemFactsCard,
+  TopAppsCard,
+} from "./PcStatusCards";
 import {
   AreaChart,
   Card,
@@ -46,6 +53,7 @@ import {
   useSystemCareInventory,
   useSystemCareLimits,
   useSystemCareLive,
+  useSystemCareStatus,
 } from "./useSystemCare";
 
 const RANGE_OPTIONS = (["1h", "24h", "7d", "90d"] as const).map((value) => ({
@@ -157,6 +165,9 @@ export function SystemCarePage() {
   const [range, setRange] = useState<HardwareHistoryRange>("24h");
   const [metric, setMetric] = useState<string | null>(null);
   const history = useSystemCareHistory(range);
+  const day = useSystemCareHistory("24h");
+  const statusQuery = useSystemCareStatus();
+  const pcStatus = statusQuery.data ?? null;
 
   const limits = useMemo(
     () => new Map((limitsView.data?.limits ?? []).map((limit) => [limit.metric, limit])),
@@ -168,7 +179,13 @@ export function SystemCarePage() {
   const score = healthScore(sample, limits, live.alerts);
   const now = sample?.at ?? 0;
   const uptime = uptimeText(inv?.os.bootedAt ?? null, now);
-  const wins = useMemo(() => quickWins(inv, sample, now), [inv, sample, now]);
+  const wins = useMemo(() => quickWins(inv, sample, now, pcStatus), [inv, sample, now, pcStatus]);
+  const speed = useMemo(() => {
+    const dayPoints = day.data?.points ?? [];
+    const peak = (key: string) => seriesStats(historySeries(dayPoints, key, "max")).max;
+    return speedReached(inv, pcStatus?.expected ?? null, peak("cpu.clock"), peak("gpu.0.clock"));
+  }, [day.data, inv, pcStatus]);
+  const tune = () => void actions.preparePrompt("tune");
   const alerts = openAlerts(live.alerts);
   const supported = live.status?.supported ?? true;
   const gpu = sample?.gpus[0];
@@ -343,6 +360,17 @@ export function SystemCarePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+            <SpeedReachedCard
+              rows={speed.rows}
+              overall={speed.overall}
+              hasExpected={pcStatus?.expected != null}
+              busy={actions.busy || !supported}
+              onTune={tune}
+            />
+            <BottleneckCard findings={pcStatus?.bottlenecks ?? []} />
+            <SpeedTestsCard runs={pcStatus?.benchmarks ?? []} />
+            <TopAppsCard apps={pcStatus?.topApps ?? []} measuring={supported} />
+            <SystemFactsCard status={pcStatus} />
             <QuickWinsCard
               wins={wins}
               busy={actions.busy || !supported}

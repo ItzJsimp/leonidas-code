@@ -1,6 +1,7 @@
 import type {
   HardwareAlert,
   HardwareInventory,
+  HardwarePcStatus,
   HardwareLimit,
   HardwareSample,
 } from "@t3tools/contracts";
@@ -88,8 +89,43 @@ export function quickWins(
   inventory: HardwareInventory | null,
   sample: HardwareSample | null,
   now: number,
+  status: HardwarePcStatus | null = null,
 ): QuickWin[] {
   const wins: QuickWin[] = [];
+  if (status) {
+    if (status.updates.rebootPending)
+      wins.push({
+        id: "reboot",
+        title: "Windows is waiting for a restart",
+        detail: "An update is half done until you restart. Restart when you can to finish it.",
+        impact: "medium",
+      });
+    if (status.powerPlan && /saver|eco/i.test(status.powerPlan))
+      wins.push({
+        id: "power-plan",
+        title: `Power plan is "${status.powerPlan}"`,
+        detail:
+          "This plan slows the processor down to save power. Balanced or High performance is faster.",
+        impact: "high",
+      });
+    if (status.startupApps.length > 12)
+      wins.push({
+        id: "startup",
+        title: `${status.startupApps.length} apps start with Windows`,
+        detail:
+          "Each one slows the start and uses memory in the background. Most of them can wait until you open them.",
+        impact: "medium",
+      });
+    const lastUpdate = parseDriverDate(status.updates.lastInstalledOn);
+    if (lastUpdate !== null && now - lastUpdate > 60 * DAY_MS)
+      wins.push({
+        id: "updates",
+        title: "No Windows update for more than 2 months",
+        detail:
+          "Updates fix security holes and bugs. Open Settings, Windows Update, and check for updates.",
+        impact: "medium",
+      });
+  }
   if (inventory) {
     const slow = inventory.memory.modules.filter(
       (module) =>
@@ -178,3 +214,85 @@ export const PART_EXPLAINER = {
   storage: "Long-term storage for your files and apps. Fast drives make loading quick.",
   board: "Connects every part. Its BIOS holds settings like memory speed.",
 } as const;
+
+export interface SpeedRow {
+  readonly part: string;
+  readonly actual: number | null;
+  readonly rated: number | null;
+  /** 0 to 100; null until both numbers are known. */
+  readonly pct: number | null;
+  readonly unit: "MHz" | "MT/s";
+}
+
+/**
+ * How close each part runs to its rated speed. Memory works from the inventory alone; processor and
+ * graphics need the rated speeds a Tune run saves in expected.json.
+ */
+export function speedReached(
+  inventory: HardwareInventory | null,
+  expected: HardwarePcStatus["expected"],
+  peakCpuMhz: number | null,
+  peakGpuMhz: number | null,
+): { readonly rows: ReadonlyArray<SpeedRow>; readonly overall: number | null } {
+  const row = (
+    part: string,
+    actual: number | null,
+    rated: number | null,
+    unit: SpeedRow["unit"],
+  ) => ({
+    part,
+    actual,
+    rated,
+    unit,
+    pct: actual !== null && rated ? Math.min(100, Math.round((actual / rated) * 100)) : null,
+  });
+  const modules = inventory?.memory.modules ?? [];
+  const running = modules
+    .map((module) => module.configuredSpeedMts)
+    .filter((value): value is number => value !== null);
+  const ratedFromSticks = Math.max(0, ...modules.map((module) => module.speedMts ?? 0)) || null;
+  const rows = [
+    row("Processor top speed", peakCpuMhz, expected?.cpuMaxBoostMhz ?? null, "MHz"),
+    row(
+      "Memory speed",
+      running.length > 0 ? Math.min(...running) : null,
+      expected?.memoryRatedMts ?? ratedFromSticks,
+      "MT/s",
+    ),
+    row("Graphics top speed", peakGpuMhz, expected?.gpuBoostClockMhz ?? null, "MHz"),
+  ];
+  const known = rows.map((entry) => entry.pct).filter((value): value is number => value !== null);
+  return {
+    rows,
+    overall:
+      known.length > 0
+        ? Math.round(known.reduce((sum, value) => sum + value, 0) / known.length)
+        : null,
+  };
+}
+
+/** What helps when a part fills up first, in plain words. */
+export const BOTTLENECK_ADVICE: Record<string, string> = {
+  processor:
+    "All processor cores are busy. Close other heavy apps, or a processor with more cores helps.",
+  "one processor thread":
+    "The app uses one core at a time. A faster processor per core helps; more cores do not.",
+  memory: "Memory runs out. Close other apps, or more memory is the best upgrade for this work.",
+  graphics:
+    "The graphics card is at its limit. Lower the graphics settings, or a stronger card helps.",
+  "video memory": "Graphics memory runs out. Lower texture quality or resolution.",
+  disk: "The drive is the slow part. Moving the app and its files to a solid state drive helps most.",
+};
+
+/** The newest run labelled before and the first after-run that follows it. */
+export function beforeAfter(runs: HardwarePcStatus["benchmarks"]): {
+  readonly before: HardwarePcStatus["benchmarks"][number];
+  readonly after: HardwarePcStatus["benchmarks"][number];
+} | null {
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    if (runs[index]!.label !== "before") continue;
+    const after = runs.slice(index + 1).find((run) => run.label === "after");
+    return after ? { before: runs[index]!, after } : null;
+  }
+  return null;
+}

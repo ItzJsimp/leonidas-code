@@ -12,21 +12,40 @@ import {
   ProjectId,
   type HardwareInventory,
   type HardwarePrepareAgentInput,
+  type HardwarePcStatus,
   type HardwarePrepareAgentResult,
 } from "@t3tools/contracts";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import * as ServerConfig from "../config.ts";
 import * as Projects from "../project/ProjectService.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import { findAiosRoot } from "../taskBoard/aiosCards.ts";
 import { HardwareWatch, type AgentContext } from "./HardwareWatch.ts";
+import {
+  BOTTLENECK_WINDOW_MS,
+  PC_PROBE_SCRIPT,
+  fullResources,
+  networkRates,
+  parseBenchmarks,
+  parseExpected,
+  parseProbeFrame,
+  summarizeBottlenecks,
+  topApps,
+  type MinuteRecord,
+  type ProbeFrame,
+  type SlowFacts,
+} from "./pcStatus.ts";
 
 export class SystemCare extends Context.Service<
   SystemCare,
@@ -34,6 +53,8 @@ export class SystemCare extends Context.Service<
     readonly prepareAgent: (
       input: HardwarePrepareAgentInput,
     ) => Effect.Effect<HardwarePrepareAgentResult, HardwareWatchError>;
+    /** Apps, power plan, startup, updates, battery, network, bottlenecks and speed tests. */
+    readonly status: Effect.Effect<HardwarePcStatus>;
   }
 >()("t3/hardwareWatch/SystemCare") {}
 
@@ -184,7 +205,7 @@ const tuneChecks = (notesPath: string) => [
   "Research: for each part, look up the maker's current driver and BIOS, the speed the memory is rated for (XMP or EXPO), and the settings the maker recommends. Cite the source link for each fact.",
   "Software load: startup entries, automatic services, background apps and scheduled tasks, ranked by measured cost. Mark each one keep, remove or unknown.",
   "Limits: temperatures and throttling in the last 24 hours, free space and health per drive, active power plan, pending Windows updates.",
-  `Save: write ${notesPath} with the parts, the research and its links, the chosen strategy and why it fits this machine, and the ranked plan. Create the folder if needed.`,
+  `Save: write ${notesPath} with the parts, the research and its links, the chosen strategy and why it fits this machine, and the ranked plan. Create the folder if needed. Also write expected.json in this folder with the maker's rated speeds as numbers: {"cpuMaxBoostMhz", "memoryRatedMts" (the XMP or EXPO speed), "gpuBoostClockMhz", "source" (the links)}. The PC Tuning page compares them with real readings.`,
 ];
 
 export function buildAgentPrompt(
@@ -365,7 +386,119 @@ const make = Effect.gen(function* () {
       ),
     );
 
-  return SystemCare.of({ prepareAgent });
+  // ── Status probe ─────────────────────────────────────────────────────────
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+  const platform = yield* HostProcess.Platform;
+  const frames = yield* Ref.make<{
+    readonly previous: ProbeFrame | null;
+    readonly current: ProbeFrame | null;
+    readonly slow: SlowFacts | null;
+  }>({ previous: null, current: null, slow: null });
+  const recordsFile = path.join(root, "bottlenecks.json");
+  const saved = yield* fs.readFileString(recordsFile).pipe(
+    Effect.map((text) => {
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        return Array.isArray(parsed) ? (parsed as MinuteRecord[]) : [];
+      } catch {
+        return [];
+      }
+    }),
+    Effect.orElseSucceed((): MinuteRecord[] => []),
+  );
+  const records = yield* Ref.make<ReadonlyArray<MinuteRecord>>(saved);
+  const threads = Effect.map(watch.inventory(false), (inventory) => inventory.cpu.threads);
+  let framesSinceSave = 0;
+
+  const onFrame = (lines: ReadonlyArray<string>) =>
+    Effect.gen(function* () {
+      const frame = parseProbeFrame(lines, Date.now());
+      const state = yield* Ref.updateAndGet(frames, (value) => ({
+        previous: value.current,
+        current: frame,
+        slow: frame.slow ?? value.slow,
+      }));
+      const sample = yield* watch.latestSample;
+      if (!state.previous || !sample) return;
+      // The busiest app this minute, if anything was really busy.
+      const top = topApps(state.previous, frame, yield* threads, 1)[0];
+      if (!top || top.cpuPct < 3) return;
+      const next = yield* Ref.updateAndGet(records, (list) => [
+        ...list.filter((record) => frame.at - record.at <= BOTTLENECK_WINDOW_MS),
+        { at: frame.at, app: top.name, full: fullResources(sample) },
+      ]);
+      framesSinceSave += 1;
+      if (framesSinceSave >= 10) {
+        framesSinceSave = 0;
+        yield* fs
+          .makeDirectory(root, { recursive: true })
+          .pipe(
+            Effect.andThen(fs.writeFileString(recordsFile, JSON.stringify(next))),
+            Effect.ignore,
+          );
+      }
+    });
+
+  // One PowerShell stays open and prints a frame a minute: starting PowerShell costs about 1.5 s
+  // of CPU, a loop pass costs almost nothing. Start late so it does not slow the app's boot.
+  const probe = Effect.scoped(
+    Effect.gen(function* () {
+      const handle = yield* Effect.acquireRelease(
+        spawner.spawn(
+          ChildProcess.make(
+            "powershell.exe",
+            ["-NoProfile", "-NonInteractive", "-Command", PC_PROBE_SCRIPT],
+            { stdin: "ignore", stdout: "pipe", stderr: "ignore" },
+          ),
+        ),
+        (child) => child.kill().pipe(Effect.ignore),
+      );
+      let buffer: string[] = [];
+      yield* handle.stdout.pipe(
+        Stream.decodeText(),
+        Stream.splitLines,
+        Stream.runForEach((line) => {
+          if (line.trim() !== "END") {
+            buffer.push(line);
+            return Effect.void;
+          }
+          const lines = buffer;
+          buffer = [];
+          return onFrame(lines);
+        }),
+      );
+    }),
+  ).pipe(Effect.ignore, Effect.andThen(Effect.sleep("60 seconds")), Effect.forever);
+  if (platform === "win32")
+    yield* Effect.forkScoped(Effect.andThen(Effect.sleep("20 seconds"), probe));
+
+  const status = Effect.gen(function* () {
+    const state = yield* Ref.get(frames);
+    const count = yield* threads;
+    const benchmarks = yield* fs
+      .readFileString(path.join(root, "benchmarks.jsonl"))
+      .pipe(Effect.orElseSucceed(() => ""));
+    const expected = yield* fs
+      .readFileString(path.join(root, "expected.json"))
+      .pipe(Effect.orElseSucceed(() => null));
+    return {
+      at: state.current?.at ?? Date.now(),
+      topApps: state.current ? topApps(state.previous, state.current, count) : [],
+      powerPlan: state.slow?.powerPlan ?? null,
+      startupApps: state.slow?.startupApps ?? [],
+      updates: {
+        rebootPending: state.slow?.rebootPending ?? false,
+        lastInstalledOn: state.slow?.lastInstalledOn ?? null,
+      },
+      battery: state.slow?.battery ?? null,
+      network: state.current ? networkRates(state.previous, state.current) : [],
+      bottlenecks: summarizeBottlenecks(yield* Ref.get(records), Date.now()),
+      benchmarks: parseBenchmarks(benchmarks),
+      expected: parseExpected(expected),
+    } satisfies HardwarePcStatus;
+  });
+
+  return SystemCare.of({ prepareAgent, status });
 });
 
 export const layer = Layer.effect(SystemCare, make);

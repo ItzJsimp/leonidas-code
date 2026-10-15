@@ -2842,6 +2842,7 @@ const layerWsRpc = (
         [WS_METHODS.hardwareAcknowledgeAlert]: (input) => hardwareWatch.acknowledge(input),
         [WS_METHODS.hardwareSetDeepSensors]: (input) => hardwareWatch.setDeepSensors(input.enabled),
         [WS_METHODS.hardwarePrepareAgent]: (input) => systemCare.prepareAgent(input),
+        [WS_METHODS.hardwareGetStatus]: (_input) => systemCare.status,
         [WS_METHODS.projectsPromptCandidates]: (input) => promptPrediction.candidates(input.cwd),
         [WS_METHODS.projectsPredictPrompt]: (input) => promptSuggestion.predict(input),
         [WS_METHODS.projectsCancelPromptPrediction]: (input) =>

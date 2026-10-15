@@ -66,6 +66,20 @@ export function useSystemCareHistory(range: HardwareHistoryRange) {
   );
 }
 
+/** Apps, power plan, updates, network, bottlenecks and speed tests; the server reads them once a minute. */
+export function useSystemCareStatus() {
+  const environmentId = usePrimaryEnvironmentId();
+  const query = useEnvironmentQuery(
+    environmentId === null ? null : serverEnvironment.hardwareStatus({ environmentId, input: {} }),
+  );
+  const { refresh } = query;
+  useEffect(() => {
+    const timer = setInterval(refresh, 60_000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+  return query;
+}
+
 export function useSystemCareLimits() {
   const environmentId = usePrimaryEnvironmentId();
   const query = useEnvironmentQuery(

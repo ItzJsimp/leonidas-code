@@ -1,3 +1,5 @@
+// @effect-diagnostics globalDate:off
+// Windows sends dates as text; they are plain values here, not clock reads.
 import type {
   HardwareGpuSample,
   HardwareInventory,
