@@ -8,6 +8,7 @@ import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
+import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
@@ -1287,6 +1288,7 @@ const layerWsRpc = (
       const pullRequestSync = yield* PullRequestSyncReactor.PullRequestSyncReactor;
       const localVmService = yield* LocalVmService.LocalVmService;
       const scribeStatus = yield* ScribeStatus.ScribeStatus;
+      const voice = yield* VoiceDictation.VoiceDictation;
       const deviceService = yield* DeviceService.DeviceService;
       const deviceHostContext =
         yield* Effect.context<Effect.Services<ReturnType<typeof remoteSshDeviceHosts>>>();
@@ -3118,6 +3120,10 @@ const layerWsRpc = (
         [WS_METHODS.subscribePreviewEvents]: (_input) => previewManager.events,
         [WS_METHODS.localVmList]: () => localVmService.list,
         [WS_METHODS.scribeGetStatus]: () => scribeStatus.get,
+        [WS_METHODS.voiceGetStatus]: () => voice.status,
+        [WS_METHODS.voiceSetGroqKey]: (input) => voice.setGroqKey(input.key),
+        [WS_METHODS.voiceClearGroqKey]: () => voice.clearGroqKey,
+        [WS_METHODS.voiceTranscribe]: (input) => voice.transcribe(input),
         [WS_METHODS.localVmConnect]: (input) => localVmService.connect(input),
         [WS_METHODS.localVmPause]: (input) => localVmService.pause(input),
         [WS_METHODS.localVmRelease]: (input) => localVmService.release(input),

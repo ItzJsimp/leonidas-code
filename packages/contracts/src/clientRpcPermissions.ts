@@ -12,6 +12,9 @@ import { WS_METHODS } from "./rpc.ts";
 
 /** Incremental client enforcement; the server still authorizes every request. */
 export const CLIENT_GUARDED_RPC_SCOPES = {
+  [WS_METHODS.voiceSetGroqKey]: AuthSettingsWriteScope,
+  [WS_METHODS.voiceClearGroqKey]: AuthSettingsWriteScope,
+  [WS_METHODS.voiceTranscribe]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsUpdate]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsTransition]: AuthOrchestrationOperateScope,

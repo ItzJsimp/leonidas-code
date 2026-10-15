@@ -1,3 +1,4 @@
+import { ComposerVoiceButton } from "../voice/ComposerVoiceButton";
 import { useBenchmarkRouteProfiles } from "../../lib/useBenchmarkRouteProfiles";
 import { ThreadPresetPicker } from "./ThreadPresetPicker";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
@@ -8012,6 +8013,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       </Tooltip>
                     </>
                   ) : null}
+                  <ComposerVoiceButton
+                    key={`${environmentId}:${activeThreadId ?? draftId}`}
+                    environmentId={environmentId}
+                    disabled={!canOperateThread || isConnecting || pendingUserInputs.length > 0}
+                    onText={(text) =>
+                      insertComposerText(text, "cursor", { ensureLeadingBoundary: true })
+                    }
+                  />
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}

@@ -1,3 +1,4 @@
+import { VoiceStep } from "./VoiceStep";
 import { useAuth } from "@clerk/react";
 import { useAtomValue } from "@effect/atom-react";
 import type {
@@ -109,11 +110,12 @@ import { cn } from "../../lib/utils";
  * re-runnable by clearing the flag.
  */
 
-type WizardStep = "welcome" | "connection" | "agents" | "skills" | "import" | "aios";
+type WizardStep = "welcome" | "connection" | "agents" | "voice" | "skills" | "import" | "aios";
 const STEP_ORDER: readonly WizardStep[] = [
   "welcome",
   "connection",
   "agents",
+  "voice",
   "skills",
   "import",
   "aios",
@@ -121,7 +123,15 @@ const STEP_ORDER: readonly WizardStep[] = [
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const ONBOARDING_STAGES = ["Welcome", "Connect", "AI", "Skills", "Projects", "AIOS"] as const;
+const ONBOARDING_STAGES = [
+  "Welcome",
+  "Connect",
+  "AI",
+  "Voice",
+  "Skills",
+  "Projects",
+  "AIOS",
+] as const;
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 export function WelcomeWizard({
@@ -341,6 +351,12 @@ export function WelcomeWizard({
           ) : step === "agents" ? (
             <AgentsStep
               environmentIds={setupIds}
+              onBack={goBack}
+              onContinue={() => setStep("voice")}
+            />
+          ) : step === "voice" ? (
+            <VoiceStep
+              environmentId={setupIds[0]}
               onBack={goBack}
               onContinue={() => setStep("skills")}
             />

@@ -69,6 +69,7 @@ export * from "./hardwareWatch.ts";
 export * from "./savedItem.ts";
 export * from "./devPreview.ts";
 export * from "./rpc.ts";
+export * from "./voice.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
 export * from "./clientRpcPermissions.ts";

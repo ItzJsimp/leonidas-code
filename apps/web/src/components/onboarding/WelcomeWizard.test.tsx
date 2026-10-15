@@ -12,6 +12,13 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   projects: [] as Array<{ id: string; environmentId: string; workspaceRoot: string }>,
 }));
+vi.mock("./VoiceStep", () => ({
+  VoiceStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Set up voice later
+    </button>
+  ),
+}));
 vi.mock("../../state/session", () => ({
   useEnvironmentScope: () => true,
   useEnvironmentsWithScope: (environments: Array<{ environmentId: string }>) =>
@@ -166,6 +173,7 @@ it("enters the workspace after a partial import and warns after navigation finis
   await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
   await click("Continue");
   await click("Continue without an AI");
+  await click("Set up voice later");
   await click("Skip skills");
   await click("Import 1 project");
   await click("Skip for now");
@@ -203,6 +211,7 @@ it.each([
     await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
     await click("Continue");
     await click("Continue without an AI");
+    await click("Set up voice later");
     await click("Skip skills");
     await click("Import 1 project");
     await click("Skip for now");
@@ -228,6 +237,7 @@ it("keeps setup open when saving completion fails and preserves the import warni
   await act(async () => root.render(<WelcomeWizard localAvailable onDone={onDone} />));
   await click("Continue");
   await click("Continue without an AI");
+  await click("Set up voice later");
   await click("Skip skills");
   await click("Import 1 project");
   await click("Skip for now");

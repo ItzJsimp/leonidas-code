@@ -447,6 +447,13 @@ import {
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
+import {
+  VoiceError,
+  VoiceSetGroqKeyInput,
+  VoiceStatus,
+  VoiceTranscribeInput,
+  VoiceTranscribeResult,
+} from "./voice.ts";
 
 export const ScribeStatusSnapshot = Schema.Struct({
   service: Schema.Literal("leonidas-scribe"),
@@ -466,6 +473,10 @@ export type ScribeStatusResult = typeof ScribeStatusResult.Type;
 
 export const WS_METHODS = {
   scribeGetStatus: "scribe.getStatus",
+  voiceGetStatus: "voice.getStatus",
+  voiceSetGroqKey: "voice.setGroqKey",
+  voiceClearGroqKey: "voice.clearGroqKey",
+  voiceTranscribe: "voice.transcribe",
   // Project registry methods
   projectsList: "projects.list",
   projectsAdd: "projects.add",
@@ -1954,6 +1965,30 @@ const WsScribeGetStatusRpc = Rpc.make(WS_METHODS.scribeGetStatus, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsVoiceGetStatusRpc = Rpc.make(WS_METHODS.voiceGetStatus, {
+  payload: Schema.Struct({}),
+  success: VoiceStatus,
+  error: Schema.Union([VoiceError, EnvironmentAuthorizationError]),
+});
+
+const WsVoiceSetGroqKeyRpc = Rpc.make(WS_METHODS.voiceSetGroqKey, {
+  payload: VoiceSetGroqKeyInput,
+  success: VoiceStatus,
+  error: Schema.Union([VoiceError, EnvironmentAuthorizationError]),
+});
+
+const WsVoiceClearGroqKeyRpc = Rpc.make(WS_METHODS.voiceClearGroqKey, {
+  payload: Schema.Struct({}),
+  success: VoiceStatus,
+  error: Schema.Union([VoiceError, EnvironmentAuthorizationError]),
+});
+
+const WsVoiceTranscribeRpc = Rpc.make(WS_METHODS.voiceTranscribe, {
+  payload: VoiceTranscribeInput,
+  success: VoiceTranscribeResult,
+  error: Schema.Union([VoiceError, EnvironmentAuthorizationError]),
+});
+
 const WsLocalVmListRpc = Rpc.make(WS_METHODS.localVmList, {
   payload: Schema.Struct({ inspect: Schema.optional(Schema.Boolean) }),
   success: LocalVmState,
@@ -2366,6 +2401,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsSavedItemsScheduleRpc,
   WsSavedItemsSaveTaskRpc,
   WsScribeGetStatusRpc,
+  WsVoiceGetStatusRpc,
+  WsVoiceSetGroqKeyRpc,
+  WsVoiceClearGroqKeyRpc,
+  WsVoiceTranscribeRpc,
   WsServerProbeRpc,
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,

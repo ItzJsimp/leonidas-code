@@ -36,6 +36,13 @@ const state = vi.hoisted(() => ({
   refreshScan: vi.fn(),
 }));
 
+vi.mock("./VoiceStep", () => ({
+  VoiceStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Set up voice later
+    </button>
+  ),
+}));
 vi.mock("../../connection/runtime", () => ({ connectionAtomRuntime: undefined }));
 vi.mock("@t3tools/client-runtime/state/session", () => ({
   createEnvironmentSessionAtoms: () => ({
@@ -248,6 +255,7 @@ async function mountImport(remote = false) {
   });
   await click("Continue");
   await click("Continue without an AI");
+  await click("Set up voice later");
   await click("Skip skills");
   expect(text(renderer!.root)).toContain("Import your projects");
 }

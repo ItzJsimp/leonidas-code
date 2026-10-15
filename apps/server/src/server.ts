@@ -4,6 +4,8 @@ import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskAutoLog from "./taskBoard/TaskAutoLog.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
+import * as VoiceDictation from "./scribe/VoiceDictation.ts";
+import * as VoiceKeyStore from "./scribe/VoiceKeyStore.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as Clock from "effect/Clock";
 import * as Random from "effect/Random";
@@ -642,6 +644,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(layerVcs),
   Layer.provideMerge(Layer.mergeAll(layerTerminal, layerPreview, layerDevice, layerLocalVm)),
   Layer.provideMerge(ScribeStatus.layer),
+  Layer.provideMerge(VoiceDictation.layer.pipe(Layer.provide(VoiceKeyStore.layer))),
   Layer.provideMerge(layerPersistence),
   // Both read a user-owned file out of the state directory and stream changes
   // to clients; neither depends on the other.
