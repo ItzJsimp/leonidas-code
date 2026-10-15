@@ -35,6 +35,7 @@ interface ComposerPrimaryActionsProps {
   canInterrupt: boolean;
   followUpBehavior?: "queue" | "steer";
   alternateShortcutLabel?: string | null;
+  stopShortcutLabel?: string | null;
   showPlanFollowUpPrompt: boolean;
   promptHasText: boolean;
   isSendBusy: boolean;
@@ -93,6 +94,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   canInterrupt,
   followUpBehavior = "steer",
   alternateShortcutLabel = null,
+  stopShortcutLabel = null,
   showPlanFollowUpPrompt,
   promptHasText,
   isSendBusy,
@@ -154,7 +156,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           <rect x="2" y="2" width="8" height="8" rx="1.5" />
         </svg>
       </TooltipTrigger>
-      <TooltipPopup>Interrupt</TooltipPopup>
+      <TooltipPopup>
+        {stopShortcutLabel ? `Interrupt (${stopShortcutLabel})` : "Interrupt"}
+      </TooltipPopup>
     </Tooltip>
   );
 

@@ -10,7 +10,11 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import type { KeybindingCommand } from "@t3tools/contracts";
+import { useAtomValue } from "@effect/atom-react";
 import { memo, useCallback, useState } from "react";
+import { shortcutLabelForCommand } from "../../keybindings";
+import { primaryServerKeybindingsAtom } from "../../state/server";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
 import { APP_VERSION_LABEL } from "../../branding";
@@ -170,14 +174,21 @@ function SidebarUtilityItem({
   icon,
   label,
   tourId,
+  shortcutCommand,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  /** Command whose shortcut is appended to the tooltip. */
+  shortcutCommand?: KeybindingCommand;
   /** Feature tour anchor, see `features/tour/tourTargets.ts`. */
   tourId?: string;
   onClick: () => void;
 }) {
+  const keybindings = useAtomValue(primaryServerKeybindingsAtom);
+  const shortcutLabel = shortcutCommand
+    ? shortcutLabelForCommand(keybindings, shortcutCommand)
+    : null;
   return (
     <SidebarMenuItem className="shrink-0">
       <Tooltip>
@@ -188,7 +199,9 @@ function SidebarUtilityItem({
             </SidebarMenuButton>
           }
         />
-        <TooltipPopup side="top">{label}</TooltipPopup>
+        <TooltipPopup side="top">
+          {shortcutLabel ? `${label} (${shortcutLabel})` : label}
+        </TooltipPopup>
       </Tooltip>
     </SidebarMenuItem>
   );
@@ -279,6 +292,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
+            shortcutCommand="settings.open"
             onClick={handleSettingsClick}
           />
           <SidebarUtilityItem
@@ -290,6 +304,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<ListChecksIcon />}
             label="Tasks"
+            shortcutCommand="tasks.open"
             tourId="sidebar-tasks"
             onClick={handleTasksClick}
           />
@@ -308,6 +323,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<ChartNoAxesColumnIcon />}
             label="Usage"
+            shortcutCommand="usage.open"
             tourId="sidebar-usage"
             onClick={handleUsageClick}
           />

@@ -321,6 +321,7 @@ import {
 import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 import { useSplitPane } from "./split/splitPaneContext";
+import { subscribeThreadAction, type ThreadAction } from "./chat/threadActionBus";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { useUpdateWhenSafeStore } from "../state/desktopUpdate";
 import {
@@ -4678,6 +4679,10 @@ export default function ChatView(props: ChatViewProps) {
     }
   }, [activeThread, environmentId, interruptThreadTurn, setThreadError]);
   useEffect(() => subscribeSnapShotComposerFocus(focusComposer), [focusComposer]);
+  const interruptFromAction = useEffectEvent((action: ThreadAction) => {
+    if (action === "stop" && paneActiveRef.current && canInterruptRunningThread) void onInterrupt();
+  });
+  useEffect(() => subscribeThreadAction(interruptFromAction), []);
   const scheduleComposerFocus = useCallback(() => {
     window.requestAnimationFrame(() => {
       focusComposer();

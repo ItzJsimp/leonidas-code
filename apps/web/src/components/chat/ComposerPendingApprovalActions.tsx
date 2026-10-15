@@ -15,6 +15,7 @@ interface ComposerPendingApprovalActionsProps {
   isResponding: boolean;
   canRespond: boolean;
   disabled?: boolean;
+  acceptShortcutLabel?: string | null;
   options?: ReadonlyArray<ProviderApprovalOption> | undefined;
   onRespondToApproval: (
     requestId: RuntimeRequestId,
@@ -34,6 +35,7 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
   isResponding,
   canRespond,
   disabled = false,
+  acceptShortcutLabel = null,
   options = DEFAULT_APPROVAL_OPTIONS,
   onRespondToApproval,
 }: ComposerPendingApprovalActionsProps) {
@@ -64,10 +66,15 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
             <span className="max-w-40 truncate">{option.label}</span>
           </Button>
         );
-        return option.warning ? (
+        const shortcutHint =
+          option.decision === "accept" && acceptShortcutLabel ? acceptShortcutLabel : null;
+        const tooltipText = [option.warning, shortcutHint && `Shortcut: ${shortcutHint}`]
+          .filter(Boolean)
+          .join(" · ");
+        return tooltipText ? (
           <Tooltip key={option.decision}>
             <TooltipTrigger render={button} />
-            <TooltipPopup side="top">{option.warning}</TooltipPopup>
+            <TooltipPopup side="top">{tooltipText}</TooltipPopup>
           </Tooltip>
         ) : (
           button

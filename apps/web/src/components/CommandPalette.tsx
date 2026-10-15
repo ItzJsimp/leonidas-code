@@ -64,6 +64,8 @@ import {
   MessageSquareWarningIcon,
   ListChecksIcon,
   CheckIcon,
+  PaperclipIcon,
+  SquareIcon,
   ChevronRightIcon,
   CornerLeftUpIcon,
   FileSearchIcon,
@@ -83,6 +85,7 @@ import {
   SunIcon,
   TextSearchIcon,
 } from "lucide-react";
+import { requestThreadAction } from "./chat/threadActionBus";
 import { requestThreadFindOpen } from "./chat/threadFindActionBus";
 import {
   useCallback,
@@ -489,6 +492,14 @@ export function CommandPalette({ children }: { children: ReactNode }) {
         event.stopPropagation();
         setOpen(false);
         void navigate({ to: "/usage" });
+        return;
+      }
+      if (command === "settings.open" || command === "tasks.open") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.repeat) return;
+        setOpen(false);
+        void navigate({ to: command === "settings.open" ? "/settings" : "/tasks" });
         return;
       }
       const mode = overlayModeForCommand(command);
@@ -1868,6 +1879,39 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
+  if (activeThreadId || activeDraftThread) {
+    actionItems.push({
+      kind: "action",
+      value: "action:attach-files",
+      searchTerms: ["attach", "file", "upload", "image", "paperclip"],
+      title: "Attach files",
+      icon: <PaperclipIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "composer.attach",
+      run: async () => requestThreadAction("attach"),
+    });
+  }
+
+  if (activeThreadId) {
+    actionItems.push({
+      kind: "action",
+      value: "action:stop-run",
+      searchTerms: ["stop", "interrupt", "cancel", "halt", "run"],
+      title: "Stop the running turn",
+      icon: <SquareIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "thread.stop",
+      run: async () => requestThreadAction("stop"),
+    });
+    actionItems.push({
+      kind: "action",
+      value: "action:approve-request",
+      searchTerms: ["approve", "accept", "allow", "permission", "request"],
+      title: "Approve the pending request",
+      icon: <CheckIcon className={ITEM_ICON_CLASS} />,
+      shortcutCommand: "approval.accept",
+      run: async () => requestThreadAction("approve"),
+    });
+  }
+
   if (activeThreadId && supportsThreadFind) {
     actionItems.push({
       kind: "action",
@@ -2207,6 +2251,7 @@ function OpenCommandPaletteDialog(props: {
     value: "action:tasks",
     searchTerms: ["tasks", "task board", "todo", "to do", "kanban", "backlog", "cards", "aios"],
     title: "Open tasks",
+    shortcutCommand: "tasks.open",
     icon: <ListChecksIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/tasks" });
@@ -2264,6 +2309,7 @@ function OpenCommandPaletteDialog(props: {
     value: "action:settings",
     searchTerms: ["settings", "preferences", "configuration", "keybindings"],
     title: "Open settings",
+    shortcutCommand: "settings.open",
     icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/settings" });
