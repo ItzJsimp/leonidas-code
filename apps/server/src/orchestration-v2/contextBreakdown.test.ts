@@ -356,7 +356,21 @@ describe("contextBreakdown", () => {
           const result = yield* queryThreadContextBreakdown({
             threadId,
             threadManagement: {
-              getThreadRecords: () => Effect.succeed({ ...projection, turnItems: [item] }),
+              getThreadRecords: () =>
+                Effect.succeed({
+                  ...projection,
+                  turnItems: [
+                    item,
+                    {
+                      ...item,
+                      id: TurnItemId.make("skill-read"),
+                      ordinal: 2,
+                      type: "command_execution",
+                      input: "cat .agents/skills/tdd/SKILL.md",
+                      exitCode: 0,
+                    },
+                  ],
+                }),
             },
             providerSessions: {
               get: () => Effect.succeed(Option.none()),
@@ -368,6 +382,14 @@ describe("contextBreakdown", () => {
           expect(result.source).toBe("estimated");
           expect(result.model).toBe("claude-sonnet-5-5");
           expect(result.driver).toBe("claudeAgent");
+          expect(result.usedSkills).toEqual([
+            {
+              name: "tdd",
+              origins: ["agent"],
+              path: ".agents/skills/tdd/SKILL.md",
+              reason: null,
+            },
+          ]);
           expect(result.totalTokens).toBeGreaterThan(0);
           expect(result.categories.some((c) => c.name === "Messages")).toBe(true);
         }),
