@@ -140,6 +140,6 @@ describe("getProviderStatusMessage", () => {
         auth: { status: "unauthenticated" },
         message: "",
       }),
-    ).toBe("Sign in via the CLI to authenticate again.");
+    ).toBe("Open provider setup to sign in.");
   });
 });

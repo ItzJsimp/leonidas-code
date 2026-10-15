@@ -32,16 +32,19 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
     });
   }, [connected, environment.environmentId]);
 
-  const label = connected && readFailed ? "Offline" : scribeStatusLabel(connected, result);
+  const notRunning = connected && !readFailed && result?.status === "unavailable";
+  const label = notRunning
+    ? "Not running"
+    : connected && readFailed
+      ? "Offline"
+      : scribeStatusLabel(connected, result);
   const available = connected && !readFailed && result?.status === "available";
   const description = !connected
     ? "Reconnect this environment in Settings > Connections."
     : readFailed
       ? "Status unavailable. Check environment access and update Leonidas if needed."
       : result?.status === "unavailable"
-        ? result.reason === "offline"
-          ? "Start Scribe with status support on this environment's machine."
-          : "Scribe is not reporting fresh status. Check Scribe on this environment's machine."
+        ? "Scribe is not running. Start it from the tray, or install it."
         : available && result.snapshot.state === "mic_error"
           ? "Check the microphone in Scribe on this environment's machine."
           : "Voice dictation status on this environment's machine.";
@@ -57,7 +60,7 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
           className={cn(
             "text-xs font-medium",
             available && result.snapshot.state !== "mic_error"
-              ? "text-primary"
+              ? "text-success"
               : "text-muted-foreground",
           )}
         >

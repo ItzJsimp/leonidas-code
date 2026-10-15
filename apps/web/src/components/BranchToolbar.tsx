@@ -223,7 +223,7 @@ const RunContextSelector = memo(function RunContextSelector({
       <TooltipPopup>
         {isPanel
           ? forceNewWorktree
-            ? "Each model starts in its own worktree."
+            ? "Each model starts in its own separate copy (worktree)."
             : (workspacePath ?? workspaceLabel)
           : workspaceLabel}
       </TooltipPopup>
@@ -388,7 +388,12 @@ const RunContextSelector = memo(function RunContextSelector({
             <MenuRadioItem disabled={envModeLocked} value="worktree" closeOnClick>
               <span className="flex min-w-0 items-center gap-1.5">
                 <FolderGit2Icon className="size-3" />
-                <span className="min-w-0 truncate">{resolveEnvModeLabel("worktree")}</span>
+                <span
+                  className="min-w-0 truncate"
+                  title="Worktree: a separate copy of the project folder"
+                >
+                  {resolveEnvModeLabel("worktree")}
+                </span>
               </span>
             </MenuRadioItem>
             {previousWorktreeLabel ? (

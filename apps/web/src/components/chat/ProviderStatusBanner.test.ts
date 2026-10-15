@@ -116,9 +116,7 @@ describe("compatibility banners", () => {
       status: "error",
       auth: { status: "unauthenticated" },
     };
-    expect(getProviderStatusMessage(unauthenticated)).toBe(
-      "Sign in via the CLI to authenticate again.",
-    );
+    expect(getProviderStatusMessage(unauthenticated)).toBe("Open provider setup to sign in.");
     expect(getProviderStatusMessage({ ...unauthenticated, message: "Credentials expired" })).toBe(
       "Credentials expired",
     );

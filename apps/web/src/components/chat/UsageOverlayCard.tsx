@@ -97,11 +97,20 @@ function ContextSegments({
   const top = used.slice(0, MAX_CONTEXT_SEGMENTS);
   // Skills, MCP tools and agents are not always their own provider category.
   const named = new Set(top.map((segment) => segment.name.toLowerCase()));
-  const extras = [
+  const extras: Array<{ name: string; title?: string; tokens: number }> = [
     { name: "Skills", tokens: sumTokens(query.data?.skills) },
-    { name: "MCP tools", tokens: sumTokens(query.data?.mcpTools) },
+    {
+      name: "Connected tools",
+      title: "MCP tools",
+      tokens: sumTokens(query.data?.mcpTools),
+    },
     { name: "Agents", tokens: sumTokens(query.data?.agents) },
-  ].filter((extra) => extra.tokens > 0 && !named.has(extra.name.toLowerCase()));
+  ].filter(
+    (extra) =>
+      extra.tokens > 0 &&
+      !named.has(extra.name.toLowerCase()) &&
+      !(extra.title && named.has(extra.title.toLowerCase())),
+  );
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -127,7 +136,9 @@ function ContextSegments({
         {extras.map((extra) => (
           <li key={extra.name} className="flex min-w-0 items-center gap-1.5">
             <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-            <span className="min-w-0 flex-1 truncate">{extra.name}</span>
+            <span className="min-w-0 flex-1 truncate" title={extra.title}>
+              {extra.name}
+            </span>
             <span className="tabular-nums text-foreground">{formatTokenCount(extra.tokens)}</span>
           </li>
         ))}

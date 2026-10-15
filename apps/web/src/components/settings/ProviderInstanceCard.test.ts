@@ -12,6 +12,7 @@ import {
   deriveProviderModelsForDisplay,
   nextProviderEnvironmentWithFieldValue,
   providerEnvironmentWithoutNames,
+  providerInstanceNeedsApiKey,
   ProviderInstanceCard,
   readProviderEnvironmentVariable,
 } from "./ProviderInstanceCard";
@@ -232,5 +233,18 @@ describe("provider environment helpers", () => {
     expect(providerEnvironmentWithoutNames(environment, new Set(["CURSOR_API_KEY"]))).toEqual([
       { name: "EXTRA_FLAG", value: "1", sensitive: false },
     ]);
+  });
+});
+
+describe("providerInstanceNeedsApiKey", () => {
+  it("is true only for an OpenRouter instance without a key", () => {
+    expect(providerInstanceNeedsApiKey({ driver: "openrouter", config: {} })).toBe(true);
+    expect(providerInstanceNeedsApiKey({ driver: "openrouter", config: { apiKey: " " } })).toBe(
+      true,
+    );
+    expect(
+      providerInstanceNeedsApiKey({ driver: "openrouter", config: { apiKey: "sk-or-v1-x" } }),
+    ).toBe(false);
+    expect(providerInstanceNeedsApiKey({ driver: "codex", config: {} })).toBe(false);
   });
 });

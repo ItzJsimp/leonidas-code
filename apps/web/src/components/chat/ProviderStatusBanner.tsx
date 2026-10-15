@@ -54,6 +54,8 @@ export function shouldShowProviderStatusBanner(
 export function hasProviderSetup(status: ServerProvider): boolean {
   return (
     status.driver === "antigravity" ||
+    status.driver === "claudeAgent" ||
+    status.driver === "codex" ||
     status.setup?.canAuthenticate === true ||
     status.setup?.canInstall === true
   );
@@ -132,7 +134,11 @@ export const ProviderStatusBanner = memo(function ProviderStatusBanner({
           </Tooltip>
           {onOpenProviderSetup && hasProviderSetup(status) ? (
             <InlineButton onClick={() => onOpenProviderSetup(status.instanceId)}>
-              Open provider setup
+              {!status.installed
+                ? "Install"
+                : status.auth.status === "unauthenticated"
+                  ? "Sign in"
+                  : "Open provider setup"}
             </InlineButton>
           ) : null}
         </AlertDescription>

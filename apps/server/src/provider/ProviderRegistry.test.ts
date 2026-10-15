@@ -502,10 +502,7 @@ it.layer(
 
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.auth.status, "unauthenticated");
-        assert.strictEqual(
-          status.message,
-          "Codex CLI is not authenticated. Run `codex login` and try again.",
-        );
+        assert.strictEqual(status.message, "Codex is not signed in. Use the Sign in button.");
       }),
     );
 
@@ -3104,7 +3101,10 @@ it.layer(
             ]);
             assert.strictEqual(cursorProvider?.enabled, false);
             assert.strictEqual(cursorProvider?.status, "disabled");
-            assert.strictEqual(cursorProvider?.message, "Cursor is disabled in Leonidas Code settings.");
+            assert.strictEqual(
+              cursorProvider?.message,
+              "Cursor is disabled in Leonidas Code settings.",
+            );
             const museProvider = providers.find((provider) => provider.driver === "muse");
             assert.strictEqual(museProvider?.enabled, false);
             assert.strictEqual(museProvider?.status, "disabled");
@@ -3558,7 +3558,10 @@ it.layer(
         assert.strictEqual(status.status, "error");
         assert.strictEqual(status.installed, false);
         assert.strictEqual(status.auth.status, "unknown");
-        assert.strictEqual(status.message, "Claude Agent CLI (`claude`) was not found on PATH.");
+        assert.strictEqual(
+          status.message,
+          "Claude is not installed yet.\nDetails: Claude Agent CLI (`claude`) was not found on PATH.",
+        );
       }).pipe(Effect.provide(layerFailingSpawner("spawn claude ENOENT"))),
     );
 

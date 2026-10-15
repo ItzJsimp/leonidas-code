@@ -972,6 +972,7 @@ export function EnvironmentProviderSettings({
             !readOnly &&
             liveProvider &&
             (liveProvider.setup?.canAuthenticate ||
+              liveProvider.driver === "claudeAgent" ||
               (liveProvider.driver === "acpRegistry" && liveProvider.installed)) ? (
             <ProviderAuthenticationSection
               key={`${environmentId}:${row.instanceId}`}

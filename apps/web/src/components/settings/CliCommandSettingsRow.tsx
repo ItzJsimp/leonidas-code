@@ -15,6 +15,7 @@ export function CliCommandSettingsRow() {
   const bridge = typeof window === "undefined" ? undefined : window.desktopBridge?.cliCommand;
   const [state, setState] = useState<DesktopCliCommandState | null>(null);
   const [pending, setPending] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (!bridge) return;
@@ -51,6 +52,19 @@ export function CliCommandSettingsRow() {
   );
 
   if (!bridge || !state?.supported) return null;
+  if (!showAdvanced) {
+    return (
+      <SettingsRow
+        {...searchableSetting("cli-command")}
+        description="For advanced users. Runs Leonidas Code from a terminal."
+        control={
+          <Button size="sm" variant="outline" onClick={() => setShowAdvanced(true)}>
+            Show
+          </Button>
+        }
+      />
+    );
+  }
   const installed = state.installedPath !== null;
   const description = state.shadowedBy
     ? `Another t3 at ${state.shadowedBy} runs first in a new terminal. Remove it to use Leonidas Code's.`
