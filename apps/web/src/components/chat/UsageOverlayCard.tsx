@@ -34,6 +34,7 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { useThreadContextBreakdown } from "../../state/queries";
 import { Button } from "../ui/button";
 import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { DetailedContextBreakdownView } from "./DetailedContextBreakdownView";
 import { barSegments } from "./ContextBreakdown.logic";
 import { deriveTrimSuggestions } from "./ContextTrim.logic";
@@ -138,10 +139,13 @@ function ContextSegments({
           <ul className="flex flex-col gap-0.5 text-2xs text-muted-foreground">
             {trim.slice(0, MAX_TRIM_ROWS).map((item) => (
               <li key={item.key} className="flex min-w-0 items-center gap-1.5">
-                <span className="min-w-0 flex-1 truncate" title={item.label}>
-                  {TRIM_KIND_LABEL[item.kind]} {item.label}
-                  {item.unused ? " (not used in this chat)" : ""}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger render={<span className="min-w-0 flex-1 truncate" />}>
+                    {TRIM_KIND_LABEL[item.kind]} {item.label}
+                    {item.unused ? " (not used in this chat)" : ""}
+                  </TooltipTrigger>
+                  <TooltipPopup>{item.label}</TooltipPopup>
+                </Tooltip>
                 <span className="tabular-nums text-foreground">
                   {item.estimated ? "~" : ""}
                   {formatTokenCount(item.tokens)}
@@ -415,11 +419,11 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             <span>{figures.state === "reported" ? `${contextLine} tokens` : contextLine}</span>
             {leftLine ? <span>{leftLine}</span> : null}
           </div>
-          {threadId && figures.state === "reported" ? (
+          {threadId ? (
             <ContextSegments
               environmentId={environmentId}
               threadId={threadId}
-              usedTokens={figures.usedTokens}
+              usedTokens={figures.state === "reported" ? figures.usedTokens : 0}
               onOpenDetails={() => setDetailsOpen(true)}
             />
           ) : null}
