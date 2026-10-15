@@ -51,9 +51,21 @@ function ReleaseNotesLink({
 export function showDesktopUpdateDownloadedToast(
   shell: DesktopUpdateShell,
   state: DesktopUpdateState,
-  actions: { readonly onRestartNow: () => void; readonly onUpdateWhenSafe: () => void },
+  actions: {
+    readonly onRestartNow: () => void;
+    readonly onUpdateWhenSafe: () => void;
+    /** Chats running now. When above 0, "Update when idle" is the primary action. */
+    readonly runningCount?: number;
+  },
 ): void {
   playUpdateReadySound();
+  const idleFirst = (actions.runningCount ?? 0) > 0;
+  const restart = { label: "Restart now", run: actions.onRestartNow };
+  const idle = {
+    label: idleFirst ? "Update when idle" : "Update when safe",
+    run: actions.onUpdateWhenSafe,
+  };
+  const [primary, secondary] = idleFirst ? [idle, restart] : [restart, idle];
   const version = getDesktopUpdateDownloadedVersion(state);
   const releaseUrl = getDesktopUpdateReleaseUrl(version);
   const toastId = toastManager.add({
@@ -67,19 +79,19 @@ export function showDesktopUpdateDownloadedToast(
     ),
     timeout: 0,
     actionProps: {
-      children: "Restart now",
+      children: primary.label,
       onClick: () => {
         toastManager.close(toastId);
-        actions.onRestartNow();
+        primary.run();
       },
     },
     data: {
       actionLayout: "stacked-end",
       secondaryActionProps: {
-        children: "Update when safe",
+        children: secondary.label,
         onClick: () => {
           toastManager.close(toastId);
-          actions.onUpdateWhenSafe();
+          secondary.run();
         },
       },
     },

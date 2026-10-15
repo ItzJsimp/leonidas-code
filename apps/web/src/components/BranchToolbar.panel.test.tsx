@@ -75,7 +75,7 @@ it("keeps machine choices usable when the combined row's workspace is locked", a
     await act(async () => trigger.click());
     const items = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
     expect(
-      items.find((item) => item.textContent === "New worktree")?.getAttribute("aria-disabled"),
+      items.find((item) => item.textContent === "New separate copy")?.getAttribute("aria-disabled"),
     ).toBe("true");
     await act(async () => items.find((item) => item.textContent === "remote")!.click());
     expect(onEnvironmentChange).toHaveBeenCalledWith("remote");

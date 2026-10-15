@@ -1855,7 +1855,8 @@ describe("OrchestratorMcpService provider resolution", () => {
         ...healthy,
         installed: false,
         status: "error",
-        message: "Claude Agent CLI (`claude`) was not found on PATH.",
+        message:
+          "Claude is not installed yet.\nDetails: Claude Agent CLI (`claude`) was not found on PATH.",
       };
       const codex = providerSnapshot({
         instanceId: codexInstanceId,

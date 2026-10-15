@@ -21,9 +21,33 @@ import { LeonidasWhatsNewDialog } from "./LeonidasWhatsNewDialog";
 import { DesktopUpdateProgress } from "./DesktopUpdateProgress";
 import { fetchLatestReleaseWhatsNew, onWhatsNewPreviewRequested } from "./whatsNewPreview";
 
+const INSTALLER_URL =
+  "https://github.com/ItzJsimp/leonidas-code/releases/latest/download/Leonidas-Setup.exe";
+const INSTALL_FALLBACK = "Check your internet connection, or download the latest installer.";
+
 function toastInstallError(description: string) {
-  toastManager.add(
-    stackedThreadToast({ type: "error", title: "Could not install update", description }),
+  const toastId = toastManager.add(
+    stackedThreadToast({
+      type: "error",
+      title: "Could not install update",
+      description,
+      actionProps: {
+        children: "Try again",
+        onClick: () => {
+          toastManager.close(toastId);
+          void installUpdate();
+        },
+      },
+      data: {
+        secondaryActionProps: {
+          children: "Download installer",
+          onClick: () => {
+            toastManager.close(toastId);
+            void ensureLocalApi().shell.openExternal(INSTALLER_URL);
+          },
+        },
+      },
+    }),
   );
 }
 
@@ -33,7 +57,7 @@ async function installUpdate(): Promise<void> {
     const actionError = result ? getDesktopUpdateActionError(result) : null;
     if (actionError) toastInstallError(actionError);
   } catch (error) {
-    toastInstallError(error instanceof Error ? error.message : "An unexpected error occurred.");
+    toastInstallError(error instanceof Error ? error.message : INSTALL_FALLBACK);
   }
 }
 
@@ -81,7 +105,7 @@ export function DesktopUpdateCoordinator() {
           if (runningCountRef.current > 0) {
             try {
               const confirmed = await ensureLocalApi().dialogs.confirm(
-                getDesktopUpdateInstallConfirmationMessage(state),
+                getDesktopUpdateInstallConfirmationMessage(state, runningCountRef.current),
               );
               if (!confirmed) return;
             } catch (error) {
@@ -95,6 +119,7 @@ export function DesktopUpdateCoordinator() {
         })();
       },
       onUpdateWhenSafe: () => setUpdateWhenSafe(true),
+      runningCount: runningCountRef.current,
     };
     const items = getWhatsNewItems(state, downloadedVersion);
     if (items.length === 0) {

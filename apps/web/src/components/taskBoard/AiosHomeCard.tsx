@@ -45,7 +45,8 @@ export function AiosHomeCard() {
           No AIOS connected yet
         </div>
         <p className="mt-1 text-muted-foreground">
-          Pick your AIOS folder on the Tasks page and your daily focus shows up here.
+          Your AIOS is your personal knowledge folder. Pick it on the Tasks page and your daily
+          focus shows up here.
         </p>
         <Link
           to="/tasks"

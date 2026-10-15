@@ -247,6 +247,7 @@ import {
 } from "../types";
 import { useTheme } from "../hooks/useTheme";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
+import { friendlyErrorMessage, friendlyErrorToastFields } from "./chat/friendlyError";
 import { isCommandPaletteOpen } from "../commandPaletteBus";
 import { subscribeSnapShotComposerFocus } from "../lib/desktopSnapShot";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -1579,7 +1580,7 @@ type LocalThreadErrorEntry = {
 };
 
 function chatActionErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "An error occurred.";
+  return friendlyErrorMessage(error);
 }
 
 const ENVIRONMENT_UNAVAILABLE_SEND_TOAST_TRAIL_SIZE = 3;
@@ -2554,7 +2555,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title,
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...friendlyErrorToastFields(error),
           }),
         );
       }
@@ -6375,7 +6376,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Failed to copy path",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...friendlyErrorToastFields(error),
           }),
         );
       },
@@ -7267,7 +7268,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: target.failureTitle,
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...friendlyErrorToastFields(error),
           }),
         );
       },
@@ -7379,7 +7380,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Failed to un-settle thread",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...friendlyErrorToastFields(error),
           }),
         );
       }
@@ -7425,7 +7426,7 @@ export default function ChatView(props: ChatViewProps) {
           stackedThreadToast({
             type: "error",
             title: "Failed to wake thread",
-            description: error instanceof Error ? error.message : "An error occurred.",
+            ...friendlyErrorToastFields(error),
           }),
         );
       }
@@ -8465,7 +8466,7 @@ export default function ChatView(props: ChatViewProps) {
             stackedThreadToast({
               type: "error",
               title: "Failed to settle thread",
-              description: error instanceof Error ? error.message : "An error occurred.",
+              ...friendlyErrorToastFields(error),
             }),
           );
         });
@@ -8486,7 +8487,7 @@ export default function ChatView(props: ChatViewProps) {
               stackedThreadToast({
                 type: "error",
                 title: pinned ? "Failed to unpin thread" : "Failed to pin thread",
-                description: error instanceof Error ? error.message : "An error occurred.",
+                ...friendlyErrorToastFields(error),
               }),
             );
           },

@@ -99,9 +99,18 @@ export function getDesktopUpdateButtonTooltip(state: DesktopUpdateState): string
 
 export function getDesktopUpdateInstallConfirmationMessage(
   state: Pick<DesktopUpdateState, "availableVersion" | "downloadedVersion">,
+  runningChatCount = 0,
 ): string {
   const version = state.downloadedVersion ?? state.availableVersion;
-  return `Install update${version ? ` ${version}` : ""} and restart Leonidas Code?\n\nAny running tasks will be interrupted. Make sure you're ready before continuing.`;
+  const head = `Install update${version ? ` ${version}` : ""} and restart Leonidas Code?`;
+  if (runningChatCount > 0) {
+    const chats =
+      runningChatCount === 1
+        ? "1 chat is running and will stop."
+        : `${runningChatCount} chats are running and will stop.`;
+    return `${head}\n\n${chats} To keep them running, choose Cancel, then choose "Update when idle".`;
+  }
+  return `${head}\n\nAny running tasks will be interrupted. Make sure you're ready before continuing.`;
 }
 
 export const UPDATE_WHEN_SAFE_WAITING_LABEL = "Will update when agents finish";

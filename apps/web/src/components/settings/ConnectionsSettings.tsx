@@ -1777,7 +1777,12 @@ function SavedBackendListRow({
             {routesOpen ? "Hide routes" : "Routes"}
           </MenuItem>
           {mcpUrl ? (
-            <MenuItem onClick={() => copyMcpUrl(mcpUrl, { url: mcpUrl })}>Copy MCP URL</MenuItem>
+            <MenuItem
+              title="Copies the MCP URL"
+              onClick={() => copyMcpUrl(mcpUrl, { url: mcpUrl })}
+            >
+              Copy connected tools link
+            </MenuItem>
           ) : null}
           {errorTraceId ? (
             <MenuItem onClick={() => copyTraceId(errorTraceId)}>Copy trace ID</MenuItem>

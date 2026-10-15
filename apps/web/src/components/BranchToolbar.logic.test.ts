@@ -537,7 +537,7 @@ describe("resolveEffectiveEnvMode", () => {
 describe("resolveEnvModeLabel", () => {
   it("uses explicit workspace labels", () => {
     expect(resolveEnvModeLabel("local")).toBe("Current checkout");
-    expect(resolveEnvModeLabel("worktree")).toBe("New worktree");
+    expect(resolveEnvModeLabel("worktree")).toBe("New separate copy");
   });
 });
 
@@ -563,7 +563,7 @@ describe("resolveLockedWorkspaceLabel", () => {
   });
 
   it("describes a worktree that is still being created as a new worktree", () => {
-    expect(resolveLockedWorkspaceLabel(null, "worktree")).toBe("New worktree");
+    expect(resolveLockedWorkspaceLabel(null, "worktree")).toBe("New separate copy");
   });
 });
 

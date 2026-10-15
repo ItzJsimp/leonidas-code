@@ -285,6 +285,18 @@ describe("desktop update UI helpers", () => {
   });
 });
 
+describe("getDesktopUpdateInstallConfirmationMessage with running chats", () => {
+  it("says how many chats will stop and points to Update when idle", () => {
+    const state = { availableVersion: "1.1.0", downloadedVersion: "1.1.0" };
+    expect(getDesktopUpdateInstallConfirmationMessage(state, 1)).toContain(
+      "1 chat is running and will stop.",
+    );
+    const many = getDesktopUpdateInstallConfirmationMessage(state, 3);
+    expect(many).toContain("3 chats are running and will stop.");
+    expect(many).toContain("Update when idle");
+  });
+});
+
 describe("resolveUpdateWhenSafeAction", () => {
   it.each([
     [0, false, "none"],

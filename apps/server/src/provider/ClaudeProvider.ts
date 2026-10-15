@@ -558,7 +558,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         status: "error",
         auth: { status: "unknown" },
         message: isCommandMissingCause(error)
-          ? "Claude Agent CLI (`claude`) was not found on PATH."
+          ? "Claude is not installed yet.\nDetails: Claude Agent CLI (`claude`) was not found on PATH."
           : "Failed to execute Claude Agent CLI health check.",
       },
     });
@@ -651,7 +651,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         version: parsedVersion,
         status: "error",
         auth: { status: "unauthenticated" },
-        message: "Claude Code is not authenticated. Run `claude auth login` and try again.",
+        message: "Claude is not signed in. Use the Sign in button.",
       },
     });
   }
@@ -664,7 +664,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     }) ?? apiProviderAuthMetadata(capabilities.apiProvider);
   const unsupportedUsageMessage =
     authMetadata?.type === "apiKey"
-      ? "Claude's 5-hour and weekly subscription limits require Claude subscription sign-in. This environment is using an API key; run `claude auth login` with the subscription account."
+      ? "Claude's 5-hour and weekly subscription limits require Claude subscription sign-in. This environment is using an API key; sign in with the subscription account."
       : capabilities.apiProvider !== undefined && capabilities.apiProvider !== "firstParty"
         ? `Claude subscription limits are not available for ${authMetadata?.label ?? "this backend"}.`
         : undefined;

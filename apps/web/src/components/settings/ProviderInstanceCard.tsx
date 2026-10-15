@@ -146,6 +146,16 @@ function readConfigString(config: unknown, key: string): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+/** An OpenRouter instance cannot run without an API key. */
+export function providerInstanceNeedsApiKey(instance: {
+  readonly driver: unknown;
+  readonly config?: unknown;
+}): boolean {
+  return (
+    String(instance.driver) === "openrouter" && readConfigString(instance.config, "apiKey") === null
+  );
+}
+
 /**
  * Set `key` to an arbitrary value on the opaque config blob. Unlike
  * provider settings field updates, does not drop empty-looking values — the
@@ -580,7 +590,8 @@ export function ProviderInstanceCard({
   acpProjects = EMPTY_ACP_PROJECTS,
 }: ProviderInstanceCardProps) {
   const activeAgentCount = useActiveAgentCounts();
-  const enabled = resolveProviderInstanceEnabled(instance);
+  const needsApiKey = providerInstanceNeedsApiKey(instance);
+  const enabled = !needsApiKey && resolveProviderInstanceEnabled(instance);
   const compatibility = enabled ? liveProvider?.compatibilityAdvisory : undefined;
   // A locally disabled provider reads "Disabled" with a muted dot even if its
   // last server status is stale. Enabled providers use the server status.
@@ -590,7 +601,7 @@ export function ProviderInstanceCard({
   const statusStyle = PROVIDER_STATUS_STYLES[statusKey];
   const summary = enabled
     ? getProviderSummary(liveProvider)
-    : { headline: "Disabled", detail: null };
+    : { headline: needsApiKey ? "Needs an API key" : "Disabled", detail: null };
   const authEmail = liveProvider?.auth.email?.trim();
   const isAuthenticated = enabled && liveProvider?.auth.status === "authenticated";
   const authLabel =
@@ -977,10 +988,15 @@ export function ProviderInstanceCard({
             </span>
           </span>
         </div>
-        <span className="flex h-5 shrink-0 items-center">
+        <span className="flex h-5 shrink-0 items-center gap-2">
+          {needsApiKey ? (
+            <Button type="button" size="xs" variant="outline" onClick={onSelect}>
+              Set API key
+            </Button>
+          ) : null}
           <Switch
             checked={enabled}
-            disabled={readOnly}
+            disabled={readOnly || needsApiKey}
             onCheckedChange={(checked) => updateEnabled(Boolean(checked))}
             aria-label={`Enable ${displayName}`}
           />
@@ -1148,10 +1164,25 @@ export function ProviderInstanceCard({
           <FoldedSettingsSection
             key={instanceId}
             id={`provider-instance-${instanceId}-runtime`}
-            title="Runtime"
+            title="Advanced"
             headerPlacement="outside"
           >
             {runtime ?? runtimeFields}
+          </FoldedSettingsSection>
+        </div>
+      ) : instance.driver === "claudeAgent" && driverOption ? (
+        <div
+          inert={readOnly}
+          aria-disabled={readOnly || undefined}
+          className={readOnly ? "opacity-50 select-none" : undefined}
+        >
+          <FoldedSettingsSection
+            key={instanceId}
+            id={`provider-instance-${instanceId}-runtime`}
+            title="Advanced"
+            headerPlacement="outside"
+          >
+            {runtimeFields}
           </FoldedSettingsSection>
         </div>
       ) : !driverOption || deriveProviderSettingsFields(driverOption).length > 0 ? (

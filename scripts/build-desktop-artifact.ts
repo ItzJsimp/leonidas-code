@@ -2946,7 +2946,13 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     // Keep blockmap-based differential downloads enabled while changing the
     // installed file topology. The optimization is in the payload shape, not
     // in trading update bandwidth for install speed.
-    buildConfig.nsis = { differentialPackage: true };
+    buildConfig.nsis = {
+      differentialPackage: true,
+      oneClick: true,
+      perMachine: false,
+      runAfterFinish: true,
+      createDesktopShortcut: true,
+    };
     const winConfig: Record<string, unknown> = {
       target: [target],
       icon: "icon.ico",
