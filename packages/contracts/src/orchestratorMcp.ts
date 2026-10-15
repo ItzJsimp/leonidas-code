@@ -538,6 +538,8 @@ export const OrchestratorMcpProviderCapability = Schema.Struct({
       options: Schema.optional(Schema.Array(ProviderOptionDescriptor)),
     }),
   ),
+  /** Total model count; set only when `models` was cut short. Pass providerInstanceId for all. */
+  modelCount: Schema.optional(Schema.Number),
   /** Runtime modes the provider offers; omitted when it offers all of them. */
   runtimeModes: Schema.optional(Schema.Array(RuntimeMode)),
   canRunChildTask: Schema.Boolean,
@@ -550,7 +552,7 @@ export const OrchestratorMcpCapabilitiesInput = Schema.Struct({
   providerInstanceId: Schema.optional(
     ProviderInstanceId.annotate({
       description:
-        "List only this provider instance, with each model's selectable options. Omit to list every provider without per-model options, which keeps the result small.",
+        "List only this provider instance, with each model's selectable options. Omit to list every provider with at most 8 models each and no per-model options, which keeps the result small.",
     }),
   ),
 });

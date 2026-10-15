@@ -1077,6 +1077,36 @@ describe("OrchestratorMcpService provider resolution", () => {
             );
           }
 
+          // A long catalog is cut to a sample plus the total; narrowing returns every model.
+          providers = providers.map((provider) =>
+            provider.instanceId === codexInstanceId
+              ? {
+                  ...provider,
+                  models: Array.from({ length: 12 }, (_, index) => ({
+                    slug: `bulk-${index}`,
+                    name: `Bulk ${index}`,
+                    isCustom: true,
+                    capabilities: null,
+                  })),
+                }
+              : provider,
+          );
+          const cutOverview = yield* service.capabilities(scope);
+          const cutCodex = cutOverview.providers.find(
+            (entry) => entry.providerInstanceId === codexInstanceId,
+          );
+          assert.strictEqual(cutCodex?.models.length, 8);
+          assert.strictEqual(cutCodex?.modelCount, 12);
+          assert.isUndefined(
+            cutOverview.providers.find((entry) => entry.providerInstanceId !== codexInstanceId)
+              ?.modelCount,
+          );
+          const fullCodex = yield* service.capabilities(scope, {
+            providerInstanceId: codexInstanceId,
+          });
+          assert.strictEqual(fullCodex.providers[0]?.models.length, 12);
+          assert.isUndefined(fullCodex.providers[0]?.modelCount);
+
           for (const instanceId of [
             codexInstanceId,
             ProviderInstanceId.make("claudeAgent"),
