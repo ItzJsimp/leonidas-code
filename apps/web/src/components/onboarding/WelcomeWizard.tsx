@@ -914,7 +914,8 @@ function ConnectedAgentsStep({
             />
           ) : driver === "claudeAgent" &&
             provider !== undefined &&
-            getOnboardingProviderState(provider) === "signIn" ? (
+            (getOnboardingProviderState(provider) === "signIn" ||
+              getOnboardingProviderState(provider) === "install") ? (
             <ClaudeSignInCard
               key={driver}
               environmentId={environmentId}

@@ -1,4 +1,4 @@
-import type { ProviderAuthState } from "@t3tools/contracts";
+import type { ProviderAuthState, ProviderInstallState } from "@t3tools/contracts";
 
 export const CLAUDE_WAITING_MESSAGE = "Finish signing in in your browser.";
 export const CLAUDE_FINISHING_MESSAGE = "Finishing sign-in...";
@@ -43,4 +43,42 @@ export function getClaudeSignInView(input: {
   if (phase === "cancelled") return { kind: "idle" };
   // The start call returned, but the first state has not arrived yet.
   return { kind: "waiting", url: null, canCancel: false };
+}
+
+export const CLAUDE_INSTALL_PROMPT =
+  "Claude is not on this computer yet. Install it for free, then sign in.";
+export const CLAUDE_INSTALLING_MESSAGE = "Installing Claude. This takes about 1 minute.";
+export const CLAUDE_INSTALL_FAILED_FALLBACK =
+  "Could not install Claude. Check your internet connection, then try again.";
+
+export type ClaudeInstallView =
+  | { readonly kind: "idle" }
+  | { readonly kind: "installing"; readonly operationId: string | null }
+  | { readonly kind: "installed" }
+  | { readonly kind: "failed"; readonly message: string };
+
+/**
+ * Choose what the Claude card shows while Claude is not installed.
+ * `requested` hides an old failed attempt on a new visit.
+ */
+export function getClaudeInstallView(input: {
+  readonly installation: ProviderInstallState | null | undefined;
+  readonly requested: boolean;
+}): ClaudeInstallView {
+  const { installation, requested } = input;
+  const phase = installation?.phase ?? "idle";
+  if (phase === "downloading" || phase === "extracting" || phase === "verifying") {
+    return { kind: "installing", operationId: installation?.operationId ?? null };
+  }
+  if (phase === "succeeded") return { kind: "installed" };
+  if (requested && (phase === "failed" || phase === "cancelled")) {
+    return {
+      kind: "failed",
+      message:
+        phase === "cancelled"
+          ? "Installation cancelled."
+          : (installation?.message ?? CLAUDE_INSTALL_FAILED_FALLBACK),
+    };
+  }
+  return { kind: "idle" };
 }
