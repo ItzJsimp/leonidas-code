@@ -69,7 +69,8 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 ## 7. Session notes
 
-In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
+- **2026-10-15:** Main checkout `node_modules` had no `.bin`; a `pnpm install` there is blocked by `scripts/guard-main-install.mjs`. Install and commit from a worktree under `C:/lcw` (2.5 minutes). The preview pairing token is one-time: pair once, then click, do not navigate by URL.
+  In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 
 - 2026-10-14: fixed-name `Leonidas-Setup.exe` added to every release (`team-release.yml`, commit `5de80b185c`) as the one beginner download link; Scribe still has 0 releases, so dictation is not installable from a link.
 - 2026-10-14: skill folders in the `/` menu (`packages/client-runtime/src/skillFolders.ts`, `apps/web/src/components/chat/composerSkillFolders.logic.ts`, `settings/SkillFoldersEditor.tsx`), commits `e518535038` and `b0e9835b08`; checked live in Claude, 97 flat rows became 9 folders. Open: AIOS mirror file, category and source for Codex skills.
