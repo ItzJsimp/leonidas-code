@@ -59,3 +59,23 @@ export function goalWorkPrompt(goal: ThreadGoal): string {
     .filter(Boolean)
     .join("\n\n");
 }
+
+/** Text compared without markdown marks, JSON escapes, quote style or spacing differences. */
+function normalizeQuote(value: string): string {
+  return value
+    .replace(/\\(?:r\\)?n/g, " ")
+    .replace(/\r?\n/g, " ")
+    .replace(/\\"/g, '"')
+    .replace(/[`*_~>#|]/g, "")
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** True when the evaluator's evidence really appears in the transcript it was given. */
+export function evidenceQuotedIn(transcript: string, evidence: string): boolean {
+  const quote = normalizeQuote(evidence);
+  return quote.length > 0 && normalizeQuote(transcript).includes(quote);
+}

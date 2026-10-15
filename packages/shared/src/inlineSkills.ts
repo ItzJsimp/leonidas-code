@@ -1,4 +1,5 @@
 import type { ServerProviderSkill } from "@t3tools/contracts";
+import { CHIPPED_SLASH_COMMANDS } from "./composerInlineTokens.ts";
 
 export type InlineSkill = Pick<ServerProviderSkill, "name" | "displayName">;
 
@@ -24,7 +25,18 @@ export function formatProviderSkillDisplayName(
 const SKILL_TOKEN_REGEX =
   /(^|\s)\p{Sc}(?![0-9][0-9_]*(?:[kKmMbBtT]|[eE][0-9]+)?(?:\s|$))(?=[a-zA-Z0-9:_-]*[a-zA-Z])([a-zA-Z0-9][a-zA-Z0-9:_-]*)(?=\s|$)/gu;
 
+const SLASH_COMMAND_REGEX = /^\/([a-z][a-z0-9_-]*)(?=\s|$)/u;
+
 export function* matchInlineSkills(text: string, skills: readonly InlineSkill[]) {
+  const command = SLASH_COMMAND_REGEX.exec(text);
+  if (command?.[1] !== undefined && CHIPPED_SLASH_COMMANDS.has(command[1])) {
+    yield {
+      start: 0,
+      end: command[0].length,
+      skill: { name: command[1] } satisfies InlineSkill,
+      rawText: command[0],
+    };
+  }
   for (const match of text.matchAll(SKILL_TOKEN_REGEX)) {
     const name = match[2] ?? "";
     const skill = skills.find((candidate) => candidate.name === name);

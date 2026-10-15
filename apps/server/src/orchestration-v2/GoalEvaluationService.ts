@@ -12,6 +12,7 @@ import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as ServerSettings from "../serverSettings.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
+import { evidenceQuotedIn } from "./GoalState.ts";
 import * as ProjectStore from "./ProjectStore.ts";
 import * as ThreadManagement from "./ThreadManagementService.ts";
 
@@ -226,23 +227,34 @@ const make = Effect.gen(function* () {
           });
           return;
         }
-        const outcome = yield* evaluate({
-          cwd,
-          condition: goal.condition,
-          transcript,
-          modelSelection: selected,
-        }).pipe(
-          Effect.timeout("60 seconds"),
-          Effect.retry({
-            times: 1,
-            schedule: Schedule.exponential("1 second"),
-            while: (error) =>
-              !/timeout|auth|login|credential|quota|credit|limit|unsupported|does not support/i.test(
-                String(error),
-              ),
-          }),
-          Effect.result,
-        );
+        const evaluateWith = (modelSelection: typeof selected) =>
+          evaluate({
+            cwd,
+            condition: goal.condition,
+            transcript,
+            modelSelection,
+          }).pipe(
+            Effect.timeout("60 seconds"),
+            Effect.retry({
+              times: 1,
+              schedule: Schedule.exponential("1 second"),
+              while: (error) =>
+                !/timeout|auth|login|credential|quota|credit|limit|unsupported|does not support/i.test(
+                  String(error),
+                ),
+            }),
+            Effect.result,
+          );
+        let outcome = yield* evaluateWith(selected);
+        // The text-generation provider may be signed out or out of quota while the
+        // thread's own provider works. Check with the model that just did the work.
+        const threadSelection = records.thread.modelSelection;
+        if (
+          outcome._tag === "Failure" &&
+          (threadSelection.instanceId !== selected.instanceId ||
+            threadSelection.model !== selected.model)
+        )
+          outcome = yield* evaluateWith(threadSelection);
         if (outcome._tag === "Failure") {
           yield* complete({
             pauseReason:
@@ -253,10 +265,7 @@ const make = Effect.gen(function* () {
           return;
         }
         let result = outcome.success;
-        if (
-          result.verdict === "met" &&
-          (!result.evidence.trim() || !transcript.includes(result.evidence))
-        )
+        if (result.verdict === "met" && !evidenceQuotedIn(transcript, result.evidence))
           result = {
             ...result,
             verdict: "unmet",

@@ -3,6 +3,16 @@ import { describe, expect, it } from "vite-plus/test";
 import { collectComposerInlineTokens } from "./composerInlineTokens.ts";
 
 describe("collectComposerInlineTokens", () => {
+  it("chips a leading /goal once a delimiter follows, and nothing else", () => {
+    expect(collectComposerInlineTokens("/goal ship it")).toEqual([
+      { type: "skill", value: "goal", source: "/goal", start: 0, end: 5 },
+    ]);
+    expect(collectComposerInlineTokens("/goal")).toEqual([]);
+    expect(collectComposerInlineTokens("/goalpost x")).toEqual([]);
+    expect(collectComposerInlineTokens("say /goal x")).toEqual([]);
+    expect(collectComposerInlineTokens("/compact now")).toEqual([]);
+  });
+
   it("collects file links, mentions, and skills with source ranges", () => {
     const text = "Use $ui and inspect [Chat.tsx](src/Chat.tsx) with @AGENTS.md please";
 

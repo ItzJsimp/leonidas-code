@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { ThreadGoal } from "@t3tools/contracts";
-import { completeGoalEvaluation } from "./GoalState.ts";
+import { completeGoalEvaluation, evidenceQuotedIn } from "./GoalState.ts";
 
 const goal = (overrides: Partial<ThreadGoal> = {}): ThreadGoal =>
   ({
@@ -53,5 +53,18 @@ describe("completeGoalEvaluation", () => {
       madeProgress: true,
     });
     expect(next.status).toBe("paused");
+  });
+});
+
+describe("evidenceQuotedIn", () => {
+  const transcript =
+    "assistant: **Objective achieved:** `a.txt` and\n`b.txt` exist and contain DONE.";
+  it("accepts a quote despite markdown, line breaks and case", () => {
+    expect(evidenceQuotedIn(transcript, "Objective achieved: a.txt and b.txt exist")).toBe(true);
+    expect(evidenceQuotedIn(transcript, "a.txt and\\nb.txt EXIST")).toBe(true);
+  });
+  it("rejects empty or invented evidence", () => {
+    expect(evidenceQuotedIn(transcript, "  ")).toBe(false);
+    expect(evidenceQuotedIn(transcript, "all tests pass")).toBe(false);
   });
 });

@@ -312,6 +312,7 @@ const ComposerSkillExtension = Node.create({
       skillName: { default: "" },
       skillLabel: { default: "" },
       skillDescription: { default: null },
+      skillSigil: { default: "$" },
     };
   },
   parseHTML() {
@@ -331,21 +332,24 @@ function ComposerSkillNodeView({ node }: NodeViewProps) {
   const skillName = (node.attrs.skillName as string) ?? "";
   const skillLabel = (node.attrs.skillLabel as string) || skillName;
   const skillDescription = (node.attrs.skillDescription as string | null) ?? null;
-  const skill = skills.find((candidate) => candidate.name === skillName);
+  const isCommand = node.attrs.skillSigil === "/";
+  const skill = isCommand ? undefined : skills.find((candidate) => candidate.name === skillName);
   return (
     <NodeViewWrapper as="span" className={CHIP_NODE_SELECTION_CLASS_NAME}>
       <ContextChipPopover
         kind="skill"
         icon={<SkillChipIcon />}
         label={skillLabel}
-        accessibleLabel={`Skill ${skillLabel}`}
+        accessibleLabel={`${isCommand ? "Command" : "Skill"} ${skillLabel}`}
       >
         <div className="space-y-3 p-2 text-sm">
           <p className="font-medium">{skillLabel}</p>
           <p>
             {skill?.description ??
               skillDescription ??
-              "No description is available for this skill."}
+              (isCommand
+                ? "Keeps the agent working across turns until the goal is met."
+                : "No description is available for this skill.")}
           </p>
           {skill?.approxTokens ? (
             <p className="text-muted-foreground text-xs">

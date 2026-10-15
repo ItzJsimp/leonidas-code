@@ -456,6 +456,7 @@ function atomJsonForSegment(
         skillName: segment.name,
         skillLabel: meta.label,
         skillDescription: meta.description,
+        skillSigil: segment.source.startsWith("/") ? "/" : "$",
       },
     };
   }
@@ -823,7 +824,7 @@ function readAtomSource(node: ProseMirrorNode): string {
       return typeof attrs.source === "string" ? attrs.source : "";
     case "composer-skill": {
       const name = typeof attrs.skillName === "string" ? attrs.skillName : "";
-      return name ? `$${name}` : "";
+      return name ? `${attrs.skillSigil === "/" ? "/" : "$"}${name}` : "";
     }
     default:
       return "";

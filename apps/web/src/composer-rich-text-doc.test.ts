@@ -58,6 +58,7 @@ const schema = getSchemaByResolvedExtensions(
       skillName: { default: "" },
       skillLabel: { default: "" },
       skillDescription: { default: null },
+      skillSigil: { default: "$" },
     }),
     stubAtom("composer-citation", {
       citation: { default: null },
@@ -111,6 +112,7 @@ const plainSchema = getSchemaByResolvedExtensions(
       skillName: { default: "" },
       skillLabel: { default: "" },
       skillDescription: { default: null },
+      skillSigil: { default: "$" },
     }),
     stubAtom("composer-citation", {
       citation: { default: null },
@@ -184,6 +186,14 @@ describe("literal editor answers", () => {
 });
 
 describe("composer rich text document model", () => {
+  it("keeps a leading /goal as a command chip and sends it unchanged", () => {
+    const value = "/goal make the tests pass";
+    expect(roundTrip(value).value).toBe(value);
+    expect(roundTripPlain(value).value).toBe(value);
+    // Only the start of the prompt is a command; later text stays prose.
+    expect(roundTrip("fix it /goal later").value).toBe("fix it /goal later");
+  });
+
   it.each(["€", "£", "¥", "₹", "₩", "₿", "𑿝"])(
     "canonicalizes %s skill aliases while preserving amounts",
     (prefix) => {

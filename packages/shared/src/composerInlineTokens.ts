@@ -37,6 +37,13 @@ const SKILL_TOKEN_REGEX = new RegExp(`${SKILL_MENTION_SOURCE}(?=\\s)`, "gu");
  * global, so use it with `matchAll` or `replace`, not `test` or `exec`.
  */
 export const SKILL_MENTION_PATTERN = new RegExp(`${SKILL_MENTION_SOURCE}(?=\\s|$)`, "gu");
+/**
+ * Provider commands that render as a chip, the way a skill does. They are
+ * chipped only at the very start of the text, where a provider reads them, and
+ * the chip keeps the typed `/name` so the sent message is unchanged.
+ */
+export const CHIPPED_SLASH_COMMANDS: ReadonlySet<string> = new Set(["goal"]);
+const SLASH_COMMAND_TOKEN_REGEX = /^\/([a-z][a-z0-9_-]*)(?=\s)/u;
 const MENTION_TOKEN_REGEX = /(^|\s)@(?:"((?:\\.|[^"\\])*)"|([^\s@"]+))(?=\s)/g;
 /**
  * The label body is bounded rather than `*`. Unbounded, every whitespace in
@@ -117,6 +124,17 @@ export function collectComposerInlineTokens(
   options: CollectComposerInlineTokensOptions = {},
 ): ReadonlyArray<ComposerInlineToken> {
   const matches = collectMentionTokens(text);
+
+  const command = SLASH_COMMAND_TOKEN_REGEX.exec(text);
+  if (command?.[1] !== undefined && CHIPPED_SLASH_COMMANDS.has(command[1])) {
+    matches.push({
+      type: "skill",
+      value: command[1],
+      source: command[0],
+      start: 0,
+      end: command[0].length,
+    });
+  }
 
   for (const match of text.matchAll(SKILL_TOKEN_REGEX)) {
     const fullMatch = match[0];
