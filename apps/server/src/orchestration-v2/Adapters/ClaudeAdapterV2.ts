@@ -42,6 +42,7 @@ import type {
   WebSearchOutput,
 } from "@anthropic-ai/claude-agent-sdk/sdk-tools";
 import { parseCliArgs } from "@t3tools/shared/cliArgs";
+import { T3_MCP_TOOL_NAMES } from "@t3tools/shared/t3McpToolPresentation";
 import { AgentScope } from "@t3tools/shared/AgentScope";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { applyClaudePromptEffortPrefix } from "@t3tools/shared/model";
@@ -304,6 +305,8 @@ export function claudePersonaToolShape(input: {
   readonly tools: ClaudeAgentSdkQueryToolList;
   readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
   readonly allowedTools?: ReadonlyArray<string>;
+  /** App tools the persona did not list. Claude removes a disallowed tool from the model's context. */
+  readonly disallowedTools?: ReadonlyArray<string>;
 } {
   const builtIn = input.persona.tools.filter((tool) => !tool.startsWith("mcp__"));
   const mcpTools = input.persona.tools.filter((tool) => tool.startsWith("mcp__"));
@@ -313,7 +316,12 @@ export function claudePersonaToolShape(input: {
   const tools =
     policyList === undefined ? builtIn : builtIn.filter((tool) => policyList.includes(tool));
   if (mcpTools.length === 0 || input.mcpServers === undefined) return { tools };
-  return { tools, mcpServers: input.mcpServers, allowedTools: mcpTools };
+  // The server lists every app tool in context (about 40,000 tokens), so hide the ones not named.
+  const listed = new Set(mcpTools);
+  const disallowedTools = [...T3_MCP_TOOL_NAMES]
+    .map((name) => `mcp__t3-code__${name}`)
+    .filter((name) => !listed.has(name));
+  return { tools, mcpServers: input.mcpServers, allowedTools: mcpTools, disallowedTools };
 }
 
 function claudeAgentSdkQueryToolsForSdk(

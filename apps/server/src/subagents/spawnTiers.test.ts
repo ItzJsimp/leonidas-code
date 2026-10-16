@@ -76,12 +76,12 @@ describe("model-tiers.json", () => {
 });
 
 describe("estimatePersonaStartTokens", () => {
-  it("adds the app MCP tool list only when the persona names an app tool", () => {
+  it("charges one schema per named app tool, not the whole app tool list", () => {
     const lean = estimatePersonaStartTokens({ systemPromptChars: 4_000, tools: ["Read", "Grep"] });
     const withMcp = estimatePersonaStartTokens({
       systemPromptChars: 4_000,
-      tools: ["Read", "Grep", "mcp__t3-code__preview_open"],
+      tools: ["Read", "Grep", "mcp__t3-code__preview_open", "mcp__t3-code__preview_click"],
     });
-    expect(withMcp - lean).toBeGreaterThan(5_000);
+    expect(withMcp - lean).toBe(500);
   });
 });

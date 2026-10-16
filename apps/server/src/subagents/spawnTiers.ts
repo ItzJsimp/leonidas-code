@@ -97,24 +97,27 @@ export function resolveSpawnTier(input: {
 
 /**
  * A rough start cost for the card: the persona prompt at about 4 characters
- * per token, a fixed harness floor, and a per-tool schema cost. The app MCP
- * server adds its own tool list when the persona names one of its tools.
- * Calibrated live on the probe persona (6 tools): 10,789 measured start tokens.
+ * per token, a fixed harness floor, and a per-tool schema cost. A persona that
+ * names app tools gets only those tools; the rest are hidden (see
+ * claudePersonaToolShape), so each costs about one schema.
+ * Calibrated live: 6 built-in tools and a 6.6 KB prompt measured 10,789 start
+ * tokens; 2 built-in and 3 app tools with a tiny prompt measured 5,500. Before
+ * the unlisted app tools were hidden, the same 3-tool persona measured 48,600.
  */
 export function estimatePersonaStartTokens(input: {
   readonly systemPromptChars: number;
   readonly tools: ReadonlyArray<string>;
 }): number {
-  const usesAppMcp = input.tools.some((tool) => tool.startsWith("mcp__"));
-  const builtInTools = input.tools.filter((tool) => !tool.startsWith("mcp__")).length;
+  const appTools = input.tools.filter((tool) => tool.startsWith("mcp__")).length;
+  const builtInTools = input.tools.length - appTools;
   return Math.round(
     input.systemPromptChars / 4 +
       PERSONA_HARNESS_FLOOR_TOKENS +
       builtInTools * PERSONA_TOKENS_PER_TOOL +
-      (usesAppMcp ? APP_MCP_TOOLS_TOKENS : 0),
+      appTools * PERSONA_TOKENS_PER_APP_TOOL,
   );
 }
 
 const PERSONA_HARNESS_FLOOR_TOKENS = 6_500;
 const PERSONA_TOKENS_PER_TOOL = 450;
-const APP_MCP_TOOLS_TOKENS = 9_000;
+const PERSONA_TOKENS_PER_APP_TOOL = 250;
