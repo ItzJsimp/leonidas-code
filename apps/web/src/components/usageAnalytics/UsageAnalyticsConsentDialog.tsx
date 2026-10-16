@@ -1,4 +1,8 @@
-import { useUsageAnalyticsStore } from "../../lib/usageAnalytics/usageAnalyticsStore";
+import { ensureLocalApi } from "../../localApi";
+import {
+  USAGE_PRIVACY_URL,
+  useUsageAnalyticsStore,
+} from "../../lib/usageAnalytics/usageAnalyticsStore";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -47,7 +51,14 @@ export function UsageAnalyticsConsentDialog() {
             <li>We use a random ID. It has no name, email or account.</li>
           </ul>
           <p className="mt-3 text-sm text-muted-foreground">
-            You can change this at any time in Settings, General.
+            You can change this at any time in Settings, General.{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => void ensureLocalApi().shell.openExternal(USAGE_PRIVACY_URL)}
+            >
+              Read the privacy notice
+            </button>
           </p>
         </DialogPanel>
         <DialogFooter>

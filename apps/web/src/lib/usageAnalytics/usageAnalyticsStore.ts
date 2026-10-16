@@ -10,6 +10,9 @@ import { resolveStorage } from "../storage";
  */
 export const USAGE_CONSENT_VERSION = 2;
 
+export const USAGE_PRIVACY_URL =
+  "https://github.com/ItzJsimp/leonidas-code/blob/main/docs/user/privacy.md";
+
 export type UsageConsent = "unknown" | "granted" | "declined";
 
 interface UsageAnalyticsState {
