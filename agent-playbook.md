@@ -71,6 +71,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 ## 7. Session notes
 
+- **2026-10-16:** Subagents (ADR-0082) live in `apps/server/src/subagents/` and `apps/web/src/components/subagents/`; starters in `packages/shared/src/subagentStarters/`. Studio edits go through `subagents.update` and `subagents.create`: only catalog-listed specs are writable, and the old text returns if a spec stops resolving. A chat's attach lives on the thread record (`attachedSubagent`, set by `thread.metadata.update`). Today's spawn counts persist in `<stateDir>/subagent-stats.json`. `personaEngines.ts` refuses a start on an engine that ignores personas (only Claude and Codex honor them). Studio data needs an AIOS root: start the dev server with `LEONIDAS_AIOS_ROOT=<folder with tasks/>`, and use a test AIOS, not your real one, when you try edits. Never run `vp fmt` on a whole folder such as `apps/server/src`: it reformats files you did not touch.
 - **2026-10-15:** Task board reader (`readAiosTasks`, `aiosCards.ts`) also reads `projects/<slug>/<child>/tasks` when `<child>` has its own `.git` (Goo Busters GB cards). GB words `doing`, `later`, `cut` and priority `P0` to `P3` map in `statusFromCard` and `priorityFromCard`. `findCardFile` searches the game repo, and `applyCardPatch` writes GB words (`doing`, `P0`, unquoted) for cards with `owner` and `system`.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
