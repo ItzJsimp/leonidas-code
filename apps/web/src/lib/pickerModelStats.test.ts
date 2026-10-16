@@ -58,4 +58,27 @@ describe("pickerModelStats", () => {
     );
     expect(formatPickerCost(stats)).toBe("$0.15 / $0.6");
   });
+
+  it("opens on medium effort and lists every measured effort from Artificial Analysis", () => {
+    const aa = (effort: string, index: number): ModelBenchmarkEntry => ({
+      source: "artificialAnalysis",
+      sourceModelKey: `claude-sonnet-5-5-${effort}`,
+      name: `Claude Sonnet 5.5 (${effort})`,
+      effort,
+      values: { "aa:index": index, "aa:speed": 100 + index },
+    });
+    const stats = pickerModelStats(
+      [
+        entry("Claude Sonnet 5.5", { "benchLm:benchmark:artificialAnalysis": 56 }),
+        aa("max", 56),
+        aa("medium", 50),
+        aa("low", 40),
+      ],
+      { modelId: "claude-sonnet-5-5" },
+    );
+    expect(stats.effort).toBe("medium");
+    expect(stats.intelligence).toBe(50);
+    expect(stats.source).toBe("artificialAnalysis");
+    expect(stats.efforts.map((item) => item.effort)).toEqual(["low", "medium", "max"]);
+  });
 });

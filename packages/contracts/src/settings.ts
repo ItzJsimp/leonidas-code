@@ -1444,6 +1444,8 @@ export const ServerSettings = Schema.Struct({
   usageLimitSources: Schema.Record(UsageLimitSourceId, UsageLimitSourceConfig).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
   ),
+  /** Free Artificial Analysis key for per-effort model benchmarks. Kept in the secret store. */
+  artificialAnalysisApiKey: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   /** Allows this server to read the Cursor CLI's macOS Keychain login for account usage. */
   cursorKeychainUsageEnabled: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
@@ -1723,6 +1725,7 @@ export const ServerSettingsPatch = Schema.Struct({
   usageLimitSources: Schema.optionalKey(
     Schema.Record(UsageLimitSourceId, Schema.NullOr(UsageLimitSourceConfig)),
   ),
+  artificialAnalysisApiKey: Schema.optionalKey(TrimmedString),
   cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
   /** Each entry replaces one model's rates; `null` restores automatic pricing. */
   usagePriceOverrides: Schema.optionalKey(

@@ -1,5 +1,5 @@
 import type { ModelBenchmarkEntry } from "@t3tools/contracts";
-import { matchBenchmarks } from "@t3tools/shared/modelBenchmarkMatch";
+import { benchmarkEffortEntries, matchBenchmarks } from "@t3tools/shared/modelBenchmarkMatch";
 
 const AA_INDEX = "benchLm:benchmark:artificialAnalysis";
 const OVERALL = "benchLm:overall";
@@ -13,7 +13,33 @@ export interface PickerModelStats {
   readonly inputPrice: number | null;
   readonly outputPrice: number | null;
   readonly ttftSeconds: number | null;
+  /** Coding and agentic indices, cost to run one index task, and the effort these numbers are for. */
+  readonly coding: number | null;
+  readonly agentic: number | null;
+  readonly costPerTask: number | null;
+  readonly effort: string | null;
+  /** Which source the numbers came from. */
+  readonly source: "artificialAnalysis" | "benchLm" | null;
+  /** One row per effort the source measured, lowest effort first; empty when it splits none. */
+  readonly efforts: ReadonlyArray<PickerEffortStats>;
 }
+
+export interface PickerEffortStats {
+  readonly effort: string;
+  readonly intelligence: number | null;
+  readonly coding: number | null;
+  readonly agentic: number | null;
+  readonly tokensPerSecond: number | null;
+  readonly ttftSeconds: number | null;
+  readonly inputPrice: number | null;
+  readonly outputPrice: number | null;
+  readonly costPerTask: number | null;
+}
+
+/** Low to high, so the tabs read in order. An effort not listed sorts last. */
+export const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "ultra", "max"] as const;
+/** The tab the panel opens on: medium is the usual provider default, then the next one up. */
+const DEFAULT_EFFORT_PREFERENCE = ["medium", "high", "low", "minimal", "xhigh", "ultra", "max"];
 
 export const NO_PICKER_STATS: PickerModelStats = {
   intelligenceSource: null,
@@ -22,7 +48,41 @@ export const NO_PICKER_STATS: PickerModelStats = {
   inputPrice: null,
   outputPrice: null,
   ttftSeconds: null,
+  coding: null,
+  agentic: null,
+  costPerTask: null,
+  effort: null,
+  source: null,
+  efforts: [],
 };
+
+const effortRank = (effort: string) => {
+  const index = EFFORT_ORDER.indexOf(effort as (typeof EFFORT_ORDER)[number]);
+  return index < 0 ? EFFORT_ORDER.length : index;
+};
+
+function effortStats(entry: ModelBenchmarkEntry): PickerEffortStats {
+  const { values } = entry;
+  return {
+    effort: entry.effort ?? "default",
+    intelligence: numberOrNull(values["aa:index"]),
+    coding: numberOrNull(values["aa:coding"]),
+    agentic: numberOrNull(values["aa:agentic"]),
+    tokensPerSecond: numberOrNull(values["aa:speed"]),
+    ttftSeconds: numberOrNull(values["aa:ttft"]),
+    inputPrice: numberOrNull(values["aa:price:input"]),
+    outputPrice: numberOrNull(values["aa:price:output"]),
+    costPerTask: numberOrNull(values["aa:cost-per-task"]),
+  };
+}
+
+/** The effort whose numbers the row shows: the model's usual default, else the best available. */
+export function defaultEffortOf(efforts: ReadonlyArray<PickerEffortStats>): string | null {
+  for (const effort of DEFAULT_EFFORT_PREFERENCE) {
+    if (efforts.some((item) => item.effort === effort)) return effort;
+  }
+  return efforts[0]?.effort ?? null;
+}
 
 const numberOrNull = (value: number | undefined) => value ?? null;
 
@@ -33,7 +93,30 @@ export function pickerModelStats(
     | ReadonlyMap<string, ReadonlyArray<ModelBenchmarkEntry>>,
   query: { readonly modelId: string; readonly displayName?: string },
 ): PickerModelStats {
-  const entry = matchBenchmarks(query, entries)[0]?.entry;
+  // Artificial Analysis measures each effort on its own; its numbers win when a key is saved.
+  const efforts = benchmarkEffortEntries(query, entries, "artificialAnalysis")
+    .map(effortStats)
+    .toSorted((a, b) => effortRank(a.effort) - effortRank(b.effort));
+  const chosen = efforts.find((item) => item.effort === defaultEffortOf(efforts));
+  if (chosen) {
+    return {
+      intelligenceSource: chosen.intelligence !== null ? "aa" : null,
+      intelligence: chosen.intelligence,
+      tokensPerSecond: chosen.tokensPerSecond,
+      inputPrice: chosen.inputPrice,
+      outputPrice: chosen.outputPrice,
+      ttftSeconds: chosen.ttftSeconds,
+      coding: chosen.coding,
+      agentic: chosen.agentic,
+      costPerTask: chosen.costPerTask,
+      effort: chosen.effort === "default" ? null : chosen.effort,
+      source: "artificialAnalysis",
+      efforts: efforts.length > 1 || efforts[0]?.effort !== "default" ? efforts : [],
+    };
+  }
+  const entry = matchBenchmarks(query, entries).find(
+    (match) => match.entry.source === "benchLm",
+  )?.entry;
   if (!entry) return NO_PICKER_STATS;
   const aa = entry.values[AA_INDEX];
   const overall = entry.values[OVERALL];
@@ -44,6 +127,12 @@ export function pickerModelStats(
     inputPrice: numberOrNull(entry.values["benchLm:price:input"]),
     outputPrice: numberOrNull(entry.values["benchLm:price:output"]),
     ttftSeconds: numberOrNull(entry.values["benchLm:ttft"]),
+    coding: null,
+    agentic: null,
+    costPerTask: null,
+    effort: null,
+    source: "benchLm",
+    efforts: [],
   };
 }
 
@@ -66,3 +155,6 @@ export const formatPickerSpeed = (stats: PickerModelStats): string | null =>
 
 export const formatPickerIntelligence = (stats: PickerModelStats): string | null =>
   stats.intelligence === null ? null : String(Math.round(stats.intelligence * 10) / 10);
+
+export const formatEffortLabel = (effort: string) =>
+  effort === "xhigh" ? "X-High" : effort.charAt(0).toUpperCase() + effort.slice(1);

@@ -7,7 +7,7 @@ import { IsoDateTime, TrimmedNonEmptyString } from "./baseSchemas.ts";
  * from Artificial Analysis, Vals, LiveBench, Arena and others with credit.
  * Each source keeps its own scale: scores are never blended into one number.
  */
-const ModelBenchmarkSourceId = Schema.Literals(["benchLm"]);
+const ModelBenchmarkSourceId = Schema.Literals(["benchLm", "artificialAnalysis"]);
 export type ModelBenchmarkSourceId = typeof ModelBenchmarkSourceId.Type;
 
 /**

@@ -1,4 +1,6 @@
 import { CacheSettings } from "./CacheSettings";
+import { BenchmarkKeySettings } from "./BenchmarkKeySettings";
+import { UsageAnalyticsSettings } from "./UsageAnalyticsSettings";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { SkillFoldersEditor } from "./SkillFoldersEditor";
 import { useSkillFoldersMirror } from "./useSkillFoldersMirror";
@@ -3327,6 +3329,10 @@ export function GeneralSettingsPanel() {
         />
       </SettingsSection>
 
+      <SettingsSection id="usage-sharing" title="Privacy">
+        <UsageAnalyticsSettings />
+      </SettingsSection>
+
       <FoldedSettingsSection
         id="notifications"
         title="Notifications"
@@ -3348,6 +3354,7 @@ export function GeneralSettingsPanel() {
         }
       >
         <CacheSettings />
+        <BenchmarkKeySettings />
         <NotificationSettings />
         <NotificationQuietHoursSettings />
         <NotificationVolumeSettings />

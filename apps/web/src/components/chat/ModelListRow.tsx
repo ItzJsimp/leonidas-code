@@ -15,6 +15,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { ModelStatsPanel } from "./ModelStatsPanel";
 import {
   formatPickerCost,
   formatPickerIntelligence,
@@ -22,8 +23,6 @@ import {
   hasPickerStats,
   type PickerModelStats,
 } from "../../lib/pickerModelStats";
-
-const formatPrice = (value: number | null) => (value === null ? "n/a" : `$${value} per 1M tokens`);
 
 function ModelStatChips(props: { stats: PickerModelStats }) {
   const { stats } = props;
@@ -51,26 +50,7 @@ function ModelStatChips(props: { stats: PickerModelStats }) {
         }
       />
       <TooltipPopup side="right" align="start">
-        {known ? (
-          <div className="space-y-0.5 text-xs">
-            <div>
-              {stats.intelligenceSource === "aa"
-                ? "Artificial Analysis Intelligence Index"
-                : "BenchLM overall score"}
-              : {formatPickerIntelligence(stats) ?? "n/a"}
-            </div>
-            <div>Speed: {formatPickerSpeed(stats) ?? "n/a"}</div>
-            <div>
-              Time to first token:{" "}
-              {stats.ttftSeconds === null ? "n/a" : `${stats.ttftSeconds.toFixed(1)} s`}
-            </div>
-            <div>Input: {formatPrice(stats.inputPrice)}</div>
-            <div>Output: {formatPrice(stats.outputPrice)}</div>
-            <div className="text-muted-foreground">Source: BenchLM</div>
-          </div>
-        ) : (
-          "No data yet"
-        )}
+        {known ? <ModelStatsPanel stats={stats} /> : "No data yet"}
       </TooltipPopup>
     </Tooltip>
   );
