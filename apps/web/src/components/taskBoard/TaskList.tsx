@@ -7,6 +7,7 @@ import {
   ListIcon,
 } from "lucide-react";
 import type { TaskBoardTeamMember } from "@t3tools/contracts";
+import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -32,6 +33,7 @@ import {
 import type { TaskActions, TaskContext } from "./taskBoard.types";
 import {
   buildListGroups,
+  flattenGroups,
   isGroupExpanded,
   nextTaskId,
   projectNameFor,
@@ -40,6 +42,7 @@ import {
   statusDotClass,
   visibleTaskIds,
   type ListGroup,
+  type ListItem,
   type ListNavigationKey,
 } from "./taskRows";
 
@@ -77,8 +80,9 @@ const TaskRow = memo(function TaskRow({
   const open = isOpen(task);
   const done = task.status === "done";
   return (
-    <li
+    <div
       aria-busy={busy}
+      role="listitem"
       className={cn(
         "@container group/row flex items-center gap-1 border-b pr-2 pl-3 hover:bg-accent/40",
         selected && "bg-accent/70 hover:bg-accent/70",
@@ -170,7 +174,7 @@ const TaskRow = memo(function TaskRow({
           </MenuPopup>
         </Menu>
       </div>
-    </li>
+    </div>
   );
 });
 
@@ -217,6 +221,7 @@ export function TaskListView(props: {
   const actionsRef = useLatest(actions);
   const onSelectRef = useLatest(props.onSelect);
   const listRef = useRef<HTMLDivElement>(null);
+  const virtualRef = useRef<LegendListRef | null>(null);
   const [overrides, setOverrides] = useState<Readonly<Record<string, boolean>>>({});
 
   const groups = useMemo(
@@ -231,6 +236,11 @@ export function TaskListView(props: {
   );
   const visibleIds = useMemo(() => visibleTaskIds(groups, overrides), [groups, overrides]);
   const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  const items = useMemo(() => flattenGroups(groups, overrides), [groups, overrides]);
+  const stickyHeaderIndices = useMemo(
+    () => items.flatMap((item, index) => (item.kind === "header" ? [index] : [])),
+    [items],
+  );
   const tabbableId =
     selectedId !== null && visibleIds.includes(selectedId) ? selectedId : (visibleIds[0] ?? null);
 
@@ -272,7 +282,17 @@ export function TaskListView(props: {
     const next = nextId === null ? undefined : tasksById.get(nextId);
     if (!next || nextId === currentId) return;
     select(next);
-    listRef.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(nextId!)}"]`)?.focus();
+    // The target row may be outside the rendered window: scroll it in, then focus it.
+    const focusRow = () =>
+      listRef.current
+        ?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(nextId!)}"]`)
+        ?.focus({ preventScroll: true });
+    const index = items.findIndex((item) => item.kind === "task" && item.key === nextId);
+    void Promise.resolve(
+      index < 0
+        ? undefined
+        : virtualRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.5 }),
+    ).then(() => requestAnimationFrame(focusRow));
   };
 
   if (groups.length === 0) {
@@ -291,43 +311,47 @@ export function TaskListView(props: {
     );
   }
 
+  const renderItem = ({ item }: { item: ListItem }) =>
+    item.kind === "header" ? (
+      <GroupHeader
+        expanded={isGroupExpanded(item.group, overrides)}
+        group={item.group}
+        onToggle={toggle}
+      />
+    ) : (
+      <TaskRow
+        busy={actions.isBusy(item.task.id)}
+        canSend={actions.canSendToAgent(item.task)}
+        mine={sameMember(item.task.claimedBy, context.member)}
+        team={context.team}
+        now={context.now}
+        onAction={runAction}
+        onSelect={select}
+        projectName={
+          groupBy === "project" || singleProject ? null : projectNameFor(item.task, projectNames)
+        }
+        selected={selectedId === item.task.id}
+        showStatusBadge={groupBy !== "status"}
+        tabbable={tabbableId === item.task.id}
+        task={item.task}
+      />
+    );
+
+  // Only the rows in view (plus a margin) are mounted; a 400-task board stays light to switch.
   return (
-    <div className="h-full min-h-0 overflow-y-auto" onKeyDown={onKeyDown} ref={listRef}>
-      {groups.map((group) => {
-        const expanded = isGroupExpanded(group, overrides);
-        return (
-          <section key={group.key}>
-            {group.label !== null ? (
-              <GroupHeader expanded={expanded} group={group} onToggle={toggle} />
-            ) : null}
-            {expanded ? (
-              <ul>
-                {group.tasks.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    busy={actions.isBusy(task.id)}
-                    canSend={actions.canSendToAgent(task)}
-                    mine={sameMember(task.claimedBy, context.member)}
-                    team={context.team}
-                    now={context.now}
-                    onAction={runAction}
-                    onSelect={select}
-                    projectName={
-                      groupBy === "project" || singleProject
-                        ? null
-                        : projectNameFor(task, projectNames)
-                    }
-                    selected={selectedId === task.id}
-                    showStatusBadge={groupBy !== "status"}
-                    tabbable={tabbableId === task.id}
-                    task={task}
-                  />
-                ))}
-              </ul>
-            ) : null}
-          </section>
-        );
-      })}
+    <div className="h-full min-h-0" onKeyDown={onKeyDown} ref={listRef} role="list">
+      <LegendList<ListItem>
+        ref={virtualRef}
+        className="h-full overflow-y-auto"
+        data={items}
+        drawDistance={600}
+        estimatedItemSize={37}
+        extraData={renderItem}
+        getItemType={(item) => item.kind}
+        keyExtractor={(item) => item.key}
+        renderItem={renderItem}
+        stickyHeaderIndices={stickyHeaderIndices}
+      />
     </div>
   );
 }

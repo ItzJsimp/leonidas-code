@@ -5,6 +5,9 @@ import { groupBySection, type TaskView } from "./taskBoard.logic";
 import {
   buildListGroups,
   capByRecency,
+  COLUMN_PAGE,
+  pageColumn,
+  flattenGroups,
   moveTargets,
   nextTaskId,
   projectNameFor,
@@ -72,6 +75,26 @@ describe("capByRecency", () => {
   });
 });
 
+describe("pageColumn", () => {
+  const many = Array.from({ length: COLUMN_PAGE + 5 }, (_, index) => ({
+    id: index,
+    updatedAt: index,
+  }));
+
+  it("keeps an open column in order and hides the rest until Show more", () => {
+    const first = pageColumn("todo", many, 0);
+    expect(first.visible.map((task) => task.id).slice(0, 3)).toEqual([0, 1, 2]);
+    expect(first.hidden).toBe(5);
+    expect(pageColumn("todo", many, COLUMN_PAGE).hidden).toBe(0);
+  });
+
+  it("shows the newest done cards first", () => {
+    const done = pageColumn("done", many, 0);
+    expect(done.visible[0]?.id).toBe(COLUMN_PAGE + 4);
+    expect(done.page).toBeLessThan(COLUMN_PAGE);
+  });
+});
+
 describe("projectNameFor", () => {
   const names = new Map([["leonidas-code", "Leonidas Code"]]);
 
@@ -116,6 +139,21 @@ describe("buildListGroups", () => {
     const groups = buildListGroups({ tasks, sections, groupBy: "project" });
     expect(groups.map((group) => group.label)).toEqual(["Leonidas Code", "Scribe"]);
     expect(groups[0]?.openCount).toBe(1);
+  });
+
+  it("flattens groups into header and task rows, keeping only the header of a collapsed group", () => {
+    const groups = buildListGroups({ tasks, sections: [], groupBy: "status" });
+    const items = flattenGroups(groups, { "status:todo": false });
+    expect(items.map((item) => item.key)).toEqual([
+      "group:status:todo",
+      "group:status:in_progress",
+      "d",
+      "group:status:done",
+      "b",
+      "group:status:parked",
+    ]);
+    const flat = flattenGroups(buildListGroups({ tasks, sections: [], groupBy: "none" }), {});
+    expect(flat.every((item) => item.kind === "task")).toBe(true);
   });
 
   it("returns one headerless group for a flat list and none when empty", () => {

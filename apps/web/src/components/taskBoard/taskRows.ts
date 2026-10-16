@@ -16,6 +16,8 @@ import {
 
 /** The Done column renders this many cards until the user asks for more. */
 export const DONE_COLUMN_PAGE = 25;
+/** Cards an open board column shows before "Show more"; keeps a 400-card board light to open. */
+export const COLUMN_PAGE = 40;
 
 /** Dot colour per status, from semantic tokens only. */
 const STATUS_DOT_CLASS: Record<TaskBoardTaskStatus, string> = {
@@ -61,6 +63,25 @@ export function capByRecency<T extends { updatedAt: number }>(
 ): { visible: T[]; hidden: number } {
   const sorted = tasks.toSorted((a, b) => b.updatedAt - a.updatedAt);
   return { visible: sorted.slice(0, limit), hidden: Math.max(0, sorted.length - limit) };
+}
+
+/**
+ * The cards one board column shows: Done keeps its newest cards; other columns keep their order.
+ * `extra` is how many more cards the user asked for with "Show more".
+ */
+export function pageColumn<T extends { updatedAt: number }>(
+  status: string,
+  tasks: ReadonlyArray<T>,
+  extra: number,
+): { visible: T[]; hidden: number; page: number } {
+  if (status === "done")
+    return { ...capByRecency(tasks, DONE_COLUMN_PAGE + extra), page: DONE_COLUMN_PAGE };
+  const limit = COLUMN_PAGE + extra;
+  return {
+    visible: tasks.slice(0, limit),
+    hidden: Math.max(0, tasks.length - limit),
+    page: COLUMN_PAGE,
+  };
 }
 
 /** slug -> display name, built once per render of a view instead of searching per card. */
@@ -183,6 +204,25 @@ export function buildListGroups(input: {
 
 export function isGroupExpanded(group: ListGroup, overrides: Readonly<Record<string, boolean>>) {
   return overrides[group.key] ?? group.defaultOpen;
+}
+
+/** One row of the flat, virtualized list: a group header or a task. */
+export type ListItem =
+  | { readonly kind: "header"; readonly key: string; readonly group: ListGroup }
+  | { readonly kind: "task"; readonly key: string; readonly task: TaskView };
+
+/** Flattens groups into list rows; collapsed groups keep only their header. */
+export function flattenGroups(
+  groups: ReadonlyArray<ListGroup>,
+  overrides: Readonly<Record<string, boolean>>,
+): ReadonlyArray<ListItem> {
+  const items: ListItem[] = [];
+  for (const group of groups) {
+    if (group.label !== null) items.push({ kind: "header", key: `group:${group.key}`, group });
+    if (!isGroupExpanded(group, overrides)) continue;
+    for (const task of group.tasks) items.push({ kind: "task", key: task.id, task });
+  }
+  return items;
 }
 
 /** Task ids in on-screen order, skipping collapsed groups, for arrow-key navigation. */
