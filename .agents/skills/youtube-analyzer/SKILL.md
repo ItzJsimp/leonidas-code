@@ -1,6 +1,6 @@
 ---
 name: youtube-analyzer
-description: "Analyze YouTube videos or channels to extract creator formulas, transcripts, and timestamped notes."
+description: "Analyze a YouTube video or channel: transcript, creator formula and timestamped notes. Use when the user shares a YouTube link or asks what a video or creator does."
 category: research
 scope: structural
 distribution: template
@@ -13,7 +13,6 @@ owner: shared
 verified: 2026-08-24
 related: ["skills-index", "mode-02", "master-instructions", "context-budget"]
 generated: false
-disable-model-invocation: true
 ---
 
 **Last updated:** 2026-08-24

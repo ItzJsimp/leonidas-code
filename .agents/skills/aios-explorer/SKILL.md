@@ -1,6 +1,6 @@
 ---
 name: "aios-explorer"
-description: "Deep internal search across AIOS files, codebase architecture, Store Cascade tiers, and Git history."
+description: "Search the AIOS deeply across files, the store cascade and Git history. Use when something may be saved somewhere in the AIOS and a first grep did not find it."
 category: knowledge
 scope: structural
 distribution: template
@@ -13,7 +13,6 @@ owner: shared
 verified: 2026-09-16
 related: ["skills-index", "research", "context-engineering", "master-instructions"]
 generated: false
-disable-model-invocation: true
 ---
 
 # AIOS Explorer Skill

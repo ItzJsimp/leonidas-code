@@ -1,6 +1,6 @@
 ---
 name: "research"
-description: "Investigate external topics, libraries, and web evidence via autonomous subagent swarms or frontier deep research prompts."
+description: "Investigate an external topic, library or claim with web evidence through sub-agents or deep-research prompts. Use for open questions that need several sources and a synthesized answer."
 category: research
 scope: structural
 distribution: template
@@ -13,7 +13,6 @@ owner: shared
 verified: 2026-09-12
 related: ["skills-index", "wiki-index", "aios-explorer", "master-instructions"]
 generated: false
-disable-model-invocation: true
 ---
 
 # Research Skill

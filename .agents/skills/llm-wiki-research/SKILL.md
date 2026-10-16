@@ -1,6 +1,6 @@
 ---
 name: llm-wiki-research
-description: "Execute structured multi-lens research investigations (Balanced, Academic, Current Reality, or Combined Pass), format findings into staged reports with grounded citations, and hand off to the Orchestrator for QA review."
+description: "Run a multi-lens research investigation (balanced, academic, current reality) and write a staged, cited report. Use for broad topic reports that need several perspectives."
 category: research
 scope: structural
 distribution: core

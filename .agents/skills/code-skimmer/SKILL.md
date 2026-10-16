@@ -1,10 +1,9 @@
 ---
 name: code-skimmer
-description: "Skim code files via AST symbol outlines (<300 tokens) to target line slices instead of dumping large files into context."
+description: "Read a large code file as a symbol outline, then open only the needed line range. Use before reading any code file over 300 lines or when finding a function in a big file."
 category: efficiency
 scope: structural
 distribution: core
-disable-model-invocation: true
 ---
 
 # Code Skimmer: AST Symbol & File Outline Engine

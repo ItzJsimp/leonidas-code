@@ -1,6 +1,6 @@
 ---
 name: technical-writing
-description: "Draft and revise reader-first technical docs, procedures, and UI copy for maximum clarity and fidelity."
+description: "Draft and revise clear docs, procedures and UI text for the reader. Use when writing or editing documentation, READMEs, guides, specs or error messages."
 category: knowledge
 scope: structural
 distribution: core
@@ -13,7 +13,6 @@ owner: shared
 verified: 2026-08-21
 related: ["skills-index", "master-instructions", "guide"]
 generated: false
-disable-model-invocation: true
 ---
 
 # NBJ Write Clearly

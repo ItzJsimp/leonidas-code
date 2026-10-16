@@ -1,6 +1,6 @@
 ---
 name: teach
-description: "Interactive Socratic teaching framework to explain new concepts, tools, or skills step-by-step."
+description: "Teach a new concept, tool or skill step by step with Socratic questions. Use when the user wants to learn something, asks to be taught, or says explain how this works."
 category: research
 scope: structural
 source: "https://github.com/mattpocock/skills (skills/productivity/teach, MIT, adapted for the AIOS)"
@@ -14,7 +14,6 @@ owner: leonidas
 verified: 2026-08-21
 related: ["[[skills-index]]", "[[system-prompt-authoring]]"]
 generated: false
-disable-model-invocation: true
 ---
 
 The user has asked you to teach them something. This is a stateful request - they intend to learn the topic over multiple sessions.

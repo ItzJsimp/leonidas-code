@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: "Execute 100% free, zero-cost deep academic and web research workflows combining open scholarly APIs (arXiv, Crossref, Semantic Scholar) with local markdown extraction, structured source ledgers, and multi-agent synthesis."
+description: "Run a free, source-ledgered research pass over arXiv, Crossref, Semantic Scholar and the web with citations. Use for academic or literature questions that need many sources."
 category: research
 scope: structural
 distribution: core

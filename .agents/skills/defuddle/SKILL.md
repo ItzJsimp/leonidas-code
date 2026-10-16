@@ -1,6 +1,6 @@
 ---
 name: "defuddle"
-description: "Extract clean, reader-mode Markdown from web URLs using Defuddle CLI, stripping navigation bars, ads, cookie banners, and DOM clutter."
+description: "Fetch a web page as clean Markdown without menus, ads or banners. Use when the user gives a URL to read, summarize or cite, before a plain page fetch."
 category: "efficiency"
 scope: "structural"
 distribution: core

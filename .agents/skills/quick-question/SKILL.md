@@ -1,7 +1,6 @@
 ---
 name: quick-question
-description: "Rapid, zero-fluff answers to quick queries or Google-style lookups using local memory or live web search."
-disable-model-invocation: true
+description: "Answer a quick factual or lookup question fast from local memory or one web search, with no extra ceremony. Use for single-fact questions, definitions and short checks."
 category: research
 type: skill
 id: skill-quick-question

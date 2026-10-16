@@ -1,6 +1,6 @@
 ---
 name: wizard
-description: "Generate an interactive bash wizard that walks a human through steps only they can do, such as credentials, CI secrets, dashboards or one-off cutovers. Skip steps the agent can do itself."
+description: "Generate an interactive script that walks the user through steps only they can do, such as credentials, secrets or dashboards. Use when a task needs manual human steps."
 scope: structural
 category: flow
 type: skill

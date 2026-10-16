@@ -1,6 +1,6 @@
 ---
 name: "ceo"
-description: "Use a frontier-capable orchestrator and bounded lower-cost workers for complex, parallelizable work, then inspect and integrate every result."
+description: "Run complex, parallel work with one orchestrator and cheaper bounded workers, then check each result. Use when a task has independent slices or spans many files."
 category: "architecture"
 type: "skill"
 id: "skill-ceo"

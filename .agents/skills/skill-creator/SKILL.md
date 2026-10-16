@@ -1,10 +1,9 @@
 ---
 name: skill-creator
-description: "Create, scaffold, or refactor agent skills adhering to AIOS standards, progressive disclosure, and harness budgets."
+description: "Create, scaffold or refactor a skill to AIOS standards with a sharp trigger description. Use when the user wants a new skill, or a repeated task should become one."
 category: agents
 scope: structural
 distribution: core
-disable-model-invocation: true
 ---
 
 # Skill Creator

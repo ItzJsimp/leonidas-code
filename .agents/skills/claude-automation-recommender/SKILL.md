@@ -1,6 +1,6 @@
 ---
 name: claude-automation-recommender
-description: "Analyze a codebase and configure Claude Code automations: hooks, subagents, skills, and MCP servers."
+description: "Analyze a codebase and recommend hooks, sub-agents, skills and MCP servers to add. Use when asked how to automate or improve a project's Claude setup."
 category: agents
 scope: structural
 distribution: core

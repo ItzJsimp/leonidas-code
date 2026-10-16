@@ -1,6 +1,6 @@
 ---
 name: retro
-description: "Conduct a retrospective on a coding session."
+description: "Run a retrospective on a work session: what worked, what failed, what to change. Use when a session ends, a milestone closes, or the user asks for a retro."
 scope: structural
 category: agents
 type: skill

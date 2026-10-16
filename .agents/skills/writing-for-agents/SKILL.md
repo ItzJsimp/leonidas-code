@@ -1,6 +1,6 @@
 ---
 name: writing-for-agents
-description: "Writing documents for agents. Use when creating or editing skills, or modifying AGENTS.md or CLAUDE.md."
+description: "Write documents that agents read: skills, AGENTS.md, CLAUDE.md and instruction files. Use when creating or editing any skill or agent instruction file."
 scope: structural
 category: agents
 type: skill

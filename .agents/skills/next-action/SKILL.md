@@ -1,6 +1,6 @@
 ---
 name: next-action
-description: "Pick the best next tasks from the user's or project's task folder, tailored to operator, project, energy, and execution mode. Use for next action, what should I work on, or current action."
+description: "Pick the best next tasks from the task folder for the current operator, project, energy and mode. Use when asked what to work on, what is next, or to pick the next action."
 category: flow
 scope: structural
 distribution: core

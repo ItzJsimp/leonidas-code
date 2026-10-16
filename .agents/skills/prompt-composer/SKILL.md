@@ -1,6 +1,6 @@
 ---
 name: "prompt-composer"
-description: "Compose, audit, and grade production-ready prompts and instructions for AI agents with model-calibrated scaffolding, precision levers, and persistence gating."
+description: "Write, audit and grade prompts and agent instructions with model-calibrated structure. Use when writing or improving a prompt, system prompt, brief or agent instruction."
 category: agents
 scope: "structural"
 distribution: template

@@ -1,7 +1,7 @@
 ---
 name: "copywriting"
 category: "money"
-description: "Write and rewrite high-converting marketing copy for landing pages, hero sections, value propositions, and CTA buttons."
+description: "Write and rewrite marketing copy for landing pages, headlines, value propositions and buttons. Use when asked for copy, a headline, a tagline, or to make text convert better."
 scope: "structural"
 distribution: core
 type: "skill"

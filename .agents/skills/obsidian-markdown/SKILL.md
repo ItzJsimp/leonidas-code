@@ -1,6 +1,6 @@
 ---
 name: obsidian-markdown
-description: "Write Obsidian Flavored Markdown: wikilinks, embeds, callouts, properties, tags. Use for .md files in the Obsidian vault or when wikilinks, callouts, or embeds come up."
+description: "Write Obsidian-flavored Markdown: wikilinks, embeds, callouts, properties and tags. Use when creating or editing notes in an Obsidian vault."
 category: knowledge
 scope: structural
 distribution: core

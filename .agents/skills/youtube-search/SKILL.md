@@ -1,6 +1,6 @@
 ---
 name: youtube-search
-description: "Search, score, and curate high-signal YouTube tutorials and creator libraries with quality filters."
+description: "Find, score and curate good YouTube tutorials and creators for a topic. Use when asked what to watch, which creators teach a subject, or to find videos on a topic."
 category: research
 type: skill
 id: skill-youtube-search
@@ -13,7 +13,6 @@ distribution: template
 verified: 2026-08-30
 related: ["youtube-analyzer", "skills-index", "master-instructions", "context-budget"]
 generated: false
-disable-model-invocation: true
 ---
 
 # YouTube Search & Quality Curation

@@ -1,10 +1,9 @@
 ---
 name: "task-management"
-description: "Capture any action as a gated, lane-routed task in tasks/; query, audit, archive, and rebuild the task substrate."
+description: "Capture work as a gated task card in tasks/ and query, audit, archive or rebuild the task list. Use when work is deferred, a to-do appears, or the user asks about task status."
 category: flow
 scope: "structural"
 distribution: template
-disable-model-invocation: true
 ---
 
 # Task Management: Capture, Route, Keep Clean
