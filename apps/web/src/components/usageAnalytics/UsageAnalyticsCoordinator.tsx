@@ -5,6 +5,9 @@ import { useClientSettings, useClientSettingsHydrationStatus } from "../../hooks
 import { sendUsageEvent } from "../../lib/usageAnalytics/sendUsageEvent";
 import { useUsageAnalyticsStore } from "../../lib/usageAnalytics/usageAnalyticsStore";
 import { daysSince, featureIdFromPathname } from "../../lib/usageAnalytics/usageEvents";
+import { usePrimaryEnvironmentId } from "../../state/environments";
+import { useEnvironmentQuery } from "../../state/query";
+import { aiosUsageShapeQuery } from "../../state/taskBoard";
 import { UsageAnalyticsConsentDialog } from "./UsageAnalyticsConsentDialog";
 
 /** Sends the five core usage events once the user has said Yes. */
@@ -14,6 +17,25 @@ export function UsageAnalyticsCoordinator() {
   const hydrated = useClientSettingsHydrationStatus() === "ready";
   const onboardingCompletedAt = useClientSettings((settings) => settings.onboardingCompletedAt);
   const lastFeature = useRef<string | null>(null);
+  const environmentId = usePrimaryEnvironmentId();
+  const aiosShape = useEnvironmentQuery(
+    consent === "granted" && environmentId
+      ? aiosUsageShapeQuery({ environmentId, input: {} })
+      : null,
+  ).data;
+  const aiosShapeSent = useRef(false);
+
+  // aios_shape: counts only, once per launch.
+  useEffect(() => {
+    if (consent !== "granted" || aiosShape === null || aiosShapeSent.current) return;
+    aiosShapeSent.current = true;
+    sendUsageEvent("aios_shape", {
+      aios_detected: aiosShape.aiosDetected ? 1 : 0,
+      skills_count: aiosShape.skillsCount,
+      task_cards_count: aiosShape.taskCardsCount,
+      memory_files_present: aiosShape.memoryFilesPresent ? 1 : 0,
+    });
+  }, [consent, aiosShape]);
 
   // install_first_run and app_opened: once per consented launch.
   useEffect(() => {

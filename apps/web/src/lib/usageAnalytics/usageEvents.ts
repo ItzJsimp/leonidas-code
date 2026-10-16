@@ -13,6 +13,7 @@ export const USAGE_EVENT_NAMES = [
   "setup_step_completed",
   "setup_abandoned_at_step",
   "time_to_first_message",
+  "aios_shape",
 ] as const;
 export type UsageEventName = (typeof USAGE_EVENT_NAMES)[number];
 
@@ -53,6 +54,8 @@ const NUMERIC_FIELDS: Readonly<Record<UsageEventName, readonly string[]>> = {
   setup_step_completed: [],
   setup_abandoned_at_step: [],
   time_to_first_message: ["seconds"],
+  // Booleans travel as 0 or 1.
+  aios_shape: ["aios_detected", "skills_count", "task_cards_count", "memory_files_present"],
 };
 
 export type UsageEventProperties = Readonly<Record<string, number | string>>;
