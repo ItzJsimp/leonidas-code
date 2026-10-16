@@ -71,11 +71,13 @@ import {
   findAiosRoot,
   cardToTask,
   findCardFile,
+  readAiosCardFile,
   readAiosTasks,
   resolveMember,
   type AiosCardCache,
   type AiosCardPatch,
 } from "./aiosCards.ts";
+import { makeAiosCardReader } from "./aiosCardReader.ts";
 import { planSharedSync, publicCopy } from "./sharedSync.ts";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
@@ -1239,6 +1241,8 @@ const make = Effect.gen(function* () {
     });
 
   const cardCache: AiosCardCache = new Map();
+  const cardReader = makeAiosCardReader(cardCache);
+  yield* Effect.addFinalizer(() => Effect.sync(cardReader.close));
 
   const rootOrFail = (projects: ReadonlyArray<Project>) => {
     const root = nativeRoot ?? aiosRootFor(projects, confirmedRoot);
@@ -1252,7 +1256,7 @@ const make = Effect.gen(function* () {
   const readCards = (root: string, now: number) =>
     Effect.try({
       try: () =>
-        readAiosTasks(root, { now, cache: cardCache }).map((task) => ({
+        cardReader.read(root, now).map((task) => ({
           ...task,
           sourceRoot: root,
         })),
@@ -1345,10 +1349,9 @@ const make = Effect.gen(function* () {
         const raw = NodeFS.readFileSync(file, "utf8");
         const next = applyCardPatch(raw, { actor, sharedSync }, now);
         if (next !== raw) writeCardAtomically(file, next);
-        const read = readAiosTasks(root, { now, cache: cardCache }).find(
-          (candidate) => candidate.id === card.id,
-        );
-        return read ? { ...read, sourceRoot: root } : card;
+        cardReader.invalidate(root);
+        const read = readAiosCardFile(root, file, { now, cache: cardCache });
+        return read?.id === card.id ? { ...read, sourceRoot: root } : card;
       },
       catch: cardWriteFailure,
     }).pipe(
@@ -1481,9 +1484,9 @@ const make = Effect.gen(function* () {
               now,
             ),
           );
-          const updated = readAiosTasks(root, { now, cache: cardCache }).find(
-            (candidate) => candidate.id === card.id,
-          );
+          cardReader.invalidate(root);
+          const read = readAiosCardFile(root, file, { now, cache: cardCache });
+          const updated = read?.id === card.id ? read : undefined;
           return updated
             ? {
                 file,
@@ -1548,6 +1551,7 @@ const make = Effect.gen(function* () {
             input.projectId === undefined
               ? undefined
               : projects.find((project) => project.id === input.projectId);
+          cardReader.invalidate(root);
           const created = createCardFile(
             root,
             {
@@ -1629,7 +1633,10 @@ const make = Effect.gen(function* () {
           const { removed, taskFile } = removeDrop(root, input.id);
           const cardRoot = nativeRoot ?? aiosRootFor(projects, confirmedRoot);
           const card = taskFile && cardRoot ? findCardFile(cardRoot, taskFile) : null;
-          if (card) NodeFS.rmSync(card);
+          if (card) {
+            NodeFS.rmSync(card);
+            cardReader.invalidate();
+          }
           return { removed };
         },
         catch: cardWriteFailure,
@@ -1752,6 +1759,7 @@ const make = Effect.gen(function* () {
                 now,
               );
               if (next !== raw) writeCardAtomically(file, next);
+              cardReader.invalidate();
             }
           },
           catch: cardWriteFailure,
