@@ -63,7 +63,7 @@ Battle-tested evaluation standard for scoring, auditing, and optimizing agent sk
 ## 3. Mandatory Penalties (Hard Deductions)
 
 - **-10 pts:** Any referenced file path absent on disk.
-- **-10 pts:** Present in both Leonidas and SimplyGersi repos but missing from scripts/sync/shared-manifest.psd1.
+- **-10 pts:** Present in both Leonidas and the peer AIOS repos but missing from scripts/sync/shared-manifest.psd1.
 - **-8 pts:** Missing or incorrect scope: tag (scope: structural or scope: personal).
 - **-5 pts:** Unquoted YAML frontmatter string values.
 - **-2 pts:** Em-dash character (Unicode U+2014) detected.

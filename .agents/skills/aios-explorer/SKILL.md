@@ -17,13 +17,13 @@ generated: false
 
 # AIOS Explorer Skill
 
-Deep internal discovery and codebase forensics engine for Leonidas AIOS and SimplyGersi AIOS. Specializes in finding buried files, tracing symbols, analyzing architecture, and navigating the 7-tier Store Cascade without firing external web tools.
+Deep internal discovery and codebase forensics engine for your AIOS and any peer AIOS. Specializes in finding buried files, tracing symbols, analyzing architecture, and navigating the 7-tier Store Cascade without firing external web tools.
 
 ---
 
 ## 1. When to Use
 
-Use this skill whenever Jake or an orchestrator asks to:
+Use this skill whenever the user or an orchestrator asks to:
 
 - "Find where X is defined or used in AIOS"
 - "Search through the operating system / D drive files"
@@ -47,7 +47,7 @@ When investigating facts, standards, or system state, traverse the tiers in stri
 5. wiki/                          -> Synthesized domain knowledge and research dossiers
 6. logs/                          -> Raw session logs, grill sessions, and handoffs
 7. decisions/                     -> ADRs and architectural rationale
-8. Ask Jake                       -> Only after 1 through 7 miss
+8. Ask the user                       -> Only after 1 through 7 miss
 ```
 
 Never search blindly across the entire drive when the Store Cascade defines the exact hierarchy of truth.

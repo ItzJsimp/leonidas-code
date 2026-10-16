@@ -22,7 +22,7 @@ Analyze codebase patterns to recommend tailored Claude Code automations across a
 
 ## AIOS Multi-Tier Automation Strategy
 
-When recommending automations in Leonidas AIOS or SimplyGersi AIOS, align with the 6-Tier Architecture:
+When recommending automations in your AIOS or a peer AIOS, align with the 6-Tier Architecture:
 
 1. Deterministic Local PowerShell/Python scripts (Tier 1)
 2. Windows Task Scheduler 24/7 background daemons (Tier 2)

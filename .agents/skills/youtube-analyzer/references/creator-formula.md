@@ -32,7 +32,7 @@ Run each at `--detail transcript` or `--detail efficient`. For long videos, `--s
 3. **⭐ Sampled Videos**: the 5-8 used with exact links, titles, and contribution.
 4. **🌶️ Sauce**: ≤6 extractions tied to specific videos and timestamps.
 5. **🔺 Delta**: memory/wiki check against host AIOS context.
-6. **🔁 Applied to My Context**: ≤4 bullets mapping what SimplyGersi or Leonidas should adopt.
+6. **🔁 Applied to My Context**: ≤4 bullets mapping what the peer AIOS or Leonidas should adopt.
 
 ## Storage
 

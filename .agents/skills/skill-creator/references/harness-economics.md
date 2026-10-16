@@ -24,7 +24,7 @@ Skills do not live in isolation; they compete for a shared listing budget:
 ## 2. Claude Code Project-Scoped Discovery (ADR-0038)
 
 - **Discovery Hierarchy:** Enterprise > Personal (~/.claude/skills/) > Project (<repo>/.claude/skills/).
-- **Isolation Standard:** To prevent personal skills (e.g. `financial-audit`, PC gaming tuners) from leaking into business repositories (SimplyGersi AIOS), the global folder ~/.claude/skills/ is kept empty.
+- **Isolation Standard:** To prevent personal skills (e.g. `financial-audit`, PC gaming tuners) from leaking into business repositories (the peer AIOS), the global folder ~/.claude/skills/ is kept empty.
 - **NTFS Junctions:** Skills canonically live in .agents/skills/<name>/SKILL.md. Running scripts/Sync-AgentSkills.ps1 creates project-scoped NTFS junctions in .claude/skills/<name>.
 - **Hot-Reloading:** Claude Code hot-reloads skills when junctions are created or modified, but mid-session description edits invalidate the prompt cache.
 

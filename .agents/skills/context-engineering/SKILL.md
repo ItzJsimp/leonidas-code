@@ -51,7 +51,7 @@ Structure context from most persistent to most transient:
 
 When retrieving knowledge or answering questions, always query in this strict sequence:
 
-1. `memory/memory-index.md` (or `memory/business.md` in SimplyGersi), durable facts already promoted.
+1. `memory/memory-index.md` (or `memory/business.md` in the peer AIOS), durable facts already promoted.
 2. `wiki/wiki-index.md`: synthesized domain knowledge.
 3. `logs/logs-index.md`: raw session history, not yet promoted.
 4. `decisions/decisions-index.md`: architectural rationale and ADRs.
@@ -68,9 +68,9 @@ When retrieving knowledge or answering questions, always query in this strict se
 
 ### 2. Domain Isolation & Cross-Repo Boundary Gates
 
-- **Hard Boundaries**: Personal AIOS (`Leonidas AIOS`) and Business AIOS (`SimplyGersi AIOS`) maintain isolated context stores.
-- **Cross-Repo Reads (Human Gate)**: Leonidas may read SimplyGersi files via Mode 3 _only_ after prompting the operator with an explicit interactive confirmation naming the target files.
-- **Peer Invariance**: SimplyGersi AIOS never reads, writes, or prompts external collaborators for Leonidas files.
+- **Hard Boundaries**: Personal AIOS (`Leonidas AIOS`) and Business AIOS (`the peer AIOS`) maintain isolated context stores.
+- **Cross-Repo Reads (Human Gate)**: Leonidas may read the peer AIOS files via Mode 3 _only_ after prompting the operator with an explicit interactive confirmation naming the target files.
+- **Peer Invariance**: the peer AIOS never reads, writes, or prompts external collaborators for Leonidas files.
 
 ### 3. Trust-Tiered File Ingestion
 

@@ -42,7 +42,7 @@ Two references, one level deep:
 
 ## Step 1 : Fetch, prune & visual gate
 
-Never ask Jake to paste a transcript. Fetch it.
+Never ask the user to paste a transcript. Fetch it.
 
 Run the self-contained engine script from the skill scripts directory:
 
@@ -72,12 +72,12 @@ Run this _before_ writing any summary, so the summary is already filtered.
 ### Multi-Tenancy & User Detection
 
 1. Check the active repository:
-   - **Leonidas AIOS (`D:\Leonidas AIOS`):** Query personal [`memory/`](../../../memory/memory-index.md), [`wiki/`](../../../wiki/wiki-index.md), and active projects in [`BUILD-PLAN.md`](../../../BUILD-PLAN.md).
-   - **SimplyGersi AIOS (`D:\SimplyGersi AIOS`):** Query SimplyGersi business context, Modes, active client pipelines, and business memory.
+   - **Leonidas AIOS (`<repo root>`):** Query personal [`memory/`](../../../memory/memory-index.md), [`wiki/`](../../../wiki/wiki-index.md), and active projects in [`BUILD-PLAN.md`](../../../BUILD-PLAN.md).
+   - **the peer AIOS (`the peer AIOS`):** Query the peer AIOS business context, Modes, active client pipelines, and business memory.
 2. Check `$env:USERNAME`:
-   - If user is **Jake** running inside `SimplyGersi AIOS` and the video contains personal infrastructure or PC/AIOS concepts, surface an interactive bridge prompt:
+   - If user is **the user** running inside `the peer AIOS` and the video contains personal infrastructure or PC/AIOS concepts, surface an interactive bridge prompt:
      _"This video covers personal AIOS / system architecture. Would you like to also log this to Leonidas AIOS?"_
-   - If user is **Gersi**: Keep operations 100% contained within SimplyGersi AIOS.
+   - If user is **a collaborator**: Keep operations 100% contained within the peer AIOS.
 
 3. Classify every substantive point against the resolved context:
    - 🆕 **New**: Nothing in memory/ or wiki/ covers this.
@@ -89,14 +89,14 @@ Run this _before_ writing any summary, so the summary is already filtered.
 
 Write the document into `raw/youtube/<creator-slug>/<video-slug>/analysis.md` per [`references/storage.md`](references/storage.md) and [`templates/youtube-analysis.md`](../../../templates/youtube-analysis.md):
 
-1. **Watch-Worthiness Score (1-10):** Grade whether Jake needs to visually watch the video or if the document captures 100% of the value. Include concise rationale.
+1. **Watch-Worthiness Score (1-10):** Grade whether the user needs to visually watch the video or if the document captures 100% of the value. Include concise rationale.
 2. **⚡ Executive Brief**: Core thesis + Mermaid architecture diagram.
 3. **🎯 Key Moments Worth Watching**: 2-4 curated timestamps formatted as clickable direct jump links `[MM:SS](https://youtu.be/<id>?t=<sec>)`.
 4. **🛠️ Technical Architecture Breakdown**: Deep, modular breakdown of tech stack, components, and code mechanisms.
 5. **🌶️ High-Value Insights & "The Sauce"**: Timestamped, non-obvious engineering tactics with clickable links.
 6. **🖼️ Extracted Prompts & Code Snippets**: Copy-pasteable prompts, CLI commands, and scripts.
 7. **🔗 Extracted Description Links & Resources**: Direct hyperlinks to GitHub repos, blogs, tools.
-8. **💼 SimplyGersi Commercial Application**: Monetizable client offerings, services, or internal automations.
+8. **💼 the peer AIOS Commercial Application**: Monetizable client offerings, services, or internal automations.
 9. **🔀 AIOS Delta & Actionability Routing**: Classification table + Markdown Git diff blocks for any canon updates.
 10. **🚀 3-Step Implementation Plan**: Concrete, high-leverage next moves to replicate or build.
 

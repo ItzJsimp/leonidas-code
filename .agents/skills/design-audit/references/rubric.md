@@ -1,12 +1,12 @@
 # Design audit rubric
 
-Distilled 2026-09-27 from: impeccable's craft floor, Vercel Web Interface Guidelines, taste-skill (design-taste-frontend, redesign-existing-projects), Anthropic frontend-design, qt-ui-design, Emil Kowalski's design engineering, Apple design principles, addyosmani accessibility, and Jake's standing preferences in [`memory/observed/patterns.md`](../../../../memory/observed/patterns.md). Severity: **P0** blocks ship, **P1** fix before done, **P2** polish.
+Distilled 2026-09-27 from: impeccable's craft floor, Vercel Web Interface Guidelines, taste-skill (design-taste-frontend, redesign-existing-projects), Anthropic frontend-design, qt-ui-design, Emil Kowalski's design engineering, Apple design principles, addyosmani accessibility, and the user's standing preferences in [`memory/observed/patterns.md`](../../../../memory/observed/patterns.md). Severity: **P0** blocks ship, **P1** fix before done, **P2** polish.
 
 ## 0. Frame the screen first
 
-- Name the job in one line: "Jake opens this to <do X>, about <N> times a day."
+- Name the job in one line: "the user opens this to <do X>, about <N> times a day."
 - High-frequency screens (10+ times a day) get zero decorative motion and maximum density of useful information. Rare screens can carry delight.
-- The first thing the eye lands on must be the thing Jake came for. If it is not, that is a P0 hierarchy failure.
+- The first thing the eye lands on must be the thing the user came for. If it is not, that is a P0 hierarchy failure.
 
 ## 1. Tokens and canon (every value has a source)
 
@@ -36,7 +36,7 @@ Distilled 2026-09-27 from: impeccable's craft floor, Vercel Web Interface Guidel
 ## 4. States (the part AI always forgets)
 
 - **P0** No empty state: a blank area or "None" where data would be. An empty state says what will appear and how to make it appear.
-- **P0** No error state, or a raw exception, stack trace or HTTP code shown to Jake. Errors say what failed and the next step.
+- **P0** No error state, or a raw exception, stack trace or HTTP code shown to the user. Errors say what failed and the next step.
 - **P1** No loading state for anything that takes over 400 ms (Doherty threshold). Prefer a skeleton shaped like the result over a spinner.
 - **P1** Live data without a "last updated" time.
 - **P1** Controls with no hover, pressed and focus states.
@@ -48,7 +48,7 @@ Distilled 2026-09-27 from: impeccable's craft floor, Vercel Web Interface Guidel
 - **P1** Filler words (elevate, seamless, unleash, next-gen), exclamation marks in success messages, "Oops".
 - **P1** Fake-precise or placeholder data in a live app. Real data or a clearly labeled sample.
 - **P1** Any em dash (U+2014). ADR-0012 applies to UI strings too.
-- **P2** Missing live, personal micro-copy where a greeting or status could be time-aware ("Late night, Jake").
+- **P2** Missing live, personal micro-copy where a greeting or status could be time-aware ("Late night, the user").
 
 ## 6. Controls and trust
 
@@ -69,7 +69,7 @@ Distilled 2026-09-27 from: impeccable's craft floor, Vercel Web Interface Guidel
 
 ## 8. Motion
 
-Canon budgets: [`app-building-standard.md`](../../../../standards/app-building-standard.md) section 6 (micro 150 ms, entrance 240 ms, celebration up to 900 ms, ambient 12-20 s loops, Calm switch). Motion is expressive by Jake's choice; the audit checks it is purposeful and on budget, not that it is absent.
+Canon budgets: [`app-building-standard.md`](../../../../standards/app-building-standard.md) section 6 (micro 150 ms, entrance 240 ms, celebration up to 900 ms, ambient 12-20 s loops, Calm switch). Motion is expressive by the user's choice; the audit checks it is purposeful and on budget, not that it is absent.
 
 - **P0** Animation on a keyboard-triggered or 100-times-a-day action.
 - **P1** Micro or entrance motion over its budget, `ease-in` on anything entering, `transition: all`, or animating geometry instead of opacity and transform.
@@ -77,7 +77,7 @@ Canon budgets: [`app-building-standard.md`](../../../../standards/app-building-s
 - **P1** Motion or sound that ignores the Calm switch (and `prefers-reduced-motion` on web).
 - **P2** Popovers that do not scale from their trigger, or elements appearing from `scale(0)` (start at 0.95 with opacity 0).
 
-## 9. The stranger test (Jake's bar)
+## 9. The stranger test (the user's bar)
 
 - **P1** A friend seeing this screen cold for the first time could not say within 30 seconds what it is for and what the main number means. Every screen explains itself, not only reports.
 

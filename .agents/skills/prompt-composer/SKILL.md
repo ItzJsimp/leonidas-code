@@ -63,7 +63,7 @@ Infer the selected provider/model from Leonidas Code live capabilities, not the 
 1. **Analyze Task Intent:** Categorize as Build/Feature, Bug Fix, Refactor, Audit/Health, or System Instruction.
 2. **Skill Discovery:** Match intent against registered skills in [`.agents/skills/skills-index.md`](../skills-index.md).
 3. **Execution Mode Tailoring:**
-   - **Manual Copy-Paste Mode (Human Operator):** Prepend the relevant interactive slash command on Line 1 so Jake can instantly paste and trigger it (e.g. `/grill-me`, `/implement`, `/component-audit`, `/fable-mode`).
+   - **Manual Copy-Paste Mode (Human Operator):** Prepend the relevant interactive slash command on Line 1 so the user can instantly paste and trigger it (e.g. `/grill-me`, `/implement`, `/component-audit`, `/fable-mode`).
    - **Autonomous Agent Mode (Leonidas AI):** Inject a direct skill execution directive inside the prompt body (`- **Required Skill:** Load and follow .agents/skills/<name>/SKILL.md before executing.`).
 
 ### Phase 2: Precision Audit & Gap Diagnosis (Matt Pocock Principles)
@@ -157,7 +157,7 @@ Prompts must NOT be saved to the repository automatically. After outputting the 
    - If NO: Keep output in chat context / task notes. Do not save to disk.
    - If YES: Prompt the operator:
      > _"This prompt qualifies as a reusable asset (cadence >=3-5 runs). Would you like me to save it to `prompts/<slug>.md`?"_
-2. **Saving & Indexing (When Confirmed by Jake):**
+2. **Saving & Indexing (When Confirmed by the user):**
    - **Filename Standard:** `prompts/<action>-<domain>-<descriptor>.md` (clean, human-scannable kebab-case, e.g. `audit-substrate-health.md`, `compose-agent-prompt.md`).
    - **Canonical Frontmatter:**
      ```yaml
@@ -187,4 +187,4 @@ The composition or review task is complete when:
 3. All no-ops and conversational pleasantries are pruned.
 4. Definition of Done contains binary, observable verification gates.
 5. Single primary calibrated prompt is delivered inside a fenced code block (with dual variants omitted unless requested).
-6. Persistence evaluation is completed and Jake's approval is requested before saving to `prompts/`.
+6. Persistence evaluation is completed and the user's approval is requested before saving to `prompts/`.

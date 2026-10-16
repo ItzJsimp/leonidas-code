@@ -1,6 +1,6 @@
-# Contact sheet: Jake picks from pixels
+# Contact sheet: the user picks from pixels
 
-Jake narrows taste fastest from rendered specimens side by side ([`patterns.md`](../../../../memory/observed/patterns.md), "Taste Is Chosen From Rendered Specimens"). Never offer visual choices as text only.
+the user narrows taste fastest from rendered specimens side by side ([`patterns.md`](../../../../memory/observed/patterns.md), "Taste Is Chosen From Rendered Specimens"). Never offer visual choices as text only.
 
 ## Build it
 
@@ -11,8 +11,8 @@ Jake narrows taste fastest from rendered specimens side by side ([`patterns.md`]
    - **B: Cards and summary first** (Apple Health, Vercel dashboard). Wins when the headline number matters most.
    - **C: Single focused column with progressive disclosure** (macOS System Settings). Wins when the screen is mostly configuration.
 4. Under each: one "wins when" line and what it would cost to build (S, M, L).
-5. Open it for Jake with `SendUserFile` (display `render`) or the browser pane, and screenshot it into the chat.
+5. Open it for the user with `SendUserFile` (display `render`) or the browser pane, and screenshot it into the chat.
 
 ## Record the pick
 
-Write Jake's answer verbatim ("B, but A's header") plus the resolved recipe (layout, components, which states) into the grill capture file or the task's spec before building.
+Write the user's answer verbatim ("B, but A's header") plus the resolved recipe (layout, components, which states) into the grill capture file or the task's spec before building.

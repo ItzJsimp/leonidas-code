@@ -77,7 +77,7 @@ Copy-pasteable prompts, CLI commands, and scripts.
 ## 🔗 Extracted Description Links & Resources
 Direct links to GitHub repositories, blog posts, and documentation.
 
-## 💼 SimplyGersi Commercial Application
+## 💼 the peer AIOS Commercial Application
 Specific service offerings, client deliverables, and agency automations to productize.
 
 ## 🔀 AIOS Delta & Actionability Routing

@@ -3,7 +3,7 @@ name: pc-systems-engineer
 description: "Diagnose and fix Windows system performance, drivers, networking, services, and hardware baselines."
 category: pc
 scope: personal
-distribution: template
+distribution: private
 disable-model-invocation: true
 ---
 

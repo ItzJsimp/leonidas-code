@@ -21,7 +21,7 @@ disable-model-invocation: true
 
 ## Purpose
 
-When a project has unresolved requirements that require input from someone else (e.g., Gersi, a client, an external partner), `/to-questionnaire` extracts all pending questions and packages them into a clean, easy-to-fill Markdown document.
+When a project has unresolved requirements that require input from someone else (e.g., a partner, a client, an external partner), `/to-questionnaire` extracts all pending questions and packages them into a clean, easy-to-fill Markdown document.
 
 ---
 

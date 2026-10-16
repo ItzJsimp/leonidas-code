@@ -27,7 +27,7 @@ Rapid, zero-fluff answer ritual for single-shot questions, factual lookups, and 
 2. **Zero Planning Artifacts:** Never create `implementation_plan.md` or `walkthrough.md` files. Answer inline in the chat.
 3. **Suppressed Standing Footer:** Omit the full 5-line standing footer (telemetry gauge, grill block, recap, tasks anchor). Quick questions are self-contained and require no decision branching.
 4. **Zero Em-Dash Standard:** Never write the Unicode em dash (U+2014) in any output per [ADR-0012](../../../decisions/0012-zero-emdash-punctuation-standard.md). Use colons, hyphens, or parentheses.
-5. **Token Density Budget:** Cap total response length under 150 to 250 tokens unless Jake explicitly asks for deep elaboration.
+5. **Token Density Budget:** Cap total response length under 150 to 250 tokens unless the user explicitly asks for deep elaboration.
 
 ---
 
@@ -35,7 +35,7 @@ Rapid, zero-fluff answer ritual for single-shot questions, factual lookups, and 
 
 ### Step 1: Routing & Source Inspection
 
-- **Personal / PC / AIOS Query:** If the question touches Jake's hardware, specs, habits, or local tools, read the authoritative store directly (e.g. [`memory/pc-system-profile.md`](../../../memory/pc-system-profile.md), [`memory/ai-stack.md`](../../../memory/ai-stack.md), [`memory/jake.md`](../../../memory/jake.md)) without asking.
+- **Personal / PC / AIOS Query:** If the question touches the user's hardware, specs, habits, or local tools, read the authoritative store directly (e.g. [`memory/pc-system-profile.md`](../../../memory/pc-system-profile.md), [`memory/ai-stack.md`](../../../memory/ai-stack.md), [`memory/jake.md`](../../../memory/jake.md)) without asking.
 - **External Web Query:** If the question requires live internet facts, current year data, software updates, or web documentation, immediately call the harness search tool (`search_web`).
 
 ### Step 2: Synthesis & Output

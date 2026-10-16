@@ -10,7 +10,7 @@ kind: procedure
 load: on-demand
 owner: leonidas
 scope: structural
-distribution: template
+distribution: private
 verified: 2026-10-04
 related:
   [

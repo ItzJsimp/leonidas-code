@@ -15,9 +15,9 @@ Proven architectural patterns for designing, testing, and operating n8n workflow
 
 ## AIOS Tier 4 Automation Integration
 
-In Leonidas AIOS and SimplyGersi AIOS, n8n serves as the Tier 4 Workflow Orchestrator for:
+In your AIOS and any peer AIOS, n8n serves as the Tier 4 Workflow Orchestrator for:
 
-- **SimplyGersi:** Parsing inbound brand inquiry emails, creating automated Discord stage notifications, and generating client contract briefs.
+- **the peer AIOS:** Parsing inbound brand inquiry emails, creating automated Discord stage notifications, and generating client contract briefs.
 - **Leonidas:** Ingesting webhooks from mobile capture, third-party APIs, and triggering local webhook endpoints.
 
 _Local Setup Status:_ If n8n is not yet running locally on Windows 11, see [references/local-setup-guide.md](references/local-setup-guide.md) to launch it in seconds via Docker or npm.
@@ -83,7 +83,7 @@ When an automation requires human verification (e.g. approving a payout, verifyi
    - Set the `Wait` node to "On Webhook Call".
    - n8n pauses workflow execution, persists state to disk/database, and releases worker memory.
    - Send the generated resume URL (`$execution.resumeUrl`) to Discord or email.
-   - When Jake clicks the link or submits a form, execution resumes instantly from that exact state.
+   - When the user clicks the link or submits a form, execution resumes instantly from that exact state.
 2. **AIOS Wizard Bridge:**
    - For local operator setups, pair the workflow with an interactive CLI wizard via [manual-setup-walkthrough](../manual-setup-walkthrough/SKILL.md).
 

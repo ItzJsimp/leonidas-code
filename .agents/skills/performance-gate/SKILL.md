@@ -44,7 +44,7 @@ Any change to source, scripts, build config, styles or dependency manifests. Ski
 3. **Measure (Full lane):** one number before, one after, same method, per [`references/measure-recipes.md`](./references/measure-recipes.md). A claim of "faster" or "lighter" without both numbers is a guess. Never optimize what you did not measure; if nothing regressed and nothing was targeted, record "no regression" with the check you ran.
 4. **Slim:** run [`code-simplification`](../code-simplification/SKILL.md) on the diff. Delete what the change made dead. Prefer removing a branch, layer or option over polishing it. Net lines should be flat or negative unless the feature needs more.
 5. **Instrument:** a project that ships code must report latency through its perf emitter (`templates/perf-emitters/`, thresholds in `standards/perf-thresholds.json`) and be listed in `standards/perf-registry.json`. A new hot path (dictation, agent turn, routine) gets a metric and a threshold row in the same change. `pwsh scripts/Detect-Drift.ps1 -Gates 13` verifies it.
-6. **Verdict:** emit the block below. FAIL means fix and re-run; never ship on FAIL without Jake accepting the named risk.
+6. **Verdict:** emit the block below. FAIL means fix and re-run; never ship on FAIL without the user accepting the named risk.
 
 ## The 12-item checklist
 

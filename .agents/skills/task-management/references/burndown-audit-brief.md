@@ -1,4 +1,4 @@
-READ-ONLY audit of task cards in git repo `D:\Leonidas AIOS`. Never edit, create, stage, or commit anything inside the repo. The ONLY file you write is your result file (outside the repo), via Bash.
+READ-ONLY audit of task cards in git repo `<repo root>`. Never edit, create, stage, or commit anything inside the repo. The ONLY file you write is your result file (outside the repo), via Bash.
 Finish in one pass. Run no background or detached commands: every late completion notice costs the parent chat a full context re-read. Use the Grep tool for repo-wide search, not `grep -r` in Bash.
 
 Input: task paths (repo-relative, one per line) in `%TEMP%/taskaudit/chunkN.txt` (N given in your prompt). All currently Not started / In progress / Blocked / Awaiting Review.

@@ -17,10 +17,10 @@ disable-model-invocation: true
 
 ## AIOS binding (overrides the config and vault steps below)
 
-- **Vault** = repo root `D:\Leonidas AIOS`. Link format = `markdown` (repo-relative links, [AGENTS.md](../../../AGENTS.md) rule 7), never `[[wikilinks]]`. There is no `.env`, `llm-wiki/SKILL.md`, `hot.md`, `log.md` or `.manifest.json` here: skip every step that needs them.
+- **Vault** = repo root `<repo root>`. Link format = `markdown` (repo-relative links, [AGENTS.md](../../../AGENTS.md) rule 7), never `[[wikilinks]]`. There is no `.env`, `llm-wiki/SKILL.md`, `hot.md`, `log.md` or `.manifest.json` here: skip every step that needs them.
 - **Inventory** = each folder's `<folder>-index.md` plus frontmatter `description:`. **Recent activity** = `git log --since=7.days --name-only`.
 - **Scope** = canon folders: `memory/ wiki/ decisions/ standards/ modes/ projects/ ideal-state/ workflows/ tools/`. Exclude `archive/ raw/ logs/ scratch/ capture/ .worktrees/` and any file with `generated: true`.
-- **Engine** = the `obsidian-wiki` CLI (pure stdlib) with `--vault "D:\Leonidas AIOS"`; the repo-root `.okignore` applies the exclusions above. Default `--budget 8000`. If the CLI is missing, say so; do not bulk-read folders instead.
+- **Engine** = the `obsidian-wiki` CLI (pure stdlib) with `--vault "<repo root>"`; the repo-root `.okignore` applies the exclusions above. Default `--budget 8000`. If the CLI is missing, say so; do not bulk-read folders instead.
 
 # Wiki Context Pack
 

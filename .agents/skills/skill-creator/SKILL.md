@@ -20,7 +20,7 @@ Every skill authoring task operates across two distinct phases:
 
 1. **The Outer Strategic Loop (Intent, Triggers & Schema):**
    - Clarify the user's intent: Is this a repeatable capability, a one-off task, or a domain coach?
-   - Determine scope: scope: structural (cross-tenant, reusable tooling) vs scope: personal (Jake-specific hardware, finances, routines).
+   - Determine scope: scope: structural (cross-tenant, reusable tooling) vs scope: personal (the user-specific hardware, finances, routines).
    - Determine distribution: core, template or private (see section 4). Propose a value for every new skill.
    - Decide invocation posture: Model-invoked vs user-invoked (disable-model-invocation: true). Consult [
      eferences/harness-economics.md](references/harness-economics.md).
@@ -43,7 +43,7 @@ Every skill authoring task operates across two distinct phases:
 Before writing any file, determine if a new skill is necessary:
 
 - **Avoid Duplication:** Check existing skills in [.agents/skills/skills-index.md](../skills-index.md). If an existing skill covers 80% of the capability, refactor the existing skill instead.
-- **Scope Allocation:** Mark scope: structural if the skill should be tracked in scripts/sync/shared-manifest.psd1 for SimplyGersi AIOS. Mark scope: personal if it contains private data or operator-specific hardware bindings.
+- **Scope Allocation:** Mark scope: structural if the skill should be tracked in scripts/sync/shared-manifest.psd1 for the peer AIOS. Mark scope: personal if it contains private data or operator-specific hardware bindings.
 - **Distribution Triage:** Run the section 4 test and tag `distribution:` in the same change that creates the skill.
 - **Determine Execution Style:** Will the skill execute automated steps directly, run interactive Socratic grilling, or guide manual developer workflows?
 
@@ -110,7 +110,7 @@ Every skill in AIOS must satisfy these non-negotiables:
 
 ## 4. Distribution Triage (Shareable AIOS Bundles)
 
-`distribution:` sits right after `scope:` and decides what ships when Jake builds or hands over an AIOS (Mob bundle, universal template, future installs). It is separate from `scope`: `scope` says whether the pattern is reusable, `distribution` says whether this skill is packaged for other people.
+`distribution:` sits right after `scope:` and decides what ships when the user builds or hands over an AIOS (a hand-over bundle, universal template, future installs). It is separate from `scope`: `scope` says whether the pattern is reusable, `distribution` says whether this skill is packaged for other people.
 
 | Value      | Meaning                                                                                                        | Ships as                                                       |
 | ---------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -127,6 +127,6 @@ Every skill in AIOS must satisfy these non-negotiables:
 
 **Placeholders:** `{{UPPER_SNAKE}}`, reusing names already in [`Export-UniversalAIOS.py`](../../../scripts/Export-UniversalAIOS.py) (`{{OPERATOR_NAME}}`, `{{AIOS_NAME}}`, `{{MACHINE_NAME}}`, `{{CPU_MODEL}}`, `{{USER_HOME}}`, `{{REPO_PATH}}`) before inventing new ones. The recipient's agent fills blanks from what it knows about the user, or interviews them once and saves the answers to memory.
 
-**Ask, don't wait:** the owner never has to say which skills to replicate. Tag the proposed value in the same change, then tell Jake in one closing line (`distribution: core, nothing personal in it`). Ask first only when borderline (generic method but heavy personal data, or a `private` call on something that looks reusable). Never leave a new skill untagged, and never promote `private` to `core` without Jake's yes.
+**Ask, don't wait:** the owner never has to say which skills to replicate. Tag the proposed value in the same change, then tell the user in one closing line (`distribution: core, nothing personal in it`). Ask first only when borderline (generic method but heavy personal data, or a `private` call on something that looks reusable). Never leave a new skill untagged, and never promote `private` to `core` without the user's yes.
 
-**Keeping `core` clean:** a `core` skill names the user as "the user", never "Jake", and has zero absolute personal paths. Re-run the test when a skill picks up owner-specific content.
+**Keeping `core` clean:** a `core` skill names the user as "the user", never "the user", and has zero absolute personal paths. Re-run the test when a skill picks up owner-specific content.

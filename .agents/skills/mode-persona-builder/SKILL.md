@@ -87,7 +87,7 @@ Modes define specialized execution blocks required for their cognitive work:
 
 - _Mode 00:_ Mandatory Plus-One Section (`### Second-Order Blind Spots & Edge Cases` and `### Frontier / Peer-Reviewed Upgrade`).
 - _Mode 02:_ Medical source citations and explicit Clinician Visit Threshold.
-- _Mode 03:_ 🛡️ SimplyGersi Write Staging Block with sanitization verification.
+- _Mode 03:_ 🛡️ the peer AIOS Write Staging Block with sanitization verification.
 - _Mode 04:_ Forensic calculations, inline parenthetical jargon translations, and Closing Micro-Drill.
 - _Mode 05:_ 1-3 WIP items with physical completion criteria, ending with binary check ("Ready to start item 1?").
 - _Mode 06:_ Mandatory Cognitive Gate block (`**Inversion (M2):**` and `**Constraint (M5):**`).
@@ -103,7 +103,7 @@ Substantive chat turns close with the 7-element standing footer defined in [`mem
 2. `**🧠 Psychological Anchor:** [Study / Bias / Model] -> [1 concise causal sentence]`
 3. `**<Domain> Anchor:** [1 dense line of domain-specific state, telemetry, or safety gates]`
 4. Grill block (when a decision is open, 2-3 options with lettered choices)
-5. `### Next Actions` (2-3 numbered options formatted as short phrases Jake can say back)
+5. `### Next Actions` (2-3 numbered options formatted as short phrases the user can say back)
 6. Session recap (strictly 1 concise line naming changes and git state)
 7. Top Focus Tasks anchor (strictly 1 concise line referencing top 1-3 active items from [`TASKS.md`](../../../TASKS.md))
 

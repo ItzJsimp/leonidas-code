@@ -17,10 +17,10 @@ source: "https://github.com/ar9av/obsidian-wiki (.skills/cross-linker, MIT, comm
 
 ## AIOS binding (overrides the config and vault steps below)
 
-- **Vault** = repo root `D:\Leonidas AIOS`. Link format = `markdown` (repo-relative links, [AGENTS.md](../../../AGENTS.md) rule 7), never `[[wikilinks]]`. There is no `.env`, `llm-wiki/SKILL.md`, `hot.md`, `log.md` or `.manifest.json` here: skip every step that needs them.
+- **Vault** = repo root `<repo root>`. Link format = `markdown` (repo-relative links, [AGENTS.md](../../../AGENTS.md) rule 7), never `[[wikilinks]]`. There is no `.env`, `llm-wiki/SKILL.md`, `hot.md`, `log.md` or `.manifest.json` here: skip every step that needs them.
 - **Inventory** = each folder's `<folder>-index.md` plus frontmatter `description:`. **Recent activity** = `git log --since=7.days --name-only`.
 - **Scope** = canon folders: `memory/ wiki/ decisions/ standards/ modes/ projects/ ideal-state/ workflows/ tools/`. Exclude `archive/ raw/ logs/ scratch/ capture/ .worktrees/` and any file with `generated: true`.
-- **Writes** = report first, apply after Jake approves (bulk multi-file edit, [MASTER-INSTRUCTIONS.md](../../../MASTER-INSTRUCTIONS.md) section 3), in one script per AGENTS.md rule 3. Then run `scripts/Detect-Drift.ps1` and commit with `Refactor:`.
+- **Writes** = report first, apply after the user approves (bulk multi-file edit, [MASTER-INSTRUCTIONS.md](../../../MASTER-INSTRUCTIONS.md) section 3), in one script per AGENTS.md rule 3. Then run `scripts/Detect-Drift.ps1` and commit with `Refactor:`.
 
 # Cross-Linker : Automated Wiki Cross-Referencing
 

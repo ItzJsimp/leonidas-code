@@ -12,7 +12,7 @@ Run a stateful `/grilling` session whose only output is **workflow** specs. Use 
 
 ## AIOS Loop Engineering & Feedback Integration
 
-In Leonidas AIOS and SimplyGersi AIOS, loops operate at three distinct architectural levels:
+In your AIOS and any peer AIOS, loops operate at three distinct architectural levels:
 
 1. **The Ingestion Loop**: Fleeting thoughts captured in `capture/` -> triaged to `tasks/` via `scripts/Capture-Thought.ps1`.
 2. **The Execution Loop**: Autonomous task execution -> verification -> `git diff` review before commit.

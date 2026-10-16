@@ -17,7 +17,7 @@ disable-model-invocation: true
 
 # Setup Git Guardrails
 
-> Leonidas policy: do NOT enable this unless Jake or Mob explicitly asks. Agents here own the whole git workflow (push to main, pull, branch and worktree cleanup, reset, clean), and this hook blocks exactly those commands. It was installed globally once on 2026-10-12 and removed the same day.
+> Leonidas policy: do NOT enable this unless the user explicitly asks. Agents here own the whole git workflow (push to main, pull, branch and worktree cleanup, reset, clean), and this hook blocks exactly those commands. It was installed globally once on 2026-10-12 and removed the same day.
 
 Sets up a PreToolUse hook that intercepts and blocks dangerous git commands before Claude executes them.
 

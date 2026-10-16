@@ -16,7 +16,7 @@ related: ["design-build", "impeccable", "standard-design-system", "app-building-
 
 # Design Audit
 
-Decides, with evidence, whether a design is good enough to ship. Jake is not a designer, so this skill is the designer's eye: it catches what he would feel is "off" but could not name, and it names it in plain English with the exact fix. A design either PASSES or FAILS; "looks fine" is not a verdict.
+Decides, with evidence, whether a design is good enough to ship. the user is not a designer, so this skill is the designer's eye: it catches what he would feel is "off" but could not name, and it names it in plain English with the exact fix. A design either PASSES or FAILS; "looks fine" is not a verdict.
 
 Works on anything with a visual surface: web apps and pages, desktop apps (Qt, Electron, Tauri), generated HTML artifacts and dashboards, and documents or PDFs. Impeccable covers web, iOS and Android; desktop Qt checks live here in [`references/qt-audit.md`](references/qt-audit.md).
 
@@ -42,7 +42,7 @@ Works on anything with a visual surface: web apps and pages, desktop apps (Qt, E
 
 Line 1: `Verdict: FAIL (2 P0, 4 P1) · Heuristics 26/40 · <surface> · judged against <canon>`
 
-Then one table, worst first. The "In plain English" column is mandatory: it is what Jake reads.
+Then one table, worst first. The "In plain English" column is mandatory: it is what the user reads.
 
 | #   | Sev | Where          | Problem                                          | In plain English                                           | Fix                                                                                 |
 | --- | --- | -------------- | ------------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |

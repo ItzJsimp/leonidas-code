@@ -11,7 +11,7 @@
 .EXAMPLE
     pwsh scripts/Measure-ChangeFootprint.ps1 -Repo . -Paths apps/server/src/taskBoard/aiosCards.ts
 .EXAMPLE
-    pwsh scripts/Measure-ChangeFootprint.ps1 -Repo D:\Leonidas AIOS\projects\leonidas-scribe
+    pwsh scripts/Measure-ChangeFootprint.ps1 -Repo <repo>/projects\leonidas-scribe
 #>
 [CmdletBinding()]
 param(

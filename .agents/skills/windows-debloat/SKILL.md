@@ -3,7 +3,7 @@ name: windows-debloat
 description: "Inventory, audit, and clean Windows packages, background services, startup bloat, and telemetry."
 category: pc
 scope: personal
-distribution: template
+distribution: private
 disable-model-invocation: true
 ---
 

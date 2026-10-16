@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unified watch entrypoint for Leonidas AIOS & SimplyGersi AIOS.
+"""Unified watch entrypoint for Leonidas AIOS & the peer AIOS.
 
 Extracts transcript, applies SponsorBlock pruning, captures video analytics,
 detects visual indicator cues, extracts keyframes/scene frames on demand,

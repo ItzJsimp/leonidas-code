@@ -40,7 +40,7 @@ TOPICS = [
 
 def run_sweep() -> Path:
     today_str = datetime.date.today().isoformat()
-    repo_root = CURRENT_DIR.parents[3] # d:\Leonidas AIOS
+    repo_root = CURRENT_DIR.parents[3] # <repo root>
     reports_dir = repo_root / "raw" / "reports"
     library_dir = repo_root / "raw" / "research-library"
     bib_dir = library_dir / "bibliographies"

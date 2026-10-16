@@ -40,7 +40,7 @@ def shoot(win, name):
 - **P1** A button or badge with no `setToolTip` saying what it does and what happens next.
 - **P1** A long operation on the UI thread (HTTP calls, file scans). The window freezes; move it to a `QThread` or worker and show progress.
 - **P1** Feedback missing after an action. Buttons confirm in place ("Saved") for about 1.5 s, then revert.
-- **P2** Settings that require editing JSON by hand. Every knob Jake would change has a control, and saves hot-reload without a restart.
+- **P2** Settings that require editing JSON by hand. Every knob the user would change has a control, and saves hot-reload without a restart.
 
 ## Motion
 

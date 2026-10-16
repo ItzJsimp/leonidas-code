@@ -17,7 +17,7 @@ generated: false
 
 # Research Skill
 
-External primary-source investigation engine for Leonidas AIOS and SimplyGersi AIOS. Operates via air-gapped subagent swarms to gather and verify web evidence without polluting orchestrator context.
+External primary-source investigation engine for your AIOS and any peer AIOS. Operates via air-gapped subagent swarms to gather and verify web evidence without polluting orchestrator context.
 
 ---
 
@@ -58,10 +58,10 @@ Executes directly in Antigravity or Claude Code for immediate, in-session delive
 
 ### Mode B: Web Deep Research Bridge (`--web`)
 
-Used when Jake explicitly requests massive (50–150+ source) cloud-scale research:
+Used when the user explicitly requests massive (50–150+ source) cloud-scale research:
 
 1. **Prompt Formulation:** Generate an optimized frontier prompt specifying scope, primary source constraints, and structured output sections.
-2. **Execution Guidance:** Direct Jake to paste into Google Gemini Deep Research (`gemini.google.com`) or Claude.ai Web Research (`claude.ai`).
+2. **Execution Guidance:** Direct the user to paste into Google Gemini Deep Research (`gemini.google.com`) or Claude.ai Web Research (`claude.ai`).
 3. **Ingestion Bridge:** Provide the ready-to-run terminal command to ingest and format the exported Markdown into the target AIOS repository directory.
 
 ---
@@ -70,7 +70,7 @@ Used when Jake explicitly requests massive (50–150+ source) cloud-scale resear
 
 - **Systemic & Evergreen:** Save to `wiki/research/YYYY-MM-DD-<topic-slug>.md`.
 - **Project-Specific:** Save to `projects/<project-name>/research/YYYY-MM-DD-<topic-slug>.md` (or `research.md`).
-- **Cross-Tenant Rule:** If SimplyGersi research is conducted within Leonidas AIOS, save in Leonidas storage tagged with `domain: simplygersi` and `scope: SimplyGersi` in frontmatter.
+- **Cross-Tenant Rule:** If the peer AIOS research is conducted within Leonidas AIOS, save in Leonidas storage tagged with `domain: peer` and `scope: the peer AIOS` in frontmatter.
 
 ---
 

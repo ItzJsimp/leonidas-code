@@ -10,7 +10,7 @@
     - Verifies zero em-dash compliance (ADR-0012)
     - Automatically syncs memory/observed/antifragile.md into mem0 index
 .PARAMETER Component
-    The target file, folder, or subsystem that failed (e.g. "modes/03-simplygersi.md").
+    The target file, folder, or subsystem that failed (e.g. "modes/03-peer.md").
 .PARAMETER Title
     A concise title summarizing the operational defect.
 .PARAMETER FailureMode

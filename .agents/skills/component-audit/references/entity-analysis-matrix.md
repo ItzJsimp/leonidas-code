@@ -23,7 +23,7 @@ The auditor first classifies the target asset into one of six operational catego
 | **Both (Subsystem)**          | `<folder>/` + key files             | Architecture standard                                                      | Tier 1 / 2         | Cohesive boundaries, clear input/output contracts, zero circular coupling |
 | **Artifact**                  | `brain/<cid>/`, `assets/`           | Artifact standard                                                          | Tier 3 (Ephemeral) | Traceable metadata, no durable knowledge trapped in ephemeral paths       |
 | **Specialized System Entity** | Skills, Modes, ADRs, Scripts, Tasks | Specialized standard                                                       | Specialized        | Strict schema compliance, registration in manifests, deterministic gates  |
-| **External / Related Asset**  | `D:\...` outside repo               | [`standards/drive-taxonomy.md`](../../../../standards/drive-taxonomy.md)   | External           | Path portability, boundary isolation, explicit confirmation for mutations |
+| **External / Related Asset**  | an external drive path outside repo | [`standards/drive-taxonomy.md`](../../../../standards/drive-taxonomy.md)   | External           | Path portability, boundary isolation, explicit confirmation for mutations |
 
 ---
 
@@ -39,10 +39,10 @@ The auditor first classifies the target asset into one of six operational catego
 
 ### B. System Modes (`modes/<num>-<slug>.md`, `modes/router.md`)
 
-- **Naming & Sequencing:** 2-digit zero-padded prefix (`modes/00-build-architect.md`, `modes/03-simplygersi.md`).
+- **Naming & Sequencing:** 2-digit zero-padded prefix (`modes/00-build-architect.md`, `modes/03-peer.md`).
 - **Precedence Ladder:** Verify synchronization with [`modes/router.md`](../../../../modes/router.md). Ensure the 9-rule precedence ladder correctly accounts for the mode.
 - **5-Section Structure:** Persona identity, core principles, technical guidelines, domain boundaries, and completion criteria.
-- **Cross-Repo Boundary:** Mode 03 SimplyGersi must enforce read-only overlay rules, with explicit user confirmation required prior to any write operations per [ADR-0008](../../../../decisions/0008-mode-3-is-a-cross-repo-read-overlay.md).
+- **Cross-Repo Boundary:** Mode 03 peer overlay must enforce read-only overlay rules, with explicit user confirmation required prior to any write operations per [ADR-0008](../../../../decisions/0008-mode-3-is-a-cross-repo-read-overlay.md).
 
 ### C. Architectural Decisions (`decisions/<0000>-<slug>.md`)
 
@@ -85,7 +85,7 @@ The auditor first classifies the target asset into one of six operational catego
 - **Depth & Semantics:** Avoid nesting deeper than 3 subdirectories. Ensure directory names represent clear functional domains.
 - **Root Hygiene:** Only approved core instruction entrypoints, routers, and dispatchers may reside in the repository root. All other files belong in categorized subfolders.
 
-### I. External & Related Assets (`D:\...`)
+### I. External & Related Assets (an external drive path)
 
 - **Boundary Verification:** Confirm whether asset is inside or outside AIOS root.
 - **Taxonomy Compliance:** Follow [`standards/drive-taxonomy.md`](../../../../standards/drive-taxonomy.md).

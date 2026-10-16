@@ -1,6 +1,6 @@
 ---
 name: zotero-research
-description: "Inspect local Zotero reference libraries read-only via local HTTP connector (127.0.0.1:23119) or local SQLite database to ground research in Jake's collected academic papers."
+description: "Inspect local Zotero reference libraries read-only via local HTTP connector (127.0.0.1:23119) or local SQLite database to ground research in the user's collected academic papers."
 category: research
 scope: structural
 distribution: core
@@ -21,7 +21,7 @@ Deterministic read-only bridge connecting Hermes and AIOS agents to a local Zote
 
 ## Purpose
 
-Enables research agents to check whether Jake already has relevant academic literature, PDFs, or annotations filed locally before conducting redundant web searches.
+Enables research agents to check whether the user already has relevant academic literature, PDFs, or annotations filed locally before conducting redundant web searches.
 
 ## Safety & Governance
 

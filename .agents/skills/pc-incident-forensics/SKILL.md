@@ -3,7 +3,7 @@ name: pc-incident-forensics
 description: "Investigate PC crashes, BSODs, freezes, and app faults via Event Viewer, minidumps, and system logs."
 category: pc
 scope: personal
-distribution: template
+distribution: private
 disable-model-invocation: true
 ---
 

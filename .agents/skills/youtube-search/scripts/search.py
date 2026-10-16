@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YouTube Search & Discovery Engine for Leonidas AIOS & SimplyGersi AIOS.
+"""YouTube Search & Discovery Engine for Leonidas AIOS & the peer AIOS.
 
 Executes zero-token local batch search via yt-dlp, calculates deterministic
 Quality Scores (0-100), checks against the local Trusted Creator Roster,

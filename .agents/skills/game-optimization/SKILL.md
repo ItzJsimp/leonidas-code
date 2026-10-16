@@ -3,7 +3,7 @@ name: game-optimization
 description: "Research and tune game engine settings, launch options, shader caches, and graphics benchmarks."
 category: pc
 scope: personal
-distribution: template
+distribution: private
 disable-model-invocation: true
 ---
 

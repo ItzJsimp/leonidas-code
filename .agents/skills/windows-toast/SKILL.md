@@ -48,7 +48,7 @@ To eliminate notification fatigue, autonomous AI agents MUST adhere strictly to 
 | ------------------------------------ | ------------------------------------------------------------------------ | ------------- | -------------------------------------------------------------- |
 | **1. Long-Running Work (>120-240s)** | Background task, test suite, or model operation exceeding 2 to 4 minutes | `Sleek`       | Fires completion notice with summary and optional input field. |
 | **2. Critical Failure**              | Substrate audit failure, broken pre-commit hook, or crashed service      | `Warning`     | Sticky notification requiring user attention or review.        |
-| **3. Explicit Operator Directive**   | Jake explicitly requests a timer, alert, or desktop nudge                | Context-aware | Fires precisely when scheduled or requested.                   |
+| **3. Explicit Operator Directive**   | the user explicitly requests a timer, alert, or desktop nudge            | Context-aware | Fires precisely when scheduled or requested.                   |
 
 **Fatigue Suppression Guardrail:** NEVER emit toasts for routine sub-minute tool calls, standard git commits, or mid-conversation chat replies.
 
@@ -111,7 +111,7 @@ pwsh -File scripts/Send-TaskToast.ps1 `
 
 ### Recipe B: Two-Way Interactive Task Toast
 
-Prompts Jake directly on desktop and appends his response directly into the task file:
+Prompts the user directly on desktop and appends his response directly into the task file:
 
 ```powershell
 pwsh -File scripts/Send-TaskToast.ps1 `

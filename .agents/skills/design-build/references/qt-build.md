@@ -45,7 +45,7 @@ class ElideLabel(QLabel):
 
 ## 5. Settings pages
 
-- Group into cards by the question Jake asks ("How does he sound?", "When may he talk?"), not by implementation.
+- Group into cards by the question the user asks ("How does he sound?", "When may he talk?"), not by implementation.
 - Every control has a hint line and a tooltip; saving is one save bar at the bottom (the existing Settings pattern) or instant with in-place "Saved" feedback, never both on one page.
 - Remove knobs nobody changes; hardcode their safe default in code with a comment.
 

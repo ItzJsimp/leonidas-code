@@ -3,7 +3,7 @@ name: peripherals-display-tuner
 description: "Tune keyboard actuation, Wooting rapid trigger, mouse polling, monitor refresh, and audio routing."
 category: pc
 scope: personal
-distribution: template
+distribution: private
 disable-model-invocation: true
 ---
 

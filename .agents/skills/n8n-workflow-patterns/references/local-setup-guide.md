@@ -1,6 +1,6 @@
 # n8n Local Setup & Operations Guide (Windows 11)
 
-A straightforward guide to running n8n locally on Jake's Windows 11 PC, either for quick testing or as a persistent background service.
+A straightforward guide to running n8n locally on the user's Windows 11 PC, either for quick testing or as a persistent background service.
 
 ---
 
@@ -30,7 +30,7 @@ If Docker Desktop is running:
 
 ```powershell
 # Create dedicated persistence folder
-New-Item -ItemType Directory -Path "D:\Leonidas AIOS\data\n8n" -Force
+New-Item -ItemType Directory -Path "<repo>/data\n8n" -Force
 
 # Launch container
 docker run -d `
@@ -40,7 +40,7 @@ docker run -d `
   -e N8N_DEFAULT_BINARY_DATA_MODE=filesystem `
   -e EXECUTIONS_DATA_PRUNE=true `
   -e EXECUTIONS_DATA_MAX_AGE=168 `
-  -v "D:/Leonidas AIOS/data/n8n:/home/node/.n8n" `
+  -v "./data/n8n:/data/n8n" `
   docker.n8n.io/n8nio/n8n
 ```
 

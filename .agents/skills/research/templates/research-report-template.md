@@ -12,8 +12,8 @@ key_takeaways:
 engine: "<Google Antigravity | Claude Code | Gemini Deep Research | Claude.ai>"
 model: "<Exact model name and effort level>"
 tier: "<quick | standard | deep>"
-domain: "<personal | simplygersi>"
-scope: "<structural | personal | SimplyGersi>"
+domain: "<personal | peer>"
+scope: "<structural | personal | the peer AIOS>"
 sources_count: 0
 confidence: "<high | medium | preliminary>"
 verified: YYYY-MM-DD
@@ -82,4 +82,4 @@ _(Top 3 to 5 high-signal takeaways)_
 
 ## 🗒️ Notes & Operator Follow-ups
 
-_(Jake's annotations, follow-up questions, or future research directions)_
+_(the user's annotations, follow-up questions, or future research directions)_

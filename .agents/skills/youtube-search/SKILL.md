@@ -23,9 +23,9 @@ Zero-token local video search and discovery engine powered by `yt-dlp`. Scours Y
 
 Activate this skill when:
 
-- Jake asks to find, search for, or recommend YouTube videos on any topic or learning goal.
-- Jake asks what creators or YouTubers to watch for a specific skill, concept, or tool.
-- Jake asks if a specific creator (e.g. Nate Herk, Cole Medin, Greg Isenberg) has uploaded videos about a topic.
+- the user asks to find, search for, or recommend YouTube videos on any topic or learning goal.
+- the user asks what creators or YouTubers to watch for a specific skill, concept, or tool.
+- the user asks if a specific creator (e.g. Nate Herk, Cole Medin, Greg Isenberg) has uploaded videos about a topic.
 - A workflow or learning goal requires educational video discovery before deep study.
 
 Do **NOT** use this skill when you already have a specific video URL or local video file: route directly to [`youtube-analyzer`](../youtube-analyzer/SKILL.md) instead.
@@ -74,7 +74,7 @@ python ".agents/skills/youtube-search/scripts/search.py" "<query>" [options]
 
 ## Output Contract
 
-Every search briefing delivered to Jake must contain:
+Every search briefing delivered to the user must contain:
 
 1. **Curated Recommendations:** Numbered list with Title (clickable link), Creator, Duration, Views, and Quality Score (`XX/100`).
 2. **Thesis Hook:** 1-2 sentence verbatim thesis from the video opening.

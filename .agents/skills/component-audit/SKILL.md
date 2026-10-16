@@ -33,7 +33,7 @@ Explicitly identify the asset category:
    - **Automation Script:** `scripts/*.ps1` or `scripts/*.py`
    - **Durable Memory / Domain Store:** `memory/*.md`, `domains/*`, `ideal-state/*`
    - **Operational Task:** `tasks/*.md`
-6. **External / Related Asset:** Workspaces, external repositories, or tools residing on the `D:\` drive outside AIOS root.
+6. **External / Related Asset:** Workspaces, external repositories, or tools residing on the another drive outside AIOS root.
 
 For detailed analysis vectors per entity type, consult [`references/entity-analysis-matrix.md`](references/entity-analysis-matrix.md).
 
@@ -41,7 +41,7 @@ For detailed analysis vectors per entity type, consult [`references/entity-analy
 
 - **Core Scope:** Leonidas AIOS files, folders, and structural components.
 - **Extended Scope:** The skill is fully authorized to inspect and audit assets outside the AIOS repository (e.g. D: drive workspaces, tool configs) when required by the optimization task.
-- **Isolation Barrier:** Modifying files outside the current repository or touching peer domains (`D:\SimplyGersi AIOS\`) strictly requires explicit operator confirmation per [ADR-0008](../../../decisions/0008-mode-3-is-a-cross-repo-read-overlay.md).
+- **Isolation Barrier:** Modifying files outside the current repository or touching peer domains (`the peer AIOS\`) strictly requires explicit operator confirmation per [ADR-0008](../../../decisions/0008-mode-3-is-a-cross-repo-read-overlay.md).
 
 ### C. Ambiguity Resolution Protocol
 

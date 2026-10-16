@@ -3,7 +3,7 @@ name: remote-streaming-sync
 description: "Diagnose Sunshine/Moonlight streaming latency, Tailscale mesh connections, and cross-PC sync drift."
 category: pc
 scope: personal
-distribution: template
+distribution: private
 disable-model-invocation: true
 ---
 

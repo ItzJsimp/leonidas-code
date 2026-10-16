@@ -4,7 +4,7 @@ Distilled 2026-09-27 from Emil Kowalski's design engineering, Apple's fluid-inte
 
 ## 1. Should it animate at all? (frequency decides)
 
-| How often Jake sees it                                             | Decision                                               |
+| How often the user sees it                                         | Decision                                               |
 | ------------------------------------------------------------------ | ------------------------------------------------------ |
 | 100+ times a day (hotkeys, palette toggle, tab switch by keyboard) | Never animate. Raycast opens instantly for this reason |
 | Tens of times a day (hover, list navigation)                       | Micro only (150 ms), or none                           |

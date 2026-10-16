@@ -84,7 +84,7 @@ SHARED_LANES = {"", "agent", "leonidas", "draft", "grill", "shared"}
 def detect_user(explicit_user=None):
     """Explicit canon identity wins; account names are only fallback hints."""
     value = (explicit_user or os.environ.get("USERNAME") or os.environ.get("USER") or "user").lower().strip()
-    aliases = {"jacob": "jake", "itzjsimp": "jake"}
+    aliases = {}  # owner aliases: add per user
     return aliases.get(value, value)
 
 

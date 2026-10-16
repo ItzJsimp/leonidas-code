@@ -43,7 +43,7 @@ Scan workspace components and calculate token footprints:
 **1. Always-Loaded Routers & Canon**
 
 - Inspect: [`AGENTS.md`](../../../AGENTS.md), [`CLAUDE.md`](../../../CLAUDE.md), [shared operating layer](../../rules/leonidas-code-overlay.md), [`.agents/antigravity-overlay.md`](../../rules/antigravity-overlay.md), [`MASTER-INSTRUCTIONS.md`](../../../MASTER-INSTRUCTIONS.md), [`BUILD-PLAN.md`](../../../BUILD-PLAN.md)
-- Thresholds: Flag if combined always-loaded base exceeds **15,000 words (~20,000 tokens)**. Superseded 2026-09-16 per Jake's decision (see `memory/observed/patterns.md`, "Knowledge-Rich Always-Loaded Budget"): the former 6,000-word ceiling starved always-loaded knowledge; the new target balances knowledge density against context cost, reached by pruning stale pointer entries, not by stripping knowledge.
+- Thresholds: Flag if combined always-loaded base exceeds **15,000 words (~20,000 tokens)**. Superseded 2026-09-16 per the user's decision (see `memory/observed/patterns.md`, "Knowledge-Rich Always-Loaded Budget"): the former 6,000-word ceiling starved always-loaded knowledge; the new target balances knowledge density against context cost, reached by pruning stale pointer entries, not by stripping knowledge.
 
 **2. Modes & Personas (`modes/*.md` or `agents/*.md`)**
 
@@ -68,7 +68,7 @@ Scan workspace components and calculate token footprints:
 
 **6. Cross-Repository Boundary Overlays**
 
-- Measure token cost of loading peer repository rules (e.g. Leonidas loading SimplyGersi instructions). Confirm cross-repo reads require explicit user confirmation to prevent unbounded context inflation.
+- Measure token cost of loading peer repository rules (e.g. Leonidas loading the peer AIOS instructions). Confirm cross-repo reads require explicit user confirmation to prevent unbounded context inflation.
 
 ---
 
@@ -103,7 +103,7 @@ Emit the structured Context Budget Report:
 ```
 Context Budget Report
 ═══════════════════════════════════════════════════
-Target Workspace: [D:\Leonidas AIOS / D:\SimplyGersi AIOS]
+Target Workspace: [<repo root> / the peer AIOS]
 Estimated Preloaded Footprint: ~XX,XXX tokens
 Effective Available Headroom: ~XXX,XXX tokens (XX%)
 

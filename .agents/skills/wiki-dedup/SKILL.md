@@ -17,7 +17,7 @@ source: "https://github.com/ar9av/obsidian-wiki (.skills/wiki-dedup, MIT, commit
 
 ## AIOS binding (overrides the config and vault steps below)
 
-- **Vault** = repo root `D:\Leonidas AIOS`. Link format = `markdown` (repo-relative links, [AGENTS.md](../../../AGENTS.md) rule 7), never `[[wikilinks]]`. There is no `.env`, `llm-wiki/SKILL.md`, `hot.md`, `log.md` or `.manifest.json` here: skip every step that needs them.
+- **Vault** = repo root `<repo root>`. Link format = `markdown` (repo-relative links, [AGENTS.md](../../../AGENTS.md) rule 7), never `[[wikilinks]]`. There is no `.env`, `llm-wiki/SKILL.md`, `hot.md`, `log.md` or `.manifest.json` here: skip every step that needs them.
 - **Inventory** = each folder's `<folder>-index.md` plus frontmatter `description:`. **Recent activity** = `git log --since=7.days --name-only`.
 - **Scope** = canon folders: `memory/ wiki/ decisions/ standards/ modes/ projects/ ideal-state/ workflows/ tools/`. Exclude `archive/ raw/ logs/ scratch/ capture/ .worktrees/` and any file with `generated: true`.
 - **Merges** = one approval per merge. The losing page is never deleted: route it per [deletion-ladder.md](../../../standards/deletion-ladder.md) and repoint inbound links. Then run `scripts/Detect-Drift.ps1` and commit with `Refactor:`.
