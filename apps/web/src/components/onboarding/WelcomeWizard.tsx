@@ -95,6 +95,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collaps
 import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
 import { Spinner } from "../ui/spinner";
+import { sendUsageEvent } from "../../lib/usageAnalytics/sendUsageEvent";
 import { WizardPanel, WizardSteps, WizardPopup, WizardHeader } from "../ui/wizard";
 import { Dialog } from "../ui/dialog";
 import { toastManager } from "../ui/toast";
@@ -118,6 +119,26 @@ const STEP_ORDER: readonly WizardStep[] = [
   "import",
   "aios",
 ];
+/** Usage events for the setup funnel. Step ids only; sendUsageEvent checks consent. */
+function useWizardUsageEvents(step: WizardStep) {
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const previousStep = useRef<WizardStep | null>(null);
+  useEffect(() => {
+    if (previousStep.current === null) sendUsageEvent("setup_started");
+    else if (previousStep.current !== step) {
+      sendUsageEvent("setup_step_completed", { step: previousStep.current });
+    }
+    previousStep.current = step;
+  }, [step]);
+  useEffect(() => {
+    const onPageHide = () => sendUsageEvent("setup_abandoned_at_step", { step: stepRef.current });
+    window.addEventListener("pagehide", onPageHide);
+    // Leaving the wizard after it finished unmounts it; only a real close counts.
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, []);
+}
+
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
@@ -182,6 +203,7 @@ export function WelcomeWizard({
   const skipConnect =
     environments.length === 1 && !hasCloudPublicConfig() && soloSetup.environmentIds.length === 1;
   const stageIndex = STEP_ORDER.indexOf(step);
+  useWizardUsageEvents(step);
   const goBack = () => {
     const previous = STEP_ORDER[stageIndex - 1] ?? "welcome";
     setStep(previous === "connection" && skipConnect ? "welcome" : previous);

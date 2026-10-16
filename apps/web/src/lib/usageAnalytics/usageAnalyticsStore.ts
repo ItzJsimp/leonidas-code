@@ -14,11 +14,15 @@ interface UsageAnalyticsState {
   friendLabel: string;
   firstRunSent: boolean;
   setupSent: boolean;
+  /** Epoch ms when the welcome wizard finished; set by the coordinator. */
+  setupDoneAt: number | null;
+  firstMessageSent: boolean;
   launchCount: number;
   setConsent: (consent: UsageConsent) => void;
   setFriendLabel: (label: string) => void;
   markFirstRunSent: () => void;
-  markSetupSent: () => void;
+  markSetupSent: (doneAt: number) => void;
+  markFirstMessageSent: () => void;
   countLaunch: () => number;
 }
 
@@ -39,11 +43,14 @@ export const useUsageAnalyticsStore = create<UsageAnalyticsState>()(
       friendLabel: "",
       firstRunSent: false,
       setupSent: false,
+      setupDoneAt: null,
+      firstMessageSent: false,
       launchCount: 0,
       setConsent: (consent) => set({ consent }),
       setFriendLabel: (friendLabel) => set({ friendLabel: friendLabel.slice(0, 40) }),
       markFirstRunSent: () => set({ firstRunSent: true }),
-      markSetupSent: () => set({ setupSent: true }),
+      markSetupSent: (setupDoneAt) => set({ setupSent: true, setupDoneAt }),
+      markFirstMessageSent: () => set({ firstMessageSent: true }),
       countLaunch: () => {
         const launchCount = get().launchCount + 1;
         set({ launchCount });

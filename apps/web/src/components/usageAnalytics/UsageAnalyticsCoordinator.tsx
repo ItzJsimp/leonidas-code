@@ -58,11 +58,11 @@ export function UsageAnalyticsCoordinator() {
     if (state.setupSent) return;
     const finishedAt = Date.parse(String(onboardingCompletedAt));
     if (Number.isFinite(finishedAt)) {
+      state.markSetupSent(finishedAt);
       sendUsageEvent("setup_completed", {
         seconds_to_setup: (finishedAt - state.installedAt) / 1000,
       });
-    }
-    state.markSetupSent();
+    } else state.markSetupSent(Date.now());
   }, [consent, hydrated, onboardingCompletedAt]);
 
   // feature_used: one event when the user moves to a different area of the app.

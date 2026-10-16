@@ -9,6 +9,10 @@ export const USAGE_EVENT_NAMES = [
   "session_duration",
   "setup_completed",
   "feature_used",
+  "setup_started",
+  "setup_step_completed",
+  "setup_abandoned_at_step",
+  "time_to_first_message",
 ] as const;
 export type UsageEventName = (typeof USAGE_EVENT_NAMES)[number];
 
@@ -29,12 +33,26 @@ export const USAGE_FEATURE_IDS = [
 ] as const;
 export type UsageFeatureId = (typeof USAGE_FEATURE_IDS)[number];
 
+export const USAGE_SETUP_STEP_IDS = [
+  "welcome",
+  "connection",
+  "agents",
+  "skills",
+  "import",
+  "aios",
+] as const;
+export type UsageSetupStepId = (typeof USAGE_SETUP_STEP_IDS)[number];
+
 const NUMERIC_FIELDS: Readonly<Record<UsageEventName, readonly string[]>> = {
   install_first_run: [],
   app_opened: ["days_since_install", "launch_count"],
   session_duration: ["seconds"],
   setup_completed: ["seconds_to_setup"],
   feature_used: [],
+  setup_started: [],
+  setup_step_completed: [],
+  setup_abandoned_at_step: [],
+  time_to_first_message: ["seconds"],
 };
 
 export type UsageEventProperties = Readonly<Record<string, number | string>>;
@@ -57,12 +75,22 @@ export function sanitizeUsageProperties(
       clean.feature = feature as string;
     }
   }
+  if (name === "setup_step_completed" || name === "setup_abandoned_at_step") {
+    const step = properties.step;
+    if ((USAGE_SETUP_STEP_IDS as readonly unknown[]).includes(step)) {
+      clean.step = step as string;
+    }
+  }
   return clean;
 }
 
 /** True when the event has everything it needs to be worth sending. */
 export function isCompleteUsageEvent(name: UsageEventName, props: UsageEventProperties): boolean {
   if (name === "feature_used") return typeof props.feature === "string";
+  if (name === "setup_step_completed" || name === "setup_abandoned_at_step") {
+    return typeof props.step === "string";
+  }
+  if (name === "time_to_first_message") return typeof props.seconds === "number";
   if (name === "session_duration") return typeof props.seconds === "number" && props.seconds >= 1;
   if (name === "setup_completed") return typeof props.seconds_to_setup === "number";
   return true;

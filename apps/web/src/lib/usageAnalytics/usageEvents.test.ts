@@ -34,6 +34,16 @@ describe("sanitizeUsageProperties", () => {
   });
 });
 
+describe("setup funnel events", () => {
+  it("accepts only known step ids", () => {
+    expect(sanitizeUsageProperties("setup_step_completed", { step: "skills" })).toEqual({
+      step: "skills",
+    });
+    expect(sanitizeUsageProperties("setup_abandoned_at_step", { step: "C:/Users/x" })).toEqual({});
+    expect(isCompleteUsageEvent("setup_abandoned_at_step", {})).toBe(false);
+  });
+});
+
 describe("isCompleteUsageEvent", () => {
   it("skips empty sessions and feature events with no feature", () => {
     expect(isCompleteUsageEvent("session_duration", { seconds: 0 })).toBe(false);
