@@ -20,6 +20,12 @@ const ENDPOINTS = [
   "https://daily-cloudcode-pa.googleapis.com",
   "https://cloudcode-pa.googleapis.com",
 ];
+/**
+ * Google chooses which models and quota groups to return from the client version in the
+ * User-Agent. An old version never sees newer groups such as Gemini 4 Argon. Keep this in
+ * step with the Antigravity app version.
+ */
+const ANTIGRAVITY_CLIENT_VERSION = "2.24.0";
 const MANUAL_REDIRECT: RequestInit = { redirect: "manual" };
 const TokenFile = Schema.Struct({
   client_id: Schema.NonEmptyString,
@@ -119,7 +125,9 @@ function summaryWindows(summary: typeof Summary.Type) {
   for (const group of groups ?? []) {
     for (const bucket of group.buckets ?? []) {
       if (bucket.disabled) continue;
-      const family = bucket.bucketId.startsWith("gemini-")
+      // Only the main Gemini group uses these two ids. Other `gemini-` buckets, such as
+      // Gemini 4 Argon, are their own group and keep the group name.
+      const family = /^gemini-(?:5h|weekly)$/.test(bucket.bucketId)
         ? "Gemini"
         : bucket.bucketId.startsWith("3p-")
           ? "Claude & GPT (shared)"
@@ -264,7 +272,7 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
           HttpClientRequest.post(`${endpoint}/v1internal:${operation}`).pipe(
             HttpClientRequest.setHeaders({
               Authorization: `Bearer ${accessToken}`,
-              "User-Agent": `antigravity/hub/1.0.0 (aidev_client; os_type=${platform}; arch=${architecture}; cl=963137146)`,
+              "User-Agent": `antigravity/hub/${ANTIGRAVITY_CLIENT_VERSION} (aidev_client; os_type=${platform}; arch=${architecture}; cl=963137146)`,
             }),
             HttpClientRequest.bodyJsonUnsafe(token.project_id ? { project: token.project_id } : {}),
           ),

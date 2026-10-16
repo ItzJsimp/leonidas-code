@@ -160,6 +160,19 @@ describe("glance and panel helpers", () => {
     ]);
   });
 
+  it("pairs the weekly row with the session row's model group when every label names a group", () => {
+    const rows = glanceLimitRows([
+      window("gemini-5h", "session", "Gemini · 5-hour", { windowDurationMins: 300 }),
+      window("gemini-weekly", "weekly", "Gemini · Weekly", { usedPercent: 98 }),
+      window("3p-5h", "session", "Claude & GPT (shared) · 5-hour", { windowDurationMins: 300 }),
+      window("3p-weekly", "weekly", "Claude & GPT (shared) · Weekly"),
+    ]);
+    expect(rows.map((row) => [row.label, row.window?.id])).toEqual([
+      ["5-hour limit", "gemini-5h"],
+      ["Weekly limit", "gemini-weekly"],
+    ]);
+  });
+
   it("keeps a not-reported row instead of dropping a missing window", () => {
     const rows = glanceLimitRows([window("w", "weekly", "Weekly")]);
     expect(rows.map((row) => [row.label, row.window?.id ?? null])).toEqual([
