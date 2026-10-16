@@ -47,6 +47,8 @@ const KEY_LINE = /^([A-Za-z0-9_-]+):[ \t]*(.*)$/;
 const LIST_ITEM = /^[ \t]*-(?:[ \t]+(.*))?$/;
 const ACTIVITY_LINE =
   /^-\s+(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?\s+(.+?)(?: \(([^()]*)\))?:\s+(.*)$/;
+// Activity lines written before 2026-10-16 separate the note with a spaced em dash.
+const LEGACY_SEPARATOR = ` ${String.fromCharCode(0x2014)} `;
 const ACTIVITY_VERBS = new Set(["claimed", "released", "completed", "blocked", "reopened"]);
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -368,7 +370,9 @@ function parseActivity(taskId: string, section: string): TaskBoardHistoryEntry[]
       Number(match[5] ?? 0),
     ).getTime();
     const text = match[8]!.trim();
-    const separator = text.indexOf(" — ");
+    // New lines use " - "; older lines use the legacy separator.
+    const legacy = text.indexOf(LEGACY_SEPARATOR);
+    const separator = legacy >= 0 ? legacy : text.indexOf(" - ");
     const head = separator < 0 ? text : text.slice(0, separator);
     const verb = /^[a-z]+/.exec(head)?.[0] ?? "";
     const action = ACTIVITY_VERBS.has(verb)
@@ -564,12 +568,92 @@ function nestedRepoDirs(projectDir: string): string[] {
   }
 }
 
+export interface AiosTaskFolder {
+  readonly dir: string;
+  readonly projectHint: string | undefined;
+  readonly global: boolean;
+}
+
+/**
+ * Lists the folders that hold cards, global first: `<root>/tasks`, then `<root>/projects/<slug>/tasks`
+ * and the `tasks` folder of each nested game repo. A folder may not exist.
+ */
+export function aiosTaskFolders(root: string): ReadonlyArray<AiosTaskFolder> {
+  const folders: AiosTaskFolder[] = [
+    { dir: NodePath.join(root, "tasks"), projectHint: undefined, global: true },
+  ];
+  try {
+    for (const entry of NodeFS.readdirSync(NodePath.join(root, "projects"), {
+      withFileTypes: true,
+    })) {
+      if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
+      const projectDir = NodePath.join(root, "projects", entry.name);
+      folders.push({
+        dir: NodePath.join(projectDir, "tasks"),
+        projectHint: entry.name,
+        global: false,
+      });
+      // A child folder with its own .git is a separate repo (a game) that keeps its own cards.
+      // Read-only here: write-back looks only in the AIOS task folders.
+      for (const child of nestedRepoDirs(projectDir)) {
+        folders.push({
+          dir: NodePath.join(child, "tasks"),
+          projectHint: entry.name,
+          global: false,
+        });
+      }
+    }
+  } catch {
+    // No projects folder: only the global cards exist.
+  }
+  return folders;
+}
+
+/** Parses one card file, reusing the cache while its mtime and size are unchanged. */
+function readCardFile(
+  file: string,
+  stat: NodeFS.Stats,
+  projectHint: string | undefined,
+  opts: { now: number; cache?: AiosCardCache | undefined },
+): TaskBoardTask | null {
+  const cached = opts.cache?.get(file);
+  if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.task;
+  const task = cardToTask({
+    fileName: NodePath.basename(file),
+    raw: NodeFS.readFileSync(file, "utf8"),
+    mtimeMs: stat.mtimeMs,
+    now: opts.now,
+    ...(projectHint ? { projectHint } : {}),
+  });
+  opts.cache?.set(file, { mtimeMs: stat.mtimeMs, size: stat.size, task });
+  return task;
+}
+
+/**
+ * Reads the one card at `file` (an AIOS card path from `findCardFile`). Used after a write, so
+ * the caller does not rescan the whole board to see its own change.
+ */
+export function readAiosCardFile(
+  root: string,
+  file: string,
+  opts: { now: number; cache?: AiosCardCache },
+): TaskBoardTask | null {
+  const relative = NodePath.relative(NodePath.join(root, "projects"), file).split(NodePath.sep);
+  const projectHint =
+    relative.length > 1 && relative[0] !== ".." && !NodePath.isAbsolute(relative[0]!)
+      ? relative[0]
+      : undefined;
+  return readCardFile(file, NodeFS.statSync(file), projectHint, opts);
+}
+
 /** Reads every task card under `<root>/tasks` and `<root>/projects/<slug>/tasks`. Never throws per card. */
 export function readAiosTasks(
   root: string,
   opts: { now: number; cache?: AiosCardCache },
 ): ReadonlyArray<TaskBoardTask> {
   const seenFiles = new Set<string>();
+  // File names in the global folder: a project view links to the global card with the same name.
+  const globalNames = new Set<string>();
   const byId = new Map<string, { task: TaskBoardTask; mtimeMs: number; global: boolean }>();
 
   const visit = (tasksDir: string, projectHint: string | undefined, global: boolean) => {
@@ -588,37 +672,26 @@ export function readAiosTasks(
       try {
         const symlink = entry.isSymbolicLink();
         if (!symlink && !entry.isFile()) continue;
-        // Project task views link to global cards already seen; one readlink skips them without a realpath.
-        if (
-          symlink &&
-          seenFiles.has(
-            keyFor(NodePath.resolve(baseDir, NodeFS.readlinkSync(NodePath.join(baseDir, name)))),
-          )
-        )
-          continue;
+        if (symlink) {
+          // Project task views link to global cards already seen. A same-name link is skipped with
+          // no file system call; any other link costs one readlink.
+          if (globalNames.has(keyFor(name))) continue;
+          const target = keyFor(
+            NodePath.resolve(baseDir, NodeFS.readlinkSync(NodePath.join(baseDir, name))),
+          );
+          if (seenFiles.has(target)) continue;
+        }
         const file = symlink
           ? NodeFS.realpathSync.native(NodePath.join(baseDir, name))
           : NodePath.join(baseDir, name);
         const seenKey = keyFor(file);
         if (seenFiles.has(seenKey)) continue;
         seenFiles.add(seenKey);
+        if (global) globalNames.add(keyFor(name));
         const stat = NodeFS.statSync(file);
         if (!stat.isFile()) continue;
 
-        const cached = opts.cache?.get(file);
-        let task: TaskBoardTask | null;
-        if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
-          task = cached.task;
-        } else {
-          task = cardToTask({
-            fileName: NodePath.basename(file),
-            raw: NodeFS.readFileSync(file, "utf8"),
-            mtimeMs: stat.mtimeMs,
-            now: opts.now,
-            ...(projectHint ? { projectHint } : {}),
-          });
-          opts.cache?.set(file, { mtimeMs: stat.mtimeMs, size: stat.size, task });
-        }
+        const task = readCardFile(file, stat, projectHint, opts);
         if (!task) continue;
 
         const existing = byId.get(task.id);
@@ -634,45 +707,14 @@ export function readAiosTasks(
     }
   };
 
-  visit(NodePath.join(root, "tasks"), undefined, true);
-  try {
-    for (const entry of NodeFS.readdirSync(NodePath.join(root, "projects"), {
-      withFileTypes: true,
-    })) {
-      if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
-      const projectDir = NodePath.join(root, "projects", entry.name);
-      visit(NodePath.join(projectDir, "tasks"), entry.name, false);
-      // A child folder with its own .git is a separate repo (a game) that keeps its own cards.
-      // Read-only here: write-back looks only in the AIOS task folders.
-      for (const child of nestedRepoDirs(projectDir)) {
-        visit(NodePath.join(child, "tasks"), entry.name, false);
-      }
-    }
-  } catch {
-    // No projects folder: only the global cards exist.
-  }
+  for (const folder of aiosTaskFolders(root)) visit(folder.dir, folder.projectHint, folder.global);
   return [...byId.values()].map((found) => found.task);
 }
 
 /** Finds a card file by its `sourceFile`: global tasks first, then project task folders. */
 export function findCardFile(root: string, sourceFile: string): string | null {
   if (sourceFile !== NodePath.basename(sourceFile)) return null;
-  const candidates = [NodePath.join(root, "tasks", sourceFile)];
-  try {
-    for (const entry of NodeFS.readdirSync(NodePath.join(root, "projects"), {
-      withFileTypes: true,
-    })) {
-      if (!entry.name.startsWith("_") && !entry.name.startsWith(".")) {
-        const projectDir = NodePath.join(root, "projects", entry.name);
-        candidates.push(NodePath.join(projectDir, "tasks", sourceFile));
-        for (const child of nestedRepoDirs(projectDir)) {
-          candidates.push(NodePath.join(child, "tasks", sourceFile));
-        }
-      }
-    }
-  } catch {
-    // Fall through with the global candidate only.
-  }
+  const candidates = aiosTaskFolders(root).map((folder) => NodePath.join(folder.dir, sourceFile));
   return candidates.find((candidate) => NodeFS.existsSync(candidate)) ?? null;
 }
 
@@ -876,7 +918,7 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   setKey("last_touched", localDate(now));
   const parts = [...lifecycle, ...claim, ...other];
   const label = patch.agentLabel ? oneLine(patch.agentLabel).replace(/[()]/g, "") : "";
-  const summary = (parts.length > 0 ? parts.join(", ") : "progress") + (note ? ` — ${note}` : "");
+  const summary = (parts.length > 0 ? parts.join(", ") : "progress") + (note ? ` - ${note}` : "");
   const entry = `- ${localDate(now)} ${localTime(now)} ${oneLine(patch.actor)}${label ? ` (${label})` : ""}: ${summary}`;
 
   return header() + appendActivity(text.slice(span.bodyStart), entry, eol);

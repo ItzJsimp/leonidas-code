@@ -11,6 +11,7 @@ import {
   findAiosRoot,
   findCardFile,
   parseFrontmatter,
+  readAiosCardFile,
   readAiosTasks,
   resolveMember,
   statusFromCard,
@@ -486,8 +487,24 @@ describe("applyCardPatch", () => {
     );
     const next = applyCardPatch(raw, { ...patchBase, note: "half done" }, NOW);
     expect(next).toContain(
-      "- 2026-10-10 08:00 Mob: claimed\n- 2026-10-11 14:30 Jake: progress — half done\n\n## Later\n\ntext\n",
+      "- 2026-10-10 08:00 Mob: claimed\n- 2026-10-11 14:30 Jake: progress - half done\n\n## Later\n\ntext\n",
     );
+  });
+
+  it("writes notes with a hyphen and reads them back, old em dash lines included", () => {
+    const next = applyCardPatch(
+      card(header),
+      { ...patchBase, claimedBy: "Jake", note: "starting" },
+      NOW,
+    );
+    expect(next).not.toContain(String.fromCharCode(0x2014));
+    const legacy = `- 2026-10-10 08:00 Mob: completed ${String.fromCharCode(0x2014)} shipped
+`;
+    const task = cardToTask({ fileName: "a.md", raw: next + legacy, mtimeMs: NOW, now: NOW });
+    expect(task?.history.map((entry) => [entry.action, entry.note])).toEqual([
+      ["claimed", "starting"],
+      ["completed", "shipped"],
+    ]);
   });
 
   it("returns the card untouched when nothing changes and rejects cards without frontmatter", () => {
@@ -636,6 +653,24 @@ describe("AIOS folder reading", () => {
     } finally {
       NodeFS.rmSync(NodePath.join(root, "projects", "beta", "tasks", "dup.md"));
     }
+  });
+
+  it("reads one card file with the same project as a full scan", () => {
+    const cache: AiosCardCache = new Map();
+    const local = readAiosCardFile(
+      root,
+      NodePath.join(root, "projects", "beta", "tasks", "local.md"),
+      {
+        now: NOW,
+        cache,
+      },
+    );
+    expect(local?.id).toBe("task-local");
+    expect(local?.projectSlug).toBe("beta");
+    expect(
+      readAiosCardFile(root, NodePath.join(root, "tasks", "crlf.md"), { now: NOW, cache })?.id,
+    ).toBe("task-crlf");
+    expect(cache.size).toBe(2);
   });
 
   it("returns an empty list for a missing root", () => {
