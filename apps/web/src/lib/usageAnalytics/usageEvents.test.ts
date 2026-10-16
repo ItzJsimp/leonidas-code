@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  USAGE_EVENT_NAMES,
   buildPostHogPayload,
   featureIdFromPathname,
   isCompleteUsageEvent,
@@ -68,6 +69,28 @@ describe("health events", () => {
     });
     expect(sanitizeUsageProperties("error_shown", { kind: "Error at C:/Users/x" })).toEqual({});
     expect(sanitizeUsageProperties("crash", { message: "my prompt", path: "sk-123" })).toEqual({});
+  });
+});
+
+describe("every event keeps private text out", () => {
+  const hostile = ["C:/Users/x", "my prompt", "sk-123", "a@b.com", "/home/me/code.ts"];
+  const fields = ["step", "feature", "element", "kind", "providers", "message", "path", "title"];
+
+  it.each(USAGE_EVENT_NAMES)("%s never carries a hostile string", (name) => {
+    for (const text of hostile) {
+      const input = Object.fromEntries(fields.map((field) => [field, text]));
+      const body = buildPostHogPayload({
+        apiKey: "k",
+        installId: "id",
+        friendLabel: "",
+        event: name,
+        properties: sanitizeUsageProperties(name, { ...input, providers: [text] }),
+        appVersion: "1",
+        os: "windows",
+        timestamp: new Date(0),
+      });
+      expect(JSON.stringify(body)).not.toContain(text);
+    }
   });
 });
 

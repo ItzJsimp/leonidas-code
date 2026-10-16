@@ -35,7 +35,14 @@ export function UsageAnalyticsConsentDialog() {
               We send: the app version, your system type, and how long and how often you use the
               app.
             </li>
-            <li>We send: which areas of the app you open, and how long setup took.</li>
+            <li>
+              We send: which areas and main buttons you open, how long setup took, and which setup
+              step you reached.
+            </li>
+            <li>
+              We send: how many skills and task cards you have, which AI services you connect, how
+              many messages you send, and a type label when an error or update happens.
+            </li>
             <li>We never send: your messages, replies, code, file names, folder paths or keys.</li>
             <li>We use a random ID. It has no name, email or account.</li>
           </ul>

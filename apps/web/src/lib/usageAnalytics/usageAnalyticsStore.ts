@@ -3,6 +3,13 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "../storage";
 
+/**
+ * Bump when an event adds a data category the dialog did not list. The persist
+ * migration below then turns older "granted" answers back into "unknown", so the
+ * user is asked again. Version 2: setup steps, AIOS counts, providers, errors.
+ */
+export const USAGE_CONSENT_VERSION = 2;
+
 export type UsageConsent = "unknown" | "granted" | "declined";
 
 interface UsageAnalyticsState {
@@ -69,7 +76,14 @@ export const useUsageAnalyticsStore = create<UsageAnalyticsState>()(
     }),
     {
       name: "leonidas:usage-analytics:v1",
-      version: 1,
+      version: USAGE_CONSENT_VERSION,
+      migrate: (persisted) => {
+        const state = persisted as Partial<UsageAnalyticsState> | undefined;
+        // Older consent covered fewer categories: ask again. A "no" stays a no.
+        return state?.consent === "granted"
+          ? ({ ...state, consent: "unknown" } as UsageAnalyticsState)
+          : (state as UsageAnalyticsState);
+      },
       storage: createJSONStorage(() =>
         resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
       ),
