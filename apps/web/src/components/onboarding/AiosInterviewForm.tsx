@@ -8,7 +8,6 @@ import { useState } from "react";
 import {
   INTERVIEW_QUESTIONS,
   buildAiosFiles,
-  cleanAnswer,
   firstMissingRequired,
   planCreateOnly,
   type InterviewAnswers,
@@ -175,7 +174,7 @@ export function AiosInterviewForm({
           {!canOperate || !canWriteFiles
             ? "This computer cannot save files here. Use the AI option below."
             : missing !== null
-              ? `Answer “${cleanAnswer(missing.label)}” to continue.`
+              ? `Answer “${missing.label}” to continue.`
               : "Existing files are never replaced."}
         </p>
       </div>

@@ -245,13 +245,30 @@ export function LeonidasAiosStep({
               </Button>
             </div>
           </div>
-          <Button
-            size="xs"
-            variant="ghost-muted"
-            onClick={() => setMode(mode === "interview" ? "run" : "interview")}
-          >
-            {mode === "interview" ? "Build it with AI instead" : "Answer the questions myself"}
-          </Button>
+          <div className="flex flex-wrap gap-x-3">
+            {mode === "interview" ? (
+              <Button
+                size="xs"
+                variant="ghost-muted"
+                onClick={() => setMode(canOperate ? "run" : "prompt")}
+              >
+                Build it with AI instead
+              </Button>
+            ) : (
+              <>
+                <Button size="xs" variant="ghost-muted" onClick={() => setMode("interview")}>
+                  Answer the questions myself
+                </Button>
+                <Button
+                  size="xs"
+                  variant="ghost-muted"
+                  onClick={() => setMode(mode === "run" ? "prompt" : "run")}
+                >
+                  {mode === "run" ? "Copy the setup message for another AI" : "Use the setup chat"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </ScrollArea>
       <div className="mt-6 flex items-center justify-between">
