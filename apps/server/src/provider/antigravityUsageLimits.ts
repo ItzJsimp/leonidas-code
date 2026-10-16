@@ -256,6 +256,9 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
       operation: string,
       parse: (response: unknown) => Effect.Effect<ServerProviderUsageWindow[], E>,
     ) {
+      // Each endpoint lists only the buckets it sees for this account (the daily one
+      // omits Gemini), so read every endpoint and keep the union.
+      const merged = new Map<string, ServerProviderUsageWindow>();
       for (const endpoint of ENDPOINTS) {
         const windows = yield* request(
           HttpClientRequest.post(`${endpoint}/v1internal:${operation}`).pipe(
@@ -272,9 +275,13 @@ export const makeAntigravityUsageProbe = Effect.fn("makeAntigravityUsageProbe")(
             return Effect.succeed([] as ServerProviderUsageWindow[]);
           }),
         );
-        if (windows.length > 0) return windows;
+        // A bucket on both endpoints keeps the more-used reading, the one closest to its limit.
+        for (const window of windows) {
+          const previous = merged.get(window.id);
+          if (!previous || window.usedPercent > previous.usedPercent) merged.set(window.id, window);
+        }
       }
-      return [];
+      return [...merged.values()];
     });
     const summary = yield* fetchWindows("retrieveUserQuotaSummary", (response) =>
       decodeSummary(response).pipe(Effect.map(summaryWindows)),

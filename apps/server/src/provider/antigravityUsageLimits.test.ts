@@ -50,6 +50,7 @@ const summary = {
 const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
   options: {
     summary?: unknown;
+    dailySummary?: unknown;
     models?: unknown;
     summaryStatus?: number;
     tokenStatus?: number;
@@ -96,7 +97,12 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
       return HttpClientResponse.fromWeb(
         request,
         request.url.endsWith(":retrieveUserQuotaSummary")
-          ? Response.json(options.summary ?? summary, { status: options.summaryStatus ?? 200 })
+          ? Response.json(
+              request.url.startsWith("https://daily-cloudcode-pa.") && options.dailySummary
+                ? options.dailySummary
+                : (options.summary ?? summary),
+              { status: options.summaryStatus ?? 200 },
+            )
           : Response.json(options.models ?? { models: {} }),
       );
     }),
@@ -130,9 +136,22 @@ describe("Antigravity subscription limits", () => {
       expect(byId.get("3p-5h")?.usedPercent).toBeCloseTo(56);
       yield* probe;
       expect(requests.filter((request) => request.url.endsWith("/token"))).toHaveLength(1);
+      // Two probes, each reading both endpoints: the cache keeps only the token.
       expect(
         requests.filter((request) => request.url.endsWith(":retrieveUserQuotaSummary")),
-      ).toHaveLength(2);
+      ).toHaveLength(4);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("keeps Gemini buckets that the daily endpoint does not list", () =>
+    Effect.gen(function* () {
+      // Live shape: the daily endpoint lists only the Claude and GPT group.
+      const { probe } = yield* fixture({
+        dailySummary: { groups: [summary.groups[1]] },
+        summary: { groups: [summary.groups[0]] },
+      });
+      const ids = (yield* probe).windows.map((window) => window.id).sort();
+      expect(ids).toEqual(["3p-5h", "3p-weekly", "gemini-5h", "gemini-weekly"]);
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
