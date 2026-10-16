@@ -69,7 +69,7 @@ Execute approved and auto-tier writes using zero-token CLI helpers:
 pwsh scripts/New-Memory.ps1 -Name "<Memory Title>" -Type <decision|preference|feedback|system|reference> -Description "<Dense Summary>" -Content "<Body Content>"
 
 # 2. Operational Tasks (🟢 Auto-applied if unambiguous)
-pwsh scripts/New-Task.ps1 -Name "<Verb-First Task Title>" -Priority <Now|Next|Someday> -Scope <personal|structural>
+pwsh scripts/New-Task.ps1 -Name "<Verb-First Task Title>" -Priority <Critical|High|Medium|Low> -Scope <personal|structural>
 
 # 3. Quick Capture (🟢 Auto-applied for unorganized thoughts)
 pwsh scripts/Capture-Thought.ps1 -Content "<Thought Content>"

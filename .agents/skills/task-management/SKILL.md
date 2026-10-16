@@ -24,7 +24,7 @@ Scoping rules applied at capture, every time:
 1. **Verb-first title**, one outcome. An "and" in the title means two tasks.
 2. **`## Done when`: 3 to 6 falsifiable claims**, each naming its probe (command, file, exit code, observable state). Physical tasks name an observable end state ("sink empty, dishes racked").
 3. **`scope: personal`** for the user's life, hardware, money, health; `structural` for reusable AIOS tooling.
-4. **Priority `Next`** unless the user says now or it blocks the system (tasks-standard §2).
+4. **Priority `Medium`** unless the user says now (`High`) or it blocks the system (tasks-standard §2). `Now`, `Next` and `Someday` are retired words.
 
 `New-Task.ps1` runs the Delegation Gate on the new file and prints the lane plus any failing gate. Read that line; it decides the next move.
 

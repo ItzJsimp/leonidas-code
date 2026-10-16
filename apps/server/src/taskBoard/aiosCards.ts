@@ -303,6 +303,8 @@ function priorityFromCard(value: string | undefined): TaskBoardTaskPriority {
       return "critical";
     case "high":
     case "p1":
+    // Older cards and skills wrote "Now" (urgent) and "Next" (the default); "Next" stays medium.
+    case "now":
       return "high";
     case "low":
     case "p3":
@@ -594,7 +596,7 @@ export function aiosTaskFolders(root: string): ReadonlyArray<AiosTaskFolder> {
         global: false,
       });
       // A child folder with its own .git is a separate repo (a game) that keeps its own cards.
-      // Read-only here: write-back looks only in the AIOS task folders.
+      // Board edits write back to that repo's card file (see `findCardFile`).
       for (const child of nestedRepoDirs(projectDir)) {
         folders.push({
           dir: NodePath.join(child, "tasks"),
