@@ -82,6 +82,24 @@ describe("estimatePersonaStartTokens", () => {
       systemPromptChars: 4_000,
       tools: ["Read", "Grep", "mcp__t3-code__preview_open", "mcp__t3-code__preview_click"],
     });
-    expect(withMcp - lean).toBe(500);
+    expect(withMcp - lean).toBe(2_600);
+  });
+
+  it("lands within 25 percent of the measured roblox-ui-designer start", () => {
+    const estimate = estimatePersonaStartTokens({
+      systemPromptChars: 12_575,
+      tools: [
+        "Read",
+        "Edit",
+        "Write",
+        "Glob",
+        "Grep",
+        "Bash",
+        ...["open", "navigate", "snapshot", "click", "resize"].map(
+          (n) => `mcp__t3-code__preview_${n}`,
+        ),
+      ],
+    });
+    expect(Math.abs(estimate - 19_001) / 19_001).toBeLessThan(0.25);
   });
 });

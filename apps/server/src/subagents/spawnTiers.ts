@@ -101,8 +101,11 @@ export function resolveSpawnTier(input: {
  * names app tools gets only those tools; the rest are hidden (see
  * claudePersonaToolShape), so each costs about one schema.
  * Calibrated live: 6 built-in tools and a 6.6 KB prompt measured 10,789 start
- * tokens; 2 built-in and 3 app tools with a tiny prompt measured 5,500. Before
- * the unlisted app tools were hidden, the same 3-tool persona measured 48,600.
+ * tokens; 2 built-in and 3 small app tools with a tiny prompt measured 5,500.
+ * Before the unlisted app tools were hidden, the same 3-tool persona measured
+ * 48,600. The preview tools carry long schemas: roblox-ui-designer (12.6 KB
+ * prompt, 6 built-in, 5 preview tools) measured 19,001 on Opus, so an app tool
+ * is charged high and the card errs toward the larger number.
  */
 export function estimatePersonaStartTokens(input: {
   readonly systemPromptChars: number;
@@ -120,4 +123,4 @@ export function estimatePersonaStartTokens(input: {
 
 const PERSONA_HARNESS_FLOOR_TOKENS = 6_500;
 const PERSONA_TOKENS_PER_TOOL = 450;
-const PERSONA_TOKENS_PER_APP_TOOL = 250;
+const PERSONA_TOKENS_PER_APP_TOOL = 1_300;
