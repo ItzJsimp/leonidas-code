@@ -2264,7 +2264,7 @@ function OpenCommandPaletteDialog(props: {
     kind: "action",
     value: "action:capture",
     searchTerms: ["capture", "note", "idea", "task", "inbox", "brain dump", "save"],
-    title: "Quick capture",
+    title: "Add to notepad",
     icon: <InboxIcon className={ITEM_ICON_CLASS} />,
     shortcutCommand: "capture.open",
     run: async () => {

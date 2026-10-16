@@ -531,6 +531,15 @@ export const readAntigravityUsage = Effect.fn("readAntigravityUsage")(function* 
  * Decodes the latest turn token usage from an Antigravity generation metadata protobuf blob.
  */
 export function decodeAntigravityTurnTokenUsage(dataBlob: unknown): TurnTokenUsage | undefined {
+  return decodeGeneration(dataBlob)?.usage;
+}
+
+interface DecodedGeneration {
+  readonly usage: TurnTokenUsage;
+  readonly timestampMs: number | null;
+}
+
+function decodeGeneration(dataBlob: unknown): DecodedGeneration | undefined {
   if (!(dataBlob instanceof Uint8Array)) return undefined;
   try {
     const meta = metadata(dataBlob, false);
@@ -542,32 +551,90 @@ export function decodeAntigravityTurnTokenUsage(dataBlob: unknown): TurnTokenUsa
     const cacheCreation = numberAt(usage, 4);
     const reasoningTokens = Math.min(outputTokens, numberAt(usage, 9));
     return {
-      usageStatus: "complete",
-      usageScope: "main_agent",
-      inputTokens: uncachedInput + cachedInput,
-      cachedInputTokens: cachedInput,
-      ...(cacheCreation > 0 ? { cacheCreationTokens: cacheCreation } : {}),
-      outputTokens,
-      reasoningTokens,
-      hasSubagents: false,
+      timestampMs: meta.timestampMs,
+      usage: {
+        usageStatus: "complete",
+        usageScope: "main_agent",
+        inputTokens: uncachedInput + cachedInput,
+        cachedInputTokens: cachedInput,
+        ...(cacheCreation > 0 ? { cacheCreationTokens: cacheCreation } : {}),
+        outputTokens,
+        reasoningTokens,
+        hasSubagents: false,
+      },
     };
   } catch {
     return undefined;
   }
 }
 
+/** Turn usage plus the size of the chat memory after the turn. */
+export type AntigravityTurnUsage = TurnTokenUsage & {
+  /** Input plus output of the newest model call: what the next call starts from. */
+  readonly contextUsedTokens: number;
+};
+
+/** A model call can start a little before its row timestamp; allow for clock skew. */
+const TURN_START_SLACK_MS = 2_000;
+
 /**
- * Reads the latest turn token usage from an active Antigravity session database.
+ * Summarizes one turn from generation rows, newest first.
+ *
+ * A turn is many model calls: each tool result starts another one. The context size is the
+ * newest call that reported tokens, because the database can end with an empty row for a call
+ * that has not answered yet. Output and reasoning add up over the calls that started inside
+ * the turn, so tokens per second matches what the model wrote. Without a turn start, or with
+ * no row stamped inside it, the newest call stands alone.
+ */
+export function summarizeAntigravityTurnUsage(
+  rowsNewestFirst: ReadonlyArray<unknown>,
+  turn?: { readonly startedAtMs: number | null },
+): AntigravityTurnUsage | undefined {
+  const generations = rowsNewestFirst
+    .map(decodeGeneration)
+    .filter(
+      (generation): generation is DecodedGeneration =>
+        generation !== undefined &&
+        (generation.usage.inputTokens ?? 0) + (generation.usage.outputTokens ?? 0) > 0,
+    );
+  const newest = generations[0];
+  if (newest === undefined) return undefined;
+  const startedAtMs = turn?.startedAtMs ?? null;
+  const inTurn =
+    startedAtMs === null
+      ? []
+      : generations.filter(
+          (generation) =>
+            generation.timestampMs !== null &&
+            generation.timestampMs >= startedAtMs - TURN_START_SLACK_MS,
+        );
+  const counted = inTurn.length > 0 ? inTurn : [newest];
+  return {
+    ...newest.usage,
+    outputTokens: counted.reduce((sum, { usage }) => sum + (usage.outputTokens ?? 0), 0),
+    reasoningTokens: counted.reduce((sum, { usage }) => sum + (usage.reasoningTokens ?? 0), 0),
+    contextUsedTokens: (newest.usage.inputTokens ?? 0) + (newest.usage.outputTokens ?? 0),
+  };
+}
+
+/** Newest calls to read. A turn with more calls than this counts only its latest ones. */
+const TURN_ROW_LIMIT = 60;
+
+/**
+ * Reads the turn token usage from an active Antigravity session database.
  */
 export const readLatestAntigravityTurnTokenUsage = Effect.fn("readLatestAntigravityTurnTokenUsage")(
-  function* (dbPath: string) {
+  function* (dbPath: string, turn?: { readonly startedAtMs: number | null }) {
     const sql = yield* SqlClient.SqlClient;
     const rows = yield* sql
-      .unsafe<{ readonly data: unknown }>("SELECT data FROM gen_metadata ORDER BY idx DESC LIMIT 1")
+      .unsafe<{
+        readonly data: unknown;
+      }>(`SELECT data FROM gen_metadata ORDER BY idx DESC LIMIT ${TURN_ROW_LIMIT}`)
       .pipe(Effect.orElseSucceed(() => []));
-    const first = rows[0];
-    if (!first || !first.data) return undefined;
-    return decodeAntigravityTurnTokenUsage(first.data);
+    return summarizeAntigravityTurnUsage(
+      rows.map((row) => row.data),
+      turn,
+    );
   },
 );
 

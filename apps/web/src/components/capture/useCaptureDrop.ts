@@ -1,3 +1,4 @@
+import { FOCUS_ITEM_MAX_LENGTH } from "@t3tools/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -6,34 +7,39 @@ import { useCallback } from "react";
 
 import { toastManager } from "~/components/ui/toast";
 import { usePrimaryEnvironmentId } from "~/state/environments";
-import { useEnvironmentQuery } from "~/state/query";
-import { inboxDrop, inboxUndo, taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import { focusUpdate } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
+import { useFocusWidgetStore } from "../focus/focusWidgetStore";
 import { failureText } from "../taskBoard/useTaskActions.logic";
 
 export type CaptureDropResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly error: string | null };
 
+/** A notepad line is one line: fold line breaks to spaces and cap the length. */
+export function toNotepadLine(text: string): string {
+  return text
+    .replace(/\s*\n\s*/g, " ")
+    .trim()
+    .slice(0, FOCUS_ITEM_MAX_LENGTH);
+}
+
 /**
- * Saves text to the inbox and shows the one toast every capture entry point shares, with Undo.
+ * Adds text to the notepad (the Global section of `<AIOS>/memory/focus.md`) and shows the one
+ * toast every capture entry point shares, with a button that opens the notepad.
  * `error` is null when the command was interrupted and nothing should be reported.
  */
 export function useCaptureDrop() {
   const environmentId = usePrimaryEnvironmentId();
-  const workspace = useEnvironmentQuery(
-    environmentId ? taskBoardWorkspaceQuery({ environmentId, input: {} }) : null,
-  );
-  const runDrop = useAtomCommand(inboxDrop, { reportFailure: false });
-  const runUndo = useAtomCommand(inboxUndo, { reportFailure: false });
-  const actor = workspace.data?.member ?? "Leonidas Code";
+  const runUpdate = useAtomCommand(focusUpdate, { reportFailure: false });
 
   const drop = useCallback(
-    async (text: string, source?: string): Promise<CaptureDropResult> => {
-      if (environmentId === null || text.trim().length === 0) return { ok: false, error: null };
-      const result = await runDrop({
+    async (text: string): Promise<CaptureDropResult> => {
+      const line = toNotepadLine(text);
+      if (environmentId === null || line.length === 0) return { ok: false, error: null };
+      const result = await runUpdate({
         environmentId,
-        input: { text: text.trim(), ...(source ? { source } : {}), actor },
+        input: { op: "add", projectId: null, text: line },
       });
       if (result._tag !== "Success") {
         return {
@@ -43,23 +49,21 @@ export function useCaptureDrop() {
             : failureText(squashAtomCommandFailure(result), "Could not save your note. Try again."),
         };
       }
-      const id = result.value.id;
       const toastId = toastManager.add({
         type: "success",
-        title: result.value.kind === "task" ? "Added to your tasks" : "Saved to your inbox",
-        ...(result.value.filedTask ? { description: result.value.filedTask } : {}),
+        title: "Added to your notepad",
         timeout: 4000,
         actionProps: {
-          children: "Undo",
+          children: "Show notepad",
           onClick: () => {
             toastManager.close(toastId);
-            void runUndo({ environmentId, input: { id } });
+            useFocusWidgetStore.getState().setVisible(true);
           },
         },
       });
       return { ok: true };
     },
-    [actor, environmentId, runDrop, runUndo],
+    [environmentId, runUpdate],
   );
 
   return { drop, canDrop: environmentId !== null };

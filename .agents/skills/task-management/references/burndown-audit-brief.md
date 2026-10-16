@@ -7,7 +7,7 @@ For EACH task:
 
 1. Read the card (frontmatter + `## Done when`).
 2. Verify against reality: `git log --oneline --since=2026-08-01 -i --grep "<distinctive keyword>"`, `git log --oneline -- <path>` for files the gates name, existence of named files/scripts/functions/config keys (Glob/Grep), any `## Resolution`, superseding task or ADR (grep `decisions/` and `tasks/`). Max ~4 tool calls per task; batch git greps for several tasks in one Bash call.
-3. Classify: DONE (every gate demonstrably holds, cite evidence) | PARTIAL (name gates that hold + evidence) | SUPERSEDED (cite what made it moot) | OPEN. Personal/physical tasks you cannot verify: OPEN, note "jake-verify".
+3. Classify: DONE (every gate demonstrably holds, cite evidence) | PARTIAL (name gates that hold + evidence) | SUPERSEDED (cite what made it moot) | OPEN. Personal/physical tasks you cannot verify: OPEN, note "human-verify".
 4. Scope: OK if 3-6 falsifiable Done-when claims each naming a probe. Else VAGUE or NO-GATES with proposed gates (max 3, semicolon-separated).
 
 Checkpoint: after every ~10 tasks, append completed rows to `%TEMP%/taskaudit/resultN.md` via Bash heredoc (append, never overwrite), so progress survives interruption. On start, if resultN.md already exists, skip slugs already in it.

@@ -7,7 +7,9 @@ import { HttpClient, HttpClientResponse } from "effect/http";
 import {
   canonicalModelKey,
   matchBenchmarks,
+  parseArtificialAnalysis,
   parseBenchLm,
+  splitAaName,
   splitEffort,
 } from "./ModelBenchmarkSources.ts";
 import * as ModelBenchmarks from "./ModelBenchmarks.ts";
@@ -191,5 +193,57 @@ describe("ModelBenchmarks", () => {
       expect(report.sources[0]?.state).toBe("unavailable");
       expect(report.rows[0]?.matches).toEqual([]);
     }).pipe(Effect.provide(harness.layer));
+  });
+});
+
+describe("Artificial Analysis source", () => {
+  it("reads the effort out of AA names", () => {
+    expect(splitAaName("Claude Sonnet 5.5 (Max, Default Fallback)")).toEqual({
+      base: "Claude Sonnet 5.5",
+      effort: "max",
+    });
+    expect(splitAaName("GPT-6.1 Sol (Medium)")).toEqual({ base: "GPT-6.1 Sol", effort: "medium" });
+    expect(splitAaName("Some Model (Non-reasoning)")).toEqual({ base: "Some Model" });
+  });
+
+  it("turns each effort row into an entry with its own numbers", () => {
+    const parsed = parseArtificialAnalysis([
+      {
+        data: [
+          {
+            name: "Claude Sonnet 5.5 (Medium)",
+            slug: "claude-sonnet-5-5-medium",
+            model_creator: { name: "Anthropic" },
+            evaluations: {
+              artificial_analysis_intelligence_index: 52,
+              artificial_analysis_coding_index: 49.5,
+            },
+            performance: {
+              median_output_tokens_per_second: 150,
+              median_time_to_first_token_seconds: 1.2,
+              median_time_to_first_answer_token: 9,
+            },
+            pricing: { price_1m_input_tokens: 3, price_1m_output_tokens: 15 },
+            artificial_analysis_intelligence_index_cost: { cost_per_task: { total_cost: 2.1 } },
+          },
+          { name: "Empty (High)", slug: "empty-high" },
+        ],
+      },
+    ]);
+    expect(parsed.entries).toHaveLength(1);
+    expect(parsed.entries[0]).toMatchObject({
+      source: "artificialAnalysis",
+      name: "Claude Sonnet 5.5 (medium)",
+      effort: "medium",
+      values: {
+        "aa:index": 52,
+        "aa:coding": 49.5,
+        "aa:speed": 150,
+        "aa:ttft": 1.2,
+        "aa:price:input": 3,
+        "aa:price:output": 15,
+        "aa:cost-per-task": 2.1,
+      },
+    });
   });
 });

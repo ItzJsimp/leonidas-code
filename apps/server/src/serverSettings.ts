@@ -167,6 +167,9 @@ function usageLimitSourceSecretName(sourceId: string): string {
   return `usage-limit-source-${Buffer.from(sourceId, "utf8").toString("base64url")}`;
 }
 
+const AA_KEY_SECRET_NAME = "artificial-analysis-api-key";
+const GROQ_KEY_SECRET_NAME = "groq-api-key";
+
 const redactSecret = (value: string) => (value.length > 0 ? SECRET_REDACTED : "");
 
 /** Each host's settings with every secret slot's value replaced by `map(slot, value)`. */
@@ -248,7 +251,14 @@ export function redactServerSettingsForClient(settings: ServerSettings): ServerS
   const sourceControlHosts = mapSlotValues(settings.sourceControlHosts, (_slot, value) =>
     redactSecret(value),
   );
-  return { ...settings, providerInstances, usageLimitSources, sourceControlHosts };
+  return {
+    ...settings,
+    providerInstances,
+    usageLimitSources,
+    sourceControlHosts,
+    artificialAnalysisApiKey: redactSecret(settings.artificialAnalysisApiKey),
+    groqApiKey: redactSecret(settings.groqApiKey),
+  };
 }
 
 export function applyProviderInstanceMutation(
@@ -1064,6 +1074,28 @@ const make = Effect.gen(function* () {
           managementKey: Option.isSome(secret) ? textDecoder.decode(secret.value) : "",
         };
       }
+      let artificialAnalysisApiKey = settings.artificialAnalysisApiKey;
+      if (artificialAnalysisApiKey === SECRET_REDACTED) {
+        const secret = yield* secretStore
+          .get(AA_KEY_SECRET_NAME)
+          .pipe(
+            Effect.mapError(
+              (cause) => new ServerSettingsError({ settingsPath, operation: "read-secret", cause }),
+            ),
+          );
+        artificialAnalysisApiKey = Option.isSome(secret) ? textDecoder.decode(secret.value) : "";
+      }
+      let groqApiKey = settings.groqApiKey;
+      if (groqApiKey === SECRET_REDACTED) {
+        const secret = yield* secretStore
+          .get(GROQ_KEY_SECRET_NAME)
+          .pipe(
+            Effect.mapError(
+              (cause) => new ServerSettingsError({ settingsPath, operation: "read-secret", cause }),
+            ),
+          );
+        groqApiKey = Option.isSome(secret) ? textDecoder.decode(secret.value) : "";
+      }
       const storedSecrets = new Map<string, string>();
       for (const slot of sourceControlHostSecretSlots(settings.sourceControlHosts)) {
         if (slot.value !== SECRET_REDACTED) continue;
@@ -1083,6 +1115,8 @@ const make = Effect.gen(function* () {
         ...settings,
         providerInstances: providerInstances as ServerSettings["providerInstances"],
         usageLimitSources: usageLimitSources as ServerSettings["usageLimitSources"],
+        artificialAnalysisApiKey,
+        groqApiKey,
         sourceControlHosts: mapSlotValues(settings.sourceControlHosts, (slot, value) =>
           value === SECRET_REDACTED
             ? (storedSecrets.get(sourceControlHostSecretName(slot)) ?? "")
@@ -1229,6 +1263,42 @@ const make = Effect.gen(function* () {
         });
       }
 
+      let artificialAnalysisApiKey = next.artificialAnalysisApiKey;
+      if (artificialAnalysisApiKey !== SECRET_REDACTED) {
+        if (artificialAnalysisApiKey.length === 0) {
+          changes.push({
+            kind: "remove",
+            secretName: AA_KEY_SECRET_NAME,
+            operation: "remove-secret",
+          });
+        } else {
+          changes.push({
+            kind: "write",
+            secretName: AA_KEY_SECRET_NAME,
+            value: textEncoder.encode(artificialAnalysisApiKey),
+          });
+          artificialAnalysisApiKey = SECRET_REDACTED;
+        }
+      }
+
+      let groqApiKey = next.groqApiKey;
+      if (groqApiKey !== SECRET_REDACTED) {
+        if (groqApiKey.length === 0) {
+          changes.push({
+            kind: "remove",
+            secretName: GROQ_KEY_SECRET_NAME,
+            operation: "remove-secret",
+          });
+        } else {
+          changes.push({
+            kind: "write",
+            secretName: GROQ_KEY_SECRET_NAME,
+            value: textEncoder.encode(groqApiKey),
+          });
+          groqApiKey = SECRET_REDACTED;
+        }
+      }
+
       // Hand-edited plaintext not yet in the store, so the redaction marker can move it there.
       const inlineSecrets = new Map(
         sourceControlHostSecretSlots(current.sourceControlHosts).flatMap((slot) =>
@@ -1266,6 +1336,8 @@ const make = Effect.gen(function* () {
           ...next,
           providerInstances: providerInstances as ServerSettings["providerInstances"],
           usageLimitSources: usageLimitSources as ServerSettings["usageLimitSources"],
+          artificialAnalysisApiKey,
+          groqApiKey,
           sourceControlHosts,
         },
         changes,

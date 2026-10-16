@@ -48,11 +48,11 @@ export const TOUR_TARGETS = {
     ],
   },
   "next-action": {
-    name: "Start task",
+    name: "Tasks",
     steps: [
       {
-        title: "Start task",
-        body: "Select a project with Start task. Then prepare a message from its tasks. Press Enter to start the AI.",
+        title: "Tasks",
+        body: "Open Tasks to show your focus list, start the next action, or open the task board. Start next action writes a message from a project's tasks. Press Enter to start the AI.",
         route: "/",
         anchor: "composer-next-action",
       },

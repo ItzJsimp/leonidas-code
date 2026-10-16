@@ -1501,6 +1501,34 @@ it.layer(NodeServices.layer)("server settings", (it) => {
     }).pipe(Effect.provide(layerServerSettings())),
   );
 
+  it.effect("keeps API keys in the secret store and never sends a saved key to the client", () =>
+    Effect.gen(function* () {
+      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
+      const serverConfig = yield* ServerConfig.ServerConfig;
+      const fileSystem = yield* FileSystem.FileSystem;
+
+      const saved = yield* serverSettings.updateSettings({
+        groqApiKey: "gsk_secret_value",
+        artificialAnalysisApiKey: "aa_secret_value",
+      });
+      assert.equal(saved.groqApiKey, "gsk_secret_value");
+      const raw = yield* fileSystem.readFileString(serverConfig.settingsPath);
+      assert.notInclude(raw, "gsk_secret_value");
+      assert.notInclude(raw, "aa_secret_value");
+
+      const forClient = ServerSettingsModule.redactServerSettingsForClient(saved);
+      assert.notInclude(JSON.stringify(forClient), "gsk_secret_value");
+      assert.notInclude(JSON.stringify(forClient), "aa_secret_value");
+      assert.isAbove(forClient.groqApiKey.length, 0);
+
+      // Echoing the marker back keeps the key; an empty value removes it.
+      yield* serverSettings.updateSettings({ groqApiKey: forClient.groqApiKey });
+      assert.equal((yield* serverSettings.getSettings).groqApiKey, "gsk_secret_value");
+      yield* serverSettings.updateSettings({ groqApiKey: "" });
+      assert.equal((yield* serverSettings.getSettings).groqApiKey, "");
+    }).pipe(Effect.provide(layerServerSettings())),
+  );
+
   it.effect(
     "keeps source control host secrets in the secret store and tells clients only that one is set",
     () =>

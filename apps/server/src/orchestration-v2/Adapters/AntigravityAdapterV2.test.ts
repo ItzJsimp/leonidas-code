@@ -10,6 +10,7 @@ import {
   RunId,
   ThreadId,
 } from "@t3tools/contracts";
+import { DatabaseSync } from "node:sqlite";
 import { resolveSelfInvocation } from "@t3tools/shared/nodeRuntime";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -26,6 +27,7 @@ import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as TestProviderHost from "@t3tools/provider-testing/TestProviderHost";
 import type * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
+import { resolveAntigravityInstanceDirectories } from "../../provider/antigravityAuthSupport.ts";
 import { makeAntigravityAcpRuntime } from "../../provider/acp/AntigravityAcpSupport.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
@@ -527,5 +529,77 @@ describe("AntigravityAdapterV2 client file system under restrictive policies", (
         assert.isFalse(yield* fileSystem.exists(path.join(outside, "x.ts")), name);
       }
     }).pipe(Effect.provide(layerSession), Effect.scoped),
+  );
+});
+
+describe("AntigravityAdapterV2 turn token usage", () => {
+  const protoNumber = (field: number, value: number): number[] => {
+    const varint = (input: number) => {
+      const bytes: number[] = [];
+      let rest = input;
+      do {
+        bytes.push((rest % 128) + (rest >= 128 ? 128 : 0));
+        rest = Math.floor(rest / 128);
+      } while (rest > 0);
+      return bytes;
+    };
+    return [...varint(field * 8), ...varint(value)];
+  };
+  const protoBytes = (field: number, bytes: readonly number[]): number[] => {
+    const head = protoNumber(field, bytes.length);
+    head[0] = head[0]! + 2;
+    return [...head, ...bytes];
+  };
+
+  it.effect(
+    "finds the agent's database by its own session id, not the app's provider-session id",
+    () =>
+      Effect.gen(function* () {
+        const crypto = yield* Crypto.Crypto;
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const host = yield* ProviderHost.ProviderHost;
+        const instanceId = ProviderInstanceId.make("antigravity-usage-test");
+        const antigravityFlavor = makeAntigravityAcpAdapterFlavor({
+          instanceId,
+          crypto,
+          fileSystem,
+          path,
+          host,
+          selfInvocation: yield* resolveSelfInvocation(),
+          makeRuntime: () => Effect.die("not spawned in this test"),
+          withProcess: (_stop, task) => task,
+          defaultModel: Effect.succeed(undefined),
+        });
+        const directories = yield* resolveAntigravityInstanceDirectories(
+          host.paths.stateDir,
+          instanceId,
+        );
+        const conversations = path.join(directories.profile, "antigravity-acp", "conversations");
+        yield* fileSystem.makeDirectory(conversations, { recursive: true });
+        const agentSessionId = "adea1dc9-fb33-4269-98c0-cf40409fe0be";
+        const database = new DatabaseSync(path.join(conversations, `${agentSessionId}.db`));
+        database.exec("CREATE TABLE gen_metadata (idx INTEGER, data BLOB)");
+        const usage = [
+          ...protoNumber(2, 500),
+          ...protoNumber(5, 99_500),
+          ...protoNumber(3, 250),
+          ...protoNumber(9, 40),
+        ];
+        database
+          .prepare("INSERT INTO gen_metadata VALUES (?, ?)")
+          .run(0, new Uint8Array(protoBytes(1, protoBytes(4, usage))));
+        database.close();
+
+        const resolved = yield* antigravityFlavor.resolveTurnTokenUsage!({
+          // The app's own id, as the adapter passes it. No database is named for it.
+          sessionId: `provider-session:provider-instance:${instanceId}:thread:t:s`,
+          nativeThreadId: agentSessionId,
+          startedAt: DateTime.makeUnsafe(Date.now()),
+          completedAt: DateTime.makeUnsafe(Date.now()),
+        });
+        assert.strictEqual(resolved?.contextUsedTokens, 100_250);
+        assert.strictEqual(resolved?.outputTokens, 250);
+      }).pipe(Effect.provide(layerSession), Effect.scoped),
   );
 });

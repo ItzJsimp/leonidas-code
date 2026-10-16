@@ -253,6 +253,8 @@ import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as UsageService from "./usage/UsageService.ts";
+import { HttpClient } from "effect/http";
+import { testApiKey } from "./apiKeys/testApiKey.ts";
 import * as ModelBenchmarks from "./benchmarks/ModelBenchmarks.ts";
 import { readModelRunStats } from "./benchmarks/ModelRunStats.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
@@ -1313,6 +1315,7 @@ const layerWsRpc = (
             );
       const usage = yield* UsageService.UsageService;
       const modelBenchmarks = yield* ModelBenchmarks.ModelBenchmarks;
+      const apiKeyHttpClient = yield* HttpClient.HttpClient;
       const usageLimitSources = yield* UsageLimitSources.UsageLimitSources;
       const projectSetupScriptRunner = yield* ProjectSetupScriptRunner.ProjectSetupScriptRunner;
       const worktreeSetupTracker = yield* WorktreeSetupTracker.WorktreeSetupTracker;
@@ -2537,6 +2540,15 @@ const layerWsRpc = (
         [WS_METHODS.serverGetStorageCleanupReport]: () => storageCleanup.reports,
         [WS_METHODS.serverGetSettings]: (_input) =>
           serverSettings.getSettings.pipe(Effect.map(ServerSettings.redactServerSettingsForClient)),
+        [WS_METHODS.serverTestApiKey]: ({ providerId, key }) =>
+          serverSettings.getSettings.pipe(
+            Effect.orElseSucceed(() => undefined),
+            Effect.flatMap((settings) =>
+              testApiKey({ providerId, key, settings }).pipe(
+                Effect.provideService(HttpClient.HttpClient, apiKeyHttpClient),
+              ),
+            ),
+          ),
         [WS_METHODS.serverUpdateSettings]: ({ patch, providerInstanceMutation }) =>
           Effect.gen(function* () {
             const deviceHosts = patch.deviceHosts
@@ -2848,6 +2860,21 @@ const layerWsRpc = (
                 }),
             });
           }),
+        // Each change made through this server pushes a fresh list; no polling.
+        [WS_METHODS.focusSubscribe]: () =>
+          taskBoard.focusChanges.pipe(
+            Stream.mapEffect(() =>
+              projectService.snapshot.pipe(
+                Effect.map((snapshot) => snapshot.projects),
+                Effect.orElseSucceed(() => []),
+                Effect.flatMap(taskBoard.focus),
+              ),
+            ),
+          ),
+        [WS_METHODS.focusUpdate]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.focusUpdate(input, projects)),
+          ),
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
         [WS_METHODS.devPreviewStart]: (input) =>
@@ -2877,6 +2904,11 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
         [WS_METHODS.taskBoardHome]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap((projects) => taskBoard.home(projects))),
+        [WS_METHODS.aiosUsageShape]: () =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.map((projects) => taskBoard.usageShape(projects)),
+          ),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.aiosDetect(input, projects)),

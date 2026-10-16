@@ -50,6 +50,7 @@ const summary = {
 const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
   options: {
     summary?: unknown;
+    dailySummary?: unknown;
     models?: unknown;
     summaryStatus?: number;
     tokenStatus?: number;
@@ -92,11 +93,18 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
         );
       }
       expect(request.headers.authorization).toBe("Bearer access-token");
+      // Google hides newer models and quota groups, such as Gemini 4 Argon, from old client versions.
+      expect(request.headers["user-agent"]).toMatch(/^antigravity\/hub\/2\.\d+\.\d+ /);
       expect(JSON.parse(body)).toEqual({ project: "project-id" });
       return HttpClientResponse.fromWeb(
         request,
         request.url.endsWith(":retrieveUserQuotaSummary")
-          ? Response.json(options.summary ?? summary, { status: options.summaryStatus ?? 200 })
+          ? Response.json(
+              request.url.startsWith("https://daily-cloudcode-pa.") && options.dailySummary
+                ? options.dailySummary
+                : (options.summary ?? summary),
+              { status: options.summaryStatus ?? 200 },
+            )
           : Response.json(options.models ?? { models: {} }),
       );
     }),
@@ -130,9 +138,65 @@ describe("Antigravity subscription limits", () => {
       expect(byId.get("3p-5h")?.usedPercent).toBeCloseTo(56);
       yield* probe;
       expect(requests.filter((request) => request.url.endsWith("/token"))).toHaveLength(1);
+      // Two probes, each reading both endpoints: the cache keeps only the token.
       expect(
         requests.filter((request) => request.url.endsWith(":retrieveUserQuotaSummary")),
-      ).toHaveLength(2);
+      ).toHaveLength(4);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("keeps Gemini buckets that the daily endpoint does not list", () =>
+    Effect.gen(function* () {
+      // Live shape: the daily endpoint lists only the Claude and GPT group.
+      const { probe } = yield* fixture({
+        dailySummary: { groups: [summary.groups[1]] },
+        summary: { groups: [summary.groups[0]] },
+      });
+      const ids = (yield* probe).windows.map((window) => window.id).sort();
+      expect(ids).toEqual(["3p-5h", "3p-weekly", "gemini-5h", "gemini-weekly"]);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("reports the Gemini 4 Argon weekly bucket under its own name", () =>
+    Effect.gen(function* () {
+      const { probe, requests } = yield* fixture({
+        summary: {
+          groups: [
+            summary.groups[1],
+            {
+              displayName: "Gemini 4 Argon",
+              buckets: [
+                {
+                  bucketId: "gemini-argon-wtu-weekly",
+                  window: "weekly",
+                  remainingFraction: 0.75,
+                  resetTime: "2026-10-23T20:25:46Z",
+                },
+              ],
+            },
+            summary.groups[0],
+          ],
+        },
+      });
+      const limits = yield* probe;
+      const ids = limits.windows.map((window) => window.id);
+      expect([...ids].sort()).toEqual([
+        "3p-5h",
+        "3p-weekly",
+        "gemini-5h",
+        "gemini-argon-wtu-weekly",
+        "gemini-weekly",
+      ]);
+      expect(
+        limits.windows.find((window) => window.id === "gemini-argon-wtu-weekly"),
+      ).toMatchObject({
+        label: "Gemini 4 Argon · Weekly",
+        kind: "weekly",
+        usedPercent: 25,
+      });
+      expect(requests.some((request) => request.url.endsWith(":retrieveUserQuotaSummary"))).toBe(
+        true,
+      );
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 

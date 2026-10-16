@@ -48,7 +48,7 @@ Translates an approved plan, task checklist, or technical specification into tes
 
 5. **Adversarial Chaos Probe (Dirty Environment Stress):**
    - Once the slice passes green on happy-path inputs, execute the 4-point stress check per [`adversarial-chaos-matrix.md`](./references/adversarial-chaos-matrix.md):
-     1. Dirty paths with spaces (e.g. `D:\Leonidas AIOS\`) and Unicode.
+     1. Dirty paths with spaces (e.g. `<repo>/`) and Unicode.
      2. Empty/null input streams and edge collections.
      3. Line-ending CRLF vs LF invariance and UTF-8 encoding.
      4. Subprocess exit code trapping (`$LASTEXITCODE -ne 0`).

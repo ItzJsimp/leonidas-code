@@ -16,7 +16,7 @@ In your AIOS and any peer AIOS, loops operate at three distinct architectural le
 
 1. **The Ingestion Loop**: Fleeting thoughts captured in `capture/` -> triaged to `tasks/` via `scripts/Capture-Thought.ps1`.
 2. **The Execution Loop**: Autonomous task execution -> verification -> `git diff` review before commit.
-3. **The Learning Loop**: Corrections and feedback logged via `scripts/Complete-Task.ps1` -> harvested into `memory/jake.md` and `logs/lessons-learned.md`.
+3. **The Learning Loop**: Corrections and feedback logged via `scripts/Complete-Task.ps1` -> harvested into `memory/user.md` and `logs/lessons-learned.md`.
 
 ## The loop lens
 

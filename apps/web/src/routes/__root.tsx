@@ -48,6 +48,8 @@ import { ReopenClosedViewShortcut } from "../components/ReopenClosedViewShortcut
 import { ProjectCloneToastCoordinator } from "../components/ProjectCloneToastCoordinator";
 import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToastCoordinator";
 import { ChatGptWelcomeCoordinator } from "../components/settings/ChatGptWelcomeCoordinator";
+import { sendUsageEvent } from "../lib/usageAnalytics/sendUsageEvent";
+import { UsageAnalyticsCoordinator } from "../components/usageAnalytics/UsageAnalyticsCoordinator";
 import { ProviderAuthCallbackCoordinator } from "../components/settings/ProviderAuthCallbackCoordinator";
 import { ThemeEditorHost } from "../components/settings/ThemeEditorHost";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
@@ -244,6 +246,7 @@ function RootRouteView() {
         <LeonidasAtmosphereSync />
         <ProviderAuthCallbackCoordinator />
         <ChatGptWelcomeCoordinator />
+        <UsageAnalyticsCoordinator />
         <FirstRunGate
           enabled={primaryEnvironmentAuthenticated}
           hostedStatic={authGateState.status === "hosted-static"}
@@ -464,6 +467,15 @@ function RootRouteErrorView({ error }: ErrorComponentProps) {
   // Router pathname rather than window.location: desktop uses hash history, where the window path is always "/".
   const pathname = useLocation({ select: (location) => location.pathname });
   const report = useMemo(() => errorReport(error, pathname), [error, pathname]);
+
+  useEffect(() => {
+    const kind = isChunkLoadError(error)
+      ? "chunk_load"
+      : hint?.autoRetry === true
+        ? "server_unreachable"
+        : "other";
+    sendUsageEvent("error_shown", { kind });
+  }, [error, hint]);
 
   // A failed lazy-module fetch heals with one reload; the guard stops a loop.
   useEffect(() => {

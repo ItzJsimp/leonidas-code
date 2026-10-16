@@ -1,5 +1,7 @@
 import type { ServerProvider } from "@t3tools/contracts";
 
+import { glanceLimitRows, limitLabel } from "../../lib/usageLimitsPopover";
+
 /** Services people pay for come first; the rest follow by name. */
 const GROUP_ORDER = ["claudeAgent", "codex", "antigravity", "gemini", "openrouter"];
 
@@ -67,14 +69,29 @@ export function describeAccount(input: {
   return { tone: "attention", text: firstLine || "Needs attention", action: "settings" };
 }
 
-/** The fullest usage window, so the bar shows the limit you hit first. */
+/** One limit bar: `name` sits beside it, `label` names the limit in the tooltip. */
+export interface AccountUsageMeter {
+  readonly percent: number;
+  readonly name: string;
+  readonly label: string;
+}
+
+/**
+ * The five-hour limit above the account-wide weekly limit, the same two the hover
+ * card shows. A limit the provider has not reported gets no bar. Empty when none reports.
+ */
 export function accountUsage(
   provider: ServerProvider | undefined,
-): { readonly percent: number; readonly label: string } | null {
-  const windows = provider?.usageLimits?.windows ?? [];
-  let top: (typeof windows)[number] | undefined;
-  for (const window of windows) {
-    if (top === undefined || window.usedPercent > top.usedPercent) top = window;
-  }
-  return top ? { percent: Math.round(top.usedPercent), label: top.label } : null;
+): ReadonlyArray<AccountUsageMeter> {
+  return glanceLimitRows(provider?.usageLimits?.windows ?? []).flatMap((row) =>
+    row.window
+      ? [
+          {
+            percent: Math.round(row.window.usedPercent),
+            name: row.label.replace(/ limit$/, ""),
+            label: limitLabel(row.window, "panel"),
+          },
+        ]
+      : [],
+  );
 }

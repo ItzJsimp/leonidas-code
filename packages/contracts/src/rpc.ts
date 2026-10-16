@@ -31,6 +31,9 @@ import {
   TaskBoardReleaseInput,
   TaskBoardCompleteInput,
   TaskBoardCompletions,
+  FocusSnapshot,
+  AiosUsageShape,
+  FocusUpdateInput,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
   TaskBoardWorkspaceInput,
@@ -397,6 +400,7 @@ import {
   ProviderConsumeResetCreditResult,
 } from "./providerUsageLimits.ts";
 import { UsagePricing, UsageReadError, UsageSummary, UsageSummaryInput } from "./usage.ts";
+import { TestApiKeyInput, TestApiKeyResult } from "./apiKeys.ts";
 import {
   ModelBenchmarkCatalog,
   ModelBenchmarkReport,
@@ -501,8 +505,11 @@ export const WS_METHODS = {
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
+  aiosUsageShape: "taskBoard.aiosUsageShape",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
+  focusSubscribe: "focus.subscribe",
+  focusUpdate: "focus.update",
   hardwareGetInventory: "hardware.getInventory",
   hardwareGetHistory: "hardware.getHistory",
   hardwareGetLimits: "hardware.getLimits",
@@ -635,6 +642,7 @@ export const WS_METHODS = {
   serverGetStorageCleanupReport: "server.getStorageCleanupReport",
   serverGetSettings: "server.getSettings",
   serverUpdateSettings: "server.updateSettings",
+  serverTestApiKey: "server.testApiKey",
   serverDiscoverSourceControl: "server.discoverSourceControl",
   serverSearchAcpRegistry: "server.searchAcpRegistry",
   serverPrepareAcpRegistryAgent: "server.prepareAcpRegistryAgent",
@@ -926,6 +934,12 @@ const WsServerGetSettingsRpc = Rpc.make(WS_METHODS.serverGetSettings, {
   payload: Schema.Struct({}),
   success: ServerSettings,
   error: Schema.Union([ServerSettingsError, EnvironmentAuthorizationError]),
+});
+
+const WsServerTestApiKeyRpc = Rpc.make(WS_METHODS.serverTestApiKey, {
+  payload: TestApiKeyInput,
+  success: TestApiKeyResult,
+  error: EnvironmentAuthorizationError,
 });
 
 const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSettings, {
@@ -1541,6 +1555,12 @@ const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
+const WsAiosUsageShapeRpc = Rpc.make(WS_METHODS.aiosUsageShape, {
+  payload: Schema.Struct({}),
+  success: AiosUsageShape,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsTaskBoardHomeWeatherRpc = Rpc.make(WS_METHODS.taskBoardHomeWeather, {
   payload: TaskBoardHomeWeatherInput,
   success: TaskBoardHomeWeather,
@@ -1556,6 +1576,19 @@ const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
+  payload: Schema.Struct({}),
+  success: FocusSnapshot,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
+const WsFocusUpdateRpc = Rpc.make(WS_METHODS.focusUpdate, {
+  payload: FocusUpdateInput,
+  success: FocusSnapshot,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
@@ -2443,6 +2476,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetStorageCleanupReportRpc,
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
+  WsServerTestApiKeyRpc,
   WsServerDiscoverSourceControlRpc,
   WsServerSearchAcpRegistryRpc,
   WsServerPrepareAcpRegistryAgentRpc,
@@ -2533,6 +2567,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubagentsListRpc,
   WsSubagentsUpdateRpc,
   WsSubagentsCreateRpc,
+  WsFocusSubscribeRpc,
+  WsFocusUpdateRpc,
   WsTaskBoardUpdateRpc,
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,
@@ -2541,6 +2577,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
   WsTaskBoardHomeRpc,
+  WsAiosUsageShapeRpc,
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
   WsHardwareGetInventoryRpc,

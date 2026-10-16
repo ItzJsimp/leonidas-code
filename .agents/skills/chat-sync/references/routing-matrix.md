@@ -33,7 +33,7 @@ Authoritative routing reference for mapping extracted conversation artifacts to 
 
 1. **Existing Memory Slug:** If a memory slug matches an existing file under `memory/`, inspect the existing content. If the new decision updates or refines the existing fact, run `scripts/New-Memory.ps1 -Update`. Never generate duplicate files (`slug-2.md`).
 2. **Contradictory Memories:** If a new decision contradicts a prior memory, overwrite the prior memory in place, document what changed in the file body, and update its `description:`.
-3. **Cross-Repository Boundary:** Never write personal memory or Leonidas tasks into `D:\SimplyGersi AIOS\`. Cross-repo interactions operate strictly through Mode 3 per [ADR-0008](../../../../decisions/0008-mode-3-is-a-cross-repo-read-overlay.md) with explicit operator confirmation.
+3. **Cross-Repository Boundary:** Never write personal memory or Leonidas tasks into `the peer AIOS`. Cross-repo interactions operate strictly through Mode 3 per [ADR-0008](../../../../decisions/0008-mode-3-is-a-cross-repo-read-overlay.md) with explicit operator confirmation.
 
 ## Staleness Confidence Scoring
 

@@ -10,7 +10,7 @@ import type {
   ModelBenchmarkSourceId,
 } from "@t3tools/contracts";
 
-const EFFORTS = "minimal|low|medium|high|xhigh|max";
+const EFFORTS = "minimal|low|medium|high|xhigh|ultra|max";
 const EFFORT_SUFFIX = new RegExp(`\\s*\\((${EFFORTS})(?: effort)?\\)\\s*$`, "i");
 /** "gemini-3.8-flash-high", "o3-mini-high": effort baked into the provider's slug. */
 const SLUG_EFFORT = new RegExp(`-(${EFFORTS})$`);
@@ -127,6 +127,26 @@ export function matchBenchmarks(
     }
   });
   return [...bySource.values()].map(({ entry, effortMeasured }) => ({ entry, effortMeasured }));
+}
+
+/**
+ * Every effort run a source measured for one model, plus its run with no effort
+ * (an entry whose `effort` is absent). Keys are tried most specific first and
+ * the first key that has any entry from `source` wins.
+ */
+export function benchmarkEffortEntries(
+  query: ModelBenchmarkQuery,
+  entries:
+    | ReadonlyArray<ModelBenchmarkEntry>
+    | ReadonlyMap<string, ReadonlyArray<ModelBenchmarkEntry>>,
+  source: ModelBenchmarkSourceId,
+): ReadonlyArray<ModelBenchmarkEntry> {
+  const index = "get" in entries ? entries : indexBenchmarkEntries(entries);
+  for (const { key } of queryKeys({ ...query, effort: undefined })) {
+    const found = (index.get(key) ?? []).filter((entry) => entry.source === source);
+    if (found.length > 0) return found;
+  }
+  return [];
 }
 
 /** 1..5 by quintile of `value` among `pool`; `invert` when lower is better. */

@@ -190,11 +190,17 @@ function SidebarUtilityItem({
     ? shortcutLabelForCommand(keybindings, shortcutCommand)
     : null;
   return (
-    <SidebarMenuItem className="shrink-0">
+    <SidebarMenuItem className="flex min-w-0 max-w-8 flex-1 justify-center">
       <Tooltip>
         <TooltipTrigger
           render={
-            <SidebarMenuButton aria-label={label} data-tour={tourId} onClick={onClick} size="icon">
+            <SidebarMenuButton
+              aria-label={label}
+              data-tour={tourId}
+              onClick={onClick}
+              size="icon"
+              className="w-full max-w-8"
+            >
               {icon}
             </SidebarMenuButton>
           }
@@ -288,7 +294,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ) : (
-        <>
+        // One row at every width: the buttons share the width instead of
+        // wrapping, so the bar never breaks into two lines.
+        <div className="flex w-full min-w-0 flex-nowrap items-center justify-between">
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
@@ -345,7 +353,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               onClick={handleFeedbackClick}
             />
           ) : null}
-        </>
+        </div>
       )}
       <SidebarUpdatePill />
       <ScribeTeamFeedDialog open={scribeFeedOpen} onOpenChange={setScribeFeedOpen} />

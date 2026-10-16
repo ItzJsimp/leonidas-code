@@ -32,7 +32,7 @@ export function CaptureDialogHost() {
   );
 }
 
-/** One field, one key: Enter saves the raw text to the inbox; sorting happens on the server. */
+/** One field, one key: Enter saves the a line to the notepad. */
 function CaptureForm(props: { readonly source?: string; readonly initialText: string }) {
   const { drop, canDrop } = useCaptureDrop();
   const [text, setText] = useState(props.initialText);
@@ -44,7 +44,7 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
     if (!canSave) return;
     setBusy(true);
     setError(null);
-    const result = await drop(text, props.source);
+    const result = await drop(text);
     setBusy(false);
     if (result.ok) closeCapture();
     else setError(result.error);
@@ -59,9 +59,9 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Quick note</DialogTitle>
+        <DialogTitle>Add to notepad</DialogTitle>
         <DialogDescription>
-          Write a note, idea or task. Clear tasks go to your task list.
+          Write a note, idea or task. It goes to your notepad, where you can see it and tick it off.
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>

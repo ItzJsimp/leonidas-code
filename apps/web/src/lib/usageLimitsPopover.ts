@@ -267,9 +267,31 @@ export function glanceLimitRows(
 ): GlanceLimitRow[] {
   if (windows.length === 0) return [];
   const ordered = orderPlanWindows(windows);
-  const session = ordered.find((window) => window.kind === "session") ?? null;
-  const weekly =
+  const plainWeekly =
     ordered.find((window) => window.kind === "weekly" && !window.label.includes("·")) ?? null;
+  // Antigravity labels every window by model group (`Gemini · 5-hour`, `Gemini · Weekly`),
+  // so none is account-wide. Show the group closest to its limit, session and weekly together.
+  const groupOf = (window: ServerProviderUsageWindow) => window.label.split("·")[0]?.trim();
+  const groupedSessions = ordered.filter(
+    (window) => window.kind === "session" && window.label.includes("·"),
+  );
+  const pairs = groupedSessions.map((candidate) => ({
+    session: candidate,
+    weekly:
+      ordered.find(
+        (window) => window.kind === "weekly" && groupOf(window) === groupOf(candidate),
+      ) ?? null,
+  }));
+  const pressure = (pair: (typeof pairs)[number]) =>
+    Math.max(pair.session.usedPercent, pair.weekly?.usedPercent ?? 0);
+  const closest = pairs.reduce<(typeof pairs)[number] | null>(
+    (best, pair) => (best === null || pressure(pair) > pressure(best) ? pair : best),
+    null,
+  );
+  const session = plainWeekly
+    ? (ordered.find((window) => window.kind === "session") ?? null)
+    : (closest?.session ?? ordered.find((window) => window.kind === "session") ?? null);
+  const weekly = plainWeekly ?? closest?.weekly ?? null;
   if (!session && !weekly) {
     return ordered
       .slice(0, 2)

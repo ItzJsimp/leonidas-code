@@ -1,3 +1,4 @@
+import { sendUsageEvent } from "../../lib/usageAnalytics/sendUsageEvent";
 import { useAtomValue } from "@effect/atom-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -99,6 +100,7 @@ export function DesktopUpdateCoordinator() {
     if (!bridge || !state || !downloadedVersion) return;
     if (toastedVersionRef.current === downloadedVersion) return;
     toastedVersionRef.current = downloadedVersion;
+    sendUsageEvent("update_downloaded");
     const actions = {
       onRestartNow: () => {
         void (async () => {

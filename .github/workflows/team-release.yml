@@ -82,6 +82,8 @@ jobs:
         env:
           # Public relay address; turns the in-app feedback button on.
           VITE_LEONIDAS_FEEDBACK_URL: ${{ vars.LEONIDAS_FEEDBACK_URL }}
+          # Public PostHog project key (write-only); without it the app sends no usage events.
+          VITE_POSTHOG_KEY: ${{ vars.POSTHOG_PROJECT_KEY }}
         run: vp run build:desktop
 
       - name: Check the web bundle boots

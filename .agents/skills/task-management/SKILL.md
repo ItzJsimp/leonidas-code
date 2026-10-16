@@ -40,7 +40,7 @@ The gate stands in for "Leonidas matches or beats the user's quality with 90%+ c
 | `leonidas` | All gates pass; multi-file or canon work                    | Eligible for the session-start execution loop                      |
 | `grill`    | Done when or quality bar unclear (G1/G2)                    | Offer a `/grill-me` capped at 3 questions on the failing gate only |
 | `draft`    | Needs permission per [`INTENT.md`](../../../INTENT.md) (G3) | Leonidas prepares everything; the user approves                    |
-| `jake`     | Physical or human-only (G4)                                 | Timed checklist, batched with nearby chores                        |
+| `human`    | Physical or human-only (G4)                                 | Timed checklist, batched with nearby chores                        |
 
 Check or re-check one task: `pwsh -NoProfile -File scripts/Test-TaskGate.ps1 -TaskFile <slug>.md`. Override with `-Lane` on `New-Task.ps1` only when the user says so.
 
@@ -62,7 +62,7 @@ pwsh -NoProfile -File scripts/Get-Tasks.ps1 -Status 'Awaiting Review'
 2. **Duplicate candidates:** merge the newer into the older (move its unique claims), then retire the newer to `archive/` per the deletion ladder.
 3. **Retire candidates** (Not started 30+ days, or `due:` passed): ask the user in one batch: keep, or retire.
 4. **Scoping defects:** rewrite `## Done when` to 3 to 6 probe-named claims; if the claim can't be written, set `lane: grill`.
-5. **Needs the user** (grill, draft, jake lanes, Blocked, stale Awaiting Review): group them into one `/grill-me` round (at most 3 questions) and one approvals list.
+5. **Needs the user** (grill, draft, human lanes, Blocked, stale Awaiting Review): group them into one `/grill-me` round (at most 3 questions) and one approvals list.
 
 Then re-run the sweep until it reports `CLEAN` or every item left is waiting on the user.
 

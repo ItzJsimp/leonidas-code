@@ -399,6 +399,15 @@ export const TaskBoardHomeMove = Schema.Struct({
 });
 export type TaskBoardHomeMove = typeof TaskBoardHomeMove.Type;
 
+/** Counts that describe the user's AIOS for opt-in usage analytics. No names or paths. */
+export const AiosUsageShape = Schema.Struct({
+  aiosDetected: Schema.Boolean,
+  skillsCount: Schema.Number,
+  taskCardsCount: Schema.Number,
+  memoryFilesPresent: Schema.Boolean,
+});
+export type AiosUsageShape = typeof AiosUsageShape.Type;
+
 export const TaskBoardHome = Schema.Struct({
   root: Schema.NullOr(Schema.String),
   brief: Schema.NullOr(
@@ -524,3 +533,46 @@ export class TaskBoardOperationError extends Schema.TaggedError<TaskBoardOperati
     message: Schema.String,
   },
 ) {}
+
+/** Longest focus line the app writes; longer text is a task card, not a scratch line. */
+export const FOCUS_ITEM_MAX_LENGTH = 500;
+
+/** One scratch line in `<AIOS>/memory/focus.md`. The id is stable while its section and text stay the same. */
+export const FocusItem = Schema.Struct({
+  id: Schema.String,
+  text: Schema.String,
+  done: Schema.Boolean,
+});
+export type FocusItem = typeof FocusItem.Type;
+
+/** One `## heading` in the focus file: a project slug, or `null` for the Global section. */
+export const FocusSection = Schema.Struct({
+  slug: Schema.NullOr(Schema.String),
+  /** The app project that uses this slug, when there is one. */
+  projectId: Schema.NullOr(ProjectId),
+  items: Schema.Array(FocusItem),
+});
+export type FocusSection = typeof FocusSection.Type;
+
+export const FocusSnapshot = Schema.Struct({
+  /** The focus file, or `null` when no folder is available. */
+  path: Schema.NullOr(Schema.String),
+  /** Who the app writes as, for cards made from a focus line. */
+  member: Schema.String,
+  sections: Schema.Array(FocusSection),
+});
+export type FocusSnapshot = typeof FocusSnapshot.Type;
+
+const FocusText = TrimmedNonEmptyString.check(Schema.isMaxLength(FOCUS_ITEM_MAX_LENGTH));
+
+/** One change to the focus file. `add` with `projectId: null` writes to the Global section. */
+export const FocusUpdateInput = Schema.Union([
+  Schema.Struct({
+    op: Schema.Literal("add"),
+    projectId: Schema.NullOr(ProjectId),
+    text: FocusText,
+  }),
+  Schema.Struct({ op: Schema.Literal("set_done"), id: Schema.String, done: Schema.Boolean }),
+  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String }),
+]);
+export type FocusUpdateInput = typeof FocusUpdateInput.Type;

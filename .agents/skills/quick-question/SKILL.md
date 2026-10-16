@@ -35,7 +35,7 @@ Rapid, zero-fluff answer ritual for single-shot questions, factual lookups, and 
 
 ### Step 1: Routing & Source Inspection
 
-- **Personal / PC / AIOS Query:** If the question touches the user's hardware, specs, habits, or local tools, read the authoritative store directly (e.g. [`memory/pc-system-profile.md`](../../../memory/pc-system-profile.md), [`memory/ai-stack.md`](../../../memory/ai-stack.md), [`memory/jake.md`](../../../memory/jake.md)) without asking.
+- **Personal / PC / AIOS Query:** If the question touches the user's hardware, specs, habits, or local tools, read the authoritative store directly (e.g. [`memory/pc-system-profile.md`](../../../memory/pc-system-profile.md), [`memory/ai-stack.md`](../../../memory/ai-stack.md), [`memory/user.md`](../../../memory/user.md)) without asking.
 - **External Web Query:** If the question requires live internet facts, current year data, software updates, or web documentation, immediately call the harness search tool (`search_web`).
 
 ### Step 2: Synthesis & Output

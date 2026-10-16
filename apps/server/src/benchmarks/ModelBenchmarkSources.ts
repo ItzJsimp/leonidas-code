@@ -204,3 +204,149 @@ export function parseBenchLm(feeds: BenchLmFeeds): ParsedBenchmarkSource {
   }
   return { metrics: [...metrics.values()], entries };
 }
+
+const AA_EFFORT_WORD = /\b(minimal|low|medium|high|xhigh|ultra|max)\b/i;
+
+/** First finite number among `record`'s fields whose name passes `test`. */
+const numberWhere = (record: UnknownRecord | undefined, test: (name: string) => boolean) => {
+  if (!record) return undefined;
+  for (const name of Object.keys(record)) {
+    const value = numberAt(record, name);
+    if (value !== undefined && test(name)) return value;
+  }
+  return undefined;
+};
+
+/**
+ * "Claude Sonnet 5.5 (Max, Default Fallback)" -> base "Claude Sonnet 5.5", effort "max".
+ * Names with no effort word, such as "(Non-reasoning)", have no effort.
+ */
+export function splitAaName(name: string): { readonly base: string; readonly effort?: string } {
+  const open = name.indexOf("(");
+  if (open < 0) return { base: name.trim() };
+  const effort = AA_EFFORT_WORD.exec(name.slice(open))?.[1]?.toLowerCase();
+  return { base: name.slice(0, open).trim(), ...(effort ? { effort } : {}) };
+}
+
+const AA_METRICS: ReadonlyArray<Omit<ModelBenchmarkMetric, "source">> = [
+  {
+    key: "aa:index",
+    label: "Intelligence Index",
+    kind: "score",
+    unit: "score",
+    higherIsBetter: true,
+  },
+  {
+    key: "aa:coding",
+    label: "Coding Index",
+    kind: "score",
+    unit: "score",
+    higherIsBetter: true,
+    category: "coding",
+  },
+  {
+    key: "aa:agentic",
+    label: "Agentic Index",
+    kind: "score",
+    unit: "score",
+    higherIsBetter: true,
+    category: "agentic",
+  },
+  {
+    key: "aa:speed",
+    label: "Output speed",
+    kind: "speed",
+    unit: "tokens_per_second",
+    higherIsBetter: true,
+  },
+  {
+    key: "aa:ttft",
+    label: "Time to first token",
+    kind: "latency",
+    unit: "seconds",
+    higherIsBetter: false,
+  },
+  {
+    key: "aa:price:input",
+    label: "Input price",
+    kind: "price",
+    unit: "usd_per_mtok",
+    higherIsBetter: false,
+  },
+  {
+    key: "aa:price:output",
+    label: "Output price",
+    kind: "price",
+    unit: "usd_per_mtok",
+    higherIsBetter: false,
+  },
+  {
+    key: "aa:cost-per-task",
+    label: "Cost per task",
+    kind: "price",
+    unit: "usd",
+    higherIsBetter: false,
+  },
+];
+
+/**
+ * Reads pages of Artificial Analysis's free language-model list. Each effort is
+ * its own row there, so an entry here carries one effort's measured numbers.
+ * Field names are matched loosely: a renamed field becomes a missing value.
+ */
+export function parseArtificialAnalysis(pages: ReadonlyArray<unknown>): ParsedBenchmarkSource {
+  const entries: ModelBenchmarkEntry[] = [];
+  const used = new Set<string>();
+  for (const page of pages) {
+    for (const model of itemsOf(page, "data")) {
+      const name = stringAt(model, "name");
+      const slug = stringAt(model, "slug");
+      if (!name || !slug) continue;
+      const evaluations = recordAt(model, "evaluations");
+      const performance = recordAt(model, "performance");
+      const pricing = recordAt(model, "pricing");
+      const cost = recordAt(
+        recordAt(model, "artificial_analysis_intelligence_index_cost"),
+        "cost_per_task",
+      );
+      const found: Record<string, number | undefined> = {
+        "aa:index": numberWhere(evaluations, (n) => n.endsWith("intelligence_index")),
+        "aa:coding": numberWhere(evaluations, (n) => n.endsWith("coding_index")),
+        "aa:agentic": numberWhere(evaluations, (n) => n.endsWith("agentic_index")),
+        "aa:speed": numberWhere(performance, (n) => /tokens_per_second/.test(n)),
+        "aa:ttft": numberWhere(
+          performance,
+          (n) => /time_to_first_token/.test(n) && !/answer/.test(n),
+        ),
+        "aa:price:input": numberWhere(pricing, (n) => /input/.test(n) && !/cache/.test(n)),
+        "aa:price:output": numberWhere(pricing, (n) => /output/.test(n)),
+        "aa:cost-per-task": numberWhere(cost, (n) => /total/.test(n)),
+      };
+      const values: Record<string, number> = {};
+      for (const [key, value] of Object.entries(found)) {
+        if (value === undefined) continue;
+        values[key] = value;
+        used.add(key);
+      }
+      if (Object.keys(values).length === 0) continue;
+      const { base, effort } = splitAaName(name);
+      entries.push({
+        source: "artificialAnalysis",
+        sourceModelKey: slug,
+        name: effort ? `${base} (${effort})` : base,
+        ...(stringAt(recordAt(model, "model_creator"), "name")
+          ? { creator: stringAt(recordAt(model, "model_creator"), "name") }
+          : {}),
+        ...(effort ? { effort } : {}),
+        values,
+      });
+    }
+  }
+  return {
+    metrics: AA_METRICS.filter((metric) => used.has(metric.key)).map((metric) => ({
+      ...metric,
+      source: "artificialAnalysis" as const,
+    })),
+    entries,
+  };
+}

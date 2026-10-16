@@ -16,6 +16,7 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.subagentsRespondSpawnApproval]: AuthOrchestrationOperateScope,
   [WS_METHODS.subagentsUpdate]: AuthOrchestrationOperateScope,
   [WS_METHODS.subagentsCreate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.focusUpdate]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsUpdate]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsTransition]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsImport]: AuthOrchestrationOperateScope,

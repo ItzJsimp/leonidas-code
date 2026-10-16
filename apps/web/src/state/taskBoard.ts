@@ -84,6 +84,13 @@ export const taskBoardHomeQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 60_000,
 });
 
+export const aiosUsageShapeQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-usage-shape",
+  tag: WS_METHODS.aiosUsageShape,
+  staleTimeMs: 10 * 60_000,
+  idleTtlMs: 60_000,
+});
+
 export const taskBoardHomeWeatherQuery = createEnvironmentRpcQueryAtomFamily(
   connectionAtomRuntime,
   {
@@ -114,3 +121,14 @@ export const taskBoardCompletionsLive = createEnvironmentRpcSubscriptionAtomFami
     tag: WS_METHODS.taskBoardSubscribeCompletions,
   },
 );
+
+/** The focus list: the file on subscribe, then a fresh list after each change made in the app or by an agent. */
+export const focusLive = createEnvironmentRpcSubscriptionAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:focus",
+  tag: WS_METHODS.focusSubscribe,
+});
+
+export const focusUpdate = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:focus:update",
+  tag: WS_METHODS.focusUpdate,
+});

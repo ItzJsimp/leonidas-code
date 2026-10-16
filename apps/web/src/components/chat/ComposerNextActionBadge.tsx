@@ -1,5 +1,6 @@
 import type { EnvironmentId, TaskBoardWorkspaceProject } from "@t3tools/contracts";
-import { PlayIcon } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ListTodoIcon } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 
 import { useEnvironmentQuery } from "~/state/query";
@@ -16,6 +17,9 @@ import {
   DialogPanel,
 } from "../ui/dialog";
 import { Input } from "../ui/input";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { useFocusWidgetStore } from "../focus/focusWidgetStore";
 import { ComposerBanner } from "./ComposerBanner";
 import {
   buildStartTaskPrompt,
@@ -78,7 +82,7 @@ function ProjectPicker(props: {
         <DialogDescription>
           {detected
             ? "We chose the project for this chat. Select a different project if you need to."
-            : "Select a project. We will write a message from its open tasks."}
+            : "Select a project. We will paste a short prompt into the message box."}
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>
@@ -129,7 +133,7 @@ function ProjectPicker(props: {
             <p>
               {openCount === 0
                 ? "This project has no open tasks. Add a task on the task board."
-                : `${openCount} open tasks. The prompt lists the top ${Math.min(openCount, START_TASK_CANDIDATE_LIMIT)}, and the AI picks one.`}
+                : `${openCount} open tasks. The prompt lists the top ${Math.min(openCount, START_TASK_CANDIDATE_LIMIT)}, and the agent picks one.`}
             </p>
           ) : null}
           <Button
@@ -140,7 +144,7 @@ function ProjectPicker(props: {
               if (project) props.onFill(buildStartTaskPrompt(project, tasks));
             }}
           >
-            Write message
+            Paste prompt
           </Button>
         </div>
       </DialogPanel>
@@ -148,36 +152,61 @@ function ProjectPicker(props: {
   );
 }
 
+/**
+ * The composer's Notepad button: show or hide the notepad, start the next action from the
+ * task board, or open the task board.
+ */
 export const ComposerNextActionBadge = memo(function ComposerNextActionBadge(props: {
   alignRight: boolean;
   environmentId: EnvironmentId;
   activeProjectId: string | null;
   cwd: string | null;
+  /** False while the composer has text, so the next action cannot replace it. */
+  canFill: boolean;
   onFill: (prompt: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const focusVisible = useFocusWidgetStore((state) => state.visible);
+  const setFocusVisible = useFocusWidgetStore((state) => state.setVisible);
   return (
     <>
-      <ComposerBanner.Root
-        density="comfortable"
-        width="content"
-        data-composer-shoulder-tab
-        className={props.alignRight ? "ml-auto" : undefined}
-      >
-        <ComposerBanner.Row
-          render={<button type="button" />}
-          data-tour="composer-next-action"
-          aria-label="Start task: select a project"
-          className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={() => setOpen(true)}
+      <Menu>
+        <ComposerBanner.Root
+          density="comfortable"
+          width="content"
+          data-composer-shoulder-tab
+          className={props.alignRight ? "ml-auto" : undefined}
         >
-          <ComposerBanner.Icon>
-            <PlayIcon />
-          </ComposerBanner.Icon>
-          <ComposerBanner.Content>Start task</ComposerBanner.Content>
-        </ComposerBanner.Row>
-      </ComposerBanner.Root>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <MenuTrigger
+                  render={<ComposerBanner.Row render={<button type="button" />} />}
+                  data-tour="composer-next-action"
+                  aria-label="Notepad: notes, next action and task board"
+                  className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                />
+              }
+            >
+              <ComposerBanner.Icon>
+                <ListTodoIcon />
+              </ComposerBanner.Icon>
+              <ComposerBanner.Content>Notepad</ComposerBanner.Content>
+            </TooltipTrigger>
+            <TooltipPopup side="top">Notepad, next action and task board</TooltipPopup>
+          </Tooltip>
+        </ComposerBanner.Root>
+        <MenuPopup side="top" align="start">
+          <MenuItem onClick={() => setFocusVisible(!focusVisible)}>
+            {focusVisible ? "Hide notepad" : "Show notepad"}
+          </MenuItem>
+          <MenuItem disabled={!props.canFill} onClick={() => setOpen(true)}>
+            {props.canFill ? "Start next action" : "Start next action (clear the message first)"}
+          </MenuItem>
+          <MenuItem onClick={() => void navigate({ to: "/tasks" })}>Open task board</MenuItem>
+        </MenuPopup>
+      </Menu>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogPopup>
           {open ? (

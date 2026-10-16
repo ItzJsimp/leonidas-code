@@ -29,6 +29,11 @@ const baseState: ThreadActionMenuState = {
   ],
 };
 
+const noShelfState: ThreadActionMenuState = {
+  ...baseState,
+  supports: { ...baseState.supports, settlement: false },
+};
+
 function ids(state: ThreadActionMenuState): string[] {
   return buildThreadActionMenuItems(state).map((item) => item.id);
 }
@@ -59,7 +64,6 @@ describe("buildThreadActionMenuItems", () => {
             "regenerate-title",
             "regenerate-title-hint",
             "auto-settle",
-            "archive",
             "delete",
           ]
         : [
@@ -70,7 +74,6 @@ describe("buildThreadActionMenuItems", () => {
             "regenerate-title",
             "regenerate-title-hint",
             "auto-settle",
-            "archive",
             "delete",
           ];
       expect(items.filter((item) => item.disabled).map((item) => item.id)).toEqual(expected);
@@ -108,7 +111,7 @@ describe("buildThreadActionMenuItems", () => {
     ).toEqual(["rename", "mark-unread", "copy", "project-settings", "archive", "delete"]);
   });
 
-  it("groups project settings with utility actions before archive", () => {
+  it("groups project settings with utility actions before delete", () => {
     const items = buildThreadActionMenuItems(baseState);
     const copyIndex = items.findIndex((item) => item.id === "copy");
     expect(items[copyIndex + 1]).toMatchObject({
@@ -116,7 +119,7 @@ describe("buildThreadActionMenuItems", () => {
       label: "Project settings",
       icon: "settings",
     });
-    expect(items[copyIndex + 2]?.id).toBe("archive");
+    expect(items[copyIndex + 2]?.id).toBe("delete");
   });
 
   it("offers project filtering only for surfaces with a scoped thread list", () => {
@@ -159,7 +162,7 @@ describe("buildThreadActionMenuItems", () => {
     const find = (state: ThreadActionMenuState) =>
       buildThreadActionMenuItems(state).find((item) => item.id === "auto-settle");
     const on = find(baseState);
-    expect(on?.label).toBe("Mark as done by itself");
+    expect(on?.label).toBe("Archive by itself");
     expect(on?.children?.map((child) => [child.id, child.checked])).toEqual([
       ["auto-settle:enabled", true],
       ["auto-settle:disabled", false],
@@ -202,8 +205,16 @@ describe("buildThreadActionMenuItems", () => {
     const items = buildThreadActionMenuItems({ ...baseState, branch: "main" });
     expect(items.at(-1)).toMatchObject({ id: "delete", destructive: true });
   });
-  it("offers archive as a non-destructive action right before delete", () => {
-    const items = buildThreadActionMenuItems(baseState);
+  it("offers one archive action: the shelf when supported, else the old archive", () => {
+    const shelf = buildThreadActionMenuItems(baseState);
+    expect(shelf.filter((item) => item.label === "Archive chat").map((item) => item.id)).toEqual([
+      "settle",
+    ]);
+    expect(shelf.some((item) => item.id === "archive")).toBe(false);
+  });
+
+  it("offers the old archive right before delete on servers without the shelf", () => {
+    const items = buildThreadActionMenuItems(noShelfState);
     const archiveItem = items.at(-2);
     expect(archiveItem?.id).toBe("archive");
     expect(archiveItem?.icon).toBe("archive");
@@ -228,7 +239,7 @@ describe("buildThreadActionMenuItems", () => {
   });
 
   it("disables archive while the thread is running", () => {
-    const archiveItem = buildThreadActionMenuItems({ ...baseState, isRunning: true }).find(
+    const archiveItem = buildThreadActionMenuItems({ ...noShelfState, isRunning: true }).find(
       (item) => item.id === "archive",
     );
     expect(archiveItem?.disabled).toBe(true);

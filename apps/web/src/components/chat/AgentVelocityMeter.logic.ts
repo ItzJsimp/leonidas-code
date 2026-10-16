@@ -314,6 +314,14 @@ export function deriveVelocitySummary(
   }
 
   const samples: TurnSpeedSample[] = [];
+  // Group once so each finished turn reads only its own items.
+  const itemsByTurn = new Map<string, OrchestrationV2TurnItem[]>();
+  for (const item of turnItems ?? []) {
+    if (item.providerTurnId == null) continue;
+    const group = itemsByTurn.get(item.providerTurnId);
+    if (group) group.push(item);
+    else itemsByTurn.set(item.providerTurnId, [item]);
+  }
 
   for (let i = 0; i < turns.length; i++) {
     const turn = turns[i]!;
@@ -322,8 +330,15 @@ export function deriveVelocitySummary(
       const endMs = parseTimestamp(turn.completedAt);
 
       if (startMs !== null && endMs !== null) {
-        const durationMs = endMs - startMs;
         const outputTokens = extractTurnOutputTokens(turn);
+        // Rolling pace is model pace: time spent waiting on tools is not generation time.
+        const { toolWaitMs } = measureTurnTiming(
+          turn.id,
+          itemsByTurn.get(turn.id) ?? [],
+          startMs,
+          endMs,
+        );
+        const durationMs = endMs - startMs - toolWaitMs;
 
         if (durationMs >= 50 && outputTokens > 0) {
           const tps = Math.round((outputTokens / durationMs) * 1000 * 10) / 10;
@@ -405,7 +420,7 @@ export function deriveVelocitySummary(
 /** "75%"; a turn that sent no input has no rate. */
 /** One plain sentence for the popover when the cache restarted. */
 export function formatCacheBreak(cacheBreak: CacheBreak): string {
-  return `Cache reads fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)}. The connection wrote ${cacheBreak.rewrittenTokens.toLocaleString()} tokens to cache. Expiry, settings, or routing can cause this. The cause is not confirmed.`;
+  return `Cached share fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)}. ${cacheBreak.rewrittenTokens.toLocaleString()} tokens were written again.`;
 }
 
 export function formatCacheHitRate(rate: number | null): string {

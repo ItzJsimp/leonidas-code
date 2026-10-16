@@ -578,6 +578,73 @@
         font: inherit;
         cursor: pointer;
       }
+
+      #boot-progress {
+        margin: 18px auto 0;
+        width: min(320px, 80vw);
+        font-size: 12px;
+        line-height: 1.5;
+        opacity: 0.85;
+      }
+
+      #boot-progress-bar {
+        position: relative;
+        height: 3px;
+        overflow: hidden;
+        border-radius: 2px;
+      }
+
+      #boot-progress-bar::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: currentColor;
+        opacity: 0.18;
+      }
+
+      #boot-progress-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 5%;
+        background: currentColor;
+        transition: width 400ms ease-out;
+      }
+
+      #boot-progress-text {
+        margin: 8px 0 0;
+      }
+
+      #boot-actions {
+        display: none;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 14px;
+        flex-wrap: wrap;
+      }
+
+      #boot-actions button {
+        padding: 6px 14px;
+        border: 1px solid currentColor;
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      #boot-actions button:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+      }
+
+      #boot-progress[data-state="slow"] #boot-actions,
+      #boot-progress[data-state="failed"] #boot-actions {
+        display: flex;
+      }
+
+      #boot-progress[data-state="failed"] #boot-progress-text {
+        font-weight: 600;
+      }
     </style>
     <title>Leonidas Code</title>
   </head>
@@ -589,6 +656,22 @@
           <div id="boot-shell-name">Leonidas Code</div>
           <p id="boot-shell-line"></p>
           <p id="boot-shell-tip"></p>
+          <div id="boot-progress" data-state="loading" role="status" aria-live="polite">
+            <div id="boot-progress-bar"><div id="boot-progress-fill"></div></div>
+            <p id="boot-progress-text">Starting…</p>
+            <div id="boot-actions">
+              <button type="button" id="boot-retry" title="Reload the page and try again">
+                Retry
+              </button>
+              <button
+                type="button"
+                id="boot-copy"
+                title="Copy a ready-made message with the details. Paste it to an agent so it can fix the problem."
+              >
+                Copy fix prompt for an agent
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -617,6 +700,129 @@
         const tip = document.getElementById("boot-shell-tip");
         if (line) line.textContent = pick(lines);
         if (tip) tip.textContent = pick(tips);
+      })();
+    </script>
+    <script>
+      // Boot watchdog. A plain script on purpose: it must still work when the app code never loads.
+      // It shows what is loading and for how long, offers Retry when the start is slow, and builds
+      // a ready-made prompt for an agent when the start fails. React replaces the whole shell.
+      (() => {
+        const started = Date.now();
+        const SLOW_MS = 20000;
+        const FAIL_MS = 75000;
+        const box = document.getElementById("boot-progress");
+        const text = document.getElementById("boot-progress-text");
+        const fill = document.getElementById("boot-progress-fill");
+        const retry = document.getElementById("boot-retry");
+        const copy = document.getElementById("boot-copy");
+        if (!box || !text || !fill) return;
+        let server = { state: "checking", ms: 0 };
+        let lastError = "";
+        let state = "loading";
+
+        const files = () => performance.getEntriesByType("resource").length;
+        const seconds = () => Math.round((Date.now() - started) / 1000);
+
+        const stageText = () => {
+          if (state === "failed") return "Could not start after " + seconds() + " s.";
+          if (server.state === "down")
+            return "The server is not answering (" + seconds() + " s). Waiting for it…";
+          if (state === "slow") return "Still starting, " + seconds() + " s. Slower than usual.";
+          if (files() < 25) return "Loading app code, " + files() + " files (" + seconds() + " s)";
+          if (server.state === "checking") return "Connecting to the server (" + seconds() + " s)";
+          return "Starting the app (" + seconds() + " s)";
+        };
+
+        const render = () => {
+          const target =
+            state === "failed"
+              ? 100
+              : Math.min(92, 5 + files() * 0.9 + (server.state === "up" ? 15 : 0));
+          fill.style.width = target + "%";
+          text.textContent = stageText();
+          box.dataset.state = state;
+        };
+
+        const checkServer = () => {
+          const t0 = Date.now();
+          const timer = setTimeout(() => {
+            server = { state: "down", ms: 0 };
+          }, 8000);
+          fetch("/.well-known/t3/environment", { cache: "no-store" })
+            .then((r) => {
+              clearTimeout(timer);
+              server = { state: r.ok ? "up" : "down", ms: Date.now() - t0 };
+            })
+            .catch(() => {
+              clearTimeout(timer);
+              server = { state: "down", ms: 0 };
+            });
+        };
+
+        const prompt = () =>
+          [
+            "Leonidas Code (Dev) does not start. It stays on the loading screen.",
+            "",
+            "What I saw:",
+            "- Page: " + location.href.replace(/#.*$/, ""),
+            "- Waited: " + seconds() + " seconds. Files loaded: " + files() + ".",
+            "- Server check (/.well-known/t3/environment): " +
+              server.state +
+              (server.ms ? ", " + server.ms + " ms" : "") +
+              ".",
+            "- Last error: " + (lastError || "none shown"),
+            "- Time: " + new Date().toISOString(),
+            "",
+            "Please find the cause and fix it. Start here:",
+            "1. Read the last 80 lines of C:/lcw/dev-live/.t3/dev-server.log and dev-server.err.log.",
+            "2. Run node scripts/dev-health.mjs to find a frozen Vite or backend server.",
+            "3. Check if Vite stays on 'bundling dependencies' with no CPU use (a dependency that does not resolve in apps/web/vite.config.ts optimizeDeps.include).",
+            "4. Check that C:/lcw/dev-live is on the same commit as the main checkout (scripts/Sync-DevLive.ps1).",
+            "Do not kill processes by name. Kill only a PID you confirmed. Report the cause, the fix and how you checked it.",
+          ].join("\n");
+
+        retry && retry.addEventListener("click", () => location.reload());
+        copy &&
+          copy.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(prompt());
+            } catch {
+              const area = document.createElement("textarea");
+              area.value = prompt();
+              document.body.append(area);
+              area.select();
+              document.execCommand("copy");
+              area.remove();
+            }
+            copy.textContent = "Copied. Paste it to an agent.";
+          });
+
+        window.addEventListener("error", (e) => {
+          lastError = String(e.message || e.error || "");
+        });
+        window.addEventListener("unhandledrejection", (e) => {
+          lastError = String((e.reason && e.reason.message) || e.reason || "");
+        });
+        // The app calls this when a startup step throws, so the failure panel appears at once.
+        window.__leonidasBootFail = (reason) => {
+          lastError = String(reason || lastError);
+          state = "failed";
+          render();
+        };
+
+        checkServer();
+        const tick = setInterval(() => {
+          if (!document.getElementById("boot-progress")) {
+            clearInterval(tick);
+            return;
+          }
+          const elapsed = Date.now() - started;
+          if (state === "loading" && elapsed > SLOW_MS) state = "slow";
+          if (state !== "failed" && elapsed > FAIL_MS) state = "failed";
+          if (server.state !== "up" && elapsed % 5000 < 500) checkServer();
+          render();
+        }, 500);
+        render();
       })();
     </script>
     <script type="module" src="/src/bootstrap.ts"></script>

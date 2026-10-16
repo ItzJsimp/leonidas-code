@@ -368,7 +368,7 @@ foreach ($file in $filesToInspect) {
                 $isIndexedPath = $file.FullName -match "[\\/](modes|decisions|templates|audits|handoff-docs)[\\/]" -or
                                  $file.FullName -match "[\\/]\.agents[\\/]skills[\\/][^\\/]+[\\/]SKILL\.md$"
                 $isExempt = $file.FullName -match "[\\/](CLAUDE|AGENTS|GEMINI|MASTER-INSTRUCTIONS|README|CONTEXT|BUILD-PLAN|INTENT|TASKS)\.md$" -or
-                            $file.FullName -match "[\\/]memory[\\/](core|soul|jake)\.md$"
+                            $file.FullName -match "[\\/]memory[\\/](core|soul|user)\.md$"
                 if ($isIndexedPath -and -not $isExempt) {
                     $frontmatterIssues += "${fileLabel}: Missing YAML frontmatter on indexed component."
                 }

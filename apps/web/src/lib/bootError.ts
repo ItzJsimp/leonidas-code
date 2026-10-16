@@ -4,6 +4,14 @@ export function showBootError(error: unknown) {
   const bootShell = document.getElementById("boot-shell");
   if (!bootShell) return;
 
+  // index.html owns a watchdog panel with Retry and a copyable fix prompt for an agent.
+  const bootFail = (globalThis as { __leonidasBootFail?: (reason: string) => void })
+    .__leonidasBootFail;
+  if (typeof bootFail === "function") {
+    bootFail(error instanceof Error ? error.message : String(error));
+    return;
+  }
+
   const content = document.createElement("div");
   content.id = "boot-error";
   content.setAttribute("role", "alert");

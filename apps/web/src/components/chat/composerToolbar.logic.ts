@@ -7,7 +7,7 @@ const BUILTIN_TOOLBAR_ITEMS = [
   { id: "capture", label: "Capture" },
   { id: "skills", label: "Skills" },
   { id: "subagents", label: "Subagent" },
-  { id: "nextAction", label: "Start task" },
+  { id: "nextAction", label: "Tasks" },
 ] as const;
 
 export interface ToolbarEntry {

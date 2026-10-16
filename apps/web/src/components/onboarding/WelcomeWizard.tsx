@@ -85,6 +85,7 @@ import { T3Wordmark } from "../T3Wordmark";
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
+import { ApiKeysStep } from "./ApiKeysStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
 import { ImportCandidateList } from "./ImportCandidateList";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -95,6 +96,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collaps
 import { Input } from "../ui/input";
 import { ScrollArea } from "../ui/scroll-area";
 import { Spinner } from "../ui/spinner";
+import { sendUsageEvent } from "../../lib/usageAnalytics/sendUsageEvent";
 import { WizardPanel, WizardSteps, WizardPopup, WizardHeader } from "../ui/wizard";
 import { Dialog } from "../ui/dialog";
 import { toastManager } from "../ui/toast";
@@ -109,19 +111,48 @@ import { cn } from "../../lib/utils";
  * re-runnable by clearing the flag.
  */
 
-type WizardStep = "welcome" | "connection" | "agents" | "skills" | "import" | "aios";
+type WizardStep = "welcome" | "connection" | "agents" | "skills" | "keys" | "import" | "aios";
 const STEP_ORDER: readonly WizardStep[] = [
   "welcome",
   "connection",
   "agents",
   "skills",
+  "keys",
   "import",
   "aios",
 ];
+/** Usage events for the setup funnel. Step ids only; sendUsageEvent checks consent. */
+function useWizardUsageEvents(step: WizardStep) {
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const previousStep = useRef<WizardStep | null>(null);
+  useEffect(() => {
+    if (previousStep.current === null) sendUsageEvent("setup_started");
+    else if (previousStep.current !== step) {
+      sendUsageEvent("setup_step_completed", { step: previousStep.current });
+    }
+    previousStep.current = step;
+  }, [step]);
+  useEffect(() => {
+    const onPageHide = () => sendUsageEvent("setup_abandoned_at_step", { step: stepRef.current });
+    window.addEventListener("pagehide", onPageHide);
+    // Leaving the wizard after it finished unmounts it; only a real close counts.
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, []);
+}
+
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const ONBOARDING_STAGES = ["Welcome", "Connect", "AI", "Skills", "Projects", "AIOS"] as const;
+const ONBOARDING_STAGES = [
+  "Welcome",
+  "Connect",
+  "AI",
+  "Skills",
+  "Keys",
+  "Projects",
+  "AIOS",
+] as const;
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 export function WelcomeWizard({
@@ -182,6 +213,7 @@ export function WelcomeWizard({
   const skipConnect =
     environments.length === 1 && !hasCloudPublicConfig() && soloSetup.environmentIds.length === 1;
   const stageIndex = STEP_ORDER.indexOf(step);
+  useWizardUsageEvents(step);
   const goBack = () => {
     const previous = STEP_ORDER[stageIndex - 1] ?? "welcome";
     setStep(previous === "connection" && skipConnect ? "welcome" : previous);
@@ -346,6 +378,12 @@ export function WelcomeWizard({
             />
           ) : step === "skills" ? (
             <LeonidasSkillsStep
+              environmentId={setupIds[0]}
+              onBack={goBack}
+              onContinue={() => setStep("keys")}
+            />
+          ) : step === "keys" ? (
+            <ApiKeysStep
               environmentId={setupIds[0]}
               onBack={goBack}
               onContinue={() => setStep("import")}

@@ -1,14 +1,7 @@
-import {
-  CacheStatusChip,
-  CacheStatusDetails,
-  cacheStatusLabel,
-  useCacheAwareness,
-  useCacheActionWarning,
-} from "./CacheAwareness";
+import { cacheStatusLabel, useCacheAwareness, useCacheActionWarning } from "./CacheAwareness";
 import { Button } from "../ui/button";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "../ui/preview-card";
-import { useClientSettings, useUpdateClientSettings } from "../../hooks/useSettings";
 import { usageSeverity } from "../../lib/usageLimitsPopover";
 import {
   formatContextWindowCompactionMessage,
@@ -17,7 +10,7 @@ import {
 import { Minimize2Icon } from "lucide-react";
 import { formatTpsLabel } from "./AgentVelocityMeter.logic";
 import { composerFloatingLayerProps } from "./composerEventScope";
-import { InputLedger, SpeedSection, type ThreadTarget } from "./AgentVelocityMeter";
+import { CacheSection, OverheadRows, SpeedSection, type ThreadTarget } from "./AgentVelocityMeter";
 import type { VelocitySummary } from "./AgentVelocityMeter.logic";
 
 const SEVERITY_COLOR = {
@@ -38,8 +31,8 @@ function formatPercentage(value: number | null): string | null {
 
 /**
  * The composer's one usage control, beside Send: a context ring with the tokens in context.
- * Hover shows context, speed and input in one card; click shows or hides the usage card over
- * the chat's top-left corner.
+ * Hover or focus shows context, prompt cache and speed in one card. It never changes the
+ * top-left overlay; only the top-right "memory and accounts" button does that.
  */
 export function ContextWindowMeter(props: {
   usage: ContextWindowSnapshot | null;
@@ -65,14 +58,11 @@ export function ContextWindowMeter(props: {
         ? {
             category: "context",
             confirmed: true,
-            message:
-              "Shortening history changes the cached conversation. Some shared instructions may still be reused. The summary also uses tokens.",
+            message: "Shortening history resets part of the cache and the summary uses tokens.",
           }
         : null,
       () => onCompact?.(),
     );
-  const cardOpen = useClientSettings((settings) => settings.usageOverlayEnabled);
-  const updateSettings = useUpdateClientSettings();
   const usedPercentage = formatPercentage(usage?.usedPercentage ?? null);
   const normalizedPercentage = Math.max(0, Math.min(100, usage?.usedPercentage ?? 0));
   const radius = 9.75;
@@ -94,15 +84,13 @@ export function ContextWindowMeter(props: {
               size="compact"
               variant="ghost-muted"
               className="shrink-0"
-              aria-pressed={cardOpen}
-              onClick={() => void updateSettings({ usageOverlayEnabled: !cardOpen })}
-              aria-label={`${cacheStatusLabel(cache)}. ${
+              aria-label={`Prompt cache: ${cacheStatusLabel(cache)}. ${
                 usage === null
                   ? "Chat memory use not known yet"
                   : usage.maxTokens !== null && usedPercentage
                     ? `Chat memory ${usedPercentage} used`
                     : `Chat memory: ${formatContextWindowTokens(usage.usedTokens)} tokens used`
-              }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last reply ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. ${cardOpen ? "Hide" : "Show"} usage card`}
+              }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last reply ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. Show usage details`}
             >
               <span className="relative flex size-4 items-center justify-center">
                 <svg
@@ -142,11 +130,11 @@ export function ContextWindowMeter(props: {
           {...composerFloatingLayerProps}
           side="top"
           align="end"
-          className="w-72 text-left whitespace-normal"
+          className="w-72 text-left whitespace-normal overflow-visible"
         >
           <div className="flex flex-col gap-2 p-3">
             <div className="flex items-center justify-between gap-3">
-              <div className="font-medium text-muted-foreground text-xs">Context Window</div>
+              <div className="font-medium text-muted-foreground text-xs">Chat memory</div>
               {usage === null ? (
                 <div className="text-secondary-label text-2xs">Not reported yet</div>
               ) : usage.maxTokens !== null && usedPercentage ? (
@@ -200,16 +188,21 @@ export function ContextWindowMeter(props: {
                 {formatContextWindowCompactionMessage(modelDisplayName, usage.autoCompactThreshold)}
               </div>
             ) : null}
-            <CacheStatusDetails usage={usage} />
-            {velocity ? <SpeedSection summary={velocity} /> : null}
-            {velocity?.ledger ? (
-              <InputLedger
-                ledger={velocity.ledger}
-                cacheBreak={velocity.cacheBreak}
-                threadTarget={props.threadTarget ?? null}
-                contextTokens={usage?.usedTokens ?? null}
-              />
+            {props.threadTarget ? (
+              <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-2xs leading-4 tabular-nums">
+                <OverheadRows
+                  threadTarget={props.threadTarget}
+                  contextTokens={usage?.usedTokens ?? null}
+                />
+              </dl>
             ) : null}
+            <CacheSection
+              label={cacheStatusLabel(cache)}
+              ledger={velocity?.ledger ?? null}
+              cachedTokens={usage?.cachedInputTokens ?? null}
+              cacheBreak={velocity?.cacheBreak ?? null}
+            />
+            {velocity ? <SpeedSection summary={velocity} /> : null}
             {onCompact ? (
               <>
                 <Button
@@ -232,7 +225,6 @@ export function ContextWindowMeter(props: {
           </div>
         </PreviewCardPopup>
       </PreviewCard>
-      <CacheStatusChip usage={usage} status={cache} />
     </>
   );
 }
