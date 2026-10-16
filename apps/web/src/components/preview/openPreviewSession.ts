@@ -17,6 +17,7 @@ import {
 } from "~/browser/browserDefaults";
 import { BrowserSettingsReadError } from "~/browser/openFileInPreview";
 import { previewRuntimeFor } from "~/browser/previewRuntime";
+import { emitGuidanceAction } from "~/onboarding/guidanceActions";
 import { applyPreviewServerSnapshot, rememberPreviewUrl } from "~/previewStateStore";
 
 interface OpenPreviewSessionInput<E> {
@@ -60,6 +61,7 @@ export async function openPreviewSession<E>(
     return result;
   }
   const snapshot = result.value;
+  emitGuidanceAction(input.threadRef.environmentId, "browser_opened");
   applyPreviewServerSnapshot(input.threadRef, snapshot);
   if (input.url !== undefined) {
     rememberPreviewUrl(

@@ -10,6 +10,8 @@ import {
   type EnvironmentId,
   type ProjectId,
   type ThreadId,
+  type RuntimeMode,
+  type ProviderInteractionMode,
 } from "@t3tools/contracts";
 import { createModelSelection } from "@t3tools/shared/model";
 import { useCallback } from "react";
@@ -61,6 +63,13 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
   const providers = useAtomValue(
     serverEnvironment.providersValueAtom(environmentId ?? ("" as EnvironmentId)),
   );
+  const selectedProvider = providers?.find(
+    (candidate) => getOnboardingProviderState(candidate) === "ready",
+  );
+  const selectedModel =
+    selectedProvider && providers
+      ? getDefaultProviderInstanceModel(providers, selectedProvider.instanceId)
+      : undefined;
 
   const ensureFolderProject = useCallback(
     async (folder: string): Promise<EnsureFolderProjectResult> => {
@@ -118,17 +127,14 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
       readonly projectId: ProjectId;
       readonly title: string;
       readonly prompt: string;
+      readonly runtimeMode?: RuntimeMode;
+      readonly interactionMode?: ProviderInteractionMode;
     }): Promise<StartChatResult> => {
       if (environmentId === undefined || !canOperate) {
         return { ok: false, message: NO_PERMISSION_MESSAGE };
       }
-      const provider = providers?.find(
-        (candidate) => getOnboardingProviderState(candidate) === "ready",
-      );
-      const model =
-        provider === undefined || providers === null || providers === undefined
-          ? undefined
-          : getDefaultProviderInstanceModel(providers, provider.instanceId);
+      const provider = selectedProvider;
+      const model = selectedModel;
       if (provider === undefined || model === undefined) {
         return { ok: false, message: "Connect an AI first." };
       }
@@ -143,8 +149,8 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
             projectId: args.projectId,
             title: args.title,
             modelSelection,
-            runtimeMode: DEFAULT_RUNTIME_MODE,
-            interactionMode: "default",
+            runtimeMode: args.runtimeMode ?? DEFAULT_RUNTIME_MODE,
+            interactionMode: args.interactionMode ?? "default",
             branch: null,
             worktreePath: null,
             createdAt,
@@ -165,8 +171,8 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
               },
               modelSelection,
               titleSeed: args.title,
-              runtimeMode: DEFAULT_RUNTIME_MODE,
-              interactionMode: "default",
+              runtimeMode: args.runtimeMode ?? DEFAULT_RUNTIME_MODE,
+              interactionMode: args.interactionMode ?? "default",
               createdAt,
             },
           });
@@ -194,8 +200,22 @@ export function useOnboardingChat(environmentId: EnvironmentId | undefined) {
         return { ok: false, message: "Could not start the chat." };
       }
     },
-    [canOperate, createThread, deleteThread, environmentId, providers, startThreadTurn],
+    [
+      canOperate,
+      createThread,
+      deleteThread,
+      environmentId,
+      selectedProvider,
+      selectedModel,
+      startThreadTurn,
+    ],
   );
 
-  return { canOperate, ensureFolderProject, startChat };
+  return {
+    canOperate,
+    ensureFolderProject,
+    startChat,
+    providerName: selectedProvider?.driver ?? null,
+    modelName: selectedModel ?? null,
+  };
 }

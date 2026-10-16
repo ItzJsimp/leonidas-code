@@ -1,4 +1,5 @@
 import { VoiceStep } from "./VoiceStep";
+import { AiLevelStep } from "./AiLevelStep";
 import { useAuth } from "@clerk/react";
 import { useAtomValue } from "@effect/atom-react";
 import type {
@@ -110,12 +111,21 @@ import { cn } from "../../lib/utils";
  * re-runnable by clearing the flag.
  */
 
-type WizardStep = "welcome" | "connection" | "agents" | "voice" | "skills" | "import" | "aios";
+type WizardStep =
+  | "welcome"
+  | "connection"
+  | "agents"
+  | "voice"
+  | "level"
+  | "skills"
+  | "import"
+  | "aios";
 const STEP_ORDER: readonly WizardStep[] = [
   "welcome",
   "connection",
   "agents",
   "voice",
+  "level",
   "skills",
   "import",
   "aios",
@@ -128,6 +138,7 @@ const ONBOARDING_STAGES = [
   "Connect",
   "AI",
   "Voice",
+  "Level",
   "Skills",
   "Projects",
   "AIOS",
@@ -356,6 +367,12 @@ export function WelcomeWizard({
             />
           ) : step === "voice" ? (
             <VoiceStep
+              environmentId={setupIds[0]}
+              onBack={goBack}
+              onContinue={() => setStep("level")}
+            />
+          ) : step === "level" ? (
+            <AiLevelStep
               environmentId={setupIds[0]}
               onBack={goBack}
               onContinue={() => setStep("skills")}

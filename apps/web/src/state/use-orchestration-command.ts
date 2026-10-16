@@ -14,6 +14,15 @@ import { useCallback } from "react";
 
 import { readEnvironmentScope } from "./session";
 import { useAtomCommand } from "./use-atom-command";
+import { emitGuidanceAction } from "../onboarding/guidanceActions";
+import type { GuidanceAction } from "../onboarding/guidance.logic";
+
+const GUIDANCE_COMMANDS: Readonly<Record<string, GuidanceAction>> = {
+  "environment-data:commands:thread:start-turn": "prompt_sent",
+  "environment-data:commands:thread:interrupt-turn": "reply_stopped",
+  "environment-data:commands:thread:create": "thread_created",
+  "environment-data:commands:thread:respond-to-approval": "approval_answered",
+};
 
 export const ORCHESTRATION_OPERATE_DENIED_MESSAGE =
   "This connection cannot change chats or projects.";
@@ -36,8 +45,11 @@ export function useOrchestrationCommand<W extends { readonly environmentId: Envi
           ),
         );
       }
-      return run(value);
+      const result = await run(value);
+      const action = GUIDANCE_COMMANDS[command.label];
+      if (result._tag === "Success" && action) emitGuidanceAction(value.environmentId, action);
+      return result;
     },
-    [run],
+    [command.label, run],
   );
 }

@@ -36,6 +36,13 @@ const state = vi.hoisted(() => ({
   refreshScan: vi.fn(),
 }));
 
+vi.mock("./AiLevelStep", () => ({
+  AiLevelStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Save AI level
+    </button>
+  ),
+}));
 vi.mock("./VoiceStep", () => ({
   VoiceStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>
@@ -256,6 +263,7 @@ async function mountImport(remote = false) {
   await click("Continue");
   await click("Continue without an AI");
   await click("Set up voice later");
+  await click("Save AI level");
   await click("Skip skills");
   expect(text(renderer!.root)).toContain("Import your projects");
 }
