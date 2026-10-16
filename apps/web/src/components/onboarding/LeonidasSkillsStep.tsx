@@ -10,6 +10,11 @@ import { useRef, useState } from "react";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { SKILL_ROOTS, skillFiles, suggestSkills } from "../../onboarding/skillPacks";
 import {
+  SUBAGENT_ROOT,
+  SUBAGENT_STARTERS,
+  subagentStarterFiles,
+} from "../../onboarding/subagentStarters";
+import {
   AIOS_FOLDER_STORAGE_KEY,
   DEFAULT_AIOS_FOLDER,
   LEONIDAS_GOALS_STORAGE_KEY,
@@ -83,9 +88,12 @@ export function LeonidasSkillsStep({
 
   const checkThenInstall = async () => {
     setChecking(true);
-    const files = selected.flatMap((skill) =>
-      SKILL_ROOTS.flatMap((root) => skillFiles(skill, root).map((file) => file.relativePath)),
-    );
+    const files = [
+      ...selected.flatMap((skill) =>
+        SKILL_ROOTS.flatMap((root) => skillFiles(skill, root).map((file) => file.relativePath)),
+      ),
+      ...subagentStarterFiles().map((file) => file.relativePath),
+    ];
     const inspection = await inspectFolder(trimmedFolder, files);
     setChecking(false);
     if (needsConfirmation(inspection)) {
@@ -104,32 +112,32 @@ export function LeonidasSkillsStep({
       setState({ status: "error", message: project.message });
       return;
     }
-    for (const skill of selected) {
-      for (const root of SKILL_ROOTS) {
-        for (const file of skillFiles(skill, root)) {
-          const result = await writeFile({
-            environmentId,
-            input: {
-              cwd: project.workspaceRoot,
-              relativePath: file.relativePath,
-              contents: file.contents,
-            },
-          });
-          if (result._tag !== "Success") {
-            if (isAtomCommandInterrupted(result)) {
-              setState({ status: "idle" });
-              return;
-            }
-            const error = squashAtomCommandFailure(result);
-            setState({
-              status: "error",
-              message: `Could not save ${file.relativePath}. ${
-                error instanceof Error ? error.message : "Try again."
-              }`,
-            });
-            return;
-          }
+    const filesToWrite = [
+      ...selected.flatMap((skill) => SKILL_ROOTS.flatMap((root) => skillFiles(skill, root))),
+      ...subagentStarterFiles(),
+    ];
+    for (const file of filesToWrite) {
+      const result = await writeFile({
+        environmentId,
+        input: {
+          cwd: project.workspaceRoot,
+          relativePath: file.relativePath,
+          contents: file.contents,
+        },
+      });
+      if (result._tag !== "Success") {
+        if (isAtomCommandInterrupted(result)) {
+          setState({ status: "idle" });
+          return;
         }
+        const error = squashAtomCommandFailure(result);
+        setState({
+          status: "error",
+          message: `Could not save ${file.relativePath}. ${
+            error instanceof Error ? error.message : "Try again."
+          }`,
+        });
+        return;
       }
     }
     setState({
@@ -154,6 +162,12 @@ export function LeonidasSkillsStep({
             </span>
           ))}
           . Find them any time with the Skills button above the message box.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          It also added {SUBAGENT_STARTERS.filter((starter) => starter.enabled).length} subagents
+          that are on and {SUBAGENT_STARTERS.filter((starter) => !starter.enabled).length} you can
+          turn on, in <span className="font-mono text-xs">{SUBAGENT_ROOT}</span>. Attach one with
+          the Subagent button, or type @ and its name.
         </p>
         <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
           <ul className="space-y-1 pr-3">
