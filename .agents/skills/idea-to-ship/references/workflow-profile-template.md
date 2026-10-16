@@ -5,6 +5,7 @@ The Idea to Ship commands read this file first. Keep it short: one line for each
 ## Tracker
 
 - Specs and slices: <where cards go, and the command that creates one>
+- Claim rule: <how a slice is marked as taken, so no other agent starts it>
 
 ## Verify
 

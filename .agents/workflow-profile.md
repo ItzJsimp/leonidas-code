@@ -5,6 +5,7 @@ The Idea to Ship commands read this file first. Rules come from [AGENTS.md](../A
 ## Tracker
 
 - Specs and slices: AIOS task cards with `project: leonidas-code` (`pwsh scripts/New-Task.ps1` from the AIOS root). Without the AIOS: a GitHub issue.
+- Claim rule: slices that this run builds now get `-Status 'In progress'`, so the autonomous picker skips them.
 
 ## Verify
 
