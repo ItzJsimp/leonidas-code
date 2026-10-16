@@ -1,3 +1,5 @@
+import { PROVIDER_DISPLAY_NAMES } from "@t3tools/contracts";
+
 /**
  * Usage events: the only data Leonidas Code can send about how the app is used.
  * Every event has a fixed name and a fixed list of numeric or enum fields, so a
@@ -14,6 +16,9 @@ export const USAGE_EVENT_NAMES = [
   "setup_abandoned_at_step",
   "time_to_first_message",
   "aios_shape",
+  "providers_connected",
+  "messages_sent",
+  "ui_element_clicked",
 ] as const;
 export type UsageEventName = (typeof USAGE_EVENT_NAMES)[number];
 
@@ -33,6 +38,24 @@ export const USAGE_FEATURE_IDS = [
   "settings_scheduled_tasks",
 ] as const;
 export type UsageFeatureId = (typeof USAGE_FEATURE_IDS)[number];
+
+/** Driver kinds we may name in an event. Anything else is dropped. */
+export const USAGE_PROVIDER_IDS: readonly string[] = Object.keys(PROVIDER_DISPLAY_NAMES);
+
+/** Elements that carry `data-usage-id`. A click on any other element is never reported. */
+export const USAGE_UI_ELEMENT_IDS = [
+  "new_thread",
+  "send_message",
+  "model_picker",
+  "open_command_palette",
+  "open_settings",
+  "open_tasks",
+  "open_command_center",
+  "add_provider",
+  "run_setup_again",
+  "send_feedback",
+] as const;
+export type UsageUiElementId = (typeof USAGE_UI_ELEMENT_IDS)[number];
 
 export const USAGE_SETUP_STEP_IDS = [
   "welcome",
@@ -55,6 +78,9 @@ const NUMERIC_FIELDS: Readonly<Record<UsageEventName, readonly string[]>> = {
   setup_abandoned_at_step: [],
   time_to_first_message: ["seconds"],
   // Booleans travel as 0 or 1.
+  providers_connected: ["provider_count"],
+  messages_sent: ["count"],
+  ui_element_clicked: [],
   aios_shape: ["aios_detected", "skills_count", "task_cards_count", "memory_files_present"],
 };
 
@@ -78,6 +104,18 @@ export function sanitizeUsageProperties(
       clean.feature = feature as string;
     }
   }
+  if (name === "providers_connected") {
+    const list = Array.isArray(properties.providers) ? properties.providers : [];
+    const known = [...new Set(list.filter((id) => USAGE_PROVIDER_IDS.includes(id as string)))];
+    clean.providers = known.toSorted().join(",");
+    clean.provider_count = known.length;
+  }
+  if (name === "ui_element_clicked") {
+    const element = properties.element;
+    if ((USAGE_UI_ELEMENT_IDS as readonly unknown[]).includes(element)) {
+      clean.element = element as string;
+    }
+  }
   if (name === "setup_step_completed" || name === "setup_abandoned_at_step") {
     const step = properties.step;
     if ((USAGE_SETUP_STEP_IDS as readonly unknown[]).includes(step)) {
@@ -93,6 +131,8 @@ export function isCompleteUsageEvent(name: UsageEventName, props: UsageEventProp
   if (name === "setup_step_completed" || name === "setup_abandoned_at_step") {
     return typeof props.step === "string";
   }
+  if (name === "ui_element_clicked") return typeof props.element === "string";
+  if (name === "messages_sent") return typeof props.count === "number" && props.count >= 1;
   if (name === "time_to_first_message") return typeof props.seconds === "number";
   if (name === "session_duration") return typeof props.seconds === "number" && props.seconds >= 1;
   if (name === "setup_completed") return typeof props.seconds_to_setup === "number";

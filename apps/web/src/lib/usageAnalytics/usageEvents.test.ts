@@ -44,6 +44,23 @@ describe("setup funnel events", () => {
   });
 });
 
+describe("providers and clicks", () => {
+  it("keeps only known provider kinds", () => {
+    expect(
+      sanitizeUsageProperties("providers_connected", {
+        providers: ["codex", "claudeAgent", "codex", "C:/Users/x", "sk-123"],
+      }),
+    ).toEqual({ providers: "claudeAgent,codex", provider_count: 2 });
+  });
+
+  it("drops clicks on elements outside the allowlist", () => {
+    expect(sanitizeUsageProperties("ui_element_clicked", { element: "new_thread" })).toEqual({
+      element: "new_thread",
+    });
+    expect(sanitizeUsageProperties("ui_element_clicked", { element: "my prompt" })).toEqual({});
+  });
+});
+
 describe("isCompleteUsageEvent", () => {
   it("skips empty sessions and feature events with no feature", () => {
     expect(isCompleteUsageEvent("session_duration", { seconds: 0 })).toBe(false);

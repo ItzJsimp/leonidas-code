@@ -5,7 +5,7 @@ import { useClientSettings, useClientSettingsHydrationStatus } from "../../hooks
 import { sendUsageEvent } from "../../lib/usageAnalytics/sendUsageEvent";
 import { useUsageAnalyticsStore } from "../../lib/usageAnalytics/usageAnalyticsStore";
 import { daysSince, featureIdFromPathname } from "../../lib/usageAnalytics/usageEvents";
-import { usePrimaryEnvironmentId } from "../../state/environments";
+import { usePrimaryEnvironment, usePrimaryEnvironmentId } from "../../state/environments";
 import { useEnvironmentQuery } from "../../state/query";
 import { aiosUsageShapeQuery } from "../../state/taskBoard";
 import { UsageAnalyticsConsentDialog } from "./UsageAnalyticsConsentDialog";
@@ -24,6 +24,29 @@ export function UsageAnalyticsCoordinator() {
       : null,
   ).data;
   const aiosShapeSent = useRef(false);
+  const providersSent = useRef(false);
+  const connectedDrivers = usePrimaryEnvironment()
+    ?.serverConfig?.providers.filter((provider) => provider.enabled && provider.installed)
+    .map((provider) => String(provider.driver));
+
+  // providers_connected: driver kinds from a fixed list, once per launch.
+  useEffect(() => {
+    if (consent !== "granted" || providersSent.current || !connectedDrivers?.length) return;
+    providersSent.current = true;
+    sendUsageEvent("providers_connected", { providers: connectedDrivers });
+  }, [consent, connectedDrivers]);
+
+  // ui_element_clicked: only elements tagged data-usage-id and listed in the allowlist.
+  useEffect(() => {
+    if (consent !== "granted") return;
+    const onClick = (event: MouseEvent) => {
+      const tagged = (event.target as Element | null)?.closest?.("[data-usage-id]");
+      const element = tagged?.getAttribute("data-usage-id");
+      if (element) sendUsageEvent("ui_element_clicked", { element });
+    };
+    document.addEventListener("click", onClick, { capture: true, passive: true });
+    return () => document.removeEventListener("click", onClick, { capture: true });
+  }, [consent]);
 
   // aios_shape: counts only, once per launch.
   useEffect(() => {
