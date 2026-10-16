@@ -2,6 +2,7 @@
 name: wayfinder
 description: "Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets (tasks/ cards), and resolve them one at a time until the way to the destination is clear."
 scope: structural
+distribution: core
 category: planning
 type: skill
 id: skill-wayfinder

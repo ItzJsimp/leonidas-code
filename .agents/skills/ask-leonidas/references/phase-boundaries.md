@@ -54,7 +54,7 @@ flowchart TD
 ### Detailed Evaluation Steps:
 
 1. **Can you continue in this session?**
-   - _Test:_ Does the next phase require this session's unbroken dialogue as a **primary source**, and is the current token footprint well within the **smart zone** (below ~400k tokens, the warning point Jake gets in Claude Code)?
+   - _Test:_ Does the next phase require this session's unbroken dialogue as a **primary source**, and is the current token footprint well within the **smart zone** (below ~400k tokens, the warning point the user gets in Claude Code)?
    - _Verdict:_ If yes, **Continue**. Grilling -> implementation is the canonical yes, preserving exact technical rationale without lossy compression.
 
 2. **Is prior context disposable?**

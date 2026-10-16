@@ -2,6 +2,7 @@
 name: to-spec
 description: "Turn the current conversation into a spec and publish it to the tracker (a tasks/ card): no interview, just synthesis of what you've already discussed."
 scope: structural
+distribution: core
 category: planning
 type: skill
 id: skill-to-spec

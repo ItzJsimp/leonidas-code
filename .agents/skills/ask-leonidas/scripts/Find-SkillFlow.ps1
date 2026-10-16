@@ -1,1 +1,1 @@
-D:/Leonidas AIOS/scripts/Find-SkillFlow.ps1
+<repo>/scripts/Find-SkillFlow.ps1

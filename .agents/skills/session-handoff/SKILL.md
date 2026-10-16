@@ -21,13 +21,13 @@ Turn everything learned in this session into a single **handoff document** so a 
 2. **Handoff is for the Transient Frontier:** The handoff document records what a zero-context agent cannot find by reading repository canon: uncommitted working tree diffs, active spikes, failed dead ends, the immediate 2 to 3 next tasks, and open blocker questions.
 3. **Goal-Slanted Focus:** If the user provides a focus argument (e.g. `/session-handoff fix frame pacing in Moonlight`), tailor the entire document, next steps, and pruned context around that objective.
 4. **Strict Redaction:** Never write secrets, API keys, passwords, bearer tokens, or PII into the handoff document. Refer to them symbolically (e.g., `the API key in .env`).
-5. **Every handoff carries its resume prompt:** the doc opens with a `## 0. Resume Prompt` block, and the final chat message prints only that block. Never paste the whole doc into chat; the prompt is what Jake copies. The pre-commit Handoff Resume Gate blocks a new handoff doc without it, so a handoff written without this skill loaded still fails closed. It also carries `status: open` in frontmatter (`open | resumed | closed | superseded`, gate-enforced). A session that resumes a handoff sets `status: resumed`, and one that finishes it sets `closed` and moves it to `handoff-docs/archive/`. [`Check-OpenHandoffs.ps1`](../../../scripts/Check-OpenHandoffs.ps1) lists open ones older than 3 days across both handoff folders.
+5. **Every handoff carries its resume prompt:** the doc opens with a `## 0. Resume Prompt` block, and the final chat message prints only that block. Never paste the whole doc into chat; the prompt is what the user copies. The pre-commit Handoff Resume Gate blocks a new handoff doc without it, so a handoff written without this skill loaded still fails closed. It also carries `status: open` in frontmatter (`open | resumed | closed | superseded`, gate-enforced). A session that resumes a handoff sets `status: resumed`, and one that finishes it sets `closed` and moves it to `handoff-docs/archive/`. [`Check-OpenHandoffs.ps1`](../../../scripts/Check-OpenHandoffs.ps1) lists open ones older than 3 days across both handoff folders.
 
 ## Save Location & Naming
 
 Save to `<project-root>/handoff-docs/YYYY-MM-DD-<topic-slug>.md`:
 
-- Path: `D:/Leonidas AIOS/handoff-docs/YYYY-MM-DD-<topic-slug>.md`
+- Path: `<repo>/handoff-docs/YYYY-MM-DD-<topic-slug>.md`
 - Auto-create `handoff-docs/` if it does not exist.
 
 ---
@@ -61,7 +61,7 @@ status: open
 
 # Session Handoff: [Task Title]
 
-**Date:** YYYY-MM-DD | **Operator:** Jake | **Status:** [In Progress / Checkpoint / Blocked]
+**Date:** YYYY-MM-DD | **Operator:** <user> | **Status:** [In Progress / Checkpoint / Blocked]
 **Saved to:** `handoff-docs/YYYY-MM-DD-<slug>.md`
 
 ## 0. Resume Prompt
