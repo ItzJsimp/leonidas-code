@@ -195,6 +195,27 @@ describe("parseFrontmatter", () => {
   });
 });
 
+describe("priority mapping", () => {
+  it("reads the old Now and Next words as high and medium", () => {
+    const priorityOf = (word: string) =>
+      cardToTask({
+        fileName: "p.md",
+        raw: `---
+id: task-p
+name: "P"
+priority: ${word}
+---
+# P
+`,
+        mtimeMs: NOW,
+        now: NOW,
+      })?.priority;
+    expect(priorityOf("Now")).toBe("high");
+    expect(priorityOf('"Next"')).toBe("medium");
+    expect(priorityOf('"Critical"')).toBe("critical");
+  });
+});
+
 describe("status mapping", () => {
   it("maps card spellings and aliases both ways", () => {
     expect(statusFromCard("Not started")).toBe("todo");
