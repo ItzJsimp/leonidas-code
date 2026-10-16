@@ -27,7 +27,7 @@ Engine: `implement` (it uses `tdd`). Added from Addy Osmani's `/build auto` and 
 ## Steps
 
 1. **Check the baseline.** Run `git status --porcelain`. Do not stage changes that are not part of this work. In a shared checkout, stage explicit paths only (`safe-parallel-commit`). If unrelated changes block the work, ask.
-2. **For each slice,** load `implement` and follow its loop: red, green, refactor, performance gate, commit.
+2. **For each slice,** load `implement` and follow its loop: red, green, refactor, performance gate, commit. Follow the `## Execution` section of the spec card: run a parallel group as subagents (one slice each, on the model named there), check each result before you commit it, and run the other slices in order in this chat.
 3. **Bug fix:** first write a test that fails because of the bug (Prove-It). Then fix it.
 4. **Apply these rules in each slice:**
    - Simplicity first: the smallest change that meets the acceptance criteria.

@@ -28,8 +28,14 @@ Engine: `task-scoping`. Added from Addy Osmani's planning-and-task-breakdown: si
 5. **Order the slices.** Dependencies first. High-risk slices early. Each slice leaves the system in a working state.
 6. **Add a checkpoint after every 2 to 3 slices:** tests pass, the build passes, the core flow works.
 7. **Write the output to the tracker in the profile.** Never write `tasks/plan.md` or `tasks/todo.md` in a repo that keeps task cards in `tasks/`. If an unfinished plan for different work exists, ask before you replace it.
-8. **Continue.** From the conductor, go to `/build`. When run alone, show the plan and stop.
+8. **Write the execution plan** in a `## Execution` section on the spec card. For each slice, decide:
+   - **Where it runs:** this chat (default), a subagent, or a new chat. Use a new chat only when the remaining work will not fit in this chat's context; write a resume prompt for it.
+   - **Parallel or serial:** slices with no `Blocked by:` edge between them and no shared files can run in parallel as subagents. Slices that touch the same files run in order in this chat.
+   - **Model and effort:** pick from the models that the harness reports as available now. Use a small, fast model for mechanical slices (rename, boilerplate, one-file edit). Keep architecture, risky and integration slices on the main model. Never name a model that the harness does not report.
+9. **Claim the slices that this run builds,** so a background task runner does not take them at the same time. Follow the tracker's claim rule in the profile.
+10. **Continue.** From the conductor, go to `/build` in this chat, and follow the execution plan. When run alone, show the plan and stop.
 
 ## Done when
 
 - Every slice is XS, S or M, and has acceptance criteria, a verify command and a `Blocked by:` line.
+- The spec card has an `## Execution` section that gives each slice a place, an order or parallel group, and a model tier.
