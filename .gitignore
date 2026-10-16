@@ -48,3 +48,5 @@ node_modules/
 
 # Python skill-helper and test interpreter caches.
 __pycache__/
+# The /build skill folder (Idea to Ship) is source, not build output.
+!/.agents/skills/build/
