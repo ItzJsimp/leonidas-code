@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./cache-awareness": {
+      "types": "./src/cacheAwareness.ts",
+      "default": "./src/cacheAwareness.ts"
+    },
     "./state/user-question-presentation": {
       "types": "./src/state/userQuestionPresentation.ts",
       "default": "./src/state/userQuestionPresentation.ts"
