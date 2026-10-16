@@ -43,6 +43,7 @@ import { NightlyMobileBetaNotice } from "../components/NightlyMobileBeta";
 import { LegacyThreadMigrationToast } from "../components/LegacyThreadMigrationToast";
 import { ThreadNotificationCoordinator } from "../components/ThreadNotificationCoordinator";
 import { TaskCelebrationCoordinator } from "../components/taskCelebration/TaskCelebrationCoordinator";
+import { SpawnApprovalCoordinator } from "../components/subagents/SpawnApprovalCoordinator";
 import { ReopenClosedViewShortcut } from "../components/ReopenClosedViewShortcut";
 import { ProjectCloneToastCoordinator } from "../components/ProjectCloneToastCoordinator";
 import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToastCoordinator";
@@ -261,6 +262,7 @@ function RootRouteView() {
           <ThreadNotificationCoordinator />
           <CacheNoticeCoordinator />
           <TaskCelebrationCoordinator />
+          <SpawnApprovalCoordinator />
           <ReopenClosedViewShortcut />
           <ConfirmDialogHost />
           <ReleaseHistoryDialogHost />

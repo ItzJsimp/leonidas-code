@@ -137,6 +137,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { DraftInput } from "../ui/draft-input";
+import { parseModelIdList } from "../subagents/spawnApproval.logic";
 import { Input } from "../ui/input";
 import {
   DEFAULT_CODE_FONT_STACK,
@@ -2546,6 +2547,22 @@ export function GeneralSettingsPanel() {
                 updateSettings({ routeLightDelegatedTasks: Boolean(checked) })
               }
               aria-label="Send simple helper work to cheaper models"
+            />
+          }
+        />
+        <SettingsRow
+          serverScoped
+          {...searchableSetting("subagent-free-tier-models")}
+          description="A subagent on one of these models starts at once. Any other model shows a confirm card first. Separate model ids with commas. A model-tiers.json file in your AIOS overrides this list."
+          settingKeys={["subagentFreeTierModels"]}
+          control={
+            <DraftInput
+              className="w-72 font-mono text-xs"
+              value={settings.subagentFreeTierModels.join(", ")}
+              onCommit={(value) =>
+                updateSettings({ subagentFreeTierModels: parseModelIdList(value) })
+              }
+              aria-label="Subagent models that start without asking"
             />
           }
         />

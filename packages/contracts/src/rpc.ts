@@ -428,6 +428,11 @@ import {
 } from "./scheduledTask.ts";
 import { SecretRequestAnswerInput, SecretRequestError } from "./secretRequest.ts";
 import {
+  SubagentSpawnApprovalError,
+  SubagentSpawnApprovals,
+  SubagentSpawnRespondInput,
+} from "./subagentSpawn.ts";
+import {
   ProjectCloneActionInput,
   ProjectCloneActionResult,
   ProjectCloneListEvent,
@@ -478,6 +483,8 @@ export const WS_METHODS = {
   taskBoardRelease: "taskBoard.release",
   taskBoardComplete: "taskBoard.complete",
   taskBoardSubscribeCompletions: "taskBoard.subscribeCompletions",
+  subagentsSubscribeSpawnApprovals: "subagents.subscribeSpawnApprovals",
+  subagentsRespondSpawnApproval: "subagents.respondSpawnApproval",
   taskBoardUpdate: "taskBoard.update",
   taskBoardWorkspace: "taskBoard.workspace",
   taskBoardCardUpdate: "taskBoard.cardUpdate",
@@ -1418,6 +1425,22 @@ const WsTaskBoardSubscribeCompletionsRpc = Rpc.make(WS_METHODS.taskBoardSubscrib
   success: TaskBoardCompletions,
   error: EnvironmentAuthorizationError,
   stream: true,
+});
+
+const WsSubagentsSubscribeSpawnApprovalsRpc = Rpc.make(
+  WS_METHODS.subagentsSubscribeSpawnApprovals,
+  {
+    payload: Schema.Struct({}),
+    success: SubagentSpawnApprovals,
+    error: EnvironmentAuthorizationError,
+    stream: true,
+  },
+);
+
+const WsSubagentsRespondSpawnApprovalRpc = Rpc.make(WS_METHODS.subagentsRespondSpawnApproval, {
+  payload: SubagentSpawnRespondInput,
+  success: Schema.Struct({}),
+  error: Schema.Union([SubagentSpawnApprovalError, EnvironmentAuthorizationError]),
 });
 
 const WsTaskBoardUpdateRpc = Rpc.make(WS_METHODS.taskBoardUpdate, {
@@ -2479,6 +2502,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardReleaseRpc,
   WsTaskBoardCompleteRpc,
   WsTaskBoardSubscribeCompletionsRpc,
+  WsSubagentsSubscribeSpawnApprovalsRpc,
+  WsSubagentsRespondSpawnApprovalRpc,
   WsTaskBoardUpdateRpc,
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,

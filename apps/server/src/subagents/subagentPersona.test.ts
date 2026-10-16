@@ -3,7 +3,7 @@ import * as NodeFs from "node:fs";
 import * as NodeOs from "node:os";
 import * as NodePath from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "@effect/vitest";
 
 import { loadSubagentPersona, parseSubagentSpec, SubagentPersonaError } from "./subagentPersona.ts";
 

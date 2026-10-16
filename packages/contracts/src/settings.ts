@@ -21,6 +21,7 @@ import {
 import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
 import { EnvironmentMachineKind, ThreadEnvMode, WorktreeSubmodules } from "./environment.ts";
 import { KeybindingShortcut } from "./keybindings.ts";
+import { DEFAULT_SUBAGENT_FREE_TIER_MODELS } from "./subagentSpawn.ts";
 import {
   CustomModelSetting,
   DEFAULT_TEXT_GENERATION_MODEL,
@@ -1319,6 +1320,13 @@ export const ServerSettings = Schema.Struct({
    * unnamed child on the parent's model.
    */
   routeLightDelegatedTasks: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  /**
+   * Models that start a subagent with no confirm card (ADR-0082). Any other
+   * model asks first. An AIOS `.agents/subagents/model-tiers.json` overrides it.
+   */
+  subagentFreeTierModels: Schema.Array(Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed([...DEFAULT_SUBAGENT_FREE_TIER_MODELS])),
+  ),
   sidebarAutoSettleOnMerge: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   backgroundActivity: BackgroundActivitySettings,
   // Legacy flat fields retained for old settings files and old clients. New
@@ -1664,6 +1672,7 @@ export const ServerSettingsPatch = Schema.Struct({
   autoResumeLimitedThreads: Schema.optionalKey(Schema.Boolean),
   snoozeLimitedThreads: Schema.optionalKey(Schema.Boolean),
   routeLightDelegatedTasks: Schema.optionalKey(Schema.Boolean),
+  subagentFreeTierModels: Schema.optionalKey(Schema.Array(Schema.String)),
   backgroundActivity: Schema.optionalKey(
     Schema.Struct({
       schemaVersion: Schema.optionalKey(Schema.Literal(1)),

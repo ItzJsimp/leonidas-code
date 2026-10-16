@@ -387,6 +387,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "subagent-free-tier-models",
+    title: "Subagent models that start without asking",
+    to: "/settings/general",
+    searchTerms: ["subagent spawn tier free confirm card approval premium model haiku opus cost"],
+  },
+  {
     id: "working-shelf",
     title: "Working section (beta)",
     to: "/settings/general",

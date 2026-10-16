@@ -70,6 +70,7 @@ import {
   type TaskBoardWorkspaceSnapshot,
   ThreadId,
 } from "@t3tools/contracts";
+import { confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
 import { loadSubagentPersona } from "../subagents/subagentPersona.ts";
 import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
 import {
@@ -2469,6 +2470,24 @@ const make = Effect.gen(function* () {
           parent.thread.interactionMode,
           input.interactionMode,
         );
+        if (persona !== undefined) {
+          yield* confirmPersonaSpawn({
+            persona,
+            parent,
+            model: target.modelSelection.model,
+            account:
+              providers.find((provider) => provider.instanceId === target.modelSelection.instanceId)
+                ?.displayName ?? target.modelSelection.instanceId,
+            reason: input.title ?? input.task,
+            appFreeModels: yield* serverSettings.getSettings.pipe(
+              Effect.map((settings) => settings.subagentFreeTierModels),
+              Effect.mapError(() =>
+                failure("orchestration_error", "Unable to read server settings."),
+              ),
+            ),
+            approvalId: yield* crypto.randomUUIDv4.pipe(Effect.orDie),
+          });
+        }
         const key = yield* requestKey(input.clientRequestId);
         const commandId = stableCommandId({
           scope,

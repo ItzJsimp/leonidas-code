@@ -5,6 +5,7 @@ import {
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
+import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -1348,6 +1349,7 @@ const layerWsRpc = (
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
+      const spawnApprovals = yield* SpawnApprovals;
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
       const systemCare = yield* SystemCare.SystemCare;
       const withTaskBoardProject = <A, E, R>(
@@ -2793,6 +2795,9 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardUpdate]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.update(project, input)),
         [WS_METHODS.taskBoardSubscribeCompletions]: () => taskBoard.completions,
+        [WS_METHODS.subagentsSubscribeSpawnApprovals]: () => spawnApprovals.pending,
+        [WS_METHODS.subagentsRespondSpawnApproval]: (input) =>
+          spawnApprovals.respond(input).pipe(Effect.as({})),
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
         [WS_METHODS.devPreviewStart]: (input) =>

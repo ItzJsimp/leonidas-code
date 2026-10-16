@@ -71,4 +71,5 @@ export * from "./devPreview.ts";
 export * from "./rpc.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
+export * from "./subagentSpawn.ts";
 export * from "./clientRpcPermissions.ts";
