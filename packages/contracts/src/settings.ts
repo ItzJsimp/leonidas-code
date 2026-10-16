@@ -1446,6 +1446,8 @@ export const ServerSettings = Schema.Struct({
   ),
   /** Free Artificial Analysis key for per-effort model benchmarks. Kept in the secret store. */
   artificialAnalysisApiKey: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  /** Free Groq key that Scribe uses for dictation. Kept in the secret store. */
+  groqApiKey: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   /** Allows this server to read the Cursor CLI's macOS Keychain login for account usage. */
   cursorKeychainUsageEnabled: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
@@ -1726,6 +1728,7 @@ export const ServerSettingsPatch = Schema.Struct({
     Schema.Record(UsageLimitSourceId, Schema.NullOr(UsageLimitSourceConfig)),
   ),
   artificialAnalysisApiKey: Schema.optionalKey(TrimmedString),
+  groqApiKey: Schema.optionalKey(TrimmedString),
   cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
   /** Each entry replaces one model's rates; `null` restores automatic pricing. */
   usagePriceOverrides: Schema.optionalKey(

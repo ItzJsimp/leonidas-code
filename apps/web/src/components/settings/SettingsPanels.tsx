@@ -1,5 +1,5 @@
 import { CacheSettings } from "./CacheSettings";
-import { BenchmarkKeySettings } from "./BenchmarkKeySettings";
+import { ApiKeysSettings } from "./ApiKeysSettings";
 import { UsageAnalyticsSettings } from "./UsageAnalyticsSettings";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { SkillFoldersEditor } from "./SkillFoldersEditor";
@@ -3354,7 +3354,6 @@ export function GeneralSettingsPanel() {
         }
       >
         <CacheSettings />
-        <BenchmarkKeySettings />
         <NotificationSettings />
         <NotificationQuietHoursSettings />
         <NotificationVolumeSettings />
@@ -3370,6 +3369,10 @@ export function GeneralSettingsPanel() {
             />
           }
         />
+      </FoldedSettingsSection>
+
+      <FoldedSettingsSection id="api-keys" title="API keys">
+        <ApiKeysSettings />
       </FoldedSettingsSection>
 
       <FoldedSettingsSection

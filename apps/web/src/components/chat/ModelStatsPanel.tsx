@@ -123,7 +123,7 @@ export function ModelStatsPanel(props: { stats: PickerModelStats }) {
       <div className="text-3xs text-muted-foreground">
         {fromAa
           ? "Source: Artificial Analysis"
-          : "Source: BenchLM. This score is for the max effort run. Add an Artificial Analysis key in Settings for each effort."}
+          : "Source: BenchLM. This score is for the max effort run. Add an Artificial Analysis key in Settings, API keys, for each effort."}
       </div>
     </div>
   );

@@ -1366,6 +1366,14 @@ export function createServerEnvironmentAtoms<R, E>(
       concurrency: configConcurrency,
     }),
     updateSettings,
+    testApiKey: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:server:test-api-key",
+      tag: WS_METHODS.serverTestApiKey,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId, input }) => `${environmentId}:${input.providerId}`,
+      },
+    }),
     // Provider-instance mutations share the settings command and its
     // environment-serial scheduler. The named boundary keeps clients on the
     // atomic map-entry payload instead of rebuilding a stale whole map.

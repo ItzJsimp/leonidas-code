@@ -85,6 +85,7 @@ import { T3Wordmark } from "../T3Wordmark";
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
+import { ApiKeysStep } from "./ApiKeysStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
 import { ImportCandidateList } from "./ImportCandidateList";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -110,12 +111,13 @@ import { cn } from "../../lib/utils";
  * re-runnable by clearing the flag.
  */
 
-type WizardStep = "welcome" | "connection" | "agents" | "skills" | "import" | "aios";
+type WizardStep = "welcome" | "connection" | "agents" | "skills" | "keys" | "import" | "aios";
 const STEP_ORDER: readonly WizardStep[] = [
   "welcome",
   "connection",
   "agents",
   "skills",
+  "keys",
   "import",
   "aios",
 ];
@@ -142,7 +144,15 @@ function useWizardUsageEvents(step: WizardStep) {
 const NO_ENVIRONMENTS: readonly EnvironmentId[] = [];
 
 const AGENT_ONBOARDING_THREAD_ID = ThreadId.make("onboarding-agent-setup");
-const ONBOARDING_STAGES = ["Welcome", "Connect", "AI", "Skills", "Projects", "AIOS"] as const;
+const ONBOARDING_STAGES = [
+  "Welcome",
+  "Connect",
+  "AI",
+  "Skills",
+  "Keys",
+  "Projects",
+  "AIOS",
+] as const;
 const SCAN_LIMIT_MESSAGE = "Scan limit reached. Some projects or conversations may be missing.";
 
 export function WelcomeWizard({
@@ -368,6 +378,12 @@ export function WelcomeWizard({
             />
           ) : step === "skills" ? (
             <LeonidasSkillsStep
+              environmentId={setupIds[0]}
+              onBack={goBack}
+              onContinue={() => setStep("keys")}
+            />
+          ) : step === "keys" ? (
+            <ApiKeysStep
               environmentId={setupIds[0]}
               onBack={goBack}
               onContinue={() => setStep("import")}

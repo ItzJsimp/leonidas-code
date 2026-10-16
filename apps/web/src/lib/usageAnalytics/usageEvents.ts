@@ -62,6 +62,7 @@ export const USAGE_SETUP_STEP_IDS = [
   "connection",
   "agents",
   "skills",
+  "keys",
   "import",
   "aios",
 ] as const;
