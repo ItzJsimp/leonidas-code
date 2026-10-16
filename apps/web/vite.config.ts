@@ -46,6 +46,8 @@ const configuredRelayTracingUrl = repoEnv.VITE_RELAY_OTLP_TRACES_URL?.trim() || 
 const configuredRelayTracingDataset = repoEnv.VITE_RELAY_OTLP_TRACES_DATASET?.trim() || "";
 const configuredRelayTracingToken = repoEnv.VITE_RELAY_OTLP_TRACES_TOKEN?.trim() || "";
 const configuredHostedAppChannel = process.env.VITE_HOSTED_APP_CHANNEL?.trim() || "";
+const useReactCompiler =
+  process.argv.includes("build") || process.env.LEONIDAS_DEV_REACT_COMPILER === "1";
 const configuredAppVersion = process.env.APP_VERSION?.trim() || pkg.version;
 // Dev copies run from a checkout whose package version is not the release number, so label them
 // from git. Production builds already carry the exact release version and skip this.
@@ -61,7 +63,8 @@ const configuredVersionLabel = (() => {
       timeout: 5_000,
     });
     return formatDevVersionLabel(describe) ?? "";
-  } catch {
+  } catch (error) {
+    console.warn("[version-label] git describe failed, showing the package version:", error);
     return "";
   }
 })();
@@ -203,17 +206,28 @@ export default defineConfig(() => {
       // them on navigation intent (see getRouter's defaultPreload).
       tanstackRouter({ autoCodeSplitting: true }),
       react(),
-      babel({
-        // We need to be explicit about the parser options after moving to @vitejs/plugin-react v6.0.0
-        // This is because the babel plugin only automatically parses typescript and jsx based on relative paths (e.g. "**/*.ts")
-        // whereas the previous version of the plugin parsed all files with a .ts extension.
-        // This is causing our packages/ directory to fail to parse, as they are not relative to the CWD.
-        parserOpts: { plugins: ["typescript", "jsx"] },
-        presets: [reactCompilerPreset()],
-      }),
+      // React Compiler runs through Babel on every module, which blocks Vite's single thread for
+      // tens of seconds on a cold start (ChatView alone is 1.5 MB). It is a build-time speedup, so
+      // dev skips it. Set LEONIDAS_DEV_REACT_COMPILER=1 to test compiled output in dev.
+      ...(useReactCompiler
+        ? [
+            babel({
+              // We need to be explicit about the parser options after moving to @vitejs/plugin-react v6.0.0
+              // This is because the babel plugin only automatically parses typescript and jsx based on relative paths (e.g. "**/*.ts")
+              // whereas the previous version of the plugin parsed all files with a .ts extension.
+              // This is causing our packages/ directory to fail to parse, as they are not relative to the CWD.
+              parserOpts: { plugins: ["typescript", "jsx"] },
+              presets: [reactCompilerPreset()],
+            }),
+          ]
+        : []),
       tailwindPlugins(bundledDev),
     ],
     optimizeDeps: {
+      // A package that cannot be resolved here (for example @clerk/clerk-js, which pnpm keeps
+      // out of this folder) leaves the dependency optimizer stuck on "bundling dependencies"
+      // with no CPU use, so every prebundled module request hangs and the page never loads.
+      // Skip what does not resolve; Vite then finds it on demand.
       include: [
         "@clerk/clerk-js",
         "@clerk/react/internal",
@@ -224,7 +238,14 @@ export default defineConfig(() => {
         "effect/Array",
         "effect/Order",
         "react-dom/client",
-      ],
+      ].filter((id) => {
+        try {
+          import.meta.resolve(id);
+          return true;
+        } catch {
+          return false;
+        }
+      }),
     },
     define: {
       // In dev mode, tell the web app where the WebSocket server lives
