@@ -42,6 +42,8 @@ const KNOWN_FIELDS = new Set([
   "tools",
   "context",
   "never",
+  // AIOS metadata (personal or structural) that the AIOS audit requires; a spawn ignores it.
+  "scope",
 ]);
 
 export interface SubagentPersonaSpec {

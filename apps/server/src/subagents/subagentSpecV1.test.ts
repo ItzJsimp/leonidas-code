@@ -63,6 +63,11 @@ describe("format v1", () => {
     );
   });
 
+  it("accepts the AIOS scope tag and ignores it", () => {
+    const spec = parseSubagentSpec(designer("scope: structural").join("\n"), "frontend-designer");
+    expect(spec.name).toBe("frontend-designer");
+  });
+
   it("refuses to start a subagent that is off", () => {
     const root = makeRoot();
     writeSpec(root, "frontend-designer", designer("enabled: false"));

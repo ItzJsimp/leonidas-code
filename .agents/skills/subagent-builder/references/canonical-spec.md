@@ -16,6 +16,7 @@ enabled: true # optional; false keeps it in the catalog but off
 tools: [Read, Edit, Write, Glob, Grep, Bash, mcp__t3-code__preview_open]
 context: [projects/rent-due-games/DESIGN.md] # loaded after the body; relative to the folder that holds .agents/
 never: ["Commit or push.", "Install packages."]
+scope: structural # optional AIOS metadata (personal or structural); a spawn ignores it
 ---
 ```
 
