@@ -158,6 +158,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.taskBoardList]: AuthOrchestrationReadScope,
   [WS_METHODS.taskBoardSubscribeCompletions]: AuthOrchestrationReadScope,
   [WS_METHODS.subagentsSubscribeSpawnApprovals]: AuthOrchestrationReadScope,
+  [WS_METHODS.subagentsList]: AuthOrchestrationReadScope,
   [WS_METHODS.subagentsRespondSpawnApproval]: AuthOrchestrationOperateScope,
   [WS_METHODS.taskBoardCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.taskBoardClaim]: AuthOrchestrationOperateScope,

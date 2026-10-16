@@ -8,6 +8,7 @@
  * @module SpawnApprovals
  */
 import {
+  type SubagentActivityStats,
   SubagentSpawnApprovalError,
   type SubagentSpawnApproval,
   type SubagentSpawnApprovals,
@@ -15,7 +16,9 @@ import {
   type SubagentSpawnRespondInput,
   type ThreadId,
 } from "@t3tools/contracts";
+import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
+import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -45,7 +48,16 @@ export interface SpawnApprovalsShape {
   readonly respond: (
     input: SubagentSpawnRespondInput,
   ) => Effect.Effect<void, SubagentSpawnApprovalError>;
+  /** Counts one subagent start with its estimated start tokens. */
+  readonly recordSpawn: (estimatedStartTokens: number) => Effect.Effect<void>;
+  /** Today's counts for the Studio KPI strip. */
+  readonly stats: Effect.Effect<SubagentActivityStats>;
 }
+
+/** Local calendar day, so "today" resets at the user's midnight. */
+const localDay = Effect.map(Clock.currentTimeMillis, (millis) =>
+  DateTime.formatIsoDate(DateTime.makeZonedUnsafe(millis, { timeZone: DateTime.zoneMakeLocal() })),
+);
 
 const allowanceKey = (threadId: string, subagent: string, model: string) =>
   `${threadId}\u0000${subagent}\u0000${model}`;
@@ -60,6 +72,11 @@ export const makeSpawnApprovals = Effect.gen(function* () {
     }
   >();
   const allowances = new Set<string>();
+  let today = { day: "", spawns: 0, waited: 0, startTokens: 0 };
+  const forToday = Effect.map(localDay, (day) => {
+    if (today.day !== day) today = { day, spawns: 0, waited: 0, startTokens: 0 };
+    return today;
+  });
   const publish = Effect.suspend(() =>
     SubscriptionRef.set(
       open,
@@ -73,6 +90,7 @@ export const makeSpawnApprovals = Effect.gen(function* () {
       Effect.sync(() => allowances.has(allowanceKey(threadId, subagent, model))),
     request: (approval) =>
       Effect.gen(function* () {
+        (yield* forToday).waited += 1;
         const answer = yield* Deferred.make<SubagentSpawnDecision>();
         waiting.set(approval.id, { approval, answer });
         yield* publish;
@@ -106,6 +124,17 @@ export const makeSpawnApprovals = Effect.gen(function* () {
         }
         yield* Deferred.succeed(entry.answer, decision);
       }),
+    recordSpawn: (estimatedStartTokens) =>
+      Effect.map(forToday, (counts) => {
+        counts.spawns += 1;
+        counts.startTokens += estimatedStartTokens;
+      }),
+    stats: Effect.map(forToday, (counts) => ({
+      spawnsToday: counts.spawns,
+      waitedToday: counts.waited,
+      meanStartTokensToday:
+        counts.spawns === 0 ? null : Math.round(counts.startTokens / counts.spawns),
+    })),
   } satisfies SpawnApprovalsShape;
 });
 

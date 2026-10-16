@@ -6,6 +6,7 @@ import {
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
+import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -36,6 +37,7 @@ import { subscribeChatGptHandoff } from "./provider/CodexChatGptHandoff.ts";
 import { subscribeCodexAuthCallback } from "./provider/CodexAuthCallback.ts";
 import {
   DEFAULT_AUTOMATIC_GIT_FETCH_INTERVAL,
+  DEFAULT_SUBAGENT_FREE_TIER_MODELS,
   AcpRegistryOperationError,
   CommandId,
   authScopeResponse,
@@ -2798,6 +2800,19 @@ const layerWsRpc = (
         [WS_METHODS.subagentsSubscribeSpawnApprovals]: () => spawnApprovals.pending,
         [WS_METHODS.subagentsRespondSpawnApproval]: (input) =>
           spawnApprovals.respond(input).pipe(Effect.as({})),
+        [WS_METHODS.subagentsList]: () =>
+          Effect.gen(function* () {
+            const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+            const aiosRoot = yield* taskBoard.aiosRoot(projects);
+            const appFreeModels = yield* serverSettings.getSettings.pipe(
+              Effect.map((settings) => settings.subagentFreeTierModels),
+              Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
+            );
+            const entries = yield* Effect.sync(() =>
+              listSubagents({ sources: subagentSources({ aiosRoot, projects }), appFreeModels }),
+            );
+            return { aiosRoot, entries, stats: yield* spawnApprovals.stats };
+          }),
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
         [WS_METHODS.devPreviewStart]: (input) =>

@@ -33,6 +33,12 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
   readonly approvalId: string;
 }) {
   const { persona, parent, model, appFreeModels } = input;
+  const approvals = yield* SpawnApprovals;
+  const estimatedStartTokens = estimatePersonaStartTokens({
+    systemPromptChars: persona.systemPrompt.length,
+    tools: persona.spec.tools,
+  });
+  const started = approvals.recordSpawn(estimatedStartTokens);
   const aios = yield* Effect.try({
     try: () => readAiosModelTiersNear(persona.specPath),
     catch: (error) =>
@@ -51,10 +57,11 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
           goodFor: DEFAULT_SUBAGENT_TIER_GOOD_FOR.confirm,
         }
       : mapped;
-  if (tier.tier === "free") return;
-  const approvals = yield* SpawnApprovals;
+  if (tier.tier === "free") return yield* started;
   const subagent = persona.spec.name;
-  if (yield* approvals.isAllowedForThread({ threadId: parent.thread.id, subagent, model })) return;
+  if (yield* approvals.isAllowedForThread({ threadId: parent.thread.id, subagent, model })) {
+    return yield* started;
+  }
   const outcome = yield* approvals.request({
     id: input.approvalId,
     threadId: parent.thread.id,
@@ -65,10 +72,7 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
     reason: input.reason.trim().slice(0, 600),
     filesInScope: persona.spec.context.map((entry) => entry.path),
     toolCount: persona.spec.tools.length,
-    estimatedStartTokens: estimatePersonaStartTokens({
-      systemPromptChars: persona.systemPrompt.length,
-      tools: persona.spec.tools,
-    }),
+    estimatedStartTokens,
     tierSource: tier.source,
     goodFor: tier.goodFor,
     requestedAt: DateTime.formatIso(yield* DateTime.now),
@@ -76,7 +80,7 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
   switch (outcome.kind) {
     case "allow_once":
     case "allow_thread":
-      return;
+      return yield* started;
     case "deny":
       return yield* denied(
         `The user denied the ${subagent} spawn on ${model}. Do not retry it; continue without this subagent or ask the user.`,

@@ -537,6 +537,8 @@ export class TaskBoardService extends Context.Service<
     readonly home: (
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<TaskBoardHome, TaskBoardReadError>;
+    /** The AIOS folder the task board reads: confirmed first, then detected; null when none. */
+    readonly aiosRoot: (projects: ReadonlyArray<Project>) => Effect.Effect<string | null>;
     /** Folders that look like the user's AIOS, plus the one already confirmed. */
     readonly aiosDetect: (
       input: TaskBoardAiosDetectInput,
@@ -1712,6 +1714,8 @@ const make = Effect.gen(function* () {
   return TaskBoardService.of({
     list,
     home,
+    aiosRoot: (projects: ReadonlyArray<Project>) =>
+      Effect.sync(() => aiosRootFor(projects, confirmedRoot)),
     aiosDetect,
     aiosConfirm,
     create,

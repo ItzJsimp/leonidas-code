@@ -15,6 +15,7 @@ import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
 import { HomeExtraCards } from "../components/taskBoard/HomeExtraCards";
+import { SubagentStudio } from "../components/subagents/SubagentStudio";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { Spinner } from "../components/ui/spinner";
@@ -103,6 +104,7 @@ function CommandCenterPage() {
           </div>
           <AiosHomeCard />
           <HomeExtraCards />
+          <SubagentStudio />
           {disconnected.length > 0 ? (
             <div
               role="status"
