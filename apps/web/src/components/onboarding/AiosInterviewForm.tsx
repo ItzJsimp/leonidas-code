@@ -84,7 +84,10 @@ export function AiosInterviewForm({
     const plan = planCreateOnly(planned, existing);
     const project = await ensureFolderProject(folder);
     if (!project.ok) {
-      setState({ status: "error", message: project.message });
+      setState({
+        status: "error",
+        message: "Could not use that folder. Check the folder location and name, then try again.",
+      });
       return;
     }
     const created: string[] = [];
@@ -165,7 +168,7 @@ export function AiosInterviewForm({
           </label>
         );
       })}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
         <Button disabled={!canCreate} onClick={() => void create()}>
           {working ? <Spinner /> : null}
           Create my AI memory

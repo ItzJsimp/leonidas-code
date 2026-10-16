@@ -227,24 +227,26 @@ export function LeonidasAiosStep({
               ) : null}
             </div>
           ) : null}
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Do you not want a chat? Paste this into PowerShell to create the same folders.
-            </p>
-            <div className="flex items-start justify-between gap-3">
-              <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
-                {folderCommand}
-              </pre>
-              <Button
-                size="compact"
-                variant="outline"
-                onClick={() => noChat.copyToClipboard(folderCommand, undefined)}
-              >
-                {noChat.isCopied ? <CheckIcon /> : <CopyIcon />}
-                {noChat.isCopied ? "Copied" : "Copy"}
-              </Button>
+          {mode !== "interview" ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Do you not want a chat? Paste this into PowerShell to create the same folders.
+              </p>
+              <div className="flex items-start justify-between gap-3">
+                <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
+                  {folderCommand}
+                </pre>
+                <Button
+                  size="compact"
+                  variant="outline"
+                  onClick={() => noChat.copyToClipboard(folderCommand, undefined)}
+                >
+                  {noChat.isCopied ? <CheckIcon /> : <CopyIcon />}
+                  {noChat.isCopied ? "Copied" : "Copy"}
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : null}
           <div className="flex flex-wrap gap-x-3">
             {mode === "interview" ? (
               <Button
