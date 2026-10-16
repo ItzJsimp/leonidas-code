@@ -285,6 +285,12 @@ import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { SidebarProjectRail } from "./sidebar/SidebarProjectRail";
+import {
+  projectHasCustomIcon,
+  SidebarProjectIconEditor,
+  type SidebarProjectIconMode,
+  useProjectIconSave,
+} from "./sidebar/SidebarProjectIconEditor";
 import { SidebarViewMenu } from "./sidebar/SidebarViewMenu";
 import { groupSidebarThreads, sidebarStatusLane } from "./sidebar/sidebarView.logic";
 import { useSidebarViewStore } from "./sidebar/sidebarViewStore";
@@ -2943,6 +2949,37 @@ export default function Sidebar() {
     },
     [isMobile, router, setOpenMobile],
   );
+  const [railIconEditor, setRailIconEditor] = useState<{
+    project: SidebarProjectSnapshot;
+    mode: SidebarProjectIconMode;
+  } | null>(null);
+  const saveProjectIcon = useProjectIconSave();
+  const handleRailProjectContextMenu = useCallback(
+    async (project: SidebarProjectSnapshot, position: { x: number; y: number }) => {
+      const api = readLocalApi();
+      if (!api) return;
+      const clicked = await settlePromise(() =>
+        api.contextMenu.show(
+          [
+            { id: "icon", label: "Choose emoji or icon" },
+            { id: "image", label: "Choose image file" },
+            ...(projectHasCustomIcon(project) ? [{ id: "reset", label: "Reset icon" }] : []),
+            { id: "settings", label: "Project settings" },
+          ],
+          position,
+        ),
+      );
+      if (clicked._tag === "Failure") return;
+      if (clicked.value === "icon" || clicked.value === "image") {
+        setRailIconEditor({ project, mode: clicked.value });
+      } else if (clicked.value === "reset") {
+        void saveProjectIcon(project, { faviconPath: null, projectIcon: null });
+      } else if (clicked.value === "settings") {
+        openProjectSettings(project);
+      }
+    },
+    [openProjectSettings, saveProjectIcon],
+  );
   // Anchor for the scope popup: the header search field, not its icon trigger.
   const headerSearchRef = useRef<HTMLDivElement | null>(null);
   // Safari can send a click after Ctrl+click opens settings. Ignore that one
@@ -5280,6 +5317,17 @@ export default function Sidebar() {
             selectedKey={projectScopeKey}
             needsYouByProject={needsYouByProject}
             onSelect={setProjectScopeKey}
+            onProjectContextMenu={(project, position) =>
+              void handleRailProjectContextMenu(project, position)
+            }
+          />
+        ) : null}
+        {railIconEditor ? (
+          <SidebarProjectIconEditor
+            key={`${railIconEditor.project.projectKey}:${railIconEditor.mode}`}
+            project={railIconEditor.project}
+            mode={railIconEditor.mode}
+            onClose={() => setRailIconEditor(null)}
           />
         ) : null}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
