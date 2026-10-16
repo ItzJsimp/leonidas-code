@@ -300,6 +300,8 @@ import { SecretRequestCard } from "./SecretRequestCard";
 import { TimelineSystemDivider } from "./TimelineSystemDivider";
 
 import { SkillChipIcon, SkillInlineText } from "./SkillInlineText";
+import { useSubagentMention } from "../subagents/useSubagentMention";
+import { useComposerSubagents } from "../subagents/useComposerSubagents";
 import * as DateTime from "effect/DateTime";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import {
@@ -4339,6 +4341,19 @@ function UserMessageMentionChip(props: {
   copyMarkdown: string;
 }) {
   const ctx = use(TimelineRowCtx);
+  const subagent = useSubagentMention(props.record.path);
+  if (subagent) {
+    return (
+      <UserMessageContextChip
+        icon={<BotIcon aria-hidden />}
+        label={subagent.name}
+        kindLabel="Subagent"
+        tooltip={subagent.description ?? `@${subagent.name}`}
+        copyMarkdown={props.copyMarkdown}
+        kind="skill"
+      />
+    );
+  }
   return (
     <Tooltip>
       <TooltipTrigger
@@ -4897,12 +4912,39 @@ const UserMessageBody = memo(function UserMessageBody(props: {
   if (props.text.length === 0) {
     return null;
   }
+  // Only a message with an @ asks the catalog for subagent names.
+  return props.text.includes("@") ? (
+    <UserMessageMarkdownWithSubagents {...props} threadRef={ctx.threadRef} />
+  ) : (
+    <UserMessageMarkdown {...props} threadRef={ctx.threadRef} subagentNames={NO_SUBAGENT_NAMES} />
+  );
+});
+
+function UserMessageMarkdownWithSubagents(
+  props: Omit<React.ComponentProps<typeof UserMessageMarkdown>, "subagentNames">,
+) {
+  const options = useComposerSubagents();
+  const names = useMemo(() => options.map((option) => option.name), [options]);
+  return <UserMessageMarkdown {...props} subagentNames={names} />;
+}
+
+const NO_SUBAGENT_NAMES: ReadonlyArray<string> = [];
+
+function UserMessageMarkdown(props: {
+  text: string;
+  renderContextReference?: (reference: ChatMarkdownContextReference) => ReactNode;
+  skills: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
+  markdownCwd: string | undefined;
+  threadRef: ScopedThreadRef | null;
+  subagentNames: ReadonlyArray<string>;
+}) {
   return (
     <ChatMarkdown
       text={props.text}
       cwd={props.markdownCwd}
-      threadRef={ctx.threadRef ?? undefined}
+      threadRef={props.threadRef ?? undefined}
       skills={props.skills}
+      subagents={props.subagentNames}
       className="text-foreground"
       lineBreaks
       parseRawHtml={false}
@@ -4910,7 +4952,7 @@ const UserMessageBody = memo(function UserMessageBody(props: {
       headingLevelOffset={MESSAGE_HEADING_LEVEL}
     />
   );
-});
+}
 
 function UserMessageReviewCommentCard({ comment }: { comment: ReviewCommentContext }) {
   const ctx = use(TimelineRowCtx);

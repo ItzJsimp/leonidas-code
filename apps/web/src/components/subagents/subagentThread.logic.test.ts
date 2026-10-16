@@ -4,6 +4,8 @@ import type { SubagentCatalogEntry } from "@t3tools/contracts";
 
 import {
   composerSubagentOptions,
+  findSubagentMention,
+  splitSubagentMentions,
   searchSubagentOptions,
   withAttachedSubagent,
 } from "./subagentThread.logic";
@@ -75,5 +77,46 @@ describe("withAttachedSubagent", () => {
   it("sends text unchanged with no attach or an unknown attach", () => {
     expect(withAttachedSubagent("hi", null, known)).toBe("hi");
     expect(withAttachedSubagent("hi", "gone", known)).toBe("hi");
+  });
+});
+
+describe("findSubagentMention", () => {
+  const options = [{ name: "explorer", description: "Finds things" }];
+
+  it("finds a mention that names a subagent", () => {
+    expect(findSubagentMention(options, "explorer")?.name).toBe("explorer");
+  });
+
+  it("leaves file paths and unknown names alone", () => {
+    expect(findSubagentMention(options, "src/explorer")).toBeNull();
+    expect(findSubagentMention(options, "explorer.ts")).toBeNull();
+    expect(findSubagentMention(options, "other")).toBeNull();
+  });
+});
+
+describe("splitSubagentMentions", () => {
+  it("splits a known mention out of prose", () => {
+    expect(splitSubagentMentions("ask @explorer to look, please", ["explorer"])).toEqual([
+      { kind: "text", text: "ask " },
+      { kind: "subagent", name: "explorer", raw: "@explorer" },
+      { kind: "text", text: " to look, please" },
+    ]);
+  });
+
+  it("keeps unknown names, addresses and plain text whole", () => {
+    expect(splitSubagentMentions("mail me@explorer.com", ["explorer"])).toEqual([
+      { kind: "text", text: "mail me@explorer.com" },
+    ]);
+    expect(splitSubagentMentions("@other hi", ["explorer"])).toEqual([
+      { kind: "text", text: "@other hi" },
+    ]);
+    expect(splitSubagentMentions("no mention", ["explorer"])).toEqual([
+      { kind: "text", text: "no mention" },
+    ]);
+  });
+
+  it("matches a mention at the start and at the end", () => {
+    const parts = splitSubagentMentions("@explorer", ["explorer"]);
+    expect(parts).toEqual([{ kind: "subagent", name: "explorer", raw: "@explorer" }]);
   });
 });

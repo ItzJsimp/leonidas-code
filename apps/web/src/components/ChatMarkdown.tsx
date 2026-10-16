@@ -224,6 +224,8 @@ interface ChatMarkdownProps {
   onTaskListChange?: ((input: { markerOffset: number; checked: boolean }) => void) | undefined;
   isStreaming?: boolean;
   skills?: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
+  /** Subagent names whose `@name` mentions render as chips (user messages only). */
+  subagents?: ReadonlyArray<string>;
   className?: string;
   /** Treat single newlines as hard breaks — chat-style user input. */
   lineBreaks?: boolean;
@@ -289,6 +291,7 @@ export function shouldUseMarkdownFileBrowserPrimaryAction(input: {
   );
 }
 
+const EMPTY_MARKDOWN_SUBAGENTS: ReadonlyArray<string> = [];
 const EMPTY_MARKDOWN_SKILLS: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">> = [];
 const EMPTY_REMARK_PLUGINS: NonNullable<ReactMarkdownOptions["remarkPlugins"]> = [];
 
@@ -2313,6 +2316,7 @@ function useChatMarkdownState({
   onTaskListChange,
   isStreaming = false,
   skills = EMPTY_MARKDOWN_SKILLS,
+  subagents = EMPTY_MARKDOWN_SUBAGENTS,
   onUseArtifactTemplate,
   onRunShellCommand,
   imageBaseDir,
@@ -2744,6 +2748,7 @@ function useChatMarkdownState({
       resolvedTheme,
       serverConfig,
       skills,
+      subagents,
       text,
       threadRef,
       updateThreadPullRequestLink,
@@ -2777,6 +2782,7 @@ function useChatMarkdownState({
       resolvedTheme,
       serverConfig,
       skills,
+      subagents,
       text,
       threadRef,
       updateThreadPullRequestLink,
@@ -2834,8 +2840,8 @@ const CHAT_MARKDOWN_COMPONENTS = {
     return <div {...props}>{children}</div>;
   },
   p: function MarkdownParagraph({ node: _node, children, ...props }) {
-    const { skills } = use(ChatMarkdownRendererContext);
-    return <p {...props}>{renderSkillInlineMarkdownChildren(children, skills)}</p>;
+    const { skills, subagents } = use(ChatMarkdownRendererContext);
+    return <p {...props}>{renderSkillInlineMarkdownChildren(children, skills, subagents)}</p>;
   },
   blockquote: function MarkdownBlockquote({ node: _node, children, ...props }) {
     const alert =
@@ -2868,13 +2874,13 @@ const CHAT_MARKDOWN_COMPONENTS = {
     );
   },
   li: function MarkdownListItem({ node, children, ...props }) {
-    const { text, skills } = use(ChatMarkdownRendererContext);
+    const { text, skills, subagents } = use(ChatMarkdownRendererContext);
     const listItemStart = node?.position?.start.offset;
     const markerOffset =
       typeof listItemStart === "number" ? findTaskListMarkerOffset(text, listItemStart) : null;
     return (
       <li {...props} data-task-marker-offset={markerOffset ?? undefined}>
-        {renderSkillInlineMarkdownChildren(children, skills)}
+        {renderSkillInlineMarkdownChildren(children, skills, subagents)}
       </li>
     );
   },

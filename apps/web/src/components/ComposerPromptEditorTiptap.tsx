@@ -2,6 +2,7 @@ import { createPromptPredictionPlugin, promptPredictionKey } from "./promptPredi
 import type { PromptCandidate } from "@t3tools/shared/promptPrediction";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { Extension, InputRule, Node, wrappingInputRule, type JSONContent } from "@tiptap/core";
+import { BotIcon } from "lucide-react";
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { type Node as ProseMirrorNode } from "@tiptap/pm/model";
@@ -97,6 +98,7 @@ import { WorkspaceEntryTooltip } from "./chat/WorkspaceEntryIcon";
 import { FileTagChipContent } from "./chat/FileTagChip";
 import { readClipboardFiles } from "./chat/composerAttachmentFiles";
 import { SkillChipIcon } from "./chat/SkillInlineText";
+import { useSubagentMention } from "./subagents/useSubagentMention";
 import { AssistantCitationChip } from "./chat/AssistantCitationChip";
 import { getTimelinePageScrollKey } from "./chat/pageScrollController";
 import { ContextChipPopover } from "./contextChipParts";
@@ -266,6 +268,25 @@ const ComposerMentionExtension = Node.create({
 function ComposerMentionNodeView({ node }: NodeViewProps) {
   const actions = use(ComposerContextActionsContext);
   const path = (node.attrs.path as string) ?? "";
+  const subagent = useSubagentMention(path);
+  if (subagent) {
+    return (
+      <NodeViewWrapper as="span" className={CHIP_NODE_SELECTION_CLASS_NAME}>
+        <ContextChipPopover
+          kind="skill"
+          icon={<BotIcon aria-hidden />}
+          label={subagent.name}
+          accessibleLabel={`Subagent ${subagent.name}`}
+        >
+          <div className="space-y-2 p-2 text-sm">
+            <p className="font-medium">{subagent.name}</p>
+            <p>{subagent.description ?? "This subagent has no description."}</p>
+            <p className="text-muted-foreground text-xs">Sends this request to the subagent.</p>
+          </div>
+        </ContextChipPopover>
+      </NodeViewWrapper>
+    );
+  }
   const chip = (
     <ContextChip
       kind="mention"
