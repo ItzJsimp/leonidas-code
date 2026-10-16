@@ -144,9 +144,14 @@ export function summarizeT3ToolCalls(
         : `Requested chat creation ${times}`;
       break;
     }
-    case "delegate":
-      label = phrase("Started", "start", quantity(countEntities(entityIds("taskId")), "helper"));
+    case "delegate": {
+      // A subagent call names who started, so the work log shows `@designer`, not "1 helper".
+      const subagents = selected.map((call) => id(call.input?.subagent));
+      label = subagents.every((name) => name !== undefined)
+        ? phrase("Started", "start", [...new Set(subagents)].map((name) => `@${name}`).join(", "))
+        : phrase("Started", "start", quantity(countEntities(entityIds("taskId")), "helper"));
       break;
+    }
     case "thread-read":
     case "thread-wait": {
       const targets = threadIds.every((value) => value !== undefined)

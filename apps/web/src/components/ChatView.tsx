@@ -11,6 +11,9 @@ import { quotaPreflightBannerItem, usageWarningBannerItem } from "./chat/QuotaPr
 import { getQuotaPreflightAdvice, getUsageWarning } from "./chat/quotaPreflight";
 import { uiVerificationBannerItem } from "./chat/UiVerificationBanner";
 import { uiChangedPaths, uiVerificationPrompt } from "./chat/uiVerification";
+import { useComposerSubagents } from "./subagents/useComposerSubagents";
+import { withAttachedSubagent } from "./subagents/subagentThread.logic";
+import { useSubagentAttachStore } from "../state/subagentAttach";
 import { getProviderFailoverTargets } from "./chat/providerFailover";
 import {
   resolveBackgroundDraftWorkspaceOptions,
@@ -1633,6 +1636,11 @@ export default function ChatView(props: ChatViewProps) {
     [environmentId, threadId],
   );
   const routeThreadKey = useMemo(() => scopedThreadKey(routeThreadRef), [routeThreadRef]);
+  const composerSubagentOptions = useComposerSubagents();
+  const composerSubagentNames = useMemo(
+    () => composerSubagentOptions.map((option) => option.name),
+    [composerSubagentOptions],
+  );
   // In a split workspace every pane is mounted, but window-level shortcuts and
   // paste belong to the focused pane only.
   const paneActiveRef = useRef(true);
@@ -9440,11 +9448,17 @@ export default function ChatView(props: ChatViewProps) {
         : sendContextPreviewAnnotations;
     // A direct "send annotation" writes the draft and sends in the same tick; the reference
     // must be in the text now, not after the next render.
-    const promptForSend = directAnnotation
+    const promptWithAnnotation = directAnnotation
       ? ensureInlineContextReferences(promptRef.current, [
           previewAnnotationContextReference(directAnnotation.annotation),
         ])
       : promptRef.current;
+    // An attached subagent leads every message of this chat, so the attach holds across turns.
+    const promptForSend = withAttachedSubagent(
+      promptWithAnnotation,
+      useSubagentAttachStore.getState().attachedByTarget[routeThreadKey] ?? null,
+      new Set(composerSubagentNames),
+    );
     if (editingQueuedRun !== null) {
       // Edit mode repurposes the composer: sending saves the queued message
       // in place instead of dispatching a new turn.

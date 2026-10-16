@@ -201,6 +201,21 @@ describe("summarizeT3ToolCalls", () => {
     });
   });
 
+  it("names the subagent a delegate call started", () => {
+    expect(
+      summarizeT3ToolCalls("delegate", [
+        completed({ subagent: "frontend-designer" }, { taskId: "task-1" }),
+        completed({ subagent: "frontend-designer" }, { taskId: "task-2" }),
+      ]).label,
+    ).toBe("Started @frontend-designer");
+    expect(
+      summarizeT3ToolCalls("delegate", [
+        completed({ subagent: "reviewer" }, { taskId: "task-1" }),
+        completed({}, { taskId: "task-2" }),
+      ]).label,
+    ).toBe("Started 2 helpers");
+  });
+
   it("does not confuse a child's failure or wait timeout with failure of the orchestration call", () => {
     const failedChild = { taskId: "task-1", status: "failed", summary: "command not found" };
     expect(

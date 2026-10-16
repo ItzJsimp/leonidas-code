@@ -11,6 +11,7 @@ describe("composer toolbar entries", () => {
       "stash",
       "capture",
       "skills",
+      "subagents",
       "nextAction",
     ]);
   });
@@ -28,6 +29,7 @@ describe("composer toolbar entries", () => {
       "stash",
       "capture",
       "skills",
+      "subagents",
     ]);
     expect(entries.find((e) => e.id === "stash")?.hidden).toBe(true);
     expect(entries.find((e) => e.id === "mine")?.custom).toBe(true);

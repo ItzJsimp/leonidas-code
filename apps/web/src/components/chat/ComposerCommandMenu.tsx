@@ -13,6 +13,7 @@ import {
 } from "@t3tools/contracts";
 import {
   BlocksIcon,
+  BotIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   FolderIcon,
@@ -33,6 +34,13 @@ import { ComposerBanner } from "./ComposerBanner";
 import { resolvePullRequestState } from "../pullRequest/pullRequestPresentation";
 
 export type ComposerCommandItem =
+  | {
+      id: string;
+      type: "subagent";
+      name: string;
+      label: string;
+      description: string;
+    }
   | {
       id: string;
       type: "path";
@@ -222,6 +230,9 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
       ) : null}
       {props.item.type === "skill-folder-back" ? (
         <ChevronLeftIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
+      ) : null}
+      {props.item.type === "subagent" ? (
+        <BotIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />
       ) : null}
       {props.item.type === "thread" ? (
         <MessagesSquareIcon aria-hidden="true" className="size-4 shrink-0 text-secondary-label" />

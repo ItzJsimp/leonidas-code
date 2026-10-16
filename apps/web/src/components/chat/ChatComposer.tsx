@@ -8,6 +8,7 @@ import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
 import { runtimeModeConfig, runtimeModeOptions as runtimeModes } from "./runtimeModeConfig";
 import { isLocalEnvironmentDisabled } from "../../localEnvironment";
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useRightPanelStore } from "~/rightPanelStore";
 import { AttachmentFilePreview } from "../files/AttachmentFilePreview";
@@ -140,6 +141,10 @@ import { openCapture } from "../capture/captureStore";
 import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge } from "./ComposerNextActionBadge";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
+import { ComposerSubagentsButton } from "../subagents/ComposerSubagentsButton";
+import { useComposerSubagents } from "../subagents/useComposerSubagents";
+import { searchSubagentOptions } from "../subagents/subagentThread.logic";
+import { selectAttachedSubagent, useSubagentAttachStore } from "../../state/subagentAttach";
 import { ComposerToolbar } from "./ComposerToolbar";
 import {
   countMentionedSkills,
@@ -2248,6 +2253,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   const compactCommandAvailable = providerSupportsManualCompaction(selectedProviderEntry);
   // Memoized so the composer menu memo below can cache between renders.
+  const composerSubagents = useComposerSubagents();
+  const subagentTargetKey = scopedThreadKey(routeThreadRef);
+  const attachedSubagent = useSubagentAttachStore(selectAttachedSubagent(subagentTargetKey));
+  const attachSubagent = useSubagentAttachStore((state) => state.attach);
+  const detachSubagent = useSubagentAttachStore((state) => state.detach);
   const selectedProviderSkills = useMemo(
     () =>
       selectedProviderStatus ? resolveProviderSkillsForCwd(selectedProviderStatus, gitCwd) : [],
@@ -2812,6 +2822,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       // Threads only surface for a typed query so `@` alone stays a file picker. A title match
       // is far more specific than a fuzzy path hit, so the few threads lead the list.
       return [
+        ...searchSubagentOptions(composerSubagents, composerTrigger.query)
+          .slice(0, 4)
+          .map((option) => ({
+            id: `subagent:${option.name}`,
+            type: "subagent" as const,
+            name: option.name,
+            label: `@${option.name}`,
+            description: option.description ?? "Subagent: send this request to it",
+          })),
         ...matchComposerThreadItems({
           shells: environmentThreadShells,
           environmentId,
@@ -2973,6 +2992,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerTrigger,
     environmentId,
     environmentThreadShells,
+    composerSubagents,
     exactPullRequestLookup.data,
     planModeUiEnabled,
     pullRequestLookup.data,
@@ -4178,6 +4198,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       if (item.type === "skill-folder" || item.type === "skill-folder-back") {
         setOpenSkillFolderId(item.type === "skill-folder" ? item.folder.id : null);
         setComposerHighlightedItemId(null);
+        return;
+      }
+      if (item.type === "subagent") {
+        const replacement = `@${item.name} `;
+        const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
+          snapshot.value,
+          trigger.rangeEnd,
+          replacement,
+        );
+        const applied = applyPromptReplacement(
+          trigger.rangeStart,
+          replacementRangeEnd,
+          replacement,
+          { expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd) },
+        );
+        if (applied) {
+          setComposerHighlightedItemId(null);
+        }
         return;
       }
       if (item.type === "path") {
@@ -7249,6 +7287,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       onSelect={(skillName) =>
                         setPrompt(prefixPromptWithSkill(promptRef.current, skillName))
                       }
+                    />
+                  ) : null,
+                subagents:
+                  composerSubagents.length > 0 || attachedSubagent !== null ? (
+                    <ComposerSubagentsButton
+                      options={composerSubagents}
+                      attached={attachedSubagent}
+                      onAttach={(name) => attachSubagent(subagentTargetKey, name)}
+                      onDetach={() => detachSubagent(subagentTargetKey)}
                     />
                   ) : null,
                 nextAction:

@@ -71,6 +71,7 @@ import {
   ThreadId,
 } from "@t3tools/contracts";
 import { confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
+import { instanceForModel } from "../subagents/instanceForModel.ts";
 import { loadSubagentPersona } from "../subagents/subagentPersona.ts";
 import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
 import {
@@ -2417,17 +2418,38 @@ const make = Effect.gen(function* () {
           input.target?.driverKind === undefined &&
           input.target?.model === undefined &&
           input.target?.options === undefined;
+        // A persona that names a model but no account runs on an account that offers it.
+        const personaCapable =
+          persona !== undefined && persona.spec.model !== null && persona.spec.account === null
+            ? yield* loadOrchestrationCapableInstanceIds()
+            : undefined;
+        const personaInstanceId =
+          persona !== undefined && persona.spec.model !== null && personaCapable !== undefined
+            ? instanceForModel(
+                providers,
+                persona.spec.model,
+                parent.thread.modelSelection.instanceId,
+                (provider) =>
+                  personaCapable.has(provider.instanceId) &&
+                  providerConstraints(provider, true).length === 0,
+              )
+            : undefined;
         let routedTarget: OrchestratorMcpTarget | undefined =
           persona !== undefined && input.target?.model === undefined && persona.spec.model !== null
             ? {
                 ...input.target,
                 model: persona.spec.model,
-                ...(persona.spec.account === null
-                  ? {}
-                  : {
+                ...(persona.spec.account !== null
+                  ? {
                       providerInstanceId: persona.spec
                         .account as OrchestratorMcpTarget["providerInstanceId"],
-                    }),
+                    }
+                  : personaInstanceId === undefined
+                    ? {}
+                    : {
+                        providerInstanceId:
+                          personaInstanceId as OrchestratorMcpTarget["providerInstanceId"],
+                      }),
               }
             : input.target;
         let fallbackModelSelection: ModelSelection | undefined;

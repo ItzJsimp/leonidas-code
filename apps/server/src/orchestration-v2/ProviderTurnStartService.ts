@@ -1,4 +1,6 @@
 import { modelSelectionsEqual } from "@t3tools/shared/model";
+import { routeSubagentMentions } from "../subagents/subagentMentions.ts";
+import { isEnabledSubagent } from "../subagents/subagentPersona.ts";
 import { projectComposerContextForProvider } from "@t3tools/shared/composerContextReferences";
 import {
   CommandId,
@@ -948,10 +950,13 @@ export const layer: Layer.Layer<
       const routableSubagents = projection.subagents.filter((subagent) =>
         RunExecutionService.canRouteRelatedSubagent(subagent.status),
       );
-      const userText = projectComposerContextForProvider({
-        text: message.text,
-        records: message.context?.records ?? [],
-      });
+      const userText = routeSubagentMentions(
+        projectComposerContextForProvider({
+          text: message.text,
+          records: message.context?.records ?? [],
+        }),
+        (name) => isEnabledSubagent(resolvedRuntimePolicy.cwd, name),
+      );
       // Delivered once: this run's provider turn marks the work as told. A
       // restart continuation is prompted by its own text or resumes natively.
       const noteContinuation = isRestartNoteContinuation(

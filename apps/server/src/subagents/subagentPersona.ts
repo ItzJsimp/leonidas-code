@@ -176,6 +176,18 @@ function resolveContextPath(root: string, relativePath: string): string {
   return absolute;
 }
 
+/** True when a spec named `name` exists above `cwd` and resolves to an enabled subagent. */
+export function isEnabledSubagent(cwd: string | null | undefined, name: string): boolean {
+  if (!cwd) return false;
+  const specPath = findSubagentSpec(cwd, name);
+  if (specPath === null) return false;
+  try {
+    return resolveSubagentSpec(specPath).enabled;
+  } catch {
+    return false;
+  }
+}
+
 const unique = (items: ReadonlyArray<string>) => [...new Set(items)];
 
 /** Reads a spec and merges its `extends` chain. Context files are located, not read. */
