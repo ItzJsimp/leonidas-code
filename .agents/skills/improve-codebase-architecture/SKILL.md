@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: "Analyze module boundaries, dependency coupling, and circular imports with visual refactoring plans."
+description: "Analyze module boundaries, coupling and circular imports, then propose a refactor plan. Use when code feels tangled, hard to change, or before a large restructure."
 category: code
 scope: structural
 source: "https://github.com/mattpocock/skills (skills/engineering/improve-codebase-architecture, MIT, adapted for the AIOS)"
@@ -14,7 +14,6 @@ owner: shared
 verified: 2026-08-22
 related: ["skills-index", "leonidas-os-audit", "ponytail-review"]
 generated: false
-disable-model-invocation: true
 ---
 
 # Improve Codebase Architecture

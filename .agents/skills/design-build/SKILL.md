@@ -1,6 +1,6 @@
 ---
 name: "design-build"
-description: "Design and build any new app, screen, web page, dashboard, HTML artifact or document to Apple-grade quality: design read, Build Menu, rendered contact sheet to pick from, token-true build, then a design-audit PASS."
+description: "Design and build a new app, screen, page, dashboard, HTML artifact or document to Apple-grade quality: design read, contact sheet to pick from, token-true build, audit PASS. Use for any new UI or visual deliverable."
 category: design
 scope: structural
 distribution: template

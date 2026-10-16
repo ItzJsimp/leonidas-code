@@ -1,6 +1,6 @@
 ---
 name: memory-leak-debugging
-description: "Diagnoses and resolves memory leaks in JavaScript and Node.js applications using Chrome DevTools MCP heap snapshots and inspection tools."
+description: "Find and fix memory leaks in JavaScript and Node.js with heap snapshots. Use when memory grows, a process is killed for memory, or a UI gets slower over time."
 scope: structural
 distribution: core
 type: skill
@@ -12,7 +12,6 @@ owner: shared
 verified: 2026-10-12
 source: "https://github.com/chromedevtools/chrome-devtools-mcp (skills/memory-leak-debugging, , commit 7007680)"
 category: code
-disable-model-invocation: true
 ---
 
 # Memory Leak Debugging

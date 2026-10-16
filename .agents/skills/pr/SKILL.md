@@ -1,6 +1,6 @@
 ---
 name: pr
-description: "Use when writing a PR body."
+description: "Write a pull request body: summary, why, test evidence, risks. Use when opening, drafting or updating a PR description."
 scope: structural
 category: code
 type: skill

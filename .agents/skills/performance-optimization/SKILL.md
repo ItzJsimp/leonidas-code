@@ -1,6 +1,6 @@
 ---
 name: performance-optimization
-description: "Optimizes application performance across frontend, backend and queries. Use when performance targets exist, regressions are suspected, load times need work, or profiling reveals bottlenecks."
+description: "Optimize speed across frontend, backend and queries with profiling first. Use when load time, latency or memory is a problem, or a regression is suspected."
 category: code
 scope: structural
 distribution: core
@@ -12,7 +12,6 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/addyosmani/agent-skills (skills/performance-optimization, MIT, commit 1be8e34)"
-disable-model-invocation: true
 ---
 
 # Performance Optimization

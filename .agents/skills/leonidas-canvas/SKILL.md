@@ -1,6 +1,6 @@
 ---
 name: "leonidas-canvas"
-description: "Generate Apple-grade interactive HTML canvases (pill navigation tabs, glowing KPI metric cards, SVG flowcharts, system maps, and styled data tables) directly in the Leonidas Code chat feed via html_render for architecture, deep research, specs, roadmaps, and designs."
+description: "Publish an interactive HTML canvas (tabs, KPI cards, flowcharts, tables) in the chat with html_render. Use for architecture, deep research, specs, roadmaps, comparisons and long multi-part answers."
 category: "design"
 scope: "structural"
 distribution: "template"
@@ -16,7 +16,7 @@ related: ["design-build", "design-audit", "impeccable", "prompt-composer"]
 
 # Leonidas Interactive Canvas
 
-Transforms complex agent output—architecture specifications, multi-facet research, system designs, game mechanics, and roadmaps—from overwhelming walls of markdown into an **Apple-grade, interactive executive dashboard** rendered directly in the Leonidas Code chat stream.
+Transforms complex agent output-architecture specifications, multi-facet research, system designs, game mechanics, and roadmaps-from overwhelming walls of markdown into an **Apple-grade, interactive executive dashboard** rendered directly in the Leonidas Code chat stream.
 
 Inspired by Rostyslav Melnyk's executive research outputs in T3 Code, this skill uses Leonidas Code's native `html_render` tool to display an interactive canvas with clickable pill tabs, glowing KPI cards, inline SVG diagrams, and high-density styled tables.
 

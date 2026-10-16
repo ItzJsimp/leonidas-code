@@ -1,6 +1,6 @@
 ---
 name: ui-taste
-description: "Build, redesign, or critique web and iOS interfaces with Uizze's anti-ui-slop playbooks and optional real-product references, including a final visual review."
+description: "Build, redesign or critique web and iOS interfaces with anti-slop playbooks and real-product references. Use for dashboards, landing pages, app screens, or when a UI looks generic or AI-made."
 category: design
 scope: structural
 distribution: core

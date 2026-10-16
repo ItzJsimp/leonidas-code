@@ -1,6 +1,6 @@
 ---
 name: code-simplification
-description: "Simplifies code for clarity. Use when refactoring code for clarity without changing behavior. Use when code works but is harder to read, maintain, or extend than it should be. Use when reviewing code that has accumulated unnecessary complexity."
+description: "Simplify code for clarity without changing behavior. Use when code works but is hard to read or extend, or when refactoring or reviewing accumulated complexity."
 category: code
 scope: structural
 distribution: core
@@ -12,7 +12,6 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/addyosmani/agent-skills (skills/code-simplification, MIT, commit 1be8e34)"
-disable-model-invocation: true
 ---
 
 # Code Simplification

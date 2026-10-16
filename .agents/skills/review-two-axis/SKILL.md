@@ -1,6 +1,6 @@
 ---
 name: review-two-axis
-description: "Review the diff since a fixed point on two axes with parallel sub-agents: Standards (repo rules plus Fowler smells) and Spec (does it match the spec or task card). Aggregates both reports."
+description: "Review a diff on two axes with parallel sub-agents: standards and spec match. Use when asked to review code, a branch, a PR or finished work against a spec or task card."
 scope: structural
 category: code
 type: skill

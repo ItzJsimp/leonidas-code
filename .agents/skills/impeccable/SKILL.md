@@ -1,6 +1,6 @@
 ---
 name: impeccable
-description: "Design, critique, audit, and polish frontend interfaces, UI systems, micro-interactions, and visual layouts."
+description: "Design, critique, audit and polish frontend UI: layouts, typography, color, spacing, motion, micro-interactions. Use for any request to design, restyle, review or improve how an interface looks or feels."
 category: design
 scope: structural
 distribution: core

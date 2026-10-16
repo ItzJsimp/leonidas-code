@@ -1,10 +1,9 @@
 ---
 name: "task-scoping"
-description: "Decompose specs, briefs, and multi-part goals into gated vertical-slice tasks via New-Task.ps1."
+description: "Break a spec, brief or multi-part goal into gated vertical-slice task cards. Use when work is large, vague or needs a build plan."
 category: planning
 scope: "structural"
 distribution: template
-disable-model-invocation: true
 ---
 
 # Task Scoping: Spec to Vertical Slices

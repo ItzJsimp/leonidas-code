@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: "Refine codebase domain models, synchronize terminology into CONTEXT.md, and record architectural ADRs."
+description: "Sharpen the domain model while designing: challenge terms, write CONTEXT.md glossary entries, record ADRs. Use when naming concepts, resolving fuzzy terms, or deciding architecture."
 category: code
 scope: structural
 source: "https://github.com/mattpocock/skills (skills/engineering/domain-modeling, MIT, adapted for the AIOS)"

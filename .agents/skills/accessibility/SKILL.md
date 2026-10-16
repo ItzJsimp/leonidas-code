@@ -1,10 +1,9 @@
 ---
 name: accessibility
-description: "Audit and implement web accessibility standards, WCAG 2.2 AA compliance, keyboard navigation, and screen reader compatibility."
+description: "Audit and fix web accessibility: WCAG 2.2 AA, keyboard use, screen readers, contrast, focus. Use when building or reviewing UI, forms or interactive controls."
 category: design
 scope: structural
 distribution: core
-disable-model-invocation: true
 ---
 
 # Web Accessibility & WCAG Compliance

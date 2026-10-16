@@ -1,6 +1,6 @@
 ---
 name: "design-audit"
-description: "Audit any UI, app screen, web page, HTML artifact or document against a scored pass/fail design rubric; screenshot at 3 sizes, list defects with plain-English fixes, route deep critique to impeccable."
+description: "Score a built UI, page, screen or document against a pass/fail design rubric from screenshots at 3 sizes, with plain fixes. Use after any UI change, or when asked to review, check or polish how it looks."
 category: design
 scope: structural
 distribution: template

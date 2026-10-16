@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: "Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like."
+description: "Build a throwaway prototype to answer a design question. Use to try a state model or logic before committing, or to explore what a UI could look like."
 category: code
 scope: structural
 distribution: core

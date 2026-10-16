@@ -1,6 +1,6 @@
 ---
 name: archify
-description: "Generate explorable standalone HTML/SVG architecture, sequence, and workflow diagrams from specs or Mermaid."
+description: "Generate explorable HTML/SVG architecture, sequence and workflow diagrams from specs or Mermaid. Use when asked to diagram, map or visualize a system or flow."
 category: design
 scope: structural
 distribution: core
@@ -18,7 +18,6 @@ metadata:
   version: "2.17"
   author: tt-a1i
   based_on: Cocoon-AI/architecture-diagram-generator (MIT, v1.0)
-disable-model-invocation: true
 ---
 
 # Archify

@@ -1,6 +1,6 @@
 ---
 name: diagnosing-bugs
-description: 'Diagnosis loop for hard bugs and performance regressions. Use when the user says "diagnose"/"debug this", or reports something broken/throwing/failing/slow.'
+description: "Diagnosis loop for hard bugs and performance regressions: reproduce, isolate, fix, prove. Use when something is broken, throwing, failing, flaky or slow, or the user says diagnose or debug this."
 scope: structural
 category: code
 type: skill
