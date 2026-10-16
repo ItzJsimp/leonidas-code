@@ -52,3 +52,20 @@ export const countReady = (entries: ReadonlyArray<SubagentCatalogEntry>) =>
 export function formatTokensShort(tokens: number): string {
   return tokens < 1_000 ? String(tokens) : `${(tokens / 1_000).toFixed(1)}k`;
 }
+
+/**
+ * A note for models whose engine does not start a persona lean. Claude is the
+ * lean path; Codex loads AGENTS.md too; other engines ignore the persona and
+ * the server refuses the spawn. Null when there is nothing to warn about.
+ */
+export function personaEngineHint(model: string | null): string | null {
+  if (model === null) return null;
+  if (model.startsWith("claude-")) return null;
+  if (model.startsWith("gpt-")) {
+    return "Runs on Codex. Codex also loads AGENTS.md, so it starts larger than the estimate.";
+  }
+  if (model.startsWith("gemini-")) {
+    return "Antigravity ignores a subagent's persona, so a start on this model is refused. Pick a Claude or Codex model.";
+  }
+  return null;
+}

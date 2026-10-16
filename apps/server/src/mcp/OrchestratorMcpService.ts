@@ -72,6 +72,7 @@ import {
 } from "@t3tools/contracts";
 import { confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
 import { instanceForModel } from "../subagents/instanceForModel.ts";
+import { personaEngineSupport } from "../subagents/personaEngines.ts";
 import { loadSubagentPersona } from "../subagents/subagentPersona.ts";
 import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
 import {
@@ -2492,10 +2493,28 @@ const make = Effect.gen(function* () {
           parent.thread.interactionMode,
           input.interactionMode,
         );
+        // An engine that ignores the persona must not run it as a plain child.
+        const personaEngine =
+          persona === undefined
+            ? undefined
+            : (() => {
+                const provider = providers.find(
+                  (entry) => entry.instanceId === target.modelSelection.instanceId,
+                );
+                return personaEngineSupport({
+                  driver: provider?.driver ?? "",
+                  subagent: persona.spec.name,
+                  engineName: provider?.displayName ?? target.modelSelection.instanceId,
+                });
+              })();
+        if (personaEngine?.kind === "unsupported") {
+          return yield* failure("invalid_request", personaEngine.message);
+        }
         if (persona !== undefined) {
           yield* confirmPersonaSpawn({
             persona,
             parent,
+            ...(personaEngine?.kind === "larger" ? { engineNote: personaEngine.note } : {}),
             model: target.modelSelection.model,
             account:
               providers.find((provider) => provider.instanceId === target.modelSelection.instanceId)

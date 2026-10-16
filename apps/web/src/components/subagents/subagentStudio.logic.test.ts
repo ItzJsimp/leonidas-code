@@ -1,7 +1,12 @@
 import type { SubagentCatalogEntry } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { countReady, formatTokensShort, groupStudioEntries } from "./subagentStudio.logic";
+import {
+  countReady,
+  formatTokensShort,
+  groupStudioEntries,
+  personaEngineHint,
+} from "./subagentStudio.logic";
 
 const entry = (overrides: Partial<SubagentCatalogEntry>): SubagentCatalogEntry => ({
   name: "explorer",
@@ -59,5 +64,14 @@ describe("KPI helpers", () => {
   it("formats token counts for the strip", () => {
     expect(formatTokensShort(950)).toBe("950");
     expect(formatTokensShort(10_830)).toBe("10.8k");
+  });
+});
+
+describe("personaEngineHint", () => {
+  it("is quiet for Claude and warns for Codex and Antigravity models", () => {
+    expect(personaEngineHint("claude-haiku-5-5")).toBeNull();
+    expect(personaEngineHint(null)).toBeNull();
+    expect(personaEngineHint("gpt-6-luna")).toContain("AGENTS.md");
+    expect(personaEngineHint("gemini-3.8-flash-low")).toContain("refused");
   });
 });

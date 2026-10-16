@@ -143,6 +143,9 @@ function SpawnApprovalCard(props: {
       <p className="text-xs text-muted-foreground">
         Confirm tier ({TIER_SOURCE_LABEL[approval.tierSource]}): {approval.goodFor}
       </p>
+      {approval.engineNote === undefined ? null : (
+        <p className="text-xs text-muted-foreground">{approval.engineNote}</p>
+      )}
 
       {redirecting ? (
         <form className="flex flex-col gap-2" onSubmit={submitRedirect}>

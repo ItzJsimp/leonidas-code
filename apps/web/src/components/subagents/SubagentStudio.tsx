@@ -27,6 +27,7 @@ import {
   entryId,
   formatTokensShort,
   groupStudioEntries,
+  personaEngineHint,
   type StudioGroupKey,
 } from "./subagentStudio.logic";
 
@@ -470,6 +471,11 @@ function SubagentDetail({
           <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
             <DetailRow label="Model">
               {entry.model === null ? "Not set" : modelDisplayName(entry.model)}
+              {personaEngineHint(entry.model) === null ? null : (
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {personaEngineHint(entry.model)}
+                </span>
+              )}
             </DetailRow>
             <DetailRow label="Account">
               {entry.account === null ? "Balanced (the app picks)" : entry.account}

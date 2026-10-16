@@ -31,6 +31,7 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
   readonly reason: string;
   readonly appFreeModels: ReadonlyArray<string>;
   readonly approvalId: string;
+  readonly engineNote?: string;
 }) {
   const { persona, parent, model, appFreeModels } = input;
   const approvals = yield* SpawnApprovals;
@@ -75,6 +76,7 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
     estimatedStartTokens,
     tierSource: tier.source,
     goodFor: tier.goodFor,
+    ...(input.engineNote === undefined ? {} : { engineNote: input.engineNote }),
     requestedAt: DateTime.formatIso(yield* DateTime.now),
   });
   switch (outcome.kind) {

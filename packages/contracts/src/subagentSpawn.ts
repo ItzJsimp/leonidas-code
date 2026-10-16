@@ -36,6 +36,8 @@ export const SubagentSpawnApproval = Schema.Struct({
   /** Where the tier came from: the app's map, the AIOS model-tiers.json, or the spec's own `tier: confirm`. */
   tierSource: Schema.Literals(["app", "aios", "subagent"]),
   goodFor: Schema.String,
+  /** Set when the engine starts a persona larger than the estimate (Codex loads AGENTS.md). */
+  engineNote: Schema.optional(Schema.String),
   requestedAt: Schema.String,
 });
 export type SubagentSpawnApproval = typeof SubagentSpawnApproval.Type;
