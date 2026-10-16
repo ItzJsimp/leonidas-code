@@ -11,6 +11,7 @@ The Idea to Ship commands read this file first. Rules come from [AGENTS.md](../A
 - Tests: `node_modules/.bin/vp test run <changed test files>`
 - Lint: `node_modules/.bin/vp lint <changed files>`
 - Typecheck (web): from `apps/web`, `../../node_modules/.bin/vp run typecheck` (about 13 s). Server typecheck has old errors: filter to changed paths.
+- Constraints: run the floor checks in [CONSTRAINTS.md](../CONSTRAINTS.md) (lint, fmt, typecheck, secrets, em dash) before each commit.
 - Build: CI owns the full build and suite. Never run `vp check`, `vp run -r test` or `vp run -r typecheck` unless asked.
 - Server boot: `node scripts/smoke.mjs` when server startup code changed.
 - Skills seen by Codex (free): `codex debug prompt-input` in the folder.
