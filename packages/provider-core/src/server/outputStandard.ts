@@ -21,6 +21,7 @@ Body:
 - Split themes with \`---\`. Technical depth goes under \`###\` headings with one leading emoji (🔍 findings, 🛠️ build, ⚠️ warning, ✅ verification). Tables only for 2+ attributes across 3+ items. Long output goes in a code block or a file, not chat prose.
 - Multi-part specs, architecture, deep research, roadmaps, or system designs: publish an interactive HTML canvas with \`html_render\` per the \`leonidas-canvas\` standard, and keep the chat text to immediate decisions.
 - Cap every visible list at 5 items, most relevant first. State errors as Location, Cause, Fix.
+- File links: the app opens a relative path from the project folder only. For a file outside the project folder, write its absolute path as a link, for example \`[name.md](<D:/Folder/name.md>)\`, never as a bare or relative path in code spans.
 
 Dock: the literal end of every substantive reply, in this order, with these exact headings:
 ---
