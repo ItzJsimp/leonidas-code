@@ -31,6 +31,7 @@ import {
   TaskBoardReleaseInput,
   TaskBoardCompleteInput,
   TaskBoardCompletions,
+  AiosUsageShape,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
   TaskBoardWorkspaceInput,
@@ -486,6 +487,7 @@ export const WS_METHODS = {
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
+  aiosUsageShape: "taskBoard.aiosUsageShape",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
   hardwareGetInventory: "hardware.getInventory",
@@ -1492,6 +1494,12 @@ const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
+const WsAiosUsageShapeRpc = Rpc.make(WS_METHODS.aiosUsageShape, {
+  payload: Schema.Struct({}),
+  success: AiosUsageShape,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsTaskBoardHomeWeatherRpc = Rpc.make(WS_METHODS.taskBoardHomeWeather, {
   payload: TaskBoardHomeWeatherInput,
   success: TaskBoardHomeWeather,
@@ -2487,6 +2495,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
   WsTaskBoardHomeRpc,
+  WsAiosUsageShapeRpc,
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
   WsHardwareGetInventoryRpc,

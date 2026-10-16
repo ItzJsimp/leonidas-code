@@ -48,6 +48,7 @@ import * as Stream from "effect/Stream";
 import * as SubscriptionRef from "effect/SubscriptionRef";
 import { ServerConfig } from "../config.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
+import { readAiosShape, type AiosShape } from "./aiosShape.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
 import { buildHome } from "./aiosHome.ts";
 import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
@@ -537,6 +538,8 @@ export class TaskBoardService extends Context.Service<
     readonly home: (
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<TaskBoardHome, TaskBoardReadError>;
+    /** Counts about the AIOS folder for opt-in usage analytics. */
+    readonly usageShape: (projects: ReadonlyArray<Project>) => AiosShape;
     /** Folders that look like the user's AIOS, plus the one already confirmed. */
     readonly aiosDetect: (
       input: TaskBoardAiosDetectInput,
@@ -1683,6 +1686,9 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const usageShape = (projects: ReadonlyArray<Project>) =>
+    readAiosShape(aiosRootFor(projects, confirmedRoot));
+
   const aiosDetect = (input: TaskBoardAiosDetectInput, projects: ReadonlyArray<Project>) =>
     Effect.sync(() => ({
       confirmedRoot: confirmedRoot ?? null,
@@ -1712,6 +1718,7 @@ const make = Effect.gen(function* () {
   return TaskBoardService.of({
     list,
     home,
+    usageShape,
     aiosDetect,
     aiosConfirm,
     create,

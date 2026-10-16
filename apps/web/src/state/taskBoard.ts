@@ -84,6 +84,13 @@ export const taskBoardHomeQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 60_000,
 });
 
+export const aiosUsageShapeQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-usage-shape",
+  tag: WS_METHODS.aiosUsageShape,
+  staleTimeMs: 10 * 60_000,
+  idleTtlMs: 60_000,
+});
+
 export const taskBoardHomeWeatherQuery = createEnvironmentRpcQueryAtomFamily(
   connectionAtomRuntime,
   {

@@ -399,6 +399,15 @@ export const TaskBoardHomeMove = Schema.Struct({
 });
 export type TaskBoardHomeMove = typeof TaskBoardHomeMove.Type;
 
+/** Counts that describe the user's AIOS for opt-in usage analytics. No names or paths. */
+export const AiosUsageShape = Schema.Struct({
+  aiosDetected: Schema.Boolean,
+  skillsCount: Schema.Number,
+  taskCardsCount: Schema.Number,
+  memoryFilesPresent: Schema.Boolean,
+});
+export type AiosUsageShape = typeof AiosUsageShape.Type;
+
 export const TaskBoardHome = Schema.Struct({
   root: Schema.NullOr(Schema.String),
   brief: Schema.NullOr(

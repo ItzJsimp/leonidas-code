@@ -2822,6 +2822,11 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
         [WS_METHODS.taskBoardHome]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap((projects) => taskBoard.home(projects))),
+        [WS_METHODS.aiosUsageShape]: () =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.map((projects) => taskBoard.usageShape(projects)),
+          ),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.aiosDetect(input, projects)),
