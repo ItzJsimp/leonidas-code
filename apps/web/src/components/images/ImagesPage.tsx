@@ -46,11 +46,17 @@ export function ImagesPage() {
                 tip={
                   state.source.online
                     ? `ComfyUI answers at ${state.source.baseUrl}.`
-                    : (state.source.message ?? "ComfyUI does not answer.")
+                    : state.source.busy
+                      ? "ComfyUI is busy, for example while it loads a model. Your images keep running."
+                      : (state.source.message ?? "ComfyUI does not answer.")
                 }
               >
                 <Badge variant={state.source.online ? "success" : "warning"} size="lg">
-                  {state.source.online ? "ComfyUI connected" : "ComfyUI not found"}
+                  {state.source.online
+                    ? "ComfyUI connected"
+                    : state.source.busy
+                      ? "ComfyUI busy"
+                      : "ComfyUI not found"}
                 </Badge>
               </Hint>
             ) : null}
@@ -97,6 +103,7 @@ export function ImagesPage() {
                   clockSkew={clockSkew}
                   onKeep={images.keep}
                   onReuse={reuse}
+                  onRetry={images.retry}
                 />
               ) : null}
             </div>

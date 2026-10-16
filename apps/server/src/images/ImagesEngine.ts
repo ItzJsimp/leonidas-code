@@ -73,6 +73,7 @@ export class ImagesEngine {
       label: options.source.label,
       baseUrl: options.source.address(),
       online: false,
+      busy: false,
       message: "Checking...",
     };
   }
@@ -118,15 +119,19 @@ export class ImagesEngine {
   /** Reads the source status. Tells the panel when it changed. */
   async refreshStatus(): Promise<void> {
     const status = await this.options.source.status();
+    // A cold ComfyUI is silent while it loads a model. While our own image runs, that is busy, not gone.
+    const busy = !status.online && status.timedOut === true && this.queue.running() !== undefined;
     const next: ImageSourceStatus = {
       sourceId: this.options.source.id,
       label: this.options.source.label,
       baseUrl: this.options.source.address(),
       online: status.online,
-      message: status.message,
+      busy,
+      message: busy ? "ComfyUI is busy. It may be loading a model." : status.message,
     };
     const same =
       next.online === this.sourceStatus.online &&
+      next.busy === this.sourceStatus.busy &&
       next.message === this.sourceStatus.message &&
       next.baseUrl === this.sourceStatus.baseUrl;
     this.sourceStatus = next;
@@ -168,6 +173,34 @@ export class ImagesEngine {
     this.changed();
     void this.pump();
     return { jobId, queued: entries.length };
+  }
+
+  /** Queues a failed or stopped image again with the same prompt, model and seed. */
+  retry(input: { readonly workspaceRoot: string; readonly itemId: string }): number | null {
+    const failed = this.queue.items.find(
+      (candidate) =>
+        candidate.id === input.itemId &&
+        candidate.workspaceRoot === input.workspaceRoot &&
+        (candidate.status === "error" || candidate.status === "cancelled"),
+    );
+    if (!failed) return null;
+    const fresh: Entry = {
+      ...failed,
+      id: `${failed.jobId}-retry-${NodeCrypto.randomUUID().slice(0, 8)}`,
+      status: "waiting",
+      startedAt: null,
+      seconds: null,
+      name: null,
+      kept: false,
+      error: null,
+      stopRequested: false,
+    };
+    // The new card takes the place of the failed one. Its time stays, so it keeps its spot in the grid.
+    this.queue.remove(failed);
+    this.queue.enqueue([fresh]);
+    this.changed();
+    void this.pump();
+    return 1;
   }
 
   /** Cancels every waiting image. With `stopRunning` it also stops the image that runs now. */

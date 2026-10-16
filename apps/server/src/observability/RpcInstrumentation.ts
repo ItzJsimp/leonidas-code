@@ -182,6 +182,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.imagesGenerate]: "workspace",
   [WS_METHODS.imagesCancel]: "workspace",
   [WS_METHODS.imagesKeep]: "workspace",
+  [WS_METHODS.imagesRetry]: "workspace",
   [WS_METHODS.imagesSetBaseUrl]: "workspace",
   [WS_METHODS.projectsPromptCandidates]: "workspace",
   [WS_METHODS.projectsPredictPrompt]: "workspace",

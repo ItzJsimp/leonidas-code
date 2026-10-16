@@ -27,6 +27,11 @@ export const imagesKeep = createEnvironmentRpcCommand(connectionAtomRuntime, {
   tag: WS_METHODS.imagesKeep,
 });
 
+export const imagesRetry = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:images:retry",
+  tag: WS_METHODS.imagesRetry,
+});
+
 export const imagesSetBaseUrl = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:images:set-base-url",
   tag: WS_METHODS.imagesSetBaseUrl,

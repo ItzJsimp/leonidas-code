@@ -61,6 +61,8 @@ export const ImageSourceStatus = Schema.Struct({
   label: Schema.String,
   baseUrl: Schema.String,
   online: Schema.Boolean,
+  /** True when ComfyUI did not answer in time while our own image runs. It is busy, not gone. */
+  busy: Schema.Boolean,
   /** Plain words about the problem when the source is offline. */
   message: Schema.NullOr(Schema.String),
 });
@@ -111,6 +113,12 @@ export const ImagesKeepInput = Schema.Struct({
   kept: Schema.Boolean,
 });
 export type ImagesKeepInput = typeof ImagesKeepInput.Type;
+
+export const ImagesRetryInput = Schema.Struct({
+  projectId: ProjectId,
+  itemId: TrimmedNonEmptyString,
+});
+export type ImagesRetryInput = typeof ImagesRetryInput.Type;
 
 export const ImagesSetBaseUrlInput = Schema.Struct({
   baseUrl: TrimmedNonEmptyString.check(Schema.isMaxLength(300)),

@@ -41,9 +41,11 @@ export function ComfySettings(props: {
           ? "Checking..."
           : source.online
             ? "Connected. Images are made on this computer."
-            : (source.message ?? "Not connected.")}
+            : source.busy
+              ? "ComfyUI is busy. It may be loading a model. Your images keep running."
+              : (source.message ?? "Not connected.")}
       </p>
-      {source && !source.online ? (
+      {source && !source.online && !source.busy ? (
         <p className="text-xs text-muted-foreground">
           ComfyUI is a free program that makes the images. Start it, then this page connects by
           itself.

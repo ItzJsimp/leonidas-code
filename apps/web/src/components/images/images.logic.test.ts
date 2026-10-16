@@ -2,6 +2,7 @@ import type { ImageItem, ImageModel } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  canRetry,
   clampVariations,
   commercialBadge,
   describeQueue,
@@ -130,5 +131,15 @@ describe("model choice", () => {
   it("toggles a model on and off", () => {
     expect(toggleModel(["a"], "b")).toEqual(["a", "b"]);
     expect(toggleModel(["a", "b"], "a")).toEqual(["b"]);
+  });
+});
+
+describe("canRetry", () => {
+  it("offers a retry for failed and stopped images only", () => {
+    expect(canRetry(item({ status: "error" }))).toBe(true);
+    expect(canRetry(item({ status: "cancelled" }))).toBe(true);
+    expect(canRetry(item({ status: "done" }))).toBe(false);
+    expect(canRetry(item({ status: "running" }))).toBe(false);
+    expect(canRetry(item({ status: "waiting" }))).toBe(false);
   });
 });

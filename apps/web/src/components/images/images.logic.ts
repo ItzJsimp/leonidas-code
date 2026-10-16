@@ -46,6 +46,11 @@ export function commercialBadge(use: ImageCommercialUse, licence: string): Badge
   }
 }
 
+/** A failed or stopped image can run again with the same recipe. */
+export function canRetry(item: ImageItem): boolean {
+  return item.status === "error" || item.status === "cancelled";
+}
+
 export interface QueueView {
   readonly waiting: number;
   readonly running: ImageItem | null;

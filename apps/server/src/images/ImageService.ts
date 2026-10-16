@@ -9,6 +9,7 @@ import {
   type ImagesGenerateInput,
   type ImagesGenerateResult,
   type ImagesKeepInput,
+  type ImagesRetryInput,
   type ImagesSetBaseUrlInput,
   type ImagesState,
   type Project,
@@ -44,6 +45,10 @@ export class ImageService extends Context.Service<
       project: Project,
       input: ImagesKeepInput,
     ) => Effect.Effect<{ readonly kept: boolean }, ImagesError>;
+    readonly retry: (
+      project: Project,
+      input: ImagesRetryInput,
+    ) => Effect.Effect<{ readonly queued: number }, ImagesError>;
     readonly setBaseUrl: (
       input: ImagesSetBaseUrlInput,
     ) => Effect.Effect<{ readonly baseUrl: string }, ImagesError>;
@@ -137,6 +142,15 @@ const make = Effect.gen(function* () {
       return { kept };
     });
 
+  const retry = (project: Project, input: ImagesRetryInput) =>
+    Effect.gen(function* () {
+      const queued = engine.retry({ workspaceRoot: project.workspaceRoot, itemId: input.itemId });
+      if (queued === null) {
+        return yield* new ImagesError({ reason: "not_found", detail: input.itemId });
+      }
+      return { queued };
+    });
+
   const setBaseUrl = (input: ImagesSetBaseUrlInput) =>
     Effect.gen(function* () {
       const next = normalizeBaseUrl(input.baseUrl);
@@ -164,6 +178,7 @@ const make = Effect.gen(function* () {
     cancel: (input) =>
       Effect.promise(() => engine.cancel(input)).pipe(Effect.map((cancelled) => ({ cancelled }))),
     keep,
+    retry,
     setBaseUrl,
   });
 });

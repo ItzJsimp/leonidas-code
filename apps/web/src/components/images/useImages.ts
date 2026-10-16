@@ -14,6 +14,7 @@ import {
   imagesGenerate,
   imagesKeep,
   imagesLive,
+  imagesRetry,
   imagesSetBaseUrl,
 } from "~/state/images";
 import { useEnvironmentQuery } from "~/state/query";
@@ -77,6 +78,7 @@ export function useImages() {
 
   const runGenerate = useAtomCommand(imagesGenerate, { reportFailure: false });
   const runCancel = useAtomCommand(imagesCancel, { reportFailure: false });
+  const runRetry = useAtomCommand(imagesRetry, { reportFailure: false });
   const runKeep = useAtomCommand(imagesKeep, { reportFailure: false });
   const runSetBaseUrl = useAtomCommand(imagesSetBaseUrl, { reportFailure: false });
 
@@ -133,6 +135,17 @@ export function useImages() {
     [attempt, environmentId, project, runKeep],
   );
 
+  const retry = useCallback(
+    (item: ImageItem) =>
+      attempt("Could not try the image again", async () => {
+        if (environmentId === null || project === null) return;
+        unwrap(
+          await runRetry({ environmentId, input: { projectId: project.id, itemId: item.id } }),
+        );
+      }),
+    [attempt, environmentId, project, runRetry],
+  );
+
   const setBaseUrl = useCallback(
     (baseUrl: string) =>
       attempt("Could not save the address", async () => {
@@ -155,6 +168,7 @@ export function useImages() {
     generate,
     cancel,
     keep,
+    retry,
     setBaseUrl,
   };
 }

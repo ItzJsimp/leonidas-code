@@ -1,5 +1,5 @@
 import type { ImageItem } from "@t3tools/contracts";
-import { CheckIcon, ImageOffIcon, RotateCcwIcon, StarIcon } from "lucide-react";
+import { CheckIcon, ImageOffIcon, RefreshCwIcon, RotateCcwIcon, StarIcon } from "lucide-react";
 import { memo } from "react";
 
 import { cn } from "~/lib/utils";
@@ -7,6 +7,7 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { ElapsedText } from "./ElapsedText";
 import { Hint } from "./Hint";
+import { canRetry } from "./images.logic";
 
 /** The square area of a card: the picture, or the state of the image that is not ready. */
 function CardFace(props: {
@@ -78,6 +79,7 @@ export const ImageCard = memo(function ImageCard(props: {
   readonly onOpen: (item: ImageItem) => void;
   readonly onKeep: (item: ImageItem, kept: boolean) => void;
   readonly onReuse: (item: ImageItem) => void;
+  readonly onRetry: (item: ImageItem) => void;
 }) {
   const { item } = props;
   const done = item.status === "done";
@@ -104,6 +106,16 @@ export const ImageCard = memo(function ImageCard(props: {
             {item.seconds !== null && done ? ` · ${String(item.seconds)} s` : ""}
           </div>
         </div>
+        {canRetry(item) ? (
+          <div className="flex items-center gap-2">
+            <Hint tip="Runs this image again with the same prompt, model and seed. Free.">
+              <Button size="compact" variant="outline" onClick={() => props.onRetry(item)}>
+                <RefreshCwIcon />
+                Try again
+              </Button>
+            </Hint>
+          </div>
+        ) : null}
         {done ? (
           <div className="flex items-center gap-2">
             <Hint

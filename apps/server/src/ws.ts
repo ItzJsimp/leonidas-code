@@ -2830,6 +2830,8 @@ const layerWsRpc = (
         [WS_METHODS.imagesCancel]: (input) => images.cancel(input),
         [WS_METHODS.imagesKeep]: (input) =>
           withImagesProject(input.projectId, (project) => images.keep(project, input)),
+        [WS_METHODS.imagesRetry]: (input) =>
+          withImagesProject(input.projectId, (project) => images.retry(project, input)),
         [WS_METHODS.imagesSetBaseUrl]: (input) => images.setBaseUrl(input),
         [WS_METHODS.taskBoardWorkspace]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),

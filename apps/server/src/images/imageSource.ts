@@ -26,6 +26,8 @@ export interface GeneratedImage {
 
 export interface SourceStatus {
   readonly online: boolean;
+  /** True when ComfyUI did not answer in time. It may be busy loading a model. */
+  readonly timedOut?: boolean;
   /** Plain words about the problem. Null when the source is fine. */
   readonly message: string | null;
 }

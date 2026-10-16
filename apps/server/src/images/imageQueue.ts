@@ -69,6 +69,10 @@ export class ImageQueue<T extends QueueEntry> {
     return cancelled;
   }
 
+  remove(entry: T): void {
+    this.entries = this.entries.filter((candidate) => candidate !== entry);
+  }
+
   running(): T | undefined {
     return this.entries.find((entry) => entry.status === "running");
   }

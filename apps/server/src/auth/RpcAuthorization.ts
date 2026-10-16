@@ -188,6 +188,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.imagesGenerate]: AuthOrchestrationOperateScope,
   [WS_METHODS.imagesCancel]: AuthOrchestrationOperateScope,
   [WS_METHODS.imagesKeep]: AuthOrchestrationOperateScope,
+  [WS_METHODS.imagesRetry]: AuthOrchestrationOperateScope,
   [WS_METHODS.imagesSetBaseUrl]: AuthSettingsWriteScope,
   [WS_METHODS.projectsPromptCandidates]: AuthFilesystemReadScope,
   [WS_METHODS.projectsPredictPrompt]: AuthFilesystemReadScope,

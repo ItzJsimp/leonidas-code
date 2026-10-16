@@ -74,6 +74,7 @@ import {
   ImagesGenerateInput,
   ImagesGenerateResult,
   ImagesKeepInput,
+  ImagesRetryInput,
   ImagesSetBaseUrlInput,
   ImagesState,
   ImagesSubscribeInput,
@@ -515,6 +516,7 @@ export const WS_METHODS = {
   imagesGenerate: "images.generate",
   imagesCancel: "images.cancel",
   imagesKeep: "images.keep",
+  imagesRetry: "images.retry",
   imagesSetBaseUrl: "images.setBaseUrl",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
@@ -1490,6 +1492,12 @@ const WsImagesCancelRpc = Rpc.make(WS_METHODS.imagesCancel, {
 const WsImagesKeepRpc = Rpc.make(WS_METHODS.imagesKeep, {
   payload: ImagesKeepInput,
   success: Schema.Struct({ kept: Schema.Boolean }),
+  error: ImagesRpcError,
+});
+
+const WsImagesRetryRpc = Rpc.make(WS_METHODS.imagesRetry, {
+  payload: ImagesRetryInput,
+  success: Schema.Struct({ queued: Schema.Number }),
   error: ImagesRpcError,
 });
 
@@ -2556,6 +2564,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsImagesGenerateRpc,
   WsImagesCancelRpc,
   WsImagesKeepRpc,
+  WsImagesRetryRpc,
   WsImagesSetBaseUrlRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,

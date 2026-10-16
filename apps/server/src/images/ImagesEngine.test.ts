@@ -294,4 +294,82 @@ describe("ImagesEngine", () => {
     expect(engine.snapshot(root).source.online).toBe(true);
     expect(changes).toBe(afterFirst + 1);
   });
+
+  it("shows busy, not gone, when a status check times out while our own image runs", async () => {
+    const fake = fakeSource({ hold: true });
+    let timedOut = true;
+    const engine = new ImagesEngine({
+      source: {
+        ...fake.source,
+        status: async () => ({
+          online: false,
+          timedOut,
+          message: "ComfyUI did not answer in time.",
+        }),
+      },
+    });
+    // Nothing runs yet, so a timeout is a real problem.
+    await engine.refreshStatus();
+    expect(engine.snapshot(root).source).toMatchObject({ online: false, busy: false });
+    engine.enqueue({
+      workspaceRoot: root,
+      prompt: "p",
+      modelIds: ["flux2klein"],
+      seed: 1,
+      count: 1,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await engine.refreshStatus();
+    expect(engine.snapshot(root).source).toMatchObject({ online: false, busy: true });
+    // A refused connection is never busy.
+    timedOut = false;
+    await engine.refreshStatus();
+    expect(engine.snapshot(root).source.busy).toBe(false);
+    fake.gates.shift()?.();
+    await settle(engine);
+  });
+
+  it("runs the next image after a failure, and runs a failed one again with the same recipe", async () => {
+    let failFirst = true;
+    const fake = fakeSource();
+    const generate = fake.source.generate;
+    const engine = new ImagesEngine({
+      source: {
+        ...fake.source,
+        generate: async (request, hooks) => {
+          if (failFirst) {
+            failFirst = false;
+            throw new Error(
+              "Cannot reach ComfyUI at http://fake.test. Start ComfyUI, then try again.",
+            );
+          }
+          return generate(request, hooks);
+        },
+      },
+    });
+    engine.enqueue({
+      workspaceRoot: root,
+      prompt: "ghost",
+      modelIds: ["flux2klein"],
+      seed: 77,
+      count: 2,
+    });
+    await settle(engine);
+    const failed = engine.snapshot(root).items.find((item) => item.status === "error")!;
+    expect(failed.seed).toBe(77);
+    // The next image still ran after the failure.
+    expect(engine.snapshot(root).items.filter((item) => item.status === "done")).toHaveLength(1);
+
+    expect(engine.retry({ workspaceRoot: root, itemId: "nope" })).toBeNull();
+    expect(engine.retry({ workspaceRoot: root, itemId: failed.id })).toBe(1);
+    await settle(engine);
+    const items = engine.snapshot(root).items;
+    expect(items.map((item) => item.status)).toEqual(["done", "done"]);
+    expect(items.map((item) => item.seed).toSorted()).toEqual([77, 78]);
+    expect(items.every((item) => item.prompt === "ghost" && item.modelId === "flux2klein")).toBe(
+      true,
+    );
+    // A finished image cannot be retried.
+    expect(engine.retry({ workspaceRoot: root, itemId: items[0]!.id })).toBeNull();
+  });
 });

@@ -50,6 +50,8 @@ export interface ComfyAdapterOptions {
   readonly pollMs?: number;
   /** Stops waiting for an image after this long. */
   readonly maxWaitMs?: number;
+  /** Longest wait for one answer. A cold ComfyUI is silent while it loads a model. */
+  readonly requestTimeoutMs?: number;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -101,49 +103,94 @@ export function describeHistoryFailure(entry: HistoryEntry): { cancelled: boolea
   return { cancelled: false, text: "ComfyUI could not make this image." };
 }
 
+/** Why a call to ComfyUI got no answer. "timeout" means ComfyUI is busy. "unreachable" means nothing listens. */
+export class ComfyConnectionError extends Error {
+  readonly kind: "timeout" | "unreachable";
+
+  constructor(kind: "timeout" | "unreachable", address: string) {
+    super(
+      kind === "timeout"
+        ? "ComfyUI did not answer in time. It may be loading a model. Try again."
+        : `Cannot reach ComfyUI at ${address}. Start ComfyUI, then try again.`,
+    );
+    this.name = "ComfyConnectionError";
+    this.kind = kind;
+  }
+}
+
+/** A cold ComfyUI does not answer while it loads a model, so a slow answer is not a failure. */
+const REQUEST_TIMEOUT_MS = 120_000;
+const MAX_RETRIES = 2;
+const BACKOFF_MS = [1_000, 2_000] as const;
+
+const isTimeout = (error: unknown) =>
+  error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+
 export function createComfyAdapter(options: ComfyAdapterOptions): ImageSource {
   const doFetch = options.fetch ?? fetch;
   const sleep = options.sleep ?? defaultSleep;
   const pollMs = options.pollMs ?? 1_000;
   const maxWaitMs = options.maxWaitMs ?? 30 * 60_000;
+  const requestTimeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
   const clientId = `leonidas-code-${Math.random().toString(36).slice(2, 10)}`;
   let currentPromptId: string | null = null;
 
   const base = () => options.baseUrl().replace(/\/+$/, "");
-  const offline = () =>
-    new Error(`Cannot reach ComfyUI at ${base()}. Start ComfyUI, then try again.`);
 
-  const post = async (path: string, body: unknown, timeoutMs = 30_000): Promise<Response> => {
+  const call = async (init: RequestInit, path: string, timeoutMs: number): Promise<Response> => {
     try {
-      return await doFetch(`${base()}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch {
-      throw offline();
+      return await doFetch(`${base()}${path}`, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    } catch (cause) {
+      throw new ComfyConnectionError(isTimeout(cause) ? "timeout" : "unreachable", base());
     }
   };
 
-  const get = async (path: string, timeoutMs = 30_000): Promise<Response> => {
-    try {
-      return await doFetch(`${base()}${path}`, { signal: AbortSignal.timeout(timeoutMs) });
-    } catch {
-      throw offline();
+  const post = (path: string, body: unknown, timeoutMs = requestTimeoutMs) =>
+    call(
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      path,
+      timeoutMs,
+    );
+
+  const get = (path: string, timeoutMs = requestTimeoutMs) => call({}, path, timeoutMs);
+
+  /**
+   * Retries a transient failure up to twice, with a short wait. A timeout is retried only when
+   * `retryTimeouts` is true: a timed out POST may already be queued, and a retry would run it twice.
+   */
+  const retrying = async <T>(
+    action: () => Promise<T>,
+    retryTimeouts: boolean,
+    signal?: AbortSignal,
+  ): Promise<T> => {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await action();
+      } catch (error) {
+        const retryable =
+          error instanceof ComfyConnectionError && (retryTimeouts || error.kind === "unreachable");
+        if (!retryable || attempt >= MAX_RETRIES) throw error;
+        await sleep(BACKOFF_MS[attempt] ?? 2_000);
+        if (signal?.aborted) throw new ImageCancelledError();
+      }
     }
   };
 
   const status = async (): Promise<SourceStatus> => {
     try {
-      const response = await doFetch(`${base()}/system_stats`, {
-        signal: AbortSignal.timeout(2_500),
-      });
+      const response = await call({}, "/system_stats", 2_500);
       if (!response.ok) {
         return { online: false, message: `ComfyUI answered ${String(response.status)}.` };
       }
       return { online: true, message: null };
-    } catch {
+    } catch (error) {
+      if (error instanceof ComfyConnectionError && error.kind === "timeout") {
+        return { online: false, timedOut: true, message: "ComfyUI did not answer in time." };
+      }
       return { online: false, message: `Cannot reach ComfyUI at ${base()}.` };
     }
   };
@@ -163,16 +210,34 @@ export function createComfyAdapter(options: ComfyAdapterOptions): ImageSource {
       width: IMAGE_SIZE,
       height: IMAGE_SIZE,
     });
-    const queued = await post("/prompt", { prompt: workflow, client_id: clientId });
+    const queued = await retrying(
+      () => post("/prompt", { prompt: workflow, client_id: clientId }),
+      false,
+      hooks.signal,
+    );
     if (!queued.ok) throw new Error(describeComfyError(queued.status, await queued.text()));
     const { prompt_id: promptId } = (await queued.json()) as { prompt_id: string };
     currentPromptId = promptId;
     try {
       const deadline = Date.now() + maxWaitMs;
+      let refusals = 0;
       for (;;) {
         if (hooks.signal?.aborted) throw new ImageCancelledError();
-        const response = await get(`/history/${encodeURIComponent(promptId)}`);
-        if (response.ok) {
+        let response: Response | null = null;
+        try {
+          response = await get(`/history/${encodeURIComponent(promptId)}`);
+          refusals = 0;
+        } catch (error) {
+          // A timeout means ComfyUI is busy, for example while it loads a model. Keep waiting.
+          if (!(error instanceof ComfyConnectionError)) throw error;
+          if (error.kind === "unreachable") {
+            refusals += 1;
+            if (refusals > MAX_RETRIES) throw error;
+            await sleep(BACKOFF_MS[refusals - 1] ?? 2_000);
+            continue;
+          }
+        }
+        if (response?.ok) {
           const history = (await response.json()) as Record<string, HistoryEntry>;
           const entry = history[promptId];
           if (entry) {
@@ -185,13 +250,12 @@ export function createComfyAdapter(options: ComfyAdapterOptions): ImageSource {
               .flatMap((output) => output.images ?? [])
               .at(0);
             if (!picture) throw new Error("ComfyUI finished but sent no image.");
-            const view = await get(
-              `/view?${new URLSearchParams({
-                filename: picture.filename,
-                subfolder: picture.subfolder ?? "",
-                type: picture.type ?? "output",
-              }).toString()}`,
-            );
+            const query = new URLSearchParams({
+              filename: picture.filename,
+              subfolder: picture.subfolder ?? "",
+              type: picture.type ?? "output",
+            }).toString();
+            const view = await retrying(() => get(`/view?${query}`), true, hooks.signal);
             if (!view.ok) throw new Error(describeComfyError(view.status, await view.text()));
             return {
               bytes: new Uint8Array(await view.arrayBuffer()),

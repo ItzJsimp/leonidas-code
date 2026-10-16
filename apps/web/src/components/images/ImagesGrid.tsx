@@ -18,6 +18,7 @@ export function ImagesGrid(props: {
   readonly clockSkew: number;
   readonly onKeep: (item: ImageItem, kept: boolean) => void;
   readonly onReuse: (item: ImageItem) => void;
+  readonly onRetry: (item: ImageItem) => void;
 }) {
   const [limit, setLimit] = useState(FIRST_PAGE);
   const [preview, setPreview] = useState<ExpandedImagePreview | null>(null);
@@ -77,6 +78,7 @@ export function ImagesGrid(props: {
             onOpen={open}
             onKeep={props.onKeep}
             onReuse={props.onReuse}
+            onRetry={props.onRetry}
           />
         ))}
       </div>
