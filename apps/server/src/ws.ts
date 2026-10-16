@@ -1354,6 +1354,7 @@ const layerWsRpc = (
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
       const spawnApprovals = yield* SpawnApprovals;
+      yield* spawnApprovals.keepStatsIn(`${config.stateDir}/subagent-stats.json`);
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
       const systemCare = yield* SystemCare.SystemCare;
       const studioWriteScope = Effect.gen(function* () {

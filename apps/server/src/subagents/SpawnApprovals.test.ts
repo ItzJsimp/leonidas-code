@@ -1,10 +1,15 @@
+// @effect-diagnostics nodeBuiltinImport:off
+import * as NodeFs from "node:fs";
+import * as NodeOs from "node:os";
+import * as NodePath from "node:path";
+
 import { describe, expect, it } from "@effect/vitest";
 import { ThreadId, type SubagentSpawnApproval } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
 
-import { makeSpawnApprovals } from "./SpawnApprovals.ts";
+import { makeSpawnApprovals, parseSavedCounts } from "./SpawnApprovals.ts";
 
 const approval = (id: string): SubagentSpawnApproval => ({
   id,
@@ -73,4 +78,41 @@ describe("SpawnApprovals", () => {
       expect(late._tag).toBe("SubagentSpawnApprovalError");
     }),
   );
+});
+
+describe("persisted counts", () => {
+  const withTempFile = () => {
+    const folder = NodeFs.mkdtempSync(NodePath.join(NodeOs.tmpdir(), "spawn-stats-"));
+    return { folder, file: NodePath.join(folder, "subagent-stats.json") };
+  };
+
+  it.effect("keeps today's counts across a restart", () =>
+    Effect.gen(function* () {
+      const { folder, file } = withTempFile();
+      const first = yield* makeSpawnApprovals;
+      yield* first.keepStatsIn(file);
+      yield* first.recordSpawn(10_000);
+      yield* first.recordSpawn(14_000);
+
+      const second = yield* makeSpawnApprovals;
+      yield* second.keepStatsIn(file);
+      const stats = yield* second.stats;
+      NodeFs.rmSync(folder, { recursive: true, force: true });
+      expect(stats.spawnsToday).toBe(2);
+      expect(stats.meanStartTokensToday).toBe(12_000);
+    }),
+  );
+
+  it("ignores counts saved on another day or damaged", () => {
+    const saved = JSON.stringify({ day: "2026-10-15", spawns: 4, waited: 1, startTokens: 40_000 });
+    expect(parseSavedCounts(saved, "2026-10-16")).toBeNull();
+    expect(parseSavedCounts(saved, "2026-10-15")).toEqual({
+      day: "2026-10-15",
+      spawns: 4,
+      waited: 1,
+      startTokens: 40_000,
+    });
+    expect(parseSavedCounts("{not json", "2026-10-16")).toBeNull();
+    expect(parseSavedCounts('{"day":"2026-10-16","spawns":-1}', "2026-10-16")).toBeNull();
+  });
 });

@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - one tiny synchronous stats write per spawn, same as subagentPersona.
 /**
  * SpawnApprovals - confirm-tier subagent spawns that wait for the user
  * (ADR-0082). `delegate_task` parks here until the user answers the card;
@@ -16,6 +17,9 @@ import {
   type SubagentSpawnRespondInput,
   type ThreadId,
 } from "@t3tools/contracts";
+import * as NodeFs from "node:fs";
+import * as NodePath from "node:path";
+
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -52,6 +56,40 @@ export interface SpawnApprovalsShape {
   readonly recordSpawn: (estimatedStartTokens: number) => Effect.Effect<void>;
   /** Today's counts for the Studio KPI strip. */
   readonly stats: Effect.Effect<SubagentActivityStats>;
+  /**
+   * Keeps today's counts in this file: reads them now (same local day only) and
+   * writes after each change, so a restart does not reset the KPI strip.
+   */
+  readonly keepStatsIn: (file: string) => Effect.Effect<void>;
+}
+
+interface DayCounts {
+  day: string;
+  spawns: number;
+  waited: number;
+  startTokens: number;
+}
+
+/** Counts saved for `day`, or null when the file is missing, from another day, or damaged. */
+export function parseSavedCounts(raw: string, day: string): DayCounts | null {
+  try {
+    const saved: unknown = JSON.parse(raw);
+    if (typeof saved !== "object" || saved === null) return null;
+    const record = saved as Record<string, unknown>;
+    const count = (key: string) =>
+      typeof record[key] === "number" && Number.isFinite(record[key]) && record[key] >= 0
+        ? Math.floor(record[key] as number)
+        : null;
+    const spawns = count("spawns");
+    const waited = count("waited");
+    const startTokens = count("startTokens");
+    if (record.day !== day || spawns === null || waited === null || startTokens === null) {
+      return null;
+    }
+    return { day, spawns, waited, startTokens };
+  } catch {
+    return null;
+  }
 }
 
 /** Local calendar day, so "today" resets at the user's midnight. */
@@ -72,11 +110,22 @@ export const makeSpawnApprovals = Effect.gen(function* () {
     }
   >();
   const allowances = new Set<string>();
-  let today = { day: "", spawns: 0, waited: 0, startTokens: 0 };
+  let today: DayCounts = { day: "", spawns: 0, waited: 0, startTokens: 0 };
+  let statsFile: string | null = null;
   const forToday = Effect.map(localDay, (day) => {
     if (today.day !== day) today = { day, spawns: 0, waited: 0, startTokens: 0 };
     return today;
   });
+  // A failed write only loses the saved count; the live count stays right.
+  const saveCounts = () => {
+    if (statsFile === null) return;
+    try {
+      NodeFs.mkdirSync(NodePath.dirname(statsFile), { recursive: true });
+      NodeFs.writeFileSync(statsFile, JSON.stringify(today), "utf8");
+    } catch {
+      // ignore
+    }
+  };
   const publish = Effect.suspend(() =>
     SubscriptionRef.set(
       open,
@@ -91,6 +140,7 @@ export const makeSpawnApprovals = Effect.gen(function* () {
     request: (approval) =>
       Effect.gen(function* () {
         (yield* forToday).waited += 1;
+        saveCounts();
         const answer = yield* Deferred.make<SubagentSpawnDecision>();
         waiting.set(approval.id, { approval, answer });
         yield* publish;
@@ -128,6 +178,30 @@ export const makeSpawnApprovals = Effect.gen(function* () {
       Effect.map(forToday, (counts) => {
         counts.spawns += 1;
         counts.startTokens += estimatedStartTokens;
+        saveCounts();
+      }),
+    keepStatsIn: (file) =>
+      Effect.gen(function* () {
+        const day = yield* localDay;
+        statsFile = file;
+        const saved = yield* Effect.sync(() => {
+          try {
+            return parseSavedCounts(NodeFs.readFileSync(file, "utf8"), day);
+          } catch {
+            return null;
+          }
+        });
+        if (saved !== null && today.day === day) {
+          // Counts made before the file was known add to the saved ones.
+          today = {
+            day,
+            spawns: saved.spawns + today.spawns,
+            waited: saved.waited + today.waited,
+            startTokens: saved.startTokens + today.startTokens,
+          };
+        } else if (saved !== null) {
+          today = saved;
+        }
       }),
     stats: Effect.map(forToday, (counts) => ({
       spawnsToday: counts.spawns,

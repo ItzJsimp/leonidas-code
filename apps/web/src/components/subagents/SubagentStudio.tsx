@@ -246,7 +246,7 @@ function KpiStrip(props: {
       <Kpi
         value={String(props.spawnsToday)}
         label="spawns today"
-        tip="Subagent starts through this app since midnight. The count restarts when the app restarts."
+        tip="Subagent starts through this app since midnight. The count is kept when the app restarts."
       />
       <Kpi
         value={String(props.waitedToday)}
