@@ -107,6 +107,18 @@ export const OrchestrationV2ProviderRef = Schema.Struct({
 });
 export type OrchestrationV2ProviderRef = typeof OrchestrationV2ProviderRef.Type;
 
+/**
+ * Lean start for an app-owned subagent child (ADR-0082). The child starts
+ * with this prompt instead of the provider preset and loads no instruction
+ * file chain. `tools` lists the only built-in and MCP tools it may use.
+ */
+export const OrchestrationV2ThreadPersona = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  systemPrompt: TrimmedNonEmptyString,
+  tools: Schema.Array(TrimmedNonEmptyString),
+});
+export type OrchestrationV2ThreadPersona = typeof OrchestrationV2ThreadPersona.Type;
+
 export const OrchestrationV2AppThreadLineage = Schema.Struct({
   parentThreadId: Schema.NullOr(ThreadId),
   relationshipToParent: Schema.NullOr(Schema.Literals(["fork", "subagent"])),
@@ -383,6 +395,8 @@ export const OrchestrationV2AppThread = Schema.Struct({
   activeProviderThreadId: Schema.NullOr(ProviderThreadId),
   historyOrigin: Schema.optional(OrchestrationV2ThreadHistoryOrigin),
   lineage: OrchestrationV2AppThreadLineage,
+  /** Set on app-owned subagent children started as a named persona. */
+  persona: Schema.optional(OrchestrationV2ThreadPersona),
   forkedFrom: Schema.NullOr(
     Schema.Union([
       Schema.Struct({ type: Schema.Literal("run"), threadId: ThreadId, runId: RunId }),
@@ -3138,6 +3152,7 @@ export const OrchestrationV2Command = Schema.Union([
     title: Schema.optional(TrimmedNonEmptyString),
     modelSelection: ModelSelection,
     fallbackModelSelection: Schema.optional(ModelSelection),
+    persona: Schema.optional(OrchestrationV2ThreadPersona),
     runtimeMode: RuntimeMode,
     interactionMode: ProviderInteractionMode,
     // Omitted behaves as "settled_only" (no wake while the parent has a live

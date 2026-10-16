@@ -181,6 +181,12 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
   target: Schema.optional(OrchestratorMcpTarget),
   title: Schema.optional(OrchestratorMcpTitle),
   role: Schema.optional(OrchestratorMcpTaskRole),
+  subagent: Schema.optional(
+    TrimmedNonEmptyString.check(Schema.isMaxLength(64)).annotate({
+      description:
+        "Name of a subagent in .agents/subagents/. The child starts as that persona with only its Context List and tools. Its model applies when target names no model.",
+    }),
+  ),
   mode: Schema.optional(
     Schema.Literals(["async", "wait"]).annotate({
       description:

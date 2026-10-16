@@ -70,6 +70,7 @@ import {
   type TaskBoardWorkspaceSnapshot,
   ThreadId,
 } from "@t3tools/contracts";
+import { loadSubagentPersona } from "../subagents/subagentPersona.ts";
 import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
 import {
   evaluatePredictiveQuota,
@@ -2385,12 +2386,49 @@ const make = Effect.gen(function* () {
           Effect.map((settings) => settings.routeLightDelegatedTasks),
           Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
         );
+        const persona =
+          input.subagent === undefined
+            ? undefined
+            : yield* Effect.gen(function* () {
+                const cwd =
+                  parent.thread.worktreePath ??
+                  (yield* projects.getById(parent.thread.projectId).pipe(
+                    Effect.map((project) =>
+                      Option.isSome(project) ? project.value.workspaceRoot : null,
+                    ),
+                    Effect.orElseSucceed(() => null),
+                  ));
+                if (cwd === null) {
+                  return yield* failure(
+                    "invalid_request",
+                    "Subagents need a project folder to find .agents/subagents/.",
+                  );
+                }
+                const subagentName = input.subagent as string;
+                return yield* Effect.try({
+                  try: () => loadSubagentPersona(cwd, subagentName),
+                  catch: (error) => failure("invalid_request", errorMessage(error)),
+                });
+              });
         const unnamedTarget =
+          persona === undefined &&
           input.target?.providerInstanceId === undefined &&
           input.target?.driverKind === undefined &&
           input.target?.model === undefined &&
           input.target?.options === undefined;
-        let routedTarget: OrchestratorMcpTarget | undefined = input.target;
+        let routedTarget: OrchestratorMcpTarget | undefined =
+          persona !== undefined && input.target?.model === undefined && persona.spec.model !== null
+            ? {
+                ...input.target,
+                model: persona.spec.model,
+                ...(persona.spec.provider === null
+                  ? {}
+                  : {
+                      providerInstanceId: persona.spec
+                        .provider as OrchestratorMcpTarget["providerInstanceId"],
+                    }),
+              }
+            : input.target;
         let fallbackModelSelection: ModelSelection | undefined;
         if (routeLight && unnamedTarget) {
           const capable = yield* loadOrchestrationCapableInstanceIds();
@@ -2449,6 +2487,15 @@ const make = Effect.gen(function* () {
             task: taskPrompt(input),
             ...(input.title === undefined ? {} : { title: input.title }),
             modelSelection: target.modelSelection,
+            ...(persona === undefined
+              ? {}
+              : {
+                  persona: {
+                    name: persona.spec.name,
+                    systemPrompt: persona.systemPrompt,
+                    tools: persona.spec.tools,
+                  },
+                }),
             // Only while the routed free model is what actually runs.
             ...(fallbackModelSelection !== undefined &&
             target.modelSelection.model === routedTarget?.model

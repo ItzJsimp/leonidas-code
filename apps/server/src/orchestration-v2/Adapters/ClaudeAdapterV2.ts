@@ -70,6 +70,7 @@ import {
   type OrchestrationV2UserInputQuestion,
   type OrchestrationV2Subagent,
   type OrchestrationV2AppThread,
+  type OrchestrationV2ThreadPersona,
   type OrchestrationV2SubagentWorkflow,
   type OrchestrationV2WorkflowRunHandles,
   type OrchestrationV2TurnItem,
@@ -288,6 +289,32 @@ export interface ClaudeAgentSdkQueryPresetTools {
 export type ClaudeAgentSdkQueryTools = ClaudeAgentSdkQueryToolList | ClaudeAgentSdkQueryPresetTools;
 
 export const CLAUDE_READ_ONLY_ALLOWED_TOOLS = ["Read", "Glob", "Grep"] as const;
+
+/**
+ * Tool surface for a persona child (ADR-0082): only the built-in tools the
+ * persona lists, narrowed by a read-only policy, and the app MCP server only
+ * when the persona lists one of its tools. Dropping unlisted MCP servers is
+ * most of the start-cost saving.
+ */
+export function claudePersonaToolShape(input: {
+  readonly persona: Pick<OrchestrationV2ThreadPersona, "tools">;
+  readonly policyTools: ClaudeAgentSdkQueryTools | undefined;
+  readonly mcpServers: ClaudeQueryOptions["mcpServers"] | undefined;
+}): {
+  readonly tools: ClaudeAgentSdkQueryToolList;
+  readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
+  readonly allowedTools?: ReadonlyArray<string>;
+} {
+  const builtIn = input.persona.tools.filter((tool) => !tool.startsWith("mcp__"));
+  const mcpTools = input.persona.tools.filter((tool) => tool.startsWith("mcp__"));
+  const policyList = Array.isArray(input.policyTools)
+    ? (input.policyTools as ClaudeAgentSdkQueryToolList)
+    : undefined;
+  const tools =
+    policyList === undefined ? builtIn : builtIn.filter((tool) => policyList.includes(tool));
+  if (mcpTools.length === 0 || input.mcpServers === undefined) return { tools };
+  return { tools, mcpServers: input.mcpServers, allowedTools: mcpTools };
+}
 
 function claudeAgentSdkQueryToolsForSdk(
   tools: ClaudeAgentSdkQueryTools,
@@ -969,6 +996,8 @@ export function makeClaudeQueryOptions(input: {
   readonly onUserDialog?: ClaudeQueryOptions["onUserDialog"];
   readonly supportedDialogKinds?: ClaudeQueryOptions["supportedDialogKinds"];
   readonly allowDangerouslySkipPermissions?: boolean;
+  /** Lean persona start: own prompt, no setting sources (no CLAUDE.md chain). */
+  readonly persona?: Pick<OrchestrationV2ThreadPersona, "systemPrompt">;
 }): ClaudeAgentSdkQueryOptions {
   const compiledSelection = compileClaudeModelSelection(input.modelSelection);
   const {
@@ -1048,13 +1077,17 @@ export function makeClaudeQueryOptions(input: {
       : {}),
     ...(input.environment === undefined ? {} : { env: input.environment }),
     ...(input.mcpServers === undefined ? {} : { mcpServers: input.mcpServers }),
-    systemPrompt: {
-      type: "preset" as const,
-      preset: "claude_code" as const,
-      append:
-        buildRuntimeInstructions({ harness: "Claude Code" }) +
-        (input.mcpServers === undefined ? "" : T3_CODE_ORCHESTRATION_INSTRUCTIONS),
-    },
+    ...(input.persona === undefined
+      ? {
+          systemPrompt: {
+            type: "preset" as const,
+            preset: "claude_code" as const,
+            append:
+              buildRuntimeInstructions({ harness: "Claude Code" }) +
+              (input.mcpServers === undefined ? "" : T3_CODE_ORCHESTRATION_INSTRUCTIONS),
+          },
+        }
+      : { systemPrompt: input.persona.systemPrompt, settingSources: [] }),
     ...(Object.keys(extraArgs).length === 0 ? {} : { extraArgs }),
   };
   const additionalDirectories = [
@@ -8428,6 +8461,14 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             turnInput.nativeThreadHasTurns ?? turnInput.providerTurnOrdinal > 1;
           const shouldResume =
             resumeSessionAt !== undefined || openedWithResume || hasPersistedProviderTurn;
+          const personaShape =
+            turnInput.appThread.persona === undefined
+              ? undefined
+              : claudePersonaToolShape({
+                  persona: turnInput.appThread.persona,
+                  policyTools: queryPolicy.tools,
+                  mcpServers: mcpOverrides.mcpServers,
+                });
           const queryOptions = makeClaudeQueryOptions({
             modelSelection: turnInput.modelSelection,
             nativeThreadId,
@@ -8440,13 +8481,20 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               model: turnInput.modelSelection.model,
               appThread: turnInput.appThread,
             }),
-            tools: queryPolicy.tools ?? CLAUDE_CODE_PRESET_TOOLS,
-            ...(mcpOverrides.allowedTools === undefined
-              ? {}
-              : { allowedTools: mcpOverrides.allowedTools }),
-            ...(mcpOverrides.mcpServers === undefined
-              ? {}
-              : { mcpServers: mcpOverrides.mcpServers }),
+            ...(personaShape === undefined
+              ? {
+                  tools: queryPolicy.tools ?? CLAUDE_CODE_PRESET_TOOLS,
+                  ...(mcpOverrides.allowedTools === undefined
+                    ? {}
+                    : { allowedTools: mcpOverrides.allowedTools }),
+                  ...(mcpOverrides.mcpServers === undefined
+                    ? {}
+                    : { mcpServers: mcpOverrides.mcpServers }),
+                }
+              : {
+                  ...personaShape,
+                  persona: turnInput.appThread.persona as OrchestrationV2ThreadPersona,
+                }),
             permissionMode: queryPolicy.permissionMode,
             ...(queryPolicy.allowDangerouslySkipPermissions === undefined
               ? {}

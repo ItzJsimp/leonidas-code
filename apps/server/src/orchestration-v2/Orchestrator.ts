@@ -6820,6 +6820,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         }),
         runtimeMode: command.runtimeMode,
         interactionMode: command.interactionMode,
+        ...(command.persona === undefined ? {} : { persona: command.persona }),
         ...(isolatedWorktreePath !== undefined ? { worktreePath: isolatedWorktreePath } : {}),
         ...(isolatedBranch !== undefined ? { branch: isolatedBranch } : {}),
       };
