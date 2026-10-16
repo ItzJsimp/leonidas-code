@@ -19,6 +19,11 @@ export const USAGE_EVENT_NAMES = [
   "providers_connected",
   "messages_sent",
   "ui_element_clicked",
+  "error_shown",
+  "crash",
+  "update_downloaded",
+  "update_installed",
+  "feedback_sent",
 ] as const;
 export type UsageEventName = (typeof USAGE_EVENT_NAMES)[number];
 
@@ -57,6 +62,9 @@ export const USAGE_UI_ELEMENT_IDS = [
 ] as const;
 export type UsageUiElementId = (typeof USAGE_UI_ELEMENT_IDS)[number];
 
+export const USAGE_ERROR_KINDS = ["chunk_load", "server_unreachable", "other"] as const;
+export type UsageErrorKind = (typeof USAGE_ERROR_KINDS)[number];
+
 export const USAGE_SETUP_STEP_IDS = [
   "welcome",
   "connection",
@@ -82,6 +90,11 @@ const NUMERIC_FIELDS: Readonly<Record<UsageEventName, readonly string[]>> = {
   providers_connected: ["provider_count"],
   messages_sent: ["count"],
   ui_element_clicked: [],
+  error_shown: [],
+  crash: [],
+  update_downloaded: [],
+  update_installed: [],
+  feedback_sent: [],
   aios_shape: ["aios_detected", "skills_count", "task_cards_count", "memory_files_present"],
 };
 
@@ -111,6 +124,10 @@ export function sanitizeUsageProperties(
     clean.providers = known.toSorted().join(",");
     clean.provider_count = known.length;
   }
+  if (name === "error_shown") {
+    const kind = properties.kind;
+    if ((USAGE_ERROR_KINDS as readonly unknown[]).includes(kind)) clean.kind = kind as string;
+  }
   if (name === "ui_element_clicked") {
     const element = properties.element;
     if ((USAGE_UI_ELEMENT_IDS as readonly unknown[]).includes(element)) {
@@ -132,6 +149,7 @@ export function isCompleteUsageEvent(name: UsageEventName, props: UsageEventProp
   if (name === "setup_step_completed" || name === "setup_abandoned_at_step") {
     return typeof props.step === "string";
   }
+  if (name === "error_shown") return typeof props.kind === "string";
   if (name === "ui_element_clicked") return typeof props.element === "string";
   if (name === "messages_sent") return typeof props.count === "number" && props.count >= 1;
   if (name === "time_to_first_message") return typeof props.seconds === "number";

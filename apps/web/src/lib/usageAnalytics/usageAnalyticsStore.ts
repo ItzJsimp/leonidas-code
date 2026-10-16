@@ -17,12 +17,18 @@ interface UsageAnalyticsState {
   /** Epoch ms when the welcome wizard finished; set by the coordinator. */
   setupDoneAt: number | null;
   firstMessageSent: boolean;
+  /** App version seen at the last launch; a change means an update was installed. */
+  lastAppVersion: string;
+  /** True while a session is open; still true at next launch means it did not close cleanly. */
+  sessionOpen: boolean;
   launchCount: number;
   setConsent: (consent: UsageConsent) => void;
   setFriendLabel: (label: string) => void;
   markFirstRunSent: () => void;
   markSetupSent: (doneAt: number) => void;
   markFirstMessageSent: () => void;
+  setLastAppVersion: (version: string) => void;
+  setSessionOpen: (open: boolean) => void;
   countLaunch: () => number;
 }
 
@@ -45,12 +51,16 @@ export const useUsageAnalyticsStore = create<UsageAnalyticsState>()(
       setupSent: false,
       setupDoneAt: null,
       firstMessageSent: false,
+      lastAppVersion: "",
+      sessionOpen: false,
       launchCount: 0,
       setConsent: (consent) => set({ consent }),
       setFriendLabel: (friendLabel) => set({ friendLabel: friendLabel.slice(0, 40) }),
       markFirstRunSent: () => set({ firstRunSent: true }),
       markSetupSent: (setupDoneAt) => set({ setupSent: true, setupDoneAt }),
       markFirstMessageSent: () => set({ firstMessageSent: true }),
+      setLastAppVersion: (lastAppVersion) => set({ lastAppVersion }),
+      setSessionOpen: (sessionOpen) => set({ sessionOpen }),
       countLaunch: () => {
         const launchCount = get().launchCount + 1;
         set({ launchCount });

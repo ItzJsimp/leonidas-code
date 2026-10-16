@@ -1,3 +1,4 @@
+import { sendUsageEvent } from "~/lib/usageAnalytics/sendUsageEvent";
 import { randomUUID } from "~/lib/utils";
 import type { FeedbackReport } from "./feedback.logic";
 
@@ -60,6 +61,7 @@ export async function submitFeedback(report: FeedbackReport): Promise<SubmitResu
       return { ok: false, error: "Too many reports just now. Try again in a minute." };
     }
     if (!response.ok) return { ok: false, error: `Couldn't send (${response.status}).` };
+    sendUsageEvent("feedback_sent");
     return { ok: true };
   } catch {
     return { ok: false, error: "Couldn't reach the feedback service. Check your connection." };

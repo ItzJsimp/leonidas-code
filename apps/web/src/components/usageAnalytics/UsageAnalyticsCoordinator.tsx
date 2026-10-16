@@ -5,6 +5,7 @@ import { useClientSettings, useClientSettingsHydrationStatus } from "../../hooks
 import { sendUsageEvent } from "../../lib/usageAnalytics/sendUsageEvent";
 import { useUsageAnalyticsStore } from "../../lib/usageAnalytics/usageAnalyticsStore";
 import { daysSince, featureIdFromPathname } from "../../lib/usageAnalytics/usageEvents";
+import { APP_VERSION } from "../../branding";
 import { usePrimaryEnvironment, usePrimaryEnvironmentId } from "../../state/environments";
 import { useEnvironmentQuery } from "../../state/query";
 import { aiosUsageShapeQuery } from "../../state/taskBoard";
@@ -68,10 +69,20 @@ export function UsageAnalyticsCoordinator() {
       sendUsageEvent("install_first_run");
       state.markFirstRunSent();
     }
+    // A session that never closed, or a new version, tells us about crashes and updates.
+    if (state.sessionOpen) sendUsageEvent("crash");
+    if (state.lastAppVersion !== "" && state.lastAppVersion !== APP_VERSION) {
+      sendUsageEvent("update_installed");
+    }
+    state.setLastAppVersion(APP_VERSION);
+    state.setSessionOpen(true);
+    const closeSession = () => useUsageAnalyticsStore.getState().setSessionOpen(false);
+    window.addEventListener("pagehide", closeSession);
     sendUsageEvent("app_opened", {
       days_since_install: daysSince(state.installedAt, Date.now()),
       launch_count: state.countLaunch(),
     });
+    return () => window.removeEventListener("pagehide", closeSession);
   }, [consent]);
 
   // session_duration: visible seconds, sent each time the window is hidden or closed.

@@ -61,6 +61,16 @@ describe("providers and clicks", () => {
   });
 });
 
+describe("health events", () => {
+  it("accepts only known error kinds and never free text", () => {
+    expect(sanitizeUsageProperties("error_shown", { kind: "chunk_load" })).toEqual({
+      kind: "chunk_load",
+    });
+    expect(sanitizeUsageProperties("error_shown", { kind: "Error at C:/Users/x" })).toEqual({});
+    expect(sanitizeUsageProperties("crash", { message: "my prompt", path: "sk-123" })).toEqual({});
+  });
+});
+
 describe("isCompleteUsageEvent", () => {
   it("skips empty sessions and feature events with no feature", () => {
     expect(isCompleteUsageEvent("session_duration", { seconds: 0 })).toBe(false);
