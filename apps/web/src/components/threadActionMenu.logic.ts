@@ -146,8 +146,8 @@ export function buildThreadActionMenuItems(
     ...(state.supports.settlement
       ? [
           state.isSettled
-            ? { id: "unsettle" as const, label: "Mark as not done", icon: "circle-check" }
-            : { id: "settle" as const, label: "Mark as done", icon: "circle-check" },
+            ? { id: "unsettle" as const, label: "Unarchive chat", icon: "archive" }
+            : { id: "settle" as const, label: "Archive chat", icon: "archive" },
         ]
       : []),
     ...(state.supports.snooze
@@ -206,7 +206,7 @@ export function buildThreadActionMenuItems(
       ? [
           {
             id: "auto-settle" as const,
-            label: "Mark as done by itself",
+            label: "Archive by itself",
             icon: "timer",
             children: [
               {
@@ -237,23 +237,26 @@ export function buildThreadActionMenuItems(
       ],
     },
     { id: "project-settings", label: "Project settings", icon: "settings" },
-    // Archive removes the thread from the sidebar while keeping its
-    // conversation under Settings > Archived threads — distinct from Settle
-    // (stays visible in the Settled shelf) and Delete (clears history for
-    // good), so it sits beside Delete without borrowing its destructive
-    // styling.
-    {
-      id: "archive",
-      label: "Archive chat",
-      icon: "archive",
-      disabled: state.isRunning,
-      separatorBefore: true,
-    },
+    // Archive is one state: the Archive shelf (settled), offered above as
+    // "Archive chat". Only a server without the shelf keeps the older
+    // hide-from-sidebar archive, so every server can still archive a chat.
+    ...(state.supports.settlement
+      ? []
+      : [
+          {
+            id: "archive" as const,
+            label: "Archive chat",
+            icon: "archive",
+            disabled: state.isRunning,
+            separatorBefore: true,
+          },
+        ]),
     {
       id: "delete",
       label: "Delete",
       destructive: true,
       icon: "trash",
+      separatorBefore: state.supports.settlement,
     },
   ];
   return state.canOperate
