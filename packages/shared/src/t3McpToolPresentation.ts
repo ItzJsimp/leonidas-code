@@ -172,6 +172,8 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   board_task_get: tool(["Read", "Reading", "Read", "a board task"], "board-task-get"),
   board_task_update: tool(["Update", "Updating", "Updated", "a board task"], "board-task-update"),
   board_task_create: tool(["Create", "Creating", "Created", "a board task"], "board-task-create"),
+  focus_list: tool(["List", "Listing", "Listed", "focus notes"], "board-task-list"),
+  focus_check: tool(["Tick", "Ticking", "Ticked", "a focus note"], "board-task-update"),
   request_secret: tool(["Ask for", "Asking for", "Asked for", "a secret"], "secret-request"),
   create_threads: tool(["Create", "Creating", "Created", "chats"], "thread-create"),
   t3_thread_start: tool(["Start", "Starting", "Started", "a chat"], "thread-create"),

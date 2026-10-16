@@ -7232,19 +7232,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       }
                     />
                   ) : null,
-                nextAction:
-                  prompt.trim().length === 0 ? (
-                    <ComposerNextActionBadge
-                      alignRight={false}
-                      environmentId={environmentId}
-                      activeProjectId={savedItemsProjectId}
-                      cwd={gitCwd}
-                      onFill={(nextPrompt) => {
-                        setPrompt(nextPrompt);
-                        requestAnimationFrame(focusComposer);
-                      }}
-                    />
-                  ) : null,
+                nextAction: (
+                  <ComposerNextActionBadge
+                    alignRight={false}
+                    environmentId={environmentId}
+                    activeProjectId={savedItemsProjectId}
+                    cwd={gitCwd}
+                    canFill={prompt.trim().length === 0}
+                    onFill={(nextPrompt) => {
+                      setPrompt(nextPrompt);
+                      requestAnimationFrame(focusComposer);
+                    }}
+                  />
+                ),
               }}
             />
           ) : null}

@@ -68,6 +68,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.subscribeHardware
   | typeof WS_METHODS.pullRequestsSubscribeRefreshes
   | typeof WS_METHODS.taskBoardSubscribeCompletions
+  | typeof WS_METHODS.focusSubscribe
   | typeof WS_METHODS.subscribeVcsStatus
   | typeof WS_METHODS.subscribeWorktreeSetup
   | typeof WS_METHODS.subscribeProjectClones

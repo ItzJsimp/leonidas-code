@@ -451,6 +451,7 @@ import {
 import { environmentShell } from "../state/shell";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
+import { FocusWidgetHost } from "./focus/FocusWidgetHost";
 import { useComposerContextSlice } from "./chat/composerContextSlice";
 import type { ComposerAttachmentSlice } from "./chat/composerAttachments";
 import type { ComposerLayoutSlice } from "./chat/composerLayout";
@@ -11999,6 +12000,10 @@ export default function ChatView(props: ChatViewProps) {
             </div>
             {/* Messages Wrapper */}
             <div className="relative flex min-h-0 flex-1 flex-col bg-background">
+              <FocusWidgetHost
+                environmentId={environmentId}
+                projectId={activeProject?.id ?? null}
+              />
               {/* Messages — LegendList handles virtualization and scrolling internally */}
               <MessagesTimeline
                 citationRequest={paintOnlyDisplayedTimeline ? null : citationRequest}

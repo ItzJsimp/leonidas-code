@@ -772,6 +772,23 @@ export type OrchestratorMcpBoardTaskListResult = typeof OrchestratorMcpBoardTask
 export const OrchestratorMcpBoardTaskGetInput = Schema.Struct({ taskId: BoardTaskId });
 export type OrchestratorMcpBoardTaskGetInput = typeof OrchestratorMcpBoardTaskGetInput.Type;
 
+export const OrchestratorMcpFocusListInput = Schema.Struct({
+  all: Schema.optional(
+    Schema.Boolean.annotate({
+      description: "True lists every section. Default: this thread's project plus Global.",
+    }),
+  ),
+});
+export type OrchestratorMcpFocusListInput = typeof OrchestratorMcpFocusListInput.Type;
+
+export const OrchestratorMcpFocusCheckInput = Schema.Struct({
+  id: Schema.String.annotate({ description: "Item id from focus_list." }),
+  done: Schema.optional(
+    Schema.Boolean.annotate({ description: "False clears the tick. Default true." }),
+  ),
+});
+export type OrchestratorMcpFocusCheckInput = typeof OrchestratorMcpFocusCheckInput.Type;
+
 export const OrchestratorMcpBoardTaskDetail = Schema.Struct({
   ...OrchestratorMcpBoardTaskRow.fields,
   description: Schema.String,

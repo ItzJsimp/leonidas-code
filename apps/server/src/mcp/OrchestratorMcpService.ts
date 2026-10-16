@@ -15,6 +15,9 @@ import {
   type OrchestratorMcpBoardTaskCreateInput,
   type OrchestratorMcpBoardTaskDetail,
   type OrchestratorMcpBoardTaskGetInput,
+  type OrchestratorMcpFocusCheckInput,
+  type OrchestratorMcpFocusListInput,
+  type FocusSnapshot,
   type OrchestratorMcpBoardTaskListInput,
   type OrchestratorMcpBoardTaskListResult,
   type OrchestratorMcpBoardTaskRow,
@@ -199,6 +202,15 @@ export interface OrchestratorMcpServiceShape {
     scope: McpInvocationScope,
     input: OrchestratorMcpBoardTaskCreateInput,
   ) => Effect.Effect<OrchestratorMcpBoardTaskRow, OrchestratorMcpFailure>;
+  /** The user's focus list: this thread's project section plus Global, or every section. */
+  readonly focusList: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpFocusListInput,
+  ) => Effect.Effect<FocusSnapshot, OrchestratorMcpFailure>;
+  readonly focusCheck: (
+    scope: McpInvocationScope,
+    input: OrchestratorMcpFocusCheckInput,
+  ) => Effect.Effect<FocusSnapshot, OrchestratorMcpFailure>;
   readonly updateScheduledTask: (
     scope: McpInvocationScope,
     input: OrchestratorMcpUpdateScheduledTaskInput,
@@ -2093,6 +2105,30 @@ const make = Effect.gen(function* () {
           )
           .pipe(Effect.mapError(boardTaskFailure));
         return boardTaskRow(created);
+      }),
+    focusList: (scope, input) =>
+      Effect.gen(function* () {
+        const { parent } = yield* loadCaller(scope);
+        const snapshot = yield* taskBoard.focus(yield* boardProjects);
+        const projectId = parent?.thread.projectId;
+        if (input.all === true) return snapshot;
+        return {
+          ...snapshot,
+          sections: snapshot.sections.filter(
+            (section) =>
+              section.slug === null || (projectId !== undefined && section.projectId === projectId),
+          ),
+        };
+      }),
+    focusCheck: (scope, input) =>
+      Effect.gen(function* () {
+        yield* loadCaller(scope);
+        return yield* taskBoard
+          .focusUpdate(
+            { op: "set_done", id: input.id, done: input.done ?? true },
+            yield* boardProjects,
+          )
+          .pipe(Effect.mapError(boardTaskFailure));
       }),
     updateScheduledTask: (scope, input) =>
       Effect.gen(function* () {

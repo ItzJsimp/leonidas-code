@@ -2793,6 +2793,21 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardUpdate]: (input) =>
           withTaskBoardProject(input.projectId, (project) => taskBoard.update(project, input)),
         [WS_METHODS.taskBoardSubscribeCompletions]: () => taskBoard.completions,
+        // Each change made through this server pushes a fresh list; no polling.
+        [WS_METHODS.focusSubscribe]: () =>
+          taskBoard.focusChanges.pipe(
+            Stream.mapEffect(() =>
+              projectService.snapshot.pipe(
+                Effect.map((snapshot) => snapshot.projects),
+                Effect.orElseSucceed(() => []),
+                Effect.flatMap(taskBoard.focus),
+              ),
+            ),
+          ),
+        [WS_METHODS.focusUpdate]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.focusUpdate(input, projects)),
+          ),
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
         [WS_METHODS.devPreviewStart]: (input) =>

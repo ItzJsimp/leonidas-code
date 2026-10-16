@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
-/** One click saves this message to the inbox, remembering which chat it came from. */
+/** One click adds this message to the notepad. */
 export const MessageCaptureButton = memo(function MessageCaptureButton(props: {
   readonly text: string;
   readonly threadId: string | undefined;
@@ -18,23 +18,21 @@ export const MessageCaptureButton = memo(function MessageCaptureButton(props: {
       <TooltipTrigger
         render={
           <Button
-            aria-label="Save message to inbox"
+            aria-label="Add message to notepad"
             disabled={!canDrop}
             type="button"
             size="xs"
             variant="ghost-muted"
             onClick={() => {
-              void drop(props.text, props.threadId ? `chat ${props.threadId}` : "chat").then(
-                (result) => {
-                  if (!result.ok && result.error) {
-                    toastManager.add({
-                      type: "error",
-                      title: "Could not save",
-                      description: result.error,
-                    });
-                  }
-                },
-              );
+              void drop(props.text).then((result) => {
+                if (!result.ok && result.error) {
+                  toastManager.add({
+                    type: "error",
+                    title: "Could not save",
+                    description: result.error,
+                  });
+                }
+              });
             }}
           />
         }
@@ -42,7 +40,7 @@ export const MessageCaptureButton = memo(function MessageCaptureButton(props: {
         <InboxIcon className="size-3" />
       </TooltipTrigger>
       <TooltipPopup>
-        <p>Save to inbox</p>
+        <p>Add to notepad</p>
       </TooltipPopup>
     </Tooltip>
   );

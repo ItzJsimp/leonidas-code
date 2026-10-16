@@ -21,8 +21,8 @@ export const ComposerCaptureBadge = memo(function ComposerCaptureBadge(props: {
       <ComposerBanner.Row
         render={<button type="button" />}
         data-tour="composer-capture"
-        aria-label="Quick capture: save a note, an idea or a task"
-        title={props.shortcutLabel ? `Quick capture (${props.shortcutLabel})` : "Quick capture"}
+        aria-label="Add to notepad: save a note, an idea or a task"
+        title={props.shortcutLabel ? `Add to notepad (${props.shortcutLabel})` : "Add to notepad"}
         className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
         onPointerDown={(event) => event.preventDefault()}
         onClick={props.onOpen}
@@ -30,7 +30,7 @@ export const ComposerCaptureBadge = memo(function ComposerCaptureBadge(props: {
         <ComposerBanner.Icon>
           <InboxIcon />
         </ComposerBanner.Icon>
-        <ComposerBanner.Content>Capture</ComposerBanner.Content>
+        <ComposerBanner.Content>Add note</ComposerBanner.Content>
       </ComposerBanner.Row>
     </ComposerBanner.Root>
   );

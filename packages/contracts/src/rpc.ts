@@ -31,7 +31,9 @@ import {
   TaskBoardReleaseInput,
   TaskBoardCompleteInput,
   TaskBoardCompletions,
+  FocusSnapshot,
   AiosUsageShape,
+  FocusUpdateInput,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
   TaskBoardWorkspaceInput,
@@ -490,6 +492,8 @@ export const WS_METHODS = {
   aiosUsageShape: "taskBoard.aiosUsageShape",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
+  focusSubscribe: "focus.subscribe",
+  focusUpdate: "focus.update",
   hardwareGetInventory: "hardware.getInventory",
   hardwareGetHistory: "hardware.getHistory",
   hardwareGetLimits: "hardware.getLimits",
@@ -1518,6 +1522,19 @@ const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
+  payload: Schema.Struct({}),
+  success: FocusSnapshot,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
+const WsFocusUpdateRpc = Rpc.make(WS_METHODS.focusUpdate, {
+  payload: FocusUpdateInput,
+  success: FocusSnapshot,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const HardwareRpcError = Schema.Union([HardwareWatchError, EnvironmentAuthorizationError]);
 
 const WsHardwareGetInventoryRpc = Rpc.make(WS_METHODS.hardwareGetInventory, {
@@ -2487,6 +2504,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardReleaseRpc,
   WsTaskBoardCompleteRpc,
   WsTaskBoardSubscribeCompletionsRpc,
+  WsFocusSubscribeRpc,
+  WsFocusUpdateRpc,
   WsTaskBoardUpdateRpc,
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,

@@ -2,6 +2,9 @@ import {
   OrchestratorMcpBoardTaskCreateInput,
   OrchestratorMcpBoardTaskDetail,
   OrchestratorMcpBoardTaskGetInput,
+  OrchestratorMcpFocusCheckInput,
+  OrchestratorMcpFocusListInput,
+  FocusSnapshot,
   OrchestratorMcpBoardTaskListInput,
   OrchestratorMcpBoardTaskListResult,
   OrchestratorMcpBoardTaskRow,
@@ -246,6 +249,34 @@ const BoardTaskCreateTool = Tool.make("board_task_create", {
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false);
 
+const FocusListTool = Tool.make("focus_list", {
+  description:
+    "List the user's focus notes (what is on their mind): this thread's project plus Global. Pass all=true for every project.",
+  parameters: OrchestratorMcpFocusListInput,
+  success: FocusSnapshot,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "List focus notes")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true);
+
+const FocusCheckTool = Tool.make("focus_check", {
+  description:
+    "Tick a focus note when your work finished it. Use the id from focus_list. done=false clears the tick.",
+  parameters: OrchestratorMcpFocusCheckInput,
+  success: FocusSnapshot,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Tick a focus note")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true);
+
 const RequestSecretTool = Tool.make("request_secret", {
   description:
     "Ask the user for a secret (a token, API key, signing secret, password) through a private card in this thread, and wait for them to answer. The value is kept by the app and NEVER returned to you or shown in the transcript. When saved, the result carries a secretRef: pass it to a tool that accepts one (e.g. schedule_task's signature.secretRef). It works once. Never ask for secrets in chat, and never invent one.",
@@ -472,6 +503,8 @@ export const OrchestratorToolkit = Toolkit.make(
   BoardTaskGetTool,
   BoardTaskUpdateTool,
   BoardTaskCreateTool,
+  FocusListTool,
+  FocusCheckTool,
   RequestSecretTool,
   CreateThreadsTool,
   ThreadListTool,

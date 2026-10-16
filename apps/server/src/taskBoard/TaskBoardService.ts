@@ -11,6 +11,8 @@ import {
   type TaskBoardCompleteInput,
   type TaskBoardCompletion,
   type TaskBoardCompletions,
+  type FocusSnapshot,
+  type FocusUpdateInput,
   type TaskBoardCreateInput,
   type TaskBoardHistoryEntry,
   type InboxDrop,
@@ -51,6 +53,14 @@ import { ServerSettingsService } from "../serverSettings.ts";
 import { readAiosShape, type AiosShape } from "./aiosShape.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
 import { buildHome } from "./aiosHome.ts";
+import {
+  addFocusItem,
+  changeFocusItem,
+  focusPathFor,
+  readFocusFile,
+  sectionItems,
+  writeFocusFile,
+} from "./focusFile.ts";
 import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
 import { triageDrop } from "./triage.ts";
 import * as ProcessRunner from "../processRunner.ts";
@@ -556,6 +566,14 @@ export class TaskBoardService extends Context.Service<
     ) => Effect.Effect<{ readonly removed: boolean }, TaskBoardOperationError>;
     /** The latest task completions made through this server: the current list, then each change. */
     readonly completions: Stream.Stream<TaskBoardCompletions>;
+    /** The focus list in `<AIOS>/memory/focus.md` (the native root when no AIOS is found). */
+    readonly focus: (projects: ReadonlyArray<Project>) => Effect.Effect<FocusSnapshot>;
+    readonly focusUpdate: (
+      input: FocusUpdateInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<FocusSnapshot, TaskBoardOperationError>;
+    /** Ticks once on subscribe, then after each focus change made through this server. */
+    readonly focusChanges: Stream.Stream<number>;
   }
 >()("t3/taskBoard/TaskBoardService") {}
 
@@ -1618,6 +1636,74 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const focusRevision = yield* SubscriptionRef.make(0);
+  const focusPath = (projects: ReadonlyArray<Project>) => {
+    const root = inboxRoot(projects);
+    return root === null ? null : focusPathFor(root);
+  };
+  const focusSnapshotOf = (
+    path: string | null,
+    doc: ReturnType<typeof readFocusFile>,
+    projects: ReadonlyArray<Project>,
+  ): FocusSnapshot => {
+    const bySlug = new Map(projects.map((project) => [aiosSlugFor(project), project.id] as const));
+    return {
+      path,
+      member: resolveMember(),
+      sections: doc.sections.map((section) => ({
+        slug: section.slug,
+        projectId: section.slug === null ? null : (bySlug.get(section.slug) ?? null),
+        items: sectionItems(section),
+      })),
+    };
+  };
+  // A file that cannot be read shows as an empty list with its path, so the widget can say where it looked.
+  const focus = (projects: ReadonlyArray<Project>) =>
+    Effect.sync(() => {
+      const path = focusPath(projects);
+      if (path === null) return { path: null, member: resolveMember(), sections: [] };
+      try {
+        return focusSnapshotOf(path, readFocusFile(path), projects);
+      } catch {
+        return { path, member: resolveMember(), sections: [] };
+      }
+    });
+
+  const focusUpdate = (input: FocusUpdateInput, projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      const path = focusPath(projects);
+      if (path === null) return yield* storageError("No folder is available for the focus list.");
+      const snapshot = yield* Effect.try({
+        try: () => {
+          const doc = readFocusFile(path);
+          let next: typeof doc | null;
+          if (input.op === "add") {
+            const project = input.projectId
+              ? projects.find((candidate) => candidate.id === input.projectId)
+              : undefined;
+            next = addFocusItem(doc, project ? aiosSlugFor(project) : null, input.text);
+          } else {
+            next = changeFocusItem(
+              doc,
+              input.id,
+              input.op === "remove" ? null : { done: input.done },
+            );
+          }
+          if (next === null) {
+            throw new TaskBoardOperationError({
+              reason: "task_not_found",
+              message: "That focus item is gone. The list has been refreshed.",
+            });
+          }
+          writeFocusFile(path, next);
+          return focusSnapshotOf(path, next, projects);
+        },
+        catch: cardWriteFailure,
+      });
+      yield* SubscriptionRef.update(focusRevision, (n) => n + 1);
+      return snapshot;
+    });
+
   const share = (projectInput: Project, input: TaskBoardShareInput) =>
     Effect.gen(function* () {
       const project = yield* projectContext(projectInput);
@@ -1733,6 +1819,9 @@ const make = Effect.gen(function* () {
     inboxUndo,
     share,
     completions: SubscriptionRef.changes(recentCompletions),
+    focus,
+    focusUpdate,
+    focusChanges: SubscriptionRef.changes(focusRevision),
   });
 });
 

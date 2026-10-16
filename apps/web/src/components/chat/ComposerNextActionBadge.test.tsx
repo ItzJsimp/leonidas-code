@@ -9,10 +9,12 @@ import { ComposerNextActionBadge } from "./ComposerNextActionBadge";
 const state = vi.hoisted(() => ({
   workspace: vi.fn(),
   shared: vi.fn(),
+  navigate: vi.fn(),
 }));
 vi.mock("~/state/query", () => ({ useEnvironmentQuery: state.workspace }));
 vi.mock("~/state/taskBoard", () => ({ taskBoardWorkspaceQuery: (input: unknown) => input }));
 vi.mock("../taskBoard/useSharedBoards", () => ({ useSharedBoards: state.shared }));
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => state.navigate }));
 
 let root: Root;
 let host: HTMLDivElement;
@@ -59,7 +61,11 @@ beforeEach(async () => {
   await renderBadge(null);
 });
 
-async function renderBadge(activeProjectId: string | null, cwd: string | null = null) {
+async function renderBadge(
+  activeProjectId: string | null,
+  cwd: string | null = null,
+  canFill = true,
+) {
   await act(() =>
     root.render(
       <ComposerNextActionBadge
@@ -67,6 +73,7 @@ async function renderBadge(activeProjectId: string | null, cwd: string | null = 
         environmentId={EnvironmentId.make("env")}
         activeProjectId={activeProjectId}
         cwd={cwd}
+        canFill={canFill}
         onFill={fill}
       />,
     ),
@@ -74,7 +81,7 @@ async function renderBadge(activeProjectId: string | null, cwd: string | null = 
 }
 
 const prepareButton = () =>
-  [...document.querySelectorAll("button")].find((item) => item.textContent === "Write message")!;
+  [...document.querySelectorAll("button")].find((item) => item.textContent === "Paste prompt")!;
 
 afterEach(async () => {
   await act(() => root.unmount());
@@ -83,6 +90,19 @@ afterEach(async () => {
   state.shared.mockClear();
   vi.unstubAllGlobals();
 });
+
+async function menuItem(label: string) {
+  await click("Notepad");
+  return [...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+    item.textContent?.startsWith(label),
+  ) as HTMLElement | undefined;
+}
+
+async function startNextAction() {
+  const item = await menuItem("Start next action");
+  expect(item).toBeDefined();
+  await act(() => item!.click());
+}
 
 async function click(label: string) {
   const button = [...document.querySelectorAll("button")].find(
@@ -94,15 +114,15 @@ async function click(label: string) {
 
 it("loads only when opened, selects a project, and fills without sending", async () => {
   expect(state.workspace).not.toHaveBeenCalled();
-  await click("Start task");
+  await startNextAction();
   await click("Project One");
   expect(state.shared).toHaveBeenLastCalledWith("env", [{ slug: "one", projectId: "one" }]);
-  await click("Write message");
+  await click("Paste prompt");
   expect(fill).toHaveBeenCalledTimes(1);
   expect(fill.mock.calls[0]![0]).toContain("local-one");
   expect(fill.mock.calls[0]![0]).toContain("shared-one");
   expect(fill.mock.calls[0]![0]).not.toContain("other-project");
-  expect(fill.mock.calls[0]![0]).toContain("prompt-composer");
+  expect(fill.mock.calls[0]![0]).toContain("Read its full card");
 });
 
 it("keeps preparation disabled when a board fails", async () => {
@@ -112,11 +132,11 @@ it("keeps preparation disabled when a board fails", async () => {
     isPending: false,
     refresh: vi.fn(),
   });
-  await click("Start task");
+  await startNextAction();
   await click("Project One");
   expect(document.querySelector('[role="alert"]')?.textContent).toBe("Board unavailable");
   const prepare = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Write message",
+    (item) => item.textContent === "Paste prompt",
   )!;
   expect(prepare.disabled).toBe(true);
   expect(fill).not.toHaveBeenCalled();
@@ -124,10 +144,10 @@ it("keeps preparation disabled when a board fails", async () => {
 
 it("waits for the selected shared board before preparing", async () => {
   state.shared.mockReturnValue({ tasks: [], error: null, isPending: true, refresh: vi.fn() });
-  await click("Start task");
+  await startNextAction();
   await click("Project One");
   const prepare = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Write message",
+    (item) => item.textContent === "Paste prompt",
   )!;
   expect(prepare.disabled).toBe(true);
   expect(document.querySelector('[role="status"]')?.textContent).toBe("Loading tasks...");
@@ -147,11 +167,11 @@ it("explains empty projects and does not create a prompt", async () => {
     refresh: vi.fn(),
   });
   state.shared.mockReturnValue({ tasks: [], error: null, isPending: false, refresh: vi.fn() });
-  await click("Start task");
+  await startNextAction();
   await click("Empty project");
   expect(document.body.textContent).toContain("This project has no open tasks");
   const prepare = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Write message",
+    (item) => item.textContent === "Paste prompt",
   )!;
   expect(prepare.disabled).toBe(true);
   expect(fill).not.toHaveBeenCalled();
@@ -159,19 +179,19 @@ it("explains empty projects and does not create a prompt", async () => {
 
 it("selects the project for the current chat without a click", async () => {
   await renderBadge("one");
-  await click("Start task");
+  await startNextAction();
   expect(document.body.textContent).toContain("This chat");
   expect(prepareButton().disabled).toBe(false);
-  await click("Write message");
+  await click("Paste prompt");
   expect(fill.mock.calls[0]![0]).toContain("local-one");
   expect(fill.mock.calls[0]![0]).not.toContain("other-project");
 });
 
 it("detects the project from the working directory and lets the user change it", async () => {
   await renderBadge(null, "D:/Work Space/projects/two/src");
-  await click("Start task");
+  await startNextAction();
   await click("Project One");
-  await click("Write message");
+  await click("Paste prompt");
   expect(fill.mock.calls[0]![0]).toContain("local-one");
 });
 
@@ -188,7 +208,24 @@ it("does not prepare a prompt for a project with only closed tasks", async () =>
   });
   state.shared.mockReturnValue({ tasks: [], error: null, isPending: false, refresh: vi.fn() });
   await renderBadge("one");
-  await click("Start task");
+  await startNextAction();
   expect(document.body.textContent).toContain("This project has no open tasks");
   expect(prepareButton().disabled).toBe(true);
+});
+
+it("keeps the next action closed while the message has text", async () => {
+  await renderBadge(null, null, false);
+  const item = await menuItem("Start next action");
+  expect(item?.getAttribute("aria-disabled") ?? item?.getAttribute("data-disabled")).not.toBeNull();
+});
+
+it("shows the focus widget and opens the task board from the menu", async () => {
+  const { useFocusWidgetStore } = await import("../focus/focusWidgetStore");
+  useFocusWidgetStore.setState({ visible: false });
+  const show = await menuItem("Show notepad");
+  await act(() => show!.click());
+  expect(useFocusWidgetStore.getState().visible).toBe(true);
+  const board = await menuItem("Open task board");
+  await act(() => board!.click());
+  expect(state.navigate).toHaveBeenCalledWith({ to: "/tasks" });
 });
