@@ -1,3 +1,6 @@
+import { modelDisplayName } from "../subagents/spawnApproval.logic";
+import { subagentWaitDetail } from "../subagents/subagentThread.logic";
+import { useComposerSubagents } from "../subagents/useComposerSubagents";
 import { CheckIcon, CircleDotIcon, CircleIcon, ListTodoIcon } from "lucide-react";
 import { memo, type ComponentProps } from "react";
 
@@ -85,6 +88,7 @@ function TaskSummary({
   readonly progress: ComposerTasksProgress;
   readonly steps: readonly ComposerTaskStep[];
 }) {
+  const subagents = useComposerSubagents();
   const waiting = progress.activity?.waiting[0];
   const extraWaits = (progress.activity?.waiting.length ?? 0) - 1;
   return (
@@ -108,7 +112,7 @@ function TaskSummary({
           title={waiting?.full ? `${waiting.source}: ${waiting.full}` : undefined}
         >
           {waiting
-            ? `${waiting.source}${waiting.detail ? `: ${waiting.detail}` : ""}${extraWaits > 0 ? ` +${extraWaits} more` : ""}`
+            ? `${waiting.source}${waiting.detail ? `: ${subagentWaitDetail(waiting.detail, subagents, modelDisplayName)}` : ""}${extraWaits > 0 ? ` +${extraWaits} more` : ""}`
             : progress.step}
         </span>
       </ComposerBanner.Content>

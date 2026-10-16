@@ -98,7 +98,11 @@ function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
     if (item.type === "command_execution" && event.kind === "command") {
       waiting.push({ ...entry, kind: "shell", source: commandShell(item.input) });
     } else if (event.kind === "agent") {
-      waiting.push({ ...entry, kind: "subagent", source: "Helper" });
+      waiting.push({
+        ...entry,
+        kind: "subagent",
+        source: event.target?.startsWith("@") ? "Subagent" : "Helper",
+      });
     } else if (event.kind === "web") {
       waiting.push({ ...entry, kind: "web", source: "Web" });
     } else if (event.kind === "tool") {

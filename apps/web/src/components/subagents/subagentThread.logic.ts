@@ -3,6 +3,7 @@ import type { SubagentCatalogEntry } from "@t3tools/contracts";
 export interface ComposerSubagentOption {
   readonly name: string;
   readonly description: string | null;
+  readonly model: string | null;
 }
 
 /** Subagents a chat can use: on and valid, one per name, sorted by name. */
@@ -12,7 +13,11 @@ export function composerSubagentOptions(
   const byName = new Map<string, ComposerSubagentOption>();
   for (const entry of entries) {
     if (!entry.enabled || entry.legacy || entry.error !== null || byName.has(entry.name)) continue;
-    byName.set(entry.name, { name: entry.name, description: entry.description });
+    byName.set(entry.name, {
+      name: entry.name,
+      description: entry.description,
+      model: entry.model,
+    });
   }
   return [...byName.values()].toSorted((left, right) => left.name.localeCompare(right.name));
 }
@@ -101,4 +106,19 @@ export function resolveAttachedSubagent(
   localValue: string | null,
 ): string | null {
   return serverValue ?? localValue;
+}
+
+/**
+ * The wait line for a running subagent start: "@name on Claude Opus 5.5" when
+ * the catalog knows the model, else the detail as it is.
+ */
+export function subagentWaitDetail(
+  detail: string | null,
+  options: ReadonlyArray<ComposerSubagentOption>,
+  modelLabel: (model: string) => string,
+): string | null {
+  const name = detail?.startsWith("@") ? detail.slice(1) : null;
+  if (name === null) return detail;
+  const model = options.find((option) => option.name === name)?.model ?? null;
+  return model === null ? detail : `${detail} on ${modelLabel(model)}`;
 }

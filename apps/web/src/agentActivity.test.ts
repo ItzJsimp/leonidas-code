@@ -123,6 +123,23 @@ describe("agent activity", () => {
     expect(activity.thought).toBe("Checking the app");
     expect(activity.project.map((file) => file.name)).toEqual(["app.ts"]);
   });
+  it("names the subagent a running delegate call starts", () => {
+    const activity = derive([
+      {
+        ...base,
+        id: TurnItemId.make("delegate"),
+        type: "dynamic_tool",
+        toolName: "mcp__t3-code__delegate_task",
+        input: { subagent: "explorer", task: "find the config" },
+      } as OrchestrationV2TurnItem,
+    ]);
+    expect(activity.waiting).toHaveLength(1);
+    expect(activity.waiting[0]).toMatchObject({
+      kind: "subagent",
+      source: "Subagent",
+      detail: "@explorer",
+    });
+  });
   it("orders touched files by most recent use so a re-read file becomes the newest", () => {
     const read = (id: string, path: string) =>
       ({

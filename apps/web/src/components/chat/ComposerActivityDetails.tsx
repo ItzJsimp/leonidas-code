@@ -18,6 +18,9 @@ import {
 import { type ReactNode, useState } from "react";
 
 import type { AccessedFile, AgentActivity, WaitingKind, WaitingOn } from "../../agentActivity";
+import { modelDisplayName } from "../subagents/spawnApproval.logic";
+import { subagentWaitDetail } from "../subagents/subagentThread.logic";
+import { useComposerSubagents } from "../subagents/useComposerSubagents";
 import { AgentElapsed } from "./AgentElapsed";
 import type { ActivityKind } from "../../agentActivityAccess";
 import { formatDuration } from "../../session-logic";
@@ -85,6 +88,7 @@ export function WaitingKindIcon({
 
 /** Each dependency the agent is blocked on, with how long it has been waiting. */
 function WaitingSection({ waiting }: { readonly waiting: readonly WaitingOn[] }) {
+  const subagents = useComposerSubagents();
   if (waiting.length === 0) return null;
   return (
     <section aria-label="Waiting on" className="flex flex-col gap-0.5">
@@ -101,7 +105,10 @@ function WaitingSection({ waiting }: { readonly waiting: readonly WaitingOn[] })
           <span className="min-w-0 flex-1 break-words" title={entry.full ?? undefined}>
             <span className="font-medium text-foreground/90">{entry.source}</span>
             {entry.full ? (
-              <span className="font-mono text-muted-foreground"> · {entry.full}</span>
+              <span className="font-mono text-muted-foreground">
+                {" "}
+                · {subagentWaitDetail(entry.full, subagents, modelDisplayName)}
+              </span>
             ) : null}
           </span>
           {entry.since ? (

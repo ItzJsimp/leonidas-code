@@ -319,6 +319,14 @@ export function classifyActivityItem(item: OrchestrationV2TurnItem): ClassifiedI
           tool: "Helper",
         };
       }
+      // A named subagent start: the bar and the thread say who runs, not "a helper".
+      if (key.endsWith("delegatetask") && str(input.subagent)) {
+        return {
+          ...NONE,
+          event: make("agent", clip(`@${str(input.subagent)}`, 60)),
+          tool: "Subagent",
+        };
+      }
       const mcp = splitMcpToolName(toolName);
       if (/mem0/i.test(toolName)) {
         return {

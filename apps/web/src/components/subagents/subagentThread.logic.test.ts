@@ -7,6 +7,7 @@ import {
   findSubagentMention,
   resolveAttachedSubagent,
   splitSubagentMentions,
+  subagentWaitDetail,
   searchSubagentOptions,
   withAttachedSubagent,
 } from "./subagentThread.logic";
@@ -35,7 +36,7 @@ describe("composerSubagentOptions", () => {
   it("keeps on, valid entries once per name, sorted", () => {
     const options = composerSubagentOptions([
       entry({ name: "zed" }),
-      entry({ name: "alpha", description: "First" }),
+      entry({ name: "alpha", description: "First", model: null }),
       entry({ name: "alpha", source: "project", specPath: "/p/alpha.md" }),
       entry({ name: "off", enabled: false }),
       entry({ name: "old", legacy: true }),
@@ -48,8 +49,8 @@ describe("composerSubagentOptions", () => {
 
 describe("searchSubagentOptions", () => {
   const options = [
-    { name: "executor", description: "Runs edits" },
-    { name: "frontend-designer", description: null },
+    { name: "executor", description: "Runs edits", model: null },
+    { name: "frontend-designer", description: null, model: null },
   ];
   it("matches name and description", () => {
     expect(searchSubagentOptions(options, "front").map((o) => o.name)).toEqual([
@@ -82,7 +83,7 @@ describe("withAttachedSubagent", () => {
 });
 
 describe("findSubagentMention", () => {
-  const options = [{ name: "explorer", description: "Finds things" }];
+  const options = [{ name: "explorer", description: "Finds things", model: null }];
 
   it("finds a mention that names a subagent", () => {
     expect(findSubagentMention(options, "explorer")?.name).toBe("explorer");
@@ -131,5 +132,20 @@ describe("resolveAttachedSubagent", () => {
     expect(resolveAttachedSubagent(undefined, "reviewer")).toBe("reviewer");
     expect(resolveAttachedSubagent(null, "reviewer")).toBe("reviewer");
     expect(resolveAttachedSubagent(null, null)).toBeNull();
+  });
+});
+
+describe("subagentWaitDetail", () => {
+  const options = [{ name: "designer", description: null, model: "claude-opus-5-5" }];
+  const label = (model: string) => `<${model}>`;
+
+  it("adds the model to a named subagent", () => {
+    expect(subagentWaitDetail("@designer", options, label)).toBe("@designer on <claude-opus-5-5>");
+  });
+
+  it("leaves other text and unknown names as they are", () => {
+    expect(subagentWaitDetail("@other", options, label)).toBe("@other");
+    expect(subagentWaitDetail("a helper", options, label)).toBe("a helper");
+    expect(subagentWaitDetail(null, options, label)).toBeNull();
   });
 });
