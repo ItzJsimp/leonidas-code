@@ -52,7 +52,7 @@ export function subagentSources(input: {
   return sources;
 }
 
-function catalogEntry(
+export function catalogEntry(
   specPath: string,
   source: SubagentSource,
   appFreeModels: ReadonlyArray<string>,

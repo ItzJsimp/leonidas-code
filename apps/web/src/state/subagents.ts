@@ -38,3 +38,14 @@ export const subagentsComposerQuery = createEnvironmentRpcQueryAtomFamily(connec
   tag: WS_METHODS.subagentsList,
   staleTimeMs: 60_000,
 });
+
+/** Studio writes: change a listed spec, or create one from a starter. */
+export const subagentUpdate = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:subagents:update",
+  tag: WS_METHODS.subagentsUpdate,
+});
+
+export const subagentCreate = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:subagents:create",
+  tag: WS_METHODS.subagentsCreate,
+});

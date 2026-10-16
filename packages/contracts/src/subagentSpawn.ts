@@ -110,3 +110,37 @@ export const SubagentCatalog = Schema.Struct({
   stats: SubagentActivityStats,
 });
 export type SubagentCatalog = typeof SubagentCatalog.Type;
+
+export class SubagentEditError extends Schema.TaggedError<SubagentEditError>()(
+  "SubagentEditError",
+  { message: Schema.String },
+) {}
+
+/** Fields the Studio can change. A missing field stays as it is; `model: null` removes the line. */
+export const SubagentSpecPatch = Schema.Struct({
+  enabled: Schema.optional(Schema.Boolean),
+  description: Schema.optional(Schema.NullOr(Schema.String.check(Schema.isMaxLength(400)))),
+  model: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  tools: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  context: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+});
+export type SubagentSpecPatch = typeof SubagentSpecPatch.Type;
+
+export const SubagentUpdateInput = Schema.Struct({
+  /** A `specPath` from the catalog. The server refuses any other file. */
+  specPath: TrimmedNonEmptyString,
+  patch: SubagentSpecPatch,
+});
+export type SubagentUpdateInput = typeof SubagentUpdateInput.Type;
+
+export const SubagentCreateInput = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  /** The starter's file text; the server sets its `name` and checks it against format v1. */
+  contents: TrimmedNonEmptyString.check(Schema.isMaxLength(60_000)),
+  /** `aios` for the AIOS folder, or the title of a project the catalog lists. */
+  destination: Schema.Union([
+    Schema.Struct({ kind: Schema.Literal("aios") }),
+    Schema.Struct({ kind: Schema.Literal("project"), projectName: TrimmedNonEmptyString }),
+  ]),
+});
+export type SubagentCreateInput = typeof SubagentCreateInput.Type;

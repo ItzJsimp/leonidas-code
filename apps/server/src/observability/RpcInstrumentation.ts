@@ -158,6 +158,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.subagentsSubscribeSpawnApprovals]: "workspace",
   [WS_METHODS.subagentsList]: "workspace",
   [WS_METHODS.subagentsRespondSpawnApproval]: "workspace",
+  [WS_METHODS.subagentsUpdate]: "workspace",
+  [WS_METHODS.subagentsCreate]: "workspace",
   [WS_METHODS.taskBoardUpdate]: "workspace",
   [WS_METHODS.taskBoardWorkspace]: "workspace",
   [WS_METHODS.taskBoardCardUpdate]: "workspace",

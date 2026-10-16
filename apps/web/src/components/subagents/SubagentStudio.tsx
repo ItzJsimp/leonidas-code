@@ -1,16 +1,26 @@
 import type { SubagentCatalogEntry } from "@t3tools/contracts";
-import { BotIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
+import { BotIcon, PencilIcon, PlusIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
+import { Switch } from "~/components/ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
-import { subagentsCatalogQuery } from "~/state/subagents";
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId } from "@t3tools/contracts";
+import { subagentsCatalogQuery, subagentsComposerQuery, subagentUpdate } from "~/state/subagents";
+import { useAtomCommand } from "~/state/use-atom-command";
+import { NewSubagentDialog } from "./NewSubagentDialog";
+import { SubagentEditor, writeFailureMessage } from "./SubagentEditor";
+import { knownFreeModels } from "./subagentEdit.logic";
 import { formatStartCost, modelDisplayName } from "./spawnApproval.logic";
 import {
   countReady,
@@ -37,8 +47,18 @@ export function SubagentStudio() {
   const catalog = useEnvironmentQuery(
     environmentId ? subagentsCatalogQuery({ environmentId, input: {} }) : null,
   );
+  // The composer keeps its own copy of the list; refresh both after a write so the
+  // @ menu and the attach tab show the change without a restart.
+  const composerCatalog = useEnvironmentQuery(
+    environmentId ? subagentsComposerQuery({ environmentId, input: {} }) : null,
+  );
+  const refreshAll = () => {
+    catalog.refresh();
+    composerCatalog.refresh();
+  };
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const entries = catalog.data?.entries ?? [];
   const groups = useMemo(() => groupStudioEntries(entries, query), [entries, query]);
   const visible = groups.flatMap((group) => group.entries);
@@ -50,21 +70,46 @@ export function SubagentStudio() {
 
   return (
     <section aria-labelledby="subagent-studio-title" className="flex flex-col gap-4">
-      <div>
-        <h2 id="subagent-studio-title" className="flex items-center gap-2 text-base font-semibold">
-          <BotIcon aria-hidden className="size-4 text-muted-foreground" />
-          Subagents
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Helpers that any chat can call. A free-tier model starts at once; a confirm-tier model
-          asks you first.
-          {catalog.dataUpdatedAt <= 0 ? null : (
-            <span className="ms-1 tabular-nums">
-              Updated {formatClockTime(catalog.dataUpdatedAt)}.
-            </span>
-          )}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2
+            id="subagent-studio-title"
+            className="flex items-center gap-2 text-base font-semibold"
+          >
+            <BotIcon aria-hidden className="size-4 text-muted-foreground" />
+            Subagents
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Helpers that any chat can call. A free-tier model starts at once; a confirm-tier model
+            asks you first.
+            {catalog.dataUpdatedAt <= 0 ? null : (
+              <span className="ms-1 tabular-nums">
+                Updated {formatClockTime(catalog.dataUpdatedAt)}.
+              </span>
+            )}
+          </p>
+        </div>
+        {environmentId === null || catalog.data === null ? null : (
+          <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+            <PlusIcon />
+            New subagent
+          </Button>
+        )}
       </div>
+
+      {environmentId === null || catalog.data === null ? null : (
+        <NewSubagentDialog
+          environmentId={environmentId}
+          entries={entries}
+          hasAios={catalog.data.aiosRoot !== null}
+          open={creating}
+          onOpenChange={setCreating}
+          onCreated={(entry) => {
+            setSelectedId(entryId(entry));
+            refreshAll();
+          }}
+        />
+      )}
 
       {catalog.data === null ? (
         catalog.error === null ? (
@@ -152,7 +197,13 @@ export function SubagentStudio() {
                     : "No subagents yet. Add one in .agents/subagents/ in your AIOS."}
                 </p>
               ) : (
-                <SubagentDetail entry={selected} />
+                <SubagentDetail
+                  key={entryId(selected)}
+                  entry={selected}
+                  environmentId={environmentId}
+                  knownFree={knownFreeModels(entries)}
+                  onChanged={refreshAll}
+                />
               )}
             </div>
           </div>
@@ -313,7 +364,39 @@ function DetailRow(props: { readonly label: string; readonly children: ReactNode
   );
 }
 
-function SubagentDetail({ entry }: { readonly entry: SubagentCatalogEntry }) {
+function SubagentDetail({
+  entry,
+  environmentId,
+  knownFree,
+  onChanged,
+}: {
+  readonly entry: SubagentCatalogEntry;
+  readonly environmentId: EnvironmentId | null;
+  readonly knownFree: ReadonlySet<string>;
+  readonly onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const update = useAtomCommand(subagentUpdate, { reportFailure: false });
+  const [toggling, setToggling] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+  const canWrite = environmentId !== null && !entry.legacy;
+
+  const setEnabled = async (enabled: boolean) => {
+    if (environmentId === null || toggling) return;
+    setToggling(true);
+    setToggleError(null);
+    const result = await update({
+      environmentId,
+      input: { specPath: entry.specPath, patch: { enabled } },
+    });
+    setToggling(false);
+    if (result._tag === "Success") return onChanged();
+    if (isAtomCommandInterrupted(result)) return;
+    setToggleError(
+      writeFailureMessage(squashAtomCommandFailure(result), "The switch did not save. Try again."),
+    );
+  };
+
   const contextTotal = entry.context.reduce((sum, item) => sum + (item.tokens ?? 0), 0);
   return (
     <article aria-labelledby="studio-detail-title" className="flex flex-col gap-4">
@@ -332,7 +415,32 @@ function SubagentDetail({ entry }: { readonly entry: SubagentCatalogEntry }) {
               Off
             </Badge>
           )}
+          {canWrite ? (
+            <div className="ms-auto flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  size="sm"
+                  checked={entry.enabled}
+                  disabled={toggling}
+                  onCheckedChange={(checked) => void setEnabled(checked)}
+                  aria-label={`${entry.name} on`}
+                />
+                On
+              </label>
+              {editing ? null : (
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                  <PencilIcon />
+                  Edit
+                </Button>
+              )}
+            </div>
+          ) : null}
         </div>
+        {toggleError === null ? null : (
+          <p role="alert" className="mt-2 rounded-md bg-destructive/8 px-3 py-2 text-sm">
+            {toggleError}
+          </p>
+        )}
         {entry.description === null ? null : (
           <p className="mt-1 text-sm text-muted-foreground">{entry.description}</p>
         )}
@@ -347,78 +455,94 @@ function SubagentDetail({ entry }: { readonly entry: SubagentCatalogEntry }) {
         </p>
       )}
 
-      <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
-        <DetailRow label="Model">
-          {entry.model === null ? "Not set" : modelDisplayName(entry.model)}
-        </DetailRow>
-        <DetailRow label="Account">
-          {entry.account === null ? "Balanced (the app picks)" : entry.account}
-        </DetailRow>
-        <DetailRow label="Tools">
-          {entry.tools.length === 0 ? (
-            <span className="text-muted-foreground">None</span>
-          ) : (
-            <ul className="flex flex-wrap gap-1">
-              {entry.tools.map((tool) => (
-                <li key={tool}>
-                  <Badge variant="outline" size="sm" className="font-mono">
-                    {tool.replace("mcp__t3-code__", "")}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </DetailRow>
-        <DetailRow label="Never">
-          {entry.never.length === 0 ? (
-            <span className="text-muted-foreground">No rules</span>
-          ) : (
-            <ul className="flex flex-col gap-0.5">
-              {entry.never.map((rule) => (
-                <li key={rule}>{rule}</li>
-              ))}
-            </ul>
-          )}
-        </DetailRow>
-      </dl>
+      {editing && environmentId !== null ? (
+        <SubagentEditor
+          environmentId={environmentId}
+          entry={entry}
+          knownFree={knownFree}
+          onDone={() => {
+            setEditing(false);
+            onChanged();
+          }}
+        />
+      ) : (
+        <>
+          <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
+            <DetailRow label="Model">
+              {entry.model === null ? "Not set" : modelDisplayName(entry.model)}
+            </DetailRow>
+            <DetailRow label="Account">
+              {entry.account === null ? "Balanced (the app picks)" : entry.account}
+            </DetailRow>
+            <DetailRow label="Tools">
+              {entry.tools.length === 0 ? (
+                <span className="text-muted-foreground">None</span>
+              ) : (
+                <ul className="flex flex-wrap gap-1">
+                  {entry.tools.map((tool) => (
+                    <li key={tool}>
+                      <Badge variant="outline" size="sm" className="font-mono">
+                        {tool.replace("mcp__t3-code__", "")}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </DetailRow>
+            <DetailRow label="Never">
+              {entry.never.length === 0 ? (
+                <span className="text-muted-foreground">No rules</span>
+              ) : (
+                <ul className="flex flex-col gap-0.5">
+                  {entry.never.map((rule) => (
+                    <li key={rule}>{rule}</li>
+                  ))}
+                </ul>
+              )}
+            </DetailRow>
+          </dl>
 
-      <div className="rounded-lg border border-border">
-        <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2">
-          <h4 className="text-sm font-medium">Context List</h4>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {entry.estimatedStartTokens === null
-              ? "Start cost unknown"
-              : `${formatStartCost(entry.estimatedStartTokens)} to start`}
-          </span>
-        </div>
-        {entry.context.length === 0 ? (
-          <p className="px-3 py-2 text-sm text-muted-foreground">
-            Persona only. No files load with it.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {entry.context.map((item) => (
-              <li key={item.path} className="flex items-center gap-3 px-3 py-1.5 text-sm">
-                <span className="min-w-0 flex-1 truncate font-mono text-xs" title={item.path}>
-                  {item.path}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 text-xs tabular-nums",
-                    item.tokens === null ? "text-destructive-foreground" : "text-muted-foreground",
-                  )}
-                >
-                  {item.tokens === null ? "missing" : item.tokens.toLocaleString("en-US")}
-                </span>
-              </li>
-            ))}
-            <li className="flex items-center gap-3 px-3 py-1.5 text-xs text-muted-foreground">
-              <span className="flex-1">Files total</span>
-              <span className="tabular-nums">{contextTotal.toLocaleString("en-US")}</span>
-            </li>
-          </ul>
-        )}
-      </div>
+          <div className="rounded-lg border border-border">
+            <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2">
+              <h4 className="text-sm font-medium">Context List</h4>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {entry.estimatedStartTokens === null
+                  ? "Start cost unknown"
+                  : `${formatStartCost(entry.estimatedStartTokens)} to start`}
+              </span>
+            </div>
+            {entry.context.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">
+                Persona only. No files load with it.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {entry.context.map((item) => (
+                  <li key={item.path} className="flex items-center gap-3 px-3 py-1.5 text-sm">
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs" title={item.path}>
+                      {item.path}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 text-xs tabular-nums",
+                        item.tokens === null
+                          ? "text-destructive-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {item.tokens === null ? "missing" : item.tokens.toLocaleString("en-US")}
+                    </span>
+                  </li>
+                ))}
+                <li className="flex items-center gap-3 px-3 py-1.5 text-xs text-muted-foreground">
+                  <span className="flex-1">Files total</span>
+                  <span className="tabular-nums">{contextTotal.toLocaleString("en-US")}</span>
+                </li>
+              </ul>
+            )}
+          </div>
+        </>
+      )}
 
       <p className="truncate font-mono text-xs text-muted-foreground" title={entry.specPath}>
         {entry.specPath}

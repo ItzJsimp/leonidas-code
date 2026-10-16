@@ -7,6 +7,7 @@ import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
+import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -38,6 +39,7 @@ import { subscribeCodexAuthCallback } from "./provider/CodexAuthCallback.ts";
 import {
   DEFAULT_AUTOMATIC_GIT_FETCH_INTERVAL,
   DEFAULT_SUBAGENT_FREE_TIER_MODELS,
+  SubagentEditError,
   AcpRegistryOperationError,
   CommandId,
   authScopeResponse,
@@ -1354,6 +1356,16 @@ const layerWsRpc = (
       const spawnApprovals = yield* SpawnApprovals;
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
       const systemCare = yield* SystemCare.SystemCare;
+      const studioWriteScope = Effect.gen(function* () {
+        const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+        const aiosRoot = yield* taskBoard.aiosRoot(projects);
+        const appFreeModels = yield* serverSettings.getSettings.pipe(
+          Effect.map((settings) => settings.subagentFreeTierModels),
+          Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
+        );
+        return { aiosRoot, projects, appFreeModels };
+      });
+
       const withTaskBoardProject = <A, E, R>(
         projectId: ProjectId,
         use: (project: Project) => Effect.Effect<A, E, R>,
@@ -2812,6 +2824,28 @@ const layerWsRpc = (
               listSubagents({ sources: subagentSources({ aiosRoot, projects }), appFreeModels }),
             );
             return { aiosRoot, entries, stats: yield* spawnApprovals.stats };
+          }),
+        [WS_METHODS.subagentsUpdate]: (input) =>
+          Effect.gen(function* () {
+            const scope = yield* studioWriteScope;
+            return yield* Effect.try({
+              try: () => updateStudioSubagent(scope, input),
+              catch: (error) =>
+                new SubagentEditError({
+                  message: error instanceof Error ? error.message : String(error),
+                }),
+            });
+          }),
+        [WS_METHODS.subagentsCreate]: (input) =>
+          Effect.gen(function* () {
+            const scope = yield* studioWriteScope;
+            return yield* Effect.try({
+              try: () => createStudioSubagent(scope, input),
+              catch: (error) =>
+                new SubagentEditError({
+                  message: error instanceof Error ? error.message : String(error),
+                }),
+            });
           }),
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
