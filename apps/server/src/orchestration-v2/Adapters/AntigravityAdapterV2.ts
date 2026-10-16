@@ -7,6 +7,7 @@ import {
 } from "@t3tools/contracts";
 import type { SelfInvocation } from "@t3tools/shared/nodeRuntime";
 import * as Crypto from "effect/Crypto";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -45,6 +46,8 @@ import {
 } from "@t3tools/provider-acp/server/adapter";
 
 const ANTIGRAVITY_PROVIDER = ProviderDriverKind.make("antigravity");
+/** The agent names its conversation database for its session id, a UUID. */
+const SAFE_SESSION_FILE_NAME = /^[A-Za-z0-9_-]{1,128}$/;
 
 const AntigravityProviderCapabilitiesV2 = {
   ...AcpProviderCapabilitiesV2,
@@ -227,7 +230,10 @@ export function makeAntigravityAcpAdapterFlavor(
     extractSubagentUpdate: extractAntigravitySubagentUpdate,
     resolveTurnTokenUsage: (input) =>
       Effect.gen(function* () {
-        if (!input.sessionId) return undefined;
+        // The database is named for the agent's own session id. `sessionId` is the app's
+        // provider-session id, which never matches a file, so the real usage was never read.
+        const agentSessionId = input.nativeThreadId ?? input.sessionId;
+        if (!agentSessionId || !SAFE_SESSION_FILE_NAME.test(agentSessionId)) return undefined;
         const directories = yield* resolveAntigravityInstanceDirectories(
           options.host.paths.stateDir,
           options.instanceId,
@@ -239,13 +245,15 @@ export function makeAntigravityAcpAdapterFlavor(
           directories.profile,
           "antigravity-acp",
           "conversations",
-          `${input.sessionId}.db`,
+          `${agentSessionId}.db`,
         );
         const exists = yield* options.fileSystem
           .exists(dbPath)
           .pipe(Effect.orElseSucceed(() => false));
         if (!exists) return undefined;
-        return yield* readLatestAntigravityTurnTokenUsage(dbPath).pipe(
+        return yield* readLatestAntigravityTurnTokenUsage(dbPath, {
+          startedAtMs: input.startedAt === null ? null : DateTime.toEpochMillis(input.startedAt),
+        }).pipe(
           Effect.provide(NodeSqliteClient.layer({ filename: dbPath, readonly: true })),
           Effect.orElseSucceed(() => undefined),
         );

@@ -443,7 +443,13 @@ export interface AcpAdapterV2Flavor {
     readonly nativeTurnId?: string | undefined;
     readonly startedAt: DateTime.Utc | null;
     readonly completedAt: DateTime.Utc;
-  }) => Effect.Effect<TurnTokenUsage | undefined, never, never>;
+  }) => Effect.Effect<
+    // `contextUsedTokens` is the chat memory size after the turn. It can differ from input plus
+    // output when output adds up over several model calls.
+    (TurnTokenUsage & { readonly contextUsedTokens?: number | undefined }) | undefined,
+    never,
+    never
+  >;
 }
 
 /** Whether image attachment blocks may be included in session/prompt. */
@@ -6710,12 +6716,13 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
               })
               .pipe(Effect.orElseSucceed(() => undefined));
             if (resolvedUsage) {
-              context.turnTokenUsage = resolvedUsage;
-              const inputTokens = resolvedUsage.inputTokens ?? 0;
-              const outputTokens = resolvedUsage.outputTokens ?? 0;
-              const cachedInputTokens = resolvedUsage.cachedInputTokens ?? 0;
-              const reasoningTokens = resolvedUsage.reasoningTokens ?? 0;
-              const usedTokens = inputTokens + outputTokens;
+              const { contextUsedTokens, ...turnUsage } = resolvedUsage;
+              context.turnTokenUsage = turnUsage;
+              const inputTokens = turnUsage.inputTokens ?? 0;
+              const outputTokens = turnUsage.outputTokens ?? 0;
+              const cachedInputTokens = turnUsage.cachedInputTokens ?? 0;
+              const reasoningTokens = turnUsage.reasoningTokens ?? 0;
+              const usedTokens = contextUsedTokens ?? inputTokens + outputTokens;
               const maxTokens = context.tokenUsage?.maxTokens ?? 1_000_000;
               context.tokenUsage = {
                 usedTokens,

@@ -16,6 +16,7 @@ import {
   readAntigravityUsage,
   decodeAntigravityTurnTokenUsage,
   readLatestAntigravityTurnTokenUsage,
+  summarizeAntigravityTurnUsage,
   analyzeAntigravitySessionTokenRoi,
 } from "./antigravityUsageReader.ts";
 
@@ -587,6 +588,89 @@ describe("readAntigravityUsage", () => {
       assert.strictEqual(usage?.reasoningTokens, 30);
     }).pipe(Effect.provide(NodeServices.layer)),
   );
+  describe("summarizeAntigravityTurnUsage", () => {
+    const generation = (input: {
+      uncached: number;
+      cached: number;
+      output: number;
+      reasoning: number;
+      atSeconds?: number;
+    }) => {
+      const usage = [
+        ...protoNumber(1, 1084),
+        ...protoNumber(2, input.uncached),
+        ...protoNumber(5, input.cached),
+        ...protoNumber(3, input.output),
+        ...protoNumber(9, input.reasoning),
+      ];
+      const stamp =
+        input.atSeconds === undefined
+          ? []
+          : protoBytes(9, protoBytes(4, protoNumber(1, input.atSeconds)));
+      return new Uint8Array(protoBytes(1, [...protoBytes(4, usage), ...stamp]));
+    };
+    const emptyCall = new Uint8Array(protoBytes(1, protoBytes(4, protoNumber(1, 1084))));
+    const turnStart = { startedAtMs: 1_000_000 * 1000 };
+
+    it("skips a trailing empty call so the chat memory is never shown as zero", () => {
+      const usage = summarizeAntigravityTurnUsage([
+        emptyCall,
+        generation({ uncached: 500, cached: 9_500, output: 40, reasoning: 5 }),
+      ]);
+      assert.strictEqual(usage?.contextUsedTokens, 10_040);
+      assert.strictEqual(usage?.inputTokens, 10_000);
+    });
+
+    it("returns nothing when no call reported tokens", () => {
+      assert.isUndefined(summarizeAntigravityTurnUsage([emptyCall]));
+      assert.isUndefined(summarizeAntigravityTurnUsage([]));
+    });
+
+    it("adds up output over the calls of this turn but takes the memory from the newest call", () => {
+      const usage = summarizeAntigravityTurnUsage(
+        [
+          generation({
+            uncached: 100,
+            cached: 11_900,
+            output: 300,
+            reasoning: 100,
+            atSeconds: 1_000_030,
+          }),
+          generation({
+            uncached: 100,
+            cached: 10_900,
+            output: 700,
+            reasoning: 200,
+            atSeconds: 1_000_010,
+          }),
+          // Before the turn started: belongs to the previous turn.
+          generation({
+            uncached: 100,
+            cached: 5_900,
+            output: 9_000,
+            reasoning: 900,
+            atSeconds: 999_000,
+          }),
+        ],
+        turnStart,
+      );
+      assert.strictEqual(usage?.outputTokens, 1_000);
+      assert.strictEqual(usage?.reasoningTokens, 300);
+      assert.strictEqual(usage?.contextUsedTokens, 12_300);
+    });
+
+    it("uses only the newest call when the calls carry no time", () => {
+      const usage = summarizeAntigravityTurnUsage(
+        [
+          generation({ uncached: 100, cached: 900, output: 300, reasoning: 0 }),
+          generation({ uncached: 100, cached: 400, output: 700, reasoning: 0 }),
+        ],
+        turnStart,
+      );
+      assert.strictEqual(usage?.outputTokens, 300);
+    });
+  });
+
   it.effect("analyzes session token ROI and cache savings across turns", () =>
     Effect.gen(function* () {
       const path = yield* Path.Path;
