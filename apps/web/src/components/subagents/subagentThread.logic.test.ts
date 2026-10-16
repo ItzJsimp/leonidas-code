@@ -5,6 +5,7 @@ import type { SubagentCatalogEntry } from "@t3tools/contracts";
 import {
   composerSubagentOptions,
   findSubagentMention,
+  resolveAttachedSubagent,
   splitSubagentMentions,
   searchSubagentOptions,
   withAttachedSubagent,
@@ -118,5 +119,17 @@ describe("splitSubagentMentions", () => {
   it("matches a mention at the start and at the end", () => {
     const parts = splitSubagentMentions("@explorer", ["explorer"]);
     expect(parts).toEqual([{ kind: "subagent", name: "explorer", raw: "@explorer" }]);
+  });
+});
+
+describe("resolveAttachedSubagent", () => {
+  it("prefers the thread record over this device", () => {
+    expect(resolveAttachedSubagent("explorer", "reviewer")).toBe("explorer");
+  });
+
+  it("falls back to this device for a draft or an older server", () => {
+    expect(resolveAttachedSubagent(undefined, "reviewer")).toBe("reviewer");
+    expect(resolveAttachedSubagent(null, "reviewer")).toBe("reviewer");
+    expect(resolveAttachedSubagent(null, null)).toBeNull();
   });
 });

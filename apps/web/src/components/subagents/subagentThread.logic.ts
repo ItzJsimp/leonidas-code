@@ -89,3 +89,16 @@ export function splitSubagentMentions(
   if (cursor < text.length) parts.push({ kind: "text", text: text.slice(cursor) });
   return parts.length > 0 ? parts : [{ kind: "text", text }];
 }
+
+/**
+ * The subagent attached to a chat. A chat that exists on the server keeps the
+ * attach on its thread record, so it follows the chat to another computer. A
+ * draft chat, and a server that predates the field, use the value kept on this
+ * device.
+ */
+export function resolveAttachedSubagent(
+  serverValue: string | null | undefined,
+  localValue: string | null,
+): string | null {
+  return serverValue ?? localValue;
+}

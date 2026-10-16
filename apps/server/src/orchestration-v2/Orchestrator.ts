@@ -3092,6 +3092,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
             ...(command.goalControl === undefined ? {} : { appGoal: controlledGoal }),
             ...(command.branch === undefined ? {} : { branch: command.branch }),
             ...(command.worktreePath === undefined ? {} : { worktreePath: command.worktreePath }),
+            ...(command.attachedSubagent === undefined
+              ? {}
+              : { attachedSubagent: command.attachedSubagent }),
             ...(command.linkedPullRequest === undefined
               ? {}
               : {

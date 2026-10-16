@@ -138,6 +138,8 @@ export interface UpdateThreadMetadataInput extends ThreadCommandInput {
   readonly titleHint?: string;
   /** Link (object) or unlink (null) a pull request (#8160). */
   readonly linkedPullRequest?: ThreadLinkedPullRequest | null;
+  /** Attach (name) or detach (null) the subagent that receives this chat's messages. */
+  readonly attachedSubagent?: string | null;
   /** Apply only while no message or run has landed on the thread. */
   readonly expectedEmpty?: boolean;
 }
@@ -578,6 +580,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
       input.worktreePath !== undefined ||
       input.regenerateTitle !== undefined ||
       input.linkedPullRequest !== undefined ||
+      input.attachedSubagent !== undefined ||
       input.limitRecovery !== undefined
     ) {
       result = yield* dispatch({
@@ -595,6 +598,9 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
         ...(input.linkedPullRequest === undefined
           ? {}
           : { linkedPullRequest: input.linkedPullRequest }),
+        ...(input.attachedSubagent === undefined
+          ? {}
+          : { attachedSubagent: input.attachedSubagent }),
       });
     }
     if (input.modelSelection !== undefined) {

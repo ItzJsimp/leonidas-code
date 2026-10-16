@@ -435,6 +435,8 @@ export const OrchestrationV2AppThread = Schema.Struct({
   ),
   /** In-flight title regeneration marker; cleared when a new title lands. */
   appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
+  /** Subagent the user attached to this chat; each message routes to it until detached. */
+  attachedSubagent: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -2046,6 +2048,8 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   lastVisitedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
   /** In-flight title regeneration marker; null/absent when no request is pending. */
   appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
+  /** Subagent the user attached to this chat; each message routes to it until detached. */
+  attachedSubagent: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -2886,6 +2890,8 @@ export const OrchestrationV2Command = Schema.Union([
     limitRecovery: Schema.optional(Schema.NullOr(OrchestrationV2LimitRecoveryUpdate)),
     /** Link (object) or unlink (null) a pull request (#8160); absent leaves it unchanged. */
     linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
+    /** Attach (name) or detach (null) a subagent for this chat; absent leaves it unchanged. */
+    attachedSubagent: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.pull-request.link"),

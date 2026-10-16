@@ -12,7 +12,7 @@ import { getQuotaPreflightAdvice, getUsageWarning } from "./chat/quotaPreflight"
 import { uiVerificationBannerItem } from "./chat/UiVerificationBanner";
 import { uiChangedPaths, uiVerificationPrompt } from "./chat/uiVerification";
 import { useComposerSubagents } from "./subagents/useComposerSubagents";
-import { withAttachedSubagent } from "./subagents/subagentThread.logic";
+import { resolveAttachedSubagent, withAttachedSubagent } from "./subagents/subagentThread.logic";
 import { useSubagentAttachStore } from "../state/subagentAttach";
 import { getProviderFailoverTargets } from "./chat/providerFailover";
 import {
@@ -9456,7 +9456,10 @@ export default function ChatView(props: ChatViewProps) {
     // An attached subagent leads every message of this chat, so the attach holds across turns.
     const promptForSend = withAttachedSubagent(
       promptWithAnnotation,
-      useSubagentAttachStore.getState().attachedByTarget[routeThreadKey] ?? null,
+      resolveAttachedSubagent(
+        isServerThread ? activeThreadShell?.attachedSubagent : undefined,
+        useSubagentAttachStore.getState().attachedByTarget[routeThreadKey] ?? null,
+      ),
       new Set(composerSubagentNames),
     );
     if (editingQueuedRun !== null) {

@@ -8,7 +8,6 @@ import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
 import { runtimeModeConfig, runtimeModeOptions as runtimeModes } from "./runtimeModeConfig";
 import { isLocalEnvironmentDisabled } from "../../localEnvironment";
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useRightPanelStore } from "~/rightPanelStore";
 import { AttachmentFilePreview } from "../files/AttachmentFilePreview";
@@ -144,7 +143,7 @@ import { ComposerSkillsButton } from "./ComposerSkillsButton";
 import { ComposerSubagentsButton } from "../subagents/ComposerSubagentsButton";
 import { useComposerSubagents } from "../subagents/useComposerSubagents";
 import { searchSubagentOptions } from "../subagents/subagentThread.logic";
-import { selectAttachedSubagent, useSubagentAttachStore } from "../../state/subagentAttach";
+import { useThreadSubagentAttach } from "../subagents/useThreadSubagentAttach";
 import { ComposerToolbar } from "./ComposerToolbar";
 import {
   countMentionedSkills,
@@ -272,7 +271,7 @@ import {
 } from "~/lib/composerContextRecords";
 import { matchComposerThreadItems } from "@t3tools/client-runtime/composerThreadItems";
 import { THREAD_CONTEXT_DROP_EVENT, threadContextDropTargetProps } from "./threadContextDrag";
-import { readThreadShell, useThreadShells } from "~/state/entities";
+import { readThreadShell, useThreadShell, useThreadShells } from "~/state/entities";
 import { requestConfirmDialog } from "~/confirmDialog";
 import { encodeComposerContextFragment } from "@t3tools/shared/composerContextClipboard";
 import type { ComposerContextClipboardFragment, ComposerContextRecord } from "@t3tools/contracts";
@@ -1731,7 +1730,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activeThreadEnvironmentId: _activeThreadEnvironmentId,
     activeThread,
     promptHistoryMessages,
-    isServerThread: _isServerThread,
+    isServerThread,
     isLocalDraftThread: _isLocalDraftThread,
     forceExpandedOnMobile,
     projectSelectionRequired,
@@ -2254,10 +2253,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const compactCommandAvailable = providerSupportsManualCompaction(selectedProviderEntry);
   // Memoized so the composer menu memo below can cache between renders.
   const composerSubagents = useComposerSubagents();
-  const subagentTargetKey = scopedThreadKey(routeThreadRef);
-  const attachedSubagent = useSubagentAttachStore(selectAttachedSubagent(subagentTargetKey));
-  const attachSubagent = useSubagentAttachStore((state) => state.attach);
-  const detachSubagent = useSubagentAttachStore((state) => state.detach);
+  const attachThreadShell = useThreadShell(isServerThread ? routeThreadRef : null);
+  const {
+    attached: attachedSubagent,
+    attach: attachSubagent,
+    detach: detachSubagent,
+  } = useThreadSubagentAttach({
+    threadRef: routeThreadRef,
+    serverValue: attachThreadShell?.attachedSubagent,
+  });
   const selectedProviderSkills = useMemo(
     () =>
       selectedProviderStatus ? resolveProviderSkillsForCwd(selectedProviderStatus, gitCwd) : [],
@@ -7294,8 +7298,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     <ComposerSubagentsButton
                       options={composerSubagents}
                       attached={attachedSubagent}
-                      onAttach={(name) => attachSubagent(subagentTargetKey, name)}
-                      onDetach={() => detachSubagent(subagentTargetKey)}
+                      onAttach={attachSubagent}
+                      onDetach={detachSubagent}
                     />
                   ) : null,
                 nextAction:
