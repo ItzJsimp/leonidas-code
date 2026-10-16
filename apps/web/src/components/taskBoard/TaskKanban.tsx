@@ -26,9 +26,10 @@ import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import { groupByStatus, statusLabel, type TaskView } from "./taskBoard.logic";
 import type { TaskActions, TaskContext } from "./taskBoard.types";
 import {
-  capByRecency,
+  COLUMN_PAGE,
   DONE_COLUMN_PAGE,
   moveTargets,
+  pageColumn,
   projectNameFor,
   projectNameIndex,
   statusChangeForDrop,
@@ -161,6 +162,7 @@ type ColumnProps = {
   readonly status: TaskBoardTaskStatus;
   readonly tasks: ReadonlyArray<TaskView>;
   readonly hidden: number;
+  readonly page: number;
   readonly isOver: boolean;
   readonly selectedId: string | null;
   readonly draggingId: string | null;
@@ -169,7 +171,7 @@ type ColumnProps = {
   readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly isBusy: (taskId: string) => boolean;
   readonly canSend: (task: TaskView) => boolean;
-  readonly onShowMore: () => void;
+  readonly onShowMore: (status: TaskBoardTaskStatus) => void;
   readonly onColumnDragOver: (event: DragEvent<HTMLElement>, status: TaskBoardTaskStatus) => void;
   readonly onColumnDragLeave: (event: DragEvent<HTMLElement>, status: TaskBoardTaskStatus) => void;
   readonly onColumnDrop: (event: DragEvent<HTMLElement>, status: TaskBoardTaskStatus) => void;
@@ -183,6 +185,7 @@ function KanbanColumn({
   status,
   tasks,
   hidden,
+  page,
   isOver,
   selectedId,
   draggingId,
@@ -238,8 +241,8 @@ function KanbanColumn({
           ))
         )}
         {hidden > 0 ? (
-          <Button onClick={onShowMore} size="sm" variant="ghost-muted">
-            Show {Math.min(DONE_COLUMN_PAGE, hidden)} more
+          <Button onClick={() => onShowMore(status)} size="sm" variant="ghost-muted">
+            Show {Math.min(page, hidden)} more
             <span className="text-muted-foreground tabular-nums">({hidden} hidden)</span>
           </Button>
         ) : null}
@@ -261,16 +264,20 @@ export function TaskKanbanView(props: {
   const dragged = useRef<TaskView | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overStatus, setOverStatus] = useState<TaskBoardTaskStatus | null>(null);
-  const [doneShown, setDoneShown] = useState(DONE_COLUMN_PAGE);
+  // Extra cards per column the user asked for with "Show more".
+  const [extra, setExtra] = useState<Readonly<Partial<Record<TaskBoardTaskStatus, number>>>>({});
 
   const columns = useMemo(
     () =>
       groupByStatus(tasks).map((column) => {
-        if (column.status !== "done") return { ...column, hidden: 0 };
-        const { visible, hidden } = capByRecency(column.tasks, doneShown);
-        return { status: column.status, tasks: visible, hidden };
+        const { visible, hidden, page } = pageColumn(
+          column.status,
+          column.tasks,
+          extra[column.status] ?? 0,
+        );
+        return { status: column.status, tasks: visible, hidden, page };
       }),
-    [tasks, doneShown],
+    [tasks, extra],
   );
   const projectNames = useMemo(() => projectNameIndex(context.projects), [context.projects]);
 
@@ -330,7 +337,14 @@ export function TaskKanbanView(props: {
     },
     [actionsRef, clearDrag],
   );
-  const showMoreDone = useCallback(() => setDoneShown((count) => count + DONE_COLUMN_PAGE), []);
+  const showMore = useCallback(
+    (status: TaskBoardTaskStatus) =>
+      setExtra((current) => ({
+        ...current,
+        [status]: (current[status] ?? 0) + (status === "done" ? DONE_COLUMN_PAGE : COLUMN_PAGE),
+      })),
+    [],
+  );
   const cardHandlers = useMemo(
     () => ({
       onSelect: select,
@@ -374,7 +388,8 @@ export function TaskKanbanView(props: {
           onColumnDragLeave={columnDragLeave}
           onColumnDragOver={columnDragOver}
           onColumnDrop={columnDrop}
-          onShowMore={showMoreDone}
+          onShowMore={showMore}
+          page={column.page}
           projectNames={projectNames}
           team={context.team}
           selectedId={selectedId}
