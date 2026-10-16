@@ -15,6 +15,7 @@ import { useEnvironmentScope } from "../state/session";
 import { selectProjectGroupingSettings } from "../logicalProject";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
 import { dispatchPreviewAction } from "../components/preview/previewActionBus";
+import { useScribeWorkspace } from "../hooks/useScribeWorkspace";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useScratchProject } from "../hooks/useScratchProject";
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
@@ -44,6 +45,16 @@ function ChatRouteGlobalShortcuts() {
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
   const projects = useProjects();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const scribeThread = activeThread ?? activeDraftThread;
+  const scribeProject = projects.find(
+    (project) =>
+      project.id === scribeThread?.projectId &&
+      project.environmentId === scribeThread.environmentId,
+  );
+  useScribeWorkspace(
+    scribeThread?.environmentId ?? null,
+    scribeThread?.worktreePath ?? scribeProject?.workspaceRoot ?? null,
+  );
   const { scratchEnvironmentId, startScratchThread } = useScratchProject();
   const projectGroupCount = useMemo(
     () =>

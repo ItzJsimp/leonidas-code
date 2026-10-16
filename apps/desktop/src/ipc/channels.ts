@@ -1,3 +1,4 @@
+export const SET_SCRIBE_WORKSPACE_CHANNEL = "desktop:set-scribe-workspace";
 export const PICK_FOLDER_CHANNEL = "desktop:pick-folder";
 export const LOGIN_ITEM_GET_STATE_CHANNEL = "desktop:login-item-get-state";
 export const LOGIN_ITEM_SET_CHANNEL = "desktop:login-item-set";
