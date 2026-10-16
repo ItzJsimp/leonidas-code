@@ -239,6 +239,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             aria-label={props.triggerAriaLabel ?? allModelNames}
             size={size}
             data-chat-provider-model-picker="true"
+            data-usage-id="model_picker"
             className={cn(
               "min-w-0 shrink justify-between whitespace-nowrap",
               props.compact

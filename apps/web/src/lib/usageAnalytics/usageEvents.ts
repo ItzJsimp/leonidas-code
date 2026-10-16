@@ -1,4 +1,4 @@
-import { PROVIDER_DISPLAY_NAMES } from "@t3tools/contracts";
+import { ClientSettingsSchema, PROVIDER_DISPLAY_NAMES, ServerSettings } from "@t3tools/contracts";
 
 /**
  * Usage events: the only data Leonidas Code can send about how the app is used.
@@ -19,6 +19,7 @@ export const USAGE_EVENT_NAMES = [
   "providers_connected",
   "messages_sent",
   "ui_element_clicked",
+  "settings_changed",
   "error_shown",
   "crash",
   "update_downloaded",
@@ -47,17 +48,21 @@ export type UsageFeatureId = (typeof USAGE_FEATURE_IDS)[number];
 /** Driver kinds we may name in an event. Anything else is dropped. */
 export const USAGE_PROVIDER_IDS: readonly string[] = Object.keys(PROVIDER_DISPLAY_NAMES);
 
+/** Setting names from the settings schemas. Values are never read, only the name. */
+export const USAGE_SETTING_KEYS: readonly string[] = [
+  ...Object.keys(ServerSettings.fields),
+  ...Object.keys(ClientSettingsSchema.fields),
+].filter((key) => key !== "onboardingCompletedAt");
+
 /** Elements that carry `data-usage-id`. A click on any other element is never reported. */
 export const USAGE_UI_ELEMENT_IDS = [
   "new_thread",
-  "send_message",
   "model_picker",
-  "open_command_palette",
   "open_settings",
   "open_tasks",
   "open_command_center",
+  "open_usage",
   "add_provider",
-  "run_setup_again",
   "send_feedback",
 ] as const;
 export type UsageUiElementId = (typeof USAGE_UI_ELEMENT_IDS)[number];
@@ -90,6 +95,7 @@ const NUMERIC_FIELDS: Readonly<Record<UsageEventName, readonly string[]>> = {
   providers_connected: ["provider_count"],
   messages_sent: ["count"],
   ui_element_clicked: [],
+  settings_changed: [],
   error_shown: [],
   crash: [],
   update_downloaded: [],
@@ -128,6 +134,10 @@ export function sanitizeUsageProperties(
     const kind = properties.kind;
     if ((USAGE_ERROR_KINDS as readonly unknown[]).includes(kind)) clean.kind = kind as string;
   }
+  if (name === "settings_changed") {
+    const key = properties.key;
+    if ((USAGE_SETTING_KEYS as readonly unknown[]).includes(key)) clean.key = key as string;
+  }
   if (name === "ui_element_clicked") {
     const element = properties.element;
     if ((USAGE_UI_ELEMENT_IDS as readonly unknown[]).includes(element)) {
@@ -149,6 +159,7 @@ export function isCompleteUsageEvent(name: UsageEventName, props: UsageEventProp
   if (name === "setup_step_completed" || name === "setup_abandoned_at_step") {
     return typeof props.step === "string";
   }
+  if (name === "settings_changed") return typeof props.key === "string";
   if (name === "error_shown") return typeof props.kind === "string";
   if (name === "ui_element_clicked") return typeof props.element === "string";
   if (name === "messages_sent") return typeof props.count === "number" && props.count >= 1;

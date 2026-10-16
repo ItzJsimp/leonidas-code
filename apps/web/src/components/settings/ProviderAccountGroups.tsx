@@ -209,7 +209,13 @@ export function ProviderAccountGroups({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <Button size="xs" variant="outline" className="ms-auto" onClick={group.onAdd}>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="ms-auto"
+                      data-usage-id="add_provider"
+                      onClick={group.onAdd}
+                    >
                       <PlusIcon />
                       Add account
                     </Button>
