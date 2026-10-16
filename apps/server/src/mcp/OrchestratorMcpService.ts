@@ -2422,11 +2422,11 @@ const make = Effect.gen(function* () {
             ? {
                 ...input.target,
                 model: persona.spec.model,
-                ...(persona.spec.provider === null
+                ...(persona.spec.account === null
                   ? {}
                   : {
                       providerInstanceId: persona.spec
-                        .provider as OrchestratorMcpTarget["providerInstanceId"],
+                        .account as OrchestratorMcpTarget["providerInstanceId"],
                     }),
               }
             : input.target;

@@ -717,6 +717,11 @@ export function buildCodexTurnStartParams(input: {
   readonly omitServiceTier?: boolean;
   /** What the thread's MCP Apps want the agent to know (`ui/update-model-context`). */
   readonly appContext?: ProviderAdapter.ProviderAdapterV2TurnInput["appContext"];
+  /**
+   * A subagent persona (ADR-0082). Codex has no whole-prompt swap, so the
+   * persona leads the developer instructions; AGENTS.md still loads.
+   */
+  readonly personaInstructions?: string;
 }) {
   return Effect.gen(function* () {
     const runtimeModeDefaults = codexRuntimeModeTurnDefaults(input.runtimePolicy.runtimeMode);
@@ -738,10 +743,14 @@ export function buildCodexTurnStartParams(input: {
       input.omitServiceTier === true
         ? undefined
         : getCodexServiceTierOptionValue(input.modelSelection);
-    const developerInstructions =
+    const appInstructions =
       input.hasT3Mcp !== true
         ? undefined
         : buildCodexDeveloperInstructions(input.runtimePolicy.interactionMode);
+    const developerInstructions =
+      input.personaInstructions === undefined
+        ? appInstructions
+        : [input.personaInstructions, appInstructions].filter(Boolean).join("\n\n");
     // An app's context is text an MCP server wrote, so it goes in as untrusted
     // context: Codex renders it as quoted user-side input, never as developer
     // instructions. Codex resends it only when it changes.
@@ -6193,6 +6202,9 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
               deviceToolsAvailable: mcpSession?.capabilities?.has("device") ?? false,
               omitServiceTier: adapterOptions.resolveRuntime !== undefined,
               ...(turnInput.appContext === undefined ? {} : { appContext: turnInput.appContext }),
+              ...(turnInput.appThread?.persona === undefined
+                ? {}
+                : { personaInstructions: turnInput.appThread.persona.systemPrompt }),
             });
             yield* Ref.update(pendingRootTurns, (current) => {
               const updated = new Map(current);

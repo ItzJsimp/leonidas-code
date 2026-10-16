@@ -3,7 +3,11 @@
  * once; a confirm-tier model waits for the user's card unless this thread
  * already allowed it.
  */
-import { OrchestratorMcpFailure, type ThreadId } from "@t3tools/contracts";
+import {
+  DEFAULT_SUBAGENT_TIER_GOOD_FOR,
+  OrchestratorMcpFailure,
+  type ThreadId,
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 
@@ -37,7 +41,16 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
         message: error instanceof Error ? error.message : String(error),
       }),
   });
-  const tier = resolveSpawnTier({ model, appFreeModels, aios });
+  const mapped = resolveSpawnTier({ model, appFreeModels, aios });
+  // A spec may raise its own tier to confirm, never lower it.
+  const tier =
+    persona.spec.tier === "confirm" && mapped.tier === "free"
+      ? {
+          tier: "confirm" as const,
+          source: "subagent" as const,
+          goodFor: DEFAULT_SUBAGENT_TIER_GOOD_FOR.confirm,
+        }
+      : mapped;
   if (tier.tier === "free") return;
   const approvals = yield* SpawnApprovals;
   const subagent = persona.spec.name;
@@ -50,7 +63,7 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
     model,
     account: input.account,
     reason: input.reason.trim().slice(0, 600),
-    filesInScope: [...persona.spec.context],
+    filesInScope: persona.spec.context.map((entry) => entry.path),
     toolCount: persona.spec.tools.length,
     estimatedStartTokens: estimatePersonaStartTokens({
       systemPromptChars: persona.systemPrompt.length,

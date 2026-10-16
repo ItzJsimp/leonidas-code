@@ -432,6 +432,29 @@ describe("CodexAdapterV2 runtime policy", () => {
     }),
   );
 
+  it.effect("leads the developer instructions with a subagent persona", () =>
+    Effect.gen(function* () {
+      const base = {
+        nativeThreadId: "native-persona",
+        codexInput: [{ type: "text" as const, text: "test" }],
+        runtimePolicy: {
+          runtimeMode: "full-access" as const,
+          interactionMode: "default" as const,
+          cwd: null,
+        },
+        modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6-sol" },
+        personaInstructions: "You are reviewer.",
+      };
+      const alone = yield* CodexAdapterV2.buildCodexTurnStartParams(base);
+      const withApp = yield* CodexAdapterV2.buildCodexTurnStartParams({ ...base, hasT3Mcp: true });
+
+      assert.equal(alone.collaborationMode?.settings.developer_instructions, "You are reviewer.");
+      const combined = withApp.collaborationMode?.settings.developer_instructions ?? "";
+      assert.isTrue(combined.startsWith("You are reviewer.\n\n"));
+      assert.isTrue(combined.length > "You are reviewer.".length + 2);
+    }),
+  );
+
   it.effect("preserves explicit Codex turn policy overrides", () =>
     Effect.gen(function* () {
       const params = yield* CodexAdapterV2.buildCodexTurnStartParams({

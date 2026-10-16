@@ -18,6 +18,12 @@ import { subagentRespondSpawnApproval, subagentSpawnApprovalsLive } from "~/stat
 import { useAtomCommand } from "~/state/use-atom-command";
 import { formatStartCost, modelDisplayName } from "./spawnApproval.logic";
 
+const TIER_SOURCE_LABEL: Record<SubagentSpawnApproval["tierSource"], string> = {
+  app: "app map",
+  aios: "your AIOS map",
+  subagent: "set by this subagent",
+};
+
 /**
  * Confirm cards for premium subagent spawns (ADR-0082). They float at the top right of every
  * screen, clear of the composer, so a spawn asked in a background chat still reaches the user.
@@ -135,8 +141,7 @@ function SpawnApprovalCard(props: {
       </dl>
 
       <p className="text-xs text-muted-foreground">
-        Confirm tier ({approval.tierSource === "aios" ? "your AIOS map" : "app map"}):{" "}
-        {approval.goodFor}
+        Confirm tier ({TIER_SOURCE_LABEL[approval.tierSource]}): {approval.goodFor}
       </p>
 
       {redirecting ? (

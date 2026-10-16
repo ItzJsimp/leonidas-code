@@ -33,8 +33,8 @@ export const SubagentSpawnApproval = Schema.Struct({
   filesInScope: Schema.Array(Schema.String),
   toolCount: NonNegativeInt,
   estimatedStartTokens: NonNegativeInt,
-  /** Where the tier came from: the app's map or the AIOS model-tiers.json. */
-  tierSource: Schema.Literals(["app", "aios"]),
+  /** Where the tier came from: the app's map, the AIOS model-tiers.json, or the spec's own `tier: confirm`. */
+  tierSource: Schema.Literals(["app", "aios", "subagent"]),
   goodFor: Schema.String,
   requestedAt: Schema.String,
 });
