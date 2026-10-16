@@ -6,7 +6,7 @@ import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import type { AccountAction, AccountStatus } from "./providerAccounts.logic";
+import type { AccountAction, AccountStatus, AccountUsageMeter } from "./providerAccounts.logic";
 
 export interface AccountRowView {
   readonly instanceId: ProviderInstanceId;
@@ -15,7 +15,8 @@ export interface AccountRowView {
   readonly accentColor: string | undefined;
   readonly enabled: boolean;
   readonly status: AccountStatus;
-  readonly usage: { readonly percent: number; readonly label: string } | null;
+  /** Five-hour limit first, then the weekly limit. Empty when nothing reports. */
+  readonly usage: ReadonlyArray<AccountUsageMeter>;
   /** Built-in accounts can be turned off but not removed. */
   readonly canRemove: boolean;
 }
@@ -42,7 +43,7 @@ const ACTION_HINT: Record<AccountAction, string> = {
   settings: "Opens this account's settings so you can fix the problem.",
 };
 
-function UsageMeter({ usage }: { readonly usage: NonNullable<AccountRowView["usage"]> }) {
+function UsageMeter({ usage }: { readonly usage: AccountUsageMeter }) {
   const tone =
     usage.percent >= 90 ? "bg-destructive" : usage.percent >= 70 ? "bg-warning" : "bg-success";
   return (
@@ -50,7 +51,7 @@ function UsageMeter({ usage }: { readonly usage: NonNullable<AccountRowView["usa
       <TooltipTrigger
         render={
           <div
-            className="w-16 shrink-0 @min-[30rem]/accounts:w-28"
+            className="flex items-center gap-2"
             role="meter"
             aria-valuemin={0}
             aria-valuemax={100}
@@ -59,15 +60,28 @@ function UsageMeter({ usage }: { readonly usage: NonNullable<AccountRowView["usa
           />
         }
       >
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <span className="w-12 shrink-0 truncate text-2xs text-muted-foreground">{usage.name}</span>
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
           <div className={cn("h-full rounded-full", tone)} style={{ width: `${usage.percent}%` }} />
         </div>
-        <p className="mt-1 text-2xs text-muted-foreground tabular-nums">{usage.percent}% used</p>
+        <span className="w-14 shrink-0 text-right text-2xs text-muted-foreground tabular-nums">
+          {usage.percent}% used
+        </span>
       </TooltipTrigger>
       <TooltipPopup side="top">
         {usage.percent}% of the {usage.label} limit is used.
       </TooltipPopup>
     </Tooltip>
+  );
+}
+
+function UsageMeters({ meters }: { readonly meters: ReadonlyArray<AccountUsageMeter> }) {
+  return (
+    <div className="flex w-44 shrink-0 flex-col gap-1.5 @min-[30rem]/accounts:w-56">
+      {meters.map((meter) => (
+        <UsageMeter key={meter.label} usage={meter} />
+      ))}
+    </div>
   );
 }
 
@@ -111,7 +125,7 @@ function AccountRow({
           <span className="truncate">{status.text}</span>
         </p>
       </div>
-      {row.usage && status.tone === "ok" ? <UsageMeter usage={row.usage} /> : null}
+      {row.usage.length > 0 && status.tone === "ok" ? <UsageMeters meters={row.usage} /> : null}
       {status.action && !readOnly ? (
         <Tooltip>
           <TooltipTrigger

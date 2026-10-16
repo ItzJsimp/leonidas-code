@@ -80,20 +80,43 @@ describe("describeAccount", () => {
 });
 
 describe("accountUsage", () => {
-  it("shows the fullest window", () => {
+  it("shows the five-hour limit above the weekly limit", () => {
     const withUsage = provider({
       usageLimits: {
         windows: [
-          { id: "five_hour", kind: "session", label: "5-hour", usedPercent: 12.4 },
-          { id: "seven_day", kind: "weekly", label: "Weekly", usedPercent: 71.6 },
+          {
+            id: "seven_day",
+            kind: "weekly",
+            label: "Weekly",
+            usedPercent: 71.6,
+          },
+          {
+            id: "five_hour",
+            kind: "session",
+            label: "5-hour",
+            windowDurationMins: 300,
+            usedPercent: 12.4,
+          },
         ],
       },
     });
-    expect(accountUsage(withUsage)).toEqual({ percent: 72, label: "Weekly" });
+    expect(accountUsage(withUsage)).toEqual([
+      { percent: 12, name: "5-hour", label: "5-hour session" },
+      { percent: 72, name: "Weekly", label: "Weekly, all models" },
+    ]);
   });
 
-  it("returns null when the provider reports no usage", () => {
-    expect(accountUsage(provider({}))).toBeNull();
+  it("leaves out a limit the provider has not reported", () => {
+    const weeklyOnly = provider({
+      usageLimits: {
+        windows: [{ id: "seven_day", kind: "weekly", label: "Weekly", usedPercent: 40 }],
+      },
+    });
+    expect(accountUsage(weeklyOnly).map((meter) => meter.name)).toEqual(["Weekly"]);
+  });
+
+  it("returns nothing when the provider reports no usage", () => {
+    expect(accountUsage(provider({}))).toEqual([]);
   });
 });
 
