@@ -1,9 +1,11 @@
 import {
   DevPreviewError,
+  ImagesError,
   OrchestrationDispatchCommandError,
   TaskBoardReadError,
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
+import * as ImageService from "./images/ImageService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
@@ -1386,6 +1388,24 @@ const layerWsRpc = (
             );
           if (Option.isNone(project)) {
             return yield* new DevPreviewError({ reason: "project_not_found", cause: projectId });
+          }
+          return yield* use(project.value);
+        });
+      const images = yield* ImageService.ImageService;
+      const withImagesProject = <A, E, R>(
+        projectId: ProjectId,
+        use: (project: Project) => Effect.Effect<A, E, R>,
+      ) =>
+        Effect.gen(function* () {
+          const project = yield* projectService
+            .getById(projectId)
+            .pipe(
+              Effect.mapError(
+                (cause) => new ImagesError({ reason: "project_not_found", detail: String(cause) }),
+              ),
+            );
+          if (Option.isNone(project)) {
+            return yield* new ImagesError({ reason: "project_not_found", detail: projectId });
           }
           return yield* use(project.value);
         });
@@ -2799,6 +2819,18 @@ const layerWsRpc = (
           withDevPreviewProject(input.projectId, devPreview.start),
         [WS_METHODS.devPreviewStop]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.stop),
+        [WS_METHODS.imagesSubscribe]: (input) =>
+          Stream.unwrap(
+            withImagesProject(input.projectId, (project) =>
+              Effect.succeed(images.subscribe(project)),
+            ),
+          ),
+        [WS_METHODS.imagesGenerate]: (input) =>
+          withImagesProject(input.projectId, (project) => images.generate(project, input)),
+        [WS_METHODS.imagesCancel]: (input) => images.cancel(input),
+        [WS_METHODS.imagesKeep]: (input) =>
+          withImagesProject(input.projectId, (project) => images.keep(project, input)),
+        [WS_METHODS.imagesSetBaseUrl]: (input) => images.setBaseUrl(input),
         [WS_METHODS.taskBoardWorkspace]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),
         [WS_METHODS.taskBoardCardUpdate]: (input) =>

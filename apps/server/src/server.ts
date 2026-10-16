@@ -1,6 +1,7 @@
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import type { RelayManagedEndpointRuntimeConfig } from "@t3tools/contracts/relay";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
+import * as ImageService from "./images/ImageService.ts";
 import * as TaskAutoLog from "./taskBoard/TaskAutoLog.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -452,6 +453,7 @@ const layerWorkspaceFileSystem = WorkspaceFileSystem.layer.pipe(
 const layerWorkspace = Layer.mergeAll(
   TaskBoardService.layer.pipe(Layer.provide(ProcessRunner.layer)),
   DevPreviewService.layer,
+  ImageService.layer,
   PromptPrediction.layer,
   WorkspacePaths.layer,
   layerWorkspaceEntries,

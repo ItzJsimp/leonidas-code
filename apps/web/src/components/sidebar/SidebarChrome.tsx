@@ -2,6 +2,7 @@ import {
   ArrowLeftIcon,
   ActivityIcon,
   ChartNoAxesColumnIcon,
+  ImageIcon,
   ListChecksIcon,
   MicIcon,
   RadarIcon,
@@ -256,6 +257,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/usage" });
   }, [isMobile, navigate, setOpenMobile]);
 
+  const handleImagesClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/images" });
+  }, [closeMobileSidebar, navigate]);
+
   const handleSystemCareClick = useCallback(() => {
     closeMobileSidebar();
     void navigate({ to: "/system-care" });
@@ -327,6 +333,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             tourId="sidebar-usage"
             onClick={handleUsageClick}
           />
+          <SidebarUtilityItem icon={<ImageIcon />} label="Images" onClick={handleImagesClick} />
           <SidebarUtilityItem
             icon={<ActivityIcon />}
             label="PC Tuning"

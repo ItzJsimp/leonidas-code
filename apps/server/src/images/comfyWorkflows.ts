@@ -1,0 +1,185 @@
+/**
+ * ComfyUI API workflows for the curated image models.
+ *
+ * Each builder is a pure function. It returns the node graph that `POST /prompt` takes.
+ * The node ids, file names and sampler settings come from workflows tested on a 12 GB card.
+ * Do not change them without a new test run on real hardware.
+ *
+ * The last node is `PreviewImage`, not `SaveImage`. ComfyUI keeps a preview in its temp folder
+ * and the app copies the image into the project, so ComfyUI's output folder does not fill up.
+ */
+
+export type ComfyNode = {
+  readonly class_type: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+};
+export type ComfyWorkflow = Readonly<Record<string, ComfyNode>>;
+
+export interface WorkflowInput {
+  readonly prompt: string;
+  readonly seed: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Sampler values saved in the Recipe sidecar of every image. */
+export type WorkflowSettings = Readonly<Record<string, string | number>>;
+
+export const IMAGE_SIZE = 1024;
+
+export const COMFY_MODEL_IDS = ["flux2klein", "qwen", "qwen21"] as const;
+export type ComfyModelId = (typeof COMFY_MODEL_IDS)[number];
+
+export const isComfyModelId = (value: string): value is ComfyModelId =>
+  (COMFY_MODEL_IDS as ReadonlyArray<string>).includes(value);
+
+/** FLUX.2 klein 4B: 4 steps, fast. */
+export function flux2kleinWorkflow({ prompt, seed, width, height }: WorkflowInput): ComfyWorkflow {
+  return {
+    "1": {
+      class_type: "UNETLoader",
+      inputs: { unet_name: "flux-2-klein-4b.safetensors", weight_dtype: "default" },
+    },
+    "2": {
+      class_type: "CLIPLoader",
+      inputs: { clip_name: "qwen_3_4b_fp4_flux2.safetensors", type: "flux2", device: "default" },
+    },
+    "3": { class_type: "VAELoader", inputs: { vae_name: "flux2-vae.safetensors" } },
+    "5": { class_type: "CLIPTextEncode", inputs: { clip: ["2", 0], text: prompt } },
+    "6": { class_type: "ConditioningZeroOut", inputs: { conditioning: ["5", 0] } },
+    "7": {
+      class_type: "EmptyFlux2LatentImage",
+      inputs: { width, height, batch_size: 1 },
+    },
+    "8": {
+      class_type: "CFGGuider",
+      inputs: { model: ["1", 0], positive: ["5", 0], negative: ["6", 0], cfg: 1.0 },
+    },
+    "9": { class_type: "KSamplerSelect", inputs: { sampler_name: "euler" } },
+    "10": { class_type: "Flux2Scheduler", inputs: { steps: 4, width, height } },
+    "11": { class_type: "RandomNoise", inputs: { noise_seed: seed } },
+    "12": {
+      class_type: "SamplerCustomAdvanced",
+      inputs: {
+        noise: ["11", 0],
+        guider: ["8", 0],
+        sampler: ["9", 0],
+        sigmas: ["10", 0],
+        latent_image: ["7", 0],
+      },
+    },
+    "13": { class_type: "VAEDecode", inputs: { samples: ["12", 0], vae: ["3", 0] } },
+    "14": { class_type: "PreviewImage", inputs: { images: ["13", 0] } },
+  };
+}
+
+/** Qwen-Image 2512, fp8: 30 steps, about 150 seconds. */
+export function qwenWorkflow({ prompt, seed, width, height }: WorkflowInput): ComfyWorkflow {
+  return {
+    "1": {
+      class_type: "UNETLoader",
+      inputs: { unet_name: "qwen_image_2512_fp8_e4m3fn.safetensors", weight_dtype: "default" },
+    },
+    "2": {
+      class_type: "CLIPLoader",
+      inputs: {
+        clip_name: "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        type: "qwen_image",
+        device: "default",
+      },
+    },
+    "3": { class_type: "VAELoader", inputs: { vae_name: "qwen_image_vae.safetensors" } },
+    "4": { class_type: "ModelSamplingAuraFlow", inputs: { model: ["1", 0], shift: 3.1 } },
+    "5": { class_type: "CLIPTextEncode", inputs: { clip: ["2", 0], text: prompt } },
+    "6": { class_type: "CLIPTextEncode", inputs: { clip: ["2", 0], text: " " } },
+    "7": { class_type: "EmptySD3LatentImage", inputs: { width, height, batch_size: 1 } },
+    "8": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["4", 0],
+        positive: ["5", 0],
+        negative: ["6", 0],
+        latent_image: ["7", 0],
+        seed,
+        steps: 30,
+        cfg: 4.0,
+        sampler_name: "euler",
+        scheduler: "simple",
+        denoise: 1.0,
+      },
+    },
+    "9": { class_type: "VAEDecode", inputs: { samples: ["8", 0], vae: ["3", 0] } },
+    "10": { class_type: "PreviewImage", inputs: { images: ["9", 0] } },
+  };
+}
+
+/** Qwen-Image 2.1, bf16: 25 steps. Non-commercial licence. */
+export function qwen21Workflow({ prompt, seed, width, height }: WorkflowInput): ComfyWorkflow {
+  return {
+    "1": {
+      class_type: "UNETLoader",
+      inputs: { unet_name: "qwen_image_2.1_bf16.safetensors", weight_dtype: "default" },
+    },
+    "2": {
+      class_type: "CLIPLoader",
+      inputs: { clip_name: "qwen3vl_8b_bf16.safetensors", type: "qwen_image", device: "default" },
+    },
+    "3": { class_type: "VAELoader", inputs: { vae_name: "qwen_image_2.1_vae_bf16.safetensors" } },
+    "4": {
+      class_type: "QwenImage21Cache",
+      inputs: { model: ["1", 0], device: "auto", dtype: "default" },
+    },
+    "5": {
+      class_type: "TextEncodeQwenImage21",
+      inputs: { clip: ["2", 0], prompt, negative_prompt: "", resolution: 1024 },
+    },
+    "7": { class_type: "EmptyLatentImage", inputs: { width, height, batch_size: 1 } },
+    "8": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["4", 0],
+        positive: ["5", 0],
+        negative: ["5", 1],
+        latent_image: ["7", 0],
+        seed,
+        steps: 25,
+        cfg: 1.0,
+        sampler_name: "euler",
+        scheduler: "simple",
+        denoise: 1.0,
+      },
+    },
+    "9": { class_type: "VAEDecode", inputs: { samples: ["8", 0], vae: ["3", 0] } },
+    "10": { class_type: "PreviewImage", inputs: { images: ["9", 0] } },
+  };
+}
+
+export const COMFY_WORKFLOWS: Readonly<
+  Record<ComfyModelId, (input: WorkflowInput) => ComfyWorkflow>
+> = {
+  flux2klein: flux2kleinWorkflow,
+  qwen: qwenWorkflow,
+  qwen21: qwen21Workflow,
+};
+
+/** What a Recipe records about the sampler. It matches the numbers in the builders above. */
+export const COMFY_WORKFLOW_SETTINGS: Readonly<Record<ComfyModelId, WorkflowSettings>> = {
+  flux2klein: { width: IMAGE_SIZE, height: IMAGE_SIZE, steps: 4, cfg: 1.0, sampler: "euler" },
+  qwen: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    steps: 30,
+    cfg: 4.0,
+    sampler: "euler",
+    scheduler: "simple",
+    shift: 3.1,
+  },
+  qwen21: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    steps: 25,
+    cfg: 1.0,
+    sampler: "euler",
+    scheduler: "simple",
+  },
+};
