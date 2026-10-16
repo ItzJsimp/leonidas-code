@@ -84,7 +84,7 @@ export function ModelStatsPanel(props: { stats: PickerModelStats }) {
                 )}
                 onClick={() => setPicked(item.effort)}
               >
-                {item.effort === "default" ? "Default" : formatEffortLabel(item.effort)}
+                {item.effort === "default" ? "None" : formatEffortLabel(item.effort)}
               </button>
             ))}
           </div>

@@ -57,6 +57,8 @@ export const NO_PICKER_STATS: PickerModelStats = {
 };
 
 const effortRank = (effort: string) => {
+  // The run with no reasoning effort (AA "Non-reasoning") is the lowest setting.
+  if (effort === "default") return -1;
   const index = EFFORT_ORDER.indexOf(effort as (typeof EFFORT_ORDER)[number]);
   return index < 0 ? EFFORT_ORDER.length : index;
 };
