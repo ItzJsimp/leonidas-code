@@ -28,7 +28,7 @@ Before you write a new spec, check the 7 starters (frontend-designer, researcher
 
 1. **One role.** If the role has two jobs, make two subagents.
 2. **Model:** the cheapest model that does the job. A free-tier model (Haiku 5.5, GPT-6 Luna, Gemini 3.8 Flash Low or Medium) starts with no card; any other model asks the user first. Add `tier: confirm` when a cheap model can still do costly work.
-3. **Tools:** list only what the role uses. Read-only roles get `Read`, `Grep`, `Glob`. Add `Bash` for checks, `Edit` and `Write` for builders. Name each app MCP tool (`mcp__t3-code__preview_open`); one `mcp__` tool loads the app MCP server and adds about 9,000 start tokens.
+3. **Tools:** list only what the role uses. Read-only roles get `Read`, `Grep`, `Glob`. Add `Bash` for checks, `Edit` and `Write` for builders. Name each app MCP tool (`mcp__t3-code__preview_open`); each named `mcp__` tool adds about 1,300 start tokens (the child loads only the tools you name).
 4. **Context List:** the files it always needs, for example a project `DESIGN.md`. Each file adds its size to every start. Keep the default empty.
 5. **Never-list:** short, checkable bans, for example "Commit or push."
 6. **Body:** the role in one sentence, numbered work steps, and a return contract with a word cap and evidence (paths, lines, commands, screenshot paths). Use mechanical rules, not adjectives.
