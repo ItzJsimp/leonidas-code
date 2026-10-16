@@ -33,7 +33,8 @@ $runRoot = if (Test-Path -LiteralPath 'C:/lcw/dev-live/node_modules/.bin/vp.cmd'
 $serverAction = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $runRoot `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$(Join-Path $runRoot 'scripts/Run-LeonidasDevServer.ps1')`""
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
+    -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) `
+    -Priority 4  # Windows gives tasks priority 7 (below normal) by default; that starved Vite and its optimizer
 Register-ScheduledTask -TaskName $taskName -Force -Settings $settings -Action $serverAction `
     -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) `
     -Principal (New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited) | Out-Null

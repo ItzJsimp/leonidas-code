@@ -11,6 +11,8 @@ $log = Join-Path $devHome 'dev-server.log'
 New-Item -ItemType Directory -Force -Path $devHome | Out-Null
 $pwsh = (Get-Process -Id $PID).Path
 $serverPort = 23773
+$webPort = 15733
+$webFrozenSeconds = 90    # a cold compile can block Vite for tens of seconds; longer than that is a freeze
 $startGraceSeconds = 180   # first start can take a while (install repair, cold caches)
 $downRestartSeconds = 60  # longer than a normal hot-reload restart
 
@@ -63,8 +65,71 @@ function Repair-PatchedPackages {
     & npx --yes pnpm@11.10.0 install --frozen-lockfile --prefer-offline *>> $log
 }
 
+# The version label in the app's top-left comes from git. A hidden task has a short PATH and a slow
+# disk, so computing it inside vite failed silently and the app showed the package number (0.0.45).
+# Compute it here, from the main branch (the dev copy can lag behind it), and pass it down.
+function Get-DevVersionLabel {
+    try {
+        $common = (& git -C $repoRoot rev-parse --path-format=absolute --git-common-dir 2>$null).Trim()
+        $describe = (& git --git-dir=$common describe --tags --long --match 'v0.*' main 2>$null).Trim()
+        if ($describe -match '^v?(\d+\.\d+\.\d+)-(\d+)-g[0-9a-f]+$') {
+            if ($Matches[2] -eq '0') { return $Matches[1] }
+            return "$($Matches[1])+$($Matches[2])"
+        }
+    } catch { }
+    return ''
+}
+
+# Keep this copy equal to the main checkout (same commit plus its uncommitted work), so every
+# agent's change shows up here. The sync script of the main checkout does the work; it copies only
+# files whose content differs, so an idle sync causes no hot reload.
+function Get-MainRoot {
+    try {
+        $common = (& git -C $repoRoot rev-parse --path-format=absolute --git-common-dir 2>$null).Trim()
+        return (Split-Path -Parent $common)
+    } catch { return $null }
+}
+# Every synced server file restarts the dev server (about a minute). When several agents edit main,
+# syncing file by file means one restart after another and changes that land one at a time. So wait
+# until main has been quiet for $syncQuietSeconds, then sync everything in one batch.
+$syncQuietSeconds = 20
+$script:lastSignature = ''
+$script:signatureChangedAt = Get-Date
+$script:syncedSignature = ''
+function Get-MainSignature([string]$mainRoot) {
+    $head = (& git -C $mainRoot rev-parse HEAD 2>$null)
+    $lines = @(& git -C $mainRoot status --porcelain=v1 -uall 2>$null)
+    $newest = 0
+    foreach ($line in $lines) {
+        $f = $line.Substring(3).Trim('"')
+        $item = Get-Item -LiteralPath (Join-Path $mainRoot $f) -ErrorAction SilentlyContinue
+        if ($item -and -not $item.PSIsContainer -and $item.LastWriteTimeUtc.Ticks -gt $newest) { $newest = $item.LastWriteTimeUtc.Ticks }
+    }
+    return "$head|$($lines.Count)|$newest"
+}
+function Sync-FromMain([switch]$Force) {
+    $mainRoot = Get-MainRoot
+    if (-not $mainRoot) { return }
+    $syncScript = Join-Path $mainRoot 'scripts/Sync-DevLive.ps1'
+    if (-not (Test-Path -LiteralPath $syncScript)) { return }
+    try {
+        $signature = Get-MainSignature $mainRoot
+        if ($signature -ne $script:lastSignature) { $script:lastSignature = $signature; $script:signatureChangedAt = Get-Date }
+        if (-not $Force) {
+            if ($signature -eq $script:syncedSignature) { return }
+            if (((Get-Date) - $script:signatureChangedAt).TotalSeconds -lt $syncQuietSeconds) { return }
+        }
+        $out = (& $syncScript 2>&1) -join ' '
+        $script:syncedSignature = $signature
+        if ($out -match 'moved to|copied [1-9]|removed [1-9]') { Add-Content -LiteralPath $log -Value "[supervisor] $out" }
+    } catch { Add-Content -LiteralPath $log -Value "[supervisor] sync from main failed: $($_.Exception.Message)" }
+}
+
 while ($true) {
+    Sync-FromMain -Force
     Repair-PatchedPackages
+    $label = Get-DevVersionLabel
+    if ($label) { $env:LEONIDAS_VERSION_LABEL = $label }
     # Leftover watchers and searches slow the whole machine; name them in the log (report only).
     $runaway = (& (Join-Path $PSScriptRoot 'Find-RunawayProcesses.ps1') 2>&1) -join "`n"
     if ($runaway -notmatch '^No runaway') { Add-Content -LiteralPath $log -Value "[supervisor] $runaway" }
@@ -78,8 +143,26 @@ while ($true) {
     # (by its captured PID only) when the server stays down.
     $startedAt = Get-Date
     $downSince = $null
+    $webSilentSince = $null
+    $lastSync = Get-Date
     while (-not $proc.HasExited) {
         Start-Sleep -Seconds 5
+        if (((Get-Date) - $lastSync).TotalSeconds -ge 10) { Sync-FromMain; $lastSync = Get-Date }
+        # Vite sometimes freezes with no CPU use (stuck dependency optimizer) and then never answers.
+        # Probe the page; when it stays silent for $webFrozenSeconds, restart the runner we started
+        # (by its captured PID only) with a clean Vite cache.
+        if (((Get-Date) - $startedAt).TotalSeconds -ge 30) {
+            $webOk = $false
+            try { $null = Invoke-WebRequest -Uri "http://127.0.0.1:$webPort/" -UseBasicParsing -TimeoutSec 5; $webOk = $true } catch { }
+            if ($webOk) { $webSilentSince = $null }
+            elseif (-not $webSilentSince) { $webSilentSince = Get-Date }
+            elseif (((Get-Date) - $webSilentSince).TotalSeconds -ge $webFrozenSeconds) {
+                Add-Content -LiteralPath $log -Value "[supervisor] web page on port $webPort silent for $webFrozenSeconds s (frozen Vite); restarting with a clean cache at $(Get-Date -Format o)"
+                & taskkill.exe /PID $proc.Id /T /F *> $null
+                Remove-Item -LiteralPath (Join-Path $repoRoot "apps/web/node_modules/.vite-$webPort") -Recurse -Force -ErrorAction SilentlyContinue
+                break
+            }
+        }
         $up = $null -ne (Get-NetTCPConnection -LocalPort $serverPort -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1)
         if ($up) { $downSince = $null; continue }
         if (((Get-Date) - $startedAt).TotalSeconds -lt $startGraceSeconds) { continue }
