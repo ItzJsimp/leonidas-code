@@ -13,10 +13,24 @@ import {
   SavedItemUpdateInput,
   type SavedItemCreator,
   type SavedItemListResult,
+  SAVED_ITEM_BODY_MAX_LENGTH,
   ThreadId,
 } from "@t3tools/contracts";
 import { parseSavedItemMarkdown } from "@t3tools/shared/savedItemMarkdown";
 import { isValidOnceRunAt } from "../scheduledTasks/Schedule.ts";
+import { ServerSettingsService } from "../serverSettings.ts";
+import { findAiosRoot } from "../taskBoard/aiosCards.ts";
+import {
+  deleteFolderPrompt,
+  FOLDER_ID_PREFIX,
+  freeFileName,
+  promptsDirFor,
+  readFolderPrompts,
+  writeFolderPrompt,
+} from "./promptFolder.ts";
+import * as NodeCrypto from "node:crypto";
+import * as NodeFS from "node:fs";
+import * as Option from "effect/Option";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -103,6 +117,20 @@ const storage = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  const settings = yield* Effect.serviceOption(ServerSettingsService);
+  /** The AIOS prompts folder, resolved on each use so a newly confirmed AIOS folder applies at once. */
+  const promptsDir = Effect.gen(function* () {
+    let confirmed: string | undefined;
+    if (Option.isSome(settings)) {
+      const current = yield* settings.value.getSettings.pipe(Effect.option);
+      confirmed = Option.isSome(current) ? current.value.aiosRoot || undefined : undefined;
+    }
+    const root = findAiosRoot([confirmed, process.env.LEONIDAS_AIOS_ROOT, process.env.AIOS_ROOT]);
+    return root === null ? null : promptsDirFor(root);
+  });
+  const folderFile = (id: SavedItemId) =>
+    id.startsWith(FOLDER_ID_PREFIX) ? id.slice(FOLDER_ID_PREFIX.length) : null;
+  const fsError = (cause: unknown) => new SavedItemError({ reason: "storage", cause });
   const project = (item: SavedItem) =>
     encode(item).pipe(
       Effect.flatMap(
@@ -164,6 +192,65 @@ const make = Effect.gen(function* () {
       )
       .pipe(storage);
   const now = DateTime.now.pipe(Effect.map(DateTime.formatIso));
+  /** Mirrors the prompts folder into the projection: the files win, the app copy follows them. */
+  const syncFolder = Effect.gen(function* () {
+    const dir = yield* promptsDir;
+    const prompts = dir === null ? null : readFolderPrompts(dir);
+    if (dir === null || prompts === null) return { path: dir, present: false };
+    yield* sql.withTransaction(
+      Effect.gen(function* () {
+        const rows = yield* sql<{
+          item_json: string;
+        }>`SELECT item_json FROM projection_saved_items WHERE item_id LIKE ${`${FOLDER_ID_PREFIX}%`}`;
+        const known = new Map<string, SavedItem>();
+        for (const row of rows) {
+          const item = yield* decode(row.item_json);
+          known.set(item.id, item);
+        }
+        const syncId = (type: string) =>
+          CommandId.make(`folder-sync:${type}:${NodeCrypto.randomUUID()}`);
+        const timestamp = yield* now;
+        for (const prompt of prompts) {
+          if (prompt.body.length > SAVED_ITEM_BODY_MAX_LENGTH) continue;
+          const id = SavedItemId.make(`${FOLDER_ID_PREFIX}${prompt.file}`);
+          const current = known.get(id);
+          known.delete(id);
+          if (!current) {
+            yield* record(syncId("created"), "saved_item.created", {
+              id,
+              kind: "prompt",
+              title: prompt.title,
+              body: prompt.body,
+              tags: [...prompt.tags],
+              projectId: null,
+              status: "queued",
+              launchedThreadId: null,
+              createdBy: "user",
+              createdAt: timestamp,
+              updatedAt: timestamp,
+              launchedBy: null,
+              scheduledTaskId: null,
+              boardTaskId: null,
+              pendingCommandId: null,
+            });
+          } else if (current.title !== prompt.title || current.body !== prompt.body) {
+            yield* record(syncId("updated"), "saved_item.updated", {
+              ...current,
+              title: prompt.title,
+              body: prompt.body,
+              updatedAt: timestamp,
+            });
+          }
+        }
+        // A file removed outside the app removes its prompt, unless work still points at it.
+        for (const item of known.values()) {
+          if (item.pendingCommandId || item.scheduledTaskId) continue;
+          yield* record(syncId("deleted"), DELETE_EVENT, { ...item, updatedAt: timestamp });
+        }
+      }),
+    );
+    return { path: dir, present: true };
+  }).pipe(storage);
   const editable = (item: SavedItem) =>
     item.pendingCommandId || item.boardTaskId
       ? Effect.fail(new SavedItemError({ reason: "conflict" }))
@@ -177,7 +264,20 @@ const make = Effect.gen(function* () {
         input,
         "saved_item.created",
         Effect.gen(function* () {
-          const id = input.id ?? SavedItemId.make(`saved:${input.commandId}`);
+          const dir =
+            input.id === undefined && input.kind === "prompt" && input.projectId === null
+              ? yield* promptsDir
+              : null;
+          let id = input.id ?? SavedItemId.make(`saved:${input.commandId}`);
+          // With an AIOS prompts folder, a new prompt is a file there; the projection follows it.
+          if (dir !== null && NodeFS.existsSync(dir)) {
+            const file = freeFileName(dir, input.title);
+            yield* Effect.try({
+              try: () => writeFolderPrompt(dir, { file, title: input.title, body: input.body }),
+              catch: fsError,
+            });
+            id = SavedItemId.make(`${FOLDER_ID_PREFIX}${file}`);
+          }
           const existing =
             yield* sql`SELECT item_id FROM projection_saved_items WHERE item_id = ${id}`;
           if (existing.length) return yield* new SavedItemError({ reason: "conflict" });
@@ -214,6 +314,16 @@ const make = Effect.gen(function* () {
         Effect.gen(function* () {
           const item = yield* get(input.id);
           yield* editable(item);
+          const file = folderFile(item.id);
+          const dir = file === null ? null : yield* promptsDir;
+          if (file !== null && dir !== null) {
+            const title = input.title ?? item.title;
+            const body = input.body ?? item.body;
+            yield* Effect.try({
+              try: () => writeFolderPrompt(dir, { file, title, body }),
+              catch: fsError,
+            });
+          }
           return {
             ...item,
             ...(input.kind === undefined ? {} : { kind: input.kind }),
@@ -249,7 +359,13 @@ const make = Effect.gen(function* () {
                   ? item.status === "launched" || item.status === "queued"
                   : item.status === "done" || item.status === "launched";
         if (!valid) return yield* new SavedItemError({ reason: "invalid_transition" });
-        if (input.action === "delete") return { ...item, updatedAt: yield* now };
+        if (input.action === "delete") {
+          const file = folderFile(item.id);
+          const dir = file === null ? null : yield* promptsDir;
+          if (file !== null && dir !== null)
+            yield* Effect.try({ try: () => deleteFolderPrompt(dir, file), catch: fsError });
+          return { ...item, updatedAt: yield* now };
+        }
         return {
           ...item,
           status:
@@ -425,6 +541,10 @@ const make = Effect.gen(function* () {
       }),
     list: (input) =>
       Effect.gen(function* () {
+        const promptsFolder =
+          input.kind === "note" || (input.projectId !== undefined && input.projectId !== null)
+            ? undefined
+            : yield* syncFolder;
         const rows = yield* sql<{
           item_json: string;
         }>`SELECT item_json FROM projection_saved_items WHERE ${sql.and([
@@ -437,7 +557,8 @@ const make = Effect.gen(function* () {
           input.status === undefined ? sql`status != 'archived'` : sql`status = ${input.status}`,
           ...(input.kind === undefined ? [] : [sql`kind = ${input.kind}`]),
         ])} ORDER BY updated_at DESC, item_id`;
-        return { items: yield* Effect.forEach(rows, (row) => decode(row.item_json)) };
+        const items = yield* Effect.forEach(rows, (row) => decode(row.item_json));
+        return promptsFolder === undefined ? { items } : { items, promptsFolder };
       }).pipe(storage),
     rebuild: sql
       .withTransaction(

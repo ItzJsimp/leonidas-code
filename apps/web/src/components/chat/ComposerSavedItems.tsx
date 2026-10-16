@@ -73,6 +73,13 @@ import { Textarea } from "../ui/textarea";
 import { ComposerBanner } from "./ComposerBanner";
 import { createDraftSaver } from "./savedDraft";
 
+/** Pasted into an agent chat, it makes the AIOS prompts folder the app reads. */
+const PROMPTS_FOLDER_SETUP = `Set up the prompts folder in my AIOS so Leonidas Code can read my saved prompts.
+1. Find my AIOS root (the folder with tasks/ and projects/). If you cannot find it, ask me.
+2. Create the folder prompts/ at that root.
+3. Add one sample file prompts/example.md. Start it with frontmatter that has type: prompt and a title, then the prompt text.
+4. Tell me the full path when you are done.`;
+
 type Props = {
   environmentId: EnvironmentId;
   projectId: ProjectId | null;
@@ -551,6 +558,25 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
       ) : null}
       {!props.canOperate ? (
         <p className="text-sm text-muted-foreground">This connection is read only.</p>
+      ) : null}
+      {query.data?.promptsFolder && !query.data.promptsFolder.present ? (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm"
+          role="note"
+        >
+          <span className="min-w-0 flex-1 text-muted-foreground">
+            {query.data.promptsFolder.path
+              ? `No prompts folder at ${query.data.promptsFolder.path}. Prompts save in the app until you make one.`
+              : "No AIOS folder found. Prompts save in the app. Connect an AIOS to keep them as files."}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void navigator.clipboard.writeText(PROMPTS_FOLDER_SETUP)}
+          >
+            Copy setup prompt
+          </Button>
+        </div>
       ) : null}
       {query.isPending && query.data === null ? (
         <div className="space-y-2" role="status" aria-label="Loading prompts">

@@ -98,7 +98,16 @@ export const SavedItemListInput = Schema.Struct({
   kind: Schema.optional(SavedItemKind),
 });
 export type SavedItemListInput = typeof SavedItemListInput.Type;
-export const SavedItemListResult = Schema.Struct({ items: Schema.Array(SavedItem) });
+/** The AIOS prompts folder the list mirrors; `present: false` lets the app offer setup. */
+export const SavedItemPromptsFolder = Schema.Struct({
+  path: Schema.NullOr(Schema.String),
+  present: Schema.Boolean,
+});
+export type SavedItemPromptsFolder = typeof SavedItemPromptsFolder.Type;
+export const SavedItemListResult = Schema.Struct({
+  items: Schema.Array(SavedItem),
+  promptsFolder: Schema.optionalKey(SavedItemPromptsFolder),
+});
 export type SavedItemListResult = typeof SavedItemListResult.Type;
 export const SavedItemGetInput = Schema.Struct({ id: SavedItemId });
 const executionFields = {
