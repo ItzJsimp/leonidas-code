@@ -19,9 +19,6 @@ import {
 } from "../../lib/cacheAwarenessStore";
 import type { ModelSelection } from "@t3tools/contracts";
 import type { ContextWindowSnapshot } from "../../lib/contextWindow";
-import { formatContextWindowTokens } from "../../lib/contextWindow";
-import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
-import { composerFloatingLayerProps } from "./composerEventScope";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import {
@@ -119,21 +116,12 @@ export function CacheNoticeCoordinator() {
     toastManager.add({
       id: "cache-expiry",
       type: "info",
-      title:
-        due.length === 1
-          ? "A recent chat may need its cache rebuilt soon"
-          : `${due.length} recent chats may need their caches rebuilt soon`,
-      description:
-        "Estimated cache time is low. You can leave these chats idle. A later request may cost more.",
-      data: {
-        hideCopyButton: true,
-        expandableContent: <CacheNoticeControls />,
-        expandableLabels: { expand: "Pause or mute", collapse: "Hide controls" },
-      },
+      title: due.length === 1 ? "Cache ends soon" : `${due.length} chats: cache ends soon`,
+      description: "The next message may cost more.",
       actionProps: {
-        children: "Pause 1 hour",
+        children: "Don't remind again",
         onClick: () => {
-          void update({ cacheNoticesSnoozedUntil: Date.now() + 3_600_000 });
+          void update({ cacheMutedWarnings: [...settings.cacheMutedWarnings, "expiry"] });
           toastManager.close("cache-expiry");
         },
       },
@@ -166,7 +154,7 @@ export function useCacheActionWarning() {
     if (!impact.confirmed) {
       toastManager.add({
         type: "info",
-        title: "Cache reuse may change",
+        title: "Cache may reset",
         description: impact.message,
         actionProps: {
           children: "Don't remind again",
@@ -189,12 +177,12 @@ export function useCacheActionWarning() {
     >
       <AlertDialogPopup>
         <AlertDialogHeader>
-          <AlertDialogTitle>Continue with this cache change?</AlertDialogTitle>
+          <AlertDialogTitle>Change the cache?</AlertDialogTitle>
           <AlertDialogDescription>{pending?.impact.message}</AlertDialogDescription>
         </AlertDialogHeader>
         <label className="flex items-center gap-2 px-1 text-sm">
           <Checkbox checked={mute} onCheckedChange={(value) => setMute(value === true)} />
-          Don't remind me about this warning type again
+          Don't remind me again
         </label>
         <AlertDialogFooter>
           <Button variant="outline" onClick={() => setPending(null)}>
@@ -257,8 +245,7 @@ export function useCacheAwareness({
         id: "cache-reuse-drop",
         type: "info",
         title: "Cache reuse fell",
-        description:
-          "The connection reported fewer saved reads. Expiry, settings, or routing can cause this. The cause is not confirmed.",
+        description: "This reply reused less of the cache.",
         actionProps: {
           children: "Don't remind again",
           onClick: () =>
@@ -278,49 +265,14 @@ export function useCacheAwareness({
   return status;
 }
 
-export function CacheStatusDetails({ usage }: { usage: ContextWindowSnapshot | null }) {
-  const status = cacheStatus(cacheObservation(usage), useCacheClock());
-  return (
-    <div className="grid gap-2 border-t border-border pt-2 text-xs">
-      <strong>Prompt cache</strong>
-      <p>{cacheStatusLabel(status)}</p>
-      <p>
-        {status.readRate === null
-          ? "Cache reads were not reported."
-          : `${Math.round(status.readRate * 100)}% of reported input came from cache (${formatContextWindowTokens(usage?.cachedInputTokens ?? null)} tokens).`}
-      </p>
-      <p className="text-muted-foreground">
-        Expiry does not erase your chat. A later request may need to rebuild the cache.
-      </p>
-      {status.remainingMs === null ? (
-        <p className="text-muted-foreground">
-          This connection does not report enough timing data for a countdown.
-        </p>
-      ) : null}
-      <p className="text-muted-foreground">
-        The provider reuses an identical start of a request. Model, account, instructions, tools,
-        effort, and history changes can affect reuse.
-      </p>
-      <p className="text-muted-foreground">
-        Timing uses a conservative turn-start estimate when available. Tool requests can refresh
-        caches later. A countdown cannot guarantee reuse.
-      </p>
-      <p className="text-muted-foreground">
-        OpenRouter reuse also depends on its route. Cache prices are not reported here, so costs
-        stay in tokens.
-      </p>
-      <CacheNoticeControls />
-    </div>
-  );
-}
-
 export function cacheStatusLabel(status: ReturnType<typeof cacheStatus>) {
   if (status.state === "estimated")
-    return `Cache: ~${Math.ceil((status.remainingMs ?? 0) / 60_000)}m left`;
-  if (status.state === "possibly-expired") return "Cache: may have expired";
-  if (status.state === "reported") return "Cache: reuse reported";
-  if (status.state === "no-reuse") return "Cache: no reuse reported";
-  return "Cache: unknown";
+    return `About ${Math.ceil((status.remainingMs ?? 0) / 60_000)}m left`;
+  if (status.state === "possibly-expired") return "May have expired";
+  if (status.state === "reported")
+    return status.readRate === null ? "In use" : `${Math.round(status.readRate * 100)}% reused`;
+  if (status.state === "no-reuse") return "Not reused";
+  return "Not reported";
 }
 
 export function CacheConfigurationNotice({
@@ -350,49 +302,5 @@ export function CacheConfigurationNotice({
         Don't remind again
       </Button>
     </div>
-  );
-}
-
-export function CacheStatusChip({
-  usage,
-  status,
-}: {
-  usage: ContextWindowSnapshot | null;
-  status: ReturnType<typeof cacheStatus>;
-}) {
-  const label = cacheStatusLabel(status);
-  const text =
-    status.state === "estimated"
-      ? `Cache ~${Math.ceil((status.remainingMs ?? 0) / 60_000)}m`
-      : status.state === "possibly-expired"
-        ? "Cache ?"
-        : status.readRate !== null
-          ? `Cache ${Math.round(status.readRate * 100)}%`
-          : "Cache --";
-  const color =
-    status.state === "possibly-expired"
-      ? "var(--color-destructive)"
-      : status.remainingMs !== null && status.remainingMs <= 10 * 60_000
-        ? "var(--color-warning)"
-        : undefined;
-  return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <Button
-            size="compact"
-            variant="ghost-muted"
-            aria-label={`${label}. Show cache details`}
-          />
-        }
-      >
-        <span className="text-2xs tabular-nums" style={{ color }}>
-          {text}
-        </span>
-      </PopoverTrigger>
-      <PopoverPopup {...composerFloatingLayerProps} width="md" side="top" align="end">
-        <CacheStatusDetails usage={usage} />
-      </PopoverPopup>
-    </Popover>
   );
 }

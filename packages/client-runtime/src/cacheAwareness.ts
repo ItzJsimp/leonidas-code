@@ -61,22 +61,19 @@ export function cacheActionImpact(
     return {
       category: "account",
       confirmed: false,
-      message:
-        "Changing connections can move requests to a different account or route. Cache reuse is not guaranteed.",
+      message: "A new connection starts a new cache. The next message may cost more.",
     };
   if (from.model !== to.model)
     return {
       category: "model",
       confirmed: true,
-      message:
-        "The new model cannot use the current model's cache. It may have its own cache. The next request can cost more.",
+      message: "A new model cannot use this cache. The next message may cost more.",
     };
   if (JSON.stringify(from.options ?? {}) !== JSON.stringify(to.options ?? {}))
     return {
       category: "configuration",
       confirmed: false,
-      message:
-        "Changed effort or model options can reduce cache reuse. The effect depends on the model and connection.",
+      message: "Changed options can reduce cache reuse. The next message may cost more.",
     };
   return null;
 }

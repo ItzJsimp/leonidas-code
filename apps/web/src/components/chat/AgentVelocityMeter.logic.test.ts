@@ -351,6 +351,38 @@ describe("AgentVelocityMeter.logic", () => {
       expect(summary.rolling10Tps).toBe(140);
       expect(summary.rolling20Tps).toBe(140);
     });
+    it("rolling pace removes tool waits so it matches the headline model pace", () => {
+      const turns = Array.from({ length: 2 }, (_, i) => ({
+        id: `t${i}`,
+        status: "completed",
+        startedAt: `2026-10-10T12:0${i}:00Z`,
+        completedAt: `2026-10-10T12:0${i}:10Z`,
+        turnTokenUsage: {
+          usageStatus: "complete",
+          usageScope: "main_agent",
+          hasSubagents: false,
+          outputTokens: 500,
+        },
+      })) as unknown as OrchestrationV2ProviderTurn[];
+      const tool = (turnId: string, from: string, to: string) =>
+        ({
+          id: `tool-${turnId}`,
+          type: "command_execution",
+          providerTurnId: turnId,
+          startedAt: from,
+          completedAt: to,
+          status: "completed",
+          input: "pnpm test",
+        }) as unknown as OrchestrationV2TurnItem;
+      const summary = deriveVelocitySummary(turns, [
+        tool("t0", "2026-10-10T12:00:02Z", "2026-10-10T12:00:07Z"),
+        tool("t1", "2026-10-10T12:01:02Z", "2026-10-10T12:01:07Z"),
+      ]);
+      // 1000 tokens over 10s of generation, not 20s of wall time.
+      expect(summary.rolling5Tps).toBe(100);
+      expect(summary.modelStreamTps).toBe(100);
+      expect(summary.averageTurnTps).toBe(50);
+    });
     it("does not present one response's context usage as a live turn total", () => {
       const turn = {
         status: "running",
@@ -493,9 +525,7 @@ describe("formatCacheBreak", () => {
   it("says what fell and what was written again", () => {
     expect(
       formatCacheBreak({ previousRate: 0.9, currentRate: 0.05, rewrittenTokens: 30_000 }),
-    ).toBe(
-      "Cache reads fell from 90% to 5%. The connection wrote 30,000 tokens to cache. Expiry, settings, or routing can cause this. The cause is not confirmed.",
-    );
+    ).toBe("Cached share fell from 90% to 5%. 30,000 tokens were written again.");
   });
 });
 
