@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   clampThreadSidebarWidth,
+  resolveInitialThreadSidebarWidth,
   resolveThreadSidebarMaximumWidth,
   resolveThreadSidebarMinimumWidth,
   THREAD_SIDEBAR_MIN_WIDTH,
@@ -32,5 +33,15 @@ describe("clampThreadSidebarWidth", () => {
   it("keeps widths inside the range and caps wide ones", () => {
     expect(clampThreadSidebarWidth(300, 238, 560)).toBe(300);
     expect(clampThreadSidebarWidth(900, 238, 560)).toBe(560);
+  });
+});
+
+describe("resolveInitialThreadSidebarWidth", () => {
+  it("opens wide enough for the project rail plus a readable title", () => {
+    expect(resolveInitialThreadSidebarWidth(null, 1440)).toBe(288);
+  });
+
+  it("keeps a width the user chose, even the old narrow default", () => {
+    expect(resolveInitialThreadSidebarWidth(256, 1440)).toBe(256);
   });
 });

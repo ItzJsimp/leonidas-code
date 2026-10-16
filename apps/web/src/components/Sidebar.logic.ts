@@ -168,9 +168,16 @@ export function sidebarMarkerId(marker: SidebarListMarker): string {
 
 export type SidebarListItem =
   | { readonly kind: "thread"; readonly key: string; readonly section: SidebarSection }
-  | { readonly kind: "marker"; readonly marker: SidebarListMarker };
+  | { readonly kind: "marker"; readonly marker: SidebarListMarker }
+  | {
+      readonly kind: "group";
+      readonly id: string;
+      readonly label: string;
+      readonly count: number;
+    };
 
 export function sidebarListItemId(item: SidebarListItem): string {
+  if (item.kind === "group") return `group:${item.id}`;
   return item.kind === "thread" ? item.key : sidebarMarkerId(item.marker);
 }
 
@@ -215,6 +222,7 @@ export function resolveSidebarDropTarget(
   const activeOrder: string[] = [];
   let currentSection: SidebarSection = "pinned";
   for (const item of moved) {
+    if (item.kind === "group") continue;
     if (item.kind === "marker") {
       if (item.marker === "pinned-divider") currentSection = "active";
       else if (

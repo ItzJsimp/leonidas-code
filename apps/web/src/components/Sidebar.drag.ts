@@ -137,6 +137,7 @@ export function createSidebarSortingStrategy(input: {
     let slimHeight = input.slimHeight;
     let headerScale: number | undefined;
     for (const [index, item] of items.entries()) {
+      if (item.kind === "group") continue;
       if (item.kind === "marker") {
         if (isShelfHeader(item)) {
           const height = rects[index]?.height;
