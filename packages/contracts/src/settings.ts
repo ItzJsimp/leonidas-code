@@ -511,6 +511,12 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   // Glance card (context, active account, other accounts) over the chat's top-left corner.
   // On for every install; the title-bar toggle hides it.
+  cacheMutedWarnings: Schema.Array(
+    Schema.Literals(["model", "account", "configuration", "context", "expiry", "reuse-drop"]),
+  ).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  cacheNoticesSnoozedUntil: Schema.Int.check(
+    Schema.isBetween({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER }),
+  ).pipe(Schema.withDecodingDefault(Effect.succeed(0))),
   usageOverlayEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   // Legacy context window meter. The composer hides it by default; users who
   // still want the old usage indicator can restore it from Settings.
@@ -1821,6 +1827,14 @@ export const ClientSettingsPatch = Schema.Struct({
   planModeEnabled: Schema.optionalKey(Schema.Boolean),
   usageControlIcon: Schema.optionalKey(
     Schema.Literals(["chart", "gauge", "activity", "battery", "layers"]),
+  ),
+  cacheMutedWarnings: Schema.optionalKey(
+    Schema.Array(
+      Schema.Literals(["model", "account", "configuration", "context", "expiry", "reuse-drop"]),
+    ),
+  ),
+  cacheNoticesSnoozedUntil: Schema.optionalKey(
+    Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })),
   ),
   usageOverlayEnabled: Schema.optionalKey(Schema.Boolean),
   contextWindowMeterEnabled: Schema.optionalKey(Schema.Boolean),

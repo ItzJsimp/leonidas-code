@@ -418,6 +418,15 @@ export const SETTINGS_SEARCH_ITEMS = [
     scope: "project-defaults",
   },
   {
+    id: "cache-warnings",
+    title: "Cache warnings and expiry notices",
+    to: "/settings/general",
+    targetId: "notifications",
+    searchTerms: [
+      "cache caching ttl expiry snooze mute model effort account history reuse prompt tokens",
+    ],
+  },
+  {
     id: "thread-notifications",
     title: "Chat notifications",
     to: "/settings/general",

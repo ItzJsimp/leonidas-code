@@ -266,6 +266,8 @@ function deriveLedgers(turns: ReadonlyArray<OrchestrationV2ProviderTurn>): {
   for (let index = turns.length - 1; index >= 0 && ledgers.length < 2; index -= 1) {
     const usage = turns[index]?.turnTokenUsage;
     if (usage?.inputTokens === undefined) continue;
+    if (usage.cachedInputTokens === undefined)
+      return { ledger: ledgers[0] ?? null, cacheBreak: null };
     ledgers.push(
       buildTurnLedger({
         inputTokens: usage.inputTokens,
@@ -403,7 +405,7 @@ export function deriveVelocitySummary(
 /** "75%"; a turn that sent no input has no rate. */
 /** One plain sentence for the popover when the cache restarted. */
 export function formatCacheBreak(cacheBreak: CacheBreak): string {
-  return `The AI had to read the chat again: saved reads fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)} and ${cacheBreak.rewrittenTokens.toLocaleString()} tokens were saved again. Something at the start of the chat changed.`;
+  return `Cache reads fell from ${formatCacheHitRate(cacheBreak.previousRate)} to ${formatCacheHitRate(cacheBreak.currentRate)}. The connection wrote ${cacheBreak.rewrittenTokens.toLocaleString()} tokens to cache. Expiry, settings, or routing can cause this. The cause is not confirmed.`;
 }
 
 export function formatCacheHitRate(rate: number | null): string {

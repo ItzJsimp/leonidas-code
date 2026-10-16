@@ -1,3 +1,4 @@
+import { CacheSettings } from "./CacheSettings";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { SkillFoldersEditor } from "./SkillFoldersEditor";
 import { useSkillFoldersMirror } from "./useSkillFoldersMirror";
@@ -635,6 +636,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.timestampFormat !== DEFAULT_UNIFIED_SETTINGS.timestampFormat
         ? ["Time format"]
         : []),
+      ...(settings.cacheMutedWarnings.length > 0 || settings.cacheNoticesSnoozedUntil > 0
+        ? ["Cache warnings"]
+        : []),
       ...(settings.notificationMode !== DEFAULT_UNIFIED_SETTINGS.notificationMode
         ? ["Chat notifications"]
         : []),
@@ -801,6 +805,8 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.sidebarThreadPreviewCount,
       settings.showSkillsInSlashMenu,
       settings.timestampFormat,
+      settings.cacheMutedWarnings,
+      settings.cacheNoticesSnoozedUntil,
       settings.notificationMode,
       settings.inAppNotificationsEnabled,
       settings.wordWrap,
@@ -877,6 +883,8 @@ export function useSettingsRestore(onRestored?: () => void) {
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
       chatWidth: DEFAULT_UNIFIED_SETTINGS.chatWidth,
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
+      cacheMutedWarnings: DEFAULT_UNIFIED_SETTINGS.cacheMutedWarnings,
+      cacheNoticesSnoozedUntil: DEFAULT_UNIFIED_SETTINGS.cacheNoticesSnoozedUntil,
       notificationMode: DEFAULT_UNIFIED_SETTINGS.notificationMode,
       inAppNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.inAppNotificationsEnabled,
       wordWrap: DEFAULT_UNIFIED_SETTINGS.wordWrap,
@@ -3326,6 +3334,8 @@ export function GeneralSettingsPanel() {
           <ResetSectionButton
             label="notification"
             keys={[
+              "cacheMutedWarnings",
+              "cacheNoticesSnoozedUntil",
               "notificationMode",
               "inAppNotificationsEnabled",
               "notificationQuietHoursEnabled",
@@ -3337,6 +3347,7 @@ export function GeneralSettingsPanel() {
           />
         }
       >
+        <CacheSettings />
         <NotificationSettings />
         <NotificationQuietHoursSettings />
         <NotificationVolumeSettings />

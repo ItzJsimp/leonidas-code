@@ -1,3 +1,10 @@
+import {
+  CacheStatusChip,
+  CacheStatusDetails,
+  cacheStatusLabel,
+  useCacheAwareness,
+  useCacheActionWarning,
+} from "./CacheAwareness";
 import { Button } from "../ui/button";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
 import { PreviewCard, PreviewCardPopup, PreviewCardTrigger } from "../ui/preview-card";
@@ -45,6 +52,25 @@ export function ContextWindowMeter(props: {
 }) {
   const { modelDisplayName, onCompact, compactDisabled, compactDisabledReason } = props;
   const { usage, velocity } = props;
+  const cache = useCacheAwareness({
+    usage,
+    chatKey: props.threadTarget
+      ? `${props.threadTarget.environmentId}:${props.threadTarget.threadId}`
+      : undefined,
+  });
+  const cacheWarning = useCacheActionWarning();
+  const compact = () =>
+    cacheWarning.run(
+      (usage?.cachedInputTokens ?? 0) > 0
+        ? {
+            category: "context",
+            confirmed: true,
+            message:
+              "Shortening history changes the cached conversation. Some shared instructions may still be reused. The summary also uses tokens.",
+          }
+        : null,
+      () => onCompact?.(),
+    );
   const cardOpen = useClientSettings((settings) => settings.usageOverlayEnabled);
   const updateSettings = useUpdateClientSettings();
   const usedPercentage = formatPercentage(usage?.usedPercentage ?? null);
@@ -57,151 +83,156 @@ export function ContextWindowMeter(props: {
   const usageColor = SEVERITY_COLOR[usageSeverity(normalizedPercentage)];
 
   return (
-    <PreviewCard>
-      <PreviewCardTrigger
-        delay={150}
-        closeDelay={onCompact ? 150 : 0}
-        render={
-          <Button
-            size="compact"
-            variant="ghost-muted"
-            className="shrink-0"
-            aria-pressed={cardOpen}
-            onClick={() => void updateSettings({ usageOverlayEnabled: !cardOpen })}
-            aria-label={`${
-              usage === null
-                ? "Chat memory use not known yet"
-                : usage.maxTokens !== null && usedPercentage
-                  ? `Chat memory ${usedPercentage} used`
-                  : `Chat memory: ${formatContextWindowTokens(usage.usedTokens)} tokens used`
-            }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last reply ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. ${cardOpen ? "Hide" : "Show"} usage card`}
-          >
-            <span className="relative flex size-4 items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                className="-rotate-90 absolute inset-0 size-full transform-gpu mx-0!"
-                aria-hidden="true"
+    <>
+      {cacheWarning.dialog}
+      <PreviewCard>
+        <PreviewCardTrigger
+          delay={150}
+          closeDelay={onCompact ? 150 : 0}
+          render={
+            <Button
+              size="compact"
+              variant="ghost-muted"
+              className="shrink-0"
+              aria-pressed={cardOpen}
+              onClick={() => void updateSettings({ usageOverlayEnabled: !cardOpen })}
+              aria-label={`${cacheStatusLabel(cache)}. ${
+                usage === null
+                  ? "Chat memory use not known yet"
+                  : usage.maxTokens !== null && usedPercentage
+                    ? `Chat memory ${usedPercentage} used`
+                    : `Chat memory: ${formatContextWindowTokens(usage.usedTokens)} tokens used`
+              }${velocity?.modelStreamTps != null || velocity?.averageTurnTps != null ? `, last reply ${formatTpsLabel(velocity.modelStreamTps ?? velocity.averageTurnTps)}` : ""}. ${cardOpen ? "Hide" : "Show"} usage card`}
+            >
+              <span className="relative flex size-4 items-center justify-center">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="-rotate-90 absolute inset-0 size-full transform-gpu mx-0!"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r={radius}
+                    fill="none"
+                    className="stroke-muted-foreground/24"
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r={radius}
+                    fill="none"
+                    stroke={usageColor}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
+                    className="transition-[stroke-dashoffset,stroke] duration-500 ease-out motion-reduce:transition-none"
+                  />
+                </svg>
+              </span>
+              <span className="text-2xs tabular-nums" aria-hidden>
+                {usage === null ? "--" : formatContextWindowTokens(usage.usedTokens)}
+              </span>
+            </Button>
+          }
+        />
+        <PreviewCardPopup
+          {...composerFloatingLayerProps}
+          side="top"
+          align="end"
+          className="w-72 text-left whitespace-normal"
+        >
+          <div className="flex flex-col gap-2 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-medium text-muted-foreground text-xs">Context Window</div>
+              {usage === null ? (
+                <div className="text-secondary-label text-2xs">Not reported yet</div>
+              ) : usage.maxTokens !== null && usedPercentage ? (
+                <div className="text-secondary-label text-2xs tabular-nums">
+                  <span>{usedPercentage}</span>
+                  <span className="mx-1">·</span>
+                  <span>
+                    {formatContextWindowTokens(usage.usedTokens)}/
+                    {formatContextWindowTokens(usage.maxTokens ?? null)}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-secondary-label text-2xs tabular-nums">
+                  {formatContextWindowTokens(usage.usedTokens)}
+                </div>
+              )}
+            </div>
+            {usage !== null && usage.maxTokens !== null ? (
+              <div
+                className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(normalizedPercentage)}
+                aria-label="Chat memory use"
               >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r={radius}
-                  fill="none"
-                  className="stroke-muted-foreground/24"
-                  strokeWidth="3"
+                <div
+                  className="h-full rounded-full transition-[width,background-color] duration-500 ease-out motion-reduce:transition-none"
+                  style={{ width: `${normalizedPercentage}%`, backgroundColor: usageColor }}
                 />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r={radius}
-                  fill="none"
-                  stroke={usageColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={dashOffset}
-                  className="transition-[stroke-dashoffset,stroke] duration-500 ease-out motion-reduce:transition-none"
-                />
-              </svg>
-            </span>
-            <span className="text-2xs tabular-nums" aria-hidden>
-              {usage === null ? "--" : formatContextWindowTokens(usage.usedTokens)}
-            </span>
-          </Button>
-        }
-      />
-      <PreviewCardPopup
-        {...composerFloatingLayerProps}
-        side="top"
-        align="end"
-        className="w-72 text-left whitespace-normal"
-      >
-        <div className="flex flex-col gap-2 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="font-medium text-muted-foreground text-xs">Context Window</div>
-            {usage === null ? (
-              <div className="text-secondary-label text-2xs">Not reported yet</div>
-            ) : usage.maxTokens !== null && usedPercentage ? (
-              <div className="text-secondary-label text-2xs tabular-nums">
-                <span>{usedPercentage}</span>
-                <span className="mx-1">·</span>
-                <span>
-                  {formatContextWindowTokens(usage.usedTokens)}/
-                  {formatContextWindowTokens(usage.maxTokens ?? null)}
+              </div>
+            ) : null}
+            {showTotalProcessed ? (
+              <div className="flex items-center justify-between gap-3 text-2xs leading-4">
+                <span className="text-secondary-label">Total processed</span>
+                <span className="font-medium tabular-nums text-secondary-label">
+                  {formatContextWindowTokens(totalProcessedTokens)}
                 </span>
               </div>
-            ) : (
-              <div className="text-secondary-label text-2xs tabular-nums">
-                {formatContextWindowTokens(usage.usedTokens)}
+            ) : null}
+            {usage?.cost != null ? (
+              <div className="flex items-center justify-between gap-3 text-2xs leading-4">
+                <span className="text-secondary-label">Cost</span>
+                <span className="font-medium tabular-nums text-secondary-label">
+                  {formatContextWindowCost(usage.cost)}
+                </span>
               </div>
-            )}
-          </div>
-          {usage !== null && usage.maxTokens !== null ? (
-            <div
-              className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(normalizedPercentage)}
-              aria-label="Chat memory use"
-            >
-              <div
-                className="h-full rounded-full transition-[width,background-color] duration-500 ease-out motion-reduce:transition-none"
-                style={{ width: `${normalizedPercentage}%`, backgroundColor: usageColor }}
+            ) : null}
+            {usage?.compactsAutomatically ? (
+              <div className="mt-1 text-pretty text-secondary-label text-2xs font-medium">
+                {formatContextWindowCompactionMessage(modelDisplayName, usage.autoCompactThreshold)}
+              </div>
+            ) : null}
+            <CacheStatusDetails usage={usage} />
+            {velocity ? <SpeedSection summary={velocity} /> : null}
+            {velocity?.ledger ? (
+              <InputLedger
+                ledger={velocity.ledger}
+                cacheBreak={velocity.cacheBreak}
+                threadTarget={props.threadTarget ?? null}
+                contextTokens={usage?.usedTokens ?? null}
               />
-            </div>
-          ) : null}
-          {showTotalProcessed ? (
-            <div className="flex items-center justify-between gap-3 text-2xs leading-4">
-              <span className="text-secondary-label">Total processed</span>
-              <span className="font-medium tabular-nums text-secondary-label">
-                {formatContextWindowTokens(totalProcessedTokens)}
-              </span>
-            </div>
-          ) : null}
-          {usage?.cost != null ? (
-            <div className="flex items-center justify-between gap-3 text-2xs leading-4">
-              <span className="text-secondary-label">Cost</span>
-              <span className="font-medium tabular-nums text-secondary-label">
-                {formatContextWindowCost(usage.cost)}
-              </span>
-            </div>
-          ) : null}
-          {usage?.compactsAutomatically ? (
-            <div className="mt-1 text-pretty text-secondary-label text-2xs font-medium">
-              {formatContextWindowCompactionMessage(modelDisplayName, usage.autoCompactThreshold)}
-            </div>
-          ) : null}
-          {velocity ? <SpeedSection summary={velocity} /> : null}
-          {velocity?.ledger ? (
-            <InputLedger
-              ledger={velocity.ledger}
-              cacheBreak={velocity.cacheBreak}
-              threadTarget={props.threadTarget ?? null}
-              contextTokens={usage?.usedTokens ?? null}
-            />
-          ) : null}
-          {onCompact ? (
-            <>
-              <Button
-                size="xs"
-                variant="outline"
-                className="mt-1 w-full justify-center"
-                disabled={compactDisabled}
-                onClick={onCompact}
-              >
-                <Minimize2Icon aria-hidden="true" />
-                Shorten history
-              </Button>
-              {compactDisabled && compactDisabledReason ? (
-                <div className="text-pretty text-secondary-label text-2xs">
-                  {compactDisabledReason}
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      </PreviewCardPopup>
-    </PreviewCard>
+            ) : null}
+            {onCompact ? (
+              <>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="mt-1 w-full justify-center"
+                  disabled={compactDisabled}
+                  onClick={compact}
+                >
+                  <Minimize2Icon aria-hidden="true" />
+                  Shorten history
+                </Button>
+                {compactDisabled && compactDisabledReason ? (
+                  <div className="text-pretty text-secondary-label text-2xs">
+                    {compactDisabledReason}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </PreviewCardPopup>
+      </PreviewCard>
+      <CacheStatusChip usage={usage} status={cache} />
+    </>
   );
 }

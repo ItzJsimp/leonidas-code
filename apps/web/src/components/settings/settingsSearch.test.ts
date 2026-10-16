@@ -585,3 +585,8 @@ describe("settings sidebar scope", () => {
     expect(isSettingsOverviewVisible({ project: "project", checkout: "checkout" })).toBe(true);
   });
 });
+
+it("finds cache warning and snooze controls", () => {
+  expect(searchSettings("cache expiry").some((item) => item.id === "cache-warnings")).toBe(true);
+  expect(searchSettings("cache snooze").some((item) => item.id === "cache-warnings")).toBe(true);
+});

@@ -1,3 +1,5 @@
+import { cacheActionImpact } from "@t3tools/client-runtime/cache-awareness";
+import { CacheConfigurationNotice, useCacheActionWarning } from "./CacheAwareness";
 import { useBenchmarkRouteProfiles } from "../../lib/useBenchmarkRouteProfiles";
 import { ThreadPresetPicker } from "./ThreadPresetPicker";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
@@ -1782,7 +1784,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onDismissActivePendingUserInput,
     onPreviousActivePendingUserInputQuestion,
     onChangeActivePendingUserInputCustomAnswer,
-    onProviderModelSelect,
+    onProviderModelSelect: applyProviderModelSelect,
     onOpenProviderSetup,
     getModelDisabledReason,
     toggleInteractionMode,
@@ -2410,6 +2412,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     () => createModelSelection(selectedInstanceId, selectedModel, selectedModelOptionsForDispatch),
     [selectedInstanceId, selectedModel, selectedModelOptionsForDispatch],
   );
+  const cacheWarning = useCacheActionWarning();
+  const onProviderModelSelect: ChatComposerProps["onProviderModelSelect"] = (
+    instanceId,
+    model,
+    options,
+  ) => {
+    cacheWarning.run(
+      cacheActionImpact(
+        activeThreadModelSelection,
+        { instanceId, model, options: activeThreadModelSelection?.options },
+        (activeContextWindow?.cachedInputTokens ?? 0) > 0,
+      ),
+      () => applyProviderModelSelect(instanceId, model, options),
+    );
+  };
   const selectedModelForPicker = selectedModel;
   // Instance-keyed option list so the picker can show each configured
   // instance (built-in + custom) as a first-class sidebar entry. The
@@ -5741,7 +5758,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   ? current.filter((selection) => !matchesModel(selection))
                   : [...current, createModelSelection(instanceId, model)];
                 if (next.length > 1) {
-                  setMultipleModelSelections(next);
+                  cacheWarning.run(
+                    exists
+                      ? null
+                      : cacheActionImpact(
+                          activeThreadModelSelection,
+                          { instanceId, model, options: activeThreadModelSelection?.options },
+                          (activeContextWindow?.cachedInputTokens ?? 0) > 0,
+                        ),
+                    () => setMultipleModelSelections(next),
+                  );
                 } else {
                   setMultipleModelSelections(null);
                   const remaining = next[0] ?? selectedModelSelection;
@@ -6976,6 +7002,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       data-chat-composer-form="true"
       {...threadContextDropTargetProps()}
     >
+      {cacheWarning.dialog}
+      <CacheConfigurationNotice
+        from={activeThreadModelSelection}
+        to={selectedModelSelection}
+        hasReusableContext={(activeContextWindow?.cachedInputTokens ?? 0) > 0}
+      />
       {composerControlsCollapsed && restingControlsHost
         ? createPortal(
             <div

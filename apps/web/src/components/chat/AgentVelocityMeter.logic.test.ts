@@ -494,7 +494,15 @@ describe("formatCacheBreak", () => {
     expect(
       formatCacheBreak({ previousRate: 0.9, currentRate: 0.05, rewrittenTokens: 30_000 }),
     ).toBe(
-      "The AI had to read the chat again: saved reads fell from 90% to 5% and 30,000 tokens were saved again. Something at the start of the chat changed.",
+      "Cache reads fell from 90% to 5%. The connection wrote 30,000 tokens to cache. Expiry, settings, or routing can cause this. The cause is not confirmed.",
     );
   });
+});
+
+it("does not call missing cache telemetry a cache break", () => {
+  const turns = [
+    { turnTokenUsage: { inputTokens: 100_000, cachedInputTokens: 90_000, outputTokens: 10 } },
+    { turnTokenUsage: { inputTokens: 100_000, outputTokens: 10 } },
+  ] as unknown as OrchestrationV2ProviderTurn[];
+  expect(deriveVelocitySummary(turns, []).cacheBreak).toBeNull();
 });

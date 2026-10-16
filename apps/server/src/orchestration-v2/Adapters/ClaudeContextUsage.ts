@@ -10,8 +10,8 @@ function claudePromptCacheTtlMs(
   cacheCreation: ClaudeCacheCreation | null | undefined,
 ): number | undefined {
   if (!cacheCreation) return undefined;
-  if (cacheCreation.ephemeral_1h_input_tokens > 0) return 60 * 60_000;
   if (cacheCreation.ephemeral_5m_input_tokens > 0) return 5 * 60_000;
+  if (cacheCreation.ephemeral_1h_input_tokens > 0) return 60 * 60_000;
   return undefined;
 }
 
@@ -25,6 +25,7 @@ export function claudeProviderTurnTokenUsage(
   },
   updatedAt: string,
   reportedContextWindow?: number,
+  promptCacheAnchorAt?: string,
 ) {
   const inputTokens =
     usage.input_tokens +
@@ -41,10 +42,13 @@ export function claudeProviderTurnTokenUsage(
         ? reportedContextWindow
         : null,
     inputTokens,
-    cachedInputTokens: usage.cache_read_input_tokens ?? 0,
+    ...(usage.cache_read_input_tokens == null
+      ? {}
+      : { cachedInputTokens: usage.cache_read_input_tokens }),
     outputTokens,
     reasoningOutputTokens: 0,
     ...(promptCacheTtlMs === undefined ? {} : { promptCacheTtlMs }),
+    ...(promptCacheAnchorAt === undefined ? {} : { promptCacheAnchorAt }),
     updatedAt,
   };
 }

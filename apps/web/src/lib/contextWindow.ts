@@ -18,6 +18,8 @@ type NullableContextWindowUsage = {
 };
 
 export type ContextWindowSnapshot = NullableContextWindowUsage & {
+  readonly promptCacheTtlMs?: number | undefined;
+  readonly promptCacheAnchorAt?: string | undefined;
   readonly remainingTokens: number | null;
   readonly usedPercentage: number | null;
   readonly remainingPercentage: number | null;
@@ -71,6 +73,8 @@ export function deriveLatestContextWindowSnapshot(
     const remainingPercentage = usedPercentage !== null ? Math.max(0, 100 - usedPercentage) : null;
     return {
       usedTokens,
+      promptCacheTtlMs: liveUsage.promptCacheTtlMs,
+      promptCacheAnchorAt: liveUsage.promptCacheAnchorAt,
       totalProcessedTokens: null,
       maxTokens,
       remainingTokens,

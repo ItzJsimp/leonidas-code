@@ -7132,6 +7132,8 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               context.latestContextUsage = claudeProviderTurnTokenUsage(
                 message.message.usage,
                 DateTime.formatIso(now),
+                undefined,
+                DateTime.formatIso(context.startedAt),
               );
               yield* emitProviderEvent({
                 type: "provider_turn.updated",

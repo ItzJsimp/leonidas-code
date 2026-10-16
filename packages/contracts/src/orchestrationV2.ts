@@ -1072,9 +1072,11 @@ export const OrchestrationV2ProviderTurnTokenUsage = Schema.Struct({
   cachedInputTokens: Schema.optional(NonNegativeInt),
   outputTokens: Schema.optional(NonNegativeInt),
   reasoningOutputTokens: Schema.optional(NonNegativeInt),
-  /** Prompt cache lifetime the provider wrote with this report. Clients treat
-      the cache as cold once `updatedAt` is this old. */
+  /** Shortest prompt cache lifetime the provider wrote with this report.
+      Expiry remains an estimate; providers can reuse partial prefixes. */
   promptCacheTtlMs: Schema.optional(PositiveInt),
+  /** Earliest known request time. A turn start is a conservative estimate. */
+  promptCacheAnchorAt: Schema.optional(Schema.String),
   /** ISO timestamp of the provider's report; string so wire encoding is stable. */
   updatedAt: Schema.String,
 });

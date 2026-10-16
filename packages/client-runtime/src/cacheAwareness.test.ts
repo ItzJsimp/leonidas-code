@@ -66,3 +66,18 @@ describe("cache awareness", () => {
     expect(collectExpiryNotices(records, now + 20 * 60_000, 0)).toEqual([]);
   });
 });
+
+it("keeps a 100-chat scan below the 5ms tick budget", () => {
+  const records = Array.from({ length: 100 }, (_, index) => ({
+    key: String(index),
+    observation,
+    lastViewedAt: now,
+    notifiedCycle: null,
+  }));
+  const samples = Array.from({ length: 3 }, () => {
+    const start = performance.now();
+    for (let index = 0; index < 1_000; index += 1) collectExpiryNotices(records, now, 0);
+    return (performance.now() - start) / 1_000;
+  }).sort((a, b) => a - b);
+  expect(samples[1]).toBeLessThan(5);
+});

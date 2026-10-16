@@ -112,3 +112,17 @@ describe("latestProviderTurnTokenUsage", () => {
     expect(latest?.usedTokens).toBe(300_000);
   });
 });
+
+it("preserves provider cache lifetime and a conservative request anchor", () => {
+  const report = {
+    usedTokens: 50_000,
+    cachedInputTokens: 40_000,
+    promptCacheTtlMs: 300_000,
+    promptCacheAnchorAt: "2026-10-16T12:00:00Z",
+    updatedAt: "2026-10-16T12:01:00Z",
+  };
+  expect(deriveLatestContextWindowSnapshot([], report)).toMatchObject({
+    promptCacheTtlMs: 300_000,
+    promptCacheAnchorAt: report.promptCacheAnchorAt,
+  });
+});

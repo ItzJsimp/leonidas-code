@@ -47,7 +47,7 @@ describe("ClaudeAdapterV2 context usage", () => {
 
     assert.strictEqual(
       ttlFor({ ephemeral_1h_input_tokens: 2_000, ephemeral_5m_input_tokens: 300 }),
-      60 * 60_000,
+      5 * 60_000,
     );
     assert.strictEqual(
       ttlFor({ ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 300 }),
@@ -58,4 +58,23 @@ describe("ClaudeAdapterV2 context usage", () => {
       undefined,
     );
   });
+});
+
+it("keeps absent cache telemetry unknown and uses the shortest mixed TTL", () => {
+  assert.strictEqual(
+    claudeProviderTurnTokenUsage({ input_tokens: 12, output_tokens: 1 }, "2026-10-16T12:00:00Z")
+      .cachedInputTokens,
+    undefined,
+  );
+  assert.strictEqual(
+    claudeProviderTurnTokenUsage(
+      {
+        input_tokens: 12,
+        output_tokens: 1,
+        cache_creation: { ephemeral_1h_input_tokens: 100, ephemeral_5m_input_tokens: 50 },
+      },
+      "2026-10-16T12:00:00Z",
+    ).promptCacheTtlMs,
+    300_000,
+  );
 });
