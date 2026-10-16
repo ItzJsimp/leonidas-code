@@ -174,6 +174,7 @@ function SidebarUtilityItem({
   icon,
   label,
   tourId,
+  usageId,
   shortcutCommand,
   onClick,
 }: {
@@ -183,6 +184,8 @@ function SidebarUtilityItem({
   shortcutCommand?: KeybindingCommand;
   /** Feature tour anchor, see `features/tour/tourTargets.ts`. */
   tourId?: string;
+  /** Usage analytics id; must be in USAGE_UI_ELEMENT_IDS. */
+  usageId?: string;
   onClick: () => void;
 }) {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -197,6 +200,7 @@ function SidebarUtilityItem({
             <SidebarMenuButton
               aria-label={label}
               data-tour={tourId}
+              data-usage-id={usageId}
               onClick={onClick}
               size="icon"
               className="w-full max-w-8"
@@ -300,18 +304,21 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
+            usageId="open_settings"
             shortcutCommand="settings.open"
             onClick={handleSettingsClick}
           />
           <SidebarUtilityItem
             icon={<RadarIcon />}
             label="Command Center"
+            usageId="open_command_center"
             tourId="sidebar-command-center"
             onClick={handleCommandCenterClick}
           />
           <SidebarUtilityItem
             icon={<ListChecksIcon />}
             label="Tasks"
+            usageId="open_tasks"
             shortcutCommand="tasks.open"
             tourId="sidebar-tasks"
             onClick={handleTasksClick}
@@ -331,6 +338,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           <SidebarUtilityItem
             icon={<ChartNoAxesColumnIcon />}
             label="Usage"
+            usageId="open_usage"
             shortcutCommand="usage.open"
             tourId="sidebar-usage"
             onClick={handleUsageClick}
@@ -350,6 +358,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             <SidebarUtilityItem
               icon={<MessageSquareWarningIcon />}
               label="Send feedback"
+              usageId="send_feedback"
               onClick={handleFeedbackClick}
             />
           ) : null}

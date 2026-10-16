@@ -138,6 +138,7 @@ export function SidebarThreadHeader({
         ) : null}
         <SidebarHeaderIconButton
           label="New chat"
+          data-usage-id="new_thread"
           tooltip={
             showNewThreadInProjectHint ? (
               <span className="flex flex-col gap-0.5">

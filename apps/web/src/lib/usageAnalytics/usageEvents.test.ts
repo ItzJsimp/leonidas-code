@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
   USAGE_EVENT_NAMES,
+  USAGE_SETTING_KEYS,
   buildPostHogPayload,
   featureIdFromPathname,
   isCompleteUsageEvent,
@@ -91,6 +92,29 @@ describe("every event keeps private text out", () => {
       });
       expect(JSON.stringify(body)).not.toContain(text);
     }
+  });
+});
+
+describe("settings_changed and tagged clicks", () => {
+  it("keeps a real setting name and drops anything else", () => {
+    const [key] = USAGE_SETTING_KEYS;
+    expect(sanitizeUsageProperties("settings_changed", { key })).toEqual({ key });
+    expect(sanitizeUsageProperties("settings_changed", { key: "C:/Users/x" })).toEqual({});
+    expect(sanitizeUsageProperties("settings_changed", { key, value: "sk-123" })).toEqual({ key });
+    expect(isCompleteUsageEvent("settings_changed", {})).toBe(false);
+  });
+
+  it("does not report the onboarding timestamp as a setting", () => {
+    expect(USAGE_SETTING_KEYS).not.toContain("onboardingCompletedAt");
+  });
+
+  it("allows every id the app tags and no old ids", () => {
+    for (const element of ["new_thread", "model_picker", "open_settings", "open_tasks"]) {
+      expect(sanitizeUsageProperties("ui_element_clicked", { element })).toEqual({ element });
+    }
+    expect(sanitizeUsageProperties("ui_element_clicked", { element: "run_setup_again" })).toEqual(
+      {},
+    );
   });
 });
 

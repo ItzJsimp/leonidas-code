@@ -9,6 +9,7 @@
  * access is intentionally named as such so environment-sensitive consumers
  * cannot silently read the wrong server's settings.
  */
+import { reportSettingsChanged } from "../lib/usageAnalytics/reportSettingsChanged";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, use } from "react";
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import {
@@ -502,6 +503,7 @@ function useUpdateSettingsTarget(environmentId: EnvironmentId | null) {
   const sharedSettingsSyncTargetIds = useSharedSettingsSyncTargetIds(true);
   const updateSettings = useCallback(
     (patch: UnifiedSettingsPatch) => {
+      reportSettingsChanged(patch);
       const { serverPatch, clientPatch } = splitPatch(patch);
 
       const canWriteServerPatch =
