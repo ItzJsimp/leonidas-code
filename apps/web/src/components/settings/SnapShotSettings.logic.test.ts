@@ -13,6 +13,8 @@ import {
   snapShotSetupComplete,
   snapShotDescription,
   snapShotAccessibilityUnavailableMessage,
+  snapShotEnablePatch,
+  SNIP_ENABLE_SHORTCUT,
 } from "./SnapShotSettings.logic";
 
 it.each([
@@ -327,4 +329,36 @@ it("hides macOS setup only while permissions and the shortcut are all in place",
       true,
     ),
   ).toBe(true);
+});
+
+const fresh = { ...DEFAULT_CLIENT_SETTINGS, snapShotEnabled: false };
+
+it("sets Ctrl+Shift+X and the snip tool when a Windows user turns SnapShots on for the first time", () => {
+  assert.deepStrictEqual(snapShotEnablePatch(fresh, true), {
+    snapShotEnabled: true,
+    snapShotShortcut: SNIP_ENABLE_SHORTCUT,
+    snapShotShortcutAction: "snip",
+  });
+});
+
+it("never uses plain Ctrl+X, which is Cut in other apps", () => {
+  assert.strictEqual(SNIP_ENABLE_SHORTCUT.shiftKey, true);
+  assert.strictEqual(SNIP_ENABLE_SHORTCUT.ctrlKey, true);
+  assert.strictEqual(SNIP_ENABLE_SHORTCUT.key, "x");
+});
+
+it("leaves other systems with the old default", () => {
+  assert.deepStrictEqual(snapShotEnablePatch(fresh, false), { snapShotEnabled: true });
+});
+
+it("keeps the choice of someone who already has SnapShots on", () => {
+  const enabled = { ...DEFAULT_CLIENT_SETTINGS, snapShotEnabled: true };
+  assert.deepStrictEqual(snapShotEnablePatch(enabled, true), { snapShotEnabled: true });
+});
+
+it("keeps a shortcut or action the user already chose", () => {
+  const chose = { ...fresh, snapShotShortcut: { kind: "modifier-pair", modifier: "alt" } as const };
+  assert.deepStrictEqual(snapShotEnablePatch(chose, true), { snapShotEnabled: true });
+  const action = { ...fresh, snapShotShortcutAction: "snip" as const };
+  assert.deepStrictEqual(snapShotEnablePatch(action, true), { snapShotEnabled: true });
 });

@@ -1,4 +1,10 @@
-import type { ClientSettingsPatch, DesktopSnapShotState, SnapShotSound } from "@t3tools/contracts";
+import type {
+  ClientSettings,
+  ClientSettingsPatch,
+  DesktopSnapShotState,
+  SnapShotShortcut,
+  SnapShotSound,
+} from "@t3tools/contracts";
 import {
   captureSetupBackend,
   captureSetupDesktopName,
@@ -139,4 +145,39 @@ export function createRecordingRequestTracker() {
       return currentRequest === request;
     },
   };
+}
+
+/**
+ * Ctrl+Shift+X. Plain Ctrl+X is Cut in nearly every app, and this shortcut works in all apps.
+ */
+export const SNIP_ENABLE_SHORTCUT = {
+  key: "x",
+  ctrlKey: true,
+  shiftKey: true,
+  altKey: false,
+  metaKey: false,
+  modKey: false,
+} as const satisfies SnapShotShortcut;
+
+/**
+ * Turning SnapShots on for the first time on Windows sets the snip tool and Ctrl+Shift+X.
+ * Anyone who already has it on, or already chose a shortcut or action, keeps their own choice.
+ */
+export function snapShotEnablePatch(
+  settings: Pick<ClientSettings, "snapShotEnabled" | "snapShotShortcut" | "snapShotShortcutAction">,
+  isWindows: boolean,
+): ClientSettingsPatch {
+  const firstTime =
+    isWindows &&
+    !settings.snapShotEnabled &&
+    "kind" in settings.snapShotShortcut &&
+    settings.snapShotShortcut.kind === "both-shift-keys" &&
+    settings.snapShotShortcutAction === "window";
+  return firstTime
+    ? {
+        snapShotEnabled: true,
+        snapShotShortcut: SNIP_ENABLE_SHORTCUT,
+        snapShotShortcutAction: "snip",
+      }
+    : { snapShotEnabled: true };
 }

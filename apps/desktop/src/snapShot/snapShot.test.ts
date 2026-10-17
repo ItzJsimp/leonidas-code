@@ -622,6 +622,19 @@ describe("toElectronAccelerator", () => {
     ).toBe("CommandOrControl+Shift+2");
   });
 
+  it("converts the first-time snip shortcut, Ctrl+Shift+X", () => {
+    expect(
+      toElectronAccelerator({
+        key: "x",
+        metaKey: false,
+        ctrlKey: true,
+        shiftKey: true,
+        altKey: false,
+        modKey: false,
+      }),
+    ).toBe("Control+Shift+X");
+  });
+
   it("maps the portable meta key to Super", () => {
     expect(
       toElectronAccelerator({
