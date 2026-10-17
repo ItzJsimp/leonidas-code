@@ -851,7 +851,8 @@ describe("AcpAdapterV2", () => {
       assert.notInclude(command.prompt, "<t3_code_instructions>");
       const firstDefault = yield* runTurn(1, defaultPolicy, "First default request.");
       assert.include(firstDefault.prompt, "Leonidas Code interaction mode: Default");
-      assert.include(firstDefault.prompt, "Leonidas Code collaborative browser");
+      // The browser block is injected only when browser tools are live; this fixture has none.
+      assert.notInclude(firstDefault.prompt, "Leonidas Code collaborative browser");
       assert.include(firstDefault.prompt, "Leonidas Code orchestration");
       assert.notInclude(
         firstDefault.methods,
