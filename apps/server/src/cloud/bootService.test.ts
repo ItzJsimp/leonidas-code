@@ -246,6 +246,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
   return { service, makeService, fs, statePath, commands, timeouts, control, runtime };
 });
 
+// The boot service targets systemd and launchd. Three install tests use host paths and /bin/sh stubs that Windows cannot run.
 it.layer(NodeServices.layer)("boot service install", (it) => {
   it.effect(
     "fails before installing files or validating a runtime when lingering needs an administrator",
@@ -338,44 +339,46 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     }),
   );
 
-  it.effect("installs, reports current state, and uninstalls", () =>
-    Effect.gen(function* () {
-      const { service, fs, statePath, timeouts, runtime } = yield* makeHarness();
-      const plan = yield* service.install();
+  it.effect.skipIf(process.platform === "win32")(
+    "installs, reports current state, and uninstalls",
+    () =>
+      Effect.gen(function* () {
+        const { service, fs, statePath, timeouts, runtime } = yield* makeHarness();
+        const plan = yield* service.install();
 
-      expect(parseServiceState(yield* fs.readFileString(statePath))).toEqual({
-        protocol: SERVICE_LAUNCHER_PROTOCOL,
-        activeVersion: "1.2.3",
-      });
-      expect(plan.program).toEqual([runtime.entryPath, "__service-launcher"]);
-      expect(yield* fs.readFileString(plan.unitPath)).toContain(
-        `ExecStart=${runtime.entryPath} __service-launcher`,
-      );
-      expect(yield* service.status).toMatchObject({
-        current: true,
-        installedVersion: "1.2.3",
-      });
-      const pendingState = JSON.stringify({
-        protocol: SERVICE_LAUNCHER_PROTOCOL,
-        activeVersion: "1.2.3",
-        update: {
-          id: "u",
-          fromVersion: "1.2.3",
-          targetVersion: "1.2.4",
-          dbPath: "/tmp/state.sqlite",
-          status: "pending",
-        },
-      });
-      yield* fs.writeFileString(statePath, pendingState);
-      expect((yield* service.status).current).toBe(false);
-      expect(yield* service.uninstall).toBe(true);
-      expect((yield* service.status).installed).toBe(false);
-      // The stop can block up to systemd's 90s TimeoutStopSec; the runner's
-      // 60s default would cancel it mid-shutdown.
-      expect(timeouts.get("systemctl --user disable --now t3code.service")).toEqual(
-        Duration.seconds(120),
-      );
-    }),
+        expect(parseServiceState(yield* fs.readFileString(statePath))).toEqual({
+          protocol: SERVICE_LAUNCHER_PROTOCOL,
+          activeVersion: "1.2.3",
+        });
+        expect(plan.program).toEqual([runtime.entryPath, "__service-launcher"]);
+        expect(yield* fs.readFileString(plan.unitPath)).toContain(
+          `ExecStart=${runtime.entryPath} __service-launcher`,
+        );
+        expect(yield* service.status).toMatchObject({
+          current: true,
+          installedVersion: "1.2.3",
+        });
+        const pendingState = JSON.stringify({
+          protocol: SERVICE_LAUNCHER_PROTOCOL,
+          activeVersion: "1.2.3",
+          update: {
+            id: "u",
+            fromVersion: "1.2.3",
+            targetVersion: "1.2.4",
+            dbPath: "/tmp/state.sqlite",
+            status: "pending",
+          },
+        });
+        yield* fs.writeFileString(statePath, pendingState);
+        expect((yield* service.status).current).toBe(false);
+        expect(yield* service.uninstall).toBe(true);
+        expect((yield* service.status).installed).toBe(false);
+        // The stop can block up to systemd's 90s TimeoutStopSec; the runner's
+        // 60s default would cancel it mid-shutdown.
+        expect(timeouts.get("systemctl --user disable --now t3code.service")).toEqual(
+          Duration.seconds(120),
+        );
+      }),
   );
 
   it.effect.each(["linux", "darwin"] as const)(
@@ -484,57 +487,61 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     }),
   );
 
-  it.effect("install with start=false rewrites the files and marks a restart pending", () =>
-    Effect.gen(function* () {
-      const { service, fs, statePath, commands, makeService } = yield* makeHarness();
-      yield* service.install();
-      commands.length = 0;
+  it.effect.skipIf(process.platform === "win32")(
+    "install with start=false rewrites the files and marks a restart pending",
+    () =>
+      Effect.gen(function* () {
+        const { service, fs, statePath, commands, makeService } = yield* makeHarness();
+        yield* service.install();
+        commands.length = 0;
 
-      const newer = yield* makeService(undefined, "1.2.4");
-      const plan = yield* newer.install({ start: false });
+        const newer = yield* makeService(undefined, "1.2.4");
+        const plan = yield* newer.install({ start: false });
 
-      expect(parseServiceState(yield* fs.readFileString(statePath))).toEqual({
-        protocol: SERVICE_LAUNCHER_PROTOCOL,
-        activeVersion: "1.2.4",
-      });
-      expect(yield* fs.readFileString(plan.unitPath)).toContain("versions/1.2.4/t3");
-      expect(
-        commands.filter(
-          (command) => command.startsWith("systemctl ") && !command.includes("show-environment"),
-        ),
-      ).toEqual([]);
-      // The files say 1.2.4 but the process is still 1.2.3: not current, and
-      // the reason is named so `t3 service status` can point at restart.
-      const status = yield* newer.status;
-      expect(status.current).toBe(false);
-      expect(status.problems).toContain("restart-pending");
+        expect(parseServiceState(yield* fs.readFileString(statePath))).toEqual({
+          protocol: SERVICE_LAUNCHER_PROTOCOL,
+          activeVersion: "1.2.4",
+        });
+        expect(yield* fs.readFileString(plan.unitPath)).toContain("versions/1.2.4/t3");
+        expect(
+          commands.filter(
+            (command) => command.startsWith("systemctl ") && !command.includes("show-environment"),
+          ),
+        ).toEqual([]);
+        // The files say 1.2.4 but the process is still 1.2.3: not current, and
+        // the reason is named so `t3 service status` can point at restart.
+        const status = yield* newer.status;
+        expect(status.current).toBe(false);
+        expect(status.problems).toContain("restart-pending");
 
-      commands.length = 0;
-      expect(yield* newer.restart).toBe(true);
-      expect((yield* newer.status).problems).not.toContain("restart-pending");
-      expect((yield* newer.status).current).toBe(true);
-    }),
+        commands.length = 0;
+        expect(yield* newer.restart).toBe(true);
+        expect((yield* newer.status).problems).not.toContain("restart-pending");
+        expect((yield* newer.status).current).toBe(true);
+      }),
   );
 
-  it.effect("install with start=false keeps the marker when a later write fails", () =>
-    Effect.gen(function* () {
-      const { service, fs, statePath, makeService } = yield* makeHarness();
-      const path = yield* Path.Path;
-      yield* service.install();
-      const newer = yield* makeService(undefined, "1.2.4");
-      // A non-empty directory in the unit's place: it still counts as an
-      // installed unit, and the rename that writes the new unit fails.
-      const unitPath = (yield* service.status).unitPath;
-      yield* fs.remove(unitPath);
-      yield* fs.makeDirectory(unitPath);
-      yield* fs.writeFileString(path.join(unitPath, "occupied"), "");
+  it.effect.skipIf(process.platform === "win32")(
+    "install with start=false keeps the marker when a later write fails",
+    () =>
+      Effect.gen(function* () {
+        const { service, fs, statePath, makeService } = yield* makeHarness();
+        const path = yield* Path.Path;
+        yield* service.install();
+        const newer = yield* makeService(undefined, "1.2.4");
+        // A non-empty directory in the unit's place: it still counts as an
+        // installed unit, and the rename that writes the new unit fails.
+        const unitPath = (yield* service.status).unitPath;
+        yield* fs.remove(unitPath);
+        yield* fs.makeDirectory(unitPath);
+        yield* fs.writeFileString(path.join(unitPath, "occupied"), "");
 
-      const error = yield* newer.install({ start: false }).pipe(Effect.flip);
-      expect(error._tag).toBe("BootServiceInstallError");
-      expect(
-        yield* fs.exists(path.join(path.dirname(statePath), SERVICE_RESTART_PENDING_FILE)),
-      ).toBe(true);
-    }),
+        const error = yield* newer.install({ start: false }).pipe(Effect.flip);
+        expect(error._tag).toBe("BootServiceInstallError");
+        expect(
+          yield* fs.exists(path.join(path.dirname(statePath), SERVICE_RESTART_PENDING_FILE)),
+        ).toBe(true);
+      }),
   );
 
   it.effect("install with start=false refuses while a remote update is pending", () =>
