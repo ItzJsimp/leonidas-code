@@ -43,10 +43,30 @@ const targets = (
     current: currentSelection,
     supportsHandoff,
     usageLimitSources: sources,
-    nowMs,
+    nowMs: nowMs ?? Date.parse("2026-10-10T00:00:00.000Z"),
   });
 
 describe("provider failover", () => {
+  it("never offers failed or stale accounts even when their old status is ready", () => {
+    expect(
+      targets([
+        provider("expired", { connectionIssue: "token_expired" }),
+        provider("signed_out", { auth: { status: "unauthenticated" } }),
+        provider("blocked", { connectionIssue: "network_blocked" }),
+        provider("stale", { checkedAt: "2026-10-09T00:00:00Z" }),
+      ]),
+    ).toEqual([]);
+  });
+  it("offers other connected drivers from live capabilities without a subscription allowlist", () => {
+    expect(
+      targets([
+        provider("custom", {
+          driver: ProviderDriverKind.make("custom"),
+          supportsTextGeneration: true,
+        }),
+      ]).map((target) => target.instanceId),
+    ).toEqual(["custom"]);
+  });
   it("offers a ready alternate subscription with its catalog default and medium effort", () => {
     expect(targets([provider()])).toEqual([
       {
