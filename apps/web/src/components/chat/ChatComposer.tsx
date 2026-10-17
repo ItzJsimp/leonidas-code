@@ -1106,6 +1106,7 @@ function ComposerCommandMenuLayer(props: { anchor: HTMLElement | null; children:
 import { Button } from "../ui/button";
 import { Select, SelectItem, SelectPopup, SelectValue } from "../ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { ComposerSnipButton } from "./ComposerSnipButton";
 import { toastManager } from "../ui/toast";
 import {
   AtSignIcon,
@@ -8074,6 +8075,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                             : "Attach files"}
                         </TooltipPopup>
                       </Tooltip>
+                      <ComposerSnipButton
+                        onSnip={(file) => {
+                          void addComposerAttachments([file]).then((inserted) => {
+                            if (!inserted) focusComposer();
+                          });
+                        }}
+                      />
                     </>
                   ) : null}
                   <ComposerFooterPrimaryActions

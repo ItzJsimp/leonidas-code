@@ -1,0 +1,116 @@
+// @vitest-environment jsdom
+import type { DesktopSnipResult } from "@t3tools/contracts";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
+
+const toast = vi.hoisted(() => ({ add: vi.fn() }));
+vi.mock("../ui/toast", () => ({ toastManager: toast }));
+
+import { ComposerSnipButton } from "./ComposerSnipButton";
+
+const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgo=";
+let root: Root;
+let host: HTMLDivElement;
+const startSnip = vi.fn<() => Promise<DesktopSnipResult>>();
+
+function stubDesktop(platform: string, withBridge = true) {
+  vi.stubGlobal("navigator", { platform });
+  Object.defineProperty(window, "navigator", { value: { platform }, configurable: true });
+  Object.defineProperty(window, "desktopBridge", {
+    configurable: true,
+    value: withBridge
+      ? {
+          startSnip,
+          listRecentSnips: vi.fn(),
+          readSnip: vi.fn(),
+          openSnipsFolder: vi.fn(),
+        }
+      : undefined,
+  });
+}
+
+async function render(onSnip: (file: File) => void) {
+  await act(async () => {
+    root.render(<ComposerSnipButton onSnip={onSnip} />);
+  });
+}
+
+async function clickSnip() {
+  const button = host.querySelector<HTMLButtonElement>('button[aria-label="Snip the screen"]');
+  expect(button).not.toBeNull();
+  await act(async () => {
+    button?.click();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+}
+
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    callback(0);
+    return 0;
+  });
+  startSnip.mockReset();
+  toast.add.mockReset();
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+});
+
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  vi.unstubAllGlobals();
+});
+
+it("attaches the saved snip as a PNG file", async () => {
+  stubDesktop("Win32");
+  startSnip.mockResolvedValue({
+    status: "saved",
+    path: "C:/snips/snip-1.png",
+    name: "snip-1.png",
+    width: 10,
+    height: 10,
+    dataUrl: PNG_DATA_URL,
+  });
+  const onSnip = vi.fn();
+  await render(onSnip);
+  await clickSnip();
+  expect(startSnip).toHaveBeenCalledTimes(1);
+  expect(onSnip).toHaveBeenCalledTimes(1);
+  const file = onSnip.mock.calls[0]?.[0] as File;
+  expect(file.name).toBe("snip-1.png");
+  expect(file.type).toBe("image/png");
+});
+
+it("attaches nothing when the user cancels", async () => {
+  stubDesktop("Win32");
+  startSnip.mockResolvedValue({ status: "cancelled" });
+  const onSnip = vi.fn();
+  await render(onSnip);
+  await clickSnip();
+  expect(onSnip).not.toHaveBeenCalled();
+  expect(toast.add).not.toHaveBeenCalled();
+});
+
+it("shows a plain error when the capture fails", async () => {
+  stubDesktop("Win32");
+  startSnip.mockRejectedValue(new Error("Could not capture the screen."));
+  const onSnip = vi.fn();
+  await render(onSnip);
+  await clickSnip();
+  expect(onSnip).not.toHaveBeenCalled();
+  expect(toast.add).toHaveBeenCalledWith(
+    expect.objectContaining({ type: "error", description: "Could not capture the screen." }),
+  );
+});
+
+it("renders nothing outside the Windows desktop app", async () => {
+  stubDesktop("MacIntel");
+  await render(vi.fn());
+  expect(host.querySelector("button")).toBeNull();
+  stubDesktop("Win32", false);
+  await render(vi.fn());
+  expect(host.querySelector("button")).toBeNull();
+});
