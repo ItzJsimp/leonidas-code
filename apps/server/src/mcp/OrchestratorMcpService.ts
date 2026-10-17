@@ -141,6 +141,7 @@ const TASK_WAKE_EVENTS = [
 ] as const;
 /** A person answers the card, so a slower poll is plenty. */
 const SECRET_REQUEST_POLL_INTERVAL_MS = 500;
+const MAX_OVERVIEW_MODELS = 8;
 const DEFAULT_THREAD_LIST_LIMIT = 50;
 const DEFAULT_THREAD_READ_LIMIT = 50;
 /** Activity items carry tool summaries, so a page is far larger than a page of messages. */
@@ -2364,24 +2365,29 @@ const make = Effect.gen(function* () {
               provider,
               orchestrationCapableInstanceIds.has(provider.instanceId),
             );
+            const visibleModels =
+              provider?.models.filter(
+                (model) =>
+                  model.isCustom ||
+                  !modelPreferences[provider.instanceId]?.hiddenModels.includes(model.slug),
+              ) ?? [];
+            // A catalog router can list 300+ models (about 30 KB); the overview keeps a sample
+            // and the total, and narrowing to one provider returns every model.
+            const cut = !includeOptions && visibleModels.length > MAX_OVERVIEW_MODELS;
             return {
               providerInstanceId: provider.instanceId,
               driverKind: provider.driver,
               displayName: provider?.displayName ?? null,
-              models:
-                provider?.models
-                  .filter(
-                    (model) =>
-                      model.isCustom ||
-                      !modelPreferences[provider.instanceId]?.hiddenModels.includes(model.slug),
-                  )
-                  .map((model) => ({
-                    id: model.slug,
-                    label: model.name ?? null,
-                    ...(!includeOptions || model.capabilities?.optionDescriptors === undefined
-                      ? {}
-                      : { options: model.capabilities.optionDescriptors }),
-                  })) ?? [],
+              models: (cut ? visibleModels.slice(0, MAX_OVERVIEW_MODELS) : visibleModels).map(
+                (model) => ({
+                  id: model.slug,
+                  label: model.name ?? null,
+                  ...(!includeOptions || model.capabilities?.optionDescriptors === undefined
+                    ? {}
+                    : { options: model.capabilities.optionDescriptors }),
+                }),
+              ),
+              ...(cut ? { modelCount: visibleModels.length } : {}),
               ...(provider.supportedRuntimeModes === undefined ||
               provider.supportedRuntimeModes.length === 0
                 ? {}

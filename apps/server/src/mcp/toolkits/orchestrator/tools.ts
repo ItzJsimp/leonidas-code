@@ -81,7 +81,7 @@ const threadMetadataDependencies = [
 
 const OrchestratorCapabilitiesTool = Tool.make("orchestrator_capabilities", {
   description:
-    "List the V2 provider instances and their current models from the same live catalog as the composer, including configured custom models, inherited runtime settings, and app-owned orchestration features available to this caller. Models carry no selectable options (such as reasoning effort) unless you pass providerInstanceId, which lists just that provider with options; do that once you have chosen a provider. For a separate top-level thread in a new or existing worktree, use t3_thread_launch with workspaceStrategy.",
+    "List the V2 provider instances and their current models from the same live catalog as the composer, including configured custom models, inherited runtime settings, and app-owned orchestration features available to this caller. Without providerInstanceId each provider lists at most 8 models (modelCount gives the total) and no selectable options (such as reasoning effort); pass providerInstanceId once you have chosen a provider to list all its models with options. For a separate top-level thread in a new or existing worktree, use t3_thread_launch with workspaceStrategy.",
   parameters: OrchestratorMcpCapabilitiesInput,
   success: OrchestratorMcpCapabilitiesResult,
   failure: OrchestratorMcpFailure,

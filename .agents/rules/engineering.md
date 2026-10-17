@@ -7,6 +7,7 @@ Read before changing code. Leonidas Code is a Node WebSocket server that wraps p
 - **Performance without compromise.** Watch websocket payload size, GPU-heavy CSS animation, and long-list rendering. No continuously repainting animations. Every change passes `performance-gate`.
 - **Smallest correct model.** Understand the real constraint first. Do not keep complexity because it exists, and do not add machinery because it looks impressive. Measure twice, cut once; YAGNI.
 - **Prompts the app writes for agents go through `prompt-composer`.** Load that skill before changing any generated agent prompt (System Care lives in `apps/server/src/hardwareWatch/SystemCare.ts`). The checkable rubric is `promptAudit.ts`; its test must stay at 100 for every prompt variant.
+- **Cheap reads.** Canon rule 21 in the AIOS root `AGENTS.md` applies here. Repo detail: check a search count with `grep -c` first, cap lines with `| cut -c1-140 | head -40`, and use `rtk read -l aggressive` only to skim (it drops content).
 - **Remote ready.** Local network, Tailscale and tunnel connections are core. New features must work over all of them.
 - **Multi-surface.** Web (hosted and local `npx`), desktop (Electron, also a host server) and mobile (React Native).
 - These are good defaults, not hard rules. If one fights the task, say so loudly and get human sign-off before breaking it.
