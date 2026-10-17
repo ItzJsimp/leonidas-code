@@ -763,24 +763,28 @@ describe("resolveMember", () => {
 
 describe("real AIOS", () => {
   const realRoot = "D:/Leonidas AIOS";
-  it.skipIf(!NodeFS.existsSync("D:/Leonidas AIOS/tasks"))("reads every real card quickly", () => {
-    const started = performance.now();
-    const tasks = readAiosTasks(realRoot, { now: Date.now() });
-    const elapsed = performance.now() - started;
-    expect(tasks.length).toBeGreaterThan(100);
-    for (const task of tasks) {
-      expect(task.id).not.toBe("");
-      expect(task.title).not.toBe("");
-    }
-    expect(new Set(tasks.map((task) => task.id)).size).toBe(tasks.length);
-    expect(elapsed).toBeLessThan(500);
+  // Opt in with LEONIDAS_REAL_AIOS_TEST=1: it reads the live AIOS against a wall-clock budget.
+  it.skipIf(process.env.LEONIDAS_REAL_AIOS_TEST !== "1" || !NodeFS.existsSync(`${realRoot}/tasks`))(
+    "reads every real card quickly",
+    () => {
+      const started = performance.now();
+      const tasks = readAiosTasks(realRoot, { now: Date.now() });
+      const elapsed = performance.now() - started;
+      expect(tasks.length).toBeGreaterThan(100);
+      for (const task of tasks) {
+        expect(task.id).not.toBe("");
+        expect(task.title).not.toBe("");
+      }
+      expect(new Set(tasks.map((task) => task.id)).size).toBe(tasks.length);
+      expect(elapsed).toBeLessThan(500);
 
-    const cache: AiosCardCache = new Map();
-    readAiosTasks(realRoot, { now: Date.now(), cache });
-    const warmStarted = performance.now();
-    readAiosTasks(realRoot, { now: Date.now(), cache });
-    expect(performance.now() - warmStarted).toBeLessThan(150);
-  });
+      const cache: AiosCardCache = new Map();
+      readAiosTasks(realRoot, { now: Date.now(), cache });
+      const warmStarted = performance.now();
+      readAiosTasks(realRoot, { now: Date.now(), cache });
+      expect(performance.now() - warmStarted).toBeLessThan(150);
+    },
+  );
 });
 
 describe("task owners and agent runs", () => {
