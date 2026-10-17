@@ -15,6 +15,7 @@ import * as Result from "effect/Result";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { createModelCapabilities } from "@t3tools/shared/model";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import { classifyProviderConnectionIssue } from "@t3tools/contracts";
 import {
   query as claudeQuery,
   type Options as ClaudeQueryOptions,
@@ -266,6 +267,7 @@ function nonEmptyProbeString(value: string): string | undefined {
 }
 
 type ClaudeCapabilitiesProbe = {
+  readonly connectionIssue?: ServerProvider["connectionIssue"];
   readonly email: string | undefined;
   /**
    * The organization UUID from the login's `.claude.json`. The driver reads it
@@ -376,6 +378,11 @@ function waitForAbortSignal(signal: AbortSignal): Promise<void> {
  * This is used as a fallback when `claude auth status` does not include
  * subscription type information.
  */
+function probeConnectionIssue(error: unknown) {
+  const cause = error instanceof Error && "cause" in error ? error.cause : error;
+  return classifyProviderConnectionIssue(String(cause));
+}
+
 const probeClaudeCapabilities = (
   claudeSettings: ClaudeSettings,
   environment?: NodeJS.ProcessEnv,
@@ -426,6 +433,10 @@ const probeClaudeCapabilities = (
                 rate_limits: usageResult.success.rate_limits,
               }
             : undefined;
+        const connectionIssue =
+          usageResult && Result.isFailure(usageResult)
+            ? probeConnectionIssue(usageResult.failure)
+            : undefined;
         const account = init.account as
           | {
               readonly email?: string;
@@ -443,6 +454,7 @@ const probeClaudeCapabilities = (
           apiProvider: account?.apiProvider,
           slashCommands: parseClaudeInitializationCommands(init.commands),
           ...(usage ? { usage } : {}),
+          ...(connectionIssue ? { connectionIssue } : {}),
         } satisfies ClaudeCapabilitiesProbe;
       }),
     ),
@@ -452,7 +464,21 @@ const probeClaudeCapabilities = (
       }),
     ),
     Effect.result,
-    Effect.map((result) => (Result.isSuccess(result) ? result.success : undefined)),
+    Effect.map((result): ClaudeCapabilitiesProbe | undefined => {
+      if (Result.isSuccess(result)) return result.success;
+      const connectionIssue = probeConnectionIssue(result.failure);
+      return connectionIssue
+        ? {
+            email: undefined,
+            subscriptionType: undefined,
+            tokenSource: undefined,
+            apiKeySource: undefined,
+            apiProvider: undefined,
+            slashCommands: [],
+            connectionIssue,
+          }
+        : undefined;
+    }),
   );
 };
 
@@ -638,6 +664,30 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     });
   }
 
+  if (capabilities.connectionIssue) {
+    const connectionIssue = capabilities.connectionIssue;
+    return buildServerProvider({
+      presentation: CLAUDE_PRESENTATION,
+      enabled: claudeSettings.enabled,
+      checkedAt,
+      models,
+      slashCommands: dedupedSlashCommands,
+      skills,
+      probe: {
+        installed: true,
+        version: parsedVersion,
+        status: "error",
+        connectionIssue,
+        auth: {
+          status:
+            connectionIssue === "token_expired" || connectionIssue === "signed_out"
+              ? "unauthenticated"
+              : "unknown",
+        },
+        message: "Claude connection check failed. Use the model picker repair action.",
+      },
+    });
+  }
   if (claudeAuthStatus(capabilities) === "unauthenticated") {
     return buildServerProvider({
       presentation: CLAUDE_PRESENTATION,

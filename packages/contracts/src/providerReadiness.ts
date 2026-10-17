@@ -64,6 +64,9 @@ export function getProviderReadiness(
     provider.connectionIssue ??
     (provider.status !== "ready"
       ? classifyProviderConnectionIssue(provider.message ?? "")
+      : undefined) ??
+    (provider.usageLimits?.unavailable?.reason === "probeFailed"
+      ? classifyProviderConnectionIssue(provider.usageLimits.unavailable.message ?? "")
       : undefined);
   const compatibility = provider.compatibilityAdvisory?.status;
   const exhausted = (provider.usageLimits?.windows ?? []).filter(

@@ -19,6 +19,21 @@ const ready: ServerProvider = {
 };
 
 describe("provider readiness before send", () => {
+  it("uses failed authenticated usage checks instead of stale local sign-in evidence", () => {
+    expect(
+      getProviderReadiness(
+        {
+          ...ready,
+          usageLimits: {
+            checkedAt: ready.checkedAt,
+            windows: [],
+            unavailable: { reason: "probeFailed", message: "OAuth token expired" },
+          },
+        },
+        { nowMs: now },
+      ),
+    ).toMatchObject({ color: "red", code: "token_expired", action: "sign_in" });
+  });
   it.each([
     [{ installed: false, status: "error" }, "cli_missing", "CLI missing", "install"],
     [

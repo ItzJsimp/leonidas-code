@@ -12,6 +12,7 @@ import type {
   ServerProviderState,
   ServerProviderUsageLimits,
 } from "@t3tools/contracts";
+import { classifyProviderConnectionIssue } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
@@ -81,6 +82,7 @@ export interface ProviderProbeResult {
   readonly status: Exclude<ServerProviderState, "disabled">;
   readonly auth: ServerProviderAuth;
   readonly message?: string;
+  readonly connectionIssue?: ServerProvider["connectionIssue"];
   readonly usageLimits?: ServerProviderUsageLimits;
 }
 
@@ -240,6 +242,11 @@ export function buildServerProvider(input: {
         checkedAt: input.checkedAt,
       })
     : undefined;
+  const connectionIssue =
+    input.probe.connectionIssue ??
+    (input.probe.status !== "ready"
+      ? classifyProviderConnectionIssue(input.probe.message ?? "")
+      : undefined);
   return {
     displayName: input.presentation.displayName,
     ...(typeof input.presentation.supportsConversationRollback === "boolean"
@@ -264,6 +271,7 @@ export function buildServerProvider(input: {
     status: input.enabled ? input.probe.status : "disabled",
     auth: input.probe.auth,
     checkedAt: input.checkedAt,
+    ...(connectionIssue ? { connectionIssue } : {}),
     ...(input.probe.message ? { message: input.probe.message } : {}),
     models: input.models,
     ...(input.updateRequiredModels?.length
