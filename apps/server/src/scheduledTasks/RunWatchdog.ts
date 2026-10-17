@@ -29,6 +29,8 @@ export class ScheduledTaskIdleLimit extends Context.Reference<Effect.Effect<numb
 
 const MIN_POLL_MS = 1_000;
 const MAX_POLL_MS = 15_000;
+// A thread that cannot be read this many polls in a row is gone; stop watching it.
+const MAX_READ_FAILURES = 20;
 
 /** A run that has not ended; `lastActivityMs` is the newest sign of progress. */
 export interface RunActivity {
@@ -92,7 +94,8 @@ export const runTokensUsed = (
  * activity is never cut for idling, however long it takes. An idle limit of 0
  * (or less) turns the idle check off; a missing cap turns the cap off; with
  * both off the watch ends at once. A read that fails is retried on the next
- * poll, so a short outage cannot kill a healthy run.
+ * poll, so a short outage cannot kill a healthy run; after 20 failed polls in
+ * a row the watch ends, so a deleted thread is not polled forever.
  */
 export const watchRun = <E1, E2>(input: {
   readonly idleLimitMs: number;
@@ -105,10 +108,16 @@ export const watchRun = <E1, E2>(input: {
     const cap = input.tokenCap ?? null;
     if (input.idleLimitMs <= 0 && cap === null) return "ended" as const;
     const poll = pollIntervalMs(input.idleLimitMs);
+    let failures = 0;
     while (true) {
       yield* Effect.sleep(poll);
       const run = yield* input.readRun.pipe(Effect.catch(() => Effect.succeed(undefined)));
-      if (run === undefined) continue;
+      if (run === undefined) {
+        failures += 1;
+        if (failures >= MAX_READ_FAILURES) return "ended" as const;
+        continue;
+      }
+      failures = 0;
       if (Option.isNone(run) || TERMINAL.has(run.value.status)) return "ended" as const;
       if (cap !== null && (run.value.tokensUsed ?? 0) >= cap) {
         yield* input.interrupt;

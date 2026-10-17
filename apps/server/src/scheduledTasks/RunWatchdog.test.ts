@@ -27,6 +27,21 @@ const setup = (initial: Option.Option<RunActivity>) =>
   });
 
 describe("watchRun", () => {
+  it.effect("stops watching a run whose thread can no longer be read", () =>
+    Effect.gen(function* () {
+      const fiber = yield* Effect.forkChild(
+        watchRun({
+          idleLimitMs: LIMIT_MS,
+          readRun: Effect.fail("gone"),
+          interrupt: Effect.void,
+          nowMs: Clock.currentTimeMillis,
+        }),
+      );
+      yield* TestClock.adjust(20 * 6_000);
+      assert.equal(yield* Fiber.join(fiber), "ended");
+    }),
+  );
+
   it.effect("interrupts a run that stops producing activity", () =>
     Effect.gen(function* () {
       const { interrupts, watch } = yield* setup(
