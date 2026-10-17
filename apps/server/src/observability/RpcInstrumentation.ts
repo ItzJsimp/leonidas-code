@@ -204,6 +204,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.localModelsStop]: "workspace",
   [WS_METHODS.localModelsSpeedTest]: "workspace",
   [WS_METHODS.localModelsStartOllama]: "workspace",
+  [WS_METHODS.localModelsAdvice]: "workspace",
   [WS_METHODS.localModelsDelete]: "workspace",
   [WS_METHODS.projectsPromptCandidates]: "workspace",
   [WS_METHODS.projectsPredictPrompt]: "workspace",

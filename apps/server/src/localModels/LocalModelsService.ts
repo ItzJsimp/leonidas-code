@@ -7,6 +7,7 @@
 import {
   LocalModelsError,
   type LocalModelsActionResult,
+  type LocalModelsAdvice,
   type LocalModelsModelInput,
   type LocalModelsPullInput,
   type LocalModelsState,
@@ -25,6 +26,7 @@ import * as NodePath from "node:path";
 import * as HardwareWatch from "../hardwareWatch/HardwareWatch.ts";
 import { computeLocalModelCapacity } from "../hardwareWatch/localModelCapacity.ts";
 import { DEFAULT_OLLAMA_URL } from "../provider/ollamaModelCatalog.ts";
+import { readAdvice } from "./modelAdvisor.ts";
 import { LocalModelsEngine, type LocalModelsHardware } from "./LocalModelsEngine.ts";
 
 /** Poll rate while a download runs, and while the tab is open and idle. */
@@ -50,6 +52,7 @@ export class LocalModelsService extends Context.Service<
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
     readonly startOllama: Effect.Effect<LocalModelsActionResult, LocalModelsError>;
+    readonly advice: Effect.Effect<LocalModelsAdvice, LocalModelsError>;
     readonly speedTest: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
@@ -229,6 +232,9 @@ const make = Effect.gen(function* () {
     cancelPull: (input) => action(() => engine.cancelPull(input.model)),
     run: (input) => action(() => engine.run(input.model)),
     stop: (input) => action(() => engine.stop(input.model)),
+    advice: Effect.promise(() =>
+      readAdvice(() => Math.round(performance.timeOrigin + performance.now())),
+    ),
     startOllama: action(() => engine.startOllama()),
     speedTest: (input) => action(() => engine.speedTest(input.model)),
     remove: (input) => action(() => engine.remove(input.model)),

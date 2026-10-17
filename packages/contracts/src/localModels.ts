@@ -80,6 +80,25 @@ export type LocalModelsPullInput = typeof LocalModelsPullInput.Type;
 export const LocalModelsStartInput = Schema.Struct({});
 export type LocalModelsStartInput = typeof LocalModelsStartInput.Type;
 
+export const LocalModelsAdviceItem = Schema.Struct({
+  kind: Schema.Literals(["vram", "ram"]),
+  name: Schema.String,
+  memoryBytes: NonNegativeInt,
+  /** How many processes of this program run. */
+  processes: NonNegativeInt,
+  /** Plain advice for known programs. Null when there is none. */
+  hint: Schema.NullOr(Schema.String),
+});
+export type LocalModelsAdviceItem = typeof LocalModelsAdviceItem.Type;
+
+export const LocalModelsAdvice = Schema.Struct({
+  at: NonNegativeInt,
+  /** False on a system where the advisor cannot read memory use. */
+  supported: Schema.Boolean,
+  items: Schema.Array(LocalModelsAdviceItem),
+});
+export type LocalModelsAdvice = typeof LocalModelsAdvice.Type;
+
 export const LocalModelsActionResult = Schema.Struct({ ok: Schema.Boolean });
 export type LocalModelsActionResult = typeof LocalModelsActionResult.Type;
 

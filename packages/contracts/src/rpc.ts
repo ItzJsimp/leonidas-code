@@ -84,6 +84,7 @@ import {
 } from "./images.ts";
 import {
   LocalModelsActionResult,
+  LocalModelsAdvice,
   LocalModelsError,
   LocalModelsModelInput,
   LocalModelsPullInput,
@@ -566,6 +567,7 @@ export const WS_METHODS = {
   localModelsStop: "localModels.stop",
   localModelsSpeedTest: "localModels.speedTest",
   localModelsStartOllama: "localModels.startOllama",
+  localModelsAdvice: "localModels.advice",
   localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
@@ -1640,6 +1642,12 @@ const WsLocalModelsSpeedTestRpc = Rpc.make(WS_METHODS.localModelsSpeedTest, {
 const WsLocalModelsStartOllamaRpc = Rpc.make(WS_METHODS.localModelsStartOllama, {
   payload: LocalModelsStartInput,
   success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsAdviceRpc = Rpc.make(WS_METHODS.localModelsAdvice, {
+  payload: LocalModelsStartInput,
+  success: LocalModelsAdvice,
   error: LocalModelsRpcError,
 });
 
@@ -2771,6 +2779,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsLocalModelsStopRpc,
   WsLocalModelsSpeedTestRpc,
   WsLocalModelsStartOllamaRpc,
+  WsLocalModelsAdviceRpc,
   WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,

@@ -19,6 +19,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { SettingsPageContainer, SettingsSection } from "./settingsLayout";
 import { fitView, pullPercent, rowAction, sortRows, speedLabel } from "./localModels.logic";
 import { OllamaAccountNotice } from "./OllamaAccountNotice";
+import { PcAdvisorCard } from "./PcAdvisorCard";
 import { useLocalModels } from "./useLocalModels";
 
 type Pending = { readonly kind: "delete" | "pull"; readonly row: LocalModelRow };
@@ -322,7 +323,10 @@ export function ModelsSettingsPanel() {
             <>
               <HardwarePills state={state} />
               {models.environmentId !== null ? (
-                <OllamaAccountNotice environmentId={models.environmentId} />
+                <>
+                  <OllamaAccountNotice environmentId={models.environmentId} />
+                  <PcAdvisorCard environmentId={models.environmentId} />
+                </>
               ) : null}
               {!state.ollama.running ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/32 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
