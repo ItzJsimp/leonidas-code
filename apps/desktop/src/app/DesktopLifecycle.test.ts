@@ -11,6 +11,7 @@ import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import * as DesktopLifecycle from "./DesktopLifecycle.ts";
+import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopShutdown from "./DesktopShutdown.ts";
 import * as DesktopState from "./DesktopState.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
@@ -126,6 +127,7 @@ describe("DesktopLifecycle", () => {
         Layer.provideMerge(layerEnvironment),
         Layer.provideMerge(DesktopShutdown.layer),
         Layer.provideMerge(DesktopState.layer),
+        Layer.provideMerge(DesktopAppSettings.layerTest()),
       );
 
       return Effect.scoped(
@@ -198,6 +200,7 @@ describe("DesktopLifecycle", () => {
         Layer.provideMerge(layerEnvironment),
         Layer.provideMerge(layerDesktopShutdown),
         Layer.provideMerge(DesktopState.layer),
+        Layer.provideMerge(DesktopAppSettings.layerTest()),
       );
 
       yield* Effect.scoped(
@@ -239,6 +242,7 @@ describe("DesktopLifecycle", () => {
         Layer.provideMerge(layerEnvironment),
         Layer.provideMerge(DesktopShutdown.layer),
         Layer.provideMerge(DesktopState.layer),
+        Layer.provideMerge(DesktopAppSettings.layerTest()),
       );
 
       yield* Effect.scoped(
@@ -254,5 +258,51 @@ describe("DesktopLifecycle", () => {
         }),
       ).pipe(Effect.provide(layer));
     }),
+  );
+
+  it.effect.each([
+    { keepRunningInBackground: true, expectedQuits: 0 },
+    { keepRunningInBackground: false, expectedQuits: 1 },
+  ])(
+    "closing the last window quits only when background mode is off ($keepRunningInBackground)",
+    ({ keepRunningInBackground, expectedQuits }) =>
+      Effect.gen(function* () {
+        const appListeners = new Map<string, (...args: readonly unknown[]) => void>();
+        let quitCount = 0;
+        const quit = Effect.sync(() => {
+          quitCount += 1;
+        });
+        const layerEnvironment = Layer.succeed(DesktopEnvironment.DesktopEnvironment, {
+          platform: "win32",
+          isDevelopment: false,
+        } as DesktopEnvironment.DesktopEnvironment["Service"]);
+        const layer = DesktopLifecycle.layer.pipe(
+          Layer.provideMerge(layerElectronApp(appListeners, quit)),
+          Layer.provideMerge(layerElectronTheme),
+          Layer.provideMerge(layerElectronWindow()),
+          Layer.provideMerge(layerDesktopWindow()),
+          Layer.provideMerge(layerEnvironment),
+          Layer.provideMerge(DesktopShutdown.layer),
+          Layer.provideMerge(DesktopState.layer),
+          Layer.provideMerge(
+            DesktopAppSettings.layerTest({
+              ...DesktopAppSettings.DEFAULT_DESKTOP_SETTINGS,
+              keepRunningInBackground,
+            }),
+          ),
+        );
+
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            const lifecycle = yield* DesktopLifecycle.DesktopLifecycle;
+            yield* lifecycle.register;
+            appListeners.get("window-all-closed")?.();
+            // The listener runs its effect on a promise; give it real time to finish.
+            // @effect-diagnostics-next-line globalTimers:off
+            yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 25)));
+            assert.equal(quitCount, expectedQuits);
+          }),
+        ).pipe(Effect.provide(layer));
+      }),
   );
 });

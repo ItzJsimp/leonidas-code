@@ -27,6 +27,10 @@ import { isValidDistroName } from "../wsl/wslPathParsing.ts";
 
 export interface DesktopSettings {
   readonly localEnvironmentEnabled: boolean;
+  // When true, closing the last window hides the app instead of quitting, so the
+  // local server keeps running and scheduled tasks keep firing. Off by default
+  // because it leaves an agent running with no window open.
+  readonly keepRunningInBackground: boolean;
   readonly linuxPasswordStore: LinuxPasswordStorePreference;
   readonly mainWindowBounds: DesktopWindowBounds | null;
   readonly mainWindowMaximized: boolean;
@@ -76,6 +80,7 @@ export const DEFAULT_MAIN_WINDOW_SIZE = {
 
 export const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
   localEnvironmentEnabled: true,
+  keepRunningInBackground: false,
   linuxPasswordStore: DEFAULT_LINUX_PASSWORD_STORE,
   mainWindowBounds: null,
   mainWindowMaximized: false,
@@ -98,6 +103,7 @@ const DesktopWindowBoundsDocument = Schema.Struct({
 
 const DesktopSettingsDocument = Schema.Struct({
   localEnvironmentEnabled: Schema.optionalKey(Schema.Boolean),
+  keepRunningInBackground: Schema.optionalKey(Schema.Boolean),
   linuxPasswordStore: Schema.optionalKey(Schema.Unknown),
   mainWindowBounds: Schema.optionalKey(Schema.NullOr(DesktopWindowBoundsDocument)),
   mainWindowMaximized: Schema.optionalKey(Schema.Boolean),
@@ -158,6 +164,9 @@ export class DesktopAppSettings extends Context.Service<
     readonly load: Effect.Effect<DesktopSettings>;
     readonly get: Effect.Effect<DesktopSettings>;
     readonly setLocalEnvironmentEnabled: (
+      enabled: boolean,
+    ) => Effect.Effect<DesktopSettingsChange, DesktopSettingsWriteError>;
+    readonly setKeepRunningInBackground: (
       enabled: boolean,
     ) => Effect.Effect<DesktopSettingsChange, DesktopSettingsWriteError>;
     readonly setMainWindowBounds: (
@@ -233,6 +242,7 @@ function normalizeDesktopSettingsDocument(
 
   return {
     localEnvironmentEnabled: parsed.localEnvironmentEnabled !== false,
+    keepRunningInBackground: parsed.keepRunningInBackground === true,
     linuxPasswordStore: normalizeLinuxPasswordStorePreference(parsed.linuxPasswordStore),
     mainWindowBounds,
     mainWindowMaximized: mainWindowBounds !== null && parsed.mainWindowMaximized === true,
@@ -258,6 +268,9 @@ function toDesktopSettingsDocument(
 
   if (settings.localEnvironmentEnabled !== defaults.localEnvironmentEnabled) {
     document.localEnvironmentEnabled = settings.localEnvironmentEnabled;
+  }
+  if (settings.keepRunningInBackground !== defaults.keepRunningInBackground) {
+    document.keepRunningInBackground = settings.keepRunningInBackground;
   }
 
   if (settings.linuxPasswordStore !== defaults.linuxPasswordStore) {
@@ -323,6 +336,12 @@ function setMainWindowBounds(
         mainWindowBounds: bounds,
         mainWindowMaximized: isMaximized,
       };
+}
+
+function setKeepRunningInBackground(settings: DesktopSettings, enabled: boolean): DesktopSettings {
+  return settings.keepRunningInBackground === enabled
+    ? settings
+    : { ...settings, keepRunningInBackground: enabled };
 }
 
 function setTailscaleServe(
@@ -554,6 +573,10 @@ export const make = Effect.gen(function* () {
       persist((settings) => setServerExposureMode(settings, mode)).pipe(
         Effect.withSpan("desktop.settings.setServerExposureMode", { attributes: { mode } }),
       ),
+    setKeepRunningInBackground: (enabled) =>
+      persist((settings) => setKeepRunningInBackground(settings, enabled)).pipe(
+        Effect.withSpan("desktop.settings.setKeepRunningInBackground", { attributes: { enabled } }),
+      ),
     setTailscaleServe: (input) =>
       persist((settings) => setTailscaleServe(settings, input)).pipe(
         Effect.withSpan("desktop.settings.setTailscaleServe", { attributes: input }),
@@ -615,6 +638,8 @@ export const layerTest = (initialSettings: DesktopSettings = DEFAULT_DESKTOP_SET
           update((settings) => setMainWindowBounds(settings, bounds, isMaximized)),
         setServerExposureMode: (mode) =>
           update((settings) => setServerExposureMode(settings, mode)),
+        setKeepRunningInBackground: (enabled) =>
+          update((settings) => setKeepRunningInBackground(settings, enabled)),
         setTailscaleServe: (input) => update((settings) => setTailscaleServe(settings, input)),
         setUpdateChannel: (channel) => update((settings) => setUpdateChannel(settings, channel)),
         setWslBackendEnabled: (enabled) =>

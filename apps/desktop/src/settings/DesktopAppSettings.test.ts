@@ -109,6 +109,20 @@ describe("DesktopSettings", () => {
         }),
       ),
   );
+  it.effect("keeps running in the background only after the user turns it on", () =>
+    withSettings(
+      Effect.gen(function* () {
+        const settings = yield* DesktopAppSettings.DesktopAppSettings;
+        assert.isFalse((yield* settings.get).keepRunningInBackground);
+        assert.isTrue((yield* settings.setKeepRunningInBackground(true)).changed);
+        assert.isTrue((yield* settings.load).keepRunningInBackground);
+        assert.isFalse((yield* settings.setKeepRunningInBackground(true)).changed);
+        yield* settings.setKeepRunningInBackground(false);
+        assert.isFalse((yield* settings.load).keepRunningInBackground);
+      }),
+    ),
+  );
+
   it.effect("loads defaults when no settings file exists", () =>
     withSettings(
       Effect.gen(function* () {
@@ -125,6 +139,7 @@ describe("DesktopSettings", () => {
       {
         linuxPasswordStore: "auto",
         localEnvironmentEnabled: true,
+        keepRunningInBackground: false,
         mainWindowBounds: null,
         mainWindowMaximized: false,
         serverExposureMode: "local-only",
@@ -155,6 +170,7 @@ describe("DesktopSettings", () => {
         assert.deepEqual(yield* settings.load, {
           linuxPasswordStore: "gnome-libsecret",
           localEnvironmentEnabled: true,
+          keepRunningInBackground: false,
           mainWindowBounds: null,
           mainWindowMaximized: false,
           serverExposureMode: "network-accessible",
@@ -263,6 +279,7 @@ describe("DesktopSettings", () => {
         assert.deepEqual(yield* settings.load, {
           linuxPasswordStore: "auto",
           localEnvironmentEnabled: true,
+          keepRunningInBackground: false,
           mainWindowBounds: { x: 120, y: 80, width: 1280, height: 900 },
           mainWindowMaximized: false,
           serverExposureMode: "network-accessible",
@@ -320,6 +337,7 @@ describe("DesktopSettings", () => {
           assert.deepEqual(yield* settings.load, {
             linuxPasswordStore: "auto",
             localEnvironmentEnabled: true,
+            keepRunningInBackground: false,
             mainWindowBounds: null,
             mainWindowMaximized: false,
             serverExposureMode: "network-accessible",
@@ -397,6 +415,7 @@ describe("DesktopSettings", () => {
         assert.deepEqual(yield* settings.load, {
           linuxPasswordStore: "auto",
           localEnvironmentEnabled: true,
+          keepRunningInBackground: false,
           mainWindowBounds: null,
           mainWindowMaximized: false,
           serverExposureMode: "local-only",
@@ -426,6 +445,7 @@ describe("DesktopSettings", () => {
         assert.deepEqual(yield* settings.load, {
           linuxPasswordStore: "auto",
           localEnvironmentEnabled: true,
+          keepRunningInBackground: false,
           mainWindowBounds: null,
           mainWindowMaximized: false,
           serverExposureMode: "local-only",
@@ -454,6 +474,7 @@ describe("DesktopSettings", () => {
         assert.deepEqual(yield* settings.load, {
           linuxPasswordStore: "auto",
           localEnvironmentEnabled: true,
+          keepRunningInBackground: false,
           mainWindowBounds: null,
           mainWindowMaximized: false,
           serverExposureMode: "local-only",

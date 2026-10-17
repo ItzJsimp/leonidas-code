@@ -7,6 +7,7 @@ import * as Scope from "effect/Scope";
 
 import type * as Electron from "electron";
 
+import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import { makeComponentLogger } from "./DesktopObservability.ts";
 import * as DesktopShutdown from "./DesktopShutdown.ts";
@@ -29,6 +30,7 @@ export class DesktopLifecycleRelaunchError extends Schema.TaggedError<DesktopLif
 }
 
 export type DesktopLifecycleRuntimeServices =
+  | DesktopAppSettings.DesktopAppSettings
   | DesktopEnvironment.DesktopEnvironment
   | DesktopShutdown.DesktopShutdown
   | DesktopState.DesktopState
@@ -41,7 +43,7 @@ type DesktopLifecycleRegistrationServices =
   | ElectronWindow.ElectronWindow;
 
 /**
- * @effect-expect-leaking DesktopEnvironment | DesktopShutdown | DesktopState | DesktopWindow | ElectronApp | ElectronTheme | ElectronWindow
+ * @effect-expect-leaking DesktopAppSettings | DesktopEnvironment | DesktopShutdown | DesktopState | DesktopWindow | ElectronApp | ElectronTheme | ElectronWindow
  */
 export class DesktopLifecycle extends Context.Service<
   DesktopLifecycle,
@@ -246,7 +248,14 @@ export const make = DesktopLifecycle.of({
         Effect.gen(function* () {
           const app = yield* ElectronApp.ElectronApp;
           const state = yield* DesktopState.DesktopState;
-          if (environment.platform !== "darwin" && !(yield* Ref.get(state.quitting))) {
+          const settings = yield* DesktopAppSettings.DesktopAppSettings;
+          // Background mode keeps the local server, and the scheduled tasks it fires, alive.
+          const keepRunning = (yield* settings.get).keepRunningInBackground;
+          if (
+            environment.platform !== "darwin" &&
+            !keepRunning &&
+            !(yield* Ref.get(state.quitting))
+          ) {
             yield* app.quit;
           }
         }).pipe(Effect.withSpan("desktop.lifecycle.windowAllClosed")),
