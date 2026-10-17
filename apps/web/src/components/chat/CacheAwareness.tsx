@@ -32,7 +32,7 @@ import {
 import { Checkbox } from "../ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "../ui/select";
 
-export function cacheObservation(usage: ContextWindowSnapshot | null): CacheObservation | null {
+function cacheObservation(usage: ContextWindowSnapshot | null): CacheObservation | null {
   return usage
     ? {
         inputTokens: usage.inputTokens,

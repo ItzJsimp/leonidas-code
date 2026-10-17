@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 
 const KEY = "leonidas.tasks.railWidth";
-export const RAIL_MIN = 208;
-export const RAIL_MAX = 480;
+const RAIL_MIN = 208;
+const RAIL_MAX = 480;
 const RAIL_DEFAULT = 288;
 
 const clamp = (value: number) => Math.min(RAIL_MAX, Math.max(RAIL_MIN, value));

@@ -1,7 +1,7 @@
 import type { TaskBoardCompletion } from "@t3tools/contracts";
 
 /** A completion older than this is history, not a moment to celebrate. */
-export const CELEBRATION_MAX_AGE_MS = 10 * 60_000;
+const CELEBRATION_MAX_AGE_MS = 10 * 60_000;
 
 /**
  * Splits a completion list into the ones not seen before. The first list (`seen` is null) only

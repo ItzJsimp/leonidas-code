@@ -23,7 +23,7 @@ const CreateMemory = Schema.Struct({
 export type CreateMemory = typeof CreateMemory.Type;
 export type ImagesView = CreateMemory["view"];
 
-export const DEFAULT_CREATE: CreateMemory = {
+const DEFAULT_CREATE: CreateMemory = {
   view: "create",
   prompt: "",
   modelIds: ["flux2klein"],

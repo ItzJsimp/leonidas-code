@@ -22,7 +22,7 @@ import {
 import { Input } from "./ui/input";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 
-export const TITLE_HINT_MAX_LENGTH = 200;
+const TITLE_HINT_MAX_LENGTH = 200;
 
 interface RegenerateTitleHintState {
   readonly target: ScopedThreadRef | null;
