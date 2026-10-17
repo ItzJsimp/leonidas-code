@@ -207,6 +207,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.localModelsAdvice]: "workspace",
   [WS_METHODS.localModelsCompare]: "workspace",
   [WS_METHODS.localModelsComparePick]: "workspace",
+  [WS_METHODS.localModelsTokenReport]: "workspace",
   [WS_METHODS.localModelsDelete]: "workspace",
   [WS_METHODS.projectsPromptCandidates]: "workspace",
   [WS_METHODS.projectsPredictPrompt]: "workspace",

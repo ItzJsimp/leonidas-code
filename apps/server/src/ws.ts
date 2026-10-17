@@ -2929,6 +2929,7 @@ const layerWsRpc = (
         [WS_METHODS.localModelsAdvice]: () => localModels.advice,
         [WS_METHODS.localModelsCompare]: (input) => localModels.compare(input),
         [WS_METHODS.localModelsComparePick]: (input) => localModels.comparePick(input),
+        [WS_METHODS.localModelsTokenReport]: (input) => localModels.tokenReport(input),
         [WS_METHODS.localModelsDelete]: (input) => localModels.remove(input),
         [WS_METHODS.taskBoardWorkspace]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),

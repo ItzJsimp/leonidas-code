@@ -58,6 +58,11 @@ export const localModelsComparePick = createEnvironmentRpcCommand(connectionAtom
   tag: WS_METHODS.localModelsComparePick,
 });
 
+export const localModelsTokenReport = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:local-models:token-report",
+  tag: WS_METHODS.localModelsTokenReport,
+});
+
 export const localModelsDelete = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:local-models:delete",
   tag: WS_METHODS.localModelsDelete,

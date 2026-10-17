@@ -12,6 +12,8 @@ import {
   type LocalModelsCompareResult,
   type LocalModelsPickInput,
   type LocalModelsPickResult,
+  type LocalModelsTokenReport,
+  type LocalModelsTokenReportInput,
   type LocalModelsModelInput,
   type LocalModelsPullInput,
   type LocalModelsState,
@@ -32,6 +34,11 @@ import * as HardwareWatch from "../hardwareWatch/HardwareWatch.ts";
 import { computeLocalModelCapacity } from "../hardwareWatch/localModelCapacity.ts";
 import { DEFAULT_OLLAMA_URL } from "../provider/ollamaModelCatalog.ts";
 import * as ServerConfig from "../config.ts";
+import * as Clock from "effect/Clock";
+import * as DateTime from "effect/DateTime";
+import * as SqlClient from "effect/sql/SqlClient";
+import { buildTokenReport } from "./tokenReport.ts";
+import { readTokenReportRows } from "./tokenReportSource.ts";
 import { ModelCompare } from "./ModelCompare.ts";
 import { readAdvice } from "./modelAdvisor.ts";
 import { LocalModelsEngine, type LocalModelsHardware } from "./LocalModelsEngine.ts";
@@ -66,6 +73,9 @@ export class LocalModelsService extends Context.Service<
     readonly comparePick: (
       input: LocalModelsPickInput,
     ) => Effect.Effect<LocalModelsPickResult, LocalModelsError>;
+    readonly tokenReport: (
+      input: LocalModelsTokenReportInput,
+    ) => Effect.Effect<LocalModelsTokenReport, LocalModelsError>;
     readonly speedTest: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
@@ -139,6 +149,7 @@ const isLocalModelsError = Schema.is(LocalModelsError);
 const make = Effect.gen(function* () {
   const hardwareWatch = yield* HardwareWatch.HardwareWatch;
   const config = yield* ServerConfig.ServerConfig;
+  const sql = yield* SqlClient.SqlClient;
   const changes = yield* PubSub.sliding<void>(1);
   let hardware: LocalModelsHardware | null = null;
 
@@ -264,6 +275,13 @@ const make = Effect.gen(function* () {
     compare: (input) =>
       Effect.tryPromise({ try: () => modelCompare.compare(input), catch: asError }),
     comparePick: (input) => Effect.try({ try: () => modelCompare.pick(input), catch: asError }),
+    tokenReport: (input) =>
+      Effect.gen(function* () {
+        const now = yield* Clock.currentTimeMillis;
+        const since = DateTime.formatIso(DateTime.makeUnsafe(now - input.days * 86_400_000));
+        const rows = yield* readTokenReportRows(sql, since);
+        return buildTokenReport(rows, input.days, null);
+      }).pipe(Effect.mapError(asError)),
     startOllama: action(() => engine.startOllama()),
     speedTest: (input) => action(() => engine.speedTest(input.model)),
     remove: (input) => action(() => engine.remove(input.model)),

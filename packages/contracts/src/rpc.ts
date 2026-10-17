@@ -91,6 +91,8 @@ import {
   LocalModelsModelInput,
   LocalModelsPickInput,
   LocalModelsPickResult,
+  LocalModelsTokenReport,
+  LocalModelsTokenReportInput,
   LocalModelsPullInput,
   LocalModelsStartInput,
   LocalModelsState,
@@ -574,6 +576,7 @@ export const WS_METHODS = {
   localModelsAdvice: "localModels.advice",
   localModelsCompare: "localModels.compare",
   localModelsComparePick: "localModels.comparePick",
+  localModelsTokenReport: "localModels.tokenReport",
   localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
@@ -1666,6 +1669,12 @@ const WsLocalModelsCompareRpc = Rpc.make(WS_METHODS.localModelsCompare, {
 const WsLocalModelsComparePickRpc = Rpc.make(WS_METHODS.localModelsComparePick, {
   payload: LocalModelsPickInput,
   success: LocalModelsPickResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsTokenReportRpc = Rpc.make(WS_METHODS.localModelsTokenReport, {
+  payload: LocalModelsTokenReportInput,
+  success: LocalModelsTokenReport,
   error: LocalModelsRpcError,
 });
 
@@ -2800,6 +2809,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsLocalModelsAdviceRpc,
   WsLocalModelsCompareRpc,
   WsLocalModelsComparePickRpc,
+  WsLocalModelsTokenReportRpc,
   WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
