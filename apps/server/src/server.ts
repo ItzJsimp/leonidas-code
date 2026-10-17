@@ -139,6 +139,7 @@ import {
   relayHookBaseUrl,
   ScheduledTaskWebhookOrigin,
 } from "./scheduledTasks/ScheduledTaskService.ts";
+import * as StoreOwner from "./scheduledTasks/StoreOwner.ts";
 import {
   CLOUD_ENDPOINT_RUNTIME_CONFIG,
   decodeRuntimeConfig,
@@ -509,6 +510,7 @@ const layerScheduledTaskWebhookOrigin = Layer.effect(
 
 const layerOrchestrationV2Runtime = RuntimeLayer.layerProduction.pipe(
   Layer.provide(layerScheduledTaskWebhookOrigin),
+  Layer.provide(StoreOwner.layer),
   Layer.provide(ProviderEventIngestor.layerAnalytics),
   Layer.provide(layerCheckpointStore),
   Layer.provide(layerGitWorkflow),

@@ -57,6 +57,7 @@ import {
   renderWebhookPrompt,
   type WebhookRequest,
 } from "./webhookTemplate.ts";
+import { ScheduledTaskStoreOwner } from "./StoreOwner.ts";
 import { constantTimeEquals, verifyWebhookSignature } from "./webhookVerification.ts";
 
 /** Path prefix of the environment route that receives webhook requests. */
@@ -953,8 +954,9 @@ export const layer = Layer.effect(
     // and run_count must count the attempt — otherwise the first poll after
     // every restart re-fires the interrupted task (same rationale as
     // releaseStuckRun). Schedules are JSON, so this is per-row Effect work
-    // rather than a single UPDATE.
-    yield* Effect.gen(function* () {
+    // rather than a single UPDATE. Only the store owner may run this: a second
+    // server on the same store would otherwise fail the owner's live runs.
+    const recoverInterruptedRuns = Effect.gen(function* () {
       const rows = yield* selectAllRows();
       const stuck = rows.filter((row) => row.last_run_status === "running");
       if (stuck.length === 0) return;
@@ -1001,7 +1003,19 @@ export const layer = Layer.effect(
       ),
     );
 
-    yield* scheduler.register("scheduled-tasks", runDueTasks());
+    // Several servers can share one task store (desktop plus boot service).
+    // Only the lock holder recovers interrupted runs and fires due work; the
+    // others check again on every tick and take over if the owner exits.
+    const isStoreOwner = yield* ScheduledTaskStoreOwner;
+    const recovered = yield* Ref.make(false);
+    yield* scheduler.register(
+      "scheduled-tasks",
+      Effect.gen(function* () {
+        if (!(yield* isStoreOwner)) return;
+        if (!(yield* Ref.getAndSet(recovered, true))) yield* recoverInterruptedRuns;
+        yield* runDueTasks();
+      }),
+    );
 
     const list: ScheduledTaskService["Service"]["list"] = () =>
       listRows().pipe(

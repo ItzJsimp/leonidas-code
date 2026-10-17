@@ -1,3 +1,4 @@
+import { ScheduledTaskStoreOwner } from "./StoreOwner.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as NodeUtil from "node:util";
 
@@ -348,6 +349,55 @@ it.effect(
           }
           yield* Deferred.succeed(releaseLast, undefined);
         }),
+      );
+    }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
+);
+
+it.effect(
+  "does not fire due tasks or recover running rows when another server owns the store",
+  () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const now = "2026-09-09T12:00:00.000Z";
+      yield* insertRow(sql, { id: "stuck", next: now, status: "running", enabled: 1 }, now);
+      yield* insertRow(sql, { id: "due", next: now, status: "never", enabled: 1 }, now);
+      yield* TestClock.setTime(Date.parse(now) + 1_000);
+      const dispatched = yield* Ref.make(0);
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          yield* Layer.build(
+            Layer.provideMerge(
+              ScheduledTaskService.layer,
+              Layer.mergeAll(
+                Layer.mock(ThreadLaunchService.ThreadLaunchService)({
+                  launch: () =>
+                    Ref.update(dispatched, (n) => n + 1).pipe(
+                      Effect.andThen(Effect.die(new Error("must not launch"))),
+                    ),
+                }),
+                Layer.mock(ThreadManagementService.ThreadManagementService)({}),
+                Layer.mock(SecretRequests.SecretRequests)({}),
+                Layer.succeed(ScheduledTaskStoreOwner, Effect.succeed(false)),
+                NodeCrypto.layer,
+                Scheduler.layer,
+              ),
+            ),
+          );
+          yield* TestClock.adjust("6 seconds");
+          yield* TestClock.adjust("6 seconds");
+        }),
+      );
+      assert.equal(yield* Ref.get(dispatched), 0);
+      const rows = yield* sql<{
+        task_id: string;
+        last_run_status: string;
+      }>`SELECT task_id, last_run_status FROM scheduled_tasks ORDER BY task_id`;
+      assert.deepEqual(
+        rows.map((row) => [row.task_id, row.last_run_status]),
+        [
+          ["due", "never"],
+          ["stuck", "running"],
+        ],
       );
     }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
 );
