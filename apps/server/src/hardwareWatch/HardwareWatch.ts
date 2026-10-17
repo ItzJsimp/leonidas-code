@@ -245,7 +245,9 @@ const make = Effect.gen(function* () {
     bootedAt: Date.now() - NodeOS.uptime() * 1000,
   });
   const inventoryRef = yield* Ref.make<HardwareInventory>(basicInventory(host(), Date.now()));
-  const volumesRef = yield* Ref.make<VolumeRef[]>(windows ? [] : [{ mount: "/", label: null }]);
+  const volumesRef = yield* Ref.make<VolumeRef[]>(
+    windows ? [] : [{ mount: "/", label: null, mediaType: "unknown" as const }],
+  );
   const inventoryLoaded = yield* Ref.make(false);
   const inventoryLock = yield* Semaphore.make(1);
   const powershell = (script: string) =>
@@ -392,6 +394,7 @@ const make = Effect.gen(function* () {
       samples.push({
         mount: volume.mount,
         label: volume.label,
+        mediaType: volume.mediaType,
         usedBytes: total - free,
         totalBytes: total,
       });
