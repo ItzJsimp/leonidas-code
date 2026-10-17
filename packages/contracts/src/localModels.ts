@@ -134,6 +134,35 @@ export const LocalModelsPickResult = Schema.Struct({
 });
 export type LocalModelsPickResult = typeof LocalModelsPickResult.Type;
 
+export const LocalModelsTokenReportInput = Schema.Struct({
+  days: Schema.Literals([7, 30]),
+});
+export type LocalModelsTokenReportInput = typeof LocalModelsTokenReportInput.Type;
+
+const TokenReportClass = Schema.Struct({
+  turns: NonNegativeInt,
+  inputTokens: NonNegativeInt,
+  outputTokens: NonNegativeInt,
+});
+
+/** Counts and class names only. It never holds message text. */
+export const LocalModelsTokenReport = Schema.Struct({
+  days: Schema.Literals([7, 30]),
+  turns: NonNegativeInt,
+  inputTokens: NonNegativeInt,
+  outputTokens: NonNegativeInt,
+  classes: Schema.Struct({
+    /** Short turns with no tool calls: a local model could take them. */
+    shortAnswer: TokenReportClass,
+    keepCloud: TokenReportClass,
+    /** The provider reported no usage. These turns add 0 tokens. */
+    notReported: Schema.Struct({ turns: NonNegativeInt }),
+  }),
+  /** Cost of the local-capable tokens at the list price set by the person. Null without a price. */
+  listPriceSaved: Schema.NullOr(Schema.Number),
+});
+export type LocalModelsTokenReport = typeof LocalModelsTokenReport.Type;
+
 export const LocalModelsActionResult = Schema.Struct({ ok: Schema.Boolean });
 export type LocalModelsActionResult = typeof LocalModelsActionResult.Type;
 
