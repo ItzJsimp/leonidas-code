@@ -152,6 +152,7 @@ const PI_DRIVER_KIND = ProviderDriverKind.make("pi");
 const ACP_REGISTRY_DRIVER_KIND = ProviderDriverKind.make("acpRegistry");
 const OPENCODE_DRIVER_KIND = ProviderDriverKind.make("opencode");
 export const OPENROUTER_DRIVER_KIND = ProviderDriverKind.make("openrouter");
+export const OLLAMA_DRIVER_KIND = ProviderDriverKind.make("ollama");
 
 export const DEFAULT_MODEL = "gpt-6-astra";
 
@@ -186,6 +187,8 @@ export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, strin
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
   [ProviderDriverKind.make("antigravity")]: ANTIGRAVITY_DEFAULT_MODEL,
   [OPENROUTER_DRIVER_KIND]: "openrouter/free",
+  // A real tag. The picker replaces it with the first model Ollama lists.
+  [OLLAMA_DRIVER_KIND]: "gemma4:12b-it-q4_K_M",
 };
 
 /** Per-provider text generation model defaults. */
@@ -225,6 +228,7 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Partial<
   },
   [OPENCODE_DRIVER_KIND]: {},
   [OPENROUTER_DRIVER_KIND]: {},
+  [OLLAMA_DRIVER_KIND]: {},
 };
 
 // ── Provider display names ───────────────────────────────────────────────────
@@ -240,4 +244,5 @@ export const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderDriverKind, string>>
   [PI_DRIVER_KIND]: "Pi",
   [OPENCODE_DRIVER_KIND]: "OpenCode",
   [OPENROUTER_DRIVER_KIND]: "OpenRouter",
+  [OLLAMA_DRIVER_KIND]: "Ollama (local)",
 };

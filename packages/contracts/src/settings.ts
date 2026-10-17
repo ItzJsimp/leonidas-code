@@ -872,6 +872,55 @@ export const OpenRouterSettings = makeProviderSettingsSchema(
 );
 export type OpenRouterSettings = typeof OpenRouterSettings.Type;
 
+export const OllamaSettings = makeProviderSettingsSchema(
+  {
+    enabled: Schema.Boolean.pipe(
+      Schema.withDecodingDefault(Effect.succeed(false)),
+      Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
+    ),
+    baseUrl: TrimmedString.pipe(
+      Schema.withDecodingDefault(Effect.succeed("http://127.0.0.1:11434")),
+      Schema.annotateKey({
+        title: "Ollama address",
+        description:
+          "Where Ollama runs on this computer. The default port is 11434. Pull models with `ollama pull`.",
+        providerSettingsForm: { placeholder: "http://127.0.0.1:11434" },
+      }),
+    ),
+    binaryPath: makeBinaryPathSetting("claude").pipe(
+      Schema.annotateKey({
+        title: "Binary path",
+        description: "Path to the Claude agent CLI runner used by Ollama.",
+        providerSettingsForm: { hidden: true },
+      }),
+    ),
+    homePath: TrimmedString.pipe(
+      Schema.withDecodingDefault(Effect.succeed("")),
+      Schema.annotateKey({
+        title: "Config directory",
+        description: "Isolated config directory for Ollama sessions. Defaults to ~/.claude_ollama.",
+        providerSettingsForm: { hidden: true },
+      }),
+    ),
+    customModels: Schema.Array(CustomModelSetting).pipe(
+      Schema.withDecodingDefault(Effect.succeed([])),
+      Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
+    ),
+    launchArgs: Schema.String.pipe(
+      Schema.withDecodingDefault(Effect.succeed("")),
+      Schema.annotateKey({
+        title: "Launch arguments",
+        description: "Additional CLI arguments passed on session start.",
+        providerSettingsForm: { hidden: true },
+      }),
+    ),
+  },
+  {
+    order: ["baseUrl", "binaryPath", "homePath", "launchArgs"],
+  },
+);
+export type OllamaSettings = typeof OllamaSettings.Type;
+
 /**
  * Antigravity ACP auth methods. Personal and Enterprise open a Google sign-in
  * in the browser. The API key and Agent Platform methods take credentials from
