@@ -1274,6 +1274,11 @@ export interface DesktopBridge {
     getState: () => Promise<{ supported: boolean; openAtLogin: boolean }>;
     setOpenAtLogin: (enabled: boolean) => Promise<{ supported: boolean; openAtLogin: boolean }>;
   };
+  /** Settings → keep running in the background. Optional: older desktop builds lack it. */
+  backgroundMode?: {
+    get: () => Promise<boolean>;
+    set: (enabled: boolean) => Promise<boolean>;
+  };
   /** Settings → `t3` command. Optional: older desktop builds lack it. */
   cliCommand?: {
     getState: () => Promise<DesktopCliCommandState>;

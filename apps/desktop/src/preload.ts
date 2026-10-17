@@ -280,6 +280,10 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     setOpenAtLogin: (enabled: boolean) =>
       ipcRenderer.invoke(IpcChannels.LOGIN_ITEM_SET_CHANNEL, enabled),
   },
+  backgroundMode: {
+    get: () => ipcRenderer.invoke(IpcChannels.BACKGROUND_MODE_GET_CHANNEL),
+    set: (enabled: boolean) => ipcRenderer.invoke(IpcChannels.BACKGROUND_MODE_SET_CHANNEL, enabled),
+  },
   cliCommand: {
     getState: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_GET_STATE_CHANNEL),
     install: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_INSTALL_CHANNEL),

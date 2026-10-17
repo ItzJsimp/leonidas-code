@@ -5,6 +5,7 @@ import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { SkillFoldersEditor } from "./SkillFoldersEditor";
 import { useSkillFoldersMirror } from "./useSkillFoldersMirror";
 import { ResetSectionButton } from "./ResetSectionButton";
+import { BackgroundModeSettings } from "./BackgroundModeSettings";
 import { LoginItemSettings } from "./LoginItemSettings";
 import { ReasoningEffortSettings } from "./ReasoningEffortSettings";
 import { SettingsBackupSettings } from "./SettingsBackupSettings";
@@ -3629,6 +3630,7 @@ export function GeneralSettingsPanel() {
       </FoldedSettingsSection>
 
       <SettingsSection id="about" title="About">
+        <BackgroundModeSettings />
         <LoginItemSettings />
         <SettingsBackupSettings />
         <SettingsRow

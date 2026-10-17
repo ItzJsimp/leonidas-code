@@ -470,6 +470,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["backup restore transfer sync json file share baseline"],
   },
   {
+    id: "keep-running-in-background",
+    title: "Keep running in the background",
+    to: "/settings/general",
+    targetId: "about",
+    desktopOnly: true,
+    searchTerms: ["tray close window scheduled tasks always on headless quit minimize"],
+  },
+  {
     id: "start-with-computer",
     title: "Start with computer",
     to: "/settings/general",
