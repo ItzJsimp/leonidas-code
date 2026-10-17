@@ -2,8 +2,34 @@
 
 Transcription edits a composer draft. It does not submit an agent turn. Audio is
 temporary client input, and only normal message submission sends the resulting
-text. The current implementation transcribes locally on supported iOS devices;
-environment-backed transcription is not implemented.
+text. Supported iOS devices transcribe locally through the shared controller.
+Web and desktop composer dictation use environment-backed Groq transcription.
+
+The web capture path lives in `apps/web/src/components/voice/`. Its server service
+is `apps/server/src/scribe/VoiceDictation.ts`. RPC contracts live in
+`packages/contracts/src/voice.ts`. The Voice wizard step follows AI account setup.
+It includes key setup, a spoken test, and an explicit skip.
+
+The Voice setup checklist opens Groq in the existing preview browser. Each setup
+owns a separate temporary browser thread, including sign-in popups. Closing setup
+waits for an in-flight open, then closes that thread's tabs. Strict Mode generations
+have separate ownership. The preview component loads only when setup opens Groq.
+
+Streamed copy events can supply a key directly. Native guests use clipboard reads
+while setup is open and the parent document has focus. Reads do not overlap; a
+permission failure stops further reads and shows manual paste guidance. Closing,
+unmounting, permission loss, success, or the ten-minute limit stops capture. An
+asynchronous clipboard result cannot save a key after capture closes.
+
+`VoiceKeyStore.ts` uses the OS credential vault, scoped to the host state directory.
+It has no plaintext fallback. `ServerSecretStore` stores file bytes and does not
+provide encryption. Audio is capped at 8 MiB and ten minutes. Groq Whisper produces
+the transcript; a separate cleanup call uses `openai/gpt-oss-20b`. Cleanup failures
+keep the raw transcript. Model availability must be checked before a release.
+
+In-window capture does not replace the always-on Scribe engine or its global hotkey.
+The web capture path currently owns its lifecycle separately from the shared iOS
+controller. Review both paths before extending draft ownership or cancellation.
 
 The [shared controller](../../packages/client-runtime/src/voice-input/controller.ts)
 owns the operation while the client supplies capture and transcription. Preparation

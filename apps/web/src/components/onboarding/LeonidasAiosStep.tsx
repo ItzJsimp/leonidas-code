@@ -27,12 +27,13 @@ import {
   normalizeGoalIds,
 } from "../../onboarding/leonidasSetup.logic";
 import { Button } from "../ui/button";
+import { AiosInterviewForm } from "./AiosInterviewForm";
 import { FolderCheckNotice } from "./FolderCheckNotice";
 import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { ScrollArea } from "../ui/scroll-area";
 
-type AiosMode = "prompt" | "run";
+type AiosMode = "interview" | "prompt" | "run";
 
 export function LeonidasAiosStep({
   environmentId,
@@ -49,8 +50,8 @@ export function LeonidasAiosStep({
   const [chosenMode, setMode] = useState<AiosMode | null>(null);
   const navigate = useNavigate();
   const { canOperate, ensureFolderProject, startChat } = useOnboardingChat(environmentId);
-  // Running it in Leonidas is the easy path, so it leads whenever an agent is connected.
-  const mode = chosenMode ?? (canOperate ? "run" : "prompt");
+  // The typed interview needs no AI account, so it leads. The AI chat stays one click away.
+  const mode = chosenMode ?? "interview";
   const [storedFolder, setStoredFolder] = useLocalStorage(
     AIOS_FOLDER_STORAGE_KEY,
     DEFAULT_AIOS_FOLDER,
@@ -162,7 +163,7 @@ export function LeonidasAiosStep({
               </div>
             </div>
           ) : null}
-          {mode === "run" ? (
+          {mode === "run" || mode === "interview" ? (
             <div className="space-y-2">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1.5">
@@ -186,20 +187,28 @@ export function LeonidasAiosStep({
                   ? "Enter a folder location and a folder name."
                   : `Leonidas Code creates ${folder} if it is missing. ~ means your user folder.`}
               </p>
-              <div className="flex items-center gap-3">
-                <Button
-                  disabled={!canOperate || starting || folder === null}
-                  onClick={() => void checkThenStart()}
-                >
-                  {starting ? <Spinner /> : null}
-                  Start the setup chat
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  {canOperate
-                    ? "Your AI builds the folder with you."
-                    : "Add an AI account first, then come back."}
-                </p>
-              </div>
+              {mode === "interview" ? (
+                <AiosInterviewForm
+                  environmentId={environmentId}
+                  folder={folder}
+                  onDone={onContinue}
+                />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Button
+                    disabled={!canOperate || starting || folder === null}
+                    onClick={() => void checkThenStart()}
+                  >
+                    {starting ? <Spinner /> : null}
+                    Start the setup chat
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {canOperate
+                      ? "Your AI builds the folder with you."
+                      : "Add an AI account first, then come back."}
+                  </p>
+                </div>
+              )}
               {folderNotice ? (
                 <FolderCheckNotice
                   tone={folderNotice.tone}
@@ -218,31 +227,50 @@ export function LeonidasAiosStep({
               ) : null}
             </div>
           ) : null}
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Do you not want a chat? Paste this into PowerShell to create the same folders.
-            </p>
-            <div className="flex items-start justify-between gap-3">
-              <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
-                {folderCommand}
-              </pre>
-              <Button
-                size="compact"
-                variant="outline"
-                onClick={() => noChat.copyToClipboard(folderCommand, undefined)}
-              >
-                {noChat.isCopied ? <CheckIcon /> : <CopyIcon />}
-                {noChat.isCopied ? "Copied" : "Copy"}
-              </Button>
+          {mode !== "interview" ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Do you not want a chat? Paste this into PowerShell to create the same folders.
+              </p>
+              <div className="flex items-start justify-between gap-3">
+                <pre className="min-w-0 flex-1 overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
+                  {folderCommand}
+                </pre>
+                <Button
+                  size="compact"
+                  variant="outline"
+                  onClick={() => noChat.copyToClipboard(folderCommand, undefined)}
+                >
+                  {noChat.isCopied ? <CheckIcon /> : <CopyIcon />}
+                  {noChat.isCopied ? "Copied" : "Copy"}
+                </Button>
+              </div>
             </div>
+          ) : null}
+          <div className="flex flex-wrap gap-x-3">
+            {mode === "interview" ? (
+              <Button
+                size="xs"
+                variant="ghost-muted"
+                onClick={() => setMode(canOperate ? "run" : "prompt")}
+              >
+                Build it with AI instead
+              </Button>
+            ) : (
+              <>
+                <Button size="xs" variant="ghost-muted" onClick={() => setMode("interview")}>
+                  Answer the questions myself
+                </Button>
+                <Button
+                  size="xs"
+                  variant="ghost-muted"
+                  onClick={() => setMode(mode === "run" ? "prompt" : "run")}
+                >
+                  {mode === "run" ? "Copy the setup message for another AI" : "Use the setup chat"}
+                </Button>
+              </>
+            )}
           </div>
-          <Button
-            size="xs"
-            variant="ghost-muted"
-            onClick={() => setMode(mode === "run" ? "prompt" : "run")}
-          >
-            {mode === "run" ? "Copy the setup message for another AI" : "Go back to the setup chat"}
-          </Button>
         </div>
       </ScrollArea>
       <div className="mt-6 flex items-center justify-between">

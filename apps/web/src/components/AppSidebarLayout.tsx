@@ -61,6 +61,9 @@ import { openCapture } from "./capture/captureStore";
 
 // The legacy sidebar is large and only used when its setting is on.
 const LegacyThreadSidebar = lazy(() => import("./LegacySidebar"));
+const GuidanceCoach = lazy(() =>
+  import("./onboarding/GuidanceCoach").then((module) => ({ default: module.GuidanceCoach })),
+);
 
 const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "var(--desktop-window-controls-inset, 90px)";
 
@@ -351,6 +354,9 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           ) : (
             <ThreadSidebar />
           )}
+          <Suspense fallback={null}>
+            <GuidanceCoach />
+          </Suspense>
           <SidebarRail onDoubleClick={resetSidebarWidth} />
         </Sidebar>
         {children}

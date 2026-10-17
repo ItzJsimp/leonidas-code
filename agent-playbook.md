@@ -47,6 +47,9 @@ verified: 2026-10-11
 
 ## 5. Gotchas (the ones that bite first)
 
+- **Voice keys:** `VoiceKeyStore.ts` uses the OS credential vault. `ServerSecretStore` does not encrypt file bytes.
+- **Capture paths:** web dictation lives in `components/voice/`; iOS uses `packages/client-runtime/src/voice-input/controller.ts`. Check both before adding capture logic.
+
 Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.md). Search it before touching updater, release, rebrand, worktree, build-preflight or quota code.
 
 - **`gh` defaults to upstream in this fork:** `gh release list` with no `-R` reads `pingdotgg/t3code`. Always pass `-R ItzJsimp/leonidas-code`.
@@ -76,9 +79,12 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 - **2026-10-16:** Opt-in usage analytics slice 1 (`apps/web/src/lib/usageAnalytics/`, `components/usageAnalytics/`, commit `24d1511edc`): PostHog EU, random install ID, consent dialog, 5 events. Key via `VITE_POSTHOG_KEY` (`apps/web/.env.local`, CI var `POSTHOG_PROJECT_KEY`). Browser panel default profile shows a blank page (HTTP 431); use the incognito profile. Slice 2 plan: `handoff-docs/2026-10-16-usage-analytics-slice-2.md`.
 - **2026-10-15:** Providers page is now accounts grouped by service (`ProviderAccountGroups.tsx`, `providerAccounts.logic.ts`); the full editor opens only in the Settings sheet. Claude installs from `ClaudeInstallation.ts` (official installer) and the driver also searches `~/.local/bin`. Mint a dev pairing token with `node apps/server/src/bin.ts auth pairing create --base-dir <home> --json`.
 - **2026-10-15:** Task completion celebration slice 1: `TaskBoardService.completions` (last 20, `SubscriptionRef`) streams over `taskBoard.subscribeCompletions` to `apps/web/src/components/taskCelebration/`. Board writes announce in `persist`; AIOS card writes announce in `cardUpdate`. Hand edits to card files do not announce yet. A toast lasts 2.5 s: verify it with a MutationObserver on `[aria-label=Notifications]` (the region has no `role` attribute).
+- **2026-10-15 (voice):** Composer dictation and the Voice wizard step are in `6528b9c958`. Ten synthetic takes reached the real composer. Real audio, embedded Groq browsing, AI levels, and the coach remain open. See [voice input](./docs/internals/voice-input.md).
+
 - **2026-10-15:** Task board reader (`readAiosTasks`, `aiosCards.ts`) also reads `projects/<slug>/<child>/tasks` when `<child>` has its own `.git` (Goo Busters GB cards). GB words `doing`, `later`, `cut` and priority `P0` to `P3` map in `statusFromCard` and `priorityFromCard`. `findCardFile` searches the game repo, and `applyCardPatch` writes GB words (`doing`, `P0`, unquoted) for cards with `owner` and `system`.
 
 In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
+
 - **2026-10-15:** Main checkout `node_modules` had no `.bin`; a `pnpm install` there is blocked by `scripts/guard-main-install.mjs`. Install and commit from a worktree under `C:/lcw` (2.5 minutes). The preview pairing token is one-time: pair once, then click, do not navigate by URL.
   In [project/agent-gotchas.md](./project/agent-gotchas.md); older ones in [project/session-notes-archive.md](./project/session-notes-archive.md).
 

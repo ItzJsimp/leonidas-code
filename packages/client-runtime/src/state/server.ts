@@ -1129,6 +1129,22 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:trace-diagnostics",
       tag: WS_METHODS.serverGetTraceDiagnostics,
     }),
+    voiceStatus: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "voice:status",
+      tag: WS_METHODS.voiceGetStatus,
+    }),
+    setVoiceKey: createEnvironmentRpcCommand(runtime, {
+      label: "voice:setVoiceKey",
+      tag: WS_METHODS.voiceSetGroqKey,
+    }),
+    clearVoiceKey: createEnvironmentRpcCommand(runtime, {
+      label: "voice:clearVoiceKey",
+      tag: WS_METHODS.voiceClearGroqKey,
+    }),
+    transcribeVoice: createEnvironmentRpcCommand(runtime, {
+      label: "voice:transcribeVoice",
+      tag: WS_METHODS.voiceTranscribe,
+    }),
     scribeStatus: createEnvironmentQueryAtomFamily(runtime, {
       label: "environment-data:scribe:status",
       idleTtlMs: 0,

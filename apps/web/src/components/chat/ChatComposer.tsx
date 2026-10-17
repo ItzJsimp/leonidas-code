@@ -1,5 +1,6 @@
 import { cacheActionImpact } from "@t3tools/client-runtime/cache-awareness";
 import { CacheConfigurationNotice, useCacheActionWarning } from "./CacheAwareness";
+import { ComposerVoiceButton } from "../voice/ComposerVoiceButton";
 import { useBenchmarkRouteProfiles } from "../../lib/useBenchmarkRouteProfiles";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { usePromptPrediction } from "./usePromptPrediction";
@@ -8084,6 +8085,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       />
                     </>
                   ) : null}
+                  <ComposerVoiceButton
+                    key={`${environmentId}:${activeThreadId ?? draftId}`}
+                    environmentId={environmentId}
+                    disabled={!canOperateThread || isConnecting || pendingUserInputs.length > 0}
+                    onText={(text) =>
+                      insertComposerText(text, "cursor", { ensureLeadingBoundary: true })
+                    }
+                  />
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
