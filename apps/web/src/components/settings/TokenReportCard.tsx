@@ -44,7 +44,7 @@ export function TokenReportCard({ environmentId }: { environmentId: EnvironmentI
             size="xs"
             variant={days === 7 ? "default" : "outline"}
             disabled={checking}
-            onClick={() => setDays(7)}
+            onClick={() => void check(7)}
           >
             7 days
           </Button>
@@ -52,7 +52,7 @@ export function TokenReportCard({ environmentId }: { environmentId: EnvironmentI
             size="xs"
             variant={days === 30 ? "default" : "outline"}
             disabled={checking}
-            onClick={() => setDays(30)}
+            onClick={() => void check(30)}
           >
             30 days
           </Button>
