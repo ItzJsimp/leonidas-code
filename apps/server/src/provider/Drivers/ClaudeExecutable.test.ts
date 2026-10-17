@@ -151,9 +151,9 @@ describe("withClaudeUserBinOnPath", () => {
 });
 
 describe("resolveInstalledClaudeBinary", () => {
-  const installed = "C:\Users\dev\.local\bin\claude.exe";
+  const installed = String.raw`C:\Users\dev\.local\bin\claude.exe`;
   const options = {
-    home: "C:\Users\dev",
+    home: String.raw`C:\Users\dev`,
     platform: "win32" as const,
     isFile: (filePath: string) => filePath === installed,
   };
@@ -169,9 +169,8 @@ describe("resolveInstalledClaudeBinary", () => {
   });
 
   it("never rewrites an explicit path or another command", () => {
-    expect(resolveInstalledClaudeBinary("D:\tools\claude.exe", options)).toBe(
-      "D:\tools\claude.exe",
-    );
+    const explicit = String.raw`D:\tools\claude.exe`;
+    expect(resolveInstalledClaudeBinary(explicit, options)).toBe(explicit);
     expect(resolveInstalledClaudeBinary("other", options)).toBe("other");
   });
 });
