@@ -1365,15 +1365,26 @@ const layerWsRpc = (
       yield* spawnApprovals.keepStatsIn(`${config.stateDir}/subagent-stats.json`);
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
       const systemCare = yield* SystemCare.SystemCare;
-      const studioWriteScope = Effect.gen(function* () {
-        const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
-        const aiosRoot = yield* taskBoard.aiosRoot(projects);
-        const appFreeModels = yield* serverSettings.getSettings.pipe(
-          Effect.map((settings) => settings.subagentFreeTierModels),
-          Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
-        );
-        return { aiosRoot, projects, appFreeModels };
-      });
+      // Studio writes see only the request's workspace: its root and the projects inside it.
+      const studioWriteScope = (workspaceId: string | undefined) =>
+        Effect.gen(function* () {
+          const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+          const aiosRoot = yield* taskBoard.aiosRoot(allProjects, workspaceId);
+          if (workspaceId !== undefined && aiosRoot === null) {
+            return yield* new SubagentEditError({ message: "That workspace is not available." });
+          }
+          const projects =
+            workspaceId === undefined
+              ? allProjects
+              : allProjects.filter(
+                  (project) => aiosRoot !== null && isPathInRoot(aiosRoot, project.workspaceRoot),
+                );
+          const appFreeModels = yield* serverSettings.getSettings.pipe(
+            Effect.map((settings) => settings.subagentFreeTierModels),
+            Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
+          );
+          return { aiosRoot, projects, appFreeModels };
+        });
 
       const withTaskBoardProject = <A, E, R>(
         projectId: ProjectId,
@@ -2870,7 +2881,7 @@ const layerWsRpc = (
           }),
         [WS_METHODS.subagentsUpdate]: (input) =>
           Effect.gen(function* () {
-            const scope = yield* studioWriteScope;
+            const scope = yield* studioWriteScope(input.workspaceId);
             return yield* Effect.try({
               try: () => updateStudioSubagent(scope, input),
               catch: (error) =>
@@ -2881,7 +2892,7 @@ const layerWsRpc = (
           }),
         [WS_METHODS.subagentsCreate]: (input) =>
           Effect.gen(function* () {
-            const scope = yield* studioWriteScope;
+            const scope = yield* studioWriteScope(input.workspaceId);
             return yield* Effect.try({
               try: () => createStudioSubagent(scope, input),
               catch: (error) =>

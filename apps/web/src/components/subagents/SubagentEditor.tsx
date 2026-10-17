@@ -11,6 +11,8 @@ import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { subagentUpdate } from "~/state/subagents";
+import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
+import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { modelDisplayName } from "./spawnApproval.logic";
 import {
@@ -65,7 +67,11 @@ export function SubagentEditor(props: {
     setError(null);
     const result = await update({
       environmentId: props.environmentId,
-      input: { specPath: entry.specPath, patch },
+      input: {
+        ...workspaceScopeInput(activeWorkspaceId(props.environmentId)),
+        specPath: entry.specPath,
+        patch,
+      },
     });
     setBusy(false);
     if (result._tag === "Success") return props.onDone();

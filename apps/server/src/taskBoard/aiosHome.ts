@@ -36,7 +36,7 @@ export function readBrief(
   } catch {
     return null;
   }
-  if (file === undefined) return null;
+  if (file === undefined || !isRealPathInside(root, NodePath.join(dir, file))) return null;
   let text: string;
   try {
     text = NodeFS.readFileSync(NodePath.join(dir, file), "utf8");

@@ -19,6 +19,8 @@ import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
 import { SUBAGENT_STARTERS } from "~/onboarding/subagentStarters";
 import { subagentCreate } from "~/state/subagents";
+import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
+import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { writeFailureMessage } from "./SubagentEditor";
 import { newSubagentDestinations, slugifySubagentName } from "./subagentEdit.logic";
@@ -59,6 +61,7 @@ export function NewSubagentDialog(props: {
     const result = await create({
       environmentId: props.environmentId,
       input: {
+        ...workspaceScopeInput(activeWorkspaceId(props.environmentId)),
         name,
         contents: starter.contents,
         destination:

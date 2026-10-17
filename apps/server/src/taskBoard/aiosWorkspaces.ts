@@ -64,11 +64,15 @@ export function writeWorkspaceFile(
 ): AiosWorkspaceState {
   const parsed = parseWorkspaceFile({ ...input, schemaVersion: SCHEMA_VERSION });
   if (typeof parsed === "string") throw new Error(parsed);
-  NodeFS.writeFileSync(
-    NodePath.join(root, WORKSPACE_FILE),
-    `${JSON.stringify(parsed, null, 2)}\n`,
-    "utf8",
-  );
+  const target = NodePath.join(root, WORKSPACE_FILE);
+  let existing: NodeFS.Stats | undefined;
+  try {
+    existing = NodeFS.lstatSync(target);
+  } catch {
+    // No file yet: the normal setup case.
+  }
+  if (existing && !existing.isFile()) throw new Error("workspace.json is not a regular file.");
+  NodeFS.writeFileSync(target, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
   return readWorkspaceFile(root);
 }
 
@@ -111,8 +115,9 @@ export function listAiosWorkspaces(
 
 /**
  * The root for a workspace id. An id that matches no ready workspace resolves to null, never to
- * another workspace. With no id, the first ready workspace wins; an install with no workspace
- * file yet keeps its first root until the setup prompt writes one.
+ * another workspace. With no id, the first listed root wins (the confirmed folder, then the env
+ * folder), ready or not, so a broken workspace file never moves default writes into another
+ * workspace.
  */
 export function resolveWorkspaceRoot(
   workspaces: ReadonlyArray<AiosWorkspaceState>,
@@ -124,11 +129,7 @@ export function resolveWorkspaceRoot(
     );
     return match?.root ?? null;
   }
-  return (
-    workspaces.find((workspace) => workspace.status === "ready")?.root ??
-    workspaces[0]?.root ??
-    null
-  );
+  return workspaces[0]?.root ?? null;
 }
 
 /** True when `path` (a project folder) is `root` or inside it, after links resolve. */

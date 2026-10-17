@@ -90,8 +90,16 @@ describe("listAiosWorkspaces and resolveWorkspaceRoot", () => {
     const list = listAiosWorkspaces([a, b]);
     expect(resolveWorkspaceRoot(list, "b")).toBe(b);
     expect(resolveWorkspaceRoot(list, "missing-id")).toBeNull();
-    // No id: the first ready workspace, so a single-AIOS install keeps working.
+    // No id: the first listed root, so a single-AIOS install keeps working.
     expect(resolveWorkspaceRoot(list, undefined)).toBe(a);
+  });
+
+  it("keeps the first listed root as the default even when its file is broken", () => {
+    const personal = makeAios("P", "{ broken");
+    const business = makeAios("B", { id: "b", name: "B", type: "business", schemaVersion: 1 });
+    expect(resolveWorkspaceRoot(listAiosWorkspaces([personal, business]), undefined)).toBe(
+      personal,
+    );
   });
 
   it("falls back to the first root when no workspace is set up yet", () => {
@@ -125,6 +133,15 @@ describe("writeWorkspaceFile", () => {
     });
     expect(readWorkspaceFile(root)).toEqual(written);
     expect(() => writeWorkspaceFile(root, { id: "../x", name: "X", type: "personal" })).toThrow();
+  });
+
+  it("refuses to write workspace.json through a link", () => {
+    const root = makeAios("linked");
+    const outside = NodePath.join(temp, "outside.json");
+    NodeFS.writeFileSync(outside, "{}");
+    NodeFS.symlinkSync(outside, NodePath.join(root, "workspace.json"), "file");
+    expect(() => writeWorkspaceFile(root, { id: "x", name: "X", type: "personal" })).toThrow();
+    expect(NodeFS.readFileSync(outside, "utf8")).toBe("{}");
   });
 });
 
