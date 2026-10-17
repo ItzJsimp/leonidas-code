@@ -285,6 +285,9 @@ import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { SidebarProjectRail } from "./sidebar/SidebarProjectRail";
+import { scopeToWorkspace } from "./workspace/aiosWorkspace.logic";
+import { useActiveAiosWorkspace } from "./workspace/useActiveAiosWorkspace";
+import { WorkspaceSwitcher } from "./workspace/WorkspaceSwitcher";
 import {
   projectHasCustomIcon,
   SidebarProjectIconEditor,
@@ -2578,9 +2581,28 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
 });
 
 export default function Sidebar() {
-  const projects = useProjects();
+  const allProjects = useProjects();
   const projectOrder = useUiStateStore((store) => store.projectOrder);
-  const threads = useThreadShells();
+  const allThreads = useThreadShells();
+  // ADR-0080: the sidebar lists only the active AIOS workspace's projects and threads.
+  const aiosWorkspace = useActiveAiosWorkspace();
+  const { projects, threads } = useMemo(
+    () =>
+      scopeToWorkspace({
+        environmentId: aiosWorkspace.environmentId,
+        workspaces: aiosWorkspace.workspaces,
+        active: aiosWorkspace.active,
+        projects: allProjects,
+        threads: allThreads,
+      }),
+    [
+      aiosWorkspace.environmentId,
+      aiosWorkspace.workspaces,
+      aiosWorkspace.active,
+      allProjects,
+      allThreads,
+    ],
+  );
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
@@ -5310,6 +5332,7 @@ export default function Sidebar() {
     <>
       <ThreadContextDragGhost />
       <SidebarChromeHeader isElectron={isElectron} />
+      <WorkspaceSwitcher />
       <div className="flex min-h-0 flex-1">
         {sidebarView.showRail && projectGroups.length > 1 ? (
           <SidebarProjectRail

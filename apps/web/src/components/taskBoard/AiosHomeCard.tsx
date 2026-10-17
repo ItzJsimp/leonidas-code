@@ -7,6 +7,7 @@ import { cn } from "~/lib/utils";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardHomeQuery } from "~/state/taskBoard";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 
 const localDate = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -14,8 +15,9 @@ const localDate = (date = new Date()) =>
 /** The AIOS Home: one next move, today's brief priorities and open-task counts. Reads files only. */
 export function AiosHomeCard() {
   const environmentId = usePrimaryEnvironmentId();
+  const { scope, scopeReady } = useActiveAiosWorkspace();
   const home = useEnvironmentQuery(
-    environmentId ? taskBoardHomeQuery({ environmentId, input: {} }) : null,
+    environmentId && scopeReady ? taskBoardHomeQuery({ environmentId, input: scope }) : null,
   );
   const { data, error, refresh } = home;
 
