@@ -970,16 +970,23 @@ function ConnectedAgentsStep({
                   !readEnvironmentScope(environmentId, AuthTerminalOperateScope)
                 )
                   return;
+                // After a Claude install in the terminal, the app signs in by itself.
+                if (!provider.installed) setClaudeInstallStarted(true);
                 setTerminalSession({
                   environmentId,
                   driver,
                   providerInstanceId: provider.instanceId,
                   cwd: serverConfig.cwd,
-                  command: resolveOnboardingProviderLoginCommand(
-                    provider,
-                    serverConfig.settings,
-                    serverConfig.environment.platform.os,
-                  ),
+                  command: provider.installed
+                    ? resolveOnboardingProviderLoginCommand(
+                        provider,
+                        serverConfig.settings,
+                        serverConfig.environment.platform.os,
+                      )
+                    : resolveOnboardingProviderInstallCommand(
+                        driver,
+                        serverConfig.environment.platform.os,
+                      ),
                   keybindings: serverConfig.keybindings,
                 });
               }}

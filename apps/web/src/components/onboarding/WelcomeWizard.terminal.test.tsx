@@ -258,6 +258,9 @@ let renderer: ReactTestRenderer | undefined;
 function button(label: string) {
   return renderer!.root.findAllByType("button").find((node) => text(node) === label)!;
 }
+function hasButton(label: string) {
+  return renderer!.root.findAllByType("button").some((node) => text(node) === label);
+}
 async function click(label: string) {
   const node = button(label);
   expect(node).toBeDefined();
@@ -338,7 +341,7 @@ describe("welcome agent terminal setup", () => {
   it("disables both setup actions for the paired read-only connection and preserves local completion", async () => {
     setAccess(remoteId, false);
     await enterRemoteAgents();
-    expect(button("Install").props.disabled).toBe(true);
+    expect(hasButton("Use a terminal instead")).toBe(false);
     expect(button("Sign in").props.disabled).toBe(true);
     expect(text(renderer!.root)).toContain(
       "This connection cannot use the terminal. Connect to a different computer.",
@@ -346,7 +349,6 @@ describe("welcome agent terminal setup", () => {
     expect(text(renderer!.root)).toContain("No AI is ready yet.");
     expect(button("Continue without an AI")).toBeDefined();
     await act(async () => {
-      button("Install").props.onClick();
       button("Sign in").props.onClick();
     });
     expect(state.open).not.toHaveBeenCalled();
@@ -363,15 +365,15 @@ describe("welcome agent terminal setup", () => {
   it("rejects a retained install action after revocation and allows a terminal-only regrant", async () => {
     setAccess(primaryId, false);
     await enterRemoteAgents();
-    const install = button("Install").props.onClick;
+    const install = button("Use a terminal instead").props.onClick;
     await act(async () => {
       setAccess(remoteId, false);
       install();
     });
     expect(state.open).not.toHaveBeenCalled();
-    expect(button("Install").props.disabled).toBe(true);
+    expect(hasButton("Use a terminal instead")).toBe(false);
     await act(async () => setAccess(remoteId, true));
-    expect(button("Install").props.disabled).toBe(false);
+    expect(button("Use a terminal instead").props.disabled).toBe(false);
     await act(async () => install());
     expect(state.open).toHaveBeenCalledExactlyOnceWith({
       environmentId: remoteId,
@@ -431,7 +433,7 @@ describe("welcome agent terminal setup", () => {
   it("checks access when a queued retry starts and recovers after regrant", async () => {
     state.open.mockResolvedValueOnce(AsyncResult.failure(Cause.fail(new Error("Could not open"))));
     await enterRemoteAgents();
-    await click("Install");
+    await click("Use a terminal instead");
     const closing = deferred<CommandResult>();
     state.close.mockReturnValueOnce(closing.promise);
     await click("Retry");
@@ -455,7 +457,7 @@ describe("welcome agent terminal setup", () => {
     const opening = deferred<CommandResult>();
     state.open.mockReturnValueOnce(opening.promise);
     await enterRemoteAgents();
-    await click("Install");
+    await click("Use a terminal instead");
     await act(async () => {
       setAccess(remoteId, false);
       opening.resolve(AsyncResult.success(undefined));
@@ -508,7 +510,7 @@ describe("welcome agent terminal setup", () => {
     const writing = deferred<CommandResult>();
     state.write.mockReturnValueOnce(writing.promise);
     await enterRemoteAgents();
-    await click("Install");
+    await click("Use a terminal instead");
     await click("Back");
     expect(state.close).not.toHaveBeenCalled();
     await act(async () => {
