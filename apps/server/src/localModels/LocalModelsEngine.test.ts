@@ -36,6 +36,7 @@ function makeEngine(
     down?: boolean;
     pullLines?: string[];
     capacity?: typeof capacity;
+    psSizes?: { size: number; size_vram: number };
   } = {},
 ) {
   const calls: Call[] = [];
@@ -51,7 +52,12 @@ function makeEngine(
     if (url.endsWith("/api/tags")) return Response.json({ models: installed });
     if (url.endsWith("/api/ps"))
       return Response.json({
-        models: [{ name: "gemma4:12b-it-q4_K_M", size: 9 * GB, size_vram: 8 * GB }],
+        models: [
+          {
+            name: "gemma4:12b-it-q4_K_M",
+            ...(options.psSizes ?? { size: 9 * GB, size_vram: 8 * GB }),
+          },
+        ],
       });
     if (url.endsWith("/api/pull")) {
       const lines = options.pullLines ?? [];
@@ -137,6 +143,32 @@ describe("LocalModelsEngine fit with a loaded model", () => {
     await engine.refresh();
     const gemma = engine.snapshot().rows.find((r) => r.id === "gemma4:12b-it-q4_K_M")!;
     expect(gemma.loaded).toBe(true);
+    expect(gemma.fit).toBe("fits");
+  });
+});
+
+describe("LocalModelsEngine fit when /api/ps reports a wrong size", () => {
+  it("uses the installed file size for a loaded model", async () => {
+    const busy = computeLocalModelCapacity({
+      cpuThreads: 24,
+      memory: { totalBytes: 64 * GB, usedBytes: 29 * GB },
+      gpus: [
+        {
+          name: "NVIDIA RTX 4070",
+          vendor: "NVIDIA",
+          vramTotalBytes: 12 * GB,
+          vramUsedBytes: 10.5 * GB,
+        },
+      ],
+      volumes: [{ mount: "C:", mediaType: "ssd", usedBytes: 860 * GB, totalBytes: 930 * GB }],
+    });
+    // Ollama 0.40.5 reports 0.9 GB for a model that holds more than 7 GB.
+    const { engine } = makeEngine({
+      capacity: busy,
+      psSizes: { size: 0.9 * GB, size_vram: 0.9 * GB },
+    });
+    await engine.refresh();
+    const gemma = engine.snapshot().rows.find((r) => r.id === "gemma4:12b-it-q4_K_M")!;
     expect(gemma.fit).toBe("fits");
   });
 });

@@ -82,14 +82,24 @@ describe("parsePullLine", () => {
 });
 
 describe("releaseLoadedModels", () => {
+  const busy = computeLocalModelCapacity({
+    ...input,
+    gpus: [
+      { name: "NVIDIA RTX 4070", vendor: "NVIDIA", vramTotalBytes: 12 * GB, vramUsedBytes: 9 * GB },
+    ],
+  });
   it("returns the same capacity when nothing is loaded", () => {
-    expect(releaseLoadedModels(capacity, [])).toBe(capacity);
+    expect(releaseLoadedModels(busy, [])).toBe(busy);
   });
   it("adds loaded VRAM to both budgets and loaded RAM to the offload budget", () => {
-    const released = releaseLoadedModels(capacity, [{ sizeBytes: 10 * GB, vramBytes: 8 * GB }]);
-    expect(released.fullGpuBudgetBytes).toBe(capacity.fullGpuBudgetBytes + 8 * GB);
+    const released = releaseLoadedModels(busy, [{ sizeBytes: 10 * GB, vramBytes: 8 * GB }]);
+    expect(released.fullGpuBudgetBytes).toBe(busy.fullGpuBudgetBytes + 8 * GB);
     expect(released.offloadBudgetBytes).toBeCloseTo(
-      capacity.offloadBudgetBytes + 8 * GB + 2 * GB * 0.7,
+      busy.offloadBudgetBytes + 8 * GB + 2 * GB * 0.7,
     );
+  });
+  it("never releases more video memory than is in use", () => {
+    const released = releaseLoadedModels(busy, [{ sizeBytes: 20 * GB, vramBytes: 20 * GB }]);
+    expect(released.fullGpuBudgetBytes).toBe(busy.fullGpuBudgetBytes + 9 * GB);
   });
 });

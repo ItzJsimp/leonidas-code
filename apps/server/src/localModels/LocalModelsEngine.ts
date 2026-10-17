@@ -23,6 +23,8 @@ import { STARTER_MODELS } from "./starterModels.ts";
 /** How long Run keeps the model in memory. Matches the keep-alive of the Ollama setup. */
 const RUN_KEEP_ALIVE = "30m";
 const REQUEST_TIMEOUT_MS = 4_000;
+/** A loaded model also holds a context cache and compute buffers: about 20% on top of the file. */
+const LOADED_VRAM_OVERHEAD = 1.2;
 /** Do not publish a pull progress change more often than this. */
 const PROGRESS_PUBLISH_MS = 500;
 
@@ -120,16 +122,7 @@ export class LocalModelsEngine {
       const psBody: TagsBody = ps.ok ? ((await ps.json()) as TagsBody) : {};
       const loadedEntries = psBody.models ?? [];
       this.loaded = new Set(loadedEntries.flatMap((entry) => modelId(entry) ?? []));
-      this.loadedMemory = loadedEntries.flatMap((entry) =>
-        typeof entry["size"] === "number"
-          ? [
-              {
-                sizeBytes: entry["size"],
-                vramBytes: typeof entry["size_vram"] === "number" ? entry["size_vram"] : 0,
-              },
-            ]
-          : [],
-      );
+      this.loadedMemory = loadedEntries.flatMap((entry) => this.memoryOf(entry));
       this.running = true;
     } catch {
       this.running = false;
@@ -138,6 +131,23 @@ export class LocalModelsEngine {
       this.loadedMemory = [];
     }
     this.deps.onChange();
+  }
+
+  /**
+   * What a loaded model holds. The file size from /api/tags is the truth: /api/ps reports a
+   * wrong size for some models (0.9 GB for a 7 GB model on Ollama 0.40.5). From /api/ps only
+   * the share that sits in video memory is used.
+   */
+  private memoryOf(entry: Record<string, unknown>): ReadonlyArray<LoadedModelMemory> {
+    const id = modelId(entry);
+    const fileSize = this.installed.find((model) => model.id === id)?.sizeBytes ?? null;
+    const psSize = typeof entry["size"] === "number" ? entry["size"] : null;
+    const sizeBytes = fileSize ?? psSize;
+    if (sizeBytes === null) return [];
+    const psVram = typeof entry["size_vram"] === "number" ? entry["size_vram"] : null;
+    const inVram =
+      psSize !== null && psSize > 0 && psVram !== null ? Math.min(1, psVram / psSize) : 1;
+    return [{ sizeBytes, vramBytes: sizeBytes * inVram * LOADED_VRAM_OVERHEAD }];
   }
 
   private modelDrive(): CapacityVolume | null {

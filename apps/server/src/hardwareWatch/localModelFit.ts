@@ -104,10 +104,11 @@ export function releaseLoadedModels(
   let vram = 0;
   let ram = 0;
   for (const model of loaded) {
-    const inVram = Math.min(model.vramBytes, model.sizeBytes);
-    vram += inVram;
-    ram += model.sizeBytes - inVram;
+    vram += model.vramBytes;
+    ram += Math.max(0, model.sizeBytes - model.vramBytes);
   }
+  // Never release more video memory than is in use now.
+  vram = Math.min(vram, capacity.gpu?.vramHeldBytes ?? vram);
   return {
     ...capacity,
     fullGpuBudgetBytes: capacity.fullGpuBudgetBytes + vram,
