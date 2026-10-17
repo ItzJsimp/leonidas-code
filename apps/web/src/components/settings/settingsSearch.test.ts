@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId, STATIC_KEYBINDING_COMMANDS } from "@t3tools/contracts";
+import { DEFAULT_KEYBINDINGS } from "@t3tools/shared/keybindings";
 
 import {
   filterAvailableSettingsSearchItems,
@@ -301,8 +302,12 @@ describe("searchSettings", () => {
   });
 
   it("sends commands without a default binding to the section", () => {
-    expect(searchSettings("thread.stop")[0]).toMatchObject({
-      id: "keybinding-thread.stop",
+    const unbound = STATIC_KEYBINDING_COMMANDS.find(
+      (command) => !DEFAULT_KEYBINDINGS.some((binding) => binding.command === command),
+    );
+    expect(unbound).toBeDefined();
+    expect(searchSettings(unbound!)[0]).toMatchObject({
+      id: `keybinding-${unbound}`,
       targetId: "keybindings",
     });
     expect(searchSettings("sidebar.toggle")[0]?.targetId).toBeUndefined();

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { LIVE_REFRESH_MIN_INTERVAL_MS } from "~/hooks/useLiveRefresh";
 import { act, useLayoutEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -87,7 +88,9 @@ describe("prompt prediction lifecycle", () => {
       _tag: "Success",
       value: [{ text: "Run the tests", count: 2, lastSeen: 1 }],
     });
+    // A refresh is held back for the live refresh floor after the mount read.
     await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_REFRESH_MIN_INTERVAL_MS);
       window.dispatchEvent(new Event("focus"));
     });
     await render({ draft: "Run", messages: [{ role: "assistant", text: "The tests are ready." }] });

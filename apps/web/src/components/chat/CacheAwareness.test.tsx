@@ -108,7 +108,7 @@ describe("cache controls", () => {
     await act(async () => root.render(<CacheNoticeCoordinator />));
     await act(async () => vi.advanceTimersByTime(30_000));
     expect(toasts.add).toHaveBeenCalledTimes(1);
-    expect(toasts.add.mock.calls[0]![0].title).toContain("2 recent chats");
+    expect(toasts.add.mock.calls[0]![0].title).toContain("2 chats");
     await act(async () => vi.advanceTimersByTime(30_000));
     expect(toasts.add).toHaveBeenCalledTimes(1);
     await act(async () => root.unmount());
