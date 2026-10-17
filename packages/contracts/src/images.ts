@@ -125,6 +125,102 @@ export const ImagesSetBaseUrlInput = Schema.Struct({
 });
 export type ImagesSetBaseUrlInput = typeof ImagesSetBaseUrlInput.Type;
 
+/*
+ * Proposed catalog contract (front end only for now). The web Images page reads these
+ * shapes from a mock. The server does not send them yet: see project/images-backend-asks.md.
+ */
+
+export const ImageModelInstallState = Schema.Literals([
+  "not-installed",
+  "installing",
+  "ready",
+  "broken",
+]);
+export type ImageModelInstallState = typeof ImageModelInstallState.Type;
+
+/** How a model fits this PC. "runs-slow" means part of the model moves to normal memory. */
+export const ImageModelFit = Schema.Literals(["runs-well", "runs-slow", "too-big"]);
+export type ImageModelFit = typeof ImageModelFit.Type;
+
+export const ImageNumberRange = Schema.Struct({
+  min: Schema.Number,
+  max: Schema.Number,
+  step: Schema.Number,
+});
+export type ImageNumberRange = typeof ImageNumberRange.Type;
+
+export const ImageModelDefaults = Schema.Struct({
+  steps: PositiveInt,
+  guidance: Schema.Number,
+  sampler: Schema.String,
+  width: PositiveInt,
+  height: PositiveInt,
+});
+export type ImageModelDefaults = typeof ImageModelDefaults.Type;
+
+export const ImageModelFile = Schema.Struct({
+  name: Schema.String,
+  sizeBytes: NonNegativeInt,
+});
+export type ImageModelFile = typeof ImageModelFile.Type;
+
+export const ImageCatalogModel = Schema.Struct({
+  id: TrimmedNonEmptyString,
+  label: Schema.String,
+  family: Schema.String,
+  sizeBytes: NonNegativeInt,
+  files: Schema.Array(ImageModelFile),
+  state: ImageModelInstallState,
+  /** 0 to 1 while the state is "installing". */
+  installProgress: Schema.NullOr(Schema.Number),
+  /** Graphics memory the model needs to run fully on the card, in bytes. */
+  vramBytes: NonNegativeInt,
+  fit: ImageModelFit,
+  /** Plain words, for example "Needs about 13 GB. Your card has 12 GB." */
+  fitReason: Schema.String,
+  /** Average seconds per image from Recipe files on this PC. Null when no image ran yet. */
+  measuredSeconds: Schema.NullOr(Schema.Number),
+  measuredRuns: NonNegativeInt,
+  /** Guess for this PC when no measured value exists. */
+  estimatedSeconds: Schema.Number,
+  /** Time to load the model before the first image. */
+  loadSeconds: Schema.Number,
+  licenceName: Schema.String,
+  licenceUrl: Schema.NullOr(Schema.String),
+  commercialUse: ImageCommercialUse,
+  /** Date a person checked the licence on the official model card. Null means not verified. */
+  licenceVerifiedOn: Schema.NullOr(Schema.String),
+  sourceUrl: Schema.NullOr(Schema.String),
+  /** True for models we did not test in Leonidas yet. */
+  candidate: Schema.Boolean,
+  tags: Schema.Array(Schema.String),
+  speedTier: Schema.Literals(["fast", "medium", "slow"]),
+  defaults: ImageModelDefaults,
+  ranges: Schema.Struct({ steps: ImageNumberRange, guidance: ImageNumberRange }),
+  samplers: Schema.Array(Schema.String),
+});
+export type ImageCatalogModel = typeof ImageCatalogModel.Type;
+
+/** The PC facts that decide fit. Same source as hardwareWatch/localModelCapacity.ts. */
+export const ImageHardwareFit = Schema.Struct({
+  gpuName: Schema.String,
+  vramBytes: NonNegativeInt,
+  ramBytes: NonNegativeInt,
+  freeDiskBytes: NonNegativeInt,
+});
+export type ImageHardwareFit = typeof ImageHardwareFit.Type;
+
+/** Settings the new Create view sends. All optional: the model default applies. */
+export const ImageGenerateSettings = Schema.Struct({
+  width: Schema.optional(PositiveInt),
+  height: Schema.optional(PositiveInt),
+  steps: Schema.optional(PositiveInt),
+  guidance: Schema.optional(Schema.Number),
+  negativePrompt: Schema.optional(Schema.String),
+  sampler: Schema.optional(Schema.String),
+});
+export type ImageGenerateSettings = typeof ImageGenerateSettings.Type;
+
 export class ImagesError extends Schema.TaggedError<ImagesError>()("ImagesError", {
   reason: Schema.Literals(["project_not_found", "invalid_input", "not_found", "storage"]),
   detail: Schema.optional(Schema.String),
