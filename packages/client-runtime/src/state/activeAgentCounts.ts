@@ -29,7 +29,7 @@ const scoped = (environmentId: string | undefined, instanceId: string) =>
   environmentId ? `${environmentId}:${instanceId}` : instanceId;
 
 /** Running or blocked on the user: the agents occupying an account right now. */
-export function isAgentActive(runtime: ThreadRuntimeSummary | null | undefined): boolean {
+function isAgentActive(runtime: ThreadRuntimeSummary | null | undefined): boolean {
   return runtime?.status === "running" || runtime?.status === "waiting";
 }
 

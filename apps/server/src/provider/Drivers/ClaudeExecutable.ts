@@ -101,7 +101,7 @@ export const resolveClaudeSdkExecutablePath = Effect.fn("resolveClaudeSdkExecuta
  * every platform. The installer adds it to the user PATH, but a server that
  * was already running keeps its old PATH.
  */
-export const claudeUserBinDirectory = (home: string, platform: NodeJS.Platform): string =>
+const claudeUserBinDirectory = (home: string, platform: NodeJS.Platform): string =>
   (platform === "win32" ? NodePath.win32 : NodePath.posix).join(home, ".local", "bin");
 
 /**

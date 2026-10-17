@@ -87,7 +87,7 @@ export function describeComfyError(status: number, body: string): string {
 }
 
 /** Reads the failure reason out of a ComfyUI history entry. */
-export function describeHistoryFailure(entry: HistoryEntry): { cancelled: boolean; text: string } {
+function describeHistoryFailure(entry: HistoryEntry): { cancelled: boolean; text: string } {
   const messages = entry.status?.messages ?? [];
   for (const [kind, data] of messages) {
     if (kind === "execution_interrupted") return { cancelled: true, text: "Stopped." };
@@ -104,7 +104,7 @@ export function describeHistoryFailure(entry: HistoryEntry): { cancelled: boolea
 }
 
 /** Why a call to ComfyUI got no answer. "timeout" means ComfyUI is busy. "unreachable" means nothing listens. */
-export class ComfyConnectionError extends Error {
+class ComfyConnectionError extends Error {
   readonly kind: "timeout" | "unreachable";
 
   constructor(kind: "timeout" | "unreachable", address: string) {
