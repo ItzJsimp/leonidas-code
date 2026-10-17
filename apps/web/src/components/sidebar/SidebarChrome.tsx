@@ -9,6 +9,7 @@ import {
   MessageSquareWarningIcon,
   ScrollTextIcon,
   SettingsIcon,
+  AudioLinesIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { KeybindingCommand } from "@t3tools/contracts";
@@ -267,6 +268,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/usage" });
   }, [isMobile, navigate, setOpenMobile]);
 
+  const handleScribeClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/scribe" });
+  }, [closeMobileSidebar, navigate]);
+
   const handleImagesClick = useCallback(() => {
     closeMobileSidebar();
     void navigate({ to: "/images" });
@@ -328,6 +334,12 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             shortcutCommand="tasks.open"
             tourId="sidebar-tasks"
             onClick={handleTasksClick}
+          />
+          <SidebarUtilityItem
+            icon={<AudioLinesIcon />}
+            label="Scribe"
+            usageId="open_scribe"
+            onClick={handleScribeClick}
           />
           <SidebarUtilityItem
             icon={<MicIcon />}
