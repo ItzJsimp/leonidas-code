@@ -165,6 +165,22 @@ describe("workspace root rules (L3 follow-ups)", () => {
   });
 });
 
+describe("listAiosWorkspaces cache", () => {
+  it("reuses a recent list and reads again after writeWorkspaceFile", () => {
+    const root = makeAios("cached");
+    const other = makeAios("other");
+    expect(listAiosWorkspaces([root])[0]?.status).toBe("missing");
+    NodeFS.writeFileSync(
+      NodePath.join(root, "workspace.json"),
+      JSON.stringify({ id: "cached", name: "Cached", type: "personal", schemaVersion: 1 }),
+    );
+    // An edit outside the app shows after the short cache window.
+    expect(listAiosWorkspaces([root])[0]?.status).toBe("missing");
+    writeWorkspaceFile(other, { id: "other", name: "Other", type: "personal" });
+    expect(listAiosWorkspaces([root])[0]?.status).toBe("ready");
+  });
+});
+
 describe("writeWorkspaceFile", () => {
   it("writes a file that reads back as ready, and refuses a bad id", () => {
     const root = makeAios("new");

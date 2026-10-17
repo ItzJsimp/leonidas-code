@@ -73,6 +73,7 @@ export function writeWorkspaceFile(
   }
   if (existing && !existing.isFile()) throw new Error("workspace.json is not a regular file.");
   NodeFS.writeFileSync(target, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  listCache.clear();
   return readWorkspaceFile(root);
 }
 
@@ -102,6 +103,25 @@ const keyFor = (path: string) => {
  * an AIOS. A root that reuses a ready id is refused, so one id never names two folders.
  */
 export function listAiosWorkspaces(
+  hints: ReadonlyArray<string | undefined>,
+): ReadonlyArray<AiosWorkspaceState> {
+  // One request calls this several times; a short cache keeps disk reads to one per window.
+  const cacheKey = hints.join("\n");
+  const now = performance.now();
+  const cached = listCache.get(cacheKey);
+  if (cached && now - cached.at < KEY_TTL_MS) return cached.workspaces;
+  const workspaces = scanAiosWorkspaces(hints);
+  if (listCache.size > 64) listCache.clear();
+  listCache.set(cacheKey, { workspaces, at: now });
+  return workspaces;
+}
+
+const listCache = new Map<
+  string,
+  { readonly workspaces: ReadonlyArray<AiosWorkspaceState>; readonly at: number }
+>();
+
+function scanAiosWorkspaces(
   hints: ReadonlyArray<string | undefined>,
 ): ReadonlyArray<AiosWorkspaceState> {
   const seen = new Set<string>();
