@@ -208,6 +208,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.localModelsSpeedTest]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsStartOllama]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsAdvice]: AuthOrchestrationReadScope,
+  [WS_METHODS.localModelsCompare]: AuthOrchestrationOperateScope,
+  [WS_METHODS.localModelsComparePick]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsDelete]: AuthOrchestrationOperateScope,
   [WS_METHODS.projectsPromptCandidates]: AuthFilesystemReadScope,
   [WS_METHODS.projectsPredictPrompt]: AuthFilesystemReadScope,

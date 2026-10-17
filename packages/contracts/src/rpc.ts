@@ -85,8 +85,12 @@ import {
 import {
   LocalModelsActionResult,
   LocalModelsAdvice,
+  LocalModelsCompareInput,
+  LocalModelsCompareResult,
   LocalModelsError,
   LocalModelsModelInput,
+  LocalModelsPickInput,
+  LocalModelsPickResult,
   LocalModelsPullInput,
   LocalModelsStartInput,
   LocalModelsState,
@@ -568,6 +572,8 @@ export const WS_METHODS = {
   localModelsSpeedTest: "localModels.speedTest",
   localModelsStartOllama: "localModels.startOllama",
   localModelsAdvice: "localModels.advice",
+  localModelsCompare: "localModels.compare",
+  localModelsComparePick: "localModels.comparePick",
   localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
@@ -1648,6 +1654,18 @@ const WsLocalModelsStartOllamaRpc = Rpc.make(WS_METHODS.localModelsStartOllama, 
 const WsLocalModelsAdviceRpc = Rpc.make(WS_METHODS.localModelsAdvice, {
   payload: LocalModelsStartInput,
   success: LocalModelsAdvice,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsCompareRpc = Rpc.make(WS_METHODS.localModelsCompare, {
+  payload: LocalModelsCompareInput,
+  success: LocalModelsCompareResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsComparePickRpc = Rpc.make(WS_METHODS.localModelsComparePick, {
+  payload: LocalModelsPickInput,
+  success: LocalModelsPickResult,
   error: LocalModelsRpcError,
 });
 
@@ -2780,6 +2798,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsLocalModelsSpeedTestRpc,
   WsLocalModelsStartOllamaRpc,
   WsLocalModelsAdviceRpc,
+  WsLocalModelsCompareRpc,
+  WsLocalModelsComparePickRpc,
   WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,

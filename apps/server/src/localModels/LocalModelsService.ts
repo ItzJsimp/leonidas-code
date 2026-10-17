@@ -8,6 +8,10 @@ import {
   LocalModelsError,
   type LocalModelsActionResult,
   type LocalModelsAdvice,
+  type LocalModelsCompareInput,
+  type LocalModelsCompareResult,
+  type LocalModelsPickInput,
+  type LocalModelsPickResult,
   type LocalModelsModelInput,
   type LocalModelsPullInput,
   type LocalModelsState,
@@ -19,6 +23,7 @@ import * as PubSub from "effect/PubSub";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as NodeChildProcess from "node:child_process";
+import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
@@ -26,6 +31,8 @@ import * as NodePath from "node:path";
 import * as HardwareWatch from "../hardwareWatch/HardwareWatch.ts";
 import { computeLocalModelCapacity } from "../hardwareWatch/localModelCapacity.ts";
 import { DEFAULT_OLLAMA_URL } from "../provider/ollamaModelCatalog.ts";
+import * as ServerConfig from "../config.ts";
+import { ModelCompare } from "./ModelCompare.ts";
 import { readAdvice } from "./modelAdvisor.ts";
 import { LocalModelsEngine, type LocalModelsHardware } from "./LocalModelsEngine.ts";
 
@@ -53,6 +60,12 @@ export class LocalModelsService extends Context.Service<
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
     readonly startOllama: Effect.Effect<LocalModelsActionResult, LocalModelsError>;
     readonly advice: Effect.Effect<LocalModelsAdvice, LocalModelsError>;
+    readonly compare: (
+      input: LocalModelsCompareInput,
+    ) => Effect.Effect<LocalModelsCompareResult, LocalModelsError>;
+    readonly comparePick: (
+      input: LocalModelsPickInput,
+    ) => Effect.Effect<LocalModelsPickResult, LocalModelsError>;
     readonly speedTest: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
@@ -125,6 +138,7 @@ const isLocalModelsError = Schema.is(LocalModelsError);
 
 const make = Effect.gen(function* () {
   const hardwareWatch = yield* HardwareWatch.HardwareWatch;
+  const config = yield* ServerConfig.ServerConfig;
   const changes = yield* PubSub.sliding<void>(1);
   let hardware: LocalModelsHardware | null = null;
 
@@ -164,6 +178,18 @@ const make = Effect.gen(function* () {
       PubSub.publishUnsafe(changes, undefined);
     },
     now: () => Math.round(performance.timeOrigin + performance.now()),
+  });
+
+  const picksFile = NodePath.join(config.stateDir, "local-models", "compare-picks.jsonl");
+  const modelCompare = new ModelCompare({
+    answer: (model, prompt) => engine.answer(model, prompt),
+    random: Math.random,
+    newId: () => NodeCrypto.randomUUID(),
+    now: () => Math.round(performance.timeOrigin + performance.now()),
+    savePick: (line) => {
+      NodeFS.mkdirSync(NodePath.dirname(picksFile), { recursive: true });
+      NodeFS.appendFileSync(picksFile, `${line}\n`);
+    },
   });
 
   const refresh = Effect.andThen(
@@ -235,6 +261,9 @@ const make = Effect.gen(function* () {
     advice: Effect.promise(() =>
       readAdvice(() => Math.round(performance.timeOrigin + performance.now())),
     ),
+    compare: (input) =>
+      Effect.tryPromise({ try: () => modelCompare.compare(input), catch: asError }),
+    comparePick: (input) => Effect.try({ try: () => modelCompare.pick(input), catch: asError }),
     startOllama: action(() => engine.startOllama()),
     speedTest: (input) => action(() => engine.speedTest(input.model)),
     remove: (input) => action(() => engine.remove(input.model)),

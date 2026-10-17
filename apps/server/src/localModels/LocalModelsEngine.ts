@@ -18,6 +18,7 @@ import {
   type LoadedModelMemory,
 } from "../hardwareWatch/localModelFit.ts";
 import { isEmbeddingModel } from "../provider/ollamaModelCatalog.ts";
+import type { ModelAnswer } from "./ModelCompare.ts";
 import { STARTER_MODELS } from "./starterModels.ts";
 
 /** How long Run keeps the model in memory. Matches the keep-alive of the Ollama setup. */
@@ -29,6 +30,8 @@ const LOADED_VRAM_OVERHEAD = 1.2;
 const PROGRESS_PUBLISH_MS = 500;
 /** The speed test asks for this many new tokens. */
 const SPEED_TEST_TOKENS = 200;
+/** A compare answer may be longer, so the two answers can be judged. */
+const ANSWER_TOKENS = 400;
 const SPEED_TEST_PROMPT =
   "Write a TypeScript function that debounces a callback, with a short explanation.";
 
@@ -430,6 +433,46 @@ export class LocalModelsEngine {
       body: JSON.stringify({ model, keep_alive: 0 }),
     });
     await this.refresh();
+  }
+
+  /** Ask one installed model a question and measure the answer speed. */
+  async answer(model: string, prompt: string): Promise<ModelAnswer> {
+    this.requireInstalled(model);
+    const started = this.deps.now();
+    let body: Record<string, unknown>;
+    try {
+      const response = await this.call("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model,
+          prompt,
+          stream: false,
+          keep_alive: RUN_KEEP_ALIVE,
+          options: { num_predict: ANSWER_TOKENS },
+        }),
+        signal: AbortSignal.timeout(10 * 60_000),
+      });
+      if (!response.ok) throw new Error(`Ollama answered ${response.status}.`);
+      body = (await response.json()) as Record<string, unknown>;
+    } catch (cause) {
+      throw new LocalModelsError({
+        reason: "ollama_down",
+        detail: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+    const tokens = body["eval_count"];
+    const nanos = body["eval_duration"];
+    const speed =
+      typeof tokens === "number" && typeof nanos === "number" && nanos > 0 && tokens > 0
+        ? Math.round((tokens / (nanos / 1e9)) * 10) / 10
+        : null;
+    const text = typeof body["response"] === "string" ? body["response"] : "";
+    return {
+      text,
+      tokensPerSecond: speed,
+      seconds: Math.max(0, Math.round((this.deps.now() - started) / 100) / 10),
+    };
   }
 
   /** Generate a short answer and measure the speed of the answer in tokens per second. */

@@ -48,6 +48,16 @@ export const localModelsAdvice = createEnvironmentRpcCommand(connectionAtomRunti
   tag: WS_METHODS.localModelsAdvice,
 });
 
+export const localModelsCompare = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:local-models:compare",
+  tag: WS_METHODS.localModelsCompare,
+});
+
+export const localModelsComparePick = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:local-models:compare-pick",
+  tag: WS_METHODS.localModelsComparePick,
+});
+
 export const localModelsDelete = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:local-models:delete",
   tag: WS_METHODS.localModelsDelete,

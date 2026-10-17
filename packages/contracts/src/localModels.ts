@@ -99,6 +99,41 @@ export const LocalModelsAdvice = Schema.Struct({
 });
 export type LocalModelsAdvice = typeof LocalModelsAdvice.Type;
 
+export const LocalModelsCompareInput = Schema.Struct({
+  prompt: TrimmedNonEmptyString.check(Schema.isMaxLength(4000)),
+  modelA: TrimmedNonEmptyString,
+  modelB: TrimmedNonEmptyString,
+});
+export type LocalModelsCompareInput = typeof LocalModelsCompareInput.Type;
+
+/** One blind answer. The label is "A" or "B"; the model name stays on the server until the pick. */
+export const LocalModelsCompareAnswer = Schema.Struct({
+  label: Schema.Literals(["A", "B"]),
+  text: Schema.String,
+  tokensPerSecond: Schema.NullOr(Schema.Number),
+  seconds: Schema.Number,
+});
+export type LocalModelsCompareAnswer = typeof LocalModelsCompareAnswer.Type;
+
+export const LocalModelsCompareResult = Schema.Struct({
+  compareId: TrimmedNonEmptyString,
+  answers: Schema.Array(LocalModelsCompareAnswer),
+});
+export type LocalModelsCompareResult = typeof LocalModelsCompareResult.Type;
+
+export const LocalModelsPickInput = Schema.Struct({
+  compareId: TrimmedNonEmptyString,
+  pick: Schema.Literals(["A", "B", "tie"]),
+});
+export type LocalModelsPickInput = typeof LocalModelsPickInput.Type;
+
+export const LocalModelsPickResult = Schema.Struct({
+  models: Schema.Struct({ A: Schema.String, B: Schema.String }),
+  /** The model the person picked. Null for a tie. */
+  winner: Schema.NullOr(Schema.String),
+});
+export type LocalModelsPickResult = typeof LocalModelsPickResult.Type;
+
 export const LocalModelsActionResult = Schema.Struct({ ok: Schema.Boolean });
 export type LocalModelsActionResult = typeof LocalModelsActionResult.Type;
 

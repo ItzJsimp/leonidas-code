@@ -19,6 +19,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { SettingsPageContainer, SettingsSection } from "./settingsLayout";
 import { fitView, pullPercent, rowAction, sortRows, speedLabel } from "./localModels.logic";
 import { OllamaAccountNotice } from "./OllamaAccountNotice";
+import { ModelCompareCard } from "./ModelCompareCard";
 import { PcAdvisorCard } from "./PcAdvisorCard";
 import { useLocalModels } from "./useLocalModels";
 
@@ -326,6 +327,10 @@ export function ModelsSettingsPanel() {
                 <>
                   <OllamaAccountNotice environmentId={models.environmentId} />
                   <PcAdvisorCard environmentId={models.environmentId} />
+                  <ModelCompareCard
+                    environmentId={models.environmentId}
+                    installed={rows.filter((row) => row.installed)}
+                  />
                 </>
               ) : null}
               {!state.ollama.running ? (
