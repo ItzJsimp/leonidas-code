@@ -1,5 +1,6 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
+  getProviderReadiness,
   type ProviderInstanceId,
   type EnvironmentId,
   type ProviderDriverKind,
@@ -13,6 +14,10 @@ import {
 } from "@t3tools/shared/autoRouter";
 import { RouteIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
+import { serverEnvironment } from "../../state/server";
+import { useAtomCommand } from "../../state/use-atom-command";
+import { READINESS_DOT } from "./ProviderReadinessControl";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import { Badge } from "../ui/badge";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -94,6 +99,37 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   }, [props.activeInstanceId, props.instanceEntries]);
 
   const activeInstanceId = props.activeInstanceId;
+  const nowMinute = useNowMinute();
+  const readiness = getProviderReadiness(activeEntry?.snapshot, {
+    nowMs: Date.parse(`${nowMinute}:00Z`),
+  });
+  const refresh = useAtomCommand(serverEnvironment.refreshProviders, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  useEffect(() => {
+    if (!props.environmentId || props.triggerLabel !== undefined) return;
+    const environmentId = props.environmentId;
+    let disposed = false;
+    let refreshing = false;
+    async function check() {
+      if (disposed || refreshing || document.visibilityState === "hidden") return;
+      refreshing = true;
+      try {
+        await refresh({ environmentId, input: { instanceId: activeInstanceId } });
+      } finally {
+        refreshing = false;
+      }
+    }
+    void check();
+    const timer = window.setInterval(() => void check(), 60_000);
+    window.addEventListener("focus", check);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+    };
+  }, [props.environmentId, props.triggerLabel, activeInstanceId, refresh]);
   const selectedInstanceOptions = props.modelOptionsByInstance.get(activeInstanceId) ?? [];
   // Account-specific catalogs must keep the selected model label while unavailable.
   const selectedModel =
@@ -315,6 +351,18 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             <Badge variant="outline" size="sm">
               Unavailable
             </Badge>
+          ) : null}
+          {props.triggerLabel === undefined && !selectedEntries && autoRouteLabel === undefined ? (
+            <span
+              className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground"
+              role="status"
+            >
+              <span
+                className={cn("size-1.5 shrink-0 rounded-full", READINESS_DOT[readiness.color])}
+                aria-hidden="true"
+              />
+              <span className="max-w-24 truncate">{readiness.reason}</span>
+            </span>
           ) : null}
         </span>
         <span aria-hidden="true" className="flex items-center">

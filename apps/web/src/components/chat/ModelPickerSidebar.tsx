@@ -1,5 +1,11 @@
 import { Toolbar } from "@base-ui/react/toolbar";
-import { type EnvironmentId, type ProviderInstanceId } from "@t3tools/contracts";
+import {
+  getProviderReadiness,
+  type EnvironmentId,
+  type ProviderInstanceId,
+} from "@t3tools/contracts";
+import { READINESS_DOT } from "./ProviderReadinessControl";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { SparklesIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -71,6 +77,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
   newBadgeInstanceIds?: ReadonlySet<ProviderInstanceId>;
 }) {
   const activeAgentCount = useActiveAgentCounts();
+  const nowMinute = useNowMinute();
   const handleSelect = (instanceId: ProviderInstanceId | "favorites") => {
     props.onSelectInstance(instanceId);
   };
@@ -166,6 +173,9 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
             const isHovered = hoveredInstanceId === entry.instanceId;
             const showNewBadge = props.newBadgeInstanceIds?.has(entry.instanceId) ?? false;
             const showInstanceBadge = shouldShowInstanceBadge(entry, props.instanceEntries);
+            const readiness = getProviderReadiness(entry.snapshot, {
+              nowMs: Date.parse(`${nowMinute}:00Z`),
+            });
 
             const tooltip = isUnavailable
               ? describeUnavailableInstance(entry)
@@ -226,6 +236,13 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                     <SparklesIcon className="size-2" />
                   </span>
                 ) : null}
+                <span
+                  className={cn(
+                    "absolute bottom-0.5 left-0.5 z-30 size-1.5 rounded-full",
+                    READINESS_DOT[readiness.color],
+                  )}
+                  aria-label={readiness.reason}
+                />
               </Toolbar.Button>
             );
 
@@ -253,7 +270,9 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                     align="center"
                   >
                     <div className="flex flex-col gap-2">
-                      <span className="font-medium">{tooltip}</span>
+                      <span className="font-medium">
+                        {tooltip}: {readiness.reason}
+                      </span>
                       <ProviderLimitTooltip provider={entry.snapshot} now={tooltipOpenedAt} />
                     </div>
                   </TooltipPopup>
