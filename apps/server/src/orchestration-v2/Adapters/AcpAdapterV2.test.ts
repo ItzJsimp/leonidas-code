@@ -8,6 +8,7 @@ import {
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -761,6 +762,81 @@ describe("AcpAdapterV2", () => {
       assert.deepEqual(mcpServer.args, ["acp-mcp-bridge"]);
       assert.equal(runtimeInput?.processEnvironment?.T3_ACP_MCP_NODE, process.execPath);
       assert.equal(runtimeInput?.processEnvironment?.T3_ACP_MCP_ENTRYPOINT, undefined);
+    }).pipe(Effect.provide(layerTest), Effect.scoped),
+  );
+
+  it.live("replays the prompt once on a new runtime when the agent reports a lost connection", () =>
+    Effect.gen(function* () {
+      const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+      const path = yield* Path.Path;
+      const selfInvocation = yield* resolveSelfInvocation();
+      const mockAgentPath = yield* path.fromFileUrl(
+        new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
+      );
+      const markerPath = path.join(
+        NodeOS.tmpdir(),
+        `acp-lost-connection-${process.pid}-${Date.now()}`,
+      );
+      const instanceId = ProviderInstanceId.make("acp-test-lost-connection");
+      const adapter = yield* makeAcpAdapterV2({
+        instanceId,
+        flavor: {
+          driver: ACP_TEST_DRIVER,
+          capabilities: AcpProviderCapabilitiesV2,
+          connectionLostText: /^Agent connection was lost and could not be re-established/,
+          makeRuntime: makeMockRuntime({
+            childProcessSpawner,
+            mockAgentPath,
+            environment: {
+              T3_ACP_LOST_CONNECTION_MARKER_PATH: markerPath,
+              T3_ACP_PROMPT_RESPONSE_TEXT: "recovered answer",
+            },
+          }),
+        },
+        selfInvocation,
+      });
+      const threadId = ThreadId.make("thread-acp-lost-connection");
+      const modelSelection = { instanceId, model: "default" } as const;
+      const runtimePolicy = ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        cwd: process.cwd(),
+      });
+      const runtime = yield* adapter.openSession({
+        threadId,
+        providerSessionId: ProviderSessionId.make("provider-session-acp-lost-connection"),
+        modelSelection,
+        runtimePolicy,
+      });
+      const providerThread = yield* runtime.ensureThread({
+        threadId,
+        modelSelection,
+        runtimePolicy,
+      });
+      yield* runtime.startTurn(
+        makeTurnInput({
+          threadId,
+          providerThread,
+          instanceId,
+          runtimePolicy,
+          now: yield* DateTime.now,
+        }),
+      );
+      const events = Array.from(
+        yield* runtime.events.pipe(
+          Stream.takeUntil((event) => event.type === "turn.terminal"),
+          Stream.runCollect,
+        ),
+      );
+      const texts = events.flatMap((event) =>
+        event.type === "turn_item.updated" && event.turnItem.type === "assistant_message"
+          ? [event.turnItem.text]
+          : [],
+      );
+      assert.isFalse(texts.some((text) => text.includes("connection was lost")));
+      assert.equal(texts.at(-1), "recovered answer");
+      const terminal = events.find((event) => event.type === "turn.terminal");
+      assert.equal(terminal?.type === "turn.terminal" ? terminal.status : undefined, "completed");
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 

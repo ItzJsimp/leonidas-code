@@ -98,6 +98,8 @@ const failSetModeConfigOption = process.env.T3_ACP_FAIL_SET_MODE_CONFIG_OPTION =
 const exitOnSetConfigOption = process.env.T3_ACP_EXIT_ON_SET_CONFIG_OPTION === "1";
 const omitModelConfigOption = process.env.T3_ACP_OMIT_MODEL_CONFIG_OPTION === "1";
 const promptResponseText = process.env.T3_ACP_PROMPT_RESPONSE_TEXT;
+// First prompt across all agent processes answers like a dead Antigravity connection.
+const lostConnectionMarkerPath = process.env.T3_ACP_LOST_CONNECTION_MARKER_PATH;
 const initialGrokReasoningEffort =
   process.env.T3_ACP_INITIAL_GROK_REASONING_EFFORT?.trim() || undefined;
 const promptDelayMs = Number(process.env.T3_ACP_PROMPT_DELAY_MS ?? "0");
@@ -1281,6 +1283,22 @@ const program = Effect.gen(function* () {
 
       if (Number.isFinite(promptDelayMs) && promptDelayMs > 0) {
         yield* Effect.sleep(`${promptDelayMs} millis`);
+      }
+
+      if (lostConnectionMarkerPath !== undefined && !NodeFS.existsSync(lostConnectionMarkerPath)) {
+        NodeFS.writeFileSync(lostConnectionMarkerPath, "lost");
+        yield* agent.client.sessionUpdate({
+          sessionId: requestedSessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            messageId: "mock-lost-connection",
+            content: {
+              type: "text",
+              text: "Agent connection was lost and could not be re-established: Failed to rebuild agent: received 1000 (OK); then sent 1000 (OK)",
+            },
+          },
+        });
+        return yield* finishPrompt(requestedSessionId, "end_turn");
       }
 
       if (failPrompt) {
