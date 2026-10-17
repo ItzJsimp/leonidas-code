@@ -513,7 +513,12 @@ export const layerExecutor: Layer.Layer<
               .execute({
                 threadId: effect.threadId,
                 requestId: effect.commandId,
-                kind: effect.request.kind,
+                kind:
+                  effect.request.kind.type === "regenerate"
+                    ? effect.request.kind.hint === undefined
+                      ? { type: "regenerate" }
+                      : { type: "regenerate", hint: effect.request.kind.hint }
+                    : effect.request.kind,
               })
               .pipe(
                 Effect.mapError(
