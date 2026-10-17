@@ -231,6 +231,8 @@ export const DesktopSnapShotEvent = Schema.Union([
   Schema.Struct({ type: Schema.Literal("ready"), id: DesktopSnapShotId }),
   Schema.Struct({ type: Schema.Literal("failed"), id: Schema.optional(DesktopSnapShotId) }),
   Schema.Struct({ type: Schema.Literal("shortcut-changed") }),
+  /** The capture shortcut is set to open the snip overlay. The renderer runs the snip. */
+  Schema.Struct({ type: Schema.Literal("snip-requested") }),
 ]);
 export type DesktopSnapShotEvent = typeof DesktopSnapShotEvent.Type;
 

@@ -7,6 +7,7 @@ import {
   type DesktopSnapShotEvent,
 } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
@@ -585,6 +586,7 @@ function concurrentCaptureFixture(platform: NodeJS.Platform, animations: boolean
   const metadata = new Map<string, string>();
   const readyIds: string[] = [];
   const requestedIds: string[] = [];
+  const snipRequests: string[] = [];
   const bounds = { x: 10, y: 20, width: 800, height: 600 };
   const takeSnapshot = async () => {
     const index = state.snapshots++;
@@ -708,6 +710,10 @@ function concurrentCaptureFixture(platform: NodeJS.Platform, animations: boolean
               return Effect.sync(() => {
                 readyIds.push(event.id);
               });
+            case "snip-requested":
+              return Effect.sync(() => {
+                snipRequests.push(event.type);
+              });
             default:
               return Effect.void;
           }
@@ -721,6 +727,7 @@ function concurrentCaptureFixture(platform: NodeJS.Platform, animations: boolean
     state,
     readyIds,
     requestedIds,
+    snipRequests,
     layer,
     settings: {
       ...DEFAULT_CLIENT_SETTINGS,
@@ -1162,6 +1169,45 @@ it.effect.each([
     ).pipe(Effect.provide(fixture.layer), Effect.ensuring(Effect.sync(fixture.reset)));
   },
 );
+
+it.effect(
+  "asks the window for a snip instead of capturing when the shortcut action is snip",
+  () => {
+    const fixture = concurrentCaptureFixture("win32", false);
+    return Effect.scoped(
+      Effect.gen(function* () {
+        const service = yield* DesktopSnapShot.make;
+        yield* service.configure({ ...fixture.settings, snapShotShortcutAction: "snip" });
+        yield* Effect.promise(fixture.trigger);
+        assert.deepEqual(fixture.snipRequests, ["snip-requested"]);
+        assert.equal(fixture.state.snapshots, 0);
+        assert.lengthOf(fixture.requestedIds, 0);
+      }).pipe(Effect.ensuring(Effect.sync(fixture.releaseAll))),
+    ).pipe(
+      Effect.provideService(HostProcess.Platform, "win32"),
+      Effect.provide(fixture.layer),
+      Effect.ensuring(Effect.sync(fixture.reset)),
+    );
+  },
+);
+
+it.effect("captures the window when the shortcut action is window", () => {
+  const fixture = concurrentCaptureFixture("win32", false);
+  fixture.releaseAll();
+  return Effect.scoped(
+    Effect.gen(function* () {
+      const service = yield* DesktopSnapShot.make;
+      yield* service.configure({ ...fixture.settings, snapShotShortcutAction: "window" });
+      yield* Effect.promise(fixture.trigger);
+      assert.deepEqual(fixture.snipRequests, []);
+      assert.equal(fixture.state.snapshots, 1);
+    }),
+  ).pipe(
+    Effect.provideService(HostProcess.Platform, "win32"),
+    Effect.provide(fixture.layer),
+    Effect.ensuring(Effect.sync(fixture.reset)),
+  );
+});
 
 it.effect.each(["succeeds", "fails"] as const)(
   "keeps the newer snapshot exclusive when older persistence %s",

@@ -19,6 +19,7 @@ const SNAP_SHOT_EVENT_TYPES = new Set([
   "ready",
   "failed",
   "shortcut-changed",
+  "snip-requested",
 ]);
 function isSnapShotEvent(value: unknown): value is DesktopSnapShotEvent {
   if (typeof value !== "object" || value === null) return false;

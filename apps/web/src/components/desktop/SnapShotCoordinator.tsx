@@ -31,7 +31,9 @@ import {
   getDesktopSnapShotBridge,
   type DesktopSnapShotBridge,
 } from "../../lib/desktopSnapShot";
+import { getDesktopSnipBridge, snipResultToFile } from "../../lib/desktopSnip";
 import { readFileAsDataUrl } from "../ChatView.logic";
+import { deliverSnipFile } from "./snipDelivery";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { userErrorToastFields } from "~/lib/userErrorToast";
 
@@ -258,6 +260,41 @@ export function SnapShotCoordinator() {
     [captureSound],
   );
 
+  // The capture shortcut can open the snip overlay instead of saving the active window.
+  const runShortcutSnip = useCallback(async () => {
+    const snipBridge = getDesktopSnipBridge();
+    if (!snipBridge) return;
+    // Pin an existing draft now. A new draft would navigate the window before the snip ends.
+    const current = lastTargetRef.current;
+    const pinned = current ? resolveExistingSnapShotTarget(current, routeThreadRef) : null;
+    try {
+      const file = snipResultToFile(await snipBridge.startSnip());
+      if (!file) return;
+      const resolved = pinned ?? (await resolveCaptureTarget());
+      const target = resolved ? resolveExistingSnapShotTarget(resolved, routeThreadRef) : null;
+      if (!target) {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Snip taken, but there is no project",
+            description: "Add a project, then snip again.",
+          }),
+        );
+        return;
+      }
+      await deliverSnipFile(file, target);
+      dispatchSnapShotComposerFocus();
+    } catch (error) {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not take the snip",
+          ...userErrorToastFields(error),
+        }),
+      );
+    }
+  }, [resolveCaptureTarget, routeThreadRef]);
+
   const drain = useCallback(async () => {
     const bridge = getDesktopSnapShotBridge();
     if (!bridge) return;
@@ -386,10 +423,20 @@ export function SnapShotCoordinator() {
         }
         case "shortcut-changed":
           return;
+        case "snip-requested":
+          void runShortcutSnip();
+          return;
       }
     });
     return unsubscribe;
-  }, [animateCaptures, drain, playCaptureSound, resolveCaptureTarget, routeThreadRef]);
+  }, [
+    animateCaptures,
+    drain,
+    playCaptureSound,
+    resolveCaptureTarget,
+    routeThreadRef,
+    runShortcutSnip,
+  ]);
 
   useEffect(() => {
     const dismissOnBlur = () => {

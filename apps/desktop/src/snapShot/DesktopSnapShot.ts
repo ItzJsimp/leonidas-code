@@ -1004,6 +1004,12 @@ export const make = Effect.gen(function* () {
     const now = yield* Clock.currentTimeNanos;
     if (lastShortcutAt !== undefined && now - lastShortcutAt < SHORTCUT_COOLDOWN_NS) return;
     lastShortcutAt = now;
+    const settings = yield* Ref.get(settingsRef);
+    // The renderer owns draft targets, so it runs the snip and attaches the image.
+    if (settings.snapShotShortcutAction === "snip" && (yield* HostProcess.isWindows)) {
+      yield* emit({ type: "snip-requested" });
+      return;
+    }
     yield* capture;
   }).pipe(Effect.withSpan("desktop.snapShot.shortcutActivated"));
   const onShortcut = () => runPromise(captureFromShortcut).catch(() => undefined);

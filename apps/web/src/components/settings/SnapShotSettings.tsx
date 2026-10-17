@@ -6,6 +6,7 @@ import {
   type DesktopSnapShotState,
   type DesktopSnapShotSetupAction,
   type SnapShotShortcut,
+  type SnapShotShortcutAction,
 } from "@t3tools/contracts";
 import { PlayIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ import {
   clearSnapShotSetupResume,
 } from "../../lib/snapShotSetupResume";
 import { sameSnapShotShortcut, snapShotKeybindingConflict } from "../../lib/snapShotShortcut";
+import { isWindowsPlatform } from "../../lib/utils";
 import { playSnapShotSound } from "../../lib/snapShotSound";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { commandLabel } from "./KeybindingsSettings.logic";
@@ -101,6 +103,8 @@ export function SnapShotSettings() {
     : null;
   const canSaveShortcut =
     shortcutChanged && candidateConflict === null && shortcutCheck.availability?.available === true;
+  const shortcutActionLabel =
+    settings.snapShotShortcutAction === "snip" ? "Open the snip tool" : "Save the active window";
   const soundSelection = settings.snapShotPlaySound ? settings.snapShotSound : "off";
   const soundLabel =
     soundSelection === "off" ? "Off" : soundSelection === "soft-pop" ? "Whoosh (Default)" : "Click";
@@ -486,6 +490,39 @@ export function SnapShotSettings() {
                   )
                 }
               />
+              {typeof navigator !== "undefined" && isWindowsPlatform(navigator.platform) ? (
+                <SettingsRow
+                  {...searchableSetting("snap-shot-shortcut-action")}
+                  description="Choose what the capture shortcut does."
+                  control={
+                    <Menu>
+                      <MenuTrigger
+                        aria-label={"Shortcut action: " + shortcutActionLabel}
+                        render={<SelectButton size="sm" />}
+                        className="w-auto min-w-0"
+                        disabled={!captureAvailable}
+                      >
+                        {shortcutActionLabel}
+                      </MenuTrigger>
+                      <MenuPopup align="end">
+                        <MenuRadioGroup
+                          onValueChange={(value) =>
+                            void save({ snapShotShortcutAction: value as SnapShotShortcutAction })
+                          }
+                          value={settings.snapShotShortcutAction}
+                        >
+                          <MenuRadioItem closeOnClick value="window">
+                            Save the active window
+                          </MenuRadioItem>
+                          <MenuRadioItem closeOnClick value="snip">
+                            Open the snip tool
+                          </MenuRadioItem>
+                        </MenuRadioGroup>
+                      </MenuPopup>
+                    </Menu>
+                  }
+                />
+              ) : null}
               <SettingsRow
                 {...searchableSetting("snap-shot-sound")}
                 description="Choose the sound played when capture starts."

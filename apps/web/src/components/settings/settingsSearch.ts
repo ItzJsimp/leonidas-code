@@ -792,6 +792,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     targetId: "snap-shot-enabled",
   },
   {
+    id: "snap-shot-shortcut-action",
+    title: "Shortcut action",
+    to: "/settings/snap-shot",
+    targetId: "snap-shot-enabled",
+    searchTerms: ["snip screenshot region window overlay capture shortcut"],
+  },
+  {
     id: "snap-shot-sound",
     title: "Capture sound",
     to: "/settings/snap-shot",

@@ -184,6 +184,11 @@ export const SnapShotShortcut = Schema.Union([
   SnapShotKeyChord,
 ]);
 export type SnapShotShortcut = typeof SnapShotShortcut.Type;
+
+/** What the capture shortcut does: save the active window, or open the snip overlay. */
+export const SnapShotShortcutAction = Schema.Literals(["window", "snip"]);
+export type SnapShotShortcutAction = typeof SnapShotShortcutAction.Type;
+export const DEFAULT_SNAP_SHOT_SHORTCUT_ACTION: SnapShotShortcutAction = "window";
 export const SnapShotSound = Schema.Literals(["soft-pop", "camera-shutter"]);
 export type SnapShotSound = typeof SnapShotSound.Type;
 const DEFAULT_SNAP_SHOT_SOUND: SnapShotSound = "soft-pop";
@@ -586,6 +591,9 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   snapShotShortcut: SnapShotShortcut.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_SNAP_SHOT_SHORTCUT)),
+  ),
+  snapShotShortcutAction: SnapShotShortcutAction.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_SNAP_SHOT_SHORTCUT_ACTION)),
   ),
   snapShotPlaySound: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   snapShotSound: SnapShotSound.pipe(
@@ -1878,6 +1886,7 @@ export const ClientSettingsPatch = Schema.Struct({
   snapShotEnabled: Schema.optionalKey(Schema.Boolean),
   snapShotIncludeAccessibility: Schema.optionalKey(Schema.Boolean),
   snapShotShortcut: Schema.optionalKey(SnapShotShortcut),
+  snapShotShortcutAction: Schema.optionalKey(SnapShotShortcutAction),
   snapShotPlaySound: Schema.optionalKey(Schema.Boolean),
   snapShotSound: Schema.optionalKey(SnapShotSound),
   snapShotFlash: Schema.optionalKey(Schema.Boolean),
