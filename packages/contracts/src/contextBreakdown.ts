@@ -79,6 +79,14 @@ export const ThreadContextBreakdownAgent = Schema.Struct({
 });
 export type ThreadContextBreakdownAgent = typeof ThreadContextBreakdownAgent.Type;
 
+export const ThreadSkillUse = Schema.Struct({
+  name: Schema.String,
+  origins: Schema.Array(Schema.Literals(["user", "agent"])),
+  path: Schema.NullOr(Schema.String),
+  reason: Schema.NullOr(Schema.String),
+});
+export type ThreadSkillUse = typeof ThreadSkillUse.Type;
+
 export const ThreadContextBreakdown = Schema.Struct({
   threadId: ThreadId,
   driver: ProviderDriverKind,
@@ -92,6 +100,8 @@ export const ThreadContextBreakdown = Schema.Struct({
   toolCalls: Schema.Array(ThreadContextBreakdownToolCall),
   mcpTools: Schema.Array(ThreadContextBreakdownMcpTool),
   skills: Schema.Array(ThreadContextBreakdownSkill),
+  /** Recorded use across all turns, separate from available skill definitions. */
+  usedSkills: Schema.optionalKey(Schema.Array(ThreadSkillUse)),
   agents: Schema.Array(ThreadContextBreakdownAgent),
   /** Plain-language caveats, for example "Per-file sizes are estimated from tool output". */
   notes: Schema.Array(Schema.String),

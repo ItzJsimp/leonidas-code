@@ -15,6 +15,7 @@ import { ProviderDriverKind, ThreadContextBreakdownError } from "@t3tools/contra
 import type { ProviderAdapterV2ContextReport } from "@t3tools/provider-core/server/ProviderAdapter";
 import type { ThreadManagementServiceShape } from "./ThreadManagementService.ts";
 import type { ProviderSessionManagerV2Shape } from "./ProviderSessionManager.ts";
+import { deriveSkillUses } from "./skillUsage.ts";
 import type { ProviderRegistry } from "../provider/ProviderRegistry.ts";
 
 /**
@@ -633,6 +634,7 @@ export const queryThreadContextBreakdown = Effect.fn("orchestrationV2.queryThrea
       model,
       capturedAt,
       ...body,
+      usedSkills: deriveSkillUses(projection.turnItems),
     } satisfies ThreadContextBreakdown;
   },
 );

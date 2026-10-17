@@ -18,6 +18,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
+  matchesQuery,
   barSegments,
   breakdownSections,
   formatWindowPercent,
@@ -56,6 +57,20 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
     if (!breakdown) return null;
     return breakdownSections(breakdown, search, sort);
   }, [breakdown, search, sort]);
+
+  const usedSkills = useMemo(
+    () =>
+      (breakdown?.usedSkills ?? []).filter((skill) =>
+        matchesQuery(
+          search,
+          skill.name,
+          skill.path,
+          skill.reason,
+          skill.origins.map((origin) => (origin === "user" ? "You" : "Auto")).join(" "),
+        ),
+      ),
+    [breakdown, search],
+  );
 
   const segments = useMemo(() => {
     if (!breakdown) return [];
@@ -197,8 +212,8 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
         </div>
         <Button
           size="sm"
-          variant="ghost"
-          className="h-8 shrink-0 text-muted-foreground"
+          variant="ghost-muted"
+          className="h-8 shrink-0"
           onClick={() => setSort((prev) => (prev === "size" ? "name" : "size"))}
         >
           Sort: {sort === "size" ? "Size ↓" : "Name A-Z"}
@@ -314,11 +329,49 @@ export const DetailedContextBreakdownView = memo(function DetailedContextBreakdo
           </SectionContainer>
         ) : null}
 
+        {usedSkills.length > 0 ? (
+          <section className="flex min-w-0 flex-col" aria-label="Skills used in this chat">
+            <div className="flex items-center gap-2 border-b border-border/60 pb-2 text-xs font-medium">
+              <SparklesIcon aria-hidden className="size-3.5 text-muted-foreground" />
+              <span>Skills used in this chat</span>
+              <span className="text-2xs text-muted-foreground">{usedSkills.length}</span>
+            </div>
+            <p className="py-2 text-2xs text-muted-foreground">
+              Recorded use across turns. Compaction can remove loaded instructions.
+            </p>
+            <div className="flex flex-col divide-y divide-border/40">
+              {usedSkills.map((skill) => (
+                <div
+                  key={skill.name}
+                  className="flex min-w-0 items-start justify-between gap-3 py-2 text-xs"
+                >
+                  <div className="flex min-w-0 flex-col">
+                    <Tooltip>
+                      <TooltipTrigger render={<span tabIndex={0} className="truncate leading-5" />}>
+                        {skill.name}
+                      </TooltipTrigger>
+                      <TooltipPopup>{skill.path ?? "Path not recorded"}</TooltipPopup>
+                    </Tooltip>
+                    {skill.reason ? (
+                      <span className="text-2xs text-muted-foreground">{skill.reason}</span>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 text-2xs text-muted-foreground">
+                    {skill.origins
+                      .map((origin) => (origin === "user" ? "You" : "Auto"))
+                      .join(" / ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {/* Skills */}
         {sections.skills.length > 0 ? (
           <SectionContainer
             icon={SparklesIcon}
-            title="Skills"
+            title="Available skills"
             count={sections.skills.length}
             tokens={sectionTokens(sections.skills)}
             maxTokens={breakdown.maxTokens}
