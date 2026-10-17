@@ -10,7 +10,7 @@ The engine is a Rust process. Leonidas Code supervises it and drives it over loo
 - Reject any request with an `Origin` header or a `Host` other than `127.0.0.1:<port>` (403 `{"error":"forbidden"}`).
 - All bodies are JSON (`Content-Type: application/json`). Responses carry `Cache-Control: no-store`.
 - Every payload carries `"service":"leonidas-scribe"` and `"apiVersion":1`.
-- Error body: `{"error":"<code>"}`. Codes: `forbidden`, `not_found`, `method_not_allowed`, `bad_request`, `status_unavailable`, `invalid_state`.
+- Error body: `{"error":"<code>"}`. Codes: `forbidden`, `not_found`, `method_not_allowed`, `bad_request`, `status_unavailable`, `invalid_state`, `store_error` (v1.1: 500 when the OS credential store fails; no detail is returned).
 
 ## States
 
@@ -74,7 +74,7 @@ Remove the stored key. Reply: `204 No Content`, also when no key was stored.
 
 ### `GET /v1/events`
 
-Server-sent events (`text/event-stream`). One JSON object per `data:` line. Types:
+Server-sent events (`text/event-stream`). One JSON object per `data:` line. Each event also carries `service` and `apiVersion` (left out of the examples below). A `: ping` comment arrives every 15 s. Types:
 
 ```json
 {"type":"state","state":"listening","at":"2026-10-15T01:00:00.000Z"}
