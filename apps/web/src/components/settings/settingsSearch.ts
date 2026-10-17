@@ -21,6 +21,7 @@ export type SettingsPath =
   | "/settings/keybindings"
   | "/settings/snap-shot"
   | "/settings/providers"
+  | "/settings/models"
   | "/settings/integrations"
   | "/settings/scheduled-tasks"
   | "/settings/source-control"
@@ -100,6 +101,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/keybindings": "Keyboard shortcuts",
   "/settings/snap-shot": "SnapShots",
   "/settings/providers": "AI services",
+  "/settings/models": "Models",
   "/settings/integrations": "Browser and devices",
   "/settings/scheduled-tasks": "Scheduled tasks",
   "/settings/source-control": "Source control",
@@ -1173,6 +1175,7 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   // environment at any selection. Neither needs a particular scope to render.
   "/settings/keybindings": null,
   "/settings/providers": null,
+  "/settings/models": null,
   "/settings/integrations": null,
   "/settings/source-control": "environment-defaults",
   "/settings/storage": "project-defaults",

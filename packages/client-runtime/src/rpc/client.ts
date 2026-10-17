@@ -67,6 +67,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.subscribeResourceTelemetry
   | typeof WS_METHODS.subscribeHardware
   | typeof WS_METHODS.imagesSubscribe
+  | typeof WS_METHODS.localModelsSubscribe
   | typeof WS_METHODS.pullRequestsSubscribeRefreshes
   | typeof WS_METHODS.taskBoardSubscribeCompletions
   | typeof WS_METHODS.subagentsSubscribeSpawnApprovals

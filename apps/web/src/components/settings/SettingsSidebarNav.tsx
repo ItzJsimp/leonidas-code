@@ -14,6 +14,7 @@ import {
   ArrowLeftIcon,
   BlocksIcon,
   BotIcon,
+  CpuIcon,
   createLucideIcon,
   CalendarClockIcon,
   GitBranchIcon,
@@ -87,6 +88,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/keybindings": KeyboardIcon,
   "/settings/snap-shot": SnapShotIcon,
   "/settings/providers": BotIcon,
+  "/settings/models": CpuIcon,
   "/settings/integrations": BlocksIcon,
   "/settings/scheduled-tasks": CalendarClockIcon,
   "/settings/source-control": GitBranchIcon,
@@ -113,7 +115,7 @@ const SETTINGS_NAV_GROUPS: ReadonlyArray<{ label: string; paths: ReadonlyArray<S
   { label: "Project", paths: ["/settings/projects"] },
   {
     label: "Essentials",
-    paths: ["/settings/general", "/settings/appearance", "/settings/providers"],
+    paths: ["/settings/general", "/settings/appearance", "/settings/providers", "/settings/models"],
   },
   {
     label: "Workflow",
