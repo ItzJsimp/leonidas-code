@@ -107,9 +107,10 @@ export function makeSnipOverlay(input: { readonly preloadPath: string }): SnipOv
         },
       });
       window.setAlwaysOnTop(true, "screen-saver");
+      // Track each window at once so release can close it if a later step throws.
+      windows.push(window);
       created.push({ display, window });
     }
-    windows = created.map((entry) => entry.window);
     if (created.length === 0) return { kind: "cancelled" };
 
     return await new Promise<SnipOutcome>((resolve) => {

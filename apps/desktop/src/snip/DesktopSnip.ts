@@ -98,7 +98,9 @@ export const layer = Layer.effect(
           });
         },
         catch: (cause) => new DesktopSnipError({ operation: "capture", cause }),
-      }).pipe(Effect.ensuring(Ref.set(running, false)));
+      }).pipe(
+        Effect.ensuring(Effect.sync(overlay.release).pipe(Effect.andThen(Ref.set(running, false)))),
+      );
     });
 
     return DesktopSnip.of({

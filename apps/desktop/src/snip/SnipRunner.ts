@@ -53,7 +53,8 @@ export function reconcileDisplays(
 export async function runSnip(deps: SnipRunnerDeps): Promise<DesktopSnipResult> {
   try {
     const frames = await deps.captureFrames(deps.displays);
-    if (frames.size === 0) return { status: "cancelled" };
+    // A silent cancel would look like a button that does nothing.
+    if (frames.size === 0) throw new Error("No screen could be captured.");
     const displays = reconcileDisplays(deps.displays, frames);
     const session = createSnipSession({ displays, windows: deps.listWindows() });
     const outcome = await deps.pick({ session, displays, frames });

@@ -126,12 +126,18 @@ it("still returns the image when the disk write fails", async () => {
   assert.strictEqual(result.name, "snip.png");
 });
 
-it("cancels when no display could be captured", async () => {
+it("reports an error when no display could be captured", async () => {
   const { deps, calls } = makeDeps({
     captureFrames: async () => new Map(),
     pick: async ({ session }) => session.cancel(),
   });
-  assert.deepStrictEqual(await runSnip(deps), { status: "cancelled" });
+  let message = "";
+  try {
+    await runSnip(deps);
+  } catch (error) {
+    message = error instanceof Error ? error.message : "";
+  }
+  assert.strictEqual(message, "No screen could be captured.");
   assert.strictEqual(calls.released, 1);
 });
 
