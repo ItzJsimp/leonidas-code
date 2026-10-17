@@ -19,6 +19,7 @@ const GREEN: (u8, u8, u8, u8) = (48, 209, 88, 255);
 const EDGE: (u8, u8, u8, u8) = (255, 255, 255, 31);
 
 /// A text coverage mask: one alpha byte per pixel, rows top to bottom.
+#[derive(Clone)]
 pub struct Mask {
     pub width: u32,
     pub height: u32,

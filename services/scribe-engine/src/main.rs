@@ -94,11 +94,12 @@ fn run() -> Result<(), String> {
     let _hooks = hotkeys::spawn(&cfg.bindings, active.clone(), accept_injected, hotkey_tx)?;
 
     #[cfg(windows)]
+    // Dictation works without the pill: a HUD failure is logged, not fatal.
     let _hud = if cfg.hud.enabled {
         let trigger = engine.clone();
-        Some(Hud::spawn(engine.subscribe(), level, move || {
-            trigger.last_trigger_at()
-        })?)
+        Hud::spawn(engine.subscribe(), level, move || trigger.last_trigger_at())
+            .inspect_err(|e| eprintln!("hud disabled: {e}"))
+            .ok()
     } else {
         None
     };

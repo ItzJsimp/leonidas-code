@@ -218,6 +218,24 @@ impl Drop for Surface {
     }
 }
 
+/// Keeps the last mask, so a label that stays on screen is drawn by GDI once, not every frame.
+#[derive(Default)]
+struct CachedText(std::cell::RefCell<Option<(String, u32, Mask)>>);
+
+impl TextMask for CachedText {
+    fn mask(&self, text: &str, px: u32) -> Option<Mask> {
+        let mut last = self.0.borrow_mut();
+        if let Some((t, p, mask)) = last.as_ref() {
+            if t == text && *p == px {
+                return Some(mask.clone());
+            }
+        }
+        let mask = GdiText.mask(text, px)?;
+        *last = Some((text.to_owned(), px, mask.clone()));
+        Some(mask)
+    }
+}
+
 /// Text coverage from GDI: white grayscale-antialiased text on black, read back as alpha.
 struct GdiText;
 
@@ -289,6 +307,7 @@ struct Frame {
     surface: Option<Surface>,
     timer: bool,
     pill_logged: bool,
+    text: CachedText,
 }
 
 fn run(
@@ -306,6 +325,7 @@ fn run(
         surface: None,
         timer: false,
         pill_logged: false,
+        text: CachedText::default(),
     };
     let mut msg: MSG = unsafe { std::mem::zeroed() };
     while unsafe { GetMessageW(&mut msg, null_mut(), 0, 0) } > 0 {
@@ -376,7 +396,7 @@ fn frame(hwnd: HWND, f: &mut Frame, level: &AtomicU32, trigger_at: &dyn Fn() -> 
     }
     let levels: Vec<f32> = f.levels.iter().copied().collect();
     let phase = f.since.elapsed().as_secs_f32();
-    let Some(pixmap) = render(&view, &levels, phase, place.scale, &GdiText) else {
+    let Some(pixmap) = render(&view, &levels, phase, place.scale, &f.text) else {
         return;
     };
     let (w, h) = (pixmap.width() as i32, pixmap.height() as i32);
@@ -517,6 +537,17 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn cached_text_reuses_the_last_mask_and_redraws_on_change() {
+        let text = CachedText::default();
+        let a = text.mask("Done", 13).unwrap();
+        assert_eq!(text.0.borrow().as_ref().unwrap().0, "Done");
+        assert_eq!(text.mask("Done", 13).unwrap().alpha, a.alpha);
+        let b = text.mask("Transcribing", 13).unwrap();
+        assert!(b.width > a.width);
+        assert_eq!(text.0.borrow().as_ref().unwrap().0, "Transcribing");
     }
 
     #[test]
