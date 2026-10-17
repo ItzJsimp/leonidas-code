@@ -27,6 +27,7 @@ import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Base64 from "effect/encoding/Base64";
 import * as Effect from "effect/Effect";
+import { layaStatus, startLayaInstall } from "./laya/layaSetup.ts";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -3064,6 +3065,13 @@ const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.layaSetup]: (input) =>
+          Effect.promise(async () => {
+            if (input.action === "install") {
+              return startLayaInstall({ installPackages: input.installPackages === true });
+            }
+            return layaStatus();
+          }),
         [WS_METHODS.filesystemInspectFolder]: (input) =>
           workspaceEntries.inspectFolder(input).pipe(
             Effect.mapError(

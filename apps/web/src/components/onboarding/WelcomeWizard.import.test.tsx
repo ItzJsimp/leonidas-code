@@ -91,6 +91,14 @@ vi.mock("./ApiKeysStep", async () => {
     },
   };
 });
+vi.mock("./LeonidasLayaStep", () => ({
+  LeonidasLayaStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip Laya
+    </button>
+  ),
+}));
+
 vi.mock("./LeonidasSkillsStep", () => ({
   LeonidasSkillsStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>
@@ -276,6 +284,7 @@ async function mountImport(remote = false) {
   await click("Set up voice later");
   await click("Save AI level");
   await click("Skip skills");
+  await click("Skip Laya");
   expect(text(renderer!.root)).toContain("Import your projects");
 }
 

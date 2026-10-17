@@ -139,6 +139,14 @@ vi.mock("./ApiKeysStep", async () => {
     },
   };
 });
+vi.mock("./LeonidasLayaStep", () => ({
+  LeonidasLayaStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip Laya
+    </button>
+  ),
+}));
+
 vi.mock("./LeonidasSkillsStep", () => ({
   LeonidasSkillsStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>
@@ -358,6 +366,7 @@ describe("welcome agent terminal setup", () => {
     expect(state.close).not.toHaveBeenCalled();
     await click("Continue without an AI");
     await click("Skip skills");
+    await click("Skip Laya");
     await click("Skip importing projects");
     await click("Skip for now");
     expect(state.complete).toHaveBeenCalledOnce();
@@ -482,6 +491,7 @@ describe("welcome agent terminal setup", () => {
     expect(state.close).not.toHaveBeenCalled();
     await click("Continue without an AI");
     await click("Skip skills");
+    await click("Skip Laya");
     expect(text(renderer!.root)).toContain("Import your projects");
   });
 
