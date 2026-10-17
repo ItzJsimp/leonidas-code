@@ -31,7 +31,7 @@ const PROGRESS_PUBLISH_MS = 500;
 /** The speed test asks for this many new tokens. */
 const SPEED_TEST_TOKENS = 200;
 /** A compare answer may be longer, so the two answers can be judged. */
-const ANSWER_TOKENS = 400;
+const ANSWER_TOKENS = 800;
 const SPEED_TEST_PROMPT =
   "Write a TypeScript function that debounces a callback, with a short explanation.";
 
@@ -448,6 +448,7 @@ export class LocalModelsEngine {
           model,
           prompt,
           stream: false,
+          think: false,
           keep_alive: RUN_KEEP_ALIVE,
           options: { num_predict: ANSWER_TOKENS },
         }),
@@ -467,7 +468,12 @@ export class LocalModelsEngine {
       typeof tokens === "number" && typeof nanos === "number" && nanos > 0 && tokens > 0
         ? Math.round((tokens / (nanos / 1e9)) * 10) / 10
         : null;
-    const text = typeof body["response"] === "string" ? body["response"] : "";
+    const raw = typeof body["response"] === "string" ? body["response"] : "";
+    // Some models write their reasoning inline; the compare shows the answer only.
+    const text = raw
+      .replace(/^[\s\S]*?<\/think>/, "")
+      .replace(/<think>[\s\S]*$/, "")
+      .trim();
     return {
       text,
       tokensPerSecond: speed,

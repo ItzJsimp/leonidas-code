@@ -277,3 +277,16 @@ describe("LocalModelsEngine actions", () => {
     await expect(engine.remove("qwen3.8:27b-q4_K_M")).rejects.toThrow(LocalModelsError);
   });
 });
+
+describe("LocalModelsEngine.answer", () => {
+  it("turns thinking off and removes inline reasoning from the answer", async () => {
+    const { engine, calls } = makeEngine({
+      generateReply: { response: "Plan the answer.\n</think>\nA hash map stores pairs." },
+    });
+    await engine.refresh();
+    const result = await engine.answer("gemma4:12b-it-q4_K_M", "What is a hash map?");
+    expect(result.text).toBe("A hash map stores pairs.");
+    const generate = calls.filter((c) => c.url.endsWith("/api/generate")).at(-1)!;
+    expect(generate.body).toMatchObject({ think: false });
+  });
+});
