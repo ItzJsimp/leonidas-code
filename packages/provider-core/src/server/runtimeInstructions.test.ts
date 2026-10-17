@@ -43,13 +43,14 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).not.toContain("reasoning effort");
   });
 
-  it("appends the Leonidas output standard with canvas instructions", () => {
+  it("appends the Leonidas output standard with the Dock and no status ritual", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex" });
     expect(instructions).toContain("<leonidas_output_standard>");
-    expect(instructions).toContain("🎯 **Focus:** <project or topic>");
+    expect(instructions).not.toContain("**Focus:**");
+    expect(instructions).toContain("Do not report model, token, cache, mode");
     expect(instructions).toContain("leonidas-canvas");
     expect(instructions).toContain("html_render");
-    expect(instructions).toContain("over 400 words");
+    expect(instructions).not.toContain("over 400 words");
     expect(instructions).toContain("actually read the available leonidas-canvas/SKILL.md");
     expect(instructions).toContain("skillLoaded:true");
     expect(instructions).toContain("### 🎯 TL;DR");

@@ -1,5 +1,4 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
-import { LEONIDAS_CANVAS_INSTRUCTIONS } from "./outputStandard.ts";
 
 export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
 
@@ -53,10 +52,6 @@ Project, model, and modes inherit unless supplied; a launched thread cannot get 
 ### Tool access
 
 Tool names may carry a harness-normalized prefix, such as \`mcp__t3_code__delegate_task\`, with the same meaning. Some harnesses attach MCP servers lazily, so T3 tools missing from the first catalog scan do not mean cross-provider delegation is unavailable. Make one bounded direct attempt by the known name on the next tool step (in Codex code mode, \`tools.mcp__t3_code__orchestrator_capabilities({})\`). Keep polling bounded, do not duplicate active work, and reuse stable \`clientRequestId\` values when retrying.
-
-### Showing visuals
-
-${LEONIDAS_CANVAS_INSTRUCTIONS}
 `;
 
 /**
