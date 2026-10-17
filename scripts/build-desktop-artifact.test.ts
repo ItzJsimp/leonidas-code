@@ -1056,6 +1056,22 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
+  it.effect("registers and stops the Scribe engine from the NSIS installer", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const script = yield* fs.readFileString(
+        NodePath.join(import.meta.dirname, "../apps/desktop/resources/installer.nsh"),
+      );
+      for (const macro of ["customInit", "customInstall", "customUnInstall"]) {
+        assert.include(script, `!macro ${macro}`);
+      }
+      assert.include(script, "taskkill /F /IM scribe-engine.exe");
+      assert.include(script, "WriteRegStr HKCU");
+      assert.include(script, "DeleteRegValue HKCU");
+      assert.include(script, String.raw`resources\scribe-engine\scribe-engine.exe`);
+    }),
+  );
+
   it.effect("skips the Scribe engine on platforms other than Windows", () =>
     Effect.scoped(
       Effect.gen(function* () {
