@@ -314,8 +314,8 @@ function trimResolved(alerts: HardwareAlert[]): HardwareAlert[] {
   const resolved = alerts.filter((alert) => alert.resolvedAt !== null);
   if (resolved.length <= MAX_RESOLVED_ALERTS) return alerts;
   const drop = new Set(
-    resolved
-      .toSorted((a, b) => a.resolvedAt! - b.resolvedAt!)
+    [...resolved]
+      .sort((a, b) => a.resolvedAt! - b.resolvedAt!)
       .slice(0, resolved.length - MAX_RESOLVED_ALERTS)
       .map((alert) => alert.id),
   );
@@ -360,7 +360,7 @@ const round = (value: number) => Math.round(value * 100) / 100;
 
 const median = (values: number[]) => {
   if (values.length === 0) return null;
-  const sorted = values.toSorted((a, b) => a - b);
+  const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
 };

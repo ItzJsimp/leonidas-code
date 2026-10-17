@@ -150,7 +150,7 @@ export function resolveSkillFolders(
         skills: entry.skills,
         commands: entry.commands,
       }))
-      .toSorted((left, right) => left.name.localeCompare(right.name));
+      .sort((left, right) => left.name.localeCompare(right.name));
   // Every provider command that no folder claimed (the harness's built-ins and bundled skills)
   // goes into one folder, but only when there are enough of them to be worth hiding.
   const claimed = new Set([
