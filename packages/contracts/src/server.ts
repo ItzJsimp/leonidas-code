@@ -314,6 +314,16 @@ export const ServerProvider = Schema.Struct({
   auth: ServerProviderAuth,
   checkedAt: IsoDateTime,
   message: Schema.optional(TrimmedNonEmptyString),
+  connectionIssue: Schema.optional(
+    Schema.Literals([
+      "cli_missing",
+      "cli_too_old",
+      "signed_out",
+      "token_expired",
+      "quota_reached",
+      "network_blocked",
+    ]),
+  ),
   // Optional for back-compat: every legacy producer omits this field and
   // an absent value is interpreted as `"available"` by consumers (see
   // `isProviderAvailable`). New `ProviderInstanceRegistry` outputs set it
