@@ -127,11 +127,14 @@ export function ModelsView(props: {
       </div>
 
       {/* Catalog */}
-      <div className="overflow-hidden rounded-2xl border bg-card shadow-xs/5">
+      <p className="text-sm text-muted-foreground" aria-live="polite">
+        Showing {shown.length} of {props.catalog.length} models
+      </p>
+      <div className="max-h-[68vh] overflow-y-auto overscroll-contain rounded-2xl border bg-card shadow-xs/5">
         <div
           className={cn(
             ROW_GRID,
-            "hidden border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground",
+            "sticky top-0 z-10 hidden border-b bg-muted px-4 py-2 text-xs font-medium text-muted-foreground",
           )}
           aria-hidden
         >
