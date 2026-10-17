@@ -740,9 +740,9 @@ function SurfaceIcon({
         <Smartphone className="size-3 shrink-0" />
       );
     case "vault":
-      return <BookOpen className="size-3 shrink-0 text-cyan-400" />;
+      return <BookOpen className="size-3 shrink-0" />;
     case "graph":
-      return <Network className="size-3 shrink-0 text-purple-400" />;
+      return <Network className="size-3 shrink-0" />;
   }
 }
 
