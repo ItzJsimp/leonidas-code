@@ -13,6 +13,8 @@ The brief both builders' agents read. Each builder's private notes live in their
 
 The app injects the reply shape (Top / Body / Dock) into every provider; its single source is `LEONIDAS_OUTPUT_STANDARD` in [outputStandard.ts](./packages/provider-core/src/server/outputStandard.ts). Do not restate it in instruction files. Repo-only additions (the pushed-to-main banner): [output-standard rule](./.agents/rules/output-standard.md).
 
+@.agents/rules/output-standard.md
+
 ## Gotchas already paid for
 
 - A copied AIOS git `pre-commit` hook can point at a script missing from this repo and block commits. Rename `.git/hooks/pre-commit` to `pre-commit.aios-disabled` in this clone; never `--no-verify`.
