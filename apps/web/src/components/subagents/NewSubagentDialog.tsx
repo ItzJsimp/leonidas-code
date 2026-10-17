@@ -84,7 +84,7 @@ export function NewSubagentDialog(props: {
       <DialogPopup>
         <form onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle>New subagent</DialogTitle>
+            <DialogTitle>New helper</DialogTitle>
             <DialogDescription>
               Start from a starter, then edit it. The starter decides if it is on or off.
             </DialogDescription>

@@ -38,7 +38,7 @@ export const ComposerSubagentsButton = memo(function ComposerSubagentsButton(pro
           aria-label={
             props.attached
               ? `Subagent: ${props.attached} is attached to this chat`
-              : "Subagent: attach one to this chat"
+              : "Helper: attach one to this chat"
           }
           className="text-muted-foreground transition-colors duration-200 hover:text-foreground data-[attached=true]:text-foreground"
           data-attached={props.attached !== null}
@@ -48,7 +48,7 @@ export const ComposerSubagentsButton = memo(function ComposerSubagentsButton(pro
             <BotIcon />
           </ComposerBanner.Icon>
           <ComposerBanner.Content>
-            {props.attached ? `@${props.attached}` : "Subagent"}
+            {props.attached ? `@${props.attached}` : "Helper"}
           </ComposerBanner.Content>
         </PopoverTrigger>
       </ComposerBanner.Root>
@@ -57,8 +57,8 @@ export const ComposerSubagentsButton = memo(function ComposerSubagentsButton(pro
           <Input
             autoFocus
             value={query}
-            placeholder="Search subagents"
-            aria-label="Search subagents"
+            placeholder="Search helpers"
+            aria-label="Search helpers"
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
@@ -79,8 +79,8 @@ export const ComposerSubagentsButton = memo(function ComposerSubagentsButton(pro
           {results.length === 0 ? (
             <p className="px-3 py-4 text-center text-sm text-muted-foreground">
               {props.options.length === 0
-                ? "No subagent is on. Turn one on in the Subagents view."
-                : "No subagents found"}
+                ? "No helper is on. Turn one on in the Helpers view."
+                : "No helpers found"}
             </p>
           ) : (
             <ul className="flex flex-col pb-1">

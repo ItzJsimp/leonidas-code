@@ -280,8 +280,8 @@ function ComposerMentionNodeView({ node }: NodeViewProps) {
         >
           <div className="space-y-2 p-2 text-sm">
             <p className="font-medium">{subagent.name}</p>
-            <p>{subagent.description ?? "This subagent has no description."}</p>
-            <p className="text-muted-foreground text-xs">Sends this request to the subagent.</p>
+            <p>{subagent.description ?? "This helper has no description."}</p>
+            <p className="text-muted-foreground text-xs">Sends this request to the helper.</p>
           </div>
         </ContextChipPopover>
       </NodeViewWrapper>

@@ -101,7 +101,7 @@ function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
       waiting.push({
         ...entry,
         kind: "subagent",
-        source: event.target?.startsWith("@") ? "Subagent" : "Helper",
+        source: "Helper",
       });
     } else if (event.kind === "web") {
       waiting.push({ ...entry, kind: "web", source: "Web" });

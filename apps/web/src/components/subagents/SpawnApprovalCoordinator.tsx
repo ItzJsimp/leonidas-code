@@ -21,7 +21,7 @@ import { formatStartCost, modelDisplayName } from "./spawnApproval.logic";
 const TIER_SOURCE_LABEL: Record<SubagentSpawnApproval["tierSource"], string> = {
   app: "app map",
   aios: "your AIOS map",
-  subagent: "set by this subagent",
+  subagent: "set by this helper",
 };
 
 /**

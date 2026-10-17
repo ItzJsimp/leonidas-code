@@ -136,7 +136,7 @@ describe("agent activity", () => {
     expect(activity.waiting).toHaveLength(1);
     expect(activity.waiting[0]).toMatchObject({
       kind: "subagent",
-      source: "Subagent",
+      source: "Helper",
       detail: "@explorer",
     });
   });
