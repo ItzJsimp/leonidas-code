@@ -491,7 +491,7 @@ it("does not scan every row against every run for a streaming item update", () =
 type VisibleRows = OrchestrationV2ThreadProjection["visibleTurnItems"];
 
 function visibleRowsProjection(rows: VisibleRows) {
-  return { visibleTurnItems: rows } as OrchestrationV2ThreadProjection;
+  return { visibleTurnItems: rows, runs: [] } as unknown as OrchestrationV2ThreadProjection;
 }
 
 // The insert/replace path before the in-place fast path, kept as the reference.
@@ -585,7 +585,8 @@ describe("upsertVisibleTurnItem", () => {
         const item =
           previous !== undefined && previous.ordinal === ordinal && random() < 0.5
             ? previous
-            : commandItem(id, `output-${seed}-${step}`, ordinal);
+            : // No run: the reference models only the ordinal window, not the run-aware keep rules.
+              { ...commandItem(id, `output-${seed}-${step}`, ordinal), runId: null };
         latestItems.set(id, item);
         const partialTimeline = random() < 0.3;
         const latestLocalTurnOrdinal = random() < 0.5 ? null : Math.floor(random() * 4);
