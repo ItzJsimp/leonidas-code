@@ -197,6 +197,9 @@ describe("shouldOfferModelPickerSetup", () => {
   it("offers integrated Codex setup when the account is unavailable", () => {
     expect(shouldOfferModelPickerSetup(entry("error", "codex"), [])).toBe(true);
   });
+  it("keeps other failed drivers reachable for their connection check", () => {
+    expect(shouldOfferModelPickerSetup(entry("error", "custom"), [])).toBe(true);
+  });
 
   it("uses the environment's setup capability for other drivers", () => {
     const providerEntry = entry("error", "custom_driver");

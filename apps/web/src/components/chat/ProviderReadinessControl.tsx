@@ -71,10 +71,12 @@ export function ProviderReadinessControl(props: {
         setError(
           "Automatic install is unavailable for this account. Open its settings to install the CLI.",
         );
+        props.onOpenProviderSetup?.(props.provider.instanceId);
         return;
       }
       if (action === "sign_in" && props.provider.setup?.canAuthenticate === false) {
         setError("This account requires external sign-in. Open its settings for instructions.");
+        props.onOpenProviderSetup?.(props.provider.instanceId);
         return;
       }
       const result =

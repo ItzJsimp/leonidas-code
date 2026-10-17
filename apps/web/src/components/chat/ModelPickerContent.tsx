@@ -15,7 +15,6 @@ import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRe
 import { ChevronRightIcon } from "lucide-react";
 import { ModelListRow } from "./ModelListRow";
 import { ModelPickerSidebar } from "./ModelPickerSidebar";
-import { hasProviderSetup } from "./ProviderStatusBanner";
 import { ProviderReadinessControl } from "./ProviderReadinessControl";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import {
@@ -120,7 +119,6 @@ export function shouldOfferModelPickerSetup(
   return (
     entry.enabled &&
     entry.status !== "disabled" &&
-    hasProviderSetup(entry.snapshot) &&
     (!isProviderInstancePickerReady(entry) ||
       !entry.installed ||
       entry.snapshot.auth.status === "unauthenticated" ||
