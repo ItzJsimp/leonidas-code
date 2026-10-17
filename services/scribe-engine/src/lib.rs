@@ -5,6 +5,7 @@ pub mod audio;
 pub mod config;
 pub mod contract;
 pub mod credentials;
+pub mod dictionary;
 pub mod engine;
 pub mod groq;
 pub mod hotkeys;
