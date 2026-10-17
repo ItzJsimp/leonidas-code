@@ -83,6 +83,7 @@ export function useLocalModels() {
   return {
     state,
     startOllama,
+    environmentId,
     error: live.error,
     isPending: live.isPending && state === null,
     pull,
