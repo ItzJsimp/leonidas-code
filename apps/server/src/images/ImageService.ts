@@ -16,15 +16,18 @@ import {
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as PubSub from "effect/PubSub";
 import * as Stream from "effect/Stream";
 import * as NodeFS from "node:fs";
+import * as NodeChildProcess from "node:child_process";
 import * as NodePath from "node:path";
 
 import * as ServerConfig from "../config.ts";
 import { DEFAULT_COMFY_URL, createComfyAdapter, normalizeBaseUrl } from "./comfyAdapter.ts";
 import { ImagesEngine } from "./ImagesEngine.ts";
+import { withOnDemandStart, type LaunchConfig } from "./onDemandSource.ts";
 
 /** How often the panel re-checks that ComfyUI answers while it is open. */
 const STATUS_POLL_MS = 5_000;
@@ -64,13 +67,72 @@ const readSavedBaseUrl = (file: string): string | null => {
   }
 };
 
+const readSettings = (file: string): Record<string, unknown> => {
+  try {
+    const value: unknown = JSON.parse(NodeFS.readFileSync(file, "utf8"));
+    return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * The start setting lives in the same file as the base address: `startCommand`, `startFolder`
+ * and `idleMinutes`. Without `startCommand` the person starts ComfyUI by hand, as before.
+ */
+const readLaunchConfig = (file: string): LaunchConfig | null => {
+  const settings = readSettings(file);
+  const command =
+    typeof settings["startCommand"] === "string" ? settings["startCommand"].trim() : "";
+  if (command.length === 0) return null;
+  const folder = typeof settings["startFolder"] === "string" ? settings["startFolder"].trim() : "";
+  const idle = settings["idleMinutes"];
+  return {
+    command,
+    folder: folder.length > 0 ? folder : null,
+    idleMinutes: typeof idle === "number" && idle >= 1 ? Math.round(idle) : 10,
+  };
+};
+
+/** Start the command in the background. The returned kill stops the whole process tree. */
+const launchComfy = (config: LaunchConfig) => {
+  const child = NodeChildProcess.spawn(config.command, {
+    cwd: config.folder ?? undefined,
+    shell: true,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  child.once("error", () => undefined);
+  const pid = child.pid;
+  return {
+    kill: () => {
+      if (pid === undefined) return;
+      if (process.platform === "win32") {
+        NodeChildProcess.execFile("taskkill", ["/PID", String(pid), "/T", "/F"], () => undefined);
+      } else {
+        child.kill();
+      }
+    },
+  };
+};
+
 const make = Effect.gen(function* () {
   const config = yield* ServerConfig.ServerConfig;
   const settingsFile = NodePath.join(config.stateDir, "images", "settings.json");
   let baseUrl = readSavedBaseUrl(settingsFile) ?? DEFAULT_COMFY_URL;
 
   const changes = yield* PubSub.sliding<void>(1);
-  const source = createComfyAdapter({ baseUrl: () => baseUrl });
+  const source = withOnDemandStart(createComfyAdapter({ baseUrl: () => baseUrl }), {
+    readConfig: () => readLaunchConfig(settingsFile),
+    launch: launchComfy,
+    // Effect timers keep the timer and the wait on the same fiber system as the rest of the server.
+    setTimer: (run, ms) => Effect.runFork(Effect.andThen(Effect.sleep(ms), Effect.sync(run))),
+    clearTimer: (timer) => {
+      Effect.runFork(Fiber.interrupt(timer as Fiber.Fiber<void>));
+    },
+    sleep: (ms) => Effect.runPromise(Effect.sleep(ms)),
+  });
+  yield* Effect.addFinalizer(() => Effect.sync(() => source.dispose()));
   const engine = new ImagesEngine({
     source,
     onChange: () => {
@@ -163,7 +225,10 @@ const make = Effect.gen(function* () {
       yield* Effect.try({
         try: () => {
           NodeFS.mkdirSync(NodePath.dirname(settingsFile), { recursive: true });
-          NodeFS.writeFileSync(settingsFile, `${JSON.stringify({ baseUrl: next }, null, 2)}\n`);
+          NodeFS.writeFileSync(
+            settingsFile,
+            `${JSON.stringify({ ...readSettings(settingsFile), baseUrl: next }, null, 2)}\n`,
+          );
         },
         catch: storage,
       });
