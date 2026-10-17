@@ -71,6 +71,17 @@ import {
   HardwareWatchStatus,
 } from "./hardwareWatch.ts";
 import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
+import {
+  ImagesCancelInput,
+  ImagesError,
+  ImagesGenerateInput,
+  ImagesGenerateResult,
+  ImagesKeepInput,
+  ImagesRetryInput,
+  ImagesSetBaseUrlInput,
+  ImagesState,
+  ImagesSubscribeInput,
+} from "./images.ts";
 import * as Schema from "effect/Schema";
 import {
   SavedItem,
@@ -523,6 +534,12 @@ export const WS_METHODS = {
   devPreviewStatus: "devPreview.status",
   devPreviewStart: "devPreview.start",
   devPreviewStop: "devPreview.stop",
+  imagesSubscribe: "images.subscribe",
+  imagesGenerate: "images.generate",
+  imagesCancel: "images.cancel",
+  imagesKeep: "images.keep",
+  imagesRetry: "images.retry",
+  imagesSetBaseUrl: "images.setBaseUrl",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
@@ -1511,6 +1528,46 @@ const WsDevPreviewStopRpc = Rpc.make(WS_METHODS.devPreviewStop, {
   payload: DevPreviewInput,
   success: DevPreviewState,
   error: Schema.Union([DevPreviewError, EnvironmentAuthorizationError]),
+});
+
+const ImagesRpcError = Schema.Union([ImagesError, EnvironmentAuthorizationError]);
+
+/** The Images panel state: source status, models and the queue with its finished images. */
+const WsImagesSubscribeRpc = Rpc.make(WS_METHODS.imagesSubscribe, {
+  payload: ImagesSubscribeInput,
+  success: ImagesState,
+  error: ImagesRpcError,
+  stream: true,
+});
+
+const WsImagesGenerateRpc = Rpc.make(WS_METHODS.imagesGenerate, {
+  payload: ImagesGenerateInput,
+  success: ImagesGenerateResult,
+  error: ImagesRpcError,
+});
+
+const WsImagesCancelRpc = Rpc.make(WS_METHODS.imagesCancel, {
+  payload: ImagesCancelInput,
+  success: Schema.Struct({ cancelled: Schema.Number }),
+  error: ImagesRpcError,
+});
+
+const WsImagesKeepRpc = Rpc.make(WS_METHODS.imagesKeep, {
+  payload: ImagesKeepInput,
+  success: Schema.Struct({ kept: Schema.Boolean }),
+  error: ImagesRpcError,
+});
+
+const WsImagesRetryRpc = Rpc.make(WS_METHODS.imagesRetry, {
+  payload: ImagesRetryInput,
+  success: Schema.Struct({ queued: Schema.Number }),
+  error: ImagesRpcError,
+});
+
+const WsImagesSetBaseUrlRpc = Rpc.make(WS_METHODS.imagesSetBaseUrl, {
+  payload: ImagesSetBaseUrlInput,
+  success: Schema.Struct({ baseUrl: Schema.String }),
+  error: ImagesRpcError,
 });
 
 const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
@@ -2594,6 +2651,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsDevPreviewStatusRpc,
   WsDevPreviewStartRpc,
   WsDevPreviewStopRpc,
+  WsImagesSubscribeRpc,
+  WsImagesGenerateRpc,
+  WsImagesCancelRpc,
+  WsImagesKeepRpc,
+  WsImagesRetryRpc,
+  WsImagesSetBaseUrlRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsCancelPromptPredictionRpc,

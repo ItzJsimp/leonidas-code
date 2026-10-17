@@ -66,6 +66,11 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.hardwareSetDeepSensors]: AuthSettingsWriteScope,
   [WS_METHODS.hardwareAcknowledgeAlert]: AuthOrchestrationOperateScope,
   [WS_METHODS.hardwarePrepareAgent]: AuthOrchestrationOperateScope,
+  [WS_METHODS.imagesGenerate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.imagesCancel]: AuthOrchestrationOperateScope,
+  [WS_METHODS.imagesKeep]: AuthOrchestrationOperateScope,
+  [WS_METHODS.imagesRetry]: AuthOrchestrationOperateScope,
+  [WS_METHODS.imagesSetBaseUrl]: AuthSettingsWriteScope,
 } as const;
 export type ClientGuardedRpcTag = keyof typeof CLIENT_GUARDED_RPC_SCOPES;
 

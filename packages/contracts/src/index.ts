@@ -69,6 +69,7 @@ export * from "./taskBoard.ts";
 export * from "./hardwareWatch.ts";
 export * from "./savedItem.ts";
 export * from "./devPreview.ts";
+export * from "./images.ts";
 export * from "./rpc.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
