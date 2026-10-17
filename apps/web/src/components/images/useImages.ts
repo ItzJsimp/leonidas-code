@@ -92,24 +92,31 @@ export function useImages() {
     }
   }, []);
 
-  const generate = useCallback(
-    (seed: number | null) =>
+  const start = useCallback(
+    (input: {
+      readonly prompt: string;
+      readonly modelIds: ReadonlyArray<string>;
+      readonly seed: number | null;
+      readonly count: number;
+    }) =>
       attempt("Could not start the images", async () => {
-        if (environmentId === null || project === null) return;
+        if (environmentId === null || project === null) {
+          throw new Error("Add a project first. Images are saved in its folder.");
+        }
         unwrap(
           await runGenerate({
             environmentId,
-            input: {
-              projectId: project.id,
-              prompt: memory.prompt.trim(),
-              modelIds: selectedModelIds,
-              seed,
-              count: memory.count,
-            },
+            input: { projectId: project.id, ...input, prompt: input.prompt.trim() },
           }),
         );
       }),
-    [attempt, environmentId, memory.count, memory.prompt, project, runGenerate, selectedModelIds],
+    [attempt, environmentId, project, runGenerate],
+  );
+
+  const generate = useCallback(
+    (seed: number | null) =>
+      start({ prompt: memory.prompt, modelIds: selectedModelIds, seed, count: memory.count }),
+    [memory.count, memory.prompt, selectedModelIds, start],
   );
 
   const cancel = useCallback(
@@ -165,6 +172,7 @@ export function useImages() {
     memory,
     selectedModelIds,
     patchMemory,
+    start,
     generate,
     cancel,
     keep,

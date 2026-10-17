@@ -7,7 +7,6 @@ import {
   RotateCcwIcon,
   SparklesIcon,
   XIcon,
-  ZapIcon,
 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 
@@ -42,12 +41,6 @@ import { MAX_VARIATIONS, promptHistory } from "./images.logic";
 import type { GalleryItem } from "./images.mock";
 import type { CreateMemory } from "./useCreateMemory";
 import type { GenerateRequest } from "./useImagesCatalog";
-
-const STARTER_PROMPTS = [
-  "a cosy reading corner with a big window, rainy afternoon, warm light",
-  'a coffee cup with the word "MONDAY" printed on it, product photo',
-  "a small robot watering plants on a balcony, cartoon style",
-];
 
 /** True when the model can make an image now. */
 const canRun = (model: ImageCatalogModel) => model.state === "ready" && model.fit !== "too-big";
@@ -103,6 +96,8 @@ export function CreateView(props: {
   readonly catalog: ReadonlyArray<ImageCatalogModel>;
   readonly items: ReadonlyArray<GalleryItem>;
   readonly online: boolean;
+  /** False when the server ignores size, steps, guidance and the negative prompt. */
+  readonly canAdjust: boolean;
   readonly onGenerate: (request: GenerateRequest) => void;
   readonly onOpenModels: () => void;
 }) {
@@ -125,14 +120,6 @@ export function CreateView(props: {
   const total = runnable.length * memory.count;
   const confirm = needsConfirm(range);
   const { width, height } = dimensionsFor(memory.aspect, memory.size);
-  const fastModels = useMemo(
-    () =>
-      catalog
-        .filter((model) => canRun(model) && model.speedTier === "fast")
-        .toSorted((a, b) => a.estimatedSeconds - b.estimatedSeconds)
-        .slice(0, 3),
-    [catalog],
-  );
   const advancedChanged =
     memory.steps !== null ||
     memory.guidance !== null ||
@@ -207,24 +194,6 @@ export function CreateView(props: {
         <HelpText id={`${ids}-prompt-help`}>
           Every chosen model gets the same words. Press Ctrl+Enter to start.
         </HelpText>
-        {memory.prompt.trim() === "" ? (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Try one of these</span>
-            <ul className="flex flex-col gap-1">
-              {STARTER_PROMPTS.map((prompt) => (
-                <li key={prompt}>
-                  <button
-                    type="button"
-                    onClick={() => change({ prompt })}
-                    className="min-h-11 w-full rounded-md border border-dashed px-3 py-1.5 text-left text-sm text-muted-foreground outline-hidden hover:bg-accent/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:min-h-8"
-                  >
-                    {prompt}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
         {history.length > 0 ? (
           <Collapsible>
             <CollapsibleTrigger className="min-h-8 rounded text-xs text-muted-foreground underline-offset-2 outline-hidden hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
@@ -273,17 +242,6 @@ export function CreateView(props: {
             ))}
           </ul>
         )}
-        {fastModels.length >= 2 ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="self-start"
-            onClick={() => change({ modelIds: fastModels.map((model) => model.id), count: 1 })}
-          >
-            <ZapIcon />
-            Try {fastModels.length} fast models
-          </Button>
-        ) : null}
       </div>
 
       {/* Images per model and Seed */}
@@ -380,56 +338,60 @@ export function CreateView(props: {
         </div>
       </div>
 
-      {/* Shape */}
-      <div className="flex flex-col gap-2">
-        <SectionLabel id={`${ids}-shape`}>Shape and size</SectionLabel>
-        <ToggleGroup
-          aria-labelledby={`${ids}-shape`}
-          className="w-full *:flex-1 *:pointer-coarse:min-h-11"
-          value={[memory.aspect]}
-          onValueChange={(next) => {
-            const value = next[0] as AspectId | undefined;
-            if (value) change({ aspect: value });
-          }}
-        >
-          {ASPECTS.map((aspect) => (
-            <Toggle key={aspect.id} value={aspect.id}>
-              {aspect.label}
-            </Toggle>
-          ))}
-        </ToggleGroup>
-        <ToggleGroup
-          aria-label="Size"
-          className="w-full *:flex-1 *:pointer-coarse:min-h-11"
-          value={[memory.size]}
-          onValueChange={(next) => {
-            const value = next[0] as SizeId | undefined;
-            if (value) change({ size: value });
-          }}
-        >
-          {SIZES.map((size) => (
-            <Toggle key={size.id} value={size.id}>
-              {size.label}
-            </Toggle>
-          ))}
-        </ToggleGroup>
-        <HelpText className="tabular-nums">
-          {width} × {height} pixels. Bigger pictures take longer.
-        </HelpText>
-      </div>
+      {props.canAdjust ? (
+        <>
+          {/* Shape */}
+          <div className="flex flex-col gap-2">
+            <SectionLabel id={`${ids}-shape`}>Shape and size</SectionLabel>
+            <ToggleGroup
+              aria-labelledby={`${ids}-shape`}
+              className="w-full *:flex-1 *:pointer-coarse:min-h-11"
+              value={[memory.aspect]}
+              onValueChange={(next) => {
+                const value = next[0] as AspectId | undefined;
+                if (value) change({ aspect: value });
+              }}
+            >
+              {ASPECTS.map((aspect) => (
+                <Toggle key={aspect.id} value={aspect.id}>
+                  {aspect.label}
+                </Toggle>
+              ))}
+            </ToggleGroup>
+            <ToggleGroup
+              aria-label="Size"
+              className="w-full *:flex-1 *:pointer-coarse:min-h-11"
+              value={[memory.size]}
+              onValueChange={(next) => {
+                const value = next[0] as SizeId | undefined;
+                if (value) change({ size: value });
+              }}
+            >
+              {SIZES.map((size) => (
+                <Toggle key={size.id} value={size.id}>
+                  {size.label}
+                </Toggle>
+              ))}
+            </ToggleGroup>
+            <HelpText className="tabular-nums">
+              {width} × {height} pixels. Bigger pictures take longer.
+            </HelpText>
+          </div>
 
-      {/* Advanced */}
-      <Collapsible defaultOpen={advancedChanged}>
-        <CollapsibleTrigger className="flex min-h-11 w-full items-center justify-between rounded-lg border px-3 text-sm font-medium outline-hidden hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:min-h-9">
-          <span>Advanced settings</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            {advancedChanged ? "Changed" : "Model defaults"}
-          </span>
-        </CollapsibleTrigger>
-        <CollapsiblePanel>
-          <AdvancedPanel memory={memory} selected={selected} onChange={change} />
-        </CollapsiblePanel>
-      </Collapsible>
+          {/* Advanced */}
+          <Collapsible defaultOpen={advancedChanged}>
+            <CollapsibleTrigger className="flex min-h-11 w-full items-center justify-between rounded-lg border px-3 text-sm font-medium outline-hidden hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:min-h-9">
+              <span>Advanced settings</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {advancedChanged ? "Changed" : "Model defaults"}
+              </span>
+            </CollapsibleTrigger>
+            <CollapsiblePanel>
+              <AdvancedPanel memory={memory} selected={selected} onChange={change} />
+            </CollapsiblePanel>
+          </Collapsible>
+        </>
+      ) : null}
 
       {/* Generate */}
       <div className="flex flex-col gap-2">
@@ -447,7 +409,7 @@ export function CreateView(props: {
                 Start {total} images
               </Button>
               <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
-                Not now
+                Ask me later
               </Button>
             </div>
           </div>

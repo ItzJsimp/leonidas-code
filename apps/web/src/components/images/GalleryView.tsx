@@ -2,7 +2,6 @@ import {
   CheckIcon,
   ClipboardCopyIcon,
   Columns2Icon,
-  FolderOpenIcon,
   ImageOffIcon,
   LockIcon,
   RefreshCwIcon,
@@ -42,7 +41,8 @@ export interface GalleryActions {
   readonly imageUrl: (item: GalleryItem) => string | null;
   readonly onKeep: (item: GalleryItem, kept: boolean) => void;
   readonly onRetry: (item: GalleryItem) => void;
-  readonly onRemove: (item: GalleryItem) => void;
+  /** Missing when the server cannot delete a picture. */
+  readonly onRemove?: ((item: GalleryItem) => void) | undefined;
   readonly onReuse: (item: GalleryItem) => void;
   readonly onLockSeed: (item: GalleryItem) => void;
 }
@@ -219,24 +219,26 @@ const RunCard = memo(function RunCard(props: {
           Reuse settings
         </Button>
       </header>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
+      <div className="flex flex-col gap-4">
         {run.byModel.map((entry) => (
           <div key={entry.modelId} className="flex min-w-0 flex-col gap-2">
-            <h4 className="truncate text-xs font-semibold">{entry.items[0]?.modelLabel}</h4>
-            {entry.items.map((item) =>
-              item.status === "done" ? (
-                <Tile
-                  key={item.id}
-                  item={item}
-                  url={props.actions.imageUrl(item)}
-                  chosen={props.compareIds.includes(item.id)}
-                  onToggleCompare={props.onToggleCompare}
-                  onOpen={props.onOpen}
-                />
-              ) : (
-                <StatusRow key={item.id} item={item} onRetry={props.actions.onRetry} />
-              ),
-            )}
+            <h4 className="truncate text-sm font-semibold">{entry.items[0]?.modelLabel}</h4>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fill,minmax(12rem,14rem))]">
+              {entry.items.map((item) =>
+                item.status === "done" ? (
+                  <Tile
+                    key={item.id}
+                    item={item}
+                    url={props.actions.imageUrl(item)}
+                    chosen={props.compareIds.includes(item.id)}
+                    onToggleCompare={props.onToggleCompare}
+                    onOpen={props.onOpen}
+                  />
+                ) : (
+                  <StatusRow key={item.id} item={item} onRetry={props.actions.onRetry} />
+                ),
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -549,20 +551,6 @@ function ImageDetailSheet(props: {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    toastManager.add({
-                      type: "info",
-                      title: "Open folder needs the server",
-                      description:
-                        "This preview uses sample data. The real page opens the images folder.",
-                    })
-                  }
-                >
-                  <FolderOpenIcon />
-                  Open folder
-                </Button>
-                <Button
-                  variant="outline"
                   onClick={() => {
                     void navigator.clipboard
                       .writeText(recipeText(item))
@@ -573,16 +561,18 @@ function ImageDetailSheet(props: {
                   <ClipboardCopyIcon />
                   Copy recipe
                 </Button>
-                <Button
-                  variant="destructive-outline"
-                  onClick={() => {
-                    actions.onRemove(item);
-                    props.onClose();
-                  }}
-                >
-                  <Trash2Icon />
-                  Delete
-                </Button>
+                {actions.onRemove ? (
+                  <Button
+                    variant="destructive-outline"
+                    onClick={() => {
+                      actions.onRemove?.(item);
+                      props.onClose();
+                    }}
+                  >
+                    <Trash2Icon />
+                    Delete
+                  </Button>
+                ) : null}
               </div>
               <HelpText>
                 Reuse all settings puts the prompt, model, seed and settings back in Create. Lock

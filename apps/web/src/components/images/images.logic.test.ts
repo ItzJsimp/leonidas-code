@@ -8,6 +8,7 @@ import {
   describeQueue,
   estimateRunSeconds,
   formatElapsed,
+  formatSeconds,
   parseSeedInput,
   promptHistory,
   resolveSelectedModels,
@@ -141,5 +142,13 @@ describe("canRetry", () => {
     expect(canRetry(item({ status: "done" }))).toBe(false);
     expect(canRetry(item({ status: "running" }))).toBe(false);
     expect(canRetry(item({ status: "waiting" }))).toBe(false);
+  });
+});
+
+describe("formatSeconds", () => {
+  it("rounds server times with decimals", () => {
+    expect(formatSeconds(152.30000000000001)).toBe("2 min 32 s");
+    expect(formatSeconds(25.7)).toBe("26 s");
+    expect(formatSeconds(120)).toBe("2 min");
   });
 });

@@ -1,10 +1,13 @@
 import { FlaskConicalIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
+import { usePrimaryEnvironmentId } from "~/state/environments";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "../ui/popover";
 import { SidebarInset } from "../ui/sidebar";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import { Spinner } from "../ui/spinner";
 import { Switch } from "../ui/switch";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { ASPECTS, SIZES, dimensionsFor } from "./catalog.logic";
@@ -16,7 +19,8 @@ import type { GalleryItem } from "./images.mock";
 import { ModelsView } from "./ModelsView";
 import { AddressField, SetupCard } from "./SetupCard";
 import { useCreateMemory, type CreateMemory, type ImagesView } from "./useCreateMemory";
-import { useImagesCatalog, type ImagesCatalogApi, type PreviewSettings } from "./useImagesCatalog";
+import { useImagesCatalog, type ImagesApi, type PreviewSettings } from "./useImagesCatalog";
+import { useImagesLive } from "./useImagesLive";
 
 /** Finds the aspect and size presets that give these pixels. Null when no preset matches. */
 function presetsFor(width: number, height: number): Pick<CreateMemory, "aspect" | "size"> | null {
@@ -36,7 +40,11 @@ function PreviewMenu(props: {
   readonly onChange: (patch: Partial<PreviewSettings>) => void;
 }) {
   const { preview, onChange } = props;
-  const row = (label: string, checked: boolean, key: "online" | "bigCatalog" | "emptyGallery") => (
+  const row = (
+    label: string,
+    checked: boolean,
+    key: "sample" | "online" | "bigCatalog" | "emptyGallery",
+  ) => (
     <label className="flex min-h-9 items-center justify-between gap-4 text-sm">
       {label}
       <Switch checked={checked} onCheckedChange={(value) => onChange({ [key]: value })} />
@@ -51,30 +59,35 @@ function PreviewMenu(props: {
       <PopoverPopup className="w-72">
         <PopoverTitle className="mb-2">Test data (dev only)</PopoverTitle>
         <div className="flex flex-col gap-1">
-          <span className="text-sm">Graphics card</span>
-          <ToggleGroup
-            aria-label="Graphics card"
-            className="w-full *:flex-1"
-            value={[preview.gpu]}
-            onValueChange={(next) => {
-              const gpu = next[0];
-              if (gpu === "6" || gpu === "12" || gpu === "24") onChange({ gpu });
-            }}
-          >
-            <Toggle value="6">6 GB</Toggle>
-            <Toggle value="12">12 GB</Toggle>
-            <Toggle value="24">24 GB</Toggle>
-          </ToggleGroup>
-          {row("ComfyUI connected", preview.online, "online")}
-          {row("20 models", preview.bigCatalog, "bigCatalog")}
-          {row("Empty gallery", preview.emptyGallery, "emptyGallery")}
+          {row("Use sample data", preview.sample, "sample")}
+          {preview.sample ? (
+            <>
+              <span className="text-sm">Graphics card</span>
+              <ToggleGroup
+                aria-label="Graphics card"
+                className="w-full *:flex-1"
+                value={[preview.gpu]}
+                onValueChange={(next) => {
+                  const gpu = next[0];
+                  if (gpu === "6" || gpu === "12" || gpu === "24") onChange({ gpu });
+                }}
+              >
+                <Toggle value="6">6 GB</Toggle>
+                <Toggle value="12">12 GB</Toggle>
+                <Toggle value="24">24 GB</Toggle>
+              </ToggleGroup>
+              {row("ComfyUI connected", preview.online, "online")}
+              {row("20 models", preview.bigCatalog, "bigCatalog")}
+              {row("Empty gallery", preview.emptyGallery, "emptyGallery")}
+            </>
+          ) : null}
         </div>
       </PopoverPopup>
     </Popover>
   );
 }
 
-function ConnectionBadge(props: { readonly api: ImagesCatalogApi }) {
+function ConnectionBadge(props: { readonly api: ImagesApi }) {
   const { source } = props.api;
   return (
     <Popover>
@@ -108,8 +121,11 @@ const VIEWS: ReadonlyArray<{ id: ImagesView; label: string }> = [
 ];
 
 /** Make pictures with models on this computer, compare models and keep the best results. */
-export function ImagesPage() {
-  const api = useImagesCatalog();
+function ImagesPageBody() {
+  const sampleApi = useImagesCatalog();
+  const liveApi = useImagesLive();
+  const sample = sampleApi.preview.sample;
+  const api: ImagesApi = sample ? sampleApi : liveApi;
   const [memory, patch] = useCreateMemory();
   const { items, catalog } = api;
   const queue = useMemo(() => describeQueue(items), [items]);
@@ -119,7 +135,6 @@ export function ImagesPage() {
     [items, latestJob],
   );
   const doneCount = useMemo(() => items.filter((item) => item.status === "done").length, [items]);
-  const readyCount = catalog.filter((model) => model.state === "ready").length;
 
   const reuse = useCallback(
     (item: GalleryItem) => {
@@ -152,7 +167,7 @@ export function ImagesPage() {
     imageUrl: api.imageUrl,
     onKeep: api.keep,
     onRetry: api.retry,
-    onRemove: api.remove,
+    onRemove: api.remove ?? undefined,
     onReuse: reuse,
     onLockSeed: lockSeed,
   };
@@ -169,17 +184,39 @@ export function ImagesPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" size="lg">
-                Sample data
-              </Badge>
+              {sample ? (
+                <Badge variant="outline" size="lg">
+                  Sample data
+                </Badge>
+              ) : null}
+              {api.projects.length > 1 ? (
+                <Select
+                  value={api.projectId ?? ""}
+                  onValueChange={(value) => value && api.setProjectId(value)}
+                >
+                  <SelectTrigger aria-label="Project" className="w-48">
+                    <SelectValue>
+                      {api.projects.find((project) => project.id === api.projectId)?.title ??
+                        "Choose a project"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup alignItemWithTrigger={false}>
+                    {api.projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.title}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              ) : null}
               <ConnectionBadge api={api} />
               {import.meta.env.DEV ? (
-                <PreviewMenu preview={api.preview} onChange={api.patchPreview} />
+                <PreviewMenu preview={sampleApi.preview} onChange={sampleApi.patchPreview} />
               ) : null}
             </div>
           </header>
 
-          {!api.source.online ? (
+          {api.ready && !api.source.online ? (
             <SetupCard
               source={api.source}
               checking={api.checking}
@@ -200,18 +237,14 @@ export function ImagesPage() {
             {VIEWS.map((view) => (
               <Toggle key={view.id} value={view.id}>
                 {view.label}
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {view.id === "models"
-                    ? readyCount
-                    : view.id === "gallery"
-                      ? doneCount
-                      : memory.modelIds.length}
-                </span>
+                {view.id === "gallery" && doneCount > 0 ? (
+                  <span className="text-xs text-muted-foreground tabular-nums">{doneCount}</span>
+                ) : null}
               </Toggle>
             ))}
           </ToggleGroup>
 
-          <ImagesQueueBar queue={queue} clockSkew={0} onCancel={api.cancel} />
+          <ImagesQueueBar queue={queue} clockSkew={api.clockSkew} onCancel={api.cancel} />
 
           {memory.view === "create" ? (
             <div className="grid items-start gap-5 lg:grid-cols-[minmax(22rem,28rem)_minmax(0,1fr)]">
@@ -221,6 +254,7 @@ export function ImagesPage() {
                 catalog={catalog}
                 items={items}
                 online={api.source.online}
+                canAdjust={api.canAdjust}
                 onGenerate={(request) => void api.generate(request)}
                 onOpenModels={() => patch({ view: "models" })}
               />
@@ -258,4 +292,17 @@ export function ImagesPage() {
       </div>
     </SidebarInset>
   );
+}
+
+/** Waits for the environment id first: picture addresses cannot be asked for without it. */
+export function ImagesPage() {
+  const environmentId = usePrimaryEnvironmentId();
+  if (environmentId === null) {
+    return (
+      <SidebarInset className="h-dvh min-h-0 items-center justify-center">
+        <Spinner />
+      </SidebarInset>
+    );
+  }
+  return <ImagesPageBody />;
 }

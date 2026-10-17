@@ -21,7 +21,8 @@ export function formatElapsed(startedAt: number, now: number): string {
   return formatSeconds(Math.max(0, Math.round((now - startedAt) / 1000)));
 }
 
-export function formatSeconds(totalSeconds: number): string {
+export function formatSeconds(rawSeconds: number): string {
+  const totalSeconds = Math.round(rawSeconds);
   if (totalSeconds < 60) return `${String(totalSeconds)} s`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;

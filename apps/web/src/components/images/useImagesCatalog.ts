@@ -25,6 +25,8 @@ import {
 
 /** Test data switches. Only the dev build shows the menu that changes them. */
 const PreviewSettings = Schema.Struct({
+  /** True shows made-up pictures and a made-up PC. False reads the real server. */
+  sample: Schema.Boolean,
   gpu: Schema.Literals(["6", "12", "24"]),
   online: Schema.Boolean,
   bigCatalog: Schema.Boolean,
@@ -33,6 +35,7 @@ const PreviewSettings = Schema.Struct({
 export type PreviewSettings = typeof PreviewSettings.Type;
 
 const DEFAULT_PREVIEW: PreviewSettings = {
+  sample: false,
   gpu: "12",
   online: true,
   bigCatalog: false,
@@ -55,6 +58,36 @@ export interface GenerateRequest {
 
 /** Mock run time: real seconds shrink so a test run finishes in a few seconds. */
 const mockDurationMs = (seconds: number) => Math.min(2500, Math.max(500, seconds * 12));
+
+/** What the Images page needs from a data source. The sample hook and the live hook both give it. */
+export interface ImagesApi {
+  readonly mode: "sample" | "live";
+  /** False until the first answer from the server. */
+  readonly ready: boolean;
+  /** Server clock minus this device's clock, in ms. */
+  readonly clockSkew: number;
+  readonly projects: ReadonlyArray<{ readonly id: string; readonly title: string }>;
+  readonly projectId: string | null;
+  readonly setProjectId: (id: string) => void;
+  /** True when size, steps, guidance and the negative prompt change the picture. */
+  readonly canAdjust: boolean;
+  readonly hardware: ImageHardwareFit;
+  readonly catalog: ReadonlyArray<ImageCatalogModel>;
+  readonly source: ImageSourceStatus;
+  readonly checking: boolean;
+  readonly items: ReadonlyArray<GalleryItem>;
+  readonly imageUrl: (item: GalleryItem) => string | null;
+  readonly generate: (request: GenerateRequest) => unknown;
+  readonly runBenchmark: (modelIds: ReadonlyArray<string>) => unknown;
+  readonly cancel: (stopRunning: boolean) => unknown;
+  readonly keep: (item: GalleryItem, kept: boolean) => unknown;
+  readonly retry: (item: GalleryItem) => unknown;
+  /** Null when the server cannot delete a picture yet. */
+  readonly remove: ((item: GalleryItem) => void) | null;
+  readonly install: (model: ImageCatalogModel) => void;
+  readonly recheck: () => Promise<boolean>;
+  readonly setBaseUrl: (value: string) => Promise<boolean>;
+}
 
 let jobCounter = 0;
 
@@ -288,6 +321,13 @@ export function useImagesCatalog() {
   );
 
   return {
+    mode: "sample" as const,
+    ready: true,
+    clockSkew: 0,
+    projects: [] as ImagesApi["projects"],
+    projectId: null as string | null,
+    setProjectId: (_id: string) => undefined,
+    canAdjust: true,
     preview,
     patchPreview,
     hardware,
@@ -308,4 +348,4 @@ export function useImagesCatalog() {
   };
 }
 
-export type ImagesCatalogApi = ReturnType<typeof useImagesCatalog>;
+export type ImagesSampleApi = ReturnType<typeof useImagesCatalog>;

@@ -255,7 +255,16 @@ export function buildCatalog(
   profile: GpuProfileId,
   overrides: ReadonlyMap<string, InstallOverride>,
 ): ImageCatalogModel[] {
-  const hardware = HARDWARE_PROFILES[profile];
+  return buildCatalogFor(specs, HARDWARE_PROFILES[profile], profile === "12", overrides);
+}
+
+/** Same as buildCatalog for any PC. `sampleMeasured` adds the sample times of the 12 GB test PC. */
+export function buildCatalogFor(
+  specs: ReadonlyArray<ModelSpec>,
+  hardware: ImageHardwareFit,
+  sampleMeasured: boolean,
+  overrides: ReadonlyMap<string, InstallOverride>,
+): ImageCatalogModel[] {
   return specs.map((spec): ImageCatalogModel => {
     const { fit, reason } = computeFit(spec.vramGb * GB, hardware);
     const cardGb = hardware.vramBytes / GB;
@@ -263,7 +272,7 @@ export function buildCatalog(
     const override = overrides.get(spec.id);
     const state: ImageModelInstallState =
       override?.state ?? (spec.installed ? "ready" : "not-installed");
-    const measured = profile === "12" ? spec.measured12 : null;
+    const measured = sampleMeasured ? spec.measured12 : null;
     return {
       id: spec.id,
       label: spec.label,

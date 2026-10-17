@@ -317,7 +317,7 @@ function ModelRow(props: {
           size="sm"
           variant="ghost"
           onClick={props.onDetails}
-          aria-label={`Details: ${model.label}`}
+          aria-label={`View details: ${model.label}`}
         >
           <InfoIcon />
           View details
