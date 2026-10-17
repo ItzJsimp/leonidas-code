@@ -5,7 +5,7 @@ import * as NodePath from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
 
-import { LAYA_FILES, layaPaths, layaStatus, sha256OfFile } from "./layaSetup.ts";
+import { LAYA_FILES, layaPaths, layaStatus, sha256OfFile, wireLayaProject } from "./layaSetup.ts";
 
 describe("layaSetup", () => {
   it("puts the pack and the model under the per-user .leonidas folder", () => {
@@ -37,5 +37,30 @@ describe("layaSetup", () => {
     await NodeFSP.writeFile(NodePath.join(paths.model, "laya_int8.onnx"), "");
     expect((await layaStatus(home)).status).toBe("ready");
     await NodeFSP.rm(home, { recursive: true, force: true });
+  });
+});
+
+describe("wireLayaProject", () => {
+  it("refuses a missing folder", async () => {
+    const result = await wireLayaProject({ projectPath: "/no/such/laya/folder", confirmed: false });
+    expect(result.status).toBe("error");
+  });
+
+  it("asks for confirmation before writing into a SimplyGersi folder", async () => {
+    const root = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "laya-wire-"));
+    const folder = NodePath.join(root, "SimplyGersi AIOS");
+    await NodeFSP.mkdir(folder);
+    const result = await wireLayaProject({ projectPath: folder, confirmed: false });
+    expect(result.status).toBe("error");
+    expect(result.message).toContain("Confirm");
+    expect(await NodeFSP.readdir(folder)).toEqual([]);
+    await NodeFSP.rm(root, { recursive: true, force: true });
+  });
+
+  it("asks to install first when the pack is missing", async () => {
+    const root = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "laya-wire-"));
+    const result = await wireLayaProject({ projectPath: root, confirmed: false, home: root });
+    expect(result.message).toContain("Install Laya first");
+    await NodeFSP.rm(root, { recursive: true, force: true });
   });
 });

@@ -111,6 +111,46 @@ async function download(url: string, target: string): Promise<void> {
 let current: LayaSetupResult = { status: "idle", message: "", missingPackages: [] };
 let running = false;
 
+/** Folders that belong to another AIOS and need the user's explicit yes before any write. */
+const PROTECTED_FOLDER = /simplygersi/i;
+
+/**
+ * Adds the thin Laya launchers to one project folder. The pack must be installed first.
+ * Returns a result and leaves the install state untouched.
+ */
+export async function wireLayaProject(input: {
+  readonly projectPath: string;
+  readonly confirmed: boolean;
+  readonly home?: string;
+}): Promise<LayaSetupResult> {
+  const fail = (message: string): LayaSetupResult => ({
+    status: "error",
+    message,
+    missingPackages: [],
+  });
+  const folder = NodePath.resolve(input.projectPath);
+  const isDirectory = await NodeFSP.stat(folder).then(
+    (stat) => stat.isDirectory(),
+    () => false,
+  );
+  if (!isDirectory) return fail("That folder does not exist.");
+  if (PROTECTED_FOLDER.test(folder) && !input.confirmed) {
+    return fail("This folder belongs to another AIOS. Confirm before Laya writes there.");
+  }
+  const script = NodePath.join(layaPaths(input.home).pack, "install_pack.py");
+  const exists = await NodeFSP.stat(script).then(
+    () => true,
+    () => false,
+  );
+  if (!exists) return fail("Install Laya first, then add it to a project.");
+  const probe = await probeLaya();
+  const [python, ...prefix] = probe.python ?? [];
+  if (!python) return fail("Laya needs Python 3.9 or newer.");
+  const result = await run(python, [...prefix, script, "--wire-only", "--wire", folder], 60_000);
+  if (result.code !== 0) return fail("Laya could not be added to that folder.");
+  return { status: "ready", message: `Laya is on in ${folder}.`, missingPackages: [] };
+}
+
 export const layaSetupState = (): LayaSetupResult => current;
 
 const set = (next: LayaSetupResult): void => {

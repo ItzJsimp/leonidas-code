@@ -1,7 +1,10 @@
 import type { EnvironmentId, LayaSetupResult } from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
 import { ArrowRightIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { AIOS_FOLDER_STORAGE_KEY, DEFAULT_AIOS_FOLDER } from "../../onboarding/leonidasSetup.logic";
 import { layaSetupQuery } from "../../state/laya";
 import { useAtomQueryRunner } from "../../state/use-atom-query-runner";
 import { Button } from "../ui/button";
@@ -31,6 +34,8 @@ export function LeonidasLayaStep({
   const [result, setResult] = useState<LayaSetupResult | null>(null);
   const [wantPackages, setWantPackages] = useState(false);
   const [started, setStarted] = useState(false);
+  const [folder] = useLocalStorage(AIOS_FOLDER_STORAGE_KEY, DEFAULT_AIOS_FOLDER, Schema.String);
+  const [wireMessage, setWireMessage] = useState<string | null>(null);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -41,12 +46,16 @@ export function LeonidasLayaStep({
   }, []);
 
   const call = useCallback(
-    async (action: "status" | "install", installPackages: boolean) => {
+    async (
+      action: "status" | "install" | "wire",
+      installPackages: boolean,
+      projectPath?: string,
+    ) => {
       if (!environmentId) return null;
       try {
         const response = await run({
           environmentId,
-          input: { action, installPackages },
+          input: { action, installPackages, ...(projectPath ? { projectPath } : {}) },
         });
         return response._tag === "Success" ? response.value : null;
       } catch {
@@ -86,6 +95,12 @@ export function LeonidasLayaStep({
         },
       );
     }
+  };
+
+  const wire = async () => {
+    const value = await call("wire", false, folder.trim());
+    if (alive.current)
+      setWireMessage(value?.message ?? "Leonidas Code could not reach this computer.");
   };
 
   const ready = result?.status === "ready";
@@ -137,6 +152,16 @@ export function LeonidasLayaStep({
         <p className="mt-4 text-xs text-muted-foreground" role="status">
           {result.message}
         </p>
+      ) : null}
+      {ready ? (
+        <div className="mt-4 space-y-1.5">
+          <Button size="sm" variant="outline" onClick={() => void wire()}>
+            Use Laya in my AIOS folder
+          </Button>
+          <p className="text-xs text-muted-foreground" role="status">
+            {wireMessage ?? `Adds two small files to ${folder.trim()}. You can skip this.`}
+          </p>
+        </div>
       ) : null}
       <div className="mt-6 flex items-center justify-between gap-2">
         <Button variant="ghost-muted" onClick={onBack} disabled={working}>
