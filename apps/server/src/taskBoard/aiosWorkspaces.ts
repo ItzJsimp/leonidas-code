@@ -79,7 +79,7 @@ const keyFor = (path: string) => {
   } catch {
     // Keep the given path when it cannot be resolved.
   }
-  return process.platform === "win32" ? real.toLowerCase() : real;
+  return NodePath.sep === "\\" ? real.toLowerCase() : real;
 };
 
 /** Finds each AIOS root once, in hint order (confirmed folder, env, then project folders). */
