@@ -1,6 +1,7 @@
 import {
   ScribeCommandResult,
   ScribeEngineError,
+  ScribeEngineState,
   ScribeEngineWireEvent,
   ScribeHistoryPage,
   type ScribeListHistoryInput,
@@ -42,6 +43,9 @@ export class ScribeEngine extends Context.Service<
 >()("t3/scribe/ScribeEngine") {}
 
 const decodeCommand = Schema.decodeUnknownEffect(ScribeCommandResult);
+const decodeStatus = Schema.decodeUnknownEffect(
+  Schema.Struct({ state: ScribeEngineState, sampledAt: Schema.String }),
+);
 const decodePage = Schema.decodeUnknownEffect(ScribeHistoryPage);
 const decodeWireEvent = Schema.decodeUnknownOption(Schema.fromJsonString(ScribeEngineWireEvent));
 
@@ -128,6 +132,15 @@ export const makeWith = (options: {
         at: DateTime.formatIso(now),
       }));
 
+    const readState = call(HttpClientRequest.get(`${baseUrl}/v1/status`), decodeStatus).pipe(
+      Effect.map((status): ScribeLiveEvent | null => ({
+        type: "state",
+        state: status.state,
+        at: status.sampledAt,
+      })),
+      Effect.orElseSucceed(() => null),
+    );
+
     const connectOnce: Stream.Stream<ScribeLiveEvent> = Stream.unwrap(
       Effect.gen(function* () {
         const response = yield* http.execute(
@@ -142,7 +155,11 @@ export const makeWith = (options: {
           Stream.map(parseEventLine),
           Stream.filter(isEvent),
         );
-        return Stream.concat(Stream.fromEffect(connection(true)), lines);
+        // The stream sends only changes, so read the current state once after each connect.
+        const current = Stream.fromEffect(readState).pipe(
+          Stream.filter((event): event is ScribeLiveEvent => event !== null),
+        );
+        return Stream.concat(Stream.fromEffect(connection(true)), Stream.concat(current, lines));
       }).pipe(
         Effect.provideService(FetchHttpClient.RequestInit, {
           redirect: "manual",

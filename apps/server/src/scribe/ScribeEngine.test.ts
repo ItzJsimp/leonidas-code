@@ -102,9 +102,12 @@ it.live("streams state, transcript and history events after a dictation", () =>
       "state",
       "state",
       "state",
+      "state",
       "transcript",
       "history",
     ]);
+    // The first state comes from /v1/status right after the connect.
+    expect(events[1]).toMatchObject({ type: "state", state: "ready" });
   }),
 );
 
@@ -112,7 +115,12 @@ it.live("reports one offline event while the engine is down, then reconnects", (
   Effect.gen(function* () {
     const engine = yield* withMock({ fail: "events" });
     const events = Array.from(
-      yield* engine.events.pipe(Stream.take(3), Stream.runCollect, Effect.timeout("2 seconds")),
+      yield* engine.events.pipe(
+        Stream.filter((event) => event.type === "connection"),
+        Stream.take(3),
+        Stream.runCollect,
+        Effect.timeout("2 seconds"),
+      ),
     );
     // A failing stream connects, drops, and reconnects: link events alternate, never repeat.
     expect(events.map((event) => event.type === "connection" && event.connected)).toEqual([
