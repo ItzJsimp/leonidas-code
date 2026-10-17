@@ -6,6 +6,8 @@ You are building **Leonidas Code**, the Leonidas team's AI coding app (a fork of
 
 This project lives inside its builder's AI operating system at `../../`. If `../../AGENTS.md` exists, read it, then `../../memory/jake.md` (or that AIOS's identity file), `../../memory/soul.md` and `../../modes/router.md` before acting. Claude loads these through `CLAUDE.md`; other engines read them by hand. If the parent AIOS is missing, work from this repo alone and say so once. Never copy personal canon into this repo: it is public.
 
+**AIOS template for new users:** the universal template lives in the Leonidas AIOS at `../../scripts/universal-template/` and is built by `../../scripts/Export-UniversalAIOS.py` into `../../_dist/aios-universal-template/`. Any change to the reply standard, onboarding or default canon must also update that template.
+
 ## 2. Non-negotiables
 
 1. **Never kill by pattern.** No `pkill -f`, `pgrep | kill`, or killing a PID matched by name or path; your own process carries the worktree path. Kill only a PID you captured at spawn, or your port's owner after confirming its cwd.
