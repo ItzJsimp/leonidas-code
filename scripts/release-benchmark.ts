@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @effect-diagnostics nodeBuiltinImport:off globalConsole:off globalDate:off globalTimers:off - Standalone CI CLI that spawns the built app and reads wall-clock time; it runs outside any Effect runtime.
 // Per-release benchmark and budget gate (ADR-0074). Measures the Scribe engine
 // with scribe-bench, then installs-by-extraction and launches the built app to
 // measure full-app idle RAM and cold start. Engine budgets fail the build. App
