@@ -72,7 +72,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
 import { ComposerBanner } from "./ComposerBanner";
 import { createDraftSaver } from "./savedDraft";
-import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
+import { useProjectAiosWorkspace } from "../workspace/useProjectAiosWorkspace";
 
 /** Pasted into an agent chat, it makes the AIOS prompts folder the app reads. */
 const PROMPTS_FOLDER_SETUP = `Set up the prompts folder in my AIOS so Leonidas Code can read my saved prompts.
@@ -103,7 +103,9 @@ function errorText(error: unknown) {
 
 /** Server-backed saves are separate from the composer's local attachment-capable stash. */
 export function ComposerSavedItems(props: Props) {
-  const workspace = useActiveAiosWorkspace();
+  const workspace = useProjectAiosWorkspace(
+    props.projectId ? { environmentId: props.environmentId, projectId: props.projectId } : null,
+  );
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -144,7 +146,13 @@ export function ComposerSavedItems(props: Props) {
       draft.reviewComments,
       draft.threadContexts,
     ].some((items) => items.length > 0);
-  const disabled = !canOperate || !props.canSave || busy || !draft?.prompt.trim() || hasContext;
+  const disabled =
+    !workspace.scopeReady ||
+    !canOperate ||
+    !props.canSave ||
+    busy ||
+    !draft?.prompt.trim() ||
+    hasContext;
   const save = async (kind: "prompt" | "note" | "task") => {
     if (disabled || !draft) return;
     const captured = draft;
@@ -325,7 +333,9 @@ function StatusTabs(props: { value: StatusFilter; onChange: (value: StatusFilter
 }
 
 function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void }) {
-  const workspace = useActiveAiosWorkspace();
+  const workspace = useProjectAiosWorkspace(
+    props.projectId ? { environmentId: props.environmentId, projectId: props.projectId } : null,
+  );
   const [scope, setScope] = useState<"This project" | "No project" | "All projects">(
     props.projectId ? "This project" : "No project",
   );

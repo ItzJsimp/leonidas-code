@@ -27,6 +27,35 @@ interface ScopedEntity {
   readonly environmentId: EnvironmentId;
 }
 
+/** A thread follows its project's workspace, even while the Command tab shows another one. */
+export function workspaceForProject(
+  workspaces: ReadonlyArray<AiosWorkspaceSummary>,
+  projectId: ProjectId | undefined,
+  chosenId: string | undefined,
+) {
+  if (projectId === undefined) return pickActiveWorkspace(workspaces, chosenId);
+  return (
+    workspaces.find(
+      (workspace) => workspace.status === "ready" && workspace.projectIds.includes(projectId),
+    ) ?? workspaces.find((workspace) => workspace.status === "ready" && workspace.isDefault)
+  );
+}
+
+/** Project candidates shared by new-chat defaults and the chat project picker. */
+export function chatProjectsForWorkspace<
+  P extends ScopedEntity & { readonly id: ProjectId },
+>(input: {
+  readonly environmentId: EnvironmentId | null;
+  readonly workspaces: ReadonlyArray<AiosWorkspaceSummary>;
+  readonly active: AiosWorkspaceSummary | undefined;
+  readonly projects: ReadonlyArray<P>;
+}) {
+  if (input.environmentId === null || input.active === undefined) return input.projects;
+  return scopeToWorkspace({ ...input, threads: [] }).projects.filter(
+    (project) => project.environmentId === input.environmentId,
+  );
+}
+
 /**
  * Keeps the projects and threads of the active workspace. A project inside no workspace belongs to
  * the default one. Other environments pass through: their workspaces are not listed here.

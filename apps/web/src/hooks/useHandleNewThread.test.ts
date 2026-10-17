@@ -127,6 +127,9 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => null,
   useRouter: () => testState.router,
 }));
+vi.mock("../components/workspace/useWorkspaceProjects", () => ({
+  useWorkspaceProjects: (projects: unknown) => projects,
+}));
 vi.mock("react", () => ({
   useCallback: <T>(callback: T) => callback,
   useMemo: <T>(factory: () => T) => factory(),

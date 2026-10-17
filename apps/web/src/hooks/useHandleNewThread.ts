@@ -40,6 +40,7 @@ import { environmentServerConfigsAtom } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
 import { useClientSettings } from "./useSettings";
+import { useWorkspaceProjects } from "../components/workspace/useWorkspaceProjects";
 
 interface NewThreadWorkspaceOptions {
   branch?: string | null;
@@ -466,7 +467,8 @@ export function useHandleNewThread() {
         : useComposerDraftStore.getState().getDraftSession(routeTarget.draftId)
       : null,
   );
-  const projects = useProjects();
+  const allProjects = useProjects();
+  const projects = useWorkspaceProjects(allProjects);
   const orderedProjects = useMemo(() => {
     return orderItemsByPreferredIds({
       items: projects,
@@ -481,8 +483,22 @@ export function useHandleNewThread() {
   const handleNewThread = useNewThreadHandler();
 
   return {
-    activeDraftThread,
-    activeThread,
+    activeDraftThread:
+      activeDraftThread &&
+      projects.some(
+        (p) =>
+          p.id === activeDraftThread.projectId &&
+          p.environmentId === activeDraftThread.environmentId,
+      )
+        ? activeDraftThread
+        : null,
+    activeThread:
+      activeThread &&
+      projects.some(
+        (p) => p.id === activeThread.projectId && p.environmentId === activeThread.environmentId,
+      )
+        ? activeThread
+        : null,
     defaultProjectRef: orderedProjects[0]
       ? scopeProjectRef(orderedProjects[0].environmentId, orderedProjects[0].id)
       : null,
