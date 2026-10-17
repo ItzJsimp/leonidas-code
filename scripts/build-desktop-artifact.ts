@@ -1006,6 +1006,12 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/prod-resources/windows-server/**/*",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
+  // The Scribe engine ships once as resources/scribe-engine. Without this the
+  // staging copies also land in app.asar.unpacked (2 extra copies, 3.2 MB).
+  "!apps/desktop/resources/scribe-engine",
+  "!apps/desktop/resources/scribe-engine/**/*",
+  "!apps/desktop/prod-resources/scribe-engine",
+  "!apps/desktop/prod-resources/scribe-engine/**/*",
   "!apps/desktop/gnome-extension",
   "!apps/desktop/gnome-extension/**/*",
 ] as const;

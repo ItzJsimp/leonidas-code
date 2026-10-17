@@ -606,6 +606,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "!apps/desktop/prod-resources/windows-server/**/*",
       "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
       "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
+      "!apps/desktop/resources/scribe-engine",
+      "!apps/desktop/resources/scribe-engine/**/*",
+      "!apps/desktop/prod-resources/scribe-engine",
+      "!apps/desktop/prod-resources/scribe-engine/**/*",
       "!apps/desktop/gnome-extension",
       "!apps/desktop/gnome-extension/**/*",
     ]);
