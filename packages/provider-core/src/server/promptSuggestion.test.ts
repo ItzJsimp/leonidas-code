@@ -53,7 +53,7 @@ describe("sanitizePromptSuggestion", () => {
 });
 
 describe("buildPromptSuggestionPrompt", () => {
-  it("keeps the newest turns in full and clips older ones", () => {
+  it("keeps the newest two turns long and clips older ones", () => {
     const messages = [
       { role: "user" as const, text: "a".repeat(2_000) },
       { role: "assistant" as const, text: "b".repeat(2_000) },
@@ -61,9 +61,12 @@ describe("buildPromptSuggestionPrompt", () => {
       { role: "assistant" as const, text: "d".repeat(2_000) },
     ];
     const { prompt } = buildPromptSuggestionPrompt({ messages });
-    expect(prompt).toContain("c".repeat(2_000));
-    expect(prompt).toContain("d".repeat(2_000));
-    expect(prompt).not.toContain("a".repeat(2_000));
+    expect(prompt).toContain("c".repeat(1_200));
+    expect(prompt).not.toContain("c".repeat(1_201));
+    expect(prompt).toContain("d".repeat(1_200));
+    expect(prompt).not.toContain("d".repeat(1_201));
+    expect(prompt).toContain("a".repeat(300));
+    expect(prompt).not.toContain("a".repeat(301));
     expect(prompt).toContain("[assistant]");
   });
 });

@@ -58,7 +58,7 @@ function turnStartCauseDetails(cause: unknown): string | undefined {
       break;
     }
   }
-  return details.length === 0 ? undefined : details.join(" Caused by: ");
+  return details.length === 0 ? undefined : details.join(". Caused by: ");
 }
 
 /** Translate known categories without exposing arbitrary provider defect text. */
