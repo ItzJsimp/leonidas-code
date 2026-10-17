@@ -145,7 +145,7 @@ function AccountRow({
               type="button"
               variant="ghost-muted"
               size="icon-xs"
-              aria-label={`More options for ${row.displayName}`}
+              aria-label={`Show more options for ${row.displayName}`}
             />
           }
         >

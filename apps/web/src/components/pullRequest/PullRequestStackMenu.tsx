@@ -137,7 +137,7 @@ export function PullRequestStackMenu({
                   <Button
                     variant="ghost"
                     size="xs"
-                    aria-label={`Stack ${stack.number}, layer ${position} of ${stack.layers.length}`}
+                    aria-label={`Open stack ${stack.number}, layer ${position} of ${stack.layers.length}`}
                   />
                 }
               >

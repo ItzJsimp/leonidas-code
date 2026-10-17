@@ -81,7 +81,7 @@ export const SplitLayoutMenu = memo(function SplitLayoutMenu() {
                   variant="ghost"
                   size="icon-sm"
                   type="button"
-                  aria-label="Pane layout"
+                  aria-label="Choose pane layout"
                   className="shrink-0 [-webkit-app-region:no-drag]"
                 />
               }

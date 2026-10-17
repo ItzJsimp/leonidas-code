@@ -84,7 +84,9 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
         <Menu>
           <MenuTrigger
             disabled={disabled || isResponding}
-            render={<Button size="icon-xs" variant="outline" aria-label="More ways to answer" />}
+            render={
+              <Button size="icon-xs" variant="outline" aria-label="Show more ways to answer" />
+            }
           >
             <EllipsisIcon />
           </MenuTrigger>

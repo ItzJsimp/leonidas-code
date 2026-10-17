@@ -170,7 +170,7 @@ export const TaskFilterBar = memo(function TaskFilterBar(props: {
       </Menu>
       {props.showGroupBy ? (
         <Menu>
-          <MenuTrigger render={<Button variant="ghost" size="compact" aria-label="Group" />}>
+          <MenuTrigger render={<Button variant="ghost" size="compact" aria-label="Group tasks" />}>
             <GroupIcon />
             <span className="hidden sm:inline">
               {prefs.groupBy === "none" ? "Group" : GROUP_LABELS[prefs.groupBy]}

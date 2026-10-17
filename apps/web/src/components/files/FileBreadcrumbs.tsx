@@ -136,8 +136,8 @@ function BreadcrumbMenuContent(props: {
         ) : children.length === 0 ? (
           <MenuItem disabled>
             {entriesTruncated
-              ? "This folder has no files to show yet. Some project files are still loading."
-              : "This folder is empty."}
+              ? "This folder has no files to show yet. Some project files are still loading. Wait a moment, then open this menu again."
+              : "This folder is empty. Choose another folder."}
           </MenuItem>
         ) : (
           // Files form a radio group keyed by path so the open file is marked as checked;

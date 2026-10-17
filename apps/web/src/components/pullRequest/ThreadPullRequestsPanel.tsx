@@ -288,7 +288,7 @@ function LinkRow({
               <Button
                 variant="ghost"
                 size="icon-micro"
-                aria-label={`Actions for #${link.number}`}
+                aria-label={`Open actions for #${link.number}`}
                 className="relative"
               >
                 <MoreHorizontalIcon className="size-3.5" />

@@ -140,7 +140,7 @@ export function DeviceControlsRail(props: {
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label="Device text size"
+                aria-label="Set device text size"
                 title="Device text size"
                 disabled={controls.disabled || !settings?.textSize}
               />
@@ -201,7 +201,7 @@ export function DeviceControlsRail(props: {
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label="More device actions"
+                aria-label="Show more device actions"
                 title="More device actions"
               />
             }

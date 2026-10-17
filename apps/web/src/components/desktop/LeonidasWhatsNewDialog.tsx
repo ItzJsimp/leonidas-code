@@ -136,7 +136,7 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="ghost" onClick={onClose}>
-              {onRestartNow ? "Later" : "Close"}
+              {onRestartNow ? "Restart later" : "Close"}
             </Button>
             {onUpdateWhenSafe ? (
               <Button

@@ -2866,7 +2866,9 @@ function ProjectSortMenu({
         <TooltipTrigger
           render={
             <MenuTrigger
-              render={<Button size="icon-xs" variant="ghost-muted" aria-label="Sidebar options" />}
+              render={
+                <Button size="icon-xs" variant="ghost-muted" aria-label="Open sidebar options" />
+              }
             />
           }
         >

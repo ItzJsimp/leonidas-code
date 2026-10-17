@@ -257,7 +257,7 @@ export function AcpRegistrySearchStep({
                                 <Button
                                   size="icon-xs"
                                   variant="ghost-muted"
-                                  aria-label={`About ${agent.name}`}
+                                  aria-label={`Learn about ${agent.name}`}
                                   render={
                                     <a
                                       href={agent.website || agent.repository || undefined}

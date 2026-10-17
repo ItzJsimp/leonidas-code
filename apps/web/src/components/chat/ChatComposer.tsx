@@ -1352,7 +1352,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
               <ComposerSelectControl
                 data-composer-shortcut="composer.mode"
                 size={size}
-                aria-label="Permission"
+                aria-label="Choose permission"
               />
             }
           >

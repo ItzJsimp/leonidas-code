@@ -1769,7 +1769,7 @@ function SavedBackendListRow({
               variant="ghost-muted"
               size="icon-xs"
               disabled={isRemoving}
-              aria-label={`More options for ${environment.label}`}
+              aria-label={`Show more options for ${environment.label}`}
             />
           }
         >
@@ -3674,7 +3674,7 @@ export function ConnectionsSettings() {
                         type="button"
                         variant="ghost-muted"
                         size="icon-xs"
-                        aria-label="More options for this computer"
+                        aria-label="Show more options for this computer"
                       />
                     }
                   >

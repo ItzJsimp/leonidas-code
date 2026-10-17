@@ -910,7 +910,7 @@ function KeybindingRowMenu({
             variant="ghost-muted"
             size="icon-sm"
             disabled={isSaving}
-            aria-label={`Actions for ${commandLabel(row.command)}`}
+            aria-label={`Open actions for ${commandLabel(row.command)}`}
           />
         }
       >

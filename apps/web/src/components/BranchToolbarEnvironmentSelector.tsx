@@ -93,7 +93,7 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
             <ComposerSelectControl
               size="xs"
               className="min-w-0 max-w-full"
-              aria-label="Computer"
+              aria-label="Choose a computer"
               data-composer-shortcut="composer.host"
               data-composer-context-control
             />
