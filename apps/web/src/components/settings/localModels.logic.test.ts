@@ -124,10 +124,16 @@ const report = (patch: Partial<LocalModelsTokenReport> = {}): LocalModelsTokenRe
   days: 30,
   turns: 10,
   inputTokens: 1_200_000,
+  cachedInputTokens: 1_000_000,
   outputTokens: 34_000,
   classes: {
-    shortAnswer: { turns: 4, inputTokens: 200_000, outputTokens: 900 },
-    keepCloud: { turns: 5, inputTokens: 1_000_000, outputTokens: 33_100 },
+    shortAnswer: { turns: 4, inputTokens: 200_000, cachedInputTokens: 150_000, outputTokens: 900 },
+    keepCloud: {
+      turns: 5,
+      inputTokens: 1_000_000,
+      cachedInputTokens: 850_000,
+      outputTokens: 33_100,
+    },
     notReported: { turns: 1 },
   },
   listPriceSaved: null,
@@ -140,10 +146,11 @@ describe("tokenReportLines", () => {
       report({
         turns: 0,
         inputTokens: 0,
+        cachedInputTokens: 0,
         outputTokens: 0,
         classes: {
-          shortAnswer: { turns: 0, inputTokens: 0, outputTokens: 0 },
-          keepCloud: { turns: 0, inputTokens: 0, outputTokens: 0 },
+          shortAnswer: { turns: 0, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0 },
+          keepCloud: { turns: 0, inputTokens: 0, cachedInputTokens: 0, outputTokens: 0 },
           notReported: { turns: 0 },
         },
       }),
@@ -154,6 +161,8 @@ describe("tokenReportLines", () => {
   it("lists totals, the local-capable share and the not-reported turns", () => {
     const lines = tokenReportLines(report());
     expect(lines[0]).toContain("10 turns");
+    expect(lines[0]).toContain("1,000,000 from cache");
+    expect(lines[1]).toContain("150,000 from cache");
     expect(lines.join(" ")).toContain("4 turns");
     expect(lines.join(" ")).toContain("1 turn had no usage reported");
   });

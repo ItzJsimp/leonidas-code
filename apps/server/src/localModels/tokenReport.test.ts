@@ -25,6 +25,7 @@ describe("buildTokenReport", () => {
     expect(report.classes.shortAnswer).toEqual({
       turns: 1,
       inputTokens: 1000,
+      cachedInputTokens: 0,
       outputTokens: SHORT_ANSWER_MAX_OUTPUT_TOKENS,
     });
     expect(report.classes.keepCloud.turns).toBe(0);
@@ -68,6 +69,17 @@ describe("buildTokenReport", () => {
     const priced = buildTokenReport(rows, 30, { inputPerMillion: 3, outputPerMillion: 15 });
     // 2M input at 3 per million, plus 100 output at 15 per million.
     expect(priced.listPriceSaved).toBeCloseTo(6 + 0.0015, 6);
+  });
+
+  it("reports cached input apart and prices only the fresh input", () => {
+    const rows = [
+      { inputTokens: 2_000_000, cachedInputTokens: 1_500_000, outputTokens: 100, toolCalls: 0 },
+    ];
+    const report = buildTokenReport(rows, 30, { inputPerMillion: 3, outputPerMillion: 15 });
+    expect(report.cachedInputTokens).toBe(1_500_000);
+    expect(report.classes.shortAnswer.cachedInputTokens).toBe(1_500_000);
+    // 500k fresh input at 3 per million, plus 100 output at 15 per million.
+    expect(report.listPriceSaved).toBeCloseTo(1.5 + 0.0015, 6);
   });
 
   it("has no text field in the result", () => {

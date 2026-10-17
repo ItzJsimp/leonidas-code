@@ -9,6 +9,7 @@ import type { TokenReportRow } from "./tokenReport.ts";
 
 interface TurnRow {
   readonly input_tokens: number | null;
+  readonly cached_input_tokens: number | null;
   readonly output_tokens: number | null;
   readonly tool_calls: number | null;
 }
@@ -29,6 +30,7 @@ export const readTokenReportRows = (sql: SqlClient.SqlClient, sinceIso: string) 
   sql<TurnRow>`
     SELECT
       json_extract(turn.payload_json, '$.turnTokenUsage.inputTokens') AS input_tokens,
+      json_extract(turn.payload_json, '$.turnTokenUsage.cachedInputTokens') AS cached_input_tokens,
       json_extract(turn.payload_json, '$.turnTokenUsage.outputTokens') AS output_tokens,
       CASE
         WHEN NOT EXISTS (
@@ -47,6 +49,7 @@ export const readTokenReportRows = (sql: SqlClient.SqlClient, sinceIso: string) 
     Effect.map((rows): ReadonlyArray<TokenReportRow> =>
       rows.map((row) => ({
         inputTokens: row.input_tokens ?? undefined,
+        cachedInputTokens: row.cached_input_tokens ?? undefined,
         outputTokens: row.output_tokens ?? undefined,
         toolCalls: row.tool_calls,
       })),

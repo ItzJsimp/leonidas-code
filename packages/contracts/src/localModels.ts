@@ -142,6 +142,8 @@ export type LocalModelsTokenReportInput = typeof LocalModelsTokenReportInput.Typ
 const TokenReportClass = Schema.Struct({
   turns: NonNegativeInt,
   inputTokens: NonNegativeInt,
+  /** Part of `inputTokens` that the provider served from its cache. */
+  cachedInputTokens: NonNegativeInt,
   outputTokens: NonNegativeInt,
 });
 
@@ -150,6 +152,7 @@ export const LocalModelsTokenReport = Schema.Struct({
   days: Schema.Literals([7, 30]),
   turns: NonNegativeInt,
   inputTokens: NonNegativeInt,
+  cachedInputTokens: NonNegativeInt,
   outputTokens: NonNegativeInt,
   classes: Schema.Struct({
     /** Short turns with no tool calls: a local model could take them. */

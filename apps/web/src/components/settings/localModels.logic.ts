@@ -92,11 +92,13 @@ export function tokenReportLines(report: LocalModelsTokenReport): string[] {
   const { shortAnswer, keepCloud, notReported } = report.classes;
   const lines = [
     `Last ${String(report.days)} days: ${count(report.turns, "turn", "turns")}, ` +
-      `${report.inputTokens.toLocaleString("en-US")} tokens in, ` +
+      `${report.inputTokens.toLocaleString("en-US")} tokens in ` +
+      `(${report.cachedInputTokens.toLocaleString("en-US")} from cache), ` +
       `${report.outputTokens.toLocaleString("en-US")} tokens out.`,
     `A local model could take ${count(shortAnswer.turns, "turn", "turns")} ` +
       `(short answers with no tool calls): ` +
-      `${(shortAnswer.inputTokens + shortAnswer.outputTokens).toLocaleString("en-US")} tokens.`,
+      `${(shortAnswer.inputTokens + shortAnswer.outputTokens).toLocaleString("en-US")} tokens ` +
+      `(${shortAnswer.cachedInputTokens.toLocaleString("en-US")} from cache).`,
     `${count(keepCloud.turns, "turn", "turns")} need the cloud model.`,
   ];
   if (notReported.turns > 0) {

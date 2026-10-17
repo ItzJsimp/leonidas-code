@@ -36,7 +36,7 @@ it.effect("reads token counts and activity counts only, inside the period", () =
       sql,
       "short",
       "2026-10-10T00:00:00.000Z",
-      { inputTokens: 50, outputTokens: 7 },
+      { inputTokens: 50, cachedInputTokens: 40, outputTokens: 7 },
       ["user_message", "assistant_message"],
       1,
     );
@@ -71,7 +71,7 @@ it.effect("reads token counts and activity counts only, inside the period", () =
     expect(sorted).toEqual([
       { inputTokens: undefined, outputTokens: undefined, toolCalls: 0 },
       { inputTokens: 5, outputTokens: 5, toolCalls: null },
-      { inputTokens: 50, outputTokens: 7, toolCalls: 0 },
+      { inputTokens: 50, cachedInputTokens: 40, outputTokens: 7, toolCalls: 0 },
       { inputTokens: 90, outputTokens: 20, toolCalls: 2 },
     ]);
     expect(JSON.stringify(rows)).not.toContain("never read");
