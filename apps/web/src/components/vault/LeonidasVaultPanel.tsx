@@ -4,15 +4,14 @@ import {
   Plus,
   Network,
   Edit3,
-  Eye,
   Trash2,
   Tag,
   Link as LinkIcon,
   Search,
   BookOpen,
   ArrowRight,
-  ExternalLink,
 } from "lucide-react";
+import { cn } from "~/lib/utils";
 import {
   type VaultNote,
   STARTER_VAULT_NOTES,
@@ -129,7 +128,6 @@ export function LeonidasVaultPanel({
   };
 
   const handleCreateNote = () => {
-    const timestamp = Date.now();
     const newTitle = `Untitled Note ${notes.length + 1}`;
     const newId = normalizeNoteId(newTitle);
     const newPath = `.leonidas/vault/${newId}.md`;
@@ -158,22 +156,24 @@ export function LeonidasVaultPanel({
   }, [activeNote, graphData.backlinksByNoteId]);
 
   return (
-    <div className={`flex h-full w-full bg-[#0a0d14] text-slate-200 overflow-hidden ${className}`}>
+    <div
+      className={cn("flex h-full w-full bg-background text-foreground overflow-hidden", className)}
+    >
       {/* Left Sidebar: Notes Navigator & Tags */}
-      <div className="w-64 flex-shrink-0 flex flex-col border-r border-slate-800/80 bg-[#0d111a]">
+      <div className="w-64 shrink-0 flex flex-col border-r border-border bg-sidebar">
         {/* Header */}
-        <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-cyan-400" />
-            <span className="font-semibold text-xs tracking-wider uppercase text-slate-100">
+            <BookOpen className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-xs tracking-wider uppercase text-foreground">
               Leonidas Vault
             </span>
           </div>
           <button
             type="button"
             onClick={handleCreateNote}
-            className="flex items-center gap-1 px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs transition"
-            title="Add a note"
+            className="flex items-center gap-1 px-2 py-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded text-xs transition font-medium"
+            aria-label="Add a note"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>New note</span>
@@ -181,28 +181,29 @@ export function LeonidasVaultPanel({
         </div>
 
         {/* Search & Tag Filter */}
-        <div className="p-2 border-b border-slate-800/60 space-y-2">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-slate-900/80 border border-slate-800 text-xs">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
+        <div className="p-2 border-b border-border space-y-2">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-muted/50 border border-border text-xs">
+            <Search className="w-3.5 h-3.5 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search notes…"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="w-full bg-transparent text-gray-200 placeholder-slate-500 focus:outline-none"
+              className="w-full bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
 
           {/* Tags scroll bar */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-2xs">
             <button
               type="button"
               onClick={() => setSelectedTag(null)}
-              className={`px-2 py-0.5 rounded transition ${
+              className={cn(
+                "px-2 py-0.5 rounded transition",
                 selectedTag === null
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
+                  ? "bg-primary/15 text-primary border border-primary/30 font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+              )}
             >
               All
             </button>
@@ -211,11 +212,12 @@ export function LeonidasVaultPanel({
                 key={tag}
                 type="button"
                 onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                className={`px-2 py-0.5 rounded whitespace-nowrap transition ${
+                className={cn(
+                  "px-2 py-0.5 rounded whitespace-nowrap transition",
                   selectedTag === tag
-                    ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
+                    ? "bg-primary/15 text-primary border border-primary/30 font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                )}
               >
                 #{tag}
               </button>
@@ -225,69 +227,93 @@ export function LeonidasVaultPanel({
 
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
-          {filteredNotes.map((note) => {
-            const isActive = activeNote?.id === note.id;
-            return (
-              <div
-                key={note.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setActiveNoteId(note.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    setActiveNoteId(note.id);
-                  }
-                }}
-                className={`group flex items-start justify-between p-2 rounded cursor-pointer transition text-xs ${
-                  isActive
-                    ? "bg-cyan-950/40 text-cyan-200 border-l-2 border-cyan-400"
-                    : "hover:bg-slate-800/40 text-slate-300"
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 font-medium truncate">
-                    <FileText
-                      className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? "text-cyan-400" : "text-slate-500"}`}
-                    />
-                    <span className="truncate">{note.title}</span>
-                  </div>
-                  {note.tags.length > 0 && (
-                    <div className="flex gap-1 mt-1 truncate">
-                      {note.tags.slice(0, 2).map((t) => (
-                        <span key={t} className="text-[10px] text-purple-400">
-                          #{t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
+          {filteredNotes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center text-xs text-muted-foreground">
+              <FileText className="w-8 h-8 mb-2 opacity-40 text-muted-foreground" />
+              <p className="font-medium text-foreground">No notes found</p>
+              <p className="mt-1 text-2xs text-muted-foreground">
+                {searchFilter ? "Try another search term" : "Create your first note to get started"}
+              </p>
+              {!searchFilter && (
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteNote(note.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 rounded transition"
-                  title="Delete note"
+                  onClick={handleCreateNote}
+                  className="mt-3 px-2.5 py-1 text-2xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition font-medium"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  New note
                 </button>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ) : (
+            filteredNotes.map((note) => {
+              const isActive = activeNote?.id === note.id;
+              return (
+                <div
+                  key={note.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setActiveNoteId(note.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setActiveNoteId(note.id);
+                    }
+                  }}
+                  className={cn(
+                    "group flex items-start justify-between p-2 rounded cursor-pointer transition text-xs",
+                    isActive
+                      ? "bg-accent text-accent-foreground border-l-2 border-primary font-medium"
+                      : "hover:bg-muted/60 text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 font-medium truncate">
+                      <FileText
+                        className={cn(
+                          "w-3.5 h-3.5 shrink-0",
+                          isActive ? "text-primary" : "text-muted-foreground",
+                        )}
+                      />
+                      <span className="truncate">{note.title}</span>
+                    </div>
+                    {note.tags.length > 0 && (
+                      <div className="flex gap-1 mt-1 truncate">
+                        {note.tags.slice(0, 2).map((t) => (
+                          <span key={t} className="text-3xs text-muted-foreground">
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNote(note.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive rounded transition"
+                    aria-label="Delete note"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* View Switcher Bar at Bottom */}
-        <div className="p-2 border-t border-slate-800/80 bg-slate-900/40 flex items-center justify-around text-xs">
+        <div className="p-2 border-t border-border bg-muted/20 flex items-center justify-around text-xs">
           <button
             type="button"
             onClick={() => setViewMode("editor")}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded transition ${
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition",
               viewMode === "editor"
-                ? "bg-cyan-600 text-white"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+                ? "bg-primary text-primary-foreground font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+            )}
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Note</span>
@@ -296,11 +322,12 @@ export function LeonidasVaultPanel({
           <button
             type="button"
             onClick={() => setViewMode("split")}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded transition ${
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition",
               viewMode === "split"
-                ? "bg-cyan-600 text-white"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+                ? "bg-primary text-primary-foreground font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+            )}
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Split</span>
@@ -309,11 +336,12 @@ export function LeonidasVaultPanel({
           <button
             type="button"
             onClick={() => setViewMode("graph")}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded transition ${
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition",
               viewMode === "graph"
-                ? "bg-cyan-600 text-white"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+                ? "bg-primary text-primary-foreground font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+            )}
           >
             <Network className="w-3.5 h-3.5" />
             <span>Note map</span>
@@ -324,123 +352,142 @@ export function LeonidasVaultPanel({
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Editor Pane (visible in editor or split mode) */}
-        {(viewMode === "editor" || viewMode === "split") && activeNote && (
-          <div className="flex-1 flex flex-col border-r border-slate-800/80 overflow-hidden bg-[#0c0f17]">
-            {/* Editor Toolbar */}
-            <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
-              <input
-                type="text"
-                value={activeNote.title}
-                onChange={(e) => handleUpdateTitle(e.target.value)}
-                className="bg-transparent text-base font-bold text-slate-100 focus:outline-none focus:border-b border-cyan-500 w-2/3"
-                placeholder="Note title"
-              />
-
-              <div className="flex items-center gap-1 bg-slate-900 rounded p-1 border border-slate-800 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setEditorPreview("edit")}
-                  className={`px-2 py-0.5 rounded transition ${
-                    editorPreview === "edit"
-                      ? "bg-cyan-600 text-white"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditorPreview("preview")}
-                  className={`px-2 py-0.5 rounded transition ${
-                    editorPreview === "preview"
-                      ? "bg-cyan-600 text-white"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  Preview
-                </button>
-              </div>
-            </div>
-
-            {/* Note Tags & Links metadata bar */}
-            <div className="px-4 py-2 bg-slate-900/30 border-b border-slate-800/40 flex items-center gap-3 text-xs text-slate-400">
-              <div className="flex items-center gap-1">
-                <Tag className="w-3 h-3 text-purple-400" />
-                <span>Tags:</span>
-                {activeNote.tags.length > 0 ? (
-                  activeNote.tags.map((t) => (
-                    <span key={t} className="text-purple-300 font-mono text-[11px]">
-                      #{t}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-600">none</span>
-                )}
-              </div>
-
-              <div className="w-[1px] h-3 bg-slate-700" />
-
-              <div className="flex items-center gap-1">
-                <LinkIcon className="w-3 h-3 text-cyan-400" />
-                <span>Links to other notes ({activeNote.outgoingLinks.length}):</span>
-                {activeNote.outgoingLinks.map((target) => (
-                  <button
-                    key={target}
-                    type="button"
-                    onClick={() => setActiveNoteId(target)}
-                    className="text-cyan-400 hover:underline font-mono text-[11px]"
-                  >
-                    [[{target}]]
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Textarea or Preview */}
-            <div className="flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed">
-              {editorPreview === "edit" ? (
-                <textarea
-                  value={activeNote.content}
-                  onChange={(e) => handleUpdateContent(e.target.value)}
-                  placeholder="Type your note. Use [[Note Title]] to link to another note. Use #tags to group notes."
-                  className="w-full h-full bg-transparent text-slate-200 resize-none focus:outline-none placeholder-slate-600 font-sans text-sm leading-relaxed"
+        {(viewMode === "editor" || viewMode === "split") &&
+          (activeNote ? (
+            <div className="flex-1 flex flex-col border-r border-border overflow-hidden bg-background">
+              {/* Editor Toolbar */}
+              <div className="p-3 border-b border-border flex items-center justify-between">
+                <input
+                  type="text"
+                  value={activeNote.title}
+                  onChange={(e) => handleUpdateTitle(e.target.value)}
+                  className="bg-transparent text-base font-bold text-foreground focus:outline-none focus:border-b border-primary w-2/3"
+                  placeholder="Note title"
                 />
-              ) : (
-                <div className="prose prose-invert max-w-none text-slate-300 font-sans">
-                  <div className="whitespace-pre-wrap">{activeNote.content}</div>
-                </div>
-              )}
-            </div>
 
-            {/* Backlinks Pane at Bottom */}
-            <div className="p-3 border-t border-slate-800 bg-[#090c12]">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-2">
-                <LinkIcon className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Notes that link here ({activeBacklinks.length})</span>
+                <div className="flex items-center gap-1 bg-muted rounded p-1 border border-border text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setEditorPreview("edit")}
+                    className={cn(
+                      "px-2 py-0.5 rounded transition",
+                      editorPreview === "edit"
+                        ? "bg-background text-foreground shadow-xs font-medium"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorPreview("preview")}
+                    className={cn(
+                      "px-2 py-0.5 rounded transition",
+                      editorPreview === "preview"
+                        ? "bg-background text-foreground shadow-xs font-medium"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Preview
+                  </button>
+                </div>
               </div>
-              {activeBacklinks.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {activeBacklinks.map((link) => (
+
+              {/* Note Tags & Links metadata bar */}
+              <div className="px-4 py-2 bg-muted/20 border-b border-border flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Tag className="w-3 h-3 text-primary" />
+                  <span>Tags:</span>
+                  {activeNote.tags.length > 0 ? (
+                    activeNote.tags.map((t) => (
+                      <span key={t} className="text-foreground font-mono text-2xs">
+                        #{t}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground/60">none</span>
+                  )}
+                </div>
+
+                <div className="w-[1px] h-3 bg-border" />
+
+                <div className="flex items-center gap-1">
+                  <LinkIcon className="w-3 h-3 text-primary" />
+                  <span>Links to other notes ({activeNote.outgoingLinks.length}):</span>
+                  {activeNote.outgoingLinks.map((target) => (
                     <button
-                      key={link.sourceId}
+                      key={target}
                       type="button"
-                      onClick={() => setActiveNoteId(link.sourceId)}
-                      className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800/60 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500/50 text-xs text-cyan-300 transition"
+                      onClick={() => setActiveNoteId(target)}
+                      className="text-primary hover:underline font-mono text-2xs"
                     >
-                      <ArrowRight className="w-3 h-3 text-cyan-400" />
-                      <span>{link.title}</span>
+                      [[{target}]]
                     </button>
                   ))}
                 </div>
-              ) : (
-                <div className="text-xs text-slate-500 italic">
-                  No notes link to this note yet. Add [[this note title]] in another note to link
-                  it.
+              </div>
+
+              {/* Textarea or Preview */}
+              <div className="flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed">
+                {editorPreview === "edit" ? (
+                  <textarea
+                    value={activeNote.content}
+                    onChange={(e) => handleUpdateContent(e.target.value)}
+                    placeholder="Type your note. Use [[Note Title]] to link to another note. Use #tags to group notes."
+                    className="w-full h-full bg-transparent text-foreground resize-none focus:outline-none placeholder:text-muted-foreground font-sans text-sm leading-relaxed"
+                  />
+                ) : (
+                  <div className="max-w-none text-foreground font-sans leading-relaxed">
+                    <div className="whitespace-pre-wrap">{activeNote.content}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Backlinks Pane at Bottom */}
+              <div className="p-3 border-t border-border bg-muted/20">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
+                  <LinkIcon className="w-3.5 h-3.5 text-primary" />
+                  <span>Notes that link here ({activeBacklinks.length})</span>
                 </div>
-              )}
+                {activeBacklinks.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {activeBacklinks.map((link) => (
+                      <button
+                        key={link.sourceId}
+                        type="button"
+                        onClick={() => setActiveNoteId(link.sourceId)}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-muted/60 hover:bg-accent border border-border hover:border-primary/50 text-xs text-foreground transition"
+                      >
+                        <ArrowRight className="w-3 h-3 text-primary" />
+                        <span>{link.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground/70 italic">
+                    No notes link to this note yet. Add [[this note title]] in another note to link
+                    it.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground border-r border-border bg-background">
+              <FileText className="w-10 h-10 mb-3 opacity-30 text-muted-foreground" />
+              <h3 className="font-medium text-sm text-foreground">No note selected</h3>
+              <p className="mt-1 text-xs max-w-xs text-muted-foreground">
+                Select a note from the sidebar or create a new note to start writing.
+              </p>
+              <button
+                type="button"
+                onClick={handleCreateNote}
+                className="mt-4 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition flex items-center gap-1.5 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create note</span>
+              </button>
+            </div>
+          ))}
 
         {/* 3D Knowledge Graph (visible in graph or split mode) */}
         {(viewMode === "graph" || viewMode === "split") && (

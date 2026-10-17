@@ -3,7 +3,7 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 /** Every AIOS template keeps its saved prompts here, relative to the AIOS root. */
-export const PROMPTS_DIR = "prompts";
+const PROMPTS_DIR = "prompts";
 /** Saved item ids for folder prompts carry the file name, so a rename is a new prompt. */
 export const FOLDER_ID_PREFIX = "folder:";
 
@@ -73,7 +73,7 @@ export function readFolderPrompts(dir: string): ReadonlyArray<FolderPrompt> | nu
   return prompts;
 }
 
-export function slugForTitle(title: string): string {
+function slugForTitle(title: string): string {
   return (
     title
       .toLowerCase()
@@ -97,7 +97,7 @@ function quoted(value: string): string {
 }
 
 /** Keeps every other frontmatter line, so AIOS metadata survives an edit made in the app. */
-export function renderFolderPrompt(
+function renderFolderPrompt(
   existing: string | null,
   input: { readonly file: string; readonly title: string; readonly body: string },
 ): string {

@@ -35,7 +35,7 @@ export function statusDotClass(status: TaskBoardTaskStatus): string {
 }
 
 /** Statuses a card can be moved to from the board (the five columns). */
-export const BOARD_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
+const BOARD_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
   "todo",
   "in_progress",
   "review",
@@ -102,7 +102,7 @@ export function projectNameFor(
 }
 
 /** How the board names work nobody owns yet. */
-export const ANYONE_LABEL = "Anyone";
+const ANYONE_LABEL = "Anyone";
 
 export function agentLabel(agent: TaskBoardAgent | null | undefined): string | null {
   return agent?.model ?? agent?.providerInstanceId ?? null;

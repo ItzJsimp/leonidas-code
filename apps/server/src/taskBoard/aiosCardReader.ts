@@ -6,7 +6,7 @@ import * as NodePath from "node:path";
 import { type AiosCardCache, aiosTaskFolders, readAiosTasks } from "./aiosCards.ts";
 
 /** A full rescan still runs this often, in case the system drops a watch event. */
-export const AIOS_RESCAN_MS = 30_000;
+const AIOS_RESCAN_MS = 30_000;
 
 export interface AiosCardReader {
   /** Returns the last scan while no watched folder changed; otherwise rescans. */

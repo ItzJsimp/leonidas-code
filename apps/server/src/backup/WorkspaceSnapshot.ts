@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/sql/SqlClient";
 
 /** Saved item tables the snapshot keeps. Order is the restore order. */
-export const SAVED_ITEM_TABLES = [
+const SAVED_ITEM_TABLES = [
   "saved_item_events",
   "projection_saved_items",
   "saved_item_commands",
@@ -113,7 +113,7 @@ export const createSnapshot = (input: {
   });
 
 /** Reads and checks a snapshot. Touches nothing outside the snapshot folder. */
-export const verifySnapshot = (snapshotDir: string) =>
+const verifySnapshot = (snapshotDir: string) =>
   Effect.gen(function* () {
     const schemaVersion = yield* currentSchemaVersion;
     const parsed = yield* Effect.try({

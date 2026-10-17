@@ -12,9 +12,9 @@ export interface Size {
 export type FocusScope = "project" | "all";
 
 /** Space kept between a floating widget and the window edge. */
-export const FOCUS_EDGE_GAP = 8;
+const FOCUS_EDGE_GAP = 8;
 /** A floating widget dropped this close to its dock goes back to the dock. */
-export const FOCUS_SNAP_DISTANCE = 24;
+const FOCUS_SNAP_DISTANCE = 24;
 
 /** Keeps the whole widget inside the viewport; a widget larger than the viewport sticks to the top left. */
 export function clampToViewport(position: Point, widget: Size, viewport: Size): Point {

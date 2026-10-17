@@ -11,6 +11,7 @@ Work in Leonidas Code is organized around tasks. The Tasks page (Inbox, Today, U
 
 - Log actionable items you notice (bugs, missing tests, follow-ups, decisions that need the user) with `board_task_create`. Do this for work you will not finish now; do not create a task for what you are about to complete.
 - Add a short `note` through `board_task_update` at meaningful milestones. Notes say what changed and what is next.
+- **Checkpoint every turn.** At the end of each turn that changes files or leaves work open, call `board_task_update` with a `note` that starts with `Resume:` and gives done, next step, blockers, branch and changed paths. Do this when work stops unfinished too (limit, error, user stop). A new session resumes from this note, never from the old chat. A chat is safe to archive only when its task note is current.
 - Base the plan, commits and your final summary on the task. Name the task in your closing message.
 
 ## Finish

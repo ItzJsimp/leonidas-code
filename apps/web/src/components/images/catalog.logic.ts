@@ -110,7 +110,7 @@ export function estimateRunRange(
 }
 
 /** Over this many seconds, Generate asks to confirm. */
-export const CONFIRM_RUN_SECONDS = 600;
+const CONFIRM_RUN_SECONDS = 600;
 
 export function needsConfirm(range: TimeRange): boolean {
   return range.high > CONFIRM_RUN_SECONDS;
@@ -131,7 +131,7 @@ export function formatRange(range: TimeRange): string {
 
 export type SeedMode = "random" | "fixed";
 
-export const MAX_SEED = 4_294_967_295;
+const MAX_SEED = 4_294_967_295;
 
 export function randomSeed(random: () => number = Math.random): number {
   return Math.floor(random() * MAX_SEED);

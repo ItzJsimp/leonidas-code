@@ -1,15 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import {
-  RotateCcw,
-  ZoomIn,
-  ZoomOut,
-  Play,
-  Pause,
-  Search,
-  Maximize2,
-  Sparkles,
-  Layers,
-} from "lucide-react";
+import { RotateCcw, ZoomIn, ZoomOut, Play, Pause, Search, Sparkles, Layers } from "lucide-react";
+import { cn } from "~/lib/utils";
 import {
   type GraphData3D,
   type GraphNode3D,
@@ -92,8 +83,7 @@ export function LeonidasKnowledgeGraph3D({
     return ids;
   }, [activeNodeId, graphData.links]);
 
-  // Render & physics loop, capped at about 30fps: a full-canvas repaint every vsync is wasted on
-  // a graph that orbits slowly, and the cap holds on 120Hz+ displays too.
+  // Render & physics loop, capped at about 30fps
   useEffect(() => {
     let animId: number;
     let lastFrame = 0;
@@ -137,11 +127,12 @@ export function LeonidasKnowledgeGraph3D({
 
       pulsePhaseRef.current = (pulsePhaseRef.current + 0.04) % (Math.PI * 2);
 
-      // Clear with dark cyberpunk background
-      ctx.fillStyle = "#07090e";
+      // Adaptive background matching theme
+      const isDark = document.documentElement.classList.contains("dark");
+      ctx.fillStyle = isDark ? "#090d16" : "#f8fafc";
       ctx.fillRect(0, 0, width, height);
 
-      // Subtle cybernetic radial glow
+      // Subtle radial glow
       const centerGlow = ctx.createRadialGradient(
         width / 2,
         height / 2,
@@ -150,9 +141,9 @@ export function LeonidasKnowledgeGraph3D({
         height / 2,
         Math.max(width, height) / 1.5,
       );
-      centerGlow.addColorStop(0, "rgba(14, 23, 42, 0.45)");
-      centerGlow.addColorStop(0.6, "rgba(8, 12, 22, 0.8)");
-      centerGlow.addColorStop(1, "#07090e");
+      centerGlow.addColorStop(0, isDark ? "rgba(14, 23, 42, 0.45)" : "rgba(226, 232, 240, 0.45)");
+      centerGlow.addColorStop(0.6, isDark ? "rgba(8, 12, 22, 0.8)" : "rgba(241, 245, 249, 0.8)");
+      centerGlow.addColorStop(1, isDark ? "#090d16" : "#f8fafc");
       ctx.fillStyle = centerGlow;
       ctx.fillRect(0, 0, width, height);
 
@@ -315,10 +306,17 @@ export function LeonidasKnowledgeGraph3D({
           ctx.textBaseline = "top";
 
           // Text shadow
-          ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+          ctx.fillStyle = isDark ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.85)";
           ctx.fillText(node.label, screenX + 1, screenY + renderedRadius + 5);
 
-          ctx.fillStyle = isHovered || isSelected ? "#ffffff" : "rgba(226, 232, 240, 0.9)";
+          ctx.fillStyle =
+            isHovered || isSelected
+              ? isDark
+                ? "#ffffff"
+                : "#0f172a"
+              : isDark
+                ? "rgba(226, 232, 240, 0.9)"
+                : "rgba(51, 65, 85, 0.9)";
           ctx.fillText(node.label, screenX, screenY + renderedRadius + 4);
         }
       }
@@ -452,31 +450,37 @@ export function LeonidasKnowledgeGraph3D({
 
   return (
     <div
-      className={`relative flex flex-col w-full h-full bg-[#07090e] select-none overflow-hidden ${className}`}
+      className={cn(
+        "relative flex flex-col w-full h-full bg-background select-none overflow-hidden",
+        className,
+      )}
     >
       {/* Top Floating Control Bar */}
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none gap-2">
         {/* Search Input */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0d121f]/90 border border-cyan-500/30 text-xs shadow-lg backdrop-blur-md pointer-events-auto">
-          <Search className="w-3.5 h-3.5 text-cyan-400" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card/90 border border-border text-xs shadow-lg backdrop-blur-md pointer-events-auto">
+          <Search className="w-3.5 h-3.5 text-primary" />
           <input
             type="text"
             placeholder="Search the note map…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-48 bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none"
+            className="w-48 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#0d121f]/90 border border-slate-700/60 shadow-lg backdrop-blur-md pointer-events-auto">
+        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-card/90 border border-border shadow-lg backdrop-blur-md pointer-events-auto">
           <button
             type="button"
             onClick={() => setAutoRotate(!autoRotate)}
-            className={`p-1.5 rounded hover:bg-slate-700/60 transition ${
-              autoRotate ? "text-cyan-400 bg-cyan-950/40" : "text-gray-400"
-            }`}
-            title={autoRotate ? "Stop turning the map" : "Turn the map by itself"}
+            className={cn(
+              "p-1.5 rounded hover:bg-muted transition",
+              autoRotate
+                ? "text-primary bg-primary/15"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-label={autoRotate ? "Stop turning the map" : "Turn the map by itself"}
           >
             <Sparkles className="w-3.5 h-3.5" />
           </button>
@@ -484,10 +488,11 @@ export function LeonidasKnowledgeGraph3D({
           <button
             type="button"
             onClick={() => setIsSimulating(!isSimulating)}
-            className={`p-1.5 rounded hover:bg-slate-700/60 transition ${
-              isSimulating ? "text-emerald-400" : "text-gray-400"
-            }`}
-            title={isSimulating ? "Hold the notes still" : "Let the notes move"}
+            className={cn(
+              "p-1.5 rounded hover:bg-muted transition",
+              isSimulating ? "text-success" : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-label={isSimulating ? "Hold the notes still" : "Let the notes move"}
           >
             {isSimulating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
@@ -495,39 +500,40 @@ export function LeonidasKnowledgeGraph3D({
           <button
             type="button"
             onClick={() => setShowTags(!showTags)}
-            className={`p-1.5 rounded hover:bg-slate-700/60 transition ${
-              showTags ? "text-purple-400 bg-purple-950/40" : "text-gray-400"
-            }`}
-            title="Show or hide tags"
+            className={cn(
+              "p-1.5 rounded hover:bg-muted transition",
+              showTags
+                ? "text-primary bg-primary/15"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-label="Show or hide tags"
           >
             <Layers className="w-3.5 h-3.5" />
           </button>
 
-          <div className="w-[1px] h-4 bg-slate-700/80 mx-1" />
+          <div className="w-[1px] h-4 bg-border mx-1" />
 
           <button
             type="button"
             onClick={zoomIn}
-            className="p-1.5 text-gray-400 hover:text-gray-200 rounded hover:bg-slate-700/60 transition"
-            title="Zoom In"
+            className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-muted transition"
+            aria-label="Zoom In"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
-
           <button
             type="button"
             onClick={zoomOut}
-            className="p-1.5 text-gray-400 hover:text-gray-200 rounded hover:bg-slate-700/60 transition"
-            title="Zoom Out"
+            className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-muted transition"
+            aria-label="Zoom Out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-
           <button
             type="button"
             onClick={resetCamera}
-            className="p-1.5 text-gray-400 hover:text-gray-200 rounded hover:bg-slate-700/60 transition"
-            title="Reset the view"
+            className="p-1.5 text-muted-foreground hover:text-foreground rounded hover:bg-muted transition"
+            aria-label="Reset the view"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -548,7 +554,7 @@ export function LeonidasKnowledgeGraph3D({
 
       {/* Hover Info Tooltip */}
       {hoveredNode && (
-        <div className="absolute bottom-4 left-4 z-10 p-3 rounded-lg bg-[#0d121f]/95 border border-cyan-500/40 shadow-xl backdrop-blur-md max-w-xs text-xs pointer-events-none animate-fadeIn">
+        <div className="absolute bottom-4 left-4 z-10 p-3 rounded-lg bg-popover/95 border border-border shadow-xl backdrop-blur-md max-w-xs text-xs pointer-events-none">
           <div className="flex items-center gap-2">
             <span
               className="w-2.5 h-2.5 rounded-full"
@@ -557,23 +563,23 @@ export function LeonidasKnowledgeGraph3D({
                 boxShadow: `0 0 8px ${hoveredNode.color}`,
               }}
             />
-            <span className="font-semibold text-gray-100">{hoveredNode.label}</span>
-            <span className="ml-auto text-[10px] text-cyan-400 font-mono">
+            <span className="font-semibold text-popover-foreground">{hoveredNode.label}</span>
+            <span className="ml-auto text-3xs text-primary font-mono">
               {hoveredNode.kind.toUpperCase()}
             </span>
           </div>
 
-          <div className="mt-2 text-slate-400 text-[11px] space-y-1">
+          <div className="mt-2 text-muted-foreground text-2xs space-y-1">
             <div className="flex justify-between">
               <span>Links:</span>
-              <span className="text-gray-200 font-mono font-medium">{hoveredNode.linkCount}</span>
+              <span className="text-foreground font-mono font-medium">{hoveredNode.linkCount}</span>
             </div>
             {hoveredNode.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {hoveredNode.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="px-1.5 py-0.5 rounded text-[10px] bg-purple-950/60 text-purple-300 border border-purple-800/40"
+                    className="px-1.5 py-0.5 rounded text-3xs bg-muted text-muted-foreground border border-border"
                   >
                     #{tag}
                   </span>
@@ -584,8 +590,8 @@ export function LeonidasKnowledgeGraph3D({
         </div>
       )}
 
-      {/* Futuristic Graph Stats Badge */}
-      <div className="absolute bottom-4 right-4 z-10 px-2.5 py-1 rounded bg-[#0d121f]/80 border border-slate-800/80 text-[10px] text-slate-400 font-mono shadow pointer-events-none backdrop-blur-sm">
+      {/* Graph Stats Badge */}
+      <div className="absolute bottom-4 right-4 z-10 px-2.5 py-1 rounded bg-popover/80 border border-border text-3xs text-muted-foreground font-mono shadow pointer-events-none backdrop-blur-sm">
         {graphData.nodes.length} notes and tags · {graphData.links.length} links
       </div>
     </div>
