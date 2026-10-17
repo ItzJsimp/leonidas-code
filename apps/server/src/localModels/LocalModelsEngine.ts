@@ -198,7 +198,7 @@ export class LocalModelsEngine {
       loaded: this.loaded.has(id),
       sizeBytes: sizeBytes === null ? null : Math.round(sizeBytes),
       fit: capacity ? fitFor(sizeBytes, capacity) : "unknown",
-      tokensPerSecond: null,
+      tokensPerSecond: starters.get(id)?.tokensPerSecond ?? null,
       benchLm: starters.get(id)?.benchLm ?? null,
       gate: gateFor(sizeBytes, installed),
       pull: this.pullView(this.pulls.get(id)),

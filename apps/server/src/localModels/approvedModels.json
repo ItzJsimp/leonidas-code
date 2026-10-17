@@ -1,0 +1,40 @@
+{
+  "models": [
+    {
+      "id": "qwen3.8:27b-q4_K_M",
+      "name": "Qwen3.8 27B",
+      "sizeBytes": 18253611008,
+      "benchLm": 59.6,
+      "source": "BenchLM",
+      "date": "2026-10-16",
+      "tokensPerSecond": null
+    },
+    {
+      "id": "gemma4:26b-a4b-it-q4_K_M",
+      "name": "Gemma 4 26B A4B",
+      "sizeBytes": 19327352832,
+      "benchLm": 45.6,
+      "source": "Artificial Analysis",
+      "date": "2026-10-16",
+      "tokensPerSecond": null
+    },
+    {
+      "id": "gemma4:12b-it-q4_K_M",
+      "name": "Gemma 4 12B",
+      "sizeBytes": 8589934592,
+      "benchLm": 36.4,
+      "source": "Artificial Analysis",
+      "date": "2026-10-16",
+      "tokensPerSecond": null
+    },
+    {
+      "id": "granite4.2:8b-q4_K_M",
+      "name": "Granite 4.2 8B",
+      "sizeBytes": 5368709120,
+      "benchLm": 33.1,
+      "source": "BenchLM",
+      "date": "2026-10-16",
+      "tokensPerSecond": null
+    }
+  ]
+}

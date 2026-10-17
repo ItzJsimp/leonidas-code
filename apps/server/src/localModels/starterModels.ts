@@ -1,20 +1,44 @@
 /**
- * Models we picked from the Artificial Analysis and BenchLM lists (read 2026-10-16).
- * Slice 2 replaces this list with a JSON file that also holds the date and the last measured speed.
- * Sizes are file sizes in bytes. An installed model shows its real size from Ollama.
+ * The approved model list. The data lives in `approvedModels.json`: each entry has the Ollama tag,
+ * the file size in bytes, the list it came from, the date it was read and the last measured speed.
+ * The server pulls only tags in this list. An installed model shows its real size from Ollama.
  */
-const GB = 1024 ** 3;
+import approved from "./approvedModels.json" with { type: "json" };
 
 export interface StarterModel {
   readonly id: string;
   readonly name: string;
   readonly sizeBytes: number;
   readonly benchLm: number | null;
+  readonly source: string;
+  readonly date: string;
+  /** Tokens per second from the last speed test. Null until one ran. */
+  readonly tokensPerSecond: number | null;
 }
 
-export const STARTER_MODELS: ReadonlyArray<StarterModel> = [
-  { id: "qwen3.8:27b-q4_K_M", name: "Qwen3.8 27B", sizeBytes: 17 * GB, benchLm: 59.6 },
-  { id: "gemma4:26b-a4b-it-q4_K_M", name: "Gemma 4 26B A4B", sizeBytes: 18 * GB, benchLm: 45.6 },
-  { id: "gemma4:12b-it-q4_K_M", name: "Gemma 4 12B", sizeBytes: 8 * GB, benchLm: 36.4 },
-  { id: "granite4.2:8b-q4_K_M", name: "Granite 4.2 8B", sizeBytes: 5 * GB, benchLm: 33.1 },
-];
+const isText = (value: unknown): value is string => typeof value === "string" && value.length > 0;
+const orNull = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+/** Keep only well-formed entries, so a bad edit of the JSON cannot widen the pull allow list. */
+export function parseApprovedModels(raw: unknown): ReadonlyArray<StarterModel> {
+  const list = (raw as { models?: unknown } | null)?.models;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((entry: Record<string, unknown>) => {
+    const size = orNull(entry["sizeBytes"]);
+    if (!isText(entry["id"]) || !isText(entry["name"]) || size === null || size <= 0) return [];
+    return [
+      {
+        id: entry["id"],
+        name: entry["name"],
+        sizeBytes: size,
+        benchLm: orNull(entry["benchLm"]),
+        source: isText(entry["source"]) ? entry["source"] : "",
+        date: isText(entry["date"]) ? entry["date"] : "",
+        tokensPerSecond: orNull(entry["tokensPerSecond"]),
+      },
+    ];
+  });
+}
+
+export const STARTER_MODELS: ReadonlyArray<StarterModel> = parseApprovedModels(approved);
