@@ -76,3 +76,34 @@ export async function saveSnipPng(
   await NodeFSP.writeFile(path, png, { flag: "wx" });
   return { path, name };
 }
+
+const THUMBNAIL_WIDTH_PX = 160;
+
+/** A small data URL for the Recent snips list. Empty when the file cannot be decoded. */
+export function snipThumbnailDataUrl(path: string): string {
+  const image = Electron.nativeImage.createFromPath(path);
+  if (image.isEmpty()) return "";
+  const width = Math.min(THUMBNAIL_WIDTH_PX, image.getSize().width);
+  return image.resize({ width, quality: "good" }).toDataURL();
+}
+
+/** Reads a saved snip back as a full image. Returns null when the file is not a readable image. */
+export async function readSnipImage(
+  path: string,
+): Promise<{ readonly width: number; readonly height: number; readonly dataUrl: string } | null> {
+  const png = await NodeFSP.readFile(path).catch(() => null);
+  if (!png) return null;
+  const size = Electron.nativeImage.createFromBuffer(png).getSize();
+  if (size.width === 0 || size.height === 0) return null;
+  return {
+    width: size.width,
+    height: size.height,
+    dataUrl: `data:image/png;base64,${png.toString("base64")}`,
+  };
+}
+
+export async function openSnipsDirectory(directory: string): Promise<void> {
+  await NodeFSP.mkdir(directory, { recursive: true });
+  const failure = await Electron.shell.openPath(directory);
+  if (failure.length > 0) throw new Error(failure);
+}

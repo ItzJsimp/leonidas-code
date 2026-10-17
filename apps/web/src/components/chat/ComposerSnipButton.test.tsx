@@ -13,6 +13,9 @@ const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgo=";
 let root: Root;
 let host: HTMLDivElement;
 const startSnip = vi.fn<() => Promise<DesktopSnipResult>>();
+const listRecentSnips = vi.fn();
+const readSnip = vi.fn<(path: string) => Promise<DesktopSnipResult>>();
+const openSnipsFolder = vi.fn();
 
 function stubDesktop(platform: string, withBridge = true) {
   vi.stubGlobal("navigator", { platform });
@@ -22,9 +25,9 @@ function stubDesktop(platform: string, withBridge = true) {
     value: withBridge
       ? {
           startSnip,
-          listRecentSnips: vi.fn(),
-          readSnip: vi.fn(),
-          openSnipsFolder: vi.fn(),
+          listRecentSnips,
+          readSnip,
+          openSnipsFolder,
         }
       : undefined,
   });
@@ -52,6 +55,9 @@ beforeEach(() => {
     return 0;
   });
   startSnip.mockReset();
+  listRecentSnips.mockReset();
+  readSnip.mockReset();
+  openSnipsFolder.mockReset();
   toast.add.mockReset();
   host = document.createElement("div");
   document.body.append(host);
@@ -113,4 +119,71 @@ it("renders nothing outside the Windows desktop app", async () => {
   stubDesktop("Win32", false);
   await render(vi.fn());
   expect(host.querySelector("button")).toBeNull();
+});
+
+async function openRecentMenu() {
+  const trigger = host.querySelector<HTMLButtonElement>('button[aria-label="Recent snips"]');
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    trigger?.click();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+}
+
+function menuItem(text: string): HTMLElement | undefined {
+  return [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+    item.textContent?.includes(text),
+  );
+}
+
+it("lists recent snips and attaches the one the user picks", async () => {
+  stubDesktop("Win32");
+  listRecentSnips.mockResolvedValue([
+    { name: "snip-2.png", path: "C:/snips/snip-2.png", modifiedMs: 2, dataUrl: "" },
+    { name: "snip-1.png", path: "C:/snips/snip-1.png", modifiedMs: 1, dataUrl: "" },
+  ]);
+  readSnip.mockResolvedValue({
+    status: "saved",
+    path: "C:/snips/snip-2.png",
+    name: "snip-2.png",
+    width: 10,
+    height: 10,
+    dataUrl: PNG_DATA_URL,
+  });
+  const onSnip = vi.fn();
+  await render(onSnip);
+  await openRecentMenu();
+  expect(listRecentSnips).toHaveBeenCalledTimes(1);
+  const item = menuItem("snip-2.png");
+  expect(item).toBeDefined();
+  await act(async () => {
+    item?.click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  expect(readSnip).toHaveBeenCalledWith("C:/snips/snip-2.png");
+  expect(onSnip).toHaveBeenCalledTimes(1);
+});
+
+it("says there are no snips yet and still offers the folder", async () => {
+  stubDesktop("Win32");
+  listRecentSnips.mockResolvedValue([]);
+  openSnipsFolder.mockResolvedValue(undefined);
+  await render(vi.fn());
+  await openRecentMenu();
+  expect(menuItem("No snips yet")).toBeDefined();
+  await act(async () => {
+    menuItem("Open snips folder")?.click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  expect(openSnipsFolder).toHaveBeenCalledTimes(1);
+});
+
+it("shows a plain error when the recent list cannot load", async () => {
+  stubDesktop("Win32");
+  listRecentSnips.mockRejectedValue(new Error("Could not list your recent snips."));
+  await render(vi.fn());
+  await openRecentMenu();
+  expect(toast.add).toHaveBeenCalledWith(
+    expect.objectContaining({ type: "error", title: "Could not list your recent snips" }),
+  );
 });

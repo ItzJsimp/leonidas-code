@@ -10,7 +10,16 @@ import * as Schema from "effect/Schema";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import { makeSnipOverlay } from "./SnipOverlay.ts";
-import { captureSnipFrames, encodeSnipPng, readSnipDisplays, saveSnipPng } from "./SnipElectron.ts";
+import {
+  captureSnipFrames,
+  encodeSnipPng,
+  openSnipsDirectory,
+  readSnipDisplays,
+  readSnipImage,
+  saveSnipPng,
+  snipThumbnailDataUrl,
+} from "./SnipElectron.ts";
+import { listSnipFiles, resolveSnipPath } from "./SnipLibrary.ts";
 import { runSnip } from "./SnipRunner.ts";
 import { loadWindowListApi, listVisibleWindows } from "./WindowList.ts";
 
@@ -94,9 +103,33 @@ export const layer = Layer.effect(
 
     return DesktopSnip.of({
       start,
-      listRecent: Effect.succeed([]),
-      read: () => Effect.fail(new DesktopSnipError({ operation: "read" })),
-      openFolder: Effect.void,
+      listRecent: Effect.tryPromise({
+        try: async () =>
+          (await listSnipFiles(snipsDirectory)).map((file) => ({
+            ...file,
+            dataUrl: snipThumbnailDataUrl(file.path),
+          })),
+        catch: (cause) => new DesktopSnipError({ operation: "list", cause }),
+      }),
+      read: (requested) =>
+        Effect.tryPromise({
+          try: async () => {
+            const path = resolveSnipPath(snipsDirectory, requested);
+            const image = path ? await readSnipImage(path) : null;
+            if (!path || !image) throw new Error("Snip file not found.");
+            return {
+              status: "saved" as const,
+              path,
+              name: path.slice(snipsDirectory.length + 1),
+              ...image,
+            };
+          },
+          catch: (cause) => new DesktopSnipError({ operation: "read", cause }),
+        }),
+      openFolder: Effect.tryPromise({
+        try: () => openSnipsDirectory(snipsDirectory),
+        catch: (cause) => new DesktopSnipError({ operation: "open-folder", cause }),
+      }),
     });
   }),
 );
