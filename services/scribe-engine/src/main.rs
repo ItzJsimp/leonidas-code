@@ -15,6 +15,8 @@ use scribe_engine::engine::{EncodedAudio, Engine, Recorder, Transcriber, Transcr
 use scribe_engine::groq::GroqClient;
 use scribe_engine::hotkeys::{self, HotkeyEvent};
 use scribe_engine::http;
+#[cfg(windows)]
+use scribe_engine::hud::window::Hud;
 use scribe_engine::paste::ClipboardPaster;
 use scribe_engine::polish::{GroqPolisher, SharedDictionary};
 use std::path::PathBuf;
@@ -69,12 +71,15 @@ fn run() -> Result<(), String> {
     } else {
         Box::new(groq.clone())
     };
+    let (recorder, level): (Box<dyn Recorder>, _) = if null_audio {
+        (Box::new(NullRecorder::default()), Default::default())
+    } else {
+        let recorder = CpalRecorder::new(&cfg.audio);
+        let level = recorder.level();
+        (Box::new(recorder), level)
+    };
     let engine = Engine::new(
-        if null_audio {
-            Box::new(NullRecorder::default()) as Box<dyn Recorder>
-        } else {
-            Box::new(CpalRecorder::new(&cfg.audio))
-        },
+        recorder,
         transcriber,
         Box::new(polisher),
         Box::new(ClipboardPaster::new()),
@@ -87,6 +92,18 @@ fn run() -> Result<(), String> {
     let active = Arc::new(AtomicBool::new(false));
     let (hotkey_tx, hotkey_rx) = mpsc::channel();
     let _hooks = hotkeys::spawn(&cfg.bindings, active.clone(), accept_injected, hotkey_tx)?;
+
+    #[cfg(windows)]
+    let _hud = if cfg.hud.enabled {
+        let trigger = engine.clone();
+        Some(Hud::spawn(engine.subscribe(), level, move || {
+            trigger.last_trigger_at()
+        })?)
+    } else {
+        None
+    };
+    #[cfg(not(windows))]
+    let _ = level;
 
     let events = engine.subscribe();
     let watcher = {
