@@ -475,6 +475,50 @@ mod tests {
         false
     }
 
+    /// Writes PNG renders of every view to `SCRIBE_HUD_RENDERS` (default `target/hud-renders`),
+    /// on a light and a dark backdrop, at 100% and 200%. Run by hand with `--ignored`.
+    #[test]
+    #[ignore]
+    fn write_renders() {
+        use tiny_skia::{Color, Pixmap, PixmapPaint, Transform};
+        let dir =
+            std::env::var("SCRIBE_HUD_RENDERS").unwrap_or_else(|_| "target/hud-renders".into());
+        std::fs::create_dir_all(&dir).unwrap();
+        let wave: Vec<f32> = (0..BARS)
+            .map(|i| (0.15 + 0.85 * ((i as f32 * 0.9).sin() * 0.5 + 0.5)).powi(2))
+            .collect();
+        let views = [
+            ("1-recording", View::Recording),
+            ("2-transcribing", View::Transcribing),
+            ("3-done", View::Done),
+            (
+                "4-error",
+                View::Error("Private mode is on, and the offline model is no…".into()),
+            ),
+        ];
+        for scale in [1.0f32, 2.0] {
+            for (name, view) in &views {
+                let pill = render(view, &wave, 0.15, scale, &GdiText).unwrap();
+                for (bg, color) in [("light", (236, 236, 240)), ("dark", (30, 30, 34))] {
+                    let pad = (24.0 * scale) as u32;
+                    let mut out =
+                        Pixmap::new(pill.width() + pad * 2, pill.height() + pad * 2).unwrap();
+                    out.fill(Color::from_rgba8(color.0, color.1, color.2, 255));
+                    out.draw_pixmap(
+                        pad as i32,
+                        pad as i32,
+                        pill.as_ref(),
+                        &PixmapPaint::default(),
+                        Transform::identity(),
+                        None,
+                    );
+                    out.save_png(format!("{dir}/{name}-{bg}-{}x.png", scale as u32))
+                        .unwrap();
+                }
+            }
+        }
+    }
+
     #[test]
     fn gdi_text_mask_has_coverage() {
         let mask = GdiText.mask("Transcribing", 13).unwrap();
