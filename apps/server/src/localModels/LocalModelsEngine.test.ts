@@ -38,6 +38,7 @@ function makeEngine(
     capacity?: typeof capacity;
     psSizes?: { size: number; size_vram: number };
     generateReply?: Record<string, unknown>;
+    holder?: string;
   } = {},
 ) {
   const calls: Call[] = [];
@@ -74,6 +75,11 @@ function makeEngine(
     fetch: fakeFetch,
     hardware: () => ({ capacity: options.capacity ?? capacity, volumes }),
     modelDir: () => options.modelDir ?? "C:\\ollama\\models",
+    startOllama: async () => {
+      calls.push({ url: "start", method: "SPAWN", body: undefined });
+    },
+    portHolder: async () => options.holder ?? null,
+    sleep: async () => {},
     onChange: () => {},
     now: () => 1000,
   });
@@ -246,6 +252,22 @@ describe("LocalModelsEngine actions", () => {
     await engine.refresh();
     await expect(engine.speedTest("gemma4:12b-it-q4_K_M")).rejects.toThrow(LocalModelsError);
     await expect(engine.speedTest("qwen3.8:27b-q4_K_M")).rejects.toThrow(LocalModelsError);
+  });
+
+  it("warns when WSL holds the Ollama port and refuses to start", async () => {
+    const { engine, calls } = makeEngine({ down: true, holder: "wslrelay.exe" });
+    await engine.refresh();
+    expect(engine.snapshot().ollama.warning).toMatch(/WSL/);
+    await expect(engine.startOllama()).rejects.toThrow(LocalModelsError);
+    expect(calls.some((call) => call.method === "SPAWN")).toBe(false);
+  });
+
+  it("does nothing when Ollama already runs", async () => {
+    const { engine, calls } = makeEngine();
+    await engine.refresh();
+    await engine.startOllama();
+    expect(engine.snapshot().ollama.warning).toBeNull();
+    expect(calls.some((call) => call.method === "SPAWN")).toBe(false);
   });
 
   it("will not run or delete a model that is not installed", async () => {

@@ -87,6 +87,7 @@ import {
   LocalModelsError,
   LocalModelsModelInput,
   LocalModelsPullInput,
+  LocalModelsStartInput,
   LocalModelsState,
 } from "./localModels.ts";
 import * as Schema from "effect/Schema";
@@ -564,6 +565,7 @@ export const WS_METHODS = {
   localModelsRun: "localModels.run",
   localModelsStop: "localModels.stop",
   localModelsSpeedTest: "localModels.speedTest",
+  localModelsStartOllama: "localModels.startOllama",
   localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
@@ -1631,6 +1633,12 @@ const WsLocalModelsStopRpc = Rpc.make(WS_METHODS.localModelsStop, {
 
 const WsLocalModelsSpeedTestRpc = Rpc.make(WS_METHODS.localModelsSpeedTest, {
   payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsStartOllamaRpc = Rpc.make(WS_METHODS.localModelsStartOllama, {
+  payload: LocalModelsStartInput,
   success: LocalModelsActionResult,
   error: LocalModelsRpcError,
 });
@@ -2762,6 +2770,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsLocalModelsRunRpc,
   WsLocalModelsStopRpc,
   WsLocalModelsSpeedTestRpc,
+  WsLocalModelsStartOllamaRpc,
   WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,

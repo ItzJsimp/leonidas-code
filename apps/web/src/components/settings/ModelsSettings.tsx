@@ -279,6 +279,7 @@ export function ModelsSettingsPanel() {
   const models = useLocalModels();
   const [pending, setPending] = useState<Pending | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
   const state = models.state;
   const rows = useMemo(() => (state ? sortRows(state.rows) : []), [state]);
 
@@ -320,8 +321,31 @@ export function ModelsSettingsPanel() {
             <>
               <HardwarePills state={state} />
               {!state.ollama.running ? (
-                <div className="rounded-lg border border-warning/32 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
-                  Ollama is not running. Start Ollama to see your models and download new ones.
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/32 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
+                  <span className="min-w-0">
+                    {state.ollama.warning ??
+                      "Ollama is not running. Start Ollama to see your models and download new ones."}
+                  </span>
+                  <Tip
+                    text={
+                      state.ollama.warning === null
+                        ? "Start Ollama on this computer. It can take a few seconds."
+                        : "Fix the port problem first, then start Ollama."
+                    }
+                  >
+                    <span className="inline-flex">
+                      <Button
+                        size="xs"
+                        disabled={state.ollama.warning !== null || starting}
+                        onClick={() => {
+                          setStarting(true);
+                          void models.startOllama().finally(() => setStarting(false));
+                        }}
+                      >
+                        {starting ? "Starting" : "Start Ollama"}
+                      </Button>
+                    </span>
+                  </Tip>
                 </div>
               ) : null}
               {rows.length === 0 ? (

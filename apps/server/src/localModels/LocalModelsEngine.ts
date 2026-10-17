@@ -43,6 +43,11 @@ export interface LocalModelsEngineDeps {
   readonly hardware: () => LocalModelsHardware | null;
   /** Real path of the Ollama model folder, or null when unknown. */
   readonly modelDir: () => string | null;
+  /** Start `ollama serve` in the background. Rejects when Ollama cannot be found. */
+  readonly startOllama: () => Promise<void>;
+  /** Name of the program that listens on the Ollama port, or null when the port is free. */
+  readonly portHolder: () => Promise<string | null>;
+  readonly sleep: (ms: number) => Promise<void>;
   readonly onChange: () => void;
   readonly now: () => number;
 }
@@ -91,6 +96,7 @@ export class LocalModelsEngine {
   private loaded: ReadonlySet<string> = new Set();
   private loadedMemory: ReadonlyArray<LoadedModelMemory> = [];
   private running = false;
+  private warning: string | null = null;
   private readonly pulls = new Map<string, PullEntry>();
   private lastPublish = 0;
   /** Speed measured in this session, by model tag. Wins over the value in the approved list. */
@@ -130,13 +136,58 @@ export class LocalModelsEngine {
       this.loaded = new Set(loadedEntries.flatMap((entry) => modelId(entry) ?? []));
       this.loadedMemory = loadedEntries.flatMap((entry) => this.memoryOf(entry));
       this.running = true;
+      this.warning = null;
     } catch {
       this.running = false;
+      this.warning = await this.portWarning();
       this.installed = [];
       this.loaded = new Set();
       this.loadedMemory = [];
     }
     this.deps.onChange();
+  }
+
+  /** When Ollama does not answer, tell the person if another program holds its port. */
+  private async portWarning(): Promise<string | null> {
+    let holder: string | null = null;
+    try {
+      holder = await this.deps.portHolder();
+    } catch {
+      return null;
+    }
+    if (holder === null) return null;
+    if (/wsl/i.test(holder)) {
+      return "WSL holds the Ollama port (11434), so the Windows Ollama cannot start. Stop Ollama inside WSL, then try again.";
+    }
+    return `Another program (${holder}) holds the Ollama port (11434) but does not answer like Ollama.`;
+  }
+
+  /** Start Ollama and wait up to 15 s for it to answer. */
+  async startOllama(): Promise<void> {
+    if (this.running) return;
+    await this.refresh();
+    if (this.running) return;
+    if (this.warning !== null) {
+      throw new LocalModelsError({ reason: "not_allowed", detail: this.warning });
+    }
+    try {
+      await this.deps.startOllama();
+    } catch (cause) {
+      throw new LocalModelsError({
+        reason: "ollama_down",
+        detail: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+    for (let attempt = 0; attempt < 15 && !this.running; attempt += 1) {
+      await this.deps.sleep(1_000);
+      await this.refresh();
+    }
+    if (!this.running) {
+      throw new LocalModelsError({
+        reason: "ollama_down",
+        detail: "Ollama was started but does not answer yet. Wait a moment and try again.",
+      });
+    }
   }
 
   /**
@@ -218,7 +269,7 @@ export class LocalModelsEngine {
       ),
     ];
     return {
-      ollama: { running: this.running, baseUrl: this.deps.baseUrl() },
+      ollama: { running: this.running, baseUrl: this.deps.baseUrl(), warning: this.warning },
       hardware: {
         gpuName: hardware?.capacity.gpu?.name ?? null,
         vramBytes: hardware?.capacity.gpu?.vramTotalBytes ?? 0,

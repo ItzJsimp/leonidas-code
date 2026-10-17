@@ -43,7 +43,12 @@ export const LocalModelRow = Schema.Struct({
 export type LocalModelRow = typeof LocalModelRow.Type;
 
 export const LocalModelsState = Schema.Struct({
-  ollama: Schema.Struct({ running: Schema.Boolean, baseUrl: Schema.String }),
+  ollama: Schema.Struct({
+    running: Schema.Boolean,
+    baseUrl: Schema.String,
+    /** Plain words. Set when something else holds the Ollama port, for example WSL. */
+    warning: Schema.NullOr(Schema.String),
+  }),
   hardware: Schema.Struct({
     gpuName: Schema.NullOr(Schema.String),
     vramBytes: NonNegativeInt,
@@ -71,6 +76,9 @@ export const LocalModelsPullInput = Schema.Struct({
   confirmed: Schema.optional(Schema.Boolean),
 });
 export type LocalModelsPullInput = typeof LocalModelsPullInput.Type;
+
+export const LocalModelsStartInput = Schema.Struct({});
+export type LocalModelsStartInput = typeof LocalModelsStartInput.Type;
 
 export const LocalModelsActionResult = Schema.Struct({ ok: Schema.Boolean });
 export type LocalModelsActionResult = typeof LocalModelsActionResult.Type;

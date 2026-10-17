@@ -14,6 +14,7 @@ import {
   localModelsPull,
   localModelsRun,
   localModelsSpeedTest,
+  localModelsStartOllama,
   localModelsStop,
 } from "~/state/localModels";
 import { useEnvironmentQuery } from "~/state/query";
@@ -39,6 +40,7 @@ export function useLocalModels() {
   const runRun = useAtomCommand(localModelsRun, { reportFailure: false });
   const runStop = useAtomCommand(localModelsStop, { reportFailure: false });
   const runSpeed = useAtomCommand(localModelsSpeedTest, { reportFailure: false });
+  const runStart = useAtomCommand(localModelsStartOllama, { reportFailure: false });
   const runDelete = useAtomCommand(localModelsDelete, { reportFailure: false });
 
   const attempt = useCallback(async (title: string, action: () => Promise<unknown>) => {
@@ -69,8 +71,18 @@ export function useLocalModels() {
     [attempt, environmentId, runPull],
   );
 
+  const startOllama = useCallback(
+    () =>
+      attempt("Could not start Ollama", async () => {
+        if (environmentId === null) return;
+        unwrap(await runStart({ environmentId, input: {} }));
+      }),
+    [attempt, environmentId, runStart],
+  );
+
   return {
     state,
+    startOllama,
     error: live.error,
     isPending: live.isPending && state === null,
     pull,

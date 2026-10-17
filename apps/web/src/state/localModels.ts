@@ -38,6 +38,11 @@ export const localModelsSpeedTest = createEnvironmentRpcCommand(connectionAtomRu
   tag: WS_METHODS.localModelsSpeedTest,
 });
 
+export const localModelsStartOllama = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:local-models:start-ollama",
+  tag: WS_METHODS.localModelsStartOllama,
+});
+
 export const localModelsDelete = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:local-models:delete",
   tag: WS_METHODS.localModelsDelete,

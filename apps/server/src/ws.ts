@@ -2925,6 +2925,7 @@ const layerWsRpc = (
         [WS_METHODS.localModelsRun]: (input) => localModels.run(input),
         [WS_METHODS.localModelsStop]: (input) => localModels.stop(input),
         [WS_METHODS.localModelsSpeedTest]: (input) => localModels.speedTest(input),
+        [WS_METHODS.localModelsStartOllama]: () => localModels.startOllama,
         [WS_METHODS.localModelsDelete]: (input) => localModels.remove(input),
         [WS_METHODS.taskBoardWorkspace]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),

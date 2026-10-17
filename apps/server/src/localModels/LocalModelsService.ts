@@ -17,6 +17,7 @@ import * as Layer from "effect/Layer";
 import * as PubSub from "effect/PubSub";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
+import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
@@ -48,6 +49,7 @@ export class LocalModelsService extends Context.Service<
     readonly stop: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
+    readonly startOllama: Effect.Effect<LocalModelsActionResult, LocalModelsError>;
     readonly speedTest: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
@@ -66,6 +68,54 @@ const resolveModelDir = (): string | null => {
   } catch {
     return null;
   }
+};
+
+/** Start `ollama serve` detached, so it keeps running when this server stops. */
+const startOllamaProcess = (): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const candidates = [
+      "ollama",
+      NodePath.join(process.env["LOCALAPPDATA"] ?? "", "Programs", "Ollama", "ollama.exe"),
+    ];
+    const attempt = (index: number) => {
+      const command = candidates[index];
+      if (command === undefined) {
+        reject(new Error("Ollama is not installed. Install it from ollama.com, then try again."));
+        return;
+      }
+      const child = NodeChildProcess.spawn(command, ["serve"], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      child.once("error", () => attempt(index + 1));
+      child.once("spawn", () => {
+        child.unref();
+        resolve();
+      });
+    };
+    attempt(0);
+  });
+
+const run = (command: string, args: ReadonlyArray<string>): Promise<string> =>
+  new Promise((resolve) => {
+    NodeChildProcess.execFile(
+      command,
+      [...args],
+      { timeout: 4_000, windowsHide: true },
+      (_e, out) => resolve(String(out ?? "")),
+    );
+  });
+
+/** Name of the program that listens on port 11434 (Windows only; null elsewhere or when free). */
+const findPortHolder = async (): Promise<string | null> => {
+  if (process.platform !== "win32") return null;
+  const lines = (await run("netstat", ["-ano", "-p", "tcp"])).split("\n");
+  const line = lines.find((entry) => /:11434\s/.test(entry) && /LISTENING/.test(entry));
+  const pid = line?.trim().split(/\s+/).pop();
+  if (pid === undefined || !/^\d+$/.test(pid)) return null;
+  const task = await run("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"]);
+  return /^"([^"]+)"/.exec(task.trim())?.[1] ?? null;
 };
 
 const isLocalModelsError = Schema.is(LocalModelsError);
@@ -104,6 +154,9 @@ const make = Effect.gen(function* () {
     fetch: globalThis.fetch,
     hardware: () => hardware,
     modelDir: resolveModelDir,
+    startOllama: startOllamaProcess,
+    portHolder: findPortHolder,
+    sleep: (ms) => Effect.runPromise(Effect.sleep(ms)),
     onChange: () => {
       PubSub.publishUnsafe(changes, undefined);
     },
@@ -176,6 +229,7 @@ const make = Effect.gen(function* () {
     cancelPull: (input) => action(() => engine.cancelPull(input.model)),
     run: (input) => action(() => engine.run(input.model)),
     stop: (input) => action(() => engine.stop(input.model)),
+    startOllama: action(() => engine.startOllama()),
     speedTest: (input) => action(() => engine.speedTest(input.model)),
     remove: (input) => action(() => engine.remove(input.model)),
   });
