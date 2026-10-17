@@ -11,6 +11,7 @@ import * as NodePath from "node:path";
 import { ServerConfig } from "../config.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import * as TaskBoardService from "./TaskBoardService.ts";
+import { discoverProjects } from "./aiosCards.ts";
 
 // Two AIOS roots side by side, like "D:\Leonidas AIOS" and "D:\SimplyGersi AIOS" (ADR-0080).
 const card = (id: string, project: string) =>
@@ -212,6 +213,86 @@ it.effect("lists every AIOS with its file state and writes the setup file once",
         board.workspaceInit({ root: bare, id: "bare2", name: "Bare", type: "personal" }, projects),
       );
       expect(Exit.isFailure(again)).toBe(true);
+    }),
+  ),
+);
+
+it.effect("files an inbox capture as a task inside the workspace it came from", () =>
+  withWorkspaces(({ personal, business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const filed = yield* board.inboxDrop(
+        { text: "call Abbe about the invoice", actor: "Gersi", workspaceId: "simplygersi" },
+        projects,
+      );
+      expect(filed.kind).toBe("task");
+      expect(NodeFS.readdirSync(NodePath.join(business, "tasks"))).toHaveLength(2);
+      expect(NodeFS.readdirSync(NodePath.join(personal, "tasks"))).toEqual(["personal.md"]);
+      const ids = (yield* board.workspace(projects, "leonidas")).tasks.map((task) => task.id);
+      expect(ids).toEqual(["task-personal"]);
+    }),
+  ),
+);
+
+it.effect("does not fall back to another workspace's shared board on a scoped update", () =>
+  withWorkspaces(({ projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const error = yield* Effect.flip(
+        board.cardUpdate(
+          {
+            taskId: "task-on-a-shared-board",
+            actor: "Jake",
+            note: "cross",
+            workspaceId: "leonidas",
+            projectId: projects[1]!.id,
+          },
+          projects,
+        ),
+      );
+      expect(error).toMatchObject({ _tag: "TaskBoardOperationError", reason: "task_not_found" });
+    }),
+  ),
+);
+
+it.effect("keeps every native card visible to callers that send no workspace id", () =>
+  withWorkspaces(({ projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      // An agent run in a SimplyGersi thread files a native card with no id (TaskAutoLog).
+      const run = yield* board.cardCreate(
+        { title: "Agent run", actor: "Leonidas", projectId: projects[1]!.id },
+        projects,
+      );
+      const ids = (target?: string) =>
+        board.workspace(projects, target).pipe(Effect.map((s) => s.tasks.map((task) => task.id)));
+      expect(yield* ids()).toContain(run.id);
+      expect(yield* ids("simplygersi")).toContain(run.id);
+      expect(yield* ids("leonidas")).not.toContain(run.id);
+    }),
+  ),
+);
+
+it.effect("does not read a brief or project linked in from another workspace", () =>
+  withWorkspaces(({ personal, business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const briefs = NodePath.join(business, "logs", "briefings");
+      NodeFS.mkdirSync(briefs, { recursive: true });
+      NodeFS.writeFileSync(
+        NodePath.join(briefs, "2026-10-17-briefing.md"),
+        "# Brief\n\n## Priorities Seeded\n- [ ] Business secret\n",
+      );
+      NodeFS.mkdirSync(NodePath.join(personal, "logs"), { recursive: true });
+      NodeFS.symlinkSync(briefs, NodePath.join(personal, "logs", "briefings"), "junction");
+      NodeFS.symlinkSync(
+        NodePath.join(business, "projects", "app"),
+        NodePath.join(personal, "projects", "linked"),
+        "junction",
+      );
+      expect((yield* board.home(projects, "simplygersi")).brief).not.toBeNull();
+      expect((yield* board.home(projects, "leonidas")).brief).toBeNull();
+      expect(discoverProjects(personal).map((project) => project.slug)).toEqual(["app"]);
     }),
   ),
 );

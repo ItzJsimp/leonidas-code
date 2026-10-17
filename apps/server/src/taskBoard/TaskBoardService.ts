@@ -669,13 +669,18 @@ const make = Effect.gen(function* () {
       const owner = workspaceForPath(workspaces, project.workspaceRoot);
       if (owner) slugOwner.set(aiosSlugFor(project), owner.root);
     }
+    // A caller with no workspace id (TaskAutoLog, MCP board tools, old clients) keeps the
+    // pre-workspace view: every native card and every project.
+    const scoped = "project" in target || Boolean(target.workspaceId);
     // App-owned (native) cards belong to the workspace that holds their project, else the default.
     const keepNative = (task: TaskBoardTask) =>
+      !scoped ||
       workspaces.length === 0 ||
       (root !== null &&
         (slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) === root);
     // An app project belongs to the workspace that holds its folder, else the default.
     const inScope = (project: { readonly workspaceRoot: string }) =>
+      !scoped ||
       workspaces.length === 0 ||
       (root !== null &&
         (workspaceForPath(workspaces, project.workspaceRoot)?.root ?? defaultRoot) === root);
@@ -1510,8 +1515,11 @@ const make = Effect.gen(function* () {
       );
       const root = card?.sourceRoot;
       if (!root || !card) {
+        const scope = scopeFor(projects, input);
         const project = input.projectId
-          ? projects.find((candidate) => candidate.id === input.projectId)
+          ? projects.find(
+              (candidate) => candidate.id === input.projectId && scope.inScope(candidate),
+            )
           : undefined;
         if (!project) {
           return yield* new TaskBoardOperationError({
@@ -1690,6 +1698,7 @@ const make = Effect.gen(function* () {
           description: `From a quick capture:\n\n${input.text.trim()}`,
           projectSlug: input.projectSlug ?? null,
           actor: input.actor,
+          ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}),
         },
         projects,
       ).pipe(Effect.option);

@@ -112,6 +112,13 @@ const realRootOf = (root: string): string | null => {
   }
 };
 
+/** True when `path` exists and stays inside `root` after links resolve (ADR-0080 guard). */
+export function isRealPathInside(root: string, path: string): boolean {
+  const realRoot = realRootOf(root);
+  const real = realRootOf(path);
+  return realRoot !== null && real !== null && isInsideRoot(realRoot, real);
+}
+
 /** Finds the AIOS root: the first hint (then its ancestors) that holds the task folders. */
 export function findAiosRoot(hints: ReadonlyArray<string | undefined>): string | null {
   for (const hint of hints) {
@@ -1092,7 +1099,8 @@ export function discoverProjects(
   for (const entry of entries) {
     if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
     const dir = NodePath.join(projectsDir, entry.name);
-    if (!hasDir(dir)) continue;
+    // A project folder linked in from outside belongs to another workspace.
+    if (!hasDir(dir) || !isRealPathInside(root, dir)) continue;
     let name = "";
     try {
       const parsed = parseFrontmatter(
