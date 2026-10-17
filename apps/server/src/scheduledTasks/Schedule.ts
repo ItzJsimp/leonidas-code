@@ -89,16 +89,28 @@ export function isSameSchedule(a: ScheduledTaskSchedule, b: ScheduledTaskSchedul
   );
 }
 
-/**
- * How late a fixed-time run may fire before it counts as missed. Covers poll
- * jitter and short sleeps, while a server booted hours after the slot skips
- * to the next occurrence instead of firing stale work at a random time.
- */
-const MISSED_FIXED_TIME_GRACE_MS = 10 * MINUTE_MS;
+const MIN_CATCH_UP_WINDOW_MS = 2 * MINUTE_MS;
+const MAX_CATCH_UP_WINDOW_MS = 120 * MINUTE_MS;
+const FALLBACK_PERIOD_MS = 24 * 60 * MINUTE_MS;
 
 /**
- * True when a due fixed-time run was missed by more than the grace window and
- * should be rescheduled to its next occurrence instead of firing now.
+ * How late a fixed-time run may fire and still count as on time: half the gap
+ * to the next occurrence, kept between 2 minutes and 2 hours. It covers poll
+ * jitter and a server restarted shortly after the slot, while a server booted
+ * hours later skips to the next occurrence instead of firing stale work.
+ */
+export function catchUpWindowMs(schedule: ScheduledTaskSchedule, dueAt: DateTime.DateTime): number {
+  const next = nextScheduledRunAt(schedule, dueAt);
+  const periodMs =
+    next === null
+      ? FALLBACK_PERIOD_MS
+      : DateTime.toEpochMillis(next) - DateTime.toEpochMillis(dueAt);
+  return Math.min(MAX_CATCH_UP_WINDOW_MS, Math.max(MIN_CATCH_UP_WINDOW_MS, periodMs / 2));
+}
+
+/**
+ * True when a due fixed-time run was missed by more than its catch-up window
+ * and should be rescheduled to its next occurrence instead of firing now.
  * Interval schedules are never considered missed: an overdue interval task
  * catching up with a single run is the desired behaviour.
  */
@@ -108,7 +120,9 @@ export function isMissedFixedTimeRun(
   now: DateTime.DateTime,
 ): boolean {
   if (schedule.type !== "fixed_time") return false;
-  return DateTime.toEpochMillis(now) - DateTime.toEpochMillis(dueAt) > MISSED_FIXED_TIME_GRACE_MS;
+  return (
+    DateTime.toEpochMillis(now) - DateTime.toEpochMillis(dueAt) > catchUpWindowMs(schedule, dueAt)
+  );
 }
 
 function describeSchedule(schedule: ScheduledTaskSchedule): string {

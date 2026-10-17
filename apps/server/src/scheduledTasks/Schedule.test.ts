@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 
 import {
+  catchUpWindowMs,
   isMissedFixedTimeRun,
   isSameSchedule,
   nextScheduledRunAt,
@@ -66,6 +67,25 @@ describe("scheduled task schedule calculation", () => {
     expect(isMissedFixedTimeRun({ type: "interval", everyMs: 60_000 }, dueAt, pastGrace)).toBe(
       false,
     );
+  });
+
+  it("fires a fixed-time run inside the catch-up window once and skips it past the window", () => {
+    const fixedTime = { type: "fixed_time", timeOfDay: "09:00" } as const;
+    const dueAt = DateTime.makeUnsafe("2026-07-01T09:00:00.000Z");
+    // A daily slot has a 24 h period, so the window is capped at 2 h.
+    expect(catchUpWindowMs(fixedTime, dueAt)).toBe(120 * 60_000);
+    expect(
+      isMissedFixedTimeRun(fixedTime, dueAt, DateTime.makeUnsafe("2026-07-01T10:59:00.000Z")),
+    ).toBe(false);
+    expect(
+      isMissedFixedTimeRun(fixedTime, dueAt, DateTime.makeUnsafe("2026-07-01T11:01:00.000Z")),
+    ).toBe(true);
+  });
+
+  it("keeps the catch-up window at least 2 minutes", () => {
+    const weekdays = { type: "fixed_time", timeOfDay: "09:00", weekdays: [1] } as const;
+    const dueAt = DateTime.makeUnsafe("2026-07-01T09:00:00.000Z");
+    expect(catchUpWindowMs(weekdays, dueAt)).toBeGreaterThanOrEqual(2 * 60_000);
   });
 
   it("compares schedules structurally", () => {

@@ -908,6 +908,7 @@ export const layer = Layer.effect(
       const next = nextRunAt(task, now);
       yield* Effect.logInfo("Skipping missed schedule task run", {
         taskId: task.id,
+        reason: "missed the catch-up window",
         missedRunAt: task.nextRunAt,
         rescheduledTo: next,
       });
