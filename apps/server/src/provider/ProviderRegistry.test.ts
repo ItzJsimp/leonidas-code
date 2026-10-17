@@ -3636,7 +3636,7 @@ it.layer(
         assert.strictEqual(status.auth.status, "unknown");
         assert.strictEqual(
           status.message,
-          "Could not verify Claude authentication status from initialization result.",
+          "Claude is installed, but Leonidas Code could not read its sign-in yet. Refresh in a few seconds. If this stays, sign in again.",
         );
       }).pipe(
         Effect.provide(

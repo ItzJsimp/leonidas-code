@@ -49,6 +49,7 @@ const state = vi.hoisted(() => ({
   done: vi.fn(),
 }));
 
+vi.mock("./ClaudeInstallPill", () => ({ ClaudeInstallPill: () => null }));
 vi.mock("../../connection/runtime", () => ({ connectionAtomRuntime: undefined }));
 vi.mock("@t3tools/client-runtime/state/session", () => ({
   createEnvironmentSessionAtoms: () => ({

@@ -85,6 +85,7 @@ import { presentSavedCloudEnvironmentConnection } from "../cloud/cloudEnvironmen
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
+import { ClaudeInstallPill } from "./ClaudeInstallPill";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
 import { ApiKeysStep } from "./ApiKeysStep";
@@ -357,6 +358,9 @@ export function WelcomeWizard({
             }}
           />
         </WizardHeader>
+        {step !== "agents" && setupIds[0] ? (
+          <ClaudeInstallPill environmentId={setupIds[0]} onOpenAgents={() => setStep("agents")} />
+        ) : null}
 
         <WizardPanel holdHeight={isLoadingProjects} stableHeight>
           {step === "welcome" ? (

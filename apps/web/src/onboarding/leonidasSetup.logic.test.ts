@@ -46,7 +46,7 @@ describe("leonidasSetup.logic", () => {
   });
 
   it("defaults the AIOS folder to a named folder in Documents", () => {
-    expect(DEFAULT_AIOS_FOLDER).toBe("~/Documents/My AIOS");
+    expect(DEFAULT_AIOS_FOLDER).toBe("~/Leonidas AIOS");
   });
 
   it("tells the chat to keep files that already exist in the folder", () => {

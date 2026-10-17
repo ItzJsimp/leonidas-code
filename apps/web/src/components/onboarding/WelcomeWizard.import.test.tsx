@@ -36,6 +36,7 @@ const state = vi.hoisted(() => ({
   refreshScan: vi.fn(),
 }));
 
+vi.mock("./ClaudeInstallPill", () => ({ ClaudeInstallPill: () => null }));
 vi.mock("./AiLevelStep", () => ({
   AiLevelStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>

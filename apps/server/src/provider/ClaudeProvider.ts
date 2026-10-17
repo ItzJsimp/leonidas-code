@@ -6,6 +6,7 @@ import {
   type ServerProviderResetCredits,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
@@ -463,6 +464,10 @@ const probeClaudeCapabilities = (
         if (!abort.signal.aborted) abort.abort();
       }),
     ),
+    // Keep the reason in the log: the caller only sees "no answer".
+    Effect.tapCause((cause) =>
+      Effect.logWarning("Claude capabilities probe failed.", { cause: Cause.pretty(cause) }),
+    ),
     Effect.result,
     Effect.map((result): ClaudeCapabilitiesProbe | undefined => {
       if (Result.isSuccess(result)) return result.success;
@@ -659,7 +664,8 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         version: parsedVersion,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Could not verify Claude authentication status from initialization result.",
+        message:
+          "Claude is installed, but Leonidas Code could not read its sign-in yet. Refresh in a few seconds. If this stays, sign in again.",
       },
     });
   }

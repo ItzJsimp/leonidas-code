@@ -107,7 +107,11 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
-import { resolveClaudeSdkExecutablePath } from "../../provider/Drivers/ClaudeExecutable.ts";
+import {
+  resolveClaudeSdkExecutablePath,
+  resolveInstalledClaudeBinary,
+  withInstalledClaudeOnPath,
+} from "../../provider/Drivers/ClaudeExecutable.ts";
 import { expandSkills, mayMentionSkill } from "@t3tools/shared/skillExpansion";
 import { discoverClaudeSkills } from "../../provider/Drivers/ClaudeSkills.ts";
 import { compileClaudeModelSelection } from "../../claudeModelOptions.ts";
@@ -1081,9 +1085,11 @@ export function makeClaudeQueryOptions(input: {
       ? {}
       : { supportedDialogKinds: input.supportedDialogKinds }),
     ...(input.settings?.binaryPath
-      ? { pathToClaudeCodeExecutable: input.settings.binaryPath }
+      ? { pathToClaudeCodeExecutable: resolveInstalledClaudeBinary(input.settings.binaryPath) }
       : {}),
-    ...(input.environment === undefined ? {} : { env: input.environment }),
+    ...(input.environment === undefined
+      ? {}
+      : { env: withInstalledClaudeOnPath(input.environment) }),
     ...(input.mcpServers === undefined ? {} : { mcpServers: input.mcpServers }),
     ...(input.persona === undefined
       ? {

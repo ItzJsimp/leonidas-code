@@ -49,7 +49,8 @@ export const CLAUDE_INSTALL_PROMPT =
   "Claude is not on this computer yet. Install it for free, then sign in.";
 export const CLAUDE_INSTALLED_ELSEWHERE_MESSAGE =
   "Claude is installed, but this account uses a different program path. Open its Settings and clear Binary path.";
-export const CLAUDE_INSTALLING_MESSAGE = "Installing Claude. This takes about 1 minute.";
+export const CLAUDE_INSTALLING_MESSAGE =
+  "Installing Claude. This takes about 1 minute. You can continue: setup keeps going.";
 export const CLAUDE_INSTALL_FAILED_FALLBACK =
   "Could not install Claude. Check your internet connection, then try again.";
 

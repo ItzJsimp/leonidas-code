@@ -7,7 +7,10 @@ import { useState } from "react";
 
 import {
   INTERVIEW_QUESTIONS,
+  answerFromChoices,
   buildAiosFiles,
+  choicesFromAnswer,
+  defaultAnswers,
   firstMissingRequired,
   planCreateOnly,
   type InterviewAnswers,
@@ -18,10 +21,10 @@ import { useOnboardingChat } from "../../onboarding/useOnboardingChat";
 import { projectEnvironment } from "~/state/projects";
 import { useEnvironmentScope } from "~/state/session";
 import { useAtomCommand } from "~/state/use-atom-command";
+import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
-import { Textarea } from "../ui/textarea";
 
 type FormState =
   | { readonly status: "idle" }
@@ -34,7 +37,7 @@ type FormState =
     };
 
 /**
- * Eight typed questions, then plain files written with no AI call. A file that already
+ * One name to type and a few chips to tap, then plain files written with no AI call. A file that already
  * exists is skipped, never replaced, and an unreadable folder stops the write.
  */
 export function AiosInterviewForm({
@@ -46,7 +49,7 @@ export function AiosInterviewForm({
   readonly folder: string | null;
   readonly onDone: () => void;
 }) {
-  const [answers, setAnswers] = useState<InterviewAnswers>({});
+  const [answers, setAnswers] = useState<InterviewAnswers>(() => defaultAnswers());
   const [state, setState] = useState<FormState>({ status: "idle" });
   const { canOperate, ensureFolderProject } = useOnboardingChat(environmentId);
   const canWriteFiles = useEnvironmentScope(environmentId ?? null, AuthFilesystemWriteScope);
@@ -142,30 +145,63 @@ export function AiosInterviewForm({
     <div className="space-y-4">
       {INTERVIEW_QUESTIONS.map((question) => {
         const value = answers[question.id] ?? "";
-        return (
-          <label key={question.id} className="block space-y-1.5">
-            <span className="text-sm text-foreground">
-              {question.label}
-              {question.required ? null : (
-                <span className="ml-1.5 text-xs text-muted-foreground">Optional</span>
-              )}
-            </span>
-            {question.multiline ? (
-              <Textarea
-                rows={2}
-                value={value}
-                maxLength={2000}
-                onChange={(event) => setAnswer(question.id, event.target.value)}
-              />
-            ) : (
+        if (question.kind === "text") {
+          return (
+            <label key={question.id} className="block space-y-1.5">
+              <span className="text-sm text-foreground">
+                {question.label}
+                {question.required ? null : (
+                  <span className="ml-1.5 text-xs text-muted-foreground">Optional</span>
+                )}
+              </span>
               <Input
                 value={value}
-                maxLength={2000}
+                maxLength={200}
                 onChange={(event) => setAnswer(question.id, event.target.value)}
               />
-            )}
-            <span className="block text-xs text-muted-foreground">{question.hint}</span>
-          </label>
+              <span className="block text-xs text-muted-foreground">{question.hint}</span>
+            </label>
+          );
+        }
+        const chosen = choicesFromAnswer(question, value);
+        return (
+          <fieldset key={question.id} className="space-y-1.5">
+            <legend className="text-sm text-foreground">
+              {question.label}
+              <span className="ml-1.5 text-xs text-muted-foreground">{question.hint}</span>
+            </legend>
+            <div className="flex flex-wrap gap-1.5">
+              {(question.choices ?? []).map((choice) => {
+                const on = chosen.includes(choice);
+                return (
+                  <button
+                    key={choice}
+                    type="button"
+                    aria-pressed={on}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs ring-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                      on
+                        ? "bg-primary/10 text-primary ring-primary/40"
+                        : "bg-card text-muted-foreground ring-black/10 hover:text-foreground dark:ring-white/10",
+                    )}
+                    onClick={() => {
+                      const next =
+                        question.kind === "single"
+                          ? on
+                            ? []
+                            : [choice]
+                          : on
+                            ? chosen.filter((entry) => entry !== choice)
+                            : [...chosen, choice];
+                      setAnswer(question.id, answerFromChoices(next));
+                    }}
+                  >
+                    {choice}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
         );
       })}
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">

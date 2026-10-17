@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   projects: [] as Array<{ id: string; environmentId: string; workspaceRoot: string }>,
 }));
+vi.mock("./ClaudeInstallPill", () => ({ ClaudeInstallPill: () => null }));
 vi.mock("./AiLevelStep", () => ({
   AiLevelStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>

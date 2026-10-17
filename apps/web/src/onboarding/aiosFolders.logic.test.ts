@@ -16,10 +16,10 @@ import type { FolderInspection } from "./folderInspection.logic";
 import { AIOS_PRESET, DEFAULT_AIOS_FOLDER } from "./leonidasSetup.logic";
 
 describe("AIOS folder location and name", () => {
-  it("splits the default into Documents and a name", () => {
+  it("splits the default into the user folder and a name", () => {
     expect(splitAiosFolder(DEFAULT_AIOS_FOLDER)).toEqual({
-      location: "~/Documents",
-      name: "My AIOS",
+      location: "~",
+      name: "Leonidas AIOS",
     });
   });
 

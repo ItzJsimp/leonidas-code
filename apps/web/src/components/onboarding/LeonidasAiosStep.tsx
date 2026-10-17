@@ -66,6 +66,7 @@ export function LeonidasAiosStep({
     const joined = joinAiosFolder(next.location, next.name);
     if (joined !== null) setStoredFolder(joined);
   };
+  const [editFolder, setEditFolder] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [stored] = useLocalStorage(LEONIDAS_GOALS_STORAGE_KEY, [], LeonidasGoalsSchema);
@@ -165,27 +166,36 @@ export function LeonidasAiosStep({
           ) : null}
           {mode === "run" || mode === "interview" ? (
             <div className="space-y-2">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block space-y-1.5">
-                  <span className="text-xs text-muted-foreground">Folder location</span>
-                  <Input
-                    value={parts.location}
-                    onChange={(event) => updateParts({ ...parts, location: event.target.value })}
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-xs text-muted-foreground">Folder name</span>
-                  <Input
-                    ref={folderInputRef}
-                    value={parts.name}
-                    onChange={(event) => updateParts({ ...parts, name: event.target.value })}
-                  />
-                </label>
-              </div>
+              {editFolder ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs text-muted-foreground">Folder location</span>
+                    <Input
+                      value={parts.location}
+                      onChange={(event) => updateParts({ ...parts, location: event.target.value })}
+                    />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs text-muted-foreground">Folder name</span>
+                    <Input
+                      ref={folderInputRef}
+                      value={parts.name}
+                      onChange={(event) => updateParts({ ...parts, name: event.target.value })}
+                    />
+                  </label>
+                </div>
+              ) : null}
               <p className="text-xs text-muted-foreground">
                 {folder === null
                   ? "Enter a folder location and a folder name."
-                  : `Leonidas Code creates ${folder} if it is missing. ~ means your user folder.`}
+                  : `Your AI memory goes in ${folder}. ~ means your user folder.`}{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-foreground"
+                  onClick={() => setEditFolder((open) => !open)}
+                >
+                  {editFolder ? "Done" : "Change"}
+                </button>
               </p>
               {mode === "interview" ? (
                 <AiosInterviewForm
@@ -217,6 +227,7 @@ export function LeonidasAiosStep({
                   cancelLabel={folderNotice.tone === "info" ? "Pick another folder" : undefined}
                   onConfirm={() => void startSetupChat()}
                   onCancel={() => {
+                    setEditFolder(true);
                     setFolderNotice(null);
                     folderInputRef.current?.focus();
                   }}
