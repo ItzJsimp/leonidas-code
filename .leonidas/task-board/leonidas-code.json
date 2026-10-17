@@ -44,6 +44,50 @@
       ]
     },
     {
+      "id": "github-4",
+      "project": "Leonidas Code",
+      "title": "Release delivery needs attention",
+      "description": "## Release delivery 0.68.0\n\nNo release published (see job results; superseded runs are expected).\n\n- Windows x64 installer: 109s (failure)\n  - Run actions/checkout@v6: 18s\n  - Run voidzero-dev/setup-vp@v1: 27s\n  - Plan version and patch notes: 21s\n  - Restore desktop dependencies: 21s\n  - Install desktop build dependencies: 16s\n- Publish complete release: 0s (skipped)\n\n\nWindows x64 installer: failure\n\n[Workflow](https://github.com/ItzJsimp/leonidas-code/actions/runs/38736996243)\n",
+      "status": "todo",
+      "priority": "medium",
+      "claimedBy": null,
+      "claimedAt": null,
+      "claimedAgent": null,
+      "completedBy": null,
+      "completedAt": null,
+      "completionSummary": null,
+      "createdAt": 1792068482000,
+      "updatedAt": 1792253814544,
+      "labels": [
+        "release"
+      ],
+      "source": "github_issue",
+      "effort": "Medium",
+      "shared": true,
+      "assignee": null,
+      "sourceId": "4",
+      "sourceFile": null,
+      "issueUrl": "https://github.com/ItzJsimp/leonidas-code/issues/4",
+      "history": [
+        {
+          "id": "github-4-created",
+          "taskId": "github-4",
+          "action": "imported",
+          "actor": "GitHub issue",
+          "timestamp": 1792068482000,
+          "note": "Imported from the project's issue tracker"
+        },
+        {
+          "id": "ef5c46f5-1a22-4ff2-a500-7c20a9907937",
+          "taskId": "github-4",
+          "action": "progress",
+          "actor": "ItzJsimp",
+          "timestamp": 1792253814544,
+          "note": "Organized automatically"
+        }
+      ]
+    },
+    {
       "id": "task-one-leonidas-app-leonidas-code-as-the-shell-with-scribe-as-a-bundled-python-sidecar-then-aios-and-command-center-as",
       "project": "Leonidas Code",
       "title": "One Leonidas app: Leonidas Code as the shell with Scribe as a bundled Python sidecar, then AIOS and Command Center as panels",
@@ -1903,50 +1947,6 @@
       "history": []
     },
     {
-      "id": "github-4",
-      "project": "Leonidas Code",
-      "title": "Release delivery needs attention",
-      "description": "## Release delivery 0.68.0\n\nNo release published (see job results; superseded runs are expected).\n\n- Windows x64 installer: 109s (failure)\n  - Run actions/checkout@v6: 18s\n  - Run voidzero-dev/setup-vp@v1: 27s\n  - Plan version and patch notes: 21s\n  - Restore desktop dependencies: 21s\n  - Install desktop build dependencies: 16s\n- Publish complete release: 0s (skipped)\n\n\nWindows x64 installer: failure\n\n[Workflow](https://github.com/ItzJsimp/leonidas-code/actions/runs/38736996243)\n",
-      "status": "todo",
-      "priority": "medium",
-      "claimedBy": null,
-      "claimedAt": null,
-      "claimedAgent": null,
-      "completedBy": null,
-      "completedAt": null,
-      "completionSummary": null,
-      "createdAt": 1792068482000,
-      "updatedAt": 1792253814544,
-      "labels": [
-        "release"
-      ],
-      "source": "github_issue",
-      "shared": true,
-      "sourceId": "4",
-      "sourceFile": null,
-      "issueUrl": "https://github.com/ItzJsimp/leonidas-code/issues/4",
-      "history": [
-        {
-          "id": "github-4-created",
-          "taskId": "github-4",
-          "action": "imported",
-          "actor": "GitHub issue",
-          "timestamp": 1792068482000,
-          "note": "Imported from the project's issue tracker"
-        },
-        {
-          "id": "ef5c46f5-1a22-4ff2-a500-7c20a9907937",
-          "taskId": "github-4",
-          "action": "progress",
-          "actor": "ItzJsimp",
-          "timestamp": 1792253814544,
-          "note": "Organized automatically"
-        }
-      ],
-      "effort": "Medium",
-      "assignee": null
-    },
-    {
       "id": "task-44d8971d-d822-4987-8a2c-f8fe427f6903",
       "project": "Leonidas Code",
       "title": "Task completion celebration: confetti, toast and soft chime",
@@ -2577,11 +2577,13 @@
       "completedAt": null,
       "completionSummary": null,
       "createdAt": 1791950400000,
-      "updatedAt": 1792026699605.8064,
-      "labels": [],
+      "updatedAt": 1792253814524,
+      "labels": [
+        "security"
+      ],
       "source": "aios_card",
       "projectSlug": "leonidas-code",
-      "effort": null,
+      "effort": "Low",
       "due": null,
       "milestone": null,
       "verify": null,
@@ -2593,7 +2595,16 @@
       "sourceId": "task-7b685a87-b30d-433a-a29b-cfde26016b25",
       "sourceFile": null,
       "issueUrl": null,
-      "history": []
+      "history": [
+        {
+          "id": "3573cbbc-b3ab-465d-a5bc-bc61ed1215ca",
+          "taskId": "task-7b685a87-b30d-433a-a29b-cfde26016b25",
+          "action": "progress",
+          "actor": "ItzJsimp",
+          "timestamp": 1792253814524,
+          "note": "Organized automatically"
+        }
+      ]
     },
     {
       "id": "task-build-delegation-ledger-task-checks-and-routing-suggestions",
