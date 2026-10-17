@@ -37,6 +37,7 @@ function makeEngine(
     pullLines?: string[];
     capacity?: typeof capacity;
     psSizes?: { size: number; size_vram: number };
+    generateReply?: Record<string, unknown>;
   } = {},
 ) {
   const calls: Call[] = [];
@@ -62,6 +63,9 @@ function makeEngine(
     if (url.endsWith("/api/pull")) {
       const lines = options.pullLines ?? [];
       return new Response(lines.join("\n") + "\n", { status: 200 });
+    }
+    if (url.endsWith("/api/generate") && options.generateReply) {
+      return Response.json(options.generateReply);
     }
     return Response.json({});
   }) as typeof fetch;
@@ -223,6 +227,25 @@ describe("LocalModelsEngine actions", () => {
     const del = calls.find((c) => c.url.endsWith("/api/delete"))!;
     expect(del.method).toBe("DELETE");
     expect(del.body).toEqual({ model: "gemma4:12b-it-q4_K_M" });
+  });
+
+  it("speed test turns eval count and duration into tokens per second", async () => {
+    const { engine, calls } = makeEngine({
+      generateReply: { eval_count: 200, eval_duration: 8_000_000_000 },
+    });
+    await engine.refresh();
+    await engine.speedTest("gemma4:12b-it-q4_K_M");
+    const generate = calls.find((c) => c.url.endsWith("/api/generate"))!;
+    expect(generate.body).toMatchObject({ stream: false, options: { num_predict: 200 } });
+    const row = engine.snapshot().rows.find((r) => r.id === "gemma4:12b-it-q4_K_M")!;
+    expect(row.tokensPerSecond).toBe(25);
+  });
+
+  it("speed test fails with a plain error when Ollama gives no timing", async () => {
+    const { engine } = makeEngine();
+    await engine.refresh();
+    await expect(engine.speedTest("gemma4:12b-it-q4_K_M")).rejects.toThrow(LocalModelsError);
+    await expect(engine.speedTest("qwen3.8:27b-q4_K_M")).rejects.toThrow(LocalModelsError);
   });
 
   it("will not run or delete a model that is not installed", async () => {

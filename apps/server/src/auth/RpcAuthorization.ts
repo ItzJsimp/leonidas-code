@@ -205,6 +205,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.localModelsCancelPull]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsRun]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsStop]: AuthOrchestrationOperateScope,
+  [WS_METHODS.localModelsSpeedTest]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsDelete]: AuthOrchestrationOperateScope,
   [WS_METHODS.projectsPromptCandidates]: AuthFilesystemReadScope,
   [WS_METHODS.projectsPredictPrompt]: AuthFilesystemReadScope,

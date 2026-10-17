@@ -48,6 +48,9 @@ export class LocalModelsService extends Context.Service<
     readonly stop: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
+    readonly speedTest: (
+      input: LocalModelsModelInput,
+    ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
     readonly remove: (
       input: LocalModelsModelInput,
     ) => Effect.Effect<LocalModelsActionResult, LocalModelsError>;
@@ -173,6 +176,7 @@ const make = Effect.gen(function* () {
     cancelPull: (input) => action(() => engine.cancelPull(input.model)),
     run: (input) => action(() => engine.run(input.model)),
     stop: (input) => action(() => engine.stop(input.model)),
+    speedTest: (input) => action(() => engine.speedTest(input.model)),
     remove: (input) => action(() => engine.remove(input.model)),
   });
 });

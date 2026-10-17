@@ -33,6 +33,11 @@ export const localModelsStop = createEnvironmentRpcCommand(connectionAtomRuntime
   tag: WS_METHODS.localModelsStop,
 });
 
+export const localModelsSpeedTest = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:local-models:speed-test",
+  tag: WS_METHODS.localModelsSpeedTest,
+});
+
 export const localModelsDelete = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:local-models:delete",
   tag: WS_METHODS.localModelsDelete,

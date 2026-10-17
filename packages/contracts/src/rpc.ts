@@ -563,6 +563,7 @@ export const WS_METHODS = {
   localModelsCancelPull: "localModels.cancelPull",
   localModelsRun: "localModels.run",
   localModelsStop: "localModels.stop",
+  localModelsSpeedTest: "localModels.speedTest",
   localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
@@ -1623,6 +1624,12 @@ const WsLocalModelsRunRpc = Rpc.make(WS_METHODS.localModelsRun, {
 });
 
 const WsLocalModelsStopRpc = Rpc.make(WS_METHODS.localModelsStop, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsSpeedTestRpc = Rpc.make(WS_METHODS.localModelsSpeedTest, {
   payload: LocalModelsModelInput,
   success: LocalModelsActionResult,
   error: LocalModelsRpcError,
@@ -2754,6 +2761,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsLocalModelsCancelPullRpc,
   WsLocalModelsRunRpc,
   WsLocalModelsStopRpc,
+  WsLocalModelsSpeedTestRpc,
   WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,

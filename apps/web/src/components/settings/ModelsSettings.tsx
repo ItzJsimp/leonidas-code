@@ -93,6 +93,7 @@ function ModelActions({
   busy,
   onRun,
   onStop,
+  onSpeedTest,
   onAskDelete,
   onGet,
   onCancel,
@@ -101,6 +102,7 @@ function ModelActions({
   busy: boolean;
   onRun: () => void;
   onStop: () => void;
+  onSpeedTest: () => void;
   onAskDelete: () => void;
   onGet: () => void;
   onCancel: () => void;
@@ -157,6 +159,11 @@ function ModelActions({
           </Button>
         </Tip>
       )}
+      <Tip text="Run a short test to measure how fast this model answers on your PC. The first test can take a minute while the model loads.">
+        <Button size="xs" variant="outline" disabled={busy} onClick={onSpeedTest}>
+          Test
+        </Button>
+      </Tip>
       <Tip text="Delete this model from your disk. You can download it again later.">
         <Button size="xs" variant="destructive-outline" disabled={busy} onClick={onAskDelete}>
           Delete
@@ -171,6 +178,7 @@ function ModelRowView({
   busy,
   onRun,
   onStop,
+  onSpeedTest,
   onAskDelete,
   onGet,
   onCancel,
@@ -238,7 +246,7 @@ function ModelRowView({
         </span>
       </TableCell>
       <TableCell>
-        <Tip text="Tokens per second from a speed test. Speed tests arrive in a later update.">
+        <Tip text="Tokens per second from a speed test. Press Test on an installed model to measure it.">
           <span className="tabular-nums text-muted-foreground">
             {speedLabel(row.tokensPerSecond)}
           </span>
@@ -257,6 +265,7 @@ function ModelRowView({
           busy={busy}
           onRun={onRun}
           onStop={onStop}
+          onSpeedTest={onSpeedTest}
           onAskDelete={onAskDelete}
           onGet={onGet}
           onCancel={onCancel}
@@ -341,6 +350,7 @@ export function ModelsSettingsPanel() {
                         busy={busyId === row.id}
                         onRun={() => void withBusy(row.id, () => models.run(row.id))}
                         onStop={() => void withBusy(row.id, () => models.stop(row.id))}
+                        onSpeedTest={() => void withBusy(row.id, () => models.speedTest(row.id))}
                         onAskDelete={() => setPending({ kind: "delete", row })}
                         onGet={() =>
                           row.gate.needsConfirm

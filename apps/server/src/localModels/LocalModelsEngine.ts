@@ -27,6 +27,10 @@ const REQUEST_TIMEOUT_MS = 4_000;
 const LOADED_VRAM_OVERHEAD = 1.2;
 /** Do not publish a pull progress change more often than this. */
 const PROGRESS_PUBLISH_MS = 500;
+/** The speed test asks for this many new tokens. */
+const SPEED_TEST_TOKENS = 200;
+const SPEED_TEST_PROMPT =
+  "Write a TypeScript function that debounces a callback, with a short explanation.";
 
 export interface LocalModelsHardware {
   readonly capacity: LocalModelCapacity;
@@ -89,6 +93,8 @@ export class LocalModelsEngine {
   private running = false;
   private readonly pulls = new Map<string, PullEntry>();
   private lastPublish = 0;
+  /** Speed measured in this session, by model tag. Wins over the value in the approved list. */
+  private readonly speeds = new Map<string, number>();
 
   private readonly deps: LocalModelsEngineDeps;
 
@@ -198,7 +204,7 @@ export class LocalModelsEngine {
       loaded: this.loaded.has(id),
       sizeBytes: sizeBytes === null ? null : Math.round(sizeBytes),
       fit: capacity ? fitFor(sizeBytes, capacity) : "unknown",
-      tokensPerSecond: starters.get(id)?.tokensPerSecond ?? null,
+      tokensPerSecond: this.speeds.get(id) ?? starters.get(id)?.tokensPerSecond ?? null,
       benchLm: starters.get(id)?.benchLm ?? null,
       gate: gateFor(sizeBytes, installed),
       pull: this.pullView(this.pulls.get(id)),
@@ -372,6 +378,44 @@ export class LocalModelsEngine {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ model, keep_alive: 0 }),
     });
+    await this.refresh();
+  }
+
+  /** Generate a short answer and measure the speed of the answer in tokens per second. */
+  async speedTest(model: string): Promise<void> {
+    this.requireInstalled(model);
+    let body: Record<string, unknown>;
+    try {
+      const response = await this.call("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model,
+          prompt: SPEED_TEST_PROMPT,
+          stream: false,
+          keep_alive: RUN_KEEP_ALIVE,
+          options: { num_predict: SPEED_TEST_TOKENS },
+        }),
+        // Loading a big model from disk can take minutes.
+        signal: AbortSignal.timeout(10 * 60_000),
+      });
+      if (!response.ok) throw new Error(`Ollama answered ${response.status}.`);
+      body = (await response.json()) as Record<string, unknown>;
+    } catch (cause) {
+      throw new LocalModelsError({
+        reason: "ollama_down",
+        detail: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+    const tokens = body["eval_count"];
+    const nanos = body["eval_duration"];
+    if (typeof tokens !== "number" || typeof nanos !== "number" || !(nanos > 0) || tokens <= 0) {
+      throw new LocalModelsError({
+        reason: "invalid_input",
+        detail: "Ollama gave no speed numbers for this model.",
+      });
+    }
+    this.speeds.set(model, Math.round((tokens / (nanos / 1e9)) * 10) / 10);
     await this.refresh();
   }
 

@@ -13,6 +13,7 @@ import {
   localModelsLive,
   localModelsPull,
   localModelsRun,
+  localModelsSpeedTest,
   localModelsStop,
 } from "~/state/localModels";
 import { useEnvironmentQuery } from "~/state/query";
@@ -37,6 +38,7 @@ export function useLocalModels() {
   const runCancel = useAtomCommand(localModelsCancelPull, { reportFailure: false });
   const runRun = useAtomCommand(localModelsRun, { reportFailure: false });
   const runStop = useAtomCommand(localModelsStop, { reportFailure: false });
+  const runSpeed = useAtomCommand(localModelsSpeedTest, { reportFailure: false });
   const runDelete = useAtomCommand(localModelsDelete, { reportFailure: false });
 
   const attempt = useCallback(async (title: string, action: () => Promise<unknown>) => {
@@ -75,6 +77,7 @@ export function useLocalModels() {
     cancelPull: model("Could not cancel the download", runCancel),
     run: model("Could not load the model", runRun),
     stop: model("Could not unload the model", runStop),
+    speedTest: model("The speed test failed", runSpeed),
     remove: model("Could not delete the model", runDelete),
   };
 }
