@@ -612,10 +612,14 @@ export const layer: Layer.Layer<
         const shouldFinalizeRun =
           input.shouldFinalizeRun === undefined ? true : yield* input.shouldFinalizeRun();
         if (shouldFinalizeRun) {
-          perfRunFinished(input.run.id, input.terminal.status, {
-            model: String(input.run.modelSelection.model),
-            provider: String(input.run.modelSelection.instanceId),
-          });
+          const selection = input.run.modelSelection;
+          perfRunFinished(
+            input.run.id,
+            input.terminal.status,
+            selection
+              ? { model: String(selection.model), provider: String(selection.instanceId) }
+              : {},
+          );
         }
         if (!shouldFinalizeRun) {
           // Superseded attempt (steer / selection restart). Emit
