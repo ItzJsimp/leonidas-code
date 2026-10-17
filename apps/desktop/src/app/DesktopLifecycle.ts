@@ -11,6 +11,7 @@ import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import { makeComponentLogger } from "./DesktopObservability.ts";
 import * as DesktopShutdown from "./DesktopShutdown.ts";
+import * as DesktopTray from "./DesktopTray.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
@@ -40,6 +41,7 @@ export type DesktopLifecycleRuntimeServices =
 
 type DesktopLifecycleRegistrationServices =
   | DesktopLifecycleRuntimeServices
+  | DesktopTray.DesktopTray
   | ElectronWindow.ElectronWindow;
 
 /**
@@ -251,6 +253,10 @@ export const make = DesktopLifecycle.of({
           const settings = yield* DesktopAppSettings.DesktopAppSettings;
           // Background mode keeps the local server, and the scheduled tasks it fires, alive.
           const keepRunning = (yield* settings.get).keepRunningInBackground;
+          if (keepRunning) {
+            // With no window left, the tray is the only way back in.
+            yield* (yield* DesktopTray.DesktopTray).ensure;
+          }
           if (
             environment.platform !== "darwin" &&
             !keepRunning &&

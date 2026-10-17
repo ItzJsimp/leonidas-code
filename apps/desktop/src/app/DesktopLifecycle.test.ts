@@ -14,7 +14,12 @@ import * as DesktopLifecycle from "./DesktopLifecycle.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopShutdown from "./DesktopShutdown.ts";
 import * as DesktopState from "./DesktopState.ts";
+import * as DesktopTray from "./DesktopTray.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
+
+function layerDesktopTray(ensure: Effect.Effect<void> = Effect.void) {
+  return Layer.succeed(DesktopTray.DesktopTray, { ensure });
+}
 
 function layerElectronApp(
   appListeners: Map<string, (...args: readonly unknown[]) => void>,
@@ -128,6 +133,7 @@ describe("DesktopLifecycle", () => {
         Layer.provideMerge(DesktopShutdown.layer),
         Layer.provideMerge(DesktopState.layer),
         Layer.provideMerge(DesktopAppSettings.layerTest()),
+        Layer.provideMerge(layerDesktopTray()),
       );
 
       return Effect.scoped(
@@ -201,6 +207,7 @@ describe("DesktopLifecycle", () => {
         Layer.provideMerge(layerDesktopShutdown),
         Layer.provideMerge(DesktopState.layer),
         Layer.provideMerge(DesktopAppSettings.layerTest()),
+        Layer.provideMerge(layerDesktopTray()),
       );
 
       yield* Effect.scoped(
@@ -243,6 +250,7 @@ describe("DesktopLifecycle", () => {
         Layer.provideMerge(DesktopShutdown.layer),
         Layer.provideMerge(DesktopState.layer),
         Layer.provideMerge(DesktopAppSettings.layerTest()),
+        Layer.provideMerge(layerDesktopTray()),
       );
 
       yield* Effect.scoped(
@@ -269,6 +277,7 @@ describe("DesktopLifecycle", () => {
       Effect.gen(function* () {
         const appListeners = new Map<string, (...args: readonly unknown[]) => void>();
         let quitCount = 0;
+        let trayCount = 0;
         const quit = Effect.sync(() => {
           quitCount += 1;
         });
@@ -290,6 +299,13 @@ describe("DesktopLifecycle", () => {
               keepRunningInBackground,
             }),
           ),
+          Layer.provideMerge(
+            layerDesktopTray(
+              Effect.sync(() => {
+                trayCount += 1;
+              }),
+            ),
+          ),
         );
 
         yield* Effect.scoped(
@@ -301,6 +317,7 @@ describe("DesktopLifecycle", () => {
             // @effect-diagnostics-next-line globalTimers:off
             yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 25)));
             assert.equal(quitCount, expectedQuits);
+            assert.equal(trayCount, keepRunningInBackground ? 1 : 0);
           }),
         ).pipe(Effect.provide(layer));
       }),
