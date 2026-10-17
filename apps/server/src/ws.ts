@@ -11,6 +11,7 @@ import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
+import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
@@ -2866,12 +2867,7 @@ const layerWsRpc = (
             const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
             const aiosRoot = yield* taskBoard.aiosRoot(allProjects, input.workspaceId);
             // A scoped request sees only the projects inside its own workspace (ADR-0080).
-            const projects =
-              input.workspaceId === undefined
-                ? allProjects
-                : allProjects.filter(
-                    (project) => aiosRoot !== null && isPathInRoot(aiosRoot, project.workspaceRoot),
-                  );
+            const projects = subagentWorkspaceProjects(allProjects, aiosRoot, input.workspaceId);
             const appFreeModels = yield* serverSettings.getSettings.pipe(
               Effect.map((settings) => settings.subagentFreeTierModels),
               Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
