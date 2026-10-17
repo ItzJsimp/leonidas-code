@@ -14,7 +14,8 @@ The plan lives in [project-roadmap.json](../../project-roadmap.json): one milest
 
 1. Startup hooks run [guarded source sync](../../scripts/Sync-LeonidasSource.ps1): it fast-forwards only clean `main` checkouts. Integrate divergent history deliberately, preserving upstream merge commits. Push small commits often.
 2. **Branch status:** [`Write-BranchStatus.ps1`](../../scripts/Write-BranchStatus.ps1) writes `.git/leonidas/branch-status.md`. Before work, read it, tell the user which branch you are on and whether it is behind `main`, and never delete or switch a branch marked uncommitted. Run it yourself if the file is missing or stale (about 30 seconds).
-3. If the other person's agent is editing the same area, say so in [the status log](../../project/status-log.md) first.
+3. **Finish and clean up:** do branch work in a worktree ([`using-git-worktrees`](../skills/using-git-worktrees/SKILL.md)). When it is done, push the branch and open a PR, or merge to local `main` and wait for the user to say push. Then remove the worktree and delete the branch, only after `git merge-base --is-ancestor <branch> origin/main` passes. Never leave a finished branch or worktree behind.
+4. If the other person's agent is editing the same area, say so in [the status log](../../project/status-log.md) first.
 
 ## Shipping
 
