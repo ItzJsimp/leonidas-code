@@ -141,6 +141,15 @@ export default defineConfig({
       outExtensions: () => ({ js: ".cjs" }),
       entry: ["src/mac-permission-preload.ts"],
     },
+    {
+      // The snip overlay preload only forwards pointer events. No desktop bridge is exposed.
+      format: "cjs",
+      outDir: "dist-electron",
+      dts: false,
+      sourcemap: true,
+      outExtensions: () => ({ js: ".cjs" }),
+      entry: ["src/snip-overlay-preload.ts"],
+    },
   ],
   test: {
     // The Windows lane runs workspace suites concurrently; filesystem-heavy

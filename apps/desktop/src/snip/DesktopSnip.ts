@@ -1,8 +1,18 @@
 import type { DesktopRecentSnip, DesktopSnipResult } from "@t3tools/contracts";
+import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Path from "effect/Path";
+import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
+
+import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
+import { makeSnipOverlay } from "./SnipOverlay.ts";
+import { captureSnipFrames, encodeSnipPng, readSnipDisplays, saveSnipPng } from "./SnipElectron.ts";
+import { runSnip } from "./SnipRunner.ts";
+import { loadWindowListApi, listVisibleWindows } from "./WindowList.ts";
 
 const DesktopSnipOperation = Schema.Literals([
   "unsupported",
@@ -46,10 +56,47 @@ export class DesktopSnip extends Context.Service<
   }
 >()("@t3tools/desktop/snip/DesktopSnip") {}
 
-/** Placeholder until the overlay slice lands: every snip is cancelled and the list is empty. */
-export const layer = Layer.succeed(DesktopSnip, {
-  start: Effect.succeed({ status: "cancelled" as const }),
-  listRecent: Effect.succeed([]),
-  read: () => Effect.fail(new DesktopSnipError({ operation: "read" })),
-  openFolder: Effect.void,
-});
+export const SNIPS_FOLDER_NAME = "snips";
+
+export const layer = Layer.effect(
+  DesktopSnip,
+  Effect.gen(function* () {
+    const environment = yield* DesktopEnvironment.DesktopEnvironment;
+    const path = yield* Path.Path;
+    const snipsDirectory = path.join(environment.stateDir, SNIPS_FOLDER_NAME);
+    const preloadPath = path.join(environment.dirname, "snip-overlay-preload.cjs");
+    const running = yield* Ref.make(false);
+
+    const start = Effect.gen(function* () {
+      if (!(yield* HostProcess.isWindows)) {
+        return yield* new DesktopSnipError({ operation: "unsupported" });
+      }
+      // A second request while the overlay is open would stack overlays.
+      if (yield* Ref.getAndSet(running, true)) return { status: "cancelled" as const };
+      const now = yield* Clock.currentTimeMillis;
+      const overlay = makeSnipOverlay({ preloadPath });
+      return yield* Effect.tryPromise({
+        try: async () => {
+          const windowApi = await loadWindowListApi();
+          return await runSnip({
+            displays: readSnipDisplays(),
+            captureFrames: captureSnipFrames,
+            listWindows: () => listVisibleWindows(windowApi),
+            pick: overlay.pick,
+            encodePng: encodeSnipPng,
+            save: (png) => saveSnipPng(snipsDirectory, png, now),
+            release: overlay.release,
+          });
+        },
+        catch: (cause) => new DesktopSnipError({ operation: "capture", cause }),
+      }).pipe(Effect.ensuring(Ref.set(running, false)));
+    });
+
+    return DesktopSnip.of({
+      start,
+      listRecent: Effect.succeed([]),
+      read: () => Effect.fail(new DesktopSnipError({ operation: "read" })),
+      openFolder: Effect.void,
+    });
+  }),
+);

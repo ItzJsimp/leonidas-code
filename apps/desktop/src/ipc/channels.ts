@@ -54,6 +54,8 @@ export const SET_SNAP_SHOT_ANIMATION_DESTINATION_CHANNEL =
   "desktop:set-snap-shot-animation-destination";
 export const DISMISS_SNAP_SHOT_ANIMATION_CHANNEL = "desktop:dismiss-snap-shot-animation";
 export const ACKNOWLEDGE_SNAP_SHOT_CHANNEL = "desktop:acknowledge-snap-shot";
+export const SNIP_OVERLAY_EVENT_CHANNEL = "desktop:snip-overlay-event";
+export const SNIP_OVERLAY_VIEW_CHANNEL = "desktop:snip-overlay-view";
 export const START_SNIP_CHANNEL = "desktop:start-snip";
 export const LIST_RECENT_SNIPS_CHANNEL = "desktop:list-recent-snips";
 export const READ_SNIP_CHANNEL = "desktop:read-snip";
