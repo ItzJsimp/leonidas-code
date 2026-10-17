@@ -16,6 +16,7 @@ import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as ScribeEngine from "./scribe/ScribeEngine.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
+import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -1299,6 +1300,7 @@ const layerWsRpc = (
       const localVmService = yield* LocalVmService.LocalVmService;
       const scribeStatus = yield* ScribeStatus.ScribeStatus;
       const scribeEngine = yield* ScribeEngine.ScribeEngine;
+      const scribeSupervisor = yield* ScribeSupervisor.ScribeSupervisor;
       const voice = yield* VoiceDictation.VoiceDictation;
       const deviceService = yield* DeviceService.DeviceService;
       const deviceHostContext =
@@ -3246,7 +3248,13 @@ const layerWsRpc = (
         [WS_METHODS.scribeStart]: (input) => scribeEngine.start(input),
         [WS_METHODS.scribeStop]: (input) => scribeEngine.stop(input),
         [WS_METHODS.scribeListHistory]: (input) => scribeEngine.listHistory(input),
-        [WS_METHODS.scribeSubscribeEvents]: () => scribeEngine.events,
+        [WS_METHODS.scribeSubscribeEvents]: () =>
+          Stream.merge(
+            scribeEngine.events,
+            scribeSupervisor.changes.pipe(
+              Stream.map((process) => ({ type: "process" as const, process })),
+            ),
+          ),
         [WS_METHODS.voiceGetStatus]: () => voice.status,
         [WS_METHODS.voiceSetGroqKey]: (input) => voice.setGroqKey(input.key),
         [WS_METHODS.voiceClearGroqKey]: () => voice.clearGroqKey,

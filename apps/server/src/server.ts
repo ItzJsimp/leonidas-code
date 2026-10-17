@@ -9,6 +9,7 @@ import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as VoiceKeyStore from "./scribe/VoiceKeyStore.ts";
 import * as ScribeEngine from "./scribe/ScribeEngine.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
+import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import * as Clock from "effect/Clock";
 import * as Random from "effect/Random";
 import * as Semaphore from "effect/Semaphore";
@@ -646,6 +647,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(layerGit),
   Layer.provideMerge(layerVcs),
   Layer.provideMerge(Layer.mergeAll(layerTerminal, layerPreview, layerDevice, layerLocalVm)),
+  Layer.provideMerge(ScribeSupervisor.layer),
   Layer.provideMerge(Layer.merge(ScribeStatus.layer, ScribeEngine.layer)),
   Layer.provideMerge(VoiceDictation.layer.pipe(Layer.provide(VoiceKeyStore.layer))),
   Layer.provideMerge(layerPersistence),
