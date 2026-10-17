@@ -105,7 +105,22 @@ export function workspaceRelativeFilePath(
   const rootForCompare = caseInsensitive ? normalizedRoot.toLowerCase() : normalizedRoot;
   if (pathForCompare.replace(/\/+$/, "") === rootForCompare) return ".";
   if (!pathForCompare.startsWith(`${rootForCompare}/`)) return null;
-  return normalizedPath.slice(normalizedRoot.length + 1);
+  const relative = normalizedPath.slice(normalizedRoot.length + 1);
+  return /(?:^|\/)\.\.?(?:\/|$)/.test(relative) ? collapseRelativeSegments(relative) : relative;
+}
+
+/** Resolve "." and ".." in a workspace-relative path. Null when it climbs out of the workspace. */
+function collapseRelativeSegments(relative: string): string | null {
+  const kept: string[] = [];
+  for (const segment of relative.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      if (kept.pop() === undefined) return null;
+      continue;
+    }
+    kept.push(segment);
+  }
+  return kept.length === 0 ? "." : kept.join("/");
 }
 
 export function isAbsolutePath(value: string): boolean {

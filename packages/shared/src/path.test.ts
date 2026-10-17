@@ -87,6 +87,20 @@ describe("fileBasename", () => {
 });
 
 describe("workspaceRelativeFilePath", () => {
+  it("returns null for a path that climbs out of the workspace with ..", () => {
+    expect(
+      workspaceRelativeFilePath(
+        "D:/Leonidas AIOS/projects/leonidas-code/../../handoff-docs/note.md",
+        "D:/Leonidas AIOS/projects/leonidas-code",
+      ),
+    ).toBeNull();
+    expect(workspaceRelativeFilePath("/work/app/src/../../secret.txt", "/work/app")).toBeNull();
+  });
+
+  it("keeps a path whose .. segments stay inside the workspace", () => {
+    expect(workspaceRelativeFilePath("/work/app/src/../lib/a.ts", "/work/app")).toBe("lib/a.ts");
+  });
+
   it.each([
     ["/repo/project/src/main.ts", "/repo/project", "src/main.ts"],
     ["/repo/project/src/main.ts", "/repo/project/", "src/main.ts"],
