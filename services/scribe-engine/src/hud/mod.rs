@@ -3,6 +3,8 @@
 //! `window` (Windows only) puts it on screen.
 
 pub mod render;
+#[cfg(windows)]
+pub mod window;
 
 use crate::{Event, State};
 use std::time::{Duration, Instant};
