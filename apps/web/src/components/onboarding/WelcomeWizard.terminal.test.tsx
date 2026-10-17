@@ -69,8 +69,15 @@ vi.mock("../../state/server", () => ({
     providersValueAtom: (id: EnvironmentId) => state.providers.get(id)!,
     configValueAtom: (id: EnvironmentId) => state.configs.get(id)!,
     refreshProviders: "refresh",
+    providerAuthState: () => null,
+    providerInstallState: () => null,
+    startProviderAuth: "startProviderAuth",
+    cancelProviderAuth: "cancelProviderAuth",
+    startProviderInstall: "startProviderInstall",
+    cancelProviderInstall: "cancelProviderInstall",
   },
 }));
+vi.mock("../../state/query", () => ({ useEnvironmentQuery: () => ({ data: undefined }) }));
 vi.mock("../../state/terminal", () => ({
   terminalEnvironment: { open: "open", write: "write", close: "close" },
 }));
@@ -274,6 +281,7 @@ async function enterRemoteAgents() {
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("window", { addEventListener: vi.fn(), removeEventListener: vi.fn() });
   vi.stubGlobal("document", { activeElement: null, body: {}, getElementById: () => null });
   state.registry = AtomRegistry.make();
   for (const id of [primaryId, remoteId]) {

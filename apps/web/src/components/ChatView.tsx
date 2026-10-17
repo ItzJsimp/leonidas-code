@@ -1,4 +1,5 @@
 import { deriveAgentActivity } from "../agentActivity";
+import { reportMessageSent } from "../lib/usageAnalytics/reportMessageSent";
 import { setFeedbackActiveModel } from "./feedback/feedbackContext";
 import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
@@ -9248,6 +9249,7 @@ export default function ChatView(props: ChatViewProps) {
     },
   ) => {
     e?.preventDefault();
+    reportMessageSent();
     const goalCommand =
       !directAnnotation && !composerHasNonPromptContent
         ? parseThreadGoalCommand(promptRef.current)
