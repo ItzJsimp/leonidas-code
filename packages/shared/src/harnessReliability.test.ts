@@ -12,6 +12,7 @@ import {
 import {
   countSentences,
   capSentences,
+  MAX_SUGGESTION_SENTENCES,
   withModelPrediction,
   contextualPromptCandidates,
   buildPromptCandidates,
@@ -24,6 +25,11 @@ import {
 } from "./searchRanking.ts";
 import { splitFilePathPosition, resolvePathLinkTarget } from "./fileLinks.ts";
 import { nextTerminalId } from "./terminalLabels.ts";
+
+// The first sentences that fit the suggestion cap, whatever the cap is.
+const KEPT = ["One.", "Two.", "Three.", "Four.", "Five.", "Six."]
+  .slice(0, MAX_SUGGESTION_SENTENCES)
+  .join(" ");
 
 describe("harness reliability at shared client boundaries", () => {
   it("compares build metadata without changing version precedence", () => {
@@ -95,8 +101,7 @@ describe("harness reliability at shared client boundaries", () => {
   });
   it("counts empty prompts and caps an unpunctuated seventh sentence", () => {
     expect(countSentences("   ")).toBe(0);
-    const six = "One. Two. Three. Four. Five. Six.";
-    expect(capSentences(`${six} Seven`)).toBe(six);
+    expect(capSentences(`${KEPT} Extra`)).toBe(KEPT);
   });
   it("rejects oversized model completions and keeps the combined candidate budget", () => {
     const base = Array.from({ length: 256 }, (_, index) => ({
@@ -109,23 +114,21 @@ describe("harness reliability at shared client boundaries", () => {
     expect(withModelPrediction(base, "Review the tests")).toHaveLength(256);
   });
   it("caps explicit next replies as well as history prompts", () => {
-    const six = "One. Two. Three. Four. Five. Six.";
     expect(
       predictPrompt(
         contextualPromptCandidates(
           [],
-          [{ role: "assistant", text: `Recommended reply: ${six} Seven` }],
+          [{ role: "assistant", text: `Recommended reply: ${KEPT} Extra` }],
         ),
         "",
       ),
-    ).toBe(six);
+    ).toBe(KEPT);
   });
   it("aggregates history after sentence capping", () => {
-    const six = "One. Two. Three. Four. Five. Six.";
     const row = (text: string) =>
       JSON.stringify({ cleaned_text: text, app: "claude", mode: "dictation" });
-    expect(buildPromptCandidates(`${row(`${six} Seven.`)}\n${row(`${six} Eight.`)}`)).toEqual([
-      { text: six, count: 2, lastSeen: 2 },
+    expect(buildPromptCandidates(`${row(`${KEPT} Extra.`)}\n${row(`${KEPT} Other.`)}`)).toEqual([
+      { text: KEPT, count: 2, lastSeen: 2 },
     ]);
   });
   it("normalizes whitespace left after removing a composer trigger", () => {
@@ -134,11 +137,16 @@ describe("harness reliability at shared client boundaries", () => {
     expect(scoreSubsequenceMatch("axxxxx", "az")).toBeNull();
   });
   it("rejects invalid search result budgets instead of growing the list", () => {
-    for (const limit of [NaN, Infinity, 0.5]) {
+    for (const limit of [NaN, 0.5]) {
       const entries: Array<{ item: string; score: number; tieBreaker: string }> = [];
       insertRankedSearchResult(entries, { item: "a", score: 0, tieBreaker: "a" }, limit);
       expect(entries).toEqual([]);
     }
+  });
+  it("treats an infinite search result budget as no limit", () => {
+    const entries: Array<{ item: string; score: number; tieBreaker: string }> = [];
+    insertRankedSearchResult(entries, { item: "a", score: 0, tieBreaker: "a" }, Infinity);
+    expect(entries).toHaveLength(1);
   });
   it("never sends unsafe editor line or column offsets", () => {
     expect(splitFilePathPosition("file.ts:9007199254740992")).toEqual({ path: "file.ts" });

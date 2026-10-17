@@ -64,14 +64,16 @@ function sentenceEnds(text: string) {
 }
 
 export function countSentences(text: string) {
-  const ends = sentenceEnds(text);
-  return ends.length + (ends.length === 0 || (ends.at(-1) ?? 0) < text.trim().length ? 1 : 0);
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  const ends = sentenceEnds(trimmed);
+  return ends.length + (ends.length === 0 || (ends.at(-1) ?? 0) < trimmed.length ? 1 : 0);
 }
 
-/** Trim at the sixth sentence boundary; shorter text passes through unchanged. */
+/** Trim at the last allowed sentence boundary; shorter text passes through unchanged. */
 export function capSentences(text: string) {
   const ends = sentenceEnds(text);
-  return ends.length > MAX_SUGGESTION_SENTENCES
+  return ends.length >= MAX_SUGGESTION_SENTENCES && countSentences(text) > MAX_SUGGESTION_SENTENCES
     ? text.slice(0, ends[MAX_SUGGESTION_SENTENCES - 1]).trim()
     : text;
 }
@@ -207,6 +209,7 @@ export function withModelPrediction(
   candidates: readonly PromptCandidate[],
   prediction: string | null,
 ): readonly PromptCandidate[] {
+  if (prediction && prediction.length > 2000) return candidates;
   const text = prediction ? capSentences(prediction.trim()) : "";
   if (!text || /[\r\n]/.test(text) || ACKNOWLEDGEMENT.test(text)) return candidates;
   const others = candidates.filter(
@@ -215,7 +218,10 @@ export function withModelPrediction(
   // An explicit recommendation from the assistant (leading, not prefix-only) keeps first place.
   const lead = others.findIndex((candidate) => candidate.prefixOnly);
   const at = lead === -1 ? others.length : lead;
-  return [...others.slice(0, at), { text, count: 1, lastSeen: 0 }, ...others.slice(at)];
+  return [...others.slice(0, at), { text, count: 1, lastSeen: 0 }, ...others.slice(at)].slice(
+    0,
+    256,
+  );
 }
 
 const AGENT_APPS =
@@ -255,9 +261,10 @@ export function buildPromptCandidates(history: string): PromptCandidate[] {
           : text;
       // Only the bounded text can ever be shown, so only it needs the check.
       if (looksLikeSecret(bounded)) continue;
-      const key = bounded.toLocaleLowerCase();
+      const capped = capSentences(bounded);
+      const key = capped.toLocaleLowerCase();
       prompts.set(key, {
-        text: capSentences(bounded),
+        text: capped,
         count: (prompts.get(key)?.count ?? 0) + 1,
         lastSeen,
       });

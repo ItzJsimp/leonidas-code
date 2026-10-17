@@ -47,7 +47,7 @@ const sample = (overrides: Partial<HardwareSample["cpu"]> = {}, gpuTemp = 60): H
     },
   ],
   disk: { readBytesPerSec: 0, writeBytesPerSec: 0, activePct: 1 },
-  volumes: [{ mount: "C:", label: null, usedBytes: 50, totalBytes: 100 }],
+  volumes: [{ mount: "C:", label: null, mediaType: "unknown", usedBytes: 50, totalBytes: 100 }],
   driveTemps: [],
   sensors: [],
 });
