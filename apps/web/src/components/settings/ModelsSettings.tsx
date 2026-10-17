@@ -44,6 +44,8 @@ function Pill({ label, value, tip }: { label: string; value: string; tip: string
 
 function HardwarePills({ state }: { state: LocalModelsState }) {
   const { hardware, modelDrive, ollama } = state;
+  // The first hardware reading arrives a few seconds after the server starts.
+  const reading = hardware.ramBytes === 0;
   const drive = modelDrive
     ? `${modelDrive.mount} ${modelDrive.mediaType === "unknown" ? "" : modelDrive.mediaType.toUpperCase()} · ${formatBytes(modelDrive.freeBytes)} free`.replace(
         "  ",
@@ -55,20 +57,22 @@ function HardwarePills({ state }: { state: LocalModelsState }) {
       <Pill
         label="GPU"
         value={
-          hardware.gpuName
-            ? `${hardware.gpuName} · ${formatBytes(hardware.vramBytes)}`
-            : "none found"
+          reading
+            ? "reading"
+            : hardware.gpuName
+              ? `${hardware.gpuName} · ${formatBytes(hardware.vramBytes)}`
+              : "none found"
         }
         tip="Your graphics card and its memory. A model that fits here runs fastest."
       />
       <Pill
         label="Memory"
-        value={formatBytes(hardware.ramBytes)}
+        value={reading ? "reading" : formatBytes(hardware.ramBytes)}
         tip="Your total computer memory. A big model can spill into it, but it runs slower."
       />
       <Pill
         label="Model drive"
-        value={drive}
+        value={reading ? "reading" : drive}
         tip="The drive that holds your model files. Downloads need free space here. A hard disk is blocked because it loads models too slowly."
       />
       <Pill

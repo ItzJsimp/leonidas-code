@@ -29,6 +29,8 @@ import { LocalModelsEngine, type LocalModelsHardware } from "./LocalModelsEngine
 /** Poll rate while a download runs, and while the tab is open and idle. */
 const PULLING_POLL_MS = 2_000;
 const IDLE_POLL_MS = 15_000;
+/** Poll rate until the first hardware reading exists, a few seconds after the server starts. */
+const WAITING_FOR_HARDWARE_POLL_MS = 1_000;
 
 export class LocalModelsService extends Context.Service<
   LocalModelsService,
@@ -120,7 +122,15 @@ const make = Effect.gen(function* () {
       // The poll adapts: fast while a download runs, slow otherwise.
       const polling = Stream.fromEffectRepeat(
         Effect.andThen(
-          Effect.suspend(() => Effect.sleep(engine.pulling ? PULLING_POLL_MS : IDLE_POLL_MS)),
+          Effect.suspend(() =>
+            Effect.sleep(
+              hardware === null
+                ? WAITING_FOR_HARDWARE_POLL_MS
+                : engine.pulling
+                  ? PULLING_POLL_MS
+                  : IDLE_POLL_MS,
+            ),
+          ),
           refresh,
         ),
       ).pipe(Stream.drain);
