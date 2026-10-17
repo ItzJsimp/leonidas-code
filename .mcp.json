@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "laya": {
+      "command": "python",
+      "args": [".claude/hooks/laya-mcp.py"]
+    }
+  }
+}

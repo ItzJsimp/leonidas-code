@@ -43,5 +43,6 @@ This project lives inside its builder's AI operating system at `../../`. If `../
 - **Tasks:** the AIOS `tasks/` folder is the only write path; `tasks/` here is a generated view.
 - **Skills:** `.agents/skills/` holds the one committed copy of every shared skill, so each contributor gets them with git pull. Jake's AIOS links to these folders, so an edit in either place is the same file. Private AIOS skills stay out; a few personal core skills are linked per machine and git-excluded.
 - **Instruction adapters:** `CLAUDE.md`, `GEMINI.md` and `.cursor/rules/leonidas.mdc` are generated from this file by `scripts/Build-AgentAdapters.ps1`. Edit this file, then run it.
+- **Laya (optional local checker):** a per-user pack adds a bash gate hook (`.claude/hooks/laya-gate.py`) and the `laya` MCP tools. Without the pack both do nothing. Install it from the Leonidas AIOS with `python scripts/laya/install_pack.py`.
 
 @LEONIDAS.md
