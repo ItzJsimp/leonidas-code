@@ -6,6 +6,7 @@ import {
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
+import * as LocalModelsService from "./localModels/LocalModelsService.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
@@ -1414,6 +1415,7 @@ const layerWsRpc = (
           return yield* use(project.value);
         });
       const images = yield* ImageService.ImageService;
+      const localModels = yield* LocalModelsService.LocalModelsService;
       const withImagesProject = <A, E, R>(
         projectId: ProjectId,
         use: (project: Project) => Effect.Effect<A, E, R>,
@@ -2917,6 +2919,12 @@ const layerWsRpc = (
         [WS_METHODS.imagesRetry]: (input) =>
           withImagesProject(input.projectId, (project) => images.retry(project, input)),
         [WS_METHODS.imagesSetBaseUrl]: (input) => images.setBaseUrl(input),
+        [WS_METHODS.localModelsSubscribe]: () => localModels.subscribe,
+        [WS_METHODS.localModelsPull]: (input) => localModels.pull(input),
+        [WS_METHODS.localModelsCancelPull]: (input) => localModels.cancelPull(input),
+        [WS_METHODS.localModelsRun]: (input) => localModels.run(input),
+        [WS_METHODS.localModelsStop]: (input) => localModels.stop(input),
+        [WS_METHODS.localModelsDelete]: (input) => localModels.remove(input),
         [WS_METHODS.taskBoardWorkspace]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),
         [WS_METHODS.taskBoardCardUpdate]: (input) =>

@@ -82,6 +82,13 @@ import {
   ImagesState,
   ImagesSubscribeInput,
 } from "./images.ts";
+import {
+  LocalModelsActionResult,
+  LocalModelsError,
+  LocalModelsModelInput,
+  LocalModelsPullInput,
+  LocalModelsState,
+} from "./localModels.ts";
 import * as Schema from "effect/Schema";
 import {
   SavedItem,
@@ -551,6 +558,12 @@ export const WS_METHODS = {
   imagesKeep: "images.keep",
   imagesRetry: "images.retry",
   imagesSetBaseUrl: "images.setBaseUrl",
+  localModelsSubscribe: "localModels.subscribe",
+  localModelsPull: "localModels.pull",
+  localModelsCancelPull: "localModels.cancelPull",
+  localModelsRun: "localModels.run",
+  localModelsStop: "localModels.stop",
+  localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
@@ -1579,6 +1592,46 @@ const WsImagesSetBaseUrlRpc = Rpc.make(WS_METHODS.imagesSetBaseUrl, {
   payload: ImagesSetBaseUrlInput,
   success: Schema.Struct({ baseUrl: Schema.String }),
   error: ImagesRpcError,
+});
+
+const LocalModelsRpcError = Schema.Union([LocalModelsError, EnvironmentAuthorizationError]);
+
+/** The Models tab state: Ollama status, this PC's capacity and one row per model. */
+const WsLocalModelsSubscribeRpc = Rpc.make(WS_METHODS.localModelsSubscribe, {
+  payload: Schema.Struct({}),
+  success: LocalModelsState,
+  error: LocalModelsRpcError,
+  stream: true,
+});
+
+const WsLocalModelsPullRpc = Rpc.make(WS_METHODS.localModelsPull, {
+  payload: LocalModelsPullInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsCancelPullRpc = Rpc.make(WS_METHODS.localModelsCancelPull, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsRunRpc = Rpc.make(WS_METHODS.localModelsRun, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsStopRpc = Rpc.make(WS_METHODS.localModelsStop, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsDeleteRpc = Rpc.make(WS_METHODS.localModelsDelete, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
 });
 
 const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
@@ -2696,6 +2749,12 @@ export const WsRpcGroup = RpcGroup.make(
   WsImagesKeepRpc,
   WsImagesRetryRpc,
   WsImagesSetBaseUrlRpc,
+  WsLocalModelsSubscribeRpc,
+  WsLocalModelsPullRpc,
+  WsLocalModelsCancelPullRpc,
+  WsLocalModelsRunRpc,
+  WsLocalModelsStopRpc,
+  WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsCancelPromptPredictionRpc,
