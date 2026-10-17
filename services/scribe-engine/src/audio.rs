@@ -1,1 +1,370 @@
 //! Microphone capture and encoding. Slice S3.
+
+use crate::config::AudioConfig;
+use crate::engine::{EncodedAudio, Recorder};
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::{FromSample, Sample, SampleFormat, SizedSample};
+use flacenc::component::BitRepr;
+use flacenc::error::Verify;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
+const OUTPUT_RATE: u32 = 16_000;
+
+#[derive(Default)]
+struct Capture {
+    samples: Vec<f32>,
+    first_buffer_at: Option<Instant>,
+    error: Option<String>,
+}
+
+pub struct CpalRecorder {
+    host: cpal::Host,
+    cfg: AudioConfig,
+    stream: Option<cpal::Stream>,
+    capture: Option<Arc<Mutex<Capture>>>,
+    sample_rate: u32,
+    first: Option<Instant>,
+    #[cfg(test)]
+    timings: Option<StartTimings>,
+}
+
+#[cfg(test)]
+struct StartTimings {
+    start: Instant,
+    lookup: std::time::Duration,
+    config: std::time::Duration,
+    build: std::time::Duration,
+    play_at: Instant,
+    play: std::time::Duration,
+}
+
+impl CpalRecorder {
+    pub fn new(cfg: &AudioConfig) -> Self {
+        Self {
+            host: cpal::default_host(),
+            cfg: cfg.clone(),
+            stream: None,
+            capture: None,
+            sample_rate: 0,
+            first: None,
+            #[cfg(test)]
+            timings: None,
+        }
+    }
+
+    fn input_device(&self) -> Result<cpal::Device, String> {
+        if let Some(name) = &self.cfg.device {
+            self.host
+                .input_devices()
+                .map_err(|e| format!("Cannot list input devices: {e}"))?
+                .find(|device| device.description().is_ok_and(|d| d.name() == name))
+                .ok_or_else(|| format!("No input device named {name}"))
+        } else {
+            self.host
+                .default_input_device()
+                .ok_or_else(|| "No input device".into())
+        }
+    }
+}
+
+impl Recorder for CpalRecorder {
+    fn start(&mut self) -> Result<(), String> {
+        if self.stream.is_some() {
+            return Err("Microphone is already recording".into());
+        }
+        self.first = None;
+        #[cfg(test)]
+        let start = Instant::now();
+        let device = self.input_device()?;
+        #[cfg(test)]
+        let lookup_done = Instant::now();
+        let supported = device
+            .default_input_config()
+            .map_err(|e| format!("Cannot read input configuration: {e}"))?;
+        let config = supported.config();
+        if config.channels == 0 || config.sample_rate == 0 {
+            return Err("Invalid input configuration".into());
+        }
+        self.sample_rate = config.sample_rate;
+        let limit = (self.sample_rate as usize)
+            .checked_mul(self.cfg.max_record_seconds as usize)
+            .ok_or("Recording limit is too large")?;
+        let mut samples = Vec::new();
+        samples
+            .try_reserve_exact(limit.min(self.sample_rate as usize * 10))
+            .map_err(|e| format!("Cannot allocate recording buffer: {e}"))?;
+        let capture = Arc::new(Mutex::new(Capture {
+            samples,
+            ..Capture::default()
+        }));
+        #[cfg(test)]
+        let build_at = Instant::now();
+        let stream = match supported.sample_format() {
+            SampleFormat::F32 => build_stream::<f32>(&device, config, &capture, limit),
+            SampleFormat::I16 => build_stream::<i16>(&device, config, &capture, limit),
+            SampleFormat::U16 => build_stream::<u16>(&device, config, &capture, limit),
+            format => return Err(format!("Unsupported input sample format: {format}")),
+        }
+        .map_err(|e| format!("Cannot open microphone: {e}"))?;
+        #[cfg(test)]
+        let play_at = Instant::now();
+        stream
+            .play()
+            .map_err(|e| format!("Cannot start microphone: {e}"))?;
+        #[cfg(test)]
+        {
+            self.timings = Some(StartTimings {
+                start,
+                lookup: lookup_done - start,
+                config: build_at - lookup_done,
+                build: play_at - build_at,
+                play_at,
+                play: play_at.elapsed(),
+            });
+        }
+        self.capture = Some(capture);
+        self.stream = Some(stream);
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<EncodedAudio, String> {
+        // Close the device before taking the lock or encoding the recording.
+        drop(self.stream.take());
+        let capture = self.capture.take().ok_or("Microphone is not recording")?;
+        let mut capture = capture.lock().map_err(|_| "Recording buffer lock failed")?;
+        self.first = capture.first_buffer_at;
+        if let Some(error) = capture.error.take() {
+            return Err(error);
+        }
+        let samples = std::mem::take(&mut capture.samples);
+        drop(capture);
+        encode(&samples, self.sample_rate)
+    }
+
+    fn cancel(&mut self) {
+        drop(self.stream.take());
+        self.capture = None;
+        self.first = None;
+    }
+
+    fn first_buffer_at(&self) -> Option<Instant> {
+        self.capture
+            .as_ref()
+            .and_then(|capture| capture.lock().ok()?.first_buffer_at)
+            .or(self.first)
+    }
+}
+
+fn build_stream<T>(
+    device: &cpal::Device,
+    config: cpal::StreamConfig,
+    capture: &Arc<Mutex<Capture>>,
+    limit: usize,
+) -> Result<cpal::Stream, cpal::Error>
+where
+    T: SizedSample,
+    f32: FromSample<T>,
+{
+    let channels = usize::from(config.channels);
+    let data = Arc::clone(capture);
+    let errors = Arc::clone(capture);
+    device.build_input_stream(
+        config,
+        move |input: &[T], _| {
+            let arrived = Instant::now();
+            if let Ok(mut capture) = data.lock() {
+                if input.len() >= channels {
+                    capture.first_buffer_at.get_or_insert(arrived);
+                    let remaining = limit.saturating_sub(capture.samples.len());
+                    capture
+                        .samples
+                        .extend(mono_frames(input, channels).take(remaining));
+                }
+            }
+        },
+        move |error| {
+            // A glitch or a default-device reroute keeps the stream alive: keep the recording.
+            if matches!(error.kind(), cpal::ErrorKind::Xrun | cpal::ErrorKind::DeviceChanged) {
+                return;
+            }
+            if let Ok(mut capture) = errors.lock() {
+                capture
+                    .error
+                    .get_or_insert_with(|| format!("Microphone input failed: {error}"));
+            }
+        },
+        None,
+    )
+}
+
+fn mono_frames<T: Sample>(input: &[T], channels: usize) -> impl Iterator<Item = f32> + '_
+where
+    f32: FromSample<T>,
+{
+    input
+        .chunks_exact(channels)
+        .map(move |frame| frame.iter().map(|&s| f32::from_sample(s)).sum::<f32>() / channels as f32)
+}
+
+fn resample(input: &[f32], rate: u32) -> Vec<f32> {
+    if rate == 0 || input.is_empty() {
+        return Vec::new();
+    }
+    if rate == OUTPUT_RATE {
+        return input.to_vec();
+    }
+    if matches!(rate, 48_000 | 32_000) {
+        let factor = (rate / OUTPUT_RATE) as usize;
+        return input
+            .chunks(factor)
+            .map(|chunk| chunk.iter().sum::<f32>() / chunk.len() as f32)
+            .collect();
+    }
+    // A moving average reduces high frequencies before interpolation and decimation.
+    let width = rate.div_ceil(OUTPUT_RATE) as usize;
+    let mut sum = 0.0;
+    let filtered: Vec<f32> = input
+        .iter()
+        .enumerate()
+        .map(|(i, &sample)| {
+            sum += sample;
+            if i >= width {
+                sum -= input[i - width];
+            }
+            sum / width.min(i + 1) as f32
+        })
+        .collect();
+    let count = (input.len() as u64 * u64::from(OUTPUT_RATE)).div_ceil(u64::from(rate));
+    (0..count)
+        .map(|i| {
+            let position = i as f64 * f64::from(rate) / f64::from(OUTPUT_RATE);
+            let left = position as usize;
+            let right = (left + 1).min(filtered.len() - 1);
+            filtered[left] + (filtered[right] - filtered[left]) * position.fract() as f32
+        })
+        .collect()
+}
+
+fn to_i16(sample: f32) -> i16 {
+    (sample.clamp(-1.0, 1.0) * 32768.0).round() as i16
+}
+
+fn encode(input: &[f32], rate: u32) -> Result<EncodedAudio, String> {
+    if rate == 0 {
+        return Err("Invalid input sample rate".into());
+    }
+    let duration_ms = input.len() as u64 * 1000 / u64::from(rate);
+    let samples: Vec<i32> = resample(input, rate)
+        .into_iter()
+        .map(|s| i32::from(to_i16(s)))
+        .collect();
+    let config = flacenc::config::Encoder::default()
+        .into_verified()
+        .map_err(|_| "Invalid FLAC encoder configuration")?;
+    let source = flacenc::source::MemSource::from_samples(&samples, 1, 16, OUTPUT_RATE as usize);
+    let stream = flacenc::encode_with_fixed_block_size(&config, source, config.block_size)
+        .map_err(|e| format!("Cannot encode recording: {e}"))?;
+    let mut sink = flacenc::bitsink::ByteSink::new();
+    stream
+        .write(&mut sink)
+        .map_err(|e| format!("Cannot write recording: {e}"))?;
+    Ok(EncodedAudio {
+        bytes: sink.into_inner(),
+        mime: "audio/flac",
+        file_name: "audio.flac",
+        duration_ms,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sine(rate: u32) -> Vec<f32> {
+        (0..rate)
+            .map(|i| (std::f32::consts::TAU * 440.0 * i as f32 / rate as f32).sin() * 0.5)
+            .collect()
+    }
+
+    #[test]
+    fn resampling_preserves_length_and_frequency() {
+        for rate in [48_000, 32_000, 44_100] {
+            let output = resample(&sine(rate), rate);
+            assert!(output.len().abs_diff(16_000) <= 1);
+            let crossings = output
+                .windows(2)
+                .filter(|w| w[0] <= 0.0 && w[1] > 0.0)
+                .count();
+            assert!(crossings.abs_diff(440) <= 1, "{rate}: {crossings}");
+        }
+    }
+
+    #[test]
+    fn stereo_mixdown_averages_channels() {
+        let mono: Vec<f32> = mono_frames(&[0.5f32, -0.5, 1.0, 0.0], 2).collect();
+        assert_eq!(mono, vec![0.0, 0.5]);
+        let from_i16: Vec<f32> = mono_frames(&[i16::MAX, i16::MAX], 2).collect();
+        assert!((from_i16[0] - 1.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn i16_conversion_clips() {
+        assert_eq!(to_i16(2.0), i16::MAX);
+        assert_eq!(to_i16(-2.0), i16::MIN);
+        assert_eq!(to_i16(0.0), 0);
+    }
+
+    #[test]
+    fn flac_header_is_16k_mono_and_duration_is_right() {
+        let audio = encode(&sine(48_000), 48_000).unwrap();
+        assert_eq!(
+            (audio.mime, audio.file_name, audio.duration_ms),
+            ("audio/flac", "audio.flac", 1000)
+        );
+        let b = &audio.bytes;
+        assert_eq!(&b[..4], b"fLaC");
+        // STREAMINFO starts at byte 8: sample rate is 20 bits at offset 18, then 3 bits channels - 1.
+        let rate = (u32::from(b[18]) << 12) | (u32::from(b[19]) << 4) | (u32::from(b[20]) >> 4);
+        let channels = ((b[20] >> 1) & 0x7) + 1;
+        assert_eq!((rate, channels), (16_000, 1));
+        assert!(
+            b.len() < 32_000,
+            "FLAC should beat raw 16-bit PCM: {}",
+            b.len()
+        );
+    }
+
+    #[test]
+    fn empty_and_zero_rate_inputs_do_not_panic() {
+        assert_eq!(encode(&[], 48_000).unwrap().duration_ms, 0);
+        assert!(encode(&[0.0], 0).is_err());
+    }
+
+    /// Run by hand: `cargo test real_mic -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "Uses the real default microphone"]
+    fn real_mic_timings() {
+        let mut rec = CpalRecorder::new(&AudioConfig::default());
+        for round in ["cold", "warm"] {
+            rec.start().unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            let t = rec.timings.take().unwrap();
+            let first = rec.first_buffer_at().expect("first buffer");
+            let enc_at = Instant::now();
+            let audio = rec.stop().unwrap();
+            println!(
+                "{round}: lookup {:?} config {:?} build {:?} play {:?} play->first {:?} start->first {:?} | encode {:?}, {} bytes for {} ms",
+                t.lookup,
+                t.config,
+                t.build,
+                t.play,
+                first - t.play_at,
+                first - t.start,
+                enc_at.elapsed(),
+                audio.bytes.len(),
+                audio.duration_ms
+            );
+        }
+    }
+}
