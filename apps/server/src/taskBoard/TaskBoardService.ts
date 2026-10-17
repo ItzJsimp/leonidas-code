@@ -37,6 +37,7 @@ import {
   type AiosWorkspaceInitInput,
   type AiosWorkspaceSummary,
   type AiosWorkspacesListResult,
+  type AiosDirection,
 } from "@t3tools/contracts";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
@@ -55,6 +56,7 @@ import { ServerConfig } from "../config.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import { readAiosShape, type AiosShape } from "./aiosShape.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
+import { buildDirection, readDirection } from "./aiosDirection.ts";
 import { buildHome } from "./aiosHome.ts";
 import {
   addFocusItem,
@@ -559,6 +561,11 @@ export class TaskBoardService extends Context.Service<
       projects: ReadonlyArray<Project>,
       workspaceId?: string,
     ) => Effect.Effect<string | null>;
+    /** The Direction view: goals and horizons from the workspace's `ideal-state/` folder. */
+    readonly direction: (
+      projects: ReadonlyArray<Project>,
+      workspaceId?: string,
+    ) => Effect.Effect<AiosDirection, TaskBoardReadError>;
     /** Counts about the AIOS folder for opt-in usage analytics. */
     readonly usageShape: (
       projects: ReadonlyArray<Project>,
@@ -1879,6 +1886,18 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const direction = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
+    Effect.gen(function* () {
+      const root = scopeFor(projects, { workspaceId }).root;
+      if (root === null) return buildDirection(null, null, null, [], 0);
+      const now = yield* Clock.currentTimeMillis;
+      const tasks = yield* readCards(root, now);
+      return yield* Effect.try({
+        try: () => readDirection(root, tasks, now),
+        catch: (cause) => new TaskBoardReadError({ reason: "request_failed", cause }),
+      });
+    });
+
   const usageShape = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.sync(() => readAiosShape(scopeFor(projects, { workspaceId }).root));
 
@@ -1957,6 +1976,7 @@ const make = Effect.gen(function* () {
     aiosRoot: (projects: ReadonlyArray<Project>, workspaceId?: string) =>
       Effect.sync(() => scopeFor(projects, { workspaceId }).root),
     usageShape,
+    direction,
     workspaces,
     workspaceInit,
     aiosDetect,
