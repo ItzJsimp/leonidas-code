@@ -33,6 +33,7 @@ import { TaskListView } from "./TaskList";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
 import { useRailWidth } from "./TaskRailResizer";
 import { AiosConfirmCard } from "./AiosConfirmCard";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { TaskQuickAdd } from "./TaskQuickAdd";
 import { TaskRoadmapView } from "./TaskRoadmap";
 import { OwnerLensTabs } from "./OwnerLensTabs";
@@ -130,6 +131,8 @@ export function TasksPage() {
 
   const practice = usePracticeActions();
   const inPractice = prefs.section === PRACTICE_SLUG;
+  // A workspace file names the AIOS folder, so the old folder prompt is only for setups without one.
+  const { active: activeWorkspace } = useActiveAiosWorkspace();
   const board = useTaskBoard({
     selectedSlug: prefs.section,
     prefs,
@@ -467,7 +470,9 @@ export function TasksPage() {
               </div>
             </div>
           </div>
-          <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
+          {activeWorkspace ? null : (
+            <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
+          )}
           {inPractice ? (
             <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
               <span className="min-w-0 flex-1">

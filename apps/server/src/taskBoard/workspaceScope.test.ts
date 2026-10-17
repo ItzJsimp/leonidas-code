@@ -103,6 +103,10 @@ it.effect("reads only the requested workspace's cards, native cards included", (
       );
       expect(made.sourceRoot).toBe(business);
 
+      const businessBoard = yield* board.workspace(projects, "simplygersi");
+      expect(
+        businessBoard.projects.flatMap((section) => (section.projectId ? [section.projectId] : [])),
+      ).toEqual(["p-business"]);
       const businessIds = (yield* board.workspace(projects, "simplygersi")).tasks.map(
         (task) => task.id,
       );

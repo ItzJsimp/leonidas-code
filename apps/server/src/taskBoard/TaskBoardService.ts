@@ -674,7 +674,12 @@ const make = Effect.gen(function* () {
       workspaces.length === 0 ||
       (root !== null &&
         (slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) === root);
-    return { workspaces, defaultRoot, root, keepNative };
+    // An app project belongs to the workspace that holds its folder, else the default.
+    const inScope = (project: { readonly workspaceRoot: string }) =>
+      workspaces.length === 0 ||
+      (root !== null &&
+        (workspaceForPath(workspaces, project.workspaceRoot)?.root ?? defaultRoot) === root);
+    return { workspaces, defaultRoot, root, keepNative, inScope };
   };
 
   const rootForProject = (project: { readonly workspaceRoot: string }) => {
@@ -1348,17 +1353,20 @@ const make = Effect.gen(function* () {
   const workspace = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
-      const root = scopeFor(projects, { workspaceId }).root;
+      const scope = scopeFor(projects, { workspaceId });
+      const root = scope.root;
       const tasks = yield* readLocalCards(projects, now, { workspaceId });
+      // Only this workspace's projects reach the board, so no other shared board loads.
+      const scoped = projects.filter(scope.inScope);
       return buildWorkspace({
         root,
         member: resolveMember(),
         checkedAt: now,
-        projects,
+        projects: scoped,
         discovered: root ? discoverProjects(root) : [],
         tasks,
-        roadmaps: readProjectRoadmaps(projects),
-        team: readProjectTeams(projects),
+        roadmaps: readProjectRoadmaps(scoped),
+        team: readProjectTeams(scoped),
       });
     });
 
