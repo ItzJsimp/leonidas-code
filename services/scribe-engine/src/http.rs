@@ -177,7 +177,7 @@ fn route(mut request: Request, engine: &Engine, keys: &dyn KeyStore, private_mod
         },
         ("/v1/credentials/groq", Method::Put) => {
             match body::<CredentialRequest>(&mut request) {
-                Ok(command) if !command.key.is_empty() => {
+                Ok(command) if !command.key.trim().is_empty() => {
                     if keys.set(&command.key).is_ok() {
                         empty(request);
                     } else {
