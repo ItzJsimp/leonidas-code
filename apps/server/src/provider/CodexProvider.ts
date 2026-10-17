@@ -46,6 +46,7 @@ import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import { makeUnavailableUsageLimits } from "@t3tools/provider-core/server/usageLimits";
 import {
   codexRateLimitsFailureMessage,
+  codexRateLimitsFailureIssue,
   codexRateLimitsToLimits,
   type CodexRateLimitSnapshot,
   type CodexResetCreditsSummary,
@@ -71,7 +72,7 @@ type CodexRateLimitsProbe =
       /** The ChatGPT workspace the usage belongs to, when the backend names it. */
       readonly accountId?: string | null | undefined;
     }
-  | { readonly failure: string };
+  | { readonly failure: string; readonly connectionIssue?: ServerProvider["connectionIssue"] };
 
 const CODEX_APP_SERVER_PROBE_FORCE_KILL_AFTER = "2 seconds" as const;
 
@@ -496,7 +497,10 @@ const probeCodexAppServerProvider = Effect.fn("probeCodexAppServerProvider")(fun
             ),
             Effect.catch((error) =>
               Effect.logDebug("Codex rate-limit read failed.", { cause: error }).pipe(
-                Effect.as<CodexRateLimitsProbe>({ failure: codexRateLimitsFailureMessage(error) }),
+                Effect.as<CodexRateLimitsProbe>({
+                  failure: codexRateLimitsFailureMessage(error),
+                  connectionIssue: codexRateLimitsFailureIssue(error),
+                }),
               ),
             ),
           ),
@@ -755,7 +759,17 @@ export const checkCodexProviderStatus = Effect.fn("checkCodexProviderStatus")(fu
     probe: {
       installed: true,
       version: snapshot.version ?? null,
-      status: accountStatus.status,
+      status:
+        snapshot.rateLimits &&
+        "failure" in snapshot.rateLimits &&
+        snapshot.rateLimits.connectionIssue
+          ? "error"
+          : accountStatus.status,
+      ...(snapshot.rateLimits &&
+      "failure" in snapshot.rateLimits &&
+      snapshot.rateLimits.connectionIssue
+        ? { connectionIssue: snapshot.rateLimits.connectionIssue }
+        : {}),
       auth: accountStatus.auth,
       ...(accountStatus.message ? { message: accountStatus.message } : {}),
       ...(managedAuth ? {} : { usageLimits }),

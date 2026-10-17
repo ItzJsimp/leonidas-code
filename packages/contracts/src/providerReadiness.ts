@@ -33,7 +33,11 @@ export function classifyProviderConnectionIssue(
     )
   )
     return "token_expired";
-  if (/not (?:logged|signed) in|unauthenticated|authentication required/i.test(message))
+  if (
+    /not (?:logged|signed) in|unauthenticated|authentication required|401 Unauthorized/i.test(
+      message,
+    )
+  )
     return "signed_out";
   if (
     /quota (?:exceeded|reached)|(?:usage|rate) limit|limit reached|resource_exhausted/i.test(
@@ -129,6 +133,7 @@ export function getProviderReadiness(
     !provider.installed ||
     provider.status !== "ready" ||
     provider.auth.status === "unknown" ||
+    provider.usageLimits?.unavailable?.reason === "probeFailed" ||
     !Number.isFinite(checked) ||
     now - checked > 600_000
   ) {

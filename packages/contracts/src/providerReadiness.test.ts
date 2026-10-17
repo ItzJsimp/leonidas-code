@@ -19,6 +19,24 @@ const ready: ServerProvider = {
 };
 
 describe("provider readiness before send", () => {
+  it("keeps an unclassified failed usage check yellow", () => {
+    expect(
+      getProviderReadiness(
+        {
+          ...ready,
+          usageLimits: {
+            checkedAt: ready.checkedAt,
+            windows: [],
+            unavailable: {
+              reason: "probeFailed",
+              message: "Codex did not answer the usage request.",
+            },
+          },
+        },
+        { nowMs: now },
+      ),
+    ).toMatchObject({ color: "yellow", action: "check" });
+  });
   it("uses failed authenticated usage checks instead of stale local sign-in evidence", () => {
     expect(
       getProviderReadiness(
