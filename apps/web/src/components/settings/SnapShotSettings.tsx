@@ -28,6 +28,7 @@ import {
   snapShotShortcutStatus,
   snapShotSetupButtonLabel,
   snapShotUnavailableMessage,
+  snapShotEnablePatch,
   snapShotSoundPatch,
   snapShotFeedbackUnavailableMessage,
   snapShotDescription,
@@ -103,6 +104,7 @@ export function SnapShotSettings() {
     : null;
   const canSaveShortcut =
     shortcutChanged && candidateConflict === null && shortcutCheck.availability?.available === true;
+  const windowsDesktop = typeof navigator !== "undefined" && isWindowsPlatform(navigator.platform);
   const shortcutActionLabel =
     settings.snapShotShortcutAction === "snip" ? "Open the snip tool" : "Save the active window";
   const soundSelection = settings.snapShotPlaySound ? settings.snapShotSound : "off";
@@ -295,7 +297,7 @@ export function SnapShotSettings() {
       if (!settings.snapShotEnabled && captureSetupInitialStep(current, requested) !== "access") {
         // Opening setup is the opt-in. Restore registration before resuming a
         // later step, just as Continue does on the access step.
-        current = await save({ snapShotEnabled: true });
+        current = await save(snapShotEnablePatch(settings, windowsDesktop));
         if (!current) {
           // A settings write can succeed even if the following status check
           // fails. Keep Finish later available to turn capture back off.
@@ -328,7 +330,7 @@ export function SnapShotSettings() {
       const nextState =
         settings.snapShotEnabled && !state?.message
           ? await refreshState()
-          : await save({ snapShotEnabled: true });
+          : await save(snapShotEnablePatch(settings, windowsDesktop));
       return nextState !== undefined && captureSetupAccessReady(nextState);
     } catch (error) {
       setSetupError(captureSettingsError("Couldn't verify capture access", error));
@@ -403,7 +405,8 @@ export function SnapShotSettings() {
                   aria-label="Turn on snapshots"
                   onCheckedChange={(checked) => {
                     if (!checked) void save({ snapShotEnabled: false });
-                    else if (state?.windows) void save({ snapShotEnabled: true });
+                    else if (state?.windows)
+                      void save(snapShotEnablePatch(settings, windowsDesktop));
                     else void openSetup();
                   }}
                 />
