@@ -157,6 +157,7 @@ fn watch_events(
     max: Duration,
 ) {
     let mut listening_since: Option<Instant> = None;
+    let mut processing_since: Option<Instant> = None;
     loop {
         match events.recv_timeout(Duration::from_millis(500)) {
             Ok(Event::State { state, .. }) => {
@@ -165,6 +166,9 @@ fn watch_events(
                     Ordering::Relaxed,
                 );
                 let left_listening = listening_since.is_some() && state != State::Listening;
+                if state == State::Processing {
+                    processing_since = Some(Instant::now());
+                }
                 listening_since = (state == State::Listening).then(Instant::now);
                 if left_listening {
                     if let Some(latency) = engine.last_hotkey_latency() {
@@ -177,7 +181,11 @@ fn watch_events(
                 pasted,
                 ..
             }) => {
-                eprintln!("transcript duration_ms={duration_ms} pasted={pasted}");
+                // Release to paste: the user-felt dictation latency (perf metric scribe.dictation.total_ms).
+                let total = processing_since
+                    .take()
+                    .map_or(0, |t| t.elapsed().as_millis());
+                eprintln!("transcript duration_ms={duration_ms} pasted={pasted} dictation_total_ms={total}");
             }
             Ok(Event::Error { code, message, .. }) => {
                 eprintln!("error code={code} message={message}")
