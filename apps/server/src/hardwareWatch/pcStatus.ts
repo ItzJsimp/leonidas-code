@@ -5,9 +5,9 @@
  */
 import type { HardwarePcStatus, HardwareSample } from "@t3tools/contracts";
 
-export const PROBE_EVERY_SECONDS = 60;
+const PROBE_EVERY_SECONDS = 60;
 /** Power plan, startup, updates and battery change slowly: read them every 10th frame. */
-export const SLOW_EVERY_FRAMES = 10;
+const SLOW_EVERY_FRAMES = 10;
 
 export const PC_PROBE_SCRIPT = `$ErrorActionPreference = 'SilentlyContinue'
 $z = 0

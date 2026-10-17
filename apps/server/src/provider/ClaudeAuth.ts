@@ -27,9 +27,9 @@ import { makeClaudeEnvironment } from "./Drivers/ClaudeHome.ts";
 const isSetupError = Schema.is(ProviderSetupError);
 
 /** The browser sign-in has five minutes to finish. */
-export const CLAUDE_AUTH_TIMEOUT_MS = 300_000;
+const CLAUDE_AUTH_TIMEOUT_MS = 300_000;
 /** The start method that signs in again even when Claude already has a login. */
-export const CLAUDE_AUTH_FORCE_METHOD_ID = "force";
+const CLAUDE_AUTH_FORCE_METHOD_ID = "force";
 
 const MAX_OUTPUT_BUFFER = 65_536;
 const MAX_URL_LENGTH = 16_384;
@@ -43,7 +43,7 @@ const decodeStatus = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Struct({ loggedIn: Schema.optional(Schema.Boolean) })),
 );
 
-export function stripAnsi(text: string): string {
+function stripAnsi(text: string): string {
   return text.replace(ANSI_PATTERN, "");
 }
 

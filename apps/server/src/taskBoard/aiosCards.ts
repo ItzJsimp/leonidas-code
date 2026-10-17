@@ -555,7 +555,7 @@ export function cardToTask(input: {
  * The owner a card's `build_lane` names, for cards written before `assignee` existed:
  * "Mob" and "Mob after Jake go" are Mob's, "Jake" is Jake's. Other lanes name no person.
  */
-export function assigneeFromLane(lane: string): string {
+function assigneeFromLane(lane: string): string {
   const person = /^(mob|jake)\b/i.exec(lane.trim())?.[1];
   return person ? person[0]!.toUpperCase() + person.slice(1).toLowerCase() : "";
 }
@@ -564,7 +564,7 @@ export function assigneeFromLane(lane: string): string {
 const AGENT_RUN_NOTE = "Agent started on this request.";
 
 /** `agent_run` for a card the app filed from a chat request, otherwise a normal task. */
-export function cardKind(
+function cardKind(
   declared: string,
   history: ReadonlyArray<TaskBoardHistoryEntry>,
 ): "task" | "agent_run" {

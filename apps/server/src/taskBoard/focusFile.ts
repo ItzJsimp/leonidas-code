@@ -3,8 +3,8 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 /** Relative to the AIOS root. People and agents edit this file directly. */
-export const FOCUS_FILE = NodePath.join("memory", "focus.md");
-export const GLOBAL_HEADING = "Global";
+const FOCUS_FILE = NodePath.join("memory", "focus.md");
+const GLOBAL_HEADING = "Global";
 
 type FocusLine =
   | { readonly kind: "item"; readonly text: string; readonly done: boolean }

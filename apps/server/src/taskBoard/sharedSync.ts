@@ -6,7 +6,7 @@ const OPEN = new Set<TaskBoardTask["status"]>(["todo", "in_progress", "review", 
 const LOCAL_LABELS = new Set(["private"]);
 
 /** A card the team sees: not an agent-run record and not marked private. */
-export function isTeamCard(card: TaskBoardTask): boolean {
+function isTeamCard(card: TaskBoardTask): boolean {
   return card.kind !== "agent_run" && !card.labels.includes("private");
 }
 
