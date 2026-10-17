@@ -159,7 +159,11 @@ it.effect("records accepted billed turn usage once without billing the context w
       durationMs: 120,
     });
   }).pipe(
-    Effect.provide(layerTest.pipe(Layer.provide(layerAnalytics))),
-    Effect.provide(Logger.layer([logCapture], { mergeWithExisting: false })),
+    Effect.provide(
+      Layer.mergeAll(
+        layerTest.pipe(Layer.provide(layerAnalytics)),
+        Logger.layer([logCapture], { mergeWithExisting: false }),
+      ),
+    ),
   );
 });
