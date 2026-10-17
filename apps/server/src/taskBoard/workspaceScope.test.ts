@@ -421,3 +421,27 @@ it.effect("serves a lone AIOS with no workspace file, before and after setup (Ge
       }),
   ),
 );
+
+it.effect("keeps a native card in its project's workspace when slugs clash", () =>
+  withWorkspaces(({ business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      // Both workspaces hold a project with the slug "app"; the card belongs to the business one.
+      NodeFS.mkdirSync(NodePath.join(business, "projects", "app"), { recursive: true });
+      const businessApp = project(
+        "p-business-app",
+        "app",
+        NodePath.join(business, "projects", "app"),
+      );
+      const all = [...projects, businessApp];
+      const native = yield* board.cardCreate(
+        { title: "Business native", actor: "Gersi", projectId: businessApp.id },
+        all,
+      );
+      const ids = (workspaceId: string) =>
+        board.workspace(all, workspaceId).pipe(Effect.map((view) => view.tasks.map((t) => t.id)));
+      expect(yield* ids("simplygersi")).toContain(native.id);
+      expect(yield* ids("leonidas")).not.toContain(native.id);
+    }),
+  ),
+);

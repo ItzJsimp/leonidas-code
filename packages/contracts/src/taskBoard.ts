@@ -91,6 +91,8 @@ export const TaskBoardTask = Schema.Struct({
   // The fields below come from an AIOS task card. All are optional so shared records written
   // before they existed still decode.
   projectSlug: Schema.optional(Schema.NullOr(Schema.String)),
+  // The app project a native card was made for; it picks the card's workspace on a slug clash.
+  projectId: Schema.optional(Schema.String),
   effort: Schema.optional(Schema.NullOr(Schema.String)),
   energy: Schema.optional(Schema.NullOr(Schema.String)),
   due: Schema.optional(Schema.NullOr(Schema.String)),

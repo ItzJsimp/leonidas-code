@@ -678,11 +678,19 @@ const make = Effect.gen(function* () {
     // pre-workspace view: every native card and every project.
     const scoped = "project" in target || Boolean(target.workspaceId);
     // App-owned (native) cards belong to the workspace that holds their project, else the default.
+    // A card made for a known project keys by that project's id; older cards key by slug.
+    const idOwner = (task: TaskBoardTask) => {
+      const project = task.projectId
+        ? projects.find((candidate) => candidate.id === task.projectId)
+        : undefined;
+      return project ? workspaceForPath(workspaces, project.workspaceRoot)?.root : undefined;
+    };
     const keepNative = (task: TaskBoardTask) =>
       !scoped ||
       workspaces.length === 0 ||
       (root !== null &&
-        (slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) === root);
+        (idOwner(task) ?? slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) ===
+          root);
     // An app project belongs to the workspace that holds its folder, else the default.
     const inScope = (project: { readonly workspaceRoot: string }) =>
       !scoped ||
@@ -1657,6 +1665,7 @@ const make = Effect.gen(function* () {
                     projectSlug: taskProject === undefined ? null : aiosSlugFor(taskProject),
                   }
                 : {}),
+              projectId: taskProject?.id ?? null,
               ...(stableId !== undefined
                 ? { id: stableId }
                 : root === nativeRoot
