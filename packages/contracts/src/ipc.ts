@@ -249,6 +249,29 @@ export const DesktopSnapShot = Schema.Struct({
 });
 export type DesktopSnapShot = typeof DesktopSnapShot.Type;
 
+/** Result of one snip: the user picked a window or region, or cancelled. */
+export const DesktopSnipResult = Schema.Union([
+  Schema.Struct({
+    status: Schema.Literal("saved"),
+    path: Schema.String,
+    name: Schema.String,
+    width: Schema.Number,
+    height: Schema.Number,
+    dataUrl: Schema.String,
+  }),
+  Schema.Struct({ status: Schema.Literal("cancelled") }),
+]);
+export type DesktopSnipResult = typeof DesktopSnipResult.Type;
+
+/** One saved snip in the Recent snips list. `dataUrl` is a small thumbnail. */
+export const DesktopRecentSnip = Schema.Struct({
+  name: Schema.String,
+  path: Schema.String,
+  modifiedMs: Schema.Number,
+  dataUrl: Schema.String,
+});
+export type DesktopRecentSnip = typeof DesktopRecentSnip.Type;
+
 export const DesktopSnapShotAnimationDestination = Schema.Struct({
   id: DesktopSnapShotId,
   viewportFrame: Schema.Struct({
@@ -1165,6 +1188,10 @@ export interface DesktopBridge {
   ) => Promise<void>;
   dismissSnapShotAnimation?: (id: DesktopSnapShotId) => Promise<void>;
   acknowledgeSnapShot?: (id: string) => Promise<void>;
+  startSnip?: () => Promise<DesktopSnipResult>;
+  listRecentSnips?: () => Promise<readonly DesktopRecentSnip[]>;
+  readSnip?: (path: string) => Promise<DesktopSnipResult>;
+  openSnipsFolder?: () => Promise<void>;
   ensureSshEnvironment: (
     target: DesktopSshEnvironmentTarget,
     options?: { issuePairingToken?: boolean },
