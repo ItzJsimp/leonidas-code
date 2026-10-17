@@ -47,6 +47,11 @@ export const layaPaths = (home: string = NodeOS.homedir()) => ({
 });
 
 /** Space the install needs: the 554 MB model plus room for the pack and a margin. */
+const DOWNLOAD_TIMEOUT_MS = 30 * 60_000;
+/** A finished install result stays visible this long, so the polling step can read an error once. */
+const RESULT_TTL_MS = 60_000;
+let finishedAt = 0;
+
 const MIN_FREE_BYTES = 800_000_000;
 
 /** Free bytes on the drive that holds `folder`, or null when the OS cannot say. */
@@ -136,7 +141,7 @@ export const sha256OfFile = async (path: string): Promise<string> => {
 };
 
 async function download(url: string, target: string): Promise<void> {
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
   if (!response.ok || !response.body) throw new Error(`Download failed (${response.status}).`);
   await NodeStreamPromises.pipeline(
     NodeStream.Readable.fromWeb(response.body as never),
@@ -191,11 +196,13 @@ export const layaSetupState = (): LayaSetupResult => current;
 
 const set = (next: LayaSetupResult): void => {
   current = next;
+  if (next.status !== "working") finishedAt = Date.now();
 };
 
 /** Reads state from disk and the probe. Used when no install is running. */
 export async function layaStatus(home?: string): Promise<LayaSetupResult> {
-  if (running || current.status !== "idle") return current;
+  if (running) return current;
+  if (current.status !== "idle" && Date.now() - finishedAt < RESULT_TTL_MS) return current;
   const paths = layaPaths(home);
   const present = await Promise.all([
     NodeFSP.stat(NodePath.join(paths.model, "laya_int8.onnx")).then(
