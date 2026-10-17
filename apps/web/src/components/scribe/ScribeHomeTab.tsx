@@ -23,19 +23,19 @@ export function ScribeHomeTab({ environmentId, live }: ScribeTabProps) {
   return (
     <div className="flex flex-col gap-5">
       <DictateCard environmentId={environmentId} live={live} />
-      <section aria-labelledby="scribe-recent" className="flex flex-col gap-2">
-        <h2 id="scribe-recent" className="text-sm font-medium">
-          Recent dictations
-        </h2>
-        {live.connected === false ? null : (
+      {live.connected === false ? null : (
+        <section aria-labelledby="scribe-recent" className="flex flex-col gap-2">
+          <h2 id="scribe-recent" className="text-sm font-medium">
+            Recent dictations
+          </h2>
           <RecentList
             items={items}
             loading={history.data === null && history.error === null}
             failed={history.error !== null && items.length === 0}
             onRetry={history.refresh}
           />
-        )}
-      </section>
+        </section>
+      )}
     </div>
   );
 }

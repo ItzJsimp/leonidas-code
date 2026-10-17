@@ -5,7 +5,7 @@ import type * as NodeNet from "node:net";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
-export type MockFailMode = "status" | "events" | "all";
+export type MockFailMode = "status" | "events" | "history" | "all";
 
 export interface MockScribeEngineOptions {
   port?: number;
@@ -130,7 +130,7 @@ export async function startMockScribeEngine(
 ): Promise<MockScribeEngine> {
   const failStatus = options.fail === "status" || options.fail === "all";
   const failEvents = options.fail === "events" || options.fail === "all";
-  const failHistory = options.fail === "all";
+  const failHistory = options.fail === "history" || options.fail === "all";
   const seed = options.seed ?? 1;
   const pingMs = options.pingMs ?? 15_000;
   const processingMs = options.processingMs ?? 600;
@@ -379,8 +379,8 @@ function parseArgs(argv: string[]): MockScribeEngineOptions {
     else if (arg === "--demo") out.demoSeconds = Number(argv[++i]);
     else if (arg === "--fail") {
       const value = argv[++i];
-      if (value !== "status" && value !== "events" && value !== "all") {
-        throw new Error("--fail takes status, events or all");
+      if (value !== "status" && value !== "events" && value !== "history" && value !== "all") {
+        throw new Error("--fail takes status, events, history or all");
       }
       out.fail = value;
     } else throw new Error(`Unknown argument: ${arg}`);
