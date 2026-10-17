@@ -37,6 +37,15 @@ export const COMFY_MODELS: ReadonlyArray<ImageModel & { readonly id: ComfyModelI
     licence: "Non-commercial licence. Do not sell these images.",
     commercialUse: "no",
   },
+  {
+    id: "zimage",
+    sourceId: "comfyui",
+    label: "Z-Image Turbo",
+    sizeLabel: "17 GB",
+    typicalSeconds: 30,
+    licence: "Licence not checked yet. Read it before you sell the images.",
+    commercialUse: "check",
+  },
 ];
 
 export const comfyModelLabel = (modelId: string): string =>
