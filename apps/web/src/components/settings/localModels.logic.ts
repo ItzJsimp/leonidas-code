@@ -1,4 +1,9 @@
-import type { LocalModelFit, LocalModelPull, LocalModelRow } from "@t3tools/contracts";
+import type {
+  LocalModelFit,
+  LocalModelPull,
+  LocalModelRow,
+  LocalModelsTokenReport,
+} from "@t3tools/contracts";
 
 export type FitTone = "success" | "warning" | "error" | "info";
 
@@ -76,4 +81,32 @@ export function sortRows(rows: ReadonlyArray<LocalModelRow>): LocalModelRow[] {
       return fit !== 0 ? fit : a.index - b.index;
     })
     .map(({ row }) => row);
+}
+
+const count = (value: number, one: string, many: string) =>
+  `${value.toLocaleString("en-US")} ${value === 1 ? one : many}`;
+
+/** Plain-word lines for the token report card. It shows counts only. */
+export function tokenReportLines(report: LocalModelsTokenReport): string[] {
+  if (report.turns === 0) return [`No turns in the last ${String(report.days)} days.`];
+  const { shortAnswer, keepCloud, notReported } = report.classes;
+  const lines = [
+    `Last ${String(report.days)} days: ${count(report.turns, "turn", "turns")}, ` +
+      `${report.inputTokens.toLocaleString("en-US")} tokens in, ` +
+      `${report.outputTokens.toLocaleString("en-US")} tokens out.`,
+    `A local model could take ${count(shortAnswer.turns, "turn", "turns")} ` +
+      `(short answers with no tool calls): ` +
+      `${(shortAnswer.inputTokens + shortAnswer.outputTokens).toLocaleString("en-US")} tokens.`,
+    `${count(keepCloud.turns, "turn", "turns")} need the cloud model.`,
+  ];
+  if (notReported.turns > 0) {
+    lines.push(
+      `${count(notReported.turns, "turn", "turns")} had no usage reported and ` +
+        `${notReported.turns === 1 ? "counts" : "count"} as 0 tokens.`,
+    );
+  }
+  if (report.listPriceSaved !== null) {
+    lines.push(`About $${report.listPriceSaved.toFixed(2)} at your list price.`);
+  }
+  return lines;
 }

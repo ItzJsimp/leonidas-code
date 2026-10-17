@@ -1,7 +1,14 @@
-import type { LocalModelRow } from "@t3tools/contracts";
+import type { LocalModelRow, LocalModelsTokenReport } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { fitView, pullPercent, rowAction, sortRows, speedLabel } from "./localModels.logic";
+import {
+  fitView,
+  pullPercent,
+  rowAction,
+  sortRows,
+  speedLabel,
+  tokenReportLines,
+} from "./localModels.logic";
 
 const GB = 1024 ** 3;
 
@@ -110,5 +117,49 @@ describe("sortRows", () => {
     const copy = [...rows];
     expect(sortRows(rows).map((r) => r.id)).toEqual(["x", "y"]);
     expect(rows).toEqual(copy);
+  });
+});
+
+const report = (patch: Partial<LocalModelsTokenReport> = {}): LocalModelsTokenReport => ({
+  days: 30,
+  turns: 10,
+  inputTokens: 1_200_000,
+  outputTokens: 34_000,
+  classes: {
+    shortAnswer: { turns: 4, inputTokens: 200_000, outputTokens: 900 },
+    keepCloud: { turns: 5, inputTokens: 1_000_000, outputTokens: 33_100 },
+    notReported: { turns: 1 },
+  },
+  listPriceSaved: null,
+  ...patch,
+});
+
+describe("tokenReportLines", () => {
+  it("says there is nothing to report for an empty period", () => {
+    const lines = tokenReportLines(
+      report({
+        turns: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        classes: {
+          shortAnswer: { turns: 0, inputTokens: 0, outputTokens: 0 },
+          keepCloud: { turns: 0, inputTokens: 0, outputTokens: 0 },
+          notReported: { turns: 0 },
+        },
+      }),
+    );
+    expect(lines).toEqual(["No turns in the last 30 days."]);
+  });
+
+  it("lists totals, the local-capable share and the not-reported turns", () => {
+    const lines = tokenReportLines(report());
+    expect(lines[0]).toContain("10 turns");
+    expect(lines.join(" ")).toContain("4 turns");
+    expect(lines.join(" ")).toContain("1 turn had no usage reported");
+  });
+
+  it("shows no dollar line without a list price, and one with a price", () => {
+    expect(tokenReportLines(report()).join(" ")).not.toContain("$");
+    expect(tokenReportLines(report({ listPriceSaved: 1.5 })).join(" ")).toContain("$1.50");
   });
 });

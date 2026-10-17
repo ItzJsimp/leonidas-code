@@ -21,6 +21,7 @@ import { fitView, pullPercent, rowAction, sortRows, speedLabel } from "./localMo
 import { OllamaAccountNotice } from "./OllamaAccountNotice";
 import { ModelCompareCard } from "./ModelCompareCard";
 import { PcAdvisorCard } from "./PcAdvisorCard";
+import { TokenReportCard } from "./TokenReportCard";
 import { useLocalModels } from "./useLocalModels";
 
 type Pending = { readonly kind: "delete" | "pull"; readonly row: LocalModelRow };
@@ -331,6 +332,7 @@ export function ModelsSettingsPanel() {
                     environmentId={models.environmentId}
                     installed={rows.filter((row) => row.installed)}
                   />
+                  <TokenReportCard environmentId={models.environmentId} />
                 </>
               ) : null}
               {!state.ollama.running ? (
