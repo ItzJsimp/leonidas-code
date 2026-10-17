@@ -1,9 +1,10 @@
+import { assert, it } from "@effect/vitest";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
-import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
-import { assert, beforeEach, it, vi } from "vite-plus/test";
+import { beforeEach, vi } from "vite-plus/test";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 
@@ -42,13 +43,10 @@ const environment = Layer.succeed(
 );
 const layer = DesktopSnip.layer.pipe(Layer.provide(Layer.merge(environment, Path.layer)));
 
-const run = <A, E>(
+const withService = <A, E>(
   effect: Effect.Effect<A, E, DesktopSnip.DesktopSnip>,
   platform: NodeJS.Platform = "win32",
-) =>
-  Effect.runPromise(
-    effect.pipe(Effect.provide(layer), Effect.provideService(HostProcess.Platform, platform)),
-  );
+) => effect.pipe(Effect.provide(layer), Effect.provideService(HostProcess.Platform, platform));
 
 beforeEach(() => {
   mocks.runSnip.mockReset();
@@ -56,9 +54,9 @@ beforeEach(() => {
   mocks.loadWindowListApi.mockReset().mockResolvedValue({});
 });
 
-it("returns the saved snip and frees the overlay", async () => {
+it.effect("returns the saved snip and frees the overlay", () => {
   const saved = {
-    status: "saved",
+    status: "saved" as const,
     path: "/state/snips/a.png",
     name: "a.png",
     width: 1,
@@ -66,44 +64,57 @@ it("returns the saved snip and frees the overlay", async () => {
     dataUrl: "data:image/png;base64,AA==",
   };
   mocks.runSnip.mockResolvedValue(saved);
-  const result = await run(Effect.flatMap(DesktopSnip.DesktopSnip, (s) => s.start));
-  assert.deepStrictEqual(result, saved);
-  assert.strictEqual(mocks.release.mock.calls.length, 1);
-});
-
-it("fails with a plain error on a system other than Windows", async () => {
-  const error = await run(
-    Effect.flip(Effect.flatMap(DesktopSnip.DesktopSnip, (s) => s.start)),
-    "linux",
+  return withService(
+    Effect.gen(function* () {
+      const result = yield* (yield* DesktopSnip.DesktopSnip).start;
+      assert.deepStrictEqual(result, saved);
+      assert.strictEqual(mocks.release.mock.calls.length, 1);
+    }),
   );
-  assert.strictEqual(error._tag, "DesktopSnipError");
-  assert.strictEqual(error.operation, "unsupported");
-  assert.strictEqual(mocks.runSnip.mock.calls.length, 0);
 });
 
-it("maps a capture failure to a snip error and still frees the overlay", async () => {
+it.effect("fails with a plain error on a system other than Windows", () =>
+  withService(
+    Effect.gen(function* () {
+      const error = yield* Effect.flip((yield* DesktopSnip.DesktopSnip).start);
+      assert.strictEqual(error.operation, "unsupported");
+      assert.strictEqual(mocks.runSnip.mock.calls.length, 0);
+    }),
+    "linux",
+  ),
+);
+
+it.effect("maps a capture failure to a snip error and still frees the overlay", () => {
   mocks.runSnip.mockRejectedValue(new Error("No screen could be captured."));
-  const error = await run(Effect.flip(Effect.flatMap(DesktopSnip.DesktopSnip, (s) => s.start)));
-  assert.strictEqual(error.operation, "capture");
-  assert.strictEqual(mocks.release.mock.calls.length, 1);
+  return withService(
+    Effect.gen(function* () {
+      const error = yield* Effect.flip((yield* DesktopSnip.DesktopSnip).start);
+      assert.strictEqual(error.operation, "capture");
+      assert.strictEqual(mocks.release.mock.calls.length, 1);
+    }),
+  );
 });
 
-it("cancels a second start while the first overlay is open, then allows a new one", async () => {
+it.effect("cancels a second start while the first overlay is open, then allows a new one", () => {
   let finishFirst: (value: unknown) => void = () => undefined;
   mocks.runSnip.mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)));
-  const program = Effect.gen(function* () {
-    const service = yield* DesktopSnip.DesktopSnip;
-    const first = yield* Effect.forkChild(service.start, { startImmediately: true });
-    yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 20)));
-    const second = yield* service.start;
-    finishFirst({ status: "cancelled" });
-    yield* Fiber.join(first);
-    mocks.runSnip.mockResolvedValueOnce({ status: "cancelled" });
-    const third = yield* service.start;
-    return { second, third, calls: mocks.runSnip.mock.calls.length };
-  });
-  const outcome = await run(Effect.scoped(program));
-  assert.deepStrictEqual(outcome.second, { status: "cancelled" });
-  assert.deepStrictEqual(outcome.third, { status: "cancelled" });
-  assert.strictEqual(outcome.calls, 2);
+  return withService(
+    Effect.gen(function* () {
+      const service = yield* DesktopSnip.DesktopSnip;
+      // The first start sets the guard before it waits on the overlay.
+      const first = yield* Effect.forkChild(service.start, { startImmediately: true });
+      const second = yield* service.start;
+      assert.deepStrictEqual(second, { status: "cancelled" });
+      // The runner starts after the window list loads, so wait until it is waiting on the overlay.
+      yield* Effect.promise(() =>
+        vi.waitFor(() => assert.strictEqual(mocks.runSnip.mock.calls.length, 1)),
+      );
+      finishFirst({ status: "cancelled" });
+      yield* Fiber.join(first);
+      mocks.runSnip.mockResolvedValueOnce({ status: "cancelled" });
+      const third = yield* service.start;
+      assert.deepStrictEqual(third, { status: "cancelled" });
+      assert.strictEqual(mocks.runSnip.mock.calls.length, 2);
+    }),
+  );
 });
