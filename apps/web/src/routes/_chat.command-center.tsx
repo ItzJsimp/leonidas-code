@@ -14,6 +14,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
+import { DirectionSection } from "../components/taskBoard/DirectionSection";
 import { HomeExtraCards } from "../components/taskBoard/HomeExtraCards";
 import { SubagentStudio } from "../components/subagents/SubagentStudio";
 import { SidebarInset } from "../components/ui/sidebar";
@@ -102,6 +103,7 @@ function CommandCenterPage() {
               Live status across your connected computers. Open a chat to see or continue its work.
             </p>
           </div>
+          <DirectionSection />
           <AiosHomeCard />
           <HomeExtraCards />
           <SubagentStudio />

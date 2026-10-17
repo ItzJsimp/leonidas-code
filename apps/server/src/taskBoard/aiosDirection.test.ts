@@ -4,6 +4,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import type { TaskBoardTask } from "@t3tools/contracts";
+import { DateTime } from "effect";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 
 import {
@@ -147,7 +148,8 @@ describe("week stale flag", () => {
 
 describe("placeTopCards", () => {
   const now = at("2026-10-17");
-  const iso = (days: number) => new Date(now + days * DAY).toISOString().slice(0, 10);
+  const iso = (days: number) =>
+    DateTime.formatIso(DateTime.makeUnsafe(now + days * DAY)).slice(0, 10);
 
   it("places open Critical and High cards by status and due date", () => {
     const placed = placeTopCards(
