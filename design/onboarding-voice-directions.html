@@ -1,0 +1,492 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      .sheet {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        font-family: var(--font-sans);
+        color: var(--foreground);
+      }
+      .dir-h {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 0 0 8px;
+      }
+      .dir-h b {
+        font-size: 15px;
+      }
+      .tag {
+        font: 600 11px var(--font-mono);
+        color: var(--primary-foreground);
+        background: var(--primary);
+        border-radius: 6px;
+        padding: 2px 7px;
+      }
+      .wins {
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+        margin: 8px 0 0;
+      }
+      .win {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        overflow: hidden;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted-foreground);
+        margin-bottom: 12px;
+      }
+      .dots {
+        display: flex;
+        gap: 4px;
+      }
+      .dots i {
+        width: 22px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border);
+      }
+      .dots i.on {
+        background: var(--primary);
+      }
+      h3 {
+        font-size: 17px;
+        margin: 0 0 4px;
+      }
+      p.s {
+        font-size: 13px;
+        color: var(--muted-foreground);
+        margin: 0 0 12px;
+        line-height: 1.45;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 7px 12px;
+        border: 1px solid var(--border);
+        background: var(--secondary);
+        color: var(--secondary-foreground);
+      }
+      .btn.p {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: transparent;
+      }
+      .ok {
+        color: var(--success-foreground);
+      }
+      .warn {
+        color: var(--warning-foreground);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+      }
+      .steps {
+        flex: 0 0 210px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .st {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        font-size: 12.5px;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+      .st.cur {
+        border-color: var(--primary);
+        background: var(--accent);
+      }
+      .n {
+        flex: 0 0 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        background: var(--secondary);
+      }
+      .st.done .n {
+        background: var(--success-foreground);
+        color: #000;
+      }
+      .browser {
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--background);
+        min-width: 0;
+      }
+      .url {
+        font: 11px var(--font-mono);
+        color: var(--muted-foreground);
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--border);
+      }
+      .gq {
+        padding: 12px;
+        font-size: 12px;
+      }
+      .key {
+        font: 12px var(--font-mono);
+        background: var(--code-background);
+        padding: 6px 8px;
+        border-radius: 6px;
+        margin: 8px 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .caught {
+        margin: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--success-foreground);
+        color: #000;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .comp {
+        margin-top: 12px;
+        border: 1px solid var(--input);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: var(--background);
+        font-size: 13px;
+      }
+      .comp .t {
+        min-height: 20px;
+      }
+      .comp .ph {
+        color: var(--muted-foreground);
+      }
+      .comp .tools {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .mic {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        background: var(--secondary);
+      }
+      .mic.rec {
+        background: var(--primary);
+        border-color: transparent;
+      }
+      .wave {
+        display: flex;
+        gap: 2px;
+        align-items: center;
+        height: 18px;
+      }
+      .wave i {
+        width: 3px;
+        border-radius: 2px;
+        background: var(--primary);
+      }
+      .col {
+        max-width: 420px;
+        margin: 0 auto;
+        text-align: center;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        text-align: left;
+        margin-top: 8px;
+        font-size: 12.5px;
+      }
+      .card.dim {
+        opacity: 0.45;
+      }
+      .bigmic {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        margin: 10px auto;
+        display: grid;
+        place-items: center;
+        background: var(--primary);
+        box-shadow: 0 0 0 8px var(--accent);
+      }
+      .chat {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+      }
+      .msg {
+        max-width: 78%;
+        padding: 9px 12px;
+        border-radius: 12px;
+        line-height: 1.45;
+      }
+      .ai {
+        background: var(--secondary);
+        align-self: flex-start;
+      }
+      .me {
+        background: var(--accent);
+        align-self: flex-end;
+      }
+      .inline {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+      .err {
+        border: 1px solid var(--destructive);
+        background: var(--destructive-surface);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      .meta {
+        font-size: 11px;
+        color: var(--muted-foreground);
+      }
+      svg {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <!-- A -->
+      <section>
+        <div class="dir-h">
+          <span class="tag">A</span><b>Checklist and a built-in browser</b
+          ><span class="meta">like Linear or Raycast setup</span>
+        </div>
+        <div class="win">
+          <div class="bar">
+            Step 4 of 9 · Voice
+            <div class="dots">
+              <i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i
+              ><i></i><i></i><i></i>
+            </div>
+          </div>
+          <h3>Turn on voice typing</h3>
+          <p class="s">
+            Talk instead of type. It is free. You make a key one time and Leonidas keeps it safe on
+            this computer.
+          </p>
+          <div class="row">
+            <div class="steps">
+              <div class="st done">
+                <span class="n">✓</span><span>Sign in to Groq with Google</span>
+              </div>
+              <div class="st cur">
+                <span class="n">2</span
+                ><span
+                  >Click <b>Create API Key</b>, then <b>Copy</b><br /><span class="meta"
+                    >Leonidas catches it for you</span
+                  ></span
+                >
+              </div>
+              <div class="st"><span class="n">3</span><span>Say one sentence to test</span></div>
+            </div>
+            <div class="browser">
+              <div class="url">🔒 console.groq.com/keys</div>
+              <div class="gq">
+                <b>API Keys</b>
+                <div class="key">gsk_7Qm2••••••••••••••••••••••••••••••••••••••••hT4c</div>
+                <span class="btn">Copy</span>
+              </div>
+              <div class="caught">✓ Key caught and saved. You can close this page.</div>
+            </div>
+          </div>
+        </div>
+        <p class="wins">
+          <b>Wins when:</b> users are new and need to see each click. The browser and steps stay in
+          one view. Build cost: M.
+        </p>
+      </section>
+
+      <!-- B -->
+      <section>
+        <div class="dir-h">
+          <span class="tag">B</span><b>One card at a time</b
+          ><span class="meta">like macOS Setup Assistant</span>
+        </div>
+        <div class="win">
+          <div class="col">
+            <div class="bar" style="justify-content: center">Voice · 2 of 3</div>
+            <h3>Now say something</h3>
+            <p class="s">
+              Click the mic and read this out loud:<br /><b
+                >"Hey Leonidas, help me plan my week."</b
+              >
+            </p>
+            <div class="bigmic">
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="9" y="2" width="6" height="12" rx="3" />
+                <path d="M5 10a7 7 0 0 0 14 0M12 17v5" />
+              </svg>
+            </div>
+            <div class="wave" style="justify-content: center">
+              <i style="height: 6px"></i><i style="height: 12px"></i><i style="height: 18px"></i
+              ><i style="height: 9px"></i><i style="height: 15px"></i><i style="height: 5px"></i
+              ><i style="height: 11px"></i>
+            </div>
+            <div class="card">
+              <span class="ok">✓ Groq key saved</span> · <span class="meta">gsk_7Qm2…hT4c</span>
+            </div>
+            <div class="card dim">
+              Next: tell Leonidas about you (8 short questions, you can talk)
+            </div>
+            <div class="err" style="text-align: left">
+              <b>Location:</b> Microphone · <b>Cause:</b> Windows blocks the mic for apps ·
+              <b>Fix:</b> <span class="btn" style="padding: 3px 8px">Open mic settings</span>
+            </div>
+          </div>
+        </div>
+        <p class="wins">
+          <b>Wins when:</b> you want the calmest screen with one action. The Groq page opens in a
+          sheet over the card. Build cost: S.
+        </p>
+      </section>
+
+      <!-- C -->
+      <section>
+        <div class="dir-h">
+          <span class="tag">C</span><b>Setup as a chat, with the real composer</b
+          ><span class="meta">like Arc or a guided ChatGPT start</span>
+        </div>
+        <div class="win">
+          <div class="chat">
+            <div class="msg ai">
+              I can type for you when you talk. To do that I need a free key from Groq. It takes
+              about 1 minute.
+              <div class="inline">
+                <span class="btn p">Get my free key</span><span class="btn">What is a key?</span>
+              </div>
+            </div>
+            <div class="msg ai">
+              <span class="ok">✓ Got it, key saved.</span> Now try it: click the mic below and tell
+              me what job you do.
+            </div>
+            <div class="msg me">
+              I run a small landscaping business and I spend way too long every Sunday night writing
+              quotes and texting customers back about scheduling.
+            </div>
+          </div>
+          <div class="comp">
+            <div class="t">I run a small landscaping business and I spend way too long…</div>
+            <div class="tools">
+              <span class="meta">Tip: press <b>Ctrl+Space</b> to talk at any time</span>
+              <span style="display: flex; gap: 8px; align-items: center"
+                ><span class="wave"
+                  ><i style="height: 6px"></i><i style="height: 14px"></i><i style="height: 9px"></i
+                  ><i style="height: 17px"></i><i style="height: 7px"></i></span
+                ><span class="mic rec"
+                  ><svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#fff"
+                    stroke-width="2.4"
+                  >
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10a7 7 0 0 0 14 0" /></svg></span
+              ></span>
+            </div>
+          </div>
+        </div>
+        <p class="wins">
+          <b>Wins when:</b> the user must learn the real composer at once. The first voice test is
+          also the first interview answer. Build cost: L.
+        </p>
+      </section>
+
+      <!-- Composer mic states (shared by all) -->
+      <section>
+        <div class="dir-h">
+          <span class="tag">All</span><b>Composer mic states</b
+          ><span class="meta">the same in A, B and C</span>
+        </div>
+        <div class="win">
+          <div class="comp" style="margin: 0">
+            <div class="t ph">Ask Leonidas anything, or click the mic and talk</div>
+            <div class="tools">
+              <span class="meta">Idle</span
+              ><span class="mic"
+                ><svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                >
+                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                  <path d="M5 10a7 7 0 0 0 14 0" /></svg
+              ></span>
+            </div>
+          </div>
+          <div class="comp">
+            <div class="t">Okay so the main thing I want to</div>
+            <div class="tools">
+              <span class="meta">Listening · 0:07 · click again to stop</span
+              ><span style="display: flex; gap: 8px; align-items: center"
+                ><span class="wave"
+                  ><i style="height: 9px"></i><i style="height: 16px"></i
+                  ><i style="height: 6px"></i></span
+                ><span class="mic rec"></span
+              ></span>
+            </div>
+          </div>
+          <div class="comp">
+            <div class="t ph">Writing your words…</div>
+            <div class="tools">
+              <span class="meta">About 1 second</span><span class="mic">…</span>
+            </div>
+          </div>
+          <div class="comp">
+            <div class="t ph">Ask Leonidas anything</div>
+            <div class="tools">
+              <span class="meta warn"
+                >Voice is off. <u>Add your free Groq key</u> to turn it on.</span
+              ><span class="mic" style="opacity: 0.5"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
