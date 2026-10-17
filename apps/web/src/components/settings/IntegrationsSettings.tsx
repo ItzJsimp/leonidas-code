@@ -1246,7 +1246,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
               disabled={!settingsHydrated || atProfileLimit}
               onClick={() => createProfile("New profile")}
             >
-              Blank profile
+              Add blank profile
             </MenuItem>
             {atProfileLimit ? (
               <MenuItem disabled>You&rsquo;ve reached the profile limit</MenuItem>
@@ -1257,7 +1257,9 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
               {sources === null ? (
                 <MenuItem disabled>Looking for browsers…</MenuItem>
               ) : importableSources.length === 0 ? (
-                <MenuItem disabled>No supported browsers found</MenuItem>
+                <MenuItem disabled>
+                  No supported browser found. Install one, then open this menu again.
+                </MenuItem>
               ) : (
                 // Every source is a plain row — running, needs-permission and
                 // ready all look the same here. The wizard picks up whatever

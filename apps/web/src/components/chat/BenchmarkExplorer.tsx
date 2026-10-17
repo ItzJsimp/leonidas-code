@@ -574,7 +574,7 @@ function ArenaPanel({
                       variant="secondary"
                       onClick={() => setArena((state) => recordArenaVote(state, match.id, "tie"))}
                     >
-                      Tie
+                      Call it a tie
                     </Button>
                   </>
                 ) : (

@@ -37,7 +37,7 @@ function ThreadErrorDetails({ error }: { error: string }) {
   return (
     <Collapsible className="mt-1">
       <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground">
-        Details
+        View details
       </CollapsibleTrigger>
       <CollapsiblePanel>
         <div className="mt-1 flex items-start gap-2">

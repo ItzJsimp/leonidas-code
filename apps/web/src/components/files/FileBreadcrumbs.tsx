@@ -132,7 +132,7 @@ function BreadcrumbMenuContent(props: {
             <span className="min-w-0 flex-1 truncate">Retry loading folder</span>
           </MenuItem>
         ) : !directoryAvailable && !entriesTruncated ? (
-          <MenuItem disabled>This folder is no longer available.</MenuItem>
+          <MenuItem disabled>This folder is gone. Choose another folder.</MenuItem>
         ) : children.length === 0 ? (
           <MenuItem disabled>
             {entriesTruncated

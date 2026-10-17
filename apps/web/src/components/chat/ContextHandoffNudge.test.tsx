@@ -37,7 +37,7 @@ it("reminds once per chat across dismissals and remounts, and explains missing s
     const options = toast.add.mock.calls[0]?.[0] as unknown as {
       actionProps: { children: string; onClick: () => void };
     };
-    expect(options.actionProps.children).toBe("Not now");
+    expect(options.actionProps.children).toBe("Ask me later");
     options.actionProps.onClick();
     expect(toast.close).toHaveBeenCalledWith("nudge");
     await render("unknown", 90_000);

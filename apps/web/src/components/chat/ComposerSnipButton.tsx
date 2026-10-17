@@ -122,7 +122,7 @@ export function ComposerSnipButton({
           {recent === null ? (
             <MenuItem disabled>Loading...</MenuItem>
           ) : recent.length === 0 ? (
-            <MenuItem disabled>No snips yet</MenuItem>
+            <MenuItem disabled>No snips yet. Take a snip to see it here.</MenuItem>
           ) : (
             recent.map((snip) => (
               <MenuItem key={snip.path} onClick={() => void attachRecent(snip.path)}>

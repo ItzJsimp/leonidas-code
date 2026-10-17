@@ -703,7 +703,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                                 openSourceControlSettings();
                               }}
                             >
-                              Setup Required
+                              Finish setup
                             </Button>
                           }
                         />

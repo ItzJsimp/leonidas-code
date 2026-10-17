@@ -483,7 +483,7 @@ export function SnapShotSettings() {
                           disabled={setupBusy || state.shortcutPending}
                           onClick={() => void setup("retry-shortcut")}
                         >
-                          Shortcut permissions
+                          Set shortcut permissions
                         </Button>
                       ) : null}
                     </>

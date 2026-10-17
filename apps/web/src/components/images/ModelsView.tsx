@@ -320,7 +320,7 @@ function ModelRow(props: {
           aria-label={`Details: ${model.label}`}
         >
           <InfoIcon />
-          Details
+          View details
         </Button>
       </div>
       {model.state === "not-installed" ? (

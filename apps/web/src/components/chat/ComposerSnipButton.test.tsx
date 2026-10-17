@@ -170,7 +170,7 @@ it("says there are no snips yet and still offers the folder", async () => {
   openSnipsFolder.mockResolvedValue(undefined);
   await render(vi.fn());
   await openRecentMenu();
-  expect(menuItem("No snips yet")).toBeDefined();
+  expect(menuItem("No snips yet. Take a snip to see it here.")).toBeDefined();
   await act(async () => {
     menuItem("Open snips folder")?.click();
     await new Promise((resolve) => setTimeout(resolve, 30));

@@ -44,7 +44,7 @@ export function UsageAnalyticsSettings() {
               variant="outline"
               onClick={() => void ensureLocalApi().shell.openExternal(USAGE_PRIVACY_URL)}
             >
-              Privacy notice
+              Read the privacy notice
             </Button>
           </div>
         }

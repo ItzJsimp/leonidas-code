@@ -332,7 +332,7 @@ export const OpenInPicker = memo(function OpenInPicker({
         <>
           {options.length === 0 && (
             <MenuItem density={presentation === "menu" ? "touch" : "default"} disabled>
-              No installed editors found
+              No editors found. Install an editor, then open this menu again.
             </MenuItem>
           )}
           {options.map(({ label, Icon, value, kind }) => (

@@ -274,7 +274,7 @@ function usePortalShortcut(shortcutCanRetry: boolean) {
 it("keeps older portal shortcuts editable without offering unsupported permissions", async () => {
   usePortalShortcut(false);
   const tree = await mount();
-  expect(() => button(tree, "Shortcut permissions")).toThrow("Missing button");
+  expect(() => button(tree, "Set shortcut permissions")).toThrow("Missing button");
   expect(bridge.setupSnapShot).not.toHaveBeenCalled();
   const recorder = visitElements(tree, (element) => "data-keybinding-capture" in element.props);
   (recorder!.props.onClick as () => void)();
@@ -288,7 +288,7 @@ it("keeps older portal shortcuts editable without offering unsupported permissio
 it("shows permission errors once in a toast and allows retrying", async () => {
   usePortalShortcut(true);
   bridge.setupSnapShot.mockRejectedValueOnce(new Error("The desktop service disconnected."));
-  button(await mount(), "Shortcut permissions").onClick();
+  button(await mount(), "Set shortcut permissions").onClick();
   await finish(bridge.setupSnapShot.mock.results[0]!.value.catch(() => undefined));
   const tree = renderWithEffects();
   expect(toastManager.add).toHaveBeenCalledExactlyOnceWith({
@@ -298,7 +298,7 @@ it("shows permission errors once in a toast and allows retrying", async () => {
   });
   expect(visitElements(tree, (element) => element.props.role === "alert")).toBeNull();
   expect(state.shortcutRegistered).toBe(true);
-  button(renderWithEffects(), "Shortcut permissions").onClick();
+  button(renderWithEffects(), "Set shortcut permissions").onClick();
   await finish(bridge.setupSnapShot.mock.results[1]!.value);
   renderWithEffects();
   expect(bridge.setupSnapShot).toHaveBeenCalledTimes(2);

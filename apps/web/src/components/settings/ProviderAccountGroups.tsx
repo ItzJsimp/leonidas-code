@@ -158,7 +158,7 @@ function AccountRow({
           <MenuItem disabled={readOnly} onClick={() => onToggle(row, !row.enabled)}>
             {row.enabled ? "Turn off" : "Turn on"}
           </MenuItem>
-          <MenuItem onClick={() => onSettings(row)}>Settings</MenuItem>
+          <MenuItem onClick={() => onSettings(row)}>Open settings</MenuItem>
           {row.canRemove ? (
             <>
               <MenuSeparator />

@@ -411,7 +411,7 @@ export function WorktreeSetupCard({
           onClick={() => setDetailsOpen((open) => !open)}
         >
           <MorphIcon aria-hidden icon={detailsOpen ? ChevronDown : ChevronRight} />
-          Details
+          View details
         </Button>
         {showTerminal ? (
           <Button type="button" size="xs" variant="ghost-muted" onClick={onOpenTerminal}>

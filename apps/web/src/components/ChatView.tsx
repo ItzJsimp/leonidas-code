@@ -3234,7 +3234,7 @@ export default function ChatView(props: ChatViewProps) {
                     type="button"
                     className="block max-w-full cursor-help truncate rounded-sm text-left"
                   >
-                    Update available for this computer
+                    Update this computer
                   </button>
                 }
               />

@@ -50,7 +50,7 @@ export function ContextHandoffNudge({
       ),
       timeout: 0,
       actionProps: {
-        children: "Not now",
+        children: "Ask me later",
         onClick: () => toastManager.close(toastId),
       },
     });

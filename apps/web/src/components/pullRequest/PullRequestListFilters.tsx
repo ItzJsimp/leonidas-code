@@ -319,7 +319,9 @@ function PullRequestAuthorFilter({
               </span>
             </MenuRadioItem>
           ))}
-          {visible.length === 0 ? <MenuItem disabled>No authors found</MenuItem> : null}
+          {visible.length === 0 ? (
+            <MenuItem disabled>No authors found. Clear the search to see all authors.</MenuItem>
+          ) : null}
         </MenuRadioGroup>
       </MenuSubPopup>
     </MenuSub>
@@ -353,7 +355,7 @@ function PullRequestLabelFilter({
       </MenuSubTrigger>
       <MenuSubPopup>
         {visible.length === 0 ? (
-          <MenuItem disabled>No labels in this view</MenuItem>
+          <MenuItem disabled>No labels here. Change the filters to see more labels.</MenuItem>
         ) : (
           visible.map((option) => {
             const key = option.name.toLowerCase();

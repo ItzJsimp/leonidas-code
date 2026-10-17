@@ -282,7 +282,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
                   setRequest((current) => ({ ...current, page: current.page + 1 }));
                 }}
               >
-                Older updates
+                Show older updates
               </Button>
             ) : null}
           </div>

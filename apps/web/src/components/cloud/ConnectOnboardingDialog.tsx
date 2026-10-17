@@ -305,7 +305,7 @@ function ConfiguredConnectOnboardingDialog() {
           {step === "publish" ? (
             <>
               <Button variant="ghost" disabled={isApplying} onClick={() => setStep("devices")}>
-                Not now
+                Ask me later
               </Button>
               <Button
                 disabled={isApplying || !canManageRelay || linkStateData === null}

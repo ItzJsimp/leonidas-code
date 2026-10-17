@@ -63,7 +63,7 @@ export function UsageAnalyticsConsentDialog() {
         </DialogPanel>
         <DialogFooter>
           <Button variant="outline" onClick={() => setConsent("declined")}>
-            No thanks
+            Decline
           </Button>
           <Button onClick={() => setConsent("granted")}>Yes, share usage</Button>
         </DialogFooter>

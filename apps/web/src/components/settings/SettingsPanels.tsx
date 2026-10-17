@@ -314,10 +314,10 @@ function NewUserSetupPreviewRow() {
       control={
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setOnboardingSimActive(true)}>
-            Guided test
+            Run guided test
           </Button>
           <Button size="sm" variant="outline" onClick={() => void navigate({ to: "/welcome" })}>
-            Real wizard
+            Open real wizard
           </Button>
         </div>
       }

@@ -22,7 +22,7 @@ async function mount(error: string) {
 }
 
 const trigger = (container: HTMLElement) =>
-  [...container.querySelectorAll("button")].find((b) => b.textContent === "Details");
+  [...container.querySelectorAll("button")].find((b) => b.textContent === "View details");
 
 afterEach(() => {
   document.body.innerHTML = "";

@@ -330,7 +330,7 @@ export function SnapShotSetupDialog({
                     disabled={busy}
                     onClick={() => void onAction("retry-shortcut")}
                   >
-                    {state.mode === "portal" ? "Shortcut permissions" : "Try again"}
+                    {state.mode === "portal" ? "Set shortcut permissions" : "Try again"}
                   </Button>
                 ) : null}
               </div>
