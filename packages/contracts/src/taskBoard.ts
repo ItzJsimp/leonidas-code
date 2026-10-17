@@ -440,6 +440,55 @@ export const TaskBoardHomeMove = Schema.Struct({
 });
 export type TaskBoardHomeMove = typeof TaskBoardHomeMove.Type;
 
+/** One goal row from `ideal-state/goals.md`. */
+export const AiosDirectionGoal = Schema.Struct({
+  id: Schema.String,
+  goal: Schema.String,
+  measuredBy: Schema.String,
+  targetDate: Schema.String,
+  status: Schema.String,
+});
+export type AiosDirectionGoal = typeof AiosDirectionGoal.Type;
+
+/** An open high-priority card, placed under the horizon it is due in. */
+export const AiosDirectionCard = Schema.Struct({
+  taskId: Schema.String,
+  title: Schema.String,
+  priority: TaskBoardTaskPriority,
+  due: Schema.NullOr(Schema.String),
+});
+export type AiosDirectionCard = typeof AiosDirectionCard.Type;
+
+export const AiosDirectionHorizonKey = Schema.Literals([
+  "week",
+  "month",
+  "sixMonths",
+  "year",
+  "life",
+]);
+export type AiosDirectionHorizonKey = typeof AiosDirectionHorizonKey.Type;
+
+export const AiosDirectionHorizon = Schema.Struct({
+  key: AiosDirectionHorizonKey,
+  title: Schema.String,
+  range: Schema.NullOr(Schema.String),
+  items: Schema.Array(Schema.String),
+  cards: Schema.Array(AiosDirectionCard),
+});
+export type AiosDirectionHorizon = typeof AiosDirectionHorizon.Type;
+
+/** The Direction view: goals, the 5 horizons and a stale flag for the week block. */
+export const AiosDirection = Schema.Struct({
+  root: Schema.NullOr(Schema.String),
+  goals: Schema.Array(AiosDirectionGoal),
+  horizons: Schema.Array(AiosDirectionHorizon),
+  weekHeading: Schema.NullOr(Schema.String),
+  weekDate: Schema.NullOr(Schema.String),
+  weekAgeDays: Schema.NullOr(Schema.Number),
+  weekStale: Schema.Boolean,
+});
+export type AiosDirection = typeof AiosDirection.Type;
+
 /** Counts that describe the user's AIOS for opt-in usage analytics. No names or paths. */
 export const AiosUsageShape = Schema.Struct({
   aiosDetected: Schema.Boolean,

@@ -132,3 +132,10 @@ export const focusUpdate = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:focus:update",
   tag: WS_METHODS.focusUpdate,
 });
+
+export const aiosDirectionQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-direction",
+  tag: WS_METHODS.aiosDirection,
+  staleTimeMs: 30_000,
+  idleTtlMs: 60_000,
+});
