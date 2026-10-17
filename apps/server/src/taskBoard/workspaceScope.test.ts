@@ -296,3 +296,36 @@ it.effect("does not read a brief or project linked in from another workspace", (
     }),
   ),
 );
+
+it.effect("does not mirror a card to another workspace's shared board on a slug clash", () =>
+  withWorkspaces(({ personal, business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const card = NodePath.join(personal, "tasks", "personal.md");
+      NodeFS.writeFileSync(
+        card,
+        NodeFS.readFileSync(card, "utf8").replace("---\n# ", "shared: true\n---\n# "),
+      );
+      // A business project with the same slug ("app") that has a GitHub shared board.
+      const clash = {
+        id: "p-business-app",
+        title: "App",
+        workspaceRoot: NodePath.join(business, "projects", "app"),
+        repositoryIdentity: {
+          canonicalKey: "github.com/simplygersi/app",
+          provider: "github",
+          owner: "simplygersi",
+          name: "app",
+        },
+      } as unknown as Project;
+      const updated = yield* board.cardUpdate(
+        { taskId: "task-personal", actor: "Jake", note: "local only", workspaceId: "leonidas" },
+        [...projects, clash],
+      );
+      expect(updated.id).toBe("task-personal");
+      // A mirror attempt would reach the business board and fail here (no process runner).
+      expect(updated.sharedSync).not.toBe("failed");
+      expect(NodeFS.readFileSync(card, "utf8")).toContain("local only");
+    }),
+  ),
+);

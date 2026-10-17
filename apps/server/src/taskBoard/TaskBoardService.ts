@@ -1513,9 +1513,11 @@ const make = Effect.gen(function* () {
       const card = (yield* readLocalCards(projects, now, input)).find(
         (candidate) => candidate.id === input.taskId,
       );
+      // Shared boards outside this request's workspace are never a fallback or a mirror target.
+      const scope = scopeFor(projects, input);
+      const boardProjects = projects.filter(scope.inScope);
       const root = card?.sourceRoot;
       if (!root || !card) {
-        const scope = scopeFor(projects, input);
         const project = input.projectId
           ? projects.find(
               (candidate) => candidate.id === input.projectId && scope.inScope(candidate),
@@ -1530,7 +1532,7 @@ const make = Effect.gen(function* () {
         return yield* boardCardUpdate(project, input);
       }
       const target = mirrorTarget(
-        projects,
+        boardProjects,
         input.projectSlug === undefined ? card.projectSlug : input.projectSlug,
       );
       // Checks and write run in one synchronous block against the file as it is now, so a claim or
@@ -1593,7 +1595,8 @@ const make = Effect.gen(function* () {
       if (!wasDone && updated.status === "done") {
         yield* announce(updated, input.actor, input.agent !== undefined, now);
       }
-      const project = updated.shared === true ? mirrorTarget(projects, updated.projectSlug) : null;
+      const project =
+        updated.shared === true ? mirrorTarget(boardProjects, updated.projectSlug) : null;
       if (!project) {
         return updated.sharedSync === "pending"
           ? yield* markSync(root, file, updated, input.actor, null, now)
@@ -1635,7 +1638,10 @@ const make = Effect.gen(function* () {
           const taskProject =
             input.projectId === undefined
               ? undefined
-              : projects.find((project) => project.id === input.projectId);
+              : projects.find(
+                  (project) =>
+                    project.id === input.projectId && scopeFor(projects, input).inScope(project),
+                );
           cardReader.invalidate(root);
           const created = createCardFile(
             root,
