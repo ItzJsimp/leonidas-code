@@ -9,6 +9,7 @@ import {
   listAiosWorkspaces,
   readWorkspaceFile,
   resolveWorkspaceRoot,
+  workspaceForPath,
   writeWorkspaceFile,
 } from "./aiosWorkspaces.ts";
 
@@ -97,6 +98,19 @@ describe("listAiosWorkspaces and resolveWorkspaceRoot", () => {
     const bare = makeAios("bare");
     expect(resolveWorkspaceRoot(listAiosWorkspaces([bare]), null)).toBe(bare);
     expect(resolveWorkspaceRoot(listAiosWorkspaces([bare]), "any")).toBeNull();
+  });
+});
+
+describe("workspaceForPath", () => {
+  it("maps a project folder to the workspace that holds it", () => {
+    const a = makeAios("A", { id: "a", name: "A", type: "personal", schemaVersion: 1 });
+    const b = makeAios("A-b", { id: "b", name: "B", type: "business", schemaVersion: 1 });
+    const project = NodePath.join(b, "projects", "app");
+    NodeFS.mkdirSync(project, { recursive: true });
+    const list = listAiosWorkspaces([a, b]);
+    expect(workspaceForPath(list, project)?.root).toBe(b);
+    expect(workspaceForPath(list, a)?.root).toBe(a);
+    expect(workspaceForPath(list, temp)).toBeUndefined();
   });
 });
 

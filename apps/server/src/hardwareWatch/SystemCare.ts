@@ -30,7 +30,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import * as ServerConfig from "../config.ts";
 import * as Projects from "../project/ProjectService.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
-import { findAiosRoot } from "../taskBoard/aiosCards.ts";
+import { defaultWorkspaceRoot } from "../taskBoard/aiosWorkspaces.ts";
 import { HardwareWatch, type AgentContext } from "./HardwareWatch.ts";
 import {
   BOTTLENECK_WINDOW_MS,
@@ -299,7 +299,8 @@ const make = Effect.gen(function* () {
       const current = Option.isSome(settings)
         ? yield* settings.value.getSettings.pipe(Effect.option)
         : Option.none();
-      const aiosRoot = findAiosRoot([
+      // PC notes go to the default workspace until System Care takes a workspace id.
+      const aiosRoot = defaultWorkspaceRoot([
         Option.isSome(current) ? current.value.aiosRoot : undefined,
         process.env.LEONIDAS_AIOS_ROOT,
         process.env.AIOS_ROOT,

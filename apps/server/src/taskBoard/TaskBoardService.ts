@@ -34,6 +34,9 @@ import {
   type TaskBoardUpdateInput,
   type TaskBoardWorkspaceSnapshot,
   type Project,
+  type AiosWorkspaceInitInput,
+  type AiosWorkspaceSummary,
+  type AiosWorkspacesListResult,
 } from "@t3tools/contracts";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
@@ -68,7 +71,6 @@ import {
   applyCardPatch,
   createCardFile,
   discoverProjects,
-  findAiosRoot,
   cardToTask,
   findCardFile,
   readAiosCardFile,
@@ -78,6 +80,13 @@ import {
   type AiosCardPatch,
 } from "./aiosCards.ts";
 import { makeAiosCardReader } from "./aiosCardReader.ts";
+import {
+  type AiosWorkspaceState,
+  listAiosWorkspaces,
+  resolveWorkspaceRoot,
+  workspaceForPath,
+  writeWorkspaceFile,
+} from "./aiosWorkspaces.ts";
 import { planSharedSync, publicCopy } from "./sharedSync.ts";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
@@ -198,17 +207,10 @@ export function aiosSlugFor(project: Project): string {
   return inProjects ? NodePath.posix.basename(root).toLowerCase() : slugify(project.title);
 }
 
-function aiosRootFor(
-  projects: ReadonlyArray<{ readonly workspaceRoot: string }>,
-  confirmedRoot?: string,
-): string | null {
-  return findAiosRoot([
-    confirmedRoot,
-    process.env.LEONIDAS_AIOS_ROOT,
-    process.env.AIOS_ROOT,
-    ...projects.map((project) => project.workspaceRoot),
-  ]);
-}
+/** Which workspace a request reads: by id (absent means the default workspace) or by project. */
+type WorkspaceTarget =
+  | { readonly workspaceId?: string | null | undefined }
+  | { readonly project: { readonly workspaceRoot: string } };
 
 function titleCase(slug: string): string {
   return slug
@@ -526,6 +528,7 @@ export class TaskBoardService extends Context.Service<
     /** Every AIOS task card, sectioned by project, read from disk with no GitHub round trip. */
     readonly workspace: (
       projects: ReadonlyArray<Project>,
+      workspaceId?: string,
     ) => Effect.Effect<TaskBoardWorkspaceSnapshot, TaskBoardReadError>;
     /** Patches one AIOS card in place; falls back to the project's shared board when the card is not local. */
     readonly cardUpdate: (
@@ -549,11 +552,27 @@ export class TaskBoardService extends Context.Service<
     /** The Command tab's Home, read from the AIOS folder; an empty Home when none is connected. */
     readonly home: (
       projects: ReadonlyArray<Project>,
+      workspaceId?: string,
     ) => Effect.Effect<TaskBoardHome, TaskBoardReadError>;
-    /** The AIOS folder the task board reads: confirmed first, then detected; null when none. */
-    readonly aiosRoot: (projects: ReadonlyArray<Project>) => Effect.Effect<string | null>;
+    /** The AIOS folder of a workspace (default: the first ready one); null when none or unknown. */
+    readonly aiosRoot: (
+      projects: ReadonlyArray<Project>,
+      workspaceId?: string,
+    ) => Effect.Effect<string | null>;
     /** Counts about the AIOS folder for opt-in usage analytics. */
-    readonly usageShape: (projects: ReadonlyArray<Project>) => Effect.Effect<AiosShape>;
+    readonly usageShape: (
+      projects: ReadonlyArray<Project>,
+      workspaceId?: string,
+    ) => Effect.Effect<AiosShape>;
+    /** Every AIOS folder the app found, with its workspace file state (ADR-0080). */
+    readonly workspaces: (
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<AiosWorkspacesListResult>;
+    /** The setup prompt: writes workspace.json into a listed folder that has none or a bad one. */
+    readonly workspaceInit: (
+      input: AiosWorkspaceInitInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<AiosWorkspaceSummary, TaskBoardOperationError>;
     /** Folders that look like the user's AIOS, plus the one already confirmed. */
     readonly aiosDetect: (
       input: TaskBoardAiosDetectInput,
@@ -630,13 +649,44 @@ const make = Effect.gen(function* () {
       { discard: true },
     );
 
-  const rootsFor = (projects: ReadonlyArray<Project>) => [
-    ...new Set(
-      [nativeRoot, aiosRootFor(projects, confirmedRoot)].filter(
-        (root): root is string => root !== null,
-      ),
-    ),
+  // ADR-0080: every Command read and card write resolves its AIOS root here, never by itself.
+  const workspaceHints = (projects: ReadonlyArray<{ readonly workspaceRoot: string }>) => [
+    confirmedRoot,
+    process.env.LEONIDAS_AIOS_ROOT,
+    process.env.AIOS_ROOT,
+    ...projects.map((project) => project.workspaceRoot),
   ];
+
+  const scopeFor = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) => {
+    const workspaces = listAiosWorkspaces(workspaceHints(projects));
+    const defaultRoot = resolveWorkspaceRoot(workspaces, undefined);
+    const root =
+      "project" in target
+        ? (workspaceForPath(workspaces, target.project.workspaceRoot)?.root ?? defaultRoot)
+        : resolveWorkspaceRoot(workspaces, target.workspaceId);
+    const slugOwner = new Map<string, string>();
+    for (const project of projects) {
+      const owner = workspaceForPath(workspaces, project.workspaceRoot);
+      if (owner) slugOwner.set(aiosSlugFor(project), owner.root);
+    }
+    // App-owned (native) cards belong to the workspace that holds their project, else the default.
+    const keepNative = (task: TaskBoardTask) =>
+      workspaces.length === 0 ||
+      (root !== null &&
+        (slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) === root);
+    return { workspaces, defaultRoot, root, keepNative };
+  };
+
+  const rootForProject = (project: { readonly workspaceRoot: string }) => {
+    const workspaces = listAiosWorkspaces(workspaceHints([project]));
+    return (
+      workspaceForPath(workspaces, project.workspaceRoot)?.root ??
+      resolveWorkspaceRoot(workspaces, undefined)
+    );
+  };
+
+  const unknownWorkspace = (target: WorkspaceTarget, root: string | null) =>
+    !("project" in target) && Boolean(target.workspaceId) && root === null;
 
   const runGh = (args: ReadonlyArray<string>, allowNotFound = false) =>
     processes
@@ -894,7 +944,7 @@ const make = Effect.gen(function* () {
     tasks: ReadonlyArray<TaskBoardTask>,
     issues: ReadonlyArray<TaskBoardIssue>,
   ) => {
-    const aiosRoot = aiosRootFor([project], confirmedRoot);
+    const aiosRoot = rootForProject(project);
     return Effect.map(
       Clock.currentTimeMillis,
       (checkedAt) =>
@@ -950,7 +1000,7 @@ const make = Effect.gen(function* () {
       if (now - (lastSync.get(projectInput.id) ?? 0) < SYNC_INTERVAL_MS) return;
       lastSync.set(projectInput.id, now);
       const slug = aiosSlugFor(projectInput);
-      const local = (yield* readLocalCards([projectInput], now)).filter(
+      const local = (yield* readLocalCards([projectInput], now, { project: projectInput })).filter(
         (card) => card.projectSlug?.toLowerCase() === slug,
       );
       const actor = resolveMember();
@@ -1246,8 +1296,17 @@ const make = Effect.gen(function* () {
   const cardReader = makeAiosCardReader(cardCache);
   yield* Effect.addFinalizer(() => Effect.sync(cardReader.close));
 
-  const rootOrFail = (projects: ReadonlyArray<Project>) => {
-    const root = nativeRoot ?? aiosRootFor(projects, confirmedRoot);
+  /** Where a new card goes: the native board for the default workspace, else that workspace's AIOS. */
+  const writeRootFor = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) => {
+    const scope = scopeFor(projects, target);
+    if (unknownWorkspace(target, scope.root)) return null;
+    return scope.root !== null && scope.root !== scope.defaultRoot
+      ? scope.root
+      : (nativeRoot ?? scope.root);
+  };
+
+  const rootOrFail = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) => {
+    const root = writeRootFor(projects, target);
     return root === null
       ? Effect.fail(
           new TaskBoardReadError({ reason: "aios_not_found", cause: "No AIOS tasks folder" }),
@@ -1265,24 +1324,32 @@ const make = Effect.gen(function* () {
       catch: (cause) => new TaskBoardReadError({ reason: "request_failed", cause }),
     });
 
-  const readLocalCards = (projects: ReadonlyArray<Project>, now: number) =>
-    Effect.forEach(rootsFor(projects), (root) => readCards(root, now)).pipe(
+  const readLocalCards = (
+    projects: ReadonlyArray<Project>,
+    now: number,
+    target: WorkspaceTarget = {},
+  ) => {
+    const scope = scopeFor(projects, target);
+    const roots = [nativeRoot, scope.root].filter((root): root is string => root !== null);
+    return Effect.forEach([...new Set(roots)], (root) => readCards(root, now)).pipe(
       // Native storage wins when an imported copy has the same id.
       Effect.map((collections) => [
         ...new Map(
           collections
             .flat()
+            .filter((task) => task.sourceRoot !== nativeRoot || scope.keepNative(task))
             .toReversed()
             .map((task) => [task.id, task]),
         ).values(),
       ]),
     );
+  };
 
-  const workspace = (projects: ReadonlyArray<Project>) =>
+  const workspace = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
-      const root = aiosRootFor(projects, confirmedRoot);
-      const tasks = yield* readLocalCards(projects, now);
+      const root = scopeFor(projects, { workspaceId }).root;
+      const tasks = yield* readLocalCards(projects, now, { workspaceId });
       return buildWorkspace({
         root,
         member: resolveMember(),
@@ -1430,7 +1497,7 @@ const make = Effect.gen(function* () {
   const cardUpdate = (input: TaskBoardCardUpdateInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
-      const card = (yield* readLocalCards(projects, now)).find(
+      const card = (yield* readLocalCards(projects, now, input)).find(
         (candidate) => candidate.id === input.taskId,
       );
       const root = card?.sourceRoot;
@@ -1535,7 +1602,7 @@ const make = Effect.gen(function* () {
 
   const cardCreate = (input: TaskBoardCardCreateInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
-      const root = yield* rootOrFail(projects);
+      const root = yield* rootOrFail(projects, input);
       const now = yield* Clock.currentTimeMillis;
       return yield* Effect.try({
         try: () => {
@@ -1589,12 +1656,14 @@ const make = Effect.gen(function* () {
       });
     });
 
-  const inboxRoot = (projects: ReadonlyArray<Project>) =>
-    aiosRootFor(projects, confirmedRoot) ?? nativeRoot ?? null;
+  const inboxRoot = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) => {
+    const root = scopeFor(projects, target).root;
+    return unknownWorkspace(target, root) ? null : (root ?? nativeRoot ?? null);
+  };
 
   const inboxDrop = (input: InboxDropInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
-      const root = inboxRoot(projects);
+      const root = inboxRoot(projects, input);
       if (root === null) return yield* storageError("No folder is available for the inbox.");
       const now = yield* Clock.currentTimeMillis;
       const verdict = triageDrop(input.text, now);
@@ -1628,12 +1697,12 @@ const make = Effect.gen(function* () {
 
   const inboxUndo = (input: InboxUndoInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
-      const root = inboxRoot(projects);
+      const root = inboxRoot(projects, input);
       if (root === null) return { removed: false };
       return yield* Effect.try({
         try: () => {
           const { removed, taskFile } = removeDrop(root, input.id);
-          const cardRoot = nativeRoot ?? aiosRootFor(projects, confirmedRoot);
+          const cardRoot = writeRootFor(projects, input);
           const card = taskFile && cardRoot ? findCardFile(cardRoot, taskFile) : null;
           if (card) {
             NodeFS.rmSync(card);
@@ -1719,7 +1788,7 @@ const make = Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
       const slug = aiosSlugFor(projectInput);
       const wanted = input.taskIds ? new Set(input.taskIds) : null;
-      const cards = (yield* readLocalCards([projectInput], now)).filter(
+      const cards = (yield* readLocalCards([projectInput], now, { project: projectInput })).filter(
         (card) =>
           card.projectSlug?.toLowerCase() === slug &&
           (wanted ? wanted.has(card.id) : input.shared ? isOpen(card) : card.shared === true),
@@ -1770,9 +1839,9 @@ const make = Effect.gen(function* () {
       return yield* list(projectInput);
     });
 
-  const home = (projects: ReadonlyArray<Project>) =>
+  const home = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.gen(function* () {
-      const root = aiosRootFor(projects, confirmedRoot);
+      const root = scopeFor(projects, { workspaceId }).root;
       if (root === null) return buildHome(null, []);
       const now = yield* Clock.currentTimeMillis;
       const tasks = yield* readCards(root, now);
@@ -1782,8 +1851,51 @@ const make = Effect.gen(function* () {
       });
     });
 
-  const usageShape = (projects: ReadonlyArray<Project>) =>
-    Effect.sync(() => readAiosShape(aiosRootFor(projects, confirmedRoot)));
+  const usageShape = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
+    Effect.sync(() => readAiosShape(scopeFor(projects, { workspaceId }).root));
+
+  const summarize = (
+    state: AiosWorkspaceState,
+    projects: ReadonlyArray<Project>,
+    defaultRoot: string | null,
+  ): AiosWorkspaceSummary => ({
+    root: state.root,
+    status: state.status,
+    id: state.status === "ready" ? state.file.id : null,
+    name: state.status === "ready" ? state.file.name : null,
+    type: state.status === "ready" ? state.file.type : null,
+    error: state.status === "invalid" ? state.error : null,
+    isDefault: state.root === defaultRoot,
+    projectIds: projects
+      .filter((project) => workspaceForPath([state], project.workspaceRoot) !== undefined)
+      .map((project) => project.id),
+  });
+
+  const workspaces = (projects: ReadonlyArray<Project>) =>
+    Effect.sync(() => {
+      const { workspaces: found, defaultRoot } = scopeFor(projects);
+      return { workspaces: found.map((state) => summarize(state, projects, defaultRoot)) };
+    });
+
+  const workspaceInit = (input: AiosWorkspaceInitInput, projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      const { workspaces: found } = scopeFor(projects);
+      const target = found.find((state) => state.root === input.root);
+      if (target === undefined) return yield* storageError("The app does not list that folder.");
+      if (target.status === "ready") {
+        return yield* storageError("That folder already has a workspace file.");
+      }
+      if (found.some((state) => state.status === "ready" && state.file.id === input.id)) {
+        return yield* storageError("Another workspace already uses that id.");
+      }
+      yield* Effect.try({
+        try: () => writeWorkspaceFile(target.root, input),
+        catch: () => storageError("Could not write workspace.json."),
+      });
+      const after = scopeFor(projects);
+      const written = after.workspaces.find((state) => state.root === target.root) ?? target;
+      return summarize(written, projects, after.defaultRoot);
+    });
 
   const aiosDetect = (input: TaskBoardAiosDetectInput, projects: ReadonlyArray<Project>) =>
     Effect.sync(() => ({
@@ -1814,9 +1926,11 @@ const make = Effect.gen(function* () {
   return TaskBoardService.of({
     list,
     home,
-    aiosRoot: (projects: ReadonlyArray<Project>) =>
-      Effect.sync(() => aiosRootFor(projects, confirmedRoot)),
+    aiosRoot: (projects: ReadonlyArray<Project>, workspaceId?: string) =>
+      Effect.sync(() => scopeFor(projects, { workspaceId }).root),
     usageShape,
+    workspaces,
+    workspaceInit,
     aiosDetect,
     aiosConfirm,
     create,

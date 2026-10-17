@@ -72,14 +72,24 @@ export function writeWorkspaceFile(
   return readWorkspaceFile(root);
 }
 
+// Each request resolves its scope, so real paths are kept briefly instead of resolved per compare.
+const KEY_TTL_MS = 2_000;
+const keyCache = new Map<string, { readonly key: string; readonly at: number }>();
+
 const keyFor = (path: string) => {
+  const now = performance.now();
+  const cached = keyCache.get(path);
+  if (cached && now - cached.at < KEY_TTL_MS) return cached.key;
   let real = path;
   try {
     real = NodeFS.realpathSync.native(path);
   } catch {
     // Keep the given path when it cannot be resolved.
   }
-  return NodePath.sep === "\\" ? real.toLowerCase() : real;
+  const key = NodePath.sep === "\\" ? real.toLowerCase() : real;
+  if (keyCache.size > 512) keyCache.clear();
+  keyCache.set(path, { key, at: now });
+  return key;
 };
 
 /** Finds each AIOS root once, in hint order (confirmed folder, env, then project folders). */
@@ -119,4 +129,23 @@ export function resolveWorkspaceRoot(
     workspaces[0]?.root ??
     null
   );
+}
+
+/** True when `path` (a project folder) is `root` or inside it, after links resolve. */
+export function isPathInRoot(root: string, path: string): boolean {
+  const relative = NodePath.relative(keyFor(root), keyFor(path));
+  return relative === "" || (!relative.startsWith("..") && !NodePath.isAbsolute(relative));
+}
+
+/** The workspace whose root holds `path` (a project folder), or undefined. */
+export function workspaceForPath(
+  workspaces: ReadonlyArray<AiosWorkspaceState>,
+  path: string,
+): AiosWorkspaceState | undefined {
+  return workspaces.find((workspace) => isPathInRoot(workspace.root, path));
+}
+
+/** The default workspace root from the confirmed folder and env hints (non-Command readers). */
+export function defaultWorkspaceRoot(hints: ReadonlyArray<string | undefined>): string | null {
+  return resolveWorkspaceRoot(listAiosWorkspaces(hints), undefined);
 }

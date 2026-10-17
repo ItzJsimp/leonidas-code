@@ -49,6 +49,10 @@ import {
   TaskBoardAiosDetectResult,
   TaskBoardHome,
   TaskBoardHomeInput,
+  AiosWorkspaceScopeInput,
+  AiosWorkspacesListResult,
+  AiosWorkspaceSummary,
+  AiosWorkspaceInitInput,
   TaskBoardHomeNews,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
@@ -528,6 +532,8 @@ export const WS_METHODS = {
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
   aiosUsageShape: "taskBoard.aiosUsageShape",
+  aiosWorkspacesList: "aiosWorkspaces.list",
+  aiosWorkspacesInit: "aiosWorkspaces.init",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
   focusSubscribe: "focus.subscribe",
@@ -1494,7 +1500,7 @@ const WsSubagentsRespondSpawnApprovalRpc = Rpc.make(WS_METHODS.subagentsRespondS
 });
 
 const WsSubagentsListRpc = Rpc.make(WS_METHODS.subagentsList, {
-  payload: Schema.Struct({}),
+  payload: AiosWorkspaceScopeInput,
   success: SubagentCatalog,
   error: EnvironmentAuthorizationError,
 });
@@ -1617,6 +1623,18 @@ const WsTaskBoardAiosConfirmRpc = Rpc.make(WS_METHODS.taskBoardAiosConfirm, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsAiosWorkspacesListRpc = Rpc.make(WS_METHODS.aiosWorkspacesList, {
+  payload: Schema.Struct({}),
+  success: AiosWorkspacesListResult,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
+const WsAiosWorkspacesInitRpc = Rpc.make(WS_METHODS.aiosWorkspacesInit, {
+  payload: AiosWorkspaceInitInput,
+  success: AiosWorkspaceSummary,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
   payload: TaskBoardHomeInput,
   success: TaskBoardHome,
@@ -1624,7 +1642,7 @@ const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
 });
 
 const WsAiosUsageShapeRpc = Rpc.make(WS_METHODS.aiosUsageShape, {
-  payload: Schema.Struct({}),
+  payload: AiosWorkspaceScopeInput,
   success: AiosUsageShape,
   error: EnvironmentAuthorizationError,
 });
@@ -2673,6 +2691,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
   WsTaskBoardHomeRpc,
+  WsAiosWorkspacesListRpc,
+  WsAiosWorkspacesInitRpc,
   WsAiosUsageShapeRpc,
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
