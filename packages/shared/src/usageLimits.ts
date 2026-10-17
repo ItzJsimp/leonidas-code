@@ -343,6 +343,8 @@ export function collectLimitNotices(presentations: LimitPresentations): readonly
       // Suppress unsupported accounts unless the provider has a useful next step.
       const unavailable = provider.usageLimits?.unavailable;
       if (unavailable?.reason === "unsupported" && !unavailable.message) continue;
+      // An external usage link already tells the user where to look.
+      if (unavailable?.reason === "unsupported" && provider.usageLimits?.externalUsage) continue;
       const notice = provider.usageLimits ? limitsNotice(provider.usageLimits) : null;
       const name = provider.displayName?.trim() || String(provider.driver);
       if (notice) notices.push(`${label(environmentLabel, name)}: ${notice}`);
