@@ -2,6 +2,48 @@
   "version": 1,
   "tasks": [
     {
+      "id": "github-2",
+      "project": "Leonidas Code",
+      "title": "[Scribe Feed] Shared collaborative dictation stream",
+      "description": "Shared collaborative Scribe dictation feed for Jake and Mob. Transcripts broadcasted by collaborators are synchronized here for attribution and team visibility.",
+      "status": "todo",
+      "priority": "medium",
+      "claimedBy": null,
+      "claimedAt": null,
+      "claimedAgent": null,
+      "completedBy": null,
+      "completedAt": null,
+      "completionSummary": null,
+      "createdAt": 1791790712000,
+      "updatedAt": 1792253814549,
+      "labels": [],
+      "source": "github_issue",
+      "effort": "Low",
+      "shared": true,
+      "assignee": null,
+      "sourceId": "2",
+      "sourceFile": null,
+      "issueUrl": "https://github.com/ItzJsimp/leonidas-code/issues/2",
+      "history": [
+        {
+          "id": "github-2-created",
+          "taskId": "github-2",
+          "action": "imported",
+          "actor": "GitHub issue",
+          "timestamp": 1791790712000,
+          "note": "Imported from the project's issue tracker"
+        },
+        {
+          "id": "66910bcf-52cb-42bc-9580-bfe2ba01b324",
+          "taskId": "github-2",
+          "action": "progress",
+          "actor": "ItzJsimp",
+          "timestamp": 1792253814549,
+          "note": "Organized automatically"
+        }
+      ]
+    },
+    {
       "id": "task-one-leonidas-app-leonidas-code-as-the-shell-with-scribe-as-a-bundled-python-sidecar-then-aios-and-command-center-as",
       "project": "Leonidas Code",
       "title": "One Leonidas app: Leonidas Code as the shell with Scribe as a bundled Python sidecar, then AIOS and Command Center as panels",
@@ -1874,8 +1916,10 @@
       "completedAt": null,
       "completionSummary": null,
       "createdAt": 1792068482000,
-      "updatedAt": 1792072105000,
-      "labels": [],
+      "updatedAt": 1792253814544,
+      "labels": [
+        "release"
+      ],
       "source": "github_issue",
       "shared": true,
       "sourceId": "4",
@@ -1889,8 +1933,18 @@
           "actor": "GitHub issue",
           "timestamp": 1792068482000,
           "note": "Imported from the project's issue tracker"
+        },
+        {
+          "id": "ef5c46f5-1a22-4ff2-a500-7c20a9907937",
+          "taskId": "github-4",
+          "action": "progress",
+          "actor": "ItzJsimp",
+          "timestamp": 1792253814544,
+          "note": "Organized automatically"
         }
-      ]
+      ],
+      "effort": "Medium",
+      "assignee": null
     },
     {
       "id": "task-44d8971d-d822-4987-8a2c-f8fe427f6903",
@@ -6403,48 +6457,6 @@
       "sourceFile": null,
       "issueUrl": null,
       "history": []
-    },
-    {
-      "id": "github-2",
-      "project": "Leonidas Code",
-      "title": "[Scribe Feed] Shared collaborative dictation stream",
-      "description": "Shared collaborative Scribe dictation feed for Jake and Mob. Transcripts broadcasted by collaborators are synchronized here for attribution and team visibility.",
-      "status": "todo",
-      "priority": "medium",
-      "claimedBy": null,
-      "claimedAt": null,
-      "claimedAgent": null,
-      "completedBy": null,
-      "completedAt": null,
-      "completionSummary": null,
-      "createdAt": 1791790712000,
-      "updatedAt": 1792253814549,
-      "labels": [],
-      "source": "github_issue",
-      "shared": true,
-      "sourceId": "2",
-      "sourceFile": null,
-      "issueUrl": "https://github.com/ItzJsimp/leonidas-code/issues/2",
-      "history": [
-        {
-          "id": "github-2-created",
-          "taskId": "github-2",
-          "action": "imported",
-          "actor": "GitHub issue",
-          "timestamp": 1791790712000,
-          "note": "Imported from the project's issue tracker"
-        },
-        {
-          "id": "66910bcf-52cb-42bc-9580-bfe2ba01b324",
-          "taskId": "github-2",
-          "action": "progress",
-          "actor": "ItzJsimp",
-          "timestamp": 1792253814549,
-          "note": "Organized automatically"
-        }
-      ],
-      "effort": "Low",
-      "assignee": null
     },
     {
       "id": "task-551e843d-3d24-46ac-9499-caeacbdfd6e5",
