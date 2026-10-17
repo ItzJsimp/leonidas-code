@@ -15,6 +15,8 @@ const BODY: (u8, u8, u8, u8) = (22, 22, 24, 235);
 const WHITE: (u8, u8, u8, u8) = (255, 255, 255, 235);
 const RED: (u8, u8, u8, u8) = (255, 69, 58, 255);
 const GREEN: (u8, u8, u8, u8) = (48, 209, 88, 255);
+/// Thin edge (about 12% white) so the pill reads on dark backgrounds.
+const EDGE: (u8, u8, u8, u8) = (255, 255, 255, 31);
 
 /// A text coverage mask: one alpha byte per pixel, rows top to bottom.
 pub struct Mask {
@@ -72,6 +74,7 @@ pub fn render(
     pb.push_circle(r, r, r);
     pb.push_circle(w - r, r, r);
     fill(&mut pixmap, pb, BODY);
+    stroke(&mut pixmap, pill_outline(w, h, 0.5 * s), EDGE, s);
 
     let cy = h / 2.0;
     let ix = pad + icon / 2.0;
@@ -135,6 +138,24 @@ pub fn render(
         blit_mask(&mut pixmap, &mask, x, y, WHITE);
     }
     Some(pixmap)
+}
+
+/// The pill outline inset by `inset`, with cubic half-circle ends.
+fn pill_outline(w: f32, h: f32, inset: f32) -> PathBuilder {
+    const K: f32 = 0.552_284_8;
+    let r = h / 2.0 - inset;
+    let (l, rt, cy) = (h / 2.0, (w - h / 2.0).max(h / 2.0), h / 2.0);
+    let (top, bottom) = (inset, h - inset);
+    let mut pb = PathBuilder::new();
+    pb.move_to(l, top);
+    pb.line_to(rt, top);
+    pb.cubic_to(rt + K * r, top, rt + r, cy - K * r, rt + r, cy);
+    pb.cubic_to(rt + r, cy + K * r, rt + K * r, bottom, rt, bottom);
+    pb.line_to(l, bottom);
+    pb.cubic_to(l - K * r, bottom, l - r, cy + K * r, l - r, cy);
+    pb.cubic_to(l - r, cy - K * r, l - K * r, top, l, top);
+    pb.close();
+    pb
 }
 
 fn paint(c: (u8, u8, u8, u8)) -> Paint<'static> {
@@ -261,6 +282,21 @@ mod tests {
         let short = render(&View::Error("x".into()), &[], 0.0, 1.0, &BoxText).unwrap();
         let long = render(&View::Error("x".repeat(40)), &[], 0.0, 1.0, &BoxText).unwrap();
         assert!(long.width() > short.width());
+    }
+
+    #[test]
+    fn the_edge_is_lighter_than_the_body() {
+        let p = render(&View::Done, &[], 0.0, 2.0, &NoText).unwrap();
+        let (edge, body) = (
+            p.pixel(p.width() / 2, 0).unwrap(),
+            p.pixel(p.width() / 2, 10).unwrap(),
+        );
+        assert!(
+            edge.red() > body.red() + 15,
+            "edge {} body {}",
+            edge.red(),
+            body.red()
+        );
     }
 
     #[test]
