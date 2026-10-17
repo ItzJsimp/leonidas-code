@@ -66,6 +66,7 @@ import {
   stageLinuxIconSize,
   stageDesktopDmgBackground,
   stageResourceMonitor,
+  stageScribeEngine,
   stageLinuxCaptureHelper,
   stageWslRuntimeArchive,
   bundlesWslRuntime,
@@ -82,6 +83,7 @@ import {
   stageCursorSdkPlatformPackages,
   WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT,
   WINDOWS_SERVER_ASAR_IGNORE_GLOBS,
+  WINDOWS_SCRIBE_ENGINE_EXTRA_RESOURCES,
   WINDOWS_SERVER_EXTRA_RESOURCES,
   WINDOWS_SERVER_ASAR_RESOURCE,
   WINDOWS_SERVER_RESOURCE_SOURCE_DIR,
@@ -218,6 +220,8 @@ const makeWindowsPayloadFixture = Effect.fn("test.makeWindowsPayloadFixture")(fu
     path.join(resourcesDir, "resource-monitor/t3-resource-monitor.exe"),
     "monitor",
   );
+  yield* fs.makeDirectory(path.join(resourcesDir, "scribe-engine"), { recursive: true });
+  yield* fs.writeFileString(path.join(resourcesDir, "scribe-engine/scribe-engine.exe"), "engine");
   const appExecutableName = "t3code.exe";
   yield* fs.writeFileString(path.join(packagedAppDir, appExecutableName), "electron");
   yield* fs.writeFileString(path.join(packagedAppDir, "chrome_crashpad_handler.exe"), "crashpad");
@@ -675,6 +679,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(win.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
+        ...WINDOWS_SCRIBE_ENGINE_EXTRA_RESOURCES,
         ...WSL_RUNTIME_EXTRA_RESOURCES,
       ]);
       // No Linux CLI archive means staging never writes the runtime, so
@@ -682,6 +687,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(winWithoutWslRuntime.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
+        ...WINDOWS_SCRIBE_ENGINE_EXTRA_RESOURCES,
       ]);
       assert.deepStrictEqual(win.nsis, {
         differentialPackage: true,
@@ -1014,6 +1020,64 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
+  it.effect("stages a cached Scribe engine without invoking Cargo", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const repoRoot = yield* fs.makeTempDirectoryScoped({ prefix: "scribe-engine-cache-test-" });
+        const binaryPath = path.join(
+          repoRoot,
+          "services/scribe-engine/target/x86_64-pc-windows-msvc/release/scribe-engine.exe",
+        );
+        const stageResourcesDir = path.join(repoRoot, "stage");
+        yield* fs.makeDirectory(path.dirname(binaryPath), { recursive: true });
+        yield* fs.writeFileString(binaryPath, "cached engine");
+
+        yield* stageScribeEngine({
+          repoRoot,
+          stageResourcesDir,
+          platform: "win",
+          arch: "x64",
+          verbose: false,
+        }).pipe(
+          Effect.provide(
+            ConfigProvider.layer(
+              ConfigProvider.fromEnv({ env: { T3CODE_DESKTOP_REUSE_SCRIBE_ENGINE: "true" } }),
+            ),
+          ),
+        );
+
+        assert.equal(
+          yield* fs.readFileString(path.join(stageResourcesDir, "scribe-engine/scribe-engine.exe")),
+          "cached engine",
+        );
+      }),
+    ),
+  );
+
+  it.effect("skips the Scribe engine on platforms other than Windows", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const repoRoot = yield* fs.makeTempDirectoryScoped({ prefix: "scribe-engine-skip-test-" });
+        const stageResourcesDir = path.join(repoRoot, "stage");
+        yield* fs.makeDirectory(stageResourcesDir, { recursive: true });
+
+        yield* stageScribeEngine({
+          repoRoot,
+          stageResourcesDir,
+          platform: "mac",
+          arch: "arm64",
+          verbose: false,
+        });
+
+        assert.isFalse(yield* fs.exists(path.join(stageResourcesDir, "scribe-engine")));
+      }),
+    ),
+  );
+
   it.effect("reports every missing Linux desktop build prerequisite with an install command", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -1161,6 +1225,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
                   env: {
                     npm_config_python: pythonPath,
                     T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: "true",
+                    T3CODE_DESKTOP_REUSE_SCRIBE_ENGINE: "true",
                   },
                 }),
               ),
@@ -1206,7 +1271,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
               spawner,
               ConfigProvider.layer(
                 ConfigProvider.fromEnv({
-                  env: { T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: "true" },
+                  env: {
+                    T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: "true",
+                    T3CODE_DESKTOP_REUSE_SCRIBE_ENGINE: "true",
+                  },
                 }),
               ),
             ),
@@ -1782,6 +1850,21 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         assert.deepStrictEqual(resourceMonitorError.missingFiles, [
           "resource-monitor/t3-resource-monitor.exe",
         ]);
+
+        yield* fs.remove(resourceMonitorPath, { recursive: true });
+        yield* fs.writeFileString(resourceMonitorPath, "monitor");
+        yield* fs.remove(
+          path.join(fixture.packagedAppDir, "resources/scribe-engine/scribe-engine.exe"),
+        );
+        const scribeEngineError = yield* validateWindowsPackagedPayload({
+          stageDistDir: fixture.stageDistDir,
+          appExecutableName: fixture.appExecutableName,
+          targetArch: "x64",
+          appVersion: WINDOWS_PAYLOAD_FIXTURE_VERSION,
+        }).pipe(Effect.flip);
+        assert.instanceOf(scribeEngineError, WindowsPackagedPayloadValidationError);
+        assert.equal(scribeEngineError.reason, "scribe-engine-missing");
+        assert.deepStrictEqual(scribeEngineError.missingFiles, ["scribe-engine/scribe-engine.exe"]);
       }),
     ),
   );
