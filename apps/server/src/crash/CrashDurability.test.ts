@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off globalTimers:off - synchronous node and global APIs are used on purpose in this file.
 // @effect-diagnostics nodeBuiltinImport:off
 // Kills a real child process by its captured PID at each crash point and checks what survives.
 // Set CRASH_PROOF_SOURCE_DB to a state.sqlite path to run against a temp COPY of that database

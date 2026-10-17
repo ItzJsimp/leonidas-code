@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - synchronous node and global APIs are used on purpose in this file.
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 

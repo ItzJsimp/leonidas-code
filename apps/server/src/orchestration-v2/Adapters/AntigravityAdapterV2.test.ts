@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDateInEffect:off - synchronous node and global APIs are used on purpose in this file.
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {

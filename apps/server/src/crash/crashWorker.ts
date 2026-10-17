@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDate:off globalTimers:off - synchronous node and global APIs are used on purpose in this file.
 // @effect-diagnostics nodeBuiltinImport:off
 // Child process for CrashDurability.test.ts. The parent kills it by PID at a known point.
 // Run with: node --experimental-strip-types crashWorker.ts <mode> <dir>

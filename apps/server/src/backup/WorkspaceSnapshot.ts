@@ -1,3 +1,4 @@
+// @effect-diagnostics globalDateInEffect:off nodeBuiltinImport:off preferSchemaOverJson:off - synchronous node and global APIs are used on purpose in this file.
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";

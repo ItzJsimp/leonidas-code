@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - synchronous node and global APIs are used on purpose in this file.
 import { assert, it } from "@effect/vitest";
 
 import * as Effect from "effect/Effect";

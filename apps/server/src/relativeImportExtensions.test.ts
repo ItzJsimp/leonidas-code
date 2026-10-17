@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - synchronous node and global APIs are used on purpose in this file.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

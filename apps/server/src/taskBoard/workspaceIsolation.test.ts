@@ -1,9 +1,10 @@
+// @effect-diagnostics nodeBuiltinImport:off - synchronous node and global APIs are used on purpose in this file.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
-import { expect, it } from "vitest";
+import { expect, it } from "vite-plus/test";
 
-import { readAiosTasks } from "./aiosCards";
+import { readAiosTasks } from "./aiosCards.ts";
 
 it("does not read workspace B cards through a directory link inside workspace A", () => {
   const temp = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "workspace-isolation-"));

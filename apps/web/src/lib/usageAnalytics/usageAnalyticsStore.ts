@@ -1,3 +1,4 @@
+// @effect-diagnostics cryptoRandomUUID:off - synchronous node and global APIs are used on purpose in this file.
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
