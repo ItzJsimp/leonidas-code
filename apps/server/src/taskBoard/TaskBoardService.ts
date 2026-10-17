@@ -553,7 +553,7 @@ export class TaskBoardService extends Context.Service<
     /** The AIOS folder the task board reads: confirmed first, then detected; null when none. */
     readonly aiosRoot: (projects: ReadonlyArray<Project>) => Effect.Effect<string | null>;
     /** Counts about the AIOS folder for opt-in usage analytics. */
-    readonly usageShape: (projects: ReadonlyArray<Project>) => AiosShape;
+    readonly usageShape: (projects: ReadonlyArray<Project>) => Effect.Effect<AiosShape>;
     /** Folders that look like the user's AIOS, plus the one already confirmed. */
     readonly aiosDetect: (
       input: TaskBoardAiosDetectInput,
@@ -1783,7 +1783,7 @@ const make = Effect.gen(function* () {
     });
 
   const usageShape = (projects: ReadonlyArray<Project>) =>
-    readAiosShape(aiosRootFor(projects, confirmedRoot));
+    Effect.sync(() => readAiosShape(aiosRootFor(projects, confirmedRoot)));
 
   const aiosDetect = (input: TaskBoardAiosDetectInput, projects: ReadonlyArray<Project>) =>
     Effect.sync(() => ({

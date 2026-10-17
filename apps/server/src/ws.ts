@@ -2941,7 +2941,7 @@ const layerWsRpc = (
         [WS_METHODS.aiosUsageShape]: () =>
           allTaskBoardProjects.pipe(
             Effect.orElseSucceed(() => []),
-            Effect.map((projects) => taskBoard.usageShape(projects)),
+            Effect.flatMap((projects) => taskBoard.usageShape(projects)),
           ),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(
