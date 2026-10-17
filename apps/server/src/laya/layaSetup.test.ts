@@ -5,7 +5,14 @@ import * as NodePath from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
 
-import { LAYA_FILES, layaPaths, layaStatus, sha256OfFile, wireLayaProject } from "./layaSetup.ts";
+import {
+  LAYA_FILES,
+  layaPaths,
+  layaStatus,
+  plainInstallError,
+  sha256OfFile,
+  wireLayaProject,
+} from "./layaSetup.ts";
 
 describe("layaSetup", () => {
   it("puts the pack and the model under the per-user .leonidas folder", () => {
@@ -62,5 +69,18 @@ describe("wireLayaProject", () => {
     const result = await wireLayaProject({ projectPath: root, confirmed: false, home: root });
     expect(result.message).toContain("Install Laya first");
     await NodeFSP.rm(root, { recursive: true, force: true });
+  });
+});
+
+describe("plainInstallError", () => {
+  it("turns a full disk into plain words", () => {
+    const error = Object.assign(new Error("ENOSPC: no space left on device, write"), {
+      code: "ENOSPC",
+    });
+    expect(plainInstallError(error)).toBe("The disk is full. Free some space, then try again.");
+  });
+
+  it("never shows a raw system message", () => {
+    expect(plainInstallError(new Error("EBADF: weird"))).toBe("The install failed. Try again.");
   });
 });

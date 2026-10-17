@@ -109,7 +109,7 @@ export function LeonidasLayaStep({
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        Turn on Laya safety checks
+        {ready && !started ? "Laya safety checks are on" : "Turn on Laya safety checks"}
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
         Laya is a small model that runs on your computer. It is free. It checks risky commands and
