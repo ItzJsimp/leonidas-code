@@ -135,6 +135,7 @@ function useWizardUsageEvents(step: WizardStep) {
   }, [step]);
   useEffect(() => {
     const onPageHide = () => sendUsageEvent("setup_abandoned_at_step", { step: stepRef.current });
+    if (typeof window === "undefined") return;
     window.addEventListener("pagehide", onPageHide);
     // Leaving the wizard after it finished unmounts it; only a real close counts.
     return () => window.removeEventListener("pagehide", onPageHide);
