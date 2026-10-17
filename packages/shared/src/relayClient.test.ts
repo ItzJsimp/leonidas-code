@@ -181,7 +181,9 @@ describe("RelayClient", () => {
               .writeFileString(path, contents, options)
               .pipe(
                 Effect.tapError(() =>
-                  path === lockPath ? Deferred.succeed(contended, undefined) : Effect.void,
+                  path.replaceAll("\\", "/") === lockPath.replaceAll("\\", "/")
+                    ? Deferred.succeed(contended, undefined)
+                    : Effect.void,
                 ),
               ),
         }),
@@ -197,7 +199,7 @@ describe("RelayClient", () => {
           NodeServices.layer,
           layerHttpClient(new Uint8Array()),
           layerSpawner([]),
-          layerHostRuntime({ PATH: "" }),
+          layerHostRuntime({ PATH: "" }, "linux"),
         ),
       ),
     ),
@@ -752,7 +754,8 @@ describe("RelayClient", () => {
   );
 
   it.effect.each([
-    ["linux", "EBUSY"],
+    // A simulated Linux install needs real executable bits, which Windows does not have.
+    ...(process.platform === "win32" ? [] : ([["linux", "EBUSY"]] as const)),
     ["win32", "EXDEV"],
   ] as const)("fails staging at once on %s for %s", ([platform, code]) =>
     Effect.gen(function* () {
