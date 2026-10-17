@@ -122,6 +122,49 @@ describe("workspaceForPath", () => {
   });
 });
 
+describe("workspace root rules (L3 follow-ups)", () => {
+  it("maps a path in a nested AIOS to the innermost root, in any hint order", () => {
+    const outer = makeAios("outer", {
+      id: "outer",
+      name: "Outer",
+      type: "personal",
+      schemaVersion: 1,
+    });
+    const inner = makeAios(NodePath.join("outer", "inner"), {
+      id: "inner",
+      name: "Inner",
+      type: "business",
+      schemaVersion: 1,
+    });
+    const project = NodePath.join(inner, "projects", "app");
+    NodeFS.mkdirSync(project, { recursive: true });
+    for (const hints of [
+      [outer, inner],
+      [inner, outer],
+    ]) {
+      expect(workspaceForPath(listAiosWorkspaces(hints), project)?.root).toBe(inner);
+    }
+  });
+
+  it("refuses a second root that reuses a workspace id", () => {
+    const file = { id: "same", name: "Same", type: "personal", schemaVersion: 1 };
+    const first = makeAios("first", file);
+    const second = makeAios("second", file);
+    const listed = listAiosWorkspaces([first, second]);
+    expect(listed.map((workspace) => workspace.status)).toEqual(["ready", "invalid"]);
+    expect(resolveWorkspaceRoot(listed, "same")).toBe(first);
+  });
+
+  it("does not list a project folder's bare tasks/ folder as a workspace", () => {
+    const aios = makeAios("aios", { id: "main", name: "Main", type: "personal", schemaVersion: 1 });
+    const loose = NodePath.join(temp, "loose");
+    NodeFS.mkdirSync(NodePath.join(loose, "tasks"), { recursive: true });
+    expect(listAiosWorkspaces([aios, loose]).map((workspace) => workspace.root)).toEqual([aios]);
+    // The first hint is the confirmed folder; it stays listed so setup can still run there.
+    expect(listAiosWorkspaces([loose]).map((workspace) => workspace.root)).toEqual([loose]);
+  });
+});
+
 describe("writeWorkspaceFile", () => {
   it("writes a file that reads back as ready, and refuses a bad id", () => {
     const root = makeAios("new");
