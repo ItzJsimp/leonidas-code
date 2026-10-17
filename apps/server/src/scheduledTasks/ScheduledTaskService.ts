@@ -5,6 +5,7 @@ import {
   ScheduledTask,
   ScheduledTaskError,
   ScheduledTaskId,
+  RunId,
   ThreadId,
   ScheduledTaskWebhookDeliveryId,
   type ScheduledTaskDeleteInput,
@@ -23,6 +24,7 @@ import {
   type ScheduledTaskUpsertInput,
 } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
+import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Data from "effect/Data";
@@ -58,6 +60,7 @@ import {
   type WebhookRequest,
 } from "./webhookTemplate.ts";
 import { ScheduledTaskStoreOwner } from "./StoreOwner.ts";
+import { ScheduledTaskIdleLimit, watchRunForIdle } from "./RunWatchdog.ts";
 import { constantTimeEquals, verifyWebhookSignature } from "./webhookVerification.ts";
 
 /** Path prefix of the environment route that receives webhook requests. */
@@ -429,6 +432,9 @@ export const layer = Layer.effect(
     const webhookQueued = yield* Ref.make<ReadonlyMap<string, number>>(new Map());
     const webhookRateWindows = yield* Ref.make<ReadonlyMap<ScheduledTaskId, RateWindow>>(new Map());
     const activeRuns = yield* Ref.make<ReadonlySet<ScheduledTaskId>>(new Set());
+    const readIdleLimit = yield* ScheduledTaskIdleLimit;
+    // Idle watchers outlive the dispatch that starts them; service shutdown interrupts them.
+    const watchdogScope = yield* Effect.scope;
     // Sliding(1) coalesces the dirty-signal: every notification triggers a
     // full list() re-emit anyway, so a slow subscriber only ever needs the
     // latest signal — an unbounded backlog would just grow memory.
@@ -729,6 +735,77 @@ export const layer = Layer.effect(
         ),
       );
 
+    // A run is dispatched, not awaited, so a stalled agent turn would hold the
+    // thread forever. Watch the turn and interrupt it once it goes quiet.
+    const superviseIdle = (input: {
+      readonly task: ScheduledTask;
+      readonly startedAtIso: string;
+      readonly fireKey: string;
+      readonly threadId: ThreadId;
+      readonly runId: RunId;
+    }) =>
+      Effect.gen(function* () {
+        const idleLimitMs = yield* readIdleLimit;
+        if (idleLimitMs <= 0) return;
+        const outcome = yield* watchRunForIdle({
+          idleLimitMs,
+          nowMs: Clock.currentTimeMillis,
+          readRun: threadManagement
+            .getProjectThread({ projectId: input.task.projectId, threadId: input.threadId })
+            .pipe(
+              Effect.map((projection) => {
+                const run = projection.runs.find((candidate) => candidate.id === input.runId);
+                if (run === undefined) return Option.none();
+                const marks = projection.turnItems
+                  .filter((item) => item.runId === input.runId)
+                  .map((item) => DateTime.toEpochMillis(item.updatedAt));
+                return Option.some({
+                  status: run.status,
+                  lastActivityMs: Math.max(
+                    DateTime.toEpochMillis(run.startedAt ?? run.requestedAt),
+                    ...marks,
+                  ),
+                });
+              }),
+            ),
+          interrupt: threadManagement
+            .interruptThread({
+              projectId: input.task.projectId,
+              commandId: CommandId.make(`scheduled-task:${input.fireKey}:idle-interrupt`),
+              threadId: input.threadId,
+              runId: input.runId,
+              reason: `Scheduled run idle for more than ${Math.round(idleLimitMs / 1000)} s.`,
+            })
+            .pipe(Effect.asVoid),
+        });
+        if (outcome !== "interrupted") return;
+        const message = `Run was idle for more than ${Math.round(idleLimitMs / 1000)} s and was interrupted.`;
+        yield* Effect.logWarning("Interrupted idle scheduled task run", {
+          taskId: input.task.id,
+          threadId: input.threadId,
+          runId: input.runId,
+          idleLimitMs,
+        });
+        yield* sql`
+          UPDATE scheduled_tasks
+          SET last_run_status = 'failed',
+              last_run_error = ${message}
+          WHERE task_id = ${input.task.id}
+            AND last_run_at = ${input.startedAtIso}
+            AND last_run_status = 'succeeded'
+        `;
+        yield* notifyChanged;
+      }).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("Idle watch for scheduled task run failed", {
+            taskId: input.task.id,
+            cause,
+          }),
+        ),
+        Effect.forkIn(watchdogScope),
+        Effect.asVoid,
+      );
+
     const runTask = Effect.fn("ScheduledTaskService.runTask")(function* (
       task: ScheduledTask,
       trigger: "scheduled" | "manual" | "webhook",
@@ -851,6 +928,26 @@ export const layer = Layer.effect(
                   creationSource: active.creationSource,
                 }),
               );
+
+        if (result._tag === "Success") {
+          const dispatched = result.value;
+          const target =
+            "run" in dispatched
+              ? { threadId: dispatched.run?.threadId, runId: dispatched.run?.id }
+              : {
+                  threadId: dispatched.threadId,
+                  runId: dispatched.projection?.runs?.at(-1)?.id,
+                };
+          if (target.threadId !== undefined && target.runId !== undefined) {
+            yield* superviseIdle({
+              task: active,
+              startedAtIso,
+              fireKey,
+              threadId: target.threadId,
+              runId: target.runId,
+            });
+          }
+        }
 
         const completedAt = yield* localNow;
         const runSucceeded = result._tag === "Success";

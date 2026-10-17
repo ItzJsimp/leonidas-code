@@ -21,6 +21,7 @@ import * as ThreadManagementService from "../orchestration-v2/ThreadManagementSe
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ScheduledTaskService from "./ScheduledTaskService.ts";
+import * as RunWatchdog from "./RunWatchdog.ts";
 
 const isScheduledTaskError = Schema.is(ScheduledTaskError);
 
@@ -400,4 +401,76 @@ it.effect(
         ],
       );
     }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
+);
+
+it.effect("interrupts a dispatched run that goes idle and records the failure on the task", () =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const now = "2026-09-09T12:00:00.000Z";
+    yield* insertRow(
+      sql,
+      {
+        id: "idle-task",
+        next: now,
+        enabled: 1,
+        status: "never",
+        scheduleJson: '{"type":"interval","everyMs":3600000}',
+      },
+      now,
+    );
+    yield* TestClock.setTime(Date.parse(now) + 1_000);
+    const interrupts = yield* Ref.make<ReadonlyArray<{ runId?: string; reason?: string }>>([]);
+    const stalledProjection = {
+      runs: [
+        {
+          id: "run-1",
+          status: "running",
+          requestedAt: DateTime.makeUnsafe(now),
+          startedAt: DateTime.makeUnsafe(now),
+        },
+      ],
+      turnItems: [],
+    };
+    yield* Effect.scoped(
+      Effect.gen(function* () {
+        yield* Layer.build(
+          Layer.provideMerge(
+            ScheduledTaskService.layer,
+            Layer.mergeAll(
+              Layer.mock(ThreadLaunchService.ThreadLaunchService)({
+                launch: () =>
+                  Effect.succeed({
+                    threadId: "thread-1",
+                    projection: stalledProjection,
+                    resumed: false,
+                  } as never),
+              }),
+              Layer.mock(ThreadManagementService.ThreadManagementService)({
+                getProjectThread: () => Effect.succeed(stalledProjection as never),
+                interruptThread: (input) =>
+                  Ref.update(interrupts, (all) => [...all, input]).pipe(
+                    Effect.as({ type: "no_active_run" } as never),
+                  ),
+              }),
+              Layer.mock(SecretRequests.SecretRequests)({}),
+              Layer.succeed(RunWatchdog.ScheduledTaskIdleLimit, Effect.succeed(60_000)),
+              NodeCrypto.layer,
+              Scheduler.layer,
+            ),
+          ),
+        );
+        // One tick dispatches the run; the watchdog then needs a minute of silence.
+        yield* TestClock.adjust("6 seconds");
+        assert.equal((yield* Ref.get(interrupts)).length, 0);
+        yield* TestClock.adjust("90 seconds");
+        const sent = yield* Ref.get(interrupts);
+        assert.equal(sent.length, 1);
+        assert.equal(sent[0]?.runId, "run-1");
+        const rows = yield* sql<{ last_run_status: string; last_run_error: string | null }>`
+          SELECT last_run_status, last_run_error FROM scheduled_tasks WHERE task_id = 'idle-task'`;
+        assert.equal(rows[0]?.last_run_status, "failed");
+        assert.include(rows[0]?.last_run_error ?? "", "idle for more than 60 s");
+      }),
+    );
+  }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
 );
