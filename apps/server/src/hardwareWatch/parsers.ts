@@ -20,13 +20,14 @@ $rel = @(Get-PhysicalDisk | Get-StorageReliabilityCounter | Select-Object Device
 $board = Get-CimInstance Win32_BaseBoard | Select-Object -First 1 Manufacturer,Product
 $bios = Get-CimInstance Win32_BIOS | Select-Object -First 1 SMBIOSBIOSVersion,ReleaseDate
 $os = Get-CimInstance Win32_OperatingSystem | Select-Object -First 1 Caption,Version,OSArchitecture,LastBootUpTime
-$vol = @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID,VolumeName)
+$vol = @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | ForEach-Object { $m = (Get-Partition -DriveLetter $_.DeviceID.Substring(0,1) | Get-Disk | Get-PhysicalDisk).MediaType; [pscustomobject]@{ DeviceID = $_.DeviceID; VolumeName = $_.VolumeName; MediaType = [string]$m } })
 [pscustomobject]@{ cpu = $cpu; gpu = $gpu; mem = $mem; disk = $disk; rel = $rel; board = $board; bios = $bios; os = $os; vol = $vol } | ConvertTo-Json -Depth 4 -Compress
 `;
 
 export interface VolumeRef {
   readonly mount: string;
   readonly label: string | null;
+  readonly mediaType: "ssd" | "hdd" | "unknown";
 }
 
 /** Fixed local drives from the inventory pass; space is sampled live with statfs. */
@@ -43,7 +44,9 @@ export function parseWindowsVolumes(raw: string): VolumeRef[] {
   try {
     return asArray((JSON.parse(raw) as Json).vol).flatMap((row) => {
       const mount = str(row.DeviceID);
-      return mount ? [{ mount, label: str(row.VolumeName) }] : [];
+      const media = str(row.MediaType)?.toLowerCase();
+      const mediaType = media === "ssd" ? "ssd" : media === "hdd" ? "hdd" : "unknown";
+      return mount ? [{ mount, label: str(row.VolumeName), mediaType }] : [];
     });
   } catch {
     return [];

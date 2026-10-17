@@ -28,7 +28,7 @@ const sample = (overrides: Partial<HardwareSample> = {}): HardwareSample => ({
   memory: { usedBytes: 8, totalBytes: 32 },
   gpus: [],
   disk: { readBytesPerSec: 0, writeBytesPerSec: 0, activePct: 1 },
-  volumes: [{ mount: "C:", label: null, usedBytes: 50, totalBytes: 100 }],
+  volumes: [{ mount: "C:", label: null, mediaType: "ssd", usedBytes: 50, totalBytes: 100 }],
   driveTemps: [],
   sensors: [],
   ...overrides,
@@ -116,7 +116,9 @@ describe("quickWins", () => {
           ],
         },
       }),
-      sample({ volumes: [{ mount: "C:", label: null, usedBytes: 95, totalBytes: 100 }] }),
+      sample({
+        volumes: [{ mount: "C:", label: null, mediaType: "ssd", usedBytes: 95, totalBytes: 100 }],
+      }),
       NOW,
     );
     expect(wins.map((win) => win.id)).toEqual([

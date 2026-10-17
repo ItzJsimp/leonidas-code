@@ -101,6 +101,8 @@ export type HardwareGpuSample = typeof HardwareGpuSample.Type;
 export const HardwareVolumeSample = Schema.Struct({
   mount: Schema.String,
   label: NullableString,
+  /** Physical media behind the drive letter; `unknown` until the inventory pass finishes. */
+  mediaType: Schema.Literals(["ssd", "hdd", "unknown"]),
   usedBytes: Schema.Number,
   totalBytes: Schema.Number,
 });

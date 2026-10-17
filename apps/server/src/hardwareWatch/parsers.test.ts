@@ -145,8 +145,8 @@ describe("parseWindowsInventory", () => {
 
   it("lists fixed volumes", () => {
     expect(parseWindowsVolumes(inventoryJson)).toEqual([
-      { mount: "C:", label: null },
-      { mount: "D:", label: "HQ" },
+      { mount: "C:", label: null, mediaType: "unknown" },
+      { mount: "D:", label: "HQ", mediaType: "unknown" },
     ]);
   });
 });
