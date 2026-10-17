@@ -329,3 +329,95 @@ it.effect("does not mirror a card to another workspace's shared board on a slug 
     }),
   ),
 );
+
+it.effect(
+  "keeps a native card in the default workspace when its slug exists in two workspaces",
+  () =>
+    withWorkspaces(({ personal, business, projects }) =>
+      Effect.gen(function* () {
+        const board = yield* TaskBoardService.TaskBoardService;
+        NodeFS.mkdirSync(NodePath.join(business, "projects", "app"), { recursive: true });
+        // Both workspaces hold a project with slug "app"; the business one is listed last.
+        const clash = project("p-business-app", "App", NodePath.join(business, "projects", "app"));
+        const all = [...projects, clash];
+        const native = yield* board.cardCreate(
+          { title: "Personal native", actor: "Jake", projectId: projects[0]!.id },
+          all,
+        );
+        const ids = (id: string) =>
+          board.workspace(all, id).pipe(Effect.map((s) => s.tasks.map((task) => task.id)));
+        expect(yield* ids("leonidas")).toContain(native.id);
+        expect(yield* ids("simplygersi")).not.toContain(native.id);
+        expect(personal).toBeTruthy();
+      }),
+    ),
+);
+
+it.effect("repairs an invalid workspace.json through the setup prompt", () =>
+  withWorkspaces(({ bare, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      NodeFS.writeFileSync(
+        NodePath.join(bare, "workspace.json"),
+        JSON.stringify({ id: "bare", name: "Bare", type: "personal", schemaVersion: 9 }),
+      );
+      const listed = (yield* board.workspaces(projects)).workspaces.find((w) => w.root === bare);
+      expect(listed).toMatchObject({ status: "invalid", id: null });
+      expect(listed?.error).toBeTruthy();
+      expect((yield* board.workspace(projects, "bare")).tasks).toEqual([]);
+      const fixed = yield* board.workspaceInit(
+        { root: bare, id: "bare", name: "Bare", type: "personal" },
+        projects,
+      );
+      expect(fixed.status).toBe("ready");
+      expect((yield* board.workspace(projects, "bare")).tasks.map((task) => task.id)).toEqual([
+        "task-bare",
+      ]);
+    }),
+  ),
+);
+
+it.effect("serves a lone AIOS with no workspace file, before and after setup (Gersi's case)", () =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const temp = NodeFS.realpathSync(
+        NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "lone aios-")),
+      );
+      const root = makeAios(temp, "SimplyGersi AIOS", null, "business");
+      const previous = process.env.LEONIDAS_AIOS_ROOT;
+      // The env hint carries a trailing separator; the project path does not.
+      process.env.LEONIDAS_AIOS_ROOT = `${root}${NodePath.sep}`;
+      return { temp, root, previous };
+    }),
+    ({ temp, root }) =>
+      Effect.gen(function* () {
+        const board = yield* TaskBoardService.TaskBoardService;
+        const projects = [project("p-sg", "SimplyGersi AIOS", root)];
+        const before = (yield* board.workspaces(projects)).workspaces;
+        expect(before.map((w) => [w.status, w.isDefault])).toEqual([["missing", true]]);
+        const cards = (yield* board.workspace(projects)).tasks.map((task) => task.id);
+        expect(cards).toHaveLength(1);
+        yield* board.workspaceInit(
+          { root: before[0]!.root, id: "simplygersi", name: "SimplyGersi", type: "business" },
+          projects,
+        );
+        expect((yield* board.workspace(projects, "simplygersi")).tasks.map((t) => t.id)).toEqual(
+          cards,
+        );
+        expect((yield* board.workspace(projects)).tasks.map((t) => t.id)).toEqual(cards);
+        expect(temp).toBeTruthy();
+      }).pipe(
+        Effect.provide(
+          TaskBoardService.layer.pipe(
+            Layer.provide(Layer.succeed(ProcessRunner.ProcessRunner, noProcesses)),
+          ),
+        ),
+      ),
+    ({ temp, previous }) =>
+      Effect.sync(() => {
+        if (previous === undefined) delete process.env.LEONIDAS_AIOS_ROOT;
+        else process.env.LEONIDAS_AIOS_ROOT = previous;
+        NodeFS.rmSync(temp, { recursive: true, force: true });
+      }),
+  ),
+);

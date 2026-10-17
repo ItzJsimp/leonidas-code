@@ -667,7 +667,12 @@ const make = Effect.gen(function* () {
     const slugOwner = new Map<string, string>();
     for (const project of projects) {
       const owner = workspaceForPath(workspaces, project.workspaceRoot);
-      if (owner) slugOwner.set(aiosSlugFor(project), owner.root);
+      const slug = aiosSlugFor(project);
+      // On a slug clash across workspaces the default workspace keeps the card: native cards
+      // predate workspaces, and a business card made with a workspace id lives in its own AIOS.
+      if (owner && (!slugOwner.has(slug) || owner.root === defaultRoot)) {
+        slugOwner.set(slug, owner.root);
+      }
     }
     // A caller with no workspace id (TaskAutoLog, MCP board tools, old clients) keeps the
     // pre-workspace view: every native card and every project.
