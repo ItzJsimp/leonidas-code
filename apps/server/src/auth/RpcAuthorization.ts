@@ -179,6 +179,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.aiosUsageShape]: AuthOrchestrationReadScope,
   [WS_METHODS.taskBoardHomeWeather]: AuthOrchestrationReadScope,
   [WS_METHODS.taskBoardHomeNews]: AuthOrchestrationReadScope,
+  [WS_METHODS.layaUsage]: AuthOrchestrationReadScope,
   [WS_METHODS.taskBoardAiosConfirm]: AuthOrchestrationOperateScope,
   [WS_METHODS.hardwareGetInventory]: AuthDiagnosticsReadScope,
   [WS_METHODS.hardwareGetHistory]: AuthDiagnosticsReadScope,

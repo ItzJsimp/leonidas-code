@@ -173,6 +173,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.aiosUsageShape]: "workspace",
   [WS_METHODS.taskBoardHomeWeather]: "workspace",
   [WS_METHODS.taskBoardHomeNews]: "workspace",
+  [WS_METHODS.layaUsage]: "workspace",
   [WS_METHODS.taskBoardAiosConfirm]: "workspace",
   [WS_METHODS.hardwareGetInventory]: "server",
   [WS_METHODS.hardwareGetHistory]: "server",

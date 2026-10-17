@@ -50,6 +50,7 @@ import {
   TaskBoardHome,
   TaskBoardHomeInput,
   TaskBoardHomeNews,
+  LayaUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
@@ -519,6 +520,7 @@ export const WS_METHODS = {
   aiosUsageShape: "taskBoard.aiosUsageShape",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
+  layaUsage: "laya.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
   hardwareGetInventory: "hardware.getInventory",
@@ -1630,6 +1632,12 @@ const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsLayaUsageRpc = Rpc.make(WS_METHODS.layaUsage, {
+  payload: Schema.Struct({}),
+  success: LayaUsage,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
@@ -2637,6 +2645,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsAiosUsageShapeRpc,
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
+  WsLayaUsageRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,
