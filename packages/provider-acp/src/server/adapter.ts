@@ -1209,6 +1209,10 @@ interface ActiveAcpTurn {
    * re-arming, the task's pre-settle completion marker.
    */
   earlyInjectedReportObserved: boolean;
+  /** The agent reported a dead connection; its text is hidden and the prompt is replayed once. */
+  connectionLostSeen: boolean;
+  /** The one allowed replay already ran; a second drop shows the agent's text. */
+  connectionReplayed: boolean;
   readonly plans: Map<
     string,
     {
@@ -4611,6 +4615,11 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                 // connection, so the next turn must respawn and resume it.
                 if (flavor.connectionLostText?.test(text) === true) {
                   yield* Ref.set(runtimeRestartRequired, true);
+                  // Hide the agent's error; the prompt is replayed once on a new runtime.
+                  if (!context.connectionReplayed) {
+                    context.connectionLostSeen = true;
+                    break;
+                  }
                 }
                 const startsNewAssistantSegment = context.assistant.current === null;
                 // The injected-turn report is streaming; the normal debounce
@@ -7122,6 +7131,8 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
               awaitingBackgroundHydration: new Set(),
               pendingInjectedReport: new Set(),
               earlyInjectedReportObserved: false,
+              connectionLostSeen: false,
+              connectionReplayed: false,
               plans: new Map(),
               interrupted: false,
               finalized: false,
@@ -7258,8 +7269,36 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
               }
               return;
             }
-            const promptGeneration = yield* Ref.get(runtimeCallbackGeneration);
-            yield* runtime.prompt({ prompt: promptParts!.prompt }).pipe(
+            let promptGeneration = yield* Ref.get(runtimeCallbackGeneration);
+            // The agent answers a dead connection with plain text and a normal
+            // stop. Restart it, resume the session and send the same prompt once.
+            const replayAfterConnectionLost = Effect.gen(function* () {
+              context.connectionReplayed = true;
+              context.connectionLostSeen = false;
+              yield* Ref.set(runtimeRestartRequired, true);
+              yield* restartRuntimeAfterTeardownIfRequired(turnInput.threadId);
+              const activated = yield* activateSession(requestedSessionId, turnInput.threadId);
+              yield* Ref.set(activeSessionId, activated.sessionId);
+              yield* Ref.set(activeSessionSetup, activated);
+              yield* configureSession(activated, turnInput.modelSelection, turnInput.runtimePolicy);
+              yield* Ref.set(activeSelection, turnInput.modelSelection);
+              yield* Ref.set(activeInteractionMode, turnInput.runtimePolicy.interactionMode);
+              promptGeneration = yield* Ref.get(runtimeCallbackGeneration);
+              return yield* runtime.prompt({ prompt: promptParts!.prompt });
+            });
+            const promptWithReplay = runtime
+              .prompt({ prompt: promptParts!.prompt })
+              .pipe(
+                Effect.flatMap((result) =>
+                  context.connectionLostSeen &&
+                  !context.connectionReplayed &&
+                  !context.interrupted &&
+                  result.stopReason !== "cancelled"
+                    ? replayAfterConnectionLost
+                    : Effect.succeed(result),
+                ),
+              );
+            yield* promptWithReplay.pipe(
               Effect.tap(() =>
                 Ref.update(promptInstructionStates, (current) => {
                   if (promptParts?.instructionState === undefined) return current;
