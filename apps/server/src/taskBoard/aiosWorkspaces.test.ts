@@ -160,8 +160,7 @@ describe("workspace root rules (L3 follow-ups)", () => {
     const loose = NodePath.join(temp, "loose");
     NodeFS.mkdirSync(NodePath.join(loose, "tasks"), { recursive: true });
     expect(listAiosWorkspaces([aios, loose]).map((workspace) => workspace.root)).toEqual([aios]);
-    // The first hint is the confirmed folder; it stays listed so setup can still run there.
-    expect(listAiosWorkspaces([loose]).map((workspace) => workspace.root)).toEqual([loose]);
+    expect(listAiosWorkspaces([loose])).toEqual([]);
   });
 });
 

@@ -73,7 +73,10 @@ export class SavedItemService extends Context.Service<
     readonly importMarkdown: (
       input: SavedItemImportInput,
     ) => Effect.Effect<SavedItem, SavedItemError>;
-    readonly get: (id: SavedItemId) => Effect.Effect<SavedItem, SavedItemError>;
+    readonly get: (
+      id: SavedItemId,
+      workspaceId?: string,
+    ) => Effect.Effect<SavedItem, SavedItemError>;
     readonly list: (
       input: SavedItemListInput,
     ) => Effect.Effect<SavedItemListResult, SavedItemError>;
@@ -191,13 +194,19 @@ const make = Effect.gen(function* () {
     kind = excluded.kind, moved_to_board = excluded.moved_to_board, item_json = excluded.item_json, updated_at = excluded.updated_at`,
       ),
     );
-  const get = (id: SavedItemId) =>
+  const get = (id: SavedItemId, workspaceId?: string) =>
     Effect.gen(function* () {
       const rows = yield* sql<{
         item_json: string;
       }>`SELECT item_json FROM projection_saved_items WHERE item_id = ${id}`;
       if (!rows[0]) return yield* new SavedItemError({ reason: "not_found" });
-      return yield* decode(rows[0].item_json);
+      const item = yield* decode(rows[0].item_json);
+      if (workspaceId !== undefined) {
+        const scope = yield* workspaceScope(workspaceId);
+        if (scope.root === null || !belongs(item, scope))
+          return yield* new SavedItemError({ reason: "not_found" });
+      }
+      return item;
     }).pipe(storage);
   const record = (commandId: CommandId, eventType: string, item: SavedItem) =>
     Effect.gen(function* () {
@@ -379,7 +388,7 @@ const make = Effect.gen(function* () {
         input,
         "saved_item.updated",
         Effect.gen(function* () {
-          const item = yield* get(input.id);
+          const item = yield* get(input.id, input.workspaceId);
           yield* editable(item);
           const file = folderFile(item.id);
           const dir = file === null ? null : yield* promptsDir(item.workspaceId);
@@ -408,7 +417,7 @@ const make = Effect.gen(function* () {
       input,
       `saved_item.${input.action}`,
       Effect.gen(function* () {
-        const item = yield* get(input.id);
+        const item = yield* get(input.id, input.workspaceId);
         yield* editable(item);
         const caller = yield* SavedItemCaller;
         // A pending schedule keeps running without its item, so it blocks deletion; agents never delete.

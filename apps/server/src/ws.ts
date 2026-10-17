@@ -2221,7 +2221,7 @@ const layerWsRpc = (
         [WS_METHODS.scheduledTasksList]: (_input) =>
           scheduledTasks.list().pipe(Effect.map(withVisibleWebhookUrls)),
         [WS_METHODS.savedItemsList]: (input) => savedItems.list(input),
-        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id),
+        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id, input.workspaceId),
         [WS_METHODS.savedItemsCreate]: (input) => savedItems.create(input),
         [WS_METHODS.savedItemsUpdate]: (input) => savedItems.update(input),
         [WS_METHODS.savedItemsTransition]: (input) => savedItems.transition(input),

@@ -98,8 +98,8 @@ const keyFor = (path: string) => {
 };
 
 /**
- * Finds each AIOS root once, in hint order (confirmed folder, env, then project folders). After
- * the first root, a folder with no workspace.json and no projects/ is a bare tasks/ folder, not
+ * Finds each AIOS root once, in hint order (confirmed folder, env, then project folders).
+ * A folder with no workspace.json and no projects/ is a bare tasks/ folder, not
  * an AIOS. A root that reuses a ready id is refused, so one id never names two folders.
  */
 export function listAiosWorkspaces(
@@ -134,7 +134,7 @@ function scanAiosWorkspaces(
     if (seen.has(key)) continue;
     seen.add(key);
     const state = readWorkspaceFile(root);
-    if (state.status === "missing" && workspaces.length > 0 && !hasProjects(root)) continue;
+    if (state.status === "missing" && !hasProjects(root)) continue;
     if (state.status === "ready") {
       if (ids.has(state.file.id)) {
         workspaces.push({ status: "invalid", root, error: `The id "${state.file.id}" is in use.` });

@@ -84,6 +84,7 @@ export const SavedItemUpdateInput = Schema.Struct({
 });
 export type SavedItemUpdateInput = typeof SavedItemUpdateInput.Type;
 export const SavedItemTransitionInput = Schema.Struct({
+  workspaceId: Schema.optionalKey(TrimmedNonEmptyString),
   commandId: CommandId,
   id: SavedItemId,
   action: Schema.Literals(["archive", "restore", "requeue", "done", "delete"]),
@@ -114,7 +115,10 @@ export const SavedItemListResult = Schema.Struct({
   promptsFolder: Schema.optionalKey(SavedItemPromptsFolder),
 });
 export type SavedItemListResult = typeof SavedItemListResult.Type;
-export const SavedItemGetInput = Schema.Struct({ id: SavedItemId });
+export const SavedItemGetInput = Schema.Struct({
+  id: SavedItemId,
+  workspaceId: Schema.optionalKey(TrimmedNonEmptyString),
+});
 const executionFields = {
   commandId: CommandId,
   id: SavedItemId,

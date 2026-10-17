@@ -48,6 +48,32 @@ it.effect("isolates same-named folder prompts and their edits across workspaces"
           (yield* service.list({ workspaceId: "business" })).items.map((item) => item.id),
           business.items.map((item) => item.id),
         );
+        const denied = yield* service
+          .update({
+            commandId: CommandId.make("foreign-edit"),
+            id: business.items[0]!.id,
+            workspaceId: "personal",
+            body: "foreign",
+          })
+          .pipe(Effect.flip);
+        assert.equal(denied.reason, "not_found");
+        assert.equal(
+          (yield* service.get(business.items[0]!.id, "personal").pipe(Effect.flip)).reason,
+          "not_found",
+        );
+        assert.equal(
+          (yield* service.get(business.items[0]!.id, "missing").pipe(Effect.flip)).reason,
+          "not_found",
+        );
+        const deniedDelete = yield* service
+          .transition({
+            commandId: CommandId.make("foreign-delete"),
+            id: business.items[0]!.id,
+            workspaceId: "personal",
+            action: "delete",
+          })
+          .pipe(Effect.flip);
+        assert.equal(deniedDelete.reason, "not_found");
         yield* service.update({
           commandId: CommandId.make("edit-business"),
           id: business.items[0]!.id,

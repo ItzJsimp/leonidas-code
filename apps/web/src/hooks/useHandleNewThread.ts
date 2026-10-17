@@ -483,22 +483,8 @@ export function useHandleNewThread() {
   const handleNewThread = useNewThreadHandler();
 
   return {
-    activeDraftThread:
-      activeDraftThread &&
-      projects.some(
-        (p) =>
-          p.id === activeDraftThread.projectId &&
-          p.environmentId === activeDraftThread.environmentId,
-      )
-        ? activeDraftThread
-        : null,
-    activeThread:
-      activeThread &&
-      projects.some(
-        (p) => p.id === activeThread.projectId && p.environmentId === activeThread.environmentId,
-      )
-        ? activeThread
-        : null,
+    activeDraftThread,
+    activeThread,
     defaultProjectRef: orderedProjects[0]
       ? scopeProjectRef(orderedProjects[0].environmentId, orderedProjects[0].id)
       : null,
