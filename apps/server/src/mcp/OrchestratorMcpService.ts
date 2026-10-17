@@ -73,7 +73,7 @@ import {
   type TaskBoardWorkspaceSnapshot,
   ThreadId,
 } from "@t3tools/contracts";
-import { confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
+import { confirmDelegatedSpawn, confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
 import { instanceForModel } from "../subagents/instanceForModel.ts";
 import { personaEngineSupport } from "../subagents/personaEngines.ts";
 import { loadSubagentPersona } from "../subagents/subagentPersona.ts";
@@ -104,6 +104,7 @@ import * as ProviderAdapterRegistry from "../orchestration-v2/ProviderAdapterReg
 import { DelegatedTaskAcceptance } from "./DelegatedTaskAcceptance.ts";
 import { DelegatedTaskLedger } from "./DelegatedTaskLedger.ts";
 import { delegatedTaskUsage } from "./delegatedTaskUsage.ts";
+import { spawnQuotaBlock } from "./spawnQuotaGuard.ts";
 import {
   subagentResultForRun,
   delegatedTaskProgress,
@@ -2431,18 +2432,23 @@ const make = Effect.gen(function* () {
           Effect.map((settings) => settings.routeLightDelegatedTasks),
           Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
         );
+        // The folder that holds .agents/ for subagent specs and model tiers.
+        const parentCwd = Effect.gen(function* () {
+          return (
+            parent.thread.worktreePath ??
+            (yield* projects.getById(parent.thread.projectId).pipe(
+              Effect.map((project) =>
+                Option.isSome(project) ? project.value.workspaceRoot : null,
+              ),
+              Effect.orElseSucceed(() => null),
+            ))
+          );
+        });
         const persona =
           input.subagent === undefined
             ? undefined
             : yield* Effect.gen(function* () {
-                const cwd =
-                  parent.thread.worktreePath ??
-                  (yield* projects.getById(parent.thread.projectId).pipe(
-                    Effect.map((project) =>
-                      Option.isSome(project) ? project.value.workspaceRoot : null,
-                    ),
-                    Effect.orElseSucceed(() => null),
-                  ));
+                const cwd = yield* parentCwd;
                 if (cwd === null) {
                   return yield* failure(
                     "invalid_request",
@@ -2552,7 +2558,35 @@ const make = Effect.gen(function* () {
         if (personaEngine?.kind === "unsupported") {
           return yield* failure("invalid_request", personaEngine.message);
         }
-        if (persona !== undefined) {
+        const delegationSettings = yield* serverSettings.getSettings.pipe(
+          Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
+        );
+        const targetProvider = providers.find(
+          (provider) => provider.instanceId === target.modelSelection.instanceId,
+        );
+        const quotaBlock = spawnQuotaBlock({
+          target: targetProvider,
+          providers,
+          blockPercent: delegationSettings.subagentQuotaBlockPercent,
+          nowMs: yield* Clock.currentTimeMillis,
+          isRunnable: (provider) =>
+            provider.models.length > 0 && providerConstraints(provider, true).length === 0,
+        });
+        if (quotaBlock !== null) {
+          return yield* failure("provider_unavailable", quotaBlock);
+        }
+        if (persona === undefined) {
+          yield* confirmDelegatedSpawn({
+            parent,
+            cwd: yield* parentCwd,
+            task: input.task,
+            model: target.modelSelection.model,
+            account: targetProvider?.displayName ?? target.modelSelection.instanceId,
+            reason: input.title ?? input.task,
+            appFreeModels: delegationSettings.subagentFreeTierModels,
+            approvalId: yield* crypto.randomUUIDv4.pipe(Effect.orDie),
+          });
+        } else {
           yield* confirmPersonaSpawn({
             persona,
             parent,
@@ -2562,12 +2596,7 @@ const make = Effect.gen(function* () {
               providers.find((provider) => provider.instanceId === target.modelSelection.instanceId)
                 ?.displayName ?? target.modelSelection.instanceId,
             reason: input.title ?? input.task,
-            appFreeModels: yield* serverSettings.getSettings.pipe(
-              Effect.map((settings) => settings.subagentFreeTierModels),
-              Effect.mapError(() =>
-                failure("orchestration_error", "Unable to read server settings."),
-              ),
-            ),
+            appFreeModels: delegationSettings.subagentFreeTierModels,
             approvalId: yield* crypto.randomUUIDv4.pipe(Effect.orDie),
           });
         }

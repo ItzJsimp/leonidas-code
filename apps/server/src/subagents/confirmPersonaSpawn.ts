@@ -1,7 +1,8 @@
 /**
- * The spawn gate for a named subagent (ADR-0082): a free-tier model starts at
- * once; a confirm-tier model waits for the user's card unless this thread
- * already allowed it.
+ * The spawn gate for every delegated child (ADR-0082): a free-tier model
+ * starts at once; a confirm-tier model waits for the user's card unless this
+ * thread already allowed it. Named subagents and plain `delegate_task` both
+ * pass through it.
  */
 import {
   DEFAULT_SUBAGENT_TIER_GOOD_FOR,
@@ -15,6 +16,7 @@ import { SpawnApprovals } from "./SpawnApprovals.ts";
 import {
   estimatePersonaStartTokens,
   readAiosModelTiersNear,
+  type ResolvedSpawnTier,
   resolveSpawnTier,
 } from "./spawnTiers.ts";
 import type { LoadedSubagentPersona } from "./subagentPersona.ts";
@@ -22,44 +24,27 @@ import type { LoadedSubagentPersona } from "./subagentPersona.ts";
 const denied = (message: string) =>
   new OrchestratorMcpFailure({ code: "capability_denied", message });
 
-/** Free-tier spawns pass; confirm-tier spawns wait for the user's card (ADR-0082). */
-export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (input: {
-  readonly persona: LoadedSubagentPersona;
+/** The card for one spawn: free tier starts at once, confirm tier waits for the user. */
+const awaitSpawnCard = Effect.fnUntraced(function* (input: {
   readonly parent: { readonly thread: { readonly id: ThreadId; readonly title: string } };
+  readonly subagent: string;
   readonly model: string;
   readonly account: string;
   readonly reason: string;
-  readonly appFreeModels: ReadonlyArray<string>;
   readonly approvalId: string;
+  readonly tier: Omit<ResolvedSpawnTier, "source"> & {
+    readonly source: ResolvedSpawnTier["source"] | "subagent";
+  };
+  readonly filesInScope: ReadonlyArray<string>;
+  readonly toolCount: number;
+  readonly estimatedStartTokens: number;
   readonly engineNote?: string;
+  /** Runs once when the spawn may start. */
+  readonly started: Effect.Effect<void>;
 }) {
-  const { persona, parent, model, appFreeModels } = input;
+  const { parent, subagent, model, tier, started } = input;
   const approvals = yield* SpawnApprovals;
-  const estimatedStartTokens = estimatePersonaStartTokens({
-    systemPromptChars: persona.systemPrompt.length,
-    tools: persona.spec.tools,
-  });
-  const started = approvals.recordSpawn(estimatedStartTokens);
-  const aios = yield* Effect.try({
-    try: () => readAiosModelTiersNear(persona.specPath),
-    catch: (error) =>
-      new OrchestratorMcpFailure({
-        code: "invalid_request",
-        message: error instanceof Error ? error.message : String(error),
-      }),
-  });
-  const mapped = resolveSpawnTier({ model, appFreeModels, aios });
-  // A spec may raise its own tier to confirm, never lower it.
-  const tier =
-    persona.spec.tier === "confirm" && mapped.tier === "free"
-      ? {
-          tier: "confirm" as const,
-          source: "subagent" as const,
-          goodFor: DEFAULT_SUBAGENT_TIER_GOOD_FOR.confirm,
-        }
-      : mapped;
   if (tier.tier === "free") return yield* started;
-  const subagent = persona.spec.name;
   if (yield* approvals.isAllowedForThread({ threadId: parent.thread.id, subagent, model })) {
     return yield* started;
   }
@@ -71,9 +56,9 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
     model,
     account: input.account,
     reason: input.reason.trim().slice(0, 600),
-    filesInScope: persona.spec.context.map((entry) => entry.path),
-    toolCount: persona.spec.tools.length,
-    estimatedStartTokens,
+    filesInScope: [...input.filesInScope],
+    toolCount: input.toolCount,
+    estimatedStartTokens: input.estimatedStartTokens,
     tierSource: tier.source,
     goodFor: tier.goodFor,
     ...(input.engineNote === undefined ? {} : { engineNote: input.engineNote }),
@@ -96,4 +81,95 @@ export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (i
         `Nobody answered the ${subagent} spawn card on ${model} in 15 minutes, so it did not start.`,
       );
   }
+});
+
+const readTiers = (path: string) =>
+  Effect.try({
+    try: () => readAiosModelTiersNear(path),
+    catch: (error) =>
+      new OrchestratorMcpFailure({
+        code: "invalid_request",
+        message: error instanceof Error ? error.message : String(error),
+      }),
+  });
+
+/** Free-tier spawns pass; confirm-tier spawns wait for the user's card (ADR-0082). */
+export const confirmPersonaSpawn = Effect.fn("confirmPersonaSpawn")(function* (input: {
+  readonly persona: LoadedSubagentPersona;
+  readonly parent: { readonly thread: { readonly id: ThreadId; readonly title: string } };
+  readonly model: string;
+  readonly account: string;
+  readonly reason: string;
+  readonly appFreeModels: ReadonlyArray<string>;
+  readonly approvalId: string;
+  readonly engineNote?: string;
+}) {
+  const { persona, model, appFreeModels } = input;
+  const approvals = yield* SpawnApprovals;
+  const estimatedStartTokens = estimatePersonaStartTokens({
+    systemPromptChars: persona.systemPrompt.length,
+    tools: persona.spec.tools,
+  });
+  const aios = yield* readTiers(persona.specPath);
+  const mapped = resolveSpawnTier({ model, appFreeModels, aios });
+  // A spec may raise its own tier to confirm, never lower it.
+  const tier =
+    persona.spec.tier === "confirm" && mapped.tier === "free"
+      ? {
+          tier: "confirm" as const,
+          source: "subagent" as const,
+          goodFor: DEFAULT_SUBAGENT_TIER_GOOD_FOR.confirm,
+        }
+      : mapped;
+  return yield* awaitSpawnCard({
+    parent: input.parent,
+    subagent: persona.spec.name,
+    model,
+    account: input.account,
+    reason: input.reason,
+    approvalId: input.approvalId,
+    tier,
+    filesInScope: persona.spec.context.map((entry) => entry.path),
+    toolCount: persona.spec.tools.length,
+    estimatedStartTokens,
+    ...(input.engineNote === undefined ? {} : { engineNote: input.engineNote }),
+    started: approvals.recordSpawn(estimatedStartTokens),
+  });
+});
+
+/** The card label for a `delegate_task` that names no subagent. */
+export const DELEGATED_TASK_SPAWN_LABEL = "delegated task";
+
+/**
+ * The same gate for a plain `delegate_task` (no subagent): a confirm-tier
+ * model waits for the user's card. `cwd` finds the AIOS model-tiers.json;
+ * null uses the app's free list only.
+ */
+export const confirmDelegatedSpawn = Effect.fn("confirmDelegatedSpawn")(function* (input: {
+  readonly parent: { readonly thread: { readonly id: ThreadId; readonly title: string } };
+  readonly cwd: string | null;
+  readonly task: string;
+  readonly model: string;
+  readonly account: string;
+  readonly reason: string;
+  readonly appFreeModels: ReadonlyArray<string>;
+  readonly approvalId: string;
+}) {
+  const aios = input.cwd === null ? null : yield* readTiers(`${input.cwd}/.agents`);
+  return yield* awaitSpawnCard({
+    parent: input.parent,
+    subagent: DELEGATED_TASK_SPAWN_LABEL,
+    model: input.model,
+    account: input.account,
+    reason: input.reason,
+    approvalId: input.approvalId,
+    tier: resolveSpawnTier({ model: input.model, appFreeModels: input.appFreeModels, aios }),
+    filesInScope: [],
+    toolCount: 0,
+    estimatedStartTokens: estimatePersonaStartTokens({
+      systemPromptChars: input.task.length,
+      tools: [],
+    }),
+    started: Effect.void,
+  });
 });
