@@ -10,6 +10,7 @@ pub mod engine;
 pub mod groq;
 pub mod hotkeys;
 pub mod http;
+pub mod hud;
 pub mod paste;
 pub mod polish;
 
