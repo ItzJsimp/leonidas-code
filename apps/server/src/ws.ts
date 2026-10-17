@@ -2904,13 +2904,13 @@ const layerWsRpc = (
             });
           }),
         // Each change made through this server pushes a fresh list; no polling.
-        [WS_METHODS.focusSubscribe]: () =>
+        [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(
             Stream.mapEffect(() =>
               projectService.snapshot.pipe(
                 Effect.map((snapshot) => snapshot.projects),
                 Effect.orElseSucceed(() => []),
-                Effect.flatMap(taskBoard.focus),
+                Effect.flatMap((projects) => taskBoard.focus(projects, input)),
               ),
             ),
           ),

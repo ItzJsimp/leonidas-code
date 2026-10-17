@@ -72,6 +72,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
 import { ComposerBanner } from "./ComposerBanner";
 import { createDraftSaver } from "./savedDraft";
+import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
 
 /** Pasted into an agent chat, it makes the AIOS prompts folder the app reads. */
 const PROMPTS_FOLDER_SETUP = `Set up the prompts folder in my AIOS so Leonidas Code can read my saved prompts.
@@ -102,6 +103,7 @@ function errorText(error: unknown) {
 
 /** Server-backed saves are separate from the composer's local attachment-capable stash. */
 export function ComposerSavedItems(props: Props) {
+  const workspace = useActiveAiosWorkspace();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -120,11 +122,16 @@ export function ComposerSavedItems(props: Props) {
     () =>
       createDraftSaver({
         create: async (input) =>
-          unwrap(await create({ environmentId: props.environmentId, input })),
+          unwrap(
+            await create({
+              environmentId: props.environmentId,
+              input: { ...input, ...workspace.scope },
+            }),
+          ),
         saveTask: async (input) =>
           unwrap(await task({ environmentId: props.environmentId, input })),
       }),
-    [create, task, props.environmentId],
+    [create, task, props.environmentId, workspace.scope],
   );
   const hasContext =
     !!draft &&
@@ -318,6 +325,7 @@ function StatusTabs(props: { value: StatusFilter; onChange: (value: StatusFilter
 }
 
 function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void }) {
+  const workspace = useActiveAiosWorkspace();
   const [scope, setScope] = useState<"This project" | "No project" | "All projects">(
     props.projectId ? "This project" : "No project",
   );
@@ -340,14 +348,17 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
   const navigate = useNavigate();
   const projectId = scope === "No project" ? null : props.projectId;
   const query = useEnvironmentQuery(
-    serverEnvironment.savedItems({
-      environmentId: props.environmentId,
-      input: {
-        ...(scope === "All projects" ? {} : { projectId }),
-        ...(kind === "All types" ? {} : { kind }),
-        ...(status === "all" ? {} : { status }),
-      },
-    }),
+    workspace.scopeReady
+      ? serverEnvironment.savedItems({
+          environmentId: props.environmentId,
+          input: {
+            ...workspace.scope,
+            ...(scope === "All projects" ? {} : { projectId }),
+            ...(kind === "All types" ? {} : { kind }),
+            ...(status === "all" ? {} : { status }),
+          },
+        })
+      : null,
   );
   const transition = useAtomCommand(serverEnvironment.transitionSavedItem);
   const importItem = useAtomCommand(serverEnvironment.importSavedItem);
@@ -472,7 +483,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
         unwrap(
           await importItem({
             environmentId: props.environmentId,
-            input: { commandId, markdown, projectId },
+            input: { commandId, markdown, projectId, ...workspace.scope },
           }),
         );
         setImportOpen(false);

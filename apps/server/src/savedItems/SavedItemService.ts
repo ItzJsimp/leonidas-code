@@ -20,7 +20,12 @@ import {
 import { parseSavedItemMarkdown } from "@t3tools/shared/savedItemMarkdown";
 import { isValidOnceRunAt } from "../scheduledTasks/Schedule.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
-import { defaultWorkspaceRoot } from "../taskBoard/aiosWorkspaces.ts";
+import {
+  listAiosWorkspaces,
+  resolveWorkspaceRoot,
+  workspaceForPath,
+} from "../taskBoard/aiosWorkspaces.ts";
+import { ProjectService } from "../project/ProjectService.ts";
 import {
   deleteFolderPrompt,
   FOLDER_ID_PREFIX,
@@ -120,22 +125,61 @@ const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const settings = yield* Effect.serviceOption(ServerSettingsService);
   /** The AIOS prompts folder, resolved on each use so a newly confirmed AIOS folder applies at once. */
-  const promptsDir = Effect.gen(function* () {
-    let confirmed: string | undefined;
-    if (Option.isSome(settings)) {
-      const current = yield* settings.value.getSettings.pipe(Effect.option);
-      confirmed = Option.isSome(current) ? current.value.aiosRoot || undefined : undefined;
-    }
-    // Prompts belong to the default workspace until saved items carry a workspace id.
-    const root = defaultWorkspaceRoot([
-      confirmed,
-      process.env.LEONIDAS_AIOS_ROOT,
-      process.env.AIOS_ROOT,
-    ]);
-    return root === null ? null : promptsDirFor(root);
-  });
+  const projects = yield* Effect.serviceOption(ProjectService);
+  const workspaceScope = (workspaceId?: string, projectId?: string | null) =>
+    Effect.gen(function* () {
+      let confirmed: string | undefined;
+      if (Option.isSome(settings)) {
+        const current = yield* settings.value.getSettings.pipe(Effect.option);
+        confirmed = Option.isSome(current) ? current.value.aiosRoot || undefined : undefined;
+      }
+      const snapshot = Option.isSome(projects)
+        ? yield* projects.value.snapshot.pipe(Effect.map((s) => s.projects))
+        : [];
+      const workspaces = listAiosWorkspaces([
+        confirmed,
+        process.env.LEONIDAS_AIOS_ROOT,
+        process.env.AIOS_ROOT,
+        ...snapshot.map((p) => p.workspaceRoot),
+      ]);
+      const project = snapshot.find((p) => p.id === projectId);
+      const owner = project ? workspaceForPath(workspaces, project.workspaceRoot) : undefined;
+      const root = workspaceId
+        ? resolveWorkspaceRoot(workspaces, workspaceId)
+        : (owner?.root ?? resolveWorkspaceRoot(workspaces, undefined));
+      const state = workspaces.find((w) => w.root === root);
+      const id = state?.status === "ready" ? state.file.id : undefined;
+      const isDefault = root === workspaces[0]?.root;
+      return {
+        root,
+        ...(id === undefined ? {} : { id }),
+        isDefault,
+        projectIds: new Set(
+          snapshot
+            .filter((p) => workspaceForPath(workspaces, p.workspaceRoot)?.root === root)
+            .map((p) => p.id),
+        ),
+      };
+    });
+  const promptsDir = (workspaceId?: string) =>
+    workspaceScope(workspaceId).pipe(
+      Effect.map((scope) => (scope.root === null ? null : promptsDirFor(scope.root))),
+    );
+  const folderPrefix = (scope: { id?: string; isDefault: boolean }) =>
+    scope.isDefault
+      ? FOLDER_ID_PREFIX
+      : `${FOLDER_ID_PREFIX}${encodeURIComponent(scope.id ?? "")}:`;
   const folderFile = (id: SavedItemId) =>
-    id.startsWith(FOLDER_ID_PREFIX) ? id.slice(FOLDER_ID_PREFIX.length) : null;
+    id.startsWith(FOLDER_ID_PREFIX) ? id.slice(id.lastIndexOf(":") + 1) : null;
+  const belongs = (
+    item: SavedItem,
+    scope: { id?: string; isDefault: boolean; projectIds: ReadonlySet<string> },
+  ) =>
+    item.workspaceId !== undefined
+      ? item.workspaceId === scope.id
+      : item.projectId !== null
+        ? scope.projectIds.has(item.projectId)
+        : scope.isDefault;
   const fsError = (cause: unknown) => new SavedItemError({ reason: "storage", cause });
   const project = (item: SavedItem) =>
     encode(item).pipe(
@@ -199,64 +243,71 @@ const make = Effect.gen(function* () {
       .pipe(storage);
   const now = DateTime.now.pipe(Effect.map(DateTime.formatIso));
   /** Mirrors the prompts folder into the projection: the files win, the app copy follows them. */
-  const syncFolder = Effect.gen(function* () {
-    const dir = yield* promptsDir;
-    const prompts = dir === null ? null : readFolderPrompts(dir);
-    if (dir === null || prompts === null) return { path: dir, present: false };
-    yield* sql.withTransaction(
-      Effect.gen(function* () {
-        const rows = yield* sql<{
-          item_json: string;
-        }>`SELECT item_json FROM projection_saved_items WHERE item_id LIKE ${`${FOLDER_ID_PREFIX}%`}`;
-        const known = new Map<string, SavedItem>();
-        for (const row of rows) {
-          const item = yield* decode(row.item_json);
-          known.set(item.id, item);
-        }
-        const syncId = (type: string) =>
-          CommandId.make(`folder-sync:${type}:${NodeCrypto.randomUUID()}`);
-        const timestamp = yield* now;
-        for (const prompt of prompts) {
-          if (prompt.body.length > SAVED_ITEM_BODY_MAX_LENGTH) continue;
-          const id = SavedItemId.make(`${FOLDER_ID_PREFIX}${prompt.file}`);
-          const current = known.get(id);
-          known.delete(id);
-          if (!current) {
-            yield* record(syncId("created"), "saved_item.created", {
-              id,
-              kind: "prompt",
-              title: prompt.title,
-              body: prompt.body,
-              tags: [...prompt.tags],
-              projectId: null,
-              status: "queued",
-              launchedThreadId: null,
-              createdBy: "user",
-              createdAt: timestamp,
-              updatedAt: timestamp,
-              launchedBy: null,
-              scheduledTaskId: null,
-              boardTaskId: null,
-              pendingCommandId: null,
-            });
-          } else if (current.title !== prompt.title || current.body !== prompt.body) {
-            yield* record(syncId("updated"), "saved_item.updated", {
-              ...current,
-              title: prompt.title,
-              body: prompt.body,
-              updatedAt: timestamp,
-            });
+  const syncFolder = (scope: {
+    root: string | null;
+    id?: string;
+    isDefault: boolean;
+    projectIds: ReadonlySet<string>;
+  }) =>
+    Effect.gen(function* () {
+      const dir = scope.root === null ? null : promptsDirFor(scope.root);
+      const prompts = dir === null ? null : readFolderPrompts(dir);
+      if (dir === null || prompts === null) return { path: dir, present: false };
+      yield* sql.withTransaction(
+        Effect.gen(function* () {
+          const rows = yield* sql<{
+            item_json: string;
+          }>`SELECT item_json FROM projection_saved_items WHERE item_id LIKE ${`${FOLDER_ID_PREFIX}%`}`;
+          const known = new Map<string, SavedItem>();
+          for (const row of rows) {
+            const item = yield* decode(row.item_json);
+            if (belongs(item, scope)) known.set(item.id, item);
           }
-        }
-        // A file removed outside the app removes its prompt, unless work still points at it.
-        for (const item of known.values()) {
-          if (item.pendingCommandId || item.scheduledTaskId) continue;
-          yield* record(syncId("deleted"), DELETE_EVENT, { ...item, updatedAt: timestamp });
-        }
-      }),
-    );
-    return { path: dir, present: true };
-  }).pipe(storage);
+          const syncId = (type: string) =>
+            CommandId.make(`folder-sync:${type}:${NodeCrypto.randomUUID()}`);
+          const timestamp = yield* now;
+          for (const prompt of prompts) {
+            if (prompt.body.length > SAVED_ITEM_BODY_MAX_LENGTH) continue;
+            const id = SavedItemId.make(`${folderPrefix(scope)}${prompt.file}`);
+            const current = known.get(id);
+            known.delete(id);
+            if (!current) {
+              yield* record(syncId("created"), "saved_item.created", {
+                id,
+                ...(scope.id === undefined ? {} : { workspaceId: scope.id }),
+                kind: "prompt",
+                title: prompt.title,
+                body: prompt.body,
+                tags: [...prompt.tags],
+                projectId: null,
+                status: "queued",
+                launchedThreadId: null,
+                createdBy: "user",
+                createdAt: timestamp,
+                updatedAt: timestamp,
+                launchedBy: null,
+                scheduledTaskId: null,
+                boardTaskId: null,
+                pendingCommandId: null,
+              });
+            } else if (current.title !== prompt.title || current.body !== prompt.body) {
+              yield* record(syncId("updated"), "saved_item.updated", {
+                ...current,
+                title: prompt.title,
+                body: prompt.body,
+                updatedAt: timestamp,
+              });
+            }
+          }
+          // A file removed outside the app removes its prompt, unless work still points at it.
+          for (const item of known.values()) {
+            if (item.pendingCommandId || item.scheduledTaskId) continue;
+            yield* record(syncId("deleted"), DELETE_EVENT, { ...item, updatedAt: timestamp });
+          }
+        }),
+      );
+      return { path: dir, present: true };
+    }).pipe(storage);
   const editable = (item: SavedItem) =>
     item.pendingCommandId || item.boardTaskId
       ? Effect.fail(new SavedItemError({ reason: "conflict" }))
@@ -270,9 +321,18 @@ const make = Effect.gen(function* () {
         input,
         "saved_item.created",
         Effect.gen(function* () {
+          const scope = yield* workspaceScope(input.workspaceId, input.projectId);
+          if (
+            input.workspaceId &&
+            (scope.root === null ||
+              (input.projectId !== null && !scope.projectIds.has(input.projectId)))
+          )
+            return yield* new SavedItemError({ reason: "invalid_input" });
           const dir =
             input.id === undefined && input.kind === "prompt" && input.projectId === null
-              ? yield* promptsDir
+              ? scope.root === null
+                ? null
+                : promptsDirFor(scope.root)
               : null;
           let id = input.id ?? SavedItemId.make(`saved:${input.commandId}`);
           // With an AIOS prompts folder, a new prompt is a file there; the projection follows it.
@@ -282,7 +342,7 @@ const make = Effect.gen(function* () {
               try: () => writeFolderPrompt(dir, { file, title: input.title, body: input.body }),
               catch: fsError,
             });
-            id = SavedItemId.make(`${FOLDER_ID_PREFIX}${file}`);
+            id = SavedItemId.make(`${folderPrefix(scope)}${file}`);
           }
           const existing =
             yield* sql`SELECT item_id FROM projection_saved_items WHERE item_id = ${id}`;
@@ -291,6 +351,7 @@ const make = Effect.gen(function* () {
           const caller = yield* SavedItemCaller;
           return {
             id,
+            ...(scope.id === undefined ? {} : { workspaceId: scope.id }),
             kind: input.kind,
             title: input.title,
             body: input.body,
@@ -321,7 +382,7 @@ const make = Effect.gen(function* () {
           const item = yield* get(input.id);
           yield* editable(item);
           const file = folderFile(item.id);
-          const dir = file === null ? null : yield* promptsDir;
+          const dir = file === null ? null : yield* promptsDir(item.workspaceId);
           if (file !== null && dir !== null) {
             const title = input.title ?? item.title;
             const body = input.body ?? item.body;
@@ -367,7 +428,7 @@ const make = Effect.gen(function* () {
         if (!valid) return yield* new SavedItemError({ reason: "invalid_transition" });
         if (input.action === "delete") {
           const file = folderFile(item.id);
-          const dir = file === null ? null : yield* promptsDir;
+          const dir = file === null ? null : yield* promptsDir(item.workspaceId);
           if (file !== null && dir !== null)
             yield* Effect.try({ try: () => deleteFolderPrompt(dir, file), catch: fsError });
           return { ...item, updatedAt: yield* now };
@@ -543,14 +604,17 @@ const make = Effect.gen(function* () {
           commandId: input.commandId,
           ...parsed.item,
           projectId: input.projectId,
+          ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
         });
       }),
     list: (input) =>
       Effect.gen(function* () {
+        const scope = yield* workspaceScope(input.workspaceId, input.projectId);
+        if (input.workspaceId && scope.root === null) return { items: [] };
         const promptsFolder =
           input.kind === "note" || (input.projectId !== undefined && input.projectId !== null)
             ? undefined
-            : yield* syncFolder;
+            : yield* syncFolder(scope);
         const rows = yield* sql<{
           item_json: string;
         }>`SELECT item_json FROM projection_saved_items WHERE ${sql.and([
@@ -564,7 +628,11 @@ const make = Effect.gen(function* () {
           ...(input.kind === undefined ? [] : [sql`kind = ${input.kind}`]),
         ])} ORDER BY updated_at DESC, item_id`;
         const items = yield* Effect.forEach(rows, (row) => decode(row.item_json));
-        return promptsFolder === undefined ? { items } : { items, promptsFolder };
+        const scoped =
+          scope.root === null && !input.workspaceId
+            ? items
+            : items.filter((item) => belongs(item, scope));
+        return promptsFolder === undefined ? { items: scoped } : { items: scoped, promptsFolder };
       }).pipe(storage),
     rebuild: sql
       .withTransaction(

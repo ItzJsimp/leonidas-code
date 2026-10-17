@@ -33,6 +33,7 @@ import {
   TaskBoardCompletions,
   FocusSnapshot,
   AiosUsageShape,
+  FocusSubscribeInput,
   FocusUpdateInput,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
@@ -1769,7 +1770,7 @@ const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
 });
 
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
-  payload: Schema.Struct({}),
+  payload: FocusSubscribeInput,
   success: FocusSnapshot,
   error: EnvironmentAuthorizationError,
   stream: true,

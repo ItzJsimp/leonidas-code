@@ -445,3 +445,24 @@ it.effect("keeps a native card in its project's workspace when slugs clash", () 
     }),
   ),
 );
+
+it.effect("keeps each workspace's focus list in its own AIOS", () =>
+  withWorkspaces(({ personal, business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      yield* board.focusUpdate(
+        { op: "add", projectId: null, text: "Call Ostrich", workspaceId: "simplygersi" },
+        projects,
+      );
+      const texts = (workspaceId?: string) =>
+        board
+          .focus(projects, workspaceId ? { workspaceId } : {})
+          .pipe(Effect.map((view) => view.sections.flatMap((s) => s.items.map((i) => i.text))));
+      expect(yield* texts("simplygersi")).toEqual(["Call Ostrich"]);
+      expect(yield* texts("leonidas")).toEqual([]);
+      expect(yield* texts()).toEqual([]);
+      expect(NodeFS.existsSync(NodePath.join(business, "memory", "focus.md"))).toBe(true);
+      expect(NodeFS.existsSync(NodePath.join(personal, "memory", "focus.md"))).toBe(false);
+    }),
+  ),
+);

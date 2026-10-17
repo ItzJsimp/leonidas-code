@@ -590,7 +590,10 @@ export class TaskBoardService extends Context.Service<
     /** The latest task completions made through this server: the current list, then each change. */
     readonly completions: Stream.Stream<TaskBoardCompletions>;
     /** The focus list in `<AIOS>/memory/focus.md` (the native root when no AIOS is found). */
-    readonly focus: (projects: ReadonlyArray<Project>) => Effect.Effect<FocusSnapshot>;
+    readonly focus: (
+      projects: ReadonlyArray<Project>,
+      target?: WorkspaceTarget,
+    ) => Effect.Effect<FocusSnapshot>;
     readonly focusUpdate: (
       input: FocusUpdateInput,
       projects: ReadonlyArray<Project>,
@@ -1752,8 +1755,8 @@ const make = Effect.gen(function* () {
     });
 
   const focusRevision = yield* SubscriptionRef.make(0);
-  const focusPath = (projects: ReadonlyArray<Project>) => {
-    const root = inboxRoot(projects);
+  const focusPath = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) => {
+    const root = inboxRoot(projects, target);
     return root === null ? null : focusPathFor(root);
   };
   const focusSnapshotOf = (
@@ -1773,9 +1776,9 @@ const make = Effect.gen(function* () {
     };
   };
   // A file that cannot be read shows as an empty list with its path, so the widget can say where it looked.
-  const focus = (projects: ReadonlyArray<Project>) =>
+  const focus = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) =>
     Effect.sync(() => {
-      const path = focusPath(projects);
+      const path = focusPath(projects, target);
       if (path === null) return { path: null, member: resolveMember(), sections: [] };
       try {
         return focusSnapshotOf(path, readFocusFile(path), projects);
@@ -1786,7 +1789,7 @@ const make = Effect.gen(function* () {
 
   const focusUpdate = (input: FocusUpdateInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
-      const path = focusPath(projects);
+      const path = focusPath(projects, input);
       if (path === null) return yield* storageError("No folder is available for the focus list.");
       const snapshot = yield* Effect.try({
         try: () => {

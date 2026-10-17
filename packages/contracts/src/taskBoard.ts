@@ -614,8 +614,18 @@ export const FocusUpdateInput = Schema.Union([
     op: Schema.Literal("add"),
     projectId: Schema.NullOr(ProjectId),
     text: FocusText,
+    ...workspaceScope,
   }),
-  Schema.Struct({ op: Schema.Literal("set_done"), id: Schema.String, done: Schema.Boolean }),
-  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String }),
+  Schema.Struct({
+    op: Schema.Literal("set_done"),
+    id: Schema.String,
+    done: Schema.Boolean,
+    ...workspaceScope,
+  }),
+  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String, ...workspaceScope }),
 ]);
 export type FocusUpdateInput = typeof FocusUpdateInput.Type;
+
+/** The focus list of one workspace; no id keeps the default workspace (old clients). */
+export const FocusSubscribeInput = Schema.Struct({ ...workspaceScope });
+export type FocusSubscribeInput = typeof FocusSubscribeInput.Type;
