@@ -60,7 +60,7 @@ import {
   type WebhookRequest,
 } from "./webhookTemplate.ts";
 import { ScheduledTaskStoreOwner } from "./StoreOwner.ts";
-import { ScheduledTaskIdleLimit, watchRunForIdle } from "./RunWatchdog.ts";
+import { ScheduledTaskIdleLimit, runTokensUsed, watchRun } from "./RunWatchdog.ts";
 import { constantTimeEquals, verifyWebhookSignature } from "./webhookVerification.ts";
 
 /** Path prefix of the environment route that receives webhook requests. */
@@ -206,6 +206,7 @@ interface ScheduledTaskRow {
   readonly run_count: number;
   readonly webhook_token: string | null;
   readonly webhook_secret: string | null;
+  readonly token_cap: number | null;
 }
 
 interface WebhookDeliveryRow {
@@ -360,6 +361,7 @@ const decodeRow = (row: ScheduledTaskRow, origin: WebhookOrigin | null = null) =
       lastRunStatus: row.last_run_status,
       lastRunError: row.last_run_error,
       runCount: row.run_count,
+      ...(row.token_cap === null ? {} : { tokenCap: row.token_cap }),
       ...(webhook === undefined ? {} : { webhook }),
     });
   }).pipe(
@@ -464,7 +466,8 @@ export const layer = Layer.effect(
         last_run_error,
         run_count,
         webhook_token,
-        webhook_secret
+        webhook_secret,
+        token_cap
       FROM scheduled_tasks
       ORDER BY updated_at DESC, task_id ASC
     `;
@@ -499,7 +502,8 @@ export const layer = Layer.effect(
         last_run_error,
         run_count,
         webhook_token,
-        webhook_secret
+        webhook_secret,
+        token_cap
       FROM scheduled_tasks
       WHERE task_id = ${id}
     `;
@@ -579,7 +583,8 @@ export const layer = Layer.effect(
           last_run_error,
           run_count,
           webhook_token,
-          webhook_secret
+          webhook_secret,
+          token_cap
         )
         SELECT
           ${task.id},
@@ -603,7 +608,8 @@ export const layer = Layer.effect(
           ${task.lastRunError},
           ${task.runCount},
           ${webhook.token},
-          ${webhook.secret}
+          ${webhook.secret},
+          ${task.tokenCap ?? null}
         WHERE ${requireExisting ? 0 : 1} = 1
            OR EXISTS (SELECT 1 FROM scheduled_tasks WHERE task_id = ${task.id})
         ON CONFLICT (task_id)
@@ -619,6 +625,7 @@ export const layer = Layer.effect(
           runtime_mode = excluded.runtime_mode,
           interaction_mode = excluded.interaction_mode,
           creation_source = excluded.creation_source,
+          token_cap = excluded.token_cap,
           updated_at = excluded.updated_at,
           next_run_at = excluded.next_run_at,
           -- Only rotate changes a live token, so a save racing a rotation
@@ -746,9 +753,11 @@ export const layer = Layer.effect(
     }) =>
       Effect.gen(function* () {
         const idleLimitMs = yield* readIdleLimit;
-        if (idleLimitMs <= 0) return;
-        const outcome = yield* watchRunForIdle({
+        const tokenCap = input.task.tokenCap ?? null;
+        if (idleLimitMs <= 0 && tokenCap === null) return;
+        const outcome = yield* watchRun({
           idleLimitMs,
+          tokenCap,
           nowMs: Clock.currentTimeMillis,
           readRun: threadManagement
             .getProjectThread({ projectId: input.task.projectId, threadId: input.threadId })
@@ -761,6 +770,7 @@ export const layer = Layer.effect(
                   .map((item) => DateTime.toEpochMillis(item.updatedAt));
                 return Option.some({
                   status: run.status,
+                  tokensUsed: runTokensUsed(projection, input.runId),
                   lastActivityMs: Math.max(
                     DateTime.toEpochMillis(run.startedAt ?? run.requestedAt),
                     ...marks,
@@ -774,13 +784,20 @@ export const layer = Layer.effect(
               commandId: CommandId.make(`scheduled-task:${input.fireKey}:idle-interrupt`),
               threadId: input.threadId,
               runId: input.runId,
-              reason: `Scheduled run idle for more than ${Math.round(idleLimitMs / 1000)} s.`,
+              reason:
+                tokenCap === null
+                  ? `Scheduled run idle for more than ${Math.round(idleLimitMs / 1000)} s.`
+                  : `Scheduled run idle for more than ${Math.round(idleLimitMs / 1000)} s or over its token cap of ${tokenCap}.`,
             })
             .pipe(Effect.asVoid),
         });
-        if (outcome !== "interrupted") return;
-        const message = `Run was idle for more than ${Math.round(idleLimitMs / 1000)} s and was interrupted.`;
-        yield* Effect.logWarning("Interrupted idle scheduled task run", {
+        if (outcome === "ended") return;
+        const message =
+          outcome === "token_cap"
+            ? `Run reached its token cap of ${tokenCap} and was interrupted.`
+            : `Run was idle for more than ${Math.round(idleLimitMs / 1000)} s and was interrupted.`;
+        yield* Effect.logWarning("Interrupted scheduled task run", {
+          reason: outcome,
           taskId: input.task.id,
           threadId: input.threadId,
           runId: input.runId,
@@ -1212,6 +1229,8 @@ export const layer = Layer.effect(
                 return { token, secret, secretChanged };
               })
             : { token: null, secret: null, secretChanged: true };
+        const tokenCap =
+          input.tokenCap === undefined ? (existingTask?.tokenCap ?? null) : input.tokenCap;
         const scheduleUnchanged =
           existingTask !== null &&
           existingTask.enabled === input.enabled &&
@@ -1239,6 +1258,7 @@ export const layer = Layer.effect(
           lastRunStatus: existingTask?.lastRunStatus ?? "never",
           lastRunError: existingTask?.lastRunError ?? null,
           runCount: existingTask?.runCount ?? 0,
+          ...(tokenCap === null ? {} : { tokenCap }),
         };
         yield* saveTask(task, input.requireExisting === true, webhook);
         yield* notifyChanged;

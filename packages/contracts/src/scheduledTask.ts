@@ -4,6 +4,7 @@ import {
   CommandId,
   ForwardCompatibleArray,
   IsoDateTime,
+  PositiveInt,
   ProjectId,
   ScheduledTaskId,
   SecretRef,
@@ -201,6 +202,8 @@ export const ScheduledTask = Schema.Struct({
   lastRunError: Schema.NullOr(Schema.String),
   runCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   webhook: Schema.optional(ScheduledTaskWebhookEndpoint),
+  /** Most tokens one run may use before it is interrupted. Absent means no cap. */
+  tokenCap: Schema.optionalKey(PositiveInt),
 });
 export type ScheduledTask = typeof ScheduledTask.Type;
 
@@ -232,6 +235,8 @@ export const ScheduledTaskUpsertInput = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   createdBy: Schema.optional(OrchestrationV2Actor),
   creationSource: Schema.optional(OrchestrationV2CreationSource),
+  /** Omit to keep the stored cap; null clears it. */
+  tokenCap: Schema.optional(Schema.NullOr(PositiveInt)),
 });
 export type ScheduledTaskUpsertInput = typeof ScheduledTaskUpsertInput.Type;
 

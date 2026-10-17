@@ -108,3 +108,36 @@ it.effect("preserves a due run when a save only pads the scheduled hour", () =>
     }).pipe(Effect.provide(ScheduledTaskService.layer.pipe(Layer.provide(layerDependencies))));
   }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
 );
+
+it.effect("stores a token cap, keeps it when a save omits it, and clears it on null", () =>
+  Effect.gen(function* () {
+    const layerDependencies = Layer.mergeAll(
+      NodeCrypto.layer,
+      Scheduler.layer,
+      Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
+      Layer.mock(ThreadManagementService.ThreadManagementService)({}),
+      Layer.mock(SecretRequests.SecretRequests)({}),
+    );
+    yield* Effect.gen(function* () {
+      const service = yield* ScheduledTaskService.ScheduledTaskService;
+      const input = yield* decodeUpsertInput({
+        id: "scheduled-task:token-cap",
+        title: "Capped",
+        prompt: "Do the work.",
+        enabled: true,
+        schedule: { type: "interval", everyMs: 3_600_000 },
+        projectId: "project-token-cap",
+        workspaceStrategy: { type: "root" },
+        modelSelection: { instanceId: "codex", model: "gpt-5.4" },
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        tokenCap: 50_000,
+      });
+      expect((yield* service.upsert(input)).task.tokenCap).toBe(50_000);
+      const { tokenCap: _omitted, ...withoutCap } = input;
+      expect((yield* service.upsert(withoutCap)).task.tokenCap).toBe(50_000);
+      expect((yield* service.list()).tasks[0]?.tokenCap).toBe(50_000);
+      expect((yield* service.upsert({ ...input, tokenCap: null })).task.tokenCap).toBeUndefined();
+    }).pipe(Effect.provide(ScheduledTaskService.layer.pipe(Layer.provide(layerDependencies))));
+  }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
+);

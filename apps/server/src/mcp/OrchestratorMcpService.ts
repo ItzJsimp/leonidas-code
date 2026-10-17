@@ -397,6 +397,7 @@ function scheduledTaskSummary(task: ScheduledTask, mayRun: boolean): Orchestrato
     schedule: task.schedule,
     nextRunAt: task.nextRunAt,
     lastRunStatus: task.lastRunStatus,
+    ...(task.tokenCap == null ? {} : { tokenCap: task.tokenCap }),
     // A bare path is not a URL anyone can call, so agents never get one to share.
     ...(task.webhook?.url == null || !mayRun ? {} : { webhookUrl: task.webhook.url }),
     ...(task.webhook === undefined
@@ -1968,6 +1969,7 @@ const make = Effect.gen(function* () {
           interactionMode: limits.interactionMode,
           createdBy: "agent",
           creationSource: "mcp",
+          ...(input.tokenCap === undefined ? {} : { tokenCap: input.tokenCap }),
           // Scope the idempotency key by provider session so two callers
           // reusing the same clientRequestId cannot collide on one task row.
           ...(input.clientRequestId === undefined
@@ -2178,6 +2180,7 @@ const make = Effect.gen(function* () {
           interactionMode: existing.interactionMode,
           createdBy: existing.createdBy,
           creationSource: existing.creationSource,
+          tokenCap: input.tokenCap === undefined ? (existing.tokenCap ?? null) : input.tokenCap,
         };
         const { task } = yield* scheduledTasks
           .upsert(upsertInput)

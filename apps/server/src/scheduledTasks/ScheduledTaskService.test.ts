@@ -430,6 +430,8 @@ it.effect("interrupts a dispatched run that goes idle and records the failure on
         },
       ],
       turnItems: [],
+      attempts: [],
+      providerTurns: [],
     };
     yield* Effect.scoped(
       Effect.gen(function* () {
@@ -470,6 +472,81 @@ it.effect("interrupts a dispatched run that goes idle and records the failure on
           SELECT last_run_status, last_run_error FROM scheduled_tasks WHERE task_id = 'idle-task'`;
         assert.equal(rows[0]?.last_run_status, "failed");
         assert.include(rows[0]?.last_run_error ?? "", "idle for more than 60 s");
+      }),
+    );
+  }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
+);
+
+it.effect("interrupts a run that reaches the task's token cap while idle checks are off", () =>
+  Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const now = "2026-09-09T12:00:00.000Z";
+    yield* insertRow(
+      sql,
+      {
+        id: "capped-task",
+        next: now,
+        enabled: 1,
+        status: "never",
+        scheduleJson: '{"type":"interval","everyMs":3600000}',
+      },
+      now,
+    );
+    yield* sql`UPDATE scheduled_tasks SET token_cap = 1000 WHERE task_id = 'capped-task'`;
+    yield* TestClock.setTime(Date.parse(now) + 1_000);
+    const interrupts = yield* Ref.make(0);
+    const projection = (usedTokens: number) => ({
+      runs: [
+        {
+          id: "run-1",
+          status: "running",
+          requestedAt: DateTime.makeUnsafe(now),
+          startedAt: DateTime.makeUnsafe(now),
+        },
+      ],
+      turnItems: [],
+      attempts: [{ id: "attempt-1", runId: "run-1" }],
+      providerTurns: [{ runAttemptId: "attempt-1", tokenUsage: { usedTokens, updatedAt: now } }],
+    });
+    const tokens = yield* Ref.make(400);
+    yield* Effect.scoped(
+      Effect.gen(function* () {
+        yield* Layer.build(
+          Layer.provideMerge(
+            ScheduledTaskService.layer,
+            Layer.mergeAll(
+              Layer.mock(ThreadLaunchService.ThreadLaunchService)({
+                launch: () =>
+                  Effect.succeed({
+                    threadId: "thread-1",
+                    projection: projection(0),
+                    resumed: false,
+                  } as never),
+              }),
+              Layer.mock(ThreadManagementService.ThreadManagementService)({
+                getProjectThread: () =>
+                  Ref.get(tokens).pipe(Effect.map((used) => projection(used) as never)),
+                interruptThread: () =>
+                  Ref.update(interrupts, (count) => count + 1).pipe(
+                    Effect.as({ type: "no_active_run" } as never),
+                  ),
+              }),
+              Layer.mock(SecretRequests.SecretRequests)({}),
+              Layer.succeed(RunWatchdog.ScheduledTaskIdleLimit, Effect.succeed(0)),
+              NodeCrypto.layer,
+              Scheduler.layer,
+            ),
+          ),
+        );
+        yield* TestClock.adjust("40 seconds");
+        assert.equal(yield* Ref.get(interrupts), 0);
+        yield* Ref.set(tokens, 1_000);
+        yield* TestClock.adjust("30 seconds");
+        assert.equal(yield* Ref.get(interrupts), 1);
+        const rows = yield* sql<{ last_run_status: string; last_run_error: string | null }>`
+          SELECT last_run_status, last_run_error FROM scheduled_tasks WHERE task_id = 'capped-task'`;
+        assert.equal(rows[0]?.last_run_status, "failed");
+        assert.include(rows[0]?.last_run_error ?? "", "token cap of 1000");
       }),
     );
   }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
