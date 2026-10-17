@@ -325,6 +325,7 @@ function priorityFromCard(value: string | undefined): TaskBoardTaskPriority {
       return "high";
     case "low":
     case "p3":
+    case "someday":
       return "low";
     default:
       return "medium";
@@ -340,6 +341,8 @@ function normalizeProjectSlug(value: string | undefined): string | null {
     .trim()
     .replace(/\\/g, "/")
     .replace(/^projects\//i, "")
+    // SimplyGersi cards link the project file: `projects/<slug>/project.md`.
+    .replace(/\/project\.md$/i, "")
     .replace(/^project-/i, "")
     .replace(/\/+$/, "")
     .toLowerCase();
