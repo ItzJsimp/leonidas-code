@@ -1,6 +1,7 @@
 import {
   createEnvironmentRpcCommand,
   createEnvironmentRpcQueryAtomFamily,
+  createEnvironmentRpcSubscriptionAtomFamily,
 } from "@t3tools/client-runtime/state/runtime";
 import { WS_METHODS } from "@t3tools/contracts";
 import { connectionAtomRuntime } from "../connection/runtime";
@@ -104,3 +105,12 @@ export const taskBoardAiosConfirm = createEnvironmentRpcCommand(connectionAtomRu
   label: "environment-data:task-board:aios-confirm",
   tag: WS_METHODS.taskBoardAiosConfirm,
 });
+
+/** Recent task completions: the current list on subscribe, then a new list after each one. */
+export const taskBoardCompletionsLive = createEnvironmentRpcSubscriptionAtomFamily(
+  connectionAtomRuntime,
+  {
+    label: "environment-data:task-board:completions",
+    tag: WS_METHODS.taskBoardSubscribeCompletions,
+  },
+);

@@ -110,6 +110,24 @@ export const TaskBoardTask = Schema.Struct({
 });
 export type TaskBoardTask = typeof TaskBoardTask.Type;
 
+/** One move of a task from an open status to done, made through this server. */
+export const TaskBoardCompletion = Schema.Struct({
+  // Unique per completion, so a task completed, reopened and completed again is two completions.
+  id: TrimmedNonEmptyString,
+  taskId: TrimmedNonEmptyString,
+  title: TrimmedNonEmptyString,
+  projectSlug: Schema.NullOr(Schema.String),
+  actor: TrimmedNonEmptyString,
+  // True when an agent made the change, false when the user did.
+  byAgent: Schema.Boolean,
+  completedAt: Schema.Number,
+});
+export type TaskBoardCompletion = typeof TaskBoardCompletion.Type;
+
+/** The latest completions, newest last; a subscriber reads the current list first. */
+export const TaskBoardCompletions = Schema.Array(TaskBoardCompletion);
+export type TaskBoardCompletions = typeof TaskBoardCompletions.Type;
+
 export const TaskBoardIssue = Schema.Struct({
   number: PositiveInt,
   title: TrimmedNonEmptyString,
