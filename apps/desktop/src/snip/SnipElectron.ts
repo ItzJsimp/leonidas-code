@@ -17,35 +17,37 @@ export function readSnipDisplays(): ReadonlyArray<SnipDisplay> {
   }));
 }
 
-/** Captures each display at its true physical size, one call per distinct size. */
+/** Captures each display at its true physical size, one call per distinct size, in parallel. */
 export async function captureSnipFrames(
   displays: ReadonlyArray<SnipDisplay>,
 ): Promise<ReadonlyMap<number, SnipFrame>> {
-  const frames = new Map<number, SnipFrame>();
   const bySize = new Map<string, SnipDisplay[]>();
   for (const display of displays) {
     const key = `${String(display.physicalBounds.width)}x${String(display.physicalBounds.height)}`;
     bySize.set(key, [...(bySize.get(key) ?? []), display]);
   }
-  for (const group of bySize.values()) {
-    const first = group[0];
-    if (!first) continue;
-    const sources = await Electron.desktopCapturer.getSources({
-      types: ["screen"],
-      thumbnailSize: { width: first.physicalBounds.width, height: first.physicalBounds.height },
-    });
-    for (const display of group) {
-      const source = sources.find((candidate) => candidate.display_id === String(display.id));
-      if (!source || source.thumbnail.isEmpty()) continue;
-      const size = source.thumbnail.getSize();
-      frames.set(display.id, {
-        width: size.width,
-        height: size.height,
-        bgra: source.thumbnail.toBitmap(),
+  const groups = await Promise.all(
+    [...bySize.values()].map(async (group) => {
+      const first = group[0];
+      if (!first) return [];
+      const sources = await Electron.desktopCapturer.getSources({
+        types: ["screen"],
+        thumbnailSize: { width: first.physicalBounds.width, height: first.physicalBounds.height },
       });
-    }
-  }
-  return frames;
+      const captured: Array<readonly [number, SnipFrame]> = [];
+      for (const display of group) {
+        const source = sources.find((candidate) => candidate.display_id === String(display.id));
+        if (!source || source.thumbnail.isEmpty()) continue;
+        const size = source.thumbnail.getSize();
+        captured.push([
+          display.id,
+          { width: size.width, height: size.height, bgra: source.thumbnail.toBitmap() },
+        ]);
+      }
+      return captured;
+    }),
+  );
+  return new Map(groups.flat());
 }
 
 export function encodeSnipPng(frame: SnipFrame): Buffer {

@@ -2,7 +2,7 @@ import { assert, it } from "vite-plus/test";
 
 import type { SnipFrame } from "./SnipCompose.ts";
 import type { SnipDisplay, SnipWindow } from "./SnipGeometry.ts";
-import { runSnip, type SnipRunnerDeps } from "./SnipRunner.ts";
+import { reconcileDisplays, runSnip, type SnipRunnerDeps } from "./SnipRunner.ts";
 
 const left: SnipDisplay = {
   id: 1,
@@ -133,4 +133,23 @@ it("cancels when no display could be captured", async () => {
   });
   assert.deepStrictEqual(await runSnip(deps), { status: "cancelled" });
   assert.strictEqual(calls.released, 1);
+});
+
+it("trusts the captured frame size when the reported display size is off by rounding", () => {
+  const odd: SnipDisplay = {
+    id: 3,
+    dipBounds: { x: 0, y: 0, width: 1281, height: 720 },
+    physicalBounds: { x: 0, y: 0, width: 3843, height: 2160 },
+    scaleFactor: 3,
+  };
+  const frames = new Map<number, SnipFrame>([
+    [3, { width: 3840, height: 2160, bgra: Buffer.alloc(0) }],
+  ]);
+  const [fixed] = reconcileDisplays([odd], frames);
+  assert.deepStrictEqual(fixed?.physicalBounds, { x: 0, y: 0, width: 3840, height: 2160 });
+});
+
+it("leaves a display alone when no frame was captured for it", () => {
+  const [same] = reconcileDisplays([left], new Map());
+  assert.strictEqual(same, left);
 });

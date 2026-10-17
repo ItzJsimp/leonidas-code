@@ -26,16 +26,41 @@ export interface SnipRunnerDeps {
 
 const UNSAVED_NAME = "snip.png";
 
+/**
+ * Electron rounds a display's physical size from its DIP size, so it can be a few pixels
+ * off at fractional scales. The captured frame is the real pixel grid, so it wins.
+ */
+export function reconcileDisplays(
+  displays: ReadonlyArray<SnipDisplay>,
+  frames: ReadonlyMap<number, SnipFrame>,
+): ReadonlyArray<SnipDisplay> {
+  return displays.map((display) => {
+    const frame = frames.get(display.id);
+    if (
+      !frame ||
+      (frame.width === display.physicalBounds.width &&
+        frame.height === display.physicalBounds.height)
+    ) {
+      return display;
+    }
+    return {
+      ...display,
+      physicalBounds: { ...display.physicalBounds, width: frame.width, height: frame.height },
+    };
+  });
+}
+
 export async function runSnip(deps: SnipRunnerDeps): Promise<DesktopSnipResult> {
   try {
     const frames = await deps.captureFrames(deps.displays);
     if (frames.size === 0) return { status: "cancelled" };
-    const session = createSnipSession({ displays: deps.displays, windows: deps.listWindows() });
-    const outcome = await deps.pick({ session, displays: deps.displays, frames });
+    const displays = reconcileDisplays(deps.displays, frames);
+    const session = createSnipSession({ displays, windows: deps.listWindows() });
+    const outcome = await deps.pick({ session, displays, frames });
     if (outcome.kind === "cancelled") return { status: "cancelled" };
 
     const { rect } = outcome;
-    const pieces = cropPiecesForRect(deps.displays, rect);
+    const pieces = cropPiecesForRect(displays, rect);
     if (pieces.length === 0) return { status: "cancelled" };
     const image: SnipFrame = {
       width: rect.width,
