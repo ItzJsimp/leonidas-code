@@ -2,7 +2,11 @@
  * Pure rules for the Models tab: how well a model fits this PC, whether a download may start,
  * and how to read one line of Ollama's streamed pull response.
  */
-import type { CapacityVolume, LocalModelCapacity } from "./localModelCapacity.ts";
+import {
+  RAM_OFFLOAD_SHARE,
+  type CapacityVolume,
+  type LocalModelCapacity,
+} from "./localModelCapacity.ts";
 
 const GB = 1024 ** 3;
 
@@ -80,5 +84,33 @@ export function parsePullLine(line: string): PullProgress | null {
     completedBytes: num("completed"),
     totalBytes: num("total"),
     error: typeof record["error"] === "string" ? record["error"] : null,
+  };
+}
+
+export interface LoadedModelMemory {
+  readonly sizeBytes: number;
+  readonly vramBytes: number;
+}
+
+/**
+ * Memory that Ollama itself holds for loaded models is free again once they unload.
+ * Without this, a model that is running would make every model look larger.
+ */
+export function releaseLoadedModels(
+  capacity: LocalModelCapacity,
+  loaded: ReadonlyArray<LoadedModelMemory>,
+): LocalModelCapacity {
+  if (loaded.length === 0) return capacity;
+  let vram = 0;
+  let ram = 0;
+  for (const model of loaded) {
+    const inVram = Math.min(model.vramBytes, model.sizeBytes);
+    vram += inVram;
+    ram += model.sizeBytes - inVram;
+  }
+  return {
+    ...capacity,
+    fullGpuBudgetBytes: capacity.fullGpuBudgetBytes + vram,
+    offloadBudgetBytes: capacity.offloadBudgetBytes + vram + ram * RAM_OFFLOAD_SHARE,
   };
 }

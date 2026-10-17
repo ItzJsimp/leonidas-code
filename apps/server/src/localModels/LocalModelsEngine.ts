@@ -10,7 +10,13 @@ import {
 } from "@t3tools/contracts";
 
 import type { CapacityVolume, LocalModelCapacity } from "../hardwareWatch/localModelCapacity.ts";
-import { downloadGate, fitFor, parsePullLine } from "../hardwareWatch/localModelFit.ts";
+import {
+  downloadGate,
+  fitFor,
+  parsePullLine,
+  releaseLoadedModels,
+  type LoadedModelMemory,
+} from "../hardwareWatch/localModelFit.ts";
 import { isEmbeddingModel } from "../provider/ollamaModelCatalog.ts";
 import { STARTER_MODELS } from "./starterModels.ts";
 
@@ -77,6 +83,7 @@ const modelId = (entry: Record<string, unknown>): string | null => {
 export class LocalModelsEngine {
   private installed: ReadonlyArray<InstalledModel> = [];
   private loaded: ReadonlySet<string> = new Set();
+  private loadedMemory: ReadonlyArray<LoadedModelMemory> = [];
   private running = false;
   private readonly pulls = new Map<string, PullEntry>();
   private lastPublish = 0;
@@ -111,12 +118,24 @@ export class LocalModelsEngine {
       });
       const ps = await this.call("/api/ps");
       const psBody: TagsBody = ps.ok ? ((await ps.json()) as TagsBody) : {};
-      this.loaded = new Set((psBody.models ?? []).flatMap((entry) => modelId(entry) ?? []));
+      const loadedEntries = psBody.models ?? [];
+      this.loaded = new Set(loadedEntries.flatMap((entry) => modelId(entry) ?? []));
+      this.loadedMemory = loadedEntries.flatMap((entry) =>
+        typeof entry["size"] === "number"
+          ? [
+              {
+                sizeBytes: entry["size"],
+                vramBytes: typeof entry["size_vram"] === "number" ? entry["size_vram"] : 0,
+              },
+            ]
+          : [],
+      );
       this.running = true;
     } catch {
       this.running = false;
       this.installed = [];
       this.loaded = new Set();
+      this.loadedMemory = [];
     }
     this.deps.onChange();
   }
@@ -145,6 +164,7 @@ export class LocalModelsEngine {
   snapshot(): LocalModelsState {
     const hardware = this.deps.hardware();
     const drive = this.modelDrive();
+    const capacity = hardware ? releaseLoadedModels(hardware.capacity, this.loadedMemory) : null;
     const installedIds = new Set(this.installed.map((model) => model.id));
     const starters = new Map(STARTER_MODELS.map((model) => [model.id, model]));
     const gateFor = (sizeBytes: number | null, installed: boolean) => {
@@ -167,7 +187,7 @@ export class LocalModelsEngine {
       installed,
       loaded: this.loaded.has(id),
       sizeBytes: sizeBytes === null ? null : Math.round(sizeBytes),
-      fit: hardware ? fitFor(sizeBytes, hardware.capacity) : "unknown",
+      fit: capacity ? fitFor(sizeBytes, capacity) : "unknown",
       tokensPerSecond: null,
       benchLm: starters.get(id)?.benchLm ?? null,
       gate: gateFor(sizeBytes, installed),

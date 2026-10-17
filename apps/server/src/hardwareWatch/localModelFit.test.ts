@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { computeLocalModelCapacity, type CapacityInput } from "./localModelCapacity.ts";
-import { downloadGate, fitFor, parsePullLine } from "./localModelFit.ts";
+import { downloadGate, fitFor, parsePullLine, releaseLoadedModels } from "./localModelFit.ts";
 
 const GB = 1024 ** 3;
 
@@ -78,5 +78,18 @@ describe("parsePullLine", () => {
   it("returns null for a bad line", () => {
     expect(parsePullLine("not json")).toBeNull();
     expect(parsePullLine("")).toBeNull();
+  });
+});
+
+describe("releaseLoadedModels", () => {
+  it("returns the same capacity when nothing is loaded", () => {
+    expect(releaseLoadedModels(capacity, [])).toBe(capacity);
+  });
+  it("adds loaded VRAM to both budgets and loaded RAM to the offload budget", () => {
+    const released = releaseLoadedModels(capacity, [{ sizeBytes: 10 * GB, vramBytes: 8 * GB }]);
+    expect(released.fullGpuBudgetBytes).toBe(capacity.fullGpuBudgetBytes + 8 * GB);
+    expect(released.offloadBudgetBytes).toBeCloseTo(
+      capacity.offloadBudgetBytes + 8 * GB + 2 * GB * 0.7,
+    );
   });
 });

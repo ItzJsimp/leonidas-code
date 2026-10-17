@@ -7,10 +7,13 @@ import { LocalModelsEngine } from "./LocalModelsEngine.ts";
 
 const GB = 1024 ** 3;
 
+// The 8 GB of video memory in use belongs to the loaded Gemma model in the fake /api/ps.
 const capacity = computeLocalModelCapacity({
   cpuThreads: 24,
-  memory: { totalBytes: 64 * GB, usedBytes: 20 * GB },
-  gpus: [{ name: "NVIDIA RTX 4070", vendor: "NVIDIA", vramTotalBytes: 12 * GB, vramUsedBytes: 0 }],
+  memory: { totalBytes: 64 * GB, usedBytes: 29 * GB },
+  gpus: [
+    { name: "NVIDIA RTX 4070", vendor: "NVIDIA", vramTotalBytes: 12 * GB, vramUsedBytes: 8 * GB },
+  ],
   volumes: [
     { mount: "C:", mediaType: "ssd", usedBytes: 860 * GB, totalBytes: 930 * GB },
     { mount: "D:", mediaType: "hdd", usedBytes: 400 * GB, totalBytes: 930 * GB },
@@ -27,7 +30,14 @@ interface Call {
   readonly body: unknown;
 }
 
-function makeEngine(options: { modelDir?: string; down?: boolean; pullLines?: string[] } = {}) {
+function makeEngine(
+  options: {
+    modelDir?: string;
+    down?: boolean;
+    pullLines?: string[];
+    capacity?: typeof capacity;
+  } = {},
+) {
   const calls: Call[] = [];
   const installed = [
     { name: "gemma4:12b-it-q4_K_M", size: 8 * GB },
@@ -40,7 +50,9 @@ function makeEngine(options: { modelDir?: string; down?: boolean; pullLines?: st
     if (options.down) throw new Error("connect ECONNREFUSED");
     if (url.endsWith("/api/tags")) return Response.json({ models: installed });
     if (url.endsWith("/api/ps"))
-      return Response.json({ models: [{ name: "gemma4:12b-it-q4_K_M" }] });
+      return Response.json({
+        models: [{ name: "gemma4:12b-it-q4_K_M", size: 9 * GB, size_vram: 8 * GB }],
+      });
     if (url.endsWith("/api/pull")) {
       const lines = options.pullLines ?? [];
       return new Response(lines.join("\n") + "\n", { status: 200 });
@@ -50,7 +62,7 @@ function makeEngine(options: { modelDir?: string; down?: boolean; pullLines?: st
   const engine = new LocalModelsEngine({
     baseUrl: () => "http://127.0.0.1:11434",
     fetch: fakeFetch,
-    hardware: () => ({ capacity, volumes }),
+    hardware: () => ({ capacity: options.capacity ?? capacity, volumes }),
     modelDir: () => options.modelDir ?? "C:\\ollama\\models",
     onChange: () => {},
     now: () => 1000,
@@ -102,6 +114,30 @@ describe("LocalModelsEngine.snapshot", () => {
     expect(state.ollama.running).toBe(false);
     expect(state.rows.every((row) => row.installed === false)).toBe(true);
     expect(state.rows[0]!.gate.allowed).toBe(false);
+  });
+});
+
+describe("LocalModelsEngine fit with a loaded model", () => {
+  it("does not count memory held by a loaded Ollama model against the models", async () => {
+    // The 8 GB of video memory used on this PC belongs to the loaded Gemma model.
+    const busy = computeLocalModelCapacity({
+      cpuThreads: 24,
+      memory: { totalBytes: 64 * GB, usedBytes: 29 * GB },
+      gpus: [
+        {
+          name: "NVIDIA RTX 4070",
+          vendor: "NVIDIA",
+          vramTotalBytes: 12 * GB,
+          vramUsedBytes: 8 * GB,
+        },
+      ],
+      volumes: [{ mount: "C:", mediaType: "ssd", usedBytes: 860 * GB, totalBytes: 930 * GB }],
+    });
+    const { engine } = makeEngine({ capacity: busy });
+    await engine.refresh();
+    const gemma = engine.snapshot().rows.find((r) => r.id === "gemma4:12b-it-q4_K_M")!;
+    expect(gemma.loaded).toBe(true);
+    expect(gemma.fit).toBe("fits");
   });
 });
 
