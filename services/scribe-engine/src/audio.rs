@@ -156,6 +156,35 @@ impl Recorder for CpalRecorder {
     }
 }
 
+/// A recorder with no device, for the CI latency bench: capture "starts" at once and
+/// returns no audio, so the engine drops it without a speech-to-text call.
+#[derive(Default)]
+pub struct NullRecorder {
+    first: Option<Instant>,
+}
+
+impl Recorder for NullRecorder {
+    fn start(&mut self) -> Result<(), String> {
+        self.first = Some(Instant::now());
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<EncodedAudio, String> {
+        Ok(EncodedAudio {
+            bytes: Vec::new(),
+            mime: "audio/flac",
+            file_name: "audio.flac",
+            duration_ms: 0,
+        })
+    }
+
+    fn cancel(&mut self) {}
+
+    fn first_buffer_at(&self) -> Option<Instant> {
+        self.first
+    }
+}
+
 fn build_stream<T>(
     device: &cpal::Device,
     config: cpal::StreamConfig,
@@ -185,7 +214,10 @@ where
         },
         move |error| {
             // A glitch or a default-device reroute keeps the stream alive: keep the recording.
-            if matches!(error.kind(), cpal::ErrorKind::Xrun | cpal::ErrorKind::DeviceChanged) {
+            if matches!(
+                error.kind(),
+                cpal::ErrorKind::Xrun | cpal::ErrorKind::DeviceChanged
+            ) {
                 return;
             }
             if let Ok(mut capture) = errors.lock() {

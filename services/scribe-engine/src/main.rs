@@ -4,13 +4,14 @@
 //! The always-on Scribe engine process. Leonidas Code supervises it over the contract.
 //!
 //! Flags: `--config <path>` (default `%APPDATA%\Leonidas\scribe-engine\config.json`),
-//! `--accept-injected` (the latency bench sends synthetic hotkeys).
+//! `--accept-injected` (the latency bench sends synthetic hotkeys),
+//! `--null-audio` (the CI bench has no microphone).
 
-use scribe_engine::audio::CpalRecorder;
+use scribe_engine::audio::{CpalRecorder, NullRecorder};
 use scribe_engine::config::Config;
 use scribe_engine::contract::{Event, Mode, State};
 use scribe_engine::credentials::{KeyStore, OsKeyStore};
-use scribe_engine::engine::{EncodedAudio, Engine, Transcriber, Transcription};
+use scribe_engine::engine::{EncodedAudio, Engine, Recorder, Transcriber, Transcription};
 use scribe_engine::groq::GroqClient;
 use scribe_engine::hotkeys::{self, HotkeyEvent};
 use scribe_engine::http;
@@ -43,10 +44,12 @@ fn run() -> Result<(), String> {
     let mut args = std::env::args().skip(1);
     let mut config_path: Option<PathBuf> = None;
     let mut accept_injected = false;
+    let mut null_audio = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--config" => config_path = Some(args.next().ok_or("--config needs a path")?.into()),
             "--accept-injected" => accept_injected = true,
+            "--null-audio" => null_audio = true,
             other => return Err(format!("unknown argument {other}")),
         }
     }
@@ -67,7 +70,11 @@ fn run() -> Result<(), String> {
         Box::new(groq.clone())
     };
     let engine = Engine::new(
-        Box::new(CpalRecorder::new(&cfg.audio)),
+        if null_audio {
+            Box::new(NullRecorder::default()) as Box<dyn Recorder>
+        } else {
+            Box::new(CpalRecorder::new(&cfg.audio))
+        },
         transcriber,
         Box::new(polisher),
         Box::new(ClipboardPaster::new()),
@@ -157,8 +164,9 @@ fn watch_events(
                     matches!(state, State::Listening | State::Processing),
                     Ordering::Relaxed,
                 );
+                let left_listening = listening_since.is_some() && state != State::Listening;
                 listening_since = (state == State::Listening).then(Instant::now);
-                if state == State::Processing {
+                if left_listening {
                     if let Some(latency) = engine.last_hotkey_latency() {
                         eprintln!("hotkey_to_capture_ms={:.1}", latency.as_secs_f64() * 1000.0);
                     }
