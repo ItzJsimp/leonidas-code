@@ -118,14 +118,19 @@ describe("catalog", () => {
     expect(ids(filterCatalog(catalog, "", new Set(["fits"])))).not.toContain("flux2dev");
     // No licence is verified, so nothing passes "Sale use OK" and nothing is claimed.
     expect(filterCatalog(catalog, "", new Set(["commercial"]))).toEqual([]);
-    expect(ids(filterCatalog(catalog, "", new Set(["fast"])))).toEqual([
-      "flux2klein",
-      "zimage-turbo",
-      "sdxl",
-    ]);
+    expect(ids(filterCatalog(catalog, "", new Set(["fast"])))).toEqual(
+      expect.arrayContaining(["flux2klein", "zimage-turbo", "sdxl"]),
+    );
+    expect(ids(filterCatalog(catalog, "", new Set(["fast"])))).not.toContain("qwen");
   });
   it("searches name, family and tags", () => {
-    expect(ids(filterCatalog(catalog, "text", new Set()))).toEqual(["qwen", "qwen21"]);
+    expect(ids(filterCatalog(catalog, "text", new Set()))).toEqual(
+      expect.arrayContaining(["qwen", "qwen21"]),
+    );
+  });
+  it("lists at least 30 known models", () => {
+    expect(catalog.length).toBeGreaterThanOrEqual(30);
+    expect(new Set(ids(catalog)).size).toBe(catalog.length);
   });
   it("sorts ready and fitting models first", () => {
     expect(ids(sortCatalog(catalog, "recommended")).slice(0, 3)).toEqual([
@@ -133,15 +138,15 @@ describe("catalog", () => {
       "qwen21",
       "qwen",
     ]);
-    expect(ids(sortCatalog(catalog, "smallest"))[0]).toBe("sdxl");
+    expect(ids(sortCatalog(catalog, "smallest"))[0]).toBe("sd15");
   });
   it("uses measured seconds only for the measured PC", () => {
     const other = buildCatalog(catalogSpecs(false), "24", new Map());
     expect(catalog.find((model) => model.id === "flux2klein")?.measuredSeconds).toBe(15);
     expect(other.find((model) => model.id === "flux2klein")?.measuredSeconds).toBeNull();
   });
-  it("builds a 20-model catalog", () => {
-    expect(buildCatalog(catalogSpecs(true), "6", new Map())).toHaveLength(20);
+  it("builds a 40-model catalog", () => {
+    expect(buildCatalog(catalogSpecs(true), "6", new Map())).toHaveLength(40);
   });
 });
 
