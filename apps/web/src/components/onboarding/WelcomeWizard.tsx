@@ -57,6 +57,7 @@ import {
 import { newProjectId, randomUUID } from "../../lib/utils";
 import { agentSessionImport } from "../../state/agentSessions";
 import { readProjects, useProjects } from "../../state/entities";
+import { environmentCatalog } from "../../connection/catalog";
 import { useEnvironments, usePrimaryEnvironment } from "../../state/environments";
 import {
   isOnboardingRelayEnvironment,
@@ -194,6 +195,17 @@ export function WelcomeWizard({
   const finishingPromiseRef = useRef<Promise<boolean> | null>(null);
   const completionErrorToastIdRef = useRef<ReturnType<typeof toastManager.add> | null>(null);
   const primaryEnvironment = usePrimaryEnvironment();
+  const setEnvironmentEnabled = useAtomCommand(environmentCatalog.setEnabled, {
+    reportFailure: false,
+  });
+  // A new user who finds "This computer" switched off cannot chat or add an AI. Switch
+  // it on once, before the steps need it.
+  const turnedOnPrimary = useRef(false);
+  useEffect(() => {
+    if (!primaryEnvironment || primaryEnvironment.entry.enabled || turnedOnPrimary.current) return;
+    turnedOnPrimary.current = true;
+    void setEnvironmentEnabled({ environmentId: primaryEnvironment.environmentId, enabled: true });
+  }, [primaryEnvironment, setEnvironmentEnabled]);
   useEffect(() => {
     const newComputers = environments.filter(
       (environment) => !autoSelectedComputers.current.has(environment.environmentId),

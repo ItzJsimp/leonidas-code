@@ -2764,6 +2764,22 @@ export default function ChatView(props: ChatViewProps) {
       connection: activeEnvironment.connection,
     };
   }, [activeEnvironment, activeEnvironmentUnavailable, activeEnvironmentUnavailableLabel]);
+  const activeEnvironmentTurnedOff = activeEnvironment !== null && !activeEnvironment.entry.enabled;
+  const handleTurnOnActiveEnvironment = useCallback(
+    async (environmentId: EnvironmentId) => {
+      const result = await setEnvironmentEnabled({ environmentId, enabled: true });
+      if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Could not turn on the computer",
+            ...userErrorToastFields(squashAtomCommandFailure(result)),
+          }),
+        );
+      }
+    },
+    [setEnvironmentEnabled],
+  );
   const handleReconnectActiveEnvironment = useCallback(
     async (environmentId: EnvironmentId) => {
       const result = await retryEnvironment(environmentId);
@@ -3183,10 +3199,22 @@ export default function ChatView(props: ChatViewProps) {
         id: `environment-unavailable:${activeEnvironmentUnavailableState.environmentId}`,
         variant: unavailableConnection.phase === "error" ? "error" : "warning",
         icon: <WifiOffIcon />,
-        title: `${activeEnvironmentUnavailableState.label} is ${environmentReconnecting ? "reconnecting" : "offline"}`,
+        title: `${activeEnvironmentUnavailableState.label} is ${activeEnvironmentTurnedOff ? "turned off" : environmentReconnecting ? "reconnecting" : "offline"}`,
         actions: (
           <>
-            {!environmentReconnecting ? (
+            {activeEnvironmentTurnedOff ? (
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() =>
+                  void handleTurnOnActiveEnvironment(
+                    activeEnvironmentUnavailableState.environmentId,
+                  )
+                }
+              >
+                Turn on
+              </Button>
+            ) : !environmentReconnecting ? (
               <Button
                 size="xs"
                 variant="ghost"

@@ -36,6 +36,7 @@ const state = vi.hoisted(() => ({
   refreshScan: vi.fn(),
 }));
 
+vi.mock("../../connection/catalog", () => ({ environmentCatalog: { setEnabled: "setEnabled" } }));
 vi.mock("./ClaudeInstallPill", () => ({ ClaudeInstallPill: () => null }));
 vi.mock("./AiLevelStep", () => ({
   AiLevelStep: ({ onContinue }: { onContinue: () => void }) => (
