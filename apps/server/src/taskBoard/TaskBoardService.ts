@@ -1759,6 +1759,14 @@ const make = Effect.gen(function* () {
     const root = inboxRoot(projects, target);
     return root === null ? null : focusPathFor(root);
   };
+  const focusProjects = (projects: ReadonlyArray<Project>, target: WorkspaceTarget) => {
+    const scope = scopeFor(projects, target);
+    return projects.filter(
+      (project) =>
+        (workspaceForPath(scope.workspaces, project.workspaceRoot)?.root ?? scope.defaultRoot) ===
+        scope.root,
+    );
+  };
   const focusSnapshotOf = (
     path: string | null,
     doc: ReturnType<typeof readFocusFile>,
@@ -1781,7 +1789,7 @@ const make = Effect.gen(function* () {
       const path = focusPath(projects, target);
       if (path === null) return { path: null, member: resolveMember(), sections: [] };
       try {
-        return focusSnapshotOf(path, readFocusFile(path), projects);
+        return focusSnapshotOf(path, readFocusFile(path), focusProjects(projects, target));
       } catch {
         return { path, member: resolveMember(), sections: [] };
       }
@@ -1791,13 +1799,21 @@ const make = Effect.gen(function* () {
     Effect.gen(function* () {
       const path = focusPath(projects, input);
       if (path === null) return yield* storageError("No folder is available for the focus list.");
+      const scopedProjects = focusProjects(projects, input);
+      if (
+        input.op === "add" &&
+        input.projectId !== null &&
+        !scopedProjects.some((project) => project.id === input.projectId)
+      ) {
+        return yield* storageError("That project is not in this workspace.");
+      }
       const snapshot = yield* Effect.try({
         try: () => {
           const doc = readFocusFile(path);
           let next: typeof doc | null;
           if (input.op === "add") {
             const project = input.projectId
-              ? projects.find((candidate) => candidate.id === input.projectId)
+              ? scopedProjects.find((candidate) => candidate.id === input.projectId)
               : undefined;
             next = addFocusItem(doc, project ? aiosSlugFor(project) : null, input.text);
           } else {
@@ -1814,7 +1830,7 @@ const make = Effect.gen(function* () {
             });
           }
           writeFocusFile(path, next);
-          return focusSnapshotOf(path, next, projects);
+          return focusSnapshotOf(path, next, scopedProjects);
         },
         catch: cardWriteFailure,
       });

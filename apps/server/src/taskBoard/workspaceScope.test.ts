@@ -466,3 +466,37 @@ it.effect("keeps each workspace's focus list in its own AIOS", () =>
     }),
   ),
 );
+
+it.effect("resolves focus project links inside their workspace when project slugs clash", () =>
+  withWorkspaces(({ business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const businessApp = project(
+        "business-app",
+        "Business app",
+        NodePath.join(business, "projects", "app"),
+      );
+      const all = [...projects, businessApp];
+      yield* board.focusUpdate(
+        { op: "add", projectId: projects[0]!.id, text: "Personal note", workspaceId: "leonidas" },
+        all,
+      );
+      expect((yield* board.focus(all, { workspaceId: "leonidas" })).sections[0]?.projectId).toBe(
+        projects[0]!.id,
+      );
+      expect((yield* board.focus(all)).sections[0]?.projectId).toBe(projects[0]!.id);
+      const foreign = yield* Effect.exit(
+        board.focusUpdate(
+          {
+            op: "add",
+            projectId: businessApp.id,
+            text: "Wrong workspace",
+            workspaceId: "leonidas",
+          },
+          all,
+        ),
+      );
+      expect(Exit.isFailure(foreign)).toBe(true);
+    }),
+  ),
+);
