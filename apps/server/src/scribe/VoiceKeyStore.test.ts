@@ -10,10 +10,12 @@ import * as Keys from "./VoiceKeyStore.ts";
 const state = vi.hoisted(() => ({ values: new Map<string, string>(), fail: false }));
 vi.mock("@napi-rs/keyring", () => ({
   AsyncEntry: class {
-    constructor(
-      readonly service: string,
-      readonly account: string,
-    ) {}
+    readonly service: string;
+    readonly account: string;
+    constructor(service: string, account: string) {
+      this.service = service;
+      this.account = account;
+    }
     async getPassword() {
       if (state.fail) throw new Error("vault unavailable");
       return state.values.get(this.account);

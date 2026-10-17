@@ -773,9 +773,10 @@ describe("AcpAdapterV2", () => {
       const mockAgentPath = yield* path.fromFileUrl(
         new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
       );
+      const markerTime = yield* Clock.currentTimeMillis;
       const markerPath = path.join(
         NodeOS.tmpdir(),
-        `acp-lost-connection-${process.pid}-${Date.now()}`,
+        `acp-lost-connection-${process.pid}-${markerTime}`,
       );
       const instanceId = ProviderInstanceId.make("acp-test-lost-connection");
       const adapter = yield* makeAcpAdapterV2({
