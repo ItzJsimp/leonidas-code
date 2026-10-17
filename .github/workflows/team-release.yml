@@ -78,6 +78,15 @@ jobs:
       - name: Set release version
         run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"
 
+      # Stops a release on a type error or a failed test in the packages that
+      # are clean today. Server, web and provider-core still hold older errors
+      # and Windows-only test failures; add each one here once it is green.
+      - name: Check types and fast tests
+        run: |
+          (cd packages/shared && vp run typecheck)
+          (cd packages/client-runtime && vp run typecheck && vp test run)
+          (cd packages/shared && vp test run src/usageLimits.test.ts src/promptPrediction.test.ts src/harnessReliability.test.ts src/hardwareWatch.test.ts src/turnLedger.test.ts)
+
       - name: Build JS bundle
         env:
           # Public relay address; turns the in-app feedback button on.
