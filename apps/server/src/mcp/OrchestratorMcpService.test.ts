@@ -25,6 +25,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
+import * as Stream from "effect/Stream";
 
 import {
   DispatchModeLimit,
@@ -46,7 +47,36 @@ import * as TaskBoardService from "../taskBoard/TaskBoardService.ts";
 import type { McpInvocationScope } from "./McpInvocationContext.ts";
 import { idleThreadProjection, liveThreadShell } from "./McpToolAccess.testkit.ts";
 import * as OrchestratorMcpService from "./OrchestratorMcpService.ts";
+import { SpawnApprovals, type SpawnApprovalsShape } from "../subagents/SpawnApprovals.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
+
+/** A broker that allows every confirm-tier spawn, so delegate tests do not wait for a card. */
+const spawnApprovalsAnswering = (
+  answer: "allow_once" | "deny",
+  requested?: Array<{ readonly subagent: string; readonly model: string }>,
+): SpawnApprovalsShape => ({
+  pending: Stream.empty,
+  isAllowedForThread: () => Effect.succeed(false),
+  request: (approval) =>
+    Effect.sync(() => {
+      requested?.push({ subagent: approval.subagent, model: approval.model });
+      return { kind: answer };
+    }),
+  respond: () => Effect.void,
+  recordSpawn: () => Effect.void,
+  stats: Effect.succeed({ spawnsToday: 0, waitedToday: 0, meanStartTokensToday: null }),
+  keepStatsIn: () => Effect.void,
+});
+
+/** No project folder, so a plain delegation reads only the app's free-tier list. */
+const noProjects = Layer.mock(ProjectService.ProjectService)({
+  getById: () => Effect.succeedNone,
+});
+
+const serviceLayerUnderTest = Layer.merge(
+  OrchestratorMcpService.layer,
+  Layer.succeed(SpawnApprovals, spawnApprovalsAnswering("allow_once")),
+);
 
 describe("OrchestratorMcpService", () => {
   it.effect("retries terminal acknowledgement with a fresh command id", () =>
@@ -141,7 +171,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -181,7 +211,7 @@ describe("OrchestratorMcpService", () => {
         const commandIds = yield* Ref.get(acknowledgementCommandIds);
         assert.equal(commandIds.length, 2);
         assert.notEqual(commandIds[0], commandIds[1]);
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -245,7 +275,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -279,7 +309,7 @@ describe("OrchestratorMcpService", () => {
         const settled = yield* service.taskStatus(scope, taskId);
         assert.equal(settled.status, "cancelled");
         assert.equal(yield* Ref.get(dispatched), 1);
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -331,7 +361,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -356,7 +386,7 @@ describe("OrchestratorMcpService", () => {
           .pipe(Effect.flip);
         assert.equal(error.code, "task_not_cancellable");
         assert.deepEqual(yield* Ref.get(dispatched), []);
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -409,7 +439,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -437,7 +467,7 @@ describe("OrchestratorMcpService", () => {
           (yield* Ref.get(dispatched)).map((command) => (command as { type: string }).type),
           ["thread.stop"],
         );
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -495,7 +525,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -524,7 +554,7 @@ describe("OrchestratorMcpService", () => {
           (yield* Ref.get(dispatched)).map((command) => (command as { type: string }).type),
           ["thread.stop", "delegated_task.completion-delivery.dispose"],
         );
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -583,7 +613,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -608,7 +638,7 @@ describe("OrchestratorMcpService", () => {
           .pipe(Effect.flip);
         assert.equal(error.code, "runtime_mode_escalation_denied");
         assert.deepEqual(yield* Ref.get(dispatched), []);
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -725,7 +755,7 @@ describe("OrchestratorMcpService", () => {
         Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
           list: () => Effect.succeed([]),
         }),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -753,7 +783,7 @@ describe("OrchestratorMcpService", () => {
           dispatched: yield* Ref.get(dispatched),
           stoppedBelow: yield* Ref.get(stoppedBelow),
         };
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     });
 
   it.effect("refuses to cancel a task when a task under it now runs above the parent's modes", () =>
@@ -1019,7 +1049,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             antigravityInstanceId,
             disabledAntigravityInstanceId,
           ]),
-          Layer.mock(ProjectService.ProjectService)({}),
+          noProjects,
           Layer.mock(TaskBoardService.TaskBoardService)({}),
           Layer.mock(SecretRequests.SecretRequests)({}),
           Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1139,9 +1169,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           assert.isTrue(
             fork!.constraints.includes("Driver 'forkOnly' is not registered in this build."),
           );
-        }).pipe(
-          Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
-        );
+        }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
       }),
   );
 
@@ -1175,7 +1203,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           },
         ]),
         adapterRegistryLayer([codexInstanceId]),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1188,7 +1216,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           capabilities.providers[0]?.models.map((model) => model.id),
           ["gpt-5.4", "my-model"],
         );
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -1262,7 +1290,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             ]),
           }),
           adapterRegistryLayer([codexInstanceId, antigravityInstanceId]),
-          Layer.mock(ProjectService.ProjectService)({}),
+          noProjects,
           Layer.mock(TaskBoardService.TaskBoardService)({}),
           Layer.mock(SecretRequests.SecretRequests)({}),
           Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1287,9 +1315,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           assert.equal(request.type, "delegated_task.request");
           assert.equal(request.modelSelection.instanceId, antigravityInstanceId);
           assert.equal(request.modelSelection.model, "ant-model");
-        }).pipe(
-          Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
-        );
+        }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
       }),
   );
 
@@ -1364,7 +1390,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             ]),
           }),
           adapterRegistryLayer([codexInstanceId]),
-          Layer.mock(ProjectService.ProjectService)({}),
+          noProjects,
           Layer.mock(TaskBoardService.TaskBoardService)({}),
           ServerSettings.layerTest(),
           Layer.mock(SecretRequests.SecretRequests)({}),
@@ -1396,9 +1422,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           assert.equal(request.type, "delegated_task.request");
           assert.equal(request.workspaceStrategy?.type, "worktree");
           assert.equal(request.branch, "feature/speculative-1");
-        }).pipe(
-          Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
-        );
+        }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
       }),
   );
 
@@ -1470,7 +1494,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           ]),
         }),
         adapterRegistryLayer([codexInstanceId, antigravityInstanceId]),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1492,7 +1516,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         };
         assert.equal(request.modelSelection.instanceId, antigravityInstanceId);
         assert.equal(request.modelSelection.model, "ant-model");
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -1600,7 +1624,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           sameCredentialInstanceId,
           limitedInstanceId,
         ]),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1623,7 +1647,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         assert.equal(commands.length, 1);
         assert.equal(request.modelSelection.instanceId, codexTeamInstanceId);
         assert.equal(request.modelSelection.model, "gpt-5.4");
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -1705,7 +1729,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             }),
           ]),
           adapterRegistryLayer([codexInstanceId, codexAltInstanceId]),
-          Layer.mock(ProjectService.ProjectService)({}),
+          noProjects,
           Layer.mock(SecretRequests.SecretRequests)({}),
           Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
         );
@@ -1730,9 +1754,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           // parent's provider.
           assert.equal(request.modelSelection.instanceId, codexAltInstanceId);
           assert.equal(request.runtimeMode, "approval-required");
-        }).pipe(
-          Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
-        );
+        }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
       }),
   );
 
@@ -1769,7 +1791,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             }),
           ]),
           adapterRegistryLayer([codexInstanceId, duplicateLoginInstanceId]),
-          Layer.mock(ProjectService.ProjectService)({}),
+          noProjects,
           Layer.mock(TaskBoardService.TaskBoardService)({}),
           Layer.mock(SecretRequests.SecretRequests)({}),
           Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1787,10 +1809,117 @@ describe("OrchestratorMcpService provider resolution", () => {
 
           assert.equal(error.code, "provider_unavailable");
           assert.equal((yield* Ref.get(dispatched)).length, 0);
-        }).pipe(
-          Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
-        );
+        }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
       }),
+  );
+
+  it.effect(
+    "refuses an explicit spawn on an account past the quota guard and names one with room",
+    () =>
+      Effect.gen(function* () {
+        const claudeInstanceId = ProviderInstanceId.make("claudeAgent");
+        const dispatched = yield* Ref.make<ReadonlyArray<unknown>>([]);
+        const layerDependencies = Layer.mergeAll(
+          NodeServices.layer,
+          Layer.mock(ThreadManagementService.ThreadManagementService)({
+            getThreadRecords: () => Effect.succeed(parentProjection([])),
+            dispatch: (command) =>
+              Ref.update(dispatched, (commands) => [...commands, command]).pipe(
+                Effect.as({ sequence: 1, storedEvents: [] } as never),
+              ),
+          }),
+          ServerSettings.layerTest({ routeLightDelegatedTasks: false }),
+          providerRegistryLayer([
+            providerSnapshot({
+              instanceId: codexInstanceId,
+              driver: ProviderDriverKind.make("codex"),
+              model: "gpt-5.4",
+              usagePercent: 98,
+            }),
+            providerSnapshot({
+              instanceId: claudeInstanceId,
+              driver: ProviderDriverKind.make("claudeAgent"),
+              model: "claude-sonnet-4-6",
+              usagePercent: 20,
+            }),
+          ]),
+          adapterRegistryLayer([codexInstanceId, claudeInstanceId]),
+          noProjects,
+          Layer.mock(TaskBoardService.TaskBoardService)({}),
+          Layer.mock(SecretRequests.SecretRequests)({}),
+          Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+        );
+
+        yield* Effect.gen(function* () {
+          const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+          const error = yield* service
+            .delegateTask(scope, {
+              task: "Port the parser.",
+              mode: "async",
+              target: { providerInstanceId: codexInstanceId, model: "gpt-5.4" },
+              clientRequestId: "delegate-quota-guard-1",
+            })
+            .pipe(Effect.flip);
+
+          assert.equal(error.code, "provider_unavailable");
+          assert.include(error.message, "98% of its Weekly limit");
+          assert.include(error.message, "claudeAgent, highest window 20%");
+          assert.equal((yield* Ref.get(dispatched)).length, 0);
+        }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
+      }),
+  );
+
+  it.effect("asks the user before a plain delegate_task starts on a confirm-tier model", () =>
+    Effect.gen(function* () {
+      const dispatched = yield* Ref.make<ReadonlyArray<unknown>>([]);
+      const requested: Array<{ readonly subagent: string; readonly model: string }> = [];
+      const layerDependencies = Layer.mergeAll(
+        NodeServices.layer,
+        Layer.mock(ThreadManagementService.ThreadManagementService)({
+          getThreadRecords: () => Effect.succeed(parentProjection([])),
+          dispatch: (command) =>
+            Ref.update(dispatched, (commands) => [...commands, command]).pipe(
+              Effect.as({ sequence: 1, storedEvents: [] } as never),
+            ),
+        }),
+        ServerSettings.layerTest({ routeLightDelegatedTasks: false }),
+        providerRegistryLayer([
+          providerSnapshot({
+            instanceId: codexInstanceId,
+            driver: ProviderDriverKind.make("codex"),
+            model: "gpt-5.4",
+            usagePercent: 10,
+          }),
+        ]),
+        adapterRegistryLayer([codexInstanceId]),
+        noProjects,
+        Layer.mock(TaskBoardService.TaskBoardService)({}),
+        Layer.mock(SecretRequests.SecretRequests)({}),
+        Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
+      );
+
+      yield* Effect.gen(function* () {
+        const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+        const error = yield* service
+          .delegateTask(scope, {
+            task: "Port the parser.",
+            mode: "async",
+            clientRequestId: "delegate-confirm-tier-1",
+          })
+          .pipe(Effect.flip);
+
+        assert.equal(error.code, "capability_denied");
+        assert.deepEqual(requested, [{ subagent: "delegated task", model: "gpt-5.4" }]);
+        assert.equal((yield* Ref.get(dispatched)).length, 0);
+      }).pipe(
+        Effect.provide(
+          Layer.merge(
+            OrchestratorMcpService.layer,
+            Layer.succeed(SpawnApprovals, spawnApprovalsAnswering("deny", requested)),
+          ).pipe(Layer.provide(layerDependencies)),
+        ),
+      );
+    }),
   );
 
   it.effect("rejects delegation to a provider without a registered adapter", () =>
@@ -1817,7 +1946,7 @@ describe("OrchestratorMcpService provider resolution", () => {
           forkShadow,
         ]),
         adapterRegistryLayer([codexInstanceId]),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -1848,7 +1977,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         assert.isTrue(
           byDriver.message.includes("No V2 provider adapter is registered for driver forkOnly."),
         );
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -1928,7 +2057,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         }),
         adapterRegistryLayer([codexInstanceId, claudeInstanceId]),
         Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
-        Layer.mock(ProjectService.ProjectService)({}),
+        noProjects,
         Layer.mock(TaskBoardService.TaskBoardService)({}),
         Layer.mock(SecretRequests.SecretRequests)({}),
       );
@@ -1953,7 +2082,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         assert.equal(result.providerInstanceId, claudeInstanceId);
         assert.equal(yield* Ref.get(probes), 2);
         assert.equal(yield* Ref.get(dispatched), 1);
-      }).pipe(Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))));
+      }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
     }),
   );
 
@@ -2087,7 +2216,7 @@ describe("OrchestratorMcpService provider resolution", () => {
               }),
             ]),
             adapterRegistryLayer([codexInstanceId, codexAltInstanceId]),
-            Layer.mock(ProjectService.ProjectService)({}),
+            noProjects,
             Layer.mock(TaskBoardService.TaskBoardService)({}),
             Layer.mock(SecretRequests.SecretRequests)({}),
             Layer.mock(ScheduledTaskService.ScheduledTaskService)({}),
@@ -2162,9 +2291,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             } else {
               assert.equal(request.modelSelection.model, "codex-alt-model", testCase.name);
             }
-          }).pipe(
-            Effect.provide(OrchestratorMcpService.layer.pipe(Layer.provide(layerDependencies))),
-          );
+          }).pipe(Effect.provide(serviceLayerUnderTest.pipe(Layer.provide(layerDependencies))));
         }
       }),
   );
@@ -2217,7 +2344,7 @@ describe("OrchestratorMcpService provider resolution", () => {
       boundThread: OrchestrationV2ThreadShell | null,
       upserted: Ref.Ref<number>,
     ) =>
-      OrchestratorMcpService.layer.pipe(
+      serviceLayerUnderTest.pipe(
         Layer.provide(
           Layer.mergeAll(
             NodeServices.layer,
@@ -2230,7 +2357,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
               list: () => Effect.succeed([]),
             }),
-            Layer.mock(ProjectService.ProjectService)({}),
+            noProjects,
             Layer.mock(TaskBoardService.TaskBoardService)({}),
             Layer.mock(SecretRequests.SecretRequests)({}),
             Layer.mock(ScheduledTaskService.ScheduledTaskService)({
@@ -2286,7 +2413,7 @@ describe("OrchestratorMcpService provider resolution", () => {
             ),
           ),
           Effect.provide(
-            OrchestratorMcpService.layer.pipe(
+            serviceLayerUnderTest.pipe(
               Layer.provide(
                 Layer.mergeAll(
                   NodeServices.layer,
@@ -2302,7 +2429,7 @@ describe("OrchestratorMcpService provider resolution", () => {
                   Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
                     list: () => Effect.succeed([]),
                   }),
-                  Layer.mock(ProjectService.ProjectService)({}),
+                  noProjects,
                   Layer.mock(TaskBoardService.TaskBoardService)({}),
                   Layer.mock(SecretRequests.SecretRequests)({}),
                   Layer.mock(ScheduledTaskService.ScheduledTaskService)({
@@ -2370,7 +2497,7 @@ describe("OrchestratorMcpService provider resolution", () => {
         // The edit's own check reads the thread; the read after the save fails.
         const mcp = yield* OrchestratorMcpService.OrchestratorMcpService.pipe(
           Effect.provide(
-            OrchestratorMcpService.layer.pipe(
+            serviceLayerUnderTest.pipe(
               Layer.provide(
                 Layer.mergeAll(
                   NodeServices.layer,
@@ -2393,7 +2520,7 @@ describe("OrchestratorMcpService provider resolution", () => {
                   Layer.mock(ProviderAdapterRegistry.ProviderAdapterRegistryV2)({
                     list: () => Effect.succeed([]),
                   }),
-                  Layer.mock(ProjectService.ProjectService)({}),
+                  noProjects,
                   Layer.mock(TaskBoardService.TaskBoardService)({}),
                   Layer.mock(SecretRequests.SecretRequests)({}),
                   Layer.mock(ScheduledTaskService.ScheduledTaskService)({
@@ -2510,7 +2637,7 @@ describe("OrchestratorMcpService board tasks", () => {
     tasks: ReadonlyArray<TaskBoardTask>,
     board: Partial<TaskBoardService.TaskBoardService["Service"]> = {},
   ) =>
-    OrchestratorMcpService.layer.pipe(
+    serviceLayerUnderTest.pipe(
       Layer.provide(
         Layer.mergeAll(
           NodeServices.layer,

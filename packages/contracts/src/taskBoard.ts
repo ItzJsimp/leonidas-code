@@ -280,11 +280,16 @@ export const TaskBoardWorkspaceSnapshot = Schema.Struct({
 });
 export type TaskBoardWorkspaceSnapshot = typeof TaskBoardWorkspaceSnapshot.Type;
 
-export const TaskBoardWorkspaceInput = Schema.Struct({});
+// The AIOS workspace a Command request reads (ADR-0080). Absent: the server's default workspace.
+export const AiosWorkspaceId = TrimmedNonEmptyString.check(Schema.isMaxLength(64));
+const workspaceScope = { workspaceId: Schema.optional(AiosWorkspaceId) };
+
+export const TaskBoardWorkspaceInput = Schema.Struct({ ...workspaceScope });
 export type TaskBoardWorkspaceInput = typeof TaskBoardWorkspaceInput.Type;
 
 // Patches one AIOS card in place. `projectSlug: null` unlinks it from its project.
 export const TaskBoardCardUpdateInput = Schema.Struct({
+  ...workspaceScope,
   taskId: TrimmedNonEmptyString,
   // Needed only to update a task that exists on a project's shared board but not in this AIOS.
   projectId: Schema.optional(ProjectId),
@@ -311,6 +316,7 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
 export type TaskBoardCardUpdateInput = typeof TaskBoardCardUpdateInput.Type;
 
 export const TaskBoardCardCreateInput = Schema.Struct({
+  ...workspaceScope,
   idempotencyKey: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
   projectId: Schema.optional(ProjectId),
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
@@ -327,6 +333,7 @@ export type TaskBoardCardCreateInput = typeof TaskBoardCardCreateInput.Type;
 
 /** A raw capture: saved first, classified later. `source` says where it came from. */
 export const InboxDropInput = Schema.Struct({
+  ...workspaceScope,
   text: TrimmedNonEmptyString.check(Schema.isMaxLength(20_000)),
   source: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(500))),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -343,7 +350,7 @@ export const InboxDrop = Schema.Struct({
 });
 export type InboxDrop = typeof InboxDrop.Type;
 
-export const InboxUndoInput = Schema.Struct({ id: TrimmedNonEmptyString });
+export const InboxUndoInput = Schema.Struct({ ...workspaceScope, id: TrimmedNonEmptyString });
 export type InboxUndoInput = typeof InboxUndoInput.Type;
 
 // Publishes (or withdraws) cards on the project's shared board. Omitting `taskIds` targets every
@@ -380,8 +387,42 @@ export type TaskBoardAiosDetectResult = typeof TaskBoardAiosDetectResult.Type;
 
 // The Command tab's Home: today's brief priorities, open-task counts and one next move, all read
 // from the AIOS folder. `root` is null when no AIOS is connected yet.
-export const TaskBoardHomeInput = Schema.Struct({});
+export const TaskBoardHomeInput = Schema.Struct({ ...workspaceScope });
 export type TaskBoardHomeInput = typeof TaskBoardHomeInput.Type;
+
+export const AiosWorkspaceScopeInput = Schema.Struct({ ...workspaceScope });
+export type AiosWorkspaceScopeInput = typeof AiosWorkspaceScopeInput.Type;
+
+export const AiosWorkspaceType = Schema.Literals(["personal", "business"]);
+export type AiosWorkspaceType = typeof AiosWorkspaceType.Type;
+
+// One AIOS folder the app found. Only a `ready` workspace (valid workspace.json) can be opened;
+// `missing` and `invalid` show the setup prompt. `projectIds` are the app projects inside it.
+export const AiosWorkspaceSummary = Schema.Struct({
+  root: Schema.String,
+  status: Schema.Literals(["ready", "missing", "invalid"]),
+  id: Schema.NullOr(Schema.String),
+  name: Schema.NullOr(Schema.String),
+  type: Schema.NullOr(AiosWorkspaceType),
+  error: Schema.NullOr(Schema.String),
+  isDefault: Schema.Boolean,
+  projectIds: Schema.Array(ProjectId),
+});
+export type AiosWorkspaceSummary = typeof AiosWorkspaceSummary.Type;
+
+export const AiosWorkspacesListResult = Schema.Struct({
+  workspaces: Schema.Array(AiosWorkspaceSummary),
+});
+export type AiosWorkspacesListResult = typeof AiosWorkspacesListResult.Type;
+
+// The setup prompt: writes workspace.json into a folder the app already lists.
+export const AiosWorkspaceInitInput = Schema.Struct({
+  root: TrimmedNonEmptyString,
+  id: TrimmedNonEmptyString.check(Schema.isPattern(/^[a-z0-9][a-z0-9-]{0,63}$/)),
+  name: TrimmedNonEmptyString.check(Schema.isMaxLength(80)),
+  type: AiosWorkspaceType,
+});
+export type AiosWorkspaceInitInput = typeof AiosWorkspaceInitInput.Type;
 
 export const TaskBoardHomePriority = Schema.Struct({
   title: Schema.String,

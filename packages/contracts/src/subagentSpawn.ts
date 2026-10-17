@@ -128,7 +128,13 @@ export const SubagentSpecPatch = Schema.Struct({
 });
 export type SubagentSpecPatch = typeof SubagentSpecPatch.Type;
 
+// The AIOS workspace a Studio write targets (ADR-0080). Absent: the default workspace.
+const studioWorkspace = {
+  workspaceId: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(64))),
+};
+
 export const SubagentUpdateInput = Schema.Struct({
+  ...studioWorkspace,
   /** A `specPath` from the catalog. The server refuses any other file. */
   specPath: TrimmedNonEmptyString,
   patch: SubagentSpecPatch,
@@ -136,6 +142,7 @@ export const SubagentUpdateInput = Schema.Struct({
 export type SubagentUpdateInput = typeof SubagentUpdateInput.Type;
 
 export const SubagentCreateInput = Schema.Struct({
+  ...studioWorkspace,
   name: TrimmedNonEmptyString,
   /** The starter's file text; the server sets its `name` and checks it against format v1. */
   contents: TrimmedNonEmptyString.check(Schema.isMaxLength(60_000)),

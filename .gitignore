@@ -37,6 +37,7 @@ apps/mobile/.generated/
 artifacts/app-store/screenshots/
 .github/pr-assets/
 native/**/target/
+services/**/target/
 node_modules/
 .alchemy/
 *.log

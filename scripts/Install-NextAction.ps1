@@ -24,6 +24,10 @@ $target = (Resolve-Path -LiteralPath $AiosRoot).Path
 if (-not (Test-Path -LiteralPath (Join-Path $target 'AGENTS.md'))) { throw "No AIOS or project instructions at $target" }
 & (Join-Path $PSScriptRoot 'Sync-DefaultSkills.ps1') -RepoPath $target -SourceRoot $source -WhatIf:$WhatIfPreference
 if ($WhatIfPreference) { return }
+& node (Join-Path $source 'scripts/sync-output-standard.ts') --aios-root $target
+if ($LASTEXITCODE -ne 0) { throw 'Output standard sync failed' }
+& node (Join-Path $source 'scripts/sync-output-standard.ts') --aios-root $target --check
+if ($LASTEXITCODE -ne 0) { throw 'Output standard drift check failed' }
 
 # Leave a reusable updater in the AIOS, without replacing a customized project creator.
 $updaterSource = Join-Path $PSScriptRoot 'Sync-DefaultSkills.ps1'

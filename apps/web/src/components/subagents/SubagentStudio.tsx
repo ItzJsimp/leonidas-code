@@ -17,6 +17,9 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { subagentsCatalogQuery, subagentsComposerQuery, subagentUpdate } from "~/state/subagents";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
+import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
+import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { NewSubagentDialog } from "./NewSubagentDialog";
 import { SubagentEditor, writeFailureMessage } from "./SubagentEditor";
@@ -45,8 +48,9 @@ const EMPTY_GROUP_TEXT: Record<StudioGroupKey, string | null> = {
  */
 export function SubagentStudio() {
   const environmentId = usePrimaryEnvironmentId();
+  const { scope, scopeReady } = useActiveAiosWorkspace();
   const catalog = useEnvironmentQuery(
-    environmentId ? subagentsCatalogQuery({ environmentId, input: {} }) : null,
+    environmentId && scopeReady ? subagentsCatalogQuery({ environmentId, input: scope }) : null,
   );
   // The composer keeps its own copy of the list; refresh both after a write so the
   // @ menu and the attach tab show the change without a restart.
@@ -388,7 +392,11 @@ function SubagentDetail({
     setToggleError(null);
     const result = await update({
       environmentId,
-      input: { specPath: entry.specPath, patch: { enabled } },
+      input: {
+        ...workspaceScopeInput(activeWorkspaceId(environmentId)),
+        specPath: entry.specPath,
+        patch: { enabled },
+      },
     });
     setToggling(false);
     if (result._tag === "Success") return onChanged();

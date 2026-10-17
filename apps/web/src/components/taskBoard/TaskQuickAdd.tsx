@@ -11,6 +11,8 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
 import { taskBoardCardCreate } from "~/state/taskBoard";
+import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
+import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { failureText } from "./useTaskActions.logic";
 
@@ -39,6 +41,7 @@ export function TaskQuickAdd(props: {
     const result = await runCreate({
       environmentId: props.environmentId,
       input: {
+        ...workspaceScopeInput(activeWorkspaceId(props.environmentId)),
         title: title.trim(),
         due: due || null,
         projectSlug: props.projectSlug,

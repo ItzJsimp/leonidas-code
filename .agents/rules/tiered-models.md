@@ -13,6 +13,19 @@ Match the model to the work. Procedure for splitting work: the `ceo` skill (`/ce
 
 Pick the exact model from `orchestrator_capabilities`; never assume it exists.
 
+## Before you spawn
+
+1. Call `orchestrator_capabilities` and read each account's quota windows (5-hour session and weekly).
+2. Skip every account at 85% or more in any window. A child there stops at the limit and loses its work.
+3. Rank the remaining accounts by headroom, then by tier fit. Prefer the cheapest tier that can do the work.
+4. State the choice in one line before you spawn: account, model, and its highest window percent.
+5. If no account has room, do the work yourself or ask the user. Do not spawn and hope.
+
+The app enforces two gates on every `delegate_task`, not only on named subagents:
+
+- **Quota guard:** a spawn on an account at the `subagentQuotaBlockPercent` setting (default 90%) fails, and the error names the accounts with room.
+- **Confirm tier (ADR-0082):** a model outside the free tier (Haiku, Luna, Flash Low and Medium) waits for the user's approval card.
+
 ## How
 
 - Split read-only scans by area (web and mobile, desktop and marketing, server and packages) and run the workers in parallel. Parallel light workers matched a single frontier worker on accuracy and covered more ground (2026-10-12 branding scan).

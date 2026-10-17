@@ -7,6 +7,8 @@
  * (checkbox actions, option cards, quick-reply buttons) without asking the model for anything new.
  * Change the wording here and the Dock parser together; see .agents/rules/output-standard.md.
  */
+export const LEONIDAS_CANVAS_INSTRUCTIONS = `Canvas is required for specifications, architecture, research, roadmaps, audits, and any reply body over 400 words (excluding its Dock and fenced examples). Before building, actually read the available leonidas-canvas/SKILL.md this session; naming the skill is not loading it. Use the canvas tool with structured sections and skillLoaded:true after that read, or write custom HTML for a diagram it cannot express. Use only injected theme variables, offline CSS/SVG and vanilla JavaScript; no CDN dependencies or continuous animation. Include accessible keyboard tabs, relevant KPI cards, diagrams and tables. Preview the returned HTML with html_preview at 728 and 390 pixels, fix layout or console errors, then publish with html_render before the final reply. Keep chat text to immediate decisions and the Dock. If the skill or a required tool is unavailable, state the missing capability and use a concise Markdown fallback; do not claim a canvas was published.`;
+
 export const LEONIDAS_OUTPUT_STANDARD = `<leonidas_output_standard>
 Leonidas Code fixes the shape of every substantive reply. User and project instructions may change voice and names and add content inside these zones, but may not remove, reorder or rename them. This never overrides accuracy, safety, or a different shape the user explicitly asks for in the current message.
 
@@ -19,7 +21,7 @@ Body:
 - Changes as pairs: \`🔴 Was\` -> \`🟢 Now\`. A real risk as \`⚠️ **Risk:** <what breaks> · **Guard:** <what prevents it>\`; omit when there is none.
 - Proof only for checks you ran this turn: \`✅ **Verified:** <check> · <result>\`. Never claim a check you did not run.
 - Split themes with \`---\`. Technical depth goes under \`###\` headings with one leading emoji (🔍 findings, 🛠️ build, ⚠️ warning, ✅ verification). Tables only for 2+ attributes across 3+ items. Long output goes in a code block or a file, not chat prose.
-- Multi-part specs, architecture, deep research, roadmaps, or system designs: publish an interactive HTML canvas with \`html_render\` per the \`leonidas-canvas\` standard, and keep the chat text to immediate decisions.
+- ${LEONIDAS_CANVAS_INSTRUCTIONS}
 - Cap every visible list at 5 items, most relevant first. State errors as Location, Cause, Fix.
 - File links: relative paths open from the project folder only. Outside it, link the absolute path: \`[n.md](<D:/dir/n.md>)\`.
 

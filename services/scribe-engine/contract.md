@@ -1,14 +1,16 @@
-# Scribe engine contract (v1)
+# Scribe engine contract (v1.1)
+
+v1.1 (2026-10-17, lane L1) is additive: v1 clients keep working and `apiVersion` stays `1`. New: `groqKey` and `privateMode` in status, the credentials commands, and `raw` and `engine` in the `transcript` event.
 
 The engine is a Rust process. Leonidas Code supervises it and drives it over loopback HTTP. The contract is the only coupling ([ADR-0074](../../../../decisions/0074-leonidas-scribe-engine-moves-to-rust-and-python-leaves-the-product.md)). Any UI can drive the engine through it.
 
 ## Transport
 
-- Bind `127.0.0.1` only, default port `8766`. Fail to start if the port is taken.
+- Bind `127.0.0.1` only, default port `8766`. Fail to start if the port is taken. The engine config (`%APPDATA%\Leonidas\scribe-engine\config.json`, field `port`) can change the port, for example to run next to Python Scribe.
 - Reject any request with an `Origin` header or a `Host` other than `127.0.0.1:<port>` (403 `{"error":"forbidden"}`).
 - All bodies are JSON (`Content-Type: application/json`). Responses carry `Cache-Control: no-store`.
 - Every payload carries `"service":"leonidas-scribe"` and `"apiVersion":1`.
-- Error body: `{"error":"<code>"}`. Codes: `forbidden`, `not_found`, `method_not_allowed`, `bad_request`, `status_unavailable`, `invalid_state`.
+- Error body: `{"error":"<code>"}`. Codes: `forbidden`, `not_found`, `method_not_allowed`, `bad_request`, `status_unavailable`, `invalid_state`, `store_error` (v1.1: 500 when the OS credential store fails; no detail is returned).
 
 ## States
 
@@ -25,9 +27,14 @@ Matches the old Python API. 503 `status_unavailable` if no sample is under 5 s o
   "service": "leonidas-scribe",
   "apiVersion": 1,
   "state": "ready",
-  "sampledAt": "2026-10-15T01:00:00.000Z"
+  "sampledAt": "2026-10-15T01:00:00.000Z",
+  "groqKey": true,
+  "privateMode": false
 }
 ```
+
+- `groqKey` (v1.1): a Groq key is stored, or `GROQ_API_KEY` is set. The key itself is never returned.
+- `privateMode` (v1.1): audio never leaves the device.
 
 ### `POST /v1/start`
 
@@ -49,18 +56,36 @@ Stop recording and start transcription. Allowed in `listening` only.
 
 Reply: `{"service":"leonidas-scribe","apiVersion":1,"state":"processing"}`. When `paste` is true, the engine pastes the final text into the focused window.
 
+### `PUT /v1/credentials/groq` (v1.1)
+
+Store the user's Groq key in the OS credential store (Windows Credential Manager, macOS Keychain).
+
+```json
+{ "key": "gsk_..." }
+```
+
+Reply: `204 No Content`. An empty or missing `key` is 400 `bad_request`. The engine never writes the key to a file or a log.
+
+### `DELETE /v1/credentials/groq` (v1.1)
+
+Remove the stored key. Reply: `204 No Content`, also when no key was stored.
+
 ## Events
 
 ### `GET /v1/events`
 
-Server-sent events (`text/event-stream`). One JSON object per `data:` line. Types:
+Server-sent events (`text/event-stream`). One JSON object per `data:` line. Each event also carries `service` and `apiVersion` (left out of the examples below). A `: ping` comment arrives every 15 s. Types:
 
 ```json
 {"type":"state","state":"listening","at":"2026-10-15T01:00:00.000Z"}
 {"type":"partial","text":"hello wor","at":"2026-10-15T01:00:01.000Z"}
-{"type":"transcript","text":"Hello world.","durationMs":1840,"pasted":true,"at":"2026-10-15T01:00:03.000Z"}
+{"type":"transcript","text":"Hello world.","raw":"hello world","durationMs":1840,"pasted":true,"engine":"groq","at":"2026-10-15T01:00:03.000Z"}
 {"type":"error","code":"mic_error","message":"No input device","at":"2026-10-15T01:00:00.000Z"}
 ```
+
+- `transcript.text` is the polished text that was pasted. `raw` (v1.1) is the speech-to-text output before polish. `engine` (v1.1) is `groq` or `local`.
+- Error codes: `mic_error` (no device or capture failed), `stt_error` (speech-to-text failed; the state returns to `ready`).
+- A v1 reader ignores the new fields; a v1.1 reader treats a missing `raw` as `""` and a missing `engine` as `groq`.
 
 ## Budgets
 

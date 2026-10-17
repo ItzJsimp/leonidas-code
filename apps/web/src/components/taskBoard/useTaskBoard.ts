@@ -11,6 +11,7 @@ import { useVisibleInterval } from "~/hooks/useVisibleInterval";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { PRACTICE_SLUG } from "./practice.logic";
 import { useSharedBoards } from "./useSharedBoards";
 import {
@@ -98,8 +99,9 @@ export function useTaskBoard(input: {
 }): TaskBoardState {
   const { selectedSlug, prefs, query, practiceTasks } = input;
   const environmentId = usePrimaryEnvironmentId();
+  const { scope, scopeReady } = useActiveAiosWorkspace();
   const workspace = useEnvironmentQuery(
-    environmentId ? taskBoardWorkspaceQuery({ environmentId, input: {} }) : null,
+    environmentId && scopeReady ? taskBoardWorkspaceQuery({ environmentId, input: scope }) : null,
   );
   const data = workspace.data;
   const projects = data?.projects ?? NO_PROJECTS;

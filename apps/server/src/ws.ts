@@ -7,6 +7,7 @@ import {
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
 import * as LocalModelsService from "./localModels/LocalModelsService.ts";
+import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
@@ -1365,15 +1366,26 @@ const layerWsRpc = (
       yield* spawnApprovals.keepStatsIn(`${config.stateDir}/subagent-stats.json`);
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
       const systemCare = yield* SystemCare.SystemCare;
-      const studioWriteScope = Effect.gen(function* () {
-        const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
-        const aiosRoot = yield* taskBoard.aiosRoot(projects);
-        const appFreeModels = yield* serverSettings.getSettings.pipe(
-          Effect.map((settings) => settings.subagentFreeTierModels),
-          Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
-        );
-        return { aiosRoot, projects, appFreeModels };
-      });
+      // Studio writes see only the request's workspace: its root and the projects inside it.
+      const studioWriteScope = (workspaceId: string | undefined) =>
+        Effect.gen(function* () {
+          const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+          const aiosRoot = yield* taskBoard.aiosRoot(allProjects, workspaceId);
+          if (workspaceId !== undefined && aiosRoot === null) {
+            return yield* new SubagentEditError({ message: "That workspace is not available." });
+          }
+          const projects =
+            workspaceId === undefined
+              ? allProjects
+              : allProjects.filter(
+                  (project) => aiosRoot !== null && isPathInRoot(aiosRoot, project.workspaceRoot),
+                );
+          const appFreeModels = yield* serverSettings.getSettings.pipe(
+            Effect.map((settings) => settings.subagentFreeTierModels),
+            Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
+          );
+          return { aiosRoot, projects, appFreeModels };
+        });
 
       const withTaskBoardProject = <A, E, R>(
         projectId: ProjectId,
@@ -2849,10 +2861,17 @@ const layerWsRpc = (
         [WS_METHODS.subagentsSubscribeSpawnApprovals]: () => spawnApprovals.pending,
         [WS_METHODS.subagentsRespondSpawnApproval]: (input) =>
           spawnApprovals.respond(input).pipe(Effect.as({})),
-        [WS_METHODS.subagentsList]: () =>
+        [WS_METHODS.subagentsList]: (input) =>
           Effect.gen(function* () {
-            const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
-            const aiosRoot = yield* taskBoard.aiosRoot(projects);
+            const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+            const aiosRoot = yield* taskBoard.aiosRoot(allProjects, input.workspaceId);
+            // A scoped request sees only the projects inside its own workspace (ADR-0080).
+            const projects =
+              input.workspaceId === undefined
+                ? allProjects
+                : allProjects.filter(
+                    (project) => aiosRoot !== null && isPathInRoot(aiosRoot, project.workspaceRoot),
+                  );
             const appFreeModels = yield* serverSettings.getSettings.pipe(
               Effect.map((settings) => settings.subagentFreeTierModels),
               Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
@@ -2864,7 +2883,7 @@ const layerWsRpc = (
           }),
         [WS_METHODS.subagentsUpdate]: (input) =>
           Effect.gen(function* () {
-            const scope = yield* studioWriteScope;
+            const scope = yield* studioWriteScope(input.workspaceId);
             return yield* Effect.try({
               try: () => updateStudioSubagent(scope, input),
               catch: (error) =>
@@ -2875,7 +2894,7 @@ const layerWsRpc = (
           }),
         [WS_METHODS.subagentsCreate]: (input) =>
           Effect.gen(function* () {
-            const scope = yield* studioWriteScope;
+            const scope = yield* studioWriteScope(input.workspaceId);
             return yield* Effect.try({
               try: () => createStudioSubagent(scope, input),
               catch: (error) =>
@@ -2931,8 +2950,10 @@ const layerWsRpc = (
         [WS_METHODS.localModelsComparePick]: (input) => localModels.comparePick(input),
         [WS_METHODS.localModelsTokenReport]: (input) => localModels.tokenReport(input),
         [WS_METHODS.localModelsDelete]: (input) => localModels.remove(input),
-        [WS_METHODS.taskBoardWorkspace]: () =>
-          allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),
+        [WS_METHODS.taskBoardWorkspace]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.workspace(projects, input.workspaceId)),
+          ),
         [WS_METHODS.taskBoardCardUpdate]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.cardUpdate(input, projects)),
@@ -2952,12 +2973,20 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeWeather]: (input) =>
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
-        [WS_METHODS.taskBoardHome]: () =>
-          allTaskBoardProjects.pipe(Effect.flatMap((projects) => taskBoard.home(projects))),
-        [WS_METHODS.aiosUsageShape]: () =>
+        [WS_METHODS.taskBoardHome]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.aiosUsageShape]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.orElseSucceed(() => []),
-            Effect.flatMap((projects) => taskBoard.usageShape(projects)),
+            Effect.flatMap((projects) => taskBoard.usageShape(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.aiosWorkspacesList]: () =>
+          allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspaces)),
+        [WS_METHODS.aiosWorkspacesInit]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.workspaceInit(input, projects)),
           ),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(

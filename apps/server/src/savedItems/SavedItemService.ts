@@ -20,7 +20,7 @@ import {
 import { parseSavedItemMarkdown } from "@t3tools/shared/savedItemMarkdown";
 import { isValidOnceRunAt } from "../scheduledTasks/Schedule.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
-import { findAiosRoot } from "../taskBoard/aiosCards.ts";
+import { defaultWorkspaceRoot } from "../taskBoard/aiosWorkspaces.ts";
 import {
   deleteFolderPrompt,
   FOLDER_ID_PREFIX,
@@ -126,7 +126,12 @@ const make = Effect.gen(function* () {
       const current = yield* settings.value.getSettings.pipe(Effect.option);
       confirmed = Option.isSome(current) ? current.value.aiosRoot || undefined : undefined;
     }
-    const root = findAiosRoot([confirmed, process.env.LEONIDAS_AIOS_ROOT, process.env.AIOS_ROOT]);
+    // Prompts belong to the default workspace until saved items carry a workspace id.
+    const root = defaultWorkspaceRoot([
+      confirmed,
+      process.env.LEONIDAS_AIOS_ROOT,
+      process.env.AIOS_ROOT,
+    ]);
     return root === null ? null : promptsDirFor(root);
   });
   const folderFile = (id: SavedItemId) =>

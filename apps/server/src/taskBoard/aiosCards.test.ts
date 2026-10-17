@@ -213,6 +213,30 @@ priority: ${word}
     expect(priorityOf("Now")).toBe("high");
     expect(priorityOf('"Next"')).toBe("medium");
     expect(priorityOf('"Critical"')).toBe("critical");
+    // SimplyGersi cards use Now / Next / Someday.
+    expect(priorityOf('"Someday"')).toBe("low");
+  });
+});
+
+describe("project links", () => {
+  it("reads a project.md path as the project slug", () => {
+    const slugOf = (value: string) =>
+      cardToTask({
+        fileName: "p.md",
+        raw: `---
+id: task-p
+name: "P"
+project: ${value}
+---
+# P
+`,
+        mtimeMs: NOW,
+        now: NOW,
+      })?.projectSlug;
+    expect(slugOf('"projects/simplygersi-command-center/project.md"')).toBe(
+      "simplygersi-command-center",
+    );
+    expect(slugOf('"leonidas-code"')).toBe("leonidas-code");
   });
 });
 

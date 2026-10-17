@@ -9,6 +9,7 @@ import { APP_VERSION } from "../../branding";
 import { usePrimaryEnvironment, usePrimaryEnvironmentId } from "../../state/environments";
 import { useEnvironmentQuery } from "../../state/query";
 import { aiosUsageShapeQuery } from "../../state/taskBoard";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { UsageAnalyticsConsentDialog } from "./UsageAnalyticsConsentDialog";
 
 /** Sends the five core usage events once the user has said Yes. */
@@ -19,9 +20,10 @@ export function UsageAnalyticsCoordinator() {
   const onboardingCompletedAt = useClientSettings((settings) => settings.onboardingCompletedAt);
   const lastFeature = useRef<string | null>(null);
   const environmentId = usePrimaryEnvironmentId();
+  const { scope, scopeReady } = useActiveAiosWorkspace();
   const aiosShape = useEnvironmentQuery(
-    consent === "granted" && environmentId
-      ? aiosUsageShapeQuery({ environmentId, input: {} })
+    consent === "granted" && environmentId && scopeReady
+      ? aiosUsageShapeQuery({ environmentId, input: scope })
       : null,
   ).data;
   const aiosShapeSent = useRef(false);
