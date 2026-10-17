@@ -95,6 +95,23 @@ const hasDir = (path: string) => {
   }
 };
 
+/**
+ * True when the real path `path` is `realRoot` or inside it. Both must already be real paths, so a
+ * link or junction that leaves the root is caught (ADR-0080 workspace guard).
+ */
+export function isInsideRoot(realRoot: string, path: string): boolean {
+  const relative = NodePath.relative(realRoot, path);
+  return relative === "" || (!relative.startsWith("..") && !NodePath.isAbsolute(relative));
+}
+
+const realRootOf = (root: string): string | null => {
+  try {
+    return NodeFS.realpathSync.native(root);
+  } catch {
+    return null;
+  }
+};
+
 /** Finds the AIOS root: the first hint (then its ancestors) that holds the task folders. */
 export function findAiosRoot(hints: ReadonlyArray<string | undefined>): string | null {
   for (const hint of hints) {
@@ -679,11 +696,16 @@ export function readAiosTasks(
   const globalNames = new Set<string>();
   const byId = new Map<string, { task: TaskBoardTask; mtimeMs: number; global: boolean }>();
 
+  const realRoot = realRootOf(root);
+  if (realRoot === null) return [];
+
   const visit = (tasksDir: string, projectHint: string | undefined, global: boolean) => {
     let baseDir: string;
     let entries: NodeFS.Dirent[];
     try {
       baseDir = NodeFS.realpathSync.native(tasksDir);
+      // A folder linked in from outside the workspace is another workspace's data.
+      if (!isInsideRoot(realRoot, baseDir)) return;
       entries = NodeFS.readdirSync(baseDir, { withFileTypes: true });
     } catch {
       return;
@@ -707,6 +729,7 @@ export function readAiosTasks(
         const file = symlink
           ? NodeFS.realpathSync.native(NodePath.join(baseDir, name))
           : NodePath.join(baseDir, name);
+        if (symlink && !isInsideRoot(realRoot, file)) continue;
         const seenKey = keyFor(file);
         if (seenFiles.has(seenKey)) continue;
         seenFiles.add(seenKey);
@@ -749,8 +772,16 @@ export function readAiosTasks(
 /** Finds a card file by its `sourceFile`: global tasks first, then project task folders. */
 export function findCardFile(root: string, sourceFile: string): string | null {
   if (sourceFile !== NodePath.basename(sourceFile)) return null;
+  const realRoot = realRootOf(root);
+  if (realRoot === null) return null;
   const candidates = aiosTaskFolders(root).map((folder) => NodePath.join(folder.dir, sourceFile));
-  return candidates.find((candidate) => NodeFS.existsSync(candidate)) ?? null;
+  return (
+    candidates.find((candidate) => {
+      if (!NodeFS.existsSync(candidate)) return false;
+      const real = realRootOf(candidate);
+      return real !== null && isInsideRoot(realRoot, real);
+    }) ?? null
+  );
 }
 
 const quote = (value: string) =>
