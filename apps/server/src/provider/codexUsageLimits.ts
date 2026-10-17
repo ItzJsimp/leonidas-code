@@ -15,6 +15,7 @@ import type {
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 import type * as CodexErrors from "effect-codex-app-server/errors";
+import { classifyProviderConnectionIssue } from "@t3tools/contracts";
 
 import { clampPercent, makeUsageLimits } from "@t3tools/provider-core/server/usageLimits";
 
@@ -157,6 +158,13 @@ export function codexRateLimitsFailureMessage(error: CodexErrors.CodexAppServerE
     default:
       return "Codex did not answer the usage request.";
   }
+}
+
+/** Keep only a safe category before the usage failure text is sanitized. */
+export function codexRateLimitsFailureIssue(error: CodexErrors.CodexAppServerError) {
+  return classifyProviderConnectionIssue(
+    error._tag === "CodexAppServerRequestError" ? error.errorMessage : error.message,
+  );
 }
 
 /**

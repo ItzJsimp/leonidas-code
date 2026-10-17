@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   codexRateLimitsFailureMessage,
+  codexRateLimitsFailureIssue,
   codexRateLimitsToLimits,
   codexRateLimitsToUpdate,
   codexResetCreditsToContract,
@@ -158,6 +159,17 @@ describe("codexRateLimitsToUpdate", () => {
 });
 
 describe("codexRateLimitsFailureMessage", () => {
+  it.each([
+    ["OAuth token expired", "token_expired"],
+    ["request failed: 401 Unauthorized", "signed_out"],
+    ["fetch failed: ECONNREFUSED", "network_blocked"],
+  ] as const)("preserves safe connection evidence from %s", (errorMessage, issue) => {
+    expect(
+      codexRateLimitsFailureIssue(
+        new CodexErrors.CodexAppServerRequestError({ code: -32603, errorMessage }),
+      ),
+    ).toBe(issue);
+  });
   it("keeps the JSON-RPC code and nothing else from a request failure", () => {
     expect(
       codexRateLimitsFailureMessage(

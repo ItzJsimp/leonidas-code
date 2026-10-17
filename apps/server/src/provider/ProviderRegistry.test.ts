@@ -23,6 +23,7 @@ import {
   ClaudeSettings,
   CodexSettings,
   DEFAULT_SERVER_SETTINGS,
+  getProviderReadiness,
   PROVIDER_WORKSPACE_SNAPSHOT_TTL_MS,
   ProviderDriverKind,
   ProviderInstanceId,
@@ -163,6 +164,7 @@ function booleanDescriptor(id: string, label: string) {
 }
 
 type TestClaudeCapabilities = {
+  readonly connectionIssue?: ServerProvider["connectionIssue"];
   readonly email: string | undefined;
   readonly subscriptionType: string | undefined;
   readonly tokenSource: string | undefined;
@@ -3129,6 +3131,37 @@ it.layer(
   // ── checkClaudeProviderStatus tests ──────────────────────────
 
   describe("checkClaudeProviderStatus", () => {
+    it.effect.each(["token_expired", "network_blocked", "quota_reached"] as const)(
+      "publishes readiness for %s",
+      (connectionIssue) =>
+        Effect.gen(function* () {
+          const snapshot = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ connectionIssue }),
+          );
+          assert.strictEqual(snapshot.status, "error");
+          const readiness = getProviderReadiness(
+            {
+              ...snapshot,
+              instanceId: ProviderInstanceId.make("isolated"),
+              driver: ProviderDriverKind.make("claudeAgent"),
+            },
+            { nowMs: 0 },
+          );
+          assert.strictEqual(readiness.color, "red");
+          assert.strictEqual(readiness.code, connectionIssue);
+          assert.strictEqual(
+            readiness.action,
+            connectionIssue === "token_expired"
+              ? "sign_in"
+              : connectionIssue === "network_blocked"
+                ? "check_connection"
+                : "check",
+          );
+        }).pipe(
+          Effect.provide(layerMockSpawner(() => ({ stdout: "2.1.288", stderr: "", code: 0 }))),
+        ),
+    );
     it.effect("returns ready when claude is installed and authenticated", () =>
       Effect.gen(function* () {
         const status = yield* checkClaudeProviderStatus(

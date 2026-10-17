@@ -194,12 +194,12 @@ describe("shouldOfferModelPickerSetup", () => {
     ).toBe(false);
   });
 
-  it("keeps providers without integrated setup on their existing path", () => {
-    expect(shouldOfferModelPickerSetup(entry("error"), [])).toBe(false);
-  });
-
   it("offers setup for a Codex account that has an integrated setup path", () => {
     expect(shouldOfferModelPickerSetup(entry("error", "codex"), [])).toBe(true);
+  });
+
+  it("keeps other failed drivers reachable for their connection check", () => {
+    expect(shouldOfferModelPickerSetup(entry("error", "custom"), [])).toBe(true);
   });
 
   it("uses the environment's setup capability for other drivers", () => {

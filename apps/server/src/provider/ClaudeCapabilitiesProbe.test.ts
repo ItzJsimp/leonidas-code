@@ -143,6 +143,7 @@ it.layer(NodeServices.layer)("Claude capability probe SDK boundary", (it) => {
                 enabled: true,
                 scope: "project",
                 description: "Existing project skill",
+                approxTokens: 20,
               },
             ],
           });
@@ -206,6 +207,7 @@ it.layer(NodeServices.layer)("Claude capability probe SDK boundary", (it) => {
             enabled: true,
             scope: "project",
             description: "Existing project skill",
+            approxTokens: 20,
           },
         ],
       });
@@ -372,5 +374,31 @@ it.effect("asks for usage without the local transcript scan", () =>
     yield* Effect.addFinalizer(() => Effect.sync(() => query.mockRestore()));
     yield* probeClaudeCapabilities(decodeClaudeSettings({ binaryPath: "claude" }));
     assert.deepEqual(usageOptions, { skipBehaviors: true });
+  }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+);
+
+it.effect.each([
+  ["init", "connect ECONNREFUSED", "network_blocked"],
+  ["init", "OAuth token expired", "token_expired"],
+  ["usage", "OAuth token expired", "token_expired"],
+  ["usage", "quota exceeded", "quota_reached"],
+] as const)("preserves probe failure from %s: %s", ([stage, message, issue]) =>
+  Effect.gen(function* () {
+    const query = vi.spyOn(ClaudeSdk, "query").mockImplementation(
+      () =>
+        ({
+          initializationResult: async () => {
+            if (stage === "init") throw new Error(message);
+            return { account: { tokenSource: "oauth" }, commands: [] };
+          },
+          usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET: async () => {
+            throw new Error(message);
+          },
+        }) as unknown as ReturnType<typeof ClaudeSdk.query>,
+    );
+    yield* Effect.addFinalizer(() => Effect.sync(() => query.mockRestore()));
+    const result = yield* probeClaudeCapabilities(decodeClaudeSettings({ binaryPath: "claude" }));
+    assert.equal(result?.connectionIssue, issue);
+    assert.equal(JSON.stringify(result).includes(message), false);
   }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 );

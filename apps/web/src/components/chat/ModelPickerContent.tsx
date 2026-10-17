@@ -1,5 +1,6 @@
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
+  getProviderReadiness,
   type ProviderInstanceId,
   type EnvironmentId,
   type ProviderDriverKind,
@@ -14,7 +15,8 @@ import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRe
 import { ChevronRightIcon } from "lucide-react";
 import { ModelListRow } from "./ModelListRow";
 import { ModelPickerSidebar } from "./ModelPickerSidebar";
-import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
+import { ProviderReadinessControl } from "./ProviderReadinessControl";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import {
   modelPickerLegacySectionKey,
   modelPickerModelKey,
@@ -117,7 +119,6 @@ export function shouldOfferModelPickerSetup(
   return (
     entry.enabled &&
     entry.status !== "disabled" &&
-    hasProviderSetup(entry.snapshot) &&
     (!isProviderInstancePickerReady(entry) ||
       !entry.installed ||
       entry.snapshot.auth.status === "unauthenticated" ||
@@ -595,6 +596,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   const selectedEntry =
     selectedInstanceId === "favorites" ? undefined : entryByInstanceId.get(selectedInstanceId);
+  const nowMinute = useNowMinute();
   const providerSetupEntries =
     !isSearching && props.onOpenProviderSetup
       ? instanceEntries.filter(
@@ -609,6 +611,27 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
               : filteredModels.length === 0),
         )
       : [];
+  const readinessEntries = selectedEntry ? [selectedEntry] : providerSetupEntries;
+  const nextConnectedEntry = selectedEntry
+    ? instanceEntries.find(
+        (entry) =>
+          entry.instanceId !== selectedEntry.instanceId &&
+          matchesLockedProvider(entry) &&
+          !(
+            entry.continuationGroupKey &&
+            entry.continuationGroupKey === selectedEntry.continuationGroupKey
+          ) &&
+          !(
+            entry.driverKind === selectedEntry.driverKind &&
+            entry.snapshot.auth.email &&
+            entry.snapshot.auth.email.toLowerCase() ===
+              selectedEntry.snapshot.auth.email?.toLowerCase()
+          ) &&
+          getProviderReadiness(entry.snapshot, { nowMs: Date.parse(`${nowMinute}:00Z`) }).color ===
+            "green" &&
+          modelOptionsByInstance.get(entry.instanceId)?.some((model) => !model.isUnavailable),
+      )
+    : undefined;
 
   // Models the manifest announces that this provider's installed CLI is too
   // old to run. Without this, a new model just seems missing until the user
@@ -1090,25 +1113,38 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                 />
               </ComboboxListVirtualized>
             </div>
-            {providerSetupEntries.length > 0 ? (
+            {readinessEntries.length > 0 ? (
               <div className="max-h-44 shrink-0 overflow-y-auto border-t border-border/70 p-2">
-                {providerSetupEntries.map((entry) => (
-                  <div key={entry.instanceId} className="px-1 py-1.5 text-xs leading-snug">
-                    <p className="line-clamp-3 text-muted-foreground">
-                      {getProviderStatusMessage(entry.snapshot)}
-                    </p>
-                    <InlineButton
-                      className="mt-1"
-                      onClick={() => {
-                        props.onRequestClose?.();
-                        props.onOpenProviderSetup?.(entry.instanceId);
-                      }}
-                    >
-                      {providerSetupEntries.length > 1
-                        ? `Set up ${entry.displayName}`
-                        : "Open AI account setup"}
-                    </InlineButton>
-                  </div>
+                {readinessEntries.map((entry) => (
+                  <ProviderReadinessControl
+                    key={entry.instanceId}
+                    environmentId={props.environmentId}
+                    provider={entry.snapshot}
+                    onOpenProviderSetup={
+                      props.onOpenProviderSetup
+                        ? (instanceId) => {
+                            props.onRequestClose?.();
+                            props.onOpenProviderSetup?.(instanceId);
+                          }
+                        : undefined
+                    }
+                    onSwitchAccount={
+                      nextConnectedEntry
+                        ? () => {
+                            const model = modelOptionsByInstance
+                              .get(nextConnectedEntry.instanceId)
+                              ?.find((model) => !model.isUnavailable);
+                            if (model) {
+                              props.onInstanceModelChange(
+                                nextConnectedEntry.instanceId,
+                                model.slug,
+                              );
+                              props.onRequestClose?.();
+                            }
+                          }
+                        : undefined
+                    }
+                  />
                 ))}
               </div>
             ) : (

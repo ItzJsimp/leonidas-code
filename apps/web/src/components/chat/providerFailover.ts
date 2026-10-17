@@ -5,6 +5,7 @@ import type {
   ServerProviderUsageWindow,
   UsageLimitSourceSnapshots,
 } from "@t3tools/contracts";
+import { getProviderReadiness, isProviderTextGenerationCapable } from "@t3tools/contracts";
 import type { UnifiedSettings } from "@t3tools/contracts/settings";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
 import { isProviderInstancePickerReady, type ProviderInstanceEntry } from "../../providerInstances";
@@ -22,13 +23,6 @@ export interface ProviderFailoverTarget {
   readonly modelSelection: ModelSelection;
   readonly availableModels: ReadonlyArray<ProviderFailoverModelChoice>;
 }
-
-const FAILOVER_SUPPORTED_DRIVERS: ReadonlySet<string> = new Set([
-  "codex",
-  "claudeAgent",
-  "antigravity",
-  "cursor",
-]);
 
 export function isProviderUsageWindowExhausted(
   window: ServerProviderUsageWindow,
@@ -169,16 +163,12 @@ export function getProviderFailoverTargets(input: {
   const source = input.entries.find((entry) => entry.instanceId === input.current.instanceId);
   return input.entries
     .flatMap((entry) => {
-      // Must be a supported subscription driver or authenticated with usage limits
-      const isSupportedDriver =
-        FAILOVER_SUPPORTED_DRIVERS.has(entry.driverKind) ||
-        (entry.snapshot.auth.status === "authenticated" &&
-          entry.snapshot.usageLimits !== undefined);
       if (
         entry.instanceId === input.current.instanceId ||
-        !isSupportedDriver ||
+        !isProviderTextGenerationCapable(entry.snapshot) ||
         !entry.installed ||
-        !isProviderInstancePickerReady(entry)
+        !isProviderInstancePickerReady(entry) ||
+        getProviderReadiness(entry.snapshot, { nowMs }).color !== "green"
       ) {
         return [];
       }
