@@ -324,7 +324,7 @@ export function classifyActivityItem(item: OrchestrationV2TurnItem): ClassifiedI
         return {
           ...NONE,
           event: make("agent", clip(`@${str(input.subagent)}`, 60)),
-          tool: "Subagent",
+          tool: "Helper",
         };
       }
       const mcp = splitMcpToolName(toolName);

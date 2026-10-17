@@ -2555,7 +2555,7 @@ export function GeneralSettingsPanel() {
         <SettingsRow
           serverScoped
           {...searchableSetting("subagent-free-tier-models")}
-          description="A subagent on one of these models starts at once. Any other model shows a confirm card first. Separate model ids with commas. A model-tiers.json file in your AIOS overrides this list."
+          description="A helper on one of these models starts at once. Any other model shows a confirm card first. Separate model ids with commas. A model-tiers.json file in your AIOS overrides this list."
           settingKeys={["subagentFreeTierModels"]}
           control={
             <DraftInput
@@ -2564,7 +2564,7 @@ export function GeneralSettingsPanel() {
               onCommit={(value) =>
                 updateSettings({ subagentFreeTierModels: parseModelIdList(value) })
               }
-              aria-label="Subagent models that start without asking"
+              aria-label="Helper models that start without asking"
             />
           }
         />

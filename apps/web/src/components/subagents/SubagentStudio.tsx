@@ -32,9 +32,9 @@ import {
 } from "./subagentStudio.logic";
 
 const EMPTY_GROUP_TEXT: Record<StudioGroupKey, string | null> = {
-  on: "No subagent is on. Turn one on from the catalog.",
+  on: "No helper is on. Turn one on from the catalog.",
   catalog: null,
-  projects: "No project subagents yet. Add one in projects/<name>/.agents/subagents/.",
+  projects: "No project helpers yet. Add one in projects/<name>/.agents/subagents/.",
   fix: null,
 };
 
@@ -78,7 +78,7 @@ export function SubagentStudio() {
             className="flex items-center gap-2 text-base font-semibold"
           >
             <BotIcon aria-hidden className="size-4 text-muted-foreground" />
-            Subagents
+            Helpers
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Helpers that any chat can call. A free-tier model starts at once; a confirm-tier model
@@ -115,11 +115,11 @@ export function SubagentStudio() {
       {catalog.data === null ? (
         catalog.error === null ? (
           <div role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Spinner /> Loading subagents…
+            <Spinner /> Loading helpers…
           </div>
         ) : (
           <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm">
-            <p className="font-medium">Could not read your subagents</p>
+            <p className="font-medium">Could not read your helpers</p>
             <Button size="sm" variant="outline" className="mt-3" onClick={catalog.refresh}>
               Try again
             </Button>
@@ -136,7 +136,7 @@ export function SubagentStudio() {
           />
           <div className="grid min-h-[26rem] overflow-hidden rounded-lg border border-border md:grid-cols-[17rem_minmax(0,1fr)]">
             <nav
-              aria-label="Subagents"
+              aria-label="Helpers"
               className="flex min-w-0 flex-col border-b border-border md:border-r md:border-b-0"
             >
               <div className="relative border-b border-border p-2">
@@ -148,8 +148,8 @@ export function SubagentStudio() {
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search subagents"
-                  aria-label="Search subagents"
+                  placeholder="Search helpers"
+                  aria-label="Search helpers"
                   className="ps-7"
                 />
               </div>
@@ -186,7 +186,7 @@ export function SubagentStudio() {
                   );
                 })}
                 {visible.length === 0 && query.length > 0 ? (
-                  <p className="px-2 text-xs text-muted-foreground">No subagent matches.</p>
+                  <p className="px-2 text-xs text-muted-foreground">No helper matches.</p>
                 ) : null}
               </div>
             </nav>
@@ -194,8 +194,8 @@ export function SubagentStudio() {
               {selected === null ? (
                 <p className="text-sm text-muted-foreground">
                   {catalog.data.aiosRoot === null
-                    ? "Connect your AIOS folder on Home to list its subagents."
-                    : "No subagents yet. Add one in .agents/subagents/ in your AIOS."}
+                    ? "Connect your AIOS folder on Home to list its helpers."
+                    : "No helpers yet. Add one in .agents/subagents/ in your AIOS."}
                 </p>
               ) : (
                 <SubagentDetail
@@ -241,12 +241,12 @@ function KpiStrip(props: {
       <Kpi
         value={String(props.ready)}
         label="on, ready to spawn"
-        tip="Subagents that are on and whose spec resolves, so a chat can start them now."
+        tip="Helpers that are on and whose spec resolves, so a chat can start them now."
       />
       <Kpi
         value={String(props.spawnsToday)}
         label="spawns today"
-        tip="Subagent starts through this app since midnight. The count is kept when the app restarts."
+        tip="Helper starts made in this app since midnight. The count is kept when the app restarts."
       />
       <Kpi
         value={String(props.waitedToday)}
@@ -258,7 +258,7 @@ function KpiStrip(props: {
         label="tokens per lean start"
         tip={
           props.meanStartTokens === null
-            ? "No spawn yet today. This is the mean estimate for the subagents that are on."
+            ? "No spawn yet today. This is the mean estimate for the helpers that are on."
             : "Mean estimated start tokens of today's spawns."
         }
       />

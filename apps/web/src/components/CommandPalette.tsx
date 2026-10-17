@@ -1898,7 +1898,7 @@ function OpenCommandPaletteDialog(props: {
       kind: "action",
       value: "action:stop-run",
       searchTerms: ["stop", "interrupt", "cancel", "halt", "run"],
-      title: "Stop the running turn",
+      title: "Stop the AI reply",
       icon: <SquareIcon className={ITEM_ICON_CLASS} />,
       shortcutCommand: "thread.stop",
       run: async () => requestThreadAction("stop"),

@@ -833,7 +833,7 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         type: "error",
-        title: "Could not update provider instance",
+        title: "Could not save the AI account. Try again",
         ...userErrorToastFields(error),
       });
     }
@@ -865,7 +865,7 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(updateResult);
       toastManager.add({
         type: "error",
-        title: "Could not delete provider instance",
+        title: "Could not remove the AI account. Try again",
         ...userErrorToastFields(error),
       });
       return;
@@ -902,7 +902,7 @@ export function EnvironmentProviderSettings({
       const error = squashAtomCommandFailure(result);
       toastManager.add({
         type: "error",
-        title: "Could not reset provider instance",
+        title: "Could not reset the AI account. Try again",
         ...userErrorToastFields(error),
       });
     }

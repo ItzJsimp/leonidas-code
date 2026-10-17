@@ -4347,7 +4347,7 @@ function UserMessageMentionChip(props: {
       <UserMessageContextChip
         icon={<BotIcon aria-hidden />}
         label={subagent.name}
-        kindLabel="Subagent"
+        kindLabel="Helper"
         tooltip={subagent.description ?? `@${subagent.name}`}
         copyMarkdown={props.copyMarkdown}
         kind="skill"
