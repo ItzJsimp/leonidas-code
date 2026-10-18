@@ -6,6 +6,8 @@ import {
 } from "@t3tools/shared/answerBlocks";
 import { memo, useMemo, useState, type ReactNode } from "react";
 
+import { useAnswerBlockActions } from "./AnswerBlockActions";
+
 interface AnswerBlockViewProps {
   type: AnswerBlockType;
   code: string;
@@ -38,6 +40,8 @@ function BlockBody({ block, fallback }: { block: AnswerBlock; fallback: ReactNod
   switch (block.type) {
     case "table":
       return <TableBlock block={block} />;
+    case "choices":
+      return <ChoicesBlock block={block} />;
     default:
       return <>{fallback}</>;
   }
@@ -113,6 +117,55 @@ function TableBlock({ block }: { block: Extract<AnswerBlock, { type: "table" }> 
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices" }> }) {
+  const actions = useAnswerBlockActions();
+  const [picked, setPicked] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const choose = (label: string) => {
+    if (!actions || picked !== null) return;
+    setPicked(label);
+    setError(null);
+    actions.sendMessage(label).catch((cause: unknown) => {
+      setPicked(null);
+      setError(cause instanceof Error ? cause.message : "Could not send the choice.");
+    });
+  };
+
+  return (
+    <div className="my-2 flex flex-col gap-2" data-answer-block="choices">
+      {block.q ? <div className="text-sm font-medium">{block.q}</div> : null}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {block.options.map((option) => {
+          const isPicked = picked === option.label;
+          return (
+            <button
+              key={option.label}
+              type="button"
+              disabled={!actions || picked !== null}
+              aria-pressed={isPicked}
+              onClick={() => choose(option.label)}
+              className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors enabled:hover:bg-muted/40 disabled:cursor-default ${
+                isPicked ? "border-primary bg-primary/10" : "border-border/60"
+              } ${picked !== null && !isPicked ? "opacity-50" : ""}`}
+            >
+              <div className="font-medium">{option.label}</div>
+              {option.note ? (
+                <div className="mt-0.5 text-xs text-muted-foreground">{option.note}</div>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {error ? (
+        <div role="alert" className="text-xs text-destructive">
+          {error}
+        </div>
+      ) : null}
     </div>
   );
 }
