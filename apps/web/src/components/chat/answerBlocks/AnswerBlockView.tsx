@@ -127,16 +127,12 @@ function TableBlock({ block }: { block: Extract<AnswerBlock, { type: "table" }> 
 function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices" }> }) {
   const actions = useAnswerBlockActions();
   const [picked, setPicked] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
+  // A pick only fills the composer. The user can edit the text and must send it by hand.
   const choose = (label: string) => {
-    if (!actions || picked !== null) return;
+    if (!actions) return;
     setPicked(label);
-    setError(null);
-    actions.sendMessage(label).catch((cause: unknown) => {
-      setPicked(null);
-      setError(cause instanceof Error ? cause.message : "Could not send the choice.");
-    });
+    actions.fillComposer(label);
   };
 
   return (
@@ -149,12 +145,13 @@ function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices"
             <button
               key={option.label}
               type="button"
-              disabled={!actions || picked !== null}
+              disabled={!actions}
               aria-pressed={isPicked}
+              title="Add to message"
               onClick={() => choose(option.label)}
               className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors enabled:hover:bg-muted/40 disabled:cursor-default ${
                 isPicked ? "border-primary bg-primary/10" : "border-border/60"
-              } ${picked !== null && !isPicked ? "opacity-50" : ""}`}
+              }`}
             >
               <div className="font-medium">{option.label}</div>
               {option.note ? (
@@ -164,11 +161,6 @@ function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices"
           );
         })}
       </div>
-      {error ? (
-        <div role="alert" className="text-xs text-destructive">
-          {error}
-        </div>
-      ) : null}
     </div>
   );
 }

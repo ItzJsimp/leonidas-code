@@ -1,8 +1,9 @@
 import { createContext, useContext } from "react";
 
-/** Chat actions that answer blocks can call, such as sending a choice as a message. */
+/** Chat actions that answer blocks can call. Blocks never send a message by themselves. */
 export interface AnswerBlockActions {
-  sendMessage: (text: string) => Promise<void>;
+  /** Put text in the composer; the user edits it and sends it by hand. */
+  fillComposer: (text: string) => void;
 }
 
 export const AnswerBlockActionsContext = createContext<AnswerBlockActions | null>(null);

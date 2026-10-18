@@ -49,13 +49,13 @@ describe("AnswerBlockView table", () => {
 
 const CHOICES = '{"q":"Pick one","options":["Alpha",{"label":"Beta","note":"why"}]}';
 
-function renderChoices(sendMessage?: (text: string) => Promise<void>): ReactTestRenderer {
+function renderChoices(fillComposer?: (text: string) => void): ReactTestRenderer {
   let renderer!: ReactTestRenderer;
   const view = <AnswerBlockView type="choices" code={CHOICES} closed fallback={<pre>raw</pre>} />;
   act(() => {
     renderer = create(
-      sendMessage ? (
-        <AnswerBlockActionsContext value={{ sendMessage }}>{view}</AnswerBlockActionsContext>
+      fillComposer ? (
+        <AnswerBlockActionsContext value={{ fillComposer }}>{view}</AnswerBlockActionsContext>
       ) : (
         view
       ),
@@ -65,25 +65,24 @@ function renderChoices(sendMessage?: (text: string) => Promise<void>): ReactTest
 }
 
 describe("AnswerBlockView choices", () => {
-  it("sends the picked label once, then locks the cards", async () => {
-    const sendMessage = vi.fn(() => Promise.resolve());
-    const renderer = renderChoices(sendMessage);
-    const buttons = () => renderer.root.findAllByType("button");
-    await act(async () => buttons()[1]!.props.onClick());
-    await act(async () => buttons()[0]!.props.onClick());
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(sendMessage).toHaveBeenCalledWith("Beta");
-    expect(buttons().every((button) => button.props.disabled)).toBe(true);
+  it("fills the composer with the picked label and never sends", () => {
+    const fillComposer = vi.fn();
+    const renderer = renderChoices(fillComposer);
+    act(() => renderer.root.findAllByType("button")[1]!.props.onClick());
+    expect(fillComposer).toHaveBeenCalledWith("Beta");
+    expect(renderer.root.findAllByType("button")[1]!.props["aria-pressed"]).toBe(true);
   });
 
-  it("unlocks and shows the error when the send fails", async () => {
-    const renderer = renderChoices(() => Promise.reject(new Error("offline")));
-    await act(async () => renderer.root.findAllByType("button")[0]!.props.onClick());
-    expect(renderer.root.findByProps({ role: "alert" }).children).toEqual(["offline"]);
-    expect(renderer.root.findAllByType("button")[0]!.props.disabled).toBe(false);
+  it("lets the user pick again to change the choice", () => {
+    const fillComposer = vi.fn();
+    const renderer = renderChoices(fillComposer);
+    act(() => renderer.root.findAllByType("button")[0]!.props.onClick());
+    act(() => renderer.root.findAllByType("button")[1]!.props.onClick());
+    expect(fillComposer.mock.calls).toEqual([["Alpha"], ["Beta"]]);
+    expect(renderer.root.findAllByType("button").every((b) => !b.props.disabled)).toBe(true);
   });
 
-  it("disables the cards when no chat can receive the choice", () => {
+  it("disables the cards when no composer can receive the choice", () => {
     const renderer = renderChoices();
     expect(renderer.root.findAllByType("button").every((button) => button.props.disabled)).toBe(
       true,

@@ -4731,6 +4731,7 @@ export default function ChatView(props: ChatViewProps) {
     composerRef,
     scheduleComposerFocus,
   );
+  const answerBlockActions = useMemo(() => ({ fillComposer: fillDockReply }), [fillDockReply]);
   // An MCP App's approved `ui/message`: queued like a typed message, so it
   // never steers or interrupts a running turn.
   const sendAppMessage = useCallback(
@@ -4755,7 +4756,6 @@ export default function ChatView(props: ChatViewProps) {
     },
     [activeThreadId, environmentId, interactionMode, isServerThread, runtimeMode, startThreadTurn],
   );
-  const answerBlockActions = useMemo(() => ({ sendMessage: sendAppMessage }), [sendAppMessage]);
   const editQueuedRunCommand = useAtomCommand(threadEnvironment.editQueuedRun, {
     reportFailure: false,
   });
