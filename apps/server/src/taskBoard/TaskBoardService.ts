@@ -677,8 +677,8 @@ const make = Effect.gen(function* () {
         slugOwner.set(slug, owner.root);
       }
     }
-    // A caller with no workspace id (TaskAutoLog, MCP board tools, old clients) keeps the
-    // pre-workspace view: every native card and every project.
+    // Card callers with no workspace id (TaskAutoLog, MCP board tools, old clients) keep the
+    // pre-workspace card view. Focus uses its file's workspace, including the default file.
     const scoped = "project" in target || Boolean(target.workspaceId);
     // App-owned (native) cards belong to the workspace that holds their project, else the default.
     // A card made for a known project keys by that project's id; older cards key by slug.

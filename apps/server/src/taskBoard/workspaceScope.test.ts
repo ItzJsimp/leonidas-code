@@ -497,6 +497,20 @@ it.effect("resolves focus project links inside their workspace when project slug
         ),
       );
       expect(Exit.isFailure(foreign)).toBe(true);
+      const legacyForeign = yield* Effect.exit(
+        board.focusUpdate(
+          { op: "add", projectId: businessApp.id, text: "Wrong default workspace" },
+          all,
+        ),
+      );
+      expect(Exit.isFailure(legacyForeign)).toBe(true);
+      yield* board.focusUpdate(
+        { op: "add", projectId: projects[0]!.id, text: "Default workspace note" },
+        all,
+      );
+      expect((yield* board.focus(all)).sections.every((s) => s.projectId !== businessApp.id)).toBe(
+        true,
+      );
     }),
   ),
 );
