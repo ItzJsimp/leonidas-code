@@ -555,6 +555,25 @@ export type TaskBoardHomeNewsItem = typeof TaskBoardHomeNewsItem.Type;
 export const TaskBoardHomeNews = Schema.Struct({ items: Schema.Array(TaskBoardHomeNewsItem) });
 export type TaskBoardHomeNews = typeof TaskBoardHomeNews.Type;
 
+// Laya usage monitor. Counts only: the log holds no command or page text.
+export const LayaUsage = Schema.Struct({
+  status: Schema.Literals(["ready", "missing"]),
+  modelPresent: Schema.Boolean,
+  packPresent: Schema.Boolean,
+  total: Schema.Number,
+  days: Schema.Array(Schema.Struct({ date: Schema.String, count: Schema.Number })),
+  jobs: Schema.Array(
+    Schema.Struct({
+      job: Schema.String,
+      count: Schema.Number,
+      blocked: Schema.Number,
+      asked: Schema.Number,
+      flagged: Schema.Number,
+    }),
+  ),
+});
+export type LayaUsage = typeof LayaUsage.Type;
+
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({
   root: Schema.NullOr(TrimmedNonEmptyString),

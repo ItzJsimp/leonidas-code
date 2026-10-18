@@ -108,6 +108,13 @@ export const taskBoardHomeNewsQuery = createEnvironmentRpcQueryAtomFamily(connec
   idleTtlMs: 15 * 60_000,
 });
 
+export const layaUsageQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:laya:usage",
+  tag: WS_METHODS.layaUsage,
+  staleTimeMs: 30_000,
+  idleTtlMs: 5 * 60_000,
+});
+
 export const taskBoardAiosConfirm = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:task-board:aios-confirm",
   tag: WS_METHODS.taskBoardAiosConfirm,
