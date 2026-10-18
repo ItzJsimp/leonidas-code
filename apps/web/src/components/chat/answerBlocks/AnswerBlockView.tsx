@@ -1,0 +1,118 @@
+import {
+  parseAnswerBlock,
+  type AnswerBlock,
+  type AnswerBlockType,
+  type Cell,
+} from "@t3tools/shared/answerBlocks";
+import { memo, useMemo, useState, type ReactNode } from "react";
+
+interface AnswerBlockViewProps {
+  type: AnswerBlockType;
+  code: string;
+  /** False while the fence still streams. */
+  closed: boolean;
+  /** Shown when the block JSON is bad: the plain code fence. */
+  fallback: ReactNode;
+}
+
+export const AnswerBlockView = memo(function AnswerBlockView({
+  type,
+  code,
+  closed,
+  fallback,
+}: AnswerBlockViewProps) {
+  const result = useMemo(() => parseAnswerBlock(type, code, closed), [type, code, closed]);
+  if (result.status === "pending") {
+    return (
+      <div
+        className="my-2 h-16 animate-pulse rounded-lg border border-border/60 bg-muted/30"
+        aria-label="Loading block"
+      />
+    );
+  }
+  if (result.status === "fallback") return <>{fallback}</>;
+  return <BlockBody block={result.block} fallback={fallback} />;
+});
+
+function BlockBody({ block, fallback }: { block: AnswerBlock; fallback: ReactNode }) {
+  switch (block.type) {
+    case "table":
+      return <TableBlock block={block} />;
+    default:
+      return <>{fallback}</>;
+  }
+}
+
+function compareCells(a: Cell | undefined, b: Cell | undefined): number {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a ?? "").localeCompare(String(b ?? ""), undefined, { numeric: true });
+}
+
+function TableBlock({ block }: { block: Extract<AnswerBlock, { type: "table" }> }) {
+  const [sort, setSort] = useState<{ col: number; dir: 1 | -1 } | null>(null);
+  const rows = useMemo(() => {
+    if (!sort) return block.rows;
+    return block.rows.toSorted((a, b) => compareCells(a[sort.col], b[sort.col]) * sort.dir);
+  }, [block.rows, sort]);
+
+  return (
+    <div className="my-2 flex flex-col gap-2" data-answer-block="table">
+      {block.kpis && block.kpis.length > 0 ? (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2">
+          {block.kpis.map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-border/60 px-3 py-2">
+              <div className="text-xs text-muted-foreground">{label}</div>
+              <div className="text-lg font-semibold">{value}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div className="overflow-x-auto rounded-lg border border-border/60">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              {block.cols.map((col, index) => {
+                const active = sort?.col === index;
+                return (
+                  <th
+                    key={col}
+                    aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
+                    className="border-b border-border/60 p-0 text-left font-medium"
+                  >
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left hover:bg-muted/40"
+                      onClick={() =>
+                        setSort(
+                          active && sort.dir === 1
+                            ? { col: index, dir: -1 }
+                            : { col: index, dir: 1 },
+                        )
+                      }
+                    >
+                      {col}
+                      {active ? (sort.dir === 1 ? " ↑" : " ↓") : ""}
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              // Rows carry no id; the index is stable for one render of a sorted copy.
+              // oxlint-disable-next-line react/no-array-index-key
+              <tr key={rowIndex} className="border-b border-border/40 last:border-b-0">
+                {block.cols.map((col, colIndex) => (
+                  <td key={col} className="px-3 py-2">
+                    {row[colIndex] ?? ""}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
