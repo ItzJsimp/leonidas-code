@@ -90,3 +90,25 @@ describe("AnswerBlockView choices", () => {
     );
   });
 });
+
+describe("AnswerBlockView checklist", () => {
+  it("toggles items and counts the done items", () => {
+    let renderer!: ReactTestRenderer;
+    act(() => {
+      renderer = create(
+        <AnswerBlockView
+          type="checklist"
+          code='{"title":"Steps","items":["one","two"]}'
+          closed
+          fallback={<pre>raw</pre>}
+        />,
+      );
+    });
+    const boxes = () => renderer.root.findAllByType("input");
+    act(() => boxes()[1]!.props.onChange());
+    expect(boxes().map((box) => box.props.checked)).toEqual([false, true]);
+    expect(JSON.stringify(renderer.toJSON())).toContain('"1","/","2"');
+    act(() => boxes()[1]!.props.onChange());
+    expect(boxes()[1]!.props.checked).toBe(false);
+  });
+});

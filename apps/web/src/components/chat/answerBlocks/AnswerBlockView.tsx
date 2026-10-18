@@ -42,6 +42,8 @@ function BlockBody({ block, fallback }: { block: AnswerBlock; fallback: ReactNod
       return <TableBlock block={block} />;
     case "choices":
       return <ChoicesBlock block={block} />;
+    case "checklist":
+      return <ChecklistBlock block={block} />;
     default:
       return <>{fallback}</>;
   }
@@ -166,6 +168,50 @@ function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices"
           {error}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ChecklistBlock({ block }: { block: Extract<AnswerBlock, { type: "checklist" }> }) {
+  // v1 keeps ticks local to this view (spec decision A); they do not write task cards.
+  const [done, setDone] = useState<ReadonlySet<number>>(() => new Set());
+  const toggle = (index: number) =>
+    setDone((current) => {
+      const next = new Set(current);
+      if (!next.delete(index)) next.add(index);
+      return next;
+    });
+
+  return (
+    <div
+      className="my-2 rounded-lg border border-border/60 px-3 py-2"
+      data-answer-block="checklist"
+    >
+      <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+        <span className="font-medium">{block.title ?? "Checklist"}</span>
+        <span className="text-xs text-muted-foreground">
+          {done.size}/{block.items.length}
+        </span>
+      </div>
+      <ul className="flex flex-col gap-1">
+        {block.items.map((item, index) => (
+          // Items carry no id and never reorder, so the index is a stable key.
+          // oxlint-disable-next-line react/no-array-index-key
+          <li key={index}>
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={done.has(index)}
+                onChange={() => toggle(index)}
+              />
+              <span className={done.has(index) ? "text-muted-foreground line-through" : ""}>
+                {item}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
