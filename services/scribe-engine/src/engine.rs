@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// Encoded audio ready for upload.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EncodedAudio {
     pub bytes: Vec<u8>,
     /// For example `audio/wav` or `audio/flac`.
@@ -15,6 +15,8 @@ pub struct EncodedAudio {
     /// Multipart file name, for example `audio.wav`.
     pub file_name: &'static str,
     pub duration_ms: u64,
+    /// 16 kHz mono samples for the local model. Empty when the recorder has none.
+    pub pcm: Vec<f32>,
 }
 
 pub trait Recorder: Send {
@@ -293,6 +295,7 @@ pub mod fakes {
                 mime: "audio/wav",
                 file_name: "audio.wav",
                 duration_ms: self.duration_ms,
+                pcm: Vec::new(),
             })
         }
         fn cancel(&mut self) {}

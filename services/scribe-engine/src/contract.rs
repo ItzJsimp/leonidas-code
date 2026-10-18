@@ -28,6 +28,9 @@ pub struct Status {
     /// v1.1: audio never leaves the device.
     #[serde(default)]
     pub private_mode: bool,
+    /// v1.3: the offline model, one of absent, downloading or ready.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_model: Option<String>,
 }
 
 /// Reply to `POST /v1/start` and `POST /v1/stop`.
@@ -173,6 +176,7 @@ mod tests {
                 sampled_at: "2026-10-15T01:00:00.000Z".into(),
                 groq_key: true,
                 private_mode: false,
+                local_model: None,
             },
         );
     }
