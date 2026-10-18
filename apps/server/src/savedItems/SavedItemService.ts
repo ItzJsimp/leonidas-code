@@ -172,8 +172,11 @@ const make = Effect.gen(function* () {
     scope.isDefault
       ? FOLDER_ID_PREFIX
       : `${FOLDER_ID_PREFIX}${encodeURIComponent(scope.id ?? "")}:`;
-  const folderFile = (id: SavedItemId) =>
-    id.startsWith(FOLDER_ID_PREFIX) ? id.slice(id.lastIndexOf(":") + 1) : null;
+  const folderFile = (id: SavedItemId) => {
+    if (!id.startsWith(FOLDER_ID_PREFIX)) return null;
+    const file = id.slice(id.lastIndexOf(":") + 1);
+    return file.endsWith(".md") && !/[\\/:]/.test(file) ? file : null;
+  };
   const belongs = (
     item: SavedItem,
     scope: { id?: string; isDefault: boolean; projectIds: ReadonlySet<string> },
@@ -326,6 +329,8 @@ const make = Effect.gen(function* () {
       const input = yield* decodeCreate(raw).pipe(
         Effect.mapError((cause) => new SavedItemError({ reason: "invalid_input", cause })),
       );
+      if (input.id?.startsWith(FOLDER_ID_PREFIX))
+        return yield* new SavedItemError({ reason: "invalid_input" });
       return yield* command(
         input,
         "saved_item.created",

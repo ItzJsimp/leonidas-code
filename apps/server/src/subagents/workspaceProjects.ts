@@ -13,6 +13,7 @@ export function subagentWorkspaceProjects<P extends { readonly workspaceRoot: st
     ...projects.map((project) => project.workspaceRoot),
   ]);
   const owner = workspaceForPath(workspaces, aiosRoot);
+  if (owner?.status !== "ready" || owner.file.id !== workspaceId) return [];
   return projects.filter(
     (project) => workspaceForPath(workspaces, project.workspaceRoot) === owner,
   );

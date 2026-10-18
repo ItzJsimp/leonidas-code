@@ -26,6 +26,8 @@ it("keeps siblings and nested workspaces out of a scoped subagent catalog", () =
     expect(subagentWorkspaceProjects(projects, business, "business")).toEqual([projects[0]]);
     expect(subagentWorkspaceProjects(projects, personal, "personal")).toEqual([projects[1]]);
     expect(subagentWorkspaceProjects(projects, null, "unknown")).toEqual([]);
+    expect(subagentWorkspaceProjects(projects, business, "unknown")).toEqual([]);
+    expect(subagentWorkspaceProjects(projects, `${business}-missing`, "business")).toEqual([]);
     expect(subagentWorkspaceProjects(projects, business)).toBe(projects);
   } finally {
     NodeFS.rmSync(temp, { recursive: true, force: true });

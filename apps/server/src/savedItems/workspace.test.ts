@@ -1,12 +1,13 @@
 // @effect-diagnostics nodeBuiltinImport:off - temp folders are plain Node fixtures.
 import { assert, it } from "@effect/vitest";
-import { CommandId } from "@t3tools/contracts";
+import { CommandId, SavedItemId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as Sqlite from "../persistence/Sqlite.ts";
+import * as SqlClient from "effect/sql/SqlClient";
 import * as SavedItems from "./SavedItemService.ts";
 
 it.effect("isolates same-named folder prompts and their edits across workspaces", () =>
@@ -40,6 +41,39 @@ it.effect("isolates same-named folder prompts and their edits across workspaces"
           business.items.map((item) => item.body),
           ["business"],
         );
+        const forged = yield* service
+          .create({
+            commandId: CommandId.make("forged-folder-id"),
+            id: SavedItemId.make("folder:../../victim"),
+            workspaceId: "business",
+            projectId: null,
+            kind: "prompt",
+            title: "Forged file",
+            body: "foreign",
+            tags: [],
+          })
+          .pipe(Effect.flip);
+        assert.equal(forged.reason, "invalid_input");
+        const sql = yield* SqlClient.SqlClient;
+        const legacyId = SavedItemId.make("folder:business:../victim.md");
+        const legacy = { ...business.items[0]!, id: legacyId };
+        yield* sql`INSERT INTO projection_saved_items
+          (item_id, project_id, status, kind, moved_to_board, item_json, updated_at)
+          VALUES (${legacyId}, NULL, 'queued', 'prompt', 0, ${JSON.stringify(legacy)}, ${legacy.updatedAt})`;
+        const victim = NodePath.join(roots[1]!, "victim.md");
+        NodeFS.writeFileSync(victim, "keep");
+        yield* service.update({
+          commandId: CommandId.make("legacy-edit"),
+          id: legacyId,
+          body: "replace",
+        });
+        assert.equal(NodeFS.readFileSync(victim, "utf8"), "keep");
+        yield* service.transition({
+          commandId: CommandId.make("legacy-delete"),
+          id: legacyId,
+          action: "delete",
+        });
+        assert.equal(NodeFS.readFileSync(victim, "utf8"), "keep");
         assert.deepEqual(
           (yield* service.list({})).items.map((item) => item.body),
           ["personal"],
