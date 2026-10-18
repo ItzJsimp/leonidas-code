@@ -36,6 +36,10 @@ import {
 } from "./maintenanceResolver.ts";
 import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
 
+// These tests build POSIX package-manager layouts (lib/node_modules, Homebrew, Volta, Yarn)
+// out of symlinks, which do not exist on Windows.
+const posixLayoutsSupported = symlinksSupported && process.platform !== "win32";
+
 const driver = (value: string) => ProviderDriverKind.make(value);
 // These write `#!/bin/sh` stubs and evaluate them with darwin/linux path
 // semantics; a Windows temp path cannot be split on `:`.
@@ -372,7 +376,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
     ),
   );
 
-  it.effect.skipIf(!symlinksSupported)(
+  it.effect.skipIf(!posixLayoutsSupported)(
     "pins npm updates to the global prefix that owns the package",
     () =>
       Effect.gen(function* () {
@@ -518,7 +522,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
     }),
   );
 
-  it.effect.skipIf(!symlinksSupported)(
+  it.effect.skipIf(!posixLayoutsSupported)(
     "switches to pnpm updates when the real path lives in pnpm's global store",
     () =>
       Effect.gen(function* () {
@@ -638,7 +642,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
     }),
   );
 
-  it.effect.skipIf(!symlinksSupported)(
+  it.effect.skipIf(!posixLayoutsSupported)(
     "prefers npm ownership over the Node keg the package lives under",
     () =>
       Effect.gen(function* () {
@@ -832,7 +836,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
           },
         });
       }),
-    { skip: !symlinksSupported },
+    { skip: !posixLayoutsSupported },
   );
 
   it.effect.skipIf(windowsHost)(
@@ -932,7 +936,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
       }),
   );
 
-  it.effect.skipIf(!symlinksSupported)("updates Yarn global installs with yarn", () =>
+  it.effect.skipIf(!posixLayoutsSupported)("updates Yarn global installs with yarn", () =>
     Effect.gen(function* () {
       const tempDir = yield* makeTempDir("t3-yarn-capabilities");
       const link = linkIntoPackage(tempDir, "package-tool", [
@@ -961,7 +965,7 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
     }),
   );
 
-  it.effect.skipIf(!symlinksSupported)(
+  it.effect.skipIf(!posixLayoutsSupported)(
     "updates Volta installs only when Volta has the package",
     () =>
       Effect.gen(function* () {

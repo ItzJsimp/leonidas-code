@@ -503,25 +503,30 @@ describe("ProviderInstanceRegistry — multi-instance codex slice", () => {
       Effect.provide(layerTest),
     );
 
-  it.live("refreshes Claude usage after redeeming a reset", () =>
-    Effect.gen(function* () {
-      const { outcome, after } = yield* redeemClaudeReset({
-        result: "reset",
-        usageFailsAfterClaim: false,
-      });
-      expect(outcome).toMatchObject({ _tag: "Success", success: "reset" });
-      expect(after.usageLimits?.windows[0]?.usedPercent).toBe(0);
-    }),
+  // The Claude fixture is a /bin/sh script, which Windows cannot run.
+  it.live.skipIf(process.platform === "win32")(
+    "refreshes Claude usage after redeeming a reset",
+    () =>
+      Effect.gen(function* () {
+        const { outcome, after } = yield* redeemClaudeReset({
+          result: "reset",
+          usageFailsAfterClaim: false,
+        });
+        expect(outcome).toMatchObject({ _tag: "Success", success: "reset" });
+        expect(after.usageLimits?.windows[0]?.usedPercent).toBe(0);
+      }),
   );
 
-  it.live("reports Claude's answer when a claim changed nothing and the re-probe fails", () =>
-    Effect.gen(function* () {
-      const { outcome } = yield* redeemClaudeReset({
-        result: "already_used",
-        usageFailsAfterClaim: true,
-      });
-      expect(outcome).toMatchObject({ _tag: "Success", success: "alreadyRedeemed" });
-    }),
+  it.live.skipIf(process.platform === "win32")(
+    "reports Claude's answer when a claim changed nothing and the re-probe fails",
+    () =>
+      Effect.gen(function* () {
+        const { outcome } = yield* redeemClaudeReset({
+          result: "already_used",
+          usageFailsAfterClaim: true,
+        });
+        expect(outcome).toMatchObject({ _tag: "Success", success: "alreadyRedeemed" });
+      }),
   );
 
   it.live(

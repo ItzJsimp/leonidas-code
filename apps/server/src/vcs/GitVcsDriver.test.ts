@@ -1036,6 +1036,8 @@ it.effect("restores empty checkpoints without changing paths outside the workspa
       }
       for (const staged of [false, true]) {
         const addedPath = path.join(cwd, "added.txt");
+        // The restore may remove the empty workspace folder, which the next pass needs again.
+        yield* fileSystem.makeDirectory(cwd, { recursive: true });
         yield* fileSystem.writeFileString(addedPath, "new\n");
         if (staged) yield* runGit(cwd, ["add", "added.txt"]);
         assert.isTrue(
@@ -1047,10 +1049,13 @@ it.effect("restores empty checkpoints without changing paths outside the workspa
         );
         assert.isFalse(yield* fileSystem.exists(addedPath));
       }
+      // Git for Windows can init without the info folder.
+      yield* fileSystem.makeDirectory(path.join(root, ".git", "info"), { recursive: true });
       yield* fileSystem.writeFileString(
         path.join(root, ".git", "info", "exclude"),
         "ignored.txt\n",
       );
+      yield* fileSystem.makeDirectory(cwd, { recursive: true });
       yield* fileSystem.writeFileString(path.join(cwd, "ignored.txt"), "keep\n");
       yield* fileSystem.makeDirectory(path.join(cwd, "untracked"));
       yield* fileSystem.writeFileString(path.join(cwd, "untracked", "file.txt"), "remove\n");

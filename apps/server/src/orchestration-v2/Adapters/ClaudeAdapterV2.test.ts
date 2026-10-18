@@ -3183,7 +3183,8 @@ describe("ClaudeAdapterV2 background wake turns", () => {
       if (terminal.status !== "failed") return;
       assert.include(terminal.failure.message, "run `claude auth login`");
       assert.include(terminal.failure.message, configDir);
-      assert.include(terminal.failure.message, cwd);
+      // The message quotes the resolved folder, which gains a drive letter on Windows.
+      assert.include(terminal.failure.message, JSON.stringify((yield* Path.Path).resolve(cwd)));
       assert.notInclude(terminal.failure.message, "repeated API errors");
     }).pipe(
       Effect.provide(

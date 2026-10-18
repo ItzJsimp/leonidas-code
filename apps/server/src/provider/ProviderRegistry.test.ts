@@ -205,6 +205,12 @@ function mockHandle(result: { stdout: string; stderr: string; code: number }) {
   });
 }
 
+// On Windows the spawner receives arguments already escaped for cmd.exe (`^"--version^"`).
+const plainArgs = (args: ReadonlyArray<string>): ReadonlyArray<string> =>
+  process.platform === "win32"
+    ? args.map((arg) => arg.replace(/\^(.)/g, "$1").replace(/^"(.*)"$/, "$1"))
+    : args;
+
 function layerMockSpawner(
   handler: (args: ReadonlyArray<string>) => {
     stdout: string;
@@ -216,7 +222,7 @@ function layerMockSpawner(
     ChildProcessSpawner.ChildProcessSpawner,
     ChildProcessSpawner.make((command) => {
       const cmd = command as unknown as { args: ReadonlyArray<string> };
-      return Effect.succeed(mockHandle(handler(cmd.args)));
+      return Effect.succeed(mockHandle(handler(plainArgs(cmd.args))));
     }),
   );
 }
@@ -241,8 +247,9 @@ function recordingMockSpawnerLayer(
           readonly env?: NodeJS.ProcessEnv;
         };
       };
-      commands.push({ args: cmd.args, env: cmd.options?.env });
-      return Effect.succeed(mockHandle(handler(cmd.args)));
+      const args = plainArgs(cmd.args);
+      commands.push({ args, env: cmd.options?.env });
+      return Effect.succeed(mockHandle(handler(args)));
     }),
   );
   return { layer, commands };
@@ -261,7 +268,7 @@ function layerMockCommandSpawner(
         command: string;
         args: ReadonlyArray<string>;
       };
-      return Effect.succeed(mockHandle(handler(cmd.command, cmd.args)));
+      return Effect.succeed(mockHandle(handler(cmd.command, plainArgs(cmd.args))));
     }),
   );
 }
@@ -3099,6 +3106,7 @@ it.layer(
               "grok",
               "muse",
               "opencode",
+              "openrouter",
               "pi",
             ]);
             assert.strictEqual(cursorProvider?.enabled, false);

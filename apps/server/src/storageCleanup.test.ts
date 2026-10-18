@@ -5,7 +5,7 @@ import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
-import type * as Path from "effect/Path";
+import * as Path from "effect/Path";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as Schema from "effect/Schema";
@@ -228,6 +228,7 @@ describe("merged pull request cleanup", () => {
 
 const cleanupFixture = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
   const config = yield* ServerConfig.ServerConfig;
   const git = yield* GitVcsDriver.GitVcsDriver;
   const repo = yield* fs.makeTempDirectoryScoped({ prefix: "cleanup-repo-" });
@@ -241,7 +242,7 @@ const cleanupFixture = Effect.gen(function* () {
   yield* command(repo, ["add", "."]);
   yield* command(repo, ["commit", "-m", "initial"]);
   yield* fs.makeDirectory(config.worktreesDir, { recursive: true });
-  const worktree = `${config.worktreesDir}/feature`;
+  const worktree = path.join(config.worktreesDir, "feature");
   yield* command(repo, ["worktree", "add", "-b", "feature", worktree]);
   let settings: import("@t3tools/contracts").ServerSettings = {
     ...DEFAULT_SERVER_SETTINGS,
@@ -501,10 +502,15 @@ describe("storage cleanup reports and local file policies", () => {
         expect(locked).toMatchObject({ outcome: "failed" });
         expect(locked?.reason).toContain("Git index is locked");
         yield* fs.remove(`${index.trim()}.lock`);
-        const gitFile = yield* fs.readFileString(`${worktree}/.git`);
-        yield* fs.writeFileString(`${worktree}/.git`, "gitdir: /missing-git-directory\n");
+        const path = yield* Path.Path;
+        // Windows git hides the .git file, and a hidden file cannot be opened for write.
+        const gitPath = path.join(worktree, ".git");
+        const gitFile = yield* fs.readFileString(gitPath);
+        yield* fs.remove(gitPath);
+        yield* fs.writeFileString(gitPath, "gitdir: /missing-git-directory\n");
         expect((yield* service.runNow).entries[0]).toMatchObject(changed);
-        yield* fs.writeFileString(`${worktree}/.git`, gitFile);
+        yield* fs.remove(gitPath);
+        yield* fs.writeFileString(gitPath, gitFile);
         expect((yield* service.runNow).entries[0]).toMatchObject({ outcome: "removed" });
         expect(fullStatusCalls()).toBe(0);
       }),
