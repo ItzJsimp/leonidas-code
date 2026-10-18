@@ -9,7 +9,7 @@ type DockKind = (typeof DOCK_HEADINGS)[keyof typeof DOCK_HEADINGS];
 export type DockItem =
   | { kind: "markdown"; text: string }
   | { kind: "action"; text: string; checked: boolean }
-  | { kind: "option"; text: string; reply: string }
+  | { kind: "option"; text: string; letter: string; reply: string }
   | { kind: "replies"; replies: string[] };
 export type DockSection = { kind: DockKind; heading: string; items: DockItem[] };
 
@@ -35,6 +35,13 @@ export function withoutFencedCode(text: string) {
 }
 
 /** Only terminal, ordered exact-heading Docks become controls; other text stays Markdown. */
+/** Short name of a Dock option: the text before its "Wins when" note and first colon or period. */
+function optionTitle(text: string): string {
+  const head = text.split(" *(")[0]!.replaceAll("**", "").trim();
+  const title = head.split(/[:.](?:\s|$)/)[0]!.trim();
+  return title || head;
+}
+
 export function parseOutputDock(text: string) {
   const lines = text.replaceAll("\r\n", "\n").split("\n");
   const headings: { index: number; kind: DockKind; heading: string }[] = [];
@@ -75,7 +82,13 @@ export function parseOutputDock(text: string) {
         items.push({ kind: "action", checked: action[1] !== " ", text: action[2]! });
       } else if (option) {
         flush();
-        items.push({ kind: "option", reply: option[1]!, text: `**${option[1]})** ${option[2]}` });
+        const letter = option[1]!;
+        items.push({
+          kind: "option",
+          letter,
+          reply: `I choose option ${letter}: ${optionTitle(option[2]!)}`,
+          text: `**${letter})** ${option[2]}`,
+        });
       } else if (quick) {
         const replies = quick[1]!.split(/\s*\|\s*/).map((v) => /^["“](.+)["”]$/.exec(v)?.[1]);
         if (replies.every((v): v is string => v !== undefined)) {
