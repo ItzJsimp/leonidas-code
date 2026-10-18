@@ -3552,6 +3552,7 @@ export function GeneralSettingsPanel() {
         >
           <SkillFoldersEditor
             prefs={settings.skillFolders}
+            aiosRoot={settings.aiosRoot}
             availableSkills={serverProviders.flatMap((provider) => provider.skills)}
             onChange={(skillFolders) => {
               updateSettings({ skillFolders });

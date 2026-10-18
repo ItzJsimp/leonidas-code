@@ -9332,7 +9332,7 @@ export default function ChatView(props: ChatViewProps) {
     }
     // Draining for an update: the draft stays in the composer and sends after the restart.
     if (useUpdateWhenSafeStore.getState().draining) {
-      toastManager.add({
+      const updateToastId = toastManager.add({
         type: "info",
         title: "Update installing soon",
         description:
@@ -9344,6 +9344,14 @@ export default function ChatView(props: ChatViewProps) {
             const store = useUpdateWhenSafeStore.getState();
             store.setUpdateWhenSafe(false);
             store.setAutoUpdateWhenSafe(false);
+            toastManager.close(updateToastId);
+            toastManager.add({
+              type: "success",
+              title: "Update canceled",
+              description:
+                "You can send your message now. The update installs later when you are away.",
+              timeout: 6000,
+            });
           },
         },
       });

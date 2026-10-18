@@ -6,7 +6,7 @@ const BUILTIN_TOOLBAR_ITEMS = [
   { id: "stash", label: "Saved drafts" },
   { id: "capture", label: "Capture" },
   { id: "skills", label: "Skills" },
-  { id: "subagents", label: "Helper" },
+  { id: "subagents", label: "Agents" },
   { id: "nextAction", label: "Tasks" },
 ] as const;
 

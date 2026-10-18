@@ -58,6 +58,7 @@ import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
+  BrainIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   InboxIcon,
@@ -2293,6 +2294,17 @@ function OpenCommandPaletteDialog(props: {
         openFeedback({ source: "command palette" });
       },
     });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:brain",
+    searchTerms: ["brain", "second brain", "graph", "map", "knowledge", "aios"],
+    title: "Open brain map",
+    icon: <BrainIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/brain" });
+    },
+  });
 
   actionItems.push({
     kind: "action",

@@ -88,6 +88,7 @@ export class DesktopEnvironment extends Context.Service<
     readonly appImagePath: Option.Option<string>;
     readonly defaultDesktopSettings: DesktopAppSettings.DesktopSettings;
     readonly runtimeInfo: DesktopRuntimeInfo;
+    readonly traceMinDurationMs?: number;
     readonly resolvePickFolderDefaultPath: (rawOptions: unknown) => Option.Option<string>;
     readonly resolveResourcePathCandidates: (fileName: string) => readonly string[];
   }
@@ -248,6 +249,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
       processArch: input.processArch,
       runningUnderArm64Translation: input.runningUnderArm64Translation,
     }),
+    traceMinDurationMs: config.traceMinDurationMs,
     resolvePickFolderDefaultPath: (rawOptions) => {
       if (typeof rawOptions !== "object" || rawOptions === null) {
         return Option.none();

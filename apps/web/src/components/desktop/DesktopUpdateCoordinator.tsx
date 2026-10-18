@@ -11,6 +11,7 @@ import {
   getDesktopUpdateInstallConfirmationMessage,
   getWhatsNewItems,
   resolveUpdateWhenSafeAction,
+  shouldInstallWhenIdle,
 } from "../desktopUpdate.logic";
 import {
   showDesktopUpdateDownloadedToast,
@@ -171,6 +172,35 @@ export function DesktopUpdateCoordinator() {
     autoUpdateWhenSafe,
     setAutoUpdateWhenSafe,
   ]);
+
+  // A user who chose Cancel, or never answered, must not stay on an old version for days:
+  // after a long idle period with no running AI work, install the downloaded update.
+  const lastInputAtRef = useRef(Date.now());
+  const idleInstallVersionRef = useRef<string | null>(null);
+  useEffect(() => {
+    const markActive = () => {
+      lastInputAtRef.current = Date.now();
+    };
+    const events = ["pointerdown", "keydown", "wheel"] as const;
+    for (const name of events) window.addEventListener(name, markActive, { passive: true });
+    return () => {
+      for (const name of events) window.removeEventListener(name, markActive);
+    };
+  }, []);
+  useEffect(() => {
+    if (!downloadedVersion) return;
+    const timer = window.setInterval(() => {
+      if (idleInstallVersionRef.current === downloadedVersion) return;
+      if (
+        !shouldInstallWhenIdle(runningCountRef.current, Date.now() - lastInputAtRef.current, true)
+      ) {
+        return;
+      }
+      idleInstallVersionRef.current = downloadedVersion;
+      void installUpdate();
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [downloadedVersion]);
 
   return (
     <>

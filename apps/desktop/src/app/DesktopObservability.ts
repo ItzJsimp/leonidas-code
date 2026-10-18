@@ -54,7 +54,7 @@ export interface DesktopBackendOutputLogShape {
 }
 
 // Factory for per-instance backend output logs. `forInstance(id)` returns
-// a writer that targets a distinct rotating log file — the primary
+// a writer that targets a distinct rotating log file - the primary
 // instance keeps `server-child.log` so the historical path stays stable
 // for ops; other instances get `server-child-<sanitized-id>.log`.
 //
@@ -675,6 +675,7 @@ const layerTelemetry = Layer.unwrap(
           maxBytes: DESKTOP_LOG_FILE_MAX_BYTES,
           maxFiles: DESKTOP_LOG_FILE_MAX_FILES,
           batchWindowMs: DESKTOP_TRACE_BATCH_WINDOW_MS,
+          minDurationMs: environment.traceMinDurationMs ?? 1,
         });
         const delegate =
           endpoints.traces === undefined

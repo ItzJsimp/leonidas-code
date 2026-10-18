@@ -38,7 +38,6 @@ import {
   modelPickerJumpCommandForIndex,
   modelPickerJumpIndexFromCommand,
   resolveShortcutCommand,
-  shortcutLabelForCommand,
 } from "../../keybindings";
 import {
   useEnvironmentModelPreferences,
@@ -154,7 +153,6 @@ export function adjacentModelPickerProvider(input: {
   ]!;
 }
 
-const EMPTY_MODEL_JUMP_LABELS = new Map<string, string>();
 const MODEL_LIST_ESTIMATED_ITEM_SIZE = 52;
 
 function ModelListSeparator() {
@@ -776,32 +774,14 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       }) as const,
     [props.terminalOpen],
   );
-  const modelJumpLabelByKey = useMemo((): ReadonlyMap<string, string> => {
-    if (modelJumpCommandByKey.size === 0) {
-      return EMPTY_MODEL_JUMP_LABELS;
-    }
-    const shortcutLabelOptions = {
-      platform: navigator.platform,
-      context: modelJumpShortcutContext,
-    };
-    const mapping = new Map<string, string>();
-    for (const [modelKey, command] of modelJumpCommandByKey) {
-      const label = shortcutLabelForCommand(keybindings, command, shortcutLabelOptions);
-      if (label) {
-        mapping.set(modelKey, label);
-      }
-    }
-    return mapping.size > 0 ? mapping : EMPTY_MODEL_JUMP_LABELS;
-  }, [keybindings, modelJumpCommandByKey, modelJumpShortcutContext]);
   const modelListExtraData = useMemo(
     () => ({
       favoritesSet,
-      modelJumpLabelByKey,
       activeModelKey,
       selectedModelKeySet,
       benchmarkIndex,
     }),
-    [favoritesSet, modelJumpLabelByKey, activeModelKey, selectedModelKeySet, benchmarkIndex],
+    [favoritesSet, activeModelKey, selectedModelKeySet, benchmarkIndex],
   );
 
   useEffect(() => {
@@ -1082,7 +1062,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                         useTriggerLabel={false}
                         showNewBadge={model.badge === "new"}
                         unavailable={model.isUnavailable === true}
-                        jumpLabel={modelJumpLabelByKey.get(modelKey) ?? null}
                         disabledReason={disabledReason}
                         stats={
                           benchmarkIndex
