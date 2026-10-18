@@ -44,6 +44,90 @@ const isCell = (value: unknown): value is Cell =>
 const optionalString = (value: unknown): value is string | undefined =>
   value === undefined || isString(value);
 
+const pick = (record: Record<string, unknown>, ...keys: string[]): unknown => {
+  for (const key of keys) if (record[key] !== undefined) return record[key];
+  return undefined;
+};
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+/**
+ * Models guess field names from the short catalog in the prompt. Map the common
+ * guesses to the canonical shape here, so the prompt can stay short.
+ */
+function normalize(type: AnswerBlockType, data: Record<string, unknown>): Record<string, unknown> {
+  switch (type) {
+    case "table": {
+      const kpis = pick(data, "kpis", "stats", "metrics");
+      return {
+        cols: pick(data, "cols", "columns", "headers"),
+        rows: data.rows,
+        kpis: Array.isArray(kpis)
+          ? kpis.map((kpi) => {
+              const record = asRecord(kpi);
+              return record ? [pick(record, "label", "name"), pick(record, "value")] : kpi;
+            })
+          : kpis,
+      };
+    }
+    case "choices": {
+      const options = data.options;
+      return {
+        q: pick(data, "q", "question", "title", "prompt"),
+        options: Array.isArray(options)
+          ? options.map((option) => {
+              const record = asRecord(option);
+              if (!record) return option;
+              const note = pick(record, "note", "description", "detail");
+              return note === undefined
+                ? { label: pick(record, "label", "title", "text") }
+                : { label: pick(record, "label", "title", "text"), note };
+            })
+          : options,
+      };
+    }
+    case "checklist": {
+      const items = pick(data, "items", "steps");
+      return {
+        title: data.title,
+        items: Array.isArray(items)
+          ? items.map((item) => {
+              const record = asRecord(item);
+              return record ? pick(record, "text", "label", "title") : item;
+            })
+          : items,
+      };
+    }
+    case "chart": {
+      const rows = data.data;
+      const base = { kind: pick(data, "kind", "type"), title: data.title };
+      if (data.labels !== undefined || !Array.isArray(rows)) {
+        return { ...base, labels: data.labels, values: data.values };
+      }
+      const records = rows.map(asRecord);
+      if (records.some((record) => record === null)) return { ...base };
+      const first = records[0] ?? {};
+      const xKey = isString(data.xKey)
+        ? data.xKey
+        : "label" in first
+          ? "label"
+          : Object.keys(first)[0];
+      const yKey = isString(data.yKey)
+        ? data.yKey
+        : "value" in first
+          ? "value"
+          : Object.keys(first)[1];
+      return {
+        ...base,
+        labels: records.map((record) => (xKey ? String(record?.[xKey] ?? "") : "")),
+        values: records.map((record) => (yKey ? record?.[yKey] : undefined)),
+      };
+    }
+  }
+}
+
 function toBlock(type: AnswerBlockType, data: Record<string, unknown>): AnswerBlock | null {
   switch (type) {
     case "table": {
@@ -118,6 +202,6 @@ export function parseAnswerBlock(
     return closed ? { status: "fallback" } : { status: "pending" };
   }
   if (!data || typeof data !== "object" || Array.isArray(data)) return { status: "fallback" };
-  const block = toBlock(type, data as Record<string, unknown>);
+  const block = toBlock(type, normalize(type, data as Record<string, unknown>));
   return block ? { status: "block", block } : { status: "fallback" };
 }

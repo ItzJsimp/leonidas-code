@@ -79,3 +79,57 @@ describe("parseAnswerBlock", () => {
     expect(parseAnswerBlock("choices", '{"options":[]}', true)).toEqual({ status: "fallback" });
   });
 });
+
+describe("parseAnswerBlock aliases (shapes models guess)", () => {
+  it("accepts columns, KPI objects and option descriptions", () => {
+    expect(
+      parseAnswerBlock(
+        "table",
+        '{"columns":["A"],"rows":[["x"]],"kpis":[{"label":"Best","value":"x"}]}',
+        true,
+      ),
+    ).toEqual({
+      status: "block",
+      block: { type: "table", kpis: [["Best", "x"]], cols: ["A"], rows: [["x"]] },
+    });
+    expect(
+      parseAnswerBlock(
+        "choices",
+        '{"title":"Pick","options":[{"label":"A","value":"a","description":"why"}]}',
+        true,
+      ),
+    ).toEqual({
+      status: "block",
+      block: { type: "choices", q: "Pick", options: [{ label: "A", note: "why" }] },
+    });
+  });
+
+  it("accepts checklist item objects", () => {
+    expect(
+      parseAnswerBlock(
+        "checklist",
+        '{"items":[{"text":"one","checked":false},{"label":"two"}]}',
+        true,
+      ),
+    ).toEqual({ status: "block", block: { type: "checklist", items: ["one", "two"] } });
+  });
+
+  it("accepts a chart given as data rows with xKey and yKey", () => {
+    expect(
+      parseAnswerBlock(
+        "chart",
+        '{"type":"bar","data":[{"runner":"Jest","speed":1},{"runner":"Bun","speed":3}],"xKey":"runner","yKey":"speed"}',
+        true,
+      ),
+    ).toEqual({
+      status: "block",
+      block: { type: "chart", kind: "bar", labels: ["Jest", "Bun"], values: [1, 3] },
+    });
+    expect(
+      parseAnswerBlock("chart", '{"kind":"line","data":[{"label":"a","value":2}]}', true),
+    ).toEqual({
+      status: "block",
+      block: { type: "chart", kind: "line", labels: ["a"], values: [2] },
+    });
+  });
+});
