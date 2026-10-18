@@ -77,6 +77,7 @@ function causeMessage(cause: unknown): string | undefined {
         case "ContextHandoffBudgetError":
           return new ContextHandoffBudgetError().message;
         case "ClaudeBackgroundWorkBlocksQueryReplacementError":
+        case "CursorModelUnavailableError":
           return stringField(cause, "message");
         case "ContextHandoffDeliveryUncertainError":
           return "Leonidas Code could not confirm whether conversation history reached the provider. Retry the turn to recover the session.";
