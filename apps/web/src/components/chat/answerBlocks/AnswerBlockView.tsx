@@ -7,6 +7,7 @@ import {
 import { memo, useMemo, useState, type ReactNode } from "react";
 
 import { useAnswerBlockActions } from "./AnswerBlockActions";
+import { ChartBlock } from "./ChartBlock";
 
 interface AnswerBlockViewProps {
   type: AnswerBlockType;
@@ -33,10 +34,10 @@ export const AnswerBlockView = memo(function AnswerBlockView({
     );
   }
   if (result.status === "fallback") return <>{fallback}</>;
-  return <BlockBody block={result.block} fallback={fallback} />;
+  return <BlockBody block={result.block} />;
 });
 
-function BlockBody({ block, fallback }: { block: AnswerBlock; fallback: ReactNode }) {
+function BlockBody({ block }: { block: AnswerBlock }) {
   switch (block.type) {
     case "table":
       return <TableBlock block={block} />;
@@ -44,8 +45,8 @@ function BlockBody({ block, fallback }: { block: AnswerBlock; fallback: ReactNod
       return <ChoicesBlock block={block} />;
     case "checklist":
       return <ChecklistBlock block={block} />;
-    default:
-      return <>{fallback}</>;
+    case "chart":
+      return <ChartBlock block={block} />;
   }
 }
 
