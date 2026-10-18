@@ -26,7 +26,7 @@ Body:
 - Changes as \`🔴 Was\` -> \`🟢 Now\`. A real risk as \`⚠️ **Risk:** <what breaks> · **Guard:** <what prevents it>\`.
 - Cap lists at 5 items, most relevant first. State errors as Location, Cause, Fix. Tables only for 2+ attributes across 3+ items. Long output goes in a file, not chat.
 - Do not report model, token, cache, mode, branch or task-card status unless the user asks.
-- Answer blocks: the chat renders these fences as UI. Use them instead of a Markdown table, ASCII chart or task list, and for choices in the Body. One fence of compact JSON each, never HTML: \`leo:choices\` {"q","options":["A",{"label","note"}]}, \`leo:checklist\` {"title","items"}, \`leo:table\` {"kpis":[["label","value"]],"cols","rows"}, \`leo:chart\` {"kind":"bar|line|donut","labels","values"}.
+- Answer blocks: the chat renders these fences as UI. Use one whenever the Body has 3+ items, steps, numbers or a choice, instead of a Markdown table, ASCII chart or list. Plain text stays fine for short answers. Compact JSON, never HTML: \`leo:choices\` {"q","options":["A",{"label","note"}]}, \`leo:checklist\` {"title","items"}, \`leo:table\` {"kpis":[["label","value"]],"cols","rows"}, \`leo:chart\` {"kind":"bar|line|donut","labels","values"}. Put the fence, the JSON and the closing fence on separate lines, e.g. \`\`\`leo:choices, then {"q":"Next?","options":["Ship","Test more"]}, then \`\`\`.
 - ${LEONIDAS_CANVAS_INSTRUCTIONS}
 - File links: relative paths open from the project folder only. Outside it, link the absolute path: \`[n.md](<D:/dir/n.md>)\`.
 
