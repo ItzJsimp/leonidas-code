@@ -138,6 +138,7 @@ function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices"
   return (
     <div className="my-2 flex flex-col gap-2" data-answer-block="choices">
       {block.q ? <div className="text-sm font-medium">{block.q}</div> : null}
+      <div className="text-xs text-muted-foreground">Pick one to add it to your message.</div>
       <div className="grid gap-2 sm:grid-cols-2">
         {block.options.map((option) => {
           const isPicked = picked === option.label;
@@ -147,7 +148,6 @@ function ChoicesBlock({ block }: { block: Extract<AnswerBlock, { type: "choices"
               type="button"
               disabled={!actions}
               aria-pressed={isPicked}
-              title="Add to message"
               onClick={() => choose(option.label)}
               className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors enabled:hover:bg-muted/40 disabled:cursor-default ${
                 isPicked ? "border-primary bg-primary/10" : "border-border/60"
