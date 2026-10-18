@@ -395,6 +395,11 @@ const make = Effect.gen(function* () {
         Effect.gen(function* () {
           const item = yield* get(input.id, input.workspaceId);
           yield* editable(item);
+          if (input.projectId !== undefined && input.projectId !== null) {
+            const scope = yield* workspaceScope(item.workspaceId);
+            if (!scope.projectIds.has(input.projectId))
+              return yield* new SavedItemError({ reason: "invalid_input" });
+          }
           const file = folderFile(item.id);
           const dir = file === null ? null : yield* promptsDir(item.workspaceId);
           if (file !== null && dir !== null) {

@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - temp folders are plain Node fixtures.
 import { assert, it } from "@effect/vitest";
-import { CommandId, SavedItemId } from "@t3tools/contracts";
+import { CommandId, ProjectId, SavedItemId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as NodeFS from "node:fs";
@@ -54,6 +54,28 @@ it.effect("isolates same-named folder prompts and their edits across workspaces"
           })
           .pipe(Effect.flip);
         assert.equal(forged.reason, "invalid_input");
+        const foreignProject = ProjectId.make("foreign-project");
+        const foreignCreate = yield* service
+          .create({
+            commandId: CommandId.make("foreign-project-create"),
+            workspaceId: "business",
+            projectId: foreignProject,
+            kind: "prompt",
+            title: "Wrong project",
+            body: "foreign",
+            tags: [],
+          })
+          .pipe(Effect.flip);
+        assert.equal(foreignCreate.reason, "invalid_input");
+        const foreignUpdate = yield* service
+          .update({
+            commandId: CommandId.make("foreign-project-update"),
+            id: business.items[0]!.id,
+            workspaceId: "business",
+            projectId: foreignProject,
+          })
+          .pipe(Effect.flip);
+        assert.equal(foreignUpdate.reason, "invalid_input");
         const sql = yield* SqlClient.SqlClient;
         const legacyId = SavedItemId.make("folder:business:../victim.md");
         const legacy = { ...business.items[0]!, id: legacyId };
