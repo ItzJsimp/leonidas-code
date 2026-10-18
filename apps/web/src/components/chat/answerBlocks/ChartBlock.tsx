@@ -113,7 +113,7 @@ export function ChartBlock({ block }: { block: ChartData }) {
           {block.kind === "bar" ? <BarChart {...block} /> : null}
           {block.kind === "line" ? <LineChart {...block} /> : null}
           {block.kind === "donut" ? <DonutChart {...block} /> : null}
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
             {block.labels.map((label, index) => (
               <li key={label} className="flex items-center gap-1.5">
                 {block.kind === "donut" ? (

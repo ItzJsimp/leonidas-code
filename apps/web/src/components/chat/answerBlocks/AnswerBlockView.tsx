@@ -194,7 +194,7 @@ function ChecklistBlock({ block }: { block: Extract<AnswerBlock, { type: "checkl
           {done.size}/{block.items.length}
         </span>
       </div>
-      <ul className="flex flex-col gap-1">
+      <ul className="m-0 flex list-none flex-col gap-1 p-0">
         {block.items.map((item, index) => (
           // Items carry no id and never reorder, so the index is a stable key.
           // oxlint-disable-next-line react/no-array-index-key
