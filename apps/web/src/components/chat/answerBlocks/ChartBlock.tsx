@@ -63,11 +63,13 @@ function LineChart({ values }: ChartData) {
 function DonutChart({ labels, values }: ChartData) {
   const total = values.reduce((sum, value) => sum + Math.max(value, 0), 0);
   const radius = 15.9155; // circumference of 100 keeps dash math in percent
-  let offset = 25;
+  const shares = values.map((value) => (Math.max(value, 0) / total) * 100);
+  // Each slice starts where the earlier slices end; 25 puts the first at 12 o'clock.
+  const offsets = shares.map((_, index) => 25 - shares.slice(0, index).reduce((a, b) => a + b, 0));
   return (
     <svg viewBox="0 0 42 42" className="size-40 shrink-0" role="img" aria-hidden>
       {values.map((value, index) => {
-        const share = (Math.max(value, 0) / total) * 100;
+        const share = shares[index] ?? 0;
         const slice = (
           <circle
             key={labels[index]}
@@ -77,12 +79,11 @@ function DonutChart({ labels, values }: ChartData) {
             fill="none"
             strokeWidth={6}
             strokeDasharray={`${share} ${100 - share}`}
-            strokeDashoffset={offset}
+            strokeDashoffset={offsets[index]}
             className="stroke-primary"
             strokeOpacity={sliceOpacity(index)}
           />
         );
-        offset -= share;
         return slice;
       })}
     </svg>
