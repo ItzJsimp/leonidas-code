@@ -61,7 +61,7 @@ function pad(value: number, length = 2): string {
 }
 
 /** `snip-20261016-173045-123.png`, in local time so the name matches the user's clock. */
-export function snipFileName(date: Date): string {
+function snipFileName(date: Date): string {
   const day = `${String(date.getFullYear())}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
   const time = `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
   return `snip-${day}-${time}-${pad(date.getMilliseconds(), 3)}.png`;

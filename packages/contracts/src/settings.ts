@@ -188,7 +188,7 @@ export type SnapShotShortcut = typeof SnapShotShortcut.Type;
 /** What the capture shortcut does: save the active window, or open the snip overlay. */
 export const SnapShotShortcutAction = Schema.Literals(["window", "snip"]);
 export type SnapShotShortcutAction = typeof SnapShotShortcutAction.Type;
-export const DEFAULT_SNAP_SHOT_SHORTCUT_ACTION: SnapShotShortcutAction = "window";
+const DEFAULT_SNAP_SHOT_SHORTCUT_ACTION: SnapShotShortcutAction = "window";
 export const SnapShotSound = Schema.Literals(["soft-pop", "camera-shutter"]);
 export type SnapShotSound = typeof SnapShotSound.Type;
 const DEFAULT_SNAP_SHOT_SOUND: SnapShotSound = "soft-pop";

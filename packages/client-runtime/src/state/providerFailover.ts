@@ -1,10 +1,5 @@
 // @effect-diagnostics globalDate:off - Pure selector over client state; callers may inject nowMs, the default is wall-clock time.
-import type {
-  ModelSelection,
-  ProviderDriverKind,
-  ServerProvider,
-  ServerProviderUsageWindow,
-} from "@t3tools/contracts";
+import type { ModelSelection, ServerProvider, ServerProviderUsageWindow } from "@t3tools/contracts";
 
 import { resolveProviderInstanceDisplayName } from "./providerInstanceDisplay.ts";
 
@@ -13,7 +8,7 @@ export interface ProviderFailoverTarget {
   readonly modelSelection: ModelSelection;
 }
 
-export const FAILOVER_SUPPORTED_DRIVERS: ReadonlySet<string> = new Set([
+const FAILOVER_SUPPORTED_DRIVERS: ReadonlySet<string> = new Set([
   "codex",
   "claudeAgent",
   "antigravity",

@@ -86,7 +86,7 @@ const isRunning = (state: ProviderInstallState) =>
  * terminal. Leonidas does not own the files: Claude updates itself, and
  * removal stays with the user.
  */
-export const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(function* () {
+const makeClaudeInstallation = Effect.fn("makeClaudeInstallation")(function* () {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const crypto = yield* Crypto.Crypto;
   const fileSystem = yield* FileSystem.FileSystem;

@@ -65,7 +65,7 @@ export class DesktopSnip extends Context.Service<
   }
 >()("@t3tools/desktop/snip/DesktopSnip") {}
 
-export const SNIPS_FOLDER_NAME = "snips";
+const SNIPS_FOLDER_NAME = "snips";
 
 export const layer = Layer.effect(
   DesktopSnip,

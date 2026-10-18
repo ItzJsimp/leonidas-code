@@ -46,7 +46,7 @@ export const FilesystemBrowseResult = Schema.Struct({
 });
 export type FilesystemBrowseResult = typeof FilesystemBrowseResult.Type;
 
-export const FILESYSTEM_INSPECT_FILE_LIMIT = 512;
+const FILESYSTEM_INSPECT_FILE_LIMIT = 512;
 export const FILESYSTEM_INSPECT_NAME_LIMIT = 50;
 
 // Checks a folder before something writes into it. Paths are absolute or ~/; the

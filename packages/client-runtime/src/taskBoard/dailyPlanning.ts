@@ -21,7 +21,7 @@ const OPEN: ReadonlySet<TaskBoardTaskStatus> = new Set([
   "blocked",
 ]);
 
-export function isOpenStatus(status: TaskBoardTaskStatus): boolean {
+function isOpenStatus(status: TaskBoardTaskStatus): boolean {
   return OPEN.has(status);
 }
 

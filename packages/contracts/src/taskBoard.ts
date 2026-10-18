@@ -2,8 +2,6 @@ import * as Schema from "effect/Schema";
 import { PositiveInt, ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ProviderOptionSelections } from "./model.ts";
 
-export const TASK_BOARD_REPOSITORY = "ItzJsimp/leonidas-code";
-
 /** A calendar day, without a timezone or time of day. */
 export const TaskBoardDueDate = Schema.String.check(
   Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
