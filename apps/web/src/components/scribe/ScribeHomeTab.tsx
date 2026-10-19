@@ -5,14 +5,14 @@ import {
 import type { ScribeHistoryItem } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { CopyIcon, MicIcon, SquareIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useEnvironmentQuery } from "~/state/query";
 import { scribeHistoryQuery, scribeStart, scribeStop } from "~/state/scribe";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
-import { commandErrorMessage, dictateButton, rowMeta } from "./home.logic";
+import { commandErrorMessage, dictateButton, rowMeta, shouldRetryHistory } from "./home.logic";
 import type { ScribeTabProps } from "./ScribePage";
 import { mergeRecent } from "./scribeLive.logic";
 
@@ -20,6 +20,13 @@ export function ScribeHomeTab({ environmentId, live }: ScribeTabProps) {
   const history = useEnvironmentQuery(scribeHistoryQuery({ environmentId, input: { limit: 20 } }));
   const loaded = history.data?.items;
   const items = useMemo(() => mergeRecent(live.saved, loaded ?? []), [live.saved, loaded]);
+  const previousConnected = useRef(live.connected);
+  const historyFailed = history.error !== null;
+  const { refresh } = history;
+  useEffect(() => {
+    if (shouldRetryHistory(previousConnected.current, live.connected, historyFailed)) refresh();
+    previousConnected.current = live.connected;
+  }, [live.connected, historyFailed, refresh]);
   return (
     <div className="flex flex-col gap-5">
       <DictateCard environmentId={environmentId} live={live} />

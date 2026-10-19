@@ -16,6 +16,15 @@ export function dictateButton(
   return { label: "Start", action: "start", disabled: false };
 }
 
+/** A failed history read retries once when the engine comes back, not only on Try again. */
+export function shouldRetryHistory(
+  previous: boolean | null,
+  connected: boolean | null,
+  failed: boolean,
+): boolean {
+  return failed && connected === true && previous !== true;
+}
+
 const COMMAND_MESSAGES: Readonly<Record<string, string>> = {
   offline: "Scribe engine is not running.",
   timeout: "Scribe did not answer in time. Try again.",

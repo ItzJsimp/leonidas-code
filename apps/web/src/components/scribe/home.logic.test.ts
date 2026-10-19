@@ -1,7 +1,13 @@
 import type { ScribeHistoryItem } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { commandErrorMessage, dictateButton, relativeTimeLabel, rowMeta } from "./home.logic";
+import {
+  commandErrorMessage,
+  dictateButton,
+  relativeTimeLabel,
+  rowMeta,
+  shouldRetryHistory,
+} from "./home.logic";
 
 const NOW = Date.parse("2026-10-17T12:00:00Z");
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
@@ -63,5 +69,18 @@ describe("rowMeta", () => {
   it("joins time, app and words", () => {
     expect(rowMeta(item, NOW)).toBe("2 min ago · Code · 1 word");
     expect(rowMeta({ ...item, app: " ", words: 4 }, NOW)).toBe("2 min ago · 4 words");
+  });
+});
+
+describe("shouldRetryHistory", () => {
+  it("retries a failed read when the engine reconnects", () => {
+    expect(shouldRetryHistory(false, true, true)).toBe(true);
+    expect(shouldRetryHistory(null, true, true)).toBe(true);
+  });
+
+  it("does not retry without an error or without a reconnect", () => {
+    expect(shouldRetryHistory(false, true, false)).toBe(false);
+    expect(shouldRetryHistory(true, true, true)).toBe(false);
+    expect(shouldRetryHistory(true, false, true)).toBe(false);
   });
 });
