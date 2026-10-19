@@ -10,6 +10,7 @@ use crate::dictionary::{SharedDictionary, VOCABULARY_CAP};
 use crate::engine::{Engine, EngineError};
 use crate::local_stt::LocalModel;
 use crate::settings::{PatchError, Settings};
+use crate::suggestions::Rejects;
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -45,6 +46,7 @@ pub struct Services {
     pub local: Arc<dyn LocalModel>,
     pub dictionary: Arc<SharedDictionary>,
     pub devices: Arc<DeviceLister>,
+    pub rejects: Arc<Rejects>,
 }
 
 /// Lists the input devices; tests pass a fake.
@@ -172,6 +174,9 @@ fn route(mut request: Request, engine: &Engine, services: &Services) {
     }
     if path == "/v1/dictionary" {
         return dictionary_route(request, services);
+    }
+    if path == "/v1/dictionary/suggestions" || path.starts_with("/v1/dictionary/suggestions/") {
+        return suggestions_route(request, engine, services, path);
     }
     if path == "/v1/settings" {
         return settings_route(request, services);
@@ -304,6 +309,63 @@ fn settings_route(mut request: Request, services: &Services) {
     }
 }
 
+/// v1.2: `GET /v1/dictionary/suggestions` and `DELETE /v1/dictionary/suggestions/{wrong}`.
+fn suggestions_route(request: Request, engine: &Engine, services: &Services, path: &str) {
+    if path == "/v1/dictionary/suggestions" {
+        if request.method() != &Method::Get {
+            return error(request, 405, "method_not_allowed");
+        }
+        let items = engine.history().map_or_else(Vec::new, |history| {
+            let page = history.page(crate::history::MAX_LIMIT, None, None);
+            let dictionary = services.dictionary.current();
+            let keys: std::collections::HashSet<String> = dictionary
+                .replacements
+                .iter()
+                .map(|(wrong, _)| wrong.to_lowercase())
+                .collect();
+            crate::suggestions::mine(
+                page.items
+                    .iter()
+                    .map(|item| (item.raw_text.as_str(), item.cleaned_text.as_str())),
+                |wrong| keys.contains(wrong) || services.rejects.contains(wrong),
+            )
+        });
+        return json(request, 200, &serde_json::json!({ "items": items }));
+    }
+    let wrong = &path["/v1/dictionary/suggestions/".len()..];
+    if wrong.is_empty() || wrong.contains('/') {
+        return error(request, 404, "not_found");
+    }
+    if request.method() != &Method::Delete {
+        return error(request, 405, "method_not_allowed");
+    }
+    let Some(wrong) = percent_decode(wrong).filter(|w| !w.trim().is_empty()) else {
+        return error(request, 400, "bad_request");
+    };
+    match services.rejects.add(wrong.trim()) {
+        Ok(()) => json(request, 200, &serde_json::json!({ "rejected": true })),
+        Err(_) => error(request, 500, "store_error"),
+    }
+}
+
+/// `%XX` escapes to UTF-8 text. `None` on a bad escape or bytes that are not UTF-8.
+fn percent_decode(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = std::str::from_utf8(bytes.get(i + 1..i + 3)?).ok()?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
 /// v1.2: `GET` and `PUT /v1/dictionary`.
 fn dictionary_route(mut request: Request, services: &Services) {
     match request.method() {
@@ -402,6 +464,7 @@ mod tests {
             local: Arc::new(NoLocal),
             dictionary: Arc::new(SharedDictionary::new(std::path::PathBuf::from("none.json"))),
             devices: Arc::new(|| Ok(Vec::new())),
+            rejects: Arc::new(Rejects::open(std::path::Path::new("none-rejects.json"))),
         }
     }
 
@@ -1072,5 +1135,90 @@ mod tests {
         TestServer::with_services(services)
             .request("GET", "/v1/devices", "")
             .error(500, "mic_error");
+    }
+
+    #[test]
+    fn suggestions_come_from_history_and_a_reject_hides_one() {
+        let dir = temp_dir("sugg");
+        let history = Arc::new(crate::history::History::open(&dir.join("history.jsonl")));
+        for (ms, raw, cleaned) in [
+            (1, "call jersey", "Call Gersi."),
+            (2, "jersey said hi", "Gersi said hi."),
+            (3, "leo nightness works", "Leonidas works."),
+            (4, "leo nightness again", "Leonidas again."),
+            (5, "btw yes", "By the way, yes."),
+            (6, "btw no", "By the way, no."),
+        ] {
+            history
+                .add(crate::history::NewItem {
+                    at: crate::contract::iso_from_unix_ms(ms),
+                    mode: "hold".into(),
+                    app: String::new(),
+                    raw_text: raw.into(),
+                    cleaned_text: cleaned.into(),
+                    metrics: Default::default(),
+                    pasted: true,
+                    at_ms: ms,
+                })
+                .unwrap();
+        }
+        std::fs::write(
+            dir.join("dictionary.json"),
+            r#"{"replacements":{"BTW":"by the way"}}"#,
+        )
+        .unwrap();
+        let engine = Engine::new(
+            Box::new(FakeRecorder::default()),
+            Box::new(FakeStt(Ok("hello".into()))),
+            Box::new(UpperPolish),
+            Box::new(Arc::new(FakePaster::default())),
+            250,
+            Some(history),
+        );
+        let mut services = test_services(Arc::new(MemoryKeyStore::default()));
+        services.dictionary = Arc::new(SharedDictionary::new(dir.join("dictionary.json")));
+        services.rejects = Arc::new(Rejects::open(&dir.join("suggestions-rejected.json")));
+        let server = TestServer(Some(
+            serve_with_ping(engine, services, 0, TEST_PING).unwrap(),
+        ));
+        let reply = server.request("GET", "/v1/dictionary/suggestions", "");
+        assert_eq!(reply.status, 200);
+        assert_eq!(
+            reply.body,
+            json!({"items":[
+                {"wrong":"jersey","correct":"Gersi","count":2},
+                {"wrong":"leo nightness","correct":"Leonidas","count":2}
+            ]})
+        );
+        let reply = server.request("DELETE", "/v1/dictionary/suggestions/Leo%20Nightness", "");
+        assert_eq!(reply.status, 200);
+        assert_eq!(reply.body, json!({"rejected": true}));
+        let items = server.request("GET", "/v1/dictionary/suggestions", "").body["items"].clone();
+        assert_eq!(
+            items,
+            json!([{"wrong":"jersey","correct":"Gersi","count":2}])
+        );
+        server
+            .request("DELETE", "/v1/dictionary/suggestions/", "")
+            .error(404, "not_found");
+        server
+            .request("DELETE", "/v1/dictionary/suggestions/bad%zz", "")
+            .error(400, "bad_request");
+        server
+            .request("POST", "/v1/dictionary/suggestions", "{}")
+            .error(405, "method_not_allowed");
+    }
+
+    #[test]
+    fn percent_decoding() {
+        assert_eq!(
+            percent_decode("Leo%20Nightness").as_deref(),
+            Some("Leo Nightness")
+        );
+        assert_eq!(percent_decode("caf%C3%A9").as_deref(), Some("caf\u{e9}"));
+        assert_eq!(percent_decode("a+b").as_deref(), Some("a+b"));
+        assert_eq!(percent_decode("bad%zz"), None);
+        assert_eq!(percent_decode("cut%2"), None);
+        assert_eq!(percent_decode("%FF"), None);
     }
 }

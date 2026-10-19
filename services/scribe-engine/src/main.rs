@@ -22,6 +22,7 @@ use scribe_engine::local_stt::{LocalModel, Router, WhisperLocal};
 use scribe_engine::paste::ClipboardPaster;
 use scribe_engine::polish::{GroqPolisher, SharedDictionary};
 use scribe_engine::settings::Settings;
+use scribe_engine::suggestions::Rejects;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -95,6 +96,7 @@ fn run() -> Result<(), String> {
             local: local.clone() as Arc<dyn LocalModel>,
             dictionary,
             devices: Arc::new(scribe_engine::audio::input_devices),
+            rejects: Arc::new(Rejects::open(&config_dir.join("suggestions-rejected.json"))),
         },
         cfg.port,
     )?;
