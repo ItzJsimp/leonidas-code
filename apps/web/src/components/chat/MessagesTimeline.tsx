@@ -1669,7 +1669,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
               onScroll={handleScroll}
               onItemSizeChanged={handleItemSizeChanged}
               className={cn(
-                "messages-timeline-scroll scrollbar-gutter-both h-full min-h-0 overflow-x-hidden overscroll-y-contain [overflow-anchor:none]",
+                "messages-timeline-scroll scrollbar-gutter-both h-full min-h-0 overflow-x-hidden overscroll-y-contain",
                 topFadeEnabled && "topbar-scroll-fade",
               )}
               ListHeaderComponent={listHeader}
@@ -4942,7 +4942,7 @@ const UserMessageBody = memo(function UserMessageBody(props: {
 function UserMessageMarkdownWithSubagents(
   props: Omit<React.ComponentProps<typeof UserMessageMarkdown>, "subagentNames">,
 ) {
-  const options = useComposerSubagents();
+  const options = useComposerSubagents(props.threadRef);
   const names = useMemo(() => options.map((option) => option.name), [options]);
   return <UserMessageMarkdown {...props} subagentNames={names} />;
 }

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { focusAttachmentRead } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { Button } from "../ui/button";
+import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
 import type { NoteAttachment } from "./focusWidget.logic";
 
 /** Reads dropped, pasted or chosen files into the form the server takes. `error` names the first file that cannot be used. */
@@ -50,15 +51,16 @@ export const filesOfTransfer = (transfer: DataTransfer | null): File[] =>
 /** Reads one attached file from the server and gives back a blob URL the caller must revoke. */
 function useAttachmentLoader(environmentId: EnvironmentId, path: string) {
   const run = useAtomCommand(focusAttachmentRead, { reportFailure: false });
+  const workspace = useActiveAiosWorkspace();
   return useCallback(async () => {
-    const result = await run({ environmentId, input: { path } });
+    const result = await run({ environmentId, input: { path, ...workspace.scope } });
     if (result._tag !== "Success" || isAtomCommandInterrupted(result)) return null;
     const bytes = Uint8Array.from(atob(result.value.dataBase64), (c) => c.charCodeAt(0));
     return {
       name: result.value.name,
       url: URL.createObjectURL(new Blob([bytes], { type: result.value.mimeType })),
     };
-  }, [environmentId, path, run]);
+  }, [environmentId, path, run, workspace.scope]);
 }
 
 function RemoveButton(props: { name: string; onRemove: () => void }) {

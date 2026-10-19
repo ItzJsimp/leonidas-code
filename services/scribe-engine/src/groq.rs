@@ -200,8 +200,37 @@ fn speech_error(error: &ApiError) -> String {
     }
 }
 
+/// A cloud failure. `offline` is true when a local model could still serve the request:
+/// no key, no network, a timeout, a rate limit or a server error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CloudFailure {
+    pub message: String,
+    pub offline: bool,
+}
+
+impl CloudFailure {
+    fn from_api(error: &ApiError) -> Self {
+        Self {
+            message: speech_error(error),
+            offline: matches!(
+                error,
+                ApiError::NoKey
+                    | ApiError::Timeout
+                    | ApiError::Transport
+                    | ApiError::Status(429 | 500..=599)
+            ),
+        }
+    }
+}
+
 impl Transcriber for GroqClient {
     fn transcribe(&self, audio: &EncodedAudio) -> Result<Transcription, String> {
+        self.transcribe_cloud(audio).map_err(|f| f.message)
+    }
+}
+
+impl GroqClient {
+    pub fn transcribe_cloud(&self, audio: &EncodedAudio) -> Result<Transcription, CloudFailure> {
         let done = |text| {
             Ok(Transcription {
                 text,
@@ -212,7 +241,7 @@ impl Transcriber for GroqClient {
             return done(String::new());
         }
         if self.key().is_none() {
-            return Err(NO_KEY.into());
+            return Err(CloudFailure::from_api(&ApiError::NoKey));
         }
         let dictionary = self.dictionary.current();
         let prompt = dictionary.vocabulary_prompt();
@@ -228,7 +257,7 @@ impl Transcriber for GroqClient {
         }
         match result {
             Ok(body) => done(transcript_text(&body, &dictionary)),
-            Err(error) => Err(speech_error(&error)),
+            Err(error) => Err(CloudFailure::from_api(&error)),
         }
     }
 }
@@ -561,6 +590,7 @@ mod tests {
             mime: "audio/flac",
             file_name: "audio.flac",
             duration_ms: 1000,
+            pcm: Vec::new(),
         }
     }
 

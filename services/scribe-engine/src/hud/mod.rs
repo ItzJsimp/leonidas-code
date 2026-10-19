@@ -67,7 +67,7 @@ impl HudModel {
             },
             Event::Transcript { .. } => self.set(View::Done, Some(now + DONE_FOR)),
             Event::Error { message, .. } => self.error(message, now),
-            Event::Partial { .. } => {}
+            Event::Partial { .. } | Event::History { .. } => {}
         }
     }
 

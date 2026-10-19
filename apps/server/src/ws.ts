@@ -11,6 +11,7 @@ import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
+import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
@@ -2222,7 +2223,7 @@ const layerWsRpc = (
         [WS_METHODS.scheduledTasksList]: (_input) =>
           scheduledTasks.list().pipe(Effect.map(withVisibleWebhookUrls)),
         [WS_METHODS.savedItemsList]: (input) => savedItems.list(input),
-        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id),
+        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id, input.workspaceId),
         [WS_METHODS.savedItemsCreate]: (input) => savedItems.create(input),
         [WS_METHODS.savedItemsUpdate]: (input) => savedItems.update(input),
         [WS_METHODS.savedItemsTransition]: (input) => savedItems.transition(input),
@@ -2868,12 +2869,7 @@ const layerWsRpc = (
             const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
             const aiosRoot = yield* taskBoard.aiosRoot(allProjects, input.workspaceId);
             // A scoped request sees only the projects inside its own workspace (ADR-0080).
-            const projects =
-              input.workspaceId === undefined
-                ? allProjects
-                : allProjects.filter(
-                    (project) => aiosRoot !== null && isPathInRoot(aiosRoot, project.workspaceRoot),
-                  );
+            const projects = subagentWorkspaceProjects(allProjects, aiosRoot, input.workspaceId);
             const appFreeModels = yield* serverSettings.getSettings.pipe(
               Effect.map((settings) => settings.subagentFreeTierModels),
               Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
@@ -2906,13 +2902,13 @@ const layerWsRpc = (
             });
           }),
         // Each change made through this server pushes a fresh list; no polling.
-        [WS_METHODS.focusSubscribe]: () =>
+        [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(
             Stream.mapEffect(() =>
               projectService.snapshot.pipe(
                 Effect.map((snapshot) => snapshot.projects),
                 Effect.orElseSucceed(() => []),
-                Effect.flatMap(taskBoard.focus),
+                Effect.flatMap((projects) => taskBoard.focus(projects, input)),
               ),
             ),
           ),

@@ -7,6 +7,8 @@ import {
   suggestWorkspaceId,
   workspaceFolderName,
   workspaceScopeInput,
+  workspaceForProject,
+  chatProjectsForWorkspace,
 } from "./aiosWorkspace.logic";
 
 const env = "env-local" as EnvironmentId;
@@ -38,6 +40,32 @@ const simplygersi = summary({
   projectIds: [pid("p-sg")],
 });
 const bare = summary({ root: "D:/Bare", status: "missing", id: null, projectIds: [pid("p-bare")] });
+
+it("keeps new-chat defaults and project choices inside the selected workspace", () => {
+  const projects = [
+    { environmentId: remote, id: pid("remote") },
+    { environmentId: env, id: pid("p-code") },
+    { environmentId: env, id: pid("p-sg") },
+  ];
+  expect(
+    chatProjectsForWorkspace({
+      environmentId: env,
+      workspaces: [leonidas, simplygersi],
+      active: simplygersi,
+      projects,
+    }).map((p) => p.id),
+  ).toEqual(["p-sg"]);
+  expect(
+    chatProjectsForWorkspace({ environmentId: env, workspaces: [], active: undefined, projects }),
+  ).toBe(projects);
+});
+
+it("takes a thread's workspace from its project before the active workspace", () => {
+  const workspaces = [leonidas, simplygersi];
+  expect(workspaceForProject(workspaces, pid("p-sg"), "leonidas")).toBe(simplygersi);
+  expect(workspaceForProject(workspaces, pid("unowned"), "simplygersi")).toBe(leonidas);
+  expect(workspaceForProject(workspaces, undefined, "simplygersi")).toBe(simplygersi);
+});
 
 describe("pickActiveWorkspace", () => {
   it("keeps a stored ready id, else the default, and never a workspace without a file", () => {

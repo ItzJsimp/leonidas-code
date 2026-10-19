@@ -28,6 +28,9 @@ pub struct Status {
     /// v1.1: audio never leaves the device.
     #[serde(default)]
     pub private_mode: bool,
+    /// v1.3: the offline model, one of absent, downloading or ready.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_model: Option<String>,
 }
 
 /// Reply to `POST /v1/start` and `POST /v1/stop`.
@@ -115,15 +118,56 @@ pub enum Event {
         message: String,
         at: String,
     },
+    /// v1.2: sent after each saved transcript.
+    History {
+        item: HistoryItem,
+    },
+}
+
+/// v1.2: timings of one dictation, in milliseconds.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryMetrics {
+    pub transcribe_ms: u64,
+    pub polish_ms: u64,
+    pub total_ms: u64,
+}
+
+/// v1.2: one saved dictation, as `GET /v1/history` and the `history` event send it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    pub id: String,
+    pub at: String,
+    /// `hold` or `toggle`.
+    pub mode: String,
+    /// Foreground app name; empty when unknown.
+    #[serde(default)]
+    pub app: String,
+    pub raw_text: String,
+    pub cleaned_text: String,
+    pub words: u32,
+    pub metrics: HistoryMetrics,
+    pub pasted: bool,
+}
+
+/// v1.2: reply of `GET /v1/history`. `next` is the `before` cursor for the next page.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HistoryPage {
+    pub items: Vec<HistoryItem>,
+    pub next: Option<String>,
 }
 
 /// UTC now as `YYYY-MM-DDTHH:MM:SS.mmmZ`.
 pub fn now_iso() -> String {
-    let ms = SystemTime::now()
+    iso_from_unix_ms(unix_ms_now())
+}
+
+pub fn unix_ms_now() -> i64 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
-        .unwrap_or(0);
-    iso_from_unix_ms(ms)
+        .unwrap_or(0)
 }
 
 pub fn iso_from_unix_ms(ms: i64) -> String {
@@ -173,6 +217,7 @@ mod tests {
                 sampled_at: "2026-10-15T01:00:00.000Z".into(),
                 groq_key: true,
                 private_mode: false,
+                local_model: None,
             },
         );
     }
@@ -256,6 +301,31 @@ mod tests {
         assert!(
             matches!(e, Event::Transcript { engine: SttEngine::Groq, ref raw, .. } if raw.is_empty())
         );
+    }
+
+    #[test]
+    fn history_event_v1_2_wire_shape() {
+        let item = HistoryItem {
+            id: "d1".into(),
+            at: "2026-10-18T00:00:00.000Z".into(),
+            mode: "hold".into(),
+            app: String::new(),
+            raw_text: "hi".into(),
+            cleaned_text: "Hi.".into(),
+            words: 1,
+            metrics: HistoryMetrics {
+                transcribe_ms: 700,
+                polish_ms: 50,
+                total_ms: 760,
+            },
+            pasted: true,
+        };
+        let wire = serde_json::to_value(Event::History { item }).unwrap();
+        assert_eq!(wire["type"], "history");
+        assert_eq!(wire["item"]["cleanedText"], "Hi.");
+        assert_eq!(wire["item"]["metrics"]["transcribeMs"], 700);
+        let back: Event = serde_json::from_value(wire.clone()).unwrap();
+        round_trip(&wire.to_string(), back);
     }
 
     #[test]

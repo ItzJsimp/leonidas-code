@@ -16,6 +16,7 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { toastManager } from "~/components/ui/toast";
 
 import { appendSample } from "./systemCare.logic";
+import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
 
 function unwrap<A, E>(result: AtomCommandResult<A, E>): A {
   if (result._tag === "Failure") throw squashAtomCommandFailure(result);
@@ -106,6 +107,7 @@ export function useSystemCareLimits() {
 }
 
 export function useSystemCareActions() {
+  const workspace = useActiveAiosWorkspace();
   const environmentId = usePrimaryEnvironmentId();
   const acknowledge = useAtomCommand(serverEnvironment.hardwareAcknowledgeAlert, {
     reportFailure: false,
@@ -153,14 +155,14 @@ export function useSystemCareActions() {
   const preparePrompt = useCallback(
     (kind: "investigate" | "checkup" | "tune", alertId?: string) =>
       run("Could not prepare the message", async () => {
-        if (environmentId === null || starting.current) return;
+        if (environmentId === null || !workspace.scopeReady || starting.current) return;
         starting.current = true;
         setBusy(true);
         try {
           const result = unwrap(
             await prepareAgent({
               environmentId,
-              input: { kind, ...(alertId ? { alertId } : {}) },
+              input: { kind, ...workspace.scope, ...(alertId ? { alertId } : {}) },
             }),
           );
           const copied = await writeTextToClipboard(result.prompt, "PC Tuning message").then(
@@ -183,7 +185,7 @@ export function useSystemCareActions() {
           setBusy(false);
         }
       }),
-    [environmentId, openNewThread, prepareAgent, run],
+    [environmentId, openNewThread, prepareAgent, run, workspace.scope, workspace.scopeReady],
   );
 
   return { busy, setAcknowledged, setDeepSensors, preparePrompt };

@@ -2251,7 +2251,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   const compactCommandAvailable = providerSupportsManualCompaction(selectedProviderEntry);
   // Memoized so the composer menu memo below can cache between renders.
-  const composerSubagents = useComposerSubagents();
+  const composerSubagents = useComposerSubagents(
+    routeKind === "draft" && draftId ? draftId : routeThreadRef,
+  );
   const attachThreadShell = useThreadShell(isServerThread ? routeThreadRef : null);
   const {
     attached: attachedSubagent,
@@ -7587,24 +7589,25 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                             )}
                             {/* Names this image in the prompt so nearby text is read as its context. */}
                             {!questionAttachmentTarget && (
-                              <Tooltip>
-                                <TooltipTrigger
-                                  render={
-                                    <Button
-                                      variant="media-close"
-                                      size="icon-xs"
-                                      className="absolute bottom-1 right-1 opacity-0 transition-opacity pointer-coarse:opacity-100 group-hover/attachment:opacity-100 group-focus-within/attachment:opacity-100"
-                                      onClick={() =>
-                                        insertAttachmentReferences([imageContextReference(image)])
-                                      }
-                                      aria-label={`Reference ${image.name} in message`}
-                                    />
-                                  }
-                                >
-                                  <AtSignIcon />
-                                </TooltipTrigger>
-                                <TooltipPopup side="top">Reference in message</TooltipPopup>
-                              </Tooltip>
+                              <span className="absolute bottom-1 right-1 opacity-0 transition-opacity pointer-coarse:opacity-100 group-hover/attachment:opacity-100 group-focus-within/attachment:opacity-100">
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <Button
+                                        variant="media-close"
+                                        size="icon-xs"
+                                        onClick={() =>
+                                          insertAttachmentReferences([imageContextReference(image)])
+                                        }
+                                        aria-label={`Reference ${image.name} in message`}
+                                      />
+                                    }
+                                  >
+                                    <AtSignIcon />
+                                  </TooltipTrigger>
+                                  <TooltipPopup side="top">Reference in message</TooltipPopup>
+                                </Tooltip>
+                              </span>
                             )}
                             {/* Snap-shot frames reveal their remove button on hover or focus. */}
                             <span
@@ -7884,7 +7887,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     containerClassName={cn(isComposerResting && "min-w-0 flex-1")}
                     className={cn(
                       showMobilePendingAnswerActions && "max-sm:pb-12",
-                      "transition-[max-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+                      "transition-[max-height] duration-300 ease-out motion-reduce:transition-none",
                       isComposerDraftCompacted &&
                         "max-h-[7.5rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_65%,transparent)]",
                       isComposerResting &&
@@ -7930,13 +7933,22 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   />
                 </ComposerContextActionsContext>
                 {promptDraftStats ? (
-                  <div
-                    data-testid="composer-draft-stats"
-                    className="mt-1 text-right text-2xs text-muted-foreground/70 tabular-nums"
-                    title={`${promptDraftStats.words.toLocaleString()} words · ${promptDraftStats.lines.toLocaleString()} ${promptDraftStats.lines === 1 ? "line" : "lines"}. The token count is a guess for this message only. The meter next to Send shows the whole chat.`}
-                  >
-                    {formatPromptDraftStats(promptDraftStats)}
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <div
+                          tabIndex={0}
+                          data-testid="composer-draft-stats"
+                          className="mt-1 text-right text-2xs text-muted-foreground/70 tabular-nums"
+                        />
+                      }
+                    >
+                      {formatPromptDraftStats(promptDraftStats)}
+                    </TooltipTrigger>
+                    <TooltipPopup>
+                      {`${promptDraftStats.words.toLocaleString()} words · ${promptDraftStats.lines.toLocaleString()} ${promptDraftStats.lines === 1 ? "line" : "lines"}. The token count is a guess for this message only. The meter next to Send shows the whole chat.`}
+                    </TooltipPopup>
+                  </Tooltip>
                 ) : null}
                 {isComposerResting ? collapsedComposerImagePreviews : null}
                 {showMobilePendingAnswerActions ? (
