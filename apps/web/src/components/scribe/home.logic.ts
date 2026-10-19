@@ -37,12 +37,17 @@ const COMMAND_MESSAGES: Readonly<Record<string, string>> = {
 
 const COMMAND_FALLBACK = "Scribe could not do that. Try again.";
 
-export function commandErrorMessage(failure: unknown): string {
+export function commandErrorReason(failure: unknown): string | null {
   const reason =
     typeof failure === "object" && failure !== null && "reason" in failure
       ? (failure as { reason: unknown }).reason
       : null;
-  return (typeof reason === "string" ? COMMAND_MESSAGES[reason] : undefined) ?? COMMAND_FALLBACK;
+  return typeof reason === "string" ? reason : null;
+}
+
+export function commandErrorMessage(failure: unknown): string {
+  const reason = commandErrorReason(failure);
+  return (reason === null ? undefined : COMMAND_MESSAGES[reason]) ?? COMMAND_FALLBACK;
 }
 
 export function relativeTimeLabel(at: string, now: number): string {

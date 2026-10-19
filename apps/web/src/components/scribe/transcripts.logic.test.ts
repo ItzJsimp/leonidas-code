@@ -7,8 +7,10 @@ import {
   dayKey,
   dayLabel,
   groupByDay,
+  mergeTranscripts,
   moreDaysLabel,
   spokenWords,
+  timeLabel,
   visibleDayItems,
 } from "./transcripts.logic";
 
@@ -115,5 +117,30 @@ describe("visibleDayItems and moreDaysLabel", () => {
     expect(moreDaysLabel(7, 5)).toBe("Show 2 older days of 2");
     expect(moreDaysLabel(6, 5)).toBe("Show 1 older day of 1");
     expect(moreDaysLabel(5, 5)).toBeNull();
+  });
+});
+
+describe("mergeTranscripts", () => {
+  const a = item("a", local(2026, 9, 25, 15), "a", "A.");
+  const b = item("b", local(2026, 9, 25, 14), "b", "B.");
+  const c = item("c", local(2026, 9, 24, 14), "c", "C.");
+
+  it("puts live saves first, keeps loaded order and drops duplicates", () => {
+    expect(mergeTranscripts([a, b], [b, c], new Set()).map((i) => i.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("drops deleted ids even when a live save still holds them", () => {
+    expect(mergeTranscripts([a], [b, c], new Set(["a", "c"])).map((i) => i.id)).toEqual(["b"]);
+  });
+});
+
+describe("timeLabel", () => {
+  it("uses a 12-hour clock with AM or PM", () => {
+    expect(timeLabel(local(2026, 9, 25, 19))).toBe("7:00 PM");
+    expect(timeLabel(new Date(2026, 8, 25, 0, 5).toISOString())).toBe("12:05 AM");
+    expect(timeLabel(new Date(2026, 8, 25, 12, 30).toISOString())).toBe("12:30 PM");
+  });
+  it("is empty for an unreadable time", () => {
+    expect(timeLabel("nope")).toBe("");
   });
 });

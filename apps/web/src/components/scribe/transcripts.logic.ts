@@ -89,3 +89,27 @@ export function moreDaysLabel(totalDays: number, shown: number): string | null {
   const step = Math.min(DAYS_PER_PAGE, remaining);
   return `Show ${step} older ${remaining === 1 ? "day" : "days"} of ${remaining.toLocaleString("en-US")}`;
 }
+
+/** Live saves first, then the loaded pages, with no id twice and no deleted id. */
+export function mergeTranscripts(
+  saved: readonly ScribeHistoryItem[],
+  loaded: readonly ScribeHistoryItem[],
+  deleted: ReadonlySet<string>,
+): ScribeHistoryItem[] {
+  const seen = new Set<string>();
+  const out: ScribeHistoryItem[] = [];
+  for (const item of [...saved, ...loaded]) {
+    if (seen.has(item.id) || deleted.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
+/** The time of day as `7:45 PM` (12-hour clock, local time). */
+export function timeLabel(at: string): string {
+  const time = new Date(at);
+  if (Number.isNaN(time.getTime())) return "";
+  const hours = time.getHours();
+  return `${hours % 12 === 0 ? 12 : hours % 12}:${pad(time.getMinutes())} ${hours < 12 ? "AM" : "PM"}`;
+}
