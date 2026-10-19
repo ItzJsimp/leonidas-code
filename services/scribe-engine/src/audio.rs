@@ -57,6 +57,11 @@ impl CpalRecorder {
         }
     }
 
+    /// v1.2: the device and length cap for the next recording.
+    fn set_config(&mut self, cfg: &AudioConfig) {
+        self.cfg = cfg.clone();
+    }
+
     /// The live mic level for the HUD.
     pub fn level(&self) -> Arc<AtomicU32> {
         self.level.clone()
@@ -78,6 +83,10 @@ impl CpalRecorder {
 }
 
 impl Recorder for CpalRecorder {
+    fn configure(&mut self, cfg: &AudioConfig) {
+        self.set_config(cfg);
+    }
+
     fn start(&mut self) -> Result<(), String> {
         if self.stream.is_some() {
             return Err("Microphone is already recording".into());
