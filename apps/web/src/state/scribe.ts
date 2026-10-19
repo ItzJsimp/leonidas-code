@@ -68,3 +68,33 @@ export const scribeRejectSuggestion = createEnvironmentRpcCommand(connectionAtom
   label: "environment-data:scribe:reject-suggestion",
   tag: WS_METHODS.scribeRejectSuggestion,
 });
+
+/** Settings are edited on the page, so they are always read fresh when the tab opens. */
+export const scribeSettingsQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:scribe:settings",
+  tag: WS_METHODS.scribeGetSettings,
+  staleTimeMs: 0,
+  idleTtlMs: 60_000,
+});
+
+export const scribeDevicesQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:scribe:devices",
+  tag: WS_METHODS.scribeListDevices,
+  staleTimeMs: 0,
+  idleTtlMs: 60_000,
+});
+
+export const scribePatchSettings = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:patch-settings",
+  tag: WS_METHODS.scribePatchSettings,
+});
+
+export const scribeSetGroqKey = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:set-groq-key",
+  tag: WS_METHODS.scribeSetGroqKey,
+});
+
+export const scribeClearGroqKey = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:clear-groq-key",
+  tag: WS_METHODS.scribeClearGroqKey,
+});

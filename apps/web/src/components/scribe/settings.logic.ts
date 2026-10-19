@@ -6,9 +6,9 @@ type Transcription = Sections["transcription"];
 /** What the page edits. The Groq key is never part of it: it has its own commands. */
 export interface SettingsDraft {
   hotkeys: { hold: string[]; toggle: string[]; cancel: string[] };
-  audio: Sections["audio"];
-  transcription: Omit<Transcription, "groqKey">;
-  hud: Sections["hud"];
+  audio: { -readonly [K in keyof Sections["audio"]]: Sections["audio"][K] };
+  transcription: { -readonly [K in keyof Omit<Transcription, "groqKey">]: Transcription[K] };
+  hud: { -readonly [K in keyof Sections["hud"]]: Sections["hud"][K] };
 }
 
 export function toDraft(settings: ScribeSettings): SettingsDraft {
