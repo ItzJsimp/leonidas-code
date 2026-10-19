@@ -59,6 +59,7 @@ import {
   AiosWorkspaceInitInput,
   TaskBoardHomeNews,
   LayaUsage,
+  PonytailUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
@@ -583,6 +584,7 @@ export const WS_METHODS = {
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
   layaUsage: "laya.usage",
+  ponytailUsage: "ponytail.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
@@ -1802,6 +1804,12 @@ const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsPonytailUsageRpc = Rpc.make(WS_METHODS.ponytailUsage, {
+  payload: Schema.Struct({}),
+  success: PonytailUsage,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsLayaUsageRpc = Rpc.make(WS_METHODS.layaUsage, {
   payload: Schema.Struct({}),
   success: LayaUsage,
@@ -2926,6 +2934,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
   WsLayaUsageRpc,
+  WsPonytailUsageRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,

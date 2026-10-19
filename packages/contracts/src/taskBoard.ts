@@ -576,6 +576,35 @@ export const LayaUsage = Schema.Struct({
 });
 export type LayaUsage = typeof LayaUsage.Type;
 
+// Ponytail monitor. Numbers come from the plugin's local ledger; savings are estimates at the
+// published benchmark rates, not measurements.
+export const PonytailUsage = Schema.Struct({
+  status: Schema.Literals(["missing", "ready"]),
+  accounts: Schema.Array(Schema.Struct({ dir: Schema.String, enabled: Schema.Boolean })),
+  tasks: Schema.Number,
+  costUsd: Schema.Number,
+  agentMinutes: Schema.Number,
+  outputTokens: Schema.Number,
+  estimatedSaved: Schema.Struct({
+    costUsd: Schema.Number,
+    agentMinutes: Schema.Number,
+    outputTokens: Schema.Number,
+  }),
+  recent: Schema.Array(
+    Schema.Struct({
+      started: Schema.String,
+      project: Schema.String,
+      name: Schema.String,
+      costUsd: Schema.Number,
+      turns: Schema.Number,
+      agentMinutes: Schema.Number,
+      outputTokens: Schema.Number,
+      level: Schema.String,
+    }),
+  ),
+});
+export type PonytailUsage = typeof PonytailUsage.Type;
+
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({
   root: Schema.NullOr(TrimmedNonEmptyString),

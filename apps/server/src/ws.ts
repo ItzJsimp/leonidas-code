@@ -21,6 +21,7 @@ import * as ScribeEngine from "./scribe/ScribeEngine.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { readLayaUsage } from "./laya/layaUsage.ts";
+import { readPonytailUsage } from "./ponytail/ponytailUsage.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -2980,6 +2981,7 @@ const layerWsRpc = (
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
         [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
+        [WS_METHODS.ponytailUsage]: () => Effect.promise(() => readPonytailUsage()),
         [WS_METHODS.taskBoardHome]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),
