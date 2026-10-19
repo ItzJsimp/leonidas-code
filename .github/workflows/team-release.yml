@@ -23,7 +23,7 @@ jobs:
   windows:
     name: Windows x64 installer
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     concurrency:
       group: team-release-build
       cancel-in-progress: true
@@ -75,6 +75,24 @@ jobs:
           path: native/resource-monitor/target/x86_64-pc-windows-msvc/release/t3-resource-monitor.exe
           key: monitor-${{ runner.os }}-x64-${{ steps.rust.outputs.version }}-${{ hashFiles('native/resource-monitor/Cargo.toml', 'native/resource-monitor/Cargo.lock', 'native/resource-monitor/src/**', 'native/resource-monitor/build.rs', 'native/resource-monitor/.cargo/**', '.cargo/**') }}
 
+      # The Rust Scribe engine ships inside the installer (ADR-0074). The cache key
+      # covers its sources, so most releases reuse the binary and skip the build.
+      - name: Restore Scribe engine
+        id: engine
+        uses: actions/cache@v4
+        with:
+          path: |
+            services/scribe-engine/target/x86_64-pc-windows-msvc/release/scribe-engine.exe
+            services/scribe-engine/target/x86_64-pc-windows-msvc/release/scribe-bench.exe
+          key: scribe-engine-${{ runner.os }}-x64-${{ steps.rust.outputs.version }}-${{ hashFiles('services/scribe-engine/Cargo.toml', 'services/scribe-engine/Cargo.lock', 'services/scribe-engine/.cargo/config.toml', 'services/scribe-engine/src/**') }}
+
+      - name: Build Scribe engine
+        if: steps.engine.outputs.cache-hit != 'true'
+        # Cargo reads .cargo/config.toml from the working folder. Run in the crate folder,
+        # or whisper.cpp builds without AVX2 and /O2 (about 8x slower offline dictation).
+        working-directory: services/scribe-engine
+        run: cargo build --locked --release --target x86_64-pc-windows-msvc
+
       - name: Set release version
         run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"
 
@@ -106,10 +124,29 @@ jobs:
       - name: Check the server boots and answers
         run: node scripts/smoke.mjs --entry apps/server/dist/bin.mjs
 
+      # ADR-0074 engine budgets (hotkey 50 ms, idle 30 MB, cold start 2 s): a miss
+      # stops the release before anything publishes.
+      - name: Check the Scribe engine budgets
+        run: services/scribe-engine/target/x86_64-pc-windows-msvc/release/scribe-bench.exe --null-audio
+
       - name: Build Windows installer
         env:
+          T3CODE_DESKTOP_REUSE_SCRIBE_ENGINE: "true"
           T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: ${{ steps.monitor.outputs.cache-hit == 'true' && 'true' || 'false' }}
         run: vp run dist:desktop:artifact --platform win --target nsis --arch x64 --build-version "${{ steps.release.outputs.version }}" --skip-build
+
+      # Per-release benchmark: engine budgets fail the build. App idle RAM (500 MB)
+      # and app cold start (2 s) only warn until the repo variable
+      # LEONIDAS_ENFORCE_APP_BUDGETS is "true" (set it after the first report is reviewed).
+      - name: Fetch benchmark history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download --repo "$GITHUB_REPOSITORY" --pattern benchmark-history.csv --output benchmark-history.csv --clobber || echo "No earlier benchmark history."
+
+      - name: Benchmark the installer
+        env:
+          ENFORCE_APP: ${{ vars.LEONIDAS_ENFORCE_APP_BUDGETS == 'true' && '--enforce-app' || '' }}
+        run: node scripts/release-benchmark.ts --version "${{ steps.release.outputs.version }}" --installer "release/Leonidas-Code-${{ steps.release.outputs.version }}-x64.exe" --engine-dir services/scribe-engine/target/x86_64-pc-windows-msvc/release --history benchmark-history.csv --out-dir release $ENFORCE_APP
 
       - name: Save release artifacts
         uses: actions/upload-artifact@v4
@@ -119,6 +156,8 @@ jobs:
             release/*.exe
             release/*.blockmap
             release/latest.yml
+            release/benchmark-history.csv
+            release/benchmark-report.md
             notes.md
           retention-days: 3
           if-no-files-found: error
@@ -182,6 +221,7 @@ jobs:
           fi
           find artifacts -type f \( -name '*.exe' -o -name '*.blockmap' -o -name 'latest.yml' \) -print0 | xargs -0 gh release upload "v$VERSION" --clobber
           # Fixed name so releases/latest/download/Leonidas-Setup.exe is one link that never changes.
+          find artifacts -type f -name 'benchmark-*' -print0 | xargs -0 gh release upload "v$VERSION" --clobber
           cp "$(find artifacts -type f -name 'Leonidas-Code-*-x64.exe' | head -n 1)" artifacts/Leonidas-Setup.exe
           gh release upload "v$VERSION" artifacts/Leonidas-Setup.exe --clobber
           gh release edit "v$VERSION" --draft=false --latest

@@ -21,6 +21,7 @@ import { useEnvironmentQuery } from "~/state/query";
 import { focusLive, focusUpdate, taskBoardCardCreate } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { failureText } from "../taskBoard/useTaskActions.logic";
+import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
@@ -58,7 +59,13 @@ export default function FocusWidget(props: {
   projectId: ProjectId | null;
 }) {
   const { position, scope, setPosition, setScope, setVisible } = useFocusWidgetStore();
-  const query = useEnvironmentQuery(focusLive({ environmentId: props.environmentId, input: {} }));
+  // The focus list and new cards belong to the workspace this window shows (ADR-0080).
+  const workspace = useActiveAiosWorkspace();
+  const query = useEnvironmentQuery(
+    workspace.scopeReady
+      ? focusLive({ environmentId: props.environmentId, input: workspace.scope })
+      : null,
+  );
   const runUpdate = useAtomCommand(focusUpdate, { reportFailure: false });
   const runCreate = useAtomCommand(taskBoardCardCreate, { reportFailure: false });
   const rootRef = useRef<HTMLElement | null>(null);
@@ -91,12 +98,15 @@ export default function FocusWidget(props: {
   const update = useCallback(
     async (input: FocusUpdateInput, failure: string) => {
       setError(null);
-      const result = await runUpdate({ environmentId: props.environmentId, input });
+      const result = await runUpdate({
+        environmentId: props.environmentId,
+        input: { ...input, ...workspace.scope },
+      });
       if (result._tag === "Success" || isAtomCommandInterrupted(result)) return true;
       setError(failureText(squashAtomCommandFailure(result), failure));
       return false;
     },
-    [props.environmentId, runUpdate],
+    [props.environmentId, runUpdate, workspace.scope],
   );
 
   const add = async (event: FormEvent) => {
@@ -124,6 +134,7 @@ export default function FocusWidget(props: {
         title: row.text.slice(0, 256),
         projectSlug: row.slug,
         actor: snapshot.member,
+        ...workspace.scope,
         ...(row.text.length > 256 ? { description: row.text } : {}),
       },
     });

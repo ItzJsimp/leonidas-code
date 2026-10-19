@@ -1,5 +1,5 @@
 /**
- * The typed AIOS interview: eight short questions, then plain files built from the answers
+ * The AIOS interview: one name to type and chips for the rest, then plain files built from the answers
  * with no AI call. The file plan is create-only: a file that already exists is never in it.
  */
 
@@ -13,12 +13,18 @@ export type InterviewQuestionId =
   | "rhythm"
   | "projects";
 
+export type InterviewQuestionKind = "text" | "single" | "multi";
+
 export interface InterviewQuestion {
   readonly id: InterviewQuestionId;
   readonly label: string;
   readonly hint: string;
   readonly required: boolean;
-  readonly multiline: boolean;
+  /** `text` is typed; `single` and `multi` are chips, one or many. */
+  readonly kind: InterviewQuestionKind;
+  readonly choices?: readonly string[];
+  /** Chips that start selected, so a user who changes nothing still gets a sound AIOS. */
+  readonly defaults?: readonly string[];
 }
 
 export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
@@ -27,58 +33,113 @@ export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
     label: "What should the AI call you?",
     hint: "A first name or nickname.",
     required: true,
-    multiline: false,
+    kind: "text",
   },
   {
     id: "work",
-    label: "What do you do or build?",
-    hint: "One or two sentences. A job, a business, a hobby, a study.",
-    required: true,
-    multiline: true,
+    label: "What best describes you?",
+    hint: "Pick one.",
+    required: false,
+    kind: "single",
+    choices: [
+      "I run a business",
+      "I build software",
+      "I create content",
+      "I study",
+      "I work a job",
+      "A mix of these",
+    ],
   },
   {
     id: "goal",
-    label: "What is your main goal right now?",
-    hint: "The one result you want most this month.",
+    label: "What do you want most from your AI?",
+    hint: "Pick all that fit.",
     required: false,
-    multiline: true,
+    kind: "multi",
+    choices: [
+      "Get more done each day",
+      "Write and edit",
+      "Build and fix code",
+      "Learn new things",
+      "Plan and organise",
+      "Research",
+    ],
   },
   {
     id: "style",
-    label: "How do you like answers written?",
-    hint: "For example: short and direct, or step by step with reasons.",
+    label: "How should answers look?",
+    hint: "Pick one.",
     required: false,
-    multiline: true,
+    kind: "single",
+    choices: ["Short and direct", "Step by step with reasons", "Detailed and thorough"],
+    defaults: ["Short and direct"],
   },
   {
     id: "tools",
-    label: "Which tools and apps do you use every day?",
-    hint: "Editors, chat apps, spreadsheets. Any list is fine.",
+    label: "Which tools do you use every day?",
+    hint: "Pick all that fit.",
     required: false,
-    multiline: true,
+    kind: "multi",
+    choices: [
+      "Chat and email",
+      "Spreadsheets",
+      "A code editor",
+      "Design apps",
+      "Video and audio",
+      "Notes and docs",
+    ],
   },
   {
     id: "avoid",
-    label: "What should the AI never do?",
-    hint: "Rules like: do not delete files, ask before you spend money.",
+    label: "What should the AI never do without asking?",
+    hint: "Pick all that fit.",
     required: false,
-    multiline: true,
+    kind: "multi",
+    choices: [
+      "Delete files",
+      "Spend money",
+      "Send messages for me",
+      "Change things outside my folders",
+    ],
+    defaults: ["Delete files", "Spend money", "Send messages for me"],
   },
   {
     id: "rhythm",
-    label: "When do you work, and what slows you down?",
-    hint: "Hours, energy, or habits the AI should plan around.",
+    label: "When do you work best?",
+    hint: "Pick one.",
     required: false,
-    multiline: true,
+    kind: "single",
+    choices: ["Morning", "Afternoon", "Evening or night", "It changes"],
   },
   {
     id: "projects",
-    label: "Which projects should the AI know about?",
-    hint: "One per line. Add a few words about each.",
+    label: "Name a project to start with",
+    hint: "Optional. One short line.",
     required: false,
-    multiline: true,
+    kind: "text",
   },
 ];
+
+/** The answers a user has before touching anything: the chips marked as defaults. */
+export function defaultAnswers(): InterviewAnswers {
+  const out: Partial<Record<InterviewQuestionId, string>> = {};
+  for (const question of INTERVIEW_QUESTIONS) {
+    if (question.defaults?.length) out[question.id] = answerFromChoices(question.defaults);
+  }
+  return out;
+}
+
+/** One chip is plain text; several become a bullet list in the file. */
+export function answerFromChoices(chosen: readonly string[]): string {
+  if (chosen.length <= 1) return chosen[0] ?? "";
+  return chosen.map((choice) => `- ${choice}`).join("\n");
+}
+
+/** The chips an answer string stands for, in the order of the question's choices. */
+export function choicesFromAnswer(question: InterviewQuestion, answer: string): readonly string[] {
+  const text = cleanAnswer(answer);
+  return (question.choices ?? []).filter((choice) => text.includes(choice));
+}
 
 export type InterviewAnswers = Readonly<Partial<Record<InterviewQuestionId, string>>>;
 

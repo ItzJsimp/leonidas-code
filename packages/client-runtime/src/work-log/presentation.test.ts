@@ -284,7 +284,9 @@ describe("resolveWorkEntryToolPresentation", () => {
       };
       const presentation = resolveWorkEntryToolPresentation(entry);
       expect(presentation, tool).not.toBeNull();
-      expect(presentation?.displayName, tool).not.toContain(tool);
+      // A raw id must not leak into the label; a plain-word id such as "canvas" may appear as a word.
+      expect(presentation?.displayName, tool).not.toBe(tool);
+      if (/[_-]/.test(tool)) expect(presentation?.displayName, tool).not.toContain(tool);
       const summary = summarizeToolGroup([entry]);
       expect(summary.summary, tool).not.toMatch(/Used (?:1 tool|Leonidas Code integration)/);
       expect(summary.hasFailure, tool).toBe(false);

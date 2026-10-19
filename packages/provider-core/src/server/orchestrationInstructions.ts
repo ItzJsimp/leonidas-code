@@ -52,10 +52,6 @@ Project, model, and modes inherit unless supplied; a launched thread cannot get 
 ### Tool access
 
 Tool names may carry a harness-normalized prefix, such as \`mcp__t3_code__delegate_task\`, with the same meaning. Some harnesses attach MCP servers lazily, so T3 tools missing from the first catalog scan do not mean cross-provider delegation is unavailable. Make one bounded direct attempt by the known name on the next tool step (in Codex code mode, \`tools.mcp__t3_code__orchestrator_capabilities({})\`). Keep polling bounded, do not duplicate active work, and reuse stable \`clientRequestId\` values when retrying.
-
-### Showing visuals
-
-For deep research, multi-part specs, architecture, roadmaps, or comparison matrices, build an interactive HTML canvas (\`leonidas-canvas\` standard) styled with the Leonidas theme variables. Check layout with \`html_preview\`, then publish with \`html_render\` before your final reply.
 `;
 
 /**

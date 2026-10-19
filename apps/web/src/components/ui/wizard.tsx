@@ -80,14 +80,24 @@ export function WizardSteps({
   readonly onStepChange?: (step: number) => void;
 }) {
   const Step = onStepChange ? "button" : "div";
+  // Many steps cannot all show a label in the dialog width. Only the current
+  // step shows its name; the others show a number and a hover title.
+  const compact = steps.length > 5;
   return (
     <ol
-      className="grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-zinc-25 p-1 ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/5"
+      className={cn(
+        "gap-1 rounded-xl bg-zinc-25 p-1 ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/5",
+        compact ? "flex" : "grid auto-cols-fr grid-flow-col",
+      )}
+      data-compact={compact ? "" : undefined}
       role="list"
       aria-label="Setup progress"
     >
       {steps.map((step, index) => (
-        <li key={step} className="min-w-0">
+        <li
+          key={step}
+          className={cn("min-w-0", compact && (index === currentStep ? "flex-none" : "flex-1"))}
+        >
           <Step
             {...(onStepChange
               ? { type: "button" as const, disabled: isStepDisabled?.(index) }
@@ -100,6 +110,7 @@ export function WizardSteps({
                 "bg-card text-foreground shadow-xs ring-1 ring-inset ring-black/5 hover:bg-card dark:shadow-none dark:ring-white/5",
             )}
             aria-current={index === currentStep ? "step" : undefined}
+            title={compact ? step : undefined}
             aria-label={`${step}, step ${index + 1}${index < currentStep && summaries?.[index] ? `, ${summaries?.[index]}` : ""}`}
             onClick={onStepChange ? () => onStepChange(index) : undefined}
           >
@@ -119,6 +130,7 @@ export function WizardSteps({
             <span
               className={cn(
                 "min-w-0 truncate text-sm font-medium max-sm:hidden",
+                compact && index !== currentStep && "hidden",
                 index === currentStep ? "text-foreground" : "text-muted-foreground",
               )}
             >

@@ -773,9 +773,10 @@ describe("AcpAdapterV2", () => {
       const mockAgentPath = yield* path.fromFileUrl(
         new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
       );
+      const markerTime = yield* Clock.currentTimeMillis;
       const markerPath = path.join(
         NodeOS.tmpdir(),
-        `acp-lost-connection-${process.pid}-${Date.now()}`,
+        `acp-lost-connection-${process.pid}-${markerTime}`,
       );
       const instanceId = ProviderInstanceId.make("acp-test-lost-connection");
       const adapter = yield* makeAcpAdapterV2({
@@ -927,7 +928,8 @@ describe("AcpAdapterV2", () => {
       assert.notInclude(command.prompt, "<t3_code_instructions>");
       const firstDefault = yield* runTurn(1, defaultPolicy, "First default request.");
       assert.include(firstDefault.prompt, "Leonidas Code interaction mode: Default");
-      assert.include(firstDefault.prompt, "Leonidas Code collaborative browser");
+      // The browser block is injected only when browser tools are live; this fixture has none.
+      assert.notInclude(firstDefault.prompt, "Leonidas Code collaborative browser");
       assert.include(firstDefault.prompt, "Leonidas Code orchestration");
       assert.notInclude(
         firstDefault.methods,

@@ -1304,6 +1304,9 @@ export interface DesktopBridge {
 /** Renderer callback invoked by Electron with a fresh user gesture before display-media capture. */
 export const DESKTOP_PREVIEW_RECORDING_CAPTURE_TRIGGER = "__t3DesktopPreviewRecordingCapture";
 
+/** Renderer check called by the memory watchdog; returns true when a reload interrupts no work. */
+export const DESKTOP_RENDERER_RELOAD_SAFE_CHECK = "__leonidasRendererReloadSafe";
+
 export interface DesktopPreviewBridge {
   setForwardedShortcuts?: (shortcuts: ReadonlyArray<PreviewForwardedShortcut>) => Promise<void>;
   createTab: (tabId: string, defaults?: DesktopPreviewTabDefaults) => Promise<void>;

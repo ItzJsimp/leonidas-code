@@ -33,6 +33,8 @@ import {
   TaskBoardCompletions,
   FocusSnapshot,
   AiosUsageShape,
+  FocusSubscribeInput,
+  AiosDirection,
   FocusUpdateInput,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
@@ -49,7 +51,12 @@ import {
   TaskBoardAiosDetectResult,
   TaskBoardHome,
   TaskBoardHomeInput,
+  AiosWorkspaceScopeInput,
+  AiosWorkspacesListResult,
+  AiosWorkspaceSummary,
+  AiosWorkspaceInitInput,
   TaskBoardHomeNews,
+  LayaUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
@@ -82,6 +89,21 @@ import {
   ImagesState,
   ImagesSubscribeInput,
 } from "./images.ts";
+import {
+  LocalModelsActionResult,
+  LocalModelsAdvice,
+  LocalModelsCompareInput,
+  LocalModelsCompareResult,
+  LocalModelsError,
+  LocalModelsModelInput,
+  LocalModelsPickInput,
+  LocalModelsPickResult,
+  LocalModelsTokenReport,
+  LocalModelsTokenReportInput,
+  LocalModelsPullInput,
+  LocalModelsStartInput,
+  LocalModelsState,
+} from "./localModels.ts";
 import * as Schema from "effect/Schema";
 import {
   SavedItem,
@@ -160,6 +182,7 @@ import {
   FilesystemInspectFolderInput,
   FilesystemInspectFolderResult,
 } from "./filesystem.ts";
+import { LayaSetupInput, LayaSetupResult } from "./laya.ts";
 import {
   AgentSessionImportInput,
   AgentSessionImportProjectChangedError,
@@ -541,8 +564,12 @@ export const WS_METHODS = {
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
   aiosUsageShape: "taskBoard.aiosUsageShape",
+  aiosDirection: "taskBoard.aiosDirection",
+  aiosWorkspacesList: "aiosWorkspaces.list",
+  aiosWorkspacesInit: "aiosWorkspaces.init",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
+  layaUsage: "laya.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
   hardwareGetInventory: "hardware.getInventory",
@@ -564,6 +591,18 @@ export const WS_METHODS = {
   imagesKeep: "images.keep",
   imagesRetry: "images.retry",
   imagesSetBaseUrl: "images.setBaseUrl",
+  localModelsSubscribe: "localModels.subscribe",
+  localModelsPull: "localModels.pull",
+  localModelsCancelPull: "localModels.cancelPull",
+  localModelsRun: "localModels.run",
+  localModelsStop: "localModels.stop",
+  localModelsSpeedTest: "localModels.speedTest",
+  localModelsStartOllama: "localModels.startOllama",
+  localModelsAdvice: "localModels.advice",
+  localModelsCompare: "localModels.compare",
+  localModelsComparePick: "localModels.comparePick",
+  localModelsTokenReport: "localModels.tokenReport",
+  localModelsDelete: "localModels.delete",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
@@ -581,6 +620,7 @@ export const WS_METHODS = {
   filesystemBrowse: "filesystem.browse",
   filesystemGetMetadata: "filesystem.getMetadata",
   filesystemInspectFolder: "filesystem.inspectFolder",
+  layaSetup: "laya.setup",
   agentSessionsScan: "agentSessions.scan",
   agentSessionsImport: "agentSessions.import",
   assetsCreateUrl: "assets.createUrl",
@@ -1507,7 +1547,7 @@ const WsSubagentsRespondSpawnApprovalRpc = Rpc.make(WS_METHODS.subagentsRespondS
 });
 
 const WsSubagentsListRpc = Rpc.make(WS_METHODS.subagentsList, {
-  payload: Schema.Struct({}),
+  payload: AiosWorkspaceScopeInput,
   success: SubagentCatalog,
   error: EnvironmentAuthorizationError,
 });
@@ -1594,6 +1634,82 @@ const WsImagesSetBaseUrlRpc = Rpc.make(WS_METHODS.imagesSetBaseUrl, {
   error: ImagesRpcError,
 });
 
+const LocalModelsRpcError = Schema.Union([LocalModelsError, EnvironmentAuthorizationError]);
+
+/** The Models tab state: Ollama status, this PC's capacity and one row per model. */
+const WsLocalModelsSubscribeRpc = Rpc.make(WS_METHODS.localModelsSubscribe, {
+  payload: Schema.Struct({}),
+  success: LocalModelsState,
+  error: LocalModelsRpcError,
+  stream: true,
+});
+
+const WsLocalModelsPullRpc = Rpc.make(WS_METHODS.localModelsPull, {
+  payload: LocalModelsPullInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsCancelPullRpc = Rpc.make(WS_METHODS.localModelsCancelPull, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsRunRpc = Rpc.make(WS_METHODS.localModelsRun, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsStopRpc = Rpc.make(WS_METHODS.localModelsStop, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsSpeedTestRpc = Rpc.make(WS_METHODS.localModelsSpeedTest, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsStartOllamaRpc = Rpc.make(WS_METHODS.localModelsStartOllama, {
+  payload: LocalModelsStartInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsAdviceRpc = Rpc.make(WS_METHODS.localModelsAdvice, {
+  payload: LocalModelsStartInput,
+  success: LocalModelsAdvice,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsCompareRpc = Rpc.make(WS_METHODS.localModelsCompare, {
+  payload: LocalModelsCompareInput,
+  success: LocalModelsCompareResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsComparePickRpc = Rpc.make(WS_METHODS.localModelsComparePick, {
+  payload: LocalModelsPickInput,
+  success: LocalModelsPickResult,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsTokenReportRpc = Rpc.make(WS_METHODS.localModelsTokenReport, {
+  payload: LocalModelsTokenReportInput,
+  success: LocalModelsTokenReport,
+  error: LocalModelsRpcError,
+});
+
+const WsLocalModelsDeleteRpc = Rpc.make(WS_METHODS.localModelsDelete, {
+  payload: LocalModelsModelInput,
+  success: LocalModelsActionResult,
+  error: LocalModelsRpcError,
+});
+
 const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
   payload: TaskBoardCardUpdateInput,
   success: TaskBoardTask,
@@ -1630,6 +1746,18 @@ const WsTaskBoardAiosConfirmRpc = Rpc.make(WS_METHODS.taskBoardAiosConfirm, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsAiosWorkspacesListRpc = Rpc.make(WS_METHODS.aiosWorkspacesList, {
+  payload: Schema.Struct({}),
+  success: AiosWorkspacesListResult,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
+const WsAiosWorkspacesInitRpc = Rpc.make(WS_METHODS.aiosWorkspacesInit, {
+  payload: AiosWorkspaceInitInput,
+  success: AiosWorkspaceSummary,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
   payload: TaskBoardHomeInput,
   success: TaskBoardHome,
@@ -1637,9 +1765,15 @@ const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
 });
 
 const WsAiosUsageShapeRpc = Rpc.make(WS_METHODS.aiosUsageShape, {
-  payload: Schema.Struct({}),
+  payload: AiosWorkspaceScopeInput,
   success: AiosUsageShape,
   error: EnvironmentAuthorizationError,
+});
+
+const WsAiosDirectionRpc = Rpc.make(WS_METHODS.aiosDirection, {
+  payload: AiosWorkspaceScopeInput,
+  success: AiosDirection,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
 const WsTaskBoardHomeWeatherRpc = Rpc.make(WS_METHODS.taskBoardHomeWeather, {
@@ -1654,6 +1788,12 @@ const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsLayaUsageRpc = Rpc.make(WS_METHODS.layaUsage, {
+  payload: Schema.Struct({}),
+  success: LayaUsage,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   payload: TaskBoardShareInput,
   success: TaskBoardSnapshot,
@@ -1661,7 +1801,7 @@ const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
 });
 
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
-  payload: Schema.Struct({}),
+  payload: FocusSubscribeInput,
   success: FocusSnapshot,
   error: EnvironmentAuthorizationError,
   stream: true,
@@ -1815,6 +1955,12 @@ const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
   payload: FilesystemBrowseInput,
   success: FilesystemBrowseResult,
   error: Schema.Union([FilesystemBrowseError, EnvironmentAuthorizationError]),
+});
+
+const WsLayaSetupRpc = Rpc.make(WS_METHODS.layaSetup, {
+  payload: LayaSetupInput,
+  success: LayaSetupResult,
+  error: EnvironmentAuthorizationError,
 });
 
 const WsFilesystemInspectFolderRpc = Rpc.make(WS_METHODS.filesystemInspectFolder, {
@@ -2715,9 +2861,13 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
   WsTaskBoardHomeRpc,
+  WsAiosWorkspacesListRpc,
+  WsAiosWorkspacesInitRpc,
   WsAiosUsageShapeRpc,
+  WsAiosDirectionRpc,
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
+  WsLayaUsageRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,
@@ -2738,6 +2888,18 @@ export const WsRpcGroup = RpcGroup.make(
   WsImagesKeepRpc,
   WsImagesRetryRpc,
   WsImagesSetBaseUrlRpc,
+  WsLocalModelsSubscribeRpc,
+  WsLocalModelsPullRpc,
+  WsLocalModelsCancelPullRpc,
+  WsLocalModelsRunRpc,
+  WsLocalModelsStopRpc,
+  WsLocalModelsSpeedTestRpc,
+  WsLocalModelsStartOllamaRpc,
+  WsLocalModelsAdviceRpc,
+  WsLocalModelsCompareRpc,
+  WsLocalModelsComparePickRpc,
+  WsLocalModelsTokenReportRpc,
+  WsLocalModelsDeleteRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsCancelPromptPredictionRpc,
@@ -2751,6 +2913,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsFilesystemBrowseRpc,
   WsFilesystemGetMetadataRpc,
   WsFilesystemInspectFolderRpc,
+  WsLayaSetupRpc,
   WsAgentSessionsScanRpc,
   WsAgentSessionsImportRpc,
   WsAssetsCreateUrlRpc,

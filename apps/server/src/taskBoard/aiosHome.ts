@@ -1,6 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - reads brief files from the AIOS folder synchronously, like aiosCards.
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
+import { isRealPathInside } from "./aiosCards.ts";
 
 import type {
   TaskBoardHome,
@@ -24,6 +25,8 @@ export function readBrief(
   tasks: ReadonlyArray<TaskBoardTask>,
 ): TaskBoardHome["brief"] {
   const dir = NodePath.join(root, "logs", "briefings");
+  // A briefings folder linked in from another workspace is not this workspace's brief.
+  if (!isRealPathInside(root, dir)) return null;
   let file: string | undefined;
   try {
     file = NodeFS.readdirSync(dir)
@@ -33,7 +36,7 @@ export function readBrief(
   } catch {
     return null;
   }
-  if (file === undefined) return null;
+  if (file === undefined || !isRealPathInside(root, NodePath.join(dir, file))) return null;
   let text: string;
   try {
     text = NodeFS.readFileSync(NodePath.join(dir, file), "utf8");

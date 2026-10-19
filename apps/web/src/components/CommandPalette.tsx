@@ -58,6 +58,7 @@ import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
+  BrainIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   InboxIcon,
@@ -104,6 +105,7 @@ import { useAtomValue } from "@effect/atom-react";
 
 import { isDesktopLocalConnectionTarget } from "../connection/desktopLocal";
 import { useDesktopLocalBootstraps } from "../connection/useDesktopLocalBootstraps";
+import { useWorkspaceProjects } from "./workspace/useWorkspaceProjects";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useOpenPanelPullRequestUrl } from "../hooks/useOpenPanelPullRequestUrl";
 import { writeTextToClipboard } from "../hooks/useCopyToClipboard";
@@ -676,7 +678,8 @@ function OpenCommandPaletteDialog(props: {
   const availableSettingsSearchItems = useAvailableSettingsSearchItems();
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
-  const projects = useProjects();
+  const allProjects = useProjects();
+  const projects = useWorkspaceProjects(allProjects);
   const referenceThreadRef =
     pathname === "/pull-requests"
       ? environments.some(
@@ -2293,6 +2296,17 @@ function OpenCommandPaletteDialog(props: {
         openFeedback({ source: "command palette" });
       },
     });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:brain",
+    searchTerms: ["brain", "second brain", "graph", "map", "knowledge", "aios"],
+    title: "Open brain map",
+    icon: <BrainIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/brain" });
+    },
+  });
 
   actionItems.push({
     kind: "action",

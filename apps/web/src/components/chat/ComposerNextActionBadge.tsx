@@ -5,6 +5,7 @@ import { memo, useMemo, useState } from "react";
 
 import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardWorkspaceQuery } from "~/state/taskBoard";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { mergeTasks } from "../taskBoard/taskBoard.logic";
 import { useSharedBoards } from "../taskBoard/useSharedBoards";
 import { Button } from "../ui/button";
@@ -36,8 +37,11 @@ function ProjectPicker(props: {
   cwd: string | null;
   onFill: (prompt: string) => void;
 }) {
+  const { scope, scopeReady } = useActiveAiosWorkspace();
   const workspace = useEnvironmentQuery(
-    taskBoardWorkspaceQuery({ environmentId: props.environmentId, input: {} }),
+    scopeReady
+      ? taskBoardWorkspaceQuery({ environmentId: props.environmentId, input: scope })
+      : null,
   );
   // null means "use the detected project" until the user picks one.
   const [picked, setPicked] = useState<string | null>(null);

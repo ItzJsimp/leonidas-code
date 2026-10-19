@@ -4,7 +4,7 @@ import { NonNegativeInt, PositiveInt, ProjectId, TrimmedNonEmptyString } from ".
 
 /** Most images one Generate press may queue per model. */
 export const IMAGES_MAX_VARIATIONS = 12;
-export const IMAGES_PROMPT_MAX_LENGTH = 4000;
+const IMAGES_PROMPT_MAX_LENGTH = 4000;
 
 /** Where an image engine lives. Slice 1 has one source: a ComfyUI server the user runs. */
 export const ImageSourceId = Schema.Literals(["comfyui"]);

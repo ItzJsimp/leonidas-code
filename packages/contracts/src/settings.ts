@@ -188,7 +188,7 @@ export type SnapShotShortcut = typeof SnapShotShortcut.Type;
 /** What the capture shortcut does: save the active window, or open the snip overlay. */
 export const SnapShotShortcutAction = Schema.Literals(["window", "snip"]);
 export type SnapShotShortcutAction = typeof SnapShotShortcutAction.Type;
-export const DEFAULT_SNAP_SHOT_SHORTCUT_ACTION: SnapShotShortcutAction = "window";
+const DEFAULT_SNAP_SHOT_SHORTCUT_ACTION: SnapShotShortcutAction = "window";
 export const SnapShotSound = Schema.Literals(["soft-pop", "camera-shutter"]);
 export type SnapShotSound = typeof SnapShotSound.Type;
 const DEFAULT_SNAP_SHOT_SOUND: SnapShotSound = "soft-pop";
@@ -1384,6 +1384,13 @@ export const ServerSettings = Schema.Struct({
   subagentFreeTierModels: Schema.Array(Schema.String).pipe(
     Schema.withDecodingDefault(Effect.succeed([...DEFAULT_SUBAGENT_FREE_TIER_MODELS])),
   ),
+  /**
+   * A delegated task fails before it starts when its account has used this
+   * percent or more of any quota window. 100 blocks only a full window.
+   */
+  subagentQuotaBlockPercent: Schema.Number.check(
+    Schema.isBetween({ minimum: 1, maximum: 100 }),
+  ).pipe(Schema.withDecodingDefault(Effect.succeed(90))),
   sidebarAutoSettleOnMerge: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   backgroundActivity: BackgroundActivitySettings,
   // Legacy flat fields retained for old settings files and old clients. New
@@ -1734,6 +1741,9 @@ export const ServerSettingsPatch = Schema.Struct({
   snoozeLimitedThreads: Schema.optionalKey(Schema.Boolean),
   routeLightDelegatedTasks: Schema.optionalKey(Schema.Boolean),
   subagentFreeTierModels: Schema.optionalKey(Schema.Array(Schema.String)),
+  subagentQuotaBlockPercent: Schema.optionalKey(
+    Schema.Number.check(Schema.isBetween({ minimum: 1, maximum: 100 })),
+  ),
   backgroundActivity: Schema.optionalKey(
     Schema.Struct({
       schemaVersion: Schema.optionalKey(Schema.Literal(1)),

@@ -2,8 +2,6 @@ import * as Schema from "effect/Schema";
 import { PositiveInt, ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ProviderOptionSelections } from "./model.ts";
 
-export const TASK_BOARD_REPOSITORY = "ItzJsimp/leonidas-code";
-
 /** A calendar day, without a timezone or time of day. */
 export const TaskBoardDueDate = Schema.String.check(
   Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
@@ -91,6 +89,8 @@ export const TaskBoardTask = Schema.Struct({
   // The fields below come from an AIOS task card. All are optional so shared records written
   // before they existed still decode.
   projectSlug: Schema.optional(Schema.NullOr(Schema.String)),
+  // The app project a native card was made for; it picks the card's workspace on a slug clash.
+  projectId: Schema.optional(Schema.String),
   effort: Schema.optional(Schema.NullOr(Schema.String)),
   energy: Schema.optional(Schema.NullOr(Schema.String)),
   due: Schema.optional(Schema.NullOr(Schema.String)),
@@ -280,11 +280,16 @@ export const TaskBoardWorkspaceSnapshot = Schema.Struct({
 });
 export type TaskBoardWorkspaceSnapshot = typeof TaskBoardWorkspaceSnapshot.Type;
 
-export const TaskBoardWorkspaceInput = Schema.Struct({});
+// The AIOS workspace a Command request reads (ADR-0080). Absent: the server's default workspace.
+export const AiosWorkspaceId = TrimmedNonEmptyString.check(Schema.isMaxLength(64));
+const workspaceScope = { workspaceId: Schema.optional(AiosWorkspaceId) };
+
+export const TaskBoardWorkspaceInput = Schema.Struct({ ...workspaceScope });
 export type TaskBoardWorkspaceInput = typeof TaskBoardWorkspaceInput.Type;
 
 // Patches one AIOS card in place. `projectSlug: null` unlinks it from its project.
 export const TaskBoardCardUpdateInput = Schema.Struct({
+  ...workspaceScope,
   taskId: TrimmedNonEmptyString,
   // Needed only to update a task that exists on a project's shared board but not in this AIOS.
   projectId: Schema.optional(ProjectId),
@@ -311,6 +316,7 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
 export type TaskBoardCardUpdateInput = typeof TaskBoardCardUpdateInput.Type;
 
 export const TaskBoardCardCreateInput = Schema.Struct({
+  ...workspaceScope,
   idempotencyKey: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
   projectId: Schema.optional(ProjectId),
   title: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
@@ -327,6 +333,7 @@ export type TaskBoardCardCreateInput = typeof TaskBoardCardCreateInput.Type;
 
 /** A raw capture: saved first, classified later. `source` says where it came from. */
 export const InboxDropInput = Schema.Struct({
+  ...workspaceScope,
   text: TrimmedNonEmptyString.check(Schema.isMaxLength(20_000)),
   source: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(500))),
   projectSlug: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -343,7 +350,7 @@ export const InboxDrop = Schema.Struct({
 });
 export type InboxDrop = typeof InboxDrop.Type;
 
-export const InboxUndoInput = Schema.Struct({ id: TrimmedNonEmptyString });
+export const InboxUndoInput = Schema.Struct({ ...workspaceScope, id: TrimmedNonEmptyString });
 export type InboxUndoInput = typeof InboxUndoInput.Type;
 
 // Publishes (or withdraws) cards on the project's shared board. Omitting `taskIds` targets every
@@ -380,8 +387,42 @@ export type TaskBoardAiosDetectResult = typeof TaskBoardAiosDetectResult.Type;
 
 // The Command tab's Home: today's brief priorities, open-task counts and one next move, all read
 // from the AIOS folder. `root` is null when no AIOS is connected yet.
-export const TaskBoardHomeInput = Schema.Struct({});
+export const TaskBoardHomeInput = Schema.Struct({ ...workspaceScope });
 export type TaskBoardHomeInput = typeof TaskBoardHomeInput.Type;
+
+export const AiosWorkspaceScopeInput = Schema.Struct({ ...workspaceScope });
+export type AiosWorkspaceScopeInput = typeof AiosWorkspaceScopeInput.Type;
+
+export const AiosWorkspaceType = Schema.Literals(["personal", "business"]);
+export type AiosWorkspaceType = typeof AiosWorkspaceType.Type;
+
+// One AIOS folder the app found. Only a `ready` workspace (valid workspace.json) can be opened;
+// `missing` and `invalid` show the setup prompt. `projectIds` are the app projects inside it.
+export const AiosWorkspaceSummary = Schema.Struct({
+  root: Schema.String,
+  status: Schema.Literals(["ready", "missing", "invalid"]),
+  id: Schema.NullOr(Schema.String),
+  name: Schema.NullOr(Schema.String),
+  type: Schema.NullOr(AiosWorkspaceType),
+  error: Schema.NullOr(Schema.String),
+  isDefault: Schema.Boolean,
+  projectIds: Schema.Array(ProjectId),
+});
+export type AiosWorkspaceSummary = typeof AiosWorkspaceSummary.Type;
+
+export const AiosWorkspacesListResult = Schema.Struct({
+  workspaces: Schema.Array(AiosWorkspaceSummary),
+});
+export type AiosWorkspacesListResult = typeof AiosWorkspacesListResult.Type;
+
+// The setup prompt: writes workspace.json into a folder the app already lists.
+export const AiosWorkspaceInitInput = Schema.Struct({
+  root: TrimmedNonEmptyString,
+  id: TrimmedNonEmptyString.check(Schema.isPattern(/^[a-z0-9][a-z0-9-]{0,63}$/)),
+  name: TrimmedNonEmptyString.check(Schema.isMaxLength(80)),
+  type: AiosWorkspaceType,
+});
+export type AiosWorkspaceInitInput = typeof AiosWorkspaceInitInput.Type;
 
 export const TaskBoardHomePriority = Schema.Struct({
   title: Schema.String,
@@ -398,6 +439,55 @@ export const TaskBoardHomeMove = Schema.Struct({
   taskId: Schema.NullOr(Schema.String),
 });
 export type TaskBoardHomeMove = typeof TaskBoardHomeMove.Type;
+
+/** One goal row from `ideal-state/goals.md`. */
+export const AiosDirectionGoal = Schema.Struct({
+  id: Schema.String,
+  goal: Schema.String,
+  measuredBy: Schema.String,
+  targetDate: Schema.String,
+  status: Schema.String,
+});
+export type AiosDirectionGoal = typeof AiosDirectionGoal.Type;
+
+/** An open high-priority card, placed under the horizon it is due in. */
+export const AiosDirectionCard = Schema.Struct({
+  taskId: Schema.String,
+  title: Schema.String,
+  priority: TaskBoardTaskPriority,
+  due: Schema.NullOr(Schema.String),
+});
+export type AiosDirectionCard = typeof AiosDirectionCard.Type;
+
+export const AiosDirectionHorizonKey = Schema.Literals([
+  "week",
+  "month",
+  "sixMonths",
+  "year",
+  "life",
+]);
+export type AiosDirectionHorizonKey = typeof AiosDirectionHorizonKey.Type;
+
+export const AiosDirectionHorizon = Schema.Struct({
+  key: AiosDirectionHorizonKey,
+  title: Schema.String,
+  range: Schema.NullOr(Schema.String),
+  items: Schema.Array(Schema.String),
+  cards: Schema.Array(AiosDirectionCard),
+});
+export type AiosDirectionHorizon = typeof AiosDirectionHorizon.Type;
+
+/** The Direction view: goals, the 5 horizons and a stale flag for the week block. */
+export const AiosDirection = Schema.Struct({
+  root: Schema.NullOr(Schema.String),
+  goals: Schema.Array(AiosDirectionGoal),
+  horizons: Schema.Array(AiosDirectionHorizon),
+  weekHeading: Schema.NullOr(Schema.String),
+  weekDate: Schema.NullOr(Schema.String),
+  weekAgeDays: Schema.NullOr(Schema.Number),
+  weekStale: Schema.Boolean,
+});
+export type AiosDirection = typeof AiosDirection.Type;
 
 /** Counts that describe the user's AIOS for opt-in usage analytics. No names or paths. */
 export const AiosUsageShape = Schema.Struct({
@@ -466,6 +556,25 @@ export type TaskBoardHomeNewsItem = typeof TaskBoardHomeNewsItem.Type;
 
 export const TaskBoardHomeNews = Schema.Struct({ items: Schema.Array(TaskBoardHomeNewsItem) });
 export type TaskBoardHomeNews = typeof TaskBoardHomeNews.Type;
+
+// Laya usage monitor. Counts only: the log holds no command or page text.
+export const LayaUsage = Schema.Struct({
+  status: Schema.Literals(["ready", "missing"]),
+  modelPresent: Schema.Boolean,
+  packPresent: Schema.Boolean,
+  total: Schema.Number,
+  days: Schema.Array(Schema.Struct({ date: Schema.String, count: Schema.Number })),
+  jobs: Schema.Array(
+    Schema.Struct({
+      job: Schema.String,
+      count: Schema.Number,
+      blocked: Schema.Number,
+      asked: Schema.Number,
+      flagged: Schema.Number,
+    }),
+  ),
+});
+export type LayaUsage = typeof LayaUsage.Type;
 
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({
@@ -571,8 +680,18 @@ export const FocusUpdateInput = Schema.Union([
     op: Schema.Literal("add"),
     projectId: Schema.NullOr(ProjectId),
     text: FocusText,
+    ...workspaceScope,
   }),
-  Schema.Struct({ op: Schema.Literal("set_done"), id: Schema.String, done: Schema.Boolean }),
-  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String }),
+  Schema.Struct({
+    op: Schema.Literal("set_done"),
+    id: Schema.String,
+    done: Schema.Boolean,
+    ...workspaceScope,
+  }),
+  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String, ...workspaceScope }),
 ]);
 export type FocusUpdateInput = typeof FocusUpdateInput.Type;
+
+/** The focus list of one workspace; no id keeps the default workspace (old clients). */
+export const FocusSubscribeInput = Schema.Struct({ ...workspaceScope });
+export type FocusSubscribeInput = typeof FocusSubscribeInput.Type;

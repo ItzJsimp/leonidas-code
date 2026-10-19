@@ -10,6 +10,7 @@ import { memo, useId, useState } from "react";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { SKILL_FOLDERS_MIRROR_PATH } from "./skillFoldersMirror.logic";
 
 function SkillAdder(props: {
   folderName: string;
@@ -58,6 +59,7 @@ function SkillAdder(props: {
 export const SkillFoldersEditor = memo(function SkillFoldersEditor(props: {
   prefs: SkillFolderPrefs;
   availableSkills: ReadonlyArray<ServerProviderSkill>;
+  aiosRoot?: string | null;
   onChange: (prefs: SkillFolderPrefs) => void;
 }) {
   const { prefs, onChange } = props;
@@ -152,6 +154,16 @@ export const SkillFoldersEditor = memo(function SkillFoldersEditor(props: {
             />
           </div>
         ))
+      )}
+      {!props.aiosRoot?.trim() ? (
+        <p className="text-secondary-label text-xs">
+          Skill folders are saved in your settings. Set an AIOS folder in settings to mirror them to
+          your AIOS for agents.
+        </p>
+      ) : (
+        <p className="text-secondary-label text-xs">
+          Folders mirror to {SKILL_FOLDERS_MIRROR_PATH} in your AIOS on change.
+        </p>
       )}
     </div>
   );

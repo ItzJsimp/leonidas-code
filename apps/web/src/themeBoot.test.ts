@@ -115,7 +115,7 @@ function runtimeResolvedAppearance(
   invalidateCustomThemes();
   try {
     const raw = storage[THEME_STORAGE_KEY] ?? null;
-    const theme = raw !== null && isKnownThemePreference(raw) ? raw : "system";
+    const theme = raw !== null && isKnownThemePreference(raw) ? raw : "dark";
     const followRaw = storage[THEME_FOLLOW_SYSTEM_STORAGE_KEY] ?? null;
     const appearanceRaw = storage[THEME_APPEARANCE_MODE_STORAGE_KEY] ?? null;
     const appearanceMode =
@@ -376,11 +376,22 @@ describe("index.html boot script", () => {
     }
   });
 
-  it.each([false, true])("uses Leonidas colors for the unselected default (dark=%s)", (dark) => {
-    const boot = runBootScript({ storage: {}, prefersDark: dark });
-    expect(boot.isDark).toBe(dark);
-    expect(boot.backgroundColor).toBe(dark ? "#07070a" : "#eee6d6");
-    expect(boot.metaContent).toBe(dark ? "#07070a" : "#eee6d6");
+  it.each([false, true])(
+    "defaults to dark Leonidas colors when nothing is stored (OS dark=%s)",
+    (dark) => {
+      const boot = runBootScript({ storage: {}, prefersDark: dark });
+      expect(boot.isDark).toBe(true);
+      expect(boot.backgroundColor).toBe("#07070a");
+      expect(boot.metaContent).toBe("#07070a");
+    },
+  );
+
+  it("keeps an explicit system preference following a light OS", () => {
+    const boot = runBootScript({
+      storage: { [THEME_STORAGE_KEY]: "system" },
+      prefersDark: false,
+    });
+    expect(boot.isDark).toBe(false);
   });
 
   it("keeps the legacy t3-code preference mapped to T3 Original at boot", () => {
@@ -519,8 +530,8 @@ describe("index.html boot script", () => {
 
     expect(boot.themeId).toBeUndefined();
     expect(boot.themeSelected).toBeUndefined();
-    expect(boot.backgroundColor).toBe("#eee6d6");
-    expect(boot.metaContent).toBe("#eee6d6");
+    expect(boot.backgroundColor).toBe("#07070a");
+    expect(boot.metaContent).toBe("#07070a");
   });
 
   it("leaves unknown preferences unthemed so the runtime default applies", () => {

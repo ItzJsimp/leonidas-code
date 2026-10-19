@@ -1,5 +1,6 @@
 import { OrchestratorMcpFailure } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import { buildCanvasDocument } from "@t3tools/shared/canvas";
 
 import * as HtmlRender from "#server/htmlRender/HtmlRender.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -20,6 +21,9 @@ const toFailure = (error: { readonly _tag: string; readonly message: string }) =
   });
 
 const handlers = {
+  canvas: McpToolAccess.readsAsCaller((input) =>
+    Effect.succeed({ html: buildCanvasDocument(input), title: input.title }),
+  ),
   // The headless browser runs on the host and can open local files, so only
   // agents T3 launched, which already work on this machine, get it.
   html_preview: McpToolAccess.readsAsCaller((input) =>
@@ -61,4 +65,5 @@ export const layerPreview = McpToolAccess.toLayer(HtmlPreviewToolkit, {
 
 export const layerRender = McpToolAccess.toLayer(HtmlRenderToolkit, {
   html_render: handlers.html_render,
+  canvas: handlers.canvas,
 });

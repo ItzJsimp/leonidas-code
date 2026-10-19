@@ -19,6 +19,8 @@ import { useComposerDraftStore } from "~/composerDraftStore";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import { readProjects, readThreadShell, useProjects } from "~/state/entities";
 import { taskBoardCardUpdate, taskBoardShare } from "~/state/taskBoard";
+import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
+import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { buildThreadRouteParams } from "~/threadRoutes";
 import { toastManager } from "~/components/ui/toast";
@@ -125,6 +127,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
       return run({
         environmentId,
         input: {
+          ...workspaceScopeInput(activeWorkspaceId(environmentId)),
           taskId: task.id,
           actor: current.member,
           ...(projectId ? { projectId } : {}),

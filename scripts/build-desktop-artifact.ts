@@ -462,6 +462,18 @@ export class ResourceMonitorBuildOutputMissingError extends Schema.TaggedError<R
   }
 }
 
+export class ScribeEngineBuildOutputMissingError extends Schema.TaggedError<ScribeEngineBuildOutputMissingError>()(
+  "ScribeEngineBuildOutputMissingError",
+  {
+    binaryPath: Schema.String,
+    rustTarget: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Scribe engine build for ${this.rustTarget} did not produce ${this.binaryPath}.`;
+  }
+}
+
 const desktopIconPlatformNames = {
   mac: "macOS",
   linux: "Linux",
@@ -731,6 +743,7 @@ const WindowsPackagedPayloadValidationReason = Schema.Literals([
   "sidecar-invalid",
   "unpacked-native-missing",
   "resource-monitor-missing",
+  "scribe-engine-missing",
   "wsl-runtime-missing",
   "wsl-runtime-invalid",
   "file-limit-exceeded",
@@ -756,6 +769,9 @@ export class WindowsPackagedPayloadValidationError extends Schema.TaggedError<Wi
     }
     if (this.reason === "resource-monitor-missing") {
       return "Windows packaged payload is missing the resource monitor executable.";
+    }
+    if (this.reason === "scribe-engine-missing") {
+      return "Windows packaged payload is missing the Scribe engine executable.";
     }
     if (this.reason === "wsl-runtime-missing") {
       return "Windows packaged payload is missing the WSL runtime archive or SHA-256 sidecar.";
@@ -990,6 +1006,12 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/prod-resources/windows-server/**/*",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
+  // The Scribe engine ships once as resources/scribe-engine. Without this the
+  // staging copies also land in app.asar.unpacked (2 extra copies, 3.2 MB).
+  "!apps/desktop/resources/scribe-engine",
+  "!apps/desktop/resources/scribe-engine/**/*",
+  "!apps/desktop/prod-resources/scribe-engine",
+  "!apps/desktop/prod-resources/scribe-engine/**/*",
   "!apps/desktop/gnome-extension",
   "!apps/desktop/gnome-extension/**/*",
 ] as const;
@@ -1077,6 +1099,16 @@ export const WINDOWS_SERVER_EXTRA_RESOURCES = [
     from: WINDOWS_SERVER_RESOURCE_SOURCE_DIR,
     to: ".",
     filter: [WINDOWS_SERVER_ASAR_RESOURCE, `${WINDOWS_SERVER_ASAR_RESOURCE}.unpacked/**/*`],
+  },
+] as const;
+// The Rust Scribe engine (ADR-0074) ships next to the app as a loose
+// executable so the installer can register it at login and it keeps running
+// after the app window closes.
+export const SCRIBE_ENGINE_EXECUTABLE_NAME = "scribe-engine.exe";
+export const WINDOWS_SCRIBE_ENGINE_EXTRA_RESOURCES = [
+  {
+    from: "apps/desktop/prod-resources/scribe-engine",
+    to: "scribe-engine",
   },
 ] as const;
 export const WSL_RUNTIME_ARCHIVE_NAME = "wsl-runtime.tar.gz";
@@ -1951,17 +1983,22 @@ export const preflightWindowsDesktopBuild = Effect.fn("preflightWindowsDesktopBu
     const reuseResourceMonitor = yield* Config.Boolean(
       "T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR",
     ).pipe(Config.withDefault(false));
+    const reuseScribeEngine = yield* Config.Boolean("T3CODE_DESKTOP_REUSE_SCRIBE_ENGINE").pipe(
+      Config.withDefault(false),
+    );
+    // Cargo and the MSVC toolchain are needed unless every Rust binary is cached.
+    const reuseRustBinaries = reuseResourceMonitor && reuseScribeEngine;
     const python = yield* resolvePythonForNodeGyp();
     const checks = yield* Effect.all(
       {
-        rust: reuseResourceMonitor
+        rust: reuseRustBinaries
           ? Effect.succeed(true)
           : Effect.all([
               desktopBuildProbeSucceeds(ChildProcess.make("cargo", ["--version"]), "cargo"),
               rustTargetIsInstalled(rustTarget),
             ]).pipe(Effect.map(([cargo, target]) => cargo && target)),
         python: Effect.succeed(python !== undefined),
-        msvc: reuseResourceMonitor
+        msvc: reuseRustBinaries
           ? Effect.succeed(true)
           : desktopBuildProbeSucceeds(
               ChildProcess.make("powershell.exe", [
@@ -2400,6 +2437,64 @@ export const stageResourceMonitor = Effect.fn("stageResourceMonitor")(function* 
   }
 });
 
+export const stageScribeEngine = Effect.fn("stageScribeEngine")(function* (input: {
+  readonly repoRoot: string;
+  readonly stageResourcesDir: string;
+  readonly platform: typeof BuildPlatform.Type;
+  readonly arch: typeof BuildArch.Type;
+  readonly verbose: boolean;
+}) {
+  // The engine is Windows-only until lane L1 ports hotkeys and paste.
+  if (input.platform !== "win") return;
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const manifestPath = path.join(input.repoRoot, "services/scribe-engine/Cargo.toml");
+  const rustTarget = resolveResourceMonitorRustTargets("win", input.arch)[0]!;
+  const reuseScribeEngine = yield* Config.Boolean("T3CODE_DESKTOP_REUSE_SCRIBE_ENGINE").pipe(
+    Config.withDefault(false),
+  );
+
+  if (!reuseScribeEngine) {
+    const spawnCommand = yield* resolveSpawnCommand("cargo", [
+      "build",
+      "--locked",
+      "--release",
+      "--manifest-path",
+      manifestPath,
+      "--target",
+      rustTarget,
+    ]);
+    yield* runCommand(
+      ChildProcess.make(spawnCommand.command, spawnCommand.args, {
+        // Cargo reads `.cargo/config.toml` from the working folder, not the manifest folder.
+        // Run in the crate folder, or whisper.cpp builds without AVX2 and /O2 (about 8x slower).
+        cwd: path.dirname(manifestPath),
+        shell: spawnCommand.shell,
+      }),
+      { label: `cargo build scribe engine (${rustTarget})`, verbose: input.verbose },
+    );
+  }
+
+  const binaryPath = path.join(
+    input.repoRoot,
+    "services/scribe-engine/target",
+    rustTarget,
+    "release",
+    SCRIBE_ENGINE_EXECUTABLE_NAME,
+  );
+  if (!(yield* fs.exists(binaryPath))) {
+    return yield* new ScribeEngineBuildOutputMissingError({ binaryPath, rustTarget });
+  }
+  if (reuseScribeEngine) {
+    yield* Effect.log(`[desktop-artifact] Reusing cached Scribe engine (${rustTarget}).`);
+  }
+
+  const destinationDirectory = path.join(input.stageResourcesDir, "scribe-engine");
+  yield* fs.remove(destinationDirectory, { recursive: true, force: true }).pipe(Effect.ignore);
+  yield* fs.makeDirectory(destinationDirectory, { recursive: true });
+  yield* fs.copyFile(binaryPath, path.join(destinationDirectory, SCRIBE_ENGINE_EXECUTABLE_NAME));
+});
+
 export const stageBrowserSecret = Effect.fn("stageBrowserSecret")(function* (input: {
   readonly repoRoot: string;
   readonly stageResourcesDir: string;
@@ -2796,6 +2891,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
+      ...(platform === "win" ? WINDOWS_SCRIBE_ENGINE_EXTRA_RESOURCES : []),
       ...(platform === "win" && wslRuntimeBundled ? WSL_RUNTIME_EXTRA_RESOURCES : []),
     ],
   };
@@ -3408,6 +3504,15 @@ export const validateWindowsPackagedPayload = Effect.fn(
     });
   }
 
+  const scribeEnginePath = path.join(resourcesDir, "scribe-engine", SCRIBE_ENGINE_EXECUTABLE_NAME);
+  if (!(yield* isFile(scribeEnginePath))) {
+    return yield* new WindowsPackagedPayloadValidationError({
+      reason: "scribe-engine-missing",
+      packagedAppDir,
+      missingFiles: [`scribe-engine/${SCRIBE_ENGINE_EXECUTABLE_NAME}`],
+    });
+  }
+
   const wslArchivePath = path.join(resourcesDir, WSL_RUNTIME_ARCHIVE_NAME);
   const wslArchiveHashPath = path.join(resourcesDir, WSL_RUNTIME_ARCHIVE_HASH_NAME);
   const [hasWslArchive, hasWslArchiveHash] = yield* Effect.all([
@@ -3764,6 +3869,13 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     yield* fs.copy(distDirs.serverDist, path.join(stageAppDir, "apps/server/dist"));
   }
   yield* stageResourceMonitor({
+    repoRoot,
+    stageResourcesDir,
+    platform: options.platform,
+    arch: options.arch,
+    verbose: options.verbose,
+  });
+  yield* stageScribeEngine({
     repoRoot,
     stageResourcesDir,
     platform: options.platform,

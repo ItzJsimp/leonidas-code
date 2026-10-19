@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect";
 import {
   ClaudeExecutableFileCheck,
   resolveClaudeSdkExecutablePath,
+  resolveInstalledClaudeBinary,
   withClaudeUserBinOnPath,
 } from "./ClaudeExecutable.ts";
 
@@ -146,5 +147,30 @@ describe("withClaudeUserBinOnPath", () => {
 
   it("creates PATH when it is missing", () => {
     expect(withClaudeUserBinOnPath({}, "/home/g", "darwin").PATH).toBe("/home/g/.local/bin");
+  });
+});
+
+describe("resolveInstalledClaudeBinary", () => {
+  const installed = String.raw`C:\Users\dev\.local\bin\claude.exe`;
+  const options = {
+    home: String.raw`C:\Users\dev`,
+    platform: "win32" as const,
+    isFile: (filePath: string) => filePath === installed,
+  };
+
+  it("finds a Claude installed after the adapter started", () => {
+    expect(resolveInstalledClaudeBinary("claude", options)).toBe(installed);
+  });
+
+  it("keeps a bare name when nothing is installed", () => {
+    expect(resolveInstalledClaudeBinary("claude", { ...options, isFile: () => false })).toBe(
+      "claude",
+    );
+  });
+
+  it("never rewrites an explicit path or another command", () => {
+    const explicit = String.raw`D:\tools\claude.exe`;
+    expect(resolveInstalledClaudeBinary(explicit, options)).toBe(explicit);
+    expect(resolveInstalledClaudeBinary("other", options)).toBe("other");
   });
 });

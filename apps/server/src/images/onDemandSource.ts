@@ -1,0 +1,119 @@
+/**
+ * Start-on-demand wrapper for an image source. ComfyUI holds graphics memory while it idles.
+ * This wrapper starts it on the first image request, frees its memory shortly after the queue
+ * ends, and stops it after a long idle time. It stops only a process that it started itself.
+ */
+import type { ImageSource } from "./imageSource.ts";
+
+export interface LaunchConfig {
+  /** Shell command that starts ComfyUI, for example `python main.py --port 8188`. */
+  readonly command: string;
+  /** Folder to run the command in. Null runs it in the server folder. */
+  readonly folder: string | null;
+  /** Minutes without an image before ComfyUI stops. */
+  readonly idleMinutes: number;
+}
+
+export interface LaunchedProcess {
+  readonly kill: () => void;
+}
+
+export interface OnDemandDeps {
+  /** Read on each request, so a change in the setting needs no restart. Null: never start. */
+  readonly readConfig: () => LaunchConfig | null;
+  readonly launch: (config: LaunchConfig) => LaunchedProcess;
+  readonly setTimer: (run: () => void, ms: number) => unknown;
+  readonly clearTimer: (timer: unknown) => void;
+  readonly sleep: (ms: number) => Promise<void>;
+}
+
+/** After the last image, free the models from graphics memory once this time passes. */
+export const FREE_AFTER_MS = 20_000;
+const START_TIMEOUT_MS = 120_000;
+const START_POLL_MS = 2_000;
+
+export interface OnDemandSource extends ImageSource {
+  /** Stop a process that this wrapper started. Call it when the server stops. */
+  readonly dispose: () => void;
+}
+
+export function withOnDemandStart(source: ImageSource, deps: OnDemandDeps): OnDemandSource {
+  let child: LaunchedProcess | null = null;
+  let starting: Promise<void> | null = null;
+  let freeTimer: unknown = null;
+  let stopTimer: unknown = null;
+
+  const clearTimers = () => {
+    if (freeTimer !== null) deps.clearTimer(freeTimer);
+    if (stopTimer !== null) deps.clearTimer(stopTimer);
+    freeTimer = null;
+    stopTimer = null;
+  };
+
+  const stopChild = () => {
+    const running = child;
+    child = null;
+    running?.kill();
+  };
+
+  const armIdle = () => {
+    clearTimers();
+    if (child === null) return;
+    const config = deps.readConfig();
+    freeTimer = deps.setTimer(() => {
+      void source.freeMemory?.();
+    }, FREE_AFTER_MS);
+    stopTimer = deps.setTimer(
+      () => {
+        stopChild();
+      },
+      Math.max(1, config?.idleMinutes ?? 10) * 60_000,
+    );
+  };
+
+  const waitUntilOnline = async () => {
+    for (let waited = 0; waited < START_TIMEOUT_MS; waited += START_POLL_MS) {
+      if ((await source.status()).online) return;
+      await deps.sleep(START_POLL_MS);
+    }
+    throw new Error("ComfyUI did not start in time. Check the start command in the settings.");
+  };
+
+  const ensureRunning = async () => {
+    if ((await source.status()).online) return;
+    const config = deps.readConfig();
+    // No start command: keep the old behaviour, where the person starts ComfyUI by hand.
+    if (config === null) return;
+    if (starting === null) {
+      starting = (async () => {
+        try {
+          child ??= deps.launch(config);
+          await waitUntilOnline();
+        } catch (cause) {
+          stopChild();
+          throw cause;
+        } finally {
+          starting = null;
+        }
+      })();
+    }
+    await starting;
+  };
+
+  return {
+    ...source,
+    generate: async (request, hooks) => {
+      clearTimers();
+      try {
+        await ensureRunning();
+        return await source.generate(request, hooks);
+      } finally {
+        armIdle();
+      }
+    },
+    dispose: () => {
+      clearTimers();
+      stopChild();
+    },
+  };
+}

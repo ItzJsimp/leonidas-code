@@ -257,6 +257,7 @@ export type HardwareSetDeepSensorsInput = typeof HardwareSetDeepSensorsInput.Typ
  * sends anything: the person pastes or sends the prompt themselves.
  */
 export const HardwarePrepareAgentInput = Schema.Struct({
+  workspaceId: Schema.optional(TrimmedNonEmptyString),
   kind: Schema.Literals(["investigate", "checkup", "tune"]),
   alertId: Schema.optional(TrimmedNonEmptyString),
 });

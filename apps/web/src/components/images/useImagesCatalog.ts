@@ -95,7 +95,7 @@ let jobCounter = 0;
  * The mock queue step: when nothing runs, the first waiting image of the oldest run starts.
  * One image runs at a time, like ComfyUI.
  */
-export function startNext(items: ReadonlyArray<GalleryItem>, now: number): GalleryItem[] {
+function startNext(items: ReadonlyArray<GalleryItem>, now: number): GalleryItem[] {
   if (items.some((item) => item.status === "running")) return [...items];
   let next: GalleryItem | null = null;
   for (const item of items) {

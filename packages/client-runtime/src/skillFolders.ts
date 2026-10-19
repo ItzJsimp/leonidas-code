@@ -74,7 +74,7 @@ export function resolveSkillPack(
   return { id: owner, name: PACK_LABELS[owner] ?? `${match[1]}/${match[2].replace(/\.git$/, "")}` };
 }
 
-export function skillCategoryLabel(category: string): string {
+function skillCategoryLabel(category: string): string {
   const key = category.trim().toLowerCase();
   return CATEGORY_LABELS[key] ?? titleCase(key);
 }
@@ -196,17 +196,6 @@ export function skillsOutsideFolders(
 ): ServerProviderSkill[] {
   const inFolder = new Set(folders.flatMap((folder) => folder.skills.map((s) => skillKey(s.name))));
   return skills.filter((skill) => !inFolder.has(skillKey(skill.name)));
-}
-
-/** Provider commands that sit in no folder. */
-export function commandsOutsideFolders(
-  commands: ReadonlyArray<ServerProviderSlashCommand>,
-  folders: ReadonlyArray<ResolvedSkillFolder>,
-): ServerProviderSlashCommand[] {
-  const inFolder = new Set(
-    folders.flatMap((folder) => folder.commands.map((c) => skillKey(c.name))),
-  );
-  return commands.filter((command) => !inFolder.has(skillKey(command.name)));
 }
 
 function newFolderId(existing: ReadonlyArray<SkillFolder>): string {

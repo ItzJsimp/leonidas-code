@@ -21,7 +21,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Embedding models cannot chat, so they stay out of the picker. */
-function isEmbeddingModel(name: string, family: unknown): boolean {
+export function isEmbeddingModel(name: string, family: unknown): boolean {
   if (/embed/i.test(name)) return true;
   return typeof family === "string" && /bert/i.test(family);
 }

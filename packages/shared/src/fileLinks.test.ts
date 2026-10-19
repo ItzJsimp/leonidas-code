@@ -51,6 +51,29 @@ describe("resolvePathLinkTarget", () => {
     ).toBe("/Users/julius/project/src/components/ThreadTerminalDrawer.tsx:42:7");
   });
 
+  it("collapses .. segments so a link out of the project becomes an absolute path", () => {
+    expect(
+      resolvePathLinkTarget(
+        "../../handoff-docs/note.md:3",
+        "D:\\Leonidas AIOS\\projects\\leonidas-code",
+      ),
+    ).toBe("D:\\Leonidas AIOS\\handoff-docs\\note.md:3");
+    expect(resolvePathLinkTarget("../notes/a.md", "/Users/julius/project")).toBe(
+      "/Users/julius/notes/a.md",
+    );
+  });
+
+  it("collapses . segments and keeps a link that stays inside the project", () => {
+    expect(resolvePathLinkTarget("./src/../src/a.ts", "/Users/julius/project")).toBe(
+      "/Users/julius/project/src/a.ts",
+    );
+  });
+
+  it("never climbs above the filesystem root", () => {
+    expect(resolvePathLinkTarget("../../../../x.md", "/Users/julius")).toBe("/x.md");
+    expect(resolvePathLinkTarget("..\\..\\..\\x.md", "C:\\Users\\julius")).toBe("C:\\x.md");
+  });
+
   it("keeps absolute paths unchanged", () => {
     expect(
       resolvePathLinkTarget("/Users/julius/project/src/main.ts:12", "/Users/julius/project"),

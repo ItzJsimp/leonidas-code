@@ -1,0 +1,539 @@
+//! The dictation state machine: ready -> listening -> processing -> ready.
+//! Audio, speech-to-text, polish and paste are seams, so tests run with fakes.
+
+use crate::contract::{now_iso, Event, Mode, State, SttEngine};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+/// Encoded audio ready for upload.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EncodedAudio {
+    pub bytes: Vec<u8>,
+    /// For example `audio/wav` or `audio/flac`.
+    pub mime: &'static str,
+    /// Multipart file name, for example `audio.wav`.
+    pub file_name: &'static str,
+    pub duration_ms: u64,
+    /// 16 kHz mono samples for the local model. Empty when the recorder has none.
+    pub pcm: Vec<f32>,
+}
+
+pub trait Recorder: Send {
+    /// Open the mic and start capture. Must return fast: it is on the hotkey path.
+    fn start(&mut self) -> Result<(), String>;
+    /// Stop capture and return the encoded recording.
+    fn stop(&mut self) -> Result<EncodedAudio, String>;
+    /// Stop capture and drop the audio.
+    fn cancel(&mut self);
+    /// When the first audio buffer arrived for the current or last recording.
+    fn first_buffer_at(&self) -> Option<Instant>;
+}
+
+/// The result of a successful transcription.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Transcription {
+    pub text: String,
+    pub engine: SttEngine,
+}
+
+pub trait Transcriber: Send + Sync {
+    fn transcribe(&self, audio: &EncodedAudio) -> Result<Transcription, String>;
+}
+
+pub trait Polisher: Send + Sync {
+    /// Never fails: on any error it returns the best text it has (at least `raw`).
+    fn polish(&self, raw: &str) -> String;
+}
+
+pub trait Paster: Send + Sync {
+    /// Paste into the focused window. Returns true when the paste was sent.
+    fn paste(&self, text: &str) -> bool;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EngineError {
+    /// The command is not allowed in the current state.
+    InvalidState(State),
+}
+
+struct Inner {
+    state: State,
+    mode: Option<Mode>,
+    recorder: Box<dyn Recorder>,
+    trigger_at: Option<Instant>,
+    hotkey_latency: Option<Duration>,
+}
+
+struct Shared {
+    inner: Mutex<Inner>,
+    subscribers: Mutex<Vec<Sender<Event>>>,
+    transcriber: Box<dyn Transcriber>,
+    polisher: Box<dyn Polisher>,
+    paster: Box<dyn Paster>,
+    min_record_ms: u64,
+}
+
+/// Cheap to clone; all clones drive the same engine.
+#[derive(Clone)]
+pub struct Engine(Arc<Shared>);
+
+impl Engine {
+    pub fn new(
+        recorder: Box<dyn Recorder>,
+        transcriber: Box<dyn Transcriber>,
+        polisher: Box<dyn Polisher>,
+        paster: Box<dyn Paster>,
+        min_record_ms: u64,
+    ) -> Self {
+        Self(Arc::new(Shared {
+            inner: Mutex::new(Inner {
+                state: State::Ready,
+                mode: None,
+                recorder,
+                trigger_at: None,
+                hotkey_latency: None,
+            }),
+            subscribers: Mutex::new(Vec::new()),
+            transcriber,
+            polisher,
+            paster,
+            min_record_ms,
+        }))
+    }
+
+    pub fn state(&self) -> State {
+        self.0.inner.lock().unwrap().state
+    }
+
+    /// The mode of the current recording, if listening.
+    pub fn mode(&self) -> Option<Mode> {
+        self.0.inner.lock().unwrap().mode
+    }
+
+    /// Hotkey time of the last recording that had a hotkey trigger.
+    pub fn last_trigger_at(&self) -> Option<Instant> {
+        self.0.inner.lock().unwrap().trigger_at
+    }
+
+    /// Hotkey callback to first audio buffer, for the last recording that had a hotkey trigger.
+    pub fn last_hotkey_latency(&self) -> Option<Duration> {
+        let mut inner = self.0.inner.lock().unwrap();
+        if inner.hotkey_latency.is_none() {
+            if let (Some(t), Some(first)) = (inner.trigger_at, inner.recorder.first_buffer_at()) {
+                inner.hotkey_latency = first.checked_duration_since(t);
+            }
+        }
+        inner.hotkey_latency
+    }
+
+    pub fn subscribe(&self) -> Receiver<Event> {
+        let (tx, rx) = channel();
+        self.0.subscribers.lock().unwrap().push(tx);
+        rx
+    }
+
+    fn emit(shared: &Shared, event: Event) {
+        shared
+            .subscribers
+            .lock()
+            .unwrap()
+            .retain(|tx| tx.send(event.clone()).is_ok());
+    }
+
+    fn set_state(shared: &Shared, inner: &mut Inner, state: State) {
+        if inner.state != state {
+            inner.state = state;
+            Self::emit(
+                shared,
+                Event::State {
+                    state,
+                    at: now_iso(),
+                },
+            );
+        }
+    }
+
+    /// Start recording. Allowed in `ready` and `mic_error`.
+    /// `trigger_at` is the hotkey time, used for the latency budget.
+    pub fn start(&self, mode: Mode, trigger_at: Option<Instant>) -> Result<State, EngineError> {
+        let shared = &*self.0;
+        let mut inner = shared.inner.lock().unwrap();
+        if !matches!(inner.state, State::Ready | State::MicError) {
+            return Err(EngineError::InvalidState(inner.state));
+        }
+        inner.trigger_at = trigger_at;
+        inner.hotkey_latency = None;
+        match inner.recorder.start() {
+            Ok(()) => {
+                inner.mode = Some(mode);
+                Self::set_state(shared, &mut inner, State::Listening);
+            }
+            Err(message) => {
+                inner.mode = None;
+                Self::set_state(shared, &mut inner, State::MicError);
+                Self::emit(
+                    shared,
+                    Event::Error {
+                        code: "mic_error".into(),
+                        message,
+                        at: now_iso(),
+                    },
+                );
+            }
+        }
+        Ok(inner.state)
+    }
+
+    /// Discard the current recording. No-op outside `listening`.
+    pub fn cancel(&self) {
+        let shared = &*self.0;
+        let mut inner = shared.inner.lock().unwrap();
+        if inner.state == State::Listening {
+            inner.recorder.cancel();
+            inner.mode = None;
+            Self::set_state(shared, &mut inner, State::Ready);
+        }
+    }
+
+    /// Stop recording and transcribe on a worker thread. Allowed in `listening` only.
+    pub fn stop(&self, paste: bool) -> Result<State, EngineError> {
+        let shared = &*self.0;
+        let mut inner = shared.inner.lock().unwrap();
+        if inner.state != State::Listening {
+            return Err(EngineError::InvalidState(inner.state));
+        }
+        inner.mode = None;
+        if let (Some(t), Some(first)) = (inner.trigger_at, inner.recorder.first_buffer_at()) {
+            inner.hotkey_latency = first.checked_duration_since(t);
+        }
+        let audio = match inner.recorder.stop() {
+            Ok(audio) => audio,
+            Err(message) => {
+                Self::set_state(shared, &mut inner, State::MicError);
+                Self::emit(
+                    shared,
+                    Event::Error {
+                        code: "mic_error".into(),
+                        message,
+                        at: now_iso(),
+                    },
+                );
+                return Ok(inner.state);
+            }
+        };
+        if audio.duration_ms < shared.min_record_ms {
+            Self::set_state(shared, &mut inner, State::Ready);
+            return Ok(inner.state);
+        }
+        Self::set_state(shared, &mut inner, State::Processing);
+        drop(inner);
+        let engine = self.clone();
+        std::thread::Builder::new()
+            .name("scribe-process".into())
+            .spawn(move || engine.process(audio, paste))
+            .expect("spawn scribe-process thread");
+        Ok(State::Processing)
+    }
+
+    fn process(&self, audio: EncodedAudio, paste: bool) {
+        let shared = &*self.0;
+        match shared.transcriber.transcribe(&audio) {
+            Ok(t) if t.text.trim().is_empty() => {}
+            Ok(t) => {
+                let text = shared.polisher.polish(&t.text);
+                let pasted = paste && !text.is_empty() && shared.paster.paste(&text);
+                Self::emit(
+                    shared,
+                    Event::Transcript {
+                        text,
+                        raw: t.text,
+                        duration_ms: audio.duration_ms,
+                        pasted,
+                        engine: t.engine,
+                        at: now_iso(),
+                    },
+                );
+            }
+            Err(message) => Self::emit(
+                shared,
+                Event::Error {
+                    code: "stt_error".into(),
+                    message,
+                    at: now_iso(),
+                },
+            ),
+        }
+        let mut inner = shared.inner.lock().unwrap();
+        Self::set_state(shared, &mut inner, State::Ready);
+    }
+}
+
+/// Test doubles, shared with other modules' tests.
+#[cfg(test)]
+pub mod fakes {
+    use super::*;
+
+    #[derive(Default)]
+    pub struct FakeRecorder {
+        pub fail_start: bool,
+        pub duration_ms: u64,
+        pub first: Option<Instant>,
+    }
+
+    impl Recorder for FakeRecorder {
+        fn start(&mut self) -> Result<(), String> {
+            if self.fail_start {
+                return Err("No input device".into());
+            }
+            self.first = Some(Instant::now());
+            Ok(())
+        }
+        fn stop(&mut self) -> Result<EncodedAudio, String> {
+            Ok(EncodedAudio {
+                bytes: vec![1, 2, 3],
+                mime: "audio/wav",
+                file_name: "audio.wav",
+                duration_ms: self.duration_ms,
+                pcm: Vec::new(),
+            })
+        }
+        fn cancel(&mut self) {}
+        fn first_buffer_at(&self) -> Option<Instant> {
+            self.first
+        }
+    }
+
+    pub struct FakeStt(pub Result<String, String>);
+    impl Transcriber for FakeStt {
+        fn transcribe(&self, _: &EncodedAudio) -> Result<Transcription, String> {
+            self.0.clone().map(|text| Transcription {
+                text,
+                engine: SttEngine::Groq,
+            })
+        }
+    }
+
+    pub struct UpperPolish;
+    impl Polisher for UpperPolish {
+        fn polish(&self, raw: &str) -> String {
+            raw.to_uppercase()
+        }
+    }
+
+    #[derive(Default)]
+    pub struct FakePaster(pub Mutex<Vec<String>>);
+    impl Paster for Arc<FakePaster> {
+        fn paste(&self, text: &str) -> bool {
+            self.0.lock().unwrap().push(text.to_owned());
+            true
+        }
+    }
+
+    /// An engine with fakes: STT returns `stt`, polish upper-cases, paste records.
+    pub fn engine(recorder: FakeRecorder, stt: Result<&str, &str>) -> (Engine, Arc<FakePaster>) {
+        let paster = Arc::new(FakePaster::default());
+        let stt = FakeStt(stt.map(str::to_owned).map_err(str::to_owned));
+        let engine = Engine::new(
+            Box::new(recorder),
+            Box::new(stt),
+            Box::new(UpperPolish),
+            Box::new(paster.clone()),
+            250,
+        );
+        (engine, paster)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fakes::*;
+    use super::*;
+
+    fn next_transcript_or_error(rx: &Receiver<Event>) -> Event {
+        loop {
+            let e = rx.recv_timeout(Duration::from_secs(2)).expect("event");
+            if matches!(e, Event::Transcript { .. } | Event::Error { .. }) {
+                return e;
+            }
+        }
+    }
+
+    fn wait_ready(engine: &Engine) {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while engine.state() != State::Ready && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert_eq!(engine.state(), State::Ready);
+    }
+
+    #[test]
+    fn happy_path_polishes_and_pastes() {
+        let (engine, paster) = engine(
+            FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            },
+            Ok("hello world"),
+        );
+        let rx = engine.subscribe();
+        assert_eq!(
+            engine.start(Mode::Hold, Some(Instant::now())),
+            Ok(State::Listening)
+        );
+        assert_eq!(engine.mode(), Some(Mode::Hold));
+        assert_eq!(engine.stop(true), Ok(State::Processing));
+        match next_transcript_or_error(&rx) {
+            Event::Transcript {
+                text,
+                raw,
+                pasted,
+                duration_ms,
+                ..
+            } => {
+                assert_eq!(
+                    (text.as_str(), raw.as_str(), pasted, duration_ms),
+                    ("HELLO WORLD", "hello world", true, 1000)
+                );
+            }
+            e => panic!("{e:?}"),
+        }
+        assert_eq!(*paster.0.lock().unwrap(), vec!["HELLO WORLD"]);
+        assert!(engine.last_hotkey_latency().is_some());
+        wait_ready(&engine);
+    }
+
+    #[test]
+    fn state_events_in_order() {
+        let (engine, _) = engine(
+            FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        let rx = engine.subscribe();
+        engine.start(Mode::Toggle, None).unwrap();
+        engine.stop(false).unwrap();
+        let states: Vec<State> =
+            std::iter::from_fn(|| rx.recv_timeout(Duration::from_secs(2)).ok())
+                .filter_map(|e| {
+                    if let Event::State { state, .. } = e {
+                        Some(state)
+                    } else {
+                        None
+                    }
+                })
+                .take(3)
+                .collect();
+        assert_eq!(
+            states,
+            vec![State::Listening, State::Processing, State::Ready]
+        );
+    }
+
+    #[test]
+    fn wrong_state_is_rejected() {
+        let (engine, _) = engine(
+            FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        assert_eq!(
+            engine.stop(true),
+            Err(EngineError::InvalidState(State::Ready))
+        );
+        engine.start(Mode::Hold, None).unwrap();
+        assert_eq!(
+            engine.start(Mode::Hold, None),
+            Err(EngineError::InvalidState(State::Listening))
+        );
+    }
+
+    #[test]
+    fn mic_failure_reports_and_allows_retry() {
+        let (engine, _) = engine(
+            FakeRecorder {
+                fail_start: true,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        let rx = engine.subscribe();
+        assert_eq!(engine.start(Mode::Hold, None), Ok(State::MicError));
+        let got: Vec<Event> = rx.try_iter().collect();
+        assert!(got
+            .iter()
+            .any(|e| matches!(e, Event::Error { code, .. } if code == "mic_error")));
+        assert_eq!(engine.start(Mode::Hold, None), Ok(State::MicError));
+    }
+
+    #[test]
+    fn short_recording_is_dropped_without_stt() {
+        let (engine, paster) = engine(
+            FakeRecorder {
+                duration_ms: 100,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        engine.start(Mode::Hold, None).unwrap();
+        assert_eq!(engine.stop(true), Ok(State::Ready));
+        assert!(paster.0.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn cancel_discards() {
+        let (engine, paster) = engine(
+            FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        engine.start(Mode::Toggle, None).unwrap();
+        engine.cancel();
+        assert_eq!(engine.state(), State::Ready);
+        assert!(paster.0.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn stt_failure_emits_error_and_returns_to_ready() {
+        let (engine, paster) = engine(
+            FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            },
+            Err("401"),
+        );
+        let rx = engine.subscribe();
+        engine.start(Mode::Hold, None).unwrap();
+        engine.stop(true).unwrap();
+        assert!(
+            matches!(next_transcript_or_error(&rx), Event::Error { code, .. } if code == "stt_error")
+        );
+        assert!(paster.0.lock().unwrap().is_empty());
+        wait_ready(&engine);
+    }
+
+    #[test]
+    fn paste_false_does_not_paste() {
+        let (engine, paster) = engine(
+            FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        let rx = engine.subscribe();
+        engine.start(Mode::Hold, None).unwrap();
+        engine.stop(false).unwrap();
+        assert!(matches!(
+            next_transcript_or_error(&rx),
+            Event::Transcript { pasted: false, .. }
+        ));
+        assert!(paster.0.lock().unwrap().is_empty());
+    }
+}

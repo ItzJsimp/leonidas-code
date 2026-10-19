@@ -22,6 +22,7 @@ import {
 import { useEnvironments } from "../state/environments";
 import { APP_DISPLAY_NAME } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
+import { useWorkspaceProjects } from "../components/workspace/useWorkspaceProjects";
 
 function ChatIndexRouteView() {
   const { authGateState } = Route.useRouteContext();
@@ -42,7 +43,8 @@ function ChatIndexRouteView() {
  * end. Falls back to an add-project hero when no project exists yet.
  */
 function IndexDraftLanding({ guidePrompt }: { readonly guidePrompt?: string | undefined }) {
-  const projects = useProjects();
+  const allProjects = useProjects();
+  const projects = useWorkspaceProjects(allProjects);
   const threads = useThreadShells();
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
   const handleNewThread = useNewThreadHandler();

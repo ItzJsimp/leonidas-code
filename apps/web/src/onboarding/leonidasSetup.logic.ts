@@ -49,9 +49,9 @@ export function toggleGoal(selected: readonly string[], id: string): readonly st
 
 /** Where the guided setup builds the AIOS; the server expands the leading ~. */
 export const AIOS_FOLDER_STORAGE_KEY = "leonidas:aios-folder";
-/** The default sits in Documents, where a new user already looks for their files. */
-export const DEFAULT_AIOS_LOCATION = "~/Documents";
-export const DEFAULT_AIOS_NAME = "My AIOS";
+/** One simple default for every user: a folder named Leonidas AIOS in the user folder. */
+export const DEFAULT_AIOS_LOCATION = "~";
+export const DEFAULT_AIOS_NAME = "Leonidas AIOS";
 export const DEFAULT_AIOS_FOLDER = `${DEFAULT_AIOS_LOCATION}/${DEFAULT_AIOS_NAME}`;
 
 export interface AiosPresetEntry {

@@ -9,7 +9,7 @@ import type {
 } from "@t3tools/contracts";
 import { daysUntilDue, dueSortKey } from "@t3tools/client-runtime/task-board/daily-planning";
 
-export { daysUntilDue, formatDue } from "@t3tools/client-runtime/task-board/daily-planning";
+export { formatDue } from "@t3tools/client-runtime/task-board/daily-planning";
 import { ownerOf } from "./owner.logic";
 
 export type TaskView = TaskBoardTask & {
@@ -24,7 +24,7 @@ const GENERAL_SECTION = "general";
 const DAY_MS = 86_400_000;
 const STALE_AFTER_DAYS = 21;
 
-export const OPEN_STATUSES: ReadonlySet<TaskBoardTaskStatus> = new Set([
+const OPEN_STATUSES: ReadonlySet<TaskBoardTaskStatus> = new Set([
   "todo",
   "in_progress",
   "review",
@@ -598,7 +598,7 @@ export function suggestTriage(task: TaskBoardTask): TriageSuggestion | null {
   };
 }
 
-export const QUICK_BATCH_MAX = 5;
+const QUICK_BATCH_MAX = 5;
 const QUICK_EFFORTS: ReadonlySet<string> = new Set(["low", "small", "xs", "s"]);
 
 export type TaskSize = "small" | "medium" | "large";
@@ -625,7 +625,7 @@ export function taskSize(task: TaskBoardTask): TaskSize {
 }
 
 /** A small, unblocked, unclaimed to-do that is cheap enough to share an agent with others. */
-export function isQuickTask(task: TaskView): boolean {
+function isQuickTask(task: TaskView): boolean {
   return (
     task.status === "todo" &&
     !task.claimedBy &&

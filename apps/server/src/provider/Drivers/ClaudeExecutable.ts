@@ -1,5 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as HostProcess from "@t3tools/shared/HostProcess";
@@ -101,7 +102,7 @@ export const resolveClaudeSdkExecutablePath = Effect.fn("resolveClaudeSdkExecuta
  * every platform. The installer adds it to the user PATH, but a server that
  * was already running keeps its old PATH.
  */
-export const claudeUserBinDirectory = (home: string, platform: NodeJS.Platform): string =>
+const claudeUserBinDirectory = (home: string, platform: NodeJS.Platform): string =>
   (platform === "win32" ? NodePath.win32 : NodePath.posix).join(home, ".local", "bin");
 
 /**
@@ -128,3 +129,35 @@ export const withClaudeUserBinOnPath = (
   if (entries.some(same)) return env;
   return { ...env, [key]: [...entries, directory].join(separator) };
 };
+
+/**
+ * Re-check a bare `claude` command each time a session starts. The adapter
+ * fixes its Claude path once, so a Claude installed after server start (the
+ * first-run wizard does this) would stay a bare name that the SDK cannot
+ * spawn. A bare name falls back to the official install folder when the file
+ * exists there. Any other value is returned unchanged.
+ */
+export const resolveInstalledClaudeBinary = (
+  binaryPath: string,
+  options: {
+    readonly home?: string;
+    readonly platform?: NodeJS.Platform;
+    readonly isFile?: ExecutableFileCheck;
+  } = {},
+): string => {
+  if (/[\/]/u.test(binaryPath)) return binaryPath;
+  const platform = options.platform ?? process.platform;
+  const name = platform === "win32" ? "claude.exe" : "claude";
+  if (binaryPath !== "claude" && binaryPath !== name) return binaryPath;
+  const candidate = (platform === "win32" ? NodePath.win32 : NodePath.posix).join(
+    options.home ?? NodeOS.homedir(),
+    ".local",
+    "bin",
+    name,
+  );
+  return (options.isFile ?? isExistingFile)(candidate) ? candidate : binaryPath;
+};
+
+/** `withClaudeUserBinOnPath` for the current user, for code that has no home folder service. */
+export const withInstalledClaudeOnPath = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv =>
+  withClaudeUserBinOnPath(env, NodeOS.homedir(), process.platform);

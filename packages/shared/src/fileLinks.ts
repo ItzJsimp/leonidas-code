@@ -69,6 +69,32 @@ function joinPath(base: string, next: string, separator: "/" | "\\"): string {
   return `${cleanBase}/${next.replace(/^\/+/, "")}`;
 }
 
+/**
+ * Collapse "." and ".." segments of an absolute path. A link such as "../../notes/a.md" joined to
+ * the project folder must become the real absolute path, so code that tests "is this inside the
+ * project" sees the truth. A ".." never climbs above the drive, the share or the root.
+ */
+export function collapseDotSegments(path: string, separator: "/" | "\\"): string {
+  const normalized = path.replaceAll("\\", "/");
+  const drive = /^[A-Za-z]:/.exec(normalized)?.[0] ?? "";
+  const unc = drive === "" && normalized.startsWith("//");
+  const rest = normalized.slice(drive.length);
+  const kept: string[] = [];
+  // A UNC path keeps its server and share segments.
+  const floor = unc ? 2 : 0;
+  for (const segment of rest.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      if (kept.length > floor) kept.pop();
+      continue;
+    }
+    kept.push(segment);
+  }
+  const rooted = unc ? "//" : rest.startsWith("/") ? "/" : "";
+  const joined = `${drive}${rooted}${kept.join("/")}`;
+  return separator === "\\" ? joined.replaceAll("/", "\\") : joined;
+}
+
 function inferHomeFromCwd(cwd: string): string | undefined {
   const posixUser = cwd.match(/^\/Users\/([^/]+)/);
   if (posixUser?.[1]) {
@@ -101,7 +127,7 @@ export function resolvePathLinkTarget(rawPath: string, cwd: string): string {
     }
   } else if (!isAbsolutePath(path)) {
     const separator: "/" | "\\" = isWindowsPathStyle(cwd) ? "\\" : "/";
-    resolvedPath = joinPath(cwd, path, separator);
+    resolvedPath = collapseDotSegments(joinPath(cwd, path, separator), separator);
   }
 
   return formatFilePathPosition({ ...position, path: resolvedPath });

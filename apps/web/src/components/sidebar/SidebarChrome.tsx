@@ -4,7 +4,6 @@ import {
   ChartNoAxesColumnIcon,
   ImageIcon,
   ListChecksIcon,
-  MicIcon,
   RadarIcon,
   MessageSquareWarningIcon,
   ScrollTextIcon,
@@ -14,7 +13,7 @@ import {
 import type { ReactNode } from "react";
 import type { KeybindingCommand } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { shortcutLabelForCommand } from "../../keybindings";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -49,7 +48,6 @@ import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUp
 import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { observeResize } from "~/lib/observeResize";
-import { ScribeTeamFeedDialog } from "../scribe/ScribeTeamFeedPanel";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
@@ -195,7 +193,7 @@ function SidebarUtilityItem({
     ? shortcutLabelForCommand(keybindings, shortcutCommand)
     : null;
   return (
-    <SidebarMenuItem className="flex min-w-0 max-w-8 flex-1 justify-center">
+    <SidebarMenuItem className="flex w-8 min-w-0 shrink justify-center">
       <Tooltip>
         <TooltipTrigger
           render={
@@ -227,7 +225,6 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
   const pullRequestsSupported = usePullRequestsSupported();
-  const [scribeFeedOpen, setScribeFeedOpen] = useState(false);
 
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) {
@@ -255,11 +252,6 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     closeMobileSidebar();
     void navigate({ to: "/tasks" });
   }, [closeMobileSidebar, navigate]);
-
-  const handleScribeFeedClick = useCallback(() => {
-    closeMobileSidebar();
-    setScribeFeedOpen(true);
-  }, [closeMobileSidebar]);
 
   const handleUsageClick = useCallback(() => {
     if (isMobile) {
@@ -301,7 +293,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   }, [closeMobileSidebar, navigateToMainApp]);
 
   return (
-    <SidebarMenu className="flex-row flex-wrap items-center">
+    <SidebarMenu className="flex-row flex-nowrap items-center">
       {isOnUtilityPage ? (
         <SidebarMenuItem className="min-w-0 flex-1">
           <SidebarMenuButton onClick={handleBackClick}>
@@ -310,9 +302,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ) : (
-        // One row at every width: the buttons share the width instead of
-        // wrapping, so the bar never breaks into two lines.
-        <div className="flex w-full min-w-0 flex-nowrap items-center justify-between">
+        // One row at every width. Buttons keep a fixed size and gap, so dragging the
+        // sidebar never spreads them; they only shrink when the sidebar is too narrow.
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-0.5">
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label="Settings"
@@ -340,11 +332,6 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Scribe"
             usageId="open_scribe"
             onClick={handleScribeClick}
-          />
-          <SidebarUtilityItem
-            icon={<MicIcon />}
-            label="Scribe Team Feed"
-            onClick={handleScribeFeedClick}
           />
           {pullRequestsSupported ? (
             <SidebarUtilityItem
@@ -384,7 +371,6 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         </div>
       )}
       <SidebarUpdatePill />
-      <ScribeTeamFeedDialog open={scribeFeedOpen} onOpenChange={setScribeFeedOpen} />
     </SidebarMenu>
   );
 });

@@ -6,9 +6,12 @@ import {
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
+import * as LocalModelsService from "./localModels/LocalModelsService.ts";
+import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
+import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
@@ -17,6 +20,7 @@ import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as ScribeEngine from "./scribe/ScribeEngine.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
+import { readLayaUsage } from "./laya/layaUsage.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -27,6 +31,7 @@ import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Base64 from "effect/encoding/Base64";
 import * as Effect from "effect/Effect";
+import { layaStatus, startLayaInstall, wireLayaProject } from "./laya/layaSetup.ts";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -1368,15 +1373,26 @@ const layerWsRpc = (
       yield* spawnApprovals.keepStatsIn(`${config.stateDir}/subagent-stats.json`);
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
       const systemCare = yield* SystemCare.SystemCare;
-      const studioWriteScope = Effect.gen(function* () {
-        const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
-        const aiosRoot = yield* taskBoard.aiosRoot(projects);
-        const appFreeModels = yield* serverSettings.getSettings.pipe(
-          Effect.map((settings) => settings.subagentFreeTierModels),
-          Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
-        );
-        return { aiosRoot, projects, appFreeModels };
-      });
+      // Studio writes see only the request's workspace: its root and the projects inside it.
+      const studioWriteScope = (workspaceId: string | undefined) =>
+        Effect.gen(function* () {
+          const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+          const aiosRoot = yield* taskBoard.aiosRoot(allProjects, workspaceId);
+          if (workspaceId !== undefined && aiosRoot === null) {
+            return yield* new SubagentEditError({ message: "That workspace is not available." });
+          }
+          const projects =
+            workspaceId === undefined
+              ? allProjects
+              : allProjects.filter(
+                  (project) => aiosRoot !== null && isPathInRoot(aiosRoot, project.workspaceRoot),
+                );
+          const appFreeModels = yield* serverSettings.getSettings.pipe(
+            Effect.map((settings) => settings.subagentFreeTierModels),
+            Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
+          );
+          return { aiosRoot, projects, appFreeModels };
+        });
 
       const withTaskBoardProject = <A, E, R>(
         projectId: ProjectId,
@@ -1418,6 +1434,7 @@ const layerWsRpc = (
           return yield* use(project.value);
         });
       const images = yield* ImageService.ImageService;
+      const localModels = yield* LocalModelsService.LocalModelsService;
       const withImagesProject = <A, E, R>(
         projectId: ProjectId,
         use: (project: Project) => Effect.Effect<A, E, R>,
@@ -2210,7 +2227,7 @@ const layerWsRpc = (
         [WS_METHODS.scheduledTasksList]: (_input) =>
           scheduledTasks.list().pipe(Effect.map(withVisibleWebhookUrls)),
         [WS_METHODS.savedItemsList]: (input) => savedItems.list(input),
-        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id),
+        [WS_METHODS.savedItemsGet]: (input) => savedItems.get(input.id, input.workspaceId),
         [WS_METHODS.savedItemsCreate]: (input) => savedItems.create(input),
         [WS_METHODS.savedItemsUpdate]: (input) => savedItems.update(input),
         [WS_METHODS.savedItemsTransition]: (input) => savedItems.transition(input),
@@ -2851,10 +2868,12 @@ const layerWsRpc = (
         [WS_METHODS.subagentsSubscribeSpawnApprovals]: () => spawnApprovals.pending,
         [WS_METHODS.subagentsRespondSpawnApproval]: (input) =>
           spawnApprovals.respond(input).pipe(Effect.as({})),
-        [WS_METHODS.subagentsList]: () =>
+        [WS_METHODS.subagentsList]: (input) =>
           Effect.gen(function* () {
-            const projects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
-            const aiosRoot = yield* taskBoard.aiosRoot(projects);
+            const allProjects = yield* allTaskBoardProjects.pipe(Effect.orElseSucceed(() => []));
+            const aiosRoot = yield* taskBoard.aiosRoot(allProjects, input.workspaceId);
+            // A scoped request sees only the projects inside its own workspace (ADR-0080).
+            const projects = subagentWorkspaceProjects(allProjects, aiosRoot, input.workspaceId);
             const appFreeModels = yield* serverSettings.getSettings.pipe(
               Effect.map((settings) => settings.subagentFreeTierModels),
               Effect.orElseSucceed(() => DEFAULT_SUBAGENT_FREE_TIER_MODELS),
@@ -2866,7 +2885,7 @@ const layerWsRpc = (
           }),
         [WS_METHODS.subagentsUpdate]: (input) =>
           Effect.gen(function* () {
-            const scope = yield* studioWriteScope;
+            const scope = yield* studioWriteScope(input.workspaceId);
             return yield* Effect.try({
               try: () => updateStudioSubagent(scope, input),
               catch: (error) =>
@@ -2877,7 +2896,7 @@ const layerWsRpc = (
           }),
         [WS_METHODS.subagentsCreate]: (input) =>
           Effect.gen(function* () {
-            const scope = yield* studioWriteScope;
+            const scope = yield* studioWriteScope(input.workspaceId);
             return yield* Effect.try({
               try: () => createStudioSubagent(scope, input),
               catch: (error) =>
@@ -2887,13 +2906,13 @@ const layerWsRpc = (
             });
           }),
         // Each change made through this server pushes a fresh list; no polling.
-        [WS_METHODS.focusSubscribe]: () =>
+        [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(
             Stream.mapEffect(() =>
               projectService.snapshot.pipe(
                 Effect.map((snapshot) => snapshot.projects),
                 Effect.orElseSucceed(() => []),
-                Effect.flatMap(taskBoard.focus),
+                Effect.flatMap((projects) => taskBoard.focus(projects, input)),
               ),
             ),
           ),
@@ -2921,8 +2940,22 @@ const layerWsRpc = (
         [WS_METHODS.imagesRetry]: (input) =>
           withImagesProject(input.projectId, (project) => images.retry(project, input)),
         [WS_METHODS.imagesSetBaseUrl]: (input) => images.setBaseUrl(input),
-        [WS_METHODS.taskBoardWorkspace]: () =>
-          allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspace)),
+        [WS_METHODS.localModelsSubscribe]: () => localModels.subscribe,
+        [WS_METHODS.localModelsPull]: (input) => localModels.pull(input),
+        [WS_METHODS.localModelsCancelPull]: (input) => localModels.cancelPull(input),
+        [WS_METHODS.localModelsRun]: (input) => localModels.run(input),
+        [WS_METHODS.localModelsStop]: (input) => localModels.stop(input),
+        [WS_METHODS.localModelsSpeedTest]: (input) => localModels.speedTest(input),
+        [WS_METHODS.localModelsStartOllama]: () => localModels.startOllama,
+        [WS_METHODS.localModelsAdvice]: () => localModels.advice,
+        [WS_METHODS.localModelsCompare]: (input) => localModels.compare(input),
+        [WS_METHODS.localModelsComparePick]: (input) => localModels.comparePick(input),
+        [WS_METHODS.localModelsTokenReport]: (input) => localModels.tokenReport(input),
+        [WS_METHODS.localModelsDelete]: (input) => localModels.remove(input),
+        [WS_METHODS.taskBoardWorkspace]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.workspace(projects, input.workspaceId)),
+          ),
         [WS_METHODS.taskBoardCardUpdate]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.cardUpdate(input, projects)),
@@ -2942,12 +2975,25 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeWeather]: (input) =>
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
-        [WS_METHODS.taskBoardHome]: () =>
-          allTaskBoardProjects.pipe(Effect.flatMap((projects) => taskBoard.home(projects))),
-        [WS_METHODS.aiosUsageShape]: () =>
+        [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
+        [WS_METHODS.taskBoardHome]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.aiosUsageShape]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.orElseSucceed(() => []),
-            Effect.flatMap((projects) => taskBoard.usageShape(projects)),
+            Effect.flatMap((projects) => taskBoard.usageShape(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.aiosDirection]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.direction(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.aiosWorkspacesList]: () =>
+          allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspaces)),
+        [WS_METHODS.aiosWorkspacesInit]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.workspaceInit(input, projects)),
           ),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(
@@ -3021,6 +3067,19 @@ const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.layaSetup]: (input) =>
+          Effect.promise(async () => {
+            if (input.action === "wire") {
+              return wireLayaProject({
+                projectPath: input.projectPath ?? "",
+                confirmed: input.confirmed === true,
+              });
+            }
+            if (input.action === "install") {
+              return startLayaInstall({ installPackages: input.installPackages === true });
+            }
+            return layaStatus();
+          }),
         [WS_METHODS.filesystemInspectFolder]: (input) =>
           workspaceEntries.inspectFolder(input).pipe(
             Effect.mapError(

@@ -95,6 +95,30 @@ const hasDir = (path: string) => {
   }
 };
 
+/**
+ * True when the real path `path` is `realRoot` or inside it. Both must already be real paths, so a
+ * link or junction that leaves the root is caught (ADR-0080 workspace guard).
+ */
+export function isInsideRoot(realRoot: string, path: string): boolean {
+  const relative = NodePath.relative(realRoot, path);
+  return relative === "" || (!relative.startsWith("..") && !NodePath.isAbsolute(relative));
+}
+
+const realRootOf = (root: string): string | null => {
+  try {
+    return NodeFS.realpathSync.native(root);
+  } catch {
+    return null;
+  }
+};
+
+/** True when `path` exists and stays inside `root` after links resolve (ADR-0080 guard). */
+export function isRealPathInside(root: string, path: string): boolean {
+  const realRoot = realRootOf(root);
+  const real = realRootOf(path);
+  return realRoot !== null && real !== null && isInsideRoot(realRoot, real);
+}
+
 /** Finds the AIOS root: the first hint (then its ancestors) that holds the task folders. */
 export function findAiosRoot(hints: ReadonlyArray<string | undefined>): string | null {
   for (const hint of hints) {
@@ -308,6 +332,7 @@ function priorityFromCard(value: string | undefined): TaskBoardTaskPriority {
       return "high";
     case "low":
     case "p3":
+    case "someday":
       return "low";
     default:
       return "medium";
@@ -323,6 +348,8 @@ function normalizeProjectSlug(value: string | undefined): string | null {
     .trim()
     .replace(/\\/g, "/")
     .replace(/^projects\//i, "")
+    // SimplyGersi cards link the project file: `projects/<slug>/project.md`.
+    .replace(/\/project\.md$/i, "")
     .replace(/^project-/i, "")
     .replace(/\/+$/, "")
     .toLowerCase();
@@ -524,6 +551,7 @@ export function cardToTask(input: {
     labels,
     source: "aios_card",
     projectSlug,
+    ...(field(fields, "project_id") ? { projectId: field(fields, "project_id") } : {}),
     effort: field(fields, "effort") || null,
     energy: field(fields, "energy_type") || null,
     due: due || null,
@@ -679,11 +707,16 @@ export function readAiosTasks(
   const globalNames = new Set<string>();
   const byId = new Map<string, { task: TaskBoardTask; mtimeMs: number; global: boolean }>();
 
+  const realRoot = realRootOf(root);
+  if (realRoot === null) return [];
+
   const visit = (tasksDir: string, projectHint: string | undefined, global: boolean) => {
     let baseDir: string;
     let entries: NodeFS.Dirent[];
     try {
       baseDir = NodeFS.realpathSync.native(tasksDir);
+      // A folder linked in from outside the workspace is another workspace's data.
+      if (!isInsideRoot(realRoot, baseDir)) return;
       entries = NodeFS.readdirSync(baseDir, { withFileTypes: true });
     } catch {
       return;
@@ -707,6 +740,7 @@ export function readAiosTasks(
         const file = symlink
           ? NodeFS.realpathSync.native(NodePath.join(baseDir, name))
           : NodePath.join(baseDir, name);
+        if (symlink && !isInsideRoot(realRoot, file)) continue;
         const seenKey = keyFor(file);
         if (seenFiles.has(seenKey)) continue;
         seenFiles.add(seenKey);
@@ -749,8 +783,16 @@ export function readAiosTasks(
 /** Finds a card file by its `sourceFile`: global tasks first, then project task folders. */
 export function findCardFile(root: string, sourceFile: string): string | null {
   if (sourceFile !== NodePath.basename(sourceFile)) return null;
+  const realRoot = realRootOf(root);
+  if (realRoot === null) return null;
   const candidates = aiosTaskFolders(root).map((folder) => NodePath.join(folder.dir, sourceFile));
-  return candidates.find((candidate) => NodeFS.existsSync(candidate)) ?? null;
+  return (
+    candidates.find((candidate) => {
+      if (!NodeFS.existsSync(candidate)) return false;
+      const real = realRootOf(candidate);
+      return real !== null && isInsideRoot(realRoot, real);
+    }) ?? null
+  );
 }
 
 const quote = (value: string) =>
@@ -925,6 +967,8 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     const slug = normalizeProjectSlug(patch.projectSlug ?? undefined);
     if (slug !== was.project) {
       setKey("project", slug === null ? null : quote(slug));
+      // The stored project id named the old project; the slug decides the owner again.
+      setKey("project_id", null);
       other.push(slug === null ? "unlinked from project" : `linked to project ${slug}`);
       changed = true;
     }
@@ -978,6 +1022,8 @@ export function createCardFile(
     description?: string | undefined;
     priority?: string | undefined;
     projectSlug?: string | null | undefined;
+    /** The app project id; it keeps a native card in that project's workspace on a slug clash. */
+    projectId?: string | null | undefined;
     assignee?: string | null | undefined;
     kind?: "task" | "agent_run" | undefined;
     actor: string;
@@ -1007,6 +1053,7 @@ export function createCardFile(
         `created: ${date}`,
         `last_touched: ${date}`,
         ...(projectSlug ? [`project: ${quote(projectSlug)}`] : []),
+        ...(projectSlug && input.projectId ? [`project_id: ${quote(input.projectId)}`] : []),
         ...(input.due ? [`due: ${quote(input.due)}`] : []),
         ...(input.milestone ? [`milestone: ${quote(input.milestone)}`] : []),
         ...(input.assignee?.trim() ? [`assignee: ${quote(oneLine(input.assignee))}`] : []),
@@ -1058,7 +1105,8 @@ export function discoverProjects(
   for (const entry of entries) {
     if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
     const dir = NodePath.join(projectsDir, entry.name);
-    if (!hasDir(dir)) continue;
+    // A project folder linked in from outside belongs to another workspace.
+    if (!hasDir(dir) || !isRealPathInside(root, dir)) continue;
     let name = "";
     try {
       const parsed = parseFrontmatter(

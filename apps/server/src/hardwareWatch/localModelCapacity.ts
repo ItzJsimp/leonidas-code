@@ -8,7 +8,7 @@ const GB = 1024 ** 3;
 /** VRAM kept free for the desktop, the KV cache and driver overhead. */
 const VRAM_HEADROOM_BYTES = 1.5 * GB;
 /** Share of free RAM a model may use when layers spill out of VRAM. */
-const RAM_OFFLOAD_SHARE = 0.7;
+export const RAM_OFFLOAD_SHARE = 0.7;
 
 export type LocalAccelerator = "cuda" | "vulkan" | "metal" | "cpu";
 export type LocalRuntime = "ollama" | "llama.cpp";

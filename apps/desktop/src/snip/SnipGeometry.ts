@@ -35,7 +35,7 @@ export type SnipGesture =
   | { readonly kind: "drag"; readonly rect: SnipRect };
 
 export const SNIP_DRAG_THRESHOLD_PX = 4;
-export const SNIP_RECENT_LIMIT = 12;
+const SNIP_RECENT_LIMIT = 12;
 /** A maximized window reports a border this far past its display. */
 const MAXIMIZED_OVERFLOW_PX = 16;
 

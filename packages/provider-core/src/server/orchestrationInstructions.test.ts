@@ -197,6 +197,12 @@ describe("injected instruction budget", () => {
     );
   });
 
+  it("names every answer block type the chat can render", () => {
+    for (const type of ["choices", "checklist", "table", "chart"]) {
+      assert.include(LEONIDAS_OUTPUT_STANDARD, `leo:${type}`);
+    }
+  });
+
   // Ratchet: every turn pays for this text. Lower the cap when you trim; raise it only on purpose.
   it("stays inside the character budget", () => {
     const total = blocks.reduce((sum, block) => sum + block.length, 0);

@@ -32,6 +32,8 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { taskBoardCardCreate } from "~/state/taskBoard";
+import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
+import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
 import { useAtomCommand } from "~/state/use-atom-command";
 
 import { priorityLabel } from "./taskBoard.logic";
@@ -113,6 +115,7 @@ function TaskCreateForm(props: {
     const result = await runCreate({
       environmentId,
       input: {
+        ...workspaceScopeInput(activeWorkspaceId(environmentId)),
         title: title.trim(),
         ...(details.trim() ? { description: details.trim() } : {}),
         priority,

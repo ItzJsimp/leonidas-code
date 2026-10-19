@@ -22,6 +22,63 @@ const Html = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(512_0
 const PAGE_RULES =
   'Write one self-contained document with inline <style> and <script>. Local images written as absolute file paths (src="/abs/shot.png", CSS url(/abs/bg.webp), or a JS string) are inlined automatically; remote http(s) URLs, such as a CDN chart library, load as-is.';
 
+const CanvasText = Schema.String.check(Schema.isMaxLength(2000));
+const CanvasCell = Schema.String.check(Schema.isMaxLength(80));
+export const CanvasTool = Tool.make("canvas", {
+  description:
+    "Build an offline Leonidas canvas from structured sections: accessible pill tabs, KPI cards, an SVG flow, and tables. First read leonidas-canvas/SKILL.md. This returns HTML, not a published page. Check the HTML with html_preview at wide and narrow widths, then publish it with html_render before replying.",
+  parameters: Schema.Struct({
+    skillLoaded: Schema.Literal(true).annotate({
+      description: "Confirm you actually read leonidas-canvas/SKILL.md this session.",
+    }),
+    title: Schema.String.check(
+      Schema.isMinLength(1),
+      Schema.isMaxLength(HTML_RENDER_MAX_TITLE_LENGTH),
+    ),
+    sections: Schema.Array(
+      Schema.Struct({
+        title: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
+        summary: CanvasText,
+        metrics: Schema.optional(
+          Schema.Array(Schema.Struct({ label: CanvasCell, value: CanvasCell })).check(
+            Schema.isMaxLength(4),
+          ),
+        ),
+        flow: Schema.optional(
+          Schema.Array(Schema.String.check(Schema.isMaxLength(40))).check(Schema.isMaxLength(8)),
+        ),
+        columns: Schema.optional(Schema.Array(CanvasCell).check(Schema.isMaxLength(6))),
+        rows: Schema.optional(
+          Schema.Array(Schema.Array(CanvasCell).check(Schema.isMaxLength(6))).check(
+            Schema.isMaxLength(20),
+          ),
+        ),
+      }).check(
+        Schema.makeFilter(
+          (section) =>
+            !section.rows?.length ||
+            Boolean(
+              section.columns?.length &&
+              section.rows.every((row) => row.length === section.columns!.length),
+            ) ||
+            "Table rows must match the columns.",
+        ),
+      ),
+    ).check(Schema.isMinLength(1), Schema.isMaxLength(6)),
+  }),
+  success: Schema.Struct({ html: Schema.String, title: Schema.String }),
+  failure: OrchestratorMcpFailure,
+  dependencies: [
+    McpInvocationContext.McpInvocationContext,
+    ThreadManagementService.ThreadManagementService,
+  ],
+})
+  .annotate(Tool.Title, "Build canvas")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
 export const HtmlPreviewTool = Tool.make("html_preview", {
   description: `Render an HTML page in T3's headless browser and get back a PNG screenshot, contentHeight (the height the page needs at this width), and its console output: log, info, warning, error, and uncaught exceptions, with stack traces pointing into page.html. console.log is a fine way to report your own checks. Use it to check and iterate on a page before html_render. The first preview on a machine can report that T3 is still installing its preview browser; call again a minute later. ${PAGE_RULES} The page gets the theme variables and layout described in html_render.`,
   parameters: Schema.Struct({
@@ -108,6 +165,6 @@ const HtmlRenderTool = Tool.make(HTML_RENDER_TOOL_NAME, {
 
 export const HtmlPreviewToolkit = Toolkit.make(HtmlPreviewTool);
 
-export const HtmlRenderToolkit = Toolkit.make(HtmlRenderTool);
+export const HtmlRenderToolkit = Toolkit.make(HtmlRenderTool, CanvasTool);
 
-export const HtmlToolkit = Toolkit.make(HtmlPreviewTool, HtmlRenderTool);
+export const HtmlToolkit = Toolkit.make(HtmlPreviewTool, HtmlRenderTool, CanvasTool);

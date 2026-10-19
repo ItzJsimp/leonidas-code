@@ -57,6 +57,7 @@ import {
 import { newProjectId, randomUUID } from "../../lib/utils";
 import { agentSessionImport } from "../../state/agentSessions";
 import { readProjects, useProjects } from "../../state/entities";
+import { environmentCatalog } from "../../connection/catalog";
 import { useEnvironments, usePrimaryEnvironment } from "../../state/environments";
 import {
   isOnboardingRelayEnvironment,
@@ -85,9 +86,11 @@ import { presentSavedCloudEnvironmentConnection } from "../cloud/cloudEnvironmen
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
+import { ClaudeInstallPill } from "./ClaudeInstallPill";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
 import { ApiKeysStep } from "./ApiKeysStep";
+import { LeonidasLayaStep } from "./LeonidasLayaStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
 import { ImportCandidateList } from "./ImportCandidateList";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -120,6 +123,7 @@ type WizardStep =
   | "voice"
   | "level"
   | "skills"
+  | "laya"
   | "keys"
   | "import"
   | "aios";
@@ -130,6 +134,7 @@ const STEP_ORDER: readonly WizardStep[] = [
   "voice",
   "level",
   "skills",
+  "laya",
   "keys",
   "import",
   "aios",
@@ -165,6 +170,7 @@ const ONBOARDING_STAGES = [
   "Voice",
   "Level",
   "Skills",
+  "Safety",
   "Keys",
   "Projects",
   "AIOS",
@@ -193,6 +199,17 @@ export function WelcomeWizard({
   const finishingPromiseRef = useRef<Promise<boolean> | null>(null);
   const completionErrorToastIdRef = useRef<ReturnType<typeof toastManager.add> | null>(null);
   const primaryEnvironment = usePrimaryEnvironment();
+  const setEnvironmentEnabled = useAtomCommand(environmentCatalog.setEnabled, {
+    reportFailure: false,
+  });
+  // A new user who finds "This computer" switched off cannot chat or add an AI. Switch
+  // it on once, before the steps need it.
+  const turnedOnPrimary = useRef(false);
+  useEffect(() => {
+    if (!primaryEnvironment || primaryEnvironment.entry.enabled || turnedOnPrimary.current) return;
+    turnedOnPrimary.current = true;
+    void setEnvironmentEnabled({ environmentId: primaryEnvironment.environmentId, enabled: true });
+  }, [primaryEnvironment, setEnvironmentEnabled]);
   useEffect(() => {
     const newComputers = environments.filter(
       (environment) => !autoSelectedComputers.current.has(environment.environmentId),
@@ -357,6 +374,9 @@ export function WelcomeWizard({
             }}
           />
         </WizardHeader>
+        {step !== "agents" && setupIds[0] ? (
+          <ClaudeInstallPill environmentId={setupIds[0]} onOpenAgents={() => setStep("agents")} />
+        ) : null}
 
         <WizardPanel holdHeight={isLoadingProjects} stableHeight>
           {step === "welcome" ? (
@@ -406,6 +426,12 @@ export function WelcomeWizard({
             />
           ) : step === "skills" ? (
             <LeonidasSkillsStep
+              environmentId={setupIds[0]}
+              onBack={goBack}
+              onContinue={() => setStep("laya")}
+            />
+          ) : step === "laya" ? (
+            <LeonidasLayaStep
               environmentId={setupIds[0]}
               onBack={goBack}
               onContinue={() => setStep("keys")}

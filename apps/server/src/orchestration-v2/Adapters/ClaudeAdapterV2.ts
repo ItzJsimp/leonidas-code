@@ -107,7 +107,11 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
-import { resolveClaudeSdkExecutablePath } from "../../provider/Drivers/ClaudeExecutable.ts";
+import {
+  resolveClaudeSdkExecutablePath,
+  resolveInstalledClaudeBinary,
+  withInstalledClaudeOnPath,
+} from "../../provider/Drivers/ClaudeExecutable.ts";
 import { expandSkills, mayMentionSkill } from "@t3tools/shared/skillExpansion";
 import { discoverClaudeSkills } from "../../provider/Drivers/ClaudeSkills.ts";
 import { compileClaudeModelSelection } from "../../claudeModelOptions.ts";
@@ -1081,9 +1085,11 @@ export function makeClaudeQueryOptions(input: {
       ? {}
       : { supportedDialogKinds: input.supportedDialogKinds }),
     ...(input.settings?.binaryPath
-      ? { pathToClaudeCodeExecutable: input.settings.binaryPath }
+      ? { pathToClaudeCodeExecutable: resolveInstalledClaudeBinary(input.settings.binaryPath) }
       : {}),
-    ...(input.environment === undefined ? {} : { env: input.environment }),
+    ...(input.environment === undefined
+      ? {}
+      : { env: withInstalledClaudeOnPath(input.environment) }),
     ...(input.mcpServers === undefined ? {} : { mcpServers: input.mcpServers }),
     ...(input.persona === undefined
       ? {
@@ -1112,6 +1118,10 @@ export const CLAUDE_T3_MCP_TOOL_WILDCARD = "mcp__t3-code__*";
 // Must stay in sync with the Tool.Readonly annotations on OrchestratorToolkit;
 // ClaudeAdapterV2.test.ts cross-checks this list against the toolkit.
 export const CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
+  "mcp__t3-code__focus_list",
+  "mcp__t3-code__model_benchmarks",
+  "mcp__t3-code__saved_item_get",
+  "mcp__t3-code__saved_item_list",
   "mcp__t3-code__orchestrator_capabilities",
   "mcp__t3-code__list_scheduled_tasks",
   "mcp__t3-code__board_task_list",

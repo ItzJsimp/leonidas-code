@@ -12,6 +12,8 @@ import {
   inlineCodeFilePathCandidate,
 } from "@t3tools/shared/markdownLinks";
 import { isAbsolutePath } from "@t3tools/shared/path";
+import { answerBlockType } from "@t3tools/shared/answerBlocks";
+import { AnswerBlockView } from "./chat/answerBlocks/AnswerBlockView";
 import { usePullRequestLinking } from "~/hooks/usePullRequestLinking";
 import { AuthFilesystemReadScope, AuthOrchestrationOperateScope } from "@t3tools/contracts";
 import {
@@ -3344,6 +3346,17 @@ const CHAT_MARKDOWN_COMPONENTS = {
     }
 
     const language = extractFenceLanguage(codeBlock.className);
+    const blockType = answerBlockType(language);
+    if (blockType) {
+      return (
+        <AnswerBlockView
+          type={blockType}
+          code={codeBlock.code}
+          closed={!isStreaming || isClosedCodeFence(node, text)}
+          fallback={<pre {...props}>{children}</pre>}
+        />
+      );
+    }
     const fenceTitle = extractFenceTitle(extractPreCodeMeta(node));
     const highlightedCode = (
       <RenderErrorBoundary

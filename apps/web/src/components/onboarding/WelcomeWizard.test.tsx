@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   projects: [] as Array<{ id: string; environmentId: string; workspaceRoot: string }>,
 }));
+vi.mock("./ClaudeInstallPill", () => ({ ClaudeInstallPill: () => null }));
 vi.mock("./AiLevelStep", () => ({
   AiLevelStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>
@@ -116,6 +117,14 @@ vi.mock("./ApiKeysStep", async () => {
     },
   };
 });
+vi.mock("./LeonidasLayaStep", () => ({
+  LeonidasLayaStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button type="button" onClick={onContinue}>
+      Skip Laya
+    </button>
+  ),
+}));
+
 vi.mock("./LeonidasSkillsStep", () => ({
   LeonidasSkillsStep: ({ onContinue }: { onContinue: () => void }) => (
     <button type="button" onClick={onContinue}>
@@ -192,6 +201,7 @@ it("enters the workspace after a partial import and warns after navigation finis
   await click("Set up voice later");
   await click("Save AI level");
   await click("Skip skills");
+  await click("Skip Laya");
   await click("Import 1 project");
   await click("Skip for now");
   expect(onDone).toHaveBeenCalledWith({
@@ -231,6 +241,7 @@ it.each([
     await click("Set up voice later");
     await click("Save AI level");
     await click("Skip skills");
+    await click("Skip Laya");
     await click("Import 1 project");
     await click("Skip for now");
     expect(onDone).toHaveBeenCalledOnce();
@@ -258,6 +269,7 @@ it("keeps setup open when saving completion fails and preserves the import warni
   await click("Set up voice later");
   await click("Save AI level");
   await click("Skip skills");
+  await click("Skip Laya");
   await click("Import 1 project");
   await click("Skip for now");
   expect(onDone).not.toHaveBeenCalled();

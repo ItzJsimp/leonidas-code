@@ -1,0 +1,45 @@
+name: Scribe engine
+
+# Tests the Rust dictation engine and fails the build when a budget from
+# ADR-0074 is missed: hotkey to recording 50 ms, idle RAM 30 MB, cold start 2 s.
+# Hosted runners have no microphone, so the bench uses --null-audio: it times the
+# hook-to-capture path, not the device open. Real-mic numbers live on the task card.
+
+on:
+  pull_request:
+    paths:
+      - "services/scribe-engine/**"
+      - ".github/workflows/scribe-engine.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "services/scribe-engine/**"
+      - ".github/workflows/scribe-engine.yml"
+
+permissions:
+  contents: read
+
+env:
+  # whisper-rs builds whisper.cpp with CMake and needs libclang; both ship on windows-latest.
+  LIBCLANG_PATH: C:/Program Files/LLVM/bin
+
+jobs:
+  test-and-budgets:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: services/scribe-engine
+    steps:
+      - uses: actions/checkout@v6
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test
+      - name: Release build
+        run: cargo build --release
+      - name: Budgets
+        run: ./target/release/scribe-bench.exe --null-audio
