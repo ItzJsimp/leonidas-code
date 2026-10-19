@@ -98,7 +98,7 @@ function DictateCard({ environmentId, live }: ScribeTabProps) {
         </div>
       ) : null}
       <p aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
-        {live.state === "listening" ? live.partial : ""}
+        {live.state === "listening" ? live.partial : live.lastTranscript}
       </p>
     </section>
   );

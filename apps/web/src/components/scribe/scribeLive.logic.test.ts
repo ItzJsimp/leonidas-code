@@ -37,6 +37,25 @@ describe("reduceScribeLive", () => {
     expect(snapshot.saved.map((saved) => saved.id)).toEqual(["a"]);
   });
 
+  it("keeps the last transcript text until the next dictation starts", () => {
+    const done = fold([
+      { type: "state", state: "processing", at: "t" },
+      {
+        type: "transcript",
+        text: "Hello there.",
+        durationMs: 760,
+        pasted: false,
+        engine: "groq",
+        at: "t",
+      },
+      { type: "state", state: "ready", at: "t" },
+    ]);
+    expect(done.lastTranscript).toBe("Hello there.");
+    expect(
+      reduceScribeLive(done, { type: "state", state: "listening", at: "t" }).lastTranscript,
+    ).toBe("");
+  });
+
   it("clears state when the link drops", () => {
     const snapshot = fold([
       { type: "connection", connected: true, at: "t" },

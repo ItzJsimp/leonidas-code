@@ -11,6 +11,8 @@ export interface ScribeLiveSnapshot {
   readonly connected: boolean | null;
   readonly state: ScribeEngineState | null;
   readonly partial: string;
+  /** Text of the last finished dictation; cleared when the next one starts. */
+  readonly lastTranscript: string;
   /** Dictations saved since the page opened, newest first. */
   readonly saved: readonly ScribeHistoryItem[];
   readonly lastError: {
@@ -27,6 +29,7 @@ export const INITIAL_SCRIBE_LIVE: ScribeLiveSnapshot = {
   connected: null,
   state: null,
   partial: "",
+  lastTranscript: "",
   saved: [],
   lastError: null,
   process: null,
@@ -46,6 +49,7 @@ export function reduceScribeLive(
         ...snapshot,
         state: event.state,
         partial: event.state === "listening" ? snapshot.partial : "",
+        lastTranscript: event.state === "listening" ? "" : snapshot.lastTranscript,
         lastError: event.state === "mic_error" ? snapshot.lastError : null,
       };
     case "partial":
@@ -63,7 +67,7 @@ export function reduceScribeLive(
     case "process":
       return { ...snapshot, process: event.process };
     case "transcript":
-      return snapshot;
+      return { ...snapshot, lastTranscript: event.text };
   }
 }
 
