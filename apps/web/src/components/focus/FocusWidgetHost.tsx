@@ -1,5 +1,5 @@
 import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 import { useFocusWidgetStore } from "./focusWidgetStore";
 
@@ -12,6 +12,10 @@ export function FocusWidgetHost(props: {
   projectId: ProjectId | null;
 }) {
   const visible = useFocusWidgetStore((state) => state.visible);
+  const registerHost = useFocusWidgetStore((state) => state.registerHost);
+  // Tells quick capture that the notepad can open here; without a host it falls back to the dialog.
+  const canHost = props.environmentId !== null;
+  useEffect(() => (canHost ? registerHost() : undefined), [canHost, registerHost]);
   if (!visible || props.environmentId === null) return null;
   return (
     <Suspense fallback={null}>

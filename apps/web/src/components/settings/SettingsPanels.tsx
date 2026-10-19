@@ -73,6 +73,7 @@ import * as Schema from "effect/Schema";
 import { APP_VERSION_LABEL, HOSTED_APP_CHANNEL, HOSTED_APP_CHANNEL_LABEL } from "../../branding";
 import { IS_NIGHTLY_BUILD, NightlyMobileBetaRow } from "../NightlyMobileBeta";
 import { CliCommandSettingsRow } from "./CliCommandSettingsRow";
+import { VoiceSettingsRow } from "./VoiceSettingsRow";
 import {
   canCheckForUpdate,
   getDesktopUpdateButtonTooltip,
@@ -2900,6 +2901,7 @@ export function GeneralSettingsPanel() {
 
       <SettingsSection id="behavior" title="AI">
         <ReasoningEffortSettings />
+        <VoiceSettingsRow />
         <SettingsRow
           {...searchableSetting("send-shortcut")}
           description="Choose when Enter sends a message or adds a new line"

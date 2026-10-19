@@ -136,9 +136,7 @@ import {
   usePromptStashStore,
   type PromptStashEntry,
 } from "../../promptStashStore";
-import { openCapture } from "../capture/captureStore";
-import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
-import { ComposerNextActionBadge } from "./ComposerNextActionBadge";
+import { ComposerNotepadButton } from "./ComposerNotepadButton";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
 import { ComposerSubagentsButton } from "../subagents/ComposerSubagentsButton";
 import { useComposerSubagents } from "../subagents/useComposerSubagents";
@@ -7259,15 +7257,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     onToggleMenu={toggleStashMenu}
                   />
                 ),
-                capture: (
-                  <ComposerCaptureBadge
-                    alignRight={false}
-                    shortcutLabel={shortcutLabelForCommand(keybindings, "capture.open", {
-                      context: { terminalFocus: false, terminalOpen, modelPickerOpen: false },
-                    })}
-                    onOpen={() => openCapture({ source: "composer" })}
-                  />
-                ),
                 skills:
                   selectedProviderSkills.length > 0 ? (
                     <ComposerSkillsButton
@@ -7287,19 +7276,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       onDetach={detachSubagent}
                     />
                   ) : null,
-                nextAction: (
-                  <ComposerNextActionBadge
-                    alignRight={false}
-                    environmentId={environmentId}
-                    activeProjectId={savedItemsProjectId}
-                    cwd={gitCwd}
-                    canFill={prompt.trim().length === 0}
-                    onFill={(nextPrompt) => {
-                      setPrompt(nextPrompt);
-                      requestAnimationFrame(focusComposer);
-                    }}
-                  />
-                ),
+                nextAction: <ComposerNotepadButton alignRight={false} />,
               }}
             />
           ) : null}

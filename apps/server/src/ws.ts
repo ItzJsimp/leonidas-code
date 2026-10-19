@@ -2920,6 +2920,10 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.focusUpdate(input, projects)),
           ),
+        [WS_METHODS.focusAttachment]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.focusAttachment(input, projects)),
+          ),
         [WS_METHODS.devPreviewStatus]: (input) =>
           withDevPreviewProject(input.projectId, devPreview.status),
         [WS_METHODS.devPreviewStart]: (input) =>

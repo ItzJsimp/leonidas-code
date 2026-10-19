@@ -1,7 +1,16 @@
 import { ProjectId, type FocusSnapshot } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { clampToViewport, nudge, progressOf, settleDrag, visibleRows } from "./focusWidget.logic";
+import {
+  clampToViewport,
+  joinNoteText,
+  nudge,
+  progressOf,
+  resizeTo,
+  settleDrag,
+  splitNoteText,
+  visibleRows,
+} from "./focusWidget.logic";
 
 const widget = { width: 300, height: 200 };
 const viewport = { width: 1000, height: 800 };
@@ -19,11 +28,25 @@ describe("focus widget drag", () => {
     });
   });
 
+  it("keeps a floating widget left of a side panel by clamping to the chat column", () => {
+    const column = { left: 0, top: 40, width: 600, height: 700 };
+    expect(clampToViewport({ x: 900, y: 10 }, widget, column)).toEqual({ x: 292, y: 48 });
+    const offset = { left: 200, top: 0, width: 400, height: 700 };
+    expect(clampToViewport({ x: 0, y: 0 }, widget, offset)).toEqual({ x: 208, y: 8 });
+  });
+
   it("snaps home near the dock and floats elsewhere", () => {
     const dock = { x: 680, y: 16 };
     expect(settleDrag({ x: 690, y: 20 }, dock, widget, viewport)).toBeNull();
     expect(settleDrag({ x: 400, y: 300 }, dock, widget, viewport)).toEqual({ x: 400, y: 300 });
     expect(settleDrag({ x: 400, y: 300 }, null, widget, viewport)).toEqual({ x: 400, y: 300 });
+  });
+
+  it("limits a resize to the minimum and to the chat column", () => {
+    const column = { width: 700, height: 500 };
+    expect(resizeTo({ width: 100, height: 50 }, column)).toEqual({ width: 260, height: 180 });
+    expect(resizeTo({ width: 900, height: 900 }, column)).toEqual({ width: 684, height: 484 });
+    expect(resizeTo({ width: 400, height: 300 }, column)).toEqual({ width: 400, height: 300 });
   });
 
   it("moves with arrow keys only", () => {
@@ -56,7 +79,54 @@ describe("focus rows", () => {
     expect(visibleRows(null, "all", null)).toEqual([]);
   });
 
+  it("lists pinned rows first and keeps file order inside each group", () => {
+    const pinnedSnapshot = {
+      path: "/x",
+      member: "jake",
+      sections: [
+        {
+          slug: null,
+          projectId: null,
+          items: [
+            { id: "a", text: "A", done: false },
+            { id: "b", text: "B", done: false, pinned: true },
+            { id: "c", text: "C", done: false },
+            { id: "d", text: "D", done: false, pinned: true },
+          ],
+        },
+      ],
+    };
+    expect(visibleRows(pinnedSnapshot, "all", null).map((row) => row.id)).toEqual([
+      "b",
+      "d",
+      "a",
+      "c",
+    ]);
+  });
+
   it("counts progress", () => {
     expect(progressOf(visibleRows(snapshot, "all", null))).toEqual({ done: 1, total: 3 });
+  });
+});
+
+describe("note attachments", () => {
+  const text =
+    "Call the bank\nabout the loan\n![shot.png](focus-files/ab12cd34-shot.png)\n[plan.pdf](focus-files/ef56ab78-plan.pdf)";
+
+  it("splits a note into words and attached files", () => {
+    const { body, attachments } = splitNoteText(text);
+    expect(body).toBe("Call the bank\nabout the loan");
+    expect(attachments.map((a) => [a.name, a.image, a.path])).toEqual([
+      ["shot.png", true, "focus-files/ab12cd34-shot.png"],
+      ["plan.pdf", false, "focus-files/ef56ab78-plan.pdf"],
+    ]);
+  });
+
+  it("writes the same note back, and leaves ordinary links alone", () => {
+    const { body, attachments } = splitNoteText(text);
+    expect(joinNoteText(body, attachments)).toBe(text);
+    const plain = "See [docs](https://example.com) and [x](notes/y.md)";
+    expect(splitNoteText(plain)).toEqual({ body: plain, attachments: [] });
+    expect(joinNoteText("  ", [])).toBe("");
   });
 });

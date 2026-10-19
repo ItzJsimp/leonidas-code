@@ -31,6 +31,8 @@ import {
   TaskBoardReleaseInput,
   TaskBoardCompleteInput,
   TaskBoardCompletions,
+  FocusAttachment,
+  FocusAttachmentInput,
   FocusSnapshot,
   AiosUsageShape,
   FocusSubscribeInput,
@@ -572,6 +574,7 @@ export const WS_METHODS = {
   layaUsage: "laya.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
+  focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
   hardwareGetHistory: "hardware.getHistory",
   hardwareGetLimits: "hardware.getLimits",
@@ -1813,6 +1816,12 @@ const WsFocusUpdateRpc = Rpc.make(WS_METHODS.focusUpdate, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+const WsFocusAttachmentRpc = Rpc.make(WS_METHODS.focusAttachment, {
+  payload: FocusAttachmentInput,
+  success: FocusAttachment,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const HardwareRpcError = Schema.Union([HardwareWatchError, EnvironmentAuthorizationError]);
 
 const WsHardwareGetInventoryRpc = Rpc.make(WS_METHODS.hardwareGetInventory, {
@@ -2853,6 +2862,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubagentsCreateRpc,
   WsFocusSubscribeRpc,
   WsFocusUpdateRpc,
+  WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,

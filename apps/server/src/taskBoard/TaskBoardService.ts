@@ -11,6 +11,8 @@ import {
   type TaskBoardCompleteInput,
   type TaskBoardCompletion,
   type TaskBoardCompletions,
+  type FocusAttachment,
+  type FocusAttachmentInput,
   type FocusSnapshot,
   type FocusUpdateInput,
   type TaskBoardCreateInput,
@@ -62,10 +64,12 @@ import {
   addFocusItem,
   changeFocusItem,
   focusPathFor,
+  moveFocusItem,
   readFocusFile,
   sectionItems,
   writeFocusFile,
 } from "./focusFile.ts";
+import { memoryDirOf, readFocusAttachment, storeFocusFiles } from "./focusAttachments.ts";
 import { linkDropToTask, removeDrop, writeDrop } from "./inbox.ts";
 import { triageDrop } from "./triage.ts";
 import * as ProcessRunner from "../processRunner.ts";
@@ -605,6 +609,11 @@ export class TaskBoardService extends Context.Service<
       input: FocusUpdateInput,
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<FocusSnapshot, TaskBoardOperationError>;
+    /** One file attached to a note, read from `<AIOS>/memory/focus-files/`. */
+    readonly focusAttachment: (
+      input: FocusAttachmentInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<FocusAttachment, TaskBoardOperationError>;
     /** Ticks once on subscribe, then after each focus change made through this server. */
     readonly focusChanges: Stream.Stream<number>;
   }
@@ -1822,12 +1831,37 @@ const make = Effect.gen(function* () {
             const project = input.projectId
               ? scopedProjects.find((candidate) => candidate.id === input.projectId)
               : undefined;
-            next = addFocusItem(doc, project ? aiosSlugFor(project) : null, input.text);
+            const lines = storeFocusFiles(memoryDirOf(path), input.files ?? []);
+            next = addFocusItem(
+              doc,
+              project ? aiosSlugFor(project) : null,
+              [input.text, ...lines].join("\n"),
+              {
+                ...(input.done === undefined ? {} : { done: input.done }),
+                ...(input.pinned === undefined ? {} : { pinned: input.pinned }),
+              },
+            );
+          } else if (input.op === "attach") {
+            const current = doc.sections
+              .flatMap((section) => sectionItems(section))
+              .find((item) => item.id === input.id);
+            const lines = storeFocusFiles(memoryDirOf(path), input.files);
+            next = current
+              ? changeFocusItem(doc, input.id, { text: [current.text, ...lines].join("\n") })
+              : null;
+          } else if (input.op === "move") {
+            next = moveFocusItem(doc, input.id, input.direction);
           } else {
             next = changeFocusItem(
               doc,
               input.id,
-              input.op === "remove" ? null : { done: input.done },
+              input.op === "remove"
+                ? null
+                : input.op === "edit"
+                  ? { text: input.text }
+                  : input.op === "pin"
+                    ? { pinned: input.pinned }
+                    : { done: input.done },
             );
           }
           if (next === null) {
@@ -1843,6 +1877,16 @@ const make = Effect.gen(function* () {
       });
       yield* SubscriptionRef.update(focusRevision, (n) => n + 1);
       return snapshot;
+    });
+
+  const focusAttachment = (input: FocusAttachmentInput, projects: ReadonlyArray<Project>) =>
+    Effect.gen(function* () {
+      const path = focusPath(projects, input);
+      if (path === null) return yield* storageError("No folder is available for the focus list.");
+      return yield* Effect.try({
+        try: () => readFocusAttachment(memoryDirOf(path), input.path),
+        catch: cardWriteFailure,
+      });
     });
 
   const share = (projectInput: Project, input: TaskBoardShareInput) =>
@@ -2023,6 +2067,7 @@ const make = Effect.gen(function* () {
     completions: SubscriptionRef.changes(recentCompletions),
     focus,
     focusUpdate,
+    focusAttachment,
     focusChanges: SubscriptionRef.changes(focusRevision),
   });
 });

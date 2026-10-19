@@ -345,6 +345,52 @@ it.effect("reveals a file in File Explorer through PowerShell on Windows", () =>
 );
 
 // Real-chain smoke check for the Explorer selection contract: runs the exact
+// Explorer's /select opens Documents or Desktop for a missing file or a
+// `:line` suffix, so the reveal must select the real file or open the nearest
+// existing folder. Needs real Windows paths on disk.
+it.effect.skipIf(!windowsHost)(
+  "reveals the real file for a line suffix and the nearest folder for a missing file",
+  () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const root = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-reveal-existing-" });
+      const docs = path.join(root, "docs folder");
+      yield* fileSystem.makeDirectory(docs, { recursive: true });
+      yield* fileSystem.writeFileString(path.join(docs, "a.md"), "");
+      yield* fileSystem.writeFileString(path.join(root, "explorer.CMD"), "@echo off\r\n");
+      const systemRoot = path.join(root, "system-root");
+      const powerShellPath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
+      yield* fileSystem.makeDirectory(path.dirname(powerShellPath), { recursive: true });
+      yield* fileSystem.writeFileString(powerShellPath, "");
+
+      const reveal = (cwd: string) => {
+        let spawned: ChildProcess.StandardCommand | undefined;
+        return Effect.gen(function* () {
+          const launcher = yield* ExternalLauncher.ExternalLauncher;
+          yield* launcher.launchEditor({ editor: "file-manager", cwd, reveal: true });
+          return Buffer.from(spawned?.args.at(-1) ?? "", "base64").toString("utf16le");
+        }).pipe(
+          Effect.provide(
+            layerTest({
+              platform: "win32",
+              env: { PATH: root, PATHEXT: ".COM;.EXE;.BAT;.CMD", SYSTEMROOT: systemRoot },
+              onSpawn: (command) => {
+                spawned = command;
+              },
+            }),
+          ),
+        );
+      };
+
+      const withLine = yield* reveal(`${path.join(docs, "a.md")}:12`);
+      assert.include(withLine, `/select,"' + '${path.join(docs, "a.md")}'`);
+      const missing = yield* reveal(path.join(docs, "gone", "missing.md"));
+      assert.notInclude(missing, "/select");
+      assert.include(missing, `'${docs}'`);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+);
+
 // PowerShell source the reveal launch encodes, against a stub that records
 // the raw argument tail it receives, and asserts a spaced path arrives as the
 // single `/select,"<path>"` switch. Mock argv assertions cannot prove this —

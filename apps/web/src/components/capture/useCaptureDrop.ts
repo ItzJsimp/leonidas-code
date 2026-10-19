@@ -17,12 +17,9 @@ export type CaptureDropResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly error: string | null };
 
-/** A notepad line is one line: fold line breaks to spaces and cap the length. */
+/** A note can have several lines; trim it and cap the length. */
 function toNotepadLine(text: string): string {
-  return text
-    .replace(/\s*\n\s*/g, " ")
-    .trim()
-    .slice(0, FOCUS_ITEM_MAX_LENGTH);
+  return text.trim().slice(0, FOCUS_ITEM_MAX_LENGTH);
 }
 
 /**

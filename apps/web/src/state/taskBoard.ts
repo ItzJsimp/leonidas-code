@@ -140,6 +140,12 @@ export const focusUpdate = createEnvironmentRpcCommand(connectionAtomRuntime, {
   tag: WS_METHODS.focusUpdate,
 });
 
+/** One file attached to a note, read on demand. */
+export const focusAttachmentRead = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:focus:attachment",
+  tag: WS_METHODS.focusAttachment,
+});
+
 export const aiosDirectionQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:task-board:aios-direction",
   tag: WS_METHODS.aiosDirection,

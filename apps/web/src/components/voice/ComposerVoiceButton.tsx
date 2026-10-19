@@ -1,7 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
 import { executeAtomQuery, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentId } from "@t3tools/contracts";
-import { MicIcon, SquareIcon, Settings2Icon } from "lucide-react";
+import { MicIcon, SquareIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { serverEnvironment } from "../../state/server";
@@ -140,16 +140,6 @@ export function ComposerVoiceButton({
           ) : (
             <MicIcon aria-hidden className="size-4" />
           )}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          aria-label="Voice setup"
-          disabled={state !== "idle"}
-          onClick={() => setSetup(true)}
-        >
-          <Settings2Icon aria-hidden className="size-3" />
         </Button>
         {state !== "idle" && (
           <span role="status" className="text-xs text-muted-foreground">

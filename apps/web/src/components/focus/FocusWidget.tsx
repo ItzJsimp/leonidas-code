@@ -2,11 +2,28 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId, FocusUpdateInput, ProjectId } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  FocusFileInput,
+  FocusUpdateInput,
+  ProjectId,
+} from "@t3tools/contracts";
 import { FOCUS_ITEM_MAX_LENGTH } from "@t3tools/contracts";
-import { GripVerticalIcon, HouseIcon, ListPlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  GripVerticalIcon,
+  HouseIcon,
+  ListPlusIcon,
+  PaperclipIcon,
+  PencilIcon,
+  PinIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -20,22 +37,31 @@ import {
 import { useEnvironmentQuery } from "~/state/query";
 import { focusLive, focusUpdate, taskBoardCardCreate } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
+import { observeResize } from "../../lib/observeResize";
 import { failureText } from "../taskBoard/useTaskActions.logic";
 import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
-import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { toastManager } from "../ui/toast";
+import { filesOfTransfer, NoteAttachments, PendingFiles, readFocusFiles } from "./FocusAttachments";
 import { Spinner } from "../ui/spinner";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
+  type Bounds,
   clampToViewport,
+  FOCUS_DEFAULT_WIDTH,
+  joinNoteText,
   nudge,
+  resizeTo,
+  splitNoteText,
   progressOf,
   settleDrag,
   visibleRows,
   type FocusRow,
   type Point,
+  type Size,
 } from "./focusWidget.logic";
 import { useFocusWidgetStore } from "./focusWidgetStore";
 
@@ -48,7 +74,13 @@ function Tip(props: { label: string; children: ReactElement }) {
   );
 }
 
-const viewportSize = () => ({ width: window.innerWidth, height: window.innerHeight });
+/** The chat column that holds the widget; the side panel sits outside it, so the widget never covers the panel. */
+const boundsOf = (node: HTMLElement | null): Bounds => {
+  const box = node?.parentElement?.getBoundingClientRect();
+  return box
+    ? { left: box.left, top: box.top, width: box.width, height: box.height }
+    : { width: window.innerWidth, height: window.innerHeight };
+};
 
 /**
  * Floating notepad of what the user has on their mind, read from `<AIOS>/memory/focus.md`.
@@ -58,7 +90,17 @@ export default function FocusWidget(props: {
   environmentId: EnvironmentId;
   projectId: ProjectId | null;
 }) {
-  const { position, scope, setPosition, setScope, setVisible } = useFocusWidgetStore();
+  const {
+    capture,
+    clearCapture,
+    position,
+    scope,
+    size,
+    setPosition,
+    setScope,
+    setSize,
+    setVisible,
+  } = useFocusWidgetStore();
   // The focus list and new cards belong to the workspace this window shows (ADR-0080).
   const workspace = useActiveAiosWorkspace();
   const query = useEnvironmentQuery(
@@ -76,6 +118,16 @@ export default function FocusWidget(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<FocusFileInput[]>([]);
+  const addRef = useRef<HTMLTextAreaElement | null>(null);
+  const addFileInputRef = useRef<HTMLInputElement | null>(null);
+  const rowFileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachTargetRef = useRef<string | null>(null);
+  const hideAfterAddRef = useRef(false);
+  const [removed, setRemoved] = useState<{ row: FocusRow; projectId: ProjectId | null } | null>(
+    null,
+  );
 
   const snapshot = query.data;
   const rows = visibleRows(snapshot, scope, props.projectId);
@@ -87,13 +139,22 @@ export default function FocusWidget(props: {
     const onResize = () => {
       const node = rootRef.current;
       if (!node) return;
-      const next = clampToViewport(position, node.getBoundingClientRect(), viewportSize());
+      const next = clampToViewport(
+        position,
+        node.getBoundingClientRect(),
+        boundsOf(rootRef.current),
+      );
       if (next.x !== position.x || next.y !== position.y) setPosition(next);
     };
     onResize();
+    const parent = rootRef.current?.parentElement;
+    const stop = parent ? observeResize(parent, onResize) : () => {};
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [position, setPosition]);
+    return () => {
+      stop();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [position, setPosition, size]);
 
   const update = useCallback(
     async (input: FocusUpdateInput, failure: string) => {
@@ -109,20 +170,105 @@ export default function FocusWidget(props: {
     [props.environmentId, runUpdate, workspace.scope],
   );
 
-  const add = async (event: FormEvent) => {
-    event.preventDefault();
-    const text = draft.trim();
+  // A quick capture (hotkey, tab, palette) lands here: fill the Add box and put the cursor in it.
+  useEffect(() => {
+    if (!capture) return;
+    hideAfterAddRef.current = capture.hideAfterAdd;
+    if (capture.text)
+      setDraft((current) => (current ? `${current}\n${capture.text}` : capture.text));
+    clearCapture();
+    addRef.current?.focus();
+  }, [capture, clearCapture]);
+
+  const stagedFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    const read = await readFocusFiles(files, pendingFiles.length);
+    if (read.files.length > 0) setPendingFiles((current) => [...current, ...read.files]);
+    setError(read.error);
+  };
+
+  const attachToRow = async (rowId: string, files: File[]) => {
+    const read = await readFocusFiles(files);
+    setError(read.error);
+    if (read.files.length === 0) return;
+    const ok = await update(
+      { op: "attach", id: rowId, files: read.files },
+      "Could not attach the file.",
+    );
+    if (ok) setNotice(`Attached ${read.files.map((file) => file.name).join(", ")}`);
+  };
+
+  const add = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const text = draft.trim() || pendingFiles[0]?.name || "";
     if (!text || busy) return;
     setBusy(true);
     const ok = await update(
-      { op: "add", projectId: scope === "project" ? props.projectId : null, text },
+      {
+        op: "add",
+        projectId: scope === "project" ? props.projectId : null,
+        text,
+        ...(pendingFiles.length > 0 ? { files: pendingFiles } : {}),
+      },
       "Could not add the focus. Try again.",
     );
     setBusy(false);
     if (ok) {
       setDraft("");
+      setPendingFiles([]);
       setNotice(`Added ${text}`);
+      if (hideAfterAddRef.current) {
+        // The notepad was closed before this quick capture, so close it again and say it worked.
+        hideAfterAddRef.current = false;
+        setVisible(false);
+        const toastId = toastManager.add({
+          type: "success",
+          title: "Added to your notepad",
+          timeout: 4000,
+          actionProps: {
+            children: "Show notepad",
+            onClick: () => {
+              toastManager.close(toastId);
+              setVisible(true);
+            },
+          },
+        });
+      }
     }
+  };
+
+  const saveEdit = async (row: FocusRow) => {
+    const current = editing;
+    setEditing(null);
+    const parts = splitNoteText(row.text);
+    const text = joinNoteText(current?.text ?? "", parts.attachments);
+    if (!current || current.id !== row.id || !current.text.trim() || text === row.text) return;
+    const ok = await update({ op: "edit", id: row.id, text }, "Could not save the note.");
+    if (ok) setNotice(`Saved ${text}`);
+  };
+
+  const remove = async (row: FocusRow) => {
+    const projectId =
+      snapshot?.sections.find((section) => section.slug === row.slug)?.projectId ?? null;
+    const ok = await update({ op: "remove", id: row.id }, "Could not remove the item.");
+    if (ok) setRemoved({ row, projectId });
+  };
+
+  const undoRemove = async () => {
+    const last = removed;
+    if (!last) return;
+    setRemoved(null);
+    const ok = await update(
+      {
+        op: "add",
+        projectId: last.projectId,
+        text: last.row.text,
+        done: last.row.done,
+        pinned: last.row.pinned === true,
+      },
+      "Could not bring the note back.",
+    );
+    if (ok) setNotice(`Restored ${last.row.text}`);
   };
 
   const promote = async (row: FocusRow) => {
@@ -131,7 +277,7 @@ export default function FocusWidget(props: {
     const result = await runCreate({
       environmentId: props.environmentId,
       input: {
-        title: row.text.slice(0, 256),
+        title: splitNoteText(row.text).body.slice(0, 256) || row.text.slice(0, 256),
         projectSlug: row.slug,
         actor: snapshot.member,
         ...workspace.scope,
@@ -144,6 +290,69 @@ export default function FocusWidget(props: {
     } else if (!isAtomCommandInterrupted(result)) {
       setError(failureText(squashAtomCommandFailure(result), "Could not make a task card."));
     }
+  };
+
+  const resize = useRef<{ pointerId: number; start: Point; from: Size; right: number } | null>(
+    null,
+  );
+  const availableSize = (): Size => {
+    const bounds = boundsOf(rootRef.current);
+    return { width: bounds.width, height: bounds.height };
+  };
+  const onResizeDown = (event: PointerEvent<HTMLElement>) => {
+    if (event.button !== 0) return;
+    const box = rootRef.current?.getBoundingClientRect();
+    if (!box) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resize.current = {
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      from: { width: box.width, height: box.height },
+      right: box.right,
+    };
+  };
+  // The handle is at the bottom left: dragging left widens the notepad and dragging down makes it
+  // taller. A floating notepad keeps its right edge in place.
+  const applySize = (wanted: Size, right: number, top: number) => {
+    const next = resizeTo(wanted, availableSize());
+    setSize(next);
+    if (position !== null) setPosition({ x: right - next.width, y: top });
+  };
+  const onResizeMove = (event: PointerEvent<HTMLElement>) => {
+    const active = resize.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    applySize(
+      {
+        width: active.from.width - (event.clientX - active.start.x),
+        height: active.from.height + event.clientY - active.start.y,
+      },
+      active.right,
+      rootRef.current?.getBoundingClientRect().top ?? 0,
+    );
+  };
+  const onResizeUp = (event: PointerEvent<HTMLElement>) => {
+    if (resize.current?.pointerId === event.pointerId) resize.current = null;
+  };
+  const onResizeKey = (event: KeyboardEvent<HTMLElement>) => {
+    const box = rootRef.current?.getBoundingClientRect();
+    if (!box) return;
+    if (event.key === "Escape" || event.key === "Home") {
+      event.preventDefault();
+      setSize(null);
+      return;
+    }
+    const step = event.shiftKey ? 40 : 10;
+    const delta: Record<string, Point> = {
+      ArrowLeft: { x: step, y: 0 },
+      ArrowRight: { x: -step, y: 0 },
+      ArrowDown: { x: 0, y: step },
+      ArrowUp: { x: 0, y: -step },
+    };
+    const move = delta[event.key];
+    if (!move) return;
+    event.preventDefault();
+    applySize({ width: box.width + move.x, height: box.height + move.y }, box.right, box.top);
   };
 
   const dockPoint = (): Point | null => {
@@ -170,7 +379,7 @@ export default function FocusWidget(props: {
       clampToViewport(
         { x: event.clientX - active.offset.x, y: event.clientY - active.offset.y },
         box,
-        viewportSize(),
+        boundsOf(rootRef.current),
       ),
     );
   };
@@ -179,7 +388,8 @@ export default function FocusWidget(props: {
     if (!active || active.pointerId !== event.pointerId) return;
     drag.current = null;
     const box = rootRef.current?.getBoundingClientRect();
-    if (dragPoint && box) setPosition(settleDrag(dragPoint, dockPoint(), box, viewportSize()));
+    if (dragPoint && box)
+      setPosition(settleDrag(dragPoint, dockPoint(), box, boundsOf(rootRef.current)));
     setDragPoint(null);
   };
   const onHandleKey = (event: KeyboardEvent<HTMLElement>) => {
@@ -193,7 +403,7 @@ export default function FocusWidget(props: {
     const next = nudge(position ?? { x: box.left, y: box.top }, event.key, event.shiftKey);
     if (!next) return;
     event.preventDefault();
-    setPosition(clampToViewport(next, box, viewportSize()));
+    setPosition(clampToViewport(next, box, boundsOf(rootRef.current)));
   };
 
   const floating = dragPoint ?? position;
@@ -223,59 +433,182 @@ export default function FocusWidget(props: {
     );
   } else {
     body = (
-      <ul className="flex max-h-72 flex-col overflow-y-auto py-1" aria-label="Focus items">
-        {rows.map((row) => (
-          <li
-            key={row.id}
-            className="group flex items-start gap-2 px-3 py-1 hover:bg-accent/50 focus-within:bg-accent/50"
-          >
-            <Checkbox
-              className="mt-0.5"
-              checked={row.done}
-              aria-label={row.done ? `Clear tick: ${row.text}` : `Tick: ${row.text}`}
-              onCheckedChange={(checked) =>
-                void update(
-                  { op: "set_done", id: row.id, done: checked === true },
-                  "Could not change the item. Try again.",
-                )
-              }
-            />
-            <span
-              className={`min-w-0 flex-1 break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
+      <ul
+        className={`flex min-h-0 flex-col overflow-y-auto py-1 ${size ? "flex-1" : "max-h-72"}`}
+        aria-label="Focus items"
+      >
+        {rows.map((row) => {
+          const parts = splitNoteText(row.text);
+          const label = parts.body || row.text;
+          return (
+            <li
+              key={row.id}
+              className="group relative flex items-start gap-2 px-3 py-1 hover:bg-foreground/[0.06] focus-within:bg-foreground/[0.06]"
             >
-              {scope === "all" && row.slug !== null ? (
-                <span className="mr-1 text-muted-foreground">{row.slug}:</span>
-              ) : null}
-              <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
-                {row.text}
-              </span>
-            </span>
-            <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-              <Tip label="Make a task card from this line">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Make a task card: ${row.text}`}
-                  onClick={() => void promote(row)}
-                >
-                  <ListPlusIcon />
-                </Button>
-              </Tip>
-              <Tip label="Remove this line">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Remove: ${row.text}`}
-                  onClick={() =>
-                    void update({ op: "remove", id: row.id }, "Could not remove the item.")
+              <Checkbox
+                className="mt-0.5"
+                checked={row.done}
+                aria-label={row.done ? `Clear tick: ${label}` : `Tick: ${label}`}
+                onCheckedChange={(checked) =>
+                  void update(
+                    { op: "set_done", id: row.id, done: checked === true },
+                    "Could not change the item. Try again.",
+                  )
+                }
+              />
+              <span className="flex min-w-0 flex-1 flex-col">
+                {editing?.id === row.id ? (
+                  <Textarea
+                    size="sm"
+                    autoFocus
+                    rows={3}
+                    aria-label={`Edit note: ${label}`}
+                    maxLength={FOCUS_ITEM_MAX_LENGTH}
+                    value={editing.text}
+                    onChange={(event) => setEditing({ id: row.id, text: event.target.value })}
+                    onBlur={() => void saveEdit(row)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void saveEdit(row);
+                      } else if (event.key === "Escape") setEditing(null);
+                    }}
+                  />
+                ) : (
+                  <span
+                    className={`min-w-0 whitespace-pre-line break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
+                    onDoubleClick={() => setEditing({ id: row.id, text: parts.body })}
+                  >
+                    {scope === "all" && row.slug !== null ? (
+                      <span className="mr-1 text-muted-foreground">{row.slug}:</span>
+                    ) : null}
+                    <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
+                      {row.pinned ? (
+                        <PinIcon
+                          aria-label="Pinned"
+                          className="mr-1 inline size-3 fill-current align-[-1px] text-muted-foreground"
+                        />
+                      ) : null}
+                      {parts.body}
+                    </span>
+                  </span>
+                )}
+                <NoteAttachments
+                  environmentId={props.environmentId}
+                  attachments={parts.attachments}
+                  onRemove={(attachment) =>
+                    void update(
+                      {
+                        op: "edit",
+                        id: row.id,
+                        text: joinNoteText(
+                          parts.body || attachment.name,
+                          parts.attachments.filter((other) => other.path !== attachment.path),
+                        ),
+                      },
+                      "Could not remove the file.",
+                    )
                   }
-                >
-                  <Trash2Icon />
-                </Button>
-              </Tip>
-            </span>
-          </li>
-        ))}
+                />
+              </span>
+              {/* Buttons float over the row's top right corner, so they never squeeze the text. */}
+              <span
+                hidden={editing?.id === row.id}
+                className="absolute top-0.5 right-1.5 flex gap-0.5 rounded-md border border-border bg-popover px-0.5 opacity-0 shadow-sm group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <Tip label={row.pinned ? "Unpin this line" : "Pin this line to the top"}>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`${row.pinned ? "Unpin" : "Pin"}: ${label}`}
+                    aria-pressed={row.pinned === true}
+                    onClick={() =>
+                      void update(
+                        { op: "pin", id: row.id, pinned: row.pinned !== true },
+                        "Could not pin the item.",
+                      )
+                    }
+                  >
+                    <PinIcon className={row.pinned ? "fill-current" : undefined} />
+                  </Button>
+                </Tip>
+                <Tip label="Move up">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Move up: ${label}`}
+                    onClick={() =>
+                      void update(
+                        { op: "move", id: row.id, direction: "up" },
+                        "Could not move the item.",
+                      )
+                    }
+                  >
+                    <ArrowUpIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Move down">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Move down: ${label}`}
+                    onClick={() =>
+                      void update(
+                        { op: "move", id: row.id, direction: "down" },
+                        "Could not move the item.",
+                      )
+                    }
+                  >
+                    <ArrowDownIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Edit this line">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Edit: ${label}`}
+                    onClick={() => setEditing({ id: row.id, text: parts.body })}
+                  >
+                    <PencilIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Attach a file or image">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Attach a file: ${label}`}
+                    onClick={() => {
+                      attachTargetRef.current = row.id;
+                      rowFileInputRef.current?.click();
+                    }}
+                  >
+                    <PaperclipIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Make a task card from this line">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Make a task card: ${label}`}
+                    onClick={() => void promote(row)}
+                  >
+                    <ListPlusIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Remove this line">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Remove: ${label}`}
+                    onClick={() => void remove(row)}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </Tip>
+              </span>
+            </li>
+          );
+        })}
       </ul>
     );
   }
@@ -286,13 +619,17 @@ export default function FocusWidget(props: {
       <div
         ref={dockRef}
         aria-hidden
-        className="pointer-events-none absolute top-2 right-2 size-0"
+        className="pointer-events-none absolute top-4 right-8 size-0"
       />
       <section
         ref={rootRef}
         aria-label="Notepad"
-        className={`z-30 flex w-72 flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ${floating ? "fixed" : "absolute top-2 right-2"}`}
-        style={floating ? { left: floating.x, top: floating.y } : undefined}
+        className={`z-30 flex flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ${floating ? "fixed" : "absolute top-4 right-8"}`}
+        style={{
+          width: size?.width ?? FOCUS_DEFAULT_WIDTH,
+          ...(size ? { height: size.height } : {}),
+          ...(floating ? { left: floating.x, top: floating.y } : {}),
+        }}
       >
         <header
           className="flex cursor-grab touch-none items-center gap-1 border-b border-border py-1 pr-1 pl-1.5 select-none active:cursor-grabbing"
@@ -376,19 +713,121 @@ export default function FocusWidget(props: {
             {error}
           </p>
         ) : null}
-        <form onSubmit={(event) => void add(event)} className="border-t border-border p-2">
-          <Input
-            size="sm"
-            aria-label="Add a note"
-            placeholder="+ Add a note"
-            maxLength={FOCUS_ITEM_MAX_LENGTH}
-            value={draft}
-            disabled={busy || snapshot?.path === null}
-            onChange={(event) => setDraft(event.target.value)}
+        {removed ? (
+          <div className="flex items-center gap-2 border-t border-border px-3 py-1 text-xs">
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">Removed a note.</span>
+            <Button size="xs" variant="outline" onClick={() => void undoRemove()}>
+              Undo
+            </Button>
+          </div>
+        ) : null}
+        <input
+          ref={rowFileInputRef}
+          type="file"
+          multiple
+          hidden
+          aria-hidden
+          tabIndex={-1}
+          onChange={(event) => {
+            const target = attachTargetRef.current;
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            if (target && files.length > 0) void attachToRow(target, files);
+          }}
+        />
+        <form
+          onSubmit={(event) => void add(event)}
+          className="border-t border-border p-2"
+          onDragOver={(event) => {
+            if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            const files = filesOfTransfer(event.dataTransfer);
+            if (files.length === 0) return;
+            event.preventDefault();
+            void stagedFiles(files);
+          }}
+        >
+          <PendingFiles
+            files={pendingFiles}
+            onRemove={(index) =>
+              setPendingFiles((current) => current.filter((_, i) => i !== index))
+            }
           />
+          <div className="flex items-end gap-1">
+            <Textarea
+              ref={addRef}
+              size="sm"
+              rows={1}
+              className="[&_textarea]:max-h-32 [&_textarea]:min-h-8"
+              aria-label="Add a note"
+              placeholder="Add a note"
+              maxLength={FOCUS_ITEM_MAX_LENGTH}
+              value={draft}
+              disabled={busy || snapshot?.path === null}
+              onChange={(event) => setDraft(event.target.value)}
+              onPaste={(event) => {
+                const files = filesOfTransfer(event.clipboardData);
+                if (files.length === 0) return;
+                event.preventDefault();
+                void stagedFiles(files);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void add();
+                } else if (event.key === "Escape" && hideAfterAddRef.current) {
+                  // A quick capture that is cancelled closes the notepad it opened.
+                  hideAfterAddRef.current = false;
+                  setVisible(false);
+                }
+              }}
+            />
+            <input
+              ref={addFileInputRef}
+              type="file"
+              multiple
+              hidden
+              aria-hidden
+              tabIndex={-1}
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                void stagedFiles(files);
+              }}
+            />
+            <Tip label="Attach a file or image. You can also paste or drop one here.">
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost-muted"
+                aria-label="Attach a file or image to the new note"
+                disabled={busy || snapshot?.path === null}
+                onClick={() => addFileInputRef.current?.click()}
+              >
+                <PaperclipIcon />
+              </Button>
+            </Tip>
+          </div>
         </form>
         <span role="status" className="sr-only">
           {notice}
+        </span>
+        <span
+          role="separator"
+          tabIndex={0}
+          aria-label="Resize the notepad. Arrow keys resize it. Home or Escape resets the size."
+          className="absolute bottom-0 left-0 z-10 size-4 cursor-nesw-resize touch-none rounded-tl-sm text-muted-foreground/60 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
+          onPointerDown={onResizeDown}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeUp}
+          onPointerCancel={onResizeUp}
+          onDoubleClick={() => setSize(null)}
+          onKeyDown={onResizeKey}
+        >
+          <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+            <path d="M2 6l8 8M2 10l4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
         </span>
       </section>
     </>

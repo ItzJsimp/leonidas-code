@@ -16,6 +16,10 @@ pub struct Config {
     /// Audio never leaves the device (local model only).
     pub private_mode: bool,
     pub hud: HudConfig,
+    /// v1.2 settings the Leonidas UI owns. The engine stores them and never reads them.
+    pub presets: serde_json::Map<String, serde_json::Value>,
+    pub features: serde_json::Map<String, serde_json::Value>,
+    pub goals: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Default for Config {
@@ -28,6 +32,9 @@ impl Default for Config {
             polish: PolishConfig::default(),
             private_mode: false,
             hud: HudConfig::default(),
+            presets: Default::default(),
+            features: Default::default(),
+            goals: Default::default(),
         }
     }
 }
@@ -171,6 +178,21 @@ impl Config {
             .clone()
             .unwrap_or_else(|| config_dir.join("dictionary.json"))
     }
+}
+
+/// Write a file so a reader sees the old or the new content, never a partial one:
+/// a temp file next to it, then a rename over the old file.
+pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(".tmp");
+    let tmp = PathBuf::from(tmp);
+    std::fs::write(&tmp, bytes)?;
+    std::fs::rename(&tmp, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })
 }
 
 #[cfg(test)]

@@ -22,6 +22,7 @@ This project lives inside its builder's AI operating system at `../../`. If `../
 10. **Release notes are for users:** before committing a user-visible change or writing an update, read [leonidas-release](./.agents/skills/leonidas-release/SKILL.md) and its [writing guide](./.agents/skills/leonidas-release/references/writing-guide.md). Use final plain-language `Release-Note:` trailers. Release authors use the illustrated story template; never publish raw commit messages as patch notes.
 11. **ASD-STE100 language:** write all prose in ASD-STE100 Simplified Technical English: short active sentences (20 words or fewer in instructions), one meaning per word, no idioms. Code, paths and identifiers stay as written. Short form lives in [outputStandard.ts](./packages/provider-core/src/server/outputStandard.ts).
 12. **Constraints:** read [CONSTRAINTS.md](./CONSTRAINTS.md) before you edit. Never weaken it to make a change pass.
+13. **Code search:** use `codebase-memory-mcp` (`search_graph`) to find where a symbol is defined. Use `rg` to find who uses it: the graph returns no callers for Effect services. Run `rg` before you trust an empty graph result.
 
 ## 3. Read when the task calls for it
 

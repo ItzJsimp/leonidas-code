@@ -1,6 +1,8 @@
-# Scribe engine contract (v1.1)
+# Scribe engine contract (v1.2)
 
 v1.1 (2026-10-17, lane L1) is additive: v1 clients keep working and `apiVersion` stays `1`. New: `groqKey` and `privateMode` in status, the credentials commands, and `raw` and `engine` in the `transcript` event.
+
+v1.2 (2026-10-18, lane L1) is additive: dictation history, dictionary, settings and devices. New: `GET /v1/history`, `DELETE /v1/history/{id}`, the `history` event, `GET` and `PUT /v1/dictionary`, `GET /v1/dictionary/suggestions`, `DELETE /v1/dictionary/suggestions/{wrong}`, `GET` and `PATCH /v1/settings`, and `GET /v1/devices`. The engine saves each transcript to `history.jsonl` next to its config file.
 
 The engine is a Rust process. Leonidas Code supervises it and drives it over loopback HTTP. The contract is the only coupling ([ADR-0074](../../../../decisions/0074-leonidas-scribe-engine-moves-to-rust-and-python-leaves-the-product.md)). Any UI can drive the engine through it.
 
@@ -74,6 +76,80 @@ Reply: `204 No Content`. An empty or missing `key` is 400 `bad_request`. The eng
 
 Remove the stored key. Reply: `204 No Content`, also when no key was stored.
 
+### `GET /v1/history` (v1.2)
+
+Query: `limit` (1 or more, default 50, at most 500), `before` (an item id; the page starts after it), `mode` (`hold` or `toggle`). Reply 200, newest first:
+
+```json
+{"items":[{"id":"d1760745603000","at":"2026-10-18T00:00:03.000Z","mode":"hold","app":"","rawText":"hello world","cleanedText":"Hello world.","words":2,"metrics":{"transcribeMs":700,"polishMs":50,"totalMs":760},"pasted":true}],"next":null}
+```
+
+- `next` is the `before` value for the next page, or `null` on the last page. An unknown `before` gives an empty page.
+- `app` is the exe file name of the foreground window when the recording started, for example `"Code.exe"`. It is `""` when the engine cannot read that window (an elevated one, for example).
+- A bad `limit` gives 400 `bad_request`. An engine without a history store gives 404 `not_found`.
+
+### `DELETE /v1/history/{id}` (v1.2)
+
+Reply 200 `{"deleted":true}`, or 404 `not_found` for an unknown id, or 500 `store_error` when the file write fails.
+
+### `GET` and `PUT /v1/dictionary` (v1.2)
+
+```json
+{"replacements":[{"wrong":"btw","correct":"by the way"}],"vocabulary":["Gersi"]}
+```
+
+- `PUT` takes the same shape and replies with the saved shape. It replaces both lists and keeps any other top-level key in `dictionary.json` (Python Scribe data).
+- 400 `bad_request`: a missing or unknown field, an empty `wrong`, or more than 800 vocabulary items. The file is not written. 500 `store_error` when the write fails.
+- A save applies to the next dictation. The body limit is 64 KB.
+
+### `GET /v1/dictionary/suggestions` (v1.2)
+
+```json
+{"items":[{"wrong":"jersey","correct":"Gersi","count":3}]}
+```
+
+- Mined from the newest 500 history items: a run of 1 to 3 raw words that polish replaced with the same 1 to 3 words in 2 or more dictations. Case and punctuation changes do not count.
+- `wrong` is lower case. Runs already in the dictionary or rejected are left out. At most 50 items, most often first.
+- Accept a suggestion with `PUT /v1/dictionary`.
+
+### `DELETE /v1/dictionary/suggestions/{wrong}` (v1.2, engine addition)
+
+`{wrong}` is URL-encoded (`leo%20nightness`). The run never shows again. Reply 200 `{"rejected":true}`, 400 `bad_request` for a bad escape, 500 `store_error` when the write fails. Rejects live in `suggestions-rejected.json` next to the config file.
+
+### `GET /v1/settings` (v1.2)
+
+```json
+{"sections":{
+  "hotkeys":{"hold":["Ctrl + Shift + T"],"toggle":["Mouse5"],"cancel":["Escape"]},
+  "audio":{"device":null,"maxRecordSeconds":600,"minRecordMs":250},
+  "transcription":{"privateMode":false,"polishEnabled":true,"polishInstructions":null,"whisperModel":"whisper-large-v3-turbo","whisperModelBackup":"whisper-large-v3","polishModel":"qwen/qwen3.8-27b","backupPolishModel":"openai/gpt-oss-20b","groqKey":{"set":true}},
+  "presets":{},"hud":{"enabled":true},"features":{},"goals":{}}}
+```
+
+- A key never appears: `groqKey` is `{"set":true}` or `{"set":false}`. Set it with `PUT /v1/credentials/groq`.
+- `audio.device` is a `name` from `GET /v1/devices`; `null` is the system default.
+- `presets`, `features` and `goals` belong to the Leonidas UI. The engine stores them as sent and never reads them.
+
+### `PATCH /v1/settings` (v1.2)
+
+Body `{"section":"audio","values":{"device":"USB Mic"}}`. The values merge into that one section; the engine saves `config.json` atomically. Reply 200:
+
+```json
+{"section":"audio","values":{"device":"USB Mic","maxRecordSeconds":600,"minRecordMs":250},"restartRequired":false}
+```
+
+- Live at once: `hotkeys`, `audio`, `privateMode`, `polishEnabled`, `polishInstructions`, `presets`, `features`, `goals`.
+- `restartRequired: true` after a change to a model or to `hud`: the saved value applies after the supervisor restarts the engine.
+- 400 `bad_request`: an unknown section, an unknown key or a wrong type in a typed section, `groqKey` in the values, or `values` that is not an object. Nothing is saved. 500 `store_error` when the write fails.
+
+### `GET /v1/devices` (v1.2)
+
+```json
+{"inputs":[{"id":"Microphone (USB PnP Audio Device)","name":"Microphone (USB PnP Audio Device)","default":true}]}
+```
+
+`id` equals `name` (the audio library has no stable id). 500 `mic_error` when the device scan fails.
+
 ## Events
 
 ### `GET /v1/events`
@@ -89,6 +165,7 @@ Server-sent events (`text/event-stream`). One JSON object per `data:` line. Each
 
 - `transcript.text` is the polished text that was pasted. `raw` (v1.1) is the speech-to-text output before polish. `engine` (v1.1) is `groq` or `local`.
 - Error codes: `mic_error` (no device or capture failed), `stt_error` (speech-to-text failed; the state returns to `ready`).
+- `history` (v1.2): `{"type":"history","item":{...}}` follows the `transcript` event after the save, with the item shape of `GET /v1/history`. When the save fails, an `error` event with code `store_error` comes instead.
 - A v1 reader ignores the new fields; a v1.1 reader treats a missing `raw` as `""` and a missing `engine` as `groq`.
 
 ## Budgets

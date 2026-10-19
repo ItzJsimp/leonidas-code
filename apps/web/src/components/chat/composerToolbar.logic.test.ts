@@ -9,7 +9,6 @@ describe("composer toolbar entries", () => {
     expect(resolveToolbarEntries(empty).map((e) => e.id)).toEqual([
       "saved",
       "stash",
-      "capture",
       "skills",
       "subagents",
       "nextAction",
@@ -27,7 +26,6 @@ describe("composer toolbar entries", () => {
       "mine",
       "saved",
       "stash",
-      "capture",
       "skills",
       "subagents",
     ]);
@@ -37,10 +35,10 @@ describe("composer toolbar entries", () => {
 
   it("moves an entry and stops at the ends", () => {
     const entries = resolveToolbarEntries(empty);
-    expect(moveToolbarEntry(entries, "capture", -1).slice(0, 3)).toEqual([
-      "saved",
-      "capture",
+    expect(moveToolbarEntry(entries, "stash", -1).slice(0, 3)).toEqual([
       "stash",
+      "saved",
+      "skills",
     ]);
     expect(moveToolbarEntry(entries, "saved", -1)[0]).toBe("saved");
   });
