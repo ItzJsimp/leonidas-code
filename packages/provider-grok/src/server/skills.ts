@@ -24,7 +24,6 @@ import * as ChildProcess from "effect/process/ChildProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 
 import { spawnAndCollect } from "@t3tools/provider-core/server/snapshotProbe";
-import { grokProbeEnvironment } from "./probeEnvironment.ts";
 
 const GROK_SKILLS_PROBE_TIMEOUT_MS = 4_000;
 
@@ -104,16 +103,15 @@ export const discoverGrokSkills = Effect.fn("discoverGrokSkills")(function* (
   cwd?: string,
 ) {
   const command = grokSettings.binaryPath || "grok";
-  const probeEnvironment = grokProbeEnvironment(environment);
   const inspectResult = yield* Effect.gen(function* () {
     const spawnCommand = yield* resolveSpawnCommand(command, ["inspect", "--json"], {
-      env: probeEnvironment,
+      env: environment,
     });
     return yield* spawnAndCollect(
       command,
       ChildProcess.make(spawnCommand.command, spawnCommand.args, {
         ...(cwd ? { cwd } : {}),
-        env: probeEnvironment,
+        env: environment,
         shell: spawnCommand.shell,
       }),
     );
