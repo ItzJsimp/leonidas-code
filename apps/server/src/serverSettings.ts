@@ -226,16 +226,79 @@ function redactProviderEnvironmentVariable(
   };
 }
 
+/**
+ * Driver config keys that hold a credential: every `control: "password"` field in the
+ * provider settings schemas (OpenRouter and Antigravity `apiKey`). Add a key here when a
+ * driver schema gains another password field.
+ */
+const PROVIDER_CONFIG_SECRET_KEYS: ReadonlySet<string> = new Set(["apiKey"]);
+
+const isConfigRecord = (config: unknown): config is Record<string, unknown> =>
+  config !== null && typeof config === "object" && !Array.isArray(config);
+
+function redactProviderConfig(config: unknown): unknown {
+  if (!isConfigRecord(config)) return config;
+  return Object.fromEntries(
+    Object.entries(config).map(([key, value]) => [
+      key,
+      PROVIDER_CONFIG_SECRET_KEYS.has(key) && typeof value === "string"
+        ? redactSecret(value)
+        : value,
+    ]),
+  );
+}
+
+/**
+ * A client only ever sees redacted driver credentials, so a save that sends the marker
+ * back means "keep the saved value", as for the other secrets in this file.
+ */
+export function restoreRedactedProviderConfigSecrets(
+  current: ServerSettings,
+  next: ServerSettings,
+): ServerSettings {
+  let changed = false;
+  const providerInstances: Record<string, ProviderInstanceConfig> = {};
+  for (const [instanceId, instance] of Object.entries(next.providerInstances)) {
+    const config = instance.config;
+    if (!isConfigRecord(config)) {
+      providerInstances[instanceId] = instance;
+      continue;
+    }
+    const previous = current.providerInstances[ProviderInstanceId.make(instanceId)];
+    const previousConfig =
+      previous?.driver === instance.driver && isConfigRecord(previous.config)
+        ? previous.config
+        : undefined;
+    let restored: Record<string, unknown> | undefined;
+    for (const key of PROVIDER_CONFIG_SECRET_KEYS) {
+      if (config[key] !== SECRET_REDACTED) continue;
+      const saved = previousConfig?.[key];
+      restored ??= { ...config };
+      restored[key] = typeof saved === "string" && saved !== SECRET_REDACTED ? saved : "";
+    }
+    if (restored === undefined) {
+      providerInstances[instanceId] = instance;
+      continue;
+    }
+    changed = true;
+    providerInstances[instanceId] = { ...instance, config: restored };
+  }
+  return changed
+    ? { ...next, providerInstances: providerInstances as ServerSettings["providerInstances"] }
+    : next;
+}
+
 export function redactServerSettingsForClient(settings: ServerSettings): ServerSettings {
   const providerInstances = Object.fromEntries(
     Object.entries(settings.providerInstances).map(([instanceId, instance]) => [
       instanceId,
-      instance.environment
-        ? {
-            ...instance,
-            environment: instance.environment.map(redactProviderEnvironmentVariable),
-          }
-        : instance,
+      {
+        ...instance,
+        ...(instance.config !== undefined ? { config: redactProviderConfig(instance.config) } : {}),
+        ...(instance.environment
+          ? { environment: instance.environment.map(redactProviderEnvironmentVariable) }
+          : {}),
+      },
     ]),
   );
   // The hub key is a bearer secret; clients only need to know one is set.
@@ -1426,7 +1489,7 @@ const make = Effect.gen(function* () {
     writeSemaphore.withPermits(1)(
       Effect.gen(function* () {
         const current = yield* getSettingsFromCache;
-        const updated = yield* update(current);
+        const updated = restoreRedactedProviderConfigSecrets(current, yield* update(current));
         const persisted = yield* persistProviderEnvironmentSecrets(current, updated);
         const next = yield* normalizeServerSettings(persisted.settings);
         const materialized = yield* Effect.uninterruptibleMask(() =>

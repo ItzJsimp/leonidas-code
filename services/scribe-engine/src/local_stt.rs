@@ -8,6 +8,7 @@ use crate::groq::{CloudFailure, GroqClient};
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -70,7 +71,7 @@ pub fn choose_backend(private_mode: bool) -> Backend {
 pub struct Router {
     cloud: Arc<dyn Cloud>,
     local: Arc<dyn LocalModel>,
-    private_mode: bool,
+    private_mode: AtomicBool,
 }
 
 impl Router {
@@ -78,8 +79,13 @@ impl Router {
         Self {
             cloud,
             local,
-            private_mode,
+            private_mode: AtomicBool::new(private_mode),
         }
+    }
+
+    /// v1.2: a saved private mode applies to the next transcription.
+    pub fn set_private_mode(&self, on: bool) {
+        self.private_mode.store(on, Ordering::Relaxed);
     }
 
     fn run_local(&self, audio: &EncodedAudio) -> Result<Transcription, String> {
@@ -102,7 +108,7 @@ impl Transcriber for Router {
                 engine: SttEngine::Local,
             });
         }
-        match choose_backend(self.private_mode) {
+        match choose_backend(self.private_mode.load(Ordering::Relaxed)) {
             Backend::LocalOnly => self.run_local(audio),
             Backend::CloudThenLocal => match self.cloud.transcribe_cloud(audio) {
                 Ok(done) => Ok(done),
@@ -452,6 +458,15 @@ mod tests {
         let t = r.transcribe(&audio()).unwrap();
         assert_eq!(t.engine, SttEngine::Local);
         assert_eq!(cloud.calls.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn private_mode_turned_on_live_stops_cloud_calls() {
+        let (r, cloud) = router(Ok("cloud text"), Ok("local text"), false);
+        assert_eq!(r.transcribe(&audio()).unwrap().engine, SttEngine::Groq);
+        r.set_private_mode(true);
+        assert_eq!(r.transcribe(&audio()).unwrap().engine, SttEngine::Local);
+        assert_eq!(cloud.calls.load(Ordering::SeqCst), 1);
     }
 
     #[test]

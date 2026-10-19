@@ -1,11 +1,15 @@
 //! Budget bench for the Scribe engine (ADR-0074). Exits 1 when a budget is missed.
 //!
 //! Usage: `scribe-bench [--engine <path to scribe-engine.exe>] [--null-audio] [--rounds N]`.
+//! Or: `scribe-bench --local-wav <16 kHz mono WAV> [--models <dir>] [--budget-ms N]`.
 //! It starts the engine with a temporary config, measures cold start, idle RAM, and
 //! hotkey-to-recording by sending a synthetic toggle chord.
 
+use scribe_engine::local_stt::{
+    download, file_matches, LocalModel, WhisperLocal, MODEL_FILE, MODEL_SHA256, MODEL_URL,
+};
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -14,6 +18,8 @@ const HOTKEY_BUDGET_MS: f64 = 50.0;
 const IDLE_RAM_BUDGET_MB: f64 = 30.0;
 const COLD_START_BUDGET_MS: f64 = 2000.0;
 const TOGGLE: &str = "Ctrl + Alt + F9";
+/// A short clean WAV on a CI runner: about 1 s with AVX2, 8 s or more without.
+const LOCAL_BUDGET_MS: f64 = 3000.0;
 
 fn main() {
     match run() {
@@ -58,6 +64,9 @@ fn run() -> Result<bool, String> {
     let mut engine_path: Option<PathBuf> = None;
     let mut null_audio = false;
     let mut rounds = 5usize;
+    let mut local_wav: Option<PathBuf> = None;
+    let mut models: Option<PathBuf> = None;
+    let mut budget_ms = LOCAL_BUDGET_MS;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--engine" => engine_path = Some(args.next().ok_or("--engine needs a path")?.into()),
@@ -68,8 +77,22 @@ fn run() -> Result<bool, String> {
                     .and_then(|n| n.parse().ok())
                     .ok_or("--rounds needs a number")?
             }
+            "--local-wav" => {
+                local_wav = Some(args.next().ok_or("--local-wav needs a path")?.into())
+            }
+            "--models" => models = Some(args.next().ok_or("--models needs a path")?.into()),
+            "--budget-ms" => {
+                budget_ms = args
+                    .next()
+                    .and_then(|n| n.parse().ok())
+                    .ok_or("--budget-ms needs a number")?
+            }
             other => return Err(format!("unknown argument {other}")),
         }
+    }
+    if let Some(wav) = local_wav {
+        let models = models.unwrap_or_else(|| std::env::temp_dir().join("scribe-bench-models"));
+        return run_local(&wav, &models, budget_ms);
     }
     let engine_path = match engine_path {
         Some(path) => path,
@@ -165,6 +188,75 @@ fn run() -> Result<bool, String> {
     Ok(pass)
 }
 
+/// `--local-wav`: time the offline model on a clean speech WAV. The best warm run must
+/// stay under the budget. whisper.cpp built without AVX2 is about 8x slower, so this
+/// catches a release build that skipped `.cargo/config.toml`.
+fn run_local(wav: &Path, models: &Path, budget_ms: f64) -> Result<bool, String> {
+    let pcm = read_wav_16k_mono(wav)?;
+    let model = models.join(MODEL_FILE);
+    if !file_matches(&model, MODEL_SHA256) {
+        eprintln!("downloading {MODEL_FILE}");
+        download(MODEL_URL, &model, MODEL_SHA256)?;
+    }
+    let local = WhisperLocal::new(models);
+    let mut runs = Vec::new();
+    let mut text = String::new();
+    for _ in 0..3 {
+        let started = Instant::now();
+        text = local.transcribe(&pcm)?;
+        runs.push(started.elapsed().as_secs_f64() * 1000.0);
+    }
+    let warm = runs[1..].iter().copied().fold(f64::INFINITY, f64::min);
+    let audio_s = pcm.len() as f64 / 16_000.0;
+    println!("local_transcript {text:?}");
+    println!(
+        "local_cold_ms {:.0} local_warm_ms {warm:.0} audio_s {audio_s:.2}",
+        runs[0]
+    );
+    let ok = !text.trim().is_empty() && warm <= budget_ms;
+    println!(
+        "{} local_warm_ms {warm:.0} (budget {budget_ms:.0})",
+        if ok { "PASS" } else { "FAIL" }
+    );
+    Ok(ok)
+}
+
+/// 16-bit PCM, mono, 16 kHz WAV to samples in -1..1.
+fn read_wav_16k_mono(path: &Path) -> Result<Vec<f32>, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if bytes.len() < 12 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
+        return Err("not a WAV file".into());
+    }
+    let u16_at = |i: usize| u16::from_le_bytes([bytes[i], bytes[i + 1]]);
+    let u32_at =
+        |i: usize| u32::from_le_bytes([bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]]);
+    let (mut at, mut format_ok) = (12, false);
+    while at + 8 <= bytes.len() {
+        let size = u32_at(at + 4) as usize;
+        let body = at + 8;
+        let end = body.saturating_add(size).min(bytes.len());
+        match &bytes[at..at + 4] {
+            b"fmt " if size >= 16 => {
+                format_ok = u16_at(body) == 1
+                    && u16_at(body + 2) == 1
+                    && u32_at(body + 4) == 16_000
+                    && u16_at(body + 14) == 16;
+            }
+            b"data" if format_ok => {
+                return Ok(bytes[body..end]
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|s| f32::from(i16::from_le_bytes(*s)) / 32768.0)
+                    .collect());
+            }
+            _ => {}
+        }
+        at = body + size + (size & 1);
+    }
+    Err("the WAV must be 16-bit PCM, mono, 16 kHz".into())
+}
+
 #[cfg(windows)]
 mod platform {
     use std::os::windows::io::AsRawHandle;
@@ -234,5 +326,52 @@ mod platform {
     }
     pub fn send_toggle() -> Result<(), String> {
         Err("scribe-bench needs Windows".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn wav(channels: u16, rate: u32, samples: &[i16]) -> Vec<u8> {
+        let data: Vec<u8> = samples.iter().flat_map(|s| s.to_le_bytes()).collect();
+        let mut out = b"RIFF\0\0\0\0WAVEfmt ".to_vec();
+        out.extend(16u32.to_le_bytes());
+        out.extend(1u16.to_le_bytes());
+        out.extend(channels.to_le_bytes());
+        out.extend(rate.to_le_bytes());
+        out.extend((rate * 2).to_le_bytes());
+        out.extend(2u16.to_le_bytes());
+        out.extend(16u16.to_le_bytes());
+        out.extend(b"data");
+        out.extend((data.len() as u32).to_le_bytes());
+        out.extend(data);
+        out
+    }
+
+    #[test]
+    fn reads_16k_mono_and_refuses_other_formats() {
+        let dir = std::env::temp_dir().join(format!("scribe bench wav {}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let good = dir.join("good.wav");
+        std::fs::write(&good, wav(1, 16_000, &[0, 16384, -32768])).unwrap();
+        assert_eq!(read_wav_16k_mono(&good).unwrap(), [0.0, 0.5, -1.0]);
+        for (name, bytes) in [
+            ("stereo.wav", wav(2, 16_000, &[0, 0])),
+            ("44k.wav", wav(1, 44_100, &[0])),
+            ("text.wav", b"not a wav".to_vec()),
+        ] {
+            let path = dir.join(name);
+            std::fs::write(&path, bytes).unwrap();
+            assert!(read_wav_16k_mono(&path).is_err(), "{name}");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_fixture_is_about_4_seconds_of_audio() {
+        let pcm = read_wav_16k_mono(Path::new("tests/fixtures/clean-speech-16k.wav")).unwrap();
+        let seconds = pcm.len() as f64 / 16_000.0;
+        assert!((3.0..5.0).contains(&seconds), "{seconds}");
     }
 }

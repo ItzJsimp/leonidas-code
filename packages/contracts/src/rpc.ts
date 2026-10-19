@@ -59,6 +59,7 @@ import {
   AiosWorkspaceInitInput,
   TaskBoardHomeNews,
   LayaUsage,
+  PonytailUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
@@ -504,6 +505,21 @@ import {
   VoiceTranscribeInput,
   VoiceTranscribeResult,
 } from "./voice.ts";
+import {
+  ScribeCommandResult,
+  ScribeDeleteHistoryInput,
+  ScribeDeleteHistoryResult,
+  ScribeDictionary,
+  ScribeEngineError,
+  ScribeHistoryPage,
+  ScribeListHistoryInput,
+  ScribeLiveEvent,
+  ScribeRejectSuggestionInput,
+  ScribeRejectSuggestionResult,
+  ScribeStartInput,
+  ScribeStopInput,
+  ScribeSuggestionList,
+} from "./scribe.ts";
 
 export const ScribeStatusSnapshot = Schema.Struct({
   service: Schema.Literal("leonidas-scribe"),
@@ -523,6 +539,15 @@ export type ScribeStatusResult = typeof ScribeStatusResult.Type;
 
 export const WS_METHODS = {
   scribeGetStatus: "scribe.getStatus",
+  scribeStart: "scribe.start",
+  scribeStop: "scribe.stop",
+  scribeListHistory: "scribe.listHistory",
+  scribeDeleteHistory: "scribe.deleteHistory",
+  scribeGetDictionary: "scribe.getDictionary",
+  scribePutDictionary: "scribe.putDictionary",
+  scribeListSuggestions: "scribe.listSuggestions",
+  scribeRejectSuggestion: "scribe.rejectSuggestion",
+  scribeSubscribeEvents: "scribe.subscribeEvents",
   voiceGetStatus: "voice.getStatus",
   voiceSetGroqKey: "voice.setGroqKey",
   voiceClearGroqKey: "voice.clearGroqKey",
@@ -559,6 +584,7 @@ export const WS_METHODS = {
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
   layaUsage: "laya.usage",
+  ponytailUsage: "ponytail.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
@@ -1778,6 +1804,12 @@ const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsPonytailUsageRpc = Rpc.make(WS_METHODS.ponytailUsage, {
+  payload: Schema.Struct({}),
+  success: PonytailUsage,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsLayaUsageRpc = Rpc.make(WS_METHODS.layaUsage, {
   payload: Schema.Struct({}),
   success: LayaUsage,
@@ -2259,6 +2291,63 @@ const WsScribeGetStatusRpc = Rpc.make(WS_METHODS.scribeGetStatus, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsScribeStartRpc = Rpc.make(WS_METHODS.scribeStart, {
+  payload: ScribeStartInput,
+  success: ScribeCommandResult,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const WsScribeStopRpc = Rpc.make(WS_METHODS.scribeStop, {
+  payload: ScribeStopInput,
+  success: ScribeCommandResult,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const WsScribeListHistoryRpc = Rpc.make(WS_METHODS.scribeListHistory, {
+  payload: ScribeListHistoryInput,
+  success: ScribeHistoryPage,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const WsScribeDeleteHistoryRpc = Rpc.make(WS_METHODS.scribeDeleteHistory, {
+  payload: ScribeDeleteHistoryInput,
+  success: ScribeDeleteHistoryResult,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const ScribeRpcError = Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]);
+
+const WsScribeGetDictionaryRpc = Rpc.make(WS_METHODS.scribeGetDictionary, {
+  payload: Schema.Struct({}),
+  success: ScribeDictionary,
+  error: ScribeRpcError,
+});
+
+const WsScribePutDictionaryRpc = Rpc.make(WS_METHODS.scribePutDictionary, {
+  payload: ScribeDictionary,
+  success: ScribeDictionary,
+  error: ScribeRpcError,
+});
+
+const WsScribeListSuggestionsRpc = Rpc.make(WS_METHODS.scribeListSuggestions, {
+  payload: Schema.Struct({}),
+  success: ScribeSuggestionList,
+  error: ScribeRpcError,
+});
+
+const WsScribeRejectSuggestionRpc = Rpc.make(WS_METHODS.scribeRejectSuggestion, {
+  payload: ScribeRejectSuggestionInput,
+  success: ScribeRejectSuggestionResult,
+  error: ScribeRpcError,
+});
+
+const WsScribeSubscribeEventsRpc = Rpc.make(WS_METHODS.scribeSubscribeEvents, {
+  payload: Schema.Struct({}),
+  success: ScribeLiveEvent,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
 const WsVoiceGetStatusRpc = Rpc.make(WS_METHODS.voiceGetStatus, {
   payload: Schema.Struct({}),
   success: VoiceStatus,
@@ -2695,6 +2784,15 @@ export const WsRpcGroup = RpcGroup.make(
   WsSavedItemsScheduleRpc,
   WsSavedItemsSaveTaskRpc,
   WsScribeGetStatusRpc,
+  WsScribeStartRpc,
+  WsScribeStopRpc,
+  WsScribeListHistoryRpc,
+  WsScribeDeleteHistoryRpc,
+  WsScribeGetDictionaryRpc,
+  WsScribePutDictionaryRpc,
+  WsScribeListSuggestionsRpc,
+  WsScribeRejectSuggestionRpc,
+  WsScribeSubscribeEventsRpc,
   WsVoiceGetStatusRpc,
   WsVoiceSetGroqKeyRpc,
   WsVoiceClearGroqKeyRpc,
@@ -2836,6 +2934,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
   WsLayaUsageRpc,
+  WsPonytailUsageRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,

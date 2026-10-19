@@ -18,6 +18,13 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).toContain("naming what finished and that you are carrying on");
   });
 
+  it("adds the Ponytail rules unless the plugin already injects them", () => {
+    expect(buildRuntimeInstructions({ harness: "Codex" })).toContain("<ponytail>");
+    expect(buildRuntimeInstructions({ harness: "Codex", ponytailPlugin: true })).not.toContain(
+      "<ponytail>",
+    );
+  });
+
   it("keeps known model and effort metadata on one line", () => {
     expect(
       buildRuntimeInstructions({

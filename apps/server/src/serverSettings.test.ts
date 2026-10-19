@@ -1530,6 +1530,37 @@ it.layer(NodeServices.layer)("server settings", (it) => {
     }).pipe(Effect.provide(layerServerSettings())),
   );
 
+  it.effect("never sends a provider driver API key to the client and keeps it on a save", () =>
+    Effect.gen(function* () {
+      const serverSettings = yield* ServerSettingsModule.ServerSettingsService;
+      const instanceId = ProviderInstanceId.make("openrouter");
+      const driver = ProviderDriverKind.make("openrouter");
+
+      const saved = yield* serverSettings.updateProviderInstance({
+        operation: "upsert",
+        instanceId,
+        instance: { driver, config: { enabled: true, apiKey: "sk-or-v1-secret" } },
+      });
+      const forClient = ServerSettingsModule.redactServerSettingsForClient(saved);
+      assert.notInclude(JSON.stringify(forClient), "sk-or-v1-secret");
+      const clientConfig = forClient.providerInstances[instanceId]?.config as
+        | Record<string, unknown>
+        | undefined;
+      assert.isAbove(String(clientConfig?.apiKey ?? "").length, 0);
+
+      // Saving the form unchanged sends the marker back; the real key stays.
+      yield* serverSettings.updateProviderInstance({
+        operation: "upsert",
+        instanceId,
+        instance: { driver, config: clientConfig },
+      });
+      const kept = (yield* serverSettings.getSettings).providerInstances[instanceId]?.config as
+        | Record<string, unknown>
+        | undefined;
+      assert.equal(kept?.apiKey, "sk-or-v1-secret");
+    }).pipe(Effect.provide(layerServerSettings())),
+  );
+
   it.effect(
     "keeps source control host secrets in the secret store and tells clients only that one is set",
     () =>

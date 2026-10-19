@@ -1,6 +1,7 @@
 //! Dictionary replacements and deterministic text passes (spoken emails, pause ellipses).
 //! Shared by speech-to-text (vocabulary prompt) and polish (replacements).
 
+use crate::contract::{DictionaryBody, Replacement};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -191,6 +192,49 @@ impl SharedDictionary {
             *state = (mtime, Arc::new(Dictionary::load(&self.path)));
         }
         state.1.clone()
+    }
+
+    /// v1.2 `PUT /v1/dictionary`. Replaces `replacements` and `vocabulary` and keeps every
+    /// other top-level key, so a Python Scribe file keeps its own data.
+    pub fn save(&self, body: &DictionaryBody) -> Result<Arc<Dictionary>, String> {
+        let mut doc = std::fs::read_to_string(&self.path)
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+        let replacements: serde_json::Map<String, serde_json::Value> = body
+            .replacements
+            .iter()
+            .map(|r| (r.wrong.clone(), r.correct.clone().into()))
+            .collect();
+        doc.insert("replacements".into(), replacements.into());
+        doc.insert("vocabulary".into(), body.vocabulary.clone().into());
+        let bytes = serde_json::to_vec_pretty(&doc).map_err(|e| e.to_string())?;
+        // Hold the lock across the write, so a reader never caches the old file with the new time.
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        crate::config::write_atomic(&self.path, &bytes).map_err(|e| e.to_string())?;
+        let mtime = std::fs::metadata(&self.path)
+            .and_then(|m| m.modified())
+            .ok();
+        *state = (mtime, Arc::new(Dictionary::load(&self.path)));
+        Ok(state.1.clone())
+    }
+}
+
+impl Dictionary {
+    /// The v1.2 wire shape.
+    pub fn body(&self) -> DictionaryBody {
+        DictionaryBody {
+            replacements: self
+                .replacements
+                .iter()
+                .map(|(wrong, correct)| Replacement {
+                    wrong: wrong.clone(),
+                    correct: correct.clone(),
+                })
+                .collect(),
+            vocabulary: self.vocabulary.clone(),
+        }
     }
 }
 

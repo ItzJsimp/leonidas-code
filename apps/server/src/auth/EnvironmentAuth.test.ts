@@ -348,6 +348,40 @@ it.layer(NodeServices.layer)("EnvironmentAuth.layer", (it) => {
     }).pipe(Effect.provide(layerEnvironmentAuth())),
   );
 
+  it.effect("refuses a cookie WebSocket upgrade from another origin", () =>
+    Effect.gen(function* () {
+      const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
+      const sessions = yield* SessionStore.SessionStore;
+      const pairing = yield* serverAuth.issuePairingCredential();
+      const exchanged = yield* serverAuth.createBrowserSession(pairing.credential, requestMetadata);
+      const upgrade = (origin: string | undefined) =>
+        ({
+          url: "/ws",
+          cookies: { [sessions.cookieName]: exchanged.sessionToken },
+          headers: {
+            host: `localhost:${TEST_SERVER_PORT}`,
+            ...(origin === undefined ? {} : { origin }),
+          },
+        }) as unknown as Parameters<
+          EnvironmentAuth.EnvironmentAuth["Service"]["authenticateWebSocketUpgrade"]
+        >[0];
+
+      // Every localhost port is the same site, so the browser sends the cookie.
+      const foreign = yield* Effect.flip(
+        serverAuth.authenticateWebSocketUpgrade(upgrade("http://localhost:5173")),
+      );
+      expect(foreign._tag).toBe("ServerAuthInvalidCredentialError");
+
+      const sameOrigin = yield* serverAuth.authenticateWebSocketUpgrade(
+        upgrade(`http://localhost:${TEST_SERVER_PORT}`),
+      );
+      expect(sameOrigin.sessionId.length).toBeGreaterThan(0);
+      // Clients that are not browsers send no Origin and cannot hold the cookie by accident.
+      const noOrigin = yield* serverAuth.authenticateWebSocketUpgrade(upgrade(undefined));
+      expect(noOrigin.sessionId).toBe(sameOrigin.sessionId);
+    }).pipe(Effect.provide(layerEnvironmentAuth())),
+  );
+
   it.effect("prefers a bearer token over a stale legacy cookie", () =>
     Effect.gen(function* () {
       const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;

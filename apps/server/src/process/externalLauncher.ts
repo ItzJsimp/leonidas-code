@@ -795,12 +795,18 @@ const launchEditorProcess = Effect.fn("externalLauncher.launchEditorProcess")(fu
   if (spawnCommand.shell && launch.args.some((arg) => WINDOWS_SHIM_UNSAFE_ARG_PATTERN.test(arg))) {
     return yield* new ExternalLauncherUnsupportedTargetError({ editor: launch.editor });
   }
+  // A detached (console-less) Windows PowerShell cannot hand the window to
+  // Explorer: the reveal silently does nothing. Keep it attached and hidden;
+  // the handle is still unref'd so the server never waits on it.
+  const isPowerShellReveal =
+    launch.editor === "file-manager" && spawnCommand.args.includes("-EncodedCommand");
   yield* launchAndUnref(
     {
       command: spawnCommand.command,
       args: spawnCommand.args,
       options: {
-        detached: true,
+        detached: !isPowerShellReveal,
+        ...(isPowerShellReveal ? { windowsHide: true } : {}),
         shell: spawnCommand.shell,
         stdin: "ignore",
         stdout: "ignore",

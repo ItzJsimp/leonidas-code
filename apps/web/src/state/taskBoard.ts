@@ -108,6 +108,13 @@ export const taskBoardHomeNewsQuery = createEnvironmentRpcQueryAtomFamily(connec
   idleTtlMs: 15 * 60_000,
 });
 
+export const ponytailUsageQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:ponytail:usage",
+  tag: WS_METHODS.ponytailUsage,
+  staleTimeMs: 30_000,
+  idleTtlMs: 5 * 60_000,
+});
+
 export const layaUsageQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:laya:usage",
   tag: WS_METHODS.layaUsage,
