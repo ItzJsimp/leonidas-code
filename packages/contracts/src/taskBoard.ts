@@ -649,6 +649,8 @@ export const FocusItem = Schema.Struct({
   id: Schema.String,
   text: Schema.String,
   done: Schema.Boolean,
+  /** Pinned lines show first in the widget. Absent means not pinned. */
+  pinned: Schema.optional(Schema.Boolean),
 });
 export type FocusItem = typeof FocusItem.Type;
 
@@ -678,9 +680,18 @@ export const FocusUpdateInput = Schema.Union([
     op: Schema.Literal("add"),
     projectId: Schema.NullOr(ProjectId),
     text: FocusText,
+    /** Used by Undo to bring a removed line back as it was. */
+    done: Schema.optional(Schema.Boolean),
+    pinned: Schema.optional(Schema.Boolean),
   }),
   Schema.Struct({ op: Schema.Literal("set_done"), id: Schema.String, done: Schema.Boolean }),
   Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String }),
   Schema.Struct({ op: Schema.Literal("edit"), id: Schema.String, text: FocusText }),
+  Schema.Struct({ op: Schema.Literal("pin"), id: Schema.String, pinned: Schema.Boolean }),
+  Schema.Struct({
+    op: Schema.Literal("move"),
+    id: Schema.String,
+    direction: Schema.Literals(["up", "down"]),
+  }),
 ]);
 export type FocusUpdateInput = typeof FocusUpdateInput.Type;

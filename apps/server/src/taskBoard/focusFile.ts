@@ -6,8 +6,17 @@ import * as NodePath from "node:path";
 const FOCUS_FILE = NodePath.join("memory", "focus.md");
 const GLOBAL_HEADING = "Global";
 
+/** A pinned line starts with this mark in the file, so a hand edit can pin too. */
+const PIN_MARK = "\u{1F4CC} ";
+
 type FocusLine =
-  | { readonly kind: "item"; readonly text: string; readonly done: boolean }
+  | {
+      readonly kind: "item";
+      /** One or more lines joined with `\n`. The file keeps extra lines indented under the item. */
+      readonly text: string;
+      readonly done: boolean;
+      readonly pinned: boolean;
+    }
   | { readonly kind: "raw"; readonly line: string };
 
 export interface FocusDocSection {
@@ -26,10 +35,13 @@ export interface FocusDocItem {
   readonly id: string;
   readonly text: string;
   readonly done: boolean;
+  readonly pinned: boolean;
 }
 
 const HEADING = /^##\s+(.+?)\s*$/;
 const ITEM = /^\s*[-*]\s+\[([ xX])\]\s+(.*?)\s*$/;
+/** An indented line right after an item continues that item. */
+const CONTINUATION = /^\s{2,}\S/;
 
 const slugOfHeading = (heading: string) =>
   heading.toLowerCase() === GLOBAL_HEADING.toLowerCase() ? null : heading.toLowerCase();
@@ -46,8 +58,17 @@ export function parseFocus(text: string): FocusDoc {
     }
     const current = sections.at(-1);
     const item = current ? ITEM.exec(line) : null;
+    const last = current?.lines.at(-1);
     if (current && item && item[2]) {
-      current.lines.push({ kind: "item", text: item[2], done: item[1] !== " " });
+      const pinned = item[2].startsWith(PIN_MARK);
+      current.lines.push({
+        kind: "item",
+        text: pinned ? item[2].slice(PIN_MARK.length) : item[2],
+        done: item[1] !== " ",
+        pinned,
+      });
+    } else if (current && last?.kind === "item" && CONTINUATION.test(line)) {
+      current.lines[current.lines.length - 1] = { ...last, text: `${last.text}\n${line.trim()}` };
     } else if (current) {
       current.lines.push({ kind: "raw", line });
     } else {
@@ -84,9 +105,13 @@ export function serializeFocus(doc: FocusDoc): string {
   for (const section of doc.sections) {
     const lines = [`## ${section.slug ?? GLOBAL_HEADING}`];
     for (const line of section.lines) {
-      lines.push(
-        line.kind === "item" ? `- [${line.done ? "x" : " "}] ${oneLine(line.text)}` : line.line,
-      );
+      if (line.kind !== "item") {
+        lines.push(line.line);
+        continue;
+      }
+      const [first = "", ...rest] = line.text.split("\n");
+      lines.push(`- [${line.done ? "x" : " "}] ${line.pinned ? PIN_MARK : ""}${first}`);
+      for (const extra of rest) lines.push(`  ${extra}`);
     }
     blocks.push(lines.join("\n"));
   }
@@ -94,6 +119,14 @@ export function serializeFocus(doc: FocusDoc): string {
 }
 
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/** Trims every line, collapses inner spaces and drops empty lines; line breaks stay. */
+const cleanText = (text: string) =>
+  text
+    .split(/\r?\n/)
+    .map(oneLine)
+    .filter((line) => line !== "")
+    .join("\n");
 
 /** FNV-1a, enough to tell lines apart inside one section. */
 function shortHash(text: string): string {
@@ -118,15 +151,26 @@ export function sectionItems(section: FocusDocSection): FocusDocItem[] {
       id: `${section.slug ?? "global"}:${shortHash(key)}${n === 0 ? "" : `:${n}`}`,
       text: line.text,
       done: line.done,
+      pinned: line.pinned,
     });
   }
   return items;
 }
 
 /** Adds an open item at the end of the section, and creates the section when it is missing. */
-export function addFocusItem(doc: FocusDoc, slug: string | null, text: string): FocusDoc {
+export function addFocusItem(
+  doc: FocusDoc,
+  slug: string | null,
+  text: string,
+  extra: { readonly done?: boolean; readonly pinned?: boolean } = {},
+): FocusDoc {
   const key = slug?.toLowerCase() ?? null;
-  const item: FocusLine = { kind: "item", text: oneLine(text), done: false };
+  const item: FocusLine = {
+    kind: "item",
+    text: cleanText(text),
+    done: extra.done ?? false,
+    pinned: extra.pinned ?? false,
+  };
   const index = doc.sections.findIndex((section) => section.slug === key);
   if (index === -1) {
     // Global first, so the file reads top down from general to project.
@@ -148,7 +192,11 @@ export function addFocusItem(doc: FocusDoc, slug: string | null, text: string): 
 export function changeFocusItem(
   doc: FocusDoc,
   id: string,
-  change: { readonly done: boolean } | { readonly text: string } | null,
+  change:
+    | { readonly done: boolean }
+    | { readonly text: string }
+    | { readonly pinned: boolean }
+    | null,
 ): FocusDoc | null {
   for (const [sectionIndex, section] of doc.sections.entries()) {
     const ids = sectionItems(section).map((item) => item.id);
@@ -158,10 +206,35 @@ export function changeFocusItem(
     const lines = section.lines.flatMap((line) => {
       if (line.kind !== "item" || ++seen !== position) return [line];
       if (change === null) return [];
-      return [
-        "text" in change ? { ...line, text: oneLine(change.text) } : { ...line, done: change.done },
-      ];
+      if ("text" in change) return [{ ...line, text: cleanText(change.text) }];
+      if ("pinned" in change) return [{ ...line, pinned: change.pinned }];
+      return [{ ...line, done: change.done }];
     });
+    return {
+      ...doc,
+      sections: doc.sections.map((other, i) => (i === sectionIndex ? { ...other, lines } : other)),
+    };
+  }
+  return null;
+}
+
+/** Swaps an item with the item above or below it in its section. `null` when the id is unknown. */
+export function moveFocusItem(
+  doc: FocusDoc,
+  id: string,
+  direction: "up" | "down",
+): FocusDoc | null {
+  for (const [sectionIndex, section] of doc.sections.entries()) {
+    const position = sectionItems(section)
+      .map((item) => item.id)
+      .indexOf(id);
+    if (position === -1) continue;
+    const slots = section.lines.flatMap((line, index) => (line.kind === "item" ? [index] : []));
+    const from = slots[position]!;
+    const to = slots[direction === "up" ? position - 1 : position + 1];
+    if (to === undefined) return doc;
+    const lines = [...section.lines];
+    [lines[from], lines[to]] = [lines[to]!, lines[from]!];
     return {
       ...doc,
       sections: doc.sections.map((other, i) => (i === sectionIndex ? { ...other, lines } : other)),

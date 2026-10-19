@@ -63,6 +63,31 @@ describe("focus rows", () => {
     expect(visibleRows(null, "all", null)).toEqual([]);
   });
 
+  it("lists pinned rows first and keeps file order inside each group", () => {
+    const pinnedSnapshot = {
+      path: "/x",
+      member: "jake",
+      sections: [
+        {
+          slug: null,
+          projectId: null,
+          items: [
+            { id: "a", text: "A", done: false },
+            { id: "b", text: "B", done: false, pinned: true },
+            { id: "c", text: "C", done: false },
+            { id: "d", text: "D", done: false, pinned: true },
+          ],
+        },
+      ],
+    };
+    expect(visibleRows(pinnedSnapshot, "all", null).map((row) => row.id)).toEqual([
+      "b",
+      "d",
+      "a",
+      "c",
+    ]);
+  });
+
   it("counts progress", () => {
     expect(progressOf(visibleRows(snapshot, "all", null))).toEqual({ done: 1, total: 3 });
   });

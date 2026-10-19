@@ -5,10 +5,13 @@ import {
 import type { EnvironmentId, FocusUpdateInput, ProjectId } from "@t3tools/contracts";
 import { FOCUS_ITEM_MAX_LENGTH } from "@t3tools/contracts";
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   GripVerticalIcon,
   HouseIcon,
   ListPlusIcon,
   PencilIcon,
+  PinIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -31,7 +34,7 @@ import { observeResize } from "../../lib/observeResize";
 import { failureText } from "../taskBoard/useTaskActions.logic";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
-import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { Spinner } from "../ui/spinner";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -85,6 +88,9 @@ export default function FocusWidget(props: {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [removed, setRemoved] = useState<{ row: FocusRow; projectId: ProjectId | null } | null>(
+    null,
+  );
 
   const snapshot = query.data;
   const rows = visibleRows(snapshot, scope, props.projectId);
@@ -124,8 +130,8 @@ export default function FocusWidget(props: {
     [props.environmentId, runUpdate],
   );
 
-  const add = async (event: FormEvent) => {
-    event.preventDefault();
+  const add = async (event?: FormEvent) => {
+    event?.preventDefault();
     const text = draft.trim();
     if (!text || busy) return;
     setBusy(true);
@@ -147,6 +153,30 @@ export default function FocusWidget(props: {
     if (!current || current.id !== row.id || !text || text === row.text) return;
     const ok = await update({ op: "edit", id: row.id, text }, "Could not save the note.");
     if (ok) setNotice(`Saved ${text}`);
+  };
+
+  const remove = async (row: FocusRow) => {
+    const projectId =
+      snapshot?.sections.find((section) => section.slug === row.slug)?.projectId ?? null;
+    const ok = await update({ op: "remove", id: row.id }, "Could not remove the item.");
+    if (ok) setRemoved({ row, projectId });
+  };
+
+  const undoRemove = async () => {
+    const last = removed;
+    if (!last) return;
+    setRemoved(null);
+    const ok = await update(
+      {
+        op: "add",
+        projectId: last.projectId,
+        text: last.row.text,
+        done: last.row.done,
+        pinned: last.row.pinned === true,
+      },
+      "Could not bring the note back.",
+    );
+    if (ok) setNotice(`Restored ${last.row.text}`);
   };
 
   const promote = async (row: FocusRow) => {
@@ -265,22 +295,25 @@ export default function FocusWidget(props: {
               }
             />
             {editing?.id === row.id ? (
-              <Input
+              <Textarea
                 size="sm"
                 autoFocus
+                rows={3}
                 aria-label={`Edit note: ${row.text}`}
                 maxLength={FOCUS_ITEM_MAX_LENGTH}
                 value={editing.text}
                 onChange={(event) => setEditing({ id: row.id, text: event.target.value })}
                 onBlur={() => void saveEdit(row)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") void saveEdit(row);
-                  else if (event.key === "Escape") setEditing(null);
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void saveEdit(row);
+                  } else if (event.key === "Escape") setEditing(null);
                 }}
               />
             ) : (
               <span
-                className={`min-w-0 flex-1 break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
+                className={`min-w-0 flex-1 whitespace-pre-line break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
                 onDoubleClick={() => setEditing({ id: row.id, text: row.text })}
               >
                 {scope === "all" && row.slug !== null ? (
@@ -292,6 +325,52 @@ export default function FocusWidget(props: {
               </span>
             )}
             <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+              <Tip label={row.pinned ? "Unpin this line" : "Pin this line to the top"}>
+                <Button
+                  size="icon-xs"
+                  variant="ghost-muted"
+                  aria-label={`${row.pinned ? "Unpin" : "Pin"}: ${row.text}`}
+                  aria-pressed={row.pinned === true}
+                  onClick={() =>
+                    void update(
+                      { op: "pin", id: row.id, pinned: row.pinned !== true },
+                      "Could not pin the item.",
+                    )
+                  }
+                >
+                  <PinIcon className={row.pinned ? "fill-current" : undefined} />
+                </Button>
+              </Tip>
+              <Tip label="Move up">
+                <Button
+                  size="icon-xs"
+                  variant="ghost-muted"
+                  aria-label={`Move up: ${row.text}`}
+                  onClick={() =>
+                    void update(
+                      { op: "move", id: row.id, direction: "up" },
+                      "Could not move the item.",
+                    )
+                  }
+                >
+                  <ArrowUpIcon />
+                </Button>
+              </Tip>
+              <Tip label="Move down">
+                <Button
+                  size="icon-xs"
+                  variant="ghost-muted"
+                  aria-label={`Move down: ${row.text}`}
+                  onClick={() =>
+                    void update(
+                      { op: "move", id: row.id, direction: "down" },
+                      "Could not move the item.",
+                    )
+                  }
+                >
+                  <ArrowDownIcon />
+                </Button>
+              </Tip>
               <Tip label="Edit this line">
                 <Button
                   size="icon-xs"
@@ -317,9 +396,7 @@ export default function FocusWidget(props: {
                   size="icon-xs"
                   variant="ghost-muted"
                   aria-label={`Remove: ${row.text}`}
-                  onClick={() =>
-                    void update({ op: "remove", id: row.id }, "Could not remove the item.")
-                  }
+                  onClick={() => void remove(row)}
                 >
                   <Trash2Icon />
                 </Button>
@@ -342,7 +419,7 @@ export default function FocusWidget(props: {
       <section
         ref={rootRef}
         aria-label="Notepad"
-        className={`z-30 flex w-72 flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ${floating ? "fixed" : "absolute top-2 right-2"}`}
+        className={`z-30 flex w-80 flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ${floating ? "fixed" : "absolute top-2 right-2"}`}
         style={floating ? { left: floating.x, top: floating.y } : undefined}
       >
         <header
@@ -427,15 +504,30 @@ export default function FocusWidget(props: {
             {error}
           </p>
         ) : null}
+        {removed ? (
+          <div className="flex items-center gap-2 border-t border-border px-3 py-1 text-xs">
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">Removed a note.</span>
+            <Button size="xs" variant="outline" onClick={() => void undoRemove()}>
+              Undo
+            </Button>
+          </div>
+        ) : null}
         <form onSubmit={(event) => void add(event)} className="border-t border-border p-2">
-          <Input
+          <Textarea
             size="sm"
+            rows={1}
             aria-label="Add a note"
-            placeholder="+ Add a note"
+            placeholder="+ Add a note (Shift+Enter for a new line)"
             maxLength={FOCUS_ITEM_MAX_LENGTH}
             value={draft}
             disabled={busy || snapshot?.path === null}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void add();
+              }
+            }}
           />
         </form>
         <span role="status" className="sr-only">

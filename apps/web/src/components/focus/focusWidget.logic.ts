@@ -87,9 +87,11 @@ export function visibleRows(
     scope === "all" ||
     section.slug === null ||
     (projectId !== null && section.projectId === projectId);
-  return snapshot.sections
+  const rows = snapshot.sections
     .filter(wanted)
     .flatMap((section) => section.items.map((item) => ({ ...item, slug: section.slug })));
+  // Pinned lines first; the sort is stable, so the file order holds inside each group.
+  return [...rows.filter((row) => row.pinned), ...rows.filter((row) => !row.pinned)];
 }
 
 export function progressOf(rows: ReadonlyArray<FocusRow>): { done: number; total: number } {

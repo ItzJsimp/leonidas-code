@@ -62,6 +62,7 @@ import {
   addFocusItem,
   changeFocusItem,
   focusPathFor,
+  moveFocusItem,
   readFocusFile,
   sectionItems,
   writeFocusFile,
@@ -1794,7 +1795,12 @@ const make = Effect.gen(function* () {
             const project = input.projectId
               ? projects.find((candidate) => candidate.id === input.projectId)
               : undefined;
-            next = addFocusItem(doc, project ? aiosSlugFor(project) : null, input.text);
+            next = addFocusItem(doc, project ? aiosSlugFor(project) : null, input.text, {
+              ...(input.done === undefined ? {} : { done: input.done }),
+              ...(input.pinned === undefined ? {} : { pinned: input.pinned }),
+            });
+          } else if (input.op === "move") {
+            next = moveFocusItem(doc, input.id, input.direction);
           } else {
             next = changeFocusItem(
               doc,
@@ -1803,7 +1809,9 @@ const make = Effect.gen(function* () {
                 ? null
                 : input.op === "edit"
                   ? { text: input.text }
-                  : { done: input.done },
+                  : input.op === "pin"
+                    ? { pinned: input.pinned }
+                    : { done: input.done },
             );
           }
           if (next === null) {
