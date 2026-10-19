@@ -19,6 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 vi.mock("../../state/environments", () => ({ usePrimaryEnvironmentId: () => "test" }));
+vi.mock("../../onboarding/aiLevelSync", () => ({ useAiLevelServerSync: () => {} }));
 vi.mock("../../onboarding/useGuidanceProfile", () => ({
   useGuidanceProfile: () => [mocks.profile, mocks.save],
 }));

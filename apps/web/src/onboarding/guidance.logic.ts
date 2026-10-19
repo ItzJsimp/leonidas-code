@@ -154,7 +154,7 @@ export const WEEKLY_QUESTIONS = [
   },
 ] as const;
 
-function localDay(now: Date): string {
+export function localDay(now: Date): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 function dayNumber(day: string): number {

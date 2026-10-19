@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAiLevelServerSync } from "../../onboarding/aiLevelSync";
 import { EnvironmentId } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
@@ -76,6 +77,7 @@ function ConnectedGuidanceCoach({
   folder: string;
 }) {
   const [profile, setProfile] = useGuidanceProfile(environmentId);
+  useAiLevelServerSync(environmentId, profile);
   const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmExplain, setConfirmExplain] = useState(false);
