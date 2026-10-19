@@ -8074,14 +8074,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       />
                     </>
                   ) : null}
-                  <ComposerVoiceButton
-                    key={`${environmentId}:${activeThreadId ?? draftId}`}
-                    environmentId={environmentId}
-                    disabled={!canOperateThread || isConnecting || pendingUserInputs.length > 0}
-                    onText={(text) =>
-                      insertComposerText(text, "cursor", { ensureLeadingBoundary: true })
-                    }
-                  />
+                  {/* Unmounted (not disabled) while a question card is open; unmount also stops a live recording. */}
+                  {pendingUserInputs.length === 0 ? (
+                    <ComposerVoiceButton
+                      key={`${environmentId}:${activeThreadId ?? draftId}`}
+                      environmentId={environmentId}
+                      disabled={!canOperateThread || isConnecting}
+                      onText={(text) =>
+                        insertComposerText(text, "cursor", { ensureLeadingBoundary: true })
+                      }
+                    />
+                  ) : null}
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
