@@ -8,6 +8,7 @@ pub mod credentials;
 pub mod dictionary;
 pub mod engine;
 pub mod groq;
+pub mod history;
 pub mod hotkeys;
 pub mod http;
 pub mod hud;

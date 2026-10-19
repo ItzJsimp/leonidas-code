@@ -1,7 +1,8 @@
 //! The dictation state machine: ready -> listening -> processing -> ready.
 //! Audio, speech-to-text, polish and paste are seams, so tests run with fakes.
 
-use crate::contract::{now_iso, Event, Mode, State, SttEngine};
+use crate::contract::{now_iso, Event, HistoryMetrics, Mode, State, SttEngine};
+use crate::history::{History, NewItem};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -72,6 +73,8 @@ struct Shared {
     polisher: Box<dyn Polisher>,
     paster: Box<dyn Paster>,
     min_record_ms: u64,
+    /// v1.2: where finished dictations are saved; `None` keeps no history.
+    history: Option<Arc<History>>,
 }
 
 /// Cheap to clone; all clones drive the same engine.
@@ -85,6 +88,7 @@ impl Engine {
         polisher: Box<dyn Polisher>,
         paster: Box<dyn Paster>,
         min_record_ms: u64,
+        history: Option<Arc<History>>,
     ) -> Self {
         Self(Arc::new(Shared {
             inner: Mutex::new(Inner {
@@ -99,7 +103,13 @@ impl Engine {
             polisher,
             paster,
             min_record_ms,
+            history,
         }))
+    }
+
+    /// v1.2: the dictation history, when the engine keeps one.
+    pub fn history(&self) -> Option<&History> {
+        self.0.history.as_deref()
     }
 
     pub fn state(&self) -> State {
@@ -203,7 +213,7 @@ impl Engine {
         if inner.state != State::Listening {
             return Err(EngineError::InvalidState(inner.state));
         }
-        inner.mode = None;
+        let mode = inner.mode.take().unwrap_or(Mode::Hold);
         if let (Some(t), Some(first)) = (inner.trigger_at, inner.recorder.first_buffer_at()) {
             inner.hotkey_latency = first.checked_duration_since(t);
         }
@@ -231,18 +241,39 @@ impl Engine {
         let engine = self.clone();
         std::thread::Builder::new()
             .name("scribe-process".into())
-            .spawn(move || engine.process(audio, paste))
+            .spawn(move || engine.process(audio, paste, mode))
             .expect("spawn scribe-process thread");
         Ok(State::Processing)
     }
 
-    fn process(&self, audio: EncodedAudio, paste: bool) {
+    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode) {
         let shared = &*self.0;
+        let started = Instant::now();
         match shared.transcriber.transcribe(&audio) {
             Ok(t) if t.text.trim().is_empty() => {}
             Ok(t) => {
+                let transcribed = Instant::now();
                 let text = shared.polisher.polish(&t.text);
+                let polished = Instant::now();
                 let pasted = paste && !text.is_empty() && shared.paster.paste(&text);
+                let at_ms = crate::contract::unix_ms_now();
+                let at = crate::contract::iso_from_unix_ms(at_ms);
+                let saved = shared.history.as_ref().map(|history| {
+                    history.add(NewItem {
+                        at: at.clone(),
+                        mode: mode_name(mode).into(),
+                        app: String::new(),
+                        raw_text: t.text.clone(),
+                        cleaned_text: text.clone(),
+                        metrics: HistoryMetrics {
+                            transcribe_ms: millis(transcribed - started),
+                            polish_ms: millis(polished - transcribed),
+                            total_ms: millis(started.elapsed()),
+                        },
+                        pasted,
+                        at_ms,
+                    })
+                });
                 Self::emit(
                     shared,
                     Event::Transcript {
@@ -251,9 +282,22 @@ impl Engine {
                         duration_ms: audio.duration_ms,
                         pasted,
                         engine: t.engine,
-                        at: now_iso(),
+                        at: at.clone(),
                     },
                 );
+                match saved {
+                    Some(Ok(item)) => Self::emit(shared, Event::History { item }),
+                    // Store errors can contain paths. Send only a fixed message.
+                    Some(Err(_)) => Self::emit(
+                        shared,
+                        Event::Error {
+                            code: "store_error".into(),
+                            message: "Could not save the dictation to history.".into(),
+                            at,
+                        },
+                    ),
+                    None => {}
+                }
             }
             Err(message) => Self::emit(
                 shared,
@@ -267,6 +311,17 @@ impl Engine {
         let mut inner = shared.inner.lock().unwrap();
         Self::set_state(shared, &mut inner, State::Ready);
     }
+}
+
+fn mode_name(mode: Mode) -> &'static str {
+    match mode {
+        Mode::Hold => "hold",
+        Mode::Toggle => "toggle",
+    }
+}
+
+fn millis(d: Duration) -> u64 {
+    u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
 }
 
 /// Test doubles, shared with other modules' tests.
@@ -340,6 +395,7 @@ pub mod fakes {
             Box::new(UpperPolish),
             Box::new(paster.clone()),
             250,
+            None,
         );
         (engine, paster)
     }
@@ -365,6 +421,75 @@ mod tests {
             std::thread::sleep(Duration::from_millis(5));
         }
         assert_eq!(engine.state(), State::Ready);
+    }
+
+    fn history_engine(name: &str) -> (Engine, Arc<History>, std::path::PathBuf) {
+        let dir =
+            std::env::temp_dir().join(format!("scribe-eng-hist-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("history.jsonl");
+        let history = Arc::new(History::open(&path));
+        let engine = Engine::new(
+            Box::new(FakeRecorder {
+                duration_ms: 1000,
+                ..Default::default()
+            }),
+            Box::new(FakeStt(Ok("hello world".into()))),
+            Box::new(UpperPolish),
+            Box::new(Arc::new(FakePaster::default())),
+            250,
+            Some(history.clone()),
+        );
+        (engine, history, path)
+    }
+
+    fn next_history_or_error(rx: &Receiver<Event>) -> Event {
+        loop {
+            let e = rx.recv_timeout(Duration::from_secs(2)).expect("event");
+            if matches!(e, Event::History { .. } | Event::Error { .. }) {
+                return e;
+            }
+        }
+    }
+
+    #[test]
+    fn a_transcript_is_saved_and_announced_as_history() {
+        let (engine, history, _) = history_engine("saved");
+        let rx = engine.subscribe();
+        engine.start(Mode::Toggle, None).unwrap();
+        engine.stop(false).unwrap();
+        match next_history_or_error(&rx) {
+            Event::History { item } => {
+                assert_eq!(
+                    (
+                        item.mode.as_str(),
+                        item.raw_text.as_str(),
+                        item.cleaned_text.as_str()
+                    ),
+                    ("toggle", "hello world", "HELLO WORLD")
+                );
+                assert_eq!((item.words, item.pasted), (2, false));
+                assert!(item.metrics.total_ms >= item.metrics.transcribe_ms);
+            }
+            e => panic!("{e:?}"),
+        }
+        wait_ready(&engine);
+        assert_eq!(history.page(10, None, None).items.len(), 1);
+    }
+
+    #[test]
+    fn a_failed_save_reports_store_error() {
+        let (engine, _, path) = history_engine("fails");
+        // A folder where the file should be makes the append fail.
+        std::fs::create_dir_all(&path).unwrap();
+        let rx = engine.subscribe();
+        engine.start(Mode::Hold, None).unwrap();
+        engine.stop(false).unwrap();
+        match next_history_or_error(&rx) {
+            Event::Error { code, .. } => assert_eq!(code, "store_error"),
+            e => panic!("{e:?}"),
+        }
+        wait_ready(&engine);
     }
 
     #[test]
