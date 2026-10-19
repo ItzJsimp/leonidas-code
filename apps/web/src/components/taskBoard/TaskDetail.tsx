@@ -32,7 +32,7 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
-import { Textarea } from "~/components/ui/textarea";
+import { DictationTextarea } from "~/components/voice/DictationTextarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ChecklistBar, PriorityBadge, StatusBadge } from "./TaskBadges";
 import {
@@ -617,7 +617,7 @@ function TaskDetailBody(props: {
 
         <Section title="Activity">
           <div className="flex flex-col gap-2">
-            <Textarea
+            <DictationTextarea
               size="sm"
               aria-label="Add a note"
               placeholder="Add a note (Ctrl+Enter to submit)"

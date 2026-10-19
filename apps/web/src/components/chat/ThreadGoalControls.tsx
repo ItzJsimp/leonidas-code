@@ -3,7 +3,7 @@ import { TargetIcon } from "lucide-react";
 import type { ThreadGoal, ThreadGoalControl } from "@t3tools/contracts";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Textarea } from "~/components/ui/textarea";
+import { DictationTextarea } from "~/components/voice/DictationTextarea";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -116,7 +116,7 @@ export function ThreadGoalControls({
           </AlertDialogHeader>
           <div className="flex flex-col gap-3 px-6 pb-6">
             <label htmlFor="thread-goal-condition">Completion condition</label>
-            <Textarea
+            <DictationTextarea
               id="thread-goal-condition"
               value={resuming ? (goal?.condition ?? "") : condition}
               onChange={(event) => setCondition(event.target.value)}

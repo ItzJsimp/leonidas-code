@@ -13,7 +13,7 @@ import { pullRequestEnvironment } from "~/state/pullRequests";
 
 import { Button } from "../ui/button";
 import { Select, SelectItem, SelectPopup, SelectTrigger } from "../ui/select";
-import { Textarea } from "../ui/textarea";
+import { DictationTextarea } from "../voice/DictationTextarea";
 import { toastManager } from "../ui/toast";
 import {
   pullRequestReviewKey,
@@ -123,7 +123,7 @@ export function PullRequestReviewForm({
 
   return (
     <>
-      <Textarea
+      <DictationTextarea
         ref={textareaRef}
         rows={3}
         value={body}

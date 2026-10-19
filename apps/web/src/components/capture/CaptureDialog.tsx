@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Spinner } from "~/components/ui/spinner";
-import { Textarea } from "~/components/ui/textarea";
+import { DictationTextarea } from "~/components/voice/DictationTextarea";
 import { closeCapture, useCaptureStore } from "./captureStore";
 import { useCaptureDrop } from "./useCaptureDrop";
 
@@ -65,7 +65,7 @@ function CaptureForm(props: { readonly source?: string; readonly initialText: st
         </DialogDescription>
       </DialogHeader>
       <DialogPanel>
-        <Textarea
+        <DictationTextarea
           autoFocus
           aria-label="Note"
           placeholder="What's on your mind?"

@@ -14,7 +14,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Spinner } from "~/components/ui/spinner";
-import { Textarea } from "~/components/ui/textarea";
+import { DictationTextarea } from "~/components/voice/DictationTextarea";
 import { toastManager } from "~/components/ui/toast";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import {
@@ -160,7 +160,7 @@ function FeedbackForm(props: {
             </Toggle>
           ))}
         </ToggleGroup>
-        <Textarea
+        <DictationTextarea
           autoFocus
           onFocus={(event) => event.currentTarget.setSelectionRange(0, 0)}
           aria-label="Feedback"
