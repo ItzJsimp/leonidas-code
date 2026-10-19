@@ -71,6 +71,8 @@ const WEBHOOK_DELIVERY_LOG_PROMPT_LIMIT = 64 * 1024;
 const WEBHOOK_MAX_QUEUED_PER_TASK = 20;
 /** Accepted deliveries per task per minute, enforced here as well as on the relay because the tunnel hostname is public too. */
 const WEBHOOK_RATE_LIMIT_PER_MINUTE = 60;
+/** Each accepted delivery is a full agent run, so a leaked URL must not spend all day. */
+const WEBHOOK_RATE_LIMIT_PER_DAY = 100;
 
 /**
  * Where a webhook task's public URL points: `${relayHookBaseUrl}/${taskId}/${token}`.
@@ -1359,7 +1361,7 @@ export const layer = Layer.effect(
       `.pipe(Effect.ignore);
 
     /**
-     * Sliding one-minute window counting every request with a valid token,
+     * Sliding one-minute and one-day windows counting every request with a valid token,
      * including ones the signature check later rejects.
      */
     const takeRateSlot = (id: ScheduledTaskId, nowMs: number) =>
@@ -1372,8 +1374,12 @@ export const layer = Layer.effect(
           ReadonlyMap<ScheduledTaskId, RateWindow>,
         ] => {
           const current = windows.get(id);
-          const recent = (current?.accepted ?? []).filter((at) => nowMs - at < 60_000);
-          if (recent.length >= WEBHOOK_RATE_LIMIT_PER_MINUTE) {
+          const recent = (current?.accepted ?? []).filter((at) => nowMs - at < 86_400_000);
+          const lastMinute = recent.filter((at) => nowMs - at < 60_000).length;
+          if (
+            lastMinute >= WEBHOOK_RATE_LIMIT_PER_MINUTE ||
+            recent.length >= WEBHOOK_RATE_LIMIT_PER_DAY
+          ) {
             const first = current?.rejectedLogged !== true;
             return [
               first ? "first_rejected" : "rejected",

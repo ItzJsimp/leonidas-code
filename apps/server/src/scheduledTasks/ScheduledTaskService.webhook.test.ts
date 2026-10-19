@@ -324,6 +324,24 @@ it.effect("rate limits a hook past 60 deliveries a minute", () =>
   ),
 );
 
+it.effect("rate limits a hook past 100 deliveries a day", () =>
+  withService(({ service }) =>
+    Effect.gen(function* () {
+      const { task } = yield* service.upsert(yield* webhookTaskInput({ enabled: false }));
+      // 50 a minute stays under the minute limit, so only the day limit can trip.
+      for (const _minute of [1, 2]) {
+        yield* Effect.forEach(Array.from({ length: 50 }), () =>
+          service.triggerWebhook(requestFor(task)),
+        );
+        yield* TestClock.adjust("61 seconds");
+      }
+      assert.equal((yield* service.triggerWebhook(requestFor(task)))._tag, "rate_limited");
+      yield* TestClock.adjust("24 hours");
+      assert.equal((yield* service.triggerWebhook(requestFor(task)))._tag, "disabled");
+    }),
+  ),
+);
+
 it.effect("a save carrying a stale token cannot undo a rotation", () =>
   withService(({ service }) =>
     Effect.gen(function* () {
