@@ -143,7 +143,7 @@ describe("AI level", () => {
     setAiLevelSetting("builder", "");
     expect(buildRuntimeInstructions({ harness: "Codex" })).toContain("whole frontier in one call");
     setAiLevelSetting("new", "2026-01-01");
-    expect(activeAiLevel(new Date("2026-03-01T12:00:00Z"))).toBe("beginner");
+    expect(activeAiLevel("2026-03-01")).toBe("beginner");
     setAiLevelSetting("new", "");
     expect(buildRuntimeInstructions({ harness: "Codex" })).toContain("Act first and report after.");
   });

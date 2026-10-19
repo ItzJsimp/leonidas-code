@@ -1,3 +1,4 @@
+import * as DateTime from "effect/DateTime";
 import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
 import { HARNESS_AWARENESS } from "./harnessAwareness.ts";
 import { effectiveAiLevel, type AiLevel } from "@t3tools/contracts";
@@ -30,13 +31,13 @@ export function setAiLevelSetting(level: AiLevel, since: string): void {
   aiLevelSetting = { level, since };
 }
 
-/** The level in force today, after the day-30 step up. */
-export function activeAiLevel(now: Date = new Date()): AiLevel {
-  return effectiveAiLevel(
-    aiLevelSetting.level,
-    aiLevelSetting.since,
-    now.toISOString().slice(0, 10),
-  );
+/** The level in force on `today` (local YYYY-MM-DD), after the day-30 step up. */
+export function activeAiLevel(
+  today: string = DateTime.formatIsoDate(
+    DateTime.makeZonedUnsafe(DateTime.nowUnsafe(), { timeZone: DateTime.zoneMakeLocal() }),
+  ),
+): AiLevel {
+  return effectiveAiLevel(aiLevelSetting.level, aiLevelSetting.since, today);
 }
 
 /**
