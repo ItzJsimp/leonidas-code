@@ -186,6 +186,7 @@ import {
   FilesystemInspectFolderResult,
 } from "./filesystem.ts";
 import { LayaSetupInput, LayaSetupResult } from "./laya.ts";
+import { ThreadSweepInput, ThreadSweepResult } from "./threadSweep.ts";
 import {
   AgentSessionImportInput,
   AgentSessionImportProjectChangedError,
@@ -637,6 +638,7 @@ export const WS_METHODS = {
   filesystemGetMetadata: "filesystem.getMetadata",
   filesystemInspectFolder: "filesystem.inspectFolder",
   layaSetup: "laya.setup",
+  threadSweepRun: "threadSweep.run",
   agentSessionsScan: "agentSessions.scan",
   agentSessionsImport: "agentSessions.import",
   assetsCreateUrl: "assets.createUrl",
@@ -1991,6 +1993,12 @@ const WsLayaSetupRpc = Rpc.make(WS_METHODS.layaSetup, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsThreadSweepRunRpc = Rpc.make(WS_METHODS.threadSweepRun, {
+  payload: ThreadSweepInput,
+  success: ThreadSweepResult,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsFilesystemInspectFolderRpc = Rpc.make(WS_METHODS.filesystemInspectFolder, {
   payload: FilesystemInspectFolderInput,
   success: FilesystemInspectFolderResult,
@@ -2981,6 +2989,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsFilesystemGetMetadataRpc,
   WsFilesystemInspectFolderRpc,
   WsLayaSetupRpc,
+  WsThreadSweepRunRpc,
   WsAgentSessionsScanRpc,
   WsAgentSessionsImportRpc,
   WsAssetsCreateUrlRpc,
