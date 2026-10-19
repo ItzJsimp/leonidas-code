@@ -4,7 +4,11 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   ScribeDeleteHistoryInput,
   ScribeDeleteHistoryResult,
+  ScribeDevices,
   ScribeDictionary,
+  ScribePatchSettingsInput,
+  ScribePatchSettingsResult,
+  ScribeSettings,
   ScribeSuggestionList,
   ScribeEngineWireEvent,
   ScribeHistoryPage,
@@ -120,5 +124,54 @@ describe("dictionary contract", () => {
   it("rejects more than 800 vocabulary words, as the engine does", () => {
     const words = Array.from({ length: 801 }, (_, index) => `w${index}`);
     expect(() => decodeDictionary({ replacements: [], vocabulary: words })).toThrow();
+  });
+});
+
+describe("settings contract", () => {
+  const decodeSettings = Schema.decodeUnknownSync(ScribeSettings);
+  const decodePatch = Schema.decodeUnknownSync(ScribePatchSettingsInput);
+  const decodePatched = Schema.decodeUnknownSync(ScribePatchSettingsResult);
+  const decodeDevices = Schema.decodeUnknownSync(ScribeDevices);
+
+  it("decodes the v1.2 GET /v1/settings example", () => {
+    const settings = decodeSettings({
+      sections: {
+        hotkeys: { hold: ["Ctrl + Shift + T"], toggle: ["Mouse5"], cancel: ["Escape"] },
+        audio: { device: null, maxRecordSeconds: 600, minRecordMs: 250 },
+        transcription: {
+          privateMode: false,
+          polishEnabled: true,
+          polishInstructions: null,
+          whisperModel: "whisper-large-v3-turbo",
+          whisperModelBackup: "whisper-large-v3",
+          polishModel: "qwen/qwen3.8-27b",
+          backupPolishModel: "openai/gpt-oss-20b",
+          groqKey: { set: true },
+        },
+        presets: {},
+        hud: { enabled: true },
+        features: {},
+        goals: {},
+      },
+    });
+    expect(settings.sections.transcription.groqKey.set).toBe(true);
+  });
+
+  it("decodes a patch, its reply and the device list", () => {
+    expect(decodePatch({ section: "audio", values: { device: "USB Mic" } }).section).toBe("audio");
+    expect(
+      decodePatched({
+        section: "audio",
+        values: { device: "USB Mic", maxRecordSeconds: 600, minRecordMs: 250 },
+        restartRequired: false,
+      }).restartRequired,
+    ).toBe(false);
+    expect(
+      decodeDevices({ inputs: [{ id: "Mic", name: "Mic", default: true }] }).inputs,
+    ).toHaveLength(1);
+  });
+
+  it("rejects an unknown section", () => {
+    expect(() => decodePatch({ section: "secrets", values: {} })).toThrow();
   });
 });

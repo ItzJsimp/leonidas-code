@@ -7,7 +7,7 @@ import { FetchHttpClient } from "effect/http";
 // Loaded by path so the server typecheck does not pull the Node-only mock into its Effect rules.
 interface MockScribeEngineOptions {
   readonly port?: number;
-  readonly fail?: "status" | "events" | "dictionary" | "all";
+  readonly fail?: "status" | "events" | "dictionary" | "settings" | "all";
   readonly historyCount?: number;
   readonly processingMs?: number;
   readonly pingMs?: number;
@@ -112,6 +112,47 @@ it.effect("lists suggestions and rejects one with an encoded phrase", () =>
     });
     const after = yield* engine.listSuggestions;
     expect(after.items.some((item) => item.wrong === phrase?.wrong)).toBe(false);
+  }),
+);
+
+it.effect("reads settings, patches one section and reports restartRequired", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock();
+    const before = yield* engine.getSettings;
+    expect(before.sections.transcription.groqKey).toEqual({ set: true });
+    const audio = yield* engine.patchSettings({ section: "audio", values: { device: "USB Mic" } });
+    expect(audio.restartRequired).toBe(false);
+    expect(audio.values).toMatchObject({ device: "USB Mic", maxRecordSeconds: 600 });
+    const model = yield* engine.patchSettings({
+      section: "transcription",
+      values: { polishModel: "llama-3.3-70b-versatile" },
+    });
+    expect(model.restartRequired).toBe(true);
+    expect((yield* engine.getSettings).sections.audio.device).toBe("USB Mic");
+    const error = yield* Effect.flip(
+      engine.patchSettings({ section: "audio", values: { speed: 1 } }),
+    );
+    expect(error.reason).toBe("bad_request");
+  }),
+);
+
+it.effect("lists input devices", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock();
+    const { inputs } = yield* engine.listDevices;
+    expect(inputs.some((input) => input.default)).toBe(true);
+  }),
+);
+
+it.effect("sets and clears the Groq key without ever reading it back", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock();
+    yield* engine.clearGroqKey;
+    expect((yield* engine.getSettings).sections.transcription.groqKey).toEqual({ set: false });
+    yield* engine.setGroqKey({ key: "gsk_test" });
+    const settings = yield* engine.getSettings;
+    expect(settings.sections.transcription.groqKey).toEqual({ set: true });
+    expect(JSON.stringify(settings)).not.toContain("gsk_test");
   }),
 );
 

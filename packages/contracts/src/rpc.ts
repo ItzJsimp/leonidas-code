@@ -510,13 +510,18 @@ import {
   ScribeCommandResult,
   ScribeDeleteHistoryInput,
   ScribeDeleteHistoryResult,
+  ScribeDevices,
   ScribeDictionary,
   ScribeEngineError,
   ScribeHistoryPage,
   ScribeListHistoryInput,
   ScribeLiveEvent,
   ScribeRejectSuggestionInput,
+  ScribePatchSettingsInput,
+  ScribePatchSettingsResult,
   ScribeRejectSuggestionResult,
+  ScribeSetGroqKeyInput,
+  ScribeSettings,
   ScribeStartInput,
   ScribeStopInput,
   ScribeSuggestionList,
@@ -548,6 +553,11 @@ export const WS_METHODS = {
   scribePutDictionary: "scribe.putDictionary",
   scribeListSuggestions: "scribe.listSuggestions",
   scribeRejectSuggestion: "scribe.rejectSuggestion",
+  scribeGetSettings: "scribe.getSettings",
+  scribePatchSettings: "scribe.patchSettings",
+  scribeListDevices: "scribe.listDevices",
+  scribeSetGroqKey: "scribe.setGroqKey",
+  scribeClearGroqKey: "scribe.clearGroqKey",
   scribeSubscribeEvents: "scribe.subscribeEvents",
   voiceGetStatus: "voice.getStatus",
   voiceSetGroqKey: "voice.setGroqKey",
@@ -2349,6 +2359,36 @@ const WsScribeRejectSuggestionRpc = Rpc.make(WS_METHODS.scribeRejectSuggestion, 
   error: ScribeRpcError,
 });
 
+const WsScribeGetSettingsRpc = Rpc.make(WS_METHODS.scribeGetSettings, {
+  payload: Schema.Struct({}),
+  success: ScribeSettings,
+  error: ScribeRpcError,
+});
+
+const WsScribePatchSettingsRpc = Rpc.make(WS_METHODS.scribePatchSettings, {
+  payload: ScribePatchSettingsInput,
+  success: ScribePatchSettingsResult,
+  error: ScribeRpcError,
+});
+
+const WsScribeListDevicesRpc = Rpc.make(WS_METHODS.scribeListDevices, {
+  payload: Schema.Struct({}),
+  success: ScribeDevices,
+  error: ScribeRpcError,
+});
+
+const WsScribeSetGroqKeyRpc = Rpc.make(WS_METHODS.scribeSetGroqKey, {
+  payload: ScribeSetGroqKeyInput,
+  success: Schema.Struct({}),
+  error: ScribeRpcError,
+});
+
+const WsScribeClearGroqKeyRpc = Rpc.make(WS_METHODS.scribeClearGroqKey, {
+  payload: Schema.Struct({}),
+  success: Schema.Struct({}),
+  error: ScribeRpcError,
+});
+
 const WsScribeSubscribeEventsRpc = Rpc.make(WS_METHODS.scribeSubscribeEvents, {
   payload: Schema.Struct({}),
   success: ScribeLiveEvent,
@@ -2800,6 +2840,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsScribePutDictionaryRpc,
   WsScribeListSuggestionsRpc,
   WsScribeRejectSuggestionRpc,
+  WsScribeGetSettingsRpc,
+  WsScribePatchSettingsRpc,
+  WsScribeListDevicesRpc,
+  WsScribeSetGroqKeyRpc,
+  WsScribeClearGroqKeyRpc,
   WsScribeSubscribeEventsRpc,
   WsVoiceGetStatusRpc,
   WsVoiceSetGroqKeyRpc,

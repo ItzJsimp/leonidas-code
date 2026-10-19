@@ -10,6 +10,7 @@ import { SidebarInset } from "../ui/sidebar";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { ScribeDictionaryTab } from "./ScribeDictionaryTab";
 import { ScribeHomeTab } from "./ScribeHomeTab";
+import { ScribeSettingsTab } from "./ScribeSettingsTab";
 import { ScribeTranscriptsTab } from "./ScribeTranscriptsTab";
 import { INITIAL_SCRIBE_LIVE, engineStrip, type ScribeLiveSnapshot } from "./scribeLive.logic";
 
@@ -23,6 +24,7 @@ const TABS = [
   { id: "home", label: "Home", render: ScribeHomeTab },
   { id: "transcripts", label: "Transcripts", render: ScribeTranscriptsTab },
   { id: "dictionary", label: "Dictionary", render: ScribeDictionaryTab },
+  { id: "settings", label: "Settings", render: ScribeSettingsTab },
 ] as const;
 
 export type ScribeTabId = (typeof TABS)[number]["id"];
