@@ -17,8 +17,8 @@ describe("isRendererReloadSafe", () => {
     ).toBe(true);
   });
 
-  it("is not safe while an agent runs or waits for the user", () => {
-    for (const status of ["running", "waiting"]) {
+  it("is not safe while an agent starts, runs or waits for the user", () => {
+    for (const status of ["queued", "starting", "running", "waiting"]) {
       expect(isRendererReloadSafe({ threads: [thread(status)], confirmDialogActive: false })).toBe(
         false,
       );

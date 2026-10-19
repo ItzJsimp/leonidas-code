@@ -1,5 +1,7 @@
-import { isAgentActive } from "@t3tools/client-runtime/state/activeAgentCounts";
-import type { ThreadRuntimeSummary } from "@t3tools/client-runtime/state/models";
+import {
+  threadRuntimeIsActive,
+  type ThreadRuntimeSummary,
+} from "@t3tools/client-runtime/state/models";
 import { DESKTOP_RENDERER_RELOAD_SAFE_CHECK } from "@t3tools/contracts";
 import { useEffect, useRef } from "react";
 
@@ -11,14 +13,14 @@ interface ReloadGuardThread {
   readonly archivedAt?: string | null;
 }
 
-/** A reload is safe when no agent runs or waits for the user and no dialog is open. */
+/** A reload is safe when no agent starts, runs or waits for the user and no dialog is open. */
 export function isRendererReloadSafe(input: {
   readonly threads: Iterable<ReloadGuardThread>;
   readonly confirmDialogActive: boolean;
 }): boolean {
   if (input.confirmDialogActive) return false;
   for (const thread of input.threads) {
-    if (!thread.archivedAt && isAgentActive(thread.runtime)) return false;
+    if (!thread.archivedAt && threadRuntimeIsActive(thread.runtime)) return false;
   }
   return true;
 }
