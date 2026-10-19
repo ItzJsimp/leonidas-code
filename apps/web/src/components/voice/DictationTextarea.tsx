@@ -3,17 +3,17 @@ import { usePrimaryEnvironmentId } from "~/state/environments";
 import { Textarea, type TextareaProps } from "../ui/textarea";
 import { ComposerVoiceButton } from "./ComposerVoiceButton";
 
-const setTextareaValue = Object.getOwnPropertyDescriptor(
-  HTMLTextAreaElement.prototype,
-  "value",
-)?.set;
-
 /** A Textarea with a mic that dictates at the cursor. Works for controlled and uncontrolled fields. */
 export function DictationTextarea(props: TextareaProps) {
   const environmentId = usePrimaryEnvironmentId();
   const box = useRef<HTMLDivElement>(null);
   const insert = (text: string) => {
     const field = box.current?.querySelector("textarea");
+    // The native setter skips React's value tracker, so the input event below reaches onChange.
+    const setTextareaValue = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )?.set;
     if (!field || !setTextareaValue) return false;
     const { selectionStart: start, selectionEnd: end } = field;
     let next = field.value.slice(0, start) + text + field.value.slice(end);
