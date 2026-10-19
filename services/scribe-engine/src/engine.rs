@@ -80,6 +80,8 @@ struct Inner {
     recorder: Box<dyn Recorder>,
     trigger_at: Option<Instant>,
     hotkey_latency: Option<Duration>,
+    /// v1.2: the app in front when this recording started.
+    app: String,
 }
 
 struct Shared {
@@ -91,6 +93,8 @@ struct Shared {
     min_record_ms: AtomicU64,
     /// v1.2: where finished dictations are saved; `None` keeps no history.
     history: Option<Arc<History>>,
+    /// v1.2: reads the app in front for the history `app` field.
+    foreground: Box<dyn Fn() -> String + Send + Sync>,
 }
 
 /// Cheap to clone; all clones drive the same engine.
@@ -113,6 +117,7 @@ impl Engine {
                 recorder,
                 trigger_at: None,
                 hotkey_latency: None,
+                app: String::new(),
             }),
             subscribers: Mutex::new(Vec::new()),
             transcriber,
@@ -120,7 +125,16 @@ impl Engine {
             paster,
             min_record_ms: AtomicU64::new(min_record_ms),
             history,
+            foreground: Box::new(String::new),
         }))
+    }
+
+    /// v1.2: set how the engine reads the app in front. Call it before the first clone.
+    pub fn with_foreground(mut self, read: impl Fn() -> String + Send + Sync + 'static) -> Self {
+        Arc::get_mut(&mut self.0)
+            .expect("with_foreground runs before the engine is shared")
+            .foreground = Box::new(read);
+        self
     }
 
     /// v1.2: apply saved audio settings to the next recording.
@@ -201,6 +215,8 @@ impl Engine {
         match inner.recorder.start() {
             Ok(()) => {
                 inner.mode = Some(mode);
+                // After the mic opens, so the read never delays capture.
+                inner.app = (shared.foreground)();
                 Self::set_state(shared, &mut inner, State::Listening);
             }
             Err(message) => {
@@ -238,6 +254,7 @@ impl Engine {
             return Err(EngineError::InvalidState(inner.state));
         }
         let mode = inner.mode.take().unwrap_or(Mode::Hold);
+        let app = std::mem::take(&mut inner.app);
         if let (Some(t), Some(first)) = (inner.trigger_at, inner.recorder.first_buffer_at()) {
             inner.hotkey_latency = first.checked_duration_since(t);
         }
@@ -265,12 +282,12 @@ impl Engine {
         let engine = self.clone();
         std::thread::Builder::new()
             .name("scribe-process".into())
-            .spawn(move || engine.process(audio, paste, mode))
+            .spawn(move || engine.process(audio, paste, mode, app))
             .expect("spawn scribe-process thread");
         Ok(State::Processing)
     }
 
-    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode) {
+    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode, app: String) {
         let shared = &*self.0;
         let started = Instant::now();
         match shared.transcriber.transcribe(&audio) {
@@ -286,7 +303,7 @@ impl Engine {
                     history.add(NewItem {
                         at: at.clone(),
                         mode: mode_name(mode).into(),
-                        app: String::new(),
+                        app,
                         raw_text: t.text.clone(),
                         cleaned_text: text.clone(),
                         metrics: HistoryMetrics {
@@ -499,6 +516,21 @@ mod tests {
         }
         wait_ready(&engine);
         assert_eq!(history.page(10, None, None).items.len(), 1);
+    }
+
+    #[test]
+    fn the_app_in_front_at_start_is_saved_with_the_item() {
+        let (engine, history, _) = history_engine("app");
+        let engine = engine.with_foreground(|| "Code.exe".into());
+        let rx = engine.subscribe();
+        engine.start(Mode::Hold, None).unwrap();
+        engine.stop(false).unwrap();
+        match next_history_or_error(&rx) {
+            Event::History { item } => assert_eq!(item.app, "Code.exe"),
+            e => panic!("{e:?}"),
+        }
+        wait_ready(&engine);
+        assert_eq!(history.page(1, None, None).items[0].app, "Code.exe");
     }
 
     #[test]

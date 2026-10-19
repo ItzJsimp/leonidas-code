@@ -86,7 +86,8 @@ fn run() -> Result<(), String> {
         Box::new(ClipboardPaster::new()),
         cfg.audio.min_record_ms,
         Some(Arc::new(History::open(&config_dir.join("history.jsonl")))),
-    );
+    )
+    .with_foreground(scribe_engine::foreground::foreground_app);
 
     let server = http::serve(
         engine.clone(),
