@@ -174,9 +174,84 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
+  # Unsigned Apple Silicon build. A failure here never blocks the Windows release.
+  mac:
+    name: macOS arm64 app
+    runs-on: macos-latest
+    timeout-minutes: 40
+    concurrency:
+      group: team-release-build-mac
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: false
+          run-install: false
+
+      # Same commit and release list as the Windows job, so the same version.
+      - name: Plan version
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_KIND: ${{ inputs.release_kind || 'auto' }}
+        run: node scripts/leonidas-release.ts
+
+      - name: Locate dependency cache
+        id: dependencies
+        run: echo "path=$(vp pm cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore desktop dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.dependencies.outputs.path }}
+          key: desktop-deps-${{ runner.os }}-arm64-${{ hashFiles('pnpm-lock.yaml', '.github/workflows/team-release.yml') }}
+
+      - name: Install desktop build dependencies
+        run: vp install --frozen-lockfile --filter @t3tools/monorepo --filter @t3tools/desktop... --filter t3... --filter @t3tools/web... --filter @t3tools/scripts...
+
+      - name: Set release version
+        run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"
+
+      - name: Build JS bundle
+        env:
+          VITE_LEONIDAS_FEEDBACK_URL: ${{ vars.LEONIDAS_FEEDBACK_URL }}
+          VITE_POSTHOG_KEY: ${{ vars.POSTHOG_PROJECT_KEY }}
+        run: vp run build:desktop
+
+      - name: Build macOS app
+        run: vp run dist:desktop:artifact --platform mac --target dmg --arch arm64 --build-version "${{ steps.release.outputs.version }}" --skip-build
+
+      # An Apple Silicon app with a broken signature opens as "damaged".
+      - name: Check the app signature
+        run: |
+          APP=$(find release -maxdepth 3 -name '*.app' -type d | head -n 1)
+          codesign --verify --deep --strict "$APP" || echo "::warning::$APP has no valid ad hoc signature; macOS may report it as damaged."
+
+      - name: Save release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-release
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/latest-mac.yml
+          retention-days: 3
+          if-no-files-found: error
+
   publish:
     name: Publish complete release
-    needs: windows
+    needs: [windows, mac]
+    # Publish Windows even when the Mac build fails.
+    if: ${{ always() && !cancelled() && needs.windows.result == 'success' }}
     outputs:
       published: ${{ steps.publish.outputs.published }}
     runs-on: ubuntu-latest
@@ -195,6 +270,11 @@ jobs:
         with:
           name: windows-release
           path: artifacts
+      - uses: actions/download-artifact@v4
+        if: ${{ needs.mac.result == 'success' }}
+        with:
+          name: mac-release
+          path: artifacts/mac
       - name: Publish if this is still the newest main commit
         id: publish
         env:
@@ -236,6 +316,11 @@ jobs:
           find artifacts -type f -name 'benchmark-*' -print0 | xargs -0 gh release upload "v$VERSION" --clobber
           cp "$(find artifacts -type f -name 'Leonidas-Code-*-x64.exe' | head -n 1)" artifacts/Leonidas-Setup.exe
           gh release upload "v$VERSION" artifacts/Leonidas-Setup.exe --clobber
+          if [ -d artifacts/mac ]; then
+            find artifacts/mac -type f -print0 | xargs -0 gh release upload "v$VERSION" --clobber
+            cp "$(find artifacts/mac -type f -name '*-arm64.dmg' | head -n 1)" artifacts/Leonidas-Setup-mac.dmg
+            gh release upload "v$VERSION" artifacts/Leonidas-Setup-mac.dmg --clobber
+          fi
           gh release edit "v$VERSION" --draft=false --latest
           echo "published=true" >> "$GITHUB_OUTPUT"
 

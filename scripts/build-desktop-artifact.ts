@@ -2922,6 +2922,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           "Leonidas Code connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
         NSScreenCaptureUsageDescription:
           "Leonidas Code captures the active window when you use the window capture shortcut.",
+        // Without this key macOS ends the app when the composer mic button records.
+        NSMicrophoneUsageDescription:
+          "Leonidas Code uses the microphone when you dictate a message to your agent.",
         // macOS lists an app under Default web browser only when it opens web
         // pages as documents as well as http and https links (see protocols).
         CFBundleDocumentTypes: [

@@ -35,3 +35,17 @@ Select this repo folder in T3 Code. To also load your own AI operating system's 
 3. Run `claude` once in this folder and answer Yes to the external imports dialog. Without that approval the imports silently do not load.
 4. Check: ask an agent in a new session to quote a line that only your AIOS canon contains.
    Redo step 3 if the folder is moved or renamed. Never commit `CLAUDE.local.md`; it holds your own paths.
+
+## Mac setup (Apple Silicon, no Apple developer account)
+
+The Mac app is unsigned, so macOS blocks it the first time. Auto-update does not work on an unsigned Mac app: download each new version by hand.
+
+1. Download https://github.com/ItzJsimp/leonidas-code/releases/latest/download/Leonidas-Setup-mac.dmg and drag Leonidas Code to Applications.
+2. Open the app. When macOS blocks it, go to System Settings > Privacy & Security and click Open Anyway.
+3. If macOS says the app "is damaged", run this once in Terminal, then open the app again: `xattr -dr com.apple.quarantine "/Applications/Leonidas Code.app"`
+4. In the welcome wizard, sign in to Claude or Codex. The wizard installs them with the macOS command.
+5. At the AIOS step, use the chat option. The "Paste this into PowerShell" command is for Windows only.
+6. At the Voice step, add a free Groq key. Allow the microphone when macOS asks. The mic button in the composer then turns speech into text for your agent.
+7. Optional, for AIOS scripts (`.ps1`): `brew install --cask powershell`.
+
+Not on Mac: Leonidas Scribe (system-wide dictation hotkey), hardware watch and the local VM tool. They are Windows-only today.
