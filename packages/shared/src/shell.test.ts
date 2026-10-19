@@ -19,7 +19,6 @@ import {
   readEnvironmentFromLoginShell,
   readEnvironmentFromWindowsShell,
   readPathFromLaunchctl,
-  readPathFromLoginShell,
   resolveCommandPath,
   resolveKnownWindowsCliDirs,
   resolveSpawnCommand,
@@ -40,38 +39,6 @@ const withWindowsEnvironmentMocks = <A, E, R>(
     Effect.provideService(WindowsShellEnvironment, readEnvironment),
     Effect.provideService(CommandAvailability, commandAvailable),
   );
-
-describe("readPathFromLoginShell", () => {
-  it("uses a shell-agnostic printenv PATH probe", () => {
-    const execFile = vi.fn<
-      (
-        file: string,
-        args: ReadonlyArray<string>,
-        options: { encoding: "utf8"; timeout: number },
-      ) => string
-    >(() => "__T3CODE_ENV_PATH_START__\n/a:/b\n__T3CODE_ENV_PATH_END__\n");
-
-    expect(readPathFromLoginShell("/opt/homebrew/bin/fish", execFile)).toBe("/a:/b");
-    expect(execFile).toHaveBeenCalledTimes(1);
-
-    const firstCall = execFile.mock.calls[0] as
-      | [string, ReadonlyArray<string>, { encoding: "utf8"; timeout: number }]
-      | undefined;
-    expect(firstCall).toBeDefined();
-    if (!firstCall) {
-      throw new Error("Expected execFile to be called");
-    }
-
-    const [shell, args, options] = firstCall;
-    expect(shell).toBe("/opt/homebrew/bin/fish");
-    expect(args).toHaveLength(2);
-    expect(args?.[0]).toBe("-ilc");
-    expect(args?.[1]).toContain("printenv PATH || true");
-    expect(args?.[1]).toContain("__T3CODE_ENV_PATH_START__");
-    expect(args?.[1]).toContain("__T3CODE_ENV_PATH_END__");
-    expect(options).toEqual({ encoding: "utf8", timeout: 5000 });
-  });
-});
 
 describe("readPathFromLaunchctl", () => {
   it("returns a trimmed PATH value from launchctl", () => {
