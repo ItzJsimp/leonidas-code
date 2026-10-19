@@ -6,6 +6,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, Sample, SampleFormat, SizedSample};
 use flacenc::component::BitRepr;
 use flacenc::error::Verify;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -25,6 +26,8 @@ pub struct CpalRecorder {
     capture: Option<Arc<Mutex<Capture>>>,
     sample_rate: u32,
     first: Option<Instant>,
+    /// Peak level since the HUD last read it, as `f32` bits.
+    level: Arc<AtomicU32>,
     #[cfg(test)]
     timings: Option<StartTimings>,
 }
@@ -48,9 +51,15 @@ impl CpalRecorder {
             capture: None,
             sample_rate: 0,
             first: None,
+            level: Arc::default(),
             #[cfg(test)]
             timings: None,
         }
+    }
+
+    /// The live mic level for the HUD.
+    pub fn level(&self) -> Arc<AtomicU32> {
+        self.level.clone()
     }
 
     fn input_device(&self) -> Result<cpal::Device, String> {
@@ -101,9 +110,9 @@ impl Recorder for CpalRecorder {
         #[cfg(test)]
         let build_at = Instant::now();
         let stream = match supported.sample_format() {
-            SampleFormat::F32 => build_stream::<f32>(&device, config, &capture, limit),
-            SampleFormat::I16 => build_stream::<i16>(&device, config, &capture, limit),
-            SampleFormat::U16 => build_stream::<u16>(&device, config, &capture, limit),
+            SampleFormat::F32 => build_stream::<f32>(&device, config, &capture, limit, &self.level),
+            SampleFormat::I16 => build_stream::<i16>(&device, config, &capture, limit, &self.level),
+            SampleFormat::U16 => build_stream::<u16>(&device, config, &capture, limit, &self.level),
             format => return Err(format!("Unsupported input sample format: {format}")),
         }
         .map_err(|e| format!("Cannot open microphone: {e}"))?;
@@ -190,6 +199,7 @@ fn build_stream<T>(
     config: cpal::StreamConfig,
     capture: &Arc<Mutex<Capture>>,
     limit: usize,
+    level: &Arc<AtomicU32>,
 ) -> Result<cpal::Stream, cpal::Error>
 where
     T: SizedSample,
@@ -198,6 +208,7 @@ where
     let channels = usize::from(config.channels);
     let data = Arc::clone(capture);
     let errors = Arc::clone(capture);
+    let level = Arc::clone(level);
     device.build_input_stream(
         config,
         move |input: &[T], _| {
@@ -206,9 +217,15 @@ where
                 if input.len() >= channels {
                     capture.first_buffer_at.get_or_insert(arrived);
                     let remaining = limit.saturating_sub(capture.samples.len());
+                    let start = capture.samples.len();
                     capture
                         .samples
                         .extend(mono_frames(input, channels).take(remaining));
+                    let peak = capture.samples[start..]
+                        .iter()
+                        .fold(0.0f32, |m, v| m.max(v.abs()));
+                    // Non-negative f32 bits order like the numbers, so fetch_max keeps the peak.
+                    level.fetch_max(peak.to_bits(), Ordering::Relaxed);
                 }
             }
         },

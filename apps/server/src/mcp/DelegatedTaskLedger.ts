@@ -37,7 +37,7 @@ export class DelegatedTaskLedger extends Context.Service<
   }
 >()("t3/mcp/DelegatedTaskLedger") {}
 
-export const make = Effect.gen(function* () {
+const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   return DelegatedTaskLedger.of({
     // The ledger is telemetry: a failed write is logged, never shown to the task caller.

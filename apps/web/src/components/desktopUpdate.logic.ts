@@ -126,6 +126,18 @@ export function resolveUpdateWhenSafeAction(
   return runningCount > 0 ? "wait" : "install";
 }
 
+/** Idle time after which a downloaded update installs by itself, even if the user chose Cancel. */
+export const IDLE_INSTALL_AFTER_MS = 30 * 60 * 1000;
+
+/** True when a downloaded update should install now: no running AI work and no user input for a while. */
+export function shouldInstallWhenIdle(
+  runningCount: number,
+  idleMs: number,
+  hasDownloadedUpdate: boolean,
+): boolean {
+  return hasDownloadedUpdate && runningCount === 0 && idleMs >= IDLE_INSTALL_AFTER_MS;
+}
+
 export function getDesktopUpdateActionError(result: DesktopUpdateActionResult): string | null {
   if (!result.accepted || result.completed) return null;
   if (typeof result.state.message !== "string") return null;

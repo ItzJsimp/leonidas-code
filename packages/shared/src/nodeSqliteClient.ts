@@ -38,7 +38,7 @@ export interface SqliteClientConfig {
   readonly transformQueryNames?: ((str: string) => string) | undefined;
 }
 
-export class UnsupportedNodeSqliteVersionError extends Schema.TaggedError<UnsupportedNodeSqliteVersionError>()(
+class UnsupportedNodeSqliteVersionError extends Schema.TaggedError<UnsupportedNodeSqliteVersionError>()(
   "UnsupportedNodeSqliteVersionError",
   {
     nodeVersion: Schema.String,
@@ -50,7 +50,7 @@ export class UnsupportedNodeSqliteVersionError extends Schema.TaggedError<Unsupp
   }
 }
 
-export class UnsupportedNodeSqliteOperationError extends Schema.TaggedError<UnsupportedNodeSqliteOperationError>()(
+class UnsupportedNodeSqliteOperationError extends Schema.TaggedError<UnsupportedNodeSqliteOperationError>()(
   "UnsupportedNodeSqliteOperationError",
   {},
 ) {

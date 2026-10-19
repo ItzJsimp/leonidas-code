@@ -37,7 +37,13 @@ const TraceRecordLine = Schema.Struct({
   ),
 });
 
-const decodeTraceRecordLine = Schema.decodeUnknownSync(Schema.fromJsonString(TraceRecordLine));
+const decodeTraceRecordRaw = Schema.decodeUnknownSync(Schema.fromJsonString(TraceRecordLine));
+const decodeTraceRecordLine = (line: string) => {
+  if (line.includes('"trace-drop-summary"')) {
+    return { name: "__trace-drop-summary__", attributes: {}, events: [] };
+  }
+  return decodeTraceRecordRaw(line);
+};
 
 const environmentInput = (baseDir: string) =>
   ({
@@ -183,6 +189,45 @@ describe("DesktopObservability", () => {
         true,
       );
       assert.isFalse(yield* fileSystem.exists(logPath));
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Layer.mergeAll(NodeServices.layer, NodeHttpClient.layerUndici, layerEmptyEnv)),
+    ),
+  );
+
+  it.effect("counts fast successful desktop spans in a summary instead of writing them", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const baseDir = yield* fileSystem.makeTempDirectoryScoped({
+        prefix: "t3-desktop-observability-fast-test-",
+      });
+      const layerEnvironment = layerEnvironmentFor(baseDir);
+      const tracePath = yield* Effect.gen(function* () {
+        const environment = yield* DesktopEnvironment.DesktopEnvironment;
+        return environment.path.join(environment.logDir, "desktop.trace.ndjson");
+      }).pipe(Effect.provide(layerEnvironment));
+
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          yield* Effect.void.pipe(Effect.withSpan("desktop.fast.span"));
+        }).pipe(
+          Effect.provide(DesktopObservability.layer.pipe(Layer.provideMerge(layerEnvironment))),
+        ),
+      );
+
+      const lines = (yield* fileSystem.readFileString(tracePath))
+        .trim()
+        .split("\n")
+        .filter((line) => line.length > 0)
+        .map(
+          (line) =>
+            JSON.parse(line) as { type?: string; name?: string; counts?: Record<string, number> },
+        );
+
+      assert.isFalse(lines.some((entry) => entry.name === "desktop.fast.span"));
+      const summary = lines.find((entry) => entry.type === "trace-drop-summary");
+      assert.isDefined(summary);
+      assert.equal(summary?.counts?.["desktop.fast.span"], 1);
     }).pipe(
       Effect.scoped,
       Effect.provide(Layer.mergeAll(NodeServices.layer, NodeHttpClient.layerUndici, layerEmptyEnv)),
@@ -395,6 +440,7 @@ describe("DesktopObservability", () => {
       const layerEnvironment = layerEnvironmentFor(baseDir, true, {
         T3CODE_OTLP_LOGS_URL: "https://collector.example.com/v1/logs",
         T3CODE_OTLP_HEADERS: "x-scope=desktop",
+        T3CODE_TRACE_MIN_DURATION_MS: "0",
       });
       const tracePath = yield* Effect.gen(function* () {
         const environment = yield* DesktopEnvironment.DesktopEnvironment;

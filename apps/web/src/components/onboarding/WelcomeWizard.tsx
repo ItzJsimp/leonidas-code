@@ -90,6 +90,7 @@ import { ClaudeInstallPill } from "./ClaudeInstallPill";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
 import { ApiKeysStep } from "./ApiKeysStep";
+import { LeonidasLayaStep } from "./LeonidasLayaStep";
 import { LeonidasSkillsStep } from "./LeonidasSkillsStep";
 import { ImportCandidateList } from "./ImportCandidateList";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -122,6 +123,7 @@ type WizardStep =
   | "voice"
   | "level"
   | "skills"
+  | "laya"
   | "keys"
   | "import"
   | "aios";
@@ -132,6 +134,7 @@ const STEP_ORDER: readonly WizardStep[] = [
   "voice",
   "level",
   "skills",
+  "laya",
   "keys",
   "import",
   "aios",
@@ -167,6 +170,7 @@ const ONBOARDING_STAGES = [
   "Voice",
   "Level",
   "Skills",
+  "Safety",
   "Keys",
   "Projects",
   "AIOS",
@@ -422,6 +426,12 @@ export function WelcomeWizard({
             />
           ) : step === "skills" ? (
             <LeonidasSkillsStep
+              environmentId={setupIds[0]}
+              onBack={goBack}
+              onContinue={() => setStep("laya")}
+            />
+          ) : step === "laya" ? (
+            <LeonidasLayaStep
               environmentId={setupIds[0]}
               onBack={goBack}
               onContinue={() => setStep("keys")}

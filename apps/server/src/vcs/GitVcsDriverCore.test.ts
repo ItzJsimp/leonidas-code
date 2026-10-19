@@ -1181,38 +1181,41 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
 
-    it.effect.each([
-      {
-        label: "a refused key",
-        sshMessage: "git@example.invalid: Permission denied (publickey).",
-        expectedReason: "authentication_failed" as const,
-        expectedText: "(authentication_failed)",
-      },
-      {
-        label: "a refused key among several methods",
-        sshMessage: "git@example.invalid: Permission denied (publickey,password).",
-        expectedReason: "authentication_failed" as const,
-        expectedText: "(authentication_failed)",
-      },
-      {
-        label: "a refused keyboard-interactive attempt",
-        sshMessage: "git@example.invalid: Permission denied (keyboard-interactive).",
-        expectedReason: "authentication_failed" as const,
-        expectedText: "(authentication_failed)",
-      },
-      {
-        label: "a rejected password",
-        sshMessage: "Permission denied, please try again.",
-        expectedReason: "authentication_failed" as const,
-        expectedText: "(authentication_failed)",
-      },
-      {
-        label: "an untrusted host key",
-        sshMessage: "Host key verification failed.",
-        expectedReason: "host_key_unverified" as const,
-        expectedText: "(host_key_unverified)",
-      },
-    ])(
+    it.effect.each(
+      [
+        {
+          label: "a refused key",
+          sshMessage: "git@example.invalid: Permission denied (publickey).",
+          expectedReason: "authentication_failed" as const,
+          expectedText: "(authentication_failed)",
+        },
+        {
+          label: "a refused key among several methods",
+          sshMessage: "git@example.invalid: Permission denied (publickey,password).",
+          expectedReason: "authentication_failed" as const,
+          expectedText: "(authentication_failed)",
+        },
+        {
+          label: "a refused keyboard-interactive attempt",
+          sshMessage: "git@example.invalid: Permission denied (keyboard-interactive).",
+          expectedReason: "authentication_failed" as const,
+          expectedText: "(authentication_failed)",
+        },
+        {
+          label: "a rejected password",
+          sshMessage: "Permission denied, please try again.",
+          expectedReason: "authentication_failed" as const,
+          expectedText: "(authentication_failed)",
+        },
+        {
+          label: "an untrusted host key",
+          sshMessage: "Host key verification failed.",
+          expectedReason: "host_key_unverified" as const,
+          expectedText: "(host_key_unverified)",
+        },
+        // The fake ssh is a /bin/sh script, which Windows cannot run.
+      ].filter(() => process.platform !== "win32"),
+    )(
       "names $label rather than an unreachable remote",
       ({ sshMessage, expectedReason, expectedText }) =>
         Effect.gen(function* () {
@@ -1652,36 +1655,39 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
 
-    it.effect("keeps untracked filenames with pathspec magic in the review", () =>
-      Effect.gen(function* () {
-        const cwd = yield* makeTmpDir();
-        yield* initRepoWithCommit(cwd);
-        const driver = yield* GitVcsDriver.GitVcsDriver;
-        yield* writeTextFile(cwd, ":(exclude)after.ts", "literal pathspec contents\n");
-        yield* writeTextFile(cwd, "ordinary.ts", "ordinary contents\n");
-        const indexBefore = yield* git(cwd, ["ls-files", "--stage"]);
+    // A file name that starts with ":" cannot exist on Windows.
+    it.effect.skipIf(process.platform === "win32")(
+      "keeps untracked filenames with pathspec magic in the review",
+      () =>
+        Effect.gen(function* () {
+          const cwd = yield* makeTmpDir();
+          yield* initRepoWithCommit(cwd);
+          const driver = yield* GitVcsDriver.GitVcsDriver;
+          yield* writeTextFile(cwd, ":(exclude)after.ts", "literal pathspec contents\n");
+          yield* writeTextFile(cwd, "ordinary.ts", "ordinary contents\n");
+          const indexBefore = yield* git(cwd, ["ls-files", "--stage"]);
 
-        const preview = yield* driver.getReviewDiffPreview({ cwd, ignoreWhitespace: false });
-        const diff = preview.sources.find((source) => source.kind === "working-tree")?.diff ?? "";
+          const preview = yield* driver.getReviewDiffPreview({ cwd, ignoreWhitespace: false });
+          const diff = preview.sources.find((source) => source.kind === "working-tree")?.diff ?? "";
 
-        assert.include(diff, "+literal pathspec contents");
-        assert.include(diff, "+ordinary contents");
-        const scoped = yield* driver.getReviewDiffPreview({
-          cwd,
-          file: {
-            path: ":(exclude)after.ts",
-            previousPath: null,
-            sourceKind: "working-tree",
-          },
-        });
-        const scopedSource = scoped.sources.find((source) => source.kind === "working-tree")!;
-        assert.deepStrictEqual(scopedSource.files, [
-          { path: ":(exclude)after.ts", previousPath: null, additions: 1, deletions: 0 },
-        ]);
-        assert.include(scopedSource.diff, "+literal pathspec contents");
-        assert.notInclude(scopedSource.diff, "ordinary.ts");
-        assert.strictEqual(yield* git(cwd, ["ls-files", "--stage"]), indexBefore);
-      }),
+          assert.include(diff, "+literal pathspec contents");
+          assert.include(diff, "+ordinary contents");
+          const scoped = yield* driver.getReviewDiffPreview({
+            cwd,
+            file: {
+              path: ":(exclude)after.ts",
+              previousPath: null,
+              sourceKind: "working-tree",
+            },
+          });
+          const scopedSource = scoped.sources.find((source) => source.kind === "working-tree")!;
+          assert.deepStrictEqual(scopedSource.files, [
+            { path: ":(exclude)after.ts", previousPath: null, additions: 1, deletions: 0 },
+          ]);
+          assert.include(scopedSource.diff, "+literal pathspec contents");
+          assert.notInclude(scopedSource.diff, "ordinary.ts");
+          assert.strictEqual(yield* git(cwd, ["ls-files", "--stage"]), indexBefore);
+        }),
     );
 
     it.effect("detects an unstaged rename with edits without mutating a split index", () =>

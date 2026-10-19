@@ -50,7 +50,7 @@ export function OutputDock({
                         disabled={!onReply}
                         onClick={() => onReply?.(item.reply)}
                       >
-                        Choose {item.reply}
+                        Choose {item.letter}
                       </Button>
                     </div>
                   </div>

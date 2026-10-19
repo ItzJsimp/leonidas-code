@@ -27,7 +27,7 @@ export type WorkflowSettings = Readonly<Record<string, string | number>>;
 
 export const IMAGE_SIZE = 1024;
 
-export const COMFY_MODEL_IDS = ["flux2klein", "qwen", "qwen21"] as const;
+export const COMFY_MODEL_IDS = ["flux2klein", "qwen", "qwen21", "zimage"] as const;
 export type ComfyModelId = (typeof COMFY_MODEL_IDS)[number];
 
 export const isComfyModelId = (value: string): value is ComfyModelId =>
@@ -154,12 +154,53 @@ export function qwen21Workflow({ prompt, seed, width, height }: WorkflowInput): 
   };
 }
 
+/** Z-Image Turbo, bf16: 8 steps, cfg 1, empty negative prompt. */
+export function zimageWorkflow({ prompt, seed, width, height }: WorkflowInput): ComfyWorkflow {
+  return {
+    "1": {
+      class_type: "UNETLoader",
+      inputs: { unet_name: "z_image_turbo_bf16.safetensors", weight_dtype: "default" },
+    },
+    "2": {
+      class_type: "CLIPLoader",
+      inputs: {
+        clip_name: "qwen_3_4b_fp8_mixed.safetensors",
+        type: "lumina2",
+        device: "default",
+      },
+    },
+    "3": { class_type: "VAELoader", inputs: { vae_name: "ae.safetensors" } },
+    "4": { class_type: "ModelSamplingAuraFlow", inputs: { model: ["1", 0], shift: 3.0 } },
+    "5": { class_type: "CLIPTextEncode", inputs: { clip: ["2", 0], text: prompt } },
+    "6": { class_type: "ConditioningZeroOut", inputs: { conditioning: ["5", 0] } },
+    "7": { class_type: "EmptySD3LatentImage", inputs: { width, height, batch_size: 1 } },
+    "8": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["4", 0],
+        positive: ["5", 0],
+        negative: ["6", 0],
+        latent_image: ["7", 0],
+        seed,
+        steps: 8,
+        cfg: 1.0,
+        sampler_name: "res_multistep",
+        scheduler: "simple",
+        denoise: 1.0,
+      },
+    },
+    "9": { class_type: "VAEDecode", inputs: { samples: ["8", 0], vae: ["3", 0] } },
+    "10": { class_type: "PreviewImage", inputs: { images: ["9", 0] } },
+  };
+}
+
 export const COMFY_WORKFLOWS: Readonly<
   Record<ComfyModelId, (input: WorkflowInput) => ComfyWorkflow>
 > = {
   flux2klein: flux2kleinWorkflow,
   qwen: qwenWorkflow,
   qwen21: qwen21Workflow,
+  zimage: zimageWorkflow,
 };
 
 /** What a Recipe records about the sampler. It matches the numbers in the builders above. */
@@ -181,5 +222,14 @@ export const COMFY_WORKFLOW_SETTINGS: Readonly<Record<ComfyModelId, WorkflowSett
     cfg: 1.0,
     sampler: "euler",
     scheduler: "simple",
+  },
+  zimage: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    steps: 8,
+    cfg: 1.0,
+    sampler: "res_multistep",
+    scheduler: "simple",
+    shift: 3.0,
   },
 };

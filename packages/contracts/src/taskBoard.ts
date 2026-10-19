@@ -2,8 +2,6 @@ import * as Schema from "effect/Schema";
 import { PositiveInt, ProjectId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ProviderOptionSelections } from "./model.ts";
 
-export const TASK_BOARD_REPOSITORY = "ItzJsimp/leonidas-code";
-
 /** A calendar day, without a timezone or time of day. */
 export const TaskBoardDueDate = Schema.String.check(
   Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/),
@@ -442,6 +440,55 @@ export const TaskBoardHomeMove = Schema.Struct({
 });
 export type TaskBoardHomeMove = typeof TaskBoardHomeMove.Type;
 
+/** One goal row from `ideal-state/goals.md`. */
+export const AiosDirectionGoal = Schema.Struct({
+  id: Schema.String,
+  goal: Schema.String,
+  measuredBy: Schema.String,
+  targetDate: Schema.String,
+  status: Schema.String,
+});
+export type AiosDirectionGoal = typeof AiosDirectionGoal.Type;
+
+/** An open high-priority card, placed under the horizon it is due in. */
+export const AiosDirectionCard = Schema.Struct({
+  taskId: Schema.String,
+  title: Schema.String,
+  priority: TaskBoardTaskPriority,
+  due: Schema.NullOr(Schema.String),
+});
+export type AiosDirectionCard = typeof AiosDirectionCard.Type;
+
+export const AiosDirectionHorizonKey = Schema.Literals([
+  "week",
+  "month",
+  "sixMonths",
+  "year",
+  "life",
+]);
+export type AiosDirectionHorizonKey = typeof AiosDirectionHorizonKey.Type;
+
+export const AiosDirectionHorizon = Schema.Struct({
+  key: AiosDirectionHorizonKey,
+  title: Schema.String,
+  range: Schema.NullOr(Schema.String),
+  items: Schema.Array(Schema.String),
+  cards: Schema.Array(AiosDirectionCard),
+});
+export type AiosDirectionHorizon = typeof AiosDirectionHorizon.Type;
+
+/** The Direction view: goals, the 5 horizons and a stale flag for the week block. */
+export const AiosDirection = Schema.Struct({
+  root: Schema.NullOr(Schema.String),
+  goals: Schema.Array(AiosDirectionGoal),
+  horizons: Schema.Array(AiosDirectionHorizon),
+  weekHeading: Schema.NullOr(Schema.String),
+  weekDate: Schema.NullOr(Schema.String),
+  weekAgeDays: Schema.NullOr(Schema.Number),
+  weekStale: Schema.Boolean,
+});
+export type AiosDirection = typeof AiosDirection.Type;
+
 /** Counts that describe the user's AIOS for opt-in usage analytics. No names or paths. */
 export const AiosUsageShape = Schema.Struct({
   aiosDetected: Schema.Boolean,
@@ -509,6 +556,25 @@ export type TaskBoardHomeNewsItem = typeof TaskBoardHomeNewsItem.Type;
 
 export const TaskBoardHomeNews = Schema.Struct({ items: Schema.Array(TaskBoardHomeNewsItem) });
 export type TaskBoardHomeNews = typeof TaskBoardHomeNews.Type;
+
+// Laya usage monitor. Counts only: the log holds no command or page text.
+export const LayaUsage = Schema.Struct({
+  status: Schema.Literals(["ready", "missing"]),
+  modelPresent: Schema.Boolean,
+  packPresent: Schema.Boolean,
+  total: Schema.Number,
+  days: Schema.Array(Schema.Struct({ date: Schema.String, count: Schema.Number })),
+  jobs: Schema.Array(
+    Schema.Struct({
+      job: Schema.String,
+      count: Schema.Number,
+      blocked: Schema.Number,
+      asked: Schema.Number,
+      flagged: Schema.Number,
+    }),
+  ),
+});
+export type LayaUsage = typeof LayaUsage.Type;
 
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({

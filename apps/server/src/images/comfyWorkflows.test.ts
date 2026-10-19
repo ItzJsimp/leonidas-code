@@ -7,6 +7,7 @@ import {
   flux2kleinWorkflow,
   qwen21Workflow,
   qwenWorkflow,
+  zimageWorkflow,
 } from "./comfyWorkflows.ts";
 
 const input = { prompt: "a ghost slime", seed: 42, width: 1024, height: 1024 };
@@ -89,6 +90,29 @@ describe("qwen21Workflow", () => {
   });
 });
 
+describe("zimageWorkflow", () => {
+  const graph = zimageWorkflow(input);
+
+  it("loads the Z-Image Turbo files", () => {
+    expect(graph["1"]?.inputs.unet_name).toBe("z_image_turbo_bf16.safetensors");
+    expect(graph["2"]?.inputs).toMatchObject({
+      clip_name: "qwen_3_4b_fp8_mixed.safetensors",
+      type: "lumina2",
+    });
+    expect(graph["3"]?.inputs.vae_name).toBe("ae.safetensors");
+  });
+
+  it("samples with 8 steps, cfg 1 and res_multistep", () => {
+    expect(graph["8"]?.inputs).toMatchObject({
+      steps: 8,
+      cfg: 1.0,
+      sampler_name: "res_multistep",
+      scheduler: "simple",
+    });
+    expect(graph["5"]?.inputs.text).toBe("a ghost slime");
+  });
+});
+
 describe("workflow table", () => {
   it("has a builder and Recipe settings for every model id", () => {
     for (const id of COMFY_MODEL_IDS) {
@@ -102,5 +126,6 @@ describe("workflow table", () => {
     expect(COMFY_WORKFLOW_SETTINGS.qwen.steps).toBe(30);
     expect(COMFY_WORKFLOW_SETTINGS.qwen.cfg).toBe(4.0);
     expect(COMFY_WORKFLOW_SETTINGS.qwen21.steps).toBe(25);
+    expect(COMFY_WORKFLOW_SETTINGS.zimage.steps).toBe(8);
   });
 });

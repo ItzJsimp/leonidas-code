@@ -37,6 +37,18 @@ describe("output Dock", () => {
       replies: ["Keep it", "Extend it"],
     });
   });
+  it("makes an option reply a full sentence, not a bare letter", () => {
+    const dock = parseOutputDock(
+      reply.replace("- **A)** Keep it.", "- **A)** **Vitest:** Jest-like API, fast."),
+    )!;
+    const [first, second] = dock.sections[2]!.items;
+    expect(first).toMatchObject({
+      kind: "option",
+      letter: "A",
+      reply: "I choose option A: Vitest",
+    });
+    expect(second).toMatchObject({ letter: "B", reply: "I choose option B: Extend it" });
+  });
   it("handles CRLF, omitted sections and completion", () => {
     expect(parseOutputDock(reply.replaceAll("\n", "\r\n"))?.sections).toEqual(
       parseOutputDock(reply)?.sections,

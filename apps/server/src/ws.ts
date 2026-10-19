@@ -18,6 +18,7 @@ import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
+import { readLayaUsage } from "./laya/layaUsage.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -28,6 +29,7 @@ import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Base64 from "effect/encoding/Base64";
 import * as Effect from "effect/Effect";
+import { layaStatus, startLayaInstall, wireLayaProject } from "./laya/layaSetup.ts";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -2969,6 +2971,7 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeWeather]: (input) =>
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
+        [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
         [WS_METHODS.taskBoardHome]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),
@@ -2977,6 +2980,10 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.orElseSucceed(() => []),
             Effect.flatMap((projects) => taskBoard.usageShape(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.aiosDirection]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.direction(projects, input.workspaceId)),
           ),
         [WS_METHODS.aiosWorkspacesList]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspaces)),
@@ -3056,6 +3063,19 @@ const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.layaSetup]: (input) =>
+          Effect.promise(async () => {
+            if (input.action === "wire") {
+              return wireLayaProject({
+                projectPath: input.projectPath ?? "",
+                confirmed: input.confirmed === true,
+              });
+            }
+            if (input.action === "install") {
+              return startLayaInstall({ installPackages: input.installPackages === true });
+            }
+            return layaStatus();
+          }),
         [WS_METHODS.filesystemInspectFolder]: (input) =>
           workspaceEntries.inspectFolder(input).pipe(
             Effect.mapError(

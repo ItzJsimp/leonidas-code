@@ -12,7 +12,9 @@ import {
   getWhatsNewItems,
   isDesktopUpdateButtonDisabled,
   resolveDesktopUpdateButtonAction,
+  IDLE_INSTALL_AFTER_MS,
   resolveUpdateWhenSafeAction,
+  shouldInstallWhenIdle,
   shouldShowArm64IntelBuildWarning,
   shouldToastDesktopUpdateActionResult,
 } from "./desktopUpdate.logic";
@@ -306,6 +308,20 @@ describe("resolveUpdateWhenSafeAction", () => {
   ] as const)("with %i running and flag %s resolves to %s", (running, flag, expected) => {
     expect(resolveUpdateWhenSafeAction(running, flag)).toBe(expected);
   });
+});
+
+describe("shouldInstallWhenIdle", () => {
+  it.each([
+    [0, IDLE_INSTALL_AFTER_MS, true, true],
+    [0, IDLE_INSTALL_AFTER_MS - 1, true, false],
+    [1, IDLE_INSTALL_AFTER_MS, true, false],
+    [0, IDLE_INSTALL_AFTER_MS, false, false],
+  ] as const)(
+    "running %i, idle %i, downloaded %s gives %s",
+    (running, idle, downloaded, expected) => {
+      expect(shouldInstallWhenIdle(running, idle, downloaded)).toBe(expected);
+    },
+  );
 });
 
 describe("canCheckForUpdate", () => {

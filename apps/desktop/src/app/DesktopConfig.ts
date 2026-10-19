@@ -61,6 +61,7 @@ export const DesktopConfig = Config.all({
   mockUpdateServerPort: Config.Port("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(
     Config.withDefault(3000),
   ),
+  traceMinDurationMs: Config.Number("T3CODE_TRACE_MIN_DURATION_MS").pipe(Config.withDefault(1)),
 });
 
 export const layerTest = (env: Readonly<Record<string, string | undefined>>) =>

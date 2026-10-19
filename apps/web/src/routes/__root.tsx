@@ -101,6 +101,7 @@ import {
 
 import { getDesktopSnapShotBridge } from "../lib/desktopSnapShot";
 import { installDesktopPasteAsText } from "../lib/desktopPasteAsText";
+import { RendererReloadGuard } from "../rendererReloadGuard";
 import { shouldResumeSnapShotSetupOnStartup } from "../lib/snapShotSetupResume";
 
 export const Route = createRootRoute({
@@ -254,6 +255,7 @@ function RootRouteView() {
           {primaryEnvironmentAuthenticated ? <AuthenticatedTracingBootstrap /> : null}
           {primaryEnvironmentAuthenticated ? <DesktopAppActivationCoordinator /> : null}
           {primaryEnvironmentAuthenticated ? <DesktopWebLinkCoordinator /> : null}
+          {primaryEnvironmentAuthenticated && window.desktopBridge ? <RendererReloadGuard /> : null}
           {isElectron ? <RunningThreadKeepAlive /> : null}
           {isElectron ? <DesktopUpdateCoordinator /> : null}
           <FeatureTourSpotlight />

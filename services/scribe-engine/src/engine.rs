@@ -109,6 +109,11 @@ impl Engine {
         self.0.inner.lock().unwrap().mode
     }
 
+    /// Hotkey time of the last recording that had a hotkey trigger.
+    pub fn last_trigger_at(&self) -> Option<Instant> {
+        self.0.inner.lock().unwrap().trigger_at
+    }
+
     /// Hotkey callback to first audio buffer, for the last recording that had a hotkey trigger.
     pub fn last_hotkey_latency(&self) -> Option<Duration> {
         let mut inner = self.0.inner.lock().unwrap();

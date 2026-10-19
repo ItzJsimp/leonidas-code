@@ -18,7 +18,7 @@ export type CaptureDropResult =
   | { readonly ok: false; readonly error: string | null };
 
 /** A notepad line is one line: fold line breaks to spaces and cap the length. */
-export function toNotepadLine(text: string): string {
+function toNotepadLine(text: string): string {
   return text
     .replace(/\s*\n\s*/g, " ")
     .trim()

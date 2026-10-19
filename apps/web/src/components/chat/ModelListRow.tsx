@@ -10,7 +10,6 @@ import {
 import { ComboboxItem } from "../ui/combobox";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Kbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
@@ -80,7 +79,6 @@ export const ModelListRow = memo(function ModelListRow(props: {
   useTriggerLabel?: boolean;
   showNewBadge?: boolean;
   unavailable?: boolean;
-  jumpLabel?: string | null;
   disabledReason?: string | null;
   /** Benchmark numbers for this model; null while the catalog loads. */
   stats?: PickerModelStats | null;
@@ -146,7 +144,6 @@ export const ModelListRow = memo(function ModelListRow(props: {
         {props.showSelection && props.isSelected ? (
           <CheckIcon className="size-3.5" aria-hidden="true" />
         ) : null}
-        {props.jumpLabel ? <Kbd>{props.jumpLabel}</Kbd> : null}
         <Tooltip>
           <TooltipTrigger
             render={

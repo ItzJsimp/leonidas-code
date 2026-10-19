@@ -34,6 +34,7 @@ import {
   FocusSnapshot,
   AiosUsageShape,
   FocusSubscribeInput,
+  AiosDirection,
   FocusUpdateInput,
   TaskBoardUpdateInput,
   TaskBoardOperationError,
@@ -55,6 +56,7 @@ import {
   AiosWorkspaceSummary,
   AiosWorkspaceInitInput,
   TaskBoardHomeNews,
+  LayaUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
@@ -180,6 +182,7 @@ import {
   FilesystemInspectFolderInput,
   FilesystemInspectFolderResult,
 } from "./filesystem.ts";
+import { LayaSetupInput, LayaSetupResult } from "./laya.ts";
 import {
   AgentSessionImportInput,
   AgentSessionImportProjectChangedError,
@@ -548,10 +551,12 @@ export const WS_METHODS = {
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
   aiosUsageShape: "taskBoard.aiosUsageShape",
+  aiosDirection: "taskBoard.aiosDirection",
   aiosWorkspacesList: "aiosWorkspaces.list",
   aiosWorkspacesInit: "aiosWorkspaces.init",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
+  layaUsage: "laya.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
   hardwareGetInventory: "hardware.getInventory",
@@ -602,6 +607,7 @@ export const WS_METHODS = {
   filesystemBrowse: "filesystem.browse",
   filesystemGetMetadata: "filesystem.getMetadata",
   filesystemInspectFolder: "filesystem.inspectFolder",
+  layaSetup: "laya.setup",
   agentSessionsScan: "agentSessions.scan",
   agentSessionsImport: "agentSessions.import",
   assetsCreateUrl: "assets.createUrl",
@@ -1751,6 +1757,12 @@ const WsAiosUsageShapeRpc = Rpc.make(WS_METHODS.aiosUsageShape, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsAiosDirectionRpc = Rpc.make(WS_METHODS.aiosDirection, {
+  payload: AiosWorkspaceScopeInput,
+  success: AiosDirection,
+  error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
+});
+
 const WsTaskBoardHomeWeatherRpc = Rpc.make(WS_METHODS.taskBoardHomeWeather, {
   payload: TaskBoardHomeWeatherInput,
   success: TaskBoardHomeWeather,
@@ -1760,6 +1772,12 @@ const WsTaskBoardHomeWeatherRpc = Rpc.make(WS_METHODS.taskBoardHomeWeather, {
 const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
   payload: Schema.Struct({}),
   success: TaskBoardHomeNews,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsLayaUsageRpc = Rpc.make(WS_METHODS.layaUsage, {
+  payload: Schema.Struct({}),
+  success: LayaUsage,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1924,6 +1942,12 @@ const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
   payload: FilesystemBrowseInput,
   success: FilesystemBrowseResult,
   error: Schema.Union([FilesystemBrowseError, EnvironmentAuthorizationError]),
+});
+
+const WsLayaSetupRpc = Rpc.make(WS_METHODS.layaSetup, {
+  payload: LayaSetupInput,
+  success: LayaSetupResult,
+  error: EnvironmentAuthorizationError,
 });
 
 const WsFilesystemInspectFolderRpc = Rpc.make(WS_METHODS.filesystemInspectFolder, {
@@ -2798,8 +2822,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsAiosWorkspacesListRpc,
   WsAiosWorkspacesInitRpc,
   WsAiosUsageShapeRpc,
+  WsAiosDirectionRpc,
   WsTaskBoardHomeWeatherRpc,
   WsTaskBoardHomeNewsRpc,
+  WsLayaUsageRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,
@@ -2845,6 +2871,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsFilesystemBrowseRpc,
   WsFilesystemGetMetadataRpc,
   WsFilesystemInspectFolderRpc,
+  WsLayaSetupRpc,
   WsAgentSessionsScanRpc,
   WsAgentSessionsImportRpc,
   WsAssetsCreateUrlRpc,
