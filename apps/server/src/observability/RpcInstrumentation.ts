@@ -188,6 +188,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.aiosDirection]: "workspace",
   [WS_METHODS.aiosWorkspacesList]: "workspace",
   [WS_METHODS.aiosWorkspacesInit]: "workspace",
+  [WS_METHODS.workspacePackWidgets]: "workspace",
   [WS_METHODS.taskBoardHomeWeather]: "workspace",
   [WS_METHODS.taskBoardHomeNews]: "workspace",
   [WS_METHODS.layaUsage]: "workspace",
