@@ -424,6 +424,27 @@ export const AiosWorkspaceInitInput = Schema.Struct({
 });
 export type AiosWorkspaceInitInput = typeof AiosWorkspaceInitInput.Type;
 
+// A card a workspace pack adds to the Command Home. Data only: the core renders it and never
+// imports the pack. `[]` means no pack, or a workspace that is not `type: business`.
+export const WorkspacePackKpi = Schema.Struct({
+  label: Schema.String,
+  value: Schema.String,
+  detail: Schema.String,
+});
+export type WorkspacePackKpi = typeof WorkspacePackKpi.Type;
+
+export const WorkspacePackWidget = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  kpis: Schema.Array(WorkspacePackKpi),
+});
+export type WorkspacePackWidget = typeof WorkspacePackWidget.Type;
+
+export const WorkspacePackWidgetsResult = Schema.Struct({
+  widgets: Schema.Array(WorkspacePackWidget),
+});
+export type WorkspacePackWidgetsResult = typeof WorkspacePackWidgetsResult.Type;
+
 export const TaskBoardHomePriority = Schema.Struct({
   title: Schema.String,
   detail: Schema.String,
