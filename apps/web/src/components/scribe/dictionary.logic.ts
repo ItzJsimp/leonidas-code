@@ -1,4 +1,4 @@
-import type { ScribeDictionary } from "@t3tools/contracts";
+import type { ScribeDictionary, ScribeSuggestionList } from "@t3tools/contracts";
 
 /** The engine refuses a vocabulary list longer than this (contract v1.2). */
 export const VOCABULARY_CAP = 800;
@@ -79,11 +79,25 @@ export function filterVocabulary(vocabulary: readonly string[], query: string): 
 /** Accepting a suggestion adds it as a word fix; the engine then stops listing it. */
 export function acceptSuggestion(
   dictionary: ScribeDictionary,
-  suggestion: { readonly wrong: string; readonly correct: string },
+  suggestion: ScribeSuggestionList["items"][number],
 ): DictionaryEdit {
   return addReplacement(dictionary, suggestion.wrong, suggestion.correct);
 }
 
 export function suggestionWhy(count: number): string {
   return `Fixed ${count} ${count === 1 ? "time" : "times"} in your dictations`;
+}
+
+const SAVE_ERRORS: Readonly<Record<string, string>> = {
+  offline: "Scribe engine is not running.",
+  timeout: "Scribe did not answer in time. Try again.",
+  bad_request: "Scribe did not accept that word list. Check the words and try again.",
+  store_error: "Scribe could not save your word list. Try again.",
+};
+
+/** One plain sentence for a failed read or save, from the engine error reason. */
+export function dictionaryErrorMessage(reason: string | null): string {
+  return (
+    (reason === null ? undefined : SAVE_ERRORS[reason]) ?? "Scribe could not do that. Try again."
+  );
 }
