@@ -152,3 +152,14 @@ export const aiosDirectionQuery = createEnvironmentRpcQueryAtomFamily(connection
   staleTimeMs: 30_000,
   idleTtlMs: 60_000,
 });
+
+/** Cards a workspace pack adds to the Command Home. `[]` for a personal workspace. */
+export const workspacePackWidgetsQuery = createEnvironmentRpcQueryAtomFamily(
+  connectionAtomRuntime,
+  {
+    label: "environment-data:task-board:workspace-pack-widgets",
+    tag: WS_METHODS.workspacePackWidgets,
+    staleTimeMs: 30_000,
+    idleTtlMs: 60_000,
+  },
+);
