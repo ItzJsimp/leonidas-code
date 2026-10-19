@@ -56,6 +56,7 @@ import {
   setTheme,
   showContextMenu,
 } from "./methods/window.ts";
+import { dictationEnded } from "./methods/dictation.ts";
 import {
   acknowledgeSnapShot,
   checkSnapShotShortcut,
@@ -158,6 +159,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(openSystemSettings);
   yield* ipc.handle(checkSystemPermission);
   yield* ipc.handle(pasteAsText);
+  yield* ipc.handle(dictationEnded);
   yield* ipc.handle(probeRemoteEditors);
   yield* ipc.handle(getUpdateState);
   yield* ipc.handle(setUpdateChannel);
