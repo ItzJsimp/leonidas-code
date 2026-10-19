@@ -1,13 +1,42 @@
-import type { ThreadId, ThreadSweepInput } from "@t3tools/contracts";
+import type { OrchestrationV2ThreadShell, ThreadId, ThreadSweepInput } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import type * as ServerSettings from "../serverSettings.ts";
 import type { TextGeneration } from "../textGeneration/TextGeneration.ts";
-import { runThreadSweep } from "./threadSweepRun.ts";
+import { runThreadSweep, type SweepThread } from "./threadSweepRun.ts";
 
 const TAIL_ITEMS = 60;
+
+/** The shell fields the sweep reads. `updatedAt` is a DateTime, so it needs formatIso to parse later. */
+export const toSweepThread = (
+  thread: Pick<
+    OrchestrationV2ThreadShell,
+    | "id"
+    | "projectId"
+    | "title"
+    | "updatedAt"
+    | "archivedAt"
+    | "settledOverride"
+    | "pinnedAt"
+    | "status"
+    | "pendingRuntimeRequest"
+    | "visibleItemCount"
+  >,
+): SweepThread => ({
+  id: thread.id,
+  projectId: thread.projectId,
+  title: thread.title,
+  updatedAt: DateTime.formatIso(thread.updatedAt),
+  archived: thread.archivedAt !== null,
+  settled: thread.settledOverride === "settled",
+  pinned: thread.pinnedAt != null,
+  status: thread.status,
+  hasPendingRequest: thread.pendingRuntimeRequest !== null,
+  visibleItemCount: thread.visibleItemCount,
+});
 
 /** The sweep handler over the live thread store and the user's text-generation model. */
 export function makeThreadSweep(deps: {
@@ -23,20 +52,7 @@ export function makeThreadSweep(deps: {
         {
           now,
           threads: deps.threadManagement.getShellSnapshot({ location: "active" }).pipe(
-            Effect.map((snapshot) =>
-              snapshot.threads.map((thread) => ({
-                id: thread.id,
-                projectId: thread.projectId,
-                title: thread.title,
-                updatedAt: String(thread.updatedAt),
-                archived: thread.archivedAt !== null,
-                settled: thread.settledOverride === "settled",
-                pinned: thread.pinnedAt != null,
-                status: thread.status,
-                hasPendingRequest: thread.pendingRuntimeRequest !== null,
-                visibleItemCount: thread.visibleItemCount,
-              })),
-            ),
+            Effect.map((snapshot) => snapshot.threads.map(toSweepThread)),
             Effect.orDie,
           ),
           readItems: (threadId, afterPosition) =>
