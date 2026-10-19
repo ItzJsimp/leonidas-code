@@ -172,7 +172,8 @@ typedef struct {
   /** Maximum number of lines to keep in scrollback history. */
   size_t max_scrollback;
 
-  // TODO: Consider ABI compatibility implications of this struct.
+  // Task: evaluate-abi-compatibility-and-padding-for-ghosttyterminaloptions
+  // Consider ABI compatibility implications of this struct.
   // We may want to artificially pad it significantly to support
   // future options.
 } GhosttyTerminalOptions;

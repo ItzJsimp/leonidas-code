@@ -9794,7 +9794,8 @@
   }
 
   function shouldUseAncestorCropShaderProxy(el) {
-    // TODO: Enable this proxy for React/Vue/etc. adapters once their live
+    // Task: enable-ancestor-crop-shader-proxy-for-react-and-vue-adapters-in-impeccable
+    // Enable this proxy for React/Vue/etc. adapters once their live
     // preview mounts are covered by the same shader regression checks.
     const adapter = String(window.__IMPECCABLE_LIVE_ADAPTER__ || "").toLowerCase();
     if (adapter === "svelte" || adapter === "sveltekit") return true;
