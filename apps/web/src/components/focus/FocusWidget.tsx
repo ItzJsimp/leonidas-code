@@ -4,7 +4,14 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentId, FocusUpdateInput, ProjectId } from "@t3tools/contracts";
 import { FOCUS_ITEM_MAX_LENGTH } from "@t3tools/contracts";
-import { GripVerticalIcon, HouseIcon, ListPlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  GripVerticalIcon,
+  HouseIcon,
+  ListPlusIcon,
+  PencilIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import {
   useCallback,
   useLayoutEffect,
@@ -69,6 +76,7 @@ export default function FocusWidget(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
 
   const snapshot = query.data;
   const rows = visibleRows(snapshot, scope, props.projectId);
@@ -113,6 +121,15 @@ export default function FocusWidget(props: {
       setDraft("");
       setNotice(`Added ${text}`);
     }
+  };
+
+  const saveEdit = async (row: FocusRow) => {
+    const current = editing;
+    setEditing(null);
+    const text = current?.text.trim() ?? "";
+    if (!current || current.id !== row.id || !text || text === row.text) return;
+    const ok = await update({ op: "edit", id: row.id, text }, "Could not save the note.");
+    if (ok) setNotice(`Saved ${text}`);
   };
 
   const promote = async (row: FocusRow) => {
@@ -216,7 +233,7 @@ export default function FocusWidget(props: {
         {rows.map((row) => (
           <li
             key={row.id}
-            className="group flex items-start gap-2 px-3 py-1 hover:bg-accent/50 focus-within:bg-accent/50"
+            className="group flex items-start gap-2 px-3 py-1 hover:bg-foreground/[0.06] focus-within:bg-foreground/[0.06]"
           >
             <Checkbox
               className="mt-0.5"
@@ -229,17 +246,44 @@ export default function FocusWidget(props: {
                 )
               }
             />
-            <span
-              className={`min-w-0 flex-1 break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
-            >
-              {scope === "all" && row.slug !== null ? (
-                <span className="mr-1 text-muted-foreground">{row.slug}:</span>
-              ) : null}
-              <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
-                {row.text}
+            {editing?.id === row.id ? (
+              <Input
+                size="sm"
+                autoFocus
+                aria-label={`Edit note: ${row.text}`}
+                maxLength={FOCUS_ITEM_MAX_LENGTH}
+                value={editing.text}
+                onChange={(event) => setEditing({ id: row.id, text: event.target.value })}
+                onBlur={() => void saveEdit(row)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void saveEdit(row);
+                  else if (event.key === "Escape") setEditing(null);
+                }}
+              />
+            ) : (
+              <span
+                className={`min-w-0 flex-1 break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
+                onDoubleClick={() => setEditing({ id: row.id, text: row.text })}
+              >
+                {scope === "all" && row.slug !== null ? (
+                  <span className="mr-1 text-muted-foreground">{row.slug}:</span>
+                ) : null}
+                <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
+                  {row.text}
+                </span>
               </span>
-            </span>
+            )}
             <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+              <Tip label="Edit this line">
+                <Button
+                  size="icon-xs"
+                  variant="ghost-muted"
+                  aria-label={`Edit: ${row.text}`}
+                  onClick={() => setEditing({ id: row.id, text: row.text })}
+                >
+                  <PencilIcon />
+                </Button>
+              </Tip>
               <Tip label="Make a task card from this line">
                 <Button
                   size="icon-xs"

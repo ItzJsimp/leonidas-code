@@ -58,6 +58,13 @@ describe("focus file", () => {
     expect(changeFocusItem(doc, "global:missing", null)).toBeNull();
   });
 
+  it("edits the text of one item and leaves its tick and the other lines alone", () => {
+    let doc = parseFocus("## Global\n- [x] Old text\n- [ ] Other\n");
+    const id = sectionItems(doc.sections[0]!)[0]!.id;
+    doc = changeFocusItem(doc, id, { text: "New  text\nwith a break" })!;
+    expect(serializeFocus(doc)).toContain("- [x] New text with a break\n- [ ] Other");
+  });
+
   it("keeps an id when other lines are added before it", () => {
     const doc = parseFocus("## app\n- [ ] Keep me\n");
     const id = sectionItems(doc.sections[0]!)[0]!.id;

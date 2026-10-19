@@ -1799,7 +1799,11 @@ const make = Effect.gen(function* () {
             next = changeFocusItem(
               doc,
               input.id,
-              input.op === "remove" ? null : { done: input.done },
+              input.op === "remove"
+                ? null
+                : input.op === "edit"
+                  ? { text: input.text }
+                  : { done: input.done },
             );
           }
           if (next === null) {

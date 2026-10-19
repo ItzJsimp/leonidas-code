@@ -642,7 +642,7 @@ export class TaskBoardOperationError extends Schema.TaggedError<TaskBoardOperati
 ) {}
 
 /** Longest focus line the app writes; longer text is a task card, not a scratch line. */
-export const FOCUS_ITEM_MAX_LENGTH = 500;
+export const FOCUS_ITEM_MAX_LENGTH = 5000;
 
 /** One scratch line in `<AIOS>/memory/focus.md`. The id is stable while its section and text stay the same. */
 export const FocusItem = Schema.Struct({
@@ -681,5 +681,6 @@ export const FocusUpdateInput = Schema.Union([
   }),
   Schema.Struct({ op: Schema.Literal("set_done"), id: Schema.String, done: Schema.Boolean }),
   Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String }),
+  Schema.Struct({ op: Schema.Literal("edit"), id: Schema.String, text: FocusText }),
 ]);
 export type FocusUpdateInput = typeof FocusUpdateInput.Type;

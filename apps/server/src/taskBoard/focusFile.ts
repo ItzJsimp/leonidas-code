@@ -144,11 +144,11 @@ export function addFocusItem(doc: FocusDoc, slug: string | null, text: string): 
   };
 }
 
-/** Changes the item with this id; `null` removes it. Returns `null` when no item has the id. */
+/** Changes the item with this id: its tick or its text. `null` removes it. Returns `null` when no item has the id. */
 export function changeFocusItem(
   doc: FocusDoc,
   id: string,
-  change: { readonly done: boolean } | null,
+  change: { readonly done: boolean } | { readonly text: string } | null,
 ): FocusDoc | null {
   for (const [sectionIndex, section] of doc.sections.entries()) {
     const ids = sectionItems(section).map((item) => item.id);
@@ -157,7 +157,10 @@ export function changeFocusItem(
     let seen = -1;
     const lines = section.lines.flatMap((line) => {
       if (line.kind !== "item" || ++seen !== position) return [line];
-      return change === null ? [] : [{ ...line, done: change.done }];
+      if (change === null) return [];
+      return [
+        "text" in change ? { ...line, text: oneLine(change.text) } : { ...line, done: change.done },
+      ];
     });
     return {
       ...doc,
