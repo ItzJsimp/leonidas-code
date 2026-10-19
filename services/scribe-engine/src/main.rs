@@ -13,6 +13,7 @@ use scribe_engine::contract::{Event, Mode, State};
 use scribe_engine::credentials::{KeyStore, OsKeyStore};
 use scribe_engine::engine::{Engine, Recorder, Transcriber};
 use scribe_engine::groq::GroqClient;
+use scribe_engine::history::History;
 use scribe_engine::hotkeys::{self, HotkeyEvent};
 use scribe_engine::http;
 #[cfg(windows)]
@@ -80,6 +81,7 @@ fn run() -> Result<(), String> {
         Box::new(polisher),
         Box::new(ClipboardPaster::new()),
         cfg.audio.min_record_ms,
+        Some(Arc::new(History::open(&config_dir.join("history.jsonl")))),
     );
 
     let server = http::serve(
@@ -210,7 +212,7 @@ fn watch_events(
             Ok(Event::Error { code, message, .. }) => {
                 eprintln!("error code={code} message={message}")
             }
-            Ok(Event::Partial { .. }) => {}
+            Ok(Event::Partial { .. } | Event::History { .. }) => {}
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
