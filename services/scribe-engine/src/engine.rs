@@ -3,6 +3,7 @@
 
 use crate::contract::{now_iso, Event, HistoryMetrics, Mode, State, SttEngine};
 use crate::history::{History, NewItem};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -29,6 +30,8 @@ pub trait Recorder: Send {
     fn cancel(&mut self);
     /// When the first audio buffer arrived for the current or last recording.
     fn first_buffer_at(&self) -> Option<Instant>;
+    /// v1.2: new audio settings for the next recording. The current one keeps its device.
+    fn configure(&mut self, _cfg: &crate::config::AudioConfig) {}
 }
 
 /// The result of a successful transcription.
@@ -45,6 +48,19 @@ pub trait Transcriber: Send + Sync {
 pub trait Polisher: Send + Sync {
     /// Never fails: on any error it returns the best text it has (at least `raw`).
     fn polish(&self, raw: &str) -> String;
+}
+
+/// `main` keeps one handle to change settings live; the engine owns the other.
+impl<T: Transcriber + ?Sized> Transcriber for Arc<T> {
+    fn transcribe(&self, audio: &EncodedAudio) -> Result<Transcription, String> {
+        (**self).transcribe(audio)
+    }
+}
+
+impl<T: Polisher + ?Sized> Polisher for Arc<T> {
+    fn polish(&self, raw: &str) -> String {
+        (**self).polish(raw)
+    }
 }
 
 pub trait Paster: Send + Sync {
@@ -64,6 +80,8 @@ struct Inner {
     recorder: Box<dyn Recorder>,
     trigger_at: Option<Instant>,
     hotkey_latency: Option<Duration>,
+    /// v1.2: the app in front when this recording started.
+    app: String,
 }
 
 struct Shared {
@@ -72,9 +90,11 @@ struct Shared {
     transcriber: Box<dyn Transcriber>,
     polisher: Box<dyn Polisher>,
     paster: Box<dyn Paster>,
-    min_record_ms: u64,
+    min_record_ms: AtomicU64,
     /// v1.2: where finished dictations are saved; `None` keeps no history.
     history: Option<Arc<History>>,
+    /// v1.2: reads the app in front for the history `app` field.
+    foreground: Box<dyn Fn() -> String + Send + Sync>,
 }
 
 /// Cheap to clone; all clones drive the same engine.
@@ -97,14 +117,32 @@ impl Engine {
                 recorder,
                 trigger_at: None,
                 hotkey_latency: None,
+                app: String::new(),
             }),
             subscribers: Mutex::new(Vec::new()),
             transcriber,
             polisher,
             paster,
-            min_record_ms,
+            min_record_ms: AtomicU64::new(min_record_ms),
             history,
+            foreground: Box::new(String::new),
         }))
+    }
+
+    /// v1.2: set how the engine reads the app in front. Call it before the first clone.
+    pub fn with_foreground(mut self, read: impl Fn() -> String + Send + Sync + 'static) -> Self {
+        Arc::get_mut(&mut self.0)
+            .expect("with_foreground runs before the engine is shared")
+            .foreground = Box::new(read);
+        self
+    }
+
+    /// v1.2: apply saved audio settings to the next recording.
+    pub fn set_audio(&self, cfg: &crate::config::AudioConfig) {
+        self.0
+            .min_record_ms
+            .store(cfg.min_record_ms, Ordering::Relaxed);
+        self.0.inner.lock().unwrap().recorder.configure(cfg);
     }
 
     /// v1.2: the dictation history, when the engine keeps one.
@@ -177,6 +215,8 @@ impl Engine {
         match inner.recorder.start() {
             Ok(()) => {
                 inner.mode = Some(mode);
+                // After the mic opens, so the read never delays capture.
+                inner.app = (shared.foreground)();
                 Self::set_state(shared, &mut inner, State::Listening);
             }
             Err(message) => {
@@ -214,6 +254,7 @@ impl Engine {
             return Err(EngineError::InvalidState(inner.state));
         }
         let mode = inner.mode.take().unwrap_or(Mode::Hold);
+        let app = std::mem::take(&mut inner.app);
         if let (Some(t), Some(first)) = (inner.trigger_at, inner.recorder.first_buffer_at()) {
             inner.hotkey_latency = first.checked_duration_since(t);
         }
@@ -232,7 +273,7 @@ impl Engine {
                 return Ok(inner.state);
             }
         };
-        if audio.duration_ms < shared.min_record_ms {
+        if audio.duration_ms < shared.min_record_ms.load(Ordering::Relaxed) {
             Self::set_state(shared, &mut inner, State::Ready);
             return Ok(inner.state);
         }
@@ -241,12 +282,12 @@ impl Engine {
         let engine = self.clone();
         std::thread::Builder::new()
             .name("scribe-process".into())
-            .spawn(move || engine.process(audio, paste, mode))
+            .spawn(move || engine.process(audio, paste, mode, app))
             .expect("spawn scribe-process thread");
         Ok(State::Processing)
     }
 
-    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode) {
+    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode, app: String) {
         let shared = &*self.0;
         let started = Instant::now();
         match shared.transcriber.transcribe(&audio) {
@@ -262,7 +303,7 @@ impl Engine {
                     history.add(NewItem {
                         at: at.clone(),
                         mode: mode_name(mode).into(),
-                        app: String::new(),
+                        app,
                         raw_text: t.text.clone(),
                         cleaned_text: text.clone(),
                         metrics: HistoryMetrics {
@@ -478,6 +519,21 @@ mod tests {
     }
 
     #[test]
+    fn the_app_in_front_at_start_is_saved_with_the_item() {
+        let (engine, history, _) = history_engine("app");
+        let engine = engine.with_foreground(|| "Code.exe".into());
+        let rx = engine.subscribe();
+        engine.start(Mode::Hold, None).unwrap();
+        engine.stop(false).unwrap();
+        match next_history_or_error(&rx) {
+            Event::History { item } => assert_eq!(item.app, "Code.exe"),
+            e => panic!("{e:?}"),
+        }
+        wait_ready(&engine);
+        assert_eq!(history.page(1, None, None).items[0].app, "Code.exe");
+    }
+
+    #[test]
     fn a_failed_save_reports_store_error() {
         let (engine, _, path) = history_engine("fails");
         // A folder where the file should be makes the append fail.
@@ -604,6 +660,24 @@ mod tests {
             },
             Ok("x"),
         );
+        engine.start(Mode::Hold, None).unwrap();
+        assert_eq!(engine.stop(true), Ok(State::Ready));
+        assert!(paster.0.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn set_audio_changes_the_minimum_length_for_the_next_recording() {
+        let (engine, paster) = engine(
+            FakeRecorder {
+                duration_ms: 300,
+                ..Default::default()
+            },
+            Ok("x"),
+        );
+        engine.set_audio(&crate::config::AudioConfig {
+            min_record_ms: 500,
+            ..Default::default()
+        });
         engine.start(Mode::Hold, None).unwrap();
         assert_eq!(engine.stop(true), Ok(State::Ready));
         assert!(paster.0.lock().unwrap().is_empty());
