@@ -1,6 +1,7 @@
 import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
 import { HARNESS_AWARENESS } from "./harnessAwareness.ts";
 import { LEONIDAS_OUTPUT_STANDARD } from "./outputStandard.ts";
+import { PONYTAIL_RULES } from "./ponytailRules.ts";
 import { SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.ts";
 import { USER_QUESTION_INSTRUCTIONS } from "./userQuestionInstructions.ts";
 
@@ -21,6 +22,8 @@ export function buildRuntimeInstructions(runtime: {
   readonly model?: string | undefined;
   readonly modelName?: string | undefined;
   readonly reasoningEffort?: string | undefined;
+  /** True when the Ponytail plugin already injects the rules for this instance. */
+  readonly ponytailPlugin?: boolean | undefined;
 }): string {
   const harness = toSingleLine(runtime.harness);
   const model = toSingleLine(runtime.model ?? "");
@@ -30,7 +33,13 @@ export function buildRuntimeInstructions(runtime: {
     modelName && modelName !== model ? `${modelName} (model slug: ${model})` : model;
   const modelInfo = model && model !== "auto" && model !== "default" ? `, as ${modelLabel}` : "";
   const effortInfo = effort ? ` with ${effort} reasoning effort` : "";
-  return `<runtime_info>In case you're asked: you are running in Leonidas Code through the ${harness} harness${modelInfo}${effortInfo}. No need to mention this otherwise. You can embed images and videos in your response using Markdown with absolute file paths.</runtime_info>\n\n${PULL_REQUEST_LINKING_INSTRUCTIONS}\n\n${WAITING_INSTRUCTIONS}\n\n${EFFICIENT_AGENT_RULES}\n\n${SKILL_ROUTING_INSTRUCTIONS}\n\n${HARNESS_AWARENESS}\n\n${LEONIDAS_OUTPUT_STANDARD}
+  return `<runtime_info>In case you're asked: you are running in Leonidas Code through the ${harness} harness${modelInfo}${effortInfo}. No need to mention this otherwise. You can embed images and videos in your response using Markdown with absolute file paths.</runtime_info>\n\n${PULL_REQUEST_LINKING_INSTRUCTIONS}\n\n${WAITING_INSTRUCTIONS}\n\n${EFFICIENT_AGENT_RULES}\n\n${SKILL_ROUTING_INSTRUCTIONS}\n\n${HARNESS_AWARENESS}\n\n${LEONIDAS_OUTPUT_STANDARD}${
+    runtime.ponytailPlugin
+      ? ""
+      : `
+
+${PONYTAIL_RULES}`
+  }
 
 ${USER_QUESTION_INSTRUCTIONS}`;
 }
