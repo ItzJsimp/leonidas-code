@@ -126,6 +126,81 @@ export type ScribeRejectSuggestionInput = typeof ScribeRejectSuggestionInput.Typ
 export const ScribeRejectSuggestionResult = Schema.Struct({ rejected: Schema.Literal(true) });
 export type ScribeRejectSuggestionResult = typeof ScribeRejectSuggestionResult.Type;
 
+const ScribeOpenSection = Schema.Record(Schema.String, Schema.Unknown);
+
+/**
+ * Contract v1.2 `GET /v1/settings`. A key never appears: `groqKey` is `{set}` only.
+ * `presets`, `features` and `goals` belong to the Leonidas UI; the engine stores them as sent.
+ */
+export const ScribeSettings = Schema.Struct({
+  sections: Schema.Struct({
+    hotkeys: Schema.Struct({
+      hold: Schema.Array(Schema.String),
+      toggle: Schema.Array(Schema.String),
+      cancel: Schema.Array(Schema.String),
+    }),
+    audio: Schema.Struct({
+      device: Schema.NullOr(Schema.String),
+      maxRecordSeconds: Schema.Number,
+      minRecordMs: Schema.Number,
+    }),
+    transcription: Schema.Struct({
+      privateMode: Schema.Boolean,
+      polishEnabled: Schema.Boolean,
+      polishInstructions: Schema.NullOr(Schema.String),
+      whisperModel: Schema.String,
+      whisperModelBackup: Schema.String,
+      polishModel: Schema.String,
+      backupPolishModel: Schema.String,
+      groqKey: Schema.Struct({ set: Schema.Boolean }),
+    }),
+    hud: Schema.Struct({ enabled: Schema.Boolean }),
+    presets: ScribeOpenSection,
+    features: ScribeOpenSection,
+    goals: ScribeOpenSection,
+  }),
+});
+export type ScribeSettings = typeof ScribeSettings.Type;
+
+export const ScribeSettingsSection = Schema.Literals([
+  "hotkeys",
+  "audio",
+  "transcription",
+  "hud",
+  "presets",
+  "features",
+  "goals",
+]);
+export type ScribeSettingsSection = typeof ScribeSettingsSection.Type;
+
+/** `PATCH /v1/settings`: the values merge into that one section. */
+export const ScribePatchSettingsInput = Schema.Struct({
+  section: ScribeSettingsSection,
+  values: Schema.Record(Schema.String, Schema.Unknown),
+});
+export type ScribePatchSettingsInput = typeof ScribePatchSettingsInput.Type;
+
+/** `restartRequired` is true after a model or overlay change: it applies when the engine restarts. */
+export const ScribePatchSettingsResult = Schema.Struct({
+  section: ScribeSettingsSection,
+  values: Schema.Record(Schema.String, Schema.Unknown),
+  restartRequired: Schema.Boolean,
+});
+export type ScribePatchSettingsResult = typeof ScribePatchSettingsResult.Type;
+
+/** `GET /v1/devices`. `id` equals `name`; `null` in `audio.device` means the system default. */
+export const ScribeDevices = Schema.Struct({
+  inputs: Schema.Array(
+    Schema.Struct({ id: Schema.String, name: Schema.String, default: Schema.Boolean }),
+  ),
+});
+export type ScribeDevices = typeof ScribeDevices.Type;
+
+export const ScribeSetGroqKeyInput = Schema.Struct({
+  key: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+});
+export type ScribeSetGroqKeyInput = typeof ScribeSetGroqKeyInput.Type;
+
 export const ScribeEngineErrorReason = Schema.Literals([
   "offline",
   "timeout",

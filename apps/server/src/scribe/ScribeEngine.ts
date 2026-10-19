@@ -6,7 +6,12 @@ import {
   ScribeEngineError,
   ScribeEngineState,
   ScribeEngineWireEvent,
+  ScribeDevices,
   ScribeHistoryPage,
+  type ScribePatchSettingsInput,
+  ScribePatchSettingsResult,
+  type ScribeSetGroqKeyInput,
+  ScribeSettings,
   type ScribeRejectSuggestionInput,
   ScribeRejectSuggestionResult,
   ScribeSuggestionList,
@@ -54,6 +59,14 @@ export class ScribeEngine extends Context.Service<
     readonly rejectSuggestion: (
       input: ScribeRejectSuggestionInput,
     ) => Effect.Effect<ScribeRejectSuggestionResult, ScribeEngineError>;
+    readonly getSettings: Effect.Effect<ScribeSettings, ScribeEngineError>;
+    readonly patchSettings: (
+      input: ScribePatchSettingsInput,
+    ) => Effect.Effect<ScribePatchSettingsResult, ScribeEngineError>;
+    readonly listDevices: Effect.Effect<ScribeDevices, ScribeEngineError>;
+    /** The key goes to the engine's OS credential store. It is never returned. */
+    readonly setGroqKey: (input: ScribeSetGroqKeyInput) => Effect.Effect<void, ScribeEngineError>;
+    readonly clearGroqKey: Effect.Effect<void, ScribeEngineError>;
     /** Engine events plus `connection` events. Reconnects every second while the engine is down. */
     readonly events: Stream.Stream<ScribeLiveEvent>;
   }
@@ -67,6 +80,9 @@ const decodeDeleted = Schema.decodeUnknownEffect(ScribeDeleteHistoryResult);
 const decodeDictionary = Schema.decodeUnknownEffect(ScribeDictionary);
 const decodeSuggestions = Schema.decodeUnknownEffect(ScribeSuggestionList);
 const decodeRejected = Schema.decodeUnknownEffect(ScribeRejectSuggestionResult);
+const decodeSettings = Schema.decodeUnknownEffect(ScribeSettings);
+const decodePatched = Schema.decodeUnknownEffect(ScribePatchSettingsResult);
+const decodeDevices = Schema.decodeUnknownEffect(ScribeDevices);
 const decodePage = Schema.decodeUnknownEffect(ScribeHistoryPage);
 const decodeWireEvent = Schema.decodeUnknownOption(Schema.fromJsonString(ScribeEngineWireEvent));
 
@@ -97,13 +113,14 @@ export const makeWith = (options: {
 
     const call = <A>(
       request: HttpClientRequest.HttpClientRequest,
-      decode: (body: unknown) => Effect.Effect<A, Schema.SchemaError>,
+      decode: ((body: unknown) => Effect.Effect<A, Schema.SchemaError>) | null,
     ) =>
       Effect.gen(function* () {
         const response = yield* http.execute(request);
         if (response.status >= 400) {
           return yield* new ScribeEngineError({ reason: reasonForStatus(response.status) });
         }
+        if (decode === null) return undefined as A;
         const body = yield* response.json;
         return yield* decode(body).pipe(
           Effect.mapError(() => new ScribeEngineError({ reason: "invalid_response" })),
@@ -176,6 +193,31 @@ export const makeWith = (options: {
         decodeRejected,
       );
 
+    const getSettings = call(HttpClientRequest.get(`${baseUrl}/v1/settings`), decodeSettings);
+
+    const patchSettings = (input: ScribePatchSettingsInput) =>
+      call(
+        HttpClientRequest.patch(`${baseUrl}/v1/settings`).pipe(
+          HttpClientRequest.bodyJsonUnsafe(input),
+        ),
+        decodePatched,
+      );
+
+    const listDevices = call(HttpClientRequest.get(`${baseUrl}/v1/devices`), decodeDevices);
+
+    const setGroqKey = (input: ScribeSetGroqKeyInput) =>
+      call<void>(
+        HttpClientRequest.put(`${baseUrl}/v1/credentials/groq`).pipe(
+          HttpClientRequest.bodyJsonUnsafe(input),
+        ),
+        null,
+      );
+
+    const clearGroqKey = call<void>(
+      HttpClientRequest.delete(`${baseUrl}/v1/credentials/groq`),
+      null,
+    );
+
     const connection = (connected: boolean) =>
       Effect.map(DateTime.now, (now): ScribeLiveEvent => ({
         type: "connection",
@@ -236,6 +278,11 @@ export const makeWith = (options: {
       putDictionary,
       listSuggestions,
       rejectSuggestion,
+      getSettings,
+      patchSettings,
+      listDevices,
+      setGroqKey,
+      clearGroqKey,
       events,
     });
   });

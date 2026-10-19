@@ -3316,6 +3316,11 @@ const layerWsRpc = (
         [WS_METHODS.scribePutDictionary]: (input) => scribeEngine.putDictionary(input),
         [WS_METHODS.scribeListSuggestions]: () => scribeEngine.listSuggestions,
         [WS_METHODS.scribeRejectSuggestion]: (input) => scribeEngine.rejectSuggestion(input),
+        [WS_METHODS.scribeGetSettings]: () => scribeEngine.getSettings,
+        [WS_METHODS.scribePatchSettings]: (input) => scribeEngine.patchSettings(input),
+        [WS_METHODS.scribeListDevices]: () => scribeEngine.listDevices,
+        [WS_METHODS.scribeSetGroqKey]: (input) => Effect.as(scribeEngine.setGroqKey(input), {}),
+        [WS_METHODS.scribeClearGroqKey]: () => Effect.as(scribeEngine.clearGroqKey, {}),
         [WS_METHODS.scribeSubscribeEvents]: () =>
           Stream.merge(
             scribeEngine.events,

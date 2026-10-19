@@ -1,11 +1,11 @@
-// Mock Scribe engine: follows contract v1.1 and v1.2 (history, dictionary and suggestions).
+// Mock Scribe engine: follows contract v1.1 and v1.2 (history, dictionary, suggestions, settings, devices).
 // Lets the UI be built before the Rust engine is ready.
 import * as NodeHttp from "node:http";
 import type * as NodeNet from "node:net";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
-export type MockFailMode = "status" | "events" | "history" | "dictionary" | "all";
+export type MockFailMode = "status" | "events" | "history" | "dictionary" | "settings" | "all";
 
 export interface MockScribeEngineOptions {
   port?: number;
@@ -125,6 +125,70 @@ export function buildHistory(seed: number, count: number, now = Date.now()): His
   return items;
 }
 
+const SETTINGS_SECTIONS = [
+  "hotkeys",
+  "audio",
+  "transcription",
+  "presets",
+  "hud",
+  "features",
+  "goals",
+] as const;
+type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+function defaultSettings() {
+  return {
+    hotkeys: { hold: ["Ctrl + Shift + T"], toggle: ["Mouse5"], cancel: ["Escape"] },
+    audio: { device: null as string | null, maxRecordSeconds: 600, minRecordMs: 250 },
+    transcription: {
+      privateMode: false,
+      polishEnabled: true,
+      polishInstructions: null as string | null,
+      whisperModel: "whisper-large-v3-turbo",
+      whisperModelBackup: "whisper-large-v3",
+      polishModel: "qwen/qwen3.8-27b",
+      backupPolishModel: "openai/gpt-oss-20b",
+    },
+    presets: {} as Record<string, unknown>,
+    hud: { enabled: true },
+    features: {} as Record<string, unknown>,
+    goals: {} as Record<string, unknown>,
+  };
+}
+
+const isStrings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
+const isString = (v: unknown) => typeof v === "string";
+const isBool = (v: unknown) => typeof v === "boolean";
+const isCount = (v: unknown) => Number.isInteger(v) && (v as number) >= 0;
+
+/** Typed sections accept only their own keys with the right types, like the Rust engine. */
+const SETTINGS_TYPES: Record<string, Record<string, (v: unknown) => boolean>> = {
+  hotkeys: { hold: isStrings, toggle: isStrings, cancel: isStrings },
+  audio: {
+    device: (v) => v === null || isString(v),
+    maxRecordSeconds: isCount,
+    minRecordMs: isCount,
+  },
+  transcription: {
+    privateMode: isBool,
+    polishEnabled: isBool,
+    polishInstructions: (v) => v === null || isString(v),
+    whisperModel: isString,
+    whisperModelBackup: isString,
+    polishModel: isString,
+    backupPolishModel: isString,
+  },
+  hud: { enabled: isBool },
+};
+
+/** A change to one of these keys applies only after the engine restarts. */
+const RESTART_KEYS: Record<string, string[]> = {
+  hotkeys: [],
+  audio: [],
+  transcription: ["whisperModel", "whisperModelBackup", "polishModel", "backupPolishModel"],
+  hud: ["enabled"],
+};
+
 /** The engine's `PUT /v1/dictionary` rules: exact fields, a non-empty `wrong`, at most 800 words. */
 function parseDictionary(body: Record<string, unknown> | null): {
   replacements: { wrong: string; correct: string }[];
@@ -156,6 +220,7 @@ export async function startMockScribeEngine(
   const failEvents = options.fail === "events" || options.fail === "all";
   const failHistory = options.fail === "history" || options.fail === "all";
   const failDictionary = options.fail === "dictionary" || options.fail === "all";
+  const failSettings = options.fail === "settings" || options.fail === "all";
   const seed = options.seed ?? 1;
   const pingMs = options.pingMs ?? 15_000;
   const processingMs = options.processingMs ?? 600;
@@ -181,6 +246,24 @@ export async function startMockScribeEngine(
         { wrong: "cooper netties", correct: "Kubernetes", count: 2 },
       ];
   const rejected = new Set<string>();
+
+  // Settings: the engine's 7 sections. Keys are never returned, only `{set}`.
+  const settings = defaultSettings();
+  const devices = [
+    {
+      id: "Microphone (Synthetic USB Audio)",
+      name: "Microphone (Synthetic USB Audio)",
+      default: true,
+    },
+    {
+      id: "Headset Microphone (Synthetic)",
+      name: "Headset Microphone (Synthetic)",
+      default: false,
+    },
+    { id: "Line In (Synthetic)", name: "Line In (Synthetic)", default: false },
+  ];
+  const readSection = (name: SettingsSection) =>
+    name === "transcription" ? { ...settings[name], groqKey: { set: groqKey } } : settings[name];
 
   let state: State = "ready";
   let groqKey = true;
@@ -369,6 +452,48 @@ export async function startMockScribeEngine(
       history.splice(idx, 1);
       return send(res, 200, { deleted: true });
     }
+    if (path === "/v1/settings") {
+      if (!allow("GET", "PATCH")) return;
+      if (failSettings) return fail(res, 500, "store_error");
+      if (method === "GET") {
+        const sections = Object.fromEntries(SETTINGS_SECTIONS.map((n) => [n, readSection(n)]));
+        return send(res, 200, { sections });
+      }
+      const body = await readJson(req);
+      const section = body?.section;
+      const values = body?.values;
+      if (
+        typeof section !== "string" ||
+        !(SETTINGS_SECTIONS as readonly string[]).includes(section) ||
+        typeof values !== "object" ||
+        values === null ||
+        Array.isArray(values)
+      ) {
+        return fail(res, 400, "bad_request");
+      }
+      const name = section as SettingsSection;
+      const patch = values as Record<string, unknown>;
+      let restartRequired = false;
+      if (name === "presets" || name === "features" || name === "goals") {
+        Object.assign(settings[name], patch);
+      } else {
+        const current = settings[name] as Record<string, unknown>;
+        const merged = { ...current };
+        for (const [key, value] of Object.entries(patch)) {
+          const check = SETTINGS_TYPES[name][key];
+          if (check === undefined || !check(value)) return fail(res, 400, "bad_request");
+          merged[key] = value;
+        }
+        restartRequired = RESTART_KEYS[name].some((key) => merged[key] !== current[key]);
+        Object.assign(current, merged);
+      }
+      return send(res, 200, { section: name, values: readSection(name), restartRequired });
+    }
+    if (path === "/v1/devices") {
+      if (!allow("GET")) return;
+      if (failSettings) return fail(res, 500, "mic_error");
+      return send(res, 200, { inputs: devices });
+    }
     if (path === "/v1/dictionary") {
       if (!allow("GET", "PUT")) return;
       if (failDictionary) return fail(res, 500, "store_error");
@@ -456,9 +581,10 @@ function parseArgs(argv: string[]): MockScribeEngineOptions {
         value !== "events" &&
         value !== "history" &&
         value !== "dictionary" &&
+        value !== "settings" &&
         value !== "all"
       ) {
-        throw new Error("--fail takes status, events, history, dictionary or all");
+        throw new Error("--fail takes status, events, history, dictionary, settings or all");
       }
       out.fail = value;
     } else throw new Error(`Unknown argument: ${arg}`);

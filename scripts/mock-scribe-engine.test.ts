@@ -280,6 +280,79 @@ describe("mock scribe engine", () => {
     expect((await call(port, "GET", "/v1/history")).status).toBe(200);
   });
 
+  it("serves the 7 settings sections and never the Groq key", async () => {
+    const { port } = await boot();
+    const r = await call(port, "GET", "/v1/settings");
+    expect(Object.keys(r.body.sections)).toEqual([
+      "hotkeys",
+      "audio",
+      "transcription",
+      "presets",
+      "hud",
+      "features",
+      "goals",
+    ]);
+    expect(r.body.sections.transcription.groqKey).toEqual({ set: true });
+    await call(port, "DELETE", "/v1/credentials/groq");
+    const after = await call(port, "GET", "/v1/settings");
+    expect(after.body.sections.transcription.groqKey).toEqual({ set: false });
+    expect(JSON.stringify(after.body)).not.toContain("gsk_");
+  });
+
+  it("patches one section, reports restartRequired and saves nothing on a bad patch", async () => {
+    const { port } = await boot();
+    const patch = (section: string, values: unknown) =>
+      call(port, "PATCH", "/v1/settings", { body: JSON.stringify({ section, values }) });
+
+    const audio = await patch("audio", { device: "USB Mic" });
+    expect(audio.status).toBe(200);
+    expect(audio.body).toMatchObject({
+      section: "audio",
+      values: { device: "USB Mic", maxRecordSeconds: 600, minRecordMs: 250 },
+      restartRequired: false,
+    });
+    expect((await patch("transcription", { polishEnabled: false })).body.restartRequired).toBe(
+      false,
+    );
+    const model = await patch("transcription", { polishModel: "llama-3.3-70b-versatile" });
+    expect(model.body.restartRequired).toBe(true);
+    expect((await patch("hud", { enabled: false })).body.restartRequired).toBe(true);
+    expect((await patch("hud", { enabled: false })).body.restartRequired).toBe(false);
+    expect((await patch("presets", { anything: { a: 1 } })).body.values).toEqual({
+      anything: { a: 1 },
+    });
+
+    for (const [section, values] of [
+      ["nope", {}],
+      ["audio", { speed: 1 }],
+      ["audio", { maxRecordSeconds: "ten" }],
+      ["transcription", { groqKey: "gsk_x" }],
+      ["hotkeys", { hold: "Ctrl + T" }],
+      ["audio", [] as unknown],
+    ] as const) {
+      expect((await patch(section, values)).body.error).toBe("bad_request");
+    }
+    const get = await call(port, "GET", "/v1/settings");
+    expect(get.body.sections.audio.device).toBe("USB Mic");
+    expect(get.body.sections.audio.maxRecordSeconds).toBe(600);
+  });
+
+  it("lists input devices with one default", async () => {
+    const { port } = await boot();
+    const { inputs } = (await call(port, "GET", "/v1/devices")).body;
+    expect(inputs.length).toBeGreaterThan(1);
+    expect(inputs.filter((d: { default: boolean }) => d.default)).toHaveLength(1);
+    expect(inputs.every((d: { id: string; name: string }) => d.id === d.name)).toBe(true);
+  });
+
+  it("fails settings and devices with --fail settings and keeps history up", async () => {
+    const { port } = await boot({ fail: "settings" });
+    expect((await call(port, "GET", "/v1/settings")).body.error).toBe("store_error");
+    expect((await call(port, "PATCH", "/v1/settings", { body: "{}" })).status).toBe(500);
+    expect((await call(port, "GET", "/v1/devices")).status).toBe(500);
+    expect((await call(port, "GET", "/v1/history")).status).toBe(200);
+  });
+
   it("fails everything with --fail all", async () => {
     const { port } = await boot({ fail: "all" });
     expect((await call(port, "GET", "/v1/status")).status).toBe(503);
