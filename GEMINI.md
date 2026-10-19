@@ -8,6 +8,8 @@ You are building **Leonidas Code**, the Leonidas team's AI coding app (a fork of
 
 This project lives inside its builder's AI operating system at `../../`. If `../../AGENTS.md` exists, read it, then `../../memory/jake.md` (or that AIOS's identity file), `../../memory/soul.md` and `../../modes/router.md` before acting. Claude loads these through `CLAUDE.md`; other engines read them by hand. If the parent AIOS is missing, work from this repo alone and say so once. Never copy personal canon into this repo: it is public.
 
+**AIOS template for new users:** the universal template lives in the Leonidas AIOS at `../../scripts/universal-template/` and is built by `../../scripts/Export-UniversalAIOS.py` into `../../_dist/aios-universal-template/`. Any change to the reply standard, onboarding or default canon must also update that template.
+
 ## 2. Non-negotiables
 
 1. **Never kill by pattern.** No `pkill -f`, `pgrep | kill`, or killing a PID matched by name or path; your own process carries the worktree path. Kill only a PID you captured at spawn, or your port's owner after confirming its cwd.
@@ -22,6 +24,7 @@ This project lives inside its builder's AI operating system at `../../`. If `../
 10. **Release notes are for users:** before committing a user-visible change or writing an update, read [leonidas-release](./.agents/skills/leonidas-release/SKILL.md) and its [writing guide](./.agents/skills/leonidas-release/references/writing-guide.md). Use final plain-language `Release-Note:` trailers. Release authors use the illustrated story template; never publish raw commit messages as patch notes.
 11. **ASD-STE100 language:** write all prose in ASD-STE100 Simplified Technical English: short active sentences (20 words or fewer in instructions), one meaning per word, no idioms. Code, paths and identifiers stay as written. Short form lives in [outputStandard.ts](./packages/provider-core/src/server/outputStandard.ts).
 12. **Constraints:** read [CONSTRAINTS.md](./CONSTRAINTS.md) before you edit. Never weaken it to make a change pass.
+13. **Code search:** use `codebase-memory-mcp` (`search_graph`) to find where a symbol is defined. Use `rg` to find who uses it: the graph returns no callers for Effect services. Run `rg` before you trust an empty graph result.
 
 ## 3. Read when the task calls for it
 
@@ -61,6 +64,8 @@ The brief both builders' agents read. Each builder's private notes live in their
 ## Output standard
 
 The app injects the reply shape (Top / Body / Dock) into every provider; its single source is `LEONIDAS_OUTPUT_STANDARD` in [outputStandard.ts](./packages/provider-core/src/server/outputStandard.ts). Do not restate it in instruction files. Repo-only additions (the pushed-to-main banner): [output-standard rule](./.agents/rules/output-standard.md).
+
+@.agents/rules/output-standard.md
 
 ## Gotchas already paid for
 
