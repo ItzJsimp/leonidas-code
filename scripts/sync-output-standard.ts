@@ -9,6 +9,8 @@ import { LEONIDAS_OUTPUT_STANDARD } from "../packages/provider-core/src/server/o
 const start = "<!-- leonidas-output-standard:start -->";
 const end = "<!-- leonidas-output-standard:end -->";
 const block = `${start}\n${LEONIDAS_OUTPUT_STANDARD}\n${end}`;
+// AIOS overlays get a pointer, not the full text: the harness already injects the standard.
+const pointer = `${start}\nReply shape: Leonidas Code injects the Body and Dock standard into every session. Source: \`LEONIDAS_OUTPUT_STANDARD\` in \`packages/provider-core/src/server/outputStandard.ts\`. Do not restate it here.\n${end}`;
 const normalize = (value: string) => value.replaceAll("\r\n", "\n");
 const read = async (file: string) =>
   NodeFSP.readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
@@ -51,8 +53,8 @@ export async function syncOutputStandard(input: {
     files.set(
       overlay,
       a < 0
-        ? `${previous.trimEnd() || "# Leonidas Code: shared operating layer"}\n\n${block}\n`
-        : `${previous.slice(0, a)}${block}${previous.slice(b + end.length)}`,
+        ? `${previous.trimEnd() || "# Leonidas Code: shared operating layer"}\n\n${pointer}\n`
+        : `${previous.slice(0, a)}${pointer}${previous.slice(b + end.length)}`,
     );
     for (const file of skillFiles)
       files.set(
