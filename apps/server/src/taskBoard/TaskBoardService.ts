@@ -39,6 +39,7 @@ import {
   type AiosWorkspaceInitInput,
   type AiosWorkspaceSummary,
   type AiosWorkspacesListResult,
+  type WorkspacePackWidgetsResult,
   type AiosDirection,
 } from "@t3tools/contracts";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@t3tools/shared/git";
@@ -59,6 +60,7 @@ import { ServerSettingsService } from "../serverSettings.ts";
 import { readAiosShape, type AiosShape } from "./aiosShape.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
 import { buildDirection, readDirection } from "./aiosDirection.ts";
+import { widgetsForWorkspace } from "../workspacePack/workspacePack.ts";
 import { buildHome } from "./aiosHome.ts";
 import {
   addFocusItem,
@@ -570,6 +572,11 @@ export class TaskBoardService extends Context.Service<
       projects: ReadonlyArray<Project>,
       workspaceId?: string,
     ) => Effect.Effect<AiosDirection, TaskBoardReadError>;
+    /** Cards a workspace pack adds to the Command Home; `[]` unless the workspace is business. */
+    readonly workspacePackWidgets: (
+      projects: ReadonlyArray<Project>,
+      workspaceId?: string,
+    ) => Effect.Effect<WorkspacePackWidgetsResult>;
     /** Counts about the AIOS folder for opt-in usage analytics. */
     readonly usageShape: (
       projects: ReadonlyArray<Project>,
@@ -1970,6 +1977,14 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const workspacePackWidgets = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
+    Effect.gen(function* () {
+      const now = yield* Clock.currentTimeMillis;
+      const { workspaces: found } = scopeFor(projects, { workspaceId });
+      const widgets = yield* Effect.promise(() => widgetsForWorkspace(found, workspaceId, now));
+      return { widgets };
+    });
+
   const usageShape = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.sync(() => readAiosShape(scopeFor(projects, { workspaceId }).root));
 
@@ -2049,6 +2064,7 @@ const make = Effect.gen(function* () {
       Effect.sync(() => scopeFor(projects, { workspaceId }).root),
     usageShape,
     direction,
+    workspacePackWidgets,
     workspaces,
     workspaceInit,
     aiosDetect,
