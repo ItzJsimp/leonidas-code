@@ -1,0 +1,44 @@
+// @effect-diagnostics nodeBuiltinImport:off - temp dirs for a pure file-reading test
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
+import { describe, expect, it } from "vite-plus/test";
+import {
+  claudeConfigDirOf,
+  ensureClaudePonytail,
+  isPonytailPluginEnabled,
+} from "./PonytailEnsure.ts";
+
+const tempDir = () => NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "pt-"));
+const writeSettings = (dir: string, value: unknown) =>
+  NodeFS.writeFileSync(NodePath.join(dir, "settings.json"), JSON.stringify(value));
+
+describe("PonytailEnsure", () => {
+  it("reads the plugin switch from the account config dir", () => {
+    const dir = tempDir();
+    expect(isPonytailPluginEnabled({ CLAUDE_CONFIG_DIR: dir })).toBe(false);
+    writeSettings(dir, { enabledPlugins: { "ponytail@ponytail": true } });
+    expect(isPonytailPluginEnabled({ CLAUDE_CONFIG_DIR: dir })).toBe(true);
+    writeSettings(dir, { enabledPlugins: { "ponytail@ponytail": false } });
+    expect(isPonytailPluginEnabled({ CLAUDE_CONFIG_DIR: dir })).toBe(false);
+  });
+
+  it("defaults to ~/.claude when no config dir is set", () => {
+    expect(claudeConfigDirOf({})).toBe(NodePath.join(NodeOS.homedir(), ".claude"));
+  });
+
+  it("leaves a user's choice alone, on or off", async () => {
+    const dir = tempDir();
+    writeSettings(dir, { enabledPlugins: { "ponytail@ponytail": false } });
+    expect(
+      await ensureClaudePonytail({ binaryPath: "no-such-claude", env: { CLAUDE_CONFIG_DIR: dir } }),
+    ).toBe("present");
+  });
+
+  it("reports failure without throwing when the CLI is missing", async () => {
+    const dir = tempDir();
+    expect(
+      await ensureClaudePonytail({ binaryPath: "no-such-claude", env: { CLAUDE_CONFIG_DIR: dir } }),
+    ).toBe("failed");
+  });
+});

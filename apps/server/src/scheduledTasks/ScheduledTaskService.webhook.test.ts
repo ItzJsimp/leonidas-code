@@ -122,7 +122,7 @@ it.effect("dispatches exactly the rendered prompt and logs the delivery", () =>
       const launched = yield* Queue.take(launches);
       assert.equal(
         launched.initialMessage?.text,
-        "Review this PR: https://github.com/org/repo/pull/45",
+        "Review this PR: <untrusted_webhook_data>\nhttps://github.com/org/repo/pull/45\n</untrusted_webhook_data>",
       );
       assert.equal(
         launched.commandId,
@@ -138,6 +138,18 @@ it.effect("dispatches exactly the rendered prompt and logs the delivery", () =>
       });
       assert.equal(delivery.body, new TextDecoder().decode(pullRequestBody));
       assert.equal(delivery.renderedPrompt, launched.initialMessage?.text);
+    }),
+  ),
+);
+
+it.effect("a webhook run never launches with full access", () =>
+  withService(({ service, launches }) =>
+    Effect.gen(function* () {
+      const { task } = yield* service.upsert(yield* webhookTaskInput());
+      assert.equal(task.runtimeMode, "full-access");
+      yield* service.triggerWebhook(requestFor(task));
+      const launched = yield* Queue.take(launches);
+      assert.equal(launched.runtimeMode, "approval-required");
     }),
   ),
 );
@@ -308,6 +320,24 @@ it.effect("rate limits a hook past 60 deliveries a minute", () =>
         (delivery) => delivery.outcome,
       );
       assert.equal(outcomes.filter((outcome) => outcome === "rate_limited").length, 1);
+    }),
+  ),
+);
+
+it.effect("rate limits a hook past 100 deliveries a day", () =>
+  withService(({ service }) =>
+    Effect.gen(function* () {
+      const { task } = yield* service.upsert(yield* webhookTaskInput({ enabled: false }));
+      // 50 a minute stays under the minute limit, so only the day limit can trip.
+      for (const _minute of [1, 2]) {
+        yield* Effect.forEach(Array.from({ length: 50 }), () =>
+          service.triggerWebhook(requestFor(task)),
+        );
+        yield* TestClock.adjust("61 seconds");
+      }
+      assert.equal((yield* service.triggerWebhook(requestFor(task)))._tag, "rate_limited");
+      yield* TestClock.adjust("24 hours");
+      assert.equal((yield* service.triggerWebhook(requestFor(task)))._tag, "disabled");
     }),
   ),
 );
@@ -512,8 +542,9 @@ it.effect("counts the prompt as the provider does, without surrounding whitespac
   withService(({ service, launches }) =>
     Effect.gen(function* () {
       const { task } = yield* service.upsert(yield* webhookTaskInput({ prompt: "{{body.text}}" }));
-      // Over the limit as sent, within it once the padding is trimmed.
-      const text = `{"text":"${" ".repeat(1_000)}${"x".repeat(119_990)}${"\\n".repeat(1_000)}"}`;
+      // Over the limit as sent, within it once the padding is trimmed (the
+      // untrusted-data fence around the value takes about 50 characters).
+      const text = `{"text":"${" ".repeat(1_000)}${"x".repeat(119_900)}${"\\n".repeat(1_000)}"}`;
       const result = yield* service.triggerWebhook(
         requestFor(task, { body: new TextEncoder().encode(text), bodyText: text }),
       );

@@ -8,6 +8,8 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
 
+import { scribeEngineBaseUrl } from "./engineUrl.ts";
+
 class ScribeReadError extends Schema.TaggedError<ScribeReadError>()("ScribeReadError", {
   reason: Schema.Literals(["invalid_response", "stale", "http_error"]),
 }) {}
@@ -22,7 +24,9 @@ export class ScribeStatus extends Context.Service<
 const make = Effect.gen(function* () {
   const http = yield* HttpClient.HttpClient;
   const probe = Effect.gen(function* () {
-    const response = yield* http.execute(HttpClientRequest.get("http://127.0.0.1:8766/v1/status"));
+    const response = yield* http.execute(
+      HttpClientRequest.get(`${scribeEngineBaseUrl()}/v1/status`),
+    );
     if (response.status !== 200) return yield* new ScribeReadError({ reason: "http_error" });
     if (Number(response.headers["content-length"]) > 4096) {
       return yield* new ScribeReadError({ reason: "invalid_response" });

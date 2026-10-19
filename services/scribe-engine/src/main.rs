@@ -21,6 +21,8 @@ use scribe_engine::hud::window::Hud;
 use scribe_engine::local_stt::{LocalModel, Router, WhisperLocal};
 use scribe_engine::paste::ClipboardPaster;
 use scribe_engine::polish::{GroqPolisher, SharedDictionary};
+use scribe_engine::settings::Settings;
+use scribe_engine::suggestions::Rejects;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -56,18 +58,20 @@ fn run() -> Result<(), String> {
 
     let keys: Arc<dyn KeyStore> = Arc::new(OsKeyStore::new()?);
     let dictionary = Arc::new(SharedDictionary::new(cfg.dictionary_path(&config_dir)));
-    let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary);
-    let polisher = GroqPolisher::new(groq.clone(), &cfg.effective_polish());
+    let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary.clone());
+    let settings = Arc::new(Settings::new(config_path.clone(), cfg.clone()));
+    let polisher = Arc::new(GroqPolisher::new(groq.clone(), &cfg.effective_polish()));
     // Cloud first. The local model serves private mode and a cloud that cannot answer.
     let local = Arc::new(WhisperLocal::new(&config_dir.join("models")));
     if cfg.private_mode {
         local.ensure_downloaded();
     }
-    let transcriber: Box<dyn Transcriber> = Box::new(Router::new(
+    let router = Arc::new(Router::new(
         Arc::new(groq.clone()),
         local.clone(),
         cfg.private_mode,
     ));
+    let transcriber: Box<dyn Transcriber> = Box::new(router.clone());
     let (recorder, level): (Box<dyn Recorder>, _) = if null_audio {
         (Box::new(NullRecorder::default()), Default::default())
     } else {
@@ -78,24 +82,75 @@ fn run() -> Result<(), String> {
     let engine = Engine::new(
         recorder,
         transcriber,
-        Box::new(polisher),
+        Box::new(polisher.clone()),
         Box::new(ClipboardPaster::new()),
         cfg.audio.min_record_ms,
         Some(Arc::new(History::open(&config_dir.join("history.jsonl")))),
-    );
+    )
+    .with_foreground(scribe_engine::foreground::foreground_app);
 
     let server = http::serve(
         engine.clone(),
-        keys,
-        cfg.private_mode,
-        local as Arc<dyn LocalModel>,
+        http::Services {
+            keys,
+            settings: settings.clone(),
+            local: local.clone() as Arc<dyn LocalModel>,
+            dictionary,
+            devices: Arc::new(scribe_engine::audio::input_devices),
+            rejects: Arc::new(Rejects::open(&config_dir.join("suggestions-rejected.json"))),
+        },
         cfg.port,
     )?;
 
     // `active` lets Escape pass through to apps when no dictation is running.
     let active = Arc::new(AtomicBool::new(false));
     let (hotkey_tx, hotkey_rx) = mpsc::channel();
-    let _hooks = hotkeys::spawn(&cfg.bindings, active.clone(), accept_injected, hotkey_tx)?;
+    let hooks = hotkeys::spawn(
+        &cfg.bindings,
+        active.clone(),
+        accept_injected,
+        hotkey_tx.clone(),
+    )?;
+
+    // v1.2: apply each saved settings section that can change without a restart.
+    {
+        let changes = settings.subscribe();
+        let settings = settings.clone();
+        let engine = engine.clone();
+        let active = active.clone();
+        let mut hooks = Some(hooks);
+        std::thread::Builder::new()
+            .name("scribe-settings".into())
+            .spawn(move || {
+                for section in changes {
+                    let cfg = settings.current();
+                    match section {
+                        "audio" => engine.set_audio(&cfg.audio),
+                        "transcription" => {
+                            router.set_private_mode(cfg.private_mode);
+                            polisher.update(&cfg.effective_polish());
+                            if cfg.private_mode {
+                                local.ensure_downloaded();
+                            }
+                        }
+                        "hotkeys" => {
+                            // Stop the old hooks first, so a key is never bound twice.
+                            drop(hooks.take());
+                            hooks = hotkeys::spawn(
+                                &cfg.bindings,
+                                active.clone(),
+                                accept_injected,
+                                hotkey_tx.clone(),
+                            )
+                            .inspect_err(|e| eprintln!("hotkeys: {e}"))
+                            .ok();
+                        }
+                        _ => {}
+                    }
+                }
+            })
+            .map_err(|e| e.to_string())?;
+    }
 
     #[cfg(windows)]
     // Dictation works without the pill: a HUD failure is logged, not fatal.
@@ -113,20 +168,19 @@ fn run() -> Result<(), String> {
     let events = engine.subscribe();
     let watcher = {
         let engine = engine.clone();
-        let max = Duration::from_secs(u64::from(cfg.audio.max_record_seconds));
+        let settings = settings.clone();
         std::thread::Builder::new()
             .name("scribe-events".into())
-            .spawn(move || watch_events(engine, events, active, max))
+            .spawn(move || watch_events(engine, events, active, &settings))
             .map_err(|e| e.to_string())?
     };
 
-    let warm = !cfg.private_mode;
     std::thread::Builder::new()
         .name("scribe-hotkey-actions".into())
         .spawn(move || {
             for event in hotkey_rx {
                 on_hotkey(&engine, event, || {
-                    if warm {
+                    if !settings.current().private_mode {
                         groq.warm();
                     }
                 });
@@ -176,7 +230,7 @@ fn watch_events(
     engine: Engine,
     events: mpsc::Receiver<Event>,
     active: Arc<AtomicBool>,
-    max: Duration,
+    settings: &Settings,
 ) {
     let mut listening_since: Option<Instant> = None;
     let mut processing_since: Option<Instant> = None;
@@ -216,6 +270,7 @@ fn watch_events(
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
+        let max = Duration::from_secs(u64::from(settings.current().audio.max_record_seconds));
         if listening_since.is_some_and(|t| t.elapsed() >= max) {
             listening_since = None;
             let _ = engine.stop(true);

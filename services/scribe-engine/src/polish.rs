@@ -248,8 +248,8 @@ fn turn(role: &str, content: &str) -> Value {
 
 pub struct GroqPolisher {
     client: GroqClient,
-    enabled: bool,
-    instructions: String,
+    /// `enabled` and the system prompt. v1.2 settings replace them live.
+    live: std::sync::RwLock<(bool, String)>,
     cooldowns: Mutex<HashMap<String, Instant>>,
 }
 
@@ -257,18 +257,23 @@ impl GroqPolisher {
     pub fn new(client: GroqClient, polish: &PolishConfig) -> Self {
         Self {
             client,
-            enabled: polish.enabled,
-            instructions: polish
-                .instructions
-                .clone()
-                .filter(|s| !s.trim().is_empty())
-                .unwrap_or_else(|| DEFAULT_INSTRUCTIONS.to_owned()),
+            live: std::sync::RwLock::new(live_state(polish)),
             cooldowns: Mutex::new(HashMap::new()),
         }
     }
 
+    /// v1.2: saved polish settings apply to the next dictation.
+    pub fn update(&self, polish: &PolishConfig) {
+        *self.live.write().unwrap_or_else(|e| e.into_inner()) = live_state(polish);
+    }
+
     fn build_prompt(&self, text: &str, vocabulary: &str) -> Prompt {
-        let mut system = self.instructions.clone();
+        let mut system = self
+            .live
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .1
+            .clone();
         if !vocabulary.is_empty() {
             system.push_str("\n\nKnown terms (spell them exactly like this):\n");
             system.push_str(vocabulary);
@@ -430,11 +435,21 @@ fn call_model(
     accept_reply(content, &prompt.input)
 }
 
+fn live_state(polish: &PolishConfig) -> (bool, String) {
+    let instructions = polish
+        .instructions
+        .clone()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_INSTRUCTIONS.to_owned());
+    (polish.enabled, instructions)
+}
+
 impl Polisher for GroqPolisher {
     fn polish(&self, raw: &str) -> String {
         let dictionary = self.client.dictionary.current();
         let text = dictionary.apply(raw);
-        if !self.enabled || text.trim().is_empty() {
+        let enabled = self.live.read().unwrap_or_else(|e| e.into_inner()).0;
+        if !enabled || text.trim().is_empty() {
             return text;
         }
         if can_fast_path(&text) {
@@ -943,6 +958,19 @@ mod tests {
         assert_eq!(no_key.polish(""), "");
         assert!(server.log.lock().unwrap().is_empty());
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn update_turns_polish_off_without_a_new_polisher() {
+        let server = Server::start(|_| Reply::chat("never"));
+        let dictionary = Arc::new(SharedDictionary::new(PathBuf::from("none.json")));
+        let p = polisher_with(&server, Some("k"), dictionary, |_| {});
+        p.update(&PolishConfig {
+            enabled: false,
+            ..PolishConfig::default()
+        });
+        assert_eq!(p.polish(SENTENCE), SENTENCE);
+        assert!(server.log.lock().unwrap().is_empty());
     }
 
     #[test]

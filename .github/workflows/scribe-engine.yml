@@ -43,3 +43,12 @@ jobs:
         run: cargo build --release
       - name: Budgets
         run: ./target/release/scribe-bench.exe --null-audio
+      - name: Restore offline model
+        uses: actions/cache@v4
+        with:
+          path: services/scribe-engine/target/models
+          key: whisper-ggml-base.en-q5_1
+      # whisper.cpp built without AVX2 and /O2 is about 8x slower. A clean 3.9 s WAV
+      # must transcribe in 3 s or less, so such a build fails here.
+      - name: Offline speed (AVX2 guard)
+        run: ./target/release/scribe-bench.exe --local-wav tests/fixtures/clean-speech-16k.wav --models target/models

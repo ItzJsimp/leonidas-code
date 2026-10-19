@@ -13,6 +13,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SystemCareRouteImport } from './routes/system-care'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ScribeRouteImport } from './routes/scribe'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as ImagesRouteImport } from './routes/images'
 import { Route as ConnectAgentRouteImport } from './routes/connect-agent'
@@ -60,6 +61,11 @@ const SystemCareRoute = SystemCareRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScribeRoute = ScribeRouteImport.update({
+  id: '/scribe',
+  path: '/scribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PairRoute = PairRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/connect-agent': typeof ConnectAgentRoute
   '/images': typeof ImagesRoute
   '/pair': typeof PairRoute
+  '/scribe': typeof ScribeRoute
   '/settings': typeof SettingsRouteWithChildren
   '/system-care': typeof SystemCareRoute
   '/usage': typeof UsageRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/connect-agent': typeof ConnectAgentRoute
   '/images': typeof ImagesRoute
   '/pair': typeof PairRoute
+  '/scribe': typeof ScribeRoute
   '/settings': typeof SettingsRouteWithChildren
   '/system-care': typeof SystemCareRoute
   '/usage': typeof UsageRoute
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/connect-agent': typeof ConnectAgentRoute
   '/images': typeof ImagesRoute
   '/pair': typeof PairRoute
+  '/scribe': typeof ScribeRoute
   '/settings': typeof SettingsRouteWithChildren
   '/system-care': typeof SystemCareRoute
   '/usage': typeof UsageRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/connect-agent'
     | '/images'
     | '/pair'
+    | '/scribe'
     | '/settings'
     | '/system-care'
     | '/usage'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/connect-agent'
     | '/images'
     | '/pair'
+    | '/scribe'
     | '/settings'
     | '/system-care'
     | '/usage'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/connect-agent'
     | '/images'
     | '/pair'
+    | '/scribe'
     | '/settings'
     | '/system-care'
     | '/usage'
@@ -415,6 +427,7 @@ export interface RootRouteChildren {
   ConnectAgentRoute: typeof ConnectAgentRoute
   ImagesRoute: typeof ImagesRoute
   PairRoute: typeof PairRoute
+  ScribeRoute: typeof ScribeRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SystemCareRoute: typeof SystemCareRoute
   UsageRoute: typeof UsageRoute
@@ -450,6 +463,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scribe': {
+      id: '/scribe'
+      path: '/scribe'
+      fullPath: '/scribe'
+      preLoaderRoute: typeof ScribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pair': {
@@ -718,6 +738,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConnectAgentRoute: ConnectAgentRoute,
   ImagesRoute: ImagesRoute,
   PairRoute: PairRoute,
+  ScribeRoute: ScribeRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SystemCareRoute: SystemCareRoute,
   UsageRoute: UsageRoute,

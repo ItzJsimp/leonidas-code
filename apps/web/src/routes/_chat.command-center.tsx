@@ -17,6 +17,7 @@ import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
 import { DirectionSection } from "../components/taskBoard/DirectionSection";
 import { HomeExtraCards } from "../components/taskBoard/HomeExtraCards";
 import { LayaMonitorCard } from "../components/taskBoard/LayaMonitorCard";
+import { PonytailCard } from "../components/taskBoard/PonytailCard";
 import { SubagentStudio } from "../components/subagents/SubagentStudio";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
@@ -108,6 +109,7 @@ function CommandCenterPage() {
           <AiosHomeCard />
           <HomeExtraCards />
           <LayaMonitorCard />
+          <PonytailCard />
           <SubagentStudio />
           {disconnected.length > 0 ? (
             <div
