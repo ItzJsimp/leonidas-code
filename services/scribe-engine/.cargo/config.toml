@@ -2,10 +2,10 @@
 # AVX2, FMA and F16C exist on every x86-64 PC since 2013.
 [env]
 GGML_NATIVE = "OFF"
-GGML_AVX = "ON"
-GGML_AVX2 = "ON"
-GGML_FMA = "ON"
-GGML_F16C = "ON"
+GGML_AVX = "OFF"
+GGML_AVX2 = "OFF"
+GGML_FMA = "OFF"
+GGML_F16C = "OFF"
 # The cmake crate drops /O2 here, so ggml would build unoptimized. Set it explicitly.
 CMAKE_C_FLAGS_RELEASE = "/O2 /Ob2 /DNDEBUG -MD"
 CMAKE_CXX_FLAGS_RELEASE = "/O2 /Ob2 /DNDEBUG -MD"
