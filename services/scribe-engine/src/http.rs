@@ -8,6 +8,7 @@ use crate::credentials::KeyStore;
 use crate::dictionary::{SharedDictionary, VOCABULARY_CAP};
 use crate::engine::{Engine, EngineError};
 use crate::local_stt::LocalModel;
+use crate::settings::{PatchError, Settings};
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -39,7 +40,7 @@ impl ServerHandle {
 /// What the routes read and write besides the engine.
 pub struct Services {
     pub keys: Arc<dyn KeyStore>,
-    pub private_mode: bool,
+    pub settings: Arc<Settings>,
     pub local: Arc<dyn LocalModel>,
     pub dictionary: Arc<SharedDictionary>,
 }
@@ -167,6 +168,9 @@ fn route(mut request: Request, engine: &Engine, services: &Services) {
     if path == "/v1/dictionary" {
         return dictionary_route(request, services);
     }
+    if path == "/v1/settings" {
+        return settings_route(request, services);
+    }
     match (request.url(), request.method()) {
         ("/v1/status", Method::Get) => {
             let status = Status {
@@ -174,9 +178,8 @@ fn route(mut request: Request, engine: &Engine, services: &Services) {
                 api_version: API_VERSION,
                 state: engine.state(),
                 sampled_at: now_iso(),
-                groq_key: keys.get().is_some()
-                    || std::env::var_os("GROQ_API_KEY").is_some_and(|key| !key.is_empty()),
-                private_mode: services.private_mode,
+                groq_key: groq_key_set(keys),
+                private_mode: services.settings.current().private_mode,
                 local_model: Some(services.local.status().as_str().into()),
             };
             json(request, 200, &status);
@@ -250,6 +253,40 @@ fn history_route(request: Request, engine: &Engine, path: &str, query: &str) {
         Ok(true) => json(request, 200, &serde_json::json!({ "deleted": true })),
         Ok(false) => error(request, 404, "not_found"),
         Err(_) => error(request, 500, "store_error"),
+    }
+}
+
+/// A key in the OS store, or `GROQ_API_KEY` in the environment.
+fn groq_key_set(keys: &dyn KeyStore) -> bool {
+    keys.get().is_some() || std::env::var_os("GROQ_API_KEY").is_some_and(|key| !key.is_empty())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PatchRequest {
+    section: String,
+    values: serde_json::Map<String, serde_json::Value>,
+}
+
+/// v1.2: `GET` and `PATCH /v1/settings`.
+fn settings_route(mut request: Request, services: &Services) {
+    let key_set = groq_key_set(services.keys.as_ref());
+    match request.method() {
+        Method::Get => json(request, 200, &services.settings.sections(key_set)),
+        Method::Patch => {
+            let Ok(patch) = body::<PatchRequest>(&mut request) else {
+                return error(request, 400, "bad_request");
+            };
+            match services
+                .settings
+                .patch(&patch.section, &patch.values, key_set)
+            {
+                Ok(reply) => json(request, 200, &reply),
+                Err(PatchError::BadRequest) => error(request, 400, "bad_request"),
+                Err(PatchError::Store) => error(request, 500, "store_error"),
+            }
+        }
+        _ => error(request, 405, "method_not_allowed"),
     }
 }
 
@@ -341,9 +378,13 @@ mod tests {
     }
 
     fn test_services(keys: Arc<dyn KeyStore>) -> Services {
+        let cfg = crate::config::Config {
+            private_mode: true,
+            ..Default::default()
+        };
         Services {
             keys,
-            private_mode: true,
+            settings: Arc::new(Settings::new("none-config.json".into(), cfg)),
             local: Arc::new(NoLocal),
             dictionary: Arc::new(SharedDictionary::new(std::path::PathBuf::from("none.json"))),
         }
@@ -865,6 +906,126 @@ mod tests {
         assert!(!path.exists(), "a bad body never writes the file");
         server
             .request("POST", "/v1/dictionary", "{}")
+            .error(405, "method_not_allowed");
+    }
+
+    fn settings_server(name: &str) -> (TestServer, std::path::PathBuf) {
+        let path = temp_dir(name).join("config.json");
+        let mut services = test_services(Arc::new(MemoryKeyStore::default()));
+        let cfg = crate::config::Config {
+            port: 8777,
+            ..Default::default()
+        };
+        services.settings = Arc::new(Settings::new(path.clone(), cfg));
+        (TestServer::with_services(services), path)
+    }
+
+    #[test]
+    fn settings_get_has_seven_sections_and_keys_only_as_set() {
+        let (server, _) = settings_server("set-get");
+        let reply = server.request("GET", "/v1/settings", "");
+        assert_eq!(reply.status, 200);
+        let sections = reply.body["sections"].as_object().unwrap();
+        let mut names: Vec<&str> = sections.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        assert_eq!(
+            names,
+            [
+                "audio",
+                "features",
+                "goals",
+                "hotkeys",
+                "hud",
+                "presets",
+                "transcription"
+            ]
+        );
+        assert_eq!(
+            sections["hotkeys"]["toggle"],
+            json!(["Mouse5", "Ctrl + Shift + Space"])
+        );
+        assert_eq!(sections["audio"]["maxRecordSeconds"], 600);
+        let env_key = std::env::var_os("GROQ_API_KEY").is_some_and(|key| !key.is_empty());
+        assert_eq!(
+            sections["transcription"]["groqKey"],
+            json!({"set": env_key})
+        );
+        assert_eq!(sections["hud"], json!({"enabled": true}));
+        assert_eq!(sections["goals"], json!({}));
+        assert_eq!(
+            server
+                .request("PUT", "/v1/credentials/groq", r#"{"key":"secret-value"}"#)
+                .status,
+            204
+        );
+        let reply = server.request("GET", "/v1/settings", "");
+        assert_eq!(
+            reply.body["sections"]["transcription"]["groqKey"],
+            json!({"set": true})
+        );
+        assert!(!reply.body.to_string().contains("secret-value"));
+    }
+
+    #[test]
+    fn settings_patch_merges_saves_and_reports_restart() {
+        let (server, path) = settings_server("set-patch");
+        let reply = server.request(
+            "PATCH",
+            "/v1/settings",
+            r#"{"section":"audio","values":{"device":"USB Mic"}}"#,
+        );
+        assert_eq!(reply.status, 200);
+        assert_eq!(
+            reply.body,
+            json!({"section":"audio","values":{"device":"USB Mic","maxRecordSeconds":600,"minRecordMs":250},"restartRequired":false})
+        );
+        let saved: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(saved["audio"]["device"], "USB Mic");
+        assert_eq!(saved["port"], 8777, "keys the API does not show are kept");
+        let get = server.request("GET", "/v1/settings", "");
+        assert_eq!(get.body["sections"]["audio"]["device"], "USB Mic");
+        for (body, restart) in [
+            (r#"{"section":"hud","values":{"enabled":false}}"#, true),
+            (
+                r#"{"section":"transcription","values":{"privateMode":true}}"#,
+                false,
+            ),
+            (
+                r#"{"section":"transcription","values":{"polishModel":"other"}}"#,
+                true,
+            ),
+            (r#"{"section":"hotkeys","values":{"hold":[]}}"#, false),
+            (r#"{"section":"goals","values":{"dailyWords":500}}"#, false),
+        ] {
+            let reply = server.request("PATCH", "/v1/settings", body);
+            assert_eq!(reply.status, 200, "{body}");
+            assert_eq!(reply.body["restartRequired"], restart, "{body}");
+        }
+        let get = server.request("GET", "/v1/settings", "").body;
+        assert_eq!(get["sections"]["goals"], json!({"dailyWords": 500}));
+        assert_eq!(get["sections"]["hotkeys"]["hold"], json!([]));
+        assert_eq!(get["sections"]["transcription"]["privateMode"], true);
+    }
+
+    #[test]
+    fn settings_patch_rejects_bad_requests_and_writes_nothing() {
+        let (server, path) = settings_server("set-bad");
+        for body in [
+            r#"{"section":"nope","values":{}}"#,
+            r#"{"section":"audio","values":{"unknown":1}}"#,
+            r#"{"section":"audio","values":{"device":5}}"#,
+            r#"{"section":"transcription","values":{"groqKey":{"set":true}}}"#,
+            r#"{"section":"goals","values":[1]}"#,
+            r#"{"section":"audio"}"#,
+            "not json",
+        ] {
+            server
+                .request("PATCH", "/v1/settings", body)
+                .error(400, "bad_request");
+        }
+        assert!(!path.exists());
+        server
+            .request("PUT", "/v1/settings", "{}")
             .error(405, "method_not_allowed");
     }
 }

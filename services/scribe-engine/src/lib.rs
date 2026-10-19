@@ -15,5 +15,6 @@ pub mod hud;
 pub mod local_stt;
 pub mod paste;
 pub mod polish;
+pub mod settings;
 
 pub use contract::*;

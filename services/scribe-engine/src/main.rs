@@ -21,6 +21,7 @@ use scribe_engine::hud::window::Hud;
 use scribe_engine::local_stt::{LocalModel, Router, WhisperLocal};
 use scribe_engine::paste::ClipboardPaster;
 use scribe_engine::polish::{GroqPolisher, SharedDictionary};
+use scribe_engine::settings::Settings;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -88,7 +89,7 @@ fn run() -> Result<(), String> {
         engine.clone(),
         http::Services {
             keys,
-            private_mode: cfg.private_mode,
+            settings: Arc::new(Settings::new(config_path.clone(), cfg.clone())),
             local: local as Arc<dyn LocalModel>,
             dictionary,
         },

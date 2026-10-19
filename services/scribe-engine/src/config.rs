@@ -16,6 +16,10 @@ pub struct Config {
     /// Audio never leaves the device (local model only).
     pub private_mode: bool,
     pub hud: HudConfig,
+    /// v1.2 settings the Leonidas UI owns. The engine stores them and never reads them.
+    pub presets: serde_json::Map<String, serde_json::Value>,
+    pub features: serde_json::Map<String, serde_json::Value>,
+    pub goals: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Default for Config {
@@ -28,6 +32,9 @@ impl Default for Config {
             polish: PolishConfig::default(),
             private_mode: false,
             hud: HudConfig::default(),
+            presets: Default::default(),
+            features: Default::default(),
+            goals: Default::default(),
         }
     }
 }
