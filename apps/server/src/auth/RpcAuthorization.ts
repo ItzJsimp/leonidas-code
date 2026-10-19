@@ -47,6 +47,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.savedItemsGet]: AuthOrchestrationReadScope,
   [WS_METHODS.scribeGetStatus]: AuthOrchestrationReadScope,
   [WS_METHODS.scribeListHistory]: AuthOrchestrationReadScope,
+  [WS_METHODS.scribeGetDictionary]: AuthOrchestrationReadScope,
+  [WS_METHODS.scribeListSuggestions]: AuthOrchestrationReadScope,
   [WS_METHODS.scribeSubscribeEvents]: AuthOrchestrationReadScope,
   [WS_METHODS.voiceGetStatus]: AuthOrchestrationReadScope,
   ...CLIENT_GUARDED_RPC_SCOPES,

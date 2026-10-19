@@ -2,10 +2,14 @@ import {
   ScribeCommandResult,
   type ScribeDeleteHistoryInput,
   ScribeDeleteHistoryResult,
+  ScribeDictionary,
   ScribeEngineError,
   ScribeEngineState,
   ScribeEngineWireEvent,
   ScribeHistoryPage,
+  type ScribeRejectSuggestionInput,
+  ScribeRejectSuggestionResult,
+  ScribeSuggestionList,
   type ScribeListHistoryInput,
   type ScribeLiveEvent,
   type ScribeStartInput,
@@ -42,6 +46,14 @@ export class ScribeEngine extends Context.Service<
     readonly deleteHistory: (
       input: ScribeDeleteHistoryInput,
     ) => Effect.Effect<ScribeDeleteHistoryResult, ScribeEngineError>;
+    readonly getDictionary: Effect.Effect<ScribeDictionary, ScribeEngineError>;
+    readonly putDictionary: (
+      input: ScribeDictionary,
+    ) => Effect.Effect<ScribeDictionary, ScribeEngineError>;
+    readonly listSuggestions: Effect.Effect<ScribeSuggestionList, ScribeEngineError>;
+    readonly rejectSuggestion: (
+      input: ScribeRejectSuggestionInput,
+    ) => Effect.Effect<ScribeRejectSuggestionResult, ScribeEngineError>;
     /** Engine events plus `connection` events. Reconnects every second while the engine is down. */
     readonly events: Stream.Stream<ScribeLiveEvent>;
   }
@@ -52,10 +64,14 @@ const decodeStatus = Schema.decodeUnknownEffect(
   Schema.Struct({ state: ScribeEngineState, sampledAt: Schema.String }),
 );
 const decodeDeleted = Schema.decodeUnknownEffect(ScribeDeleteHistoryResult);
+const decodeDictionary = Schema.decodeUnknownEffect(ScribeDictionary);
+const decodeSuggestions = Schema.decodeUnknownEffect(ScribeSuggestionList);
+const decodeRejected = Schema.decodeUnknownEffect(ScribeRejectSuggestionResult);
 const decodePage = Schema.decodeUnknownEffect(ScribeHistoryPage);
 const decodeWireEvent = Schema.decodeUnknownOption(Schema.fromJsonString(ScribeEngineWireEvent));
 
 const reasonForStatus = (status: number): ScribeEngineError["reason"] => {
+  if (status === 400) return "bad_request";
   if (status === 409) return "invalid_state";
   if (status === 404) return "not_found";
   if (status === 500) return "store_error";
@@ -137,6 +153,29 @@ export const makeWith = (options: {
         decodeDeleted,
       );
 
+    const getDictionary = call(HttpClientRequest.get(`${baseUrl}/v1/dictionary`), decodeDictionary);
+
+    const putDictionary = (input: ScribeDictionary) =>
+      call(
+        HttpClientRequest.put(`${baseUrl}/v1/dictionary`).pipe(
+          HttpClientRequest.bodyJsonUnsafe(input),
+        ),
+        decodeDictionary,
+      );
+
+    const listSuggestions = call(
+      HttpClientRequest.get(`${baseUrl}/v1/dictionary/suggestions`),
+      decodeSuggestions,
+    );
+
+    const rejectSuggestion = (input: ScribeRejectSuggestionInput) =>
+      call(
+        HttpClientRequest.delete(
+          `${baseUrl}/v1/dictionary/suggestions/${encodeURIComponent(input.wrong)}`,
+        ),
+        decodeRejected,
+      );
+
     const connection = (connected: boolean) =>
       Effect.map(DateTime.now, (now): ScribeLiveEvent => ({
         type: "connection",
@@ -188,7 +227,17 @@ export const makeWith = (options: {
       ),
     );
 
-    return ScribeEngine.of({ start, stop, listHistory, deleteHistory, events });
+    return ScribeEngine.of({
+      start,
+      stop,
+      listHistory,
+      deleteHistory,
+      getDictionary,
+      putDictionary,
+      listSuggestions,
+      rejectSuggestion,
+      events,
+    });
   });
 
 export const layer = Layer.effect(ScribeEngine, makeWith({ baseUrl: scribeEngineBaseUrl() }));

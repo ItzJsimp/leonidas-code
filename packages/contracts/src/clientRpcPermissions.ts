@@ -18,6 +18,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.scribeStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.scribeStop]: AuthOrchestrationOperateScope,
   [WS_METHODS.scribeDeleteHistory]: AuthOrchestrationOperateScope,
+  [WS_METHODS.scribePutDictionary]: AuthOrchestrationOperateScope,
+  [WS_METHODS.scribeRejectSuggestion]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.subagentsRespondSpawnApproval]: AuthOrchestrationOperateScope,
   [WS_METHODS.subagentsUpdate]: AuthOrchestrationOperateScope,

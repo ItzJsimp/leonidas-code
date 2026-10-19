@@ -103,11 +103,35 @@ export type ScribeDeleteHistoryInput = typeof ScribeDeleteHistoryInput.Type;
 export const ScribeDeleteHistoryResult = Schema.Struct({ deleted: Schema.Literal(true) });
 export type ScribeDeleteHistoryResult = typeof ScribeDeleteHistoryResult.Type;
 
+/** Contract v1.2 `GET` and `PUT /v1/dictionary`. The engine allows at most 800 vocabulary words. */
+export const ScribeDictionary = Schema.Struct({
+  replacements: Schema.Array(Schema.Struct({ wrong: Schema.String, correct: Schema.String })),
+  vocabulary: Schema.Array(Schema.String).check(Schema.isMaxLength(800)),
+});
+export type ScribeDictionary = typeof ScribeDictionary.Type;
+
+/** A run of words the engine saw polish fix in 2 or more dictations (`GET /v1/dictionary/suggestions`). */
+export const ScribeSuggestionList = Schema.Struct({
+  items: Schema.Array(
+    Schema.Struct({ wrong: Schema.String, correct: Schema.String, count: Schema.Number }),
+  ),
+});
+export type ScribeSuggestionList = typeof ScribeSuggestionList.Type;
+
+export const ScribeRejectSuggestionInput = Schema.Struct({
+  wrong: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+});
+export type ScribeRejectSuggestionInput = typeof ScribeRejectSuggestionInput.Type;
+
+export const ScribeRejectSuggestionResult = Schema.Struct({ rejected: Schema.Literal(true) });
+export type ScribeRejectSuggestionResult = typeof ScribeRejectSuggestionResult.Type;
+
 export const ScribeEngineErrorReason = Schema.Literals([
   "offline",
   "timeout",
   "invalid_state",
   "invalid_response",
+  "bad_request",
   "not_found",
   "store_error",
   "http_error",

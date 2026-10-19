@@ -3312,6 +3312,10 @@ const layerWsRpc = (
         [WS_METHODS.scribeStop]: (input) => scribeEngine.stop(input),
         [WS_METHODS.scribeListHistory]: (input) => scribeEngine.listHistory(input),
         [WS_METHODS.scribeDeleteHistory]: (input) => scribeEngine.deleteHistory(input),
+        [WS_METHODS.scribeGetDictionary]: () => scribeEngine.getDictionary,
+        [WS_METHODS.scribePutDictionary]: (input) => scribeEngine.putDictionary(input),
+        [WS_METHODS.scribeListSuggestions]: () => scribeEngine.listSuggestions,
+        [WS_METHODS.scribeRejectSuggestion]: (input) => scribeEngine.rejectSuggestion(input),
         [WS_METHODS.scribeSubscribeEvents]: () =>
           Stream.merge(
             scribeEngine.events,

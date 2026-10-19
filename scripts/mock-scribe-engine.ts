@@ -1,11 +1,11 @@
-// Mock Scribe engine: follows contract v1.1 plus the v1.2 history proposal.
+// Mock Scribe engine: follows contract v1.1 and v1.2 (history, dictionary and suggestions).
 // Lets the UI be built before the Rust engine is ready.
 import * as NodeHttp from "node:http";
 import type * as NodeNet from "node:net";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
-export type MockFailMode = "status" | "events" | "history" | "all";
+export type MockFailMode = "status" | "events" | "history" | "dictionary" | "all";
 
 export interface MockScribeEngineOptions {
   port?: number;
@@ -125,12 +125,37 @@ export function buildHistory(seed: number, count: number, now = Date.now()): His
   return items;
 }
 
+/** The engine's `PUT /v1/dictionary` rules: exact fields, a non-empty `wrong`, at most 800 words. */
+function parseDictionary(body: Record<string, unknown> | null): {
+  replacements: { wrong: string; correct: string }[];
+  vocabulary: string[];
+} | null {
+  if (body === null) return null;
+  const keys = Object.keys(body);
+  if (keys.some((key) => key !== "replacements" && key !== "vocabulary")) return null;
+  const { replacements, vocabulary } = body;
+  if (!Array.isArray(replacements) || !Array.isArray(vocabulary) || vocabulary.length > 800) {
+    return null;
+  }
+  const rules: { wrong: string; correct: string }[] = [];
+  for (const rule of replacements) {
+    if (typeof rule !== "object" || rule === null) return null;
+    const { wrong, correct } = rule as Record<string, unknown>;
+    if (typeof wrong !== "string" || typeof correct !== "string" || wrong.trim() === "")
+      return null;
+    rules.push({ wrong, correct });
+  }
+  if (vocabulary.some((word) => typeof word !== "string")) return null;
+  return { replacements: rules, vocabulary: vocabulary as string[] };
+}
+
 export async function startMockScribeEngine(
   options: MockScribeEngineOptions = {},
 ): Promise<MockScribeEngine> {
   const failStatus = options.fail === "status" || options.fail === "all";
   const failEvents = options.fail === "events" || options.fail === "all";
   const failHistory = options.fail === "history" || options.fail === "all";
+  const failDictionary = options.fail === "dictionary" || options.fail === "all";
   const seed = options.seed ?? 1;
   const pingMs = options.pingMs ?? 15_000;
   const processingMs = options.processingMs ?? 600;
@@ -139,6 +164,23 @@ export async function startMockScribeEngine(
     : buildHistory(seed, options.historyCount ?? 200);
   const liveRng = mulberry32(seed ^ 0x9e3779b9);
   let nextLiveId = history.length + 1;
+
+  // Dictionary and suggestions: same rules as the Rust engine (contract v1.2).
+  let dictionary: { replacements: { wrong: string; correct: string }[]; vocabulary: string[] } =
+    options.empty
+      ? { replacements: [], vocabulary: [] }
+      : {
+          replacements: [{ wrong: "btw", correct: "by the way" }],
+          vocabulary: ["Gersi", "Leonidas"],
+        };
+  const mined = options.empty
+    ? []
+    : [
+        { wrong: "jersey", correct: "Gersi", count: 5 },
+        { wrong: "leo nightness", correct: "Leonidas", count: 3 },
+        { wrong: "cooper netties", correct: "Kubernetes", count: 2 },
+      ];
+  const rejected = new Set<string>();
 
   let state: State = "ready";
   let groqKey = true;
@@ -327,6 +369,36 @@ export async function startMockScribeEngine(
       history.splice(idx, 1);
       return send(res, 200, { deleted: true });
     }
+    if (path === "/v1/dictionary") {
+      if (!allow("GET", "PUT")) return;
+      if (failDictionary) return fail(res, 500, "store_error");
+      if (method === "GET") return send(res, 200, dictionary);
+      const body = await readJson(req);
+      const next = parseDictionary(body);
+      if (next === null) return fail(res, 400, "bad_request");
+      dictionary = next;
+      return send(res, 200, dictionary);
+    }
+    if (path === "/v1/dictionary/suggestions") {
+      if (!allow("GET")) return;
+      if (failDictionary) return fail(res, 500, "store_error");
+      const known = new Set(dictionary.replacements.map((r) => r.wrong.toLowerCase()));
+      const items = mined.filter((s) => !known.has(s.wrong) && !rejected.has(s.wrong));
+      return send(res, 200, { items });
+    }
+    const reject = /^\/v1\/dictionary\/suggestions\/([^/]+)$/.exec(path);
+    if (reject) {
+      if (!allow("DELETE")) return;
+      let wrong: string;
+      try {
+        wrong = decodeURIComponent(reject[1] as string).toLowerCase();
+      } catch {
+        return fail(res, 400, "bad_request");
+      }
+      if (failDictionary) return fail(res, 500, "store_error");
+      rejected.add(wrong);
+      return send(res, 200, { rejected: true });
+    }
     return fail(res, 404, "not_found");
   };
 
@@ -379,8 +451,14 @@ function parseArgs(argv: string[]): MockScribeEngineOptions {
     else if (arg === "--demo") out.demoSeconds = Number(argv[++i]);
     else if (arg === "--fail") {
       const value = argv[++i];
-      if (value !== "status" && value !== "events" && value !== "history" && value !== "all") {
-        throw new Error("--fail takes status, events, history or all");
+      if (
+        value !== "status" &&
+        value !== "events" &&
+        value !== "history" &&
+        value !== "dictionary" &&
+        value !== "all"
+      ) {
+        throw new Error("--fail takes status, events, history, dictionary or all");
       }
       out.fail = value;
     } else throw new Error(`Unknown argument: ${arg}`);
