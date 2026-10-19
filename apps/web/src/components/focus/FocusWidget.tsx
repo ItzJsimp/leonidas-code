@@ -2,7 +2,12 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId, FocusUpdateInput, ProjectId } from "@t3tools/contracts";
+import type {
+  EnvironmentId,
+  FocusFileInput,
+  FocusUpdateInput,
+  ProjectId,
+} from "@t3tools/contracts";
 import { FOCUS_ITEM_MAX_LENGTH } from "@t3tools/contracts";
 import {
   ArrowDownIcon,
@@ -10,6 +15,7 @@ import {
   GripVerticalIcon,
   HouseIcon,
   ListPlusIcon,
+  PaperclipIcon,
   PencilIcon,
   PinIcon,
   Trash2Icon,
@@ -17,6 +23,7 @@ import {
 } from "lucide-react";
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -35,6 +42,8 @@ import { failureText } from "../taskBoard/useTaskActions.logic";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Textarea } from "../ui/textarea";
+import { toastManager } from "../ui/toast";
+import { filesOfTransfer, NoteAttachments, PendingFiles, readFocusFiles } from "./FocusAttachments";
 import { Spinner } from "../ui/spinner";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -42,13 +51,16 @@ import {
   type Bounds,
   clampToViewport,
   FOCUS_DEFAULT_WIDTH,
+  joinNoteText,
   nudge,
   resizeTo,
+  splitNoteText,
   progressOf,
   settleDrag,
   visibleRows,
   type FocusRow,
   type Point,
+  type Size,
 } from "./focusWidget.logic";
 import { useFocusWidgetStore } from "./focusWidgetStore";
 
@@ -77,8 +89,17 @@ export default function FocusWidget(props: {
   environmentId: EnvironmentId;
   projectId: ProjectId | null;
 }) {
-  const { position, scope, size, setPosition, setScope, setSize, setVisible } =
-    useFocusWidgetStore();
+  const {
+    capture,
+    clearCapture,
+    position,
+    scope,
+    size,
+    setPosition,
+    setScope,
+    setSize,
+    setVisible,
+  } = useFocusWidgetStore();
   const query = useEnvironmentQuery(focusLive({ environmentId: props.environmentId, input: {} }));
   const runUpdate = useAtomCommand(focusUpdate, { reportFailure: false });
   const runCreate = useAtomCommand(taskBoardCardCreate, { reportFailure: false });
@@ -91,6 +112,12 @@ export default function FocusWidget(props: {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<FocusFileInput[]>([]);
+  const addRef = useRef<HTMLTextAreaElement | null>(null);
+  const addFileInputRef = useRef<HTMLInputElement | null>(null);
+  const rowFileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachTargetRef = useRef<string | null>(null);
+  const hideAfterAddRef = useRef(false);
   const [removed, setRemoved] = useState<{ row: FocusRow; projectId: ProjectId | null } | null>(
     null,
   );
@@ -133,27 +160,79 @@ export default function FocusWidget(props: {
     [props.environmentId, runUpdate],
   );
 
+  // A quick capture (hotkey, tab, palette) lands here: fill the Add box and put the cursor in it.
+  useEffect(() => {
+    if (!capture) return;
+    hideAfterAddRef.current = capture.hideAfterAdd;
+    if (capture.text)
+      setDraft((current) => (current ? `${current}\n${capture.text}` : capture.text));
+    clearCapture();
+    addRef.current?.focus();
+  }, [capture, clearCapture]);
+
+  const stagedFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    const read = await readFocusFiles(files, pendingFiles.length);
+    if (read.files.length > 0) setPendingFiles((current) => [...current, ...read.files]);
+    setError(read.error);
+  };
+
+  const attachToRow = async (rowId: string, files: File[]) => {
+    const read = await readFocusFiles(files);
+    setError(read.error);
+    if (read.files.length === 0) return;
+    const ok = await update(
+      { op: "attach", id: rowId, files: read.files },
+      "Could not attach the file.",
+    );
+    if (ok) setNotice(`Attached ${read.files.map((file) => file.name).join(", ")}`);
+  };
+
   const add = async (event?: FormEvent) => {
     event?.preventDefault();
-    const text = draft.trim();
+    const text = draft.trim() || pendingFiles[0]?.name || "";
     if (!text || busy) return;
     setBusy(true);
     const ok = await update(
-      { op: "add", projectId: scope === "project" ? props.projectId : null, text },
+      {
+        op: "add",
+        projectId: scope === "project" ? props.projectId : null,
+        text,
+        ...(pendingFiles.length > 0 ? { files: pendingFiles } : {}),
+      },
       "Could not add the focus. Try again.",
     );
     setBusy(false);
     if (ok) {
       setDraft("");
+      setPendingFiles([]);
       setNotice(`Added ${text}`);
+      if (hideAfterAddRef.current) {
+        // The notepad was closed before this quick capture, so close it again and say it worked.
+        hideAfterAddRef.current = false;
+        setVisible(false);
+        const toastId = toastManager.add({
+          type: "success",
+          title: "Added to your notepad",
+          timeout: 4000,
+          actionProps: {
+            children: "Show notepad",
+            onClick: () => {
+              toastManager.close(toastId);
+              setVisible(true);
+            },
+          },
+        });
+      }
     }
   };
 
   const saveEdit = async (row: FocusRow) => {
     const current = editing;
     setEditing(null);
-    const text = current?.text.trim() ?? "";
-    if (!current || current.id !== row.id || !text || text === row.text) return;
+    const parts = splitNoteText(row.text);
+    const text = joinNoteText(current?.text ?? "", parts.attachments);
+    if (!current || current.id !== row.id || !current.text.trim() || text === row.text) return;
     const ok = await update({ op: "edit", id: row.id, text }, "Could not save the note.");
     if (ok) setNotice(`Saved ${text}`);
   };
@@ -188,7 +267,7 @@ export default function FocusWidget(props: {
     const result = await runCreate({
       environmentId: props.environmentId,
       input: {
-        title: row.text.slice(0, 256),
+        title: splitNoteText(row.text).body.slice(0, 256) || row.text.slice(0, 256),
         projectSlug: row.slug,
         actor: snapshot.member,
         ...(row.text.length > 256 ? { description: row.text } : {}),
@@ -338,132 +417,169 @@ export default function FocusWidget(props: {
         className={`flex min-h-0 flex-col overflow-y-auto py-1 ${size ? "flex-1" : "max-h-72"}`}
         aria-label="Focus items"
       >
-        {rows.map((row) => (
-          <li
-            key={row.id}
-            className="group flex items-start gap-2 px-3 py-1 hover:bg-foreground/[0.06] focus-within:bg-foreground/[0.06]"
-          >
-            <Checkbox
-              className="mt-0.5"
-              checked={row.done}
-              aria-label={row.done ? `Clear tick: ${row.text}` : `Tick: ${row.text}`}
-              onCheckedChange={(checked) =>
-                void update(
-                  { op: "set_done", id: row.id, done: checked === true },
-                  "Could not change the item. Try again.",
-                )
-              }
-            />
-            {editing?.id === row.id ? (
-              <Textarea
-                size="sm"
-                autoFocus
-                rows={3}
-                aria-label={`Edit note: ${row.text}`}
-                maxLength={FOCUS_ITEM_MAX_LENGTH}
-                value={editing.text}
-                onChange={(event) => setEditing({ id: row.id, text: event.target.value })}
-                onBlur={() => void saveEdit(row)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void saveEdit(row);
-                  } else if (event.key === "Escape") setEditing(null);
-                }}
+        {rows.map((row) => {
+          const parts = splitNoteText(row.text);
+          const label = parts.body || row.text;
+          return (
+            <li
+              key={row.id}
+              className="group relative flex items-start gap-2 px-3 py-1 hover:bg-foreground/[0.06] focus-within:bg-foreground/[0.06]"
+            >
+              <Checkbox
+                className="mt-0.5"
+                checked={row.done}
+                aria-label={row.done ? `Clear tick: ${label}` : `Tick: ${label}`}
+                onCheckedChange={(checked) =>
+                  void update(
+                    { op: "set_done", id: row.id, done: checked === true },
+                    "Could not change the item. Try again.",
+                  )
+                }
               />
-            ) : (
-              <span
-                className={`min-w-0 flex-1 whitespace-pre-line break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
-                onDoubleClick={() => setEditing({ id: row.id, text: row.text })}
-              >
-                {scope === "all" && row.slug !== null ? (
-                  <span className="mr-1 text-muted-foreground">{row.slug}:</span>
-                ) : null}
-                <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
-                  {row.text}
-                </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                {editing?.id === row.id ? (
+                  <Textarea
+                    size="sm"
+                    autoFocus
+                    rows={3}
+                    aria-label={`Edit note: ${label}`}
+                    maxLength={FOCUS_ITEM_MAX_LENGTH}
+                    value={editing.text}
+                    onChange={(event) => setEditing({ id: row.id, text: event.target.value })}
+                    onBlur={() => void saveEdit(row)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void saveEdit(row);
+                      } else if (event.key === "Escape") setEditing(null);
+                    }}
+                  />
+                ) : (
+                  <span
+                    className={`min-w-0 whitespace-pre-line break-words text-xs leading-5 ${row.done ? "text-muted-foreground line-through" : ""}`}
+                    onDoubleClick={() => setEditing({ id: row.id, text: parts.body })}
+                  >
+                    {scope === "all" && row.slug !== null ? (
+                      <span className="mr-1 text-muted-foreground">{row.slug}:</span>
+                    ) : null}
+                    <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
+                      {parts.body}
+                    </span>
+                  </span>
+                )}
+                <NoteAttachments
+                  environmentId={props.environmentId}
+                  attachments={parts.attachments}
+                  onRemove={(attachment) =>
+                    void update(
+                      {
+                        op: "edit",
+                        id: row.id,
+                        text: joinNoteText(
+                          parts.body || attachment.name,
+                          parts.attachments.filter((other) => other.path !== attachment.path),
+                        ),
+                      },
+                      "Could not remove the file.",
+                    )
+                  }
+                />
               </span>
-            )}
-            <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-              <Tip label={row.pinned ? "Unpin this line" : "Pin this line to the top"}>
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`${row.pinned ? "Unpin" : "Pin"}: ${row.text}`}
-                  aria-pressed={row.pinned === true}
-                  onClick={() =>
-                    void update(
-                      { op: "pin", id: row.id, pinned: row.pinned !== true },
-                      "Could not pin the item.",
-                    )
-                  }
-                >
-                  <PinIcon className={row.pinned ? "fill-current" : undefined} />
-                </Button>
-              </Tip>
-              <Tip label="Move up">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Move up: ${row.text}`}
-                  onClick={() =>
-                    void update(
-                      { op: "move", id: row.id, direction: "up" },
-                      "Could not move the item.",
-                    )
-                  }
-                >
-                  <ArrowUpIcon />
-                </Button>
-              </Tip>
-              <Tip label="Move down">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Move down: ${row.text}`}
-                  onClick={() =>
-                    void update(
-                      { op: "move", id: row.id, direction: "down" },
-                      "Could not move the item.",
-                    )
-                  }
-                >
-                  <ArrowDownIcon />
-                </Button>
-              </Tip>
-              <Tip label="Edit this line">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Edit: ${row.text}`}
-                  onClick={() => setEditing({ id: row.id, text: row.text })}
-                >
-                  <PencilIcon />
-                </Button>
-              </Tip>
-              <Tip label="Make a task card from this line">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Make a task card: ${row.text}`}
-                  onClick={() => void promote(row)}
-                >
-                  <ListPlusIcon />
-                </Button>
-              </Tip>
-              <Tip label="Remove this line">
-                <Button
-                  size="icon-xs"
-                  variant="ghost-muted"
-                  aria-label={`Remove: ${row.text}`}
-                  onClick={() => void remove(row)}
-                >
-                  <Trash2Icon />
-                </Button>
-              </Tip>
-            </span>
-          </li>
-        ))}
+              {/* Buttons float over the row's top right corner, so they never squeeze the text. */}
+              <span className="absolute top-0.5 right-1.5 flex gap-0.5 rounded-md border border-border bg-popover px-0.5 opacity-0 shadow-sm group-hover:opacity-100 group-focus-within:opacity-100">
+                <Tip label={row.pinned ? "Unpin this line" : "Pin this line to the top"}>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`${row.pinned ? "Unpin" : "Pin"}: ${label}`}
+                    aria-pressed={row.pinned === true}
+                    onClick={() =>
+                      void update(
+                        { op: "pin", id: row.id, pinned: row.pinned !== true },
+                        "Could not pin the item.",
+                      )
+                    }
+                  >
+                    <PinIcon className={row.pinned ? "fill-current" : undefined} />
+                  </Button>
+                </Tip>
+                <Tip label="Move up">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Move up: ${label}`}
+                    onClick={() =>
+                      void update(
+                        { op: "move", id: row.id, direction: "up" },
+                        "Could not move the item.",
+                      )
+                    }
+                  >
+                    <ArrowUpIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Move down">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Move down: ${label}`}
+                    onClick={() =>
+                      void update(
+                        { op: "move", id: row.id, direction: "down" },
+                        "Could not move the item.",
+                      )
+                    }
+                  >
+                    <ArrowDownIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Edit this line">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Edit: ${label}`}
+                    onClick={() => setEditing({ id: row.id, text: parts.body })}
+                  >
+                    <PencilIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Attach a file or image">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Attach a file: ${label}`}
+                    onClick={() => {
+                      attachTargetRef.current = row.id;
+                      rowFileInputRef.current?.click();
+                    }}
+                  >
+                    <PaperclipIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Make a task card from this line">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Make a task card: ${label}`}
+                    onClick={() => void promote(row)}
+                  >
+                    <ListPlusIcon />
+                  </Button>
+                </Tip>
+                <Tip label="Remove this line">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={`Remove: ${label}`}
+                    onClick={() => void remove(row)}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </Tip>
+              </span>
+            </li>
+          );
+        })}
       </ul>
     );
   }
@@ -576,23 +692,93 @@ export default function FocusWidget(props: {
             </Button>
           </div>
         ) : null}
-        <form onSubmit={(event) => void add(event)} className="border-t border-border p-2">
-          <Textarea
-            size="sm"
-            rows={1}
-            aria-label="Add a note"
-            placeholder="+ Add a note (Shift+Enter for a new line)"
-            maxLength={FOCUS_ITEM_MAX_LENGTH}
-            value={draft}
-            disabled={busy || snapshot?.path === null}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                void add();
-              }
-            }}
+        <input
+          ref={rowFileInputRef}
+          type="file"
+          multiple
+          hidden
+          aria-hidden
+          tabIndex={-1}
+          onChange={(event) => {
+            const target = attachTargetRef.current;
+            const files = Array.from(event.target.files ?? []);
+            event.target.value = "";
+            if (target && files.length > 0) void attachToRow(target, files);
+          }}
+        />
+        <form
+          onSubmit={(event) => void add(event)}
+          className="border-t border-border p-2"
+          onDragOver={(event) => {
+            if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            const files = filesOfTransfer(event.dataTransfer);
+            if (files.length === 0) return;
+            event.preventDefault();
+            void stagedFiles(files);
+          }}
+        >
+          <PendingFiles
+            files={pendingFiles}
+            onRemove={(index) =>
+              setPendingFiles((current) => current.filter((_, i) => i !== index))
+            }
           />
+          <div className="flex items-end gap-1">
+            <Textarea
+              ref={addRef}
+              size="sm"
+              rows={1}
+              aria-label="Add a note"
+              placeholder="+ Add a note (Shift+Enter for a new line)"
+              maxLength={FOCUS_ITEM_MAX_LENGTH}
+              value={draft}
+              disabled={busy || snapshot?.path === null}
+              onChange={(event) => setDraft(event.target.value)}
+              onPaste={(event) => {
+                const files = filesOfTransfer(event.clipboardData);
+                if (files.length === 0) return;
+                event.preventDefault();
+                void stagedFiles(files);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void add();
+                } else if (event.key === "Escape" && hideAfterAddRef.current) {
+                  // A quick capture that is cancelled closes the notepad it opened.
+                  hideAfterAddRef.current = false;
+                  setVisible(false);
+                }
+              }}
+            />
+            <input
+              ref={addFileInputRef}
+              type="file"
+              multiple
+              hidden
+              aria-hidden
+              tabIndex={-1}
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                void stagedFiles(files);
+              }}
+            />
+            <Tip label="Attach a file or image. You can also paste or drop one here.">
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost-muted"
+                aria-label="Attach a file or image to the new note"
+                disabled={busy || snapshot?.path === null}
+                onClick={() => addFileInputRef.current?.click()}
+              >
+                <PaperclipIcon />
+              </Button>
+            </Tip>
+          </div>
         </form>
         <span role="status" className="sr-only">
           {notice}
@@ -601,8 +787,7 @@ export default function FocusWidget(props: {
           role="separator"
           tabIndex={0}
           aria-label="Resize the notepad. Arrow keys resize it. Home or Escape resets the size."
-          title="Drag to resize. Double-click to reset."
-          className="absolute right-0 bottom-0 z-10 size-4 cursor-nwse-resize touch-none rounded-tl-sm text-muted-foreground/60 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [-webkit-app-region:no-drag]"
+          className="absolute right-0 bottom-0 z-10 size-4 cursor-nwse-resize touch-none rounded-tl-sm text-muted-foreground/60 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
           onPointerDown={onResizeDown}
           onPointerMove={onResizeMove}
           onPointerUp={onResizeUp}

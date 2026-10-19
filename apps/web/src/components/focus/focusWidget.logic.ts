@@ -112,3 +112,41 @@ export function visibleRows(
 export function progressOf(rows: ReadonlyArray<FocusRow>): { done: number; total: number } {
   return { done: rows.filter((row) => row.done).length, total: rows.length };
 }
+
+export interface NoteAttachment {
+  readonly name: string;
+  /** `focus-files/<file>`, as the note holds it. */
+  readonly path: string;
+  readonly image: boolean;
+  /** The markdown line, kept so the note can be written back unchanged. */
+  readonly line: string;
+}
+
+const ATTACHMENT_LINE = /^(!?)\[([^\]]*)\]\((focus-files\/[^)\s]+)\)$/;
+
+/** Splits a note into its words and its attached files (markdown lines that point into `focus-files/`). */
+export function splitNoteText(text: string): { body: string; attachments: NoteAttachment[] } {
+  const body: string[] = [];
+  const attachments: NoteAttachment[] = [];
+  for (const line of text.split("\n")) {
+    const match = ATTACHMENT_LINE.exec(line.trim());
+    if (match?.[3]) {
+      attachments.push({
+        name: match[2] || match[3],
+        path: match[3],
+        image: match[1] === "!",
+        line: line.trim(),
+      });
+    } else {
+      body.push(line);
+    }
+  }
+  return { body: body.join("\n"), attachments };
+}
+
+/** The reverse of `splitNoteText`: the words first, then each attachment line. */
+export function joinNoteText(body: string, attachments: ReadonlyArray<NoteAttachment>): string {
+  return [body.trim(), ...attachments.map((attachment) => attachment.line)]
+    .filter((part) => part !== "")
+    .join("\n");
+}
