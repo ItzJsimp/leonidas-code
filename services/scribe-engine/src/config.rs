@@ -15,6 +15,7 @@ pub struct Config {
     pub polish: PolishConfig,
     /// Audio never leaves the device (local model only).
     pub private_mode: bool,
+    pub hud: HudConfig,
 }
 
 impl Default for Config {
@@ -26,7 +27,21 @@ impl Default for Config {
             groq: GroqConfig::default(),
             polish: PolishConfig::default(),
             private_mode: false,
+            hud: HudConfig::default(),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct HudConfig {
+    /// Show the floating pill while dictating.
+    pub enabled: bool,
+}
+
+impl Default for HudConfig {
+    fn default() -> Self {
+        Self { enabled: true }
     }
 }
 
@@ -177,5 +192,12 @@ mod tests {
         std::fs::write(&bad, "{port:").unwrap();
         assert!(Config::load(&bad).is_err());
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn hud_is_on_by_default_and_can_be_turned_off() {
+        assert!(Config::default().hud.enabled);
+        let cfg: Config = serde_json::from_str(r#"{"hud":{"enabled":false}}"#).unwrap();
+        assert!(!cfg.hud.enabled);
     }
 }
