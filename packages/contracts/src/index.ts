@@ -84,4 +84,5 @@ export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
 export * from "./replyStyle.ts";
 export * from "./subagentSpawn.ts";
+export * from "./threadSweep.ts";
 export * from "./clientRpcPermissions.ts";
