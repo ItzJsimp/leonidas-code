@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
-import { buildRuntimeInstructions } from "./runtimeInstructions.ts";
+import {
+  activeAiLevel,
+  buildRuntimeInstructions,
+  setAiLevelSetting,
+} from "./runtimeInstructions.ts";
 import { MAX_SKILLS_PER_TASK, SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.ts";
 
 describe("buildRuntimeInstructions", () => {
@@ -51,7 +55,7 @@ describe("buildRuntimeInstructions", () => {
   });
 
   it("appends the Leonidas output standard with the Dock and no status ritual", () => {
-    const instructions = buildRuntimeInstructions({ harness: "Codex" });
+    const instructions = buildRuntimeInstructions({ harness: "Codex", aiLevel: "builder" });
     expect(instructions).toContain("<leonidas_output_standard>");
     expect(instructions).not.toContain("**Focus:**");
     expect(instructions).toContain("Do not report model, token, cache, mode");
@@ -96,9 +100,53 @@ describe("skill routing", () => {
 
 describe("user question instructions", () => {
   it("teaches the grill-style structured question flow to every harness", () => {
-    const instructions = buildRuntimeInstructions({ harness: "Codex" });
+    const instructions = buildRuntimeInstructions({ harness: "Codex", aiLevel: "builder" });
     expect(instructions).toContain("<asking_the_user>");
     expect(instructions).toContain('end its label with " (Recommended)"');
     expect(instructions).toContain("whole frontier in one call");
+  });
+});
+
+describe("AI level", () => {
+  const forLevel = (aiLevel: "new" | "beginner" | "comfortable" | "builder") =>
+    buildRuntimeInstructions({ harness: "Claude Code", aiLevel });
+
+  it("gives new and beginner users act-first rules, a slim Dock and tips", () => {
+    for (const level of ["new", "beginner"] as const) {
+      const text = forLevel(level);
+      expect(text).toContain("Act first and report after.");
+      expect(text).toContain("### 🎯 TL;DR");
+      expect(text).toContain("🔁 Assumed:");
+      expect(text).not.toContain("### ⚡ Immediate Next Actions");
+      expect(text).not.toContain("whole frontier in one call");
+      expect(text).toContain("💡");
+      expect(text).not.toContain("Also ask before a guess");
+    }
+  });
+
+  it("lets comfortable users get a question before a costly guess, without tips", () => {
+    const text = forLevel("comfortable");
+    expect(text).toContain("Also ask before a guess");
+    expect(text).not.toContain("💡");
+  });
+
+  it("keeps the full Dock and the grill-style questions for builders", () => {
+    const text = forLevel("builder");
+    expect(text).toContain("### ⚡ Immediate Next Actions");
+    expect(text).toContain("whole frontier in one call");
+    expect(text).not.toContain("Act first and report after.");
+  });
+
+  it("uses the install's level when none is passed, after the day-30 step up", () => {
+    setAiLevelSetting("builder", "");
+    expect(buildRuntimeInstructions({ harness: "Codex" })).toContain("whole frontier in one call");
+    setAiLevelSetting("new", "2026-01-01");
+    expect(activeAiLevel(new Date("2026-03-01T12:00:00Z"))).toBe("beginner");
+    setAiLevelSetting("new", "");
+    expect(buildRuntimeInstructions({ harness: "Codex" })).toContain("Act first and report after.");
+  });
+
+  it("keeps the new-user prompt no larger than the builder prompt", () => {
+    expect(forLevel("new").length).toBeLessThanOrEqual(forLevel("builder").length);
   });
 });

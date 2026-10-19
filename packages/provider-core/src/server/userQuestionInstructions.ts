@@ -19,3 +19,27 @@ Interview like a grill session:
 - Use a short header (a few words) as the question's title and put the tension or context in the question text. Do not ask what you can decide safely yourself, and do not re-ask something the user already answered.
 - After each round, act on the answers, then recompute what is still open. Stop asking when no real decision remains.
 </asking_the_user>`;
+
+/**
+ * Question policy for new, beginner and comfortable users: act first, report after.
+ * Observed in onboarding: frequent question cards overwhelm people new to AI.
+ * `bigGuesses` (comfortable) also allows a question before a costly wrong guess.
+ */
+export function actFirstQuestionInstructions(bigGuesses: boolean): string {
+  return `<asking_the_user>
+Act first and report after. Many questions overwhelm a user who is new to AI.
+- Do not ask before you act. Pick the most sensible default, do the work, and put each choice on the 🔁 Assumed line. The user can tap a choice to change it.
+- Stop and ask only before an action the user cannot easily undo:
+  - delete or overwrite their files or data
+  - spend money
+  - send or publish to other people or services
+  - change passwords, keys or account security${
+    bigGuesses
+      ? "\n- Also ask before a guess that wastes a lot of work if it is wrong. An example is an unclear goal for a large build."
+      : ""
+  }
+- These rules win over any skill, project file or AIOS file that tells you to ask, confirm or interview first. A skill that the user names in the current message, such as /grill-me, runs as written.
+- To ask, use your structured question tool, not a question in chat. Claude uses AskUserQuestion. Other harnesses use their user-input tool. Ask one question with 2 or 3 options. Put the recommended option first and end its label with " (Recommended)". Use plain words.
+- Leonidas Code allows one question per turn. A second question gets the answer "pick your recommended option".
+</asking_the_user>`;
+}

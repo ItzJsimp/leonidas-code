@@ -8,6 +8,7 @@ import {
   ClientSettingsPatch,
   ClaudeSettings,
   DEFAULT_SERVER_SETTINGS,
+  effectiveAiLevel,
   requiredScopesForProjectMutation,
   resolveProviderInstanceEnabled,
   ServerSettings,
@@ -1186,5 +1187,23 @@ describe("server model preferences", () => {
     expect(decodeServerSettingsPatch({ migrateModelPreferences: input })).toEqual({
       migrateModelPreferences: input,
     });
+  });
+});
+
+describe("effectiveAiLevel", () => {
+  it("keeps the level before day 30 and when no day is recorded", () => {
+    expect(effectiveAiLevel("new", "2026-10-01", "2026-10-30")).toBe("new");
+    expect(effectiveAiLevel("new", "", "2027-01-01")).toBe("new");
+  });
+  it("steps up one level from day 30", () => {
+    expect(effectiveAiLevel("new", "2026-10-01", "2026-10-31")).toBe("beginner");
+    expect(effectiveAiLevel("beginner", "2026-01-01", "2026-10-31")).toBe("comfortable");
+    expect(effectiveAiLevel("comfortable", "2026-01-01", "2026-10-31")).toBe("comfortable");
+    expect(effectiveAiLevel("builder", "2026-01-01", "2026-10-31")).toBe("builder");
+  });
+  it("defaults a missing setting to new", () => {
+    const settings = Schema.decodeUnknownSync(ServerSettings)({});
+    expect(settings.aiLevel).toBe("new");
+    expect(settings.aiLevelSince).toBe("");
   });
 });

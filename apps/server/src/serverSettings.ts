@@ -10,6 +10,7 @@
  *
  * @module ServerSettings
  */
+import { setAiLevelSetting } from "@t3tools/provider-core/server/runtimeInstructions";
 import {
   DEFAULT_TEXT_GENERATION_MODEL,
   DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER,
@@ -834,8 +835,14 @@ const make = Effect.gen(function* () {
   const watcherScope = yield* Scope.make("sequential");
   yield* Effect.addFinalizer(() => Scope.close(watcherScope, Exit.void));
 
+  // Every provider prompt reads the install's AI level from provider-core.
+  const syncAiLevel = (settings: ServerSettings) =>
+    Effect.sync(() => setAiLevelSetting(settings.aiLevel, settings.aiLevelSince));
   const emitChange = (settings: ServerSettings) =>
-    PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
+    syncAiLevel(settings).pipe(
+      Effect.andThen(PubSub.publish(changesPubSub, settings)),
+      Effect.asVoid,
+    );
 
   // `fs.exists` resolves through `access`, which on Windows reports a dangling
   // symlink as existing. The read below follows the link, so it would fail with
@@ -1071,7 +1078,7 @@ const make = Effect.gen(function* () {
 
   // A failed read is not kept: the next read retries instead of replaying the failure.
   const settingsCache = yield* Cache.makeWith<typeof cacheKey, ServerSettings, ServerSettingsError>(
-    () => loadSettingsFromDisk,
+    () => loadSettingsFromDisk.pipe(Effect.tap(syncAiLevel)),
     {
       capacity: 1,
       timeToLive: (exit) => (Exit.isSuccess(exit) ? Duration.infinity : Duration.zero),

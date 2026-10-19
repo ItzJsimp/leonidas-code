@@ -1272,6 +1272,18 @@ export const StorageCleanupSettings = Schema.Struct({
 });
 export type StorageCleanupSettings = typeof StorageCleanupSettings.Type;
 
+/** How much the agent asks before it acts. Missing means "new": act first, report after. */
+export const AiLevel = Schema.Literals(["new", "beginner", "comfortable", "builder"]);
+export type AiLevel = typeof AiLevel.Type;
+
+/** Day 30 after `sinceDay` (YYYY-MM-DD) moves new to beginner and beginner to comfortable, once. */
+export function effectiveAiLevel(level: AiLevel, sinceDay: string, today: string): AiLevel {
+  const since = Date.parse(sinceDay);
+  const now = Date.parse(today);
+  if (Number.isNaN(since) || Number.isNaN(now) || now - since < 30 * 86_400_000) return level;
+  return level === "new" ? "beginner" : level === "beginner" ? "comfortable" : level;
+}
+
 export const ServerSettings = Schema.Struct({
   // Null means no client has migrated this preference yet; an empty value is
   // authoritative so another device cannot resurrect cleared preferences.
@@ -1482,6 +1494,9 @@ export const ServerSettings = Schema.Struct({
   branchNameInstructions: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   /** Confirmed AIOS folder the task board reads cards from; empty means auto-detect. */
   aiosRoot: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  aiLevel: AiLevel.pipe(Schema.withDecodingDefault(Effect.succeed("new" as const))),
+  /** Local day (YYYY-MM-DD) the level was chosen; empty until the client records it. */
+  aiLevelSince: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   removeAgentCreditsOnMerge: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   sourceControlWritingStyle: SourceControlWritingStyleSettings.pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
@@ -1769,6 +1784,8 @@ export const ServerSettingsPatch = Schema.Struct({
   branchNamePrefix: Schema.optionalKey(TrimmedString),
   branchNameInstructions: Schema.optionalKey(TrimmedString),
   aiosRoot: Schema.optionalKey(TrimmedString),
+  aiLevel: Schema.optionalKey(AiLevel),
+  aiLevelSince: Schema.optionalKey(TrimmedString),
   removeAgentCreditsOnMerge: Schema.optionalKey(Schema.Boolean),
   sourceControlWritingStyle: Schema.optionalKey(
     Schema.Struct({
