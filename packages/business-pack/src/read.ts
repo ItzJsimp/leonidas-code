@@ -13,6 +13,8 @@ import {
 
 const HEAD_BYTES = 4096;
 const BATCH = 32;
+/** A folder past this many notes is cut off, so one huge folder cannot stall the Home. */
+export const MAX_FILES_PER_FOLDER = 2000;
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<
   string,
@@ -23,9 +25,9 @@ const cache = new Map<
 async function readFolder(root: string, folder: string): Promise<Array<Record<string, string>>> {
   let names: string[];
   try {
-    names = (await NodeFSP.readdir(NodePath.join(root, folder))).filter((name) =>
-      name.endsWith(".md"),
-    );
+    names = (await NodeFSP.readdir(NodePath.join(root, folder)))
+      .filter((name) => name.endsWith(".md"))
+      .slice(0, MAX_FILES_PER_FOLDER);
   } catch {
     return [];
   }

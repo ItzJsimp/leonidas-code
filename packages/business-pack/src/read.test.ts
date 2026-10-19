@@ -5,7 +5,7 @@ import * as NodePath from "node:path";
 
 import { afterEach, assert, describe, it } from "@effect/vitest";
 
-import { readWidgets } from "./read.ts";
+import { MAX_FILES_PER_FOLDER, readWidgets } from "./read.ts";
 
 const roots: string[] = [];
 const makeRoot = () => {
@@ -70,5 +70,14 @@ describe("readWidgets", () => {
     assert.strictEqual(await readWidgets(root, OCT + 1_000), first);
     const later = await readWidgets(root, OCT + 31_000);
     assert.equal(later[0]?.kpis[0]?.value, "$30");
+  });
+
+  it("reads at most MAX_FILES_PER_FOLDER files of one folder", async () => {
+    const root = makeRoot();
+    for (let n = 0; n < MAX_FILES_PER_FOLDER + 5; n += 1) {
+      write(root, `deals/d${n}.md`, "---\nstage: contacted\n---\n");
+    }
+    const [widget] = await readWidgets(root, OCT);
+    assert.equal(widget?.kpis[1]?.value, String(MAX_FILES_PER_FOLDER));
   });
 });
