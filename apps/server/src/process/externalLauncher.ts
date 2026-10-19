@@ -619,6 +619,50 @@ function normalizeWindowsFileManagerPath(target: string): string {
   return target.replaceAll("/", "\\");
 }
 
+/**
+ * Explorer's `/select` switch silently opens Documents (or Desktop) when the
+ * file is missing or the path carries a `:line:col` suffix. Resolve what is
+ * really on disk first: the file itself, the file without a position suffix,
+ * or the nearest existing parent folder. Returns undefined when nothing useful
+ * on the path exists, so the caller keeps the plain select behavior.
+ */
+const resolveExistingWindowsRevealTarget = Effect.fn("resolveExistingWindowsRevealTarget")(
+  function* (
+    windowsTarget: string,
+  ): Effect.fn.Return<
+    { readonly path: string; readonly isFolder: boolean } | undefined,
+    never,
+    FileSystem.FileSystem
+  > {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const exists = (candidate: string) =>
+      fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false));
+
+    if (yield* exists(windowsTarget)) return { path: windowsTarget, isFolder: false };
+    const position = parseTargetPathAndPosition(windowsTarget);
+    if (Option.isSome(position) && (yield* exists(position.value.path))) {
+      return { path: position.value.path, isFolder: false };
+    }
+
+    let current = Option.isSome(position) ? position.value.path : windowsTarget;
+    while (true) {
+      const separatorIndex = current.lastIndexOf("\\");
+      if (separatorIndex <= 0) return undefined;
+      current = current.slice(0, separatorIndex);
+      // Never settle on a drive root: that is no better than Explorer's fallback.
+      if (/^[a-zA-Z]:$/.test(current)) return undefined;
+      if (yield* exists(current)) return { path: current, isFolder: true };
+    }
+  },
+);
+
+function buildFileExplorerOpenFolderPowerShellSource(
+  explorerCommand: string,
+  folder: string,
+): string {
+  return `$ProgressPreference = 'SilentlyContinue'; Start-Process ${escapePowerShellStringLiteral(explorerCommand)} -ArgumentList ('"' + ${escapePowerShellStringLiteral(folder)} + '"')`;
+}
+
 const resolveFileManagerRevealLaunch = Effect.fn("resolveFileManagerRevealLaunch")(function* (
   target: string,
   platform: NodeJS.Platform,
@@ -636,11 +680,23 @@ const resolveFileManagerRevealLaunch = Effect.fn("resolveFileManagerRevealLaunch
   }
 
   if (platform === "win32") {
-    return fileExplorerRevealLaunch(
-      target,
-      normalizeWindowsFileManagerPath(target),
-      resolvePowerShellPath(env),
-    );
+    const powershellCommand = resolvePowerShellPath(env);
+    const windowsTarget = normalizeWindowsFileManagerPath(target);
+    const existing = yield* resolveExistingWindowsRevealTarget(windowsTarget);
+    if (existing?.isFolder === true) {
+      return {
+        editor: "file-manager",
+        target,
+        command: powershellCommand,
+        args: [
+          ...POWERSHELL_ARGUMENTS_PREFIX,
+          encodeUtf16LeBase64(
+            buildFileExplorerOpenFolderPowerShellSource("explorer.exe", existing.path),
+          ),
+        ],
+      };
+    }
+    return fileExplorerRevealLaunch(target, existing?.path ?? windowsTarget, powershellCommand);
   }
 
   if (
