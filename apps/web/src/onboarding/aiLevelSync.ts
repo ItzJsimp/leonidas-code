@@ -5,7 +5,7 @@ import { serverEnvironment } from "~/state/server";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { toastManager } from "../components/ui/toast";
 import type { GuidanceProfile } from "./guidance.logic";
-import { AI_LEVELS, localDay } from "./guidance.logic";
+import { AI_LEVELS, localDay, newGuidanceProfile } from "./guidance.logic";
 
 /**
  * The server keeps the level every agent prompt reads. The local guidance profile is
@@ -28,6 +28,7 @@ const STEP_UP_NOTICE_KEY = "leonidas:ai-level-step-up-notice";
 export function useAiLevelServerSync(
   environmentId: EnvironmentId,
   profile: GuidanceProfile | null,
+  setProfile: (profile: GuidanceProfile) => void,
 ) {
   const server = useAtomValue(serverEnvironment.settingsValueAtom(environmentId)) ?? null;
   const update = useAtomCommand(serverEnvironment.updateSettings, { reportFailure: false });
@@ -35,6 +36,11 @@ export function useAiLevelServerSync(
   const startedDay = profile?.startedDay;
   useEffect(() => {
     if (!server) return;
+    // The guide (where the level is changed) needs a profile; start an inactive one.
+    if (!level) {
+      setProfile({ ...newGuidanceProfile(server.aiLevel, new Date()), active: false });
+      return;
+    }
     const today = localDay(new Date());
     const local = level && startedDay ? { level, startedDay } : null;
     const patch = aiLevelSettingsPatch(server, local, today);
@@ -55,5 +61,5 @@ export function useAiLevelServerSync(
           ? "The agent now also asks before a big guess. Change your level in the guide."
           : "You get fewer tips now. Change your level in the guide.",
     });
-  }, [environmentId, level, server, startedDay, update]);
+  }, [environmentId, level, server, setProfile, startedDay, update]);
 }

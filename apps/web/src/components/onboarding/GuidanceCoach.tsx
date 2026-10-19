@@ -77,7 +77,7 @@ function ConnectedGuidanceCoach({
   folder: string;
 }) {
   const [profile, setProfile] = useGuidanceProfile(environmentId);
-  useAiLevelServerSync(environmentId, profile);
+  useAiLevelServerSync(environmentId, profile, setProfile);
   const [open, setOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmExplain, setConfirmExplain] = useState(false);
