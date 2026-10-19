@@ -4,7 +4,6 @@ import type { ComposerToolbarPrefs } from "@t3tools/contracts/settings";
 const BUILTIN_TOOLBAR_ITEMS = [
   { id: "saved", label: "Saved" },
   { id: "stash", label: "Saved drafts" },
-  { id: "capture", label: "Capture" },
   { id: "skills", label: "Skills" },
   { id: "subagents", label: "Agents" },
   { id: "nextAction", label: "Tasks" },

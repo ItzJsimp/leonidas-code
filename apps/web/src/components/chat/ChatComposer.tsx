@@ -136,8 +136,6 @@ import {
   usePromptStashStore,
   type PromptStashEntry,
 } from "../../promptStashStore";
-import { openCapture } from "../capture/captureStore";
-import { ComposerCaptureBadge } from "./ComposerCaptureBadge";
 import { ComposerNextActionBadge } from "./ComposerNextActionBadge";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
 import { ComposerSubagentsButton } from "../subagents/ComposerSubagentsButton";
@@ -7255,15 +7253,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     pulseKey={stashPulse.key}
                     pulsing={stashPulse.active}
                     onToggleMenu={toggleStashMenu}
-                  />
-                ),
-                capture: (
-                  <ComposerCaptureBadge
-                    alignRight={false}
-                    shortcutLabel={shortcutLabelForCommand(keybindings, "capture.open", {
-                      context: { terminalFocus: false, terminalOpen, modelPickerOpen: false },
-                    })}
-                    onOpen={() => openCapture({ source: "composer" })}
                   />
                 ),
                 skills:

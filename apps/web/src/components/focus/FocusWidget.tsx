@@ -463,6 +463,12 @@ export default function FocusWidget(props: {
                       <span className="mr-1 text-muted-foreground">{row.slug}:</span>
                     ) : null}
                     <span className="line-clamp-3 group-hover:line-clamp-none group-focus-within:line-clamp-none">
+                      {row.pinned ? (
+                        <PinIcon
+                          aria-label="Pinned"
+                          className="mr-1 inline size-3 fill-current align-[-1px] text-muted-foreground"
+                        />
+                      ) : null}
                       {parts.body}
                     </span>
                   </span>
@@ -730,6 +736,7 @@ export default function FocusWidget(props: {
               ref={addRef}
               size="sm"
               rows={1}
+              className="[&_textarea]:max-h-32 [&_textarea]:min-h-8"
               aria-label="Add a note"
               placeholder="+ Add a note (Shift+Enter for a new line)"
               maxLength={FOCUS_ITEM_MAX_LENGTH}

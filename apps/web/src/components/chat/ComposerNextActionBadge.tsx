@@ -20,6 +20,7 @@ import {
 import { Input } from "../ui/input";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { openCapture } from "../capture/captureStore";
 import { useFocusWidgetStore } from "../focus/focusWidgetStore";
 import { ComposerBanner } from "./ComposerBanner";
 import {
@@ -202,6 +203,7 @@ export const ComposerNextActionBadge = memo(function ComposerNextActionBadge(pro
           </Tooltip>
         </ComposerBanner.Root>
         <MenuPopup side="top" align="start">
+          <MenuItem onClick={() => openCapture({ source: "composer" })}>Add a note</MenuItem>
           <MenuItem onClick={() => setFocusVisible(!focusVisible)}>
             {focusVisible ? "Hide notepad" : "Show notepad"}
           </MenuItem>
