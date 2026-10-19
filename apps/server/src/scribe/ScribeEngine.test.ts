@@ -67,6 +67,20 @@ it.effect("pages history without duplicates", () =>
   }),
 );
 
+it.effect("deletes one history item and reports not_found the second time", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock({ historyCount: 5 });
+    const page = yield* engine.listHistory({});
+    const victim = page.items[2]?.id ?? "";
+    expect(yield* engine.deleteHistory({ id: victim })).toEqual({ deleted: true });
+    const after = yield* engine.listHistory({});
+    expect(after.items).toHaveLength(4);
+    expect(after.items.some((item) => item.id === victim)).toBe(false);
+    const error = yield* Effect.flip(engine.deleteHistory({ id: victim }));
+    expect(error.reason).toBe("not_found");
+  }),
+);
+
 it.effect("maps a store failure to store_error", () =>
   Effect.gen(function* () {
     const engine = yield* withMock({ fail: "all" });

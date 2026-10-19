@@ -95,6 +95,14 @@ export const ScribeListHistoryInput = Schema.Struct({
 });
 export type ScribeListHistoryInput = typeof ScribeListHistoryInput.Type;
 
+export const ScribeDeleteHistoryInput = Schema.Struct({
+  id: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+});
+export type ScribeDeleteHistoryInput = typeof ScribeDeleteHistoryInput.Type;
+
+export const ScribeDeleteHistoryResult = Schema.Struct({ deleted: Schema.Literal(true) });
+export type ScribeDeleteHistoryResult = typeof ScribeDeleteHistoryResult.Type;
+
 export const ScribeEngineErrorReason = Schema.Literals([
   "offline",
   "timeout",

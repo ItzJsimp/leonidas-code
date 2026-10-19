@@ -2,6 +2,8 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  ScribeDeleteHistoryInput,
+  ScribeDeleteHistoryResult,
   ScribeEngineWireEvent,
   ScribeHistoryPage,
   ScribeListHistoryInput,
@@ -78,5 +80,20 @@ describe("ScribeHistoryPage and ScribeListHistoryInput", () => {
 
   it("rejects a limit over 500", () => {
     expect(() => decodeListInput({ limit: 501 })).toThrow();
+  });
+});
+
+describe("ScribeDeleteHistoryInput and Result", () => {
+  const decodeDelete = Schema.decodeUnknownSync(ScribeDeleteHistoryInput);
+  const decodeDeleted = Schema.decodeUnknownSync(ScribeDeleteHistoryResult);
+
+  it("takes one history id and replies {deleted:true}", () => {
+    expect(decodeDelete({ id: "d1760745603000" })).toEqual({ id: "d1760745603000" });
+    expect(decodeDeleted({ deleted: true })).toEqual({ deleted: true });
+  });
+
+  it("rejects an empty id and a false reply", () => {
+    expect(() => decodeDelete({ id: "" })).toThrow();
+    expect(() => decodeDeleted({ deleted: false })).toThrow();
   });
 });
