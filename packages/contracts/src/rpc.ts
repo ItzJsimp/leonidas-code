@@ -58,7 +58,6 @@ import {
   AiosWorkspaceSummary,
   AiosWorkspaceInitInput,
   TaskBoardHomeNews,
-  LayaUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
@@ -184,7 +183,7 @@ import {
   FilesystemInspectFolderInput,
   FilesystemInspectFolderResult,
 } from "./filesystem.ts";
-import { LayaSetupInput, LayaSetupResult } from "./laya.ts";
+import { LayaSetupInput, LayaSetupResult, LayaUsage } from "./laya.ts";
 import {
   AgentSessionImportInput,
   AgentSessionImportProjectChangedError,
