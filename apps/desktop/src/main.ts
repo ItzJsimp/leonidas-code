@@ -67,6 +67,7 @@ import * as DesktopLegacyLocalStorage from "./app/DesktopLegacyLocalStorage.ts";
 import * as DesktopTelemetryPublisher from "./telemetry/DesktopTelemetryPublisher.ts";
 import * as DesktopRendererHistory from "./telemetry/DesktopRendererHistory.ts";
 import * as DesktopUpdates from "./updates/DesktopUpdates.ts";
+import * as RendererHangRecovery from "./window/RendererHangRecovery.ts";
 import * as RendererMemoryWatchdog from "./window/RendererMemoryWatchdog.ts";
 import * as BrowserImport from "./preview/BrowserImport/BrowserImport.ts";
 import * as LinuxBrowserSecret from "./preview/BrowserImport/LinuxBrowserSecret.ts";
@@ -223,6 +224,7 @@ const layerDesktopApplication = Layer.mergeAll(
   DesktopCliCommand.layer,
   DesktopShellEnvironment.layer,
   RendererMemoryWatchdog.layer,
+  RendererHangRecovery.layer,
   layerDesktopSsh,
 ).pipe(
   Layer.provideMerge(layerDesktopSnapShot),
