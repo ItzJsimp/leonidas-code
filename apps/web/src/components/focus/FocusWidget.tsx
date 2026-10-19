@@ -750,7 +750,7 @@ export default function FocusWidget(props: {
               rows={1}
               className="[&_textarea]:max-h-32 [&_textarea]:min-h-8"
               aria-label="Add a note"
-              placeholder="+ Add a note"
+              placeholder="Add a note"
               maxLength={FOCUS_ITEM_MAX_LENGTH}
               value={draft}
               disabled={busy || snapshot?.path === null}
