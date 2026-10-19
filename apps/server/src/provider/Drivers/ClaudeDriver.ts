@@ -75,6 +75,7 @@ import {
 } from "./ClaudeHome.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { withClaudeUserBinOnPath } from "./ClaudeExecutable.ts";
+import { scheduleClaudePonytail } from "../PonytailEnsure.ts";
 const decodeClaudeSettings = Schema.decodeSync(ClaudeSettings);
 
 const DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
@@ -167,6 +168,12 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv, Path.
         processEnv,
       );
       const configDir = yield* resolveClaudeHomePath(effectiveConfig, processEnv);
+      if (enabled) {
+        scheduleClaudePonytail({
+          binaryPath: effectiveConfig.binaryPath,
+          env: { ...processEnv, CLAUDE_CONFIG_DIR: configDir },
+        });
+      }
       const accountConfigPath = yield* ClaudeResetCredits.claudeAccountConfigPath(
         effectiveConfig.homePath.trim() || processEnv.CLAUDE_CONFIG_DIR?.trim()
           ? configDir

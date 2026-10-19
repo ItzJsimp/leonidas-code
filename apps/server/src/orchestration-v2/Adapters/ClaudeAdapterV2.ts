@@ -143,6 +143,7 @@ import type { ManagedServerProvider } from "@t3tools/provider-core/server/snapsh
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import { T3_CODE_ORCHESTRATION_INSTRUCTIONS } from "@t3tools/provider-core/server/orchestrationInstructions";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
+import { isPonytailPluginEnabled } from "../../provider/PonytailEnsure.ts";
 import {
   mcpToolPresentation,
   normalizeMcpText,
@@ -1097,8 +1098,10 @@ export function makeClaudeQueryOptions(input: {
             type: "preset" as const,
             preset: "claude_code" as const,
             append:
-              buildRuntimeInstructions({ harness: "Claude Code" }) +
-              (input.mcpServers === undefined ? "" : T3_CODE_ORCHESTRATION_INSTRUCTIONS),
+              buildRuntimeInstructions({
+                harness: "Claude Code",
+                ponytailPlugin: isPonytailPluginEnabled(input.environment),
+              }) + (input.mcpServers === undefined ? "" : T3_CODE_ORCHESTRATION_INSTRUCTIONS),
           },
         }
       : { systemPrompt: input.persona.systemPrompt, settingSources: [] }),
