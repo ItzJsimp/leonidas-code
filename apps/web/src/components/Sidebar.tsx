@@ -296,6 +296,7 @@ import {
   useProjectIconSave,
 } from "./sidebar/SidebarProjectIconEditor";
 import { SidebarViewMenu } from "./sidebar/SidebarViewMenu";
+import { ThreadSweepButton } from "./threadSweep/ThreadSweepDialog";
 import { groupSidebarThreads, sidebarStatusLane } from "./sidebar/sidebarView.logic";
 import { useSidebarViewStore } from "./sidebar/sidebarViewStore";
 import { useArchiveMerge } from "./sidebar/useArchiveMerge";
@@ -5365,6 +5366,12 @@ export default function Sidebar() {
                 <SidebarThreadHeader
                   searchFieldRef={headerSearchRef}
                   hasProjects={projectGroups.length > 0}
+                  reviewButton={
+                    <ThreadSweepButton
+                      environmentId={primaryEnvironmentId}
+                      cwd={projects[0]?.workspaceRoot ?? null}
+                    />
+                  }
                   viewMenu={
                     <SidebarViewMenu
                       sortOrder={threadSortOrder}

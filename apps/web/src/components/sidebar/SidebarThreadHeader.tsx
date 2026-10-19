@@ -33,6 +33,8 @@ export interface SidebarThreadHeaderProps {
   projectScope: ReactNode;
   /** The View button: grouping, sort, density and row parts. */
   viewMenu?: ReactNode;
+  /** The Review old chats button; renders nothing when it has no project to work in. */
+  reviewButton?: ReactNode;
   onNewProject: () => void;
   /** Receives the click so Shift+click can skip the project picker. */
   onNewThread: (event: ReactMouseEvent) => void;
@@ -56,6 +58,7 @@ export function SidebarThreadHeader({
   hasProjects,
   projectScope,
   viewMenu,
+  reviewButton,
   onNewProject,
   onNewThread,
   newThreadDisabled,
@@ -128,6 +131,7 @@ export function SidebarThreadHeader({
           palettes than on the base light and dark ones. */}
       <div className="flex shrink-0 items-center">
         {viewMenu}
+        {reviewButton}
         {hasProjects ? (
           <>
             {projectScope}
