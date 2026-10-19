@@ -22,7 +22,7 @@ The plan lives in [project-roadmap.json](../../project-roadmap.json): one milest
 - **Every push to `main` ships to both machines** via `.github/workflows/team-release.yml`. Changes stay local commits until the user says push. Before pushing: `vp run typecheck` and `vp test run <files you touched>`. Docs-only pushes skip the build.
 - Do not edit `team-release.yml` without telling the other person; it is the only workflow that runs.
 - The repo is **public**. Never commit keys, tokens, `.env`, personal paths or local launchers (use `.git/info/exclude`).
-- Keep upstream-file edits small; prefer new files so `git merge upstream/main` stays cheap. Jake merges upstream periodically.
+- Keep upstream-file edits small; prefer new files so `git merge upstream/main` stays cheap. Soft fork since 2026-10-18: no full upstream merges. Review upstream fixes every 2 weeks and cherry-pick one at a time ([ledger](../../project/upstream-ledger.md)).
 - **Versions:** plain semver, `0.MINOR.PATCH` in development. `feat:` advances minor, fixes patch. User-visible `feat:`/`fix:` need a `Release-Note:` trailer per [leonidas-release](../skills/leonidas-release/SKILL.md) (plain words, verb first, 8-18 words).
 - Existing `1.0.x` installs migrate once with the latest `0.x` installer; `scripts/leonidas-update.ps1 -WaitForExit` verifies it.
 
