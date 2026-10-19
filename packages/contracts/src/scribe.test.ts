@@ -4,6 +4,8 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   ScribeDeleteHistoryInput,
   ScribeDeleteHistoryResult,
+  ScribeDictionary,
+  ScribeSuggestionList,
   ScribeEngineWireEvent,
   ScribeHistoryPage,
   ScribeListHistoryInput,
@@ -95,5 +97,28 @@ describe("ScribeDeleteHistoryInput and Result", () => {
   it("rejects an empty id and a false reply", () => {
     expect(() => decodeDelete({ id: "" })).toThrow();
     expect(() => decodeDeleted({ deleted: false })).toThrow();
+  });
+});
+
+describe("dictionary contract", () => {
+  const decodeDictionary = Schema.decodeUnknownSync(ScribeDictionary);
+  const decodeSuggestions = Schema.decodeUnknownSync(ScribeSuggestionList);
+
+  it("decodes the v1.2 examples and ignores the envelope", () => {
+    const dictionary = decodeDictionary({
+      service: "leonidas-scribe",
+      apiVersion: 1,
+      replacements: [{ wrong: "btw", correct: "by the way" }],
+      vocabulary: ["Gersi"],
+    });
+    expect(dictionary.vocabulary).toEqual(["Gersi"]);
+    expect(
+      decodeSuggestions({ items: [{ wrong: "jersey", correct: "Gersi", count: 3 }] }).items,
+    ).toHaveLength(1);
+  });
+
+  it("rejects more than 800 vocabulary words, as the engine does", () => {
+    const words = Array.from({ length: 801 }, (_, index) => `w${index}`);
+    expect(() => decodeDictionary({ replacements: [], vocabulary: words })).toThrow();
   });
 });

@@ -508,12 +508,16 @@ import {
   ScribeCommandResult,
   ScribeDeleteHistoryInput,
   ScribeDeleteHistoryResult,
+  ScribeDictionary,
   ScribeEngineError,
   ScribeHistoryPage,
   ScribeListHistoryInput,
   ScribeLiveEvent,
+  ScribeRejectSuggestionInput,
+  ScribeRejectSuggestionResult,
   ScribeStartInput,
   ScribeStopInput,
+  ScribeSuggestionList,
 } from "./scribe.ts";
 
 export const ScribeStatusSnapshot = Schema.Struct({
@@ -538,6 +542,10 @@ export const WS_METHODS = {
   scribeStop: "scribe.stop",
   scribeListHistory: "scribe.listHistory",
   scribeDeleteHistory: "scribe.deleteHistory",
+  scribeGetDictionary: "scribe.getDictionary",
+  scribePutDictionary: "scribe.putDictionary",
+  scribeListSuggestions: "scribe.listSuggestions",
+  scribeRejectSuggestion: "scribe.rejectSuggestion",
   scribeSubscribeEvents: "scribe.subscribeEvents",
   voiceGetStatus: "voice.getStatus",
   voiceSetGroqKey: "voice.setGroqKey",
@@ -2299,6 +2307,32 @@ const WsScribeDeleteHistoryRpc = Rpc.make(WS_METHODS.scribeDeleteHistory, {
   error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
 });
 
+const ScribeRpcError = Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]);
+
+const WsScribeGetDictionaryRpc = Rpc.make(WS_METHODS.scribeGetDictionary, {
+  payload: Schema.Struct({}),
+  success: ScribeDictionary,
+  error: ScribeRpcError,
+});
+
+const WsScribePutDictionaryRpc = Rpc.make(WS_METHODS.scribePutDictionary, {
+  payload: ScribeDictionary,
+  success: ScribeDictionary,
+  error: ScribeRpcError,
+});
+
+const WsScribeListSuggestionsRpc = Rpc.make(WS_METHODS.scribeListSuggestions, {
+  payload: Schema.Struct({}),
+  success: ScribeSuggestionList,
+  error: ScribeRpcError,
+});
+
+const WsScribeRejectSuggestionRpc = Rpc.make(WS_METHODS.scribeRejectSuggestion, {
+  payload: ScribeRejectSuggestionInput,
+  success: ScribeRejectSuggestionResult,
+  error: ScribeRpcError,
+});
+
 const WsScribeSubscribeEventsRpc = Rpc.make(WS_METHODS.scribeSubscribeEvents, {
   payload: Schema.Struct({}),
   success: ScribeLiveEvent,
@@ -2746,6 +2780,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsScribeStopRpc,
   WsScribeListHistoryRpc,
   WsScribeDeleteHistoryRpc,
+  WsScribeGetDictionaryRpc,
+  WsScribePutDictionaryRpc,
+  WsScribeListSuggestionsRpc,
+  WsScribeRejectSuggestionRpc,
   WsScribeSubscribeEventsRpc,
   WsVoiceGetStatusRpc,
   WsVoiceSetGroqKeyRpc,

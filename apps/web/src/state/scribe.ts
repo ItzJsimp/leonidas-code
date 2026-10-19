@@ -43,3 +43,28 @@ export const scribeDeleteHistory = createEnvironmentRpcCommand(connectionAtomRun
   label: "environment-data:scribe:delete-history",
   tag: WS_METHODS.scribeDeleteHistory,
 });
+
+/** The word list is edited here, so it is always read fresh when the tab opens. */
+export const scribeDictionaryQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:scribe:dictionary",
+  tag: WS_METHODS.scribeGetDictionary,
+  staleTimeMs: 0,
+  idleTtlMs: 60_000,
+});
+
+export const scribeSuggestionsQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:scribe:suggestions",
+  tag: WS_METHODS.scribeListSuggestions,
+  staleTimeMs: 0,
+  idleTtlMs: 60_000,
+});
+
+export const scribePutDictionary = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:put-dictionary",
+  tag: WS_METHODS.scribePutDictionary,
+});
+
+export const scribeRejectSuggestion = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:reject-suggestion",
+  tag: WS_METHODS.scribeRejectSuggestion,
+});

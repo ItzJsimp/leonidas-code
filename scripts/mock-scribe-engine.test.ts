@@ -210,6 +210,76 @@ describe("mock scribe engine", () => {
     expect((await call(port, "GET", "/v1/status")).status).toBe(200);
   });
 
+  it("serves, replaces and validates the dictionary like the Rust engine", async () => {
+    const { port } = await boot();
+    const get = await call(port, "GET", "/v1/dictionary");
+    expect(get.status).toBe(200);
+    expect(get.body.replacements.length).toBeGreaterThan(0);
+    expect(get.body.vocabulary.length).toBeGreaterThan(0);
+
+    const body = { replacements: [{ wrong: "cube", correct: "Kube" }], vocabulary: ["Gersi"] };
+    const put = await call(port, "PUT", "/v1/dictionary", { body: JSON.stringify(body) });
+    expect(put.status).toBe(200);
+    expect(put.body.replacements).toEqual(body.replacements);
+    expect((await call(port, "GET", "/v1/dictionary")).body.vocabulary).toEqual(["Gersi"]);
+
+    const bad = async (value: unknown) =>
+      (await call(port, "PUT", "/v1/dictionary", { body: JSON.stringify(value) })).body.error;
+    expect(await bad({ replacements: [{ wrong: " ", correct: "x" }], vocabulary: [] })).toBe(
+      "bad_request",
+    );
+    expect(await bad({ replacements: [], vocabulary: [], extra: 1 })).toBe("bad_request");
+    expect(
+      await bad({ replacements: [], vocabulary: Array.from({ length: 801 }, (_, i) => `w${i}`) }),
+    ).toBe("bad_request");
+    expect((await call(port, "GET", "/v1/dictionary")).body.vocabulary).toEqual(["Gersi"]);
+  });
+
+  it("lists suggestions, hides accepted and rejected runs", async () => {
+    const { port } = await boot();
+    const first = (await call(port, "GET", "/v1/dictionary/suggestions")).body.items;
+    expect(first.length).toBeGreaterThanOrEqual(2);
+    const [a, b] = first;
+    const dict = (await call(port, "GET", "/v1/dictionary")).body;
+    await call(port, "PUT", "/v1/dictionary", {
+      body: JSON.stringify({
+        replacements: [...dict.replacements, { wrong: a.wrong, correct: a.correct }],
+        vocabulary: dict.vocabulary,
+      }),
+    });
+    const rej = await call(
+      port,
+      "DELETE",
+      `/v1/dictionary/suggestions/${encodeURIComponent(b.wrong)}`,
+    );
+    expect(rej.body.rejected).toBe(true);
+    const after = (await call(port, "GET", "/v1/dictionary/suggestions")).body.items;
+    expect(after.some((s: { wrong: string }) => s.wrong === a.wrong || s.wrong === b.wrong)).toBe(
+      false,
+    );
+    expect((await call(port, "DELETE", "/v1/dictionary/suggestions/%E0%A4%A")).body.error).toBe(
+      "bad_request",
+    );
+  });
+
+  it("serves an empty dictionary and no suggestions with --empty", async () => {
+    const { port } = await boot({ empty: true });
+    expect((await call(port, "GET", "/v1/dictionary")).body).toMatchObject({
+      replacements: [],
+      vocabulary: [],
+    });
+    expect((await call(port, "GET", "/v1/dictionary/suggestions")).body.items).toEqual([]);
+  });
+
+  it("fails the dictionary with --fail dictionary and keeps history up", async () => {
+    const { port } = await boot({ fail: "dictionary" });
+    const r = await call(port, "GET", "/v1/dictionary");
+    expect([r.status, r.body.error]).toEqual([500, "store_error"]);
+    expect((await call(port, "PUT", "/v1/dictionary", { body: "{}" })).status).toBe(500);
+    expect((await call(port, "GET", "/v1/dictionary/suggestions")).status).toBe(500);
+    expect((await call(port, "GET", "/v1/history")).status).toBe(200);
+  });
+
   it("fails everything with --fail all", async () => {
     const { port } = await boot({ fail: "all" });
     expect((await call(port, "GET", "/v1/status")).status).toBe(503);

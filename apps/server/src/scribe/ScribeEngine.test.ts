@@ -7,7 +7,7 @@ import { FetchHttpClient } from "effect/http";
 // Loaded by path so the server typecheck does not pull the Node-only mock into its Effect rules.
 interface MockScribeEngineOptions {
   readonly port?: number;
-  readonly fail?: "status" | "events" | "all";
+  readonly fail?: "status" | "events" | "dictionary" | "all";
   readonly historyCount?: number;
   readonly processingMs?: number;
   readonly pingMs?: number;
@@ -78,6 +78,47 @@ it.effect("deletes one history item and reports not_found the second time", () =
     expect(after.items.some((item) => item.id === victim)).toBe(false);
     const error = yield* Effect.flip(engine.deleteHistory({ id: victim }));
     expect(error.reason).toBe("not_found");
+  }),
+);
+
+it.effect("reads and replaces the dictionary, and maps a rejected save to bad_request", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock();
+    const before = yield* engine.getDictionary;
+    expect(before.replacements.length).toBeGreaterThan(0);
+    const saved = yield* engine.putDictionary({
+      replacements: [{ wrong: "cube", correct: "Kube" }],
+      vocabulary: ["Gersi"],
+    });
+    expect(saved.vocabulary).toEqual(["Gersi"]);
+    expect((yield* engine.getDictionary).replacements).toEqual([
+      { wrong: "cube", correct: "Kube" },
+    ]);
+    const error = yield* Effect.flip(
+      engine.putDictionary({ replacements: [{ wrong: " ", correct: "x" }], vocabulary: [] }),
+    );
+    expect(error.reason).toBe("bad_request");
+  }),
+);
+
+it.effect("lists suggestions and rejects one with an encoded phrase", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock();
+    const { items } = yield* engine.listSuggestions;
+    const phrase = items.find((item) => item.wrong.includes(" "));
+    expect(phrase).toBeDefined();
+    expect(yield* engine.rejectSuggestion({ wrong: phrase?.wrong ?? "" })).toEqual({
+      rejected: true,
+    });
+    const after = yield* engine.listSuggestions;
+    expect(after.items.some((item) => item.wrong === phrase?.wrong)).toBe(false);
+  }),
+);
+
+it.effect("maps a dictionary store failure to store_error", () =>
+  Effect.gen(function* () {
+    const engine = yield* withMock({ fail: "dictionary" });
+    expect((yield* Effect.flip(engine.getDictionary)).reason).toBe("store_error");
   }),
 );
 
