@@ -2,13 +2,16 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "../../lib/storage";
-import type { FocusScope, Point } from "./focusWidget.logic";
+import type { FocusScope, Point, Size } from "./focusWidget.logic";
 
 interface FocusWidgetState {
   visible: boolean;
   /** `null` is docked at the top right of the chat. */
   position: Point | null;
   scope: FocusScope;
+  /** `null` is the default size; the user sets it by dragging the bottom right corner. */
+  size: Size | null;
+  setSize: (size: Size | null) => void;
   setVisible: (visible: boolean) => void;
   setPosition: (position: Point | null) => void;
   setScope: (scope: FocusScope) => void;
@@ -21,6 +24,8 @@ export const useFocusWidgetStore = create<FocusWidgetState>()(
       visible: false,
       position: null,
       scope: "project",
+      size: null,
+      setSize: (size) => set({ size }),
       setVisible: (visible) => set({ visible }),
       setPosition: (position) => set({ position }),
       setScope: (scope) => set({ scope }),
@@ -35,6 +40,7 @@ export const useFocusWidgetStore = create<FocusWidgetState>()(
         visible: state.visible,
         position: state.position,
         scope: state.scope,
+        size: state.size,
       }),
     },
   ),

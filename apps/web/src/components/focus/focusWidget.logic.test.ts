@@ -1,7 +1,14 @@
 import { ProjectId, type FocusSnapshot } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { clampToViewport, nudge, progressOf, settleDrag, visibleRows } from "./focusWidget.logic";
+import {
+  clampToViewport,
+  nudge,
+  progressOf,
+  resizeTo,
+  settleDrag,
+  visibleRows,
+} from "./focusWidget.logic";
 
 const widget = { width: 300, height: 200 };
 const viewport = { width: 1000, height: 800 };
@@ -31,6 +38,13 @@ describe("focus widget drag", () => {
     expect(settleDrag({ x: 690, y: 20 }, dock, widget, viewport)).toBeNull();
     expect(settleDrag({ x: 400, y: 300 }, dock, widget, viewport)).toEqual({ x: 400, y: 300 });
     expect(settleDrag({ x: 400, y: 300 }, null, widget, viewport)).toEqual({ x: 400, y: 300 });
+  });
+
+  it("limits a resize to the minimum and to the chat column", () => {
+    const column = { width: 700, height: 500 };
+    expect(resizeTo({ width: 100, height: 50 }, column)).toEqual({ width: 260, height: 180 });
+    expect(resizeTo({ width: 900, height: 900 }, column)).toEqual({ width: 684, height: 484 });
+    expect(resizeTo({ width: 400, height: 300 }, column)).toEqual({ width: 400, height: 300 });
   });
 
   it("moves with arrow keys only", () => {

@@ -41,7 +41,9 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   type Bounds,
   clampToViewport,
+  FOCUS_DEFAULT_WIDTH,
   nudge,
+  resizeTo,
   progressOf,
   settleDrag,
   visibleRows,
@@ -75,7 +77,8 @@ export default function FocusWidget(props: {
   environmentId: EnvironmentId;
   projectId: ProjectId | null;
 }) {
-  const { position, scope, setPosition, setScope, setVisible } = useFocusWidgetStore();
+  const { position, scope, size, setPosition, setScope, setSize, setVisible } =
+    useFocusWidgetStore();
   const query = useEnvironmentQuery(focusLive({ environmentId: props.environmentId, input: {} }));
   const runUpdate = useAtomCommand(focusUpdate, { reportFailure: false });
   const runCreate = useAtomCommand(taskBoardCardCreate, { reportFailure: false });
@@ -117,7 +120,7 @@ export default function FocusWidget(props: {
       stop();
       window.removeEventListener("resize", onResize);
     };
-  }, [position, setPosition]);
+  }, [position, setPosition, size]);
 
   const update = useCallback(
     async (input: FocusUpdateInput, failure: string) => {
@@ -199,6 +202,60 @@ export default function FocusWidget(props: {
     }
   };
 
+  const resize = useRef<{ pointerId: number; start: Point; from: Size } | null>(null);
+  const availableSize = (): Size => {
+    const bounds = boundsOf(rootRef.current);
+    return { width: bounds.width, height: bounds.height };
+  };
+  const onResizeDown = (event: PointerEvent<HTMLElement>) => {
+    if (event.button !== 0) return;
+    const box = rootRef.current?.getBoundingClientRect();
+    if (!box) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resize.current = {
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      from: { width: box.width, height: box.height },
+    };
+  };
+  const onResizeMove = (event: PointerEvent<HTMLElement>) => {
+    const active = resize.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    setSize(
+      resizeTo(
+        {
+          width: active.from.width + event.clientX - active.start.x,
+          height: active.from.height + event.clientY - active.start.y,
+        },
+        availableSize(),
+      ),
+    );
+  };
+  const onResizeUp = (event: PointerEvent<HTMLElement>) => {
+    if (resize.current?.pointerId === event.pointerId) resize.current = null;
+  };
+  const onResizeKey = (event: KeyboardEvent<HTMLElement>) => {
+    const box = rootRef.current?.getBoundingClientRect();
+    if (!box) return;
+    if (event.key === "Escape" || event.key === "Home") {
+      event.preventDefault();
+      setSize(null);
+      return;
+    }
+    const step = event.shiftKey ? 40 : 10;
+    const delta: Record<string, Point> = {
+      ArrowRight: { x: step, y: 0 },
+      ArrowLeft: { x: -step, y: 0 },
+      ArrowDown: { x: 0, y: step },
+      ArrowUp: { x: 0, y: -step },
+    };
+    const move = delta[event.key];
+    if (!move) return;
+    event.preventDefault();
+    setSize(resizeTo({ width: box.width + move.x, height: box.height + move.y }, availableSize()));
+  };
+
   const dockPoint = (): Point | null => {
     const dock = dockRef.current?.getBoundingClientRect();
     return dock ? { x: dock.left, y: dock.top } : null;
@@ -277,7 +334,10 @@ export default function FocusWidget(props: {
     );
   } else {
     body = (
-      <ul className="flex max-h-72 flex-col overflow-y-auto py-1" aria-label="Focus items">
+      <ul
+        className={`flex min-h-0 flex-col overflow-y-auto py-1 ${size ? "flex-1" : "max-h-72"}`}
+        aria-label="Focus items"
+      >
         {rows.map((row) => (
           <li
             key={row.id}
@@ -414,13 +474,17 @@ export default function FocusWidget(props: {
       <div
         ref={dockRef}
         aria-hidden
-        className="pointer-events-none absolute top-2 right-2 size-0"
+        className="pointer-events-none absolute top-4 right-8 size-0"
       />
       <section
         ref={rootRef}
         aria-label="Notepad"
-        className={`z-30 flex w-80 flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ${floating ? "fixed" : "absolute top-2 right-2"}`}
-        style={floating ? { left: floating.x, top: floating.y } : undefined}
+        className={`z-30 flex flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg ${floating ? "fixed" : "absolute top-4 right-8"}`}
+        style={{
+          width: size?.width ?? FOCUS_DEFAULT_WIDTH,
+          ...(size ? { height: size.height } : {}),
+          ...(floating ? { left: floating.x, top: floating.y } : {}),
+        }}
       >
         <header
           className="flex cursor-grab touch-none items-center gap-1 border-b border-border py-1 pr-1 pl-1.5 select-none active:cursor-grabbing"
@@ -532,6 +596,23 @@ export default function FocusWidget(props: {
         </form>
         <span role="status" className="sr-only">
           {notice}
+        </span>
+        <span
+          role="separator"
+          tabIndex={0}
+          aria-label="Resize the notepad. Arrow keys resize it. Home or Escape resets the size."
+          title="Drag to resize. Double-click to reset."
+          className="absolute right-0 bottom-0 z-10 size-4 cursor-nwse-resize touch-none rounded-tl-sm text-muted-foreground/60 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [-webkit-app-region:no-drag]"
+          onPointerDown={onResizeDown}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeUp}
+          onPointerCancel={onResizeUp}
+          onDoubleClick={() => setSize(null)}
+          onKeyDown={onResizeKey}
+        >
+          <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+            <path d="M14 6 6 14M14 10l-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
         </span>
       </section>
     </>

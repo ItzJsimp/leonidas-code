@@ -289,7 +289,9 @@ export function QueuedRunsControl({
                   aria-current={isEditing ? "true" : undefined}
                   className={cn(
                     "relative rounded-sm",
-                    isEditing && "bg-accent text-accent-foreground",
+                    // While editing, the row grows: the text wraps and the buttons drop below it.
+                    isEditing &&
+                      "bg-foreground/[0.06] py-1.5 ring-1 ring-inset ring-ring/40 *:data-[slot=composer-banner-content]:col-end-4 *:data-[slot=composer-banner-content]:items-start *:data-[slot=composer-banner-actions]:col-start-2 *:data-[slot=composer-banner-actions]:col-end-4 *:data-[slot=composer-banner-actions]:row-start-2 *:data-[slot=composer-banner-actions]:mt-1.5",
                     dragState !== null && dragState.runId === item.runId && "opacity-50",
                   )}
                   draggable={rowDraggable}
@@ -397,7 +399,18 @@ export function QueuedRunsControl({
                       </span>
                     ) : null}
                     <Tooltip>
-                      <TooltipTrigger render={<span className="min-w-0 flex-1 truncate" />}>
+                      <TooltipTrigger
+                        render={
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1",
+                              isEditing
+                                ? "line-clamp-6 whitespace-pre-wrap break-words"
+                                : "truncate",
+                            )}
+                          />
+                        }
+                      >
                         {previewText}
                       </TooltipTrigger>
                       <TooltipPopup side="top" className="max-w-96 break-words">

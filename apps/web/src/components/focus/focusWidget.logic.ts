@@ -40,6 +40,21 @@ export function clampToViewport(position: Point, widget: Size, viewport: Bounds)
   };
 }
 
+/** Smallest size the user can drag the widget to. */
+export const FOCUS_MIN_SIZE: Size = { width: 260, height: 180 };
+/** Width of the widget before the user resizes it. */
+export const FOCUS_DEFAULT_WIDTH = 320;
+
+/** The size after a corner drag: never below the minimum, never larger than the chat column. */
+export function resizeTo(wanted: Size, available: Size): Size {
+  const maxWidth = Math.max(FOCUS_MIN_SIZE.width, available.width - FOCUS_EDGE_GAP * 2);
+  const maxHeight = Math.max(FOCUS_MIN_SIZE.height, available.height - FOCUS_EDGE_GAP * 2);
+  return {
+    width: Math.round(Math.min(Math.max(wanted.width, FOCUS_MIN_SIZE.width), maxWidth)),
+    height: Math.round(Math.min(Math.max(wanted.height, FOCUS_MIN_SIZE.height), maxHeight)),
+  };
+}
+
 /** Where the widget ends after a drag: `null` means docked. */
 export function settleDrag(
   position: Point,
