@@ -821,7 +821,12 @@ export const layer = Layer.effect(
                   projectId: active.projectId,
                   title: active.title,
                   modelSelection: active.modelSelection,
-                  runtimeMode: active.runtimeMode,
+                  // Whoever can reach a webhook sender writes part of its prompt, so a
+                  // webhook run never gets full access; it waits for approval instead.
+                  runtimeMode:
+                    webhook !== undefined && active.runtimeMode === "full-access"
+                      ? "approval-required"
+                      : active.runtimeMode,
                   interactionMode: active.interactionMode,
                   workspaceStrategy: active.workspaceStrategy,
                   initialMessage: {
