@@ -9,6 +9,8 @@ import {
   USER_QUESTION_INSTRUCTIONS,
 } from "./userQuestionInstructions.ts";
 
+export { QUESTION_BUDGET_REPLY, questionBudgetAllows } from "./userQuestionInstructions.ts";
+
 const PULL_REQUEST_LINKING_INSTRUCTIONS = `<pull_request_linking>
 When the t3-code MCP server exposes link_pull_request, register every PR you create or work on for this thread. Call it with the full PR URL immediately after creating a PR or starting work on an existing one, and for every layer of a stack. This also applies to PRs made through gh, gh stack, another CLI, or the host API, which do not register them. Linking an already-linked PR is safe. Before finishing PR work, call list_thread_pull_requests and link any missing PR from your work; do not link PRs mentioned only as background. If a link call fails, report that instead of claiming the PR is linked. When asked to monitor or babysit a PR and watch_pull_request is available, call it and end your turn; Leonidas Code wakes you on checks, comments, or conflicts, so do not poll. When handing work back, call unwatch_pull_request first.
 </pull_request_linking>`;

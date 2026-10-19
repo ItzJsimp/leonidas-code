@@ -146,7 +146,12 @@ import {
 import type { ManagedServerProvider } from "@t3tools/provider-core/server/snapshot";
 import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/instanceEnvironment";
 import { T3_CODE_ORCHESTRATION_INSTRUCTIONS } from "@t3tools/provider-core/server/orchestrationInstructions";
-import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
+import {
+  activeAiLevel,
+  buildRuntimeInstructions,
+  QUESTION_BUDGET_REPLY,
+  questionBudgetAllows,
+} from "@t3tools/provider-core/server/runtimeInstructions";
 import { isPonytailPluginEnabled } from "../../provider/PonytailEnsure.ts";
 import {
   mcpToolPresentation,
@@ -8150,6 +8155,8 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           yield* handleRoutedSdkMessage(input);
         });
 
+        // The new-user question budget: questions asked in the session's current turn.
+        let questionTurn = { id: "", asked: 0 };
         const canUseToolEffect = Effect.fn("ClaudeAdapterV2.canUseTool")(function* (
           toolName: Parameters<CanUseTool>[0],
           toolInput: Parameters<CanUseTool>[1],
@@ -8379,8 +8386,31 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           });
         });
 
+        // Only agent questions count toward the new-user budget; app dialogs reuse
+        // canUseToolEffect directly and are never limited.
+        const questionBudget = Effect.fn("ClaudeAdapterV2.questionBudget")(function* () {
+          const context = yield* Ref.get(activeTurn);
+          if (context === null) return true;
+          const turnId = String(context.providerTurnId);
+          const asked = questionTurn.id === turnId ? questionTurn.asked : 0;
+          if (!questionBudgetAllows(activeAiLevel(), asked)) return false;
+          questionTurn = { id: turnId, asked: asked + 1 };
+          return true;
+        });
         const canUseTool: CanUseTool = (toolName, toolInput, callbackOptions) =>
-          runPromise(canUseToolEffect(toolName, toolInput, callbackOptions));
+          runPromise(
+            Effect.gen(function* () {
+              if (toolName === "AskUserQuestion" && !(yield* questionBudget())) {
+                const denied: PermissionResult = {
+                  behavior: "deny",
+                  message: QUESTION_BUDGET_REPLY,
+                  toolUseID: callbackOptions.toolUseID,
+                };
+                return denied;
+              }
+              return yield* canUseToolEffect(toolName, toolInput, callbackOptions);
+            }),
+          );
 
         const onUserDialog: NonNullable<ClaudeQueryOptions["onUserDialog"]> = (
           request,

@@ -1,4 +1,9 @@
 import { revertCodexThread } from "../../provider/CodexThreadRevert.ts";
+import {
+  activeAiLevel,
+  QUESTION_BUDGET_REPLY,
+  questionBudgetAllows,
+} from "@t3tools/provider-core/server/runtimeInstructions";
 import { historyResponseItems } from "@t3tools/provider-core/server/handoffBudget";
 import { makeProviderTextDeltaCoalescer } from "./ProviderTextDeltaCoalescer.ts";
 import {
@@ -5520,6 +5525,8 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
           }).pipe(Effect.orDie),
         );
 
+        // The new-user question budget: questions asked in the current turn.
+        let questionTurn = { id: "", asked: 0 };
         yield* client.handleServerRequest("item/tool/requestUserInput", (payload) =>
           Effect.gen(function* () {
             const context = yield* awaitActiveTurn(payload.turnId);
@@ -5529,6 +5536,18 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                 payload,
               );
             }
+            const asked = questionTurn.id === payload.turnId ? questionTurn.asked : 0;
+            if (!questionBudgetAllows(activeAiLevel(), asked)) {
+              return {
+                answers: Object.fromEntries(
+                  payload.questions.map((question) => [
+                    question.id,
+                    { answers: [QUESTION_BUDGET_REPLY] },
+                  ]),
+                ),
+              } satisfies CodexSchema.ToolRequestUserInputResponse;
+            }
+            questionTurn = { id: payload.turnId, asked: asked + 1 };
 
             const artifacts = yield* buildUserInputRequestArtifacts({
               context,

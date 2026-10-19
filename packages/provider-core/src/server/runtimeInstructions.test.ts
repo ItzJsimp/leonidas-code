@@ -3,6 +3,8 @@ import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
 import {
   activeAiLevel,
   buildRuntimeInstructions,
+  QUESTION_BUDGET_REPLY,
+  questionBudgetAllows,
   setAiLevelSetting,
 } from "./runtimeInstructions.ts";
 import { MAX_SKILLS_PER_TASK, SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.ts";
@@ -148,5 +150,16 @@ describe("AI level", () => {
 
   it("keeps the new-user prompt no larger than the builder prompt", () => {
     expect(forLevel("new").length).toBeLessThanOrEqual(forLevel("builder").length);
+  });
+});
+
+describe("question budget", () => {
+  it("allows one question per turn for new and beginner users only", () => {
+    expect(questionBudgetAllows("new", 0)).toBe(true);
+    expect(questionBudgetAllows("new", 1)).toBe(false);
+    expect(questionBudgetAllows("beginner", 1)).toBe(false);
+    expect(questionBudgetAllows("comfortable", 5)).toBe(true);
+    expect(questionBudgetAllows("builder", 5)).toBe(true);
+    expect(QUESTION_BUDGET_REPLY).toContain("Pick your recommended option");
   });
 });

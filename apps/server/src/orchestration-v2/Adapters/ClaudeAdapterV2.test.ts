@@ -1,4 +1,8 @@
 // @effect-diagnostics nodeBuiltinImport:off -- workflow fixtures use files and the fake Claude CLI uses Node streams
+import {
+  QUESTION_BUDGET_REPLY,
+  setAiLevelSetting,
+} from "@t3tools/provider-core/server/runtimeInstructions";
 import * as NodeEvents from "node:events";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
@@ -1469,6 +1473,27 @@ describe("ClaudeAdapterV2 resume compaction", () => {
             answers: { [longQuestion]: "Production, Staging" },
           },
           toolUseID: "tool-question-full-access",
+        });
+        setAiLevelSetting("new", "");
+        const secondQuestion = yield* Effect.promise(() =>
+          canUseTool!(
+            "AskUserQuestion",
+            {
+              questions: [
+                { header: "Color", question: "Pick a color", options: [], multiSelect: false },
+              ],
+            },
+            {
+              signal: new AbortController().signal,
+              toolUseID: "tool-question-over-budget",
+              requestId: "request-question-over-budget",
+            },
+          ),
+        );
+        assert.deepEqual(secondQuestion, {
+          behavior: "deny",
+          message: QUESTION_BUDGET_REPLY,
+          toolUseID: "tool-question-over-budget",
         });
         const longPlan = `# Deployment plan\n\n${"Validate every region before promotion.\n".repeat(120)}`;
         const proposedPlanEvent = yield* runtime.events.pipe(

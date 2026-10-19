@@ -43,3 +43,12 @@ Act first and report after. Many questions overwhelm a user who is new to AI.
 - Leonidas Code allows one question per turn. A second question gets the answer "pick your recommended option".
 </asking_the_user>`;
 }
+
+/** The answer Leonidas Code gives for a question over the per-turn budget. */
+export const QUESTION_BUDGET_REPLY =
+  "Leonidas Code allows one question per turn for this user. Pick your recommended option, do the work, and put the choice on the 🔁 Assumed line. If this decision deletes data, spends money, sends or publishes, or changes account security, do not do it: stop and say so in your reply.";
+
+/** New and beginner users get one question per turn; other levels have no limit. */
+export function questionBudgetAllows(level: string, askedThisTurn: number): boolean {
+  return askedThisTurn < 1 || (level !== "new" && level !== "beginner");
+}
