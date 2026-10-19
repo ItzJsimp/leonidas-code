@@ -1,10 +1,11 @@
 //! Loopback HTTP and SSE server for the contract. Slice S1.
 
 use crate::contract::{
-    now_iso, CredentialRequest, ErrorBody, StartRequest, StateReply, Status, StopRequest,
-    API_VERSION, SERVICE,
+    now_iso, CredentialRequest, DictionaryBody, ErrorBody, StartRequest, StateReply, Status,
+    StopRequest, API_VERSION, SERVICE,
 };
 use crate::credentials::KeyStore;
+use crate::dictionary::{SharedDictionary, VOCABULARY_CAP};
 use crate::engine::{Engine, EngineError};
 use crate::local_stt::LocalModel;
 use serde::{de::DeserializeOwned, Serialize};
@@ -35,22 +36,22 @@ impl ServerHandle {
     }
 }
 
-pub fn serve(
-    engine: Engine,
-    keys: Arc<dyn KeyStore>,
-    private_mode: bool,
-    local: Arc<dyn LocalModel>,
-    port: u16,
-) -> Result<ServerHandle, String> {
-    serve_with_ping(engine, keys, private_mode, local, port, PING_INTERVAL)
+/// What the routes read and write besides the engine.
+pub struct Services {
+    pub keys: Arc<dyn KeyStore>,
+    pub private_mode: bool,
+    pub local: Arc<dyn LocalModel>,
+    pub dictionary: Arc<SharedDictionary>,
+}
+
+pub fn serve(engine: Engine, services: Services, port: u16) -> Result<ServerHandle, String> {
+    serve_with_ping(engine, services, port, PING_INTERVAL)
 }
 
 /// `serve` with the SSE ping interval as a parameter, so tests do not wait 15 s.
 fn serve_with_ping(
     engine: Engine,
-    keys: Arc<dyn KeyStore>,
-    private_mode: bool,
-    local: Arc<dyn LocalModel>,
+    services: Services,
     port: u16,
     ping: Duration,
 ) -> Result<ServerHandle, String> {
@@ -92,13 +93,7 @@ fn serve_with_ping(
                         streams.push(worker);
                     }
                 } else {
-                    route(
-                        request,
-                        &engine,
-                        keys.as_ref(),
-                        private_mode,
-                        local.as_ref(),
-                    );
+                    route(request, &engine, &services);
                 }
             }
             for stream in streams {
@@ -162,17 +157,15 @@ fn state_reply(request: Request, state: Result<crate::contract::State, EngineErr
     }
 }
 
-fn route(
-    mut request: Request,
-    engine: &Engine,
-    keys: &dyn KeyStore,
-    private_mode: bool,
-    local: &dyn LocalModel,
-) {
+fn route(mut request: Request, engine: &Engine, services: &Services) {
+    let keys = services.keys.as_ref();
     let url = request.url().to_owned();
     let (path, query) = url.split_once('?').unwrap_or((&url, ""));
     if path == "/v1/history" || path.starts_with("/v1/history/") {
         return history_route(request, engine, path, query);
+    }
+    if path == "/v1/dictionary" {
+        return dictionary_route(request, services);
     }
     match (request.url(), request.method()) {
         ("/v1/status", Method::Get) => {
@@ -183,8 +176,8 @@ fn route(
                 sampled_at: now_iso(),
                 groq_key: keys.get().is_some()
                     || std::env::var_os("GROQ_API_KEY").is_some_and(|key| !key.is_empty()),
-                private_mode,
-                local_model: Some(local.status().as_str().into()),
+                private_mode: services.private_mode,
+                local_model: Some(services.local.status().as_str().into()),
             };
             json(request, 200, &status);
         }
@@ -260,6 +253,27 @@ fn history_route(request: Request, engine: &Engine, path: &str, query: &str) {
     }
 }
 
+/// v1.2: `GET` and `PUT /v1/dictionary`.
+fn dictionary_route(mut request: Request, services: &Services) {
+    match request.method() {
+        Method::Get => json(request, 200, &services.dictionary.current().body()),
+        Method::Put => {
+            let valid = body::<DictionaryBody>(&mut request).ok().filter(|new| {
+                new.vocabulary.len() <= VOCABULARY_CAP
+                    && new.replacements.iter().all(|r| !r.wrong.trim().is_empty())
+            });
+            let Some(new) = valid else {
+                return error(request, 400, "bad_request");
+            };
+            match services.dictionary.save(&new) {
+                Ok(saved) => json(request, 200, &saved.body()),
+                Err(_) => error(request, 500, "store_error"),
+            }
+        }
+        _ => error(request, 405, "method_not_allowed"),
+    }
+}
+
 fn stream_events(
     request: Request,
     events: mpsc::Receiver<crate::contract::Event>,
@@ -326,6 +340,15 @@ mod tests {
         }
     }
 
+    fn test_services(keys: Arc<dyn KeyStore>) -> Services {
+        Services {
+            keys,
+            private_mode: true,
+            local: Arc::new(NoLocal),
+            dictionary: Arc::new(SharedDictionary::new(std::path::PathBuf::from("none.json"))),
+        }
+    }
+
     struct TestServer(Option<ServerHandle>);
 
     impl TestServer {
@@ -342,7 +365,7 @@ mod tests {
                 Ok("hello"),
             );
             Self(Some(
-                serve_with_ping(engine, keys, true, Arc::new(NoLocal), 0, TEST_PING).unwrap(),
+                serve_with_ping(engine, test_services(keys), 0, TEST_PING).unwrap(),
             ))
         }
 
@@ -376,7 +399,15 @@ mod tests {
             );
             let keys: Arc<dyn KeyStore> = Arc::new(MemoryKeyStore::default());
             Self(Some(
-                serve_with_ping(engine, keys, true, Arc::new(NoLocal), 0, TEST_PING).unwrap(),
+                serve_with_ping(engine, test_services(keys), 0, TEST_PING).unwrap(),
+            ))
+        }
+
+        /// A server with its own services, for the v1.2 file-backed routes.
+        fn with_services(services: Services) -> Self {
+            let (engine, _) = engine(FakeRecorder::default(), Ok("hello"));
+            Self(Some(
+                serve_with_ping(engine, services, 0, TEST_PING).unwrap(),
             ))
         }
 
@@ -636,9 +667,7 @@ mod tests {
         let (engine, _) = engine(FakeRecorder::default(), Ok(""));
         assert!(serve(
             engine,
-            Arc::new(MemoryKeyStore::default()),
-            false,
-            Arc::new(NoLocal),
+            test_services(Arc::new(MemoryKeyStore::default())),
             listener.local_addr().unwrap().port()
         )
         .is_err());
@@ -756,5 +785,86 @@ mod tests {
     fn history_is_not_found_without_a_store() {
         let server = TestServer::new();
         assert_eq!(server.request("GET", "/v1/history", "").status, 404);
+    }
+
+    /// A fresh folder with spaces in its name, so paths with spaces are covered.
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("scribe http {}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn dictionary_server(path: &std::path::Path) -> TestServer {
+        let mut services = test_services(Arc::new(MemoryKeyStore::default()));
+        services.dictionary = Arc::new(SharedDictionary::new(path.to_path_buf()));
+        TestServer::with_services(services)
+    }
+
+    #[test]
+    fn dictionary_get_and_put_round_trip_and_keep_other_keys() {
+        let path = temp_dir("dict").join("dictionary.json");
+        std::fs::write(
+            &path,
+            r#"{"replacements":{"btw":"by the way"},"vocabulary":["Gersi"],"extra":{"keep":1}}"#,
+        )
+        .unwrap();
+        let server = dictionary_server(&path);
+        let reply = server.request("GET", "/v1/dictionary", "");
+        assert_eq!(reply.status, 200);
+        assert_eq!(
+            reply.body,
+            json!({"replacements":[{"wrong":"btw","correct":"by the way"}],"vocabulary":["Gersi"]})
+        );
+        let put = json!({
+            "replacements":[{"wrong":"leo","correct":"Leonidas"},{"wrong":"btw","correct":"by the way"}],
+            "vocabulary":["Gersi","Marana"]
+        });
+        let reply = server.request("PUT", "/v1/dictionary", &put.to_string());
+        assert_eq!(reply.status, 200);
+        assert_eq!(reply.body["vocabulary"], json!(["Gersi", "Marana"]));
+        assert_eq!(reply.body["replacements"].as_array().unwrap().len(), 2);
+        let saved: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(saved["extra"], json!({"keep": 1}));
+        assert_eq!(saved["replacements"]["leo"], "Leonidas");
+        assert_eq!(server.request("GET", "/v1/dictionary", "").body, reply.body);
+    }
+
+    #[test]
+    fn dictionary_without_a_file_is_empty_and_put_creates_it() {
+        let path = temp_dir("dict-new").join("sub").join("dictionary.json");
+        let server = dictionary_server(&path);
+        let reply = server.request("GET", "/v1/dictionary", "");
+        assert_eq!(reply.body, json!({"replacements":[],"vocabulary":[]}));
+        let put = json!({"replacements":[{"wrong":"leo","correct":"Leonidas"}],"vocabulary":[]});
+        assert_eq!(
+            server
+                .request("PUT", "/v1/dictionary", &put.to_string())
+                .status,
+            200
+        );
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn dictionary_put_rejects_bad_bodies() {
+        let path = temp_dir("dict-bad").join("dictionary.json");
+        let server = dictionary_server(&path);
+        let too_many: Vec<String> = (0..801).map(|i| format!("w{i}")).collect();
+        for body in [
+            json!({"replacements":[{"wrong":"  ","correct":"x"}],"vocabulary":[]}).to_string(),
+            json!({"replacements":[],"vocabulary":too_many}).to_string(),
+            json!({"replacements":[]}).to_string(),
+            json!({"replacements":[],"vocabulary":[],"other":1}).to_string(),
+            "not json".into(),
+        ] {
+            server
+                .request("PUT", "/v1/dictionary", &body)
+                .error(400, "bad_request");
+        }
+        assert!(!path.exists(), "a bad body never writes the file");
+        server
+            .request("POST", "/v1/dictionary", "{}")
+            .error(405, "method_not_allowed");
     }
 }

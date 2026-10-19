@@ -80,6 +80,21 @@ pub struct CredentialRequest {
     pub key: String,
 }
 
+/// v1.2: body and reply of `GET` and `PUT /v1/dictionary`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DictionaryBody {
+    pub replacements: Vec<Replacement>,
+    pub vocabulary: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Replacement {
+    pub wrong: String,
+    pub correct: String,
+}
+
 /// v1.1: which speech-to-text path made a transcript.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

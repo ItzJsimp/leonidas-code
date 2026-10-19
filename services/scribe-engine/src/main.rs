@@ -56,7 +56,7 @@ fn run() -> Result<(), String> {
 
     let keys: Arc<dyn KeyStore> = Arc::new(OsKeyStore::new()?);
     let dictionary = Arc::new(SharedDictionary::new(cfg.dictionary_path(&config_dir)));
-    let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary);
+    let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary.clone());
     let polisher = GroqPolisher::new(groq.clone(), &cfg.effective_polish());
     // Cloud first. The local model serves private mode and a cloud that cannot answer.
     let local = Arc::new(WhisperLocal::new(&config_dir.join("models")));
@@ -86,9 +86,12 @@ fn run() -> Result<(), String> {
 
     let server = http::serve(
         engine.clone(),
-        keys,
-        cfg.private_mode,
-        local as Arc<dyn LocalModel>,
+        http::Services {
+            keys,
+            private_mode: cfg.private_mode,
+            local: local as Arc<dyn LocalModel>,
+            dictionary,
+        },
         cfg.port,
     )?;
 
