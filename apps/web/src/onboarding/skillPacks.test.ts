@@ -54,7 +54,7 @@ describe("skillPacks", () => {
 
   it("always includes the core skills, then goal skills in order, deduped, ignoring unknown ids", () => {
     const core = CORE_SKILLS.map((s) => s.name);
-    expect(core).toEqual(["grilling", "grill-me", "session-handoff"]);
+    expect(core).toEqual(["asd-ste100", "grilling", "grill-me", "session-handoff"]);
     const names = suggestSkills(["learning", "nope", "web-apps", "learning"]).map((s) => s.name);
     expect(names).toEqual([
       ...core,

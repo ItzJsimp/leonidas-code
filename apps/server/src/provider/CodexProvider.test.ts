@@ -214,3 +214,31 @@ it.effect("adds category and source from SKILL.md and keeps an unreadable skill 
     yield* Effect.promise(() => NodeFSP.rm(dir, { recursive: true, force: true }));
   }),
 );
+
+it("keeps the new-user effort defaults: GPT-6 Astra medium, Sonnet 5.5 high, Opus 5.5 medium", async () => {
+  const astra = mapCodexModelCapabilities({
+    additionalSpeedTiers: [],
+    defaultReasoningEffort: "high",
+    description: "",
+    displayName: "GPT-6 Astra",
+    hidden: false,
+    id: "gpt-6-astra",
+    isDefault: true,
+    model: "gpt-6-astra",
+    supportedReasoningEfforts: [
+      { description: "", reasoningEffort: "medium" },
+      { description: "", reasoningEffort: "high" },
+    ],
+  });
+  assert.strictEqual(astra.optionDescriptors?.[0]?.currentValue, "medium");
+
+  const manifest = JSON.parse(
+    await NodeFSP.readFile(new URL("./model-manifest.json", import.meta.url), "utf8"),
+  );
+  const effortDefault = (profile: string) =>
+    manifest.providers.claudeAgent.profiles[profile].capabilities.optionDescriptors
+      .find((descriptor: { id: string }) => descriptor.id === "effort")
+      .options.find((option: { isDefault?: boolean }) => option.isDefault).id;
+  assert.strictEqual(effortDefault("sonnet-5"), "high");
+  assert.strictEqual(effortDefault("opus-5-5"), "medium");
+});
