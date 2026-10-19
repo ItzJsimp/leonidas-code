@@ -173,3 +173,11 @@ it.live(
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   15_000,
 );
+
+it("passes LEONIDAS_SCRIBE_ENGINE_CONFIG to the engine as --config", () => {
+  expect(
+    ScribeSupervisor.engineArgs({ LEONIDAS_SCRIBE_ENGINE_CONFIG: " C:/dev/config.json " }),
+  ).toEqual(["--config", "C:/dev/config.json"]);
+  expect(ScribeSupervisor.engineArgs({ LEONIDAS_SCRIBE_ENGINE_CONFIG: "  " })).toEqual([]);
+  expect(ScribeSupervisor.engineArgs({})).toEqual([]);
+});

@@ -13,7 +13,8 @@ import * as ScribeStatus from "./ScribeStatus.ts";
 
 /**
  * Keeps the Scribe engine process alive. It starts the binary named by
- * `LEONIDAS_SCRIBE_ENGINE_BIN`, restarts it when it exits or stops answering
+ * `LEONIDAS_SCRIBE_ENGINE_BIN` (with `--config` from `LEONIDAS_SCRIBE_ENGINE_CONFIG`
+ * when set, so a dev engine can use its own port and hotkeys), restarts it when it exits or stops answering
  * `/v1/status`, and backs off after repeated fast crashes. Without a binary it
  * reports `unmanaged` and touches nothing (Python Scribe or the mock may run).
  */
@@ -119,6 +120,12 @@ export const makeWith = (options: SupervisorOptions) =>
     return service;
   });
 
+/** Engine flags from the environment: `--config <path>` when `LEONIDAS_SCRIBE_ENGINE_CONFIG` is set. */
+export function engineArgs(env: Readonly<Record<string, string | undefined>>): string[] {
+  const config = env.LEONIDAS_SCRIBE_ENGINE_CONFIG?.trim();
+  return config ? ["--config", config] : [];
+}
+
 export const layer = Layer.effect(
   ScribeSupervisor,
   Effect.gen(function* () {
@@ -126,6 +133,7 @@ export const layer = Layer.effect(
     const status = yield* ScribeStatus.ScribeStatus;
     return yield* makeWith({
       bin,
+      args: engineArgs(process.env),
       healthy: Effect.map(status.get, (result) => result.status === "available"),
     });
   }),
