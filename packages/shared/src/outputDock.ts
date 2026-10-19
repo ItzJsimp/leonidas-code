@@ -10,7 +10,9 @@ export type DockItem =
   | { kind: "markdown"; text: string }
   | { kind: "action"; text: string; checked: boolean }
   | { kind: "option"; text: string; letter: string; reply: string }
-  | { kind: "replies"; replies: string[] };
+  | { kind: "replies"; replies: string[] }
+  /** Choices the agent made without asking; each one is a chip the user can tap to change. */
+  | { kind: "assumptions"; choices: string[] };
 export type DockSection = { kind: DockKind; heading: string; items: DockItem[] };
 
 function fencedLineIndexes(lines: string[]) {
@@ -40,6 +42,12 @@ function optionTitle(text: string): string {
   const head = text.split(" *(")[0]!.replaceAll("**", "").trim();
   const title = head.split(/[:.](?:\s|$)/)[0]!.trim();
   return title || head;
+}
+
+/** `"a" | "b"` to ["a", "b"]; undefined when any part is not quoted. */
+function quotedList(text: string): string[] | undefined {
+  const values = text.split(/\s*\|\s*/).map((v) => /^["“](.+)["”]$/.exec(v.trim())?.[1]);
+  return values.every((v): v is string => v !== undefined) ? values : undefined;
 }
 
 export function parseOutputDock(text: string) {
@@ -77,7 +85,12 @@ export function parseOutputDock(text: string) {
       const action = h.kind === "actions" ? /^- \[([ xX])\] ((?:🤖|👤) .+)$/.exec(line) : null;
       const option = h.kind === "decisions" ? /^- \*\*([A-Z])\)\*\* (.+)$/.exec(line) : null;
       const quick = h.kind === "decisions" ? /^💬 Quick Replies: (.+)$/.exec(line) : null;
-      if (action) {
+      const assumed = h.kind === "summary" ? /^🔁 Assumed: (.+)$/.exec(line) : null;
+      const choices = assumed ? quotedList(assumed[1]!) : undefined;
+      if (choices) {
+        flush();
+        items.push({ kind: "assumptions", choices });
+      } else if (action) {
         flush();
         items.push({ kind: "action", checked: action[1] !== " ", text: action[2]! });
       } else if (option) {
@@ -90,8 +103,8 @@ export function parseOutputDock(text: string) {
           text: `**${letter})** ${option[2]}`,
         });
       } else if (quick) {
-        const replies = quick[1]!.split(/\s*\|\s*/).map((v) => /^["“](.+)["”]$/.exec(v)?.[1]);
-        if (replies.every((v): v is string => v !== undefined)) {
+        const replies = quotedList(quick[1]!);
+        if (replies) {
           flush();
           items.push({ kind: "replies", replies });
         } else block.push(line);

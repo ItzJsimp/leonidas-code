@@ -92,3 +92,21 @@ describe("output Dock", () => {
     expect(workedForMs("2026-10-13T00:01:12Z", "2026-10-13T00:00:00Z")).toBeNull();
   });
 });
+
+describe("slim Dock", () => {
+  it("parses the Assumed line as chips and allows a Dock with only a TL;DR", () => {
+    const dock = parseOutputDock(
+      'Done. Your site is live.\n---\n### 🎯 TL;DR\n- Open index.html to see it.\n🔁 Assumed: "Blue theme" | "One page"',
+    )!;
+    expect(dock.sections.map((s) => s.kind)).toEqual(["summary"]);
+    expect(dock.sections[0]!.items).toEqual([
+      { kind: "markdown", text: "- Open index.html to see it." },
+      { kind: "assumptions", choices: ["Blue theme", "One page"] },
+    ]);
+  });
+
+  it("keeps an unquoted Assumed line as Markdown", () => {
+    const dock = parseOutputDock("Done.\n---\n### 🎯 TL;DR\n- Ready.\n🔁 Assumed: blue theme")!;
+    expect(dock.sections[0]!.items.map((i) => i.kind)).toEqual(["markdown"]);
+  });
+});

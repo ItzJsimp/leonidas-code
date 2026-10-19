@@ -608,6 +608,8 @@ type MessagesTimelineRowContent =
       assistantCopyStreaming: boolean;
       assistantTurnDiffSummary?: TurnDiffSummary | undefined;
       revertTurnCount?: number | undefined;
+      /** Assistant rows: the user message whose turn "Undo this turn" reverts. */
+      undoTarget?: { turnCount: number; messageId: MessageId } | undefined;
     }
   | {
       kind: "assistant-meta";
@@ -1572,6 +1574,8 @@ export function deriveMessagesTimelineRows(input: {
     );
   };
 
+  // The user message that started the turn: the target of a reply's "Undo this turn".
+  let undoTarget: { turnCount: number; messageId: MessageId } | undefined;
   for (let index = 0; index < timelineEntries.length; index += 1) {
     const timelineEntry = timelineEntries[index];
     if (!timelineEntry) {
@@ -1871,6 +1875,12 @@ export function deriveMessagesTimelineRows(input: {
       terminalAssistantMessageIds.has(timelineEntry.message.id) &&
       !assistantResponseStillInProgress;
 
+    if (timelineEntry.message.role === "user") {
+      const turnCount = revertTurnCountByUserMessageId.get(timelineEntry.message.id);
+      undoTarget =
+        turnCount === undefined ? undefined : { turnCount, messageId: timelineEntry.message.id };
+    }
+
     nextRows.push({
       kind: "message",
       id: timelineEntry.id,
@@ -1891,6 +1901,7 @@ export function deriveMessagesTimelineRows(input: {
         timelineEntry.message.role === "user"
           ? revertTurnCountByUserMessageId.get(timelineEntry.message.id)
           : undefined,
+      undoTarget: timelineEntry.message.role === "assistant" ? undoTarget : undefined,
     });
   }
 
@@ -2337,7 +2348,9 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.showAssistantCopyButton === bm.showAssistantCopyButton &&
         a.assistantCopyStreaming === bm.assistantCopyStreaming &&
         a.assistantTurnDiffSummary === bm.assistantTurnDiffSummary &&
-        a.revertTurnCount === bm.revertTurnCount
+        a.revertTurnCount === bm.revertTurnCount &&
+        a.undoTarget?.turnCount === bm.undoTarget?.turnCount &&
+        a.undoTarget?.messageId === bm.undoTarget?.messageId
       );
     }
   }

@@ -38,6 +38,7 @@ import {
 } from "@t3tools/contracts";
 import { parseScopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useAtomValue } from "@effect/atom-react";
+import { serverEnvironment } from "~/state/server";
 import { environmentThreadDetails } from "../../state/threads";
 import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
 import { Link } from "@tanstack/react-router";
@@ -2814,6 +2815,11 @@ function AttemptFoldTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "at
 
 function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" }> }) {
   const ctx = use(TimelineRowCtx);
+  const activity = use(TimelineRowActivityCtx);
+  const aiLevel =
+    useAtomValue(serverEnvironment.settingsValueAtom(ctx.activeThreadEnvironmentId))?.aiLevel ??
+    "new";
+  const undoTarget = row.undoTarget;
   const messageText = row.message.text || (row.message.streaming ? "" : "(empty response)");
   const run = ctx.runs.find((candidate) => candidate.id === row.message.runId);
   const start = run?.workStartedAt ?? run?.startedAt;
@@ -2839,6 +2845,12 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
           >
             <AssistantOutput
               onReply={ctx.onDockReply}
+              simple={aiLevel !== "builder"}
+              onUndo={
+                undoTarget && !activity.isWorking && !activity.isRevertingCheckpoint
+                  ? () => ctx.onRevertToTurnCount(undoTarget.turnCount, undoTarget.messageId)
+                  : undefined
+              }
               text={messageText}
               cwd={ctx.markdownCwd}
               threadRef={ctx.threadRef ?? undefined}
