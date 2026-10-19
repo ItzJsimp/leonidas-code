@@ -6,6 +6,7 @@ use crate::contract::{
 };
 use crate::credentials::KeyStore;
 use crate::engine::{Engine, EngineError};
+use crate::local_stt::LocalModel;
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -38,9 +39,10 @@ pub fn serve(
     engine: Engine,
     keys: Arc<dyn KeyStore>,
     private_mode: bool,
+    local: Arc<dyn LocalModel>,
     port: u16,
 ) -> Result<ServerHandle, String> {
-    serve_with_ping(engine, keys, private_mode, port, PING_INTERVAL)
+    serve_with_ping(engine, keys, private_mode, local, port, PING_INTERVAL)
 }
 
 /// `serve` with the SSE ping interval as a parameter, so tests do not wait 15 s.
@@ -48,6 +50,7 @@ fn serve_with_ping(
     engine: Engine,
     keys: Arc<dyn KeyStore>,
     private_mode: bool,
+    local: Arc<dyn LocalModel>,
     port: u16,
     ping: Duration,
 ) -> Result<ServerHandle, String> {
@@ -89,7 +92,13 @@ fn serve_with_ping(
                         streams.push(worker);
                     }
                 } else {
-                    route(request, &engine, keys.as_ref(), private_mode);
+                    route(
+                        request,
+                        &engine,
+                        keys.as_ref(),
+                        private_mode,
+                        local.as_ref(),
+                    );
                 }
             }
             for stream in streams {
@@ -153,7 +162,13 @@ fn state_reply(request: Request, state: Result<crate::contract::State, EngineErr
     }
 }
 
-fn route(mut request: Request, engine: &Engine, keys: &dyn KeyStore, private_mode: bool) {
+fn route(
+    mut request: Request,
+    engine: &Engine,
+    keys: &dyn KeyStore,
+    private_mode: bool,
+    local: &dyn LocalModel,
+) {
     match (request.url(), request.method()) {
         ("/v1/status", Method::Get) => {
             let status = Status {
@@ -164,6 +179,7 @@ fn route(mut request: Request, engine: &Engine, keys: &dyn KeyStore, private_mod
                 groq_key: keys.get().is_some()
                     || std::env::var_os("GROQ_API_KEY").is_some_and(|key| !key.is_empty()),
                 private_mode,
+                local_model: Some(local.status().as_str().into()),
             };
             json(request, 200, &status);
         }
@@ -257,6 +273,17 @@ mod tests {
 
     const TEST_PING: Duration = Duration::from_millis(50);
 
+    struct NoLocal;
+
+    impl LocalModel for NoLocal {
+        fn transcribe(&self, _: &[f32]) -> Result<String, String> {
+            Err("no local model in this test".into())
+        }
+        fn status(&self) -> crate::local_stt::ModelStatus {
+            crate::local_stt::ModelStatus::Absent
+        }
+    }
+
     struct TestServer(Option<ServerHandle>);
 
     impl TestServer {
@@ -273,7 +300,7 @@ mod tests {
                 Ok("hello"),
             );
             Self(Some(
-                serve_with_ping(engine, keys, true, 0, TEST_PING).unwrap(),
+                serve_with_ping(engine, keys, true, Arc::new(NoLocal), 0, TEST_PING).unwrap(),
             ))
         }
 
@@ -535,6 +562,7 @@ mod tests {
             engine,
             Arc::new(MemoryKeyStore::default()),
             false,
+            Arc::new(NoLocal),
             listener.local_addr().unwrap().port()
         )
         .is_err());

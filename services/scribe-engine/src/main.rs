@@ -11,28 +11,19 @@ use scribe_engine::audio::{CpalRecorder, NullRecorder};
 use scribe_engine::config::Config;
 use scribe_engine::contract::{Event, Mode, State};
 use scribe_engine::credentials::{KeyStore, OsKeyStore};
-use scribe_engine::engine::{EncodedAudio, Engine, Recorder, Transcriber, Transcription};
+use scribe_engine::engine::{Engine, Recorder, Transcriber};
 use scribe_engine::groq::GroqClient;
 use scribe_engine::hotkeys::{self, HotkeyEvent};
 use scribe_engine::http;
 #[cfg(windows)]
 use scribe_engine::hud::window::Hud;
+use scribe_engine::local_stt::{LocalModel, Router, WhisperLocal};
 use scribe_engine::paste::ClipboardPaster;
 use scribe_engine::polish::{GroqPolisher, SharedDictionary};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
-
-/// Private mode must never send audio off the device. Until the local model exists
-/// (whisper.cpp slice), it refuses instead of calling Groq.
-struct PrivateModeGuard;
-
-impl Transcriber for PrivateModeGuard {
-    fn transcribe(&self, _: &EncodedAudio) -> Result<Transcription, String> {
-        Err("Private mode is on, and the offline model is not installed yet.".into())
-    }
-}
 
 fn main() {
     if let Err(message) = run() {
@@ -65,12 +56,17 @@ fn run() -> Result<(), String> {
     let keys: Arc<dyn KeyStore> = Arc::new(OsKeyStore::new()?);
     let dictionary = Arc::new(SharedDictionary::new(cfg.dictionary_path(&config_dir)));
     let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary);
-    let polisher = GroqPolisher::new(groq.clone(), &cfg.polish);
-    let transcriber: Box<dyn Transcriber> = if cfg.private_mode {
-        Box::new(PrivateModeGuard)
-    } else {
-        Box::new(groq.clone())
-    };
+    let polisher = GroqPolisher::new(groq.clone(), &cfg.effective_polish());
+    // Cloud first. The local model serves private mode and a cloud that cannot answer.
+    let local = Arc::new(WhisperLocal::new(&config_dir.join("models")));
+    if cfg.private_mode {
+        local.ensure_downloaded();
+    }
+    let transcriber: Box<dyn Transcriber> = Box::new(Router::new(
+        Arc::new(groq.clone()),
+        local.clone(),
+        cfg.private_mode,
+    ));
     let (recorder, level): (Box<dyn Recorder>, _) = if null_audio {
         (Box::new(NullRecorder::default()), Default::default())
     } else {
@@ -86,7 +82,13 @@ fn run() -> Result<(), String> {
         cfg.audio.min_record_ms,
     );
 
-    let server = http::serve(engine.clone(), keys, cfg.private_mode, cfg.port)?;
+    let server = http::serve(
+        engine.clone(),
+        keys,
+        cfg.private_mode,
+        local as Arc<dyn LocalModel>,
+        cfg.port,
+    )?;
 
     // `active` lets Escape pass through to apps when no dictation is running.
     let active = Arc::new(AtomicBool::new(false));

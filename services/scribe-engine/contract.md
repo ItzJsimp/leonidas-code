@@ -4,6 +4,8 @@ v1.1 (2026-10-17, lane L1) is additive: v1 clients keep working and `apiVersion`
 
 The engine is a Rust process. Leonidas Code supervises it and drives it over loopback HTTP. The contract is the only coupling ([ADR-0074](../../../../decisions/0074-leonidas-scribe-engine-moves-to-rust-and-python-leaves-the-product.md)). Any UI can drive the engine through it.
 
+v1.3 (2026-10-18, lane L1) is additive too. New: `localModel` in status, and `engine: "local"` in the `transcript` event. The engine falls back to an on-device whisper.cpp model when the cloud cannot answer, and private mode uses only that model.
+
 ## Transport
 
 - Bind `127.0.0.1` only, default port `8766`. Fail to start if the port is taken. The engine config (`%APPDATA%\Leonidas\scribe-engine\config.json`, field `port`) can change the port, for example to run next to Python Scribe.
@@ -29,12 +31,14 @@ Matches the old Python API. 503 `status_unavailable` if no sample is under 5 s o
   "state": "ready",
   "sampledAt": "2026-10-15T01:00:00.000Z",
   "groqKey": true,
-  "privateMode": false
+  "privateMode": false,
+  "localModel": "absent"
 }
 ```
 
 - `groqKey` (v1.1): a Groq key is stored, or `GROQ_API_KEY` is set. The key itself is never returned.
 - `privateMode` (v1.1): audio never leaves the device.
+- `localModel` (v1.3, optional): the offline model, `absent`, `downloading` or `ready`. It downloads once (about 60 MB) the first time it is needed and is not in the installer.
 
 ### `POST /v1/start`
 
