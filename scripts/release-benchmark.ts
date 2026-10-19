@@ -2,7 +2,7 @@
 // @effect-diagnostics nodeBuiltinImport:off globalConsole:off globalDate:off globalTimers:off - Standalone CI CLI that spawns the built app and reads wall-clock time; it runs outside any Effect runtime.
 // Per-release benchmark and budget gate (ADR-0074). Measures the Scribe engine
 // with scribe-bench, then installs-by-extraction and launches the built app to
-// measure full-app idle RAM and cold start. Engine budgets fail the build. App
+// measure full-app idle RAM (private memory) and cold start. Engine budgets fail the build. App
 // budgets fail it only with --enforce-app; before that they warn and the report
 // says whether the Tauri gate (an app budget busted) is tripped.
 //
@@ -180,9 +180,19 @@ function powershell(script: string): string {
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
+const psPath = (path: string) => path.replaceAll("/", "\\").replaceAll("'", "''");
+
+/**
+ * PowerShell that prints the summed private bytes of every process of the app. Private memory is
+ * what the app owns; the working set counts shared pages once per process (761.3 MB on the first
+ * proof), so it overstates the cost against the budget.
+ */
+export const appMemoryScript = (appExe: string): string =>
+  `(Get-Process | Where-Object { $_.Path -eq '${psPath(appExe)}' } | Measure-Object PrivateMemorySize64 -Sum).Sum`;
+
 async function measureApp(appExe: string, idleSeconds: number) {
   const home = mkdtempSync(join(tmpdir(), "leonidas-bench-"));
-  const exeForPs = appExe.replaceAll("/", "\\").replaceAll("'", "''");
+  const exeForPs = psPath(appExe);
   const started = Date.now();
   // The app allows one instance per user, so this cannot run beside a running
   // Leonidas on the same Windows account (a CI runner has none). The app
@@ -204,11 +214,7 @@ async function measureApp(appExe: string, idleSeconds: number) {
       await sleep(100);
     }
     await sleep(idleSeconds * 1000);
-    const bytes = Number(
-      powershell(
-        `(Get-Process | Where-Object { $_.Path -eq '${exeForPs}' } | Measure-Object WorkingSet64 -Sum).Sum`,
-      ),
-    );
+    const bytes = Number(powershell(appMemoryScript(appExe)));
     // No running process sums to 0 or NaN: report not measured, never 0 MB.
     const idleMb = bytes > 0 ? Math.round((bytes / 1024 / 1024) * 10) / 10 : Number.NaN;
     return { coldStartMs, idleMb };

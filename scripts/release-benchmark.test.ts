@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 
 import {
   appendHistoryRow,
+  appMemoryScript,
   evaluateBudgets,
   HISTORY_HEADER,
   parseBenchOutput,
@@ -111,5 +112,18 @@ describe("history and report", () => {
       evaluateBudgets({ ...goodSample, appIdleMb: 600 }, { enforceApp: false }),
     );
     assert.include(tripped, "Tauri gate: TRIPPED");
+  });
+});
+
+describe("appMemoryScript", () => {
+  it("sums private memory over the app processes, not the working set that counts shared pages twice", () => {
+    const script = appMemoryScript("C:\Apps\Leonidas Code.exe");
+    assert.include(script, "PrivateMemorySize64");
+    assert.notInclude(script, "WorkingSet64");
+    assert.include(script, "C:\Apps\Leonidas Code.exe");
+  });
+
+  it("escapes a single quote in the path", () => {
+    assert.include(appMemoryScript("C:\it's\app.exe"), "it''s");
   });
 });
