@@ -24,6 +24,7 @@ export function LocalVmPanel({
   return (
     <>
       <Button
+        className="shrink-0"
         variant="ghost"
         size="sm"
         onClick={() => setVisible(!visible)}

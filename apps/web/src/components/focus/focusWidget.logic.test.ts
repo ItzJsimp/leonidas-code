@@ -19,6 +19,13 @@ describe("focus widget drag", () => {
     });
   });
 
+  it("keeps a floating widget left of a side panel by clamping to the chat column", () => {
+    const column = { left: 0, top: 40, width: 600, height: 700 };
+    expect(clampToViewport({ x: 900, y: 10 }, widget, column)).toEqual({ x: 292, y: 48 });
+    const offset = { left: 200, top: 0, width: 400, height: 700 };
+    expect(clampToViewport({ x: 0, y: 0 }, widget, offset)).toEqual({ x: 208, y: 8 });
+  });
+
   it("snaps home near the dock and floats elsewhere", () => {
     const dock = { x: 680, y: 16 };
     expect(settleDrag({ x: 690, y: 20 }, dock, widget, viewport)).toBeNull();

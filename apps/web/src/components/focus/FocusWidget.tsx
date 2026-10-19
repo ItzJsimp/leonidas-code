@@ -27,6 +27,7 @@ import {
 import { useEnvironmentQuery } from "~/state/query";
 import { focusLive, focusUpdate, taskBoardCardCreate } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
+import { observeResize } from "../../lib/observeResize";
 import { failureText } from "../taskBoard/useTaskActions.logic";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -35,6 +36,7 @@ import { Spinner } from "../ui/spinner";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
+  type Bounds,
   clampToViewport,
   nudge,
   progressOf,
@@ -54,7 +56,13 @@ function Tip(props: { label: string; children: ReactElement }) {
   );
 }
 
-const viewportSize = () => ({ width: window.innerWidth, height: window.innerHeight });
+/** The chat column that holds the widget; the side panel sits outside it, so the widget never covers the panel. */
+const boundsOf = (node: HTMLElement | null): Bounds => {
+  const box = node?.parentElement?.getBoundingClientRect();
+  return box
+    ? { left: box.left, top: box.top, width: box.width, height: box.height }
+    : { width: window.innerWidth, height: window.innerHeight };
+};
 
 /**
  * Floating notepad of what the user has on their mind, read from `<AIOS>/memory/focus.md`.
@@ -88,12 +96,21 @@ export default function FocusWidget(props: {
     const onResize = () => {
       const node = rootRef.current;
       if (!node) return;
-      const next = clampToViewport(position, node.getBoundingClientRect(), viewportSize());
+      const next = clampToViewport(
+        position,
+        node.getBoundingClientRect(),
+        boundsOf(rootRef.current),
+      );
       if (next.x !== position.x || next.y !== position.y) setPosition(next);
     };
     onResize();
+    const parent = rootRef.current?.parentElement;
+    const stop = parent ? observeResize(parent, onResize) : () => {};
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      stop();
+      window.removeEventListener("resize", onResize);
+    };
   }, [position, setPosition]);
 
   const update = useCallback(
@@ -176,7 +193,7 @@ export default function FocusWidget(props: {
       clampToViewport(
         { x: event.clientX - active.offset.x, y: event.clientY - active.offset.y },
         box,
-        viewportSize(),
+        boundsOf(rootRef.current),
       ),
     );
   };
@@ -185,7 +202,8 @@ export default function FocusWidget(props: {
     if (!active || active.pointerId !== event.pointerId) return;
     drag.current = null;
     const box = rootRef.current?.getBoundingClientRect();
-    if (dragPoint && box) setPosition(settleDrag(dragPoint, dockPoint(), box, viewportSize()));
+    if (dragPoint && box)
+      setPosition(settleDrag(dragPoint, dockPoint(), box, boundsOf(rootRef.current)));
     setDragPoint(null);
   };
   const onHandleKey = (event: KeyboardEvent<HTMLElement>) => {
@@ -199,7 +217,7 @@ export default function FocusWidget(props: {
     const next = nudge(position ?? { x: box.left, y: box.top }, event.key, event.shiftKey);
     if (!next) return;
     event.preventDefault();
-    setPosition(clampToViewport(next, box, viewportSize()));
+    setPosition(clampToViewport(next, box, boundsOf(rootRef.current)));
   };
 
   const floating = dragPoint ?? position;

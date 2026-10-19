@@ -16,13 +16,27 @@ const FOCUS_EDGE_GAP = 8;
 /** A floating widget dropped this close to its dock goes back to the dock. */
 const FOCUS_SNAP_DISTANCE = 24;
 
-/** Keeps the whole widget inside the viewport; a widget larger than the viewport sticks to the top left. */
-export function clampToViewport(position: Point, widget: Size, viewport: Size): Point {
-  const maxX = Math.max(FOCUS_EDGE_GAP, viewport.width - widget.width - FOCUS_EDGE_GAP);
-  const maxY = Math.max(FOCUS_EDGE_GAP, viewport.height - widget.height - FOCUS_EDGE_GAP);
+/** The area a floating widget may use. `left` and `top` default to 0 (the whole window). */
+export interface Bounds extends Size {
+  readonly left?: number;
+  readonly top?: number;
+}
+
+/** Keeps the whole widget inside the bounds; a widget larger than the bounds sticks to the top left. */
+export function clampToViewport(position: Point, widget: Size, viewport: Bounds): Point {
+  const minX = (viewport.left ?? 0) + FOCUS_EDGE_GAP;
+  const minY = (viewport.top ?? 0) + FOCUS_EDGE_GAP;
+  const maxX = Math.max(
+    minX,
+    (viewport.left ?? 0) + viewport.width - widget.width - FOCUS_EDGE_GAP,
+  );
+  const maxY = Math.max(
+    minY,
+    (viewport.top ?? 0) + viewport.height - widget.height - FOCUS_EDGE_GAP,
+  );
   return {
-    x: Math.round(Math.min(Math.max(position.x, FOCUS_EDGE_GAP), maxX)),
-    y: Math.round(Math.min(Math.max(position.y, FOCUS_EDGE_GAP), maxY)),
+    x: Math.round(Math.min(Math.max(position.x, minX), maxX)),
+    y: Math.round(Math.min(Math.max(position.y, minY), maxY)),
   };
 }
 
@@ -31,7 +45,7 @@ export function settleDrag(
   position: Point,
   dock: Point | null,
   widget: Size,
-  viewport: Size,
+  viewport: Bounds,
 ): Point | null {
   const clamped = clampToViewport(position, widget, viewport);
   if (dock && Math.hypot(clamped.x - dock.x, clamped.y - dock.y) <= FOCUS_SNAP_DISTANCE) {
