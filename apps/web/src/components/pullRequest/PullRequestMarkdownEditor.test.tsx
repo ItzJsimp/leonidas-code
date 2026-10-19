@@ -27,6 +27,7 @@ vi.mock("~/state/session", async () => {
 vi.mock("~/lib/utils", () => ({ cn: () => "" }));
 vi.mock("../ui/button", () => ({ Button: "button" }));
 vi.mock("../ui/textarea", () => ({ Textarea: "textarea" }));
+vi.mock("../voice/DictationTextarea", () => ({ DictationTextarea: "textarea" }));
 vi.mock("../ui/toggle-group", () => ({ Toggle: "button", ToggleGroup: "div" }));
 vi.mock("./PullRequestMarkdown", () => ({ PullRequestMarkdown: "article" }));
 

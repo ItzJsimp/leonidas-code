@@ -92,7 +92,7 @@ import {
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { Textarea } from "../ui/textarea";
+import { DictationTextarea } from "../voice/DictationTextarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import {
   SettingsPageContainer,
@@ -1114,7 +1114,7 @@ function ScheduledTaskEditorDialog({
             ) : null}
 
             <Field label="Message" htmlFor="scheduled-task-prompt">
-              <Textarea
+              <DictationTextarea
                 id="scheduled-task-prompt"
                 className="max-h-64 overflow-y-auto"
                 placeholder="What should the AI do each time this runs?"

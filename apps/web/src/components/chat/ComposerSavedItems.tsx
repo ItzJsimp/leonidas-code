@@ -70,6 +70,7 @@ import {
 import { Input } from "../ui/input";
 import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
+import { DictationTextarea } from "../voice/DictationTextarea";
 import { ComposerBanner } from "./ComposerBanner";
 import { createDraftSaver } from "./savedDraft";
 import { useProjectAiosWorkspace } from "../workspace/useProjectAiosWorkspace";
@@ -691,7 +692,7 @@ function SavedItemsPanel(props: Props & { canOperate: boolean; close: () => void
                             setEditing({ ...editing, title: event.target.value })
                           }
                         />
-                        <Textarea
+                        <DictationTextarea
                           aria-label="Message text"
                           className="min-h-32"
                           value={editing.body}

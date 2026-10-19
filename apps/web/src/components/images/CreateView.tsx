@@ -22,6 +22,7 @@ import {
 } from "../ui/number-field";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Textarea } from "../ui/textarea";
+import { DictationTextarea } from "../voice/DictationTextarea";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { FitBadge, HelpText } from "./catalogBadges";
 import {
@@ -177,7 +178,7 @@ export function CreateView(props: {
       {/* Prompt */}
       <div className="flex flex-col gap-2">
         <SectionLabel htmlFor={`${ids}-prompt`}>Prompt</SectionLabel>
-        <Textarea
+        <DictationTextarea
           id={`${ids}-prompt`}
           value={memory.prompt}
           maxLength={4000}
