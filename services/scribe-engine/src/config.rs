@@ -137,6 +137,14 @@ impl Default for PolishConfig {
 }
 
 impl Config {
+    /// Polish sends the transcript text to the cloud, so private mode turns it off.
+    pub fn effective_polish(&self) -> PolishConfig {
+        PolishConfig {
+            enabled: self.polish.enabled && !self.private_mode,
+            ..self.polish.clone()
+        }
+    }
+
     /// `%APPDATA%\Leonidas\scribe-engine` (or `$HOME/.config/leonidas/scribe-engine`).
     pub fn default_dir() -> PathBuf {
         if let Some(app) = std::env::var_os("APPDATA") {
@@ -168,6 +176,14 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn private_mode_turns_cloud_polish_off() {
+        let mut c = Config::default();
+        assert!(c.effective_polish().enabled);
+        c.private_mode = true;
+        assert!(!c.effective_polish().enabled);
+    }
 
     #[test]
     fn partial_file_keeps_defaults() {
