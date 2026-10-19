@@ -1,5 +1,6 @@
 //! Loopback HTTP and SSE server for the contract. Slice S1.
 
+use crate::audio::InputDevice;
 use crate::contract::{
     now_iso, CredentialRequest, DictionaryBody, ErrorBody, StartRequest, StateReply, Status,
     StopRequest, API_VERSION, SERVICE,
@@ -43,7 +44,11 @@ pub struct Services {
     pub settings: Arc<Settings>,
     pub local: Arc<dyn LocalModel>,
     pub dictionary: Arc<SharedDictionary>,
+    pub devices: Arc<DeviceLister>,
 }
+
+/// Lists the input devices; tests pass a fake.
+pub type DeviceLister = dyn Fn() -> Result<Vec<InputDevice>, String> + Send + Sync;
 
 pub fn serve(engine: Engine, services: Services, port: u16) -> Result<ServerHandle, String> {
     serve_with_ping(engine, services, port, PING_INTERVAL)
@@ -170,6 +175,15 @@ fn route(mut request: Request, engine: &Engine, services: &Services) {
     }
     if path == "/v1/settings" {
         return settings_route(request, services);
+    }
+    if path == "/v1/devices" {
+        if request.method() != &Method::Get {
+            return error(request, 405, "method_not_allowed");
+        }
+        return match (services.devices)() {
+            Ok(inputs) => json(request, 200, &serde_json::json!({ "inputs": inputs })),
+            Err(_) => error(request, 500, "mic_error"),
+        };
     }
     match (request.url(), request.method()) {
         ("/v1/status", Method::Get) => {
@@ -387,6 +401,7 @@ mod tests {
             settings: Arc::new(Settings::new("none-config.json".into(), cfg)),
             local: Arc::new(NoLocal),
             dictionary: Arc::new(SharedDictionary::new(std::path::PathBuf::from("none.json"))),
+            devices: Arc::new(|| Ok(Vec::new())),
         }
     }
 
@@ -1027,5 +1042,35 @@ mod tests {
         server
             .request("PUT", "/v1/settings", "{}")
             .error(405, "method_not_allowed");
+    }
+
+    #[test]
+    fn devices_list_inputs_and_report_a_failure() {
+        let mut services = test_services(Arc::new(MemoryKeyStore::default()));
+        services.devices = Arc::new(|| {
+            Ok(vec![
+                InputDevice::new("USB Mic", false),
+                InputDevice::new("Realtek Mic", true),
+            ])
+        });
+        let server = TestServer::with_services(services);
+        let reply = server.request("GET", "/v1/devices", "");
+        assert_eq!(reply.status, 200);
+        assert_eq!(
+            reply.body,
+            json!({"inputs":[
+                {"id":"USB Mic","name":"USB Mic","default":false},
+                {"id":"Realtek Mic","name":"Realtek Mic","default":true}
+            ]})
+        );
+        server
+            .request("POST", "/v1/devices", "{}")
+            .error(405, "method_not_allowed");
+
+        let mut services = test_services(Arc::new(MemoryKeyStore::default()));
+        services.devices = Arc::new(|| Err("no audio host".into()));
+        TestServer::with_services(services)
+            .request("GET", "/v1/devices", "")
+            .error(500, "mic_error");
     }
 }

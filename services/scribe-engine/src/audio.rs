@@ -19,6 +19,38 @@ struct Capture {
     error: Option<String>,
 }
 
+/// v1.2 `GET /v1/devices` item. cpal has no stable device id, so the id is the name.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct InputDevice {
+    pub id: String,
+    pub name: String,
+    pub default: bool,
+}
+
+impl InputDevice {
+    pub fn new(name: &str, default: bool) -> Self {
+        Self {
+            id: name.into(),
+            name: name.into(),
+            default,
+        }
+    }
+}
+
+/// The input devices of the default host, with the system default marked.
+pub fn input_devices() -> Result<Vec<InputDevice>, String> {
+    let host = cpal::default_host();
+    let name = |device: &cpal::Device| device.description().ok().map(|d| d.name().to_owned());
+    let default = host.default_input_device().as_ref().and_then(name);
+    let devices = host
+        .input_devices()
+        .map_err(|e| format!("Cannot list input devices: {e}"))?;
+    Ok(devices
+        .filter_map(|device| name(&device))
+        .map(|n| InputDevice::new(&n, default.as_deref() == Some(n.as_str())))
+        .collect())
+}
+
 pub struct CpalRecorder {
     host: cpal::Host,
     cfg: AudioConfig,

@@ -94,6 +94,7 @@ fn run() -> Result<(), String> {
             settings: settings.clone(),
             local: local.clone() as Arc<dyn LocalModel>,
             dictionary,
+            devices: Arc::new(scribe_engine::audio::input_devices),
         },
         cfg.port,
     )?;
