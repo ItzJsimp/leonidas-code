@@ -32,3 +32,14 @@ export const scribeStop = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:scribe:stop",
   tag: WS_METHODS.scribeStop,
 });
+
+/** One page of history, read on demand (the Transcripts tab pages by cursor and searches loaded pages). */
+export const scribeListHistoryPage = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:history-page",
+  tag: WS_METHODS.scribeListHistory,
+});
+
+export const scribeDeleteHistory = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:delete-history",
+  tag: WS_METHODS.scribeDeleteHistory,
+});

@@ -506,6 +506,8 @@ import {
 } from "./voice.ts";
 import {
   ScribeCommandResult,
+  ScribeDeleteHistoryInput,
+  ScribeDeleteHistoryResult,
   ScribeEngineError,
   ScribeHistoryPage,
   ScribeListHistoryInput,
@@ -535,6 +537,7 @@ export const WS_METHODS = {
   scribeStart: "scribe.start",
   scribeStop: "scribe.stop",
   scribeListHistory: "scribe.listHistory",
+  scribeDeleteHistory: "scribe.deleteHistory",
   scribeSubscribeEvents: "scribe.subscribeEvents",
   voiceGetStatus: "voice.getStatus",
   voiceSetGroqKey: "voice.setGroqKey",
@@ -2290,6 +2293,12 @@ const WsScribeListHistoryRpc = Rpc.make(WS_METHODS.scribeListHistory, {
   error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
 });
 
+const WsScribeDeleteHistoryRpc = Rpc.make(WS_METHODS.scribeDeleteHistory, {
+  payload: ScribeDeleteHistoryInput,
+  success: ScribeDeleteHistoryResult,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
 const WsScribeSubscribeEventsRpc = Rpc.make(WS_METHODS.scribeSubscribeEvents, {
   payload: Schema.Struct({}),
   success: ScribeLiveEvent,
@@ -2736,6 +2745,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsScribeStartRpc,
   WsScribeStopRpc,
   WsScribeListHistoryRpc,
+  WsScribeDeleteHistoryRpc,
   WsScribeSubscribeEventsRpc,
   WsVoiceGetStatusRpc,
   WsVoiceSetGroqKeyRpc,

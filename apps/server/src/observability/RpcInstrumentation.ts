@@ -83,6 +83,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.serverDisableAcpRegistryProvider]: "server",
   [WS_METHODS.scribeGetStatus]: "scribe",
   [WS_METHODS.scribeListHistory]: "scribe",
+  [WS_METHODS.scribeDeleteHistory]: "scribe",
   [WS_METHODS.scribeSubscribeEvents]: "scribe",
   [WS_METHODS.scribeStart]: "scribe",
   [WS_METHODS.scribeStop]: "scribe",

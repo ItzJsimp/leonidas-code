@@ -1,5 +1,7 @@
 import {
   ScribeCommandResult,
+  type ScribeDeleteHistoryInput,
+  ScribeDeleteHistoryResult,
   ScribeEngineError,
   ScribeEngineState,
   ScribeEngineWireEvent,
@@ -37,6 +39,9 @@ export class ScribeEngine extends Context.Service<
     readonly listHistory: (
       input: ScribeListHistoryInput,
     ) => Effect.Effect<ScribeHistoryPage, ScribeEngineError>;
+    readonly deleteHistory: (
+      input: ScribeDeleteHistoryInput,
+    ) => Effect.Effect<ScribeDeleteHistoryResult, ScribeEngineError>;
     /** Engine events plus `connection` events. Reconnects every second while the engine is down. */
     readonly events: Stream.Stream<ScribeLiveEvent>;
   }
@@ -46,6 +51,7 @@ const decodeCommand = Schema.decodeUnknownEffect(ScribeCommandResult);
 const decodeStatus = Schema.decodeUnknownEffect(
   Schema.Struct({ state: ScribeEngineState, sampledAt: Schema.String }),
 );
+const decodeDeleted = Schema.decodeUnknownEffect(ScribeDeleteHistoryResult);
 const decodePage = Schema.decodeUnknownEffect(ScribeHistoryPage);
 const decodeWireEvent = Schema.decodeUnknownOption(Schema.fromJsonString(ScribeEngineWireEvent));
 
@@ -125,6 +131,12 @@ export const makeWith = (options: {
       );
     };
 
+    const deleteHistory = (input: ScribeDeleteHistoryInput) =>
+      call(
+        HttpClientRequest.delete(`${baseUrl}/v1/history/${encodeURIComponent(input.id)}`),
+        decodeDeleted,
+      );
+
     const connection = (connected: boolean) =>
       Effect.map(DateTime.now, (now): ScribeLiveEvent => ({
         type: "connection",
@@ -176,7 +188,7 @@ export const makeWith = (options: {
       ),
     );
 
-    return ScribeEngine.of({ start, stop, listHistory, events });
+    return ScribeEngine.of({ start, stop, listHistory, deleteHistory, events });
   });
 
 export const layer = Layer.effect(ScribeEngine, makeWith({ baseUrl: scribeEngineBaseUrl() }));

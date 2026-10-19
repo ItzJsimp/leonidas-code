@@ -9,6 +9,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "..
 import { SidebarInset } from "../ui/sidebar";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { ScribeHomeTab } from "./ScribeHomeTab";
+import { ScribeTranscriptsTab } from "./ScribeTranscriptsTab";
 import { INITIAL_SCRIBE_LIVE, engineStrip, type ScribeLiveSnapshot } from "./scribeLive.logic";
 
 export interface ScribeTabProps {
@@ -17,7 +18,10 @@ export interface ScribeTabProps {
 }
 
 /** Only built tabs appear. Each later tab adds one row here. */
-const TABS = [{ id: "home", label: "Home", render: ScribeHomeTab }] as const;
+const TABS = [
+  { id: "home", label: "Home", render: ScribeHomeTab },
+  { id: "transcripts", label: "Transcripts", render: ScribeTranscriptsTab },
+] as const;
 
 export type ScribeTabId = (typeof TABS)[number]["id"];
 
