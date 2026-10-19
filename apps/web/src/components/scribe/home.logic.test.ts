@@ -1,0 +1,86 @@
+import type { ScribeHistoryItem } from "@t3tools/contracts";
+import { describe, expect, it } from "vite-plus/test";
+
+import {
+  commandErrorMessage,
+  dictateButton,
+  relativeTimeLabel,
+  rowMeta,
+  shouldRetryHistory,
+} from "./home.logic";
+
+const NOW = Date.parse("2026-10-17T12:00:00Z");
+const ago = (ms: number) => new Date(NOW - ms).toISOString();
+
+describe("dictateButton", () => {
+  it("disables when the engine is stopped or unknown", () => {
+    expect(dictateButton(false, null)).toEqual({ label: "Start", action: "none", disabled: true });
+    expect(dictateButton(null, "ready").disabled).toBe(true);
+  });
+  it("maps engine states", () => {
+    expect(dictateButton(true, "ready")).toEqual({
+      label: "Start",
+      action: "start",
+      disabled: false,
+    });
+    expect(dictateButton(true, null).action).toBe("start");
+    expect(dictateButton(true, "listening")).toEqual({
+      label: "Stop",
+      action: "stop",
+      disabled: false,
+    });
+    expect(dictateButton(true, "processing")).toEqual({
+      label: "Processing",
+      action: "none",
+      disabled: true,
+    });
+  });
+});
+
+describe("commandErrorMessage", () => {
+  it("maps known reasons", () => {
+    expect(commandErrorMessage({ reason: "invalid_state" })).toBe(
+      "Scribe is busy. Wait for it to finish, then try again.",
+    );
+    expect(commandErrorMessage({ reason: "offline" })).toBe("Scribe engine is not running.");
+  });
+  it("falls back for unknown input", () => {
+    expect(commandErrorMessage({ reason: "zzz" })).toBe("Scribe could not do that. Try again.");
+    expect(commandErrorMessage(null)).toBe("Scribe could not do that. Try again.");
+    expect(commandErrorMessage(new Error("x"))).toBe("Scribe could not do that. Try again.");
+  });
+});
+
+describe("relativeTimeLabel", () => {
+  it("steps through units", () => {
+    expect(relativeTimeLabel(ago(10_000), NOW)).toBe("Just now");
+    expect(relativeTimeLabel(ago(5 * 60_000), NOW)).toBe("5 min ago");
+    expect(relativeTimeLabel(ago(3 * 3_600_000), NOW)).toBe("3 h ago");
+    expect(relativeTimeLabel(ago(2 * 86_400_000), NOW)).toBe("2 d ago");
+  });
+  it("handles bad and future dates", () => {
+    expect(relativeTimeLabel("nope", NOW)).toBe("");
+    expect(relativeTimeLabel(ago(-5000), NOW)).toBe("Just now");
+  });
+});
+
+describe("rowMeta", () => {
+  const item = { at: ago(120_000), app: "Code", words: 1 } as ScribeHistoryItem;
+  it("joins time, app and words", () => {
+    expect(rowMeta(item, NOW)).toBe("2 min ago · Code · 1 word");
+    expect(rowMeta({ ...item, app: " ", words: 4 }, NOW)).toBe("2 min ago · 4 words");
+  });
+});
+
+describe("shouldRetryHistory", () => {
+  it("retries a failed read when the engine reconnects", () => {
+    expect(shouldRetryHistory(false, true, true)).toBe(true);
+    expect(shouldRetryHistory(null, true, true)).toBe(true);
+  });
+
+  it("does not retry without an error or without a reconnect", () => {
+    expect(shouldRetryHistory(false, true, false)).toBe(false);
+    expect(shouldRetryHistory(true, true, true)).toBe(false);
+    expect(shouldRetryHistory(true, false, true)).toBe(false);
+  });
+});

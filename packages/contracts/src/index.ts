@@ -75,6 +75,7 @@ export * from "./images.ts";
 export * from "./localModels.ts";
 export * from "./rpc.ts";
 export * from "./voice.ts";
+export * from "./scribe.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
 export * from "./subagentSpawn.ts";
