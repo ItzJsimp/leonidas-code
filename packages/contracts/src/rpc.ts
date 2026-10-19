@@ -505,6 +505,15 @@ import {
   VoiceTranscribeInput,
   VoiceTranscribeResult,
 } from "./voice.ts";
+import {
+  ScribeCommandResult,
+  ScribeEngineError,
+  ScribeHistoryPage,
+  ScribeListHistoryInput,
+  ScribeLiveEvent,
+  ScribeStartInput,
+  ScribeStopInput,
+} from "./scribe.ts";
 
 export const ScribeStatusSnapshot = Schema.Struct({
   service: Schema.Literal("leonidas-scribe"),
@@ -524,6 +533,10 @@ export type ScribeStatusResult = typeof ScribeStatusResult.Type;
 
 export const WS_METHODS = {
   scribeGetStatus: "scribe.getStatus",
+  scribeStart: "scribe.start",
+  scribeStop: "scribe.stop",
+  scribeListHistory: "scribe.listHistory",
+  scribeSubscribeEvents: "scribe.subscribeEvents",
   voiceGetStatus: "voice.getStatus",
   voiceSetGroqKey: "voice.setGroqKey",
   voiceClearGroqKey: "voice.clearGroqKey",
@@ -2267,6 +2280,31 @@ const WsScribeGetStatusRpc = Rpc.make(WS_METHODS.scribeGetStatus, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsScribeStartRpc = Rpc.make(WS_METHODS.scribeStart, {
+  payload: ScribeStartInput,
+  success: ScribeCommandResult,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const WsScribeStopRpc = Rpc.make(WS_METHODS.scribeStop, {
+  payload: ScribeStopInput,
+  success: ScribeCommandResult,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const WsScribeListHistoryRpc = Rpc.make(WS_METHODS.scribeListHistory, {
+  payload: ScribeListHistoryInput,
+  success: ScribeHistoryPage,
+  error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
+});
+
+const WsScribeSubscribeEventsRpc = Rpc.make(WS_METHODS.scribeSubscribeEvents, {
+  payload: Schema.Struct({}),
+  success: ScribeLiveEvent,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
 const WsVoiceGetStatusRpc = Rpc.make(WS_METHODS.voiceGetStatus, {
   payload: Schema.Struct({}),
   success: VoiceStatus,
@@ -2703,6 +2741,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsSavedItemsScheduleRpc,
   WsSavedItemsSaveTaskRpc,
   WsScribeGetStatusRpc,
+  WsScribeStartRpc,
+  WsScribeStopRpc,
+  WsScribeListHistoryRpc,
+  WsScribeSubscribeEventsRpc,
   WsVoiceGetStatusRpc,
   WsVoiceSetGroqKeyRpc,
   WsVoiceClearGroqKeyRpc,

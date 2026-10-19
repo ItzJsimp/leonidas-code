@@ -15,6 +15,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.voiceSetGroqKey]: AuthSettingsWriteScope,
   [WS_METHODS.voiceClearGroqKey]: AuthSettingsWriteScope,
   [WS_METHODS.voiceTranscribe]: AuthOrchestrationOperateScope,
+  [WS_METHODS.scribeStart]: AuthOrchestrationOperateScope,
+  [WS_METHODS.scribeStop]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.subagentsRespondSpawnApproval]: AuthOrchestrationOperateScope,
   [WS_METHODS.subagentsUpdate]: AuthOrchestrationOperateScope,
