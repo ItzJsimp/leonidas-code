@@ -2466,7 +2466,9 @@ export const stageScribeEngine = Effect.fn("stageScribeEngine")(function* (input
     ]);
     yield* runCommand(
       ChildProcess.make(spawnCommand.command, spawnCommand.args, {
-        cwd: input.repoRoot,
+        // Cargo reads `.cargo/config.toml` from the working folder, not the manifest folder.
+        // Run in the crate folder, or whisper.cpp builds without AVX2 and /O2 (about 8x slower).
+        cwd: path.dirname(manifestPath),
         shell: spawnCommand.shell,
       }),
       { label: `cargo build scribe engine (${rustTarget})`, verbose: input.verbose },
