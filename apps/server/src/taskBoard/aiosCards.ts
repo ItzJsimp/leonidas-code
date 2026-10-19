@@ -551,6 +551,7 @@ export function cardToTask(input: {
     labels,
     source: "aios_card",
     projectSlug,
+    ...(field(fields, "project_id") ? { projectId: field(fields, "project_id") } : {}),
     effort: field(fields, "effort") || null,
     energy: field(fields, "energy_type") || null,
     due: due || null,
@@ -966,6 +967,8 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
     const slug = normalizeProjectSlug(patch.projectSlug ?? undefined);
     if (slug !== was.project) {
       setKey("project", slug === null ? null : quote(slug));
+      // The stored project id named the old project; the slug decides the owner again.
+      setKey("project_id", null);
       other.push(slug === null ? "unlinked from project" : `linked to project ${slug}`);
       changed = true;
     }
@@ -1019,6 +1022,8 @@ export function createCardFile(
     description?: string | undefined;
     priority?: string | undefined;
     projectSlug?: string | null | undefined;
+    /** The app project id; it keeps a native card in that project's workspace on a slug clash. */
+    projectId?: string | null | undefined;
     assignee?: string | null | undefined;
     kind?: "task" | "agent_run" | undefined;
     actor: string;
@@ -1048,6 +1053,7 @@ export function createCardFile(
         `created: ${date}`,
         `last_touched: ${date}`,
         ...(projectSlug ? [`project: ${quote(projectSlug)}`] : []),
+        ...(projectSlug && input.projectId ? [`project_id: ${quote(input.projectId)}`] : []),
         ...(input.due ? [`due: ${quote(input.due)}`] : []),
         ...(input.milestone ? [`milestone: ${quote(input.milestone)}`] : []),
         ...(input.assignee?.trim() ? [`assignee: ${quote(oneLine(input.assignee))}`] : []),

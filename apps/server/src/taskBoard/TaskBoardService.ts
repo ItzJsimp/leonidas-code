@@ -597,7 +597,10 @@ export class TaskBoardService extends Context.Service<
     /** The latest task completions made through this server: the current list, then each change. */
     readonly completions: Stream.Stream<TaskBoardCompletions>;
     /** The focus list in `<AIOS>/memory/focus.md` (the native root when no AIOS is found). */
-    readonly focus: (projects: ReadonlyArray<Project>) => Effect.Effect<FocusSnapshot>;
+    readonly focus: (
+      projects: ReadonlyArray<Project>,
+      target?: WorkspaceTarget,
+    ) => Effect.Effect<FocusSnapshot>;
     readonly focusUpdate: (
       input: FocusUpdateInput,
       projects: ReadonlyArray<Project>,
@@ -681,15 +684,23 @@ const make = Effect.gen(function* () {
         slugOwner.set(slug, owner.root);
       }
     }
-    // A caller with no workspace id (TaskAutoLog, MCP board tools, old clients) keeps the
-    // pre-workspace view: every native card and every project.
+    // Card callers with no workspace id (TaskAutoLog, MCP board tools, old clients) keep the
+    // pre-workspace card view. Focus uses its file's workspace, including the default file.
     const scoped = "project" in target || Boolean(target.workspaceId);
     // App-owned (native) cards belong to the workspace that holds their project, else the default.
+    // A card made for a known project keys by that project's id; older cards key by slug.
+    const idOwner = (task: TaskBoardTask) => {
+      const project = task.projectId
+        ? projects.find((candidate) => candidate.id === task.projectId)
+        : undefined;
+      return project ? workspaceForPath(workspaces, project.workspaceRoot)?.root : undefined;
+    };
     const keepNative = (task: TaskBoardTask) =>
       !scoped ||
       workspaces.length === 0 ||
       (root !== null &&
-        (slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) === root);
+        (idOwner(task) ?? slugOwner.get(task.projectSlug?.toLowerCase() ?? "") ?? defaultRoot) ===
+          root);
     // An app project belongs to the workspace that holds its folder, else the default.
     const inScope = (project: { readonly workspaceRoot: string }) =>
       !scoped ||
@@ -1664,6 +1675,7 @@ const make = Effect.gen(function* () {
                     projectSlug: taskProject === undefined ? null : aiosSlugFor(taskProject),
                   }
                 : {}),
+              projectId: taskProject?.id ?? null,
               ...(stableId !== undefined
                 ? { id: stableId }
                 : root === nativeRoot
@@ -1750,9 +1762,17 @@ const make = Effect.gen(function* () {
     });
 
   const focusRevision = yield* SubscriptionRef.make(0);
-  const focusPath = (projects: ReadonlyArray<Project>) => {
-    const root = inboxRoot(projects);
+  const focusPath = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) => {
+    const root = inboxRoot(projects, target);
     return root === null ? null : focusPathFor(root);
+  };
+  const focusProjects = (projects: ReadonlyArray<Project>, target: WorkspaceTarget) => {
+    const scope = scopeFor(projects, target);
+    return projects.filter(
+      (project) =>
+        (workspaceForPath(scope.workspaces, project.workspaceRoot)?.root ?? scope.defaultRoot) ===
+        scope.root,
+    );
   };
   const focusSnapshotOf = (
     path: string | null,
@@ -1771,12 +1791,12 @@ const make = Effect.gen(function* () {
     };
   };
   // A file that cannot be read shows as an empty list with its path, so the widget can say where it looked.
-  const focus = (projects: ReadonlyArray<Project>) =>
+  const focus = (projects: ReadonlyArray<Project>, target: WorkspaceTarget = {}) =>
     Effect.sync(() => {
-      const path = focusPath(projects);
+      const path = focusPath(projects, target);
       if (path === null) return { path: null, member: resolveMember(), sections: [] };
       try {
-        return focusSnapshotOf(path, readFocusFile(path), projects);
+        return focusSnapshotOf(path, readFocusFile(path), focusProjects(projects, target));
       } catch {
         return { path, member: resolveMember(), sections: [] };
       }
@@ -1784,15 +1804,23 @@ const make = Effect.gen(function* () {
 
   const focusUpdate = (input: FocusUpdateInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
-      const path = focusPath(projects);
+      const path = focusPath(projects, input);
       if (path === null) return yield* storageError("No folder is available for the focus list.");
+      const scopedProjects = focusProjects(projects, input);
+      if (
+        input.op === "add" &&
+        input.projectId !== null &&
+        !scopedProjects.some((project) => project.id === input.projectId)
+      ) {
+        return yield* storageError("That project is not in this workspace.");
+      }
       const snapshot = yield* Effect.try({
         try: () => {
           const doc = readFocusFile(path);
           let next: typeof doc | null;
           if (input.op === "add") {
             const project = input.projectId
-              ? projects.find((candidate) => candidate.id === input.projectId)
+              ? scopedProjects.find((candidate) => candidate.id === input.projectId)
               : undefined;
             next = addFocusItem(doc, project ? aiosSlugFor(project) : null, input.text);
           } else {
@@ -1809,7 +1837,7 @@ const make = Effect.gen(function* () {
             });
           }
           writeFocusFile(path, next);
-          return focusSnapshotOf(path, next, projects);
+          return focusSnapshotOf(path, next, scopedProjects);
         },
         catch: cardWriteFailure,
       });

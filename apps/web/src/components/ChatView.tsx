@@ -1638,7 +1638,7 @@ export default function ChatView(props: ChatViewProps) {
     [environmentId, threadId],
   );
   const routeThreadKey = useMemo(() => scopedThreadKey(routeThreadRef), [routeThreadRef]);
-  const composerSubagentOptions = useComposerSubagents();
+  const composerSubagentOptions = useComposerSubagents(draftId ?? routeThreadRef);
   const composerSubagentNames = useMemo(
     () => composerSubagentOptions.map((option) => option.name),
     [composerSubagentOptions],

@@ -33,4 +33,8 @@ codegen-units = 1
 strip = true
 
 [dev-dependencies]
-tiny-skia = { version = "0.11.4", default-features = false, features = ["std", "simd", "png-format"] }
+tiny-skia = { version = "0.11.4", default-features = false, features = [
+  "std",
+  "simd",
+  "png-format",
+] }

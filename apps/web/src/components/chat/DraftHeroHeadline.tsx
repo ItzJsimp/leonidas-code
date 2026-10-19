@@ -40,6 +40,7 @@ import {
 } from "../ui/combobox";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { InlineButton } from "../ui/button";
+import { useWorkspaceProjects } from "../workspace/useWorkspaceProjects";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 
 // Picker value for the "Add project" row; real entries are keyed by logical
@@ -62,7 +63,8 @@ export function DraftHeroHeadline({
   activeProjectRef,
   activeProjectTitle,
 }: DraftHeroHeadlineProps) {
-  const projects = useProjects();
+  const allProjects = useProjects();
+  const projects = useWorkspaceProjects(allProjects, activeProjectRef);
   const threads = useThreadShells();
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
