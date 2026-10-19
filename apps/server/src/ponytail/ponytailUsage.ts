@@ -84,6 +84,7 @@ export function summarizePonytail(
   return {
     status: tasks.length > 0 || accounts.some((a) => a.enabled) ? "ready" : "missing",
     accounts: [...accounts],
+    providers: [],
     tasks: tasks.length,
     costUsd,
     agentMinutes,

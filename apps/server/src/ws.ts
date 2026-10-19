@@ -22,12 +22,14 @@ import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { readLayaUsage } from "./laya/layaUsage.ts";
 import { readPonytailUsage } from "./ponytail/ponytailUsage.ts";
+import { readProviderTotals } from "./ponytail/providerTotals.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as Crypto from "effect/Crypto";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
 
+import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Base64 from "effect/encoding/Base64";
@@ -2981,7 +2983,16 @@ const layerWsRpc = (
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
         [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
-        [WS_METHODS.ponytailUsage]: () => Effect.promise(() => readPonytailUsage()),
+        [WS_METHODS.ponytailUsage]: () =>
+          Effect.gen(function* () {
+            const now = yield* Clock.currentTimeMillis;
+            const since = DateTime.formatIso(DateTime.makeUnsafe(now - 30 * 86_400_000));
+            const [usage, providers] = yield* Effect.all([
+              Effect.promise(() => readPonytailUsage()),
+              readProviderTotals(sql, since).pipe(Effect.orElseSucceed(() => [])),
+            ]);
+            return { ...usage, providers };
+          }),
         [WS_METHODS.taskBoardHome]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),

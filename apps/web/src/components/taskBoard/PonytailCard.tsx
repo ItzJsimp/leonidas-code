@@ -4,6 +4,12 @@ import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
 import { ponytailUsageQuery } from "~/state/taskBoard";
 
+const PROVIDER_LABELS: Record<string, string> = {
+  claudeAgent: "Claude",
+  codex: "Codex",
+  antigravity: "Gemini (Antigravity)",
+};
+
 const usd = (n: number) => `$${n.toFixed(2)}`;
 const mins = (n: number) => `${n.toFixed(n < 10 ? 1 : 0)} min`;
 const tokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 100_000 ? 0 : 1)}k` : `${n}`);
@@ -32,9 +38,32 @@ export function PonytailCard() {
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Rules active for every provider. Plugin on in {on} of {data.accounts.length} Claude{" "}
-            {data.accounts.length === 1 ? "account" : "accounts"}.
+            Rules active for every provider. Cost is logged for Claude with the plugin on; other
+            providers show turns, time and tokens. Plugin on in {on} of {data.accounts.length}{" "}
+            Claude {data.accounts.length === 1 ? "account" : "accounts"}.
           </p>
+          {data.providers.length > 0 ? (
+            <div>
+              <h3 className="mb-1 text-xs font-medium text-muted-foreground">
+                Last 30 days, every provider
+              </h3>
+              <ul className="flex flex-col divide-y divide-border">
+                {data.providers.map((p) => (
+                  <li
+                    key={p.provider}
+                    className="flex items-baseline justify-between gap-3 py-1.5 text-sm"
+                  >
+                    <span>{PROVIDER_LABELS[p.provider] ?? p.provider}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {p.turns} {p.turns === 1 ? "turn" : "turns"} · {mins(p.agentMinutes)} ·{" "}
+                      {tokens(p.outputTokens)} out · {tokens(p.inputTokens)} in (
+                      {tokens(p.cachedInputTokens)} cached)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {data.tasks === 0 ? (
             <p className="text-sm text-muted-foreground">
               No tasks logged yet. The log fills after a Claude task with the plugin on.

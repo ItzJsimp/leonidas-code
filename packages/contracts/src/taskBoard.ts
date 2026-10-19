@@ -581,6 +581,17 @@ export type LayaUsage = typeof LayaUsage.Type;
 export const PonytailUsage = Schema.Struct({
   status: Schema.Literals(["missing", "ready"]),
   accounts: Schema.Array(Schema.Struct({ dir: Schema.String, enabled: Schema.Boolean })),
+  // Last 30 days of turns for every provider, from the app's own records.
+  providers: Schema.Array(
+    Schema.Struct({
+      provider: Schema.String,
+      turns: Schema.Number,
+      inputTokens: Schema.Number,
+      cachedInputTokens: Schema.Number,
+      outputTokens: Schema.Number,
+      agentMinutes: Schema.Number,
+    }),
+  ),
   tasks: Schema.Number,
   costUsd: Schema.Number,
   agentMinutes: Schema.Number,
