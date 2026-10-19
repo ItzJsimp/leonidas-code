@@ -281,7 +281,9 @@ export default function FocusWidget(props: {
     }
   };
 
-  const resize = useRef<{ pointerId: number; start: Point; from: Size } | null>(null);
+  const resize = useRef<{ pointerId: number; start: Point; from: Size; right: number } | null>(
+    null,
+  );
   const availableSize = (): Size => {
     const bounds = boundsOf(rootRef.current);
     return { width: bounds.width, height: bounds.height };
@@ -296,19 +298,26 @@ export default function FocusWidget(props: {
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
       from: { width: box.width, height: box.height },
+      right: box.right,
     };
+  };
+  // The handle is at the bottom left: dragging left widens the notepad and dragging down makes it
+  // taller. A floating notepad keeps its right edge in place.
+  const applySize = (wanted: Size, right: number, top: number) => {
+    const next = resizeTo(wanted, availableSize());
+    setSize(next);
+    if (position !== null) setPosition({ x: right - next.width, y: top });
   };
   const onResizeMove = (event: PointerEvent<HTMLElement>) => {
     const active = resize.current;
     if (!active || active.pointerId !== event.pointerId) return;
-    setSize(
-      resizeTo(
-        {
-          width: active.from.width + event.clientX - active.start.x,
-          height: active.from.height + event.clientY - active.start.y,
-        },
-        availableSize(),
-      ),
+    applySize(
+      {
+        width: active.from.width - (event.clientX - active.start.x),
+        height: active.from.height + event.clientY - active.start.y,
+      },
+      active.right,
+      rootRef.current?.getBoundingClientRect().top ?? 0,
     );
   };
   const onResizeUp = (event: PointerEvent<HTMLElement>) => {
@@ -324,15 +333,15 @@ export default function FocusWidget(props: {
     }
     const step = event.shiftKey ? 40 : 10;
     const delta: Record<string, Point> = {
-      ArrowRight: { x: step, y: 0 },
-      ArrowLeft: { x: -step, y: 0 },
+      ArrowLeft: { x: step, y: 0 },
+      ArrowRight: { x: -step, y: 0 },
       ArrowDown: { x: 0, y: step },
       ArrowUp: { x: 0, y: -step },
     };
     const move = delta[event.key];
     if (!move) return;
     event.preventDefault();
-    setSize(resizeTo({ width: box.width + move.x, height: box.height + move.y }, availableSize()));
+    applySize({ width: box.width + move.x, height: box.height + move.y }, box.right, box.top);
   };
 
   const dockPoint = (): Point | null => {
@@ -492,7 +501,10 @@ export default function FocusWidget(props: {
                 />
               </span>
               {/* Buttons float over the row's top right corner, so they never squeeze the text. */}
-              <span className="absolute top-0.5 right-1.5 flex gap-0.5 rounded-md border border-border bg-popover px-0.5 opacity-0 shadow-sm group-hover:opacity-100 group-focus-within:opacity-100">
+              <span
+                hidden={editing?.id === row.id}
+                className="absolute top-0.5 right-1.5 flex gap-0.5 rounded-md border border-border bg-popover px-0.5 opacity-0 shadow-sm group-hover:opacity-100 group-focus-within:opacity-100"
+              >
                 <Tip label={row.pinned ? "Unpin this line" : "Pin this line to the top"}>
                   <Button
                     size="icon-xs"
@@ -738,7 +750,7 @@ export default function FocusWidget(props: {
               rows={1}
               className="[&_textarea]:max-h-32 [&_textarea]:min-h-8"
               aria-label="Add a note"
-              placeholder="+ Add a note (Shift+Enter for a new line)"
+              placeholder="+ Add a note"
               maxLength={FOCUS_ITEM_MAX_LENGTH}
               value={draft}
               disabled={busy || snapshot?.path === null}
@@ -794,7 +806,7 @@ export default function FocusWidget(props: {
           role="separator"
           tabIndex={0}
           aria-label="Resize the notepad. Arrow keys resize it. Home or Escape resets the size."
-          className="absolute right-0 bottom-0 z-10 size-4 cursor-nwse-resize touch-none rounded-tl-sm text-muted-foreground/60 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
+          className="absolute bottom-0 left-0 z-10 size-4 cursor-nesw-resize touch-none rounded-tl-sm text-muted-foreground/60 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
           onPointerDown={onResizeDown}
           onPointerMove={onResizeMove}
           onPointerUp={onResizeUp}
@@ -803,7 +815,7 @@ export default function FocusWidget(props: {
           onKeyDown={onResizeKey}
         >
           <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
-            <path d="M14 6 6 14M14 10l-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+            <path d="M2 6l8 8M2 10l4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
           </svg>
         </span>
       </section>

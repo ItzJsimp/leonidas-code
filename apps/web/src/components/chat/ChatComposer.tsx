@@ -136,7 +136,7 @@ import {
   usePromptStashStore,
   type PromptStashEntry,
 } from "../../promptStashStore";
-import { ComposerNextActionBadge } from "./ComposerNextActionBadge";
+import { ComposerNotepadButton } from "./ComposerNotepadButton";
 import { ComposerSkillsButton } from "./ComposerSkillsButton";
 import { ComposerSubagentsButton } from "../subagents/ComposerSubagentsButton";
 import { useComposerSubagents } from "../subagents/useComposerSubagents";
@@ -7274,19 +7274,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       onDetach={detachSubagent}
                     />
                   ) : null,
-                nextAction: (
-                  <ComposerNextActionBadge
-                    alignRight={false}
-                    environmentId={environmentId}
-                    activeProjectId={savedItemsProjectId}
-                    cwd={gitCwd}
-                    canFill={prompt.trim().length === 0}
-                    onFill={(nextPrompt) => {
-                      setPrompt(nextPrompt);
-                      requestAnimationFrame(focusComposer);
-                    }}
-                  />
-                ),
+                nextAction: <ComposerNotepadButton alignRight={false} />,
               }}
             />
           ) : null}
