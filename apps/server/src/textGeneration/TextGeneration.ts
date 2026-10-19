@@ -36,6 +36,7 @@ type TextGenerationOp =
   | "generateBranchName"
   | "generateThreadTitle"
   | "evaluateGoal"
+  | "assessThread"
   | "generatePromptSuggestion"
   | "generateVoiceLogDraft";
 
@@ -84,6 +85,19 @@ export const make = Effect.gen(function* () {
                 new TextGenerationError({
                   operation: "generatePromptSuggestion",
                   detail: "This provider does not support prompt prediction.",
+                }),
+              ),
+        ),
+      ),
+    assessThread: (input) =>
+      resolveInstance(registry, "assessThread", input.modelSelection.instanceId).pipe(
+        Effect.flatMap((generation) =>
+          generation.assessThread
+            ? generation.assessThread(input)
+            : Effect.fail(
+                new TextGenerationError({
+                  operation: "assessThread",
+                  detail: "This provider does not support thread assessment.",
                 }),
               ),
         ),
