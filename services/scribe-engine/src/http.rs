@@ -6,6 +6,7 @@ use crate::contract::{
 };
 use crate::credentials::KeyStore;
 use crate::engine::{Engine, EngineError};
+use crate::local_stt::LocalModel;
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -38,9 +39,10 @@ pub fn serve(
     engine: Engine,
     keys: Arc<dyn KeyStore>,
     private_mode: bool,
+    local: Arc<dyn LocalModel>,
     port: u16,
 ) -> Result<ServerHandle, String> {
-    serve_with_ping(engine, keys, private_mode, port, PING_INTERVAL)
+    serve_with_ping(engine, keys, private_mode, local, port, PING_INTERVAL)
 }
 
 /// `serve` with the SSE ping interval as a parameter, so tests do not wait 15 s.
@@ -48,6 +50,7 @@ fn serve_with_ping(
     engine: Engine,
     keys: Arc<dyn KeyStore>,
     private_mode: bool,
+    local: Arc<dyn LocalModel>,
     port: u16,
     ping: Duration,
 ) -> Result<ServerHandle, String> {
@@ -89,7 +92,13 @@ fn serve_with_ping(
                         streams.push(worker);
                     }
                 } else {
-                    route(request, &engine, keys.as_ref(), private_mode);
+                    route(
+                        request,
+                        &engine,
+                        keys.as_ref(),
+                        private_mode,
+                        local.as_ref(),
+                    );
                 }
             }
             for stream in streams {
@@ -153,7 +162,18 @@ fn state_reply(request: Request, state: Result<crate::contract::State, EngineErr
     }
 }
 
-fn route(mut request: Request, engine: &Engine, keys: &dyn KeyStore, private_mode: bool) {
+fn route(
+    mut request: Request,
+    engine: &Engine,
+    keys: &dyn KeyStore,
+    private_mode: bool,
+    local: &dyn LocalModel,
+) {
+    let url = request.url().to_owned();
+    let (path, query) = url.split_once('?').unwrap_or((&url, ""));
+    if path == "/v1/history" || path.starts_with("/v1/history/") {
+        return history_route(request, engine, path, query);
+    }
     match (request.url(), request.method()) {
         ("/v1/status", Method::Get) => {
             let status = Status {
@@ -164,6 +184,7 @@ fn route(mut request: Request, engine: &Engine, keys: &dyn KeyStore, private_mod
                 groq_key: keys.get().is_some()
                     || std::env::var_os("GROQ_API_KEY").is_some_and(|key| !key.is_empty()),
                 private_mode,
+                local_model: Some(local.status().as_str().into()),
             };
             json(request, 200, &status);
         }
@@ -199,6 +220,43 @@ fn route(mut request: Request, engine: &Engine, keys: &dyn KeyStore, private_mod
             error(request, 405, "method_not_allowed");
         }
         _ => error(request, 404, "not_found"),
+    }
+}
+
+/// v1.2: `GET /v1/history` and `DELETE /v1/history/{id}`.
+fn history_route(request: Request, engine: &Engine, path: &str, query: &str) {
+    let Some(history) = engine.history() else {
+        return error(request, 404, "not_found");
+    };
+    if path == "/v1/history" {
+        if request.method() != &Method::Get {
+            return error(request, 405, "method_not_allowed");
+        }
+        let (mut limit, mut before, mut mode) = (Some(crate::history::DEFAULT_LIMIT), None, None);
+        for (key, value) in query.split('&').filter_map(|pair| pair.split_once('=')) {
+            match key {
+                "limit" => limit = value.parse().ok().filter(|n| *n >= 1),
+                "before" => before = Some(value),
+                "mode" => mode = Some(value),
+                _ => {}
+            }
+        }
+        let Some(limit) = limit else {
+            return error(request, 400, "bad_request");
+        };
+        return json(request, 200, &history.page(limit, before, mode));
+    }
+    let id = &path["/v1/history/".len()..];
+    if id.is_empty() || id.contains('/') {
+        return error(request, 404, "not_found");
+    }
+    if request.method() != &Method::Delete {
+        return error(request, 405, "method_not_allowed");
+    }
+    match history.delete(id) {
+        Ok(true) => json(request, 200, &serde_json::json!({ "deleted": true })),
+        Ok(false) => error(request, 404, "not_found"),
+        Err(_) => error(request, 500, "store_error"),
     }
 }
 
@@ -250,12 +308,23 @@ mod tests {
     use super::*;
     use crate::contract::{Event, State};
     use crate::credentials::{KeyStore, MemoryKeyStore};
-    use crate::engine::fakes::{engine, FakeRecorder};
+    use crate::engine::fakes::{engine, FakePaster, FakeRecorder, FakeStt, UpperPolish};
     use serde_json::{json, Value};
     use std::io::{BufRead, BufReader};
     use std::net::{TcpListener, TcpStream};
 
     const TEST_PING: Duration = Duration::from_millis(50);
+
+    struct NoLocal;
+
+    impl LocalModel for NoLocal {
+        fn transcribe(&self, _: &[f32]) -> Result<String, String> {
+            Err("no local model in this test".into())
+        }
+        fn status(&self) -> crate::local_stt::ModelStatus {
+            crate::local_stt::ModelStatus::Absent
+        }
+    }
 
     struct TestServer(Option<ServerHandle>);
 
@@ -273,7 +342,41 @@ mod tests {
                 Ok("hello"),
             );
             Self(Some(
-                serve_with_ping(engine, keys, true, 0, TEST_PING).unwrap(),
+                serve_with_ping(engine, keys, true, Arc::new(NoLocal), 0, TEST_PING).unwrap(),
+            ))
+        }
+
+        /// A server whose engine keeps a history seeded with `d1` (hold), `d2` (toggle), `d3` (hold).
+        fn with_history(name: &str) -> Self {
+            let dir = std::env::temp_dir()
+                .join(format!("scribe-http-hist-{}-{name}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            let history = Arc::new(crate::history::History::open(&dir.join("history.jsonl")));
+            for (ms, mode) in [(1, "hold"), (2, "toggle"), (3, "hold")] {
+                history
+                    .add(crate::history::NewItem {
+                        at: crate::contract::iso_from_unix_ms(ms),
+                        mode: mode.into(),
+                        app: String::new(),
+                        raw_text: "hi".into(),
+                        cleaned_text: "Hi.".into(),
+                        metrics: Default::default(),
+                        pasted: false,
+                        at_ms: ms,
+                    })
+                    .unwrap();
+            }
+            let engine = Engine::new(
+                Box::new(FakeRecorder::default()),
+                Box::new(FakeStt(Ok("hello".into()))),
+                Box::new(UpperPolish),
+                Box::new(Arc::new(FakePaster::default())),
+                250,
+                Some(history),
+            );
+            let keys: Arc<dyn KeyStore> = Arc::new(MemoryKeyStore::default());
+            Self(Some(
+                serve_with_ping(engine, keys, true, Arc::new(NoLocal), 0, TEST_PING).unwrap(),
             ))
         }
 
@@ -535,6 +638,7 @@ mod tests {
             engine,
             Arc::new(MemoryKeyStore::default()),
             false,
+            Arc::new(NoLocal),
             listener.local_addr().unwrap().port()
         )
         .is_err());
@@ -596,5 +700,61 @@ mod tests {
         assert_eq!(read_line(&mut reader), ": ping\n");
         // Shutdown must return even with an SSE client connected.
         drop(server);
+    }
+
+    #[test]
+    fn history_pages_newest_first_with_a_cursor() {
+        let server = TestServer::with_history("pages");
+        let first = server.request("GET", "/v1/history?limit=2", "");
+        assert_eq!(first.status, 200);
+        let ids: Vec<&str> = first.body["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids, ["d3", "d2"]);
+        assert_eq!(first.body["next"], "d2");
+        assert_eq!(first.body["items"][0]["cleanedText"], "Hi.");
+
+        let second = server.request("GET", "/v1/history?limit=2&before=d2", "");
+        assert_eq!(second.body["items"][0]["id"], "d1");
+        assert!(second.body["next"].is_null());
+
+        let holds = server.request("GET", "/v1/history?mode=hold", "");
+        assert_eq!(holds.body["items"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn history_rejects_a_bad_limit_and_wrong_methods() {
+        let server = TestServer::with_history("bad");
+        for path in ["/v1/history?limit=0", "/v1/history?limit=abc"] {
+            let reply = server.request("GET", path, "");
+            assert_eq!(
+                (reply.status, reply.body["error"].as_str()),
+                (400, Some("bad_request"))
+            );
+        }
+        assert_eq!(server.request("POST", "/v1/history", "").status, 405);
+        assert_eq!(server.request("GET", "/v1/history/d1", "").status, 405);
+    }
+
+    #[test]
+    fn history_delete_removes_one_item() {
+        let server = TestServer::with_history("delete");
+        let reply = server.request("DELETE", "/v1/history/d2", "");
+        assert_eq!(
+            (reply.status, reply.body["deleted"].as_bool()),
+            (200, Some(true))
+        );
+        assert_eq!(server.request("DELETE", "/v1/history/d2", "").status, 404);
+        let rest = server.request("GET", "/v1/history", "");
+        assert_eq!(rest.body["items"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn history_is_not_found_without_a_store() {
+        let server = TestServer::new();
+        assert_eq!(server.request("GET", "/v1/history", "").status, 404);
     }
 }

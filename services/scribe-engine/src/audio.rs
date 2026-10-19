@@ -184,6 +184,7 @@ impl Recorder for NullRecorder {
             mime: "audio/flac",
             file_name: "audio.flac",
             duration_ms: 0,
+            pcm: Vec::new(),
         })
     }
 
@@ -304,10 +305,8 @@ fn encode(input: &[f32], rate: u32) -> Result<EncodedAudio, String> {
         return Err("Invalid input sample rate".into());
     }
     let duration_ms = input.len() as u64 * 1000 / u64::from(rate);
-    let samples: Vec<i32> = resample(input, rate)
-        .into_iter()
-        .map(|s| i32::from(to_i16(s)))
-        .collect();
+    let pcm = resample(input, rate);
+    let samples: Vec<i32> = pcm.iter().map(|&s| i32::from(to_i16(s))).collect();
     let config = flacenc::config::Encoder::default()
         .into_verified()
         .map_err(|_| "Invalid FLAC encoder configuration")?;
@@ -323,6 +322,7 @@ fn encode(input: &[f32], rate: u32) -> Result<EncodedAudio, String> {
         mime: "audio/flac",
         file_name: "audio.flac",
         duration_ms,
+        pcm,
     })
 }
 

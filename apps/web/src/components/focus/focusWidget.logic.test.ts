@@ -3,10 +3,12 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   clampToViewport,
+  joinNoteText,
   nudge,
   progressOf,
   resizeTo,
   settleDrag,
+  splitNoteText,
   visibleRows,
 } from "./focusWidget.logic";
 
@@ -104,5 +106,27 @@ describe("focus rows", () => {
 
   it("counts progress", () => {
     expect(progressOf(visibleRows(snapshot, "all", null))).toEqual({ done: 1, total: 3 });
+  });
+});
+
+describe("note attachments", () => {
+  const text =
+    "Call the bank\nabout the loan\n![shot.png](focus-files/ab12cd34-shot.png)\n[plan.pdf](focus-files/ef56ab78-plan.pdf)";
+
+  it("splits a note into words and attached files", () => {
+    const { body, attachments } = splitNoteText(text);
+    expect(body).toBe("Call the bank\nabout the loan");
+    expect(attachments.map((a) => [a.name, a.image, a.path])).toEqual([
+      ["shot.png", true, "focus-files/ab12cd34-shot.png"],
+      ["plan.pdf", false, "focus-files/ef56ab78-plan.pdf"],
+    ]);
+  });
+
+  it("writes the same note back, and leaves ordinary links alone", () => {
+    const { body, attachments } = splitNoteText(text);
+    expect(joinNoteText(body, attachments)).toBe(text);
+    const plain = "See [docs](https://example.com) and [x](notes/y.md)";
+    expect(splitNoteText(plain)).toEqual({ body: plain, attachments: [] });
+    expect(joinNoteText("  ", [])).toBe("");
   });
 });

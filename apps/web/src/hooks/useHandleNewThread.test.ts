@@ -127,6 +127,9 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: () => null,
   useRouter: () => testState.router,
 }));
+vi.mock("../components/workspace/useWorkspaceProjects", () => ({
+  useWorkspaceProjects: (projects: unknown) => projects,
+}));
 vi.mock("react", () => ({
   useCallback: <T>(callback: T) => callback,
   useMemo: <T>(factory: () => T) => factory(),
@@ -173,6 +176,7 @@ vi.mock("../state/entities", () => ({
   readThreadShells: () => [],
   useProjects: () => [],
   useThread: () => null,
+  useThreadShell: () => ({ projectId: "business-project", environmentId: "environment-ssh" }),
 }));
 vi.mock("../state/server", () => ({
   environmentServerConfigsAtom: {},
@@ -185,7 +189,11 @@ vi.mock("../uiStateStore", () => ({
 }));
 vi.mock("./useSettings", () => ({ useClientSettings: () => ({}) }));
 
-import { useNewThreadHandler } from "./useHandleNewThread";
+import { useHandleNewThread, useNewThreadHandler } from "./useHandleNewThread";
+
+it("keeps the open thread context when Command selects another workspace", () => {
+  expect(useHandleNewThread().activeThread?.projectId).toBe("business-project");
+});
 
 describe.each([
   ["new", null],

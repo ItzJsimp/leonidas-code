@@ -53,6 +53,7 @@ const make = Effect.gen(function* () {
             description: item.body,
             actor,
             idempotencyKey: String(commandId),
+            ...(item.workspaceId === undefined ? {} : { workspaceId: item.workspaceId }),
             ...(item.projectId === null ? { projectSlug: null } : { projectId: item.projectId }),
           },
           snapshot.projects,

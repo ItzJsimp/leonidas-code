@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
@@ -55,7 +55,7 @@ export function SubagentStudio() {
   // The composer keeps its own copy of the list; refresh both after a write so the
   // @ menu and the attach tab show the change without a restart.
   const composerCatalog = useEnvironmentQuery(
-    environmentId ? subagentsComposerQuery({ environmentId, input: {} }) : null,
+    environmentId && scopeReady ? subagentsComposerQuery({ environmentId, input: scope }) : null,
   );
   const refreshAll = () => {
     catalog.refresh();
@@ -144,18 +144,18 @@ export function SubagentStudio() {
               className="flex min-w-0 flex-col border-b border-border md:border-r md:border-b-0"
             >
               <div className="relative border-b border-border p-2">
-                <SearchIcon
-                  aria-hidden
-                  className="pointer-events-none absolute top-1/2 left-4 z-10 size-3.5 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search helpers"
-                  aria-label="Search helpers"
-                  className="ps-7"
-                />
+                <InputGroup>
+                  <InputGroupAddon>
+                    <SearchIcon aria-hidden />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search helpers"
+                    aria-label="Search helpers"
+                  />
+                </InputGroup>
               </div>
               <div className="flex max-h-[22rem] flex-col gap-3 overflow-y-auto p-2 md:max-h-none">
                 {groups.map((group) => {
@@ -277,7 +277,7 @@ function Kpi(props: { readonly value: string; readonly label: string; readonly t
         render={
           <div
             tabIndex={0}
-            className="flex flex-col justify-start rounded-lg border border-border px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex flex-col justify-start rounded-lg border border-border px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           />
         }
       >
@@ -343,14 +343,15 @@ function StudioListItem(props: {
       onClick={props.onSelect}
       aria-current={props.selected ? "true" : undefined}
       className={cn(
-        "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring",
+        "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         props.selected && "bg-accent",
       )}
     >
       <span className="min-w-0 flex-1">
-        <span className="block truncate" title={entry.name}>
-          {entry.name}
-        </span>
+        <Tooltip>
+          <TooltipTrigger render={<span className="block truncate" />}>{entry.name}</TooltipTrigger>
+          <TooltipPopup>{entry.name}</TooltipPopup>
+        </Tooltip>
         {entry.projectName === null ? null : (
           <span className="block truncate text-xs text-muted-foreground">{entry.projectName}</span>
         )}
@@ -411,13 +412,20 @@ function SubagentDetail({
     <article aria-labelledby="studio-detail-title" className="flex flex-col gap-4">
       <header className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h3
-            id="studio-detail-title"
-            className="min-w-0 truncate text-lg font-semibold"
-            title={entry.name}
-          >
-            {entry.name}
-          </h3>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <h3
+                  id="studio-detail-title"
+                  className="min-w-0 truncate text-lg font-semibold"
+                  tabIndex={0}
+                />
+              }
+            >
+              {entry.name}
+            </TooltipTrigger>
+            <TooltipPopup>{entry.name}</TooltipPopup>
+          </Tooltip>
           <TierBadge entry={entry} />
           {entry.enabled ? null : (
             <Badge variant="secondary" size="sm">
@@ -495,7 +503,7 @@ function SubagentDetail({
                 <ul className="flex flex-wrap gap-1">
                   {entry.tools.map((tool) => (
                     <li key={tool}>
-                      <Badge variant="outline" size="sm" className="font-mono">
+                      <Badge variant="outline" size="sm">
                         {tool.replace("mcp__t3-code__", "")}
                       </Badge>
                     </li>
@@ -533,9 +541,19 @@ function SubagentDetail({
               <ul className="divide-y divide-border">
                 {entry.context.map((item) => (
                   <li key={item.path} className="flex items-center gap-3 px-3 py-1.5 text-sm">
-                    <span className="min-w-0 flex-1 truncate font-mono text-xs" title={item.path}>
-                      {item.path}
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <span
+                            className="min-w-0 flex-1 truncate font-mono text-xs"
+                            tabIndex={0}
+                          />
+                        }
+                      >
+                        {item.path}
+                      </TooltipTrigger>
+                      <TooltipPopup>{item.path}</TooltipPopup>
+                    </Tooltip>
                     <span
                       className={cn(
                         "shrink-0 text-xs tabular-nums",
@@ -558,9 +576,14 @@ function SubagentDetail({
         </>
       )}
 
-      <p className="truncate font-mono text-xs text-muted-foreground" title={entry.specPath}>
-        {entry.specPath}
-      </p>
+      <Tooltip>
+        <TooltipTrigger
+          render={<p className="truncate font-mono text-xs text-muted-foreground" tabIndex={0} />}
+        >
+          {entry.specPath}
+        </TooltipTrigger>
+        <TooltipPopup>{entry.specPath}</TooltipPopup>
+      </Tooltip>
     </article>
   );
 }

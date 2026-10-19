@@ -89,6 +89,8 @@ export const TaskBoardTask = Schema.Struct({
   // The fields below come from an AIOS task card. All are optional so shared records written
   // before they existed still decode.
   projectSlug: Schema.optional(Schema.NullOr(Schema.String)),
+  // The app project a native card was made for; it picks the card's workspace on a slug clash.
+  projectId: Schema.optional(Schema.String),
   effort: Schema.optional(Schema.NullOr(Schema.String)),
   energy: Schema.optional(Schema.NullOr(Schema.String)),
   due: Schema.optional(Schema.NullOr(Schema.String)),
@@ -672,6 +674,32 @@ export const FocusSnapshot = Schema.Struct({
 });
 export type FocusSnapshot = typeof FocusSnapshot.Type;
 
+/** Most files one `add` or `attach` call can carry, and the largest file in bytes. */
+export const FOCUS_FILES_MAX = 5;
+export const FOCUS_FILE_MAX_BYTES = 8 * 1024 * 1024;
+
+/** A file the user attached to a note. The server saves it in `<AIOS>/memory/focus-files/`. */
+export const FocusFileInput = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  mimeType: Schema.String,
+  dataBase64: Schema.String,
+});
+export type FocusFileInput = typeof FocusFileInput.Type;
+
+export const FocusAttachmentInput = Schema.Struct({
+  /** Path under the memory folder, as written in the note: `focus-files/<name>`. */
+  path: Schema.String,
+  ...workspaceScope,
+});
+export type FocusAttachmentInput = typeof FocusAttachmentInput.Type;
+
+export const FocusAttachment = Schema.Struct({
+  name: Schema.String,
+  mimeType: Schema.String,
+  dataBase64: Schema.String,
+});
+export type FocusAttachment = typeof FocusAttachment.Type;
+
 const FocusText = TrimmedNonEmptyString.check(Schema.isMaxLength(FOCUS_ITEM_MAX_LENGTH));
 
 /** One change to the focus file. `add` with `projectId: null` writes to the Global section. */
@@ -683,15 +711,43 @@ export const FocusUpdateInput = Schema.Union([
     /** Used by Undo to bring a removed line back as it was. */
     done: Schema.optional(Schema.Boolean),
     pinned: Schema.optional(Schema.Boolean),
+    files: Schema.optional(Schema.Array(FocusFileInput)),
+    ...workspaceScope,
   }),
-  Schema.Struct({ op: Schema.Literal("set_done"), id: Schema.String, done: Schema.Boolean }),
-  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String }),
-  Schema.Struct({ op: Schema.Literal("edit"), id: Schema.String, text: FocusText }),
-  Schema.Struct({ op: Schema.Literal("pin"), id: Schema.String, pinned: Schema.Boolean }),
+  Schema.Struct({
+    op: Schema.Literal("attach"),
+    id: Schema.String,
+    files: Schema.Array(FocusFileInput),
+    ...workspaceScope,
+  }),
+  Schema.Struct({
+    op: Schema.Literal("set_done"),
+    id: Schema.String,
+    done: Schema.Boolean,
+    ...workspaceScope,
+  }),
+  Schema.Struct({ op: Schema.Literal("remove"), id: Schema.String, ...workspaceScope }),
+  Schema.Struct({
+    op: Schema.Literal("edit"),
+    id: Schema.String,
+    text: FocusText,
+    ...workspaceScope,
+  }),
+  Schema.Struct({
+    op: Schema.Literal("pin"),
+    id: Schema.String,
+    pinned: Schema.Boolean,
+    ...workspaceScope,
+  }),
   Schema.Struct({
     op: Schema.Literal("move"),
     id: Schema.String,
     direction: Schema.Literals(["up", "down"]),
+    ...workspaceScope,
   }),
 ]);
 export type FocusUpdateInput = typeof FocusUpdateInput.Type;
+
+/** The focus list of one workspace; no id keeps the default workspace (old clients). */
+export const FocusSubscribeInput = Schema.Struct({ ...workspaceScope });
+export type FocusSubscribeInput = typeof FocusSubscribeInput.Type;

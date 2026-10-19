@@ -31,6 +31,7 @@ export const SAVED_ITEM_BODY_MAX_LENGTH = 100_000;
 
 export const SavedItem = Schema.Struct({
   id: SavedItemId,
+  workspaceId: Schema.optionalKey(TrimmedNonEmptyString),
   kind: SavedItemKind,
   title: Schema.String,
   body: Schema.String.check(Schema.isMaxLength(SAVED_ITEM_BODY_MAX_LENGTH)),
@@ -63,6 +64,7 @@ export const SavedItemExport = Schema.Struct({
 export type SavedItemExport = typeof SavedItemExport.Type;
 
 export const SavedItemCreateInput = Schema.Struct({
+  workspaceId: Schema.optional(TrimmedNonEmptyString),
   commandId: CommandId,
   id: Schema.optional(SavedItemId),
   ...SavedItemExport.fields,
@@ -73,6 +75,7 @@ export type SavedItemCreateInput = typeof SavedItemCreateInput.Type;
 export const SavedItemUpdateInput = Schema.Struct({
   commandId: CommandId,
   id: SavedItemId,
+  workspaceId: Schema.optionalKey(TrimmedNonEmptyString),
   kind: Schema.optional(SavedItemKind),
   title: Schema.optional(Schema.String),
   body: Schema.optional(SavedItem.fields.body),
@@ -81,18 +84,21 @@ export const SavedItemUpdateInput = Schema.Struct({
 });
 export type SavedItemUpdateInput = typeof SavedItemUpdateInput.Type;
 export const SavedItemTransitionInput = Schema.Struct({
+  workspaceId: Schema.optionalKey(TrimmedNonEmptyString),
   commandId: CommandId,
   id: SavedItemId,
   action: Schema.Literals(["archive", "restore", "requeue", "done", "delete"]),
 });
 export type SavedItemTransitionInput = typeof SavedItemTransitionInput.Type;
 export const SavedItemImportInput = Schema.Struct({
+  workspaceId: Schema.optional(TrimmedNonEmptyString),
   commandId: CommandId,
   markdown: Schema.String.check(Schema.isMaxLength(110_000)),
   projectId: Schema.NullOr(ProjectId),
 });
 export type SavedItemImportInput = typeof SavedItemImportInput.Type;
 export const SavedItemListInput = Schema.Struct({
+  workspaceId: Schema.optional(TrimmedNonEmptyString),
   projectId: Schema.optional(Schema.NullOr(ProjectId)),
   status: Schema.optional(SavedItemStatus),
   kind: Schema.optional(SavedItemKind),
@@ -109,7 +115,10 @@ export const SavedItemListResult = Schema.Struct({
   promptsFolder: Schema.optionalKey(SavedItemPromptsFolder),
 });
 export type SavedItemListResult = typeof SavedItemListResult.Type;
-export const SavedItemGetInput = Schema.Struct({ id: SavedItemId });
+export const SavedItemGetInput = Schema.Struct({
+  id: SavedItemId,
+  workspaceId: Schema.optionalKey(TrimmedNonEmptyString),
+});
 const executionFields = {
   commandId: CommandId,
   id: SavedItemId,

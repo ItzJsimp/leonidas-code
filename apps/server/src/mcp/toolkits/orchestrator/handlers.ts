@@ -39,7 +39,11 @@ const handlers = {
     savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.list(input))),
   ),
   saved_item_get: McpToolAccess.reads((input) =>
-    savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.get(input.id))),
+    savedItemCall(
+      Effect.flatMap(SavedItems.SavedItemService, (service) =>
+        service.get(input.id, input.workspaceId),
+      ),
+    ),
   ),
   saved_item_create: McpToolAccess.writes((input) =>
     savedItemCall(Effect.flatMap(SavedItems.SavedItemService, (service) => service.create(input))),

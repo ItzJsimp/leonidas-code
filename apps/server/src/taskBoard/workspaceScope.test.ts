@@ -421,3 +421,96 @@ it.effect("serves a lone AIOS with no workspace file, before and after setup (Ge
       }),
   ),
 );
+
+it.effect("keeps a native card in its project's workspace when slugs clash", () =>
+  withWorkspaces(({ business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      // Both workspaces hold a project with the slug "app"; the card belongs to the business one.
+      NodeFS.mkdirSync(NodePath.join(business, "projects", "app"), { recursive: true });
+      const businessApp = project(
+        "p-business-app",
+        "app",
+        NodePath.join(business, "projects", "app"),
+      );
+      const all = [...projects, businessApp];
+      const native = yield* board.cardCreate(
+        { title: "Business native", actor: "Gersi", projectId: businessApp.id },
+        all,
+      );
+      const ids = (workspaceId: string) =>
+        board.workspace(all, workspaceId).pipe(Effect.map((view) => view.tasks.map((t) => t.id)));
+      expect(yield* ids("simplygersi")).toContain(native.id);
+      expect(yield* ids("leonidas")).not.toContain(native.id);
+    }),
+  ),
+);
+
+it.effect("keeps each workspace's focus list in its own AIOS", () =>
+  withWorkspaces(({ personal, business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      yield* board.focusUpdate(
+        { op: "add", projectId: null, text: "Call Ostrich", workspaceId: "simplygersi" },
+        projects,
+      );
+      const texts = (workspaceId?: string) =>
+        board
+          .focus(projects, workspaceId ? { workspaceId } : {})
+          .pipe(Effect.map((view) => view.sections.flatMap((s) => s.items.map((i) => i.text))));
+      expect(yield* texts("simplygersi")).toEqual(["Call Ostrich"]);
+      expect(yield* texts("leonidas")).toEqual([]);
+      expect(yield* texts()).toEqual([]);
+      expect(NodeFS.existsSync(NodePath.join(business, "memory", "focus.md"))).toBe(true);
+      expect(NodeFS.existsSync(NodePath.join(personal, "memory", "focus.md"))).toBe(false);
+    }),
+  ),
+);
+
+it.effect("resolves focus project links inside their workspace when project slugs clash", () =>
+  withWorkspaces(({ business, projects }) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const businessApp = project(
+        "business-app",
+        "Business app",
+        NodePath.join(business, "projects", "app"),
+      );
+      const all = [...projects, businessApp];
+      yield* board.focusUpdate(
+        { op: "add", projectId: projects[0]!.id, text: "Personal note", workspaceId: "leonidas" },
+        all,
+      );
+      expect((yield* board.focus(all, { workspaceId: "leonidas" })).sections[0]?.projectId).toBe(
+        projects[0]!.id,
+      );
+      expect((yield* board.focus(all)).sections[0]?.projectId).toBe(projects[0]!.id);
+      const foreign = yield* Effect.exit(
+        board.focusUpdate(
+          {
+            op: "add",
+            projectId: businessApp.id,
+            text: "Wrong workspace",
+            workspaceId: "leonidas",
+          },
+          all,
+        ),
+      );
+      expect(Exit.isFailure(foreign)).toBe(true);
+      const legacyForeign = yield* Effect.exit(
+        board.focusUpdate(
+          { op: "add", projectId: businessApp.id, text: "Wrong default workspace" },
+          all,
+        ),
+      );
+      expect(Exit.isFailure(legacyForeign)).toBe(true);
+      yield* board.focusUpdate(
+        { op: "add", projectId: projects[0]!.id, text: "Default workspace note" },
+        all,
+      );
+      expect((yield* board.focus(all)).sections.every((s) => s.projectId !== businessApp.id)).toBe(
+        true,
+      );
+    }),
+  ),
+);

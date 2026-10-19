@@ -11,17 +11,15 @@ import { focusUpdate } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { useFocusWidgetStore } from "../focus/focusWidgetStore";
 import { failureText } from "../taskBoard/useTaskActions.logic";
+import { useActiveAiosWorkspace } from "../workspace/useActiveAiosWorkspace";
 
 export type CaptureDropResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly error: string | null };
 
-/** A notepad line is one line: fold line breaks to spaces and cap the length. */
+/** A note can have several lines; trim it and cap the length. */
 function toNotepadLine(text: string): string {
-  return text
-    .replace(/\s*\n\s*/g, " ")
-    .trim()
-    .slice(0, FOCUS_ITEM_MAX_LENGTH);
+  return text.trim().slice(0, FOCUS_ITEM_MAX_LENGTH);
 }
 
 /**
@@ -32,14 +30,17 @@ function toNotepadLine(text: string): string {
 export function useCaptureDrop() {
   const environmentId = usePrimaryEnvironmentId();
   const runUpdate = useAtomCommand(focusUpdate, { reportFailure: false });
+  // A capture goes to the notepad of the workspace this window shows (ADR-0080).
+  const { scope, scopeReady } = useActiveAiosWorkspace();
 
   const drop = useCallback(
     async (text: string): Promise<CaptureDropResult> => {
       const line = toNotepadLine(text);
-      if (environmentId === null || line.length === 0) return { ok: false, error: null };
+      if (environmentId === null || !scopeReady || line.length === 0)
+        return { ok: false, error: null };
       const result = await runUpdate({
         environmentId,
-        input: { op: "add", projectId: null, text: line },
+        input: { op: "add", projectId: null, text: line, ...scope },
       });
       if (result._tag !== "Success") {
         return {
@@ -63,8 +64,8 @@ export function useCaptureDrop() {
       });
       return { ok: true };
     },
-    [environmentId, runUpdate],
+    [environmentId, runUpdate, scope, scopeReady],
   );
 
-  return { drop, canDrop: environmentId !== null };
+  return { drop, canDrop: environmentId !== null && scopeReady };
 }

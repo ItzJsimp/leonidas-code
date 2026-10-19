@@ -84,11 +84,14 @@ jobs:
           path: |
             services/scribe-engine/target/x86_64-pc-windows-msvc/release/scribe-engine.exe
             services/scribe-engine/target/x86_64-pc-windows-msvc/release/scribe-bench.exe
-          key: scribe-engine-${{ runner.os }}-x64-${{ steps.rust.outputs.version }}-${{ hashFiles('services/scribe-engine/Cargo.toml', 'services/scribe-engine/Cargo.lock', 'services/scribe-engine/src/**') }}
+          key: scribe-engine-${{ runner.os }}-x64-${{ steps.rust.outputs.version }}-${{ hashFiles('services/scribe-engine/Cargo.toml', 'services/scribe-engine/Cargo.lock', 'services/scribe-engine/.cargo/config.toml', 'services/scribe-engine/src/**') }}
 
       - name: Build Scribe engine
         if: steps.engine.outputs.cache-hit != 'true'
-        run: cargo build --locked --release --target x86_64-pc-windows-msvc --manifest-path services/scribe-engine/Cargo.toml
+        # Cargo reads .cargo/config.toml from the working folder. Run in the crate folder,
+        # or whisper.cpp builds without AVX2 and /O2 (about 8x slower offline dictation).
+        working-directory: services/scribe-engine
+        run: cargo build --locked --release --target x86_64-pc-windows-msvc
 
       - name: Set release version
         run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"

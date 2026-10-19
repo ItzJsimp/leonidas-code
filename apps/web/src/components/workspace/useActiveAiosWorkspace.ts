@@ -26,19 +26,21 @@ export function useActiveAiosWorkspace() {
   const choose = useAiosWorkspaceStore((store) => store.choose);
   const setResolved = useAiosWorkspaceStore((store) => store.setResolved);
   const active = useMemo(() => pickActiveWorkspace(workspaces, chosenId), [workspaces, chosenId]);
-  const activeId = active?.id ?? undefined;
+  const loaded = query.data !== null;
+  // A failed load keeps the chosen scope, so a view never falls back to the default workspace.
+  const activeId = loaded ? (active?.id ?? undefined) : chosenId;
   const scope = useMemo(() => workspaceScopeInput(activeId), [activeId]);
 
   useEffect(() => {
-    if (environmentId) setResolved(environmentId, activeId);
-  }, [environmentId, activeId, setResolved]);
+    if (environmentId && loaded) setResolved(environmentId, activeId);
+  }, [environmentId, loaded, activeId, setResolved]);
 
   return {
     environmentId,
     workspaces,
     active,
     scope,
-    scopeReady: query.data !== null || query.error !== null,
+    scopeReady: loaded,
     refresh: query.refresh,
     choose: (workspaceId: string) => {
       if (environmentId) choose(environmentId, workspaceId);

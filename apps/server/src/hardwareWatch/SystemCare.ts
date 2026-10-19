@@ -30,7 +30,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import * as ServerConfig from "../config.ts";
 import * as Projects from "../project/ProjectService.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
-import { defaultWorkspaceRoot } from "../taskBoard/aiosWorkspaces.ts";
+import { systemCarePaths } from "./systemCareWorkspace.ts";
 import { HardwareWatch, type AgentContext } from "./HardwareWatch.ts";
 import {
   BOTTLENECK_WINDOW_MS,
@@ -292,42 +292,43 @@ const make = Effect.gen(function* () {
 
   const settings = yield* Effect.serviceOption(ServerSettingsService);
 
-  // Research about this machine belongs in the owner's AIOS when one is connected, so every agent
-  // that loads the AIOS knows the machine. Without an AIOS it stays in the PC Tuning folder.
-  const notesPath = (inventory: HardwareInventory) =>
+  const workspacePaths = (workspaceId?: string) =>
     Effect.gen(function* () {
       const current = Option.isSome(settings)
         ? yield* settings.value.getSettings.pipe(Effect.option)
         : Option.none();
-      // PC notes go to the default workspace until System Care takes a workspace id.
-      const aiosRoot = defaultWorkspaceRoot([
-        Option.isSome(current) ? current.value.aiosRoot : undefined,
-        process.env.LEONIDAS_AIOS_ROOT,
-        process.env.AIOS_ROOT,
-      ]);
-      const file = `${slug(inventory.os.hostname) || "this-pc"}.md`;
-      return aiosRoot ? path.join(aiosRoot, "domains", "pc", file) : `notes/${file}`;
+      const snapshot = yield* projects.snapshot;
+      const paths = systemCarePaths(
+        config.baseDir,
+        [
+          Option.isSome(current) ? current.value.aiosRoot : undefined,
+          process.env.LEONIDAS_AIOS_ROOT,
+          process.env.AIOS_ROOT,
+          ...snapshot.projects.map((project) => project.workspaceRoot),
+        ],
+        workspaceId,
+      );
+      if (paths === null)
+        return yield* new HardwareWatchError({
+          reason: "invalid_input",
+          detail: "Unknown workspace.",
+        });
+      return paths;
     });
 
-  const ensureProject = Effect.gen(function* () {
-    const saved = yield* watch.systemCareProjectId;
-    if (saved) {
-      const existing = yield* projects.getById(ProjectId.make(saved));
-      if (Option.isSome(existing)) return existing.value.id;
-    }
-    const byRoot = yield* projects.getByWorkspaceRoot(root);
-    const project = Option.isSome(byRoot)
-      ? byRoot.value
-      : yield* projects.create({
-          commandId: CommandId.make(`system-care:project:${Date.now()}`),
-          projectId: ProjectId.make(`system-care-${Date.now()}`),
-          title: "PC Tuning",
-          workspaceRoot: root,
-          createWorkspaceRootIfMissing: true,
-        });
-    yield* watch.setSystemCareProjectId(project.id);
-    return project.id;
-  });
+  const ensureProject = (workspaceRoot: string) =>
+    Effect.gen(function* () {
+      const byRoot = yield* projects.getByWorkspaceRoot(workspaceRoot);
+      if (Option.isSome(byRoot)) return byRoot.value.id;
+      const project = yield* projects.create({
+        commandId: CommandId.make(`system-care:project:${Date.now()}`),
+        projectId: ProjectId.make(`system-care-${Date.now()}`),
+        title: "PC Tuning",
+        workspaceRoot,
+        createWorkspaceRootIfMissing: true,
+      });
+      return project.id;
+    });
 
   const prepareAgent = (input: HardwarePrepareAgentInput) =>
     Effect.gen(function* () {
@@ -336,6 +337,7 @@ const make = Effect.gen(function* () {
           reason: "invalid_input",
           detail: "alertId is required",
         });
+      const { root, notesDir } = yield* workspacePaths(input.workspaceId);
       const context = yield* watch.agentContext(
         input.kind === "investigate" ? input.alertId : undefined,
       );
@@ -363,7 +365,7 @@ const make = Effect.gen(function* () {
           1,
         ),
       );
-      const projectId = yield* ensureProject;
+      const projectId = yield* ensureProject(root);
       const title =
         input.kind === "investigate" && context.alert
           ? `Investigate: ${context.alert.label}`
@@ -378,7 +380,7 @@ const make = Effect.gen(function* () {
           input.kind,
           context,
           incident,
-          yield* notesPath(context.inventory),
+          path.join(notesDir, `${slug(context.inventory.os.hostname) || "this-pc"}.md`),
         ),
       };
     }).pipe(

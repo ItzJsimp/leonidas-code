@@ -166,6 +166,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.subagentsCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.focusSubscribe]: AuthOrchestrationReadScope,
   [WS_METHODS.focusUpdate]: AuthOrchestrationOperateScope,
+  [WS_METHODS.focusAttachment]: AuthOrchestrationReadScope,
   [WS_METHODS.taskBoardCreate]: AuthOrchestrationOperateScope,
   [WS_METHODS.taskBoardClaim]: AuthOrchestrationOperateScope,
   [WS_METHODS.taskBoardRelease]: AuthOrchestrationOperateScope,

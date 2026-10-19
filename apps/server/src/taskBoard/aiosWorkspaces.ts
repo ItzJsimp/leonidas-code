@@ -73,6 +73,7 @@ export function writeWorkspaceFile(
   }
   if (existing && !existing.isFile()) throw new Error("workspace.json is not a regular file.");
   NodeFS.writeFileSync(target, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  listCache.clear();
   return readWorkspaceFile(root);
 }
 
@@ -96,11 +97,35 @@ const keyFor = (path: string) => {
   return key;
 };
 
-/** Finds each AIOS root once, in hint order (confirmed folder, env, then project folders). */
+/**
+ * Finds each AIOS root once, in hint order (confirmed folder, env, then project folders).
+ * A folder with no workspace.json and no projects/ is a bare tasks/ folder, not
+ * an AIOS. A root that reuses a ready id is refused, so one id never names two folders.
+ */
 export function listAiosWorkspaces(
   hints: ReadonlyArray<string | undefined>,
 ): ReadonlyArray<AiosWorkspaceState> {
+  // One request calls this several times; a short cache keeps disk reads to one per window.
+  const cacheKey = hints.join("\n");
+  const now = performance.now();
+  const cached = listCache.get(cacheKey);
+  if (cached && now - cached.at < KEY_TTL_MS) return cached.workspaces;
+  const workspaces = scanAiosWorkspaces(hints);
+  if (listCache.size > 64) listCache.clear();
+  listCache.set(cacheKey, { workspaces, at: now });
+  return workspaces;
+}
+
+const listCache = new Map<
+  string,
+  { readonly workspaces: ReadonlyArray<AiosWorkspaceState>; readonly at: number }
+>();
+
+function scanAiosWorkspaces(
+  hints: ReadonlyArray<string | undefined>,
+): ReadonlyArray<AiosWorkspaceState> {
   const seen = new Set<string>();
+  const ids = new Set<string>();
   const workspaces: AiosWorkspaceState[] = [];
   for (const hint of hints) {
     const root = findAiosRoot([hint]);
@@ -108,10 +133,27 @@ export function listAiosWorkspaces(
     const key = keyFor(root);
     if (seen.has(key)) continue;
     seen.add(key);
-    workspaces.push(readWorkspaceFile(root));
+    const state = readWorkspaceFile(root);
+    if (state.status === "missing" && !hasProjects(root)) continue;
+    if (state.status === "ready") {
+      if (ids.has(state.file.id)) {
+        workspaces.push({ status: "invalid", root, error: `The id "${state.file.id}" is in use.` });
+        continue;
+      }
+      ids.add(state.file.id);
+    }
+    workspaces.push(state);
   }
   return workspaces;
 }
+
+const hasProjects = (root: string): boolean => {
+  try {
+    return NodeFS.statSync(NodePath.join(root, "projects")).isDirectory();
+  } catch {
+    return false;
+  }
+};
 
 /**
  * The root for a workspace id. An id that matches no ready workspace resolves to null, never to
@@ -143,7 +185,13 @@ export function workspaceForPath(
   workspaces: ReadonlyArray<AiosWorkspaceState>,
   path: string,
 ): AiosWorkspaceState | undefined {
-  return workspaces.find((workspace) => isPathInRoot(workspace.root, path));
+  // Nested roots: the innermost (longest) root that holds the path wins.
+  let best: AiosWorkspaceState | undefined;
+  for (const workspace of workspaces) {
+    if (!isPathInRoot(workspace.root, path)) continue;
+    if (!best || keyFor(workspace.root).length > keyFor(best.root).length) best = workspace;
+  }
+  return best;
 }
 
 /** The default workspace root from the confirmed folder and env hints (non-Command readers). */

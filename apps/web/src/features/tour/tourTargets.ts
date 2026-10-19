@@ -48,11 +48,11 @@ export const TOUR_TARGETS = {
     ],
   },
   "next-action": {
-    name: "Tasks",
+    name: "Notepad",
     steps: [
       {
-        title: "Tasks",
-        body: "Open Tasks to show your focus list, start the next action, or open the task board. Start next action writes a message from a project's tasks. Press Enter to start the AI.",
+        title: "Notepad",
+        body: "Click Notepad to show or hide your notes. Add a note, tick it off, pin it, or attach a file or image. Open the task board from the sidebar.",
         route: "/",
         anchor: "composer-next-action",
       },

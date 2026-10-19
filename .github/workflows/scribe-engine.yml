@@ -20,6 +20,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # whisper-rs builds whisper.cpp with CMake and needs libclang; both ship on windows-latest.
+  LIBCLANG_PATH: C:/Program Files/LLVM/bin
+
 jobs:
   test-and-budgets:
     runs-on: windows-latest

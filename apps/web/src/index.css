@@ -2463,3 +2463,7 @@ html[data-theme-id="leonidas"].dark:not([data-leonidas-grid="true"]) [data-slot=
     top left,
     top left;
 }
+
+@utility messages-timeline-scroll {
+  overflow-anchor: none;
+}

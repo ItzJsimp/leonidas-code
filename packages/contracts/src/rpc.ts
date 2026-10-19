@@ -31,8 +31,11 @@ import {
   TaskBoardReleaseInput,
   TaskBoardCompleteInput,
   TaskBoardCompletions,
+  FocusAttachment,
+  FocusAttachmentInput,
   FocusSnapshot,
   AiosUsageShape,
+  FocusSubscribeInput,
   AiosDirection,
   FocusUpdateInput,
   TaskBoardUpdateInput,
@@ -558,6 +561,7 @@ export const WS_METHODS = {
   layaUsage: "laya.usage",
   focusSubscribe: "focus.subscribe",
   focusUpdate: "focus.update",
+  focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
   hardwareGetHistory: "hardware.getHistory",
   hardwareGetLimits: "hardware.getLimits",
@@ -1787,7 +1791,7 @@ const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
 });
 
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
-  payload: Schema.Struct({}),
+  payload: FocusSubscribeInput,
   success: FocusSnapshot,
   error: EnvironmentAuthorizationError,
   stream: true,
@@ -1796,6 +1800,12 @@ const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
 const WsFocusUpdateRpc = Rpc.make(WS_METHODS.focusUpdate, {
   payload: FocusUpdateInput,
   success: FocusSnapshot,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsFocusAttachmentRpc = Rpc.make(WS_METHODS.focusAttachment, {
+  payload: FocusAttachmentInput,
+  success: FocusAttachment,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
@@ -2810,6 +2820,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubagentsCreateRpc,
   WsFocusSubscribeRpc,
   WsFocusUpdateRpc,
+  WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,
