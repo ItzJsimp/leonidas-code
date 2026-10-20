@@ -6,6 +6,7 @@ import {
   evaluateBudgets,
   HISTORY_HEADER,
   parseBenchOutput,
+  removeQuietly,
   renderReport,
   type BenchmarkSample,
 } from "./release-benchmark.ts";
@@ -125,5 +126,14 @@ describe("appMemoryScript", () => {
 
   it("escapes a single quote in the path", () => {
     assert.include(appMemoryScript("C:\it's\app.exe"), "it''s");
+  });
+});
+
+describe("removeQuietly", () => {
+  it("swallows a locked-folder error so the measurement before it survives", () => {
+    const locked = () => {
+      throw new Error("EPERM, Permission denied");
+    };
+    assert.doesNotThrow(() => removeQuietly("C:/tmp/leonidas-bench-x", locked));
   });
 });

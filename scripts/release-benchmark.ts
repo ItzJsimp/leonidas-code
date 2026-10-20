@@ -190,6 +190,15 @@ const psPath = (path: string) => path.replaceAll("/", "\\").replaceAll("'", "''"
 export const appMemoryScript = (appExe: string): string =>
   `(Get-Process | Where-Object { $_.Path -eq '${psPath(appExe)}' } | Measure-Object PrivateMemorySize64 -Sum).Sum`;
 
+/** Deletes a folder and never throws: cleanup must not replace a measurement already taken. */
+export function removeQuietly(path: string, remove: typeof rmSync = rmSync): void {
+  try {
+    remove(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  } catch (error) {
+    console.log(`::warning::Could not remove ${path}: ${String(error)}`);
+  }
+}
+
 async function measureApp(appExe: string, idleSeconds: number) {
   const home = mkdtempSync(join(tmpdir(), "leonidas-bench-"));
   const exeForPs = psPath(appExe);
@@ -220,7 +229,9 @@ async function measureApp(appExe: string, idleSeconds: number) {
     return { coldStartMs, idleMb };
   } finally {
     spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
-    rmSync(home, { recursive: true, force: true });
+    // Windows keeps the files locked for a moment after the kill. A throw here would discard the
+    // numbers above (release 0.100.0 reported "not measured" for this reason).
+    removeQuietly(home);
   }
 }
 
@@ -264,7 +275,7 @@ async function main() {
     console.log(`::warning::App measurement failed: ${String(error)}`);
     app = { coldStartMs: Number.NaN, idleMb: Number.NaN };
   } finally {
-    rmSync(extracted, { recursive: true, force: true });
+    removeQuietly(extracted);
   }
 
   const sample: BenchmarkSample = {
