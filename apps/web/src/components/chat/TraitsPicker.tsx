@@ -40,6 +40,7 @@ import {
 } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
 import { useComposerMenuState } from "./useComposerMenuState";
+import { showFirstOpenTip } from "../onboarding/firstOpenTip";
 
 type ProviderOptions = ReadonlyArray<ProviderOptionSelection>;
 
@@ -629,6 +630,7 @@ export const TraitsPicker = memo(function TraitsPicker({
     <Menu
       open={isMenuOpen}
       onOpenChange={(open) => {
+        if (open && !disabled) showFirstOpenTip("effort");
         setIsMenuOpen(open && !disabled);
       }}
     >
