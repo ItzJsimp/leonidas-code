@@ -228,7 +228,7 @@ import {
 } from "./chat/timelineScrollAnchoring";
 import {
   buildPendingUserInputAnswers,
-  carryDisplacedCustomAnswerIntoPrompt,
+  buildSkippedPendingUserInputAnswers,
   derivePendingUserInputProgress,
   setPendingUserInputCustomAnswer,
   togglePendingUserInputOptionSelection,
@@ -10835,6 +10835,15 @@ export default function ChatView(props: ChatViewProps) {
   const onDismissUserInput = useCallback(
     async (requestId: RuntimeRequestId) => {
       if (!activeThreadId) return;
+      // A live question holds the agent's turn, so Skip answers it with a skip
+      // notice. Only async questions can close without a reply.
+      const pendingInput = pendingUserInputs.find((input) => input.requestId === requestId);
+      if (pendingInput && !pendingInput.dismissible) {
+        return onRespondToUserInput(
+          requestId,
+          buildSkippedPendingUserInputAnswers(pendingInput.questions),
+        );
+      }
 
       setRespondingUserInputRequestIds((existing) =>
         existing.includes(requestId) ? existing : [...existing, requestId],
@@ -10853,7 +10862,14 @@ export default function ChatView(props: ChatViewProps) {
       setRespondingUserInputRequestIds((existing) => existing.filter((id) => id !== requestId));
       return result;
     },
-    [activeThreadId, dismissThreadUserInput, environmentId, setThreadError],
+    [
+      activeThreadId,
+      dismissThreadUserInput,
+      environmentId,
+      onRespondToUserInput,
+      pendingUserInputs,
+      setThreadError,
+    ],
   );
 
   const setActivePendingUserInputQuestionIndex = useCallback(
@@ -10874,16 +10890,7 @@ export default function ChatView(props: ChatViewProps) {
       if (!activePendingUserInput) {
         return;
       }
-      // The option replaces the custom answer. Anything typed there is the
-      // user's text, so it goes back to the thread draft instead of vanishing.
-      const displacedAnswer =
-        pendingUserInputAnswersByRequestId[activePendingRequestKey]?.[questionId]?.customAnswer;
-      const currentPrompt =
-        useComposerDraftStore.getState().getComposerDraft(composerDraftTarget)?.prompt ?? "";
-      const nextPrompt = carryDisplacedCustomAnswerIntoPrompt(currentPrompt, displacedAnswer);
-      if (nextPrompt !== currentPrompt) {
-        setComposerDraftPrompt(composerDraftTarget, nextPrompt);
-      }
+      // Typed text stays in the composer as a note sent with the option.
       setPendingUserInputAnswersByRequestId((existing) => {
         const question =
           (activePendingProgress?.activeQuestion?.id === questionId
@@ -10906,18 +10913,8 @@ export default function ChatView(props: ChatViewProps) {
           },
         };
       });
-      promptRef.current = "";
-      composerRef.current?.resetCursorState({ cursor: 0 });
     },
-    [
-      activePendingProgress?.activeQuestion,
-      activePendingUserInput,
-      activePendingRequestKey,
-      composerDraftTarget,
-      composerRef,
-      pendingUserInputAnswersByRequestId,
-      setComposerDraftPrompt,
-    ],
+    [activePendingProgress?.activeQuestion, activePendingUserInput, activePendingRequestKey],
   );
 
   const onChangeActivePendingUserInputCustomAnswer = useCallback(

@@ -29,6 +29,7 @@ const prompt = {
     header: `Question ${index + 1}`,
     question: `Choose for question ${index + 1}`,
     options: [{ label: "Incremental", description: "One module at a time" }],
+    allowCustomAnswer: false,
     multiSelect: false,
   })),
 };
@@ -156,6 +157,7 @@ it("renders repaired explanations inside clickable choices and submits the exact
               {
                 id: "repair",
                 header: "Approach",
+                allowCustomAnswer: false,
                 multiSelect: false,
                 question:
                   "Choose a path - **A) Native:** Reuse existing tools. - **B) Custom:** Build new tools. ➡️ **Recommended: A** - Smaller change.",
@@ -197,4 +199,31 @@ it("renders repaired explanations inside clickable choices and submits the exact
   expect(onToggleOption).toHaveBeenCalledWith("repair", "native-id");
   await act(async () => vi.advanceTimersByTime(200));
   expect(onAdvance).toHaveBeenCalledTimes(1);
+});
+
+it("waits for the composer when the user may still type a note", async () => {
+  const onAdvance = vi.fn();
+  await act(async () => {
+    renderer = create(
+      <ComposerPendingUserInputPanel
+        pendingUserInputs={[
+          { ...prompt, questions: [{ ...prompt.questions[0]!, allowCustomAnswer: true }] },
+        ]}
+        respondingRequestIds={[]}
+        answers={{}}
+        questionIndex={0}
+        onToggleOption={() => {}}
+        onAdvance={onAdvance}
+        onDismiss={() => {}}
+      />,
+    );
+  });
+  const choice = renderer!.root
+    .findAllByType("button")
+    .find((button) =>
+      button.findAllByType("span").some((span) => span.children.includes("Incremental")),
+    )!;
+  await act(async () => choice.props.onClick());
+  await act(async () => vi.advanceTimersByTime(500));
+  expect(onAdvance).not.toHaveBeenCalled();
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildPendingUserInputAnswers,
-  carryDisplacedCustomAnswerIntoPrompt,
+  buildSkippedPendingUserInputAnswers,
   countAnsweredPendingUserInputQuestions,
   derivePendingUserInputProgress,
   findFirstUnansweredPendingUserInputQuestionIndex,
@@ -82,13 +82,25 @@ describe("resolvePendingUserInputAnswer", () => {
     });
   });
 
-  it("prefers a custom answer over selected options", () => {
+  it("sends the selected option together with the typed note", () => {
     expect(
       resolvePendingUserInputAnswer(singleSelectQuestion, {
         selectedOptionValues: ["Orchestration-first"],
-        customAnswer: "Keep the existing envelope for one release",
+        customAnswer: "  Keep the existing envelope for one release ",
       }),
-    ).toBe("Keep the existing envelope for one release");
+    ).toBe("Orchestration-first\n\nNote: Keep the existing envelope for one release");
+    expect(
+      resolvePendingUserInputAnswer(multiSelectQuestion, {
+        selectedOptionValues: ["Server", "Web"],
+        customAnswer: "skip mobile",
+      }),
+    ).toEqual(["Server", "Web", "Note: skip mobile"]);
+  });
+
+  it("sends typed text alone when no option is selected", () => {
+    expect(
+      resolvePendingUserInputAnswer(singleSelectQuestion, { customAnswer: "Something else" }),
+    ).toBe("Something else");
   });
 
   it("falls back to the selected option for single-select questions", () => {
@@ -107,17 +119,20 @@ describe("resolvePendingUserInputAnswer", () => {
     ).toEqual(["Server", "Web"]);
   });
 
-  it("clears the preset selection when a custom answer is entered", () => {
+  it("keeps the selected options when a note is typed", () => {
     expect(
-      setPendingUserInputCustomAnswer(
-        {
-          selectedOptionValues: ["Server", "Web"],
-        },
-        "doesn't matter",
+      setPendingUserInputCustomAnswer({ selectedOptionValues: ["Server", "Web"] }, "a note"),
+    ).toEqual({ customAnswer: "a note", selectedOptionValues: ["Server", "Web"] });
+  });
+
+  it("keeps the typed note when an option is selected", () => {
+    expect(
+      togglePendingUserInputOptionSelection(
+        singleSelectQuestion,
+        { customAnswer: "a note" },
+        "Orchestration-first",
       ),
-    ).toEqual({
-      customAnswer: "doesn't matter",
-    });
+    ).toEqual({ customAnswer: "a note", selectedOptionValues: ["Orchestration-first"] });
   });
 
   it("does not replace a required choice with a custom answer", () => {
@@ -375,21 +390,14 @@ it("accepts attachment-only answers after every upload finishes", () => {
   ).toBeNull();
 });
 
-describe("carryDisplacedCustomAnswerIntoPrompt", () => {
-  it("keeps the thread draft when nothing was typed into the answer", () => {
-    expect(carryDisplacedCustomAnswerIntoPrompt("draft", undefined)).toBe("draft");
-    expect(carryDisplacedCustomAnswerIntoPrompt("draft", "   ")).toBe("draft");
-  });
-
-  it("moves the typed answer into an empty thread draft", () => {
-    expect(carryDisplacedCustomAnswerIntoPrompt("", "also rename the flag ")).toBe(
-      "also rename the flag",
-    );
-  });
-
-  it("appends the typed answer after an existing thread draft", () => {
-    expect(carryDisplacedCustomAnswerIntoPrompt("first half\n", "second half")).toBe(
-      "first half\n\nsecond half",
-    );
+describe("buildSkippedPendingUserInputAnswers", () => {
+  it("answers every question with the skip notice", () => {
+    const answers = buildSkippedPendingUserInputAnswers([
+      singleSelectQuestion,
+      multiSelectQuestion,
+    ]);
+    expect(Object.keys(answers)).toEqual(["scope", "areas"]);
+    expect(answers.scope).toMatch(/^Skipped/);
+    expect(answers.areas).toBe(answers.scope);
   });
 });

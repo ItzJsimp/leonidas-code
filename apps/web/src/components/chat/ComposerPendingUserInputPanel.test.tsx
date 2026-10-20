@@ -53,11 +53,14 @@ describe("ComposerPendingUserInputPanel", () => {
     expect(markup).toMatch(new RegExp(`<div[^>]*\\sid="${controlledId}"`));
   });
 
-  it("offers dismiss only for async questions", () => {
-    expect(renderPanel()).toContain("data-pending-user-input-dismiss");
-    expect(renderPanel({ ...prompt, dismissible: false })).not.toContain(
-      "data-pending-user-input-dismiss",
-    );
+  it("offers a visible Skip control for live and async questions", () => {
+    expect(renderPanel()).toContain("data-pending-user-input-skip");
+    const live = renderPanel({ ...prompt, dismissible: false });
+    expect(live).toContain("data-pending-user-input-skip");
+    expect(live).toContain(">Skip<");
+    expect(
+      renderPanel({ ...prompt, dismissible: false, responseCapability: "not_resumable" }),
+    ).not.toContain("data-pending-user-input-skip");
   });
 
   it("starts expanded so the question and its options are visible", () => {

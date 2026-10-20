@@ -106,18 +106,10 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       setOptimisticSingleSelect(null);
       return;
     }
-    if (
-      progress.customAnswer.trim().length === 0 &&
-      progress.selectedOptionValues.includes(optimisticSingleSelect.optionValue)
-    ) {
+    if (progress.selectedOptionValues.includes(optimisticSingleSelect.optionValue)) {
       setOptimisticSingleSelect(null);
     }
-  }, [
-    activeQuestion,
-    optimisticSingleSelect,
-    progress.customAnswer,
-    progress.selectedOptionValues,
-  ]);
+  }, [activeQuestion, optimisticSingleSelect, progress.selectedOptionValues]);
 
   // A delayed answer only advances its own question, while permission remains granted.
   useEffect(() => {
@@ -140,6 +132,9 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       }
       setOptimisticSingleSelect({ questionId, optionValue });
       onToggleOption(questionId, optionValue);
+      // The user may still type a note to send with the option, so only
+      // choice-only questions submit on click. Others submit from the composer.
+      if (activeQuestion?.allowCustomAnswer !== false) return;
       if (autoAdvanceTimerRef.current !== null) {
         window.clearTimeout(autoAdvanceTimerRef.current);
       }
@@ -186,8 +181,6 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     return null;
   }
 
-  const customAnswerActive = progress.customAnswer.trim().length > 0;
-
   return (
     <Collapsible
       open={!isCollapsed}
@@ -222,15 +215,16 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
             </span>
           ) : null}
           <ComposerBanner.ToggleIcon expanded={!isCollapsed} />
-          {prompt.dismissible ? (
+          {prompt.dismissible || canRespond ? (
             // Sits inside the trigger button, so stop the click from toggling
-            // the disclosure. Dismiss closes the question without a reply.
+            // the disclosure. Skip releases the agent without choosing an option.
             <ComposerBanner.Dismiss
               render={<span role="button" tabIndex={0} />}
-              aria-label="Dismiss question without answering"
-              title="Dismiss question without answering"
+              aria-label="Skip this question and let the agent decide"
+              title="Skip this question and let the agent decide"
+              className="w-auto px-1.5 text-xs"
               disabled={isResponding}
-              data-pending-user-input-dismiss
+              data-pending-user-input-skip
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -242,7 +236,9 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                 event.stopPropagation();
                 onDismiss(prompt.requestId);
               }}
-            />
+            >
+              Skip
+            </ComposerBanner.Dismiss>
           ) : null}
         </ComposerBanner.Actions>
       </CollapsibleTrigger>
@@ -260,8 +256,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   optimisticSingleSelect?.questionId === activeQuestion.id &&
                   optimisticSingleSelect.optionValue === optionValue;
                 const isSelected =
-                  isOptimisticallySelected ||
-                  (!customAnswerActive && progress.selectedOptionValues.includes(optionValue));
+                  isOptimisticallySelected || progress.selectedOptionValues.includes(optionValue);
                 const shortcutKey = index < 9 ? index + 1 : null;
                 const { label: optionLabel, recommended } = option;
                 const className = cn(

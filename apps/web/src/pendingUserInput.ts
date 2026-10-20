@@ -39,6 +39,10 @@ function normalizeSelectedOptionValues(value: string[] | undefined): string[] {
   return Array.from(new Set(value.filter((entry) => typeof entry === "string")));
 }
 
+const NOTE_PREFIX = "Note: ";
+const SKIPPED_ANSWER =
+  "Skipped: the user chose not to answer. Use your best judgment and continue.";
+
 export function resolvePendingUserInputAnswer(
   question: UserInputQuestion,
   draft: PendingUserInputDraftAnswer | undefined,
@@ -50,13 +54,24 @@ export function resolvePendingUserInputAnswer(
       : question.initialAnswer !== undefined
         ? (draft?.customAnswer ?? null)
         : normalizeDraftAnswer(draft?.customAnswer);
-  if (customAnswer !== null && customAnswer.length > 0) {
-    return customAnswer;
-  }
-
   const selectedOptionValues = normalizeSelectedOptionValues(draft?.selectedOptionValues).filter(
     (value) => question.options.some((option) => (option.value ?? option.label) === value),
   );
+  // Prefilled literal answers send the editor text exactly as written.
+  if (question.initialAnswer !== undefined && customAnswer !== null) {
+    return customAnswer;
+  }
+  // A typed note travels with the chosen options instead of replacing them.
+  const note = customAnswer !== null && customAnswer.length > 0 ? customAnswer : null;
+  if (note !== null && selectedOptionValues.length > 0) {
+    const noteLine = `${NOTE_PREFIX}${note}`;
+    return question.multiSelect
+      ? [...selectedOptionValues, noteLine]
+      : `${selectedOptionValues[0]}\n\n${noteLine}`;
+  }
+  if (note !== null) {
+    return note;
+  }
   if (question.multiSelect) {
     return selectedOptionValues.length > 0
       ? selectedOptionValues
@@ -77,7 +92,7 @@ export function setPendingUserInputCustomAnswer(
   question?: Pick<UserInputQuestion, "initialAnswer">,
 ): PendingUserInputDraftAnswer {
   const selectedOptionValues =
-    question?.initialAnswer !== undefined || customAnswer.trim().length > 0
+    question?.initialAnswer !== undefined
       ? undefined
       : normalizeSelectedOptionValues(draft?.selectedOptionValues);
 
@@ -85,28 +100,6 @@ export function setPendingUserInputCustomAnswer(
     customAnswer,
     ...(selectedOptionValues && selectedOptionValues.length > 0 ? { selectedOptionValues } : {}),
   };
-}
-
-const DISPLACED_ANSWER_SEPARATOR = "\n\n";
-
-/**
- * Selecting an option replaces the custom answer, because a non-empty custom
- * answer outranks selected options in `resolvePendingUserInputAnswer`. Text the
- * user typed into the answer field must not vanish on that click: it moves back
- * into the thread draft, after whatever was already waiting there.
- */
-export function carryDisplacedCustomAnswerIntoPrompt(
-  prompt: string,
-  customAnswer: string | undefined,
-): string {
-  const displaced = customAnswer?.trim() ?? "";
-  if (displaced.length === 0) {
-    return prompt;
-  }
-  if (prompt.trim().length === 0) {
-    return displaced;
-  }
-  return `${prompt.trimEnd()}${DISPLACED_ANSWER_SEPARATOR}${displaced}`;
 }
 
 export function togglePendingUserInputOptionSelection(
@@ -121,7 +114,7 @@ export function togglePendingUserInputOptionSelection(
       : [...selectedOptionValues, optionValue];
 
     return {
-      customAnswer: "",
+      customAnswer: draft?.customAnswer ?? "",
       ...(nextSelectedOptionValues.length > 0
         ? { selectedOptionValues: nextSelectedOptionValues }
         : {}),
@@ -129,9 +122,16 @@ export function togglePendingUserInputOptionSelection(
   }
 
   return {
-    customAnswer: "",
+    customAnswer: draft?.customAnswer ?? "",
     selectedOptionValues: [optionValue],
   };
+}
+
+/** Answers every question with a skip notice, so the agent continues on its own judgment. */
+export function buildSkippedPendingUserInputAnswers(
+  questions: ReadonlyArray<UserInputQuestion>,
+): Record<string, string> {
+  return Object.fromEntries(questions.map((question) => [question.id, SKIPPED_ANSWER]));
 }
 
 export function buildPendingUserInputAnswers(

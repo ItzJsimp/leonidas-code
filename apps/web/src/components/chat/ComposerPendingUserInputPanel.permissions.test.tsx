@@ -36,6 +36,7 @@ it("cancels an answer's pending auto-submit on revocation and resumes after a ne
         header: "Approach",
         question: "Which approach?",
         options: [{ label: "Incremental", description: "One module at a time" }],
+        allowCustomAnswer: false,
         multiSelect: false,
       },
     ],
