@@ -178,6 +178,9 @@ export function makeAntigravityAcpAdapterFlavor(
     // without the replay and is what the official client does.
     preferResumeSession: true,
     connectionLostText: /^Agent connection was lost and could not be re-established/,
+    // `manage_task kill` cancels the next model request; the agent then stops without a reply.
+    silentStopContinuation:
+      "Your last model request was cancelled before you replied. Continue from where you stopped and finish with a short reply for the user.",
     subagentsIdleOnTurnCompletion: true,
     ...(options.onSessionEvent === undefined ? {} : { onSessionEvent: options.onSessionEvent }),
     applyModelSelection: ({ runtime, modelSelection }) =>

@@ -221,6 +221,11 @@ export interface AcpAdapterV2Flavor {
   readonly promptFailure?: (cause: unknown) => OrchestrationV2ProviderFailure;
   /** Assistant text the agent emits when its own connection died; the next turn restarts the runtime. */
   readonly connectionLostText?: RegExp;
+  /**
+   * Some agents end a turn with a normal stop right after a tool call, because their
+   * next model request was cancelled. Sent once as a follow-up prompt so the user gets a reply.
+   */
+  readonly silentStopContinuation?: string;
   readonly driver: ProviderDriverKind;
   readonly capabilities: OrchestrationV2ProviderCapabilities;
   readonly clientCapabilitiesMeta?: NonNullable<
@@ -1213,6 +1218,10 @@ interface ActiveAcpTurn {
   connectionLostSeen: boolean;
   /** The one allowed replay already ran; a second drop shows the agent's text. */
   connectionReplayed: boolean;
+  /** A tool call started and no assistant text has followed it yet. */
+  awaitingReplyAfterTool: boolean;
+  /** The one allowed silent-stop continuation already ran. */
+  silentStopContinued: boolean;
   readonly plans: Map<
     string,
     {
@@ -4587,6 +4596,16 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
           ) {
             yield* emitProviderRetry(context, "completed");
           }
+          if (update.sessionUpdate === "tool_call") {
+            context.awaitingReplyAfterTool = true;
+          } else if (
+            update.sessionUpdate === "agent_message_chunk" &&
+            (acpContentBlockDisplayText(update.content)?.trim().length ?? 0) > 0 &&
+            flavor.connectionLostText?.test(acpContentBlockDisplayText(update.content) ?? "") !==
+              true
+          ) {
+            context.awaitingReplyAfterTool = false;
+          }
           switch (update.sessionUpdate) {
             case "state_update": {
               const toolCallId = `${context.nativeTurnId}:requires-action`;
@@ -7137,6 +7156,8 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
               earlyInjectedReportObserved: false,
               connectionLostSeen: false,
               connectionReplayed: false,
+              awaitingReplyAfterTool: false,
+              silentStopContinued: false,
               plans: new Map(),
               interrupted: false,
               finalized: false,
@@ -7290,18 +7311,32 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
               promptGeneration = yield* Ref.get(runtimeCallbackGeneration);
               return yield* runtime.prompt({ prompt: promptParts!.prompt });
             });
-            const promptWithReplay = runtime
-              .prompt({ prompt: promptParts!.prompt })
-              .pipe(
-                Effect.flatMap((result) =>
-                  context.connectionLostSeen &&
-                  !context.connectionReplayed &&
-                  !context.interrupted &&
-                  result.stopReason !== "cancelled"
-                    ? replayAfterConnectionLost
-                    : Effect.succeed(result),
-                ),
-              );
+            const promptWithReplay = runtime.prompt({ prompt: promptParts!.prompt }).pipe(
+              Effect.flatMap((result) =>
+                context.connectionLostSeen &&
+                !context.connectionReplayed &&
+                !context.interrupted &&
+                result.stopReason !== "cancelled"
+                  ? replayAfterConnectionLost
+                  : Effect.succeed(result),
+              ),
+              // The turn ended on a tool call with no reply: send one follow-up on the
+              // same session so the user sees an answer instead of a silent stop.
+              Effect.flatMap((result) => {
+                const continuation = flavor.silentStopContinuation;
+                if (
+                  continuation === undefined ||
+                  !context.awaitingReplyAfterTool ||
+                  context.silentStopContinued ||
+                  context.interrupted ||
+                  result.stopReason === "cancelled"
+                ) {
+                  return Effect.succeed(result);
+                }
+                context.silentStopContinued = true;
+                return runtime.prompt({ prompt: [{ type: "text", text: continuation }] });
+              }),
+            );
             yield* promptWithReplay.pipe(
               Effect.tap(() =>
                 Ref.update(promptInstructionStates, (current) => {
