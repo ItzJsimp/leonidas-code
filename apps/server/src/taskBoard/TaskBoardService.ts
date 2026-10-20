@@ -42,6 +42,7 @@ import {
   type AiosWorkspaceSummary,
   type AiosWorkspacesListResult,
   type AiosDirection,
+  type AiosMemorySummary,
 } from "@t3tools/contracts";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
@@ -59,6 +60,7 @@ import * as SubscriptionRef from "effect/SubscriptionRef";
 import { ServerConfig } from "../config.ts";
 import { ServerSettingsService } from "../serverSettings.ts";
 import { readAiosShape, type AiosShape } from "./aiosShape.ts";
+import { readAiosMemorySummary } from "./aiosMemory.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
 import { buildDirection, readDirection } from "./aiosDirection.ts";
 import { buildHome } from "./aiosHome.ts";
@@ -609,6 +611,11 @@ export class TaskBoardService extends Context.Service<
       projects: ReadonlyArray<Project>,
       workspaceId?: string,
     ) => Effect.Effect<AiosDirection, TaskBoardReadError>;
+    /** The Memory view: active identity, verified facts, decisions, and review queue. */
+    readonly memorySummary: (
+      projects: ReadonlyArray<Project>,
+      workspaceId?: string,
+    ) => Effect.Effect<AiosMemorySummary>;
     /** Counts about the AIOS folder for opt-in usage analytics. */
     readonly usageShape: (
       projects: ReadonlyArray<Project>,
@@ -2132,6 +2139,9 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const memorySummary = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
+    Effect.sync(() => readAiosMemorySummary(scopeFor(projects, { workspaceId }).root));
+
   const usageShape = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.sync(() => readAiosShape(scopeFor(projects, { workspaceId }).root));
 
@@ -2210,6 +2220,7 @@ const make = Effect.gen(function* () {
     aiosRoot: (projects: ReadonlyArray<Project>, workspaceId?: string) =>
       Effect.sync(() => scopeFor(projects, { workspaceId }).root),
     usageShape,
+    memorySummary,
     direction,
     workspaces,
     workspaceInit,

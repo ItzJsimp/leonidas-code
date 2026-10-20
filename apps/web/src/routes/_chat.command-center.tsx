@@ -14,6 +14,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
+import { AiosMemoryCard } from "../components/taskBoard/AiosMemoryCard";
 import { DirectionSection } from "../components/taskBoard/DirectionSection";
 import { HomeExtraCards } from "../components/taskBoard/HomeExtraCards";
 import { LayaMonitorCard } from "../components/taskBoard/LayaMonitorCard";
@@ -107,6 +108,7 @@ function CommandCenterPage() {
           </div>
           <DirectionSection />
           <AiosHomeCard />
+          <AiosMemoryCard />
           <HomeExtraCards />
           <LayaMonitorCard />
           <PonytailCard />

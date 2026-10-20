@@ -89,6 +89,13 @@ export const taskBoardHomeQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 60_000,
 });
 
+export const aiosMemorySummaryQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-memory-summary",
+  tag: WS_METHODS.aiosMemorySummary,
+  staleTimeMs: 10_000,
+  idleTtlMs: 60_000,
+});
+
 export const aiosUsageShapeQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:task-board:aios-usage-shape",
   tag: WS_METHODS.aiosUsageShape,

@@ -545,6 +545,53 @@ export const AiosUsageShape = Schema.Struct({
 });
 export type AiosUsageShape = typeof AiosUsageShape.Type;
 
+export const AiosMemorySummary = Schema.Struct({
+  status: Schema.Literals(["ready", "empty", "not_detected"]),
+  docCount: Schema.Number,
+  lastRebuild: Schema.Number,
+  indexSizeBytes: Schema.Number,
+  identity: Schema.NullOr(
+    Schema.Struct({
+      name: Schema.String,
+      title: Schema.String,
+      verified: Schema.String,
+      snippet: Schema.String,
+    }),
+  ),
+  verifiedCount: Schema.Number,
+  decisionsCount: Schema.Number,
+  grillSessionsCount: Schema.Number,
+  reviewQueue: Schema.Struct({
+    openCount: Schema.Number,
+    dismissedCount: Schema.Number,
+    promotedCount: Schema.Number,
+    recentOpen: Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        slug: Schema.String,
+        type: Schema.String,
+        description: Schema.String,
+        origin: Schema.String,
+        queuedAt: Schema.String,
+      }),
+    ),
+  }),
+  recentDecisions: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      title: Schema.String,
+      file: Schema.String,
+    }),
+  ),
+  checks: Schema.Struct({
+    provenance: Schema.Boolean,
+    correctionPropagation: Schema.Boolean,
+    privacyGuard: Schema.Boolean,
+    boundaryIsolation: Schema.Boolean,
+  }),
+});
+export type AiosMemorySummary = typeof AiosMemorySummary.Type;
+
 export const TaskBoardHome = Schema.Struct({
   root: Schema.NullOr(Schema.String),
   brief: Schema.NullOr(

@@ -3001,6 +3001,11 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),
           ),
+        [WS_METHODS.aiosMemorySummary]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.flatMap((projects) => taskBoard.memorySummary(projects, input.workspaceId)),
+          ),
         [WS_METHODS.aiosUsageShape]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.orElseSucceed(() => []),
