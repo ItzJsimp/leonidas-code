@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { PRIVACY_POLICY_URL } from "../../legalLinks";
 import { resolveStorage } from "../storage";
 
 /**
@@ -11,8 +12,7 @@ import { resolveStorage } from "../storage";
  */
 export const USAGE_CONSENT_VERSION = 2;
 
-export const USAGE_PRIVACY_URL =
-  "https://github.com/ItzJsimp/leonidas-code/blob/main/docs/user/privacy.md";
+export const USAGE_PRIVACY_URL = PRIVACY_POLICY_URL;
 
 export type UsageConsent = "unknown" | "granted" | "declined";
 

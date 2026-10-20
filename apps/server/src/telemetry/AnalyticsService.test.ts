@@ -274,4 +274,44 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
       assert.deepEqual(capturedPaths, []);
     }),
   );
+
+  it.effect("a fresh profile with no telemetry setting sends 0 requests to us.i.posthog.com", () =>
+    Effect.gen(function* () {
+      const urls: Array<string> = [];
+      const countingClient = Layer.succeed(
+        HttpClient.HttpClient,
+        HttpClient.make((request) =>
+          Effect.gen(function* () {
+            urls.push(request.url);
+            return yield* new HttpClientError.HttpClientError({
+              reason: new HttpClientError.TransportError({ request, cause: "blocked" }),
+            });
+          }),
+        ),
+      );
+      const layerRuntime = AnalyticsService.layer.pipe(
+        Layer.provideMerge(
+          ServerConfig.ServerConfig.layerTest(process.cwd(), { prefix: "t3-telemetry-fresh-" }),
+        ),
+        // No T3CODE_* keys at all: a fresh profile where nobody gave consent.
+        Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown({}))),
+        Layer.provide(
+          Layer.mergeAll(
+            Layer.succeed(HostProcess.Platform, "win32"),
+            Layer.succeed(HostProcess.Architecture, "x64"),
+            countingClient,
+          ),
+        ),
+      );
+
+      yield* Effect.gen(function* () {
+        const analytics = yield* AnalyticsService.AnalyticsService;
+        yield* analytics.record("test.fresh", { index: 1 });
+        yield* analytics.flush;
+        yield* TestClock.adjust("5 seconds");
+      }).pipe(Effect.provide(layerRuntime));
+
+      assert.deepEqual(urls, []);
+    }),
+  );
 });
