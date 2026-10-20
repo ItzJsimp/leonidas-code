@@ -43,6 +43,8 @@ import {
   TaskBoardWorkspaceInput,
   TaskBoardWorkspaceSnapshot,
   TaskBoardCardUpdateInput,
+  TaskBoardChangeSetInput,
+  TaskBoardChangeSetResult,
   TaskBoardCardCreateInput,
   InboxDrop,
   InboxDropInput,
@@ -584,6 +586,7 @@ export const WS_METHODS = {
   taskBoardWorkspace: "taskBoard.workspace",
   taskBoardCardUpdate: "taskBoard.cardUpdate",
   taskBoardCardCreate: "taskBoard.cardCreate",
+  taskBoardApplyChangeSet: "taskBoard.applyChangeSet",
   taskBoardShare: "taskBoard.share",
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
@@ -1741,6 +1744,12 @@ const WsLocalModelsDeleteRpc = Rpc.make(WS_METHODS.localModelsDelete, {
 const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
   payload: TaskBoardCardUpdateInput,
   success: TaskBoardTask,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsTaskBoardApplyChangeSetRpc = Rpc.make(WS_METHODS.taskBoardApplyChangeSet, {
+  payload: TaskBoardChangeSetInput,
+  success: TaskBoardChangeSetResult,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
@@ -2976,6 +2985,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardWorkspaceRpc,
   WsTaskBoardCardUpdateRpc,
   WsTaskBoardCardCreateRpc,
+  WsTaskBoardApplyChangeSetRpc,
   WsTaskBoardShareRpc,
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
