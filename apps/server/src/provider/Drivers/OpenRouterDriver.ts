@@ -53,6 +53,11 @@ import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
 import { providerModelsFromSettings } from "@t3tools/provider-core/server/snapshotProbe";
 import { resolveClaudeModelCatalog } from "../ClaudeModelCatalog.ts";
 import { readOpenRouterUsageLimits } from "../openRouterUsageLimits.ts";
+import {
+  exchangeOpenRouterCode,
+  makeOpenRouterAuth,
+  makeOpenRouterKeyWriter,
+} from "../OpenRouterAuth.ts";
 import { bundledOpenRouterModels, fetchOpenRouterModels } from "../openRouterModelCatalog.ts";
 import {
   defaultProviderContinuationIdentity,
@@ -427,9 +432,22 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
           ),
         );
 
+        // One-click sign-in: the key lands in settings, which rebuilds this instance.
+        const writeApiKey = yield* makeOpenRouterKeyWriter(instanceId);
+        const auth = yield* makeOpenRouterAuth({
+          instanceId,
+          exchangeCode: (code, verifier) =>
+            exchangeOpenRouterCode(instanceId, code, verifier).pipe(
+              Effect.provideService(HttpClient.HttpClient, httpClient),
+            ),
+          saveKey: writeApiKey,
+          removeKey: writeApiKey(""),
+        });
+
         return {
           instanceId,
           driverKind: DRIVER_KIND,
+          auth,
           continuationIdentity: {
             ...fallbackContinuationIdentity,
             continuationKey: continuationGroupKey,
