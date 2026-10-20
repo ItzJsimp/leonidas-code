@@ -1,4 +1,5 @@
 import { CacheSettings } from "./CacheSettings";
+import { OWN_YOUR_BRAIN_LINE } from "../../onboarding/ownYourBrain";
 import { ApiKeysSettings } from "./ApiKeysSettings";
 import { LeaderboardSettings } from "./LeaderboardSettings";
 import { UsageAnalyticsSettings } from "./UsageAnalyticsSettings";
@@ -3634,6 +3635,7 @@ export function GeneralSettingsPanel() {
       </FoldedSettingsSection>
 
       <SettingsSection id="about" title="About">
+        <SettingsRow title="Your AI, your files" description={OWN_YOUR_BRAIN_LINE} />
         <LoginItemSettings />
         <SettingsBackupSettings />
         <SettingsRow

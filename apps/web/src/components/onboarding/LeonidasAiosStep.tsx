@@ -15,6 +15,7 @@ import {
   splitAiosFolder,
   type AiosFolderNotice,
 } from "../../onboarding/aiosFolders.logic";
+import { OWN_YOUR_BRAIN_LINE } from "../../onboarding/ownYourBrain";
 import { useFolderInspection } from "../../onboarding/useFolderInspection";
 import { useOnboardingChat } from "../../onboarding/useOnboardingChat";
 import {
@@ -134,6 +135,7 @@ export function LeonidasAiosStep({
         This step is optional. Your AI starts every chat knowing who you are and what you work on.
         It reads a few plain text files first (an “AIOS”). Leonidas Code can build them with you.
       </p>
+      <p className="mt-2 text-sm font-medium text-foreground">{OWN_YOUR_BRAIN_LINE}</p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-4 pr-3">
           <ul className="space-y-1.5">

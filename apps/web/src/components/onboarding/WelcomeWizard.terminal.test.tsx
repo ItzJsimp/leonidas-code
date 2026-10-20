@@ -51,6 +51,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("../../connection/catalog", () => ({ environmentCatalog: { setEnabled: "setEnabled" } }));
 vi.mock("./ClaudeInstallPill", () => ({ ClaudeInstallPill: () => null }));
+vi.mock("../voice/DictationTextarea", () => ({ DictationTextarea: () => null }));
 vi.mock("../../connection/runtime", () => ({ connectionAtomRuntime: undefined }));
 vi.mock("@t3tools/client-runtime/state/session", () => ({
   createEnvironmentSessionAtoms: () => ({
