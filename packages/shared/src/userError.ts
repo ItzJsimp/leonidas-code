@@ -10,6 +10,7 @@
 export type UserErrorKind =
   | "provider-cli-missing"
   | "auth-expired"
+  | "no-paid-plan"
   | "quota-reached"
   | "port-in-use"
   | "settings-corrupt"
@@ -116,6 +117,8 @@ const CLI_MISSING =
   /spawn \S+ enoent|command not found|is not recognized as an internal or external command|executable (was )?not found|cli (is )?not installed|(claude|codex|gemini|cursor|opencode|antigravity)( cli| code)? (is )?not installed|could not find the (claude|codex|gemini|cursor|opencode) (cli|binary|executable)/;
 const AUTH_EXPIRED =
   /unauthori[sz]ed|not logged in|not signed in|please (log|sign) ?in|login required|authentication (failed|required|expired)|(token|session|credentials?) (has )?(expired|invalid|revoked)|invalid (api key|token)|re-?authenticate|oauth token/;
+const NO_PAID_PLAN =
+  /(pro|max|plus|team|paid) (plan|subscription) (is )?required|requires an? (claude |chatgpt )?(pro|max|plus|paid)|subscription required|does not have access to (claude code|codex)|plan does not include|upgrade your plan|not (included|available) (in|on|with) your plan/;
 const QUOTA_REACHED =
   /usage limit|rate.?limit|quota|too many requests|credit balance|out of credits|limit (reached|exceeded)/;
 const PORT_IN_USE = /eaddrinuse|address already in use|port (\d+ )?is (already )?in use/;
@@ -143,6 +146,7 @@ function classify(facts: ErrorFacts, options: DescribeUserErrorOptions): UserErr
   if (tags.has("ServerSettingsError") || SETTINGS_CORRUPT.test(text)) return "settings-corrupt";
   if (codes.has("EADDRINUSE") || PORT_IN_USE.test(text)) return "port-in-use";
   if (CLI_MISSING.test(text)) return "provider-cli-missing";
+  if (NO_PAID_PLAN.test(text)) return "no-paid-plan";
   if (options.providerClass === "usage_limit" || status === 429 || QUOTA_REACHED.test(text)) {
     return "quota-reached";
   }
@@ -175,24 +179,35 @@ function buildUserError(
       return {
         kind,
         detail,
-        title: "The provider CLI is not installed.",
-        reason: "Leonidas Code could not find the provider's command-line tool on this computer.",
-        action: { kind: "route", label: "Open provider settings", to: PROVIDER_SETTINGS_ROUTE },
+        title: "The AI program is not installed.",
+        reason:
+          "Leonidas Code could not find the AI program on this computer. Install it from the AI accounts page.",
+        action: { kind: "route", label: "Install it", to: PROVIDER_SETTINGS_ROUTE },
       };
     case "auth-expired":
       return {
         kind,
         detail,
-        title: "You are signed out of this provider.",
-        reason: "The provider sign-in expired or was removed.",
+        title: "You are signed out of this AI account.",
+        reason: "The sign-in expired or was removed. Sign in again to keep chatting.",
         action: { kind: "route", label: "Sign in again", to: PROVIDER_SETTINGS_ROUTE },
+      };
+    case "no-paid-plan":
+      return {
+        kind,
+        detail,
+        title: "This AI account has no paid plan.",
+        reason:
+          "This AI needs a paid plan (about $20 a month). To start free, sign in with OpenRouter.",
+        action: { kind: "route", label: "Start free", to: PROVIDER_SETTINGS_ROUTE },
       };
     case "quota-reached":
       return {
         kind,
         detail,
-        title: "The provider usage limit is reached.",
-        reason: "This account used all of its allowance for now.",
+        title: "This AI account reached its limit.",
+        reason:
+          "It used all of its allowance for now. Wait and try again later, or pick another AI in the model menu.",
         action: { kind: "route", label: "View usage", to: PROVIDER_SETTINGS_ROUTE },
       };
     case "port-in-use": {

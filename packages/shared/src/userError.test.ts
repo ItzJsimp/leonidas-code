@@ -18,11 +18,11 @@ describe("describeUserError", () => {
     const result = describeUserError(nodeError("spawn claude ENOENT", "ENOENT"));
     expect(result.kind).toBe("provider-cli-missing");
     expect(result.reason).toBe(
-      "Leonidas Code could not find the provider's command-line tool on this computer.",
+      "Leonidas Code could not find the AI program on this computer. Install it from the AI accounts page.",
     );
     expect(result.action).toEqual({
       kind: "route",
-      label: "Open provider settings",
+      label: "Install it",
       to: PROVIDER_SETTINGS_ROUTE,
     });
   });
@@ -39,7 +39,9 @@ describe("describeUserError", () => {
       message: "Unauthorized",
     });
     expect(result.kind).toBe("auth-expired");
-    expect(result.reason).toBe("The provider sign-in expired or was removed.");
+    expect(result.reason).toBe(
+      "The sign-in expired or was removed. Sign in again to keep chatting.",
+    );
     expect(result.action).toEqual({
       kind: "route",
       label: "Sign in again",
@@ -54,12 +56,43 @@ describe("describeUserError", () => {
       describeUserError("Turn failed", { providerClass: "usage_limit" }),
     ]) {
       expect(result.kind).toBe("quota-reached");
-      expect(result.reason).toBe("This account used all of its allowance for now.");
+      expect(result.reason).toBe(
+        "It used all of its allowance for now. Wait and try again later, or pick another AI in the model menu.",
+      );
       expect(result.action).toEqual({
         kind: "route",
         label: "View usage",
         to: PROVIDER_SETTINGS_ROUTE,
       });
+    }
+  });
+
+  it("no paid plan: points to the free path before the quota case", () => {
+    for (const text of [
+      "Claude Code requires a Claude Pro or Max subscription.",
+      "Your plan does not include Codex. Upgrade your plan to continue.",
+      "This account does not have access to Claude Code.",
+    ]) {
+      const result = describeUserError(new Error(text));
+      expect(result.kind).toBe("no-paid-plan");
+      expect(result.reason).toContain("OpenRouter");
+      expect(result.action).toEqual({
+        kind: "route",
+        label: "Start free",
+        to: "/settings/providers",
+      });
+    }
+  });
+
+  it("setup failures use plain words, not CLI or provider jargon", () => {
+    for (const error of [
+      new Error("spawn claude ENOENT"),
+      new Error("Not logged in. Please run /login"),
+      new Error("rate limit exceeded"),
+      new Error("Claude Code requires a Claude Pro subscription"),
+    ]) {
+      const { title, reason } = describeUserError(error);
+      expect(`${title} ${reason}`).not.toMatch(/CLI|provider|command-line/i);
     }
   });
 
