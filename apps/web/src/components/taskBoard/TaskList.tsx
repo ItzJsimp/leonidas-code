@@ -12,16 +12,10 @@ import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "~/components/ui/empty";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { cn } from "~/lib/utils";
 import { ChecklistBar, DueChip, PriorityBadge, SharedBadge, StatusBadge } from "./TaskBadges";
+import { TasksEmpty } from "./TaskEmptyStates";
 import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import {
   isOpen,
@@ -216,6 +210,7 @@ export function TaskListView(props: {
   actions: TaskActions;
   selectedId: string | null;
   onSelect: (task: TaskView) => void;
+  onClearFilters: (() => void) | null;
 }) {
   const { tasks, sections, groupBy, context, actions, selectedId } = props;
   const actionsRef = useLatest(actions);
@@ -296,19 +291,7 @@ export function TaskListView(props: {
   };
 
   if (groups.length === 0) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ListIcon />
-          </EmptyMedia>
-          <EmptyTitle>No tasks to show</EmptyTitle>
-          <EmptyDescription>
-            Add a task above, choose another view, or clear your filters.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
+    return <TasksEmpty icon={<ListIcon />} onClearFilters={props.onClearFilters} />;
   }
 
   const renderItem = ({ item }: { item: ListItem }) =>

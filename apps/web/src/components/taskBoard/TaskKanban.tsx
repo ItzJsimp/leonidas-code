@@ -5,13 +5,6 @@ import { memo, useCallback, useMemo, useRef, useState, type DragEvent } from "re
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "~/components/ui/empty";
-import {
   Menu,
   MenuGroup,
   MenuGroupLabel,
@@ -22,6 +15,7 @@ import {
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { DueChip, PriorityBadge, SharedBadge, ChecklistBar } from "./TaskBadges";
+import { TasksEmpty } from "./TaskEmptyStates";
 import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import { groupByStatus, statusLabel, type TaskView } from "./taskBoard.logic";
 import type { TaskActions, TaskContext } from "./taskBoard.types";
@@ -222,7 +216,7 @@ function KanbanColumn({
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-2 pt-0">
         {tasks.length === 0 ? (
           <p className="rounded-lg border border-dashed px-3 py-6 text-center text-muted-foreground text-xs">
-            {isOver ? "Drop to move here" : "No tasks"}
+            {isOver ? "Drop to move here" : "No tasks. Drag a card here to move it."}
           </p>
         ) : (
           tasks.map((task) => (
@@ -257,6 +251,7 @@ export function TaskKanbanView(props: {
   actions: TaskActions;
   selectedId: string | null;
   onSelect: (task: TaskView) => void;
+  onClearFilters: (() => void) | null;
 }) {
   const { tasks, context, actions, selectedId } = props;
   const actionsRef = useLatest(actions);
@@ -357,20 +352,7 @@ export function TaskKanbanView(props: {
   );
 
   if (tasks.length === 0) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <KanbanIcon />
-          </EmptyMedia>
-          <EmptyTitle>No tasks to show</EmptyTitle>
-          <EmptyDescription>
-            Tasks from your AIOS task folder show here when they match the filters. Clear the
-            filters to see all tasks.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
+    return <TasksEmpty icon={<KanbanIcon />} onClearFilters={props.onClearFilters} />;
   }
 
   return (

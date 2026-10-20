@@ -29,6 +29,7 @@ import { TaskDashboardView } from "./TaskDashboard";
 import { TaskDetailPanel } from "./TaskDetail";
 import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskKanbanView } from "./TaskKanban";
+import { RoadmapEmpty } from "./TaskEmptyStates";
 import { TaskListView } from "./TaskList";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
 import { useRailWidth } from "./TaskRailResizer";
@@ -44,6 +45,7 @@ import type { TaskView } from "./taskBoard.logic";
 import {
   DEFAULT_TASKS_PREFS,
   TASKS_PREFS_KEY,
+  activeFilterCount,
   parseTasksPrefs,
   sectionShareState,
   tasksInFocus,
@@ -266,6 +268,14 @@ export function TasksPage() {
     </div>
   );
 
+  const clearFilters =
+    activeFilterCount(prefs, query) > 0
+      ? () => {
+          setQuery("");
+          patchPrefs({ statuses: null, priorities: null, sharedOnly: false });
+        }
+      : null;
+
   let body;
   if (board.isLoading && !inPractice) {
     body = (
@@ -298,15 +308,7 @@ export function TasksPage() {
         onRefresh={board.refresh}
       />
     ) : (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>No update plan yet</EmptyTitle>
-          <EmptyDescription>
-            Ask your AI to define the current version, the goal version and the steps between in
-            this project’s project-roadmap.json. Assign tasks to versions in their details.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <RoadmapEmpty name={railEntry?.name ?? roadmapSlug} slug={roadmapSlug} />
     );
   } else if (prefs.view === "dashboard") {
     body = (
@@ -328,6 +330,7 @@ export function TasksPage() {
         actions={actions}
         selectedId={selectedId}
         onSelect={selectTask}
+        onClearFilters={clearFilters}
       />
     );
   } else {
@@ -340,6 +343,7 @@ export function TasksPage() {
         actions={actions}
         selectedId={selectedId}
         onSelect={selectTask}
+        onClearFilters={clearFilters}
       />
     );
   }
