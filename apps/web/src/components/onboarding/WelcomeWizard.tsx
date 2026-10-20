@@ -86,6 +86,8 @@ import { presentSavedCloudEnvironmentConnection } from "../cloud/cloudEnvironmen
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
+import { OpenRouterSignInCard } from "./OpenRouterSignInCard";
+import { AI_STEP_DESCRIPTION } from "../../onboarding/openRouterSignIn.logic";
 import { ClaudeInstallPill } from "./ClaudeInstallPill";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
 import { LeonidasGoalsStep } from "./LeonidasGoalsStep";
@@ -864,10 +866,7 @@ function AgentsStep({
   const hasReadyAgent = environmentIds.some((id) => readyIds.has(id));
   const continueCopy = describeAgentsStepContinue(hasReadyAgent);
   return (
-    <StepShell
-      title="Add your AI accounts"
-      description="You only need one AI account to start. You can add more later."
-    >
+    <StepShell title="Add your AI accounts" description={AI_STEP_DESCRIPTION}>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-5 pr-3">
           {environmentIds.map((environmentId) => (
@@ -936,6 +935,8 @@ function ConnectedAgentsStep({
   }, [environmentId, refreshProviders]);
 
   const byDriver = useMemo(() => selectOnboardingProvidersByDriver(providers), [providers]);
+  // The free path for users with no paid AI plan.
+  const openRouter = byDriver.get("openrouter");
 
   const primaryAgents = PRIMARY_AGENT_DRIVERS.flatMap((driver) => {
     const instances =
@@ -1081,6 +1082,9 @@ function ConnectedAgentsStep({
             />
           ),
         )}
+        {openRouter ? (
+          <OpenRouterSignInCard environmentId={environmentId} provider={openRouter} />
+        ) : null}
       </div>
       {providers?.some(
         (provider) =>
