@@ -41,6 +41,12 @@ those limits. Active work, scheduled tasks, and pairing sessions are excluded. P
 logins remain machine-local; dev signing keys stay independent. Browser-only preferences
 remain in their browser profile, so the web preview is not an exact desktop-profile clone.
 
+A second `vp run dev` for a home whose server is still healthy prints `reusing healthy dev at <url>`
+and exits without starting anything. A dead pid or a port that no longer answers counts as stale
+and starts normally. `--share`, `--dry-run`, explicit ports and other modes always start normally.
+`scripts/Start-LeonidasDev.ps1` reads its ports from the same `server-runtime.json`, so it is
+correct when the preferred ports are taken.
+
 Read ports from the `[dev-runner]` output. Worktrees derive stable preferences from their paths,
 but occupied ports can shift them. `T3CODE_PORT_OFFSET` or `T3CODE_DEV_INSTANCE` can select a
 different preference when needed.

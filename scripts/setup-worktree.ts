@@ -7,6 +7,7 @@
  * worktree, then warms the web dependency cache.
  */
 import * as NodeChildProcess from "node:child_process";
+import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
@@ -18,13 +19,30 @@ if (!projectRoot) {
 }
 const worktree = NodePath.dirname(import.meta.dirname);
 
-// `shell` resolves `vp` through PATH, including Windows command shims.
-const install = NodeChildProcess.spawnSync("vp i", {
-  cwd: worktree,
-  shell: true,
-  stdio: "inherit",
-});
-if (install.status !== 0) process.exit(install.status ?? 1);
+// A no-op `vp i` still costs about 10 s. The stamp lives in node_modules, so a
+// deleted install loses it, and it is written only after a successful install.
+const stampPath = NodePath.join(worktree, "node_modules", ".leonidas-install-stamp");
+const stamp = NodeCrypto.createHash("sha256")
+  .update(process.version)
+  .update(NodeFS.readFileSync(NodePath.join(worktree, "package.json")))
+  .update(NodeFS.readFileSync(NodePath.join(worktree, "pnpm-lock.yaml")))
+  .update(NodeFS.readFileSync(NodePath.join(worktree, "pnpm-workspace.yaml")))
+  .digest("hex");
+const installIsCurrent =
+  NodeFS.existsSync(NodePath.join(worktree, "node_modules", ".modules.yaml")) &&
+  NodeFS.existsSync(stampPath) &&
+  NodeFS.readFileSync(stampPath, "utf8").trim() === stamp;
+
+if (!installIsCurrent) {
+  // `shell` resolves `vp` through PATH, including Windows command shims.
+  const install = NodeChildProcess.spawnSync("vp i", {
+    cwd: worktree,
+    shell: true,
+    stdio: "inherit",
+  });
+  if (install.status !== 0) process.exit(install.status ?? 1);
+  NodeFS.writeFileSync(stampPath, `${stamp}\n`);
+}
 
 // Env files live as real files in the main checkout; worktrees only get
 // symlinks to them. Only a symlink is ever replaced, so a real env file is

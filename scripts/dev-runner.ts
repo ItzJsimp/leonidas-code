@@ -19,6 +19,7 @@ import * as Schema from "effect/Schema";
 import { Argument, Command, Flag } from "effect/cli";
 import { ChildProcess } from "effect/process";
 
+import { findReusableDev, formatDevReuseMessage } from "./lib/dev-reuse.ts";
 import { type DevShareError, shareDevServer, unshareDevServer } from "./lib/dev-share.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
 
@@ -645,7 +646,24 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
       return yield* new DevRunnerHostNotProxiableError({ mode: input.mode, host: input.host });
     }
 
-    const worktreePath = yield* resolveGitWorktreePath(yield* HostProcess.WorkingDirectory);
+    // Development must not inherit the live application's home, including
+    // when an agent launches it from inside that application. Both main
+    // checkouts and worktrees use gitignored, checkout-local state.
+    const path = yield* Path.Path;
+    const cwd = yield* HostProcess.WorkingDirectory;
+    const resolvedT3Home =
+      (input.t3Home?.trim() || undefined) ?? path.join(path.resolve(cwd), ".t3");
+
+    // A second `vp run dev` for the same home would start a Vite with no
+    // backend (the server refuses a second instance) on shifted ports. Reuse
+    // the healthy stack instead.
+    const healthy = yield* Effect.promise(() => findReusableDev(input, resolvedT3Home));
+    if (healthy) {
+      yield* Effect.logInfo(formatDevReuseMessage(healthy));
+      return;
+    }
+
+    const worktreePath = yield* resolveGitWorktreePath(cwd);
 
     const { offset, source } = yield* resolveOffset({
       portOffset,
@@ -664,13 +682,6 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
     });
 
     const hostEnvironment = yield* HostProcess.Environment;
-    // Development must not inherit the live application's home, including
-    // when an agent launches it from inside that application. Both main
-    // checkouts and worktrees use gitignored, checkout-local state.
-    const path = yield* Path.Path;
-    const cwd = yield* HostProcess.WorkingDirectory;
-    const resolvedT3Home =
-      (input.t3Home?.trim() || undefined) ?? path.join(path.resolve(cwd), ".t3");
     const env = yield* createDevRunnerEnv({
       mode: input.mode,
       baseEnv: hostEnvironment,
