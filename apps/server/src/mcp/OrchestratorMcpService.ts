@@ -1744,6 +1744,7 @@ const make = Effect.gen(function* () {
         hasPendingChildRuns: hasPendingChildRuns(childProjection, childRun),
         providerInstanceId: task.providerInstanceId,
         model: task.model,
+        routingReason: task.routingReason,
         summary: derivedResult,
         resultContextTransferId: resultTransfer?.id ?? null,
         latestTerminalRunId: terminalRun?.id ?? null,
@@ -2517,6 +2518,7 @@ const make = Effect.gen(function* () {
               }
             : input.target;
         let fallbackModelSelection: ModelSelection | undefined;
+        let routingReason: string | undefined;
         if (delegationSettings.routeLightDelegatedTasks && unnamedTarget) {
           const capable = yield* loadOrchestrationCapableInstanceIds();
           const routed = routeLightDelegatedTask({
@@ -2536,6 +2538,7 @@ const make = Effect.gen(function* () {
               ...(selection.options === undefined ? {} : { options: selection.options }),
             };
             fallbackModelSelection = routed.fallback;
+            routingReason = routed.reason;
           }
         }
         const backgroundTarget = yield* resolveBackgroundTaskTarget({
@@ -2640,7 +2643,7 @@ const make = Effect.gen(function* () {
                     tools: persona.spec.tools,
                   },
                 }),
-            // Only while the routed free model is what actually runs.
+            routingReason,
             ...(fallbackModelSelection !== undefined &&
             target.modelSelection.model === routedTarget?.model
               ? { fallbackModelSelection }

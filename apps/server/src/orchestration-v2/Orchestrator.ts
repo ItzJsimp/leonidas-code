@@ -6842,9 +6842,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         prompt: command.task,
         title: command.title ?? null,
         model: command.modelSelection.model,
-        ...(command.fallbackModelSelection === undefined
-          ? {}
-          : { fallbackModelSelection: command.fallbackModelSelection }),
+        fallbackModelSelection: command.fallbackModelSelection,
+        routingReason: command.routingReason,
         ...(command.completionWake === undefined ? {} : { completionWake: command.completionWake }),
         ...(command.workspaceStrategy !== undefined
           ? { workspaceStrategy: command.workspaceStrategy }
