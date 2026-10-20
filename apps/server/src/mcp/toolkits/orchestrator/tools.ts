@@ -43,6 +43,11 @@ import {
   ModelBenchmarkReportInput,
   ThreadMetadataMcpUpdateInput,
   ThreadMetadataMcpUpdateResult,
+  MemorySearchInput,
+  MemorySearchResult,
+  MemoryGetInput,
+  MemoryGetResult,
+  MemoryStatusResult,
 } from "@t3tools/contracts";
 import { Tool, Toolkit } from "effect/ai";
 import * as Schema from "effect/Schema";
@@ -397,6 +402,49 @@ const ModelBenchmarksTool = Tool.make("model_benchmarks", {
   .annotate(Tool.Idempotent, true)
   .annotate(Tool.OpenWorld, true);
 
+export const MemorySearchTool = Tool.make("memory_search", {
+  description:
+    "Search Leonidas AIOS durable facts, architectural decisions, and preferences using local SQLite FTS5 BM25 text retrieval. Returns ranked matching files, summaries, and snippets.",
+  parameters: MemorySearchInput,
+  success: MemorySearchResult,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies: [McpInvocationContext.McpInvocationContext],
+})
+  .annotate(Tool.Title, "Search AIOS memory")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, true);
+
+export const MemoryGetTool = Tool.make("memory_get", {
+  description:
+    "Retrieve the full markdown content of a specific memory or decision log file by relative path.",
+  parameters: MemoryGetInput,
+  success: MemoryGetResult,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies: [McpInvocationContext.McpInvocationContext],
+})
+  .annotate(Tool.Title, "Read AIOS memory file")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, true);
+
+export const MemoryStatusTool = Tool.make("memory_status", {
+  description: "Check the status and document count of the local SQLite FTS5 memory index.",
+  success: MemoryStatusResult,
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies: [McpInvocationContext.McpInvocationContext],
+})
+  .annotate(Tool.Title, "AIOS memory index status")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, true);
+
 export const OrchestratorToolkit = Toolkit.make(
   Tool.make("saved_item_list", {
     description:
@@ -514,4 +562,7 @@ export const OrchestratorToolkit = Toolkit.make(
   ThreadWaitTool,
   ThreadInterruptTool,
   ModelBenchmarksTool,
+  MemorySearchTool,
+  MemoryGetTool,
+  MemoryStatusTool,
 );

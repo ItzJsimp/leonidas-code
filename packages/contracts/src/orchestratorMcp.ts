@@ -905,3 +905,54 @@ export class OrchestratorMcpFailure extends Schema.TaggedError<OrchestratorMcpFa
     message: Schema.String,
   },
 ) {}
+
+export const MemorySearchInput = Schema.Struct({
+  query: TrimmedNonEmptyString.annotate({
+    description: "Search query terms to recall facts, decisions, or preferences.",
+  }),
+  limit: Schema.optional(
+    Schema.Number.check(Schema.isGreaterThanOrEqualTo(1))
+      .check(Schema.isLessThanOrEqualTo(50))
+      .annotate({
+        description: "Maximum results to return. Default 5.",
+      }),
+  ),
+});
+export type MemorySearchInput = typeof MemorySearchInput.Type;
+
+export const MemorySearchResultItem = Schema.Struct({
+  path: Schema.String.annotate({ description: "Relative path of the memory or log file." }),
+  name: Schema.String.annotate({ description: "Title or slug name." }),
+  description: Schema.String.annotate({ description: "Concise description from frontmatter." }),
+  snippet: Schema.String.annotate({ description: "Matched snippet with BM25 highlighted terms." }),
+  score: Schema.Number.annotate({ description: "BM25 ranking score (lower is more relevant)." }),
+});
+export type MemorySearchResultItem = typeof MemorySearchResultItem.Type;
+
+export const MemorySearchResult = Schema.Struct({
+  results: Schema.Array(MemorySearchResultItem),
+});
+export type MemorySearchResult = typeof MemorySearchResult.Type;
+
+export const MemoryGetInput = Schema.Struct({
+  path: TrimmedNonEmptyString.annotate({
+    description:
+      "Relative path of the memory file (e.g. memory/user.md or logs/grill-sessions/...)",
+  }),
+});
+export type MemoryGetInput = typeof MemoryGetInput.Type;
+
+export const MemoryGetResult = Schema.Struct({
+  path: Schema.String,
+  content: Schema.String,
+});
+export type MemoryGetResult = typeof MemoryGetResult.Type;
+
+export const MemoryStatusResult = Schema.Struct({
+  status: Schema.String,
+  docCount: Schema.Number,
+  lastRebuild: Schema.Number,
+  dbSizeKb: Schema.Number,
+  dbPath: Schema.String,
+});
+export type MemoryStatusResult = typeof MemoryStatusResult.Type;

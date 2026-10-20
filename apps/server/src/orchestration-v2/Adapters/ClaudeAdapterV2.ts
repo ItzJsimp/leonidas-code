@@ -1185,6 +1185,9 @@ export const CLAUDE_T3_MCP_TOOL_WILDCARD = "mcp__t3-code__*";
 export const CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS: ReadonlyArray<string> = [
   "mcp__t3-code__focus_list",
   "mcp__t3-code__model_benchmarks",
+  "mcp__t3-code__memory_get",
+  "mcp__t3-code__memory_search",
+  "mcp__t3-code__memory_status",
   "mcp__t3-code__saved_item_get",
   "mcp__t3-code__saved_item_list",
   "mcp__t3-code__orchestrator_capabilities",

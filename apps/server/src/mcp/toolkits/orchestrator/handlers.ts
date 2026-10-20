@@ -1,3 +1,6 @@
+import * as NodeFs from "node:fs";
+import * as NodePath from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { OrchestratorMcpFailure, type SavedItemError } from "@t3tools/contracts";
 import { OrchestratorToolkit } from "./tools.ts";
 import * as Effect from "effect/Effect";
@@ -268,6 +271,120 @@ const handlers = {
   ),
   model_benchmarks: McpToolAccess.reads(({ models }) =>
     Effect.flatMap(ModelBenchmarks.ModelBenchmarks, (benchmarks) => benchmarks.report(models)),
+  ),
+  memory_search: McpToolAccess.reads(({ query, limit = 5 }) =>
+    Effect.gen(function* () {
+      const aiosRoot = "D:/Leonidas AIOS";
+      const dbPath = NodePath.join(aiosRoot, ".leonidas", "memory.sqlite");
+      if (!NodeFs.existsSync(dbPath)) {
+        return { results: [] };
+      }
+      try {
+        const db = new DatabaseSync(dbPath, { readOnly: true });
+        const terms = query
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim()
+          .split(/\s+/)
+          .filter((t: string) => t.length > 1);
+
+        if (terms.length === 0) {
+          return { results: [] };
+        }
+
+        const matchExpr = terms.map((t: string) => `"${t}"`).join(" OR ");
+        const sql = `
+          SELECT path, name, desc, snippet(memory_fts, 3, '[', ']', ' ... ', 20),
+                 bm25(memory_fts, 0.0, 4.0, 3.0, 1.0) as score
+          FROM memory_fts
+          WHERE memory_fts MATCH ?
+          ORDER BY score
+          LIMIT ?
+        `;
+        const rows = db.prepare(sql).all(matchExpr, limit) as ReadonlyArray<any>;
+        db.close();
+
+        return {
+          results: rows.map((r: any) => ({
+            path: r.path ?? "",
+            name: r.name ?? "",
+            description: r.desc ?? "",
+            snippet: r["snippet(memory_fts, 3, '[', ']', ' ... ', 20)"] ?? "",
+            score: Number(r.score ?? 0),
+          })),
+        };
+      } catch (err: any) {
+        return yield* new OrchestratorMcpFailure({
+          code: "orchestration_error",
+          message: `Memory search failed: ${err.message}`,
+        });
+      }
+    }),
+  ),
+  memory_get: McpToolAccess.reads(({ path }) =>
+    Effect.gen(function* () {
+      const aiosRoot = "D:/Leonidas AIOS";
+      const fullPath = NodePath.resolve(aiosRoot, path);
+      if (!fullPath.startsWith(NodePath.resolve(aiosRoot))) {
+        return yield* new OrchestratorMcpFailure({
+          code: "capability_denied",
+          message: "Path outside AIOS directory is forbidden.",
+        });
+      }
+      if (!NodeFs.existsSync(fullPath)) {
+        return yield* new OrchestratorMcpFailure({
+          code: "task_not_found",
+          message: `Memory file not found: ${path}`,
+        });
+      }
+      try {
+        const content = NodeFs.readFileSync(fullPath, "utf-8");
+        return { path, content };
+      } catch (err: any) {
+        return yield* new OrchestratorMcpFailure({
+          code: "orchestration_error",
+          message: `Failed to read memory file: ${err.message}`,
+        });
+      }
+    }),
+  ),
+  memory_status: McpToolAccess.reads(() =>
+    Effect.gen(function* () {
+      const aiosRoot = "D:/Leonidas AIOS";
+      const dbPath = NodePath.join(aiosRoot, ".leonidas", "memory.sqlite");
+      if (!NodeFs.existsSync(dbPath)) {
+        return {
+          status: "not_built",
+          docCount: 0,
+          lastRebuild: 0,
+          dbSizeKb: 0,
+          dbPath,
+        };
+      }
+      try {
+        const db = new DatabaseSync(dbPath, { readOnly: true });
+        const rows = Object.fromEntries(
+          (db.prepare("SELECT key, value FROM meta").all() as ReadonlyArray<any>).map((r: any) => [
+            r.key,
+            r.value,
+          ]),
+        );
+        const stat = NodeFs.statSync(dbPath);
+        db.close();
+        return {
+          status: "ready",
+          docCount: Number(rows.doc_count ?? 0),
+          lastRebuild: Number(rows.last_rebuild ?? 0),
+          dbSizeKb: Math.round(stat.size / 1024),
+          dbPath,
+        };
+      } catch (err: any) {
+        return yield* new OrchestratorMcpFailure({
+          code: "orchestration_error",
+          message: `Failed to read memory index status: ${err.message}`,
+        });
+      }
+    }),
   ),
 } satisfies McpToolAccess.Handlers<typeof OrchestratorToolkit.tools>;
 
