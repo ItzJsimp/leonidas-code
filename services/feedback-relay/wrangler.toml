@@ -11,3 +11,15 @@ binding = "RATE"
 id = "51f368282335475ca118658781fa740a"
 
 # Secret (never committed): npx wrangler secret put GITHUB_TOKEN
+
+# Free-tier D1 for stuck reports and the friends leaderboard. Create once:
+#   npx wrangler d1 create leonidas-community   (then paste the printed id below)
+#   npx wrangler d1 execute leonidas-community --remote --file schema.sql
+# `wrangler dev --local` uses a throwaway database and ignores this id.
+[[d1_databases]]
+binding = "DB"
+database_name = "leonidas-community"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Secret (never committed), lets the triage step mark a report fixed:
+#   npx wrangler secret put ADMIN_TOKEN

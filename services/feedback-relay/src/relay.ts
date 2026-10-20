@@ -30,7 +30,7 @@ const PER_IP_PER_HOUR = 40;
 const CORS = {
   "access-control-allow-origin": "*",
   "access-control-allow-headers": "content-type",
-  "access-control-allow-methods": "POST, OPTIONS",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
 };
 
 interface Report {
@@ -112,7 +112,7 @@ export function buildIssue(report: Report, screenshotUrl: string | null) {
   return { title, body, labels: [report.type, "needs-triage"] };
 }
 
-async function overLimit(
+export async function overLimit(
   kv: KvLike,
   key: string,
   limit: number,
@@ -124,14 +124,14 @@ async function overLimit(
   return false;
 }
 
-function reply(status: number, body?: unknown): Response {
+export function reply(status: number, body?: unknown): Response {
   return new Response(body === undefined ? null : JSON.stringify(body), {
     status,
     headers: { ...CORS, ...(body === undefined ? {} : { "content-type": "application/json" }) },
   });
 }
 
-async function github(env: RelayEnv, path: string, init: RequestInit): Promise<Response> {
+export async function github(env: RelayEnv, path: string, init: RequestInit): Promise<Response> {
   return fetch(`https://api.github.com/repos/${env.GITHUB_REPO}${path}`, {
     ...init,
     headers: {
