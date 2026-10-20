@@ -30,7 +30,9 @@ import { TaskDetailPanel } from "./TaskDetail";
 import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskKanbanView } from "./TaskKanban";
 import { RoadmapEmpty } from "./TaskEmptyStates";
+import { TaskBulkBar } from "./TaskBulkBar";
 import { TaskListView } from "./TaskList";
+import { toggleChecked } from "./bulkSelect.logic";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
 import { useRailWidth } from "./TaskRailResizer";
 import { AiosConfirmCard } from "./AiosConfirmCard";
@@ -131,6 +133,7 @@ export function TasksPage() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
 
   const practice = usePracticeActions();
   const inPractice = prefs.section === PRACTICE_SLUG;
@@ -345,6 +348,8 @@ export function TasksPage() {
         actions={actions}
         selectedId={selectedId}
         onSelect={selectTask}
+        checked={checked}
+        onCheck={(id) => setChecked((current) => toggleChecked(current, id))}
         onClearFilters={clearFilters}
       />
     );
@@ -519,6 +524,17 @@ export function TasksPage() {
             >
               The shared board could not be read, so only the tasks on this computer show.
             </p>
+          ) : null}
+
+          {prefs.view === "list" && !inPractice ? (
+            <TaskBulkBar
+              environmentId={board.environmentId}
+              member={board.member}
+              checked={checked}
+              entries={rail}
+              onClear={() => setChecked(new Set())}
+              onChanged={board.refresh}
+            />
           ) : null}
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
