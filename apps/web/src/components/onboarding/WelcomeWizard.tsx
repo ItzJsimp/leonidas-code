@@ -87,6 +87,7 @@ import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { T3Wordmark } from "../T3Wordmark";
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
 import { OpenRouterSignInCard } from "./OpenRouterSignInCard";
+import { PrimerStep } from "./PrimerStep";
 import { AI_STEP_DESCRIPTION } from "../../onboarding/openRouterSignIn.logic";
 import { ClaudeInstallPill } from "./ClaudeInstallPill";
 import { LeonidasAiosStep } from "./LeonidasAiosStep";
@@ -121,6 +122,7 @@ type WizardStep =
   | "welcome"
   | "connection"
   | "agents"
+  | "primer"
   | "voice"
   | "level"
   | "skills"
@@ -131,6 +133,7 @@ const STEP_ORDER: readonly WizardStep[] = [
   "welcome",
   "connection",
   "agents",
+  "primer",
   "voice",
   "level",
   "skills",
@@ -166,6 +169,7 @@ const ONBOARDING_STAGES = [
   "Welcome",
   "Connect",
   "AI",
+  "Basics",
   "Voice",
   "Level",
   "Skills",
@@ -408,8 +412,10 @@ export function WelcomeWizard({
             <AgentsStep
               environmentIds={setupIds}
               onBack={goBack}
-              onContinue={() => setStep("voice")}
+              onContinue={() => setStep("primer")}
             />
+          ) : step === "primer" ? (
+            <PrimerStep onBack={goBack} onContinue={() => setStep("voice")} />
           ) : step === "voice" ? (
             <VoiceStep
               environmentId={setupIds[0]}
