@@ -139,34 +139,67 @@ export function SidebarBrandWidthProbe({
   );
 }
 
+function resolveCurrentAppName(pathname: string): string {
+  if (pathname === "/command-center" || pathname.startsWith("/command-center/"))
+    return "Command Center";
+  if (pathname === "/scribe" || pathname.startsWith("/scribe/")) return "Scribe";
+  if (pathname === "/images" || pathname.startsWith("/images/")) return "Images";
+  if (pathname === "/brain" || pathname.startsWith("/brain/")) return "Brain";
+  if (pathname === "/tasks" || pathname.startsWith("/tasks/")) return "Tasks";
+  if (pathname === "/system-care" || pathname.startsWith("/system-care/")) return "Device Health";
+  if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname === "/usage" || pathname.startsWith("/usage/")) return "Usage";
+  if (pathname === "/pull-requests" || pathname.startsWith("/pull-requests/"))
+    return "Code Reviews";
+  return "Code";
+}
+
 function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
+  const currentApp = useLocation({
+    select: (location) => resolveCurrentAppName(location.pathname),
+  });
   return (
     <Link
-      aria-label="Go to chats"
+      aria-label={`Leonidas \u00b7 ${currentApp}`}
       className={cn(
         "relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-7 w-fit min-w-0 shrink-0 items-center overflow-hidden rounded-md outline-hidden ring-ring focus-visible:ring-2 focus-visible:ring-inset md:flex",
         onBackdrop ? "text-white" : "text-foreground",
       )}
-      to="/"
+      to="/command-center"
     >
-      <SidebarBrandMark onBackdrop={onBackdrop} />
+      <SidebarBrandMark onBackdrop={onBackdrop} currentApp={currentApp} />
     </Link>
   );
 }
 
-function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
+function SidebarBrandMark({
+  onBackdrop,
+  currentApp = "Code",
+}: {
+  onBackdrop: boolean;
+  currentApp?: string;
+}) {
   return (
     // Center the visible capitals, without the font's ascender/descender space.
     // Padding keeps ascenders and round-letter overshoot inside the truncation clip.
     <span className="inline-flex min-w-0 items-baseline gap-1 text-sm font-medium tracking-tight">
       <span className="[text-box:trim-both_cap_alphabetic]">Leonidas</span>
       <span
+        aria-hidden="true"
+        className={cn(
+          "text-xs select-none",
+          onBackdrop ? "text-white/50" : "text-muted-foreground/50",
+        )}
+      >
+        \u00b7
+      </span>
+      <span
         className={cn(
           "truncate [text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both_cap_alphabetic]:py-1",
           onBackdrop ? "text-white/70" : "text-muted-foreground",
         )}
       >
-        Code
+        {currentApp}
       </span>
     </span>
   );
