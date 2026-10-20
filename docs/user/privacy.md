@@ -13,6 +13,11 @@ Leonidas Code can send anonymous usage numbers. It does this only if you click *
 - How many messages you send.
 - A short type label when an error screen, an unexpected close, an update or a feedback send happens.
 
+## Only when you ask for it
+
+- **I'm stuck.** When you press **I'm stuck** or say "Leonidas, I'm stuck", the app shows you a short report first. It holds the screen name, your last action, an error type, the AI service name, the app version and your system type. It has a random report ID that is not your install ID. You choose **Send report** or **Cancel**. We keep the report ID so the app can tell you when the problem is fixed. The app asks our service about its own report IDs and nothing else.
+- **Friends leaderboard.** It is off until you turn it on in Settings, General, Privacy. Then the app sends your weekly counts (words dictated, messages sent, days you dictated), a random ID made only for the leaderboard and the invite code. Friends see you as "Friend 1", "Friend 2" and so on. They see your nickname only if you turn on **Show my nickname**. Turning the leaderboard off removes your counts from our service.
+
 ## What we never send
 
 - Your messages, replies or code.

@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
+import * as NodeFS from "node:fs";
+import * as NodeSqlite from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -13,8 +13,8 @@ import type { KvLike } from "./relay";
 
 /** The real schema on real SQLite (D1 is SQLite), behind the same prepare/bind surface as D1. */
 function sqliteD1(): D1Like {
-  const db = new DatabaseSync(":memory:");
-  db.exec(readFileSync(new URL("../schema.sql", import.meta.url), "utf8"));
+  const db = new NodeSqlite.DatabaseSync(":memory:");
+  db.exec(NodeFS.readFileSync(new URL("../schema.sql", import.meta.url), "utf8"));
   return {
     prepare: (sql) => ({
       bind: (...values) => {
@@ -161,14 +161,14 @@ describe("friends leaderboard", () => {
     return created.code;
   }
 
-  const score = (code: string, boardId: string, xp: number) => ({
+  // 10 words = 1 point, so `words` is also the point count times ten.
+  const score = (code: string, boardId: string, points: number) => ({
     code,
     boardId,
     week: "2026-10-19",
-    xp,
-    tokens: xp * 10,
-    skills: 3,
-    tasks: 2,
+    words: points * 10,
+    messages: 0,
+    activeDays: 0,
   });
 
   it("shows two opted-in installs on one invite board, anonymous by default", async () => {
@@ -187,8 +187,8 @@ describe("friends leaderboard", () => {
     ).json();
     expect(view).toMatchObject({
       rows: [
-        { name: "Friend 2", isMe: false, xp: 90 },
-        { name: "Shake", isMe: true, xp: 40 },
+        { name: "Friend 2", isMe: false, points: 90 },
+        { name: "Shake", isMe: true, points: 40 },
       ],
     });
     expect(JSON.stringify(view)).not.toContain(BOARD_TWO);

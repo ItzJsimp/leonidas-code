@@ -62,6 +62,7 @@ import {
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   InboxIcon,
+  LifeBuoyIcon,
   MessageSquareWarningIcon,
   ListChecksIcon,
   CheckIcon,
@@ -152,6 +153,7 @@ import {
 import { onOpenCommandPalette } from "../commandPaletteBus";
 import { openCapture } from "./capture/captureStore";
 import { FEEDBACK_ENABLED } from "./feedback/feedbackRelay";
+import { openStuck, STUCK_ENABLED } from "./community/stuckStore";
 import { openFeedback } from "./feedback/feedbackStore";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
@@ -2274,6 +2276,18 @@ function OpenCommandPaletteDialog(props: {
       openCapture({ source: "command palette" });
     },
   });
+
+  if (STUCK_ENABLED)
+    actionItems.push({
+      kind: "action",
+      value: "action:stuck",
+      searchTerms: ["stuck", "help", "lost", "confused", "broken", "problem"],
+      title: "I'm stuck",
+      icon: <LifeBuoyIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        openStuck("button");
+      },
+    });
 
   if (FEEDBACK_ENABLED)
     actionItems.push({

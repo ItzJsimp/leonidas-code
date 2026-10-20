@@ -5,6 +5,7 @@ import {
   ImageIcon,
   ListChecksIcon,
   RadarIcon,
+  LifeBuoyIcon,
   MessageSquareWarningIcon,
   ScrollTextIcon,
   SettingsIcon,
@@ -43,6 +44,7 @@ import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { FEEDBACK_ENABLED } from "../feedback/feedbackRelay";
+import { openStuck, STUCK_ENABLED } from "../community/stuckStore";
 import { openFeedback } from "../feedback/feedbackStore";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
@@ -287,6 +289,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     openFeedback({ source: "sidebar" });
   }, [closeMobileSidebar]);
 
+  const handleStuckClick = useCallback(() => {
+    closeMobileSidebar();
+    openStuck("button");
+  }, [closeMobileSidebar]);
+
   const handleBackClick = useCallback(() => {
     closeMobileSidebar();
     void navigateToMainApp();
@@ -360,6 +367,13 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             tourId="sidebar-updates"
             onClick={handleUpdateHistoryClick}
           />
+          {STUCK_ENABLED ? (
+            <SidebarUtilityItem
+              icon={<LifeBuoyIcon />}
+              label="I'm stuck"
+              onClick={handleStuckClick}
+            />
+          ) : null}
           {FEEDBACK_ENABLED ? (
             <SidebarUtilityItem
               icon={<MessageSquareWarningIcon />}

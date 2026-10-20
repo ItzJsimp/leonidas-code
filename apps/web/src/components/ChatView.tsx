@@ -52,6 +52,8 @@ import {
   hasProviderUsageLimits,
   isUsageLimitsCommand,
 } from "@t3tools/shared/usageLimits";
+import { openStuck, STUCK_ENABLED } from "./community/stuckStore";
+import { isStuckPhrase } from "~/lib/community/stuckReport";
 import { feedbackBannerItem } from "./chat/ComposerFeedback";
 import { usageLimitsBannerItem } from "./chat/ComposerUsageLimits";
 import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
@@ -9302,6 +9304,20 @@ export default function ChatView(props: ChatViewProps) {
         setComposerDraftPrompt(composerDraftTarget, "");
         composerRef.current?.resetCursorState();
       }
+      return;
+    }
+
+    // The spoken phrase "Leonidas, I'm stuck" (by mic or Scribe) opens the report preview.
+    if (
+      STUCK_ENABLED &&
+      !directAnnotation &&
+      !composerHasNonPromptContent &&
+      isStuckPhrase(promptRef.current)
+    ) {
+      openStuck("voice");
+      promptRef.current = "";
+      setComposerDraftPrompt(composerDraftTarget, "");
+      composerRef.current?.resetCursorState();
       return;
     }
 

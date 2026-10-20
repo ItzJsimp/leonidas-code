@@ -1,5 +1,6 @@
 import { CacheSettings } from "./CacheSettings";
 import { ApiKeysSettings } from "./ApiKeysSettings";
+import { LeaderboardSettings } from "./LeaderboardSettings";
 import { UsageAnalyticsSettings } from "./UsageAnalyticsSettings";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
 import { SkillFoldersEditor } from "./SkillFoldersEditor";
@@ -3350,6 +3351,7 @@ export function GeneralSettingsPanel() {
 
       <SettingsSection id="usage-sharing" title="Privacy">
         <UsageAnalyticsSettings />
+        <LeaderboardSettings />
       </SettingsSection>
 
       <FoldedSettingsSection

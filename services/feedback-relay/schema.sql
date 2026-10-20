@@ -37,10 +37,10 @@ CREATE TABLE IF NOT EXISTS scores (
   code TEXT NOT NULL,
   board_id TEXT NOT NULL,
   week TEXT NOT NULL,
-  xp INTEGER NOT NULL,
-  tokens INTEGER NOT NULL,
-  skills INTEGER NOT NULL,
-  tasks INTEGER NOT NULL,
+  words INTEGER NOT NULL,
+  messages INTEGER NOT NULL,
+  active_days INTEGER NOT NULL,
+  tokens INTEGER,
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (code, board_id, week)
 );

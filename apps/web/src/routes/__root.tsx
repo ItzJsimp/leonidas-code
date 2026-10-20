@@ -22,6 +22,8 @@ import { resolveServerBackedAppDisplayName } from "../branding.logic";
 import { AppSidebarLayout } from "../components/AppSidebarLayout";
 import { CommandPalette } from "../components/CommandPalette";
 import { CaptureDialogHost } from "../components/capture/CaptureDialog";
+import { CommunityCoordinator } from "../components/community/CommunityCoordinator";
+import { StuckDialogHost } from "../components/community/StuckDialog";
 import { FeedbackDialogHost } from "../components/feedback/FeedbackDialog";
 import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialog";
 import { ConfirmDialogHost } from "../components/ConfirmDialogHost";
@@ -205,6 +207,8 @@ function RootRouteView() {
           <CustomSnoozeDialogHost />
           <CaptureDialogHost />
           <FeedbackDialogHost />
+          <StuckDialogHost />
+          <CommunityCoordinator />
           <CommandPalette>
             <AppSidebarLayout>
               <Outlet />
@@ -274,6 +278,8 @@ function RootRouteView() {
           <CustomSnoozeDialogHost />
           <CaptureDialogHost />
           <FeedbackDialogHost />
+          <StuckDialogHost />
+          <CommunityCoordinator />
           <SlowRpcRequestToastCoordinator />
           <PermissionUpdateNotice />
           {primaryEnvironmentAuthenticated ? <LegacyThreadMigrationToast /> : null}

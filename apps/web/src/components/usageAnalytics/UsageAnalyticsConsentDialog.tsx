@@ -47,6 +47,17 @@ export function UsageAnalyticsConsentDialog() {
               We send: how many skills and task cards you have, which AI services you connect, how
               many messages you send, and a type label when an error or update happens.
             </li>
+            <li>
+              Only if you press I'm stuck: a short report with the screen name, your last action, an
+              error type and the app version. You see it first and can cancel.
+            </li>
+            <li>
+              Only if you join the friends leaderboard: your weekly word, message and active day
+              counts, with a random ID made for it and a nickname only if you show one.
+            </li>
+            <li>
+              Optional: a tester name, if you type one in Settings, so we can tell testers apart.
+            </li>
             <li>We never send: your messages, replies, code, file names, folder paths or keys.</li>
             <li>We use a random ID. It has no name, email or account.</li>
           </ul>

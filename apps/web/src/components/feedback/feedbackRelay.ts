@@ -13,6 +13,9 @@ const RELAY_URL: string =
 /** False in installed builds until the real relay is wired; entry points hide themselves. */
 export const FEEDBACK_ENABLED = RELAY_URL !== "";
 
+/** Base of the community routes (stuck reports, leaderboard) on the same Worker. */
+export const COMMUNITY_URL = RELAY_URL.replace(/\/feedback$/, "");
+
 const INSTALL_ID_KEY = "leonidas.feedback.installId";
 const NAME_KEY = "leonidas.feedback.name";
 

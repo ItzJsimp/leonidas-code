@@ -252,30 +252,38 @@ async function boardScore(request: Request, env: CommunityEnv): Promise<Response
   const code = match(body?.code, CODE);
   const boardId = match(body?.boardId, HEX32);
   const week = match(body?.week, WEEK);
-  const xp = count(body?.xp);
-  const tokens = count(body?.tokens);
-  const skills = count(body?.skills);
-  const tasks = count(body?.tasks);
-  if (!code || !boardId || !week || xp === null || tokens === null)
+  const words = count(body?.words);
+  const messages = count(body?.messages);
+  const activeDays = count(body?.activeDays);
+  // Tokens stay empty until the provider usage readers can supply them.
+  const tokens = body?.tokens == null ? null : count(body.tokens);
+  if (!code || !boardId || !week || words === null || messages === null) {
     return reply(400, { ok: false });
-  if (skills === null || tasks === null) return reply(400, { ok: false });
+  }
+  if (activeDays === null || activeDays > 7 || (body?.tokens != null && tokens === null)) {
+    return reply(400, { ok: false });
+  }
   // Only a member who joined (so consented on the device) can post a score.
   if (!(await isMember(env, code, boardId))) return reply(403, { ok: false });
   await env.DB.prepare(
-    "INSERT INTO scores (code, board_id, week, xp, tokens, skills, tasks, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (code, board_id, week) DO UPDATE SET xp = excluded.xp, tokens = excluded.tokens, skills = excluded.skills, tasks = excluded.tasks, updated_at = excluded.updated_at",
+    "INSERT INTO scores (code, board_id, week, words, messages, active_days, tokens, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (code, board_id, week) DO UPDATE SET words = excluded.words, messages = excluded.messages, active_days = excluded.active_days, tokens = excluded.tokens, updated_at = excluded.updated_at",
   )
-    .bind(code, boardId, week, xp, tokens, skills, tasks, Date.now())
+    .bind(code, boardId, week, words, messages, activeDays, tokens, Date.now())
     .run();
   return reply(200, { ok: true });
 }
 
-interface BoardRow {
-  readonly name: string;
-  readonly isMe: boolean;
-  readonly xp: number;
-  readonly tokens: number;
-  readonly skills: number;
-  readonly tasks: number;
+interface ScoreRow {
+  readonly board_id: string;
+  readonly words: number;
+  readonly messages: number;
+  readonly active_days: number;
+  readonly tokens: number | null;
+}
+
+/** Fluency points, version 1: 10 words = 1, a message = 5, an active day = 20. */
+export function fluencyPoints(score: Pick<ScoreRow, "words" | "messages" | "active_days">): number {
+  return Math.floor(score.words / 10) + score.messages * 5 + score.active_days * 20;
 }
 
 async function boardGet(url: URL, env: CommunityEnv, code: string): Promise<Response> {
@@ -290,23 +298,24 @@ async function boardGet(url: URL, env: CommunityEnv, code: string): Promise<Resp
   // Only a member can read the board: it shows the other members' counts.
   if (!me || !members.some((member) => member.board_id === me)) return reply(403, { ok: false });
   const { results: scores } = await env.DB.prepare(
-    "SELECT board_id, xp, tokens, skills, tasks FROM scores WHERE code = ? AND week = ?",
+    "SELECT board_id, words, messages, active_days, tokens FROM scores WHERE code = ? AND week = ?",
   )
     .bind(code, week)
-    .all<{ board_id: string; xp: number; tokens: number; skills: number; tasks: number }>();
+    .all<ScoreRow>();
   const byId = new Map(scores.map((score) => [score.board_id, score]));
-  const rows: BoardRow[] = members.map((member, index) => {
+  const rows = members.map((member, index) => {
     const score = byId.get(member.board_id);
     return {
       name: member.nickname ?? `Friend ${index + 1}`,
       isMe: member.board_id === me,
-      xp: score?.xp ?? 0,
-      tokens: score?.tokens ?? 0,
-      skills: score?.skills ?? 0,
-      tasks: score?.tasks ?? 0,
+      points: score ? fluencyPoints(score) : 0,
+      words: score?.words ?? 0,
+      messages: score?.messages ?? 0,
+      activeDays: score?.active_days ?? 0,
+      tokens: score?.tokens ?? null,
     };
   });
-  rows.sort((a, b) => b.xp - a.xp);
+  rows.sort((a, b) => b.points - a.points);
   return reply(200, { ok: true, week, rows });
 }
 
