@@ -79,7 +79,12 @@ const makeHarness = Effect.fn("providerInstallation.test.makeHarness")(function*
               return [];
             }),
         }),
-        Layer.mock(ClaudeInstallation.ClaudeInstallation)({}),
+        Layer.mock(ClaudeInstallation.ClaudeInstallation)({
+          start: Effect.sync(() => {
+            calls.push("claude-start");
+            return { ...state, driver: ProviderDriverKind.make("claudeAgent") };
+          }),
+        }),
         Layer.mock(CodexInstallation.CodexInstallation)({
           managedDirectory: "/unused-managed-codex",
           start: Effect.sync(() => {
@@ -130,6 +135,17 @@ describe("provider installation routing", () => {
       const harness = yield* makeHarness();
       yield* harness.router.start({ instanceId });
       assert.deepEqual(harness.calls, ["start"]);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("installs the Claude program for OpenRouter, which runs on it", () =>
+    Effect.gen(function* () {
+      const openRouter = ProviderInstanceId.make("openrouter");
+      const harness = yield* makeHarness({
+        instance: instance(ProviderDriverKind.make("openrouter"), openRouter),
+      });
+      yield* harness.router.start({ instanceId: openRouter });
+      assert.deepEqual(harness.calls, ["claude-start"]);
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
