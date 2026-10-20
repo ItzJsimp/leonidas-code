@@ -134,6 +134,34 @@ it.layer(layerTest)("CheckpointStore.layer", (it) => {
       expect(yield* checkpointStore.isGitRepository(nested)).toBe(true);
     }),
   );
+  it.effect("undoes a turn in a folder that started without git, after a plain git init", () =>
+    Effect.gen(function* () {
+      const tmp = yield* makeTmpDir();
+      const fileSystem = yield* FileSystem.FileSystem;
+      const checkpointStore = yield* CheckpointStore.CheckpointStore;
+      const threadId = ThreadId.make("checkpoint-no-git-undo");
+      const before = checkpointRefForThreadTurn(threadId, 0);
+      yield* writeTextFile(NodePath.join(tmp, "notes.txt"), "mine\n");
+      expect(yield* checkpointStore.isGitRepository(tmp)).toBe(false);
+
+      // The "Turn it on?" button runs git init. No commit, no identity.
+      yield* git(tmp, ["init"]);
+      expect(yield* checkpointStore.isGitRepository(tmp)).toBe(true);
+      yield* checkpointStore.captureCheckpoint({ cwd: tmp, checkpointRef: before });
+
+      // The agent turn edits one file and adds another.
+      yield* writeTextFile(NodePath.join(tmp, "notes.txt"), "changed by the agent\n");
+      yield* writeTextFile(NodePath.join(tmp, "new.txt"), "agent file\n");
+
+      expect(yield* checkpointStore.restoreCheckpoint({ cwd: tmp, checkpointRef: before })).toBe(
+        true,
+      );
+      // Windows autocrlf may restore CRLF; the content is what matters.
+      const restored = yield* fileSystem.readFileString(NodePath.join(tmp, "notes.txt"));
+      expect(restored.replaceAll("\r\n", "\n")).toBe("mine\n");
+      expect(yield* fileSystem.exists(NodePath.join(tmp, "new.txt"))).toBe(false);
+    }),
+  );
   describe("diffCheckpoints", () => {
     it.effect("returns full oversized checkpoint diffs without truncation", () =>
       Effect.gen(function* () {

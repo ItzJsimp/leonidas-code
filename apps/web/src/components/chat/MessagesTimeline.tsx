@@ -39,6 +39,7 @@ import {
 import { parseScopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useAtomValue } from "@effect/atom-react";
 import { serverEnvironment } from "~/state/server";
+import { TurnOnUndoNote } from "./TurnOnUndoNote";
 import { environmentThreadDetails } from "../../state/threads";
 import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
 import { Link } from "@tanstack/react-router";
@@ -2863,6 +2864,9 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
               onImageExpand={ctx.onImageExpand}
             />
           </AssistantCitationSource>
+          {!undoTarget && row.showAssistantMeta && aiLevel !== "builder" && ctx.markdownCwd ? (
+            <TurnOnUndoNote environmentId={ctx.activeThreadEnvironmentId} cwd={ctx.markdownCwd} />
+          ) : null}
         </div>
         <AssistantChangedFilesSection
           turnSummary={row.assistantTurnDiffSummary}
