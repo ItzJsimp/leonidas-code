@@ -19,7 +19,7 @@ id = "51f368282335475ca118658781fa740a"
 [[d1_databases]]
 binding = "DB"
 database_name = "leonidas-community"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "bb4ac112-79ce-4f40-96e4-c60b5f29b5ea"
 
 # Secret (never committed), lets the triage step mark a report fixed:
 #   npx wrangler secret put ADMIN_TOKEN
