@@ -33,7 +33,7 @@ it("shows the plain summary and one action, with the raw error only under Detail
   const { container, root } = await mount("Claude usage limit reached. Resets at 5pm.");
   const summary = container.querySelector("[data-testid=thread-error-summary]");
   expect(summary?.textContent).toBe(
-    "The provider usage limit is reached.This account used all of its allowance for now.",
+    "This AI account reached its limit.It used all of its allowance for now. Wait and try again later, or pick another AI in the model menu.",
   );
   expect(container.querySelector("[data-testid=thread-error-action]")?.textContent).toBe(
     "View usage",
