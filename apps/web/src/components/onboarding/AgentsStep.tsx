@@ -47,6 +47,7 @@ import { TerminalViewport } from "../TerminalViewport";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 
 import { ClaudeSignInCard } from "./ClaudeSignInCard";
+import { OpenRouterSignInCard } from "./OpenRouterSignInCard";
 
 import { Button } from "../ui/button";
 
@@ -173,6 +174,8 @@ function ConnectedAgentsStep({
   }, [environmentId, refreshProviders]);
 
   const byDriver = useMemo(() => selectOnboardingProvidersByDriver(providers), [providers]);
+  // The free path for users with no paid AI plan.
+  const openRouter = byDriver.get("openrouter");
 
   const primaryAgents = PRIMARY_AGENT_DRIVERS.flatMap((driver) => {
     const instances =
@@ -318,6 +321,9 @@ function ConnectedAgentsStep({
             />
           ),
         )}
+        {openRouter ? (
+          <OpenRouterSignInCard environmentId={environmentId} provider={openRouter} />
+        ) : null}
       </div>
       {providers?.some(
         (provider) =>
