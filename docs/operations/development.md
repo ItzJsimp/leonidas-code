@@ -29,7 +29,7 @@ Add `--browser` to open a browser automatically.
 Every checkout defaults to its own gitignored `.t3/userdata`, even when `T3CODE_HOME` is set.
 An explicit `--home-dir` wins. Existing development data is left in place; it is not copied.
 Never run a development server against the live `~/.t3/userdata`.
-See [test data](../../AGENTS.md#test-data) for copying a consistent database snapshot.
+See [test data](../../.agents/rules/engineering.md#test-data) for copying a consistent database snapshot.
 
 On Windows, stop the dev server and run `pwsh -NoProfile -File scripts/dev-isolated.ps1 -Mode web -RefreshSnapshot`
 to refresh the checkout's dev copy from the installed app and launch it. Refresh is explicit;

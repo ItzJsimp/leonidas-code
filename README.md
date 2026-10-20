@@ -66,6 +66,15 @@ Checkout their getting started guide for more information: https://viteplus.dev/
 vp i
 ```
 
+To check command syntax without installing dependencies, run `vp i --help`.
+The installer commands above change your machine. For a read-only check, download the script
+without piping it to a shell. Check the shell script with `bash -n` or parse the PowerShell script
+with `System.Management.Automation.Language.Parser.ParseFile`.
+
+Provider login commands require account authentication or secrets. To check installed CLIs
+without signing in, append `--help`, for example `codex login --help` or `claude auth login --help`.
+Grok Build and OpenCode must be installed before you can check their login commands.
+
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
 
 Issues and ideas: https://github.com/ItzJsimp/leonidas-code/issues
