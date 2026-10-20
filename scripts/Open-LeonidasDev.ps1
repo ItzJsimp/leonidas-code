@@ -3,7 +3,7 @@
   One click to "Leonidas Code (Dev)": makes sure the always-on dev server is running, then opens
   its window. Run Install-DevShortcut.ps1 once to set up the server task and the shortcut.
 .DESCRIPTION
-  The window is an app-style Chromium window (Vivaldi, Chrome, Edge or Brave, first found) on the dev server (http://localhost:15733), with its
+  The window is an app-style Chromium window (Vivaldi, Chrome, Edge or Brave, first found) on the dev server (the web port the server records), with its
   own profile so it keeps its sign-in. Problems show in a message box, not a console.
   -Simulate turns on the new-user onboarding simulation (fake accounts) in that window until you press Exit in it.
 #>
@@ -21,20 +21,15 @@ if (Test-Path -LiteralPath (Join-Path $devLive 'node_modules/.bin/vp.cmd')) {
 $devHome = Join-Path $repoRoot '.t3'
 $log = Join-Path $devHome 'dev-server.log'
 $taskName = 'Leonidas Code Dev Server'
-$serverPort = 23773
-$webPort = 15733
-$origin = "http://localhost:$webPort"
+. (Join-Path $PSScriptRoot 'lib/DevRuntime.ps1')
 
 function Show-Problem([string]$Message) {
     Add-Type -AssemblyName PresentationFramework
     [void][System.Windows.MessageBox]::Show($Message, 'Leonidas Code (Dev)', 'OK', 'Error')
 }
-function Test-Listening([int]$Port) {
-    $null -ne (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1)
-}
 
 try {
-    if (-not ((Test-Listening $serverPort) -and (Test-Listening $webPort))) {
+    if (-not (Test-DevHealthy (Get-DevRuntime $devHome))) {
         if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'node_modules/.bin/vp.cmd'))) {
             $installing = Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
                 Where-Object { $_.CommandLine -match 'pnpm' -and $_.CommandLine -match 'install' }
@@ -55,13 +50,16 @@ try {
         Enable-ScheduledTask -TaskName $taskName | Out-Null
         Start-ScheduledTask -TaskName $taskName
         $deadline = (Get-Date).AddSeconds($WaitSeconds)
-        while ((Get-Date) -lt $deadline -and -not ((Test-Listening $serverPort) -and (Test-Listening $webPort))) {
+        while ((Get-Date) -lt $deadline -and -not (Test-DevHealthy (Get-DevRuntime $devHome))) {
             Start-Sleep -Seconds 2
         }
-        if (-not ((Test-Listening $serverPort) -and (Test-Listening $webPort))) {
+        if (-not (Test-DevHealthy (Get-DevRuntime $devHome))) {
             throw "The dev server did not come up within $WaitSeconds seconds. See $log"
         }
     }
+
+    # The ports are whatever the running server recorded; the runner moves them when the preferred pair is taken.
+    $origin = "http://localhost:$((Get-DevRuntime $devHome).WebPort)"
 
     # Sign in automatically: the fixed T3CODE_DEV_AUTH_TOKEN in .env is the same value the server seeds
     # at every start, so the pairing link never changes. Re-opening it just refreshes the cookie.

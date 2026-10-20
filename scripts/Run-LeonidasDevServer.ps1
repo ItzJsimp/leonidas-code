@@ -10,8 +10,7 @@ $devHome = Join-Path $repoRoot '.t3'
 $log = Join-Path $devHome 'dev-server.log'
 New-Item -ItemType Directory -Force -Path $devHome | Out-Null
 $pwsh = (Get-Process -Id $PID).Path
-$serverPort = 23773
-$webPort = 15733
+. (Join-Path $PSScriptRoot 'lib/DevRuntime.ps1')
 $webFrozenSeconds = 90    # a cold compile can block Vite for tens of seconds; longer than that is a freeze
 $startGraceSeconds = 180   # first start can take a while (install repair, cold caches)
 $downRestartSeconds = 60  # longer than a normal hot-reload restart
@@ -174,6 +173,7 @@ while ($true) {
     $startedAt = Get-Date
     $downSince = $null
     $webSilentSince = $null
+    $webPort = $null   # learned from the server's descriptor; the runner may have moved off the preferred pair
     $lastSync = Get-Date
     while (-not $proc.HasExited) {
         Start-Sleep -Seconds 5
@@ -192,7 +192,9 @@ while ($true) {
         # Vite sometimes freezes with no CPU use (stuck dependency optimizer) and then never answers.
         # Probe the page; when it stays silent for $webFrozenSeconds, restart the runner we started
         # (by its captured PID only) with a clean Vite cache.
-        if (((Get-Date) - $startedAt).TotalSeconds -ge 30) {
+        $rt = Get-DevRuntime $devHome
+        if ($rt) { $webPort = $rt.WebPort }
+        if (((Get-Date) - $startedAt).TotalSeconds -ge 30 -and $webPort) {
             $webOk = $false
             try { $null = Invoke-WebRequest -Uri "http://127.0.0.1:$webPort/" -UseBasicParsing -TimeoutSec 5; $webOk = $true } catch { }
             if ($webOk) { $webSilentSince = $null }
@@ -204,12 +206,12 @@ while ($true) {
                 break
             }
         }
-        $up = $null -ne (Get-NetTCPConnection -LocalPort $serverPort -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1)
+        $up = $null -ne $rt -and (Test-Listening $rt.ServerPort)
         if ($up) { $downSince = $null; continue }
         if (((Get-Date) - $startedAt).TotalSeconds -lt $startGraceSeconds) { continue }
         if (-not $downSince) { $downSince = Get-Date; continue }
         if (((Get-Date) - $downSince).TotalSeconds -ge $downRestartSeconds) {
-            Add-Content -LiteralPath $log -Value "[supervisor] server port $serverPort down for $downRestartSeconds s while the dev runner is alive; restarting it at $(Get-Date -Format o)"
+            Add-Content -LiteralPath $log -Value "[supervisor] dev server (no live descriptor or closed port) down for $downRestartSeconds s while the dev runner is alive; restarting it at $(Get-Date -Format o)"
             & taskkill.exe /PID $proc.Id /T /F *> $null
             break
         }

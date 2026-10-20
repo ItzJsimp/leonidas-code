@@ -25,31 +25,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $devHome = Join-Path $repoRoot '.t3'
 $pidFile = Join-Path $devHome 'dev-launcher.pid'
 $logFile = Join-Path $devHome 'dev-launcher.log'
-$runtimeFile = Join-Path $devHome 'userdata/server-runtime.json'
-
-function Test-Listening([int]$Port) {
-    $null -ne (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1)
-}
-
-# The server writes this descriptor when it starts. Returns $null when it is missing, malformed,
-# not a dev stack (no devUrl) or its pid is gone; callers then treat the dev copy as not running.
-function Get-DevRuntime {
-    if (-not (Test-Path -LiteralPath $runtimeFile)) { return $null }
-    try {
-        $d = Get-Content -LiteralPath $runtimeFile -Raw | ConvertFrom-Json
-        $web = [int]([uri]$d.devUrl).Port
-        # ConvertFrom-Json already turns an ISO timestamp into a DateTime; re-parsing it as text shifts it by the UTC offset.
-        $started = if ($d.startedAt -is [datetime]) { $d.startedAt.ToUniversalTime() } else { [DateTimeOffset]::Parse($d.startedAt).UtcDateTime }
-        if (-not $d.pid -or -not $d.port -or $web -le 0) { return $null }
-    } catch { return $null }
-    if (-not (Get-Process -Id $d.pid -ErrorAction SilentlyContinue)) { return $null }
-    [pscustomobject]@{ Pid = [int]$d.pid; ServerPort = [int]$d.port; WebPort = $web; StartedAt = $started }
-}
-
-# Healthy means both recorded ports answer, which also rejects a recycled pid.
-function Test-DevHealthy($Runtime) {
-    $null -ne $Runtime -and (Test-Listening $Runtime.ServerPort) -and (Test-Listening $Runtime.WebPort)
-}
+. (Join-Path $PSScriptRoot 'lib/DevRuntime.ps1')
 
 function Get-LauncherPid {
     if (-not (Test-Path -LiteralPath $pidFile)) { return $null }
@@ -72,7 +48,7 @@ function Show-LogTail {
 if ($Stop -or $Restart) {
     $launcherPid = Get-LauncherPid
     if ($null -eq $launcherPid) {
-        if ($null -ne (Get-DevRuntime)) {
+        if ($null -ne (Get-DevRuntime $devHome)) {
             Write-Host 'A dev copy is running that this script did not start, so it will not close it.'
             Write-Host 'Close its "Leonidas Code (Dev)" window with the X button, then run this again.'
             return
@@ -85,11 +61,11 @@ if ($Stop -or $Restart) {
         Remove-Item -LiteralPath $pidFile -ErrorAction SilentlyContinue
         Write-Host 'Dev copy stopped. Your real Leonidas Code was not touched.' -ForegroundColor Green
         if ($Stop) { return }
-        for ($i = 0; $i -lt 20 -and $null -ne (Get-DevRuntime); $i++) { Start-Sleep -Milliseconds 500 }
+        for ($i = 0; $i -lt 20 -and $null -ne (Get-DevRuntime $devHome); $i++) { Start-Sleep -Milliseconds 500 }
     }
 }
 
-$runtime = Get-DevRuntime
+$runtime = Get-DevRuntime $devHome
 $running = Test-DevHealthy $runtime
 if ($Status) {
     if ($running) { Write-Host "Dev copy is running (server $($runtime.ServerPort), web $($runtime.WebPort))." -ForegroundColor Green }
@@ -139,7 +115,7 @@ while ((Get-Date) -lt $deadline) {
         Remove-Item -LiteralPath $pidFile -ErrorAction SilentlyContinue
         exit 1
     }
-    $runtime = Get-DevRuntime
+    $runtime = Get-DevRuntime $devHome
     if ((Test-DevHealthy $runtime) -and $runtime.StartedAt -ge $launchedAt) {
         Write-Host "Ready (server $($runtime.ServerPort), web $($runtime.WebPort)). Look for the window titled `"Leonidas Code (Dev)`"." -ForegroundColor Green
         Write-Host 'It is a separate copy: your real Leonidas Code keeps running. Close it any time with: scripts\Start-LeonidasDev.ps1 -Stop'
