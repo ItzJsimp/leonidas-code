@@ -16,12 +16,9 @@ const TESTED_FREE_LIGHT_MODELS = [
 const isFreeSlug = (slug: string) => slug.endsWith(":free") || slug === "openrouter/free";
 
 /**
- * Picks a model for a delegated task that names no target, but only when the
- * brief reads as a light task (rename, format, lookup). A tested free model
- * goes first, with the cheapest runnable subscription model as its one-time
- * fallback; without a free model that subscription model runs directly. A
- * delegated child starts a fresh session, so nothing cached is lost by leaving
- * the parent's model. Anything bigger returns null and keeps inheriting.
+ * Routes unnamed delegated tasks above their quality floor. Tested free
+ * models are eligible only for light tasks, with a subscription fallback.
+ * A child starts a fresh session, so leaving the parent loses no cache.
  */
 export function routeLightDelegatedTask(input: {
   readonly task: string;
@@ -30,8 +27,13 @@ export function routeLightDelegatedTask(input: {
   /** The mode the child would inherit; providers that cannot offer it are skipped. */
   readonly runtimeMode: RuntimeMode;
   readonly now: number;
-}): { readonly selection: ModelSelection; readonly fallback?: ModelSelection } | null {
-  if (classifyTask({ prompt: input.task }) !== "light") return null;
+  readonly quotaBlockPercent?: number | undefined;
+}): {
+  readonly selection: ModelSelection;
+  readonly reason: string;
+  readonly fallback?: ModelSelection;
+} | null {
+  const light = classifyTask({ prompt: input.task }) === "light";
   const runnable = input.providers.filter((provider) => {
     const modes = provider.supportedRuntimeModes ?? [];
     return input.isRunnable(provider) && (modes.length === 0 || modes.includes(input.runtimeMode));
@@ -52,17 +54,23 @@ export function routeLightDelegatedTask(input: {
         models: provider.models.filter((model) => !isFreeSlug(model.slug)),
       })),
     now: input.now,
+    quotaBlockPercent: input.quotaBlockPercent,
   });
-  const paid = decision?.task === "light" ? decision.modelSelection : undefined;
+  const paid = decision?.modelSelection;
 
-  for (const slug of TESTED_FREE_LIGHT_MODELS) {
-    const provider = runnable.find((candidate) =>
-      candidate.models.some((model) => model.slug === slug),
+  for (const slug of light ? TESTED_FREE_LIGHT_MODELS : []) {
+    const provider = runnable.find(
+      (candidate) =>
+        candidate.models.some((model) => model.slug === slug) &&
+        !candidate.usageLimits?.windows.some(
+          (window) => window.usedPercent >= (input.quotaBlockPercent ?? 90),
+        ),
     );
     if (provider) {
       const selection = { instanceId: provider.instanceId, model: slug };
-      return paid === undefined ? { selection } : { selection, fallback: paid };
+      const reason = "Light task, tested free model";
+      return paid === undefined ? { selection, reason } : { selection, reason, fallback: paid };
     }
   }
-  return paid === undefined ? null : { selection: paid };
+  return paid === undefined ? null : { selection: paid, reason: decision!.reason };
 }

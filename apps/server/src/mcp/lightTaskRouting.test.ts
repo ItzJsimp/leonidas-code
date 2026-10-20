@@ -48,15 +48,35 @@ describe("routeLightDelegatedTask", () => {
   it("sends a small task to the cheapest model", () => {
     const selection = routeLightDelegatedTask({ ...base, task: "Fix a typo in README.md" });
     expect(selection?.selection.model).toBe("claude-haiku-5-5");
+    expect(selection?.reason).toContain("lowest cost");
   });
 
-  it("leaves a larger task on the parent's model", () => {
+  it("switches accounts at the configured quota threshold", () => {
+    const selection = routeLightDelegatedTask({
+      ...base,
+      task: "Fix a typo in README.md",
+      quotaBlockPercent: 80,
+      providers: [
+        provider("claude", "claudeAgent", ["claude-haiku-5-5"], {
+          usageLimits: {
+            checkedAt: "2026-10-19T00:00:00Z",
+            windows: [{ id: "weekly", kind: "weekly", label: "Weekly", usedPercent: 80 }],
+          },
+        }),
+        provider("codex", "codex", ["gpt-6-luna"]),
+      ],
+    });
+    expect(selection?.selection.instanceId).toBe("codex");
+    expect(selection?.reason).toContain("80%");
+  });
+
+  it("routes a larger task above its quality floor", () => {
     expect(
       routeLightDelegatedTask({
         ...base,
         task: "Refactor the orchestrator to separate commands from effects and migrate every adapter.",
-      }),
-    ).toBeNull();
+      })?.selection.model,
+    ).toMatch(/opus|sol/);
   });
 
   it("skips providers that are not runnable or lack the runtime mode", () => {
@@ -161,13 +181,13 @@ describe("routeLightDelegatedTask", () => {
     expect(onlyMetered?.fallback).toBeUndefined();
   });
 
-  it("keeps a larger task on the parent even when free models exist", () => {
+  it("does not use tested light free models for a larger task", () => {
     expect(
       routeLightDelegatedTask({
         ...base,
         providers: [...providers, openrouter],
         task: "Refactor the orchestrator to separate commands from effects and migrate every adapter.",
-      }),
-    ).toBeNull();
+      })?.selection.model,
+    ).toMatch(/opus|sol/);
   });
 });

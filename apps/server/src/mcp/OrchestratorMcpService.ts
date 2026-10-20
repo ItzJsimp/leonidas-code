@@ -2444,8 +2444,7 @@ const make = Effect.gen(function* () {
           );
         }
         const providers = yield* loadProviders;
-        const routeLight = yield* serverSettings.getSettings.pipe(
-          Effect.map((settings) => settings.routeLightDelegatedTasks),
+        const delegationSettings = yield* serverSettings.getSettings.pipe(
           Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
         );
         // The folder that holds .agents/ for subagent specs and model tiers.
@@ -2518,7 +2517,7 @@ const make = Effect.gen(function* () {
               }
             : input.target;
         let fallbackModelSelection: ModelSelection | undefined;
-        if (routeLight && unnamedTarget) {
+        if (delegationSettings.routeLightDelegatedTasks && unnamedTarget) {
           const capable = yield* loadOrchestrationCapableInstanceIds();
           const routed = routeLightDelegatedTask({
             task: input.task,
@@ -2527,6 +2526,7 @@ const make = Effect.gen(function* () {
               capable.has(provider.instanceId) && providerConstraints(provider, true).length === 0,
             runtimeMode: parent.thread.runtimeMode,
             now: yield* Clock.currentTimeMillis,
+            quotaBlockPercent: delegationSettings.subagentQuotaBlockPercent,
           });
           if (routed !== null) {
             const { selection } = routed;
@@ -2574,9 +2574,6 @@ const make = Effect.gen(function* () {
         if (personaEngine?.kind === "unsupported") {
           return yield* failure("invalid_request", personaEngine.message);
         }
-        const delegationSettings = yield* serverSettings.getSettings.pipe(
-          Effect.mapError(() => failure("orchestration_error", "Unable to read server settings.")),
-        );
         const targetProvider = providers.find(
           (provider) => provider.instanceId === target.modelSelection.instanceId,
         );
