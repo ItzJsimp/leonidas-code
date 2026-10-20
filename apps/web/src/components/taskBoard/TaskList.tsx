@@ -12,16 +12,11 @@ import { memo, useCallback, useMemo, useRef, useState, type KeyboardEvent } from
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "~/components/ui/empty";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
 import { cn } from "~/lib/utils";
 import { ChecklistBar, DueChip, PriorityBadge, SharedBadge, StatusBadge } from "./TaskBadges";
+import { TasksEmpty } from "./TaskEmptyStates";
 import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import {
   isOpen,
@@ -61,6 +56,10 @@ type RowProps = {
   readonly team: ReadonlyArray<TaskBoardTeamMember>;
   readonly onSelect: (task: TaskView) => void;
   readonly onAction: (task: TaskView, action: RowAction) => void;
+  readonly checked: boolean;
+  /** True while any row is checked, so every checkbox stays visible. */
+  readonly selecting: boolean;
+  readonly onCheck: ((id: string) => void) | undefined;
 };
 
 const TaskRow = memo(function TaskRow({
@@ -76,6 +75,9 @@ const TaskRow = memo(function TaskRow({
   team,
   onSelect,
   onAction,
+  checked,
+  selecting,
+  onCheck,
 }: RowProps) {
   const open = isOpen(task);
   const done = task.status === "done";
@@ -89,6 +91,17 @@ const TaskRow = memo(function TaskRow({
         busy && "opacity-60",
       )}
     >
+      {onCheck ? (
+        <Checkbox
+          aria-label={`Select ${task.title}`}
+          checked={checked}
+          className={cn(
+            !selecting &&
+              "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100",
+          )}
+          onCheckedChange={() => onCheck(task.id)}
+        />
+      ) : null}
       <Button
         variant="ghost-muted"
         size="icon-sm"
@@ -216,6 +229,10 @@ export function TaskListView(props: {
   actions: TaskActions;
   selectedId: string | null;
   onSelect: (task: TaskView) => void;
+  /** Rows show a checkbox when `onCheck` is set. */
+  checked?: ReadonlySet<string>;
+  onCheck?: (id: string) => void;
+  onClearFilters: (() => void) | null;
 }) {
   const { tasks, sections, groupBy, context, actions, selectedId } = props;
   const actionsRef = useLatest(actions);
@@ -296,19 +313,7 @@ export function TaskListView(props: {
   };
 
   if (groups.length === 0) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ListIcon />
-          </EmptyMedia>
-          <EmptyTitle>No tasks to show</EmptyTitle>
-          <EmptyDescription>
-            Add a task above, choose another view, or clear your filters.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
+    return <TasksEmpty icon={<ListIcon />} onClearFilters={props.onClearFilters} />;
   }
 
   const renderItem = ({ item }: { item: ListItem }) =>
@@ -327,6 +332,9 @@ export function TaskListView(props: {
         now={context.now}
         onAction={runAction}
         onSelect={select}
+        checked={props.checked?.has(item.task.id) ?? false}
+        selecting={(props.checked?.size ?? 0) > 0}
+        onCheck={props.onCheck}
         projectName={
           groupBy === "project" || singleProject ? null : projectNameFor(item.task, projectNames)
         }

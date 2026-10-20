@@ -29,7 +29,10 @@ import { TaskDashboardView } from "./TaskDashboard";
 import { TaskDetailPanel } from "./TaskDetail";
 import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskKanbanView } from "./TaskKanban";
+import { RoadmapEmpty } from "./TaskEmptyStates";
+import { TaskBulkBar } from "./TaskBulkBar";
 import { TaskListView } from "./TaskList";
+import { toggleChecked } from "./bulkSelect.logic";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
 import { useRailWidth } from "./TaskRailResizer";
 import { AiosConfirmCard } from "./AiosConfirmCard";
@@ -44,6 +47,7 @@ import type { TaskView } from "./taskBoard.logic";
 import {
   DEFAULT_TASKS_PREFS,
   TASKS_PREFS_KEY,
+  activeFilterCount,
   capBadge,
   parseTasksPrefs,
   sectionShareState,
@@ -129,6 +133,7 @@ export function TasksPage() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
 
   const practice = usePracticeActions();
   const inPractice = prefs.section === PRACTICE_SLUG;
@@ -268,6 +273,14 @@ export function TasksPage() {
     </div>
   );
 
+  const clearFilters =
+    activeFilterCount(prefs, query) > 0
+      ? () => {
+          setQuery("");
+          patchPrefs({ statuses: null, priorities: null, sharedOnly: false });
+        }
+      : null;
+
   let body;
   if (board.isLoading && !inPractice) {
     body = (
@@ -300,15 +313,7 @@ export function TasksPage() {
         onRefresh={board.refresh}
       />
     ) : (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>No update plan yet</EmptyTitle>
-          <EmptyDescription>
-            Ask your AI to define the current version, the goal version and the steps between in
-            this project’s project-roadmap.json. Assign tasks to versions in their details.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <RoadmapEmpty name={railEntry?.name ?? roadmapSlug} slug={roadmapSlug} />
     );
   } else if (prefs.view === "dashboard") {
     body = (
@@ -330,6 +335,7 @@ export function TasksPage() {
         actions={actions}
         selectedId={selectedId}
         onSelect={selectTask}
+        onClearFilters={clearFilters}
       />
     );
   } else {
@@ -342,6 +348,9 @@ export function TasksPage() {
         actions={actions}
         selectedId={selectedId}
         onSelect={selectTask}
+        checked={checked}
+        onCheck={(id) => setChecked((current) => toggleChecked(current, id))}
+        onClearFilters={clearFilters}
       />
     );
   }
@@ -515,6 +524,17 @@ export function TasksPage() {
             >
               The shared board could not be read, so only the tasks on this computer show.
             </p>
+          ) : null}
+
+          {prefs.view === "list" && !inPractice ? (
+            <TaskBulkBar
+              environmentId={board.environmentId}
+              member={board.member}
+              checked={checked}
+              entries={rail}
+              onClear={() => setChecked(new Set())}
+              onChanged={board.refresh}
+            />
           ) : null}
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
