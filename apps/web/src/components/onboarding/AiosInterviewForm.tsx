@@ -158,7 +158,10 @@ export function AiosInterviewForm({
                 rows={2}
                 value={value}
                 maxLength={200}
-                onChange={(event) => setAnswer(question.id, event.target.value)}
+                // One line per answer: a newline would break the heading in the saved files.
+                onChange={(event) =>
+                  setAnswer(question.id, event.target.value.replace(/\s*\n\s*/g, " "))
+                }
               />
               <span className="block text-xs text-muted-foreground">{question.hint}</span>
             </label>

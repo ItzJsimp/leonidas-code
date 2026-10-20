@@ -51,3 +51,18 @@ it("gives every free-text interview question a mic, and a spoken answer lands in
   await act(async () => mics[0]!.click());
   expect(fields[0]!.value).toBe("Sam");
 });
+
+it("keeps a spoken or typed answer on one line", async () => {
+  mocks.speak = "Sam\nLee";
+  await act(async () =>
+    root.render(
+      <AiosInterviewForm
+        environmentId={EnvironmentId.make("env-1")}
+        folder="~/x"
+        onDone={vi.fn()}
+      />,
+    ),
+  );
+  await act(async () => container.querySelector<HTMLButtonElement>("[aria-label=mic]")!.click());
+  expect(container.querySelector("textarea")!.value).toBe("Sam Lee");
+});
