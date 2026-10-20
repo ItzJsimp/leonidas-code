@@ -92,6 +92,11 @@ describe("AntigravityAdapterV2 flavor", () => {
     assert.isFalse(pattern?.test("Agent execution error: the tool call was rejected."));
   });
 
+  it("keeps both the timeout restart and the silent-stop follow-up", () => {
+    assert.isDefined(flavor.connectionLostText);
+    assert.isString(flavor.silentStopContinuation);
+  });
+
   it("maps runtime modes to the agent's native permission modes", () => {
     const mode = (runtimeMode: "approval-required" | "auto-accept-edits" | "full-access") =>
       flavor.sessionModeForPolicy?.(

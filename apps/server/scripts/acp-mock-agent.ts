@@ -101,6 +101,9 @@ const emitEmptyDefaultAgentOption = process.env.T3_ACP_EMIT_EMPTY_DEFAULT_AGENT_
 const promptResponseText = process.env.T3_ACP_PROMPT_RESPONSE_TEXT;
 // First prompt across all agent processes answers like a dead Antigravity connection.
 const lostConnectionMarkerPath = process.env.T3_ACP_LOST_CONNECTION_MARKER_PATH;
+// First prompt across all agent processes ends right after a tool call with no reply, like an
+// Antigravity turn whose last model request was cancelled by `manage_task kill`.
+const silentStopMarkerPath = process.env.T3_ACP_SILENT_STOP_MARKER_PATH;
 const initialGrokReasoningEffort =
   process.env.T3_ACP_INITIAL_GROK_REASONING_EFFORT?.trim() || undefined;
 const promptDelayMs = Number(process.env.T3_ACP_PROMPT_DELAY_MS ?? "0");
@@ -1319,6 +1322,23 @@ const program = Effect.gen(function* () {
             },
           },
         });
+        return yield* finishPrompt(requestedSessionId, "end_turn");
+      }
+
+      if (silentStopMarkerPath !== undefined && !NodeFS.existsSync(silentStopMarkerPath)) {
+        NodeFS.writeFileSync(silentStopMarkerPath, "silent");
+        yield* Effect.sync(() =>
+          writeJsonRpcNotification("session/update", {
+            sessionId: requestedSessionId,
+            update: {
+              sessionUpdate: "tool_call_update",
+              toolCallId: "mock-silent-stop-kill",
+              title: "manage_task",
+              kind: "other",
+              status: "completed",
+            },
+          }),
+        );
         return yield* finishPrompt(requestedSessionId, "end_turn");
       }
 
