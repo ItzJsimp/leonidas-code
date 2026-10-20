@@ -23,6 +23,7 @@ import { mergeProviderInstanceEnvironment } from "@t3tools/provider-core/server/
 
 const ANTIGRAVITY = ProviderDriverKind.make("antigravity");
 const CLAUDE = ProviderDriverKind.make("claudeAgent");
+const OPENROUTER = ProviderDriverKind.make("openrouter");
 const hasBinaryPath = Schema.is(Schema.Struct({ binaryPath: Schema.String }));
 const decodeCodexSettings = Schema.decodeUnknownEffect(CodexSettings);
 const decodeAntigravitySettings = Schema.decodeUnknownEffect(AntigravitySettings);
@@ -60,7 +61,8 @@ export const makeProviderInstallation = Effect.fn("makeProviderInstallation")(fu
   ) {
     const instance = yield* instances.getInstance(instanceId);
     // Claude installs with the official installer and owns its own files.
-    if (instance?.driverKind === CLAUDE) {
+    // OpenRouter runs on the same Claude program, so it shares that installer.
+    if (instance?.driverKind === CLAUDE || instance?.driverKind === OPENROUTER) {
       return { installation: claudeInstallation, driver: instance.driverKind };
     }
     const isCodex = instance?.driverKind === ProviderDriverKind.make("codex");

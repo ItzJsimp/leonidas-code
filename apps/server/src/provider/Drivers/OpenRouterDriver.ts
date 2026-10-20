@@ -80,6 +80,7 @@ import {
 } from "@t3tools/provider-core/server/snapshotSettings";
 import { makeClaudeCapabilitiesCacheKey, makeClaudeContinuationGroupKey } from "./ClaudeHome.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import { withClaudeUserBinOnPath } from "./ClaudeExecutable.ts";
 
 const decodeOpenRouterSettings = Schema.decodeSync(OpenRouterSettings);
 
@@ -182,7 +183,12 @@ export const OpenRouterDriver: ProviderDriver<OpenRouterSettings, OpenRouterDriv
           { name: "OPENROUTER_API_KEY", value: effectiveApiKey, sensitive: true },
         ];
 
-        const processEnv = yield* mergeProviderInstanceEnvironment(openRouterEnvironment);
+        // A Claude installed from setup (or after server start) lives in ~/.local/bin.
+        const processEnv = withClaudeUserBinOnPath(
+          yield* mergeProviderInstanceEnvironment(openRouterEnvironment),
+          yield* HostProcess.HomeDirectory,
+          yield* HostProcess.Platform,
+        );
         const fallbackContinuationIdentity = defaultProviderContinuationIdentity({
           driverKind: DRIVER_KIND,
           instanceId,
