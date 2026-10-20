@@ -18,6 +18,7 @@ import {
 } from "../ui/dialog";
 import { VoiceSetup } from "./VoiceSetup";
 import { recordVoice, voiceAudioBase64 } from "./recordVoice";
+import { describeVoiceFailure } from "./voiceErrors";
 
 export function ComposerVoiceButton({
   environmentId,
@@ -101,12 +102,7 @@ export function ComposerVoiceButton({
         if (!insert.current(`${result.value.text} `)) setRetainedText(result.value.text);
       } else if (result._tag === "Failure") throw squashAtomCommandFailure(result);
     } catch (failure) {
-      if (active.current)
-        setError(
-          failure instanceof Error
-            ? failure.message
-            : "Voice failed. Check microphone access and try again.",
-        );
+      if (active.current) setError(describeVoiceFailure(failure));
     } finally {
       busy.current = false;
       if (active.current) setState("idle");
