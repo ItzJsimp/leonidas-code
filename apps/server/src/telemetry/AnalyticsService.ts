@@ -67,9 +67,9 @@ export function retryDelayMs(failures: number, random: number): number {
 }
 
 const TelemetryEnvConfig = Config.all({
-  posthogKey: Config.String("T3CODE_POSTHOG_KEY").pipe(
-    Config.withDefault("phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m"),
-  ),
+  // Off unless a build or operator sets both a key and the enable flag. The old
+  // default sent every install to T3 Tools' PostHog project without consent.
+  posthogKey: Config.String("T3CODE_POSTHOG_KEY").pipe(Config.withDefault("")),
   posthogHost: Config.String("T3CODE_POSTHOG_HOST").pipe(
     Config.withDefault("https://us.i.posthog.com"),
   ),
@@ -126,6 +126,7 @@ export const make = Effect.gen(function* () {
   const httpClient = yield* HttpClient.HttpClient;
   const serverConfig = yield* ServerConfig.ServerConfig;
   const identifier = yield* getTelemetryIdentifier;
+  const telemetryActive = telemetryConfig.enabled && telemetryConfig.posthogKey.length > 0;
   const crypto = yield* Crypto.Crypto;
   const bufferRef = yield* Ref.make<ReadonlyArray<BufferedAnalyticsEvent>>([]);
   const deliveryRef = yield* Ref.make<DeliveryState>({
@@ -175,7 +176,7 @@ export const make = Effect.gen(function* () {
   const sendBatch = Effect.fn("AnalyticsService.sendBatch")(function* (
     events: ReadonlyArray<BufferedAnalyticsEvent>,
   ) {
-    if (!telemetryConfig.enabled || !identifier) return;
+    if (!telemetryActive || !identifier) return;
 
     const payload = {
       api_key: telemetryConfig.posthogKey,
@@ -260,7 +261,7 @@ export const make = Effect.gen(function* () {
 
   const record: AnalyticsService["Service"]["record"] = Effect.fn("AnalyticsService.record")(
     function* (event, properties) {
-      if (!telemetryConfig.enabled || !identifier) return;
+      if (!telemetryActive || !identifier) return;
 
       // Telemetry is best effort: an event without a uuid is not sent. The
       // Node implementation throws (a defect) rather than failing, so catch both.
