@@ -6,6 +6,7 @@ import {
   joinBoard,
   leaveBoard,
   pushScore,
+  updateBoardProfile,
   type BoardRow,
 } from "~/lib/community/leaderboard";
 import { useUsageAnalyticsStore } from "~/lib/usageAnalytics/usageAnalyticsStore";
@@ -71,11 +72,12 @@ export function LeaderboardSettings() {
                   maxLength={20}
                   value={nickname}
                   onChange={(event) => setProfile(event.target.value, isPublic)}
+                  onBlur={() => void updateBoardProfile(nickname, isPublic)}
                 />
                 <Switch
                   aria-label="Show my nickname"
                   checked={isPublic}
-                  onCheckedChange={(checked) => setProfile(nickname, checked)}
+                  onCheckedChange={(checked) => void updateBoardProfile(nickname, checked)}
                 />
               </div>
             }

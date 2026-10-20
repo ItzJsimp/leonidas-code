@@ -85,6 +85,16 @@ export async function joinBoard(code: string): Promise<boolean> {
   return joined.ok;
 }
 
+/**
+ * Saves the nickname choice and tells every joined board at once. A join is an upsert, so this
+ * is how "Show my nickname" going off makes the member anonymous to friends right away.
+ */
+export async function updateBoardProfile(nickname: string, isPublic: boolean): Promise<void> {
+  const store = useUsageAnalyticsStore.getState();
+  store.setBoardProfile(nickname, isPublic);
+  await Promise.all(useUsageAnalyticsStore.getState().boards.map((code) => joinBoard(code)));
+}
+
 export async function pushScore(code: string, stats: WeeklyStats, now: number): Promise<boolean> {
   const { boardId } = profile();
   return (await post("/board/score", { code, boardId, week: weekStart(now), ...stats })).ok;

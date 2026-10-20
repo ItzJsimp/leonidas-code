@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { checkFixedForYou, versionAtLeast } from "./fixedForYou";
-import { createBoard, joinBoard, pushScore, weeklyStats, weekStart } from "./leaderboard";
+import {
+  createBoard,
+  joinBoard,
+  pushScore,
+  updateBoardProfile,
+  weeklyStats,
+  weekStart,
+} from "./leaderboard";
 import {
   buildStuckReport,
   errorCodeFromText,
@@ -176,6 +183,19 @@ describe("friends leaderboard", () => {
     useUsageAnalyticsStore.setState({ boardPublic: true });
     await joinBoard("ABCD2345");
     expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string).nickname).toBe("Shake");
+  });
+
+  it("tells joined boards at once when the nickname goes private", async () => {
+    useUsageAnalyticsStore.setState({
+      leaderboardConsent: "granted",
+      boards: ["ABCD2345"],
+      boardNickname: "Shake",
+      boardPublic: true,
+    });
+    await updateBoardProfile("Shake", false);
+    const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(fetchMock.mock.calls[0]![0]).toContain("/board/join");
+    expect(body.nickname).toBeUndefined();
   });
 
   it("uses a board id that is not the analytics install id", async () => {
