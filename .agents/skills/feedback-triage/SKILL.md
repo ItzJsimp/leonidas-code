@@ -16,6 +16,14 @@ Reports land as Issues in the private repo `ItzJsimp/leonidas-feedback` (filed b
 5. **Create a task** on the Leonidas board (`board_task_create`) with a sanitized title and body. In a headless run that tool is not available: skip this step, the private issue is the record. Never copy the reporter's name, install id or quoted text verbatim into a public place; the board and the public repo are not private.
 6. Relabel: remove `needs-triage`, add `triaged`.
 
+## Stuck reports (label `stuck`)
+
+An "I'm stuck" press files an Issue titled `[stuck] <screen>: <error or last action>`. The table holds state codes only (screen, last action, error type, AI service, version). There is no user text, so there is nothing to scrub. Handle it like any report, with these changes:
+
+- **Dedupe by pattern.** Same screen, same error type and same version means the same problem. Comment `Duplicate of #<n>` and keep a count on the first issue.
+- **Card within 24 hours.** Create a task through `board_task_create` with `project: leonidas-product`, title `Stuck on <screen>: <error type>`, and the issue number in the body. Give the card testable gates.
+- **Tell the sender when it ships.** When a fix is merged and released, call the relay once per issue: `curl -X POST <relay>/admin/fixed -H "Authorization: Bearer $ADMIN_TOKEN" -H "content-type: application/json" -d '{"issue": <n>, "version": "<release version>"}'`. The app then shows "Fixed for you" to the install that sent that report, and only to that install. Run this for every duplicate issue too. `ADMIN_TOKEN` is a Worker secret that Jake holds. If it is not in your environment, skip the call and list the issue numbers in your summary.
+
 ## Drafting a fix (bugs only)
 
 Only when all hold: it is a `bug`, you located the cause, the fix is small and contained, and you can test it. Otherwise stop at the task.
