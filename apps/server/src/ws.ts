@@ -19,6 +19,7 @@ import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as ScribeEngine from "./scribe/ScribeEngine.ts";
+import * as VoiceLogMemory from "./scribe/VoiceLogMemory.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { readLayaUsage } from "./laya/layaUsage.ts";
@@ -1309,6 +1310,7 @@ const layerWsRpc = (
       const localVmService = yield* LocalVmService.LocalVmService;
       const scribeStatus = yield* ScribeStatus.ScribeStatus;
       const scribeEngine = yield* ScribeEngine.ScribeEngine;
+      const voiceLogMemory = yield* VoiceLogMemory.VoiceLogMemory;
       const scribeSupervisor = yield* ScribeSupervisor.ScribeSupervisor;
       const voice = yield* VoiceDictation.VoiceDictation;
       const deviceService = yield* DeviceService.DeviceService;
@@ -3344,6 +3346,8 @@ const layerWsRpc = (
         [WS_METHODS.scribeGetStatus]: () => scribeStatus.get,
         [WS_METHODS.scribeStart]: (input) => scribeEngine.start(input),
         [WS_METHODS.scribeStop]: (input) => scribeEngine.stop(input),
+        [WS_METHODS.voiceLogMemoryReview]: () => voiceLogMemory.review,
+        [WS_METHODS.voiceLogMemoryApprove]: (input) => voiceLogMemory.approve(input),
         [WS_METHODS.scribeListHistory]: (input) => scribeEngine.listHistory(input),
         [WS_METHODS.scribeDeleteHistory]: (input) => scribeEngine.deleteHistory(input),
         [WS_METHODS.scribeGetDictionary]: () => scribeEngine.getDictionary,

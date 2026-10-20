@@ -10,6 +10,7 @@ import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as VoiceKeyStore from "./scribe/VoiceKeyStore.ts";
 import * as ScribeEngine from "./scribe/ScribeEngine.ts";
+import * as VoiceLogMemory from "./scribe/VoiceLogMemory.ts";
 import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import * as Clock from "effect/Clock";
@@ -732,7 +733,10 @@ const layerRuntimeCoreDependencies = layerRuntimeCoreDependenciesBase.pipe(
   ),
 );
 
-const layerRuntimeDependencies = layerRuntimeCoreDependencies.pipe(
+const layerRuntimeDependencies = Layer.merge(
+  layerRuntimeCoreDependencies,
+  VoiceLogMemory.layer.pipe(Layer.provide(layerRuntimeCoreDependencies)),
+).pipe(
   // Misc.
   // Usage reads provider history through the ProviderHost, which needs the
   // background policy below it.

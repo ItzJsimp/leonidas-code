@@ -515,6 +515,12 @@ function SubagentTimelineLink(props: {
             <span className="block truncate">{detail}</span>
           )}
         </span>
+        {agent?.routingReason ? (
+          <span className="block text-2xs text-muted-foreground">
+            Chose {agent.model} on {props.provider?.displayName ?? agent.providerInstanceId}:{" "}
+            {agent.routingReason}.
+          </span>
+        ) : null}
       </span>
       <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
         {props.event ? props.event.timestamp : <SubagentElapsed agent={timing} />}

@@ -382,7 +382,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "route-light-delegated-tasks",
-    title: "Send simple helper work to cheaper models",
+    title: "Send helper work to the cheapest capable model",
     to: "/settings/general",
     searchTerms: [
       "route light delegated tasks subagent delegate cheap model quota cost autorouter",

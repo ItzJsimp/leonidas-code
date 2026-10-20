@@ -243,7 +243,7 @@ fn history_route(request: Request, engine: &Engine, path: &str, query: &str) {
     let Some(history) = engine.history() else {
         return error(request, 404, "not_found");
     };
-    if path == "/v1/history" {
+    if path == "/v1/history" || path == "/v1/history/public" {
         if request.method() != &Method::Get {
             return error(request, 405, "method_not_allowed");
         }
@@ -259,7 +259,12 @@ fn history_route(request: Request, engine: &Engine, path: &str, query: &str) {
         let Some(limit) = limit else {
             return error(request, 400, "bad_request");
         };
-        return json(request, 200, &history.page(limit, before, mode));
+        let page = if path == "/v1/history/public" {
+            history.page_public(limit, before, mode)
+        } else {
+            history.page(limit, before, mode)
+        };
+        return json(request, 200, &page);
     }
     let id = &path["/v1/history/".len()..];
     if id.is_empty() || id.contains('/') {
@@ -504,6 +509,7 @@ mod tests {
                         cleaned_text: "Hi.".into(),
                         metrics: Default::default(),
                         pasted: false,
+                        private: false,
                         at_ms: ms,
                     })
                     .unwrap();
@@ -864,6 +870,9 @@ mod tests {
         assert_eq!(ids, ["d3", "d2"]);
         assert_eq!(first.body["next"], "d2");
         assert_eq!(first.body["items"][0]["cleanedText"], "Hi.");
+        let public = server.request("GET", "/v1/history/public?limit=2", "");
+        assert_eq!(public.status, 200);
+        assert!(public.body["items"].as_array().unwrap().iter().all(|item| item["private"] == false));
 
         let second = server.request("GET", "/v1/history?limit=2&before=d2", "");
         assert_eq!(second.body["items"][0]["id"], "d1");
@@ -1158,6 +1167,7 @@ mod tests {
                     cleaned_text: cleaned.into(),
                     metrics: Default::default(),
                     pasted: true,
+                    private: false,
                     at_ms: ms,
                 })
                 .unwrap();

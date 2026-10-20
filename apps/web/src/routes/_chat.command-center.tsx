@@ -20,6 +20,8 @@ import { DirectionSection } from "../components/taskBoard/DirectionSection";
 import { HomeExtraCards } from "../components/taskBoard/HomeExtraCards";
 import { LayaMonitorCard } from "../components/taskBoard/LayaMonitorCard";
 import { PonytailCard } from "../components/taskBoard/PonytailCard";
+import { ValueMeterCard } from "../components/taskBoard/ValueMeterCard";
+import { VoiceLogCard } from "../components/taskBoard/VoiceLogCard";
 import { SubagentStudio } from "../components/subagents/SubagentStudio";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
@@ -135,6 +137,8 @@ function CommandCenterPage() {
               </Link>
             </div>
           ) : null}
+          <ValueMeterCard />
+          <VoiceLogCard />
           {isReady && environments.length > 0 ? (
             <section aria-label="Scribe status" className="grid gap-3 sm:grid-cols-2">
               {environments.map((environment) => (

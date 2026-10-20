@@ -100,6 +100,11 @@ export interface PromptSuggestionResult {
 
 /** Commit, change request, branch, and title generation backed by one provider instance. */
 export interface ProviderTextGeneration {
+  readonly generateVoiceLogDraft?: (input: {
+    cwd: string;
+    texts: ReadonlyArray<string>;
+    modelSelection: ModelSelection;
+  }) => Effect.Effect<{ lines: ReadonlyArray<string> }, TextGenerationError>;
   /** Predict the user's next message from the chat so far. */
   readonly generatePromptSuggestion?: (
     input: PromptSuggestionInput,

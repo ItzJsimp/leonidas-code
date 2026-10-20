@@ -36,7 +36,8 @@ type TextGenerationOp =
   | "generateBranchName"
   | "generateThreadTitle"
   | "evaluateGoal"
-  | "generatePromptSuggestion";
+  | "generatePromptSuggestion"
+  | "generateVoiceLogDraft";
 
 const resolveInstance = (
   registry: ProviderInstanceRegistry.ProviderInstanceRegistry["Service"],
@@ -61,6 +62,19 @@ export const make = Effect.gen(function* () {
   const registry = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
   const sourceControl = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
   return TextGeneration.of({
+    generateVoiceLogDraft: (input) =>
+      resolveInstance(registry, "generateVoiceLogDraft", input.modelSelection.instanceId).pipe(
+        Effect.flatMap((generation) =>
+          generation.generateVoiceLogDraft
+            ? generation.generateVoiceLogDraft(input)
+            : Effect.fail(
+                new TextGenerationError({
+                  operation: "generateVoiceLogDraft",
+                  detail: "This account cannot draft voice-log memories.",
+                }),
+              ),
+        ),
+      ),
     generatePromptSuggestion: (input) =>
       resolveInstance(registry, "generatePromptSuggestion", input.modelSelection.instanceId).pipe(
         Effect.flatMap((generation) =>

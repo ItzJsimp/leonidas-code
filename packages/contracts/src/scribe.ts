@@ -12,7 +12,7 @@ export type ScribeEngineState = typeof ScribeEngineState.Type;
 export const ScribeRecordMode = Schema.Literals(["hold", "toggle"]);
 export type ScribeRecordMode = typeof ScribeRecordMode.Type;
 
-/** One saved dictation (contract v1.2 proposal, `GET /v1/history`). */
+/** One saved dictation (`GET /v1/history`, private flag added in contract v1.4). */
 export const ScribeHistoryItem = Schema.Struct({
   id: Schema.String,
   at: Schema.String,
@@ -27,6 +27,7 @@ export const ScribeHistoryItem = Schema.Struct({
     totalMs: Schema.Number,
   }),
   pasted: Schema.Boolean,
+  private: Schema.optional(Schema.Boolean),
 });
 export type ScribeHistoryItem = typeof ScribeHistoryItem.Type;
 

@@ -63,6 +63,18 @@ describe("RPC authorization scopes", () => {
   it("requires read scope for Scribe status", () => {
     expect(requiredScopeForRpcMethod(WS_METHODS.scribeGetStatus)).toBe(AuthOrchestrationReadScope);
   });
+  it("requires file-write scope to approve voice memories on both clients and server", () => {
+    expect(requiredScopeForRpcMethod(WS_METHODS.voiceLogMemoryReview)).toBe(
+      AuthOrchestrationReadScope,
+    );
+    expect(requiredScopeForRpcMethod(WS_METHODS.voiceLogMemoryApprove)).toBe("filesystem:write");
+    expect(
+      clientRpcRequiredScopes(WS_METHODS.voiceLogMemoryApprove, {
+        draftId: "night",
+        selected: [0],
+      }),
+    ).toEqual(["filesystem:write"]);
+  });
   it("declares exactly one scope for every RPC in the server group", () => {
     expect(new Set(Object.keys(RPC_REQUIRED_SCOPES))).toEqual(new Set(WsRpcGroup.requests.keys()));
   });

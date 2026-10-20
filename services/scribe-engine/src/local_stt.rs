@@ -88,7 +88,7 @@ impl Router {
         self.private_mode.store(on, Ordering::Relaxed);
     }
 
-    fn run_local(&self, audio: &EncodedAudio) -> Result<Transcription, String> {
+    fn run_local(&self, audio: &EncodedAudio, private: bool) -> Result<Transcription, String> {
         if audio.pcm.is_empty() {
             return Err("The recording has no audio for the offline model.".into());
         }
@@ -96,23 +96,29 @@ impl Router {
         Ok(Transcription {
             text,
             engine: SttEngine::Local,
+            private,
         })
     }
 }
 
 impl Transcriber for Router {
+    fn private_mode(&self) -> bool {
+        self.private_mode.load(Ordering::Relaxed)
+    }
     fn transcribe(&self, audio: &EncodedAudio) -> Result<Transcription, String> {
+        let private = self.private_mode.load(Ordering::Relaxed);
         if audio.bytes.is_empty() {
             return Ok(Transcription {
                 text: String::new(),
                 engine: SttEngine::Local,
+                private,
             });
         }
-        match choose_backend(self.private_mode.load(Ordering::Relaxed)) {
-            Backend::LocalOnly => self.run_local(audio),
+        match choose_backend(private) {
+            Backend::LocalOnly => self.run_local(audio, private),
             Backend::CloudThenLocal => match self.cloud.transcribe_cloud(audio) {
                 Ok(done) => Ok(done),
-                Err(failure) if failure.offline => self.run_local(audio),
+                Err(failure) if failure.offline => self.run_local(audio, private),
                 Err(failure) => Err(failure.message),
             },
         }
@@ -375,6 +381,7 @@ mod tests {
             self.reply.clone().map(|text| Transcription {
                 text: text.into(),
                 engine: SttEngine::Groq,
+                private: false,
             })
         }
     }

@@ -508,6 +508,11 @@ import {
   VoiceTranscribeResult,
 } from "./voice.ts";
 import {
+  VoiceLogMemoryReview,
+  VoiceLogMemoryApproveInput,
+  VoiceLogMemoryError,
+} from "./voiceLogMemory.ts";
+import {
   ScribeCommandResult,
   ScribeDeleteHistoryInput,
   ScribeDeleteHistoryResult,
@@ -548,6 +553,8 @@ export const WS_METHODS = {
   scribeGetStatus: "scribe.getStatus",
   scribeStart: "scribe.start",
   scribeStop: "scribe.stop",
+  voiceLogMemoryReview: "voiceLogMemory.review",
+  voiceLogMemoryApprove: "voiceLogMemory.approve",
   scribeListHistory: "scribe.listHistory",
   scribeDeleteHistory: "scribe.deleteHistory",
   scribeGetDictionary: "scribe.getDictionary",
@@ -2339,6 +2346,17 @@ const WsScribeStopRpc = Rpc.make(WS_METHODS.scribeStop, {
   error: Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]),
 });
 
+const WsVoiceLogMemoryReviewRpc = Rpc.make(WS_METHODS.voiceLogMemoryReview, {
+  payload: Schema.Struct({}),
+  success: VoiceLogMemoryReview,
+  error: Schema.Union([VoiceLogMemoryError, EnvironmentAuthorizationError]),
+});
+const WsVoiceLogMemoryApproveRpc = Rpc.make(WS_METHODS.voiceLogMemoryApprove, {
+  payload: VoiceLogMemoryApproveInput,
+  success: VoiceLogMemoryReview,
+  error: Schema.Union([VoiceLogMemoryError, EnvironmentAuthorizationError]),
+});
+
 const WsScribeListHistoryRpc = Rpc.make(WS_METHODS.scribeListHistory, {
   payload: ScribeListHistoryInput,
   success: ScribeHistoryPage,
@@ -2852,6 +2870,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsScribeGetStatusRpc,
   WsScribeStartRpc,
   WsScribeStopRpc,
+  WsVoiceLogMemoryReviewRpc,
+  WsVoiceLogMemoryApproveRpc,
   WsScribeListHistoryRpc,
   WsScribeDeleteHistoryRpc,
   WsScribeGetDictionaryRpc,

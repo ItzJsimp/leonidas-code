@@ -1,4 +1,8 @@
-# Scribe engine contract (v1.2)
+# Scribe engine contract (v1.4)
+
+v1.4 (2026-10-19, lane L1 contract addition for Lane C): history items add optional `private`, a boolean. New engines write it on every take. `true` means private mode was on at recording start or transcription. A missing field means unknown. Memory jobs must skip both `true` and missing fields before reading transcript text.
+
+`GET /v1/history/public` (v1.4) accepts the same paging parameters as history, but returns only items with `private: false`. Private and unknown items are filtered before their text is copied into the reply. Memory jobs use this endpoint so an older engine fails closed instead of returning private history.
 
 v1.1 (2026-10-17, lane L1) is additive: v1 clients keep working and `apiVersion` stays `1`. New: `groqKey` and `privateMode` in status, the credentials commands, and `raw` and `engine` in the `transcript` event.
 
@@ -81,7 +85,22 @@ Remove the stored key. Reply: `204 No Content`, also when no key was stored.
 Query: `limit` (1 or more, default 50, at most 500), `before` (an item id; the page starts after it), `mode` (`hold` or `toggle`). Reply 200, newest first:
 
 ```json
-{"items":[{"id":"d1760745603000","at":"2026-10-18T00:00:03.000Z","mode":"hold","app":"","rawText":"hello world","cleanedText":"Hello world.","words":2,"metrics":{"transcribeMs":700,"polishMs":50,"totalMs":760},"pasted":true}],"next":null}
+{
+  "items": [
+    {
+      "id": "d1760745603000",
+      "at": "2026-10-18T00:00:03.000Z",
+      "mode": "hold",
+      "app": "",
+      "rawText": "hello world",
+      "cleanedText": "Hello world.",
+      "words": 2,
+      "metrics": { "transcribeMs": 700, "polishMs": 50, "totalMs": 760 },
+      "pasted": true
+    }
+  ],
+  "next": null
+}
 ```
 
 - `next` is the `before` value for the next page, or `null` on the last page. An unknown `before` gives an empty page.
@@ -95,7 +114,7 @@ Reply 200 `{"deleted":true}`, or 404 `not_found` for an unknown id, or 500 `stor
 ### `GET` and `PUT /v1/dictionary` (v1.2)
 
 ```json
-{"replacements":[{"wrong":"btw","correct":"by the way"}],"vocabulary":["Gersi"]}
+{ "replacements": [{ "wrong": "btw", "correct": "by the way" }], "vocabulary": ["Gersi"] }
 ```
 
 - `PUT` takes the same shape and replies with the saved shape. It replaces both lists and keeps any other top-level key in `dictionary.json` (Python Scribe data).
@@ -105,7 +124,7 @@ Reply 200 `{"deleted":true}`, or 404 `not_found` for an unknown id, or 500 `stor
 ### `GET /v1/dictionary/suggestions` (v1.2)
 
 ```json
-{"items":[{"wrong":"jersey","correct":"Gersi","count":3}]}
+{ "items": [{ "wrong": "jersey", "correct": "Gersi", "count": 3 }] }
 ```
 
 - Mined from the newest 500 history items: a run of 1 to 3 raw words that polish replaced with the same 1 to 3 words in 2 or more dictations. Case and punctuation changes do not count.
@@ -119,11 +138,26 @@ Reply 200 `{"deleted":true}`, or 404 `not_found` for an unknown id, or 500 `stor
 ### `GET /v1/settings` (v1.2)
 
 ```json
-{"sections":{
-  "hotkeys":{"hold":["Ctrl + Shift + T"],"toggle":["Mouse5"],"cancel":["Escape"]},
-  "audio":{"device":null,"maxRecordSeconds":600,"minRecordMs":250},
-  "transcription":{"privateMode":false,"polishEnabled":true,"polishInstructions":null,"whisperModel":"whisper-large-v3-turbo","whisperModelBackup":"whisper-large-v3","polishModel":"qwen/qwen3.8-27b","backupPolishModel":"openai/gpt-oss-20b","groqKey":{"set":true}},
-  "presets":{},"hud":{"enabled":true},"features":{},"goals":{}}}
+{
+  "sections": {
+    "hotkeys": { "hold": ["Ctrl + Shift + T"], "toggle": ["Mouse5"], "cancel": ["Escape"] },
+    "audio": { "device": null, "maxRecordSeconds": 600, "minRecordMs": 250 },
+    "transcription": {
+      "privateMode": false,
+      "polishEnabled": true,
+      "polishInstructions": null,
+      "whisperModel": "whisper-large-v3-turbo",
+      "whisperModelBackup": "whisper-large-v3",
+      "polishModel": "qwen/qwen3.8-27b",
+      "backupPolishModel": "openai/gpt-oss-20b",
+      "groqKey": { "set": true }
+    },
+    "presets": {},
+    "hud": { "enabled": true },
+    "features": {},
+    "goals": {}
+  }
+}
 ```
 
 - A key never appears: `groqKey` is `{"set":true}` or `{"set":false}`. Set it with `PUT /v1/credentials/groq`.
@@ -135,7 +169,11 @@ Reply 200 `{"deleted":true}`, or 404 `not_found` for an unknown id, or 500 `stor
 Body `{"section":"audio","values":{"device":"USB Mic"}}`. The values merge into that one section; the engine saves `config.json` atomically. Reply 200:
 
 ```json
-{"section":"audio","values":{"device":"USB Mic","maxRecordSeconds":600,"minRecordMs":250},"restartRequired":false}
+{
+  "section": "audio",
+  "values": { "device": "USB Mic", "maxRecordSeconds": 600, "minRecordMs": 250 },
+  "restartRequired": false
+}
 ```
 
 - Live at once: `hotkeys`, `audio`, `privateMode`, `polishEnabled`, `polishInstructions`, `presets`, `features`, `goals`.
@@ -145,7 +183,15 @@ Body `{"section":"audio","values":{"device":"USB Mic"}}`. The values merge into 
 ### `GET /v1/devices` (v1.2)
 
 ```json
-{"inputs":[{"id":"Microphone (USB PnP Audio Device)","name":"Microphone (USB PnP Audio Device)","default":true}]}
+{
+  "inputs": [
+    {
+      "id": "Microphone (USB PnP Audio Device)",
+      "name": "Microphone (USB PnP Audio Device)",
+      "default": true
+    }
+  ]
+}
 ```
 
 `id` equals `name` (the audio library has no stable id). 500 `mic_error` when the device scan fails.

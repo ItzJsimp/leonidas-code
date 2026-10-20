@@ -192,6 +192,26 @@ function withFakeClaudeEnv<A, E, R>(
 }
 
 it.layer(layerClaudeTextGenerationTest)("ClaudeTextGeneration", (it) => {
+  it.effect("drafts voice memories in an isolated directory", () =>
+    withFakeClaudeEnv(
+      {
+        output: JSON.stringify({ structured_output: { lines: ["Prefers short replies."] } }),
+        cwdMustNotBe: process.cwd(),
+      },
+      (generation) =>
+        Effect.gen(function* () {
+          const result = yield* generation.generateVoiceLogDraft!({
+            cwd: process.cwd(),
+            texts: ["I prefer short replies."],
+            modelSelection: {
+              instanceId: ProviderInstanceId.make("claudeAgent"),
+              model: SYNTHETIC_CLAUDE_STANDARD_MODEL,
+            },
+          });
+          expect(result.lines).toEqual(["Prefers short replies."]);
+        }),
+    ),
+  );
   it.effect("predicts from a temporary cwd without project instructions", () =>
     withFakeClaudeEnv(
       {

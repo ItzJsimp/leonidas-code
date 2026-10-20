@@ -48,6 +48,9 @@ export class ScribeEngine extends Context.Service<
     readonly listHistory: (
       input: ScribeListHistoryInput,
     ) => Effect.Effect<ScribeHistoryPage, ScribeEngineError>;
+    readonly listPublicHistory: (
+      input: ScribeListHistoryInput,
+    ) => Effect.Effect<ScribeHistoryPage, ScribeEngineError>;
     readonly deleteHistory: (
       input: ScribeDeleteHistoryInput,
     ) => Effect.Effect<ScribeDeleteHistoryResult, ScribeEngineError>;
@@ -153,13 +156,15 @@ export const makeWith = (options: {
         decodeCommand,
       );
 
-    const listHistory = (input: ScribeListHistoryInput) => {
+    const listHistory = (input: ScribeListHistoryInput, publicOnly = false) => {
       const params: Record<string, string> = {};
       if (input.limit !== undefined) params.limit = String(input.limit);
       if (input.before !== undefined) params.before = input.before;
       if (input.mode !== undefined) params.mode = input.mode;
       return call(
-        HttpClientRequest.get(`${baseUrl}/v1/history`).pipe(HttpClientRequest.setUrlParams(params)),
+        HttpClientRequest.get(`${baseUrl}/v1/history${publicOnly ? "/public" : ""}`).pipe(
+          HttpClientRequest.setUrlParams(params),
+        ),
         decodePage,
       );
     };
@@ -273,6 +278,7 @@ export const makeWith = (options: {
       start,
       stop,
       listHistory,
+      listPublicHistory: (input) => listHistory(input, true),
       deleteHistory,
       getDictionary,
       putDictionary,

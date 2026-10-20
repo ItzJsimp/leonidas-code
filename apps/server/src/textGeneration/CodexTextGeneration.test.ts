@@ -181,6 +181,23 @@ function withFakeCodexEnv<A, E, R>(
 }
 
 it.layer(layerCodexTextGenerationTest)("CodexTextGeneration", (it) => {
+  it.effect("drafts voice memories in an isolated directory", () =>
+    withFakeCodexEnv(
+      {
+        output: JSON.stringify({ lines: ["Prefers short replies."] }),
+        cwdMustNotBe: process.cwd(),
+      },
+      (generation) =>
+        Effect.gen(function* () {
+          const result = yield* generation.generateVoiceLogDraft!({
+            cwd: process.cwd(),
+            texts: ["I prefer short replies."],
+            modelSelection: DEFAULT_TEST_MODEL_SELECTION,
+          });
+          expect(result.lines).toEqual(["Prefers short replies."]);
+        }),
+    ),
+  );
   it.effect("predicts from a temporary cwd without project instructions", () =>
     withFakeCodexEnv(
       {

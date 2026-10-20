@@ -19,6 +19,7 @@ import { formatGeneratedBranchName, sanitizeFeatureBranchName } from "@t3tools/s
 import { extractJsonObject } from "@t3tools/shared/schemaJson";
 
 import type { ProviderTextGeneration } from "./textGeneration.ts";
+import { buildVoiceLogPrompt } from "./voiceLogPrompt.ts";
 import {
   buildBranchNamePrompt,
   buildCommitMessagePrompt,
@@ -172,6 +173,13 @@ export function fromRunner(name: string, run: Runner): ProviderTextGeneration {
     });
 
   return {
+    generateVoiceLogDraft: (input) =>
+      run({
+        operation: "generateVoiceLogDraft",
+        cwd: input.cwd,
+        modelSelection: input.modelSelection,
+        ...buildVoiceLogPrompt(input.texts),
+      }),
     generatePromptSuggestion,
     evaluateGoal: (input) =>
       run({

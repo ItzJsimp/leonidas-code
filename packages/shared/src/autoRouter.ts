@@ -390,21 +390,12 @@ function effortOptions(
   return choice ? [{ id: "effort", value: choice }] : undefined;
 }
 
-/** Fit for the task and goal, ignoring where the thread is now. */
-function fitScore(input: {
+function modelEconomy(input: {
   readonly model: AutoRouteModel;
   readonly profile: ModelRouteProfile;
-  readonly preference: AutoRoutePreference;
   readonly task: AutoRouteTaskSize;
   readonly driverKind: string;
-  readonly outlook: QuotaOutlook;
-  readonly isLegacy: boolean;
-}): number {
-  const weights = WEIGHTS[input.preference];
-  const effectiveQuality =
-    input.preference === "quality"
-      ? input.profile.quality
-      : Math.min(input.profile.quality, QUALITY_CEILING[input.task]);
+}) {
   const outputShare = input.task === "heavy" ? 0.3 : input.task === "light" ? 0.15 : 0.2;
   const inputPrice = input.model.inputCostPerMillionTokens;
   const outputPrice = input.model.outputCostPerMillionTokens;
@@ -421,6 +412,25 @@ function fitScore(input: {
       : estimatedPricePerMillionTokens === 0
         ? 5
         : 5 - Math.log10(Math.max(estimatedPricePerMillionTokens, 0.01) / 0.01);
+  return { economyBeforeQuota, estimatedPricePerMillionTokens };
+}
+
+/** Fit for the task and goal, ignoring where the thread is now. */
+function fitScore(input: {
+  readonly model: AutoRouteModel;
+  readonly profile: ModelRouteProfile;
+  readonly preference: AutoRoutePreference;
+  readonly task: AutoRouteTaskSize;
+  readonly driverKind: string;
+  readonly outlook: QuotaOutlook;
+  readonly isLegacy: boolean;
+}): number {
+  const weights = WEIGHTS[input.preference];
+  const effectiveQuality =
+    input.preference === "quality"
+      ? input.profile.quality
+      : Math.min(input.profile.quality, QUALITY_CEILING[input.task]);
+  const { economyBeforeQuota, estimatedPricePerMillionTokens } = modelEconomy(input);
   const economy = Math.max(
     1,
     Math.min(
@@ -536,6 +546,7 @@ export function rankModelsForPreference(input: {
 }
 
 interface ScoredOption {
+  readonly economy: number;
   readonly candidate: AutoRouteCandidate;
   readonly model: AutoRouteModel;
   readonly fit: number;
@@ -580,6 +591,8 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
       const profile = profileModel(model.slug, input.profiles);
       const isCurrent = sameProviderSession && model.slug === current?.model;
       options.push({
+        economy: modelEconomy({ model, profile, task, driverKind: candidate.driverKind })
+          .economyBeforeQuota,
         candidate,
         model,
         isCurrent,
@@ -645,7 +658,15 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
     Math.max(0, option.inputCost - stayCost) * SWITCH_TOKEN_WEIGHT[input.preference] -
     option.contextLoss * CONTEXT_LOSS_WEIGHT[input.preference] -
     (thread && !option.isCurrent ? SWITCH_MARGIN : 0);
-  const best = allowed.reduce((a, b) => (total(b) > total(a) ? b : a));
+  const best = allowed.reduce((a, b) =>
+    input.preference === "cost" && !thread && a.economy !== b.economy
+      ? b.economy > a.economy
+        ? b
+        : a
+      : total(b) > total(a)
+        ? b
+        : a,
+  );
   const bestFit = options.reduce((a, b) => (b.fit > a.fit ? b : a));
 
   const switched = current !== null && !best.isCurrent;

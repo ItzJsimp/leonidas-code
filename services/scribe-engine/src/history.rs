@@ -19,6 +19,7 @@ pub struct NewItem {
     pub cleaned_text: String,
     pub metrics: HistoryMetrics,
     pub pasted: bool,
+    pub private: bool,
     /// Unix milliseconds of `at`, for the id.
     pub at_ms: i64,
 }
@@ -74,6 +75,7 @@ impl History {
             cleaned_text: new.cleaned_text,
             metrics: new.metrics,
             pasted: new.pasted,
+            private: Some(new.private),
         };
         let mut line = serde_json::to_string(&item).map_err(|e| e.to_string())?;
         line.push('\n');
@@ -93,10 +95,30 @@ impl History {
     /// One page, newest first. `before` is the id of the last item of the previous page;
     /// an unknown `before` gives an empty page. Same rules as the mock engine.
     pub fn page(&self, limit: usize, before: Option<&str>, mode: Option<&str>) -> HistoryPage {
+        self.page_filtered(limit, before, mode, false)
+    }
+
+    pub fn page_public(
+        &self,
+        limit: usize,
+        before: Option<&str>,
+        mode: Option<&str>,
+    ) -> HistoryPage {
+        self.page_filtered(limit, before, mode, true)
+    }
+
+    fn page_filtered(
+        &self,
+        limit: usize,
+        before: Option<&str>,
+        mode: Option<&str>,
+        public_only: bool,
+    ) -> HistoryPage {
         let items = self.items.lock().unwrap();
         let mut list = items
             .iter()
-            .filter(|item| mode.is_none_or(|m| item.mode == m));
+            .filter(|item| mode.is_none_or(|m| item.mode == m))
+            .filter(|item| !public_only || item.private == Some(false));
         // `any` consumes the list up to and including the cursor.
         if let Some(before) = before {
             if !list.by_ref().any(|item| item.id == before) {
@@ -160,6 +182,7 @@ mod tests {
                 total_ms: 760,
             },
             pasted: true,
+            private: false,
             at_ms,
         }
     }
@@ -175,6 +198,7 @@ mod tests {
             .add(new_item(2_000, "toggle", "Second one."))
             .unwrap();
         assert_eq!(first.words, 2);
+        assert_eq!(first.private, Some(false));
         assert_eq!(first.id, "d1000");
 
         let reopened = History::open(&path);
@@ -182,6 +206,25 @@ mod tests {
         let texts: Vec<&str> = page.items.iter().map(|i| i.cleaned_text.as_str()).collect();
         assert_eq!(texts, ["Second one.", "Hello there."]);
         assert_eq!(page.next, None);
+    }
+
+    #[test]
+    fn public_pages_exclude_private_and_unknown_before_copying_text() {
+        let path = temp("public-only");
+        let history = History::open(&path);
+        let public = history
+            .add(new_item(1_000, "hold", "Public preference."))
+            .unwrap();
+        let mut private = new_item(2_000, "hold", "Private text.");
+        private.private = true;
+        history.add(private).unwrap();
+        let mut legacy = public.clone();
+        legacy.id = "legacy".into();
+        legacy.private = None;
+        history.items.lock().unwrap().insert(0, legacy);
+        let page = history.page_public(500, None, None);
+        assert_eq!(page.items, vec![public]);
+        assert!(page.next.is_none());
     }
 
     #[test]

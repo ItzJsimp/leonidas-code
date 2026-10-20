@@ -3,6 +3,7 @@ import { GitPreparePullRequestThreadInput } from "./git.ts";
 import {
   AuthOrchestrationOperateScope,
   AuthFilesystemReadScope,
+  AuthFilesystemWriteScope,
   AuthSettingsWriteScope,
   AuthSourceControlWriteScope,
   type AuthEnvironmentScope,
@@ -12,6 +13,7 @@ import { WS_METHODS } from "./rpc.ts";
 
 /** Incremental client enforcement; the server still authorizes every request. */
 export const CLIENT_GUARDED_RPC_SCOPES = {
+  [WS_METHODS.voiceLogMemoryApprove]: AuthFilesystemWriteScope,
   [WS_METHODS.voiceSetGroqKey]: AuthSettingsWriteScope,
   [WS_METHODS.voiceClearGroqKey]: AuthSettingsWriteScope,
   [WS_METHODS.voiceTranscribe]: AuthOrchestrationOperateScope,

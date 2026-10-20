@@ -2542,7 +2542,7 @@ export function GeneralSettingsPanel() {
         <SettingsRow
           serverScoped
           {...searchableSetting("route-light-delegated-tasks")}
-          description="Run small helper jobs that name no model on the cheapest ready model. This saves the usage of your main AI account."
+          description="Send helper jobs that name no model to the cheapest capable model. Switch accounts near their usage limit."
           settingKeys={["routeLightDelegatedTasks"]}
           control={
             <ScopedSwitch
@@ -2551,7 +2551,7 @@ export function GeneralSettingsPanel() {
               onCheckedChange={(checked) =>
                 updateSettings({ routeLightDelegatedTasks: Boolean(checked) })
               }
-              aria-label="Send simple helper work to cheaper models"
+              aria-label="Send helper work to the cheapest capable model"
             />
           }
         />
@@ -2562,7 +2562,7 @@ export function GeneralSettingsPanel() {
           settingKeys={["subagentFreeTierModels"]}
           control={
             <DraftInput
-              className="w-72 font-mono text-xs"
+              className="w-72"
               value={settings.subagentFreeTierModels.join(", ")}
               onCommit={(value) =>
                 updateSettings({ subagentFreeTierModels: parseModelIdList(value) })

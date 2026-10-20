@@ -235,6 +235,7 @@ impl GroqClient {
             Ok(Transcription {
                 text,
                 engine: SttEngine::Groq,
+                private: false,
             })
         };
         if audio.bytes.is_empty() {
@@ -629,7 +630,8 @@ mod tests {
             got,
             Transcription {
                 text: "hello there".into(),
-                engine: SttEngine::Groq
+                engine: SttEngine::Groq,
+                private: false,
             }
         );
         let log = server.log.lock().unwrap();

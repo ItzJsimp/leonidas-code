@@ -265,6 +265,27 @@ describe("routeTurn on a new chat", () => {
     expect(profileModel(decision!.modelSelection.model).quality).toBeGreaterThanOrEqual(4);
   });
 
+  it("puts cost before speed once a model clears the quality floor", () => {
+    const cheap = "cheap-capable";
+    const fast = "fast-capable";
+    const decision = route("cost", STANDARD, {
+      candidates: [
+        {
+          ...claudeCandidate(),
+          models: [
+            { slug: fast, name: fast },
+            { slug: cheap, name: cheap },
+          ],
+        },
+      ],
+      profiles: new Map([
+        [cheap, { quality: 3, speed: 1, economy: 5, known: true }],
+        [fast, { quality: 5, speed: 5, economy: 4.5, known: true }],
+      ]),
+    });
+    expect(decision?.modelSelection.model).toBe(cheap);
+  });
+
   it("uses a light model and low effort for light tasks", () => {
     expect(route("balanced", LIGHT, { candidates: [claudeCandidate()] })).toEqual({
       modelSelection: {

@@ -39,9 +39,14 @@ pub trait Recorder: Send {
 pub struct Transcription {
     pub text: String,
     pub engine: SttEngine,
+    pub private: bool,
 }
 
 pub trait Transcriber: Send + Sync {
+    /// Unknown privacy is treated as private for memory extraction.
+    fn private_mode(&self) -> bool {
+        true
+    }
     fn transcribe(&self, audio: &EncodedAudio) -> Result<Transcription, String>;
 }
 
@@ -52,6 +57,9 @@ pub trait Polisher: Send + Sync {
 
 /// `main` keeps one handle to change settings live; the engine owns the other.
 impl<T: Transcriber + ?Sized> Transcriber for Arc<T> {
+    fn private_mode(&self) -> bool {
+        (**self).private_mode()
+    }
     fn transcribe(&self, audio: &EncodedAudio) -> Result<Transcription, String> {
         (**self).transcribe(audio)
     }
@@ -82,6 +90,7 @@ struct Inner {
     hotkey_latency: Option<Duration>,
     /// v1.2: the app in front when this recording started.
     app: String,
+    private: bool,
 }
 
 struct Shared {
@@ -118,6 +127,7 @@ impl Engine {
                 trigger_at: None,
                 hotkey_latency: None,
                 app: String::new(),
+                private: true,
             }),
             subscribers: Mutex::new(Vec::new()),
             transcriber,
@@ -210,6 +220,7 @@ impl Engine {
         if !matches!(inner.state, State::Ready | State::MicError) {
             return Err(EngineError::InvalidState(inner.state));
         }
+        inner.private = shared.transcriber.private_mode();
         inner.trigger_at = trigger_at;
         inner.hotkey_latency = None;
         match inner.recorder.start() {
@@ -255,6 +266,7 @@ impl Engine {
         }
         let mode = inner.mode.take().unwrap_or(Mode::Hold);
         let app = std::mem::take(&mut inner.app);
+        let private = inner.private || shared.transcriber.private_mode();
         if let (Some(t), Some(first)) = (inner.trigger_at, inner.recorder.first_buffer_at()) {
             inner.hotkey_latency = first.checked_duration_since(t);
         }
@@ -282,12 +294,12 @@ impl Engine {
         let engine = self.clone();
         std::thread::Builder::new()
             .name("scribe-process".into())
-            .spawn(move || engine.process(audio, paste, mode, app))
+            .spawn(move || engine.process(audio, paste, mode, app, private))
             .expect("spawn scribe-process thread");
         Ok(State::Processing)
     }
 
-    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode, app: String) {
+    fn process(&self, audio: EncodedAudio, paste: bool, mode: Mode, app: String, private: bool) {
         let shared = &*self.0;
         let started = Instant::now();
         match shared.transcriber.transcribe(&audio) {
@@ -312,6 +324,7 @@ impl Engine {
                             total_ms: millis(started.elapsed()),
                         },
                         pasted,
+                        private: private || t.private || shared.transcriber.private_mode(),
                         at_ms,
                     })
                 });
@@ -406,6 +419,7 @@ pub mod fakes {
             self.0.clone().map(|text| Transcription {
                 text,
                 engine: SttEngine::Groq,
+                private: false,
             })
         }
     }
@@ -510,6 +524,7 @@ mod tests {
                     ("toggle", "hello world", "HELLO WORLD")
                 );
                 assert_eq!((item.words, item.pasted), (2, false));
+                assert_eq!(item.private, Some(true));
                 assert!(item.metrics.total_ms >= item.metrics.transcribe_ms);
             }
             e => panic!("{e:?}"),

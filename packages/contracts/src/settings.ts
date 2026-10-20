@@ -1,4 +1,5 @@
 import { SshDeviceHostConfigs } from "./device.ts";
+import { VoiceLogMemorySettings, DEFAULT_VOICE_LOG_SKIP_APPS } from "./voiceLogMemory.ts";
 import {
   AuthOrchestrationOperateScope,
   AuthSettingsWriteScope,
@@ -612,6 +613,14 @@ export const DEFAULT_CLIENT_SETTINGS: ClientSettings = Schema.decodeSync(ClientS
 const UsageModelTokenPrice = Schema.Number.check(
   Schema.isFinite(),
   Schema.isGreaterThanOrEqualTo(0),
+);
+const SubscriptionPaidUsd = Schema.Record(
+  Schema.String,
+  Schema.Record(TrimmedNonEmptyString, UsageModelTokenPrice),
+).check(
+  Schema.makeFilter((months) =>
+    Object.keys(months).every((month) => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)),
+  ),
 );
 
 /** USD per million tokens. Omitted cache rates use the input rate. */
@@ -1384,8 +1393,8 @@ export const ServerSettings = Schema.Struct({
   snoozeLimitedThreads: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   autoResumeLimitedThreads: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   /**
-   * When a delegated task names no provider or model and reads as light, run
-   * it on the cheapest ready model instead of the parent's. Off keeps every
+   * When a delegated task names no provider or model, run
+   * it on the cheapest capable model instead of the parent's. Off keeps every
    * unnamed child on the parent's model.
    */
   routeLightDelegatedTasks: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
@@ -1542,6 +1551,16 @@ export const ServerSettings = Schema.Struct({
   /** Exact model IDs, applied to past and future usage on this environment. */
   usagePriceOverrides: Schema.Record(TrimmedNonEmptyString, UsageModelPriceOverride).pipe(
     Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+  /** User-entered paid amounts by calendar month, then provider kind. */
+  subscriptionPaidUsd: SubscriptionPaidUsd.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
+  voiceLogMemory: VoiceLogMemorySettings.pipe(
+    Schema.withDecodingDefault(
+      Effect.succeed({
+        enabled: false,
+        skipApps: DEFAULT_VOICE_LOG_SKIP_APPS,
+      }),
+    ),
   ),
   /**
    * Exact model ID to the model its usage counts as, such as a preview slug to
@@ -1824,6 +1843,8 @@ export const ServerSettingsPatch = Schema.Struct({
   groqApiKey: Schema.optionalKey(TrimmedString),
   cursorKeychainUsageEnabled: Schema.optionalKey(Schema.Boolean),
   /** Each entry replaces one model's rates; `null` restores automatic pricing. */
+  subscriptionPaidUsd: Schema.optionalKey(SubscriptionPaidUsd),
+  voiceLogMemory: Schema.optionalKey(VoiceLogMemorySettings),
   usagePriceOverrides: Schema.optionalKey(
     Schema.Record(TrimmedNonEmptyString, Schema.NullOr(UsageModelPriceOverride)),
   ),

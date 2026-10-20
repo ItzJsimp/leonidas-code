@@ -164,6 +164,8 @@ pub struct HistoryItem {
     pub words: u32,
     pub metrics: HistoryMetrics,
     pub pasted: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub private: Option<bool>,
 }
 
 /// v1.2: reply of `GET /v1/history`. `next` is the `before` cursor for the next page.
@@ -334,9 +336,11 @@ mod tests {
                 total_ms: 760,
             },
             pasted: true,
+            private: Some(true),
         };
         let wire = serde_json::to_value(Event::History { item }).unwrap();
         assert_eq!(wire["type"], "history");
+        assert_eq!(wire["item"]["private"], true);
         assert_eq!(wire["item"]["cleanedText"], "Hi.");
         assert_eq!(wire["item"]["metrics"]["transcribeMs"], 700);
         let back: Event = serde_json::from_value(wire.clone()).unwrap();
