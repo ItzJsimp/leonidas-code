@@ -23,7 +23,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { APP_VERSION_LABEL } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { usePullRequestsSupported } from "../../state/environments";
+import { usePrimaryEnvironment, usePullRequestsSupported } from "../../state/environments";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
@@ -261,6 +261,9 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
   const pullRequestsSupported = usePullRequestsSupported();
+  // The Scribe engine runs on Windows only. The server host decides, not this browser.
+  const scribeSupported =
+    usePrimaryEnvironment()?.serverConfig?.environment.platform.os === "windows";
 
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) {
@@ -374,12 +377,14 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             onClick={handleTasksClick}
           />
           <SidebarUtilityItem icon={<GitBranchIcon />} label="Git" onClick={handleGitClick} />
-          <SidebarUtilityItem
-            icon={<AudioLinesIcon />}
-            label="Scribe"
-            usageId="open_scribe"
-            onClick={handleScribeClick}
-          />
+          {scribeSupported ? (
+            <SidebarUtilityItem
+              icon={<AudioLinesIcon />}
+              label="Scribe"
+              usageId="open_scribe"
+              onClick={handleScribeClick}
+            />
+          ) : null}
           {pullRequestsSupported ? (
             <SidebarUtilityItem
               icon={<PullRequestGlyph.pullRequest />}
