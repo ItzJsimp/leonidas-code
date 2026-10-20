@@ -23,7 +23,7 @@ import { useEnvironmentScope } from "~/state/session";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { DictationTextarea } from "../voice/DictationTextarea";
 import { Spinner } from "../ui/spinner";
 
 type FormState =
@@ -154,7 +154,8 @@ export function AiosInterviewForm({
                   <span className="ml-1.5 text-xs text-muted-foreground">Optional</span>
                 )}
               </span>
-              <Input
+              <DictationTextarea
+                rows={2}
                 value={value}
                 maxLength={200}
                 onChange={(event) => setAnswer(question.id, event.target.value)}
