@@ -255,7 +255,7 @@ describe("rankModelsForPreference", () => {
 
 describe("routeTurn on a new chat", () => {
   it("lets the preference decide the model", () => {
-    expect(route("cost", STANDARD)?.modelSelection.model).toMatch(/haiku|luna/);
+    expect(route("cost", STANDARD)?.modelSelection.model).toMatch(/sonnet|astra/);
     expect(route("quality", STANDARD)?.modelSelection.model).toMatch(/fable|sol/);
   });
 
@@ -384,6 +384,44 @@ describe("routeTurn on a running chat", () => {
 });
 
 describe("subscription quota", () => {
+  it("keeps a hard quality floor even when a weaker model has spare quota", () => {
+    const decision = route("cost", STANDARD, {
+      candidates: [
+        {
+          ...claudeCandidate(session(95)),
+          models: [{ slug: "claude-sonnet-5-5", name: "Sonnet" }],
+        },
+        { ...codexCandidate(session(10)), models: [{ slug: "gpt-6-luna", name: "Luna" }] },
+      ],
+    });
+    expect(decision?.modelSelection.model).toBe("claude-sonnet-5-5");
+  });
+
+  it("moves at the threshold on any window, even with a warm cache", () => {
+    const limits = session(10);
+    const hot = {
+      ...limits,
+      windows: [...limits.windows, { ...limits.windows[0]!, id: "weekly", usedPercent: 90 }],
+    };
+    const decision = route("cost", STANDARD, {
+      candidates: [claudeCandidate(hot), claudeCandidate(session(20), claudeWork)],
+      current: sonnet,
+      thread: sonnetThread(1),
+    });
+    expect(decision?.modelSelection.instanceId).toBe(claudeWork);
+    expect(decision?.reason).toContain("90%");
+  });
+
+  it("uses the configured threshold and falls back when all accounts are hot", () => {
+    expect(
+      route("cost", STANDARD, {
+        candidates: [claudeCandidate(session(81)), claudeCandidate(session(70), claudeWork)],
+        quotaBlockPercent: 80,
+      })?.modelSelection.instanceId,
+    ).toBe(claudeWork);
+    expect(route("cost", STANDARD, { candidates: [claudeCandidate(session(95))] })).not.toBeNull();
+  });
+
   it("projects a window to its reset at the account's own pace", () => {
     // 40% in the first hour of five: on track to need 200%.
     expect(projectUsedPercentAtReset(session(40, 1).windows[0]!, NOW)).toBeCloseTo(200);

@@ -24,6 +24,9 @@ import type {
 } from "@t3tools/contracts";
 import { AutoRoutePreference } from "@t3tools/contracts/settings";
 
+import { classifyTask, type AutoRouteTaskSize } from "./autoRouterTask.ts";
+export { classifyTask, type AutoRouteTaskSize } from "./autoRouterTask.ts";
+
 import { elapsedShare } from "./usageLimits.ts";
 import {
   forecastWindowUsedPercentAtReset,
@@ -41,8 +44,6 @@ export const AUTO_ROUTE_PREFERENCE_LABELS: Record<AutoRoutePreference, string> =
   quality: "Best quality",
   speed: "Fastest",
 };
-
-export type AutoRouteTaskSize = "light" | "standard" | "heavy";
 
 /** 1 (worst) to 5 (best) on each axis. `economy` 5 means cheapest. */
 export interface ModelRouteProfile {
@@ -94,6 +95,8 @@ export interface AutoRouteInput {
   readonly attachmentCount?: number | undefined;
   readonly planMode?: boolean | undefined;
   readonly now: number;
+  /** Prefer another capable account when any reported window reaches this percentage. */
+  readonly quotaBlockPercent?: number | undefined;
 }
 
 export interface AutoRouteDecision {
@@ -193,33 +196,6 @@ export function profileModel(slug: string, measured?: BenchmarkRouteProfiles): M
   const normalized = slug.toLowerCase();
   const family = MODEL_FAMILIES.find((entry) => entry.pattern.test(normalized));
   return family ? { ...family.profile, known: true } : UNKNOWN_PROFILE;
-}
-
-const HEAVY_SIGNALS =
-  /\b(architect\w*|design|redesign|refactor\w*|migrat\w*|rewrite|implement\w*|build|from scratch|debug\w*|investigat\w*|root cause|race condition|deadlock|performance|optimi[sz]\w*|security|vulnerab\w*|audit|plan|end[- ]to[- ]end|across the (code ?base|repo)|whole (code ?base|repo|app))\b/i;
-const LIGHT_SIGNALS =
-  /\b(typo|rename|reword|format|lint|commit message|commit|push|bump|changelog|what is|what's|explain this|summari[sz]e|translate|list|show me|quick|small|tiny|one[- ]liner|spelling)\b/i;
-
-/** Rough task size from the prompt alone. Cheap enough to run on every send. */
-export function classifyTask(input: {
-  readonly prompt: string;
-  readonly attachmentCount?: number | undefined;
-  readonly planMode?: boolean | undefined;
-}): AutoRouteTaskSize {
-  const prompt = input.prompt.trim();
-  const words = prompt.length === 0 ? 0 : prompt.split(/\s+/).length;
-  let weight = 0;
-  if (words > 250) weight += 2;
-  else if (words > 80) weight += 1;
-  else if (words <= 4) weight -= 1;
-  if (HEAVY_SIGNALS.test(prompt)) weight += 2;
-  if (LIGHT_SIGNALS.test(prompt)) weight -= 1;
-  if ((prompt.match(/```/g)?.length ?? 0) >= 2) weight += 1;
-  if ((input.attachmentCount ?? 0) > 0) weight += 1;
-  if (input.planMode) weight += 3;
-  if (weight >= 2) return "heavy";
-  if (weight <= -1) return "light";
-  return "standard";
 }
 
 // ---------------------------------------------------------------------------
@@ -460,8 +436,7 @@ function fitScore(input: {
     weights.quality * effectiveQuality +
     weights.speed * input.profile.speed +
     weights.economy * economy;
-  // A cost focus accepts one notch less quality than the task would otherwise get.
-  const floor = QUALITY_FLOOR[input.task] - (input.preference === "cost" ? 1 : 0);
+  const floor = QUALITY_FLOOR[input.task];
   const shortfall = floor - input.profile.quality;
   if (shortfall > 0) score -= shortfall * 4;
   if (!input.profile.known) score -= 0.5;
@@ -636,18 +611,31 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
   }
   if (options.length === 0) return null;
 
+  const capable = options.filter((option) => option.quality >= QUALITY_FLOOR[task]);
+  const bestQuality = options.reduce((quality, option) => Math.max(quality, option.quality), 0);
+  // When no capable model can run, keep the strongest available fallback.
+  const qualityOptions =
+    capable.length > 0 ? capable : options.filter((option) => option.quality === bestQuality);
+  const threshold = input.quotaBlockPercent ?? 90;
+  const belowThreshold = qualityOptions.filter(
+    (option) =>
+      !option.candidate.usageLimits?.windows.some((window) => window.usedPercent >= threshold),
+  );
+  const avoidedLimit = belowThreshold.length > 0 && belowThreshold.length < qualityOptions.length;
+  const eligible = belowThreshold.length > 0 ? belowThreshold : qualityOptions;
+
   // A warm thread never steps down to a weaker model for a lighter prompt: the
   // move re-reads the whole context, and the next normal prompt would move it
   // back. It steps down only once the cache is cold or its account runs low.
-  const stay = options.find((option) => option.isCurrent);
+  const stay = eligible.find((option) => option.isCurrent);
   const warm =
     thread !== undefined &&
     thread.lastActivityAt !== null &&
     input.now - thread.lastActivityAt < cacheProfile(thread.driverKind).ttlMs;
   const allowed =
     stay && warm && stay.scarcity < 0.5
-      ? options.filter((option) => option.isCurrent || option.quality >= stay.quality)
-      : options;
+      ? eligible.filter((option) => option.isCurrent || option.quality >= stay.quality)
+      : eligible;
 
   // A move pays only what it costs beyond staying. When the current model
   // cannot run, every option pays its own next-turn input.
@@ -677,7 +665,7 @@ export function routeTurn(input: AutoRouteInput): AutoRouteDecision | null {
     modelName: best.model.name,
     task,
     switched,
-    reason: `${TASK_LABELS[task]} task, ${AUTO_ROUTE_PREFERENCE_LABELS[input.preference].toLowerCase()}${keptForCache ? ", stayed to keep the cache warm" : ""}`,
+    reason: `${TASK_LABELS[task]} task, ${AUTO_ROUTE_PREFERENCE_LABELS[input.preference].toLowerCase()}${avoidedLimit ? `, kept below ${threshold}% account limit` : ""}${keptForCache ? ", stayed to keep the cache warm" : ""}`,
   };
 }
 
