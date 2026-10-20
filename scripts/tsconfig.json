@@ -5,5 +5,13 @@
     "types": ["node"],
     "lib": ["ESNext", "esnext.disposable"]
   },
-  "include": ["**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "../apps/web/src/onboarding/aiosFolders.logic.ts",
+    "../apps/web/src/onboarding/folderInspection.logic.ts",
+    "../apps/web/src/onboarding/leonidasSetup.logic.ts",
+    "../apps/web/src/onboarding/skillPacks.ts",
+    "../packages/provider-core/src/server/outputStandard.ts",
+    "../packages/provider-core/src/server/efficientAgentRules.ts"
+  ]
 }
