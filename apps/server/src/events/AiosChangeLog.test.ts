@@ -1,7 +1,12 @@
+// @effect-diagnostics nodeBuiltinImport:off - builds a temp folder with nested Git repos.
 import { decodeFeedEvent, completeFeedEvent } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
-import { aiosChangedDraft } from "./AiosChangeLog.ts";
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
+
+import { aiosChangedDraft, inNestedRepo } from "./AiosChangeLog.ts";
 
 const ROOT = "D:\\Leonidas AIOS";
 
@@ -46,5 +51,19 @@ describe("aiosChangedDraft", () => {
     const files = Array.from({ length: 12 }, (_, i) => `folder-with-a-long-name-${i}/x.md`);
     const draft = aiosChangedDraft({ aiosRoot: ROOT, cwd: ROOT, threadId: "t", runId: "r", files });
     expect(draft!.title.length).toBeLessThanOrEqual(80);
+  });
+});
+
+describe("inNestedRepo", () => {
+  it("is true for a code repo inside the AIOS and false for the AIOS itself", () => {
+    const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "aios-nested-"));
+    NodeFS.mkdirSync(NodePath.join(root, ".git"));
+    NodeFS.mkdirSync(NodePath.join(root, "projects", "app", ".git"), { recursive: true });
+    NodeFS.mkdirSync(NodePath.join(root, "projects", "notes"), { recursive: true });
+    expect(inNestedRepo(root, root)).toBe(false);
+    expect(inNestedRepo(root, NodePath.join(root, "projects", "notes"))).toBe(false);
+    expect(inNestedRepo(root, NodePath.join(root, "projects", "app"))).toBe(true);
+    expect(inNestedRepo(root, NodePath.join(root, "projects", "app", "src"))).toBe(true);
+    NodeFS.rmSync(root, { recursive: true, force: true });
   });
 });

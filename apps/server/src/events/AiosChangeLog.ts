@@ -3,6 +3,7 @@ import type { FeedEventDraft, ThreadId } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
@@ -14,6 +15,19 @@ import { appendDraft } from "./eventsRpc.ts";
 
 const MAX_FILES = 50;
 const MAX_TITLE = 80;
+
+/**
+ * True when `cwd` is inside a Git repo nested in the AIOS, such as a code project under
+ * `projects/`. Turns there change code, not the AIOS, so they write no `aios.changed` event.
+ */
+export function inNestedRepo(aiosRoot: string, cwd: string): boolean {
+  const path = aiosRoot.includes("\\") ? NodePath.win32 : NodePath.posix;
+  for (let dir = cwd; ; dir = path.dirname(dir)) {
+    const relative = path.relative(aiosRoot, dir);
+    if (relative === "" || relative.startsWith("..") || path.dirname(dir) === dir) return false;
+    if (NodeFS.existsSync(path.join(dir, ".git"))) return true;
+  }
+}
 
 /**
  * The `aios.changed` event for one finished agent turn: every changed file inside the AIOS, as
@@ -78,7 +92,7 @@ export const make = Effect.gen(function* () {
       const project = projects.find((item) => item.id === shell.projectId);
       const aiosRoot = yield* taskBoard.aiosRoot(projects);
       const cwd = shell.worktreePath ?? project?.workspaceRoot;
-      if (aiosRoot === null || cwd === undefined) return;
+      if (aiosRoot === null || cwd === undefined || inNestedRepo(aiosRoot, cwd)) return;
       const draft = aiosChangedDraft({
         aiosRoot,
         cwd,
