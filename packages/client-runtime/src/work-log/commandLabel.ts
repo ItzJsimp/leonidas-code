@@ -212,6 +212,17 @@ function shellCommandArgumentIndex(tokens: ReadonlyArray<string>, start: number)
   return null;
 }
 
+// `pwsh -NoProfile -ExecutionPolicy Bypass -Command '<script>'`: options are case-insensitive.
+function powerShellCommandArgumentIndex(tokens: ReadonlyArray<string>): number | null {
+  for (let index = 1; index < tokens.length; index += 1) {
+    const option = tokens[index]!.toLowerCase();
+    if (!option.startsWith("-")) return null;
+    if (option === "-command" || option === "-c") return index + 1;
+    if (POWERSHELL_OPTIONS_WITH_VALUE.has(option)) index += 1;
+  }
+  return null;
+}
+
 const COMMAND_WRAPPER_OPTIONS_WITH_VALUE: Record<CommandWrapper, ReadonlySet<string>> = {
   env: new Set(["-C", "--chdir", "-S", "--split-string", "-u", "--unset"]),
   sudo: new Set(["-C", "--close-from", "-D", "--chdir", "-g", "--group", "-u", "--user"]),
@@ -1401,8 +1412,11 @@ function withoutShellWrapper(command: string): string {
     ?.split(/[\\/]/u)
     .at(-1)
     ?.replace(/\.exe$/iu, "");
-  if (!tokens || !program || !SHELL_PROGRAMS.has(program)) return trimmed;
-  const scriptIndex = shellCommandArgumentIndex(tokens, 1);
+  const powerShell = program !== undefined && POWERSHELL_PROGRAMS.has(program.toLowerCase());
+  if (!tokens || !program || !(powerShell || SHELL_PROGRAMS.has(program))) return trimmed;
+  const scriptIndex = powerShell
+    ? powerShellCommandArgumentIndex(tokens)
+    : shellCommandArgumentIndex(tokens, 1);
   // Positional arguments can affect the script; keep those invocations intact.
   if (scriptIndex === null || scriptIndex !== tokens.length - 1) return trimmed;
   return tokens[scriptIndex]?.trim() || trimmed;

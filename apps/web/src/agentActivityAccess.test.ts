@@ -54,4 +54,20 @@ describe("readable output", () => {
     expect(firstThought("**Active Mode:** Mode 10\n\nFixing the bar")).toBe("Fixing the bar");
     expect(readableCommand('cd "D:/repo" && gh run list')).toBe("gh run list");
   });
+
+  it("drops the rtk proxy and the local bin path", () => {
+    expect(
+      readableCommand(
+        "rtk proxy .\\\\node_modules\\\\.bin\\\\vp.cmd test run apps/web/src/a.test.tsx",
+      ),
+    ).toBe("vp test run apps/web/src/a.test.tsx");
+    expect(readableCommand("rtk git status")).toBe("git status");
+    expect(readableCommand("./node_modules/.bin/tsc --noEmit")).toBe("tsc --noEmit");
+    expect(readableCommand("node_modules\\.bin\\vp.exe lint")).toBe("vp lint");
+    // A path argument keeps its folders; only the launcher at the start is shortened.
+    expect(readableCommand("vp test run node_modules/.bin/x.test.ts")).toBe(
+      "vp test run node_modules/.bin/x.test.ts",
+    );
+    expect(readableCommand("rtk")).toBe("rtk");
+  });
 });

@@ -493,6 +493,13 @@ describe("commandDisplayText", () => {
     ["zsh -lc 'echo $1' name value", "zsh -lc 'echo $1' name value"],
     ["zsh -lc 'pwd'; git status", "zsh -lc 'pwd'; git status"],
     ["zsh -lc 'unterminated", "zsh -lc 'unterminated"],
+    [
+      String.raw`"C:\Program Files\PowerShell\7\pwsh.exe" -Command 'Get-Content package.json'`,
+      "Get-Content package.json",
+    ],
+    ['pwsh -NoProfile -Command "npm test"', "npm test"],
+    ["powershell.exe -ExecutionPolicy Bypass -c 'git status'", "git status"],
+    ["pwsh -File build.ps1", "pwsh -File build.ps1"],
   ])("shows the script without hiding meaningful outer commands: %s", (input, expected) => {
     expect(commandDisplayText(input)).toBe(expected);
   });

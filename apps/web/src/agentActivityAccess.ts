@@ -124,10 +124,18 @@ export function readableCommand(command: string): string {
     .replace(SHELL_LAUNCHER, "")
     .replace(/^(["'])([\s\S]*)\1$/, "$2");
   // `cd "<repo>" && gh run list` is about `gh run list`, not the directory change.
-  return unwrapped
-    .replace(/^cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    unwrapped
+      .replace(/^cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*/i, "")
+      // `rtk proxy` and `.\node_modules\.bin\vp.cmd` are launch plumbing; the user cares about `vp`.
+      .replace(/^rtk\s+(?:proxy\s+)?(?=\S)/i, "")
+      .replace(
+        /^(?:\.[\\/]+)?node_modules[\\/]+\.bin[\\/]+([\w.-]+?)(?:\.(?:cmd|exe|ps1))?(?=\s|$)/i,
+        "$1",
+      )
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 /** The shell a command was launched through, for telling the user what they are waiting on. */
