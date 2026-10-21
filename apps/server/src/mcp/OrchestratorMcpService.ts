@@ -17,6 +17,7 @@ import {
   type OrchestratorMcpBoardTaskGetInput,
   type OrchestratorMcpFocusCheckInput,
   type OrchestratorMcpFocusListInput,
+  type FeedEventDraft,
   type FocusSnapshot,
   type OrchestratorMcpBoardTaskListInput,
   type OrchestratorMcpBoardTaskListResult,
@@ -73,6 +74,7 @@ import {
   type TaskBoardWorkspaceSnapshot,
   ThreadId,
 } from "@t3tools/contracts";
+import { appendDraft } from "../events/eventsRpc.ts";
 import { confirmDelegatedSpawn, confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
 import { instanceForModel } from "../subagents/instanceForModel.ts";
 import { personaEngineSupport } from "../subagents/personaEngines.ts";
@@ -208,6 +210,11 @@ export interface OrchestratorMcpServiceShape {
     scope: McpInvocationScope,
     input: OrchestratorMcpBoardTaskCreateInput,
   ) => Effect.Effect<OrchestratorMcpBoardTaskRow, OrchestratorMcpFailure>;
+  /** Checks one event draft, then appends it to the AIOS event feed. */
+  readonly eventEmit: (
+    scope: McpInvocationScope,
+    input: FeedEventDraft,
+  ) => Effect.Effect<{ readonly id: string }, OrchestratorMcpFailure>;
   /** The user's focus list: this thread's project section plus Global, or every section. */
   readonly focusList: (
     scope: McpInvocationScope,
@@ -2112,6 +2119,15 @@ const make = Effect.gen(function* () {
           .pipe(Effect.mapError(boardTaskFailure));
         return boardTaskRow(created);
       }),
+    // The tool schema already checked the fields; this stamps and appends.
+    eventEmit: (_scope, input) =>
+      boardProjects.pipe(
+        Effect.flatMap((list) => taskBoard.aiosRoot(list)),
+        Effect.flatMap((root) => appendDraft(root, input)),
+        Effect.catchTag("FeedEventError", (error) =>
+          Effect.fail(failure("invalid_request", error.message)),
+        ),
+      ),
     focusList: (scope, input) =>
       Effect.gen(function* () {
         const { parent } = yield* loadCaller(scope);
