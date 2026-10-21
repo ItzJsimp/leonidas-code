@@ -34,6 +34,7 @@ import { usePrimaryEnvironment } from "../../../state/environments";
 import { primaryServerAvailableEditorsAtom } from "../../../state/server";
 import * as Schema from "effect/Schema";
 import { Dialog } from "../../ui/dialog";
+import { Spinner } from "../../ui/spinner";
 import { WizardHeader, WizardPanel, WizardPopup, WizardSteps } from "../../ui/wizard";
 import { AgentsStep } from "../AgentsStep";
 import { WelcomeWizard } from "../WelcomeWizard";
@@ -53,8 +54,17 @@ export function SetupFlow(props: {
   readonly onDone: (projectRef?: ScopedProjectRef) => void | Promise<void>;
 }) {
   const primary = usePrimaryEnvironment();
-  if (!props.localAvailable || props.resumeEnvironmentId !== undefined || !primary) {
+  if (!props.localAvailable || props.resumeEnvironmentId !== undefined) {
     return <WelcomeWizard {...props} />;
+  }
+  // This computer is still loading. Mounting the old wizard here would flash it and run its effects.
+  if (!primary) {
+    return (
+      <div role="status" className="fixed inset-0 grid place-items-center">
+        <Spinner />
+        <span className="sr-only">Loading setup</span>
+      </div>
+    );
   }
   return <LocalSetupFlow environmentId={primary.environmentId} />;
 }

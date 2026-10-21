@@ -10,6 +10,9 @@ import {
   type SetupState,
 } from "../../../onboarding/setupState.logic";
 
+const primary = vi.hoisted(() => ({
+  current: { environmentId: "local" } as { environmentId: string } | null,
+}));
 const navigate = vi.fn(async (_options: unknown) => undefined);
 const completeOnboarding = vi.fn(async () => undefined);
 const write = vi.fn(async (_folder: string, _files: readonly { relativePath: string }[]) => ({
@@ -27,7 +30,7 @@ vi.mock("../../../onboarding/useAiosFileWriter", () => ({
   useAiosFileWriter: () => ({ canWrite: true, write }),
 }));
 vi.mock("../../../state/environments", () => ({
-  usePrimaryEnvironment: () => ({ environmentId: EnvironmentId.make("local") }),
+  usePrimaryEnvironment: () => primary.current,
 }));
 vi.mock("../../../state/server", () => ({ primaryServerAvailableEditorsAtom: {} }));
 vi.mock("../WelcomeWizard", () => ({ WelcomeWizard: () => <p>old wizard</p> }));
@@ -93,4 +96,12 @@ it("enters the app with every optional step skipped, and lists each skip", async
 it("keeps the old wizard for setups without this computer", async () => {
   await act(async () => root.render(<SetupFlow localAvailable={false} onDone={() => {}} />));
   expect(document.body.textContent).toContain("old wizard");
+});
+
+it("waits for this computer instead of flashing the old wizard", async () => {
+  primary.current = null;
+  await act(async () => root.render(<SetupFlow localAvailable onDone={() => {}} />));
+  expect(document.body.textContent).not.toContain("old wizard");
+  expect(document.body.querySelector('[role="status"]')).not.toBeNull();
+  primary.current = { environmentId: EnvironmentId.make("local") };
 });

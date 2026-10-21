@@ -81,11 +81,7 @@ export function FinishSetupCard() {
   const item = items.find((entry) => entry.id === openItem) ?? null;
 
   return (
-    <section
-      data-tour="finish-setup"
-      aria-labelledby="finish-setup-title"
-      className="space-y-4 rounded-xl border p-4"
-    >
+    <section aria-labelledby="finish-setup-title" className="space-y-4 rounded-xl border p-4">
       {touring || !state.tourSeen ? (
         <SetupTour
           stops={tourStops(voice)}
@@ -174,7 +170,10 @@ export function FinishSetupCard() {
                 voice={voice}
                 onDone={(answered) => {
                   if (answered !== undefined) {
-                    setState((current) => ({ ...current, questionsAnswered: answered }));
+                    setState((current) => ({
+                      ...current,
+                      questionsAnswered: Math.max(current.questionsAnswered, answered),
+                    }));
                     setOpenItem(null);
                   } else done(item.id);
                 }}
