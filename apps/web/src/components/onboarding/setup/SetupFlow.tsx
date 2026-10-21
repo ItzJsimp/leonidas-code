@@ -40,6 +40,7 @@ import { WizardHeader, WizardPanel, WizardPopup, WizardSteps } from "../../ui/wi
 import { AgentsStep } from "../AgentsStep";
 import { WelcomeWizard } from "../WelcomeWizard";
 import { SetupBasicsScreen, type SetupBasics } from "./SetupBasicsScreen";
+import { SetupPreviewBar } from "./SetupPreviewBar";
 import { SetupQuestionsScreen } from "./SetupQuestionsScreen";
 
 const STEPS = ["You", "AI account", "Questions"] as const;
@@ -152,6 +153,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
           <WizardSteps steps={STEPS} currentStep={step} />
         </WizardHeader>
         <WizardPanel stableHeight>
+          <SetupPreviewBar />
           {step === 0 ? (
             <SetupBasicsScreen
               editorIds={editorIds}

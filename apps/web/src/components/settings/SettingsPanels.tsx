@@ -131,6 +131,14 @@ import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { Button } from "../ui/button";
 import { setOnboardingSimActive } from "../onboarding/sim/onboardingSim.flag";
+import { startSetupPreview } from "../../onboarding/setupPreview";
+import {
+  EMPTY_SETUP_STATE,
+  SETUP_STATE_STORAGE_KEY,
+  SetupStateSchema,
+  brainScore,
+  openSetupItems,
+} from "../../onboarding/setupState.logic";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import {
   Dialog,
@@ -309,18 +317,29 @@ function AboutVersionTitle() {
 
 /** Dev only: replay first-run setup as a brand-new user with one click. */
 function NewUserSetupPreviewRow() {
-  const navigate = useNavigate();
+  const [setup] = useLocalStorage(SETUP_STATE_STORAGE_KEY, EMPTY_SETUP_STATE, SetupStateSchema);
+  const status =
+    setup.startedAt === null
+      ? "Setup not run yet on this browser."
+      : `Now: brain strength ${brainScore(setup)} / 100, ${openSetupItems(setup).length} steps open, tour ${setup.tourSeen ? "seen" : "not seen"}.`;
   return (
     <SettingsRow
       title="Preview new-user setup"
-      description="Walk through the full first-run setup as a new user. Dev builds only."
+      description={`Walk through the 3 setup screens, the tour and the checklist as a new user. Nothing is saved, and your setup comes back when you end the preview. ${status} Dev builds only.`}
       control={
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setOnboardingSimActive(true)}>
-            Run guided test
+          <Button
+            size="sm"
+            onClick={() => {
+              startSetupPreview();
+              // A full load makes every screen start from the fresh preview state.
+              window.location.assign("/welcome");
+            }}
+          >
+            Walk through new setup
           </Button>
-          <Button size="sm" variant="outline" onClick={() => void navigate({ to: "/welcome" })}>
-            Open real wizard
+          <Button size="sm" variant="outline" onClick={() => setOnboardingSimActive(true)}>
+            Old wizard test
           </Button>
         </div>
       }

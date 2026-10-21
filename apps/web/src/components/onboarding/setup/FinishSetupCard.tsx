@@ -32,6 +32,7 @@ import {
   type SetupItemId,
 } from "../../../onboarding/setupState.logic";
 import { useAiosFileWriter } from "../../../onboarding/useAiosFileWriter";
+import { isSetupPreview } from "../../../onboarding/setupPreview";
 import { useOnboardingChat } from "../../../onboarding/useOnboardingChat";
 import { usePrimaryEnvironment } from "../../../state/environments";
 import { Button } from "../../ui/button";
@@ -44,6 +45,7 @@ import { LeonidasLayaStep } from "../LeonidasLayaStep";
 import { LeonidasSkillsStep } from "../LeonidasSkillsStep";
 import { VoiceStep } from "../VoiceStep";
 import { MemoryImportPanel } from "./MemoryImportPanel";
+import { SetupPreviewBar } from "./SetupPreviewBar";
 import { SetupQuestionsScreen } from "./SetupQuestionsScreen";
 import { SetupTour } from "./SetupTour";
 
@@ -93,6 +95,7 @@ export function FinishSetupCard() {
           }}
         />
       ) : null}
+      <SetupPreviewBar />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="finish-setup-title" className="text-base font-semibold">
@@ -294,6 +297,8 @@ function FirstChatPanel({
       <Button
         disabled={busy}
         onClick={async () => {
+          // A preview never makes a real chat or project.
+          if (isSetupPreview()) return onStarted();
           setBusy(true);
           const project = await ensureFolderProject(folder);
           const chat = project.ok

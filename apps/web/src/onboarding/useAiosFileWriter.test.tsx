@@ -109,3 +109,12 @@ it("asks before adding files to a folder that already has other files", async ()
   const confirmed = await writer.write("C:/code/app", files, { allowExisting: true });
   expect(confirmed.ok).toBe(true);
 });
+
+it("writes nothing during a setup preview, but reports the files it would make", async () => {
+  localStorage.setItem("leonidas:setup-preview", '{"backup":null}');
+  const result = await writer.write("C:/aios", files);
+  localStorage.removeItem("leonidas:setup-preview");
+  expect(result).toEqual({ ok: true, created: ["CLAUDE.md", "memory/README.md"], skipped: [] });
+  expect(mocks.inspect).not.toHaveBeenCalled();
+  expect(mocks.writeFile).not.toHaveBeenCalled();
+});

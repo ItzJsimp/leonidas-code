@@ -10,6 +10,7 @@ import { useEnvironmentScope } from "~/state/session";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { planCreateOnly, type PlannedFile } from "./aiosInterview.logic";
 import { needsConfirmation } from "./folderInspection.logic";
+import { isSetupPreview } from "./setupPreview";
 import { useFolderInspection } from "./useFolderInspection";
 import { useOnboardingChat } from "./useOnboardingChat";
 
@@ -34,6 +35,9 @@ export function useAiosFileWriter(environmentId: EnvironmentId | undefined) {
       planned: readonly PlannedFile[],
       options: { readonly allowExisting?: boolean } = {},
     ): Promise<AiosWriteResult> => {
+      if (isSetupPreview()) {
+        return { ok: true, created: planned.map((file) => file.relativePath), skipped: [] };
+      }
       if (!environmentId || !canWrite) {
         return { ok: false, message: "This computer cannot save files to your AI's folder yet." };
       }
