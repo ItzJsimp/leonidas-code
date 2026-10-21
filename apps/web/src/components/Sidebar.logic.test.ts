@@ -2405,4 +2405,31 @@ describe("threadActivityTimestamp", () => {
       threadActivityTimestamp({ lastActivityAt: newer, latestUserMessageAt: null, updatedAt }),
     ).toBe(newer);
   });
+
+  it("returns the shared value when both timestamps are equal", () => {
+    expect(
+      threadActivityTimestamp({ lastActivityAt: newer, latestUserMessageAt: newer, updatedAt }),
+    ).toBe(newer);
+  });
+
+  it("keeps a valid older user message over an unparseable lastActivityAt", () => {
+    expect(
+      threadActivityTimestamp({
+        lastActivityAt: "not-a-date",
+        latestUserMessageAt: older,
+        updatedAt,
+      }),
+    ).toBe(older);
+  });
+
+  it("lets an unparseable user message win over a valid lastActivityAt", () => {
+    // known gap: NaN compares false, so an unparseable latestUserMessageAt beats a valid lastActivityAt
+    expect(
+      threadActivityTimestamp({
+        lastActivityAt: newer,
+        latestUserMessageAt: "not-a-date",
+        updatedAt,
+      }),
+    ).toBe("not-a-date");
+  });
 });
