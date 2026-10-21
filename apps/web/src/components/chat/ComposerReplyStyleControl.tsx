@@ -44,6 +44,7 @@ import { ComposerControl, ComposerControlChevron, ComposerControlIcon } from "./
 import { useComposerMenuProps } from "./composerEventScope";
 import {
   REPLY_STYLE_PROBLEM_TEXT,
+  replyStyleBodyForRepair,
   replyStyleDraftProblem,
   replyStyleRelativePath,
   replyStyleSlugFromName,
@@ -54,10 +55,14 @@ import { useThreadReplyStyle } from "./useThreadReplyStyle";
 // One fallback toast per chat, style and cause in this window session, across reloads.
 const ANNOUNCED_KEY = "leonidas:reply-style-announced:v1";
 function announceOnce(key: string): boolean {
-  const seen = new Set<string>(JSON.parse(sessionStorage.getItem(ANNOUNCED_KEY) ?? "[]"));
-  if (seen.has(key)) return false;
-  seen.add(key);
-  sessionStorage.setItem(ANNOUNCED_KEY, JSON.stringify([...seen]));
+  try {
+    const seen = new Set<string>(JSON.parse(sessionStorage.getItem(ANNOUNCED_KEY) ?? "[]"));
+    if (seen.has(key)) return false;
+    seen.add(key);
+    sessionStorage.setItem(ANNOUNCED_KEY, JSON.stringify([...seen]));
+  } catch {
+    // Blocked or corrupt storage: still show the notice, it can repeat after a reload.
+  }
   return true;
 }
 
@@ -101,16 +106,19 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const threadKey = `${props.threadRef.environmentId}:${props.threadRef.threadId}`;
 
+  const problemName = chip.problem?.name ?? null;
+  const problemKey = chip.problem
+    ? `${threadKey}:${chip.problem.slug}:${chip.problem.reason}`
+    : null;
+  const problemReason = chip.problem?.reason ?? null;
   useEffect(() => {
-    if (!chip.problem) return;
-    const key = `${threadKey}:${chip.problem.slug}:${chip.problem.reason}`;
-    if (!announceOnce(key)) return;
+    if (problemKey === null || problemReason === null || !announceOnce(problemKey)) return;
     toastManager.add({
       type: "warning",
-      title: `Reply style "${chip.problem.name}" could not load`,
-      description: `Replies use Leonidas because ${REPLY_STYLE_PROBLEM_TEXT[chip.problem.reason]}.`,
+      title: `Reply style "${problemName}" could not load`,
+      description: `Replies use Leonidas because ${REPLY_STYLE_PROBLEM_TEXT[problemReason]}.`,
     });
-  }, [chip.problem, threadKey]);
+  }, [problemKey, problemName, problemReason]);
 
   const setProjectStyle = (slug: string) => {
     if (projectId === null) return;
@@ -344,7 +352,7 @@ function ReplyStyleEditorDialog(props: {
     const parsed = parseReplyStyleFile(loadedText);
     initial =
       "problem" in parsed
-        ? { ...target, body: loadedText.trim() }
+        ? { ...target, body: replyStyleBodyForRepair(loadedText) }
         : { slug: target.slug, ...parsed };
   }
   const isNew = target?.slug === null;

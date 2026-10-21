@@ -98,3 +98,15 @@ export function replyStyleDraftProblem(draft: {
   }
   return null;
 }
+
+/**
+ * The body of a style file that does not parse, for the editor to repair. Save writes new
+ * frontmatter, so an old block at the top is dropped instead of saved twice.
+ */
+export function replyStyleBodyForRepair(text: string): string {
+  return text
+    .replace(/^\uFEFF/, "")
+    .replaceAll("\r\n", "\n")
+    .replace(/^---\n[\s\S]*?\n---(?:\n|$)/, "")
+    .trim();
+}

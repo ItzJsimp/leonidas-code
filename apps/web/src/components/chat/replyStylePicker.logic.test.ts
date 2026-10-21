@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import type { ReplyStylePreset } from "@t3tools/contracts";
 
 import {
+  replyStyleBodyForRepair,
   replyStyleDraftProblem,
   replyStyleSlugFromName,
   resolveReplyStyleChip,
@@ -100,5 +101,15 @@ describe("replyStyleDraftProblem", () => {
     expect(replyStyleDraftProblem({ name: "A", body: " " })).toBe("Add instructions.");
     expect(replyStyleDraftProblem({ name: "A", body: "x".repeat(4_001) })).toMatch(/4,000/);
     expect(replyStyleDraftProblem({ name: "A", body: "x".repeat(4_000) })).toBeNull();
+  });
+});
+
+describe("replyStyleBodyForRepair", () => {
+  it("drops an old frontmatter block so Save does not write it twice", () => {
+    expect(replyStyleBodyForRepair("---\r\nname: \n---\r\n\nBe brief.\n")).toBe("Be brief.");
+  });
+
+  it("keeps a file with no frontmatter whole", () => {
+    expect(replyStyleBodyForRepair("Be brief.\n---\nmore")).toBe("Be brief.\n---\nmore");
   });
 });
