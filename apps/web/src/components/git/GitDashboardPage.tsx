@@ -6,7 +6,7 @@ import {
 import { effectiveAiLevel } from "@t3tools/contracts";
 import { GitBranchIcon, TriangleAlertIcon } from "lucide-react";
 import * as Schema from "effect/Schema";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { localDay } from "~/onboarding/guidance.logic";
@@ -101,6 +101,11 @@ function ProjectGitCard(props: {
     }),
   );
   const switchRef = useAtomCommand(vcsEnvironment.switchRef, { reportFailure: false });
+  const refreshStatus = useAtomCommand(vcsEnvironment.refreshStatus, { reportFailure: false });
+  // One refresh when the card opens, so the counts are current. No timer.
+  useEffect(() => {
+    void refreshStatus({ environmentId: props.environmentId, input: { cwd: props.cwd } });
+  }, [refreshStatus, props.environmentId, props.cwd]);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
   const data = status.data;
@@ -124,7 +129,11 @@ function ProjectGitCard(props: {
       toastManager.add({
         type: "error",
         title: "Could not go back to main",
-        description: String(squashAtomCommandFailure(result)),
+        description: String(squashAtomCommandFailure(result)).includes(
+          "branch_checked_out_in_worktree",
+        )
+          ? "Main is already open in another folder, so this folder cannot switch to it."
+          : "Git could not switch this folder. Nothing was changed.",
       });
     }
   };
