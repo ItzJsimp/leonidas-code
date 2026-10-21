@@ -12,9 +12,7 @@ import {
   type ActivityKind,
   classifyAccessPath,
   classifyActivityItem,
-  commandShell,
   firstThought,
-  readableCommand,
 } from "./agentActivityAccess";
 
 export interface AccessedFile {
@@ -58,63 +56,24 @@ function tally<T extends { access: AccessKind; count: number }>(
   );
 }
 
-export type WaitingKind = "shell" | "subagent" | "app" | "web";
-
-/** One dependency the agent is blocked on. */
-export interface WaitingOn {
-  readonly id: string;
-  readonly kind: WaitingKind;
-  /** What it is: `PowerShell`, `Subagent`, an MCP server name, `Web`. */
-  readonly source: string;
-  /** The command, task or tool in question. */
-  readonly detail: string | null;
-  /** The whole command, unclipped, for hover text and the expanded list. */
+/** What the agent is doing right now, for the composer's live bar. */
+export interface ActivityNow {
+  /** `Running vp test run a.test.ts`: label and target joined. */
+  readonly text: string;
+  /** The verb: `Running`, `Read`, `Thinking`. */
+  readonly label: string;
+  readonly target: string | null;
+  readonly kind: ActivityKind | "think" | "idle";
+  readonly running: boolean;
+  readonly failed: boolean;
+  /** The turn item the bar reveals in the chat, when the action is a tool call. */
+  readonly itemId: string | null;
+  /** The whole command as the agent sent it, unclipped, for hover text. */
   readonly full: string | null;
-  /** ISO time the wait began, for the live elapsed clock. */
+  /** ISO time the action began, for the live clock. */
   readonly since: string | null;
-}
-
-/**
- * The agent is waiting, not working, when every live item is a tool call or a
- * subagent and nothing is thinking or writing. Short file reads and searches
- * return at once, so they never count as a wait.
- */
-function deriveWaiting(items: readonly OrchestrationV2TurnItem[]): WaitingOn[] {
-  const live = items.filter((item) => item.status === "running" || item.status === "pending");
-  if (live.some((item) => item.type === "reasoning" || item.type === "assistant_message")) {
-    return [];
-  }
-  const waiting: WaitingOn[] = [];
-  for (const item of live) {
-    const { event } = classifyActivityItem(item);
-    if (!event?.running) continue;
-    const since = item.startedAt ? DateTime.formatIso(item.startedAt) : null;
-    const entry = {
-      id: item.id,
-      detail: event.target,
-      full: item.type === "command_execution" ? readableCommand(item.input) : event.target,
-      since,
-    };
-    if (item.type === "command_execution" && event.kind === "command") {
-      waiting.push({ ...entry, kind: "shell", source: commandShell(item.input) });
-    } else if (event.kind === "agent") {
-      waiting.push({
-        ...entry,
-        kind: "subagent",
-        source: "Helper",
-      });
-    } else if (event.kind === "web") {
-      waiting.push({ ...entry, kind: "web", source: "Web" });
-    } else if (event.kind === "tool") {
-      const server = item.type === "dynamic_tool" ? item.toolName?.split("__")[1] : null;
-      waiting.push({
-        ...entry,
-        kind: "app",
-        source: server ? server.replace(/[-_]+/g, " ") : "App",
-      });
-    }
-  }
-  return waiting;
+  /** Other tool calls still running beside this one. */
+  readonly alsoRunning: number;
 }
 
 /**
@@ -213,7 +172,8 @@ export function deriveAgentActivity(input: {
     }
   }
 
-  const running = events.findLast((event) => event.running);
+  const runningEvents = events.filter((event) => event.running);
+  const running = runningEvents.at(-1);
   const thoughtItem = recentItems.findLast((item) => item.type === "reasoning");
   const thought = thoughtItem?.type === "reasoning" ? firstThought(thoughtItem.text) : null;
   const saidItem = recentItems.findLast((item) => item.type === "assistant_message");
@@ -223,34 +183,48 @@ export function deriveAgentActivity(input: {
     (item) => item.type === "reasoning" || classifyActivityItem(item).event !== null,
   );
   const lastEvent = events.at(-1);
-  const now: {
-    readonly text: string;
-    readonly kind: ActivityKind | "think" | "idle";
-    readonly running: boolean;
-  } = running
-    ? {
-        text: `${running.label} ${running.target ?? ""}`.trim(),
-        kind: running.kind,
-        running: true,
-      }
+  const fromEvent = (event: ActivityEvent): ActivityNow => {
+    const item = recentItems.find((candidate) => candidate.id === event.id);
+    return {
+      text: `${event.label} ${event.target ?? ""}`.trim(),
+      label: event.label,
+      target: event.target,
+      kind: event.kind,
+      running: event.running,
+      failed: event.failed,
+      itemId: event.id,
+      full: item?.type === "command_execution" ? item.input : event.target,
+      since: item?.startedAt ? DateTime.formatIso(item.startedAt) : null,
+      alsoRunning: event.running ? runningEvents.length - 1 : 0,
+    };
+  };
+  const quiet = (label: string, kind: "think" | "idle", target: string | null = null) => ({
+    text: target ? `${label}: ${target}` : label,
+    label,
+    target,
+    kind,
+    running: kind === "think",
+    failed: false,
+    itemId: null,
+    full: target,
+    since:
+      kind === "think" && thoughtItem?.startedAt ? DateTime.formatIso(thoughtItem.startedAt) : null,
+    alsoRunning: 0,
+  });
+  const now: ActivityNow = running
+    ? fromEvent(running)
     : lastWork?.type === "reasoning"
-      ? { text: thought ? `Thinking: ${thought}` : "Thinking", kind: "think", running: true }
+      ? quiet("Thinking", "think", thought)
       : lastEvent
-        ? {
-            text: `${lastEvent.label} ${lastEvent.target ?? ""}`.trim(),
-            kind: lastEvent.kind,
-            running: false,
-          }
-        : {
-            text:
-              steer && !plan
-                ? "Updating plan"
-                : input.startPhase
-                  ? START_PHASE_TEXT[input.startPhase]
-                  : "Getting started",
-            kind: "idle",
-            running: false,
-          };
+        ? fromEvent(lastEvent)
+        : quiet(
+            steer && !plan
+              ? "Updating plan"
+              : input.startPhase
+                ? START_PHASE_TEXT[input.startPhase]
+                : "Getting started",
+            "idle",
+          );
 
   const notes = recentItems
     .flatMap((item) => {
@@ -283,7 +257,6 @@ export function deriveAgentActivity(input: {
     files: [...new Set(paths.toReversed())].toReversed().slice(-MAX_FILES),
     explanation: plan?.explanation ?? null,
     notes,
-    waiting: deriveWaiting(items),
   };
 }
 

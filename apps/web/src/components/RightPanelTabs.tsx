@@ -27,6 +27,7 @@ import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dn
 import { CSS } from "@dnd-kit/utilities";
 import {
   Smartphone,
+  Activity,
   BookOpen,
   Network,
   ChevronDown,
@@ -145,6 +146,7 @@ interface RightPanelTabsProps {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddActivity?: () => void;
   onAddVault?: () => void;
   onAddGraph?: () => void;
   browserAvailable: boolean;
@@ -347,6 +349,7 @@ function RightPanelEmptyState(props: {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddActivity?: () => void;
   onAddVault?: () => void;
   onAddGraph?: () => void;
   browserAvailable: boolean;
@@ -419,6 +422,14 @@ function RightPanelEmptyState(props: {
       available: props.deviceAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Activity",
+      icon: Activity,
+      shortcut: "A",
+      available: Boolean(props.onAddActivity),
+      disabledReason: "Activity unavailable.",
+      onClick: props.onAddActivity ?? (() => {}),
     },
     {
       label: "Vault",
@@ -646,6 +657,8 @@ function surfaceTitle(
       return "Pull requests";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
+    case "activity":
+      return "Activity";
     case "vault":
       return "Vault";
     case "graph":
@@ -739,6 +752,8 @@ function SurfaceIcon({
       ) : (
         <Smartphone className="size-3 shrink-0" />
       );
+    case "activity":
+      return <Activity className="size-3 shrink-0" />;
     case "vault":
       return <BookOpen className="size-3 shrink-0" />;
     case "graph":
@@ -1024,6 +1039,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.deviceAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Activity",
+      icon: Activity,
+      shortcut: "A",
+      available: Boolean(props.onAddActivity),
+      disabledReason: "Activity unavailable.",
+      onClick: props.onAddActivity ?? (() => {}),
     },
     {
       label: "Vault",

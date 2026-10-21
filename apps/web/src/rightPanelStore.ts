@@ -32,6 +32,7 @@ const RIGHT_PANEL_KINDS = [
   "pull-requests",
   "vault",
   "graph",
+  "activity",
 ] as const;
 export type RightPanelKind = (typeof RIGHT_PANEL_KINDS)[number];
 
@@ -89,6 +90,8 @@ export type RightPanelSurface =
   /** The thread's linked pull requests, one singleton tab beside any number of `pull-request` tabs. */
   | { id: "vault"; kind: "vault" }
   | { id: "graph"; kind: "graph" }
+  /** What the agent does now, its plan, and the skills and files it used. */
+  | { id: "activity"; kind: "activity" }
   | { id: "pull-requests"; kind: "pull-requests" };
 
 const RIGHT_PANEL_STORAGE_KEY = "t3code:right-panel-state:v2";
@@ -235,6 +238,8 @@ const singletonSurface = (
       return { id: "vault", kind };
     case "graph":
       return { id: "graph", kind };
+    case "activity":
+      return { id: "activity", kind };
   }
 };
 

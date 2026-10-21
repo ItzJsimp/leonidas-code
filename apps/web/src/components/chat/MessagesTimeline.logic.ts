@@ -2112,6 +2112,71 @@ export function timelineTurnFoldRunIdsByEntryId(
   return byEntryId;
 }
 
+/** The next step to bring one tool call into view: scroll to its row, or first open what hides it. */
+export type TimelineRevealStep =
+  | { readonly kind: "row"; readonly index: number }
+  | { readonly kind: "open-run"; readonly runId: RunId }
+  | { readonly kind: "open-attempt"; readonly attemptId: RunAttemptId }
+  | { readonly kind: "open-group"; readonly groupId: string }
+  | { readonly kind: "missing" };
+
+export function resolveTimelineReveal(input: {
+  readonly rows: ReadonlyArray<MessagesTimelineRow>;
+  readonly timelineEntries: ReadonlyArray<TimelineEntry>;
+  /** The folded turn hiding the item, from `timelineEntryTurnFoldRunId`. */
+  readonly foldRunId: RunId | null;
+  readonly itemId: string;
+}): TimelineRevealStep {
+  const { rows, timelineEntries, itemId } = input;
+  const holds = (entries: ReadonlyArray<WorkLogEntry>) => entries.some((e) => e.id === itemId);
+  const index = rows.findIndex((row) => row.kind === "work" && holds(row.groupedEntries));
+  if (index >= 0) return { kind: "row", index };
+  if (
+    input.foldRunId !== null &&
+    rows.some((row) => row.kind === "turn-fold" && row.runId === input.foldRunId && !row.expanded)
+  ) {
+    return { kind: "open-run", runId: input.foldRunId };
+  }
+  const entryIndex = timelineEntries.findIndex((entry) => entry.id === itemId);
+  const entry = timelineEntries[entryIndex];
+  if (!entry || entry.kind !== "work") return { kind: "missing" };
+  const attemptId = entry.attempt?.id;
+  if (
+    attemptId &&
+    rows.some((row) => row.kind === "attempt-fold" && row.attemptId === attemptId && !row.expanded)
+  ) {
+    return { kind: "open-attempt", attemptId };
+  }
+  const live = rows.find(
+    (row) => row.kind === "work-live" && !row.expanded && holds(row.groupedEntries),
+  );
+  if (live?.kind === "work-live") return { kind: "open-group", groupId: live.groupId };
+  // A collapsed group's toggle names only its first entry. The item belongs to the
+  // nearest toggle before it when every entry between them is tool work of the same run.
+  let best: { start: number; groupId: string } | null = null;
+  for (const row of rows) {
+    if (row.kind !== "work-toggle" || row.expanded) continue;
+    const start = timelineEntries.findIndex(
+      (candidate) => `work-toggle:${candidate.id}` === row.id,
+    );
+    if (start < 0 || start > entryIndex || (best && start <= best.start)) continue;
+    best = { start, groupId: row.groupId };
+  }
+  if (
+    best &&
+    timelineEntries
+      .slice(best.start, entryIndex + 1)
+      .every(
+        (candidate) =>
+          candidate.kind === "work" &&
+          (candidate.entry.runId ?? null) === (entry.entry.runId ?? null),
+      )
+  ) {
+    return { kind: "open-group", groupId: best.groupId };
+  }
+  return { kind: "missing" };
+}
+
 function sameCheckpointSummaries(
   previous: MessagesTimelineRowsInput["turnDiffSummaries"],
   next: MessagesTimelineRowsInput["turnDiffSummaries"],

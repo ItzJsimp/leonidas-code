@@ -133,12 +133,7 @@ describe("agent activity", () => {
         input: { subagent: "explorer", task: "find the config" },
       } as OrchestrationV2TurnItem,
     ]);
-    expect(activity.waiting).toHaveLength(1);
-    expect(activity.waiting[0]).toMatchObject({
-      kind: "subagent",
-      source: "Helper",
-      detail: "@explorer",
-    });
+    expect(activity.now).toMatchObject({ kind: "agent", target: "@explorer", running: true });
   });
   it("orders touched files by most recent use so a re-read file becomes the newest", () => {
     const read = (id: string, path: string) =>
@@ -199,7 +194,15 @@ describe("agent activity", () => {
       tool("e", "Edit", { file_path: "D:/Leonidas AIOS/tasks/x.md" }),
       tool("f", "Grep", { pattern: "usage limits" }, "running"),
     ]);
-    expect(activity.now).toEqual({ text: "Searching usage limits", kind: "search", running: true });
+    expect(activity.now).toMatchObject({
+      text: "Searching usage limits",
+      label: "Searching",
+      target: "usage limits",
+      kind: "search",
+      running: true,
+      itemId: "f",
+      since: "2026-01-01T00:00:00.000Z",
+    });
     expect(activity.skills.map((skill) => skill.name)).toEqual(["design-build", "impeccable"]);
     expect(activity.aios.map((file) => [file.folder, file.access])).toEqual([
       ["memory", "read"],
@@ -214,56 +217,56 @@ describe("agent activity", () => {
     expect(activity.finishing).toBe(true);
     expect(activity.currentStep).toBe(1);
   });
-  it("reports a running PowerShell command, subagent and app tool as waiting", () => {
+  it("shows the newest running command, cleaned, with the raw command and a count of the rest", () => {
     const shell: OrchestrationV2TurnItem = {
       ...base,
       id: TurnItemId.make("shell"),
       type: "command_execution",
-      input: 'pwsh -NoProfile -Command "npm test"',
+      input: String.raw`pwsh -NoProfile -Command "rtk proxy .\node_modules\.bin\vp.cmd test run a.test.ts"`,
     } as OrchestrationV2TurnItem;
     const app: OrchestrationV2TurnItem = {
       ...base,
       id: TurnItemId.make("app"),
       type: "dynamic_tool",
-      toolName: "mcp__t3-code__preview_open",
-      input: {},
+      toolName: "Grep",
+      input: { pattern: "cache" },
     } as OrchestrationV2TurnItem;
-    const waiting = derive([shell, app]).waiting;
-    expect(waiting.map(({ kind, source }) => [kind, source])).toEqual([
-      ["shell", "PowerShell"],
-      ["app", "t3 code"],
-    ]);
-    expect(waiting[0]?.detail).toBe("npm test");
+    expect(derive([app, shell]).now).toMatchObject({
+      label: "Running",
+      target: "vp test run a.test.ts",
+      itemId: "shell",
+      full: shell.type === "command_execution" ? shell.input : null,
+      alsoRunning: 1,
+    });
   });
 
-  it("keeps the whole command for a long wait while the bar text is clipped", () => {
-    const command =
-      `pnpm install --frozen-lockfile --reporter=append-only ${"--filter=@scope/package ".repeat(6)}`.trim();
-    const shell = {
-      ...base,
-      id: TurnItemId.make("long-shell"),
-      type: "command_execution",
-      input: `pwsh -NoProfile -Command "${command}"`,
-    } as OrchestrationV2TurnItem;
-    const [entry] = derive([shell]).waiting;
-    expect(entry?.full).toBe(command);
-    expect(entry?.detail?.length).toBeLessThan(command.length);
-  });
-  it("is not waiting while the agent is thinking or nothing is running", () => {
+  it("names the thought while the agent thinks, and a failed last action once nothing runs", () => {
     const thinking: OrchestrationV2TurnItem = {
       ...base,
       id: TurnItemId.make("think"),
+      ordinal: 2,
       type: "reasoning",
-      text: "Planning",
+      text: "**Planning the fix**",
       streaming: true,
     } as OrchestrationV2TurnItem;
-    const shell: OrchestrationV2TurnItem = {
+    const failed: OrchestrationV2TurnItem = {
       ...base,
       id: TurnItemId.make("shell"),
+      status: "failed",
       type: "command_execution",
       input: "npm test",
     } as OrchestrationV2TurnItem;
-    expect(derive([thinking, shell]).waiting).toEqual([]);
-    expect(derive([{ ...shell, status: "completed" }]).waiting).toEqual([]);
+    expect(derive([failed, thinking]).now).toMatchObject({
+      kind: "think",
+      label: "Thinking",
+      target: "Planning the fix",
+      running: true,
+    });
+    expect(derive([failed]).now).toMatchObject({
+      label: "Ran",
+      target: "npm test",
+      failed: true,
+      running: false,
+    });
   });
 });

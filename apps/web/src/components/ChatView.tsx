@@ -744,6 +744,7 @@ const DevicePanel = lazy(() =>
 );
 const FilePreviewPanel = lazy(() => import("./files/FilePreviewPanel"));
 const ThreadTerminalDrawer = lazy(() => import("./ThreadTerminalDrawer"));
+import { ActivityPanel } from "./chat/ActivityPanel";
 const LeonidasVaultPanel = lazy(() =>
   import("./vault/LeonidasVaultPanel").then((module) => ({ default: module.LeonidasVaultPanel })),
 );
@@ -2501,36 +2502,38 @@ export default function ChatView(props: ChatViewProps) {
     });
   }, [activeTerminalDrawerPresence.present, activeThreadKey, existingOpenTerminalThreadKeys]);
   const latestRunSettled = isLatestRunSettled(activeLatestRun, activeRuntime);
-  const activeComposerActivity = useMemo(() => {
-    if (
-      !serverProjection ||
-      !activeActivityRun ||
-      isLatestRunSettled(activeActivityRun, activeRuntime)
-    )
-      return null;
+  const activityLive =
+    activeActivityRun !== null && !isLatestRunSettled(activeActivityRun, activeRuntime);
+  const activityPanelOpen = rightPanelOpen && activeRightPanelSurface?.kind === "activity";
+  // The panel keeps the finished run's record; the composer bar shows only live work.
+  const activityRun = activityLive ? activeActivityRun : activityPanelOpen ? activeLatestRun : null;
+  const runActivity = useMemo(() => {
+    if (!serverProjection || !activityRun) return null;
     // Plans are published from the provider's own node, not the run's root node.
     const plan = serverProjection.plans.findLast(
       (candidate) =>
         candidate.kind === "todo_list" &&
         candidate.status !== "superseded" &&
-        candidate.runId === activeActivityRun.runId,
+        candidate.runId === activityRun.runId,
     );
     // A queued turn starts only after the previous run's checkpoint is captured.
-    const startPhase = serverProjection.runs.some(
-      (run) => run.status === "waiting" && run.id !== activeActivityRun.runId,
-    )
-      ? "checkpoint"
-      : activeActivityRun.status === "preparing" || activeActivityRun.status === "starting"
-        ? activeActivityRun.status
-        : null;
+    const startPhase = !activityLive
+      ? null
+      : serverProjection.runs.some(
+            (run) => run.status === "waiting" && run.id !== activityRun.runId,
+          )
+        ? "checkpoint"
+        : activityRun.status === "preparing" || activityRun.status === "starting"
+          ? activityRun.status
+          : null;
     return deriveAgentActivity({
-      runId: activeActivityRun.runId,
+      runId: activityRun.runId,
       items: serverProjection.turnItems,
       plan: plan?.kind === "todo_list" ? plan : null,
       startPhase,
     });
-  }, [activeActivityRun, activeRuntime, serverProjection]);
-  const activeComposerTaskSteps = activeComposerActivity?.steps ?? null;
+  }, [activityLive, activityRun, serverProjection]);
+  const activeComposerActivity = activityLive ? runActivity : null;
   const activeProjectRef = useMemo(
     () =>
       activeThread ? scopeProjectRef(activeThread.environmentId, activeThread.projectId) : null,
@@ -5584,6 +5587,11 @@ export default function ChatView(props: ChatViewProps) {
     useRightPanelStore.getState().open(activeThreadRef, "device");
   }, [activeThreadRef, deviceState.onboardingCompleted, deviceState.hostStatus]);
 
+  const addActivitySurface = useCallback(() => {
+    if (!activeThreadRef) return;
+    useRightPanelStore.getState().open(activeThreadRef, "activity");
+  }, [activeThreadRef]);
+
   const addVaultSurface = useCallback(() => {
     if (!activeThreadRef) return;
     useRightPanelStore.getState().open(activeThreadRef, "vault");
@@ -5713,6 +5721,24 @@ export default function ChatView(props: ChatViewProps) {
     },
     [activeProject, activeThreadRef],
   );
+  // One tool call to open in the chat; the nonce repeats a request for the same call.
+  const [timelineReveal, setTimelineReveal] = useState<{
+    readonly itemId: string;
+    readonly nonce: number;
+  } | null>(null);
+  const showActivityItem = useCallback(
+    (itemId: string) => {
+      setTimelineReveal((previous) => ({ itemId, nonce: (previous?.nonce ?? 0) + 1 }));
+      // The sheet covers the chat on narrow windows; close it so the row is visible.
+      if (shouldUsePlanSidebarSheet && activityPanelOpen && activeThreadRef) {
+        useRightPanelStore.getState().toggle(activeThreadRef, "activity");
+      }
+    },
+    [activeThreadRef, activityPanelOpen, shouldUsePlanSidebarSheet],
+  );
+  const toggleActivityPanel = useCallback(() => {
+    if (activeThreadRef) useRightPanelStore.getState().toggle(activeThreadRef, "activity");
+  }, [activeThreadRef]);
   const activeComposerTasksProgress = useMemo(
     () =>
       activeComposerActivity
@@ -5724,10 +5750,20 @@ export default function ChatView(props: ChatViewProps) {
               ...activeComposerActivity,
               startedAt: activeWorkStartedAt,
               onOpenFile: openFileSurface,
+              onShowItem: showActivityItem,
+              onTogglePanel: toggleActivityPanel,
+              panelOpen: activityPanelOpen,
             },
           }
         : null,
-    [activeComposerActivity, activeWorkStartedAt, openFileSurface],
+    [
+      activeComposerActivity,
+      activeWorkStartedAt,
+      openFileSurface,
+      showActivityItem,
+      toggleActivityPanel,
+      activityPanelOpen,
+    ],
   );
   // The thread's own change request, placed against the project it belongs to. Without a
   // project there is nothing to resolve it against, so the caller falls back to the browser.
@@ -11739,6 +11775,14 @@ export default function ChatView(props: ChatViewProps) {
           workspaceMutationId={workspaceMutationId}
         />
       </Suspense>
+    ) : renderedRightPanelSurface?.kind === "activity" ? (
+      <ActivityPanel
+        activity={runActivity}
+        live={activityLive}
+        startedAt={activeWorkStartedAt}
+        onOpenFile={openFileSurface}
+        onShowItem={showActivityItem}
+      />
     ) : renderedRightPanelSurface?.kind === "vault" ? (
       <Suspense fallback={null}>
         <LeonidasVaultPanel initialView="vault" />
@@ -12062,6 +12106,7 @@ export default function ChatView(props: ChatViewProps) {
               {/* Messages — LegendList handles virtualization and scrolling internally */}
               <AnswerBlockActionsContext value={answerBlockActions}>
                 <MessagesTimeline
+                  revealRequest={timelineReveal}
                   citationRequest={paintOnlyDisplayedTimeline ? null : citationRequest}
                   citationHistoryLoading={threadDetailLoading}
                   {...(!paintOnlyDisplayedTimeline
@@ -12385,7 +12430,6 @@ export default function ChatView(props: ChatViewProps) {
                               }
                               activeThreadModelSelection={activeThread?.modelSelection}
                               activeTasksProgress={activeComposerTasksProgress}
-                              activeTaskSteps={activeComposerTaskSteps}
                               resolvedTheme={resolvedTheme}
                               settings={settings}
                               keybindings={keybindings}
@@ -12629,6 +12673,7 @@ export default function ChatView(props: ChatViewProps) {
           onAddPullRequest={addPullRequestSurface}
           onAddPullRequests={addPullRequestsSurface}
           onAddDevice={addDeviceSurface}
+          onAddActivity={addActivitySurface}
           onAddVault={addVaultSurface}
           onAddGraph={addGraphSurface}
           vaultAvailable={true}
@@ -12692,6 +12737,7 @@ export default function ChatView(props: ChatViewProps) {
             onAddPullRequest={addPullRequestSurface}
             onAddPullRequests={addPullRequestsSurface}
             onAddDevice={addDeviceSurface}
+            onAddActivity={addActivitySurface}
             onAddVault={addVaultSurface}
             onAddGraph={addGraphSurface}
             vaultAvailable={true}
