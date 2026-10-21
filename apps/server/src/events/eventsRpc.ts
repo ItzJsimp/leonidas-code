@@ -16,9 +16,31 @@ const eventFeed = makeEventFeed();
 
 const EMPTY: FeedUpdate = { kind: "snapshot", events: [], bad: [] };
 
-/** The feed of `root` as a stream; one empty snapshot when no AIOS is connected. */
-export function feedStream(root: string | null): Stream.Stream<FeedUpdate> {
-  if (root === null) return Stream.make(EMPTY);
+/** How often a client with no AIOS checks again, so a folder connected later starts the feed. */
+const NO_ROOT_RETRY = "30 seconds";
+
+/**
+ * The feed of the AIOS `resolveRoot` names. With no AIOS yet, it sends one empty snapshot and
+ * checks again every 30 s without sending more.
+ */
+export function feedStream<E, R>(
+  resolveRoot: Effect.Effect<string | null, E, R>,
+  sentEmpty = false,
+): Stream.Stream<FeedUpdate, E, R> {
+  return Stream.unwrap(
+    resolveRoot.pipe(
+      Effect.map((root) => {
+        if (root !== null) return rootStream(root);
+        const retry = Stream.unwrap(
+          Effect.sleep(NO_ROOT_RETRY).pipe(Effect.as(feedStream(resolveRoot, true))),
+        );
+        return sentEmpty ? retry : Stream.make(EMPTY).pipe(Stream.concat(retry));
+      }),
+    ),
+  );
+}
+
+function rootStream(root: string): Stream.Stream<FeedUpdate> {
   return Stream.callback<FeedUpdate>((mailbox) =>
     Effect.acquireRelease(
       Effect.sync(() => eventFeed.subscribe(root, (update) => Queue.offerUnsafe(mailbox, update))),

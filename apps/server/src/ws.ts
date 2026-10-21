@@ -2910,11 +2910,10 @@ const layerWsRpc = (
             });
           }),
         [WS_METHODS.eventsSubscribe]: (input) =>
-          Stream.unwrap(
+          feedStream(
             allTaskBoardProjects.pipe(
               Effect.orElseSucceed(() => []),
               Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
-              Effect.map(feedStream),
             ),
           ),
         [WS_METHODS.eventsAppend]: (input) =>
