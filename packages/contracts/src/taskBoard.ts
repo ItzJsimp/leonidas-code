@@ -610,10 +610,20 @@ const PonytailProviderTotals = Schema.Struct({
 
 export const PonytailUsage = Schema.Struct({
   status: Schema.Literals(["missing", "ready"]),
-  accounts: Schema.Array(Schema.Struct({ dir: Schema.String, enabled: Schema.Boolean })),
+  // Every enabled provider account in the app. The rules reach all of them. `plugin` is "on" or
+  // "off" for a Claude account and "none" for a provider that has no Ponytail plugin.
+  accounts: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      name: Schema.String,
+      driver: Schema.String,
+      plugin: Schema.Literals(["on", "off", "none"]),
+    }),
+  ),
   // Date (YYYY-MM-DD) of the first ledger row: the day the plugin started logging.
   since: Schema.String,
-  // Turns for every provider from the app's own records: the 30 days before `since`, and since.
+  // Turns by provider driver from the app's own records. With a `since` date: the 30 days before
+  // it, then since. With none (no ledger): `providers` is the last 30 days and `providersBefore` is empty.
   providersBefore: Schema.Array(PonytailProviderTotals),
   providers: Schema.Array(PonytailProviderTotals),
   tasks: Schema.Number,

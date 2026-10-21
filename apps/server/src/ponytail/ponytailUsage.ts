@@ -85,7 +85,7 @@ export function summarizePonytail(
   const outputTokens = sum((t) => t.outputTokens);
   const skillRuns = tasks.filter((t) => t.skillRun);
   return {
-    status: tasks.length > 0 || accounts.some((a) => a.enabled) ? "ready" : "missing",
+    status: tasks.length > 0 || accounts.some((a) => a.plugin === "on") ? "ready" : "missing",
     accounts: [...accounts],
     since:
       tasks
@@ -113,30 +113,18 @@ export function summarizePonytail(
   };
 }
 
-async function readAccounts(home: string): Promise<PonytailUsage["accounts"]> {
-  const names = (await NodeFSP.readdir(home).catch(() => [])).filter((n) =>
-    n.startsWith(".claude"),
+/** The plugin writes its ledger under XDG_CONFIG_HOME, else ~/.config, on every platform. */
+export const ponytailLedgerDir = (env: NodeJS.ProcessEnv = process.env): string =>
+  NodePath.join(
+    env.XDG_CONFIG_HOME || NodePath.join(NodeOS.homedir(), ".config"),
+    "ponytail",
+    "band",
   );
-  const accounts: PonytailUsage["accounts"][number][] = [];
-  for (const name of names) {
-    try {
-      const settings = JSON.parse(
-        await NodeFSP.readFile(NodePath.join(home, name, "settings.json"), "utf8"),
-      );
-      accounts.push({
-        dir: name,
-        enabled: settings?.enabledPlugins?.["ponytail@ponytail"] === true,
-      });
-    } catch {
-      // Not a Claude config folder.
-    }
-  }
-  return accounts;
-}
 
-export async function readPonytailUsage(): Promise<PonytailUsage> {
-  const home = NodeOS.homedir();
-  const dir = NodePath.join(home, ".config", "ponytail", "band");
+export async function readPonytailUsage(
+  accounts: PonytailUsage["accounts"],
+): Promise<PonytailUsage> {
+  const dir = ponytailLedgerDir();
   const rows: string[][] = [];
   for (const file of (await NodeFSP.readdir(dir).catch(() => [])).filter((f) =>
     f.endsWith(".csv"),
@@ -150,5 +138,5 @@ export async function readPonytailUsage(): Promise<PonytailUsage> {
       // A torn file is skipped.
     }
   }
-  return summarizePonytail(rows, await readAccounts(home));
+  return summarizePonytail(rows, accounts);
 }

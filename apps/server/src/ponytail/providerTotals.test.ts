@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
-import { readProviderTotals } from "./providerTotals.ts";
+import { mergeByDriver, readProviderTotals } from "./providerTotals.ts";
 
 it.effect("sums turns, tokens and minutes per provider inside the period", () =>
   Effect.gen(function* () {
@@ -40,5 +40,31 @@ it.effect("sums turns, tokens and minutes per provider inside the period", () =>
     });
     expect(rows[0]?.agentMinutes).toBeCloseTo(3);
     expect(rows[1]).toMatchObject({ provider: "antigravity", turns: 1, outputTokens: 5 });
+
+    const before = yield* readProviderTotals(
+      sql,
+      "2026-09-01T00:00:00.000Z",
+      "2026-10-01T00:00:00.000Z",
+    );
+    expect(before).toHaveLength(1);
+    expect(before[0]).toMatchObject({ provider: "antigravity", turns: 1, outputTokens: 99 });
   }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
 );
+
+it("merges account rows into one row per driver and sorts by turns", () => {
+  const row = (provider: string, turns: number) => ({
+    provider,
+    turns,
+    inputTokens: 10,
+    cachedInputTokens: 5,
+    outputTokens: 2,
+    agentMinutes: 1,
+  });
+  const driverOf = (id: string) => (id.startsWith("claude") ? "claudeAgent" : id);
+  const merged = mergeByDriver(
+    [row("codex", 3), row("claudeAgent_a", 2), row("claudeAgent_b", 4)],
+    driverOf,
+  );
+  expect(merged.map((r) => r.provider)).toEqual(["claudeAgent", "codex"]);
+  expect(merged[0]).toMatchObject({ turns: 6, outputTokens: 4, agentMinutes: 2 });
+});

@@ -24,7 +24,8 @@ import * as ScribeStatus from "./scribe/ScribeStatus.ts";
 import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { readLayaUsage } from "./laya/layaUsage.ts";
 import { readPonytailUsage } from "./ponytail/ponytailUsage.ts";
-import { readProviderTotals } from "./ponytail/providerTotals.ts";
+import { mergeByDriver, readProviderTotals } from "./ponytail/providerTotals.ts";
+import { isPonytailPluginEnabled } from "./provider/PonytailEnsure.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -3002,18 +3003,45 @@ const layerWsRpc = (
         [WS_METHODS.ponytailUsage]: () =>
           Effect.gen(function* () {
             const now = yield* Clock.currentTimeMillis;
-            const usage = yield* Effect.promise(() => readPonytailUsage());
-            // Split at the day the plugin started logging: the 30 days before it, then since.
-            const deployed = usage.since
-              ? DateTime.makeUnsafe(`${usage.since}T00:00:00.000Z`)
-              : undefined;
-            const deployedMs = deployed ? DateTime.toEpochMillis(deployed) : now;
+            // The app's own accounts, so the card follows each user's setup and not a folder scan.
+            const instances = (yield* providerInstances.listInstances).filter((i) => i.enabled);
+            const accounts = instances.map((instance) => {
+              const driver = String(instance.driverKind);
+              const key = instance.continuationIdentity.continuationKey;
+              const home = key.startsWith("claude:home:") ? key.slice("claude:home:".length) : "";
+              return {
+                id: String(instance.instanceId),
+                name: instance.displayName ?? String(instance.instanceId),
+                driver,
+                plugin:
+                  driver !== "claudeAgent"
+                    ? ("none" as const)
+                    : isPonytailPluginEnabled(home ? { CLAUDE_CONFIG_DIR: home } : undefined)
+                      ? ("on" as const)
+                      : ("off" as const),
+              };
+            });
+            const driverOf = (provider: string) =>
+              String(
+                instances.find((i) => String(i.instanceId) === provider)?.driverKind ?? provider,
+              );
+            const usage = yield* Effect.promise(() => readPonytailUsage(accounts));
             const iso = (ms: number) => DateTime.formatIso(DateTime.makeUnsafe(ms));
-            const [providersBefore, providers] = yield* Effect.all([
-              readProviderTotals(sql, iso(deployedMs - 30 * 86_400_000), iso(deployedMs)).pipe(
+            const totals = (from: number, to?: number) =>
+              readProviderTotals(sql, iso(from), to === undefined ? undefined : iso(to)).pipe(
+                Effect.map((rows) => mergeByDriver(rows, driverOf)),
                 Effect.orElseSucceed(() => []),
-              ),
-              readProviderTotals(sql, iso(deployedMs)).pipe(Effect.orElseSucceed(() => [])),
+              );
+            const day = 86_400_000;
+            if (!usage.since)
+              return { ...usage, providersBefore: [], providers: yield* totals(now - 30 * day) };
+            // Split at the day the plugin started logging: the 30 days before it, then since.
+            const deployedMs = DateTime.toEpochMillis(
+              DateTime.makeUnsafe(`${usage.since}T00:00:00.000Z`),
+            );
+            const [providersBefore, providers] = yield* Effect.all([
+              totals(deployedMs - 30 * day, deployedMs),
+              totals(deployedMs),
             ]);
             return { ...usage, providersBefore, providers };
           }),

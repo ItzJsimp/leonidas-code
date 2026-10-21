@@ -47,3 +47,24 @@ export const readProviderTotals = (
       })),
     ),
   );
+
+/** Folds per-account rows into one row per provider driver, so any number of accounts reads as one line. */
+export function mergeByDriver(
+  rows: PonytailUsage["providers"],
+  driverOf: (provider: string) => string,
+): PonytailUsage["providers"] {
+  const merged = new Map<string, PonytailUsage["providers"][number]>();
+  for (const row of rows) {
+    const driver = driverOf(row.provider);
+    const sum = merged.get(driver);
+    merged.set(driver, {
+      provider: driver,
+      turns: (sum?.turns ?? 0) + row.turns,
+      inputTokens: (sum?.inputTokens ?? 0) + row.inputTokens,
+      cachedInputTokens: (sum?.cachedInputTokens ?? 0) + row.cachedInputTokens,
+      outputTokens: (sum?.outputTokens ?? 0) + row.outputTokens,
+      agentMinutes: (sum?.agentMinutes ?? 0) + row.agentMinutes,
+    });
+  }
+  return [...merged.values()].toSorted((a, b) => b.turns - a.turns);
+}

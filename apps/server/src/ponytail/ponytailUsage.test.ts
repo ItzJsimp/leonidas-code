@@ -16,7 +16,9 @@ describe("ponytail usage", () => {
     const rows = parseCsv(
       `${HEADER}\nk1,2026-10-18 09:00,p,"first",1.48,2,10,100,1000,not run,full\nk2,2026-10-19 09:00,p,second,2.00,1,5,100,500,passed,full\n`,
     );
-    const usage = summarizePonytail(rows, [{ dir: ".claude", enabled: true }]);
+    const usage = summarizePonytail(rows, [
+      { id: "claudeAgent", name: "Claude", driver: "claudeAgent", plugin: "on" },
+    ]);
     expect(usage.tasks).toBe(2);
     expect(usage.costUsd).toBeCloseTo(3.48);
     expect(usage.recent[0]?.name).toBe("second");
