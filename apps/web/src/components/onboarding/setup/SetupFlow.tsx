@@ -79,6 +79,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   const voice = voiceFor(basics?.coder ?? state.coder);
 
   const finish = async () => {
+    // A failed save only means setup may show again next launch; it must not block entry now.
     await completeOnboarding().catch(() => undefined);
     // The Command Center hosts the tour and the Finish-setup checklist.
     await navigate({ to: "/command-center", replace: true });

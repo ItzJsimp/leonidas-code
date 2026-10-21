@@ -18,7 +18,10 @@ const QUICK_QUESTIONS = INTERVIEW_QUESTIONS.filter((question) =>
   QUICK_QUESTION_IDS.includes(question.id),
 );
 
-/** Screen 3 of 3. Chips only, all optional; Skip still enters the app. */
+/**
+ * Screen 3 of 3. Chips only, all optional; Skip still enters the app.
+ * shortcut: the chip markup copies AiosInterviewForm, delete that copy when WelcomeWizard goes.
+ */
 export function SetupQuestionsScreen({
   voice,
   onBack,
