@@ -2,7 +2,7 @@
  * Setup words in two voices. "Do you build software?" picks the voice; it never changes a feature.
  * The everyday voice keeps tech words out (setupCopy.test.ts checks the list).
  */
-import type { PlannedFile } from "./aiosInterview.logic";
+import { QUICK_QUESTION_IDS, type InterviewAnswers, type PlannedFile } from "./aiosInterview.logic";
 
 export type SetupVoice = "everyday" | "builder";
 
@@ -190,5 +190,44 @@ export function buildImportedMemoryFile(pasted: string, stamp: string): PlannedF
   return {
     relativePath: importedMemoryPath(stamp),
     contents: `# Imported from another AI\n\nImported on ${stamp}. Treat these as facts the user shared.\n\n${pasted.trim()}\n`,
+  };
+}
+
+/** Multi-chip answers are a bullet list; the tour shows only the first chip. */
+function firstChoice(answer: string | undefined): string {
+  return (answer ?? "").split("\n")[0]?.replace(/^- /, "").trim() ?? "";
+}
+
+/** Up to 3 of the user's own answers, for the tour's Memory stop. */
+export function memoryPreviewFrom(answers: InterviewAnswers): readonly string[] {
+  return QUICK_QUESTION_IDS.map((id) => firstChoice(answers[id]))
+    .filter((answer) => answer !== "")
+    .slice(0, 3);
+}
+
+/** The first goal answer becomes the first task, so the Tasks stop shows something real. */
+export function firstTaskFrom(answers: InterviewAnswers): string | null {
+  const goal = firstChoice(answers.goal);
+  return goal === "" ? null : `Make a 3-step plan: ${goal}`;
+}
+
+export function buildFirstTaskFile(task: string): PlannedFile {
+  return {
+    relativePath: "tasks/first-task.md",
+    contents: `# ${task}\n\nAsk your AI to help with this in your first chat.\n`,
+  };
+}
+
+/** What the tour shows from the user's own setup. Empty data gets a plain line, never a blank. */
+export function tourExtras(
+  memoryPreview: readonly string[],
+  firstTask: string | null,
+): Readonly<Record<string, readonly string[]>> {
+  return {
+    memory:
+      memoryPreview.length > 0
+        ? memoryPreview.map((line) => `It knows: ${line}`)
+        : ["Nothing yet. Your AI saves facts here as you chat."],
+    tasks: [firstTask ?? "No tasks yet. Ask your AI to add one."],
   };
 }

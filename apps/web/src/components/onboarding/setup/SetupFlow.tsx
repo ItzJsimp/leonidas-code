@@ -14,7 +14,14 @@ import {
   AIOS_FOLDER_STORAGE_KEY,
   DEFAULT_AIOS_FOLDER,
 } from "../../../onboarding/leonidasSetup.logic";
-import { SETUP_COPY, buildImportedMemoryFile, voiceFor } from "../../../onboarding/setupCopy";
+import {
+  SETUP_COPY,
+  buildFirstTaskFile,
+  buildImportedMemoryFile,
+  firstTaskFrom,
+  memoryPreviewFrom,
+  voiceFor,
+} from "../../../onboarding/setupCopy";
 import {
   EMPTY_SETUP_STATE,
   SETUP_STATE_STORAGE_KEY,
@@ -82,13 +89,19 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
 
   const saveAnswers = async (answers: InterviewAnswers) => {
     if (!basics) return "Go back and name your AI first.";
-    const result = await write(
-      basics.folder,
-      buildAiosFiles({ ...answers, name: basics.userName }, basics.aiName),
-    );
+    const firstTask = firstTaskFrom(answers);
+    const result = await write(basics.folder, [
+      ...buildAiosFiles({ ...answers, name: basics.userName }, basics.aiName),
+      ...(firstTask ? [buildFirstTaskFile(firstTask)] : []),
+    ]);
     if (!result.ok) return result.message;
     const answered = QUICK_QUESTION_IDS.filter((id) => (answers[id] ?? "").trim() !== "").length;
-    setState((current) => ({ ...current, questionsAnswered: answered }));
+    setState((current) => ({
+      ...current,
+      questionsAnswered: answered,
+      memoryPreview: memoryPreviewFrom(answers),
+      firstTask,
+    }));
     void finish();
     return null;
   };

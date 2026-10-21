@@ -91,6 +91,10 @@ export const SetupStateSchema = Schema.Struct({
   tourSeen: Schema.Boolean,
   /** Set when the new setup runs, so users from the old wizard get no surprise tour. */
   startedAt: Schema.NullOr(Schema.String),
+  /** The user's own answers, shown on the tour's Memory stop. */
+  memoryPreview: Schema.Array(Schema.String),
+  /** The first task made from the goal answer, shown on the Tasks stop. */
+  firstTask: Schema.NullOr(Schema.String),
 });
 export type SetupState = typeof SetupStateSchema.Type;
 
@@ -100,6 +104,8 @@ export const EMPTY_SETUP_STATE: SetupState = {
   coder: null,
   tourSeen: false,
   startedAt: null,
+  memoryPreview: [],
+  firstTask: null,
 };
 
 function answeredQuestions(state: SetupState): number {

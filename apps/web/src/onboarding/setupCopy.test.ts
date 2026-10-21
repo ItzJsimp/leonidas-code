@@ -4,7 +4,11 @@ import { buildAiosFiles, INTERVIEW_QUESTIONS, QUICK_QUESTION_IDS } from "./aiosI
 import {
   IMPORT_MEMORY_PROMPT,
   SETUP_COPY,
+  buildFirstTaskFile,
   buildImportedMemoryFile,
+  firstTaskFrom,
+  memoryPreviewFrom,
+  tourExtras,
   tourStops,
   voiceFor,
 } from "./setupCopy";
@@ -82,5 +86,35 @@ describe("memory import", () => {
     expect(file.relativePath).toBe("memory/imported-from-other-ai-2026-10-20.md");
     expect(file.contents).toContain("I like tea.");
     expect(file.contents).toContain("2026-10-20");
+  });
+});
+
+describe("tour data from answers", () => {
+  const answers = {
+    work: "I run a business",
+    goal: "- Get more done each day\n- Learn AI",
+    style: "",
+  };
+
+  it("previews the user's own answers, first chip only", () => {
+    expect(memoryPreviewFrom(answers)).toEqual(["I run a business", "Get more done each day"]);
+  });
+
+  it("turns the first goal into the first task", () => {
+    expect(firstTaskFrom(answers)).toBe("Make a 3-step plan: Get more done each day");
+    expect(firstTaskFrom({})).toBeNull();
+    expect(buildFirstTaskFile("Do X").relativePath).toBe("tasks/first-task.md");
+  });
+});
+
+describe("tourExtras", () => {
+  it("shows the user's data, or a plain line when there is none", () => {
+    expect(tourExtras(["I run a business"], "Plan X")).toEqual({
+      memory: ["It knows: I run a business"],
+      tasks: ["Plan X"],
+    });
+    const empty = tourExtras([], null);
+    expect(empty.memory?.[0]).toMatch(/^Nothing yet/);
+    expect(empty.tasks?.[0]).toMatch(/^No tasks yet/);
   });
 });
