@@ -1,4 +1,5 @@
 import {
+  FeedEventDraft,
   OrchestratorMcpBoardTaskCreateInput,
   OrchestratorMcpBoardTaskDetail,
   OrchestratorMcpBoardTaskGetInput,
@@ -246,6 +247,19 @@ const BoardTaskCreateTool = Tool.make("board_task_create", {
   dependencies,
 })
   .annotate(Tool.Title, "Create a board task")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false);
+
+export const EventEmitTool = Tool.make("event_emit", {
+  description:
+    "Write one event to the user's Leonidas event feed (events/YYYY-MM.jsonl in the AIOS). level: needs_you only when the user must act, failed for a failure, info otherwise. Write at most one event per turn and set dedupe for repeats. Action buttons only open a thread, file, task or link.",
+  parameters: FeedEventDraft,
+  success: Schema.Struct({ id: Schema.String }),
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Emit a feed event")
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false);
 
@@ -503,6 +517,7 @@ export const OrchestratorToolkit = Toolkit.make(
   BoardTaskGetTool,
   BoardTaskUpdateTool,
   BoardTaskCreateTool,
+  EventEmitTool,
   FocusListTool,
   FocusCheckTool,
   RequestSecretTool,

@@ -1,9 +1,12 @@
 import { assert, describe, it } from "@effect/vitest";
+import * as Exit from "effect/Exit";
+import * as Schema from "effect/Schema";
 import { Tool } from "effect/ai";
 
 import {
   CreateThreadsTool,
   DelegateTaskTool,
+  EventEmitTool,
   OrchestratorToolkit,
   ScheduleTaskTool,
   ThreadUpdateTool,
@@ -87,5 +90,26 @@ describe("orchestrator MCP tool guidance", () => {
       "clientRequestId",
     ]);
     assert.include(ThreadUpdateTool.description ?? "", "Workspace and branch changes");
+  });
+});
+
+describe("event_emit", () => {
+  const decode = Schema.decodeUnknownExit(EventEmitTool.parametersSchema);
+  const draft = {
+    level: "failed",
+    type: "script.failed",
+    title: "Nightly backup failed",
+    actor: { kind: "agent", name: "Leonidas" },
+  };
+
+  it("accepts a valid draft", () => {
+    assert.isTrue(Exit.isSuccess(decode(draft)));
+  });
+
+  it("rejects a bad level and a button that is not open-only", () => {
+    assert.isTrue(Exit.isFailure(decode({ ...draft, level: "urgent" })));
+    assert.isTrue(
+      Exit.isFailure(decode({ ...draft, actions: [{ label: "Run", kind: "run", ref: "rm" }] })),
+    );
   });
 });

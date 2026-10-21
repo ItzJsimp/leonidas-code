@@ -21,6 +21,10 @@ const state = vi.hoisted(() => ({
   limited: false,
   subagent: false,
   background: [] as Array<{ taskId: string; kind: "command" | "monitor" }>,
+  appended: [] as unknown[],
+  appendOk: false,
+  scopeReady: true,
+  feed: null as { fresh: unknown[] } | null,
   add: vi.fn(
     (_toast: { title: string; description: string; actionProps: { onClick: () => void } }) =>
       "toast-1",
@@ -103,8 +107,31 @@ vi.mock("../hooks/useSettings", () => ({
       settings: Pick<ClientSettings, "notificationMode" | "inAppNotificationsEnabled">,
     ) => unknown,
   ) => select({ notificationMode: state.mode, inAppNotificationsEnabled: state.inApp }),
-  getClientSettings: () => ({ notificationMode: state.mode }),
+  getClientSettings: () => ({
+    notificationMode: state.mode,
+    inAppNotificationsEnabled: state.inApp,
+  }),
 }));
+vi.mock("../state/eventFeed", () => ({ eventFeedLive: () => null, eventsAppend: {} }));
+vi.mock("../state/query", () => ({ useEnvironmentQuery: () => ({ data: state.feed }) }));
+// By default no AIOS is connected: the append fails, so each trigger shows directly.
+vi.mock("../state/use-atom-command", () => ({
+  useAtomCommand: () => async (value: unknown) => {
+    state.appended.push(value);
+    return { _tag: state.appendOk ? "Success" : "Failure" };
+  },
+}));
+vi.mock("./workspace/useActiveAiosWorkspace", () => ({
+  useActiveAiosWorkspace: () => ({
+    environmentId: "env-1",
+    scope: {},
+    scopeReady: state.scopeReady,
+  }),
+}));
+vi.mock("../eventFeedOpen", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../eventFeedOpen")>()),
+}));
+vi.mock("../localApi", () => ({ ensureLocalApi: () => ({ shell: { openExternal: vi.fn() } }) }));
 vi.mock("../state/environments", () => ({
   useEnvironmentIds: () => ["env-1"],
 }));
@@ -128,6 +155,9 @@ async function render() {
   await act(() => {
     if (renderer) renderer.update(<ThreadNotificationCoordinator />);
     else renderer = create(<ThreadNotificationCoordinator />);
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
 
@@ -153,6 +183,10 @@ beforeEach(() => {
     turnError: false,
     limited: false,
     subagent: false,
+    appended: [],
+    appendOk: false,
+    scopeReady: true,
+    feed: null,
     background: [],
   });
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -176,10 +210,10 @@ afterEach(async () => {
 
 describe("thread notifications", () => {
   it.each([true, false])(
-    "alerts once when a delegated child completes with focus=%s",
+    "alerts once when a delegated child completes with visible=%s",
     async (focused) => {
       state.subagent = true;
-      state.focused = focused;
+      state.visible = focused ? "visible" : "hidden";
       state.mode = "notifications-and-sound";
       await render();
       await complete();
@@ -206,7 +240,7 @@ describe("thread notifications", () => {
 
   it("keeps short parent turns silent but reports a long turn", async () => {
     state.mode = "notifications-and-sound";
-    state.focused = false;
+    state.visible = "hidden";
     await render();
     state.completedAt = "2026-09-13T09:01:59.000Z";
     await render();
@@ -234,12 +268,11 @@ describe("thread notifications", () => {
     expect(state.notification).not.toHaveBeenCalled();
   });
 
-  it.each(["active", "blurred", "hidden", "archived", "disabled"])(
+  it.each(["active", "hidden", "archived", "disabled"])(
     "does not show a completion toast for %s chats",
     async (condition) => {
       await render();
       if (condition === "active") state.active.threadId = "thread-1";
-      if (condition === "blurred") state.focused = false;
       if (condition === "hidden") state.visible = "hidden";
       if (condition === "archived") state.archivedAt = "2026-09-13T09:00:00.000Z";
       if (condition === "disabled") state.inApp = false;
@@ -267,7 +300,7 @@ describe("thread notifications", () => {
 
     state[event] = false;
     await render();
-    state.focused = false;
+    state.visible = "hidden";
     state[event] = true;
     await render();
     await render();
@@ -294,7 +327,7 @@ describe("thread notifications", () => {
   });
 
   it("keeps background desktop alerts when in-app notifications are disabled", async () => {
-    state.focused = false;
+    state.visible = "hidden";
     state.inApp = false;
     state.mode = "notifications";
     await render();
@@ -340,9 +373,18 @@ describe("thread notifications", () => {
     expect(state.notification).not.toHaveBeenCalled();
   });
 
-  it("keeps system alerts when the app is in the background", async () => {
+  it("toasts in a visible but unfocused window and sends no Windows notification", async () => {
     state.mode = "notifications";
     state.focused = false;
+    await render();
+    await complete();
+    expect(state.add).toHaveBeenCalledTimes(1);
+    expect(state.notification).not.toHaveBeenCalled();
+  });
+
+  it("keeps system alerts while the window is hidden", async () => {
+    state.mode = "notifications";
+    state.visible = "hidden";
     await render();
     await complete();
     expect(state.add).not.toHaveBeenCalled();
@@ -351,5 +393,64 @@ describe("thread notifications", () => {
       tag: "env-1:thread-1",
       silent: true,
     });
+  });
+});
+
+describe("thread notifications through the event feed", () => {
+  it("writes the trigger to the feed and shows it only when the feed delivers it", async () => {
+    state.appendOk = true;
+    await render();
+    await complete();
+    expect(state.add).not.toHaveBeenCalled();
+    expect(state.appended).toEqual([
+      expect.objectContaining({
+        environmentId: "env-1",
+        input: expect.objectContaining({
+          event: expect.objectContaining({
+            level: "info",
+            type: "agent.finished",
+            target: { thread: "thread-1" },
+          }),
+        }),
+      }),
+    ]);
+    const { event } = (state.appended[0] as { input: { event: object } }).input;
+    state.feed = { fresh: [{ v: 1, id: "evt_1", ts: "2026-09-13T10:00:00Z", count: 1, ...event }] };
+    await render();
+    expect(state.add).toHaveBeenCalledTimes(1);
+    expect(state.add).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Chat completed" }),
+    );
+  });
+
+  it("does not pop info events from scripts or agents", async () => {
+    await render();
+    state.feed = {
+      fresh: [
+        {
+          v: 1,
+          id: "evt_2",
+          ts: "2026-09-13T10:00:00Z",
+          level: "info",
+          type: "aios.changed",
+          title: "Leonidas updated 2 files",
+          actor: { kind: "agent", name: "Leonidas" },
+          count: 1,
+        },
+      ],
+    };
+    await render();
+    expect(state.add).not.toHaveBeenCalled();
+  });
+});
+
+describe("thread notifications while the workspace loads", () => {
+  it("writes the trigger and shows it directly when no feed is listening yet", async () => {
+    state.appendOk = true;
+    state.scopeReady = false;
+    await render();
+    await complete();
+    expect(state.appended).toHaveLength(1);
+    expect(state.add).toHaveBeenCalledTimes(1);
   });
 });

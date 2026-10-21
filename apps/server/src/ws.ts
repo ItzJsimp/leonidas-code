@@ -13,6 +13,7 @@ import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
 import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
+import { appendDraft, feedStream } from "./events/eventsRpc.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -2908,6 +2909,19 @@ const layerWsRpc = (
                 }),
             });
           }),
+        [WS_METHODS.eventsSubscribe]: (input) =>
+          feedStream(
+            allTaskBoardProjects.pipe(
+              Effect.orElseSucceed(() => []),
+              Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
+            ),
+          ),
+        [WS_METHODS.eventsAppend]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
+            Effect.flatMap((root) => appendDraft(root, input.event)),
+          ),
         // Each change made through this server pushes a fresh list; no polling.
         [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(

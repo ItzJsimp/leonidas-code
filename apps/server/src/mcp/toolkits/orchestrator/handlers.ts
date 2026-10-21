@@ -187,6 +187,13 @@ const handlers = {
       return yield* service.boardTaskCreate(scope, input);
     }),
   ),
+  event_emit: McpToolAccess.writes((input) =>
+    Effect.gen(function* () {
+      const scope = yield* McpInvocationContext.McpInvocationContext;
+      const service = yield* OrchestratorMcpService.OrchestratorMcpService;
+      return yield* service.eventEmit(scope, input);
+    }),
+  ),
   focus_list: McpToolAccess.reads((input) =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.McpInvocationContext;
