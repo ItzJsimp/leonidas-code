@@ -12,13 +12,24 @@ function findTarget(stop: TourStop): DOMRect | null {
   return rect && rect.width > 0 && rect.height > 0 ? rect : null;
 }
 
-/** Below the target when there is room, else above it. No target: centered. */
-function cardPosition(rect: DOMRect | null): CSSProperties {
+const CARD_HEIGHT_GUESS = 240;
+
+/** Beside a tall target, else below or above it, always inside the window. No target: centered. */
+export function cardPosition(
+  rect: Pick<DOMRect, "left" | "right" | "top" | "bottom" | "height"> | null,
+  view: { readonly width: number; readonly height: number },
+): CSSProperties {
   if (!rect) return { left: "50%", top: "50%", transform: "translate(-50%, -50%)" };
-  const left = Math.min(Math.max(rect.left, 16), window.innerWidth - CARD_WIDTH - 16);
-  return rect.bottom < window.innerHeight * 0.6
+  const clampTop = (top: number) => Math.min(Math.max(top, 16), view.height - CARD_HEIGHT_GUESS);
+  if (rect.height > view.height * 0.4) {
+    const right = rect.right + GAP;
+    const left = right + CARD_WIDTH < view.width ? right : rect.left - GAP - CARD_WIDTH;
+    return { left: Math.max(left, 16), top: clampTop(rect.top) };
+  }
+  const left = Math.min(Math.max(rect.left, 16), view.width - CARD_WIDTH - 16);
+  return rect.bottom + GAP + CARD_HEIGHT_GUESS < view.height
     ? { left, top: rect.bottom + GAP }
-    : { left, bottom: window.innerHeight - rect.top + GAP };
+    : { left, top: clampTop(rect.top - GAP - CARD_HEIGHT_GUESS) };
 }
 
 /**
@@ -84,7 +95,11 @@ export function SetupTour({
         aria-labelledby="setup-tour-title"
         tabIndex={-1}
         className="absolute space-y-3 rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg outline-none"
-        style={{ width: CARD_WIDTH, maxWidth: "calc(100vw - 32px)", ...cardPosition(rect) }}
+        style={{
+          width: CARD_WIDTH,
+          maxWidth: "calc(100vw - 32px)",
+          ...cardPosition(rect, { width: window.innerWidth, height: window.innerHeight }),
+        }}
         onKeyDown={(event) => {
           if (event.key === "Escape") onClose();
           else if (event.key === "ArrowRight") next();

@@ -67,7 +67,7 @@ async function render(state: Partial<SetupState> | null) {
 
 function button(name: string): HTMLButtonElement {
   const found = [...document.body.querySelectorAll("button")].find(
-    (node) => node.textContent?.trim() === name,
+    (node) => node.textContent?.trim() === name || node.getAttribute("aria-label") === name,
   );
   if (!found) throw new Error(`no button ${name}`);
   return found;
@@ -96,7 +96,7 @@ it("lists every skipped item with its ability line and points", async () => {
 
 it("marks an item done from its step, and the meter grows", async () => {
   await render(skippedEverything);
-  await act(async () => button("Turn on voice").click());
+  await act(async () => button("Start: Turn on voice").click());
   await act(async () => button("finish VoiceStep").click());
   expect(container.textContent).not.toContain("I can't hear you yet.");
   expect(container.querySelector('[role="meter"]')?.getAttribute("aria-valuenow")).toBe("15");

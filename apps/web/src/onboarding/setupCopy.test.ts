@@ -11,6 +11,7 @@ import {
   firstTaskFrom,
   memoryPreviewFrom,
   tourExtras,
+  visibleChoices,
   tourStops,
   voiceFor,
 } from "./setupCopy";
@@ -135,5 +136,13 @@ describe("buildQuickAnswersFile", () => {
 
   it("stamps files by minute", () => {
     expect(fileStamp(new Date("2026-10-20T22:15:09Z"))).toBe("2026-10-20-22-15");
+  });
+});
+
+describe("visibleChoices", () => {
+  it("hides tech chips from everyday users only", () => {
+    const work = INTERVIEW_QUESTIONS.flatMap((question) => question.choices ?? []);
+    expect(visibleChoices(work, "everyday").join(" ")).not.toMatch(BANNED_FOR_EVERYDAY);
+    expect(visibleChoices(work, "builder")).toEqual(work);
   });
 });

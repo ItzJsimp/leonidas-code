@@ -107,7 +107,7 @@ function CommandCenterPage() {
       </WorkspacePageHeader>
       <main className="min-h-0 flex-1 overflow-y-auto">
         <WorkspacePageContainer width="wide">
-          <div>
+          <div data-tour="command-home">
             <h2 className="text-xl font-semibold tracking-tight">Your AI work, at a glance</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Live status across your connected computers. Open a chat to see or continue its work.

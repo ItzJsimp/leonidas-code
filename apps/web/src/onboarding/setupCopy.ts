@@ -87,7 +87,7 @@ const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
   everyday: [
     {
       id: "home",
-      target: "sidebar-command-center",
+      target: "command-home",
       title: "Home",
       line: "Your day at a glance: what needs you, what your AI did, and what is next.",
     },
@@ -119,7 +119,7 @@ const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
   builder: [
     {
       id: "home",
-      target: "sidebar-command-center",
+      target: "command-home",
       title: "Command Center",
       line: "Live view of agents, approvals, tasks and usage across the AIOS.",
     },
@@ -254,4 +254,9 @@ export function buildQuickAnswersFile(answers: InterviewAnswers, stamp: string):
 
 export function fileStamp(now: Date): string {
   return now.toISOString().slice(0, 16).replace(/[:T]/g, "-");
+}
+
+/** Everyday users never see tech words, so chips like "A code editor" are left out for them. */
+export function visibleChoices(choices: readonly string[], voice: SetupVoice): readonly string[] {
+  return voice === "builder" ? choices : choices.filter((choice) => !/\bcode\b/i.test(choice));
 }

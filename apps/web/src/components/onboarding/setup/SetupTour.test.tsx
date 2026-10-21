@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
 
 import { tourStops } from "../../../onboarding/setupCopy";
-import { SetupTour } from "./SetupTour";
+import { SetupTour, cardPosition } from "./SetupTour";
 
 let root: Root;
 let container: HTMLDivElement;
@@ -71,4 +71,21 @@ it("skips on Escape", async () => {
   await render();
   await press("Escape");
   expect(onClose).toHaveBeenCalledOnce();
+});
+
+const view = { width: 1440, height: 900 };
+
+it("keeps the card inside the window for a tall target, beside it", () => {
+  const style = cardPosition({ left: 0, right: 288, top: 52, bottom: 811, height: 759 }, view);
+  expect(style.left).toBe(300);
+  expect(style.top).toBe(52);
+});
+
+it("puts the card below a small target, or above it near the bottom", () => {
+  expect(cardPosition({ left: 40, right: 70, top: 100, bottom: 130, height: 30 }, view).top).toBe(
+    142,
+  );
+  const low = cardPosition({ left: 40, right: 70, top: 820, bottom: 850, height: 30 }, view);
+  expect(Number(low.top)).toBeLessThan(820);
+  expect(Number(low.top)).toBeGreaterThanOrEqual(16);
 });

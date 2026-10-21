@@ -150,8 +150,13 @@ export function FinishSetupCard() {
                     ) : null}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setOpenItem(entry.id)}>
-                  {entry.label}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Start: ${entry.label}`}
+                  onClick={() => setOpenItem(entry.id)}
+                >
+                  Start
                 </Button>
               </li>
             );

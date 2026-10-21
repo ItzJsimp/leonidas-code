@@ -8,7 +8,7 @@ import {
   defaultAnswers,
   type InterviewAnswers,
 } from "../../../onboarding/aiosInterview.logic";
-import { SETUP_COPY, type SetupVoice } from "../../../onboarding/setupCopy";
+import { SETUP_COPY, visibleChoices, type SetupVoice } from "../../../onboarding/setupCopy";
 import { cn } from "~/lib/utils";
 import { Button } from "../../ui/button";
 import { Spinner } from "../../ui/spinner";
@@ -58,7 +58,7 @@ export function SetupQuestionsScreen({
               </span>
             </legend>
             <div className="flex flex-wrap gap-1.5">
-              {(question.choices ?? []).map((choice) => {
+              {visibleChoices(question.choices ?? [], voice).map((choice) => {
                 const on = chosen.includes(choice);
                 return (
                   <button
