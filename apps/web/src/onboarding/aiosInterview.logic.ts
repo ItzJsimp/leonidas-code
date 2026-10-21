@@ -121,6 +121,15 @@ export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
 ];
 
 /** The answers a user has before touching anything: the chips marked as defaults. */
+/** The 5 quick questions on the first-run screen. The rest wait for the first chat. */
+export const QUICK_QUESTION_IDS: readonly InterviewQuestionId[] = [
+  "work",
+  "goal",
+  "style",
+  "tools",
+  "avoid",
+];
+
 export function defaultAnswers(): InterviewAnswers {
   const out: Partial<Record<InterviewQuestionId, string>> = {};
   for (const question of INTERVIEW_QUESTIONS) {
@@ -179,13 +188,15 @@ function projectLines(answer: string | undefined): readonly string[] {
     .slice(0, 12);
 }
 
-function identityFile(answers: InterviewAnswers): string {
+function identityFile(answers: InterviewAnswers, aiName: string | undefined): string {
   const name = cleanAnswer(answers.name ?? "") || "the user";
+  const ai = cleanAnswer(aiName ?? "");
   return [
     `# ${name}`,
     "",
     "Your AI reads this file at the start of every session. Edit it any time.",
     "",
+    ...(ai ? [`Your AI is called ${ai}.`, ""] : []),
     ...section("Who I am", answers.work),
     ...section("Main goal", answers.goal),
     ...section("How to answer me", answers.style),
@@ -226,7 +237,7 @@ function projectFile(line: string): PlannedFile {
 }
 
 /** Every file the interview would write, before any check for files that already exist. */
-export function buildAiosFiles(answers: InterviewAnswers): readonly PlannedFile[] {
+export function buildAiosFiles(answers: InterviewAnswers, aiName?: string): readonly PlannedFile[] {
   const seen = new Set<string>();
   const projects: PlannedFile[] = [];
   for (const line of projectLines(answers.projects)) {
@@ -236,7 +247,7 @@ export function buildAiosFiles(answers: InterviewAnswers): readonly PlannedFile[
     projects.push(file);
   }
   return [
-    { relativePath: "CLAUDE.md", contents: identityFile(answers) },
+    { relativePath: "CLAUDE.md", contents: identityFile(answers, aiName) },
     { relativePath: "AGENTS.md", contents: agentsFile() },
     {
       relativePath: "memory/README.md",

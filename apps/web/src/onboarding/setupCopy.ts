@@ -1,0 +1,191 @@
+/**
+ * Setup words in two voices. "Do you build software?" picks the voice; it never changes a feature.
+ * The everyday voice keeps tech words out (setupCopy.test.ts checks the list).
+ */
+import type { PlannedFile } from "./aiosInterview.logic";
+
+export type SetupVoice = "everyday" | "builder";
+
+export function voiceFor(coder: boolean | null): SetupVoice {
+  return coder === true ? "builder" : "everyday";
+}
+
+interface SetupCopy {
+  readonly basicsTitle: string;
+  readonly basicsLead: string;
+  readonly aiNameLabel: string;
+  readonly userNameLabel: string;
+  readonly folderLabel: string;
+  readonly folderWhy: string;
+  readonly coderQuestion: string;
+  readonly coderHint: string;
+  readonly accountTitle: string;
+  readonly accountLead: string;
+  readonly questionsTitle: string;
+  readonly questionsLead: string;
+  readonly importLead: string;
+  readonly tourIntro: string;
+  readonly checklistTitle: string;
+  readonly checklistLead: string;
+  readonly meterLabel: string;
+}
+
+export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
+  everyday: {
+    basicsTitle: "Meet your AI",
+    basicsLead: "Three short steps, then you are in. You can skip anything but the name.",
+    aiNameLabel: "Name your AI",
+    userNameLabel: "What should your AI call you?",
+    folderLabel: "Where your AI keeps its notes",
+    folderWhy:
+      "This folder is your AI's notebook. It saves what it learns about you, so you never explain twice.",
+    coderQuestion: "Do you build software?",
+    coderHint: "This only changes how we explain things. You get every feature either way.",
+    accountTitle: "Connect one AI account",
+    accountLead:
+      "Your AI needs one account to think with. Sign in with the account you already use.",
+    questionsTitle: "5 quick questions",
+    questionsLead: "Your answers go into your AI's notebook. Skip any you like.",
+    importLead: "Already use ChatGPT or Claude? Bring what it knows about you.",
+    tourIntro: "Here is a quick look around. Each stop takes a few seconds.",
+    checklistTitle: "Finish setup",
+    checklistLead: "Each step makes your AI more useful. Do them when you want.",
+    meterLabel: "Brain strength",
+  },
+  builder: {
+    basicsTitle: "Set up your AI",
+    basicsLead: "Three short steps, then you are in. Only the name is required.",
+    aiNameLabel: "Name your AI",
+    userNameLabel: "What should your AI call you?",
+    folderLabel: "AIOS folder",
+    folderWhy:
+      "Your AIOS is a folder of Markdown files your AI reads every session: memory, tasks, projects and rules. Git keeps its history.",
+    coderQuestion: "Do you build software?",
+    coderHint: "This changes the words and the tour depth only. Every feature stays on.",
+    accountTitle: "Connect one AI account",
+    accountLead: "Sign in to Claude or Codex. You can add more accounts later in Settings.",
+    questionsTitle: "5 quick questions",
+    questionsLead: "Answers become your identity file in the AIOS. Skip any you like.",
+    importLead: "Import memory from ChatGPT, Claude or another AI into your AIOS.",
+    tourIntro: "A quick tour of the AIOS. Each stop shows what it is and why it matters.",
+    checklistTitle: "Finish setup",
+    checklistLead: "Each step adds context or a capability. Do them in any order.",
+    meterLabel: "Brain strength",
+  },
+};
+
+export interface TourStop {
+  readonly id: string;
+  /** Matches a `data-tour` attribute in the app. A missing target shows the stop as a centered card. */
+  readonly target: string;
+  readonly title: string;
+  readonly line: string;
+  readonly builderOnly?: boolean;
+}
+
+const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
+  everyday: [
+    {
+      id: "home",
+      target: "home",
+      title: "Home",
+      line: "Your day at a glance: what needs you, what your AI did, and what is next.",
+    },
+    {
+      id: "chats",
+      target: "chats",
+      title: "Chats",
+      line: "Talk to your AI here. It remembers every chat, so you never start over.",
+    },
+    {
+      id: "memory",
+      target: "memory",
+      title: "Memory",
+      line: "What your AI knows about you. The more it knows, the better it helps.",
+    },
+    {
+      id: "tasks",
+      target: "tasks",
+      title: "Tasks",
+      line: "Your to-do list. Your AI adds tasks and checks them off with you.",
+    },
+    {
+      id: "projects",
+      target: "projects",
+      title: "Projects",
+      line: "One place per big goal, so notes and work stay together.",
+    },
+  ],
+  builder: [
+    {
+      id: "home",
+      target: "home",
+      title: "Command Center",
+      line: "Live view of agents, approvals, tasks and usage across the AIOS.",
+    },
+    {
+      id: "chats",
+      target: "chats",
+      title: "Chats",
+      line: "Threads per project. Agents read the AIOS before every answer.",
+    },
+    {
+      id: "memory",
+      target: "memory",
+      title: "Memory",
+      line: "memory/: durable facts and corrections. Agents check it before asking again.",
+    },
+    {
+      id: "tasks",
+      target: "tasks",
+      title: "Tasks",
+      line: "tasks/: one Markdown card per task, with scope and a check for done.",
+    },
+    {
+      id: "projects",
+      target: "projects",
+      title: "Projects",
+      line: "projects/: one folder per project with its own rules and notes.",
+    },
+    {
+      id: "skills",
+      target: "skills",
+      title: "Skills",
+      line: ".agents/skills/: reusable instructions every engine loads on demand.",
+      builderOnly: true,
+    },
+    {
+      id: "modes",
+      target: "modes",
+      title: "Modes",
+      line: "modes/: routing rules that pick how your AI works for each kind of task.",
+      builderOnly: true,
+    },
+    {
+      id: "decisions",
+      target: "decisions",
+      title: "Decisions",
+      line: "decisions/: short records of why things are the way they are.",
+      builderOnly: true,
+    },
+  ],
+};
+
+export function tourStops(voice: SetupVoice): readonly TourStop[] {
+  return TOUR_STOPS[voice];
+}
+
+export const IMPORT_MEMORY_PROMPT = [
+  "I am moving to a new AI assistant. Please tell me everything you know about me.",
+  "Include my name, work, goals, projects, preferences, how I like answers, people I mention, and anything I asked you to remember.",
+  "Write it as a plain list of short facts, grouped by topic. Leave out anything you are not sure about.",
+].join("\n");
+
+export const IMPORTED_MEMORY_PATH = "memory/imported-from-other-ai.md";
+
+export function buildImportedMemoryFile(pasted: string, isoDate: string): PlannedFile {
+  return {
+    relativePath: IMPORTED_MEMORY_PATH,
+    contents: `# Imported from another AI\n\nImported on ${isoDate}. Treat these as facts the user shared.\n\n${pasted.trim()}\n`,
+  };
+}

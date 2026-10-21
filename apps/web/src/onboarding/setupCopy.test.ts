@@ -1,0 +1,86 @@
+import { describe, expect, it } from "vite-plus/test";
+
+import { buildAiosFiles, INTERVIEW_QUESTIONS, QUICK_QUESTION_IDS } from "./aiosInterview.logic";
+import {
+  IMPORT_MEMORY_PROMPT,
+  SETUP_COPY,
+  buildImportedMemoryFile,
+  tourStops,
+  voiceFor,
+} from "./setupCopy";
+import { SETUP_ITEMS } from "./setupState.logic";
+
+const BANNED_FOR_EVERYDAY = /\b(code|coding|mcp|worktree|t3|repo|git)\b/i;
+
+function strings(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(strings);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(strings);
+  return [];
+}
+
+describe("voiceFor", () => {
+  it("uses the builder voice only for a clear yes", () => {
+    expect(voiceFor(true)).toBe("builder");
+    expect(voiceFor(false)).toBe("everyday");
+    expect(voiceFor(null)).toBe("everyday");
+  });
+});
+
+describe("SETUP_COPY", () => {
+  it("has the same keys in both voices", () => {
+    expect(Object.keys(SETUP_COPY.builder).sort()).toEqual(Object.keys(SETUP_COPY.everyday).sort());
+  });
+
+  it("keeps jargon out of the everyday voice and the tour", () => {
+    const everyday = [
+      ...strings(SETUP_COPY.everyday),
+      ...strings(tourStops("everyday")),
+      ...SETUP_ITEMS.flatMap((item) => [item.label, item.ability]),
+    ];
+    for (const text of everyday) expect(text).not.toMatch(BANNED_FOR_EVERYDAY);
+  });
+});
+
+describe("tourStops", () => {
+  it("shows 5 stops to everyday users and 8 to builders", () => {
+    expect(tourStops("everyday")).toHaveLength(5);
+    expect(tourStops("builder")).toHaveLength(8);
+  });
+
+  it("keeps each line under 20 words", () => {
+    for (const stop of [...tourStops("everyday"), ...tourStops("builder")]) {
+      expect(stop.line.split(/\s+/).length).toBeLessThan(20);
+    }
+  });
+});
+
+describe("quick questions", () => {
+  it("are 5 real interview questions", () => {
+    const ids = new Set(INTERVIEW_QUESTIONS.map((question) => question.id));
+    expect(QUICK_QUESTION_IDS).toHaveLength(5);
+    for (const id of QUICK_QUESTION_IDS) expect(ids.has(id)).toBe(true);
+  });
+});
+
+describe("buildAiosFiles with an AI name", () => {
+  it("writes the AI name into the identity file", () => {
+    const identity = buildAiosFiles({ name: "Sam" }, "Nova").find(
+      (file) => file.relativePath === "CLAUDE.md",
+    );
+    expect(identity?.contents).toContain("Your AI is called Nova.");
+  });
+});
+
+describe("memory import", () => {
+  it("has a prompt that asks for everything the other AI knows", () => {
+    expect(IMPORT_MEMORY_PROMPT).toMatch(/everything you know about me/i);
+  });
+
+  it("saves the pasted answer as a memory file", () => {
+    const file = buildImportedMemoryFile("  I like tea.  ", "2026-10-20");
+    expect(file.relativePath).toBe("memory/imported-from-other-ai.md");
+    expect(file.contents).toContain("I like tea.");
+    expect(file.contents).toContain("2026-10-20");
+  });
+});
