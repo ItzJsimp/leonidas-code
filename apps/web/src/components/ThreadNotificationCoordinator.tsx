@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { feedEventOpenTarget, openFeedEvent } from "../eventFeedOpen";
+import { useEventFeedStore } from "../eventFeedStore";
 import { getClientSettings, useClientSettings } from "../hooks/useSettings";
 import { useEnvironmentIds } from "../state/environments";
 import { eventFeedLive, eventsAppend } from "../state/eventFeed";
@@ -135,6 +136,7 @@ function threadEventType(
 
 /** Toasts and Windows notifications read `needs_you` and `failed`, plus the app's finished chats. */
 function popsUp(event: FeedEvent): boolean {
+  if (useEventFeedStore.getState().mutedTypes.includes(event.type)) return false;
   if (event.level !== "info") return true;
   return (
     event.actor.kind === "app" &&

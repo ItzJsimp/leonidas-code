@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { groupCommandCenterThreads, type CommandCenterStatus } from "../commandCenter";
 import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
+import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
 import { WorkspacePackWidgets } from "../components/taskBoard/WorkspacePackWidgets";
@@ -97,6 +98,9 @@ function CommandCenterPage() {
       <WorkspacePageHeader electron={isElectron} className="border-b border-border">
         <LayoutDashboardIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <h1 className="truncate text-sm font-medium">Command Center</h1>
+        <div className="ml-auto">
+          <EventInbox />
+        </div>
       </WorkspacePageHeader>
       <main className="min-h-0 flex-1 overflow-y-auto">
         <WorkspacePageContainer width="wide">
