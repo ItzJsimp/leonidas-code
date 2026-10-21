@@ -11907,7 +11907,7 @@ export default function ChatView(props: ChatViewProps) {
       {rightPanelControlsAtRoot ? panelLayoutControls : null}
       <div
         className={cn(
-          "flex min-h-0 min-w-0 flex-col overflow-x-hidden",
+          "@container flex min-h-0 min-w-0 flex-col overflow-x-hidden",
           rightPanelMaximized ? "w-0 flex-none" : "flex-1",
         )}
         data-chat-column-maximized-away={rightPanelMaximized ? "true" : "false"}
@@ -11981,7 +11981,8 @@ export default function ChatView(props: ChatViewProps) {
             }
           />
         ) : null}
-        <div className="@container relative flex min-h-0 min-w-0 flex-1">
+        {/* The usage card is a flow item here: a rail beside the chat when wide, a row above it when narrow. */}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col @7xl:flex-row">
           {usageOverlayEnabled ? (
             <UsageOverlayCard
               key={routeThreadKey}

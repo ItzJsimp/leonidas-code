@@ -278,9 +278,9 @@ function AccountLimits({
 /**
  * The one usage card: model, effort, the context window and what fills it, then every
  * connected account's session and weekly bars with this chat's account first. The composer's
- * context ring toggles it. Wide chat areas show the whole card as a left rail in the layout,
- * so the chat shrinks beside it and the card never covers chat text (a side panel opening
- * cannot change that). Narrow ones show a one-line pill that expands over the chat on click.
+ * context ring toggles it. It is part of the layout, never over the chat: wide chat areas
+ * show the whole card as a left rail with the chat beside it, narrow ones show a one-line pill
+ * above the chat that expands in place on click. A side panel opening cannot cover chat text.
  */
 export const UsageOverlayCard = memo(function UsageOverlayCard({
   environmentId,
@@ -395,7 +395,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   return (
     <div
       data-usage-overlay
-      className="pointer-events-none absolute top-2 left-3 z-30 max-w-[calc(100%-1.5rem)] @7xl:static @7xl:mt-2 @7xl:ml-3 @7xl:shrink-0 @7xl:self-start"
+      className="pointer-events-none z-30 mt-2 ml-3 max-w-[calc(100%-1.5rem)] shrink-0 self-start"
     >
       {/* Narrow column: one line, expands in place. */}
       {!expanded ? (
@@ -429,7 +429,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
       <section
         aria-label="Memory and accounts"
         className={cn(
-          "pointer-events-auto w-80 max-w-full max-h-[calc(100dvh-10rem)] [scrollbar-width:thin] overflow-y-auto flex-col gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-md backdrop-blur",
+          "pointer-events-auto w-80 max-w-full max-h-[40dvh] @7xl:max-h-[calc(100dvh-10rem)] [scrollbar-width:thin] overflow-y-auto flex-col gap-3 rounded-xl border border-border/60 bg-background/90 p-3 shadow-md backdrop-blur",
           expanded ? "flex" : "hidden @7xl:flex",
         )}
       >
