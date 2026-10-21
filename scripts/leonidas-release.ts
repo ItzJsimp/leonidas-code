@@ -184,7 +184,10 @@ export function releaseNotes(
 }
 
 function run(command: string, args: string[]): string {
-  return NodeChildProcess.execFileSync(command, args, { encoding: "utf8" }).trim();
+  return NodeChildProcess.execFileSync(command, args, {
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+  }).trim();
 }
 
 function main() {

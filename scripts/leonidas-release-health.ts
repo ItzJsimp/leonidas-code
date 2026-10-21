@@ -34,7 +34,12 @@ async function main() {
   const runId = process.env.GITHUB_RUN_ID;
   if (!repository || !runId) throw new Error("Release health needs a workflow run");
   const api = (path: string) =>
-    JSON.parse(NodeChildProcess.execFileSync("gh", ["api", path], { encoding: "utf8" }));
+    JSON.parse(
+      NodeChildProcess.execFileSync("gh", ["api", path], {
+        encoding: "utf8",
+        maxBuffer: 256 * 1024 * 1024,
+      }),
+    );
   const run = api(`repos/${repository}/actions/runs/${runId}`) as {
     created_at: string;
     html_url: string;
