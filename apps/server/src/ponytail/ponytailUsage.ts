@@ -7,8 +7,8 @@ import type { PonytailUsage } from "@t3tools/contracts";
 
 const RECENT = 10;
 const MAX_LEDGER_BYTES = 4_000_000;
-/** Published Ponytail 5 benchmark: share of the no-skill baseline that remains. */
-const BENCHMARK = { cost: 0.74, time: 0.59, output: 0.55 } as const;
+/** The ledger names a task by its first prompt line; a skill run opens with this preamble. */
+const SKILL_PREAMBLE = "The request mentions skills";
 
 /** Splits CSV text into rows, honoring quoted fields that hold commas, quotes or newlines. */
 export function parseCsv(text: string): string[][] {
@@ -64,10 +64,13 @@ export function summarizePonytail(
     minutes: col("agent_minutes"),
     out: col("tokens_output"),
     level: col("level"),
+    tests: col("tests"),
   };
   const tasks = (idx.cost < 0 ? [] : rows.slice(1)).map((r) => ({
     started: r[idx.started] ?? "",
     project: r[idx.project] ?? "",
+    skillRun: (r[idx.name] ?? "").startsWith(SKILL_PREAMBLE),
+    testsRan: idx.tests >= 0 && (r[idx.tests] ?? "") !== "" && r[idx.tests] !== "not run",
     name: (r[idx.name] ?? "").slice(0, 80),
     costUsd: num(r[idx.cost]),
     turns: num(r[idx.turns]),
@@ -80,21 +83,33 @@ export function summarizePonytail(
   const costUsd = sum((t) => t.costUsd);
   const agentMinutes = sum((t) => t.agentMinutes);
   const outputTokens = sum((t) => t.outputTokens);
-  const saved = (used: number, kept: number) => (used * (1 - kept)) / kept;
+  const skillRuns = tasks.filter((t) => t.skillRun);
   return {
     status: tasks.length > 0 || accounts.some((a) => a.enabled) ? "ready" : "missing",
     accounts: [...accounts],
+    since:
+      tasks
+        .map((t) => t.started.slice(0, 10))
+        .filter(Boolean)
+        .toSorted()[0] ?? "",
+    providersBefore: [],
     providers: [],
     tasks: tasks.length,
     costUsd,
     agentMinutes,
     outputTokens,
-    estimatedSaved: {
-      costUsd: saved(costUsd, BENCHMARK.cost),
-      agentMinutes: saved(agentMinutes, BENCHMARK.time),
-      outputTokens: Math.round(saved(outputTokens, BENCHMARK.output)),
+    testsRan: idx.tests < 0 ? null : tasks.filter((t) => t.testsRan).length,
+    skillRuns: {
+      tasks: skillRuns.length,
+      costUsd: skillRuns.reduce((total, t) => total + t.costUsd, 0),
     },
-    recent: tasks.toSorted((a, b) => b.started.localeCompare(a.started)).slice(0, RECENT),
+    recent: tasks
+      .toSorted((a, b) => b.started.localeCompare(a.started))
+      .slice(0, RECENT)
+      .map(({ skillRun, testsRan: _ran, ...t }) => ({
+        ...t,
+        name: skillRun ? "Skill run" : t.name,
+      })),
   };
 }
 

@@ -3002,12 +3002,20 @@ const layerWsRpc = (
         [WS_METHODS.ponytailUsage]: () =>
           Effect.gen(function* () {
             const now = yield* Clock.currentTimeMillis;
-            const since = DateTime.formatIso(DateTime.makeUnsafe(now - 30 * 86_400_000));
-            const [usage, providers] = yield* Effect.all([
-              Effect.promise(() => readPonytailUsage()),
-              readProviderTotals(sql, since).pipe(Effect.orElseSucceed(() => [])),
+            const usage = yield* Effect.promise(() => readPonytailUsage());
+            // Split at the day the plugin started logging: the 30 days before it, then since.
+            const deployed = usage.since
+              ? DateTime.makeUnsafe(`${usage.since}T00:00:00.000Z`)
+              : undefined;
+            const deployedMs = deployed ? DateTime.toEpochMillis(deployed) : now;
+            const iso = (ms: number) => DateTime.formatIso(DateTime.makeUnsafe(ms));
+            const [providersBefore, providers] = yield* Effect.all([
+              readProviderTotals(sql, iso(deployedMs - 30 * 86_400_000), iso(deployedMs)).pipe(
+                Effect.orElseSucceed(() => []),
+              ),
+              readProviderTotals(sql, iso(deployedMs)).pipe(Effect.orElseSucceed(() => [])),
             ]);
-            return { ...usage, providers };
+            return { ...usage, providersBefore, providers };
           }),
         [WS_METHODS.taskBoardHome]: (input) =>
           allTaskBoardProjects.pipe(

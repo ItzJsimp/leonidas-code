@@ -16,7 +16,11 @@ interface TotalsRow {
  * Per-provider totals from the app's own turn records, so Claude, Codex and Gemini are all counted
  * with no ledger write. Counts only: no message text is selected.
  */
-export const readProviderTotals = (sql: SqlClient.SqlClient, sinceIso: string) =>
+export const readProviderTotals = (
+  sql: SqlClient.SqlClient,
+  sinceIso: string,
+  untilIso = "9999-12-31T00:00:00.000Z",
+) =>
   sql<TotalsRow>`
     SELECT
       thread.provider AS provider,
@@ -28,7 +32,7 @@ export const readProviderTotals = (sql: SqlClient.SqlClient, sinceIso: string) =
     FROM orchestration_v2_projection_provider_turns AS turn
     JOIN orchestration_v2_projection_provider_threads AS thread
       ON thread.provider_thread_id = turn.provider_thread_id
-    WHERE turn.started_at >= ${sinceIso}
+    WHERE turn.started_at >= ${sinceIso} AND turn.started_at < ${untilIso}
     GROUP BY thread.provider
     ORDER BY turns DESC
   `.pipe(

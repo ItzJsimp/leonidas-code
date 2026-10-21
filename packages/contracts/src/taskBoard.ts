@@ -597,31 +597,34 @@ export const LayaUsage = Schema.Struct({
 });
 export type LayaUsage = typeof LayaUsage.Type;
 
-// Ponytail monitor. Numbers come from the plugin's local ledger; savings are estimates at the
-// published benchmark rates, not measurements.
+// Ponytail monitor. Numbers come from the plugin's local ledger and the app's own turn records.
+// Nothing here is an estimate: a saving needs a baseline, and the ledger has none.
+const PonytailProviderTotals = Schema.Struct({
+  provider: Schema.String,
+  turns: Schema.Number,
+  inputTokens: Schema.Number,
+  cachedInputTokens: Schema.Number,
+  outputTokens: Schema.Number,
+  agentMinutes: Schema.Number,
+});
+
 export const PonytailUsage = Schema.Struct({
   status: Schema.Literals(["missing", "ready"]),
   accounts: Schema.Array(Schema.Struct({ dir: Schema.String, enabled: Schema.Boolean })),
-  // Last 30 days of turns for every provider, from the app's own records.
-  providers: Schema.Array(
-    Schema.Struct({
-      provider: Schema.String,
-      turns: Schema.Number,
-      inputTokens: Schema.Number,
-      cachedInputTokens: Schema.Number,
-      outputTokens: Schema.Number,
-      agentMinutes: Schema.Number,
-    }),
-  ),
+  // Date (YYYY-MM-DD) of the first ledger row: the day the plugin started logging.
+  since: Schema.String,
+  // Turns for every provider from the app's own records: the 30 days before `since`, and since.
+  providersBefore: Schema.Array(PonytailProviderTotals),
+  providers: Schema.Array(PonytailProviderTotals),
   tasks: Schema.Number,
   costUsd: Schema.Number,
   agentMinutes: Schema.Number,
   outputTokens: Schema.Number,
-  estimatedSaved: Schema.Struct({
-    costUsd: Schema.Number,
-    agentMinutes: Schema.Number,
-    outputTokens: Schema.Number,
-  }),
+  // Tasks whose ledger row says the tests ran. Null when the ledger has no tests column.
+  testsRan: Schema.NullOr(Schema.Number),
+  // Tasks that start from a skill run (audit, handoff): they write little code, so Ponytail
+  // does little there.
+  skillRuns: Schema.Struct({ tasks: Schema.Number, costUsd: Schema.Number }),
   recent: Schema.Array(
     Schema.Struct({
       started: Schema.String,
