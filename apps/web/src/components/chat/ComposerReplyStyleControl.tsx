@@ -149,7 +149,12 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
       },
     });
     if (result._tag !== "Success") {
-      toastManager.add({ type: "error", title: "Reply style not saved" });
+      toastManager.add({
+        type: "error",
+        title: "Reply style not saved",
+        description:
+          "Check that the project folder still exists and you can write to it, then save again.",
+      });
       return false;
     }
     choose(slug);
@@ -175,7 +180,11 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
                 render={
                   <ComposerControl
                     size={size}
-                    aria-label={`Reply style: ${chip.label}`}
+                    aria-label={
+                      chip.problem
+                        ? `Reply style: Leonidas, because ${chip.problem.name} could not load`
+                        : `Reply style: ${chip.label}`
+                    }
                     data-reply-style-chip
                   />
                 }
@@ -199,7 +208,7 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
               />
             )}
             <span className="sr-only sm:not-sr-only sm:max-w-32 sm:truncate">{chip.label}</span>
-            <ComposerControlChevron size={size} />
+            <ComposerControlChevron size={size} className="hidden sm:block" />
           </TooltipTrigger>
           <TooltipPopup side="top" className="max-w-72">
             {problemText}
@@ -311,6 +320,7 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
       <ReplyStyleEditorDialog
         target={editor}
         loadedText={editor?.slug ? (readFile.data?.contents ?? null) : null}
+        loadError={editor?.slug ? readFile.error : null}
         onClose={() => setEditor(null)}
         onSave={save}
       />
@@ -322,6 +332,7 @@ function ReplyStyleEditorDialog(props: {
   target: EditorTarget | null;
   /** The file text for an edit; null while it loads or for a new style. */
   loadedText: string | null;
+  loadError: string | null;
   onClose: () => void;
   onSave: (draft: EditorTarget) => Promise<boolean>;
 }) {
@@ -357,7 +368,11 @@ function ReplyStyleEditorDialog(props: {
           />
         ) : (
           <DialogPanel>
-            <p className="text-muted-foreground text-sm">Loading the style...</p>
+            <p className="text-muted-foreground text-sm">
+              {props.loadError
+                ? `Cannot open the style: ${props.loadError}`
+                : "Loading the style..."}
+            </p>
           </DialogPanel>
         )}
       </DialogPopup>

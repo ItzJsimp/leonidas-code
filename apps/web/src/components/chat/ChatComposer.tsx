@@ -5863,14 +5863,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         onOpenProviderSetup={onOpenProviderSetup}
       />
       {/* Outside the resting blocks: the overflow menu would hide the style, which must stay in view. */}
-      <ComposerReplyStyleControl
-        threadRef={routeThreadRef}
-        serverValue={attachThreadShell?.replyStyle}
-        environmentId={routeThreadRef.environmentId}
-        projectId={savedItemsProjectId}
-        cwd={gitCwd}
-        size={composerControlsCollapsed ? "xs" : "sm"}
-      />
+      <div data-resting-fixed className="flex shrink-0 items-center gap-1">
+        <ComposerControlSeparator size={composerControlsCollapsed ? "xs" : "sm"} />
+        <ComposerReplyStyleControl
+          threadRef={routeThreadRef}
+          serverValue={attachThreadShell?.replyStyle}
+          environmentId={routeThreadRef.environmentId}
+          projectId={savedItemsProjectId}
+          cwd={gitCwd}
+          size={composerControlsCollapsed ? "xs" : "sm"}
+        />
+      </div>
 
       <>
         {restingBlockDefs.map((def, index) => {
