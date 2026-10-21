@@ -341,6 +341,8 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
     setRefreshing(true);
     try {
       await refreshUsageLimits(environmentId, () => refreshProviders({ environmentId, input: {} }));
+    } catch {
+      // The bars keep their last numbers; the freshness line shows they are old.
     } finally {
       setRefreshing(false);
     }
@@ -364,7 +366,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
         environmentId,
         () => refreshProviders({ environmentId, input: {} }),
         true,
-      );
+      ).catch(() => undefined);
     }, delay);
     return () => clearTimeout(timer);
   }, [nextReset, now, environmentId, refreshProviders]);

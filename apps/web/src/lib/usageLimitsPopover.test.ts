@@ -192,6 +192,17 @@ describe("glance and panel helpers", () => {
     expect(glanceLimitRows([past])[0]?.window?.usedPercent).toBe(80);
   });
 
+  it("expires a window exactly at its reset time and keeps one with a bad reset time", () => {
+    const now = Date.parse("2026-10-20T12:00:00Z");
+    const base = { ...window("s", "session", "Session"), usedPercent: 80 };
+    expect(
+      expireElapsedWindow({ ...base, resetsAt: "2026-10-20T12:00:00Z" }, now).usedPercent,
+    ).toBe(0);
+    const garbage = { ...base, resetsAt: "not a date" };
+    expect(expireElapsedWindow(garbage, now)).toBe(garbage);
+    expect(expireElapsedWindow(base, now)).toBe(base);
+  });
+
   it("keeps a not-reported row instead of dropping a missing window", () => {
     const rows = glanceLimitRows([window("w", "weekly", "Weekly")]);
     expect(rows.map((row) => [row.label, row.window?.id ?? null])).toEqual([
