@@ -4,6 +4,7 @@ import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
 import * as LocalModelsService from "./localModels/LocalModelsService.ts";
 import * as TaskAutoLog from "./taskBoard/TaskAutoLog.ts";
+import * as AiosChangeLog from "./events/AiosChangeLog.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
@@ -608,6 +609,10 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   layerThreadPullRequestWorker,
   // Files each user request as a task card, so the task list is the activity log.
   Layer.effectDiscard(TaskAutoLog.make.pipe(Effect.flatMap((service) => service.start()))).pipe(
+    Layer.provide(ProjectionStoreV2.layer),
+  ),
+  // One aios.changed event per agent turn that changed AIOS files (ADR-0087).
+  Layer.effectDiscard(AiosChangeLog.make.pipe(Effect.flatMap((service) => service.start()))).pipe(
     Layer.provide(ProjectionStoreV2.layer),
   ),
   Layer.effectDiscard(
