@@ -23,7 +23,7 @@ export function SetupBasicsScreen({
   onContinue,
 }: {
   readonly editorIds: readonly string[];
-  readonly initial?: Partial<SetupBasics>;
+  readonly initial?: Partial<SetupBasics> | undefined;
   readonly onContinue: (basics: SetupBasics) => void;
 }) {
   const [aiName, setAiName] = useState(initial?.aiName ?? DEFAULT_AI_NAME);

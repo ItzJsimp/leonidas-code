@@ -89,6 +89,8 @@ export const SetupStateSchema = Schema.Struct({
   questionsAnswered: Schema.Number,
   coder: Schema.NullOr(Schema.Boolean),
   tourSeen: Schema.Boolean,
+  /** Set when the new setup runs, so users from the old wizard get no surprise tour. */
+  startedAt: Schema.NullOr(Schema.String),
 });
 export type SetupState = typeof SetupStateSchema.Type;
 
@@ -97,6 +99,7 @@ export const EMPTY_SETUP_STATE: SetupState = {
   questionsAnswered: 0,
   coder: null,
   tourSeen: false,
+  startedAt: null,
 };
 
 function answeredQuestions(state: SetupState): number {

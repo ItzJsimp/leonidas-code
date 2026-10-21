@@ -5,7 +5,7 @@ import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 
 import { NoProjectsHero } from "../components/NoProjectsHero";
-import { WelcomeWizard } from "../components/onboarding/WelcomeWizard";
+import { SetupFlow } from "../components/onboarding/setup/SetupFlow";
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
 
 const decodeEnvironmentId = Schema.decodeOption(EnvironmentId);
@@ -42,7 +42,7 @@ function WelcomeRouteView() {
     <>
       <NoProjectsHero />
       {isWelcomeRoute && !dismissed ? (
-        <WelcomeWizard
+        <SetupFlow
           localAvailable={localAvailable}
           resumeEnvironmentId={resumeEnvironmentId}
           onDone={async (projectRef) => {
