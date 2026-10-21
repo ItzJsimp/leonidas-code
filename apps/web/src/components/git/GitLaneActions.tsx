@@ -46,6 +46,7 @@ export function GitLaneActions(props: {
   };
 
   const save = async () => {
+    setNote(null);
     const result = await stacked.run({
       actionId: randomUUID(),
       action: "commit",
@@ -59,6 +60,7 @@ export function GitLaneActions(props: {
   };
 
   const send = async () => {
+    setNote(null);
     setConfirmingMain(false);
     const result = await stacked.run({ actionId: randomUUID(), action: "push" });
     if (result._tag === "Success") setNote(result.value.toast.title);
@@ -66,6 +68,7 @@ export function GitLaneActions(props: {
   };
 
   const getLatest = async () => {
+    setNote(null);
     const result = await pull.run();
     if (result._tag === "Success") {
       setNote(
@@ -81,7 +84,7 @@ export function GitLaneActions(props: {
   if (props.stepId === "working") {
     const gate = saveGate(props.status);
     return (
-      <ActionRow help={labels.saveHelp} note={gate.allowed ? note : gate.reason}>
+      <ActionRow help={labels.saveHelp} note={note ?? (gate.allowed ? null : gate.reason)}>
         {composing ? (
           <div className="flex w-full flex-col gap-2">
             <Textarea
@@ -112,7 +115,7 @@ export function GitLaneActions(props: {
   if (props.stepId === "saved") {
     const gate = sendGate(props.status);
     return (
-      <ActionRow help={labels.sendHelp} note={gate.allowed ? note : gate.reason}>
+      <ActionRow help={labels.sendHelp} note={note ?? (gate.allowed ? null : gate.reason)}>
         {confirmingMain ? (
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span>You are on main, the official copy. Send anyway?</span>
@@ -138,7 +141,7 @@ export function GitLaneActions(props: {
 
   const gate = getLatestGate(props.status);
   return (
-    <ActionRow help={labels.getLatestHelp} note={gate.allowed ? note : gate.reason}>
+    <ActionRow help={labels.getLatestHelp} note={note ?? (gate.allowed ? null : gate.reason)}>
       <Button size="sm" disabled={!gate.allowed || busy} onClick={getLatest}>
         {labels.getLatest}
       </Button>

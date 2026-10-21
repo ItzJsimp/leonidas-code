@@ -187,6 +187,7 @@ function ProjectGitCard(props: {
           mode={props.mode}
           renderActions={(stepId) => (
             <GitLaneActions
+              key={stepId}
               stepId={stepId}
               scope={{ environmentId: props.environmentId, cwd: props.cwd }}
               status={data}
