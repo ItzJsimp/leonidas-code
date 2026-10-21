@@ -5,6 +5,7 @@ import type {
   ThreadId,
   UsageLimitsReport,
 } from "@t3tools/contracts";
+import { refreshUsageLimits } from "@t3tools/client-runtime/state/usage";
 import { limitsNotice } from "@t3tools/shared/usageLimits";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
@@ -33,6 +34,7 @@ import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useThreadContextBreakdown } from "../../state/queries";
 import { Button } from "../ui/button";
+import { RefreshIcon } from "../ui/refresh-icon";
 import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { DetailedContextBreakdownView } from "./DetailedContextBreakdownView";
@@ -48,6 +50,10 @@ type Account = UsageLimitsReport["accounts"][number];
 
 /** How often the open card re-reads account limits; the server caches probes inside this. */
 const LIMITS_REFRESH_MS = 5 * 60_000;
+
+/** After a window resets, wait this long before the automatic re-read. */
+const RESET_REFRESH_DELAY_MS = 5_000;
+const MAX_RESET_REFRESH_DELAY_MS = 24 * 60 * 60_000;
 
 const MAX_CONTEXT_SEGMENTS = 8;
 const MAX_TRIM_ROWS = 3;
@@ -304,6 +310,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const [expanded, setExpanded] = useState(false);
   const [view, toggleView] = useLimitView();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const minute = useNowMinute();
   const now = Date.parse(`${minute}:00Z`);
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
@@ -329,6 +336,38 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const primary = active[0] ?? null;
   const activeIds = useMemo(() => new Set(active.map((account) => account.id)), [active]);
   const accounts = useMemo(() => [...active, ...others], [active, others]);
+  const refreshNow = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refreshUsageLimits(environmentId, () => refreshProviders({ environmentId, input: {} }));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  const nextReset = useMemo(() => {
+    const times = accounts
+      .flatMap((account) => account.limits.windows)
+      .map((window) => (window.resetsAt === undefined ? Number.NaN : Date.parse(window.resetsAt)))
+      .filter((at) => at > now);
+    return times.length > 0 ? Math.min(...times) : null;
+  }, [accounts, now]);
+  // A window that resets while the card is open is gone from the provider's answer: re-read once.
+  useEffect(() => {
+    if (nextReset === null) return;
+    const delay = Math.min(
+      Math.max(nextReset + RESET_REFRESH_DELAY_MS - now, RESET_REFRESH_DELAY_MS),
+      MAX_RESET_REFRESH_DELAY_MS,
+    );
+    const timer = setTimeout(() => {
+      void refreshUsageLimits(
+        environmentId,
+        () => refreshProviders({ environmentId, input: {} }),
+        true,
+      );
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [nextReset, now, environmentId, refreshProviders]);
   const benchmarkCandidates = useMemo(
     () => connectedBenchmarkCandidates(providerEntries, instanceId),
     [providerEntries, instanceId],
@@ -498,6 +537,15 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           >
             Show {view === "used" ? "% left" : "% used"}
           </button>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label="Refresh usage now"
+            disabled={refreshing}
+            onClick={() => void refreshNow()}
+          >
+            <RefreshIcon size="xs" refreshing={refreshing} />
+          </Button>
           <Button
             size="icon-xs"
             variant="ghost"
