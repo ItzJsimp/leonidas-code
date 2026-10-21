@@ -2,6 +2,7 @@ import {
   ArrowLeftIcon,
   ActivityIcon,
   ChartNoAxesColumnIcon,
+  GitBranchIcon,
   ImageIcon,
   ListChecksIcon,
   RadarIcon,
@@ -283,6 +284,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/command-center" });
   }, [closeMobileSidebar, navigate]);
 
+  const handleGitClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/git" });
+  }, [closeMobileSidebar, navigate]);
+
   const handleTasksClick = useCallback(() => {
     closeMobileSidebar();
     void navigate({ to: "/tasks" });
@@ -367,6 +373,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             tourId="sidebar-tasks"
             onClick={handleTasksClick}
           />
+          <SidebarUtilityItem icon={<GitBranchIcon />} label="Git" onClick={handleGitClick} />
           <SidebarUtilityItem
             icon={<AudioLinesIcon />}
             label="Scribe"

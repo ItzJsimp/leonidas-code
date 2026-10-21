@@ -39,6 +39,7 @@ import { Route as SettingsAppearanceRouteImport } from './routes/settings.appear
 import { Route as ProjectsProjectKeyRouteImport } from './routes/projects.$projectKey'
 import { Route as ChatTasksRouteImport } from './routes/_chat.tasks'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
+import { Route as ChatGitRouteImport } from './routes/_chat.git'
 import { Route as ChatCommandCenterRouteImport } from './routes/_chat.command-center'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
@@ -193,6 +194,11 @@ const ChatPullRequestsRoute = ChatPullRequestsRouteImport.update({
   path: '/pull-requests',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatGitRoute = ChatGitRouteImport.update({
+  id: '/git',
+  path: '/git',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatCommandCenterRoute = ChatCommandCenterRouteImport.update({
   id: '/command-center',
   path: '/command-center',
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/git': typeof ChatGitRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/tasks': typeof ChatTasksRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/git': typeof ChatGitRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/tasks': typeof ChatTasksRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
@@ -292,6 +300,7 @@ export interface FileRoutesById {
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
   '/_chat/command-center': typeof ChatCommandCenterRoute
+  '/_chat/git': typeof ChatGitRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/_chat/tasks': typeof ChatTasksRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/usage'
     | '/welcome'
     | '/command-center'
+    | '/git'
     | '/pull-requests'
     | '/tasks'
     | '/projects/$projectKey'
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/usage'
     | '/welcome'
     | '/command-center'
+    | '/git'
     | '/pull-requests'
     | '/tasks'
     | '/projects/$projectKey'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/usage'
     | '/welcome'
     | '/_chat/command-center'
+    | '/_chat/git'
     | '/_chat/pull-requests'
     | '/_chat/tasks'
     | '/projects/$projectKey'
@@ -647,6 +659,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatPullRequestsRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/git': {
+      id: '/_chat/git'
+      path: '/git'
+      fullPath: '/git'
+      preLoaderRoute: typeof ChatGitRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/command-center': {
       id: '/_chat/command-center'
       path: '/command-center'
@@ -673,6 +692,7 @@ declare module '@tanstack/react-router' {
 
 interface ChatRouteChildren {
   ChatCommandCenterRoute: typeof ChatCommandCenterRoute
+  ChatGitRoute: typeof ChatGitRoute
   ChatPullRequestsRoute: typeof ChatPullRequestsRoute
   ChatTasksRoute: typeof ChatTasksRoute
   ChatIndexRoute: typeof ChatIndexRoute
@@ -682,6 +702,7 @@ interface ChatRouteChildren {
 
 const ChatRouteChildren: ChatRouteChildren = {
   ChatCommandCenterRoute: ChatCommandCenterRoute,
+  ChatGitRoute: ChatGitRoute,
   ChatPullRequestsRoute: ChatPullRequestsRoute,
   ChatTasksRoute: ChatTasksRoute,
   ChatIndexRoute: ChatIndexRoute,

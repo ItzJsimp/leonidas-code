@@ -16,6 +16,7 @@ export function isSidebarUtilityPage(pathname: string) {
     pathname === "/scribe" ||
     pathname === "/command-center" ||
     pathname === "/tasks" ||
+    pathname === "/git" ||
     pathname === "/pull-requests"
   );
 }
