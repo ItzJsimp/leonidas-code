@@ -433,6 +433,8 @@ export const OrchestrationV2AppThread = Schema.Struct({
   lastVisitedAt: Schema.NullOr(Schema.DateTimeUtc).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
+  /** Last real work in the thread; pins, visits and metadata edits do not move it. */
+  lastActivityAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
   /** In-flight title regeneration marker; cleared when a new title lands. */
   appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   /** Subagent the user attached to this chat; each message routes to it until detached. */
@@ -2046,6 +2048,8 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
    * back to their local visited state when the field is absent.
    */
   lastVisitedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
+  /** Last real work in the thread. Omitted by servers that predate it. */
+  lastActivityAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
   /** In-flight title regeneration marker; null/absent when no request is pending. */
   appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   /** Subagent the user attached to this chat; each message routes to it until detached. */
@@ -2139,6 +2143,7 @@ export const OrchestrationV2AppThreadJson = OrchestrationV2AppThread.mapFields((
   lastVisitedAt: Schema.NullOr(Schema.DateTimeUtcFromString).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
+  lastActivityAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtcFromString)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -2563,6 +2568,7 @@ export const OrchestrationV2ThreadShellJson = OrchestrationV2ThreadShell.mapFiel
   pinnedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtcFromString)),
   autoSettleDisabledAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtcFromString)),
   lastVisitedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtcFromString)),
+  lastActivityAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtcFromString)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({

@@ -2371,6 +2371,145 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
     }),
   );
 
+  it.effect("moves lastActivityAt on work events and not on pin, sync or visit events", () =>
+    Effect.gen(function* () {
+      const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
+      const createdAt = yield* DateTime.now;
+      const workAt = DateTime.add(createdAt, { seconds: 1 });
+      const threadId = ThreadId.make("thread:projection-last-activity");
+      const projectId = ProjectId.make("project:projection-last-activity");
+      const thread = {
+        createdBy: "user" as const,
+        creationSource: "web" as const,
+        id: threadId,
+        projectId,
+        title: "Projection last activity",
+        providerInstanceId,
+        modelSelection,
+        runtimeMode: "full-access" as const,
+        interactionMode: "default" as const,
+        branch: null,
+        worktreePath: null,
+        activeProviderThreadId: null,
+        lineage: {
+          parentThreadId: null,
+          relationshipToParent: null,
+          rootThreadId: threadId,
+        },
+        forkedFrom: null,
+        createdAt,
+        updatedAt: createdAt,
+        archivedAt: null,
+        settledOverride: null,
+        settledAt: null,
+        lastVisitedAt: null,
+        deletedAt: null,
+      };
+      const lifecycle = (
+        name: string,
+        type: "thread.pinned" | "thread.pull-request-synced" | "thread.visited",
+        seconds: number,
+      ) =>
+        Effect.gen(function* () {
+          const current = (yield* projectionStore.getThreadProjection(threadId)).thread;
+          yield* projectionStore.apply({
+            id: EventId.make(`event:projection-last-activity:${name}`),
+            type,
+            threadId,
+            occurredAt: DateTime.add(createdAt, { seconds }),
+            payload: { ...current, pinnedAt: createdAt },
+          });
+          return (yield* projectionStore.getThreadProjection(threadId)).thread;
+        });
+
+      yield* projectionStore.apply({
+        id: EventId.make("event:projection-last-activity:created"),
+        type: "thread.created",
+        threadId,
+        occurredAt: createdAt,
+        payload: thread,
+      });
+      yield* projectionStore.apply({
+        id: EventId.make("event:projection-last-activity:message"),
+        type: "message.updated",
+        threadId,
+        driver,
+        occurredAt: workAt,
+        payload: {
+          createdBy: "user",
+          creationSource: "web",
+          id: MessageId.make("message:projection-last-activity"),
+          threadId,
+          runId: null,
+          nodeId: null,
+          role: "user",
+          text: "hello",
+          attachments: [],
+          streaming: false,
+          createdAt: workAt,
+          updatedAt: workAt,
+        },
+      });
+      const afterWork = (yield* projectionStore.getThreadProjection(threadId)).thread;
+      assert.deepEqual(afterWork.lastActivityAt, workAt);
+
+      const pinned = yield* lifecycle("pinned", "thread.pinned", 5);
+      assert.deepEqual(pinned.lastActivityAt, workAt);
+      const synced = yield* lifecycle("synced", "thread.pull-request-synced", 6);
+      assert.deepEqual(synced.lastActivityAt, workAt);
+      const visited = yield* lifecycle("visited", "thread.visited", 7);
+      assert.deepEqual(visited.lastActivityAt, workAt);
+
+      const shell = yield* projectionStore.getThreadShell(threadId);
+      assert.deepEqual(shell?.lastActivityAt, workAt);
+    }),
+  );
+
+  it("keeps the previous lastActivityAt for lifecycle events in the in-memory projection", () => {
+    const at = DateTime.makeUnsafe("2026-01-01T00:00:00.000Z");
+    const later = DateTime.makeUnsafe("2026-01-01T00:05:00.000Z");
+    const threadId = ThreadId.make("thread:projection-last-activity-pure");
+    const thread = {
+      createdBy: "user" as const,
+      creationSource: "web" as const,
+      id: threadId,
+      projectId: ProjectId.make("project:projection-last-activity-pure"),
+      title: "Pure",
+      providerInstanceId,
+      modelSelection,
+      runtimeMode: "full-access" as const,
+      interactionMode: "default" as const,
+      branch: null,
+      worktreePath: null,
+      activeProviderThreadId: null,
+      lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: threadId },
+      forkedFrom: null,
+      createdAt: at,
+      updatedAt: at,
+      archivedAt: null,
+      settledOverride: null,
+      settledAt: null,
+      lastVisitedAt: null,
+      deletedAt: null,
+    };
+    const empty = ProjectionStore.emptyProjection({
+      id: EventId.make("event:pure:created"),
+      type: "thread.created",
+      threadId,
+      occurredAt: at,
+      payload: thread,
+    });
+    const created = { ...empty, thread: { ...empty.thread, lastActivityAt: at } };
+    const pinned = ProjectionStore.applyToProjection(created, {
+      id: EventId.make("event:pure:pinned"),
+      type: "thread.pinned",
+      threadId,
+      occurredAt: later,
+      payload: { ...thread, pinnedAt: later },
+    });
+    assert.deepEqual(pinned.thread.lastActivityAt, at);
+  });
+
   it.effect("preserves delegated completion ownership across stale run and task updates", () =>
     Effect.gen(function* () {
       const projectionStore = yield* ProjectionStore.ProjectionStoreV2;

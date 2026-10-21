@@ -718,12 +718,18 @@ export function applyToProjection(
     thread: {
       ...projection.thread,
       updatedAt: event.occurredAt,
+      lastActivityAt: event.occurredAt,
     },
     updatedAt: event.occurredAt,
   };
 
   switch (event.type) {
     case "thread.created":
+      return {
+        ...base,
+        thread: { ...event.payload, lastActivityAt: event.occurredAt },
+      };
+    // Lifecycle and metadata edits are not activity: keep the previous lastActivityAt.
     case "thread.archived":
     case "thread.unarchived":
     case "thread.deleted":
@@ -744,7 +750,7 @@ export function applyToProjection(
     case "thread.provider-switched":
       return {
         ...base,
-        thread: event.payload,
+        thread: { ...event.payload, lastActivityAt: projection.thread.lastActivityAt },
       };
     // Visited tracking is read state, not activity: skip the updatedAt bump so
     // viewing a thread does not surface it as recently active.
@@ -1558,6 +1564,7 @@ export function threadShellFromProjection(
     autoSettleDisabledAt: projection.thread.autoSettleDisabledAt ?? null,
     pinOrderKey: projection.thread.pinOrderKey ?? null,
     lastVisitedAt: projection.thread.lastVisitedAt,
+    lastActivityAt: projection.thread.lastActivityAt ?? null,
     appGoal: projection.thread.appGoal ?? null,
     attachedSubagent: projection.thread.attachedSubagent ?? null,
     titleRegeneration: projection.thread.titleRegeneration ?? null,
@@ -1817,6 +1824,7 @@ function shellFromState(input: {
     autoSettleDisabledAt: input.state.thread.autoSettleDisabledAt ?? null,
     pinOrderKey: input.state.thread.pinOrderKey ?? null,
     lastVisitedAt: input.state.thread.lastVisitedAt,
+    lastActivityAt: input.state.thread.lastActivityAt ?? null,
     appGoal: input.state.thread.appGoal ?? null,
     attachedSubagent: input.state.thread.attachedSubagent ?? null,
     titleRegeneration: input.state.thread.titleRegeneration ?? null,
@@ -2709,7 +2717,15 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
           const row = rows[0];
           if (row !== undefined) {
             const thread = yield* decodeThreadPayload(row.payload_json);
-            const updatedThread = { ...thread, updatedAt: event.occurredAt };
+            // These two events bump updatedAt but are not activity.
+            const isActivity =
+              event.type !== "thread.pull-request-synced" &&
+              event.type !== "thread.active-reordered";
+            const updatedThread = {
+              ...thread,
+              updatedAt: event.occurredAt,
+              ...(isActivity ? { lastActivityAt: event.occurredAt } : {}),
+            };
             const payloadJson = yield* encodeThreadPayload(updatedThread);
             yield* sql`
               UPDATE orchestration_v2_projection_threads
