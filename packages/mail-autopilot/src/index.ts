@@ -6,3 +6,4 @@ export * from "./types.ts";
 export * from "./provider.ts";
 export * from "./actionLog.ts";
 export * from "./apply.ts";
+export * from "./undo.ts";

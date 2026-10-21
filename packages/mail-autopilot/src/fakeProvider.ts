@@ -67,6 +67,7 @@ export class FakeMailProvider implements MailProvider {
   }
 
   async archive(id: string) {
+    this.maybeFail("archive");
     await this.modifyLabels(id, { add: [], remove: ["INBOX"] });
   }
 
