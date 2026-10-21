@@ -29,8 +29,24 @@ vi.mock("../hooks/useSettings", () => ({
   useClientSettings: (
     select: (settings: { notificationMode: string; inAppNotificationsEnabled: boolean }) => unknown,
   ) => select({ notificationMode: state.mode, inAppNotificationsEnabled: state.inApp }),
-  getClientSettings: () => ({ notificationMode: state.mode }),
+  getClientSettings: () => ({
+    notificationMode: state.mode,
+    inAppNotificationsEnabled: state.inApp,
+  }),
 }));
+vi.mock("../state/eventFeed", () => ({ eventFeedLive: () => null, eventsAppend: {} }));
+vi.mock("../state/query", () => ({ useEnvironmentQuery: () => ({ data: null }) }));
+// No AIOS in these tests: the append fails, so each trigger shows directly.
+vi.mock("../state/use-atom-command", () => ({
+  useAtomCommand: () => async () => ({ _tag: "Failure" }),
+}));
+vi.mock("./workspace/useActiveAiosWorkspace", () => ({
+  useActiveAiosWorkspace: () => ({ environmentId: "one", scope: {}, scopeReady: true }),
+}));
+vi.mock("../eventFeedOpen", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../eventFeedOpen")>()),
+}));
+vi.mock("../localApi", () => ({ ensureLocalApi: () => ({ shell: { openExternal: vi.fn() } }) }));
 vi.mock("../threadNotifications", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../threadNotifications")>()),
   playNotificationSound: state.sound,
@@ -142,6 +158,9 @@ async function render() {
     if (renderer) renderer.update(<ThreadNotificationCoordinator />);
     else renderer = create(<ThreadNotificationCoordinator />);
   });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 beforeEach(() => {
@@ -152,7 +171,7 @@ beforeEach(() => {
   state.shells.set("one", shell());
   state.shells.set("two", shell());
   focused = false;
-  visibility = "visible";
+  visibility = "hidden";
   TestNotification.permission = "granted";
   TestNotification.sent = [];
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -160,12 +179,14 @@ beforeEach(() => {
   vi.stubGlobal("window", Object.assign(new EventTarget(), { focus: vi.fn() }));
   vi.stubGlobal(
     "document",
-    Object.assign(new EventTarget(), {
-      hasFocus: () => focused,
-      get visibilityState() {
-        return visibility;
+    // defineProperty keeps the getter live; Object.assign would copy one fixed value.
+    Object.defineProperty(
+      Object.assign(new EventTarget(), { hasFocus: () => focused }),
+      "visibilityState",
+      {
+        get: () => visibility,
       },
-    }),
+    ),
   );
 });
 
@@ -257,7 +278,10 @@ it.each(["off", "sound", "focused", "denied", "archived"])(
   "does not show visual alerts when %s",
   async (condition) => {
     if (condition === "off" || condition === "sound") state.mode = condition;
-    if (condition === "focused") focused = true;
+    if (condition === "focused") {
+      focused = true;
+      visibility = "visible";
+    }
     if (condition === "denied") TestNotification.permission = "denied";
     await render();
     complete();
@@ -298,6 +322,7 @@ it.each(["hasPendingApprovals", "hasPendingUserInput"] as const)(
 it("shows in-app alerts without adding a badge while focused", async () => {
   state.inApp = true;
   focused = true;
+  visibility = "visible";
   await render();
   complete();
   await render();
