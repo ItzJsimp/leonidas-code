@@ -262,11 +262,12 @@ function EnvironmentNotifications({
   );
   const feed = useEnvironmentQuery(feedAtom);
 
-  // Thread triggers go through the feed. With no AIOS to write to, they show directly.
+  // Thread triggers go through the feed. With no AIOS to write to, or no feed listening yet
+  // (workspace still loading), they also show directly so none is lost.
   const emit = useCallback(
     (draft: FeedEventDraft) => {
       void runAppend({ environmentId, input: { ...scope, event: draft } }).then((result) => {
-        if (result._tag !== "Success") present(completeFeedEvent(draft));
+        if (result._tag !== "Success" || scope === null) present(completeFeedEvent(draft));
       });
     },
     [environmentId, present, runAppend, scope],

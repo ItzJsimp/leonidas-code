@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   background: [] as Array<{ taskId: string; kind: "command" | "monitor" }>,
   appended: [] as unknown[],
   appendOk: false,
+  scopeReady: true,
   feed: null as { fresh: unknown[] } | null,
   add: vi.fn(
     (_toast: { title: string; description: string; actionProps: { onClick: () => void } }) =>
@@ -121,7 +122,11 @@ vi.mock("../state/use-atom-command", () => ({
   },
 }));
 vi.mock("./workspace/useActiveAiosWorkspace", () => ({
-  useActiveAiosWorkspace: () => ({ environmentId: "env-1", scope: {}, scopeReady: true }),
+  useActiveAiosWorkspace: () => ({
+    environmentId: "env-1",
+    scope: {},
+    scopeReady: state.scopeReady,
+  }),
 }));
 vi.mock("../eventFeedOpen", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../eventFeedOpen")>()),
@@ -180,6 +185,7 @@ beforeEach(() => {
     subagent: false,
     appended: [],
     appendOk: false,
+    scopeReady: true,
     feed: null,
     background: [],
   });
@@ -435,5 +441,16 @@ describe("thread notifications through the event feed", () => {
     };
     await render();
     expect(state.add).not.toHaveBeenCalled();
+  });
+});
+
+describe("thread notifications while the workspace loads", () => {
+  it("writes the trigger and shows it directly when no feed is listening yet", async () => {
+    state.appendOk = true;
+    state.scopeReady = false;
+    await render();
+    await complete();
+    expect(state.appended).toHaveLength(1);
+    expect(state.add).toHaveBeenCalledTimes(1);
   });
 });
