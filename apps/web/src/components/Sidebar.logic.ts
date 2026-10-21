@@ -1480,3 +1480,16 @@ export function sortScopedProjectsForSidebar<
       left.id.localeCompare(right.id),
   );
 }
+
+/** Row time: the latest of last activity and last user message, else updatedAt. */
+export function threadActivityTimestamp(
+  thread: Pick<SidebarThreadSummary, "lastActivityAt" | "latestUserMessageAt" | "updatedAt">,
+): string {
+  const { lastActivityAt, latestUserMessageAt } = thread;
+  if (lastActivityAt && latestUserMessageAt) {
+    return Date.parse(lastActivityAt) >= Date.parse(latestUserMessageAt)
+      ? lastActivityAt
+      : latestUserMessageAt;
+  }
+  return lastActivityAt ?? latestUserMessageAt ?? thread.updatedAt;
+}

@@ -231,6 +231,7 @@ import {
   type SidebarListItem,
   type SidebarListMarker,
   type SidebarSection,
+  threadActivityTimestamp,
 } from "./Sidebar.logic";
 import { resolveLocalCheckoutBranchMismatch } from "./BranchToolbar.logic";
 import {
@@ -355,7 +356,7 @@ function compactSidebarTimeLabel(label: string): string {
 }
 
 function threadTimeLabel(thread: SidebarThreadSummary): string {
-  const timestamp = thread.latestUserMessageAt ?? thread.updatedAt;
+  const timestamp = threadActivityTimestamp(thread);
   return compactSidebarTimeLabel(formatRelativeTimeLabel(timestamp));
 }
 

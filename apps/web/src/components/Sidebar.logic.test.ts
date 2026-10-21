@@ -61,6 +61,7 @@ import {
   type SidebarListMarker,
   type SidebarSection,
   resolveSidebarDropVerb,
+  threadActivityTimestamp,
 } from "./Sidebar.logic";
 import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
 import { sortSettledThreads } from "@t3tools/client-runtime/state/thread-sort";
@@ -2374,5 +2375,34 @@ describe("Working shelf (beta)", () => {
         unsnooze: false,
       });
     });
+  });
+});
+
+describe("threadActivityTimestamp", () => {
+  const updatedAt = "2026-01-01T00:00:00.000Z";
+  const older = "2026-01-02T00:00:00.000Z";
+  const newer = "2026-01-03T00:00:00.000Z";
+
+  it("uses lastActivityAt when it is newer than the last user message", () => {
+    expect(
+      threadActivityTimestamp({ lastActivityAt: newer, latestUserMessageAt: older, updatedAt }),
+    ).toBe(newer);
+  });
+
+  it("keeps the last user message when it is newer", () => {
+    expect(
+      threadActivityTimestamp({ lastActivityAt: older, latestUserMessageAt: newer, updatedAt }),
+    ).toBe(newer);
+  });
+
+  it("falls back to the old rule when lastActivityAt is missing", () => {
+    expect(threadActivityTimestamp({ latestUserMessageAt: older, updatedAt })).toBe(older);
+    expect(threadActivityTimestamp({ latestUserMessageAt: null, updatedAt })).toBe(updatedAt);
+  });
+
+  it("uses lastActivityAt alone when there is no user message", () => {
+    expect(
+      threadActivityTimestamp({ lastActivityAt: newer, latestUserMessageAt: null, updatedAt }),
+    ).toBe(newer);
   });
 });
