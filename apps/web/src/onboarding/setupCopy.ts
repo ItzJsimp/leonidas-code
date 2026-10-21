@@ -87,13 +87,13 @@ const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
   everyday: [
     {
       id: "home",
-      target: "home",
+      target: "sidebar-command-center",
       title: "Home",
       line: "Your day at a glance: what needs you, what your AI did, and what is next.",
     },
     {
       id: "chats",
-      target: "chats",
+      target: "sidebar-chats",
       title: "Chats",
       line: "Talk to your AI here. It remembers every chat, so you never start over.",
     },
@@ -105,13 +105,13 @@ const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
     },
     {
       id: "tasks",
-      target: "tasks",
+      target: "sidebar-tasks",
       title: "Tasks",
       line: "Your to-do list. Your AI adds tasks and checks them off with you.",
     },
     {
       id: "projects",
-      target: "projects",
+      target: "sidebar-projects",
       title: "Projects",
       line: "One place per big goal, so notes and work stay together.",
     },
@@ -119,13 +119,13 @@ const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
   builder: [
     {
       id: "home",
-      target: "home",
+      target: "sidebar-command-center",
       title: "Command Center",
       line: "Live view of agents, approvals, tasks and usage across the AIOS.",
     },
     {
       id: "chats",
-      target: "chats",
+      target: "sidebar-chats",
       title: "Chats",
       line: "Threads per project. Agents read the AIOS before every answer.",
     },
@@ -137,13 +137,13 @@ const TOUR_STOPS: Record<SetupVoice, readonly TourStop[]> = {
     },
     {
       id: "tasks",
-      target: "tasks",
+      target: "sidebar-tasks",
       title: "Tasks",
       line: "tasks/: one Markdown card per task, with scope and a check for done.",
     },
     {
       id: "projects",
-      target: "projects",
+      target: "sidebar-projects",
       title: "Projects",
       line: "projects/: one folder per project with its own rules and notes.",
     },
@@ -230,4 +230,28 @@ export function tourExtras(
         : ["Nothing yet. Your AI saves facts here as you chat."],
     tasks: [firstTask ?? "No tasks yet. Ask your AI to add one."],
   };
+}
+
+/** The first chat: the AI interviews the user and files what it learns into the AIOS. */
+export const FIRST_CHAT_PROMPT = [
+  "This is our first chat. Interview me so you can help me well.",
+  "Ask one short question at a time, about 8 in total: my work, my projects, my week, my goals, and how I like answers.",
+  "After each answer, save what you learned as a short fact in memory/. Add any project I name as a folder in projects/.",
+  "When you are done, tell me in 3 lines what you now know and one thing you can do for me today.",
+].join("\n");
+
+/** Quick answers given after setup get their own file, because the identity file is never replaced. */
+export function buildQuickAnswersFile(answers: InterviewAnswers, stamp: string): PlannedFile {
+  const lines = QUICK_QUESTION_IDS.flatMap((id) => {
+    const answer = (answers[id] ?? "").trim();
+    return answer === "" ? [] : [`## ${id}`, "", answer, ""];
+  });
+  return {
+    relativePath: `memory/quick-answers-${stamp}.md`,
+    contents: ["# Quick answers", "", ...lines].join("\n"),
+  };
+}
+
+export function fileStamp(now: Date): string {
+  return now.toISOString().slice(0, 16).replace(/[:T]/g, "-");
 }

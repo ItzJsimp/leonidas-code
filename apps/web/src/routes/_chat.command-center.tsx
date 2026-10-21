@@ -14,6 +14,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
+import { FinishSetupCard } from "../components/onboarding/setup/FinishSetupCard";
 import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
 import { WorkspacePackWidgets } from "../components/taskBoard/WorkspacePackWidgets";
 import { DirectionSection } from "../components/taskBoard/DirectionSection";
@@ -112,6 +113,7 @@ function CommandCenterPage() {
               Live status across your connected computers. Open a chat to see or continue its work.
             </p>
           </div>
+          <FinishSetupCard />
           <DirectionSection />
           <AiosHomeCard />
           <WorkspacePackWidgets />

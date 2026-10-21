@@ -5,6 +5,8 @@ import {
   IMPORT_MEMORY_PROMPT,
   SETUP_COPY,
   buildFirstTaskFile,
+  buildQuickAnswersFile,
+  fileStamp,
   buildImportedMemoryFile,
   firstTaskFrom,
   memoryPreviewFrom,
@@ -116,5 +118,22 @@ describe("tourExtras", () => {
     const empty = tourExtras([], null);
     expect(empty.memory?.[0]).toMatch(/^Nothing yet/);
     expect(empty.tasks?.[0]).toMatch(/^No tasks yet/);
+  });
+});
+
+describe("buildQuickAnswersFile", () => {
+  it("writes only the answered quick questions to a new memory file", () => {
+    const file = buildQuickAnswersFile(
+      { work: "I study", goal: "", name: "Sam" },
+      "2026-10-20-10-00",
+    );
+    expect(file.relativePath).toBe("memory/quick-answers-2026-10-20-10-00.md");
+    expect(file.contents).toContain("I study");
+    expect(file.contents).not.toContain("## goal");
+    expect(file.contents).not.toContain("Sam");
+  });
+
+  it("stamps files by minute", () => {
+    expect(fileStamp(new Date("2026-10-20T22:15:09Z"))).toBe("2026-10-20-22-15");
   });
 });

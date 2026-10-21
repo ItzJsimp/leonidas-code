@@ -18,6 +18,7 @@ import {
   SETUP_COPY,
   buildFirstTaskFile,
   buildImportedMemoryFile,
+  fileStamp,
   firstTaskFrom,
   memoryPreviewFrom,
   voiceFor,
@@ -41,10 +42,6 @@ import { SetupQuestionsScreen } from "./SetupQuestionsScreen";
 
 const STEPS = ["You", "AI account", "Questions"] as const;
 type Step = 0 | 1 | 2;
-
-function importStamp(now: Date): string {
-  return now.toISOString().slice(0, 16).replace(/[:T]/g, "-");
-}
 
 /**
  * First run in 3 screens. Anything skipped stays open on the Finish-setup checklist.
@@ -119,7 +116,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   const importMemory = async (pasted: string) => {
     if (!basics) return "Go back and name your AI first.";
     const result = await write(basics.folder, [
-      buildImportedMemoryFile(pasted, importStamp(new Date())),
+      buildImportedMemoryFile(pasted, fileStamp(new Date())),
     ]);
     if (!result.ok) return result.message;
     setState((current) => markDone(current, "import"));
