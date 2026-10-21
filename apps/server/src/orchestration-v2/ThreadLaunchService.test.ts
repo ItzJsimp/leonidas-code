@@ -946,6 +946,26 @@ it.effect("arms durable title generation after accepting the first message", () 
   }),
 );
 
+it.effect("sets the draft's reply style on a new thread at launch", () =>
+  Effect.gen(function* () {
+    const harness = makeHarness();
+    yield* Effect.gen(function* () {
+      const launches = yield* ThreadLaunch.ThreadLaunchService;
+      const threads = yield* ThreadManagement.ThreadManagementService;
+      const launched = yield* launches.launch({
+        ...launchInput({
+          command: "command:launch:reply-style",
+          thread: "thread:launch:reply-style",
+          message: "Hello",
+        }),
+        replyStyle: "short",
+      });
+      const projection = yield* threads.getThreadProjection(launched.threadId);
+      assert.equal(projection.thread.replyStyle, "short");
+    }).pipe(Effect.provide(harness.layer));
+  }),
+);
+
 it.effect("does not update a reused thread title when the initial message is rejected", () =>
   Effect.gen(function* () {
     const harness = makeHarness();

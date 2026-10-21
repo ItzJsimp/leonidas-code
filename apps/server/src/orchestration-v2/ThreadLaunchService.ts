@@ -83,6 +83,8 @@ export interface ThreadLaunchInput {
   readonly runtimeMode: RuntimeMode;
   readonly interactionMode: ProviderInteractionMode;
   readonly workspaceStrategy: ThreadLaunchWorkspaceStrategy;
+  /** Chat reply style to set before the first message, so its first reply uses it. */
+  readonly replyStyle?: string;
   readonly initialMessage?: ThreadLaunchInitialMessage;
   readonly importedNativeThread?: {
     readonly ref: {
@@ -863,6 +865,17 @@ const make = Effect.gen(function* () {
             .threadId ?? candidateThreadId;
         if (project.id !== input.projectId) {
           return yield* mapError(input, "resolve-project", threadId)("Project identity changed.");
+        }
+
+        if (input.replyStyle !== undefined) {
+          yield* threads
+            .dispatch({
+              type: "thread.metadata.update",
+              commandId: CommandId.make(`${input.commandId}:reply-style`),
+              threadId,
+              replyStyle: input.replyStyle,
+            })
+            .pipe(Effect.mapError(mapError(input, "update-thread", threadId)));
         }
 
         let runId: RunId | null = null;

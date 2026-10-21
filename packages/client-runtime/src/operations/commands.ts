@@ -164,6 +164,8 @@ interface StartThreadBootstrap {
     readonly branch: string | null;
     readonly worktreePath: string | null;
     readonly createdAt: string;
+    /** Reply style chosen in the draft, applied before the first message. */
+    readonly replyStyle?: string;
   };
   readonly prepareWorktree?: {
     /** V2 worktree launches always fail rather than falling back to the project checkout. */
@@ -701,6 +703,7 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
       runtimeMode: input.runtimeMode,
       interactionMode: input.interactionMode,
       workspaceStrategy,
+      ...(bootstrap?.replyStyle === undefined ? {} : { replyStyle: bootstrap.replyStyle }),
       initialMessage: {
         messageId: input.message.messageId,
         text: input.message.text,

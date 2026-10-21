@@ -457,6 +457,7 @@ import {
 } from "../state/entities";
 import { environmentShell } from "../state/shell";
 import { UsageOverlayCard } from "./chat/UsageOverlayCard";
+import { draftReplyStyleField } from "./chat/useThreadReplyStyle";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { FocusWidgetHost } from "./focus/FocusWidgetHost";
 import { useComposerContextSlice } from "./chat/composerContextSlice";
@@ -7189,6 +7190,7 @@ export default function ChatView(props: ChatViewProps) {
                   branch: activeThreadBranch,
                   worktreePath: null,
                   createdAt,
+                  ...draftReplyStyleField(routeThreadRef),
                 },
               },
               createdAt,
@@ -10208,6 +10210,7 @@ export default function ChatView(props: ChatViewProps) {
                       branch: activeThreadBranch,
                       worktreePath: null,
                       createdAt: messageCreatedAt,
+                      ...draftReplyStyleField(routeThreadRef),
                     },
                     prepareWorktree: {
                       projectCwd: activeProject.workspaceRoot,
@@ -10548,6 +10551,7 @@ export default function ChatView(props: ChatViewProps) {
                       branch: activeThreadBranch,
                       worktreePath: activeThread.worktreePath,
                       createdAt: activeThread.createdAt,
+                      ...draftReplyStyleField(routeThreadRef),
                     },
                   }
                 : {}),

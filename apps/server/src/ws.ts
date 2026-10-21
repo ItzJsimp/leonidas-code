@@ -2167,6 +2167,7 @@ const layerWsRpc = (
                     runtimeMode: input.runtimeMode,
                     interactionMode: input.interactionMode,
                     workspaceStrategy: input.workspaceStrategy,
+                    ...(input.replyStyle === undefined ? {} : { replyStyle: input.replyStyle }),
                     ...(input.initialMessage === undefined
                       ? {}
                       : {

@@ -81,3 +81,9 @@ export function useThreadReplyStyle(input: {
 
   return { chatSlug: onServer ? (serverValue ?? null) : local, choose };
 }
+
+/** The draft's chosen style as a launch field, so the first reply uses it. */
+export function draftReplyStyleField(threadRef: ScopedThreadRef): { replyStyle?: string } {
+  const slug = useDraftReplyStyleStore.getState().byTarget[scopedThreadKey(threadRef)];
+  return slug === undefined ? {} : { replyStyle: slug };
+}
