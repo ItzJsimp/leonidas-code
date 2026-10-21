@@ -87,7 +87,7 @@ export function SetupBasicsScreen({
         <legend className="text-sm font-medium">{copy.coderQuestion}</legend>
         <RadioGroup
           aria-label={copy.coderQuestion}
-          className="flex gap-2"
+
           value={coder === null ? "" : coder ? "yes" : "no"}
           onValueChange={(value) => setCoder(value === "yes")}
         >
