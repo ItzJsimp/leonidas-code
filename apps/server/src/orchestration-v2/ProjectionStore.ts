@@ -709,6 +709,23 @@ function isQueuedProviderThreadPlaceholder(providerThread: OrchestrationV2Provid
   );
 }
 
+// Bookkeeping that runs on idle chats too: a provider session closing is not work.
+const BACKGROUND_EVENT_TYPES: ReadonlySet<OrchestrationV2DomainEvent["type"]> = new Set([
+  "provider-session.attached",
+  "provider-session.detached",
+  "provider-session.updated",
+  "provider-thread.updated",
+]);
+
+/** True when the event is user-visible work, so it moves the chat's `lastActivityAt`. */
+export function isActivityEvent(type: OrchestrationV2DomainEvent["type"]): boolean {
+  return (
+    !BACKGROUND_EVENT_TYPES.has(type) &&
+    type !== "thread.pull-request-synced" &&
+    type !== "thread.active-reordered"
+  );
+}
+
 export function applyToProjection(
   projection: OrchestrationV2ThreadProjection,
   event: OrchestrationV2DomainEvent,
@@ -718,7 +735,7 @@ export function applyToProjection(
     thread: {
       ...projection.thread,
       updatedAt: event.occurredAt,
-      lastActivityAt: event.occurredAt,
+      ...(isActivityEvent(event.type) ? { lastActivityAt: event.occurredAt } : {}),
     },
     updatedAt: event.occurredAt,
   };
@@ -2717,14 +2734,10 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
           const row = rows[0];
           if (row !== undefined) {
             const thread = yield* decodeThreadPayload(row.payload_json);
-            // These two events bump updatedAt but are not activity.
-            const isActivity =
-              event.type !== "thread.pull-request-synced" &&
-              event.type !== "thread.active-reordered";
             const updatedThread = {
               ...thread,
               updatedAt: event.occurredAt,
-              ...(isActivity ? { lastActivityAt: event.occurredAt } : {}),
+              ...(isActivityEvent(event.type) ? { lastActivityAt: event.occurredAt } : {}),
             };
             const payloadJson = yield* encodeThreadPayload(updatedThread);
             yield* sql`

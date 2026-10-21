@@ -2510,6 +2510,14 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
     assert.deepEqual(pinned.thread.lastActivityAt, at);
   });
 
+  it("counts work events as activity, not session bookkeeping or sync", () => {
+    assert.isTrue(ProjectionStore.isActivityEvent("turn-item.updated"));
+    assert.isTrue(ProjectionStore.isActivityEvent("runtime-request.updated"));
+    assert.isFalse(ProjectionStore.isActivityEvent("provider-session.detached"));
+    assert.isFalse(ProjectionStore.isActivityEvent("provider-thread.updated"));
+    assert.isFalse(ProjectionStore.isActivityEvent("thread.pull-request-synced"));
+  });
+
   it.effect("preserves delegated completion ownership across stale run and task updates", () =>
     Effect.gen(function* () {
       const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
