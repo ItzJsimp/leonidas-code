@@ -50,6 +50,7 @@ export type T3McpToolSummaryAction =
   | "question-read"
   | "question-respond"
   | "secret-request"
+  | "event-emit"
   | "worktree-handoff"
   | "worktree-list"
   | "worktree-status"
@@ -175,6 +176,7 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   focus_list: tool(["List", "Listing", "Listed", "focus notes"], "board-task-list"),
   focus_check: tool(["Tick", "Ticking", "Ticked", "a focus note"], "board-task-update"),
   request_secret: tool(["Ask for", "Asking for", "Asked for", "a secret"], "secret-request"),
+  event_emit: tool(["Post", "Posting", "Posted", "a feed event"], "event-emit"),
   create_threads: tool(["Create", "Creating", "Created", "chats"], "thread-create"),
   t3_thread_start: tool(["Start", "Starting", "Started", "a chat"], "thread-create"),
   t3_thread_list: tool(["List", "Listing", "Listed", "chats"], "thread-list"),

@@ -293,6 +293,9 @@ export function summarizeT3ToolCalls(
         quantity(countEntities(entityIds("requestId")), "question"),
       );
       break;
+    case "event-emit":
+      label = phrase("Posted", "post", quantity(selected.length, "feed event"));
+      break;
     case "secret-request":
       label = phrase("Asked for", "ask for", quantity(selected.length, "secret"));
       break;
