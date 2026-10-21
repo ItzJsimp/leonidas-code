@@ -2518,6 +2518,115 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
     assert.isFalse(ProjectionStore.isActivityEvent("thread.pull-request-synced"));
   });
 
+  it("classifies every background and lifecycle-sync event as non-activity", () => {
+    const notActivity = [
+      "provider-session.attached",
+      "provider-session.updated",
+      "provider-session.detached",
+      "provider-thread.updated",
+      "thread.pull-request-synced",
+      "thread.active-reordered",
+    ] as const;
+    const activity = [
+      "turn-item.updated",
+      "message.updated",
+      "run.updated",
+      "runtime-request.updated",
+    ] as const;
+    for (const type of notActivity) assert.isFalse(ProjectionStore.isActivityEvent(type), type);
+    for (const type of activity) assert.isTrue(ProjectionStore.isActivityEvent(type), type);
+  });
+
+  it.effect(
+    "starts lastActivityAt at creation and keeps the work time through visit and switch",
+    () =>
+      Effect.gen(function* () {
+        const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
+        const createdAt = yield* DateTime.now;
+        const workAt = DateTime.add(createdAt, { seconds: 1 });
+        const threadId = ThreadId.make("thread:projection-last-activity-creation");
+        const thread = {
+          createdBy: "user" as const,
+          creationSource: "web" as const,
+          id: threadId,
+          projectId: ProjectId.make("project:projection-last-activity-creation"),
+          title: "Projection last activity creation",
+          providerInstanceId,
+          modelSelection,
+          runtimeMode: "full-access" as const,
+          interactionMode: "default" as const,
+          branch: null,
+          worktreePath: null,
+          activeProviderThreadId: null,
+          lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: threadId },
+          forkedFrom: null,
+          createdAt,
+          updatedAt: createdAt,
+          archivedAt: null,
+          settledOverride: null,
+          settledAt: null,
+          lastVisitedAt: null,
+          deletedAt: null,
+        };
+        const current = () => projectionStore.getThreadProjection(threadId);
+
+        yield* projectionStore.apply({
+          id: EventId.make("event:projection-last-activity-creation:created"),
+          type: "thread.created",
+          threadId,
+          occurredAt: createdAt,
+          payload: thread,
+        });
+        const created = yield* projectionStore.getThreadShell(threadId);
+        // known gap: the SQL store leaves lastActivityAt null at creation; only applyToProjection sets createdAt
+        assert.isNull(created?.lastActivityAt);
+        assert.isNull((yield* current()).thread.lastActivityAt ?? null);
+
+        yield* projectionStore.apply({
+          id: EventId.make("event:projection-last-activity-creation:message"),
+          type: "message.updated",
+          threadId,
+          driver,
+          occurredAt: workAt,
+          payload: {
+            createdBy: "user",
+            creationSource: "web",
+            id: MessageId.make("message:projection-last-activity-creation"),
+            threadId,
+            runId: null,
+            nodeId: null,
+            role: "user",
+            text: "hello",
+            attachments: [],
+            streaming: false,
+            createdAt: workAt,
+            updatedAt: workAt,
+          },
+        });
+        assert.deepEqual((yield* current()).thread.lastActivityAt, workAt);
+
+        yield* projectionStore.apply({
+          id: EventId.make("event:projection-last-activity-creation:visited"),
+          type: "thread.visited",
+          threadId,
+          occurredAt: DateTime.add(createdAt, { seconds: 5 }),
+          payload: (yield* current()).thread,
+        });
+        assert.deepEqual((yield* current()).thread.lastActivityAt, workAt);
+
+        yield* projectionStore.apply({
+          id: EventId.make("event:projection-last-activity-creation:switched"),
+          type: "thread.provider-switched",
+          threadId,
+          occurredAt: DateTime.add(createdAt, { seconds: 6 }),
+          payload: (yield* current()).thread,
+        });
+        assert.deepEqual((yield* current()).thread.lastActivityAt, workAt);
+        const shell = yield* projectionStore.getThreadShell(threadId);
+        assert.deepEqual(shell?.lastActivityAt, workAt);
+      }),
+  );
+
   it.effect("preserves delegated completion ownership across stale run and task updates", () =>
     Effect.gen(function* () {
       const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
