@@ -193,7 +193,7 @@ export const makeGmailProvider = (deps: GmailRequestDeps): MailProvider => {
     await loadLabels();
   };
 
-  const ids = async (names: readonly string[], create: boolean): Promise<string[]> => {
+  const labelIdsFor = async (names: readonly string[], create: boolean): Promise<string[]> => {
     const out: string[] = [];
     for (const name of names) {
       let id = await idFor(name);
@@ -208,8 +208,8 @@ export const makeGmailProvider = (deps: GmailRequestDeps): MailProvider => {
   };
 
   const modifyLabels: MailProvider["modifyLabels"] = async (id, change: LabelChange) => {
-    const addLabelIds = await ids(change.add, true);
-    const removeLabelIds = await ids(change.remove, false);
+    const addLabelIds = await labelIdsFor(change.add, true);
+    const removeLabelIds = await labelIdsFor(change.remove, false);
     await request("POST", `${ME}/messages/${encodeURIComponent(id)}/modify`, {
       addLabelIds,
       removeLabelIds,

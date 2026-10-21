@@ -186,3 +186,45 @@ describe("parseLog", () => {
     );
   });
 });
+
+describe("applyActions with a log that breaks", () => {
+  it("throws when the outcome line cannot be written, and does not report the change as failed", async () => {
+    const { provider, deps } = setup();
+    const inner = new MemoryActionLog();
+    let writes = 0;
+    const log = {
+      append: async (e: ActionLogEntry) => {
+        // The first write is the intent line. The second would record the outcome.
+        if (++writes === 2) throw new Error("disk full");
+        await inner.append(e);
+      },
+      readAll: () => inner.readAll(),
+    };
+    const m = inboxMsg();
+    provider.seed([m]);
+    const err = await applyActions({ ...deps, log }, m, [{ type: "archive" }]).catch(
+      (e: unknown) => e,
+    );
+    assert.instanceOf(err, Error);
+    assert.equal((err as Error).message, "disk full");
+    assert.notInclude((await provider.getMessage("m1")).labels, "INBOX");
+    assert.deepEqual(
+      (await inner.readAll()).map((e) => e.status),
+      ["intent"],
+    );
+  });
+
+  it("does not make the change when the intent line cannot be written", async () => {
+    const { provider, deps } = setup();
+    const log = {
+      append: async () => {
+        throw new Error("disk full");
+      },
+      readAll: async () => [],
+    };
+    const m = inboxMsg();
+    provider.seed([m]);
+    await applyActions({ ...deps, log }, m, [{ type: "archive" }]).catch(() => undefined);
+    assert.include((await provider.getMessage("m1")).labels, "INBOX");
+  });
+});

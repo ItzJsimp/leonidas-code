@@ -68,17 +68,19 @@ export const applyActions = async (
   ): Promise<boolean> => {
     const intentId = newId();
     await log.append(entry(intentId, action, "intent"));
+    let inverse: Inverse;
     try {
-      const inverse = await call();
-      await log.append(entry(newId(), action, "applied", { ref: intentId, inverse }));
-      results.push({ action: type, outcome: "applied" });
-      return true;
+      inverse = await call();
     } catch (err) {
       const code = err instanceof ProviderError ? err.code : undefined;
       await log.append(entry(newId(), action, "failed", { ref: intentId, note: code ?? "error" }));
       results.push({ action: type, outcome: "failed", ...(code ? { code } : {}) });
       return false;
     }
+    // Outside the try: a log that breaks now throws, so a change that happened is never reported as failed.
+    await log.append(entry(newId(), action, "applied", { ref: intentId, inverse }));
+    results.push({ action: type, outcome: "applied" });
+    return true;
   };
 
   for (const action of actions) {
