@@ -9,12 +9,13 @@ import { projectEnvironment } from "~/state/projects";
 import { useEnvironmentScope } from "~/state/session";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { planCreateOnly, type PlannedFile } from "./aiosInterview.logic";
+import { needsConfirmation } from "./folderInspection.logic";
 import { useFolderInspection } from "./useFolderInspection";
 import { useOnboardingChat } from "./useOnboardingChat";
 
 export type AiosWriteResult =
   | { readonly ok: true; readonly created: readonly string[]; readonly skipped: readonly string[] }
-  | { readonly ok: false; readonly message: string };
+  | { readonly ok: false; readonly message: string; readonly needsConfirmation?: true };
 
 /**
  * Writes setup files into the AIOS folder, create-only: a file that already exists is kept.
@@ -28,7 +29,11 @@ export function useAiosFileWriter(environmentId: EnvironmentId | undefined) {
   const canWrite = environmentId !== undefined && canOperate && canWriteFiles;
 
   const write = useCallback(
-    async (folder: string, planned: readonly PlannedFile[]): Promise<AiosWriteResult> => {
+    async (
+      folder: string,
+      planned: readonly PlannedFile[],
+      options: { readonly allowExisting?: boolean } = {},
+    ): Promise<AiosWriteResult> => {
       if (!environmentId || !canWrite) {
         return { ok: false, message: "This computer cannot save files to your AI's folder yet." };
       }
@@ -45,6 +50,14 @@ export function useAiosFileWriter(environmentId: EnvironmentId | undefined) {
       }
       if (inspection._tag === "unreadable") {
         return { ok: false, message: "Leonidas cannot read that folder." };
+      }
+      if (!options.allowExisting && needsConfirmation(inspection)) {
+        return {
+          ok: false,
+          needsConfirmation: true,
+          message:
+            "This folder already has other files. Press the button again to add your AI's files next to them. Nothing is replaced.",
+        };
       }
       const existing = inspection._tag === "directory" ? inspection.existingFiles : [];
       const plan = planCreateOnly(planned, existing);

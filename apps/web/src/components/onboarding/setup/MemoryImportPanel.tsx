@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useCopyToClipboard } from "../../../hooks/useCopyToClipboard";
-import { IMPORT_MEMORY_PROMPT } from "../../../onboarding/setupCopy";
+import { IMPORT_MEMORY_PROMPT, MAX_IMPORT_LENGTH } from "../../../onboarding/setupCopy";
 import { Button } from "../../ui/button";
 import { Spinner } from "../../ui/spinner";
 import { Textarea } from "../../ui/textarea";
@@ -59,6 +59,7 @@ export function MemoryImportPanel({
           <label className="block space-y-1.5">
             <span className="block">Paste its whole answer here.</span>
             <Textarea
+              maxLength={MAX_IMPORT_LENGTH}
               rows={5}
               value={pasted}
               onChange={(event) => setPasted(event.currentTarget.value)}

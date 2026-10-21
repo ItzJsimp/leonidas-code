@@ -15,9 +15,22 @@ vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("../../../onboarding/useAiosFileWriter", () => ({
   useAiosFileWriter: () => ({ canWrite: true, write: vi.fn() }),
 }));
-vi.mock("../../../onboarding/useOnboardingChat", () => ({
-  useOnboardingChat: () => ({ ensureFolderProject: vi.fn(), startChat: vi.fn() }),
+const chat = vi.hoisted(() => ({
+  ensureFolderProject: vi.fn(async (_folder: string) => ({
+    ok: true as const,
+    projectId: "p1",
+    workspaceRoot: "C:/aios",
+  })),
+  startChat: vi.fn(
+    async (
+      _args: unknown,
+    ): Promise<{ ok: true; threadId: string } | { ok: false; message: string }> => ({
+      ok: true,
+      threadId: "t1",
+    }),
+  ),
 }));
+vi.mock("../../../onboarding/useOnboardingChat", () => ({ useOnboardingChat: () => chat }));
 vi.mock("../../../state/environments", () => ({
   usePrimaryEnvironment: () => ({ environmentId: EnvironmentId.make("local") }),
 }));
@@ -109,4 +122,23 @@ it("runs the tour once after setup, and again on request", async () => {
   expect(document.body.querySelector("#setup-tour-title")).toBeNull();
   await act(async () => button("Take the tour again").click());
   expect(document.body.querySelector("#setup-tour-title")).not.toBeNull();
+});
+
+it("starts the first chat, and the meter grows by 20", async () => {
+  await render(skippedEverything);
+  await act(async () => button("Start: Have your first chat").click());
+  await act(async () => button("Start my first chat").click());
+  expect(chat.startChat).toHaveBeenCalledWith(
+    expect.objectContaining({ projectId: "p1", title: "First chat" }),
+  );
+  expect(container.querySelector('[role="meter"]')?.getAttribute("aria-valuenow")).toBe("30");
+});
+
+it("shows why the first chat could not start, and keeps the item open", async () => {
+  chat.startChat.mockResolvedValueOnce({ ok: false, message: "Connect an AI first." });
+  await render(skippedEverything);
+  await act(async () => button("Start: Have your first chat").click());
+  await act(async () => button("Start my first chat").click());
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toBe("Connect an AI first.");
+  expect(container.querySelector('[role="meter"]')?.getAttribute("aria-valuenow")).toBe("10");
 });

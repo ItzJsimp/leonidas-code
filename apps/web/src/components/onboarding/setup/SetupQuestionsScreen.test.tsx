@@ -89,3 +89,21 @@ it("imports memory pasted from another AI", async () => {
   expect(onImport).toHaveBeenCalledWith("I like tea.");
   expect(container.textContent).toContain("Memory imported.");
 });
+
+it("keeps the pasted text and says why when the import cannot be saved", async () => {
+  onImport.mockResolvedValueOnce("Could not save memory/imported.md.");
+  await render();
+  await act(async () => button("Import memory from another AI").click());
+  const area = container.querySelector("textarea");
+  if (!area) throw new Error("no textarea");
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(area, "I like tea.");
+    area.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => button("Save to memory").click());
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not save");
+  expect(container.querySelector("textarea")?.value).toBe("I like tea.");
+  expect(button("Save to memory").disabled).toBe(false);
+  expect(container.textContent).not.toContain("Memory imported.");
+});

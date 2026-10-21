@@ -13,6 +13,7 @@ import {
 const primary = vi.hoisted(() => ({
   current: { environmentId: "local" } as { environmentId: string } | null,
 }));
+const agentReady = vi.hoisted(() => ({ current: false }));
 const navigate = vi.fn(async (_options: unknown) => undefined);
 const completeOnboarding = vi.fn(async () => undefined);
 const write = vi.fn(async (_folder: string, _files: readonly { relativePath: string }[]) => ({
@@ -36,7 +37,7 @@ vi.mock("../../../state/server", () => ({ primaryServerAvailableEditorsAtom: {} 
 vi.mock("../WelcomeWizard", () => ({ WelcomeWizard: () => <p>old wizard</p> }));
 vi.mock("../AgentsStep", () => ({
   AgentsStep: (props: { onContinue: (ready: boolean) => void }) => (
-    <button type="button" onClick={() => props.onContinue(false)}>
+    <button type="button" onClick={() => props.onContinue(agentReady.current)}>
       Continue without an AI
     </button>
   ),
@@ -59,6 +60,8 @@ afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  primary.current = { environmentId: "local" };
+  agentReady.current = false;
 });
 
 function button(name: string): HTMLButtonElement {
@@ -103,5 +106,41 @@ it("waits for this computer instead of flashing the old wizard", async () => {
   await act(async () => root.render(<SetupFlow localAvailable onDone={() => {}} />));
   expect(document.body.textContent).not.toContain("old wizard");
   expect(document.body.querySelector('[role="status"]')).not.toBeNull();
-  primary.current = { environmentId: EnvironmentId.make("local") };
+});
+
+async function reachQuestions() {
+  await act(async () => root.render(<SetupFlow localAvailable onDone={() => {}} />));
+  await act(async () => button("Continue").click());
+  await act(async () => button("Continue without an AI").click());
+}
+
+it("saves the answers, the first task and the tour data, then enters the app", async () => {
+  await reachQuestions();
+  await act(async () => button("Get more done each day").click());
+  await act(async () => button("Save answers").click());
+
+  const paths = write.mock.calls[0]?.[1].map((file) => file.relativePath) ?? [];
+  expect(paths).toContain("CLAUDE.md");
+  expect(paths).toContain("tasks/first-task.md");
+  expect(navigate).toHaveBeenCalledWith({ to: "/command-center", replace: true });
+  const state = storedState();
+  expect(state.questionsAnswered).toBeGreaterThan(0);
+  expect(state.memoryPreview).toContain("Get more done each day");
+  expect(state.firstTask).toBe("Make a 3-step plan: Get more done each day");
+});
+
+it("stays on screen 3 when saving fails, and still lets the user in", async () => {
+  write.mockResolvedValueOnce({ ok: false, message: "Could not use that folder." } as never);
+  await reachQuestions();
+  await act(async () => button("Save answers").click());
+  expect(navigate).not.toHaveBeenCalled();
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("Could not use");
+  await act(async () => button("Continue without saving").click());
+  expect(navigate).toHaveBeenCalledWith({ to: "/command-center", replace: true });
+});
+
+it("marks the account done when an AI is ready", async () => {
+  agentReady.current = true;
+  await reachQuestions();
+  expect(openSetupItems(storedState()).map((item) => item.id)).not.toContain("account");
 });

@@ -8,6 +8,7 @@ import {
   QUICK_QUESTION_IDS,
   buildAiosFiles,
   type InterviewAnswers,
+  type PlannedFile,
 } from "../../../onboarding/aiosInterview.logic";
 import { useCompleteOnboarding } from "../../../onboarding/firstRun";
 import {
@@ -86,7 +87,15 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   );
   const [step, setStep] = useState<Step>(0);
   const [basics, setBasics] = useState<SetupBasics | null>(null);
+  // True once the user saw the "folder has other files" note or a write succeeded.
+  const [folderConfirmed, setFolderConfirmed] = useState(false);
   const voice = voiceFor(basics?.coder ?? state.coder);
+
+  const writeAios = async (folder: string, files: readonly PlannedFile[]) => {
+    const result = await write(folder, files, { allowExisting: folderConfirmed });
+    if (result.ok || result.needsConfirmation) setFolderConfirmed(true);
+    return result;
+  };
 
   const finish = async () => {
     // A failed save only means setup may show again next launch; it must not block entry now.
@@ -98,7 +107,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   const saveAnswers = async (answers: InterviewAnswers) => {
     if (!basics) return "Go back and name your AI first.";
     const firstTask = firstTaskFrom(answers);
-    const result = await write(basics.folder, [
+    const result = await writeAios(basics.folder, [
       ...buildAiosFiles({ ...answers, name: basics.userName }, basics.aiName),
       ...(firstTask ? [buildFirstTaskFile(firstTask)] : []),
     ]);
@@ -117,19 +126,21 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   const skipQuestions = async () => {
     // Still write the identity file, so the AI knows its name. A failure here never blocks entry.
     if (basics) {
-      await write(basics.folder, buildAiosFiles({ name: basics.userName }, basics.aiName)).catch(
-        () => undefined,
-      );
+      await writeAios(
+        basics.folder,
+        buildAiosFiles({ name: basics.userName }, basics.aiName),
+      ).catch(() => undefined);
     }
     await finish();
   };
 
   const importMemory = async (pasted: string) => {
     if (!basics) return "Go back and name your AI first.";
-    const result = await write(basics.folder, [
+    const result = await writeAios(basics.folder, [
       buildImportedMemoryFile(pasted, fileStamp(new Date())),
     ]);
     if (!result.ok) return result.message;
+    if (result.created.length === 0) return "That memory was already saved. Try again.";
     setState((current) => markDone(current, "import"));
     return null;
   };
@@ -147,6 +158,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
               initial={basics ?? undefined}
               onContinue={(next) => {
                 setBasics(next);
+                if (next.folder !== basics?.folder) setFolderConfirmed(false);
                 setStoredFolder(next.folder);
                 setState((current) =>
                   markDone(

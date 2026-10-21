@@ -205,8 +205,10 @@ function ItemPanel({
   const [folder] = useLocalStorage(AIOS_FOLDER_STORAGE_KEY, DEFAULT_AIOS_FOLDER, Schema.String);
   const { write } = useAiosFileWriter(environmentId);
   const writeOne = async (file: Parameters<typeof write>[1][number]) => {
-    const result = await write(folder, [file]);
-    return result.ok ? null : result.message;
+    // Setup already made this folder, so adding files next to others is expected here.
+    const result = await write(folder, [file], { allowExisting: true });
+    if (!result.ok) return result.message;
+    return result.created.length > 0 ? null : "That file was already saved. Try again.";
   };
   const step = { environmentId, onBack: onClose, onContinue: () => onDone() };
 
