@@ -181,11 +181,14 @@ export const IMPORT_MEMORY_PROMPT = [
   "Write it as a plain list of short facts, grouped by topic. Leave out anything you are not sure about.",
 ].join("\n");
 
-export const IMPORTED_MEMORY_PATH = "memory/imported-from-other-ai.md";
+/** One file per import, so a second import never replaces the first. */
+export function importedMemoryPath(stamp: string): string {
+  return `memory/imported-from-other-ai-${stamp}.md`;
+}
 
-export function buildImportedMemoryFile(pasted: string, isoDate: string): PlannedFile {
+export function buildImportedMemoryFile(pasted: string, stamp: string): PlannedFile {
   return {
-    relativePath: IMPORTED_MEMORY_PATH,
-    contents: `# Imported from another AI\n\nImported on ${isoDate}. Treat these as facts the user shared.\n\n${pasted.trim()}\n`,
+    relativePath: importedMemoryPath(stamp),
+    contents: `# Imported from another AI\n\nImported on ${stamp}. Treat these as facts the user shared.\n\n${pasted.trim()}\n`,
   };
 }

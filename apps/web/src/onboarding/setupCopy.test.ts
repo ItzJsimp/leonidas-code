@@ -79,7 +79,7 @@ describe("memory import", () => {
 
   it("saves the pasted answer as a memory file", () => {
     const file = buildImportedMemoryFile("  I like tea.  ", "2026-10-20");
-    expect(file.relativePath).toBe("memory/imported-from-other-ai.md");
+    expect(file.relativePath).toBe("memory/imported-from-other-ai-2026-10-20.md");
     expect(file.contents).toContain("I like tea.");
     expect(file.contents).toContain("2026-10-20");
   });

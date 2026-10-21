@@ -76,10 +76,15 @@ export function AgentsStep({
   environmentIds,
   onBack,
   onContinue,
+  title = "Add your AI accounts",
+  description = "You only need one AI account to start. You can add more later.",
 }: {
   readonly environmentIds: readonly EnvironmentId[];
   readonly onBack: () => void;
-  readonly onContinue: () => void;
+  /** Gets whether an AI account was ready, so setup can list a skipped account. */
+  readonly onContinue: (hasReadyAgent: boolean) => void;
+  readonly title?: string;
+  readonly description?: string;
 }) {
   const { environments } = useEnvironments();
   const [readyIds, setReadyIds] = useState<ReadonlySet<EnvironmentId>>(new Set());
@@ -95,10 +100,7 @@ export function AgentsStep({
   const hasReadyAgent = environmentIds.some((id) => readyIds.has(id));
   const continueCopy = describeAgentsStepContinue(hasReadyAgent);
   return (
-    <StepShell
-      title="Add your AI accounts"
-      description="You only need one AI account to start. You can add more later."
-    >
+    <StepShell title={title} description={description}>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-5 pr-3">
           {environmentIds.map((environmentId) => (
@@ -123,7 +125,11 @@ export function AgentsStep({
         <Button variant="ghost-muted" onClick={onBack}>
           Back
         </Button>
-        <Button autoFocus variant={hasReadyAgent ? "default" : "outline"} onClick={onContinue}>
+        <Button
+          autoFocus
+          variant={hasReadyAgent ? "default" : "outline"}
+          onClick={() => onContinue(hasReadyAgent)}
+        >
           {continueCopy.label}
           <ArrowRightIcon className="size-3.5" />
         </Button>
