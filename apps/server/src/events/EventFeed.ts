@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - file watching is a Node API.
 // @effect-diagnostics globalTimers:off - a short debounce and a rescan timer, owned by this plain module.
-import type { FeedBadLine, FeedEvent, FeedUpdate, FoldedFeedEvent } from "@t3tools/contracts";
+import type { FeedBadLine, FeedEvent, FeedUpdate } from "@t3tools/contracts";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
