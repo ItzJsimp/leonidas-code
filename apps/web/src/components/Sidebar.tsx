@@ -5356,6 +5356,7 @@ export default function Sidebar() {
         ) : null}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <SidebarContent
+            data-tour="sidebar-chats"
             className="min-h-full"
             fixedHeader={
               // Lifted above the stage backdrop, whose fade bleeds below the

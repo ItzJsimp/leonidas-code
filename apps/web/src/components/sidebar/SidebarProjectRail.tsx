@@ -77,6 +77,7 @@ export function SidebarProjectRail<P extends RailProject>(props: {
   return (
     <nav
       aria-label="Projects"
+      data-tour="sidebar-projects"
       className="flex w-10 shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-sidebar-border/70 py-1.5 [scrollbar-width:none]"
     >
       <RailButton
