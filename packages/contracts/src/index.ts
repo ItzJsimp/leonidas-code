@@ -80,5 +80,6 @@ export * from "./scribe.ts";
 export * from "./voiceLogMemory.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
+export * from "./replyStyle.ts";
 export * from "./subagentSpawn.ts";
 export * from "./clientRpcPermissions.ts";

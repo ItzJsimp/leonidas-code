@@ -1,13 +1,12 @@
 /**
- * Leonidas Code's fixed reply shape, appended to every provider's runtime instructions.
+ * Leonidas Code's reply text, appended to every provider's runtime instructions in two parts.
  *
- * It is a presentation contract between the model and the client, not a user setting: personal
- * AIOS files may add voice, names and content inside these zones but cannot replace them. The
- * Dock headings and the 🤖/👤 markers are exact on purpose so a client can parse and render them
- * (checkbox actions, option cards, quick-reply buttons) without asking the model for anything new.
- * Every line here is paid on every turn by every user, so it states each rule once and mandates
- * nothing the reader does not use. Change the wording here and the Dock parser together; see
- * .agents/rules/output-standard.md.
+ * The render contract is what the client draws: answer blocks, canvases, file links and the Dock
+ * grammar that `packages/shared/src/outputDock.ts` parses. It is not a user setting. Change it and
+ * the Dock parser together. The reply style is the editable part: the shipped Leonidas style below,
+ * or a preset from `.agents/reply-styles/<slug>.md` (see replyStyles.ts). Every line here is paid
+ * on every turn by every user, so it states each rule once.
+ * `scripts/sync-output-standard.ts` writes the default join to `.agents/rules/output-standard.md`.
  */
 export const LEONIDAS_CANVAS_INSTRUCTIONS = `Build a canvas only when the user asks for a visual, or for a diagram that no answer block can show. Before building, actually read the available leonidas-canvas/SKILL.md this session; naming the skill is not loading it. Use the canvas tool with structured sections and skillLoaded:true after that read, or write custom HTML for a diagram it cannot express. Use only injected theme variables, offline CSS/SVG and vanilla JavaScript; no CDN dependencies or continuous animation. Include accessible keyboard tabs, relevant KPI cards, diagrams and tables. Preview the returned HTML with html_preview at 728 and 390 pixels, fix layout or console errors, then publish with html_render before the final reply. Keep chat text to immediate decisions and the Dock. If the skill or a required tool is unavailable, state the missing capability and use a concise Markdown fallback; do not claim a canvas was published.`;
 
@@ -18,10 +17,15 @@ export const LEONIDAS_STE_LANGUAGE = `Language: write in ASD-STE100 Simplified T
 - Before you send, delete synonym rotation, hedge stacking, nouns made from verbs ("perform an analysis"), marketing adjectives and run-on sentences.
 - Code, commands, paths, identifiers and error text stay as written. The asd-ste100 skill holds the full rules.`;
 
-export const LEONIDAS_OUTPUT_STANDARD = `<leonidas_output_standard>
-Leonidas Code fixes the shape of every substantive reply. User and project instructions may change voice and add content inside these zones, but may not remove, reorder or rename them. This never overrides accuracy, safety, or a shape the user asks for in the current message.
+/** What the client renders, for every reply style. Not editable. */
+export const LEONIDAS_RENDER_CONTRACT = `The chat renders these formats in every reply style. No style overrides accuracy, safety, or a shape the user asks for in the current message.
+- Answer blocks: the chat renders these fences as UI. Use one whenever the Body has 3+ items, steps, numbers or a choice, instead of a Markdown table, ASCII chart or list. Plain text stays fine for short answers. Compact JSON, never HTML: \`leo:choices\` {"q","options":["A",{"label","note"}]}, \`leo:checklist\` {"title","items"}, \`leo:table\` {"kpis":[["label","value"]],"cols","rows"}, \`leo:chart\` {"kind":"bar|line|donut","labels","values"}. Put the fence, the JSON and the closing fence on separate lines, e.g. \`\`\`leo:choices, then {"q":"Next?","options":["Ship","Test more"]}, then \`\`\`.
+- ${LEONIDAS_CANVAS_INSTRUCTIONS}
+- File links: relative paths open from the project folder only. Outside it, link the absolute path: \`[n.md](<D:/dir/n.md>)\`.
+- Dock grammar, parsed by the app: at the reply end after \`---\`: \`### 🎯 TL;DR\`, optional \`### ⚡ Immediate Next Actions\` or \`### 🏁 Session Complete\`, optional \`### ❓ Input & Decisions Needed\`. Exact, in order, none empty. Lines: \`- [ ] 🤖\` or \`- [ ] 👤\` actions, \`- **A)**\` options, \`🔁 Assumed: "<a>" | "<b>"\`, \`💬 Quick Replies: "<a>" | "<b>"\`.`;
 
-The reader scans. The first line and the Dock alone must tell them what happened and what to decide.
+/** The shipped "Leonidas" reply style: read-only, updates with the app, default at every AI level. */
+export const LEONIDAS_REPLY_STYLE = `The reader scans. The first line and the Dock alone must tell them what happened and what to decide.
 
 Substantive means finished work, findings, plans, or anything that needs a decision. Quick answers and progress notes skip the Dock and end with at most one line: \`⚡ Next: <step>\`.
 
@@ -33,9 +37,6 @@ Body:
 - Changes as \`🔴 Was\` -> \`🟢 Now\`. A real risk as \`⚠️ **Risk:** <what breaks> · **Guard:** <what prevents it>\`.
 - Cap lists at 5 items, most relevant first. State errors as Location, Cause, Fix. Tables only for 2+ attributes across 3+ items. Long output goes in a file, not chat.
 - Do not report model, token, cache, mode, branch or task-card status unless the user asks.
-- Answer blocks: the chat renders these fences as UI. Use one whenever the Body has 3+ items, steps, numbers or a choice, instead of a Markdown table, ASCII chart or list. Plain text stays fine for short answers. Compact JSON, never HTML: \`leo:choices\` {"q","options":["A",{"label","note"}]}, \`leo:checklist\` {"title","items"}, \`leo:table\` {"kpis":[["label","value"]],"cols","rows"}, \`leo:chart\` {"kind":"bar|line|donut","labels","values"}. Put the fence, the JSON and the closing fence on separate lines, e.g. \`\`\`leo:choices, then {"q":"Next?","options":["Ship","Test more"]}, then \`\`\`.
-- ${LEONIDAS_CANVAS_INSTRUCTIONS}
-- File links: relative paths open from the project folder only. Outside it, link the absolute path: \`[n.md](<D:/dir/n.md>)\`.
 
 Dock: the literal end of every substantive reply, in this order, with these exact headings:
 ---
@@ -53,45 +54,17 @@ Dock: the literal end of every substantive reply, in this order, with these exac
 
 Omit any Dock section with nothing in it; never leave an empty heading. Omit the Assumed line when you made no choice for the user; the app shows each one as a chip the user can tap to change. Skip Input & Decisions when the structured question tool already asked it this turn. Keep the 🤖 and 👤 markers on every action. When work is finished, verified, and nothing is queued, replace Next Actions with \`### 🏁 Session Complete\` and one line each for ✅ Objective achieved, 🧼 State saved, 🚀 Next best move.
 
-${LEONIDAS_STE_LANGUAGE}
-</leonidas_output_standard>`;
+${LEONIDAS_STE_LANGUAGE}`;
 
-/**
- * The reply shape for new, beginner and comfortable users: a Done line, plain bullets and a
- * slim Dock (TL;DR, optional Assumed chips, a decision only when a risky one waits). It keeps
- * the exact headings the Dock parser reads. `tips` adds one in-context feature tip per reply.
- */
-export function leonidasSimpleOutputStandard(tips: boolean): string {
+/** The render contract plus one reply style body (a preset's Markdown, frontmatter removed). */
+export function leonidasOutputStandard(replyStyle: string = LEONIDAS_REPLY_STYLE): string {
   return `<leonidas_output_standard>
-The user may be new to AI. Write so they understand every reply the first time. This never overrides accuracy, safety, or a shape the user asks for in the current message.
+${LEONIDAS_RENDER_CONTRACT}
 
-When a reply finishes work:
-1. Open with one line that says what is done, for example "Done. Your budget sheet is ready."
-2. Then write 2 to 4 short bullets in plain words: what you made or changed, and where to find it. Link the files.
-3. Explain each technical word the first time you use it, in a few plain words.
-4. Do not show code, commands or logs unless the user asks. Name the result instead.
-5. Do not report model, token, cache, mode, branch or task status.${
-    tips
-      ? `
-6. At most once per reply, end the Body with one line: \`💡 <one Leonidas Code feature that fits what you just did, and how to use it>\`. Skip it when nothing fits.`
-      : ""
-  }
-- Answer blocks: for 3 or more steps or numbers, use one \`leo:checklist\` {"title","items"} or \`leo:table\` {"cols","rows"} fence with compact JSON, the fence and JSON on separate lines.
-- ${LEONIDAS_CANVAS_INSTRUCTIONS}
-- File links: relative paths open from the project folder only. Outside it, link the absolute path: \`[n.md](<D:/dir/n.md>)\`.
-
-End each reply that finishes work with this Dock, exactly:
----
-### 🎯 TL;DR
-- <one line: what the user can do now>
-🔁 Assumed: "<a choice you made without asking>" | "<another>"
-### ❓ Input & Decisions Needed
-- **A)** <option>
-- **B)** <option>
-➡️ **Recommended: <letter>** · <reason>.
-
-Omit the Assumed line when you made no choice for the user. The app shows each choice as a chip the user can tap to change. Omit the Input & Decisions section unless a risky decision waits. Add no other Dock sections. Quick answers skip the Dock.
-
-${LEONIDAS_STE_LANGUAGE}
+<reply_style>
+${replyStyle.trim()}
+</reply_style>
 </leonidas_output_standard>`;
 }
+
+export const LEONIDAS_OUTPUT_STANDARD = leonidasOutputStandard();

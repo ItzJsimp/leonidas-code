@@ -2,7 +2,7 @@ import * as DateTime from "effect/DateTime";
 import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
 import { HARNESS_AWARENESS } from "./harnessAwareness.ts";
 import { effectiveAiLevel, type AiLevel } from "@t3tools/contracts";
-import { LEONIDAS_OUTPUT_STANDARD, leonidasSimpleOutputStandard } from "./outputStandard.ts";
+import { leonidasOutputStandard } from "./outputStandard.ts";
 import { PONYTAIL_RULES } from "./ponytailRules.ts";
 import { SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.ts";
 import {
@@ -53,6 +53,8 @@ export function buildRuntimeInstructions(runtime: {
   readonly ponytailPlugin?: boolean | undefined;
   /** Defaults to the install's active level. */
   readonly aiLevel?: AiLevel | undefined;
+  /** Reply style body from `runtimePolicy.replyStyle`; defaults to the shipped Leonidas style. */
+  readonly replyStyle?: string | undefined;
 }): string {
   const level = runtime.aiLevel ?? activeAiLevel();
   const builder = level === "builder";
@@ -64,7 +66,7 @@ export function buildRuntimeInstructions(runtime: {
     modelName && modelName !== model ? `${modelName} (model slug: ${model})` : model;
   const modelInfo = model && model !== "auto" && model !== "default" ? `, as ${modelLabel}` : "";
   const effortInfo = effort ? ` with ${effort} reasoning effort` : "";
-  return `<runtime_info>In case you're asked: you are running in Leonidas Code through the ${harness} harness${modelInfo}${effortInfo}. No need to mention this otherwise. You can embed images and videos in your response using Markdown with absolute file paths.</runtime_info>\n\n${PULL_REQUEST_LINKING_INSTRUCTIONS}\n\n${WAITING_INSTRUCTIONS}\n\n${EFFICIENT_AGENT_RULES}\n\n${SKILL_ROUTING_INSTRUCTIONS}\n\n${HARNESS_AWARENESS}\n\n${builder ? LEONIDAS_OUTPUT_STANDARD : leonidasSimpleOutputStandard(level !== "comfortable")}${
+  return `<runtime_info>In case you're asked: you are running in Leonidas Code through the ${harness} harness${modelInfo}${effortInfo}. No need to mention this otherwise. You can embed images and videos in your response using Markdown with absolute file paths.</runtime_info>\n\n${PULL_REQUEST_LINKING_INSTRUCTIONS}\n\n${WAITING_INSTRUCTIONS}\n\n${EFFICIENT_AGENT_RULES}\n\n${SKILL_ROUTING_INSTRUCTIONS}\n\n${HARNESS_AWARENESS}\n\n${leonidasOutputStandard(runtime.replyStyle)}${
     runtime.ponytailPlugin
       ? ""
       : `

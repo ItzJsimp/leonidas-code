@@ -1,6 +1,12 @@
 import { assert, describe, it } from "@effect/vitest";
 
-import { LEONIDAS_OUTPUT_STANDARD } from "./outputStandard.ts";
+import { DOCK_HEADINGS } from "@t3tools/shared/outputDock";
+
+import {
+  LEONIDAS_OUTPUT_STANDARD,
+  LEONIDAS_RENDER_CONTRACT,
+  LEONIDAS_REPLY_STYLE,
+} from "./outputStandard.ts";
 import {
   T3_ACP_FALLBACK_INSTRUCTIONS,
   T3_CODE_BROWSER_TOOL_INSTRUCTIONS,
@@ -182,11 +188,13 @@ describe("T3 orchestration provider instructions", () => {
 });
 
 describe("injected instruction budget", () => {
+  const BUDGET = 15_736;
   const blocks = [
     T3_CODE_ORCHESTRATION_INSTRUCTIONS,
     T3_CODE_BROWSER_TOOL_INSTRUCTIONS,
     T3_ACP_FALLBACK_INSTRUCTIONS,
-    LEONIDAS_OUTPUT_STANDARD,
+    LEONIDAS_RENDER_CONTRACT,
+    LEONIDAS_REPLY_STYLE,
   ];
 
   it("never repeats a heading", () => {
@@ -199,14 +207,27 @@ describe("injected instruction budget", () => {
 
   it("names every answer block type the chat can render", () => {
     for (const type of ["choices", "checklist", "table", "chart"]) {
-      assert.include(LEONIDAS_OUTPUT_STANDARD, `leo:${type}`);
+      assert.include(LEONIDAS_RENDER_CONTRACT, `leo:${type}`);
     }
   });
 
+  it("names every Dock heading the client parses in the render contract", () => {
+    for (const heading of Object.keys(DOCK_HEADINGS)) {
+      assert.include(LEONIDAS_RENDER_CONTRACT, `\`${heading}\``);
+    }
+  });
+
+  it("keeps the shipped Leonidas style inside the preset cap", () => {
+    assert.isAtMost(LEONIDAS_REPLY_STYLE.length, 4_000);
+    assert.notInclude(LEONIDAS_OUTPUT_STANDARD, "may not remove, reorder or rename");
+  });
+
   // Ratchet: every turn pays for this text. Lower the cap when you trim; raise it only on purpose.
+  // 15,736: the base was already 15,579 (cap 14,903 was stale); the render contract's Dock
+  // grammar line adds the rest, on purpose, so presets that drop the Dock still parse.
   it("stays inside the character budget", () => {
     const total = blocks.reduce((sum, block) => sum + block.length, 0);
-    assert.isAtMost(total, 14_903);
+    assert.isAtMost(total, BUDGET);
   });
 
   it("keeps a thread without browser or ACP fallback below the full budget", () => {
@@ -225,7 +246,7 @@ describe("injected instruction budget", () => {
     });
     assert.isAtMost(
       plain.length + LEONIDAS_OUTPUT_STANDARD.length,
-      14_903 - T3_CODE_BROWSER_TOOL_INSTRUCTIONS.length - T3_ACP_FALLBACK_INSTRUCTIONS.length + 600,
+      BUDGET - T3_CODE_BROWSER_TOOL_INSTRUCTIONS.length - T3_ACP_FALLBACK_INSTRUCTIONS.length + 600,
     );
     assert.isAbove(
       full.length - plain.length,

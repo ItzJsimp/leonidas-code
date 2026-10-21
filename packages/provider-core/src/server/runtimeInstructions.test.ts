@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EFFICIENT_AGENT_RULES } from "./efficientAgentRules.ts";
+import { LEONIDAS_RENDER_CONTRACT, LEONIDAS_REPLY_STYLE } from "./outputStandard.ts";
 import {
   activeAiLevel,
   buildRuntimeInstructions,
@@ -113,23 +114,25 @@ describe("AI level", () => {
   const forLevel = (aiLevel: "new" | "beginner" | "comfortable" | "builder") =>
     buildRuntimeInstructions({ harness: "Claude Code", aiLevel });
 
-  it("gives new and beginner users act-first rules, a slim Dock and tips", () => {
+  it("gives new and beginner users act-first rules and the Leonidas reply style", () => {
     for (const level of ["new", "beginner"] as const) {
       const text = forLevel(level);
       expect(text).toContain("Act first and report after.");
-      expect(text).toContain("### 🎯 TL;DR");
-      expect(text).toContain("🔁 Assumed:");
-      expect(text).not.toContain("### ⚡ Immediate Next Actions");
+      expect(text).toContain(LEONIDAS_REPLY_STYLE);
       expect(text).not.toContain("whole frontier in one call");
-      expect(text).toContain("💡");
       expect(text).not.toContain("Also ask before a guess");
     }
   });
 
-  it("lets comfortable users get a question before a costly guess, without tips", () => {
-    const text = forLevel("comfortable");
-    expect(text).toContain("Also ask before a guess");
-    expect(text).not.toContain("💡");
+  it("lets comfortable users get a question before a costly guess", () => {
+    expect(forLevel("comfortable")).toContain("Also ask before a guess");
+  });
+
+  it("uses the given reply style instead of Leonidas and keeps the render contract", () => {
+    const text = buildRuntimeInstructions({ harness: "Codex", replyStyle: "Reply in haiku." });
+    expect(text).toContain("<reply_style>\nReply in haiku.\n</reply_style>");
+    expect(text).toContain(LEONIDAS_RENDER_CONTRACT);
+    expect(text).not.toContain("The reader scans.");
   });
 
   it("keeps the full Dock and the grill-style questions for builders", () => {
