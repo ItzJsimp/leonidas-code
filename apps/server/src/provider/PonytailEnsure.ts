@@ -6,6 +6,10 @@
  * plugin adds `/ponytail` levels, its skills and a per-turn cost ledger. This module installs it
  * once for each Claude config dir (each account), so a new account needs no setup.
  *
+ * Codex has its own plugin install (`codex plugin add`). Codex asks the user to trust a plugin's
+ * lifecycle hooks, and this module never grants that trust: it installs, then the card shows
+ * "needs trust" until the user approves the hooks in Codex (`/hooks`).
+ *
  * It never overrides a user choice: if `settings.json` already lists the plugin (on or off), it
  * does nothing. It needs `node` on PATH for the plugin hooks; without it the rules in the runtime
  * instructions still apply.
@@ -82,4 +86,63 @@ export function scheduleClaudePonytail(input: {
   readonly env: NodeJS.ProcessEnv;
 }): void {
   setTimeout(() => void ensureClaudePonytail(input), START_DELAY_MS).unref();
+}
+
+export type CodexPluginState = "off" | "needs-trust" | "on";
+
+/**
+ * Reads a Codex home's `config.toml` text. Trust is stored as `[hooks.state."<key>"]`; a trusted
+ * Ponytail hook has a key that names the plugin. shortcut: the key format for plugin hooks is
+ * matched by name only, so check it against a real trusted install if the badge looks wrong.
+ */
+export function codexPonytailState(configToml: string | undefined): CodexPluginState {
+  const block = configToml ? /\[plugins\."ponytail@ponytail"\]([^[]*)/.exec(configToml) : null;
+  if (!configToml || !block || !/enabled\s*=\s*true/.test(block[1] ?? "")) return "off";
+  return /\[hooks\.state\.[^\]]*ponytail[^\]]*\]/i.test(configToml) ? "on" : "needs-trust";
+}
+
+export function codexHomeOf(env: NodeJS.ProcessEnv | undefined): string {
+  const configured = env?.CODEX_HOME?.trim();
+  return configured ? NodePath.resolve(configured) : NodePath.join(NodeOS.homedir(), ".codex");
+}
+
+export function readCodexPonytailState(home: string): CodexPluginState {
+  try {
+    return codexPonytailState(NodeFS.readFileSync(NodePath.join(home, "config.toml"), "utf8"));
+  } catch {
+    return "off";
+  }
+}
+
+/** Install the plugin for one Codex home. Never throws; a failed try repeats at next start. */
+export async function ensureCodexPonytail(input: {
+  readonly binaryPath: string;
+  readonly env: NodeJS.ProcessEnv;
+}): Promise<"installed" | "present" | "skipped" | "failed"> {
+  const home = codexHomeOf(input.env);
+  const key = `codex:${home}`;
+  if (attempted.has(key)) return "skipped";
+  attempted.add(key);
+  let text = "";
+  try {
+    text = NodeFS.readFileSync(NodePath.join(home, "config.toml"), "utf8");
+  } catch {
+    // No config yet: Codex has never run here, so install.
+  }
+  if (text.includes(PONYTAIL_PLUGIN_ID)) return "present";
+  const env = { ...input.env, CODEX_HOME: home };
+  if (!(await run("node", ["--version"], env))) return "skipped";
+  const codex = input.binaryPath.trim() || "codex";
+  const added = await run(codex, ["plugin", "marketplace", "add", PONYTAIL_MARKETPLACE], env);
+  const installed = added && (await run(codex, ["plugin", "add", PONYTAIL_PLUGIN_ID], env));
+  if (!installed) attempted.delete(key);
+  return installed ? "installed" : "failed";
+}
+
+/** Fire and forget, delayed, from the driver. */
+export function scheduleCodexPonytail(input: {
+  readonly binaryPath: string;
+  readonly env: NodeJS.ProcessEnv;
+}): void {
+  setTimeout(() => void ensureCodexPonytail(input), START_DELAY_MS).unref();
 }

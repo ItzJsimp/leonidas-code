@@ -598,7 +598,7 @@ export const LayaUsage = Schema.Struct({
 export type LayaUsage = typeof LayaUsage.Type;
 
 // Ponytail monitor. Numbers come from the plugin's local ledger and the app's own turn records.
-// Nothing here is an estimate: a saving needs a baseline, and the ledger has none.
+// `projected` is the only estimate: the published benchmark applied to code tasks, labelled as such.
 const PonytailProviderTotals = Schema.Struct({
   provider: Schema.String,
   turns: Schema.Number,
@@ -611,13 +611,14 @@ const PonytailProviderTotals = Schema.Struct({
 export const PonytailUsage = Schema.Struct({
   status: Schema.Literals(["missing", "ready"]),
   // Every enabled provider account in the app. The rules reach all of them. `plugin` is "on" or
-  // "off" for a Claude account and "none" for a provider that has no Ponytail plugin.
+  // "off" for a Claude account, "needs-trust" for a Codex account whose hooks the user has not
+  // approved yet, and "none" for a provider that has no Ponytail plugin.
   accounts: Schema.Array(
     Schema.Struct({
       id: Schema.String,
       name: Schema.String,
       driver: Schema.String,
-      plugin: Schema.Literals(["on", "off", "none"]),
+      plugin: Schema.Literals(["on", "needs-trust", "off", "none"]),
     }),
   ),
   // Date (YYYY-MM-DD) of the first ledger row: the day the plugin started logging.
@@ -630,11 +631,24 @@ export const PonytailUsage = Schema.Struct({
   costUsd: Schema.Number,
   agentMinutes: Schema.Number,
   outputTokens: Schema.Number,
-  // Tasks whose ledger row says the tests ran. Null when the ledger has no tests column.
-  testsRan: Schema.NullOr(Schema.Number),
-  // Tasks that start from a skill run (audit, handoff): they write little code, so Ponytail
-  // does little there.
-  skillRuns: Schema.Struct({ tasks: Schema.Number, costUsd: Schema.Number }),
+  // Tasks where the agent wrote or reused code, with what the ledger measured on them.
+  code: Schema.Struct({
+    tasks: Schema.Number,
+    costUsd: Schema.Number,
+    agentMinutes: Schema.Number,
+    outputTokens: Schema.Number,
+    reused: Schema.Number,
+    created: Schema.Number,
+    callersOpen: Schema.Number,
+    // Tasks whose ledger row says the tests ran. Null when the ledger has no tests column.
+    testsRan: Schema.NullOr(Schema.Number),
+  }),
+  // The published benchmark share applied to `code`. A projection, not a measurement.
+  projected: Schema.Struct({
+    costUsd: Schema.Number,
+    agentMinutes: Schema.Number,
+    outputTokens: Schema.Number,
+  }),
   recent: Schema.Array(
     Schema.Struct({
       started: Schema.String,

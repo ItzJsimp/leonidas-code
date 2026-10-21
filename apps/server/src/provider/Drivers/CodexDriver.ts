@@ -41,6 +41,7 @@ import {
   type CodexAdapterV2DriverEnv,
 } from "../../orchestration-v2/Adapters/CodexAdapterV2.ts";
 import { ProviderDriverError } from "../Errors.ts";
+import { scheduleCodexPonytail } from "../PonytailEnsure.ts";
 import * as ResetCreditCoordinator from "../resetCreditCoordinator.ts";
 import {
   checkCodexProviderStatus,
@@ -182,6 +183,12 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv, Path.Pat
         binaryPath: expandHomePath(config.binaryPath, yield* HostProcess.HomeDirectory),
         homePath: homeLayout.effectiveHomePath ?? "",
       } satisfies CodexSettings;
+      if (enabled) {
+        scheduleCodexPonytail({
+          binaryPath: effectiveConfig.binaryPath,
+          env: { ...processEnv, CODEX_HOME: homeLayout.sharedHomePath },
+        });
+      }
       const resolveMaintenance = yield* makeCachedProviderMaintenanceResolution(
         resolveProviderMaintenanceCapabilitiesEffect(
           makeCodexMaintenanceResolver(homeLayout.sharedHomePath),

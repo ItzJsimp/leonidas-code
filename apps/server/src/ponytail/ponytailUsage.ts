@@ -7,6 +7,8 @@ import type { PonytailUsage } from "@t3tools/contracts";
 
 const RECENT = 10;
 const MAX_LEDGER_BYTES = 4_000_000;
+/** Published Ponytail 5 benchmark (39 tasks, 5 runs each, Opus 5.5): the share of the no-skill baseline that remains. */
+const BENCHMARK = { cost: 0.74, time: 0.59, output: 0.55 } as const;
 /** The ledger names a task by its first prompt line; a skill run opens with this preamble. */
 const SKILL_PREAMBLE = "The request mentions skills";
 
@@ -65,27 +67,49 @@ export function summarizePonytail(
     out: col("tokens_output"),
     level: col("level"),
     tests: col("tests"),
+    reused: col("reused"),
+    created: col("new"),
+    callers: col("callers_open"),
   };
-  const tasks = (idx.cost < 0 ? [] : rows.slice(1)).map((r) => ({
-    started: r[idx.started] ?? "",
-    project: r[idx.project] ?? "",
-    skillRun: (r[idx.name] ?? "").startsWith(SKILL_PREAMBLE),
-    testsRan: idx.tests >= 0 && (r[idx.tests] ?? "") !== "" && r[idx.tests] !== "not run",
-    name: (r[idx.name] ?? "").slice(0, 80),
-    costUsd: num(r[idx.cost]),
-    turns: num(r[idx.turns]),
-    agentMinutes: num(r[idx.minutes]),
-    outputTokens: num(r[idx.out]),
-    level: r[idx.level] ?? "",
-  }));
-  const sum = (pick: (t: (typeof tasks)[number]) => number) =>
-    tasks.reduce((total, t) => total + pick(t), 0);
-  const costUsd = sum((t) => t.costUsd);
-  const agentMinutes = sum((t) => t.agentMinutes);
-  const outputTokens = sum((t) => t.outputTokens);
-  const skillRuns = tasks.filter((t) => t.skillRun);
+  const tasks = (idx.cost < 0 ? [] : rows.slice(1)).map((r) => {
+    const reused = num(r[idx.reused]);
+    const created = num(r[idx.created]);
+    return {
+      started: r[idx.started] ?? "",
+      project: r[idx.project] ?? "",
+      skillRun: (r[idx.name] ?? "").startsWith(SKILL_PREAMBLE),
+      // A task counts as code work when the agent wrote or reused code in it.
+      code: reused + created > 0,
+      reused,
+      created,
+      callersOpen: num(r[idx.callers]),
+      testsRan: idx.tests >= 0 && (r[idx.tests] ?? "") !== "" && r[idx.tests] !== "not run",
+      name: (r[idx.name] ?? "").slice(0, 80),
+      costUsd: num(r[idx.cost]),
+      turns: num(r[idx.turns]),
+      agentMinutes: num(r[idx.minutes]),
+      outputTokens: num(r[idx.out]),
+      level: r[idx.level] ?? "",
+    };
+  });
+  type Task = (typeof tasks)[number];
+  const sum = (list: ReadonlyArray<Task>, pick: (t: Task) => number) =>
+    list.reduce((total, t) => total + pick(t), 0);
+  const codeTasks = tasks.filter((t) => t.code);
+  const code = {
+    tasks: codeTasks.length,
+    costUsd: sum(codeTasks, (t) => t.costUsd),
+    agentMinutes: sum(codeTasks, (t) => t.agentMinutes),
+    outputTokens: sum(codeTasks, (t) => t.outputTokens),
+    reused: sum(codeTasks, (t) => t.reused),
+    created: sum(codeTasks, (t) => t.created),
+    callersOpen: sum(codeTasks, (t) => t.callersOpen),
+    testsRan: idx.tests < 0 ? null : codeTasks.filter((t) => t.testsRan).length,
+  };
+  // What the benchmark share would imply for the code work: used / kept gives the baseline size.
+  const saved = (used: number, kept: number) => (used * (1 - kept)) / kept;
   return {
-    status: tasks.length > 0 || accounts.some((a) => a.plugin === "on") ? "ready" : "missing",
+    status: tasks.length > 0 || accounts.some((a) => a.plugin !== "off") ? "ready" : "missing",
     accounts: [...accounts],
     since:
       tasks
@@ -95,21 +119,32 @@ export function summarizePonytail(
     providersBefore: [],
     providers: [],
     tasks: tasks.length,
-    costUsd,
-    agentMinutes,
-    outputTokens,
-    testsRan: idx.tests < 0 ? null : tasks.filter((t) => t.testsRan).length,
-    skillRuns: {
-      tasks: skillRuns.length,
-      costUsd: skillRuns.reduce((total, t) => total + t.costUsd, 0),
+    costUsd: sum(tasks, (t) => t.costUsd),
+    agentMinutes: sum(tasks, (t) => t.agentMinutes),
+    outputTokens: sum(tasks, (t) => t.outputTokens),
+    code,
+    projected: {
+      costUsd: saved(code.costUsd, BENCHMARK.cost),
+      agentMinutes: saved(code.agentMinutes, BENCHMARK.time),
+      outputTokens: Math.round(saved(code.outputTokens, BENCHMARK.output)),
     },
     recent: tasks
       .toSorted((a, b) => b.started.localeCompare(a.started))
       .slice(0, RECENT)
-      .map(({ skillRun, testsRan: _ran, ...t }) => ({
-        ...t,
-        name: skillRun ? "Skill run" : t.name,
-      })),
+      .map(
+        ({
+          skillRun,
+          testsRan: _ran,
+          code: _code,
+          reused: _r,
+          created: _c,
+          callersOpen: _o,
+          ...t
+        }) => ({
+          ...t,
+          name: skillRun ? "Skill run" : t.name,
+        }),
+      ),
   };
 }
 

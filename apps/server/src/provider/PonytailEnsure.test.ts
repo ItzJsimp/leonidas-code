@@ -5,6 +5,7 @@ import * as NodePath from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import {
   claudeConfigDirOf,
+  codexPonytailState,
   ensureClaudePonytail,
   isPonytailPluginEnabled,
 } from "./PonytailEnsure.ts";
@@ -40,5 +41,15 @@ describe("PonytailEnsure", () => {
     expect(
       await ensureClaudePonytail({ binaryPath: "no-such-claude", env: { CLAUDE_CONFIG_DIR: dir } }),
     ).toBe("failed");
+  });
+
+  it("reads the Codex plugin state from config.toml text", () => {
+    const on = '[plugins."ponytail@ponytail"]\nenabled = true\n';
+    const trusted = `${on}\n[hooks.state."ponytail@ponytail:hooks.json:session_start:0:0"]\ntrusted_hash = "sha256:x"\n`;
+    expect(codexPonytailState(undefined)).toBe("off");
+    expect(codexPonytailState('[plugins."pdf@x"]\nenabled = true\n')).toBe("off");
+    expect(codexPonytailState('[plugins."ponytail@ponytail"]\nenabled = false\n')).toBe("off");
+    expect(codexPonytailState(on)).toBe("needs-trust");
+    expect(codexPonytailState(trusted)).toBe("on");
   });
 });

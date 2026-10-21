@@ -25,7 +25,11 @@ import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { readLayaUsage } from "./laya/layaUsage.ts";
 import { readPonytailUsage } from "./ponytail/ponytailUsage.ts";
 import { mergeByDriver, readProviderTotals } from "./ponytail/providerTotals.ts";
-import { isPonytailPluginEnabled } from "./provider/PonytailEnsure.ts";
+import {
+  codexHomeOf,
+  isPonytailPluginEnabled,
+  readCodexPonytailState,
+} from "./provider/PonytailEnsure.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -3008,17 +3012,24 @@ const layerWsRpc = (
             const accounts = instances.map((instance) => {
               const driver = String(instance.driverKind);
               const key = instance.continuationIdentity.continuationKey;
-              const home = key.startsWith("claude:home:") ? key.slice("claude:home:".length) : "";
+              const homeOf = (prefix: string) =>
+                key.startsWith(prefix) ? key.slice(prefix.length) : "";
+              const claudeHome = homeOf("claude:home:");
+              const plugin =
+                driver === "claudeAgent"
+                  ? isPonytailPluginEnabled(
+                      claudeHome ? { CLAUDE_CONFIG_DIR: claudeHome } : undefined,
+                    )
+                    ? ("on" as const)
+                    : ("off" as const)
+                  : driver === "codex"
+                    ? readCodexPonytailState(homeOf("codex:home:") || codexHomeOf(undefined))
+                    : ("none" as const);
               return {
                 id: String(instance.instanceId),
                 name: instance.displayName ?? String(instance.instanceId),
                 driver,
-                plugin:
-                  driver !== "claudeAgent"
-                    ? ("none" as const)
-                    : isPonytailPluginEnabled(home ? { CLAUDE_CONFIG_DIR: home } : undefined)
-                      ? ("on" as const)
-                      : ("off" as const),
+                plugin,
               };
             });
             const driverOf = (provider: string) =>
