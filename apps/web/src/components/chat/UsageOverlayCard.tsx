@@ -276,10 +276,11 @@ function AccountLimits({
 }
 
 /**
- * The one usage card, over the chat's top-left corner: model, effort, the context window and
- * what fills it, then every connected account's session and weekly bars with this chat's
- * account first. The composer's context ring toggles it. Wide chat columns show the whole
- * card; narrow ones show a one-line pill that expands over the chat on click.
+ * The one usage card: model, effort, the context window and what fills it, then every
+ * connected account's session and weekly bars with this chat's account first. The composer's
+ * context ring toggles it. Wide chat areas show the whole card as a left rail in the layout,
+ * so the chat shrinks beside it and the card never covers chat text (a side panel opening
+ * cannot change that). Narrow ones show a one-line pill that expands over the chat on click.
  */
 export const UsageOverlayCard = memo(function UsageOverlayCard({
   environmentId,
@@ -394,7 +395,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   return (
     <div
       data-usage-overlay
-      className="pointer-events-none absolute top-2 left-3 z-30 max-w-[calc(100%-1.5rem)]"
+      className="pointer-events-none absolute top-2 left-3 z-30 max-w-[calc(100%-1.5rem)] @7xl:static @7xl:mt-2 @7xl:ml-3 @7xl:shrink-0 @7xl:self-start"
     >
       {/* Narrow column: one line, expands in place. */}
       {!expanded ? (
