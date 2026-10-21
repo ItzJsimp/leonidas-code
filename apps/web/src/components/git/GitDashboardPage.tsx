@@ -20,6 +20,7 @@ import { SidebarInset } from "../ui/sidebar";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { toastManager } from "../ui/toast";
 import { GitLane } from "./GitLane";
+import { GitLaneActions } from "./GitLaneActions";
 import {
   backToMainGate,
   buildLane,
@@ -181,7 +182,18 @@ function ProjectGitCard(props: {
           This folder is not tracked by Git yet, so there is nothing to show.
         </p>
       ) : (
-        <GitLane lane={buildLane(data)} mode={props.mode} />
+        <GitLane
+          lane={buildLane(data)}
+          mode={props.mode}
+          renderActions={(stepId) => (
+            <GitLaneActions
+              stepId={stepId}
+              scope={{ environmentId: props.environmentId, cwd: props.cwd }}
+              status={data}
+              mode={props.mode}
+            />
+          )}
+        />
       )}
     </section>
   );

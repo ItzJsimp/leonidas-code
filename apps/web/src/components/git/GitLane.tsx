@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 import type { GitLane as GitLaneModel, LaneStep, WordsMode } from "./gitLane.logic";
@@ -11,6 +11,8 @@ export function GitLane(props: {
   readonly lane: GitLaneModel;
   readonly mode: WordsMode;
   readonly onConnectGitHub?: () => void;
+  /** Optional per-step controls, shown under the step's explainer. */
+  readonly renderActions?: (stepId: LaneStep["id"]) => ReactNode;
 }) {
   const [openId, setOpenId] = useState<LaneStep["id"] | null>(null);
   const open = props.lane.steps.find((step) => step.id === openId) ?? null;
@@ -53,13 +55,16 @@ export function GitLane(props: {
         ) : null}
       </ol>
       {open ? (
-        <p
-          id={`git-lane-explainer-${open.id}`}
-          role="status"
-          className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground"
-        >
-          {open.explainer}
-        </p>
+        <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2">
+          <p
+            id={`git-lane-explainer-${open.id}`}
+            role="status"
+            className="text-sm text-muted-foreground"
+          >
+            {open.explainer}
+          </p>
+          {props.renderActions?.(open.id)}
+        </div>
       ) : null}
     </div>
   );
