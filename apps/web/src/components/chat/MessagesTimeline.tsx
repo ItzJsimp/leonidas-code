@@ -569,7 +569,7 @@ interface MessagesTimelineProps {
   activeFindMatch?: ThreadFindMatch | null;
   findNavigationId?: number;
   /** Open and scroll to one tool call; a new nonce repeats the request. */
-  revealRequest?: { readonly itemId: string; readonly nonce: number } | null;
+  revealRequest?: { readonly itemId: string; readonly nonce: number; readonly at: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -984,7 +984,10 @@ const ConversationTimeline = memo(function ConversationTimeline({
   } | null>(null);
   const [revealedEntry, setRevealedEntry] = useState<TimelineReveal | null>(null);
   useEffect(() => {
-    if (revealRequest) setPendingReveal({ ...revealRequest, steps: 0 });
+    // A list that mounts later must not replay an old request and scroll by surprise.
+    if (revealRequest && Date.now() - revealRequest.at < 3_000) {
+      setPendingReveal({ itemId: revealRequest.itemId, nonce: revealRequest.nonce, steps: 0 });
+    }
   }, [revealRequest]);
   useEffect(() => {
     if (!pendingReveal) return;

@@ -5725,10 +5725,15 @@ export default function ChatView(props: ChatViewProps) {
   const [timelineReveal, setTimelineReveal] = useState<{
     readonly itemId: string;
     readonly nonce: number;
+    readonly at: number;
   } | null>(null);
   const showActivityItem = useCallback(
     (itemId: string) => {
-      setTimelineReveal((previous) => ({ itemId, nonce: (previous?.nonce ?? 0) + 1 }));
+      setTimelineReveal((previous) => ({
+        itemId,
+        nonce: (previous?.nonce ?? 0) + 1,
+        at: Date.now(),
+      }));
       // The sheet covers the chat on narrow windows; close it so the row is visible.
       if (shouldUsePlanSidebarSheet && activityPanelOpen && activeThreadRef) {
         useRightPanelStore.getState().toggle(activeThreadRef, "activity");
