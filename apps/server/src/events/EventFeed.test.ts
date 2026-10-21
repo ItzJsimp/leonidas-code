@@ -101,3 +101,14 @@ describe("event feed service", () => {
     expect(updates).toEqual([{ kind: "snapshot", events: [], bad: [] }]);
   });
 });
+
+describe("event feed bad-line cap", () => {
+  it("reports at most 50 unreadable lines per update", () => {
+    const root = tempRoot();
+    const file = appendFeedEvent(root, event("one"));
+    NodeFS.appendFileSync(file, "garbage\n".repeat(200));
+    const updates = subscribe(root, fakeWatch());
+    expect(updates[0]!.bad).toHaveLength(50);
+    expect(updates[0]!.events).toHaveLength(1);
+  });
+});

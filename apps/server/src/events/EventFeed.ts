@@ -13,6 +13,8 @@ const FEED_DEBOUNCE_MS = 150;
 /** Month files loaded at start; the AI searches older months on request. */
 const FEED_MONTHS = 2;
 const FEED_MAX_EVENTS = 1_000;
+/** Unreadable-line reports sent per update; a garbage file must not flood the socket. */
+const FEED_MAX_BAD = 50;
 const MONTH_FILE = /^\d{4}-\d{2}\.jsonl$/;
 
 export interface EventFeed {
@@ -72,7 +74,7 @@ export function makeEventFeed(
       const file = NodePath.join(dir, name);
       const read = readFeedFrom(file, state.cursors.get(file) ?? { offset: 0, line: 0 });
       state.cursors.set(file, read.cursor);
-      bad.push(...read.bad);
+      bad.push(...read.bad.slice(0, FEED_MAX_BAD - bad.length));
       for (const event of read.events) {
         if (state.ids.has(event.id)) continue;
         state.ids.add(event.id);
