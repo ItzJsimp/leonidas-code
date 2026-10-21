@@ -69,6 +69,7 @@ export * from "./resourceTelemetry.ts";
 export * from "./taskBoard.ts";
 export * from "./laya.ts";
 export * from "./hardwareWatch.ts";
+export * from "./events.ts";
 export * from "./savedItem.ts";
 export * from "./devPreview.ts";
 export * from "./images.ts";
