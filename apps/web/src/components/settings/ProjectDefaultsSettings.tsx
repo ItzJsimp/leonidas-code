@@ -27,6 +27,7 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { toastManager } from "../ui/toast";
 import { Switch } from "../ui/switch";
 import type { ProjectSettingsCategory } from "./ProjectSettingsPanel";
+import { ReplyStyleSettingsRow } from "./ReplyStyleSettingsRow";
 import { searchableSetting } from "./settingsSearch";
 import { useSettingsScope } from "./SettingsScopeContext";
 import {
@@ -270,11 +271,13 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
       {category === "project" ? (
         <>
           {modelRow}
+          <ReplyStyleSettingsRow />
           {workspaceRow}
         </>
       ) : category === "general" ? (
         <>
           {modelRow}
+          <ReplyStyleSettingsRow />
           <SettingsRow
             serverScoped
             settingKeys={["defaultRuntimeMode"]}

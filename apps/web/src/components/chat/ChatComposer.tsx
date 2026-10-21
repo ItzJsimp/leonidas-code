@@ -288,6 +288,7 @@ import {
 import { applySkillFolderView } from "./composerSkillFolders.logic";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
+import { ComposerReplyStyleControl } from "./ComposerReplyStyleControl";
 import { ComposerImageThumbnail } from "./ComposerImageThumbnail";
 import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerPendingApprovalPanel } from "./ComposerPendingApprovalPanel";
@@ -5860,6 +5861,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           },
         }}
         onOpenProviderSetup={onOpenProviderSetup}
+      />
+      {/* Outside the resting blocks: the overflow menu would hide the style, which must stay in view. */}
+      <ComposerReplyStyleControl
+        threadRef={routeThreadRef}
+        serverValue={attachThreadShell?.replyStyle}
+        environmentId={routeThreadRef.environmentId}
+        projectId={savedItemsProjectId}
+        cwd={gitCwd}
+        size={composerControlsCollapsed ? "xs" : "sm"}
       />
 
       <>

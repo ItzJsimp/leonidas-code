@@ -236,6 +236,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     ],
   },
   {
+    id: "reply-style",
+    title: "Reply style",
+    to: "/settings/general",
+    scope: "project-defaults",
+    searchTerms: ["reply style preset tone dock tldr output format answer shape"],
+  },
+  {
     id: "color-scheme",
     title: "Color scheme",
     to: "/settings/appearance",
