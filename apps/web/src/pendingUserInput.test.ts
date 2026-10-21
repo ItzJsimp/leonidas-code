@@ -135,6 +135,16 @@ describe("resolvePendingUserInputAnswer", () => {
     ).toEqual({ customAnswer: "a note", selectedOptionValues: ["Orchestration-first"] });
   });
 
+  it("clears a single-select option on a second click and keeps the note", () => {
+    expect(
+      togglePendingUserInputOptionSelection(
+        singleSelectQuestion,
+        { customAnswer: "a note", selectedOptionValues: ["Orchestration-first"] },
+        "Orchestration-first",
+      ),
+    ).toEqual({ customAnswer: "a note" });
+  });
+
   it("does not replace a required choice with a custom answer", () => {
     expect(
       resolvePendingUserInputAnswer(nativeChoiceQuestion, {

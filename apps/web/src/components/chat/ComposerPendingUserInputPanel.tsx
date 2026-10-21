@@ -130,6 +130,12 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
         onToggleOption(questionId, optionValue);
         return;
       }
+      // A second click on the chosen option clears it.
+      if (progress.selectedOptionValues.includes(optionValue)) {
+        setOptimisticSingleSelect(null);
+        onToggleOption(questionId, optionValue);
+        return;
+      }
       setOptimisticSingleSelect({ questionId, optionValue });
       onToggleOption(questionId, optionValue);
       // The user may still type a note to send with the option, so only
@@ -143,7 +149,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
         onAdvanceRef.current();
       }, 200);
     },
-    [activeQuestion, disabled, isResponding, onToggleOption],
+    [activeQuestion, disabled, isResponding, onToggleOption, progress.selectedOptionValues],
   );
 
   // Keyboard shortcut: number keys 1-9 select corresponding options when focus is

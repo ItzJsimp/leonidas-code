@@ -121,9 +121,12 @@ export function togglePendingUserInputOptionSelection(
     };
   }
 
+  const alreadySelected = normalizeSelectedOptionValues(draft?.selectedOptionValues).includes(
+    optionValue,
+  );
   return {
     customAnswer: draft?.customAnswer ?? "",
-    selectedOptionValues: [optionValue],
+    ...(alreadySelected ? {} : { selectedOptionValues: [optionValue] }),
   };
 }
 
