@@ -1,6 +1,11 @@
 // @effect-diagnostics nodeBuiltinImport:off - the feed is plain JSONL files that scripts write too.
 // @effect-diagnostics globalDate:off - month files are named from the caller's wall-clock time.
-import { decodeFeedEventLine, type FeedEvent } from "@t3tools/contracts";
+import {
+  decodeFeedEventLine,
+  type FeedBadLine,
+  type FeedEvent,
+  type FoldedFeedEvent,
+} from "@t3tools/contracts";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
@@ -14,21 +19,10 @@ export interface FeedCursor {
   readonly line: number;
 }
 
-export interface FeedBadLine {
-  readonly file: string;
-  readonly line: number;
-  readonly reason: string;
-}
-
 export interface FeedRead {
   readonly events: ReadonlyArray<FeedEvent>;
   readonly bad: ReadonlyArray<FeedBadLine>;
   readonly cursor: FeedCursor;
-}
-
-export interface FoldedFeedEvent extends FeedEvent {
-  /** Events folded into this one by `dedupe`; 1 when none. */
-  readonly count: number;
 }
 
 const month = (at: number) => {

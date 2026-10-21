@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - tests write real feed files in a temp folder.
 import { completeFeedEvent, type FeedEvent } from "@t3tools/contracts";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as NodeFS from "node:fs";

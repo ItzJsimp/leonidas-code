@@ -131,3 +131,35 @@ export function feedEventTimestamp(now: number = Date.now()): string {
 export function completeFeedEvent(draft: FeedEventDraft, now: number = Date.now()): FeedEvent {
   return { v: 1, id: makeFeedEventId(now), ts: feedEventTimestamp(now), ...draft };
 }
+
+/** A feed event after `dedupe` folding: `count` is 1 when nothing folded into it. */
+export const FoldedFeedEvent = Schema.Struct({ ...FeedEvent.fields, count: Schema.Number });
+export type FoldedFeedEvent = typeof FoldedFeedEvent.Type;
+
+export const FeedBadLine = Schema.Struct({
+  file: Schema.String,
+  line: Schema.Number,
+  reason: Schema.String,
+});
+export type FeedBadLine = typeof FeedBadLine.Type;
+
+/** `snapshot` replaces the list; `upsert` adds new events or raises a folded count. */
+export const FeedUpdate = Schema.Struct({
+  kind: Schema.Literals(["snapshot", "upsert"]),
+  events: Schema.Array(FoldedFeedEvent),
+  bad: Schema.Array(FeedBadLine),
+});
+export type FeedUpdate = typeof FeedUpdate.Type;
+
+export const EventsSubscribeInput = Schema.Struct({ workspaceId: Schema.optional(Schema.String) });
+export type EventsSubscribeInput = typeof EventsSubscribeInput.Type;
+
+export const EventsAppendInput = Schema.Struct({
+  workspaceId: Schema.optional(Schema.String),
+  event: FeedEventDraft,
+});
+export type EventsAppendInput = typeof EventsAppendInput.Type;
+
+export class FeedEventError extends Schema.TaggedError<FeedEventError>()("FeedEventError", {
+  message: Schema.String,
+}) {}

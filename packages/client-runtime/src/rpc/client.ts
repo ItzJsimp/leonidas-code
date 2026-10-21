@@ -73,6 +73,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.scribeSubscribeEvents
   | typeof WS_METHODS.subagentsSubscribeSpawnApprovals
   | typeof WS_METHODS.focusSubscribe
+  | typeof WS_METHODS.eventsSubscribe
   | typeof WS_METHODS.subscribeVcsStatus
   | typeof WS_METHODS.subscribeWorktreeSetup
   | typeof WS_METHODS.subscribeProjectClones

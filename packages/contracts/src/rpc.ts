@@ -4,6 +4,7 @@ import {
   OrchestrationV2SearchThreadResult,
 } from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
+import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
 import {
   McpAppCallToolInput,
   McpAppCallToolResult,
@@ -598,6 +599,8 @@ export const WS_METHODS = {
   layaUsage: "laya.usage",
   ponytailUsage: "ponytail.usage",
   focusSubscribe: "focus.subscribe",
+  eventsSubscribe: "events.subscribe",
+  eventsAppend: "events.append",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
@@ -1840,6 +1843,21 @@ const WsTaskBoardShareRpc = Rpc.make(WS_METHODS.taskBoardShare, {
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
+/** The event feed: recent months on subscribe, then new and folded events as files change. */
+const WsEventsSubscribeRpc = Rpc.make(WS_METHODS.eventsSubscribe, {
+  payload: EventsSubscribeInput,
+  success: FeedUpdate,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
+/** Appends one event that the app writes; the folder watch delivers it to subscribers. */
+const WsEventsAppendRpc = Rpc.make(WS_METHODS.eventsAppend, {
+  payload: EventsAppendInput,
+  success: Schema.Struct({ id: Schema.String }),
+  error: Schema.Union([FeedEventError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -2970,6 +2988,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubagentsUpdateRpc,
   WsSubagentsCreateRpc,
   WsFocusSubscribeRpc,
+  WsEventsSubscribeRpc,
+  WsEventsAppendRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,
