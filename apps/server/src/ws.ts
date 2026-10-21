@@ -25,6 +25,7 @@ import * as ScribeSupervisor from "./scribe/ScribeSupervisor.ts";
 import { readLayaUsage } from "./laya/layaUsage.ts";
 import { readPonytailUsage } from "./ponytail/ponytailUsage.ts";
 import { mergeByDriver, readProviderTotals } from "./ponytail/providerTotals.ts";
+import { codexPonytailHooks } from "./provider/CodexPonytailHooks.ts";
 import {
   codexHomeOf,
   isPonytailPluginEnabled,
@@ -3055,6 +3056,24 @@ const layerWsRpc = (
               totals(deployedMs),
             ]);
             return { ...usage, providersBefore, providers };
+          }),
+        [WS_METHODS.ponytailCodexHooks]: (input) =>
+          Effect.gen(function* () {
+            const instances = yield* providerInstances.listInstances;
+            const instance = instances.find(
+              (i) => String(i.instanceId) === input.instanceId && String(i.driverKind) === "codex",
+            );
+            const key = instance?.continuationIdentity.continuationKey ?? "";
+            if (!key.startsWith("codex:home:")) {
+              return { hooks: [], error: "That Codex account was not found." };
+            }
+            return yield* Effect.promise(() =>
+              codexPonytailHooks({
+                home: key.slice("codex:home:".length),
+                cwd: config.cwd,
+                approve: input.approve,
+              }),
+            );
           }),
         [WS_METHODS.taskBoardHome]: (input) =>
           allTaskBoardProjects.pipe(

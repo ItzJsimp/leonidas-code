@@ -61,6 +61,8 @@ import {
   AiosWorkspaceInitInput,
   TaskBoardHomeNews,
   LayaUsage,
+  PonytailCodexHooks,
+  PonytailCodexHooksInput,
   PonytailUsage,
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
@@ -605,6 +607,7 @@ export const WS_METHODS = {
   taskBoardHomeNews: "taskBoard.homeNews",
   layaUsage: "laya.usage",
   ponytailUsage: "ponytail.usage",
+  ponytailCodexHooks: "ponytail.codexHooks",
   focusSubscribe: "focus.subscribe",
   eventsSubscribe: "events.subscribe",
   eventsAppend: "events.append",
@@ -1838,6 +1841,12 @@ const WsPonytailUsageRpc = Rpc.make(WS_METHODS.ponytailUsage, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsPonytailCodexHooksRpc = Rpc.make(WS_METHODS.ponytailCodexHooks, {
+  payload: PonytailCodexHooksInput,
+  success: PonytailCodexHooks,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsLayaUsageRpc = Rpc.make(WS_METHODS.layaUsage, {
   payload: Schema.Struct({}),
   success: LayaUsage,
@@ -3029,6 +3038,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeNewsRpc,
   WsLayaUsageRpc,
   WsPonytailUsageRpc,
+  WsPonytailCodexHooksRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,
   WsHardwareGetLimitsRpc,

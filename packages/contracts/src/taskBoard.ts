@@ -664,6 +664,20 @@ export const PonytailUsage = Schema.Struct({
 });
 export type PonytailUsage = typeof PonytailUsage.Type;
 
+// The user's approval of Ponytail's Codex hooks. With `approve` false it only lists them.
+export const PonytailCodexHooksInput = Schema.Struct({
+  instanceId: Schema.String,
+  approve: Schema.Boolean,
+});
+export type PonytailCodexHooksInput = typeof PonytailCodexHooksInput.Type;
+export const PonytailCodexHooks = Schema.Struct({
+  hooks: Schema.Array(
+    Schema.Struct({ event: Schema.String, command: Schema.String, trusted: Schema.Boolean }),
+  ),
+  error: Schema.NullOr(Schema.String),
+});
+export type PonytailCodexHooks = typeof PonytailCodexHooks.Type;
+
 // Confirms a folder as the AIOS. `null` clears it and returns to auto-detection.
 export const TaskBoardAiosConfirmInput = Schema.Struct({
   root: Schema.NullOr(TrimmedNonEmptyString),

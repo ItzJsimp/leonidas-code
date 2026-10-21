@@ -202,6 +202,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.taskBoardHomeNews]: "workspace",
   [WS_METHODS.layaUsage]: "workspace",
   [WS_METHODS.ponytailUsage]: "workspace",
+  [WS_METHODS.ponytailCodexHooks]: "workspace",
   [WS_METHODS.taskBoardAiosConfirm]: "workspace",
   [WS_METHODS.hardwareGetInventory]: "server",
   [WS_METHODS.hardwareGetHistory]: "server",

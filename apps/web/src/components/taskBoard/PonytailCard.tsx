@@ -1,11 +1,18 @@
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId, PonytailCodexHooks, PonytailUsage } from "@t3tools/contracts";
 import { ScissorsIcon } from "lucide-react";
-
-import type { PonytailUsage } from "@t3tools/contracts";
+import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
-import { ponytailUsageQuery } from "~/state/taskBoard";
+import { ponytailCodexHooks, ponytailUsageQuery } from "~/state/taskBoard";
+import { useAtomCommand } from "~/state/use-atom-command";
+import { failureText } from "./useTaskActions.logic";
 
 const DRIVER_LABELS: Record<string, string> = {
   claudeAgent: "Claude",
@@ -70,7 +77,7 @@ function TurnCell(props: { readonly totals: Totals | undefined }) {
  */
 export function PonytailCard() {
   const environmentId = usePrimaryEnvironmentId();
-  const { data, error } = useEnvironmentQuery(
+  const { data, error, refresh } = useEnvironmentQuery(
     environmentId ? ponytailUsageQuery({ environmentId, input: {} }) : null,
   );
 
@@ -107,7 +114,7 @@ export function PonytailCard() {
           <PonytailBenefit data={data} />
           <PonytailDone data={data} />
           <PonytailCompare data={data} />
-          <PonytailWhere data={data} />
+          <PonytailWhere data={data} environmentId={environmentId} onChanged={refresh} />
           <PonytailRecent data={data} />
         </>
       )}
@@ -224,12 +231,16 @@ function PonytailCompare(props: { readonly data: PonytailUsage }) {
   );
 }
 
-function PonytailWhere(props: { readonly data: PonytailUsage }) {
+function PonytailWhere(props: {
+  readonly data: PonytailUsage;
+  readonly environmentId: EnvironmentId | null;
+  readonly onChanged: () => void;
+}) {
   const { accounts } = props.data;
   const hasClaude = accounts.some((a) => a.driver === "claudeAgent");
   const hasCodex = accounts.some((a) => a.driver === "codex");
   const missingClaude = accounts.some((a) => a.driver === "claudeAgent" && a.plugin !== "on");
-  const waiting = accounts.some((a) => a.plugin === "needs-trust");
+  const waiting = accounts.filter((a) => a.plugin === "needs-trust");
   return (
     <div className="flex flex-col gap-1.5">
       <h3 className="text-xs font-medium text-muted-foreground">Where it is on</h3>
@@ -262,12 +273,15 @@ function PonytailWhere(props: { readonly data: PonytailUsage }) {
           </>
         ) : null}
       </dl>
-      {waiting ? (
-        <p className="text-xs text-warning-foreground">
-          Codex asks you to approve a plugin&apos;s hooks. Open Codex, type /hooks, trust the two
-          Ponytail hooks, and start a new thread.
-        </p>
-      ) : null}
+      {waiting.map((account) => (
+        <CodexApproval
+          key={account.id}
+          account={account}
+          environmentId={props.environmentId}
+          showName={waiting.length > 1}
+          onChanged={props.onChanged}
+        />
+      ))}
       {missingClaude ? (
         <p className="text-xs text-muted-foreground">
           The app installs the Claude plugin about 30 seconds after an account starts. It needs
@@ -310,6 +324,73 @@ function PonytailWhere(props: { readonly data: PonytailUsage }) {
             ))}
           </ul>
         </details>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Codex runs a plugin's hooks only after the user approves them. This asks once, says what the
+ * hooks do, and applies the approval through the app so no terminal step is needed.
+ */
+function CodexApproval(props: {
+  readonly account: Account;
+  readonly environmentId: EnvironmentId | null;
+  readonly showName: boolean;
+  readonly onChanged: () => void;
+}) {
+  const run = useAtomCommand(ponytailCodexHooks, { reportFailure: false });
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<PonytailCodexHooks | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const send = async (approve: boolean) => {
+    if (!props.environmentId || busy) return;
+    setBusy(true);
+    setError(null);
+    const outcome = await run({
+      environmentId: props.environmentId,
+      input: { instanceId: props.account.id, approve },
+    });
+    setBusy(false);
+    if (outcome._tag === "Success") {
+      setResult(outcome.value);
+      setError(outcome.value.error);
+      if (approve && outcome.value.error === null) props.onChanged();
+    } else if (!isAtomCommandInterrupted(outcome)) {
+      setError(failureText(squashAtomCommandFailure(outcome), "Could not reach Codex."));
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/8 p-3 text-sm">
+      <p>
+        <span className="font-medium">
+          {props.showName ? `${props.account.name}: ` : ""}Codex needs your OK
+        </span>{" "}
+        before Ponytail can start its helpers. They load Ponytail when a chat starts, follow
+        /ponytail commands and brief helper agents. Codex asks you once for each plugin.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy} onClick={() => void send(true)}>
+          {busy ? "Working..." : "Approve Ponytail's hooks"}
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void send(false)}>
+          Show what they run
+        </Button>
+      </div>
+      {error ? <p className="text-xs text-destructive-foreground">{error}</p> : null}
+      {result && result.hooks.length > 0 ? (
+        <ul className="flex flex-col gap-1 text-xs">
+          {result.hooks.map((hook) => (
+            <li key={`${hook.event}-${hook.command}`} className="flex flex-col gap-0.5">
+              <span>
+                {hook.event} · {hook.trusted ? "approved" : "not approved yet"}
+              </span>
+              <code className="break-all text-muted-foreground">{hook.command}</code>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

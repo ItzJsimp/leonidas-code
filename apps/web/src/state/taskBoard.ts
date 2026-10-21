@@ -115,6 +115,12 @@ export const ponytailUsageQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 5 * 60_000,
 });
 
+/** Lists Ponytail's Codex hooks, or approves them when the user clicks Approve. */
+export const ponytailCodexHooks = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:ponytail:codex-hooks",
+  tag: WS_METHODS.ponytailCodexHooks,
+});
+
 export const layaUsageQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:laya:usage",
   tag: WS_METHODS.layaUsage,

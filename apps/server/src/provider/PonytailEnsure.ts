@@ -49,12 +49,17 @@ export function isPonytailPluginEnabled(env: NodeJS.ProcessEnv | undefined): boo
   return readEnabledPlugins(claudeConfigDirOf(env))?.[PONYTAIL_PLUGIN_ID] === true;
 }
 
-function run(file: string, args: readonly string[], env: NodeJS.ProcessEnv): Promise<boolean> {
+function run(
+  file: string,
+  args: readonly string[],
+  env: NodeJS.ProcessEnv,
+  shell = false,
+): Promise<boolean> {
   return new Promise((resolve) => {
     NodeChildProcess.execFile(
       file,
       [...args],
-      { env, timeout: COMMAND_TIMEOUT_MS, windowsHide: true },
+      { env, timeout: COMMAND_TIMEOUT_MS, windowsHide: true, shell },
       (error) => resolve(error === null),
     );
   });
@@ -133,16 +138,22 @@ export async function ensureCodexPonytail(input: {
   const env = { ...input.env, CODEX_HOME: home };
   if (!(await run("node", ["--version"], env))) return "skipped";
   const codex = input.binaryPath.trim() || "codex";
-  const added = await run(codex, ["plugin", "marketplace", "add", PONYTAIL_MARKETPLACE], env);
-  const installed = added && (await run(codex, ["plugin", "add", PONYTAIL_PLUGIN_ID], env));
+  // A shell runs the .cmd shim Codex uses on Windows; the arguments are fixed.
+  const added = await run(codex, ["plugin", "marketplace", "add", PONYTAIL_MARKETPLACE], env, true);
+  const installed = added && (await run(codex, ["plugin", "add", PONYTAIL_PLUGIN_ID], env, true));
   if (!installed) attempted.delete(key);
   return installed ? "installed" : "failed";
 }
+
+/** Which Codex binary serves each Codex home, so a later hook approval uses the same one. */
+const codexBinaryByHome = new Map<string, string>();
+export const codexBinaryFor = (home: string): string => codexBinaryByHome.get(home) || "codex";
 
 /** Fire and forget, delayed, from the driver. */
 export function scheduleCodexPonytail(input: {
   readonly binaryPath: string;
   readonly env: NodeJS.ProcessEnv;
 }): void {
+  codexBinaryByHome.set(codexHomeOf(input.env), input.binaryPath.trim());
   setTimeout(() => void ensureCodexPonytail(input), START_DELAY_MS).unref();
 }
