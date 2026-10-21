@@ -4,6 +4,7 @@ import { InfoIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { limitText, useLimitView } from "../../hooks/useLimitView";
 import {
+  expireElapsedWindow,
   formatResetCountdown,
   orderPlanWindows,
   planWindowLabel,
@@ -83,7 +84,8 @@ export function ProviderLimitTooltip({
           <span>{notice}</span>
         </div>
       ) : (
-        windows.map((window) => {
+        windows.map((raw) => {
+          const window = expireElapsedWindow(raw, now);
           const countdown = formatResetCountdown(window.resetsAt, now, true);
           const resetsAt = window.resetsAt ? Date.parse(window.resetsAt) : Number.NaN;
           const label = planWindowLabel(window, windows);

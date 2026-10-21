@@ -209,7 +209,7 @@ function AccountLimits({
   readonly view: LimitView;
 }) {
   const title = titleOf(account);
-  const rows = glanceLimitRows(account.limits.windows);
+  const rows = glanceLimitRows(account.limits.windows, now);
   const notice = limitsNotice(account.limits);
   return (
     <div className="flex min-w-0 items-start gap-2">

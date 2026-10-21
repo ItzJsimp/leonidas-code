@@ -5,6 +5,7 @@ import {
   accountTitle,
   contextWindowFigures,
   contextWindowTokensForModel,
+  expireElapsedWindow,
   formatResetCountdown,
   formatResetLabel,
   formatTokenCount,
@@ -171,6 +172,24 @@ describe("glance and panel helpers", () => {
       ["5-hour limit", "gemini-5h"],
       ["Weekly limit", "gemini-weekly"],
     ]);
+  });
+
+  it("reads an elapsed window as 0% used with no reset time", () => {
+    const now = Date.parse("2026-10-20T12:00:00Z");
+    const past = {
+      ...window("s", "session", "Session"),
+      usedPercent: 80,
+      resetsAt: "2026-10-20T11:00:00Z",
+    };
+    const future = { ...past, resetsAt: "2026-10-20T13:00:00Z" };
+    const expired = expireElapsedWindow(past, now);
+    expect(expired.usedPercent).toBe(0);
+    expect("resetsAt" in expired).toBe(false);
+    expect(expireElapsedWindow(future, now)).toBe(future);
+    const rows = glanceLimitRows([past, window("w", "weekly", "Weekly")], now);
+    expect(rows[0]?.window?.usedPercent).toBe(0);
+    expect(rows[0]?.window?.resetsAt).toBeUndefined();
+    expect(glanceLimitRows([past])[0]?.window?.usedPercent).toBe(80);
   });
 
   it("keeps a not-reported row instead of dropping a missing window", () => {

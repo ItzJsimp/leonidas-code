@@ -250,6 +250,19 @@ export function limitLabel(window: ServerProviderUsageWindow, style: "glance" | 
   return window.label;
 }
 
+/**
+ * A window whose reset time has passed holds the old window's numbers: the provider no
+ * longer reports it. Read it as fresh, 0% used, with no reset time left to count down.
+ */
+export function expireElapsedWindow(
+  window: ServerProviderUsageWindow,
+  now: number,
+): ServerProviderUsageWindow {
+  if (window.resetsAt === undefined || !(Date.parse(window.resetsAt) <= now)) return window;
+  const { resetsAt: _elapsed, ...rest } = window;
+  return { ...rest, usedPercent: 0 };
+}
+
 export interface GlanceLimitRow {
   readonly key: string;
   readonly label: string;
@@ -264,9 +277,12 @@ export interface GlanceLimitRow {
  */
 export function glanceLimitRows(
   windows: ReadonlyArray<ServerProviderUsageWindow>,
+  now?: number,
 ): GlanceLimitRow[] {
   if (windows.length === 0) return [];
-  const ordered = orderPlanWindows(windows);
+  const ordered = orderPlanWindows(
+    now === undefined ? windows : windows.map((window) => expireElapsedWindow(window, now)),
+  );
   const plainWeekly =
     ordered.find((window) => window.kind === "weekly" && !window.label.includes("·")) ?? null;
   // Antigravity labels every window by model group (`Gemini · 5-hour`, `Gemini · Weekly`),
