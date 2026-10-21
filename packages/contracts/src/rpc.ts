@@ -112,6 +112,7 @@ import {
   LocalModelsState,
 } from "./localModels.ts";
 import * as Schema from "effect/Schema";
+import { ReplyStylesListInput, ReplyStylesListResult } from "./replyStyle.ts";
 import {
   SavedItem,
   SavedItemError,
@@ -649,6 +650,7 @@ export const WS_METHODS = {
   projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
   projectsSearchContents: "projects.searchContents",
   projectsSearchEntries: "projects.searchEntries",
+  replyStylesList: "replyStyles.list",
   projectsWriteFile: "projects.writeFile",
   projectsMutate: "projects.mutate",
   projectsEnsureScratch: "projects.ensureScratch",
@@ -1520,6 +1522,12 @@ const WsProjectsSearchEntriesRpc = Rpc.make(WS_METHODS.projectsSearchEntries, {
   payload: ProjectSearchEntriesInput,
   success: ProjectSearchEntriesResult,
   error: Schema.Union([ProjectSearchEntriesError, EnvironmentAuthorizationError]),
+});
+
+const WsReplyStylesListRpc = Rpc.make(WS_METHODS.replyStylesList, {
+  payload: ReplyStylesListInput,
+  success: ReplyStylesListResult,
+  error: EnvironmentAuthorizationError,
 });
 
 const WsProjectsSearchContentsRpc = Rpc.make(WS_METHODS.projectsSearchContents, {
@@ -3076,6 +3084,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsCancelPromptPredictionRpc,
   WsProjectsSearchContentsRpc,
   WsProjectsSearchEntriesRpc,
+  WsReplyStylesListRpc,
   WsProjectsEnsureScratchRpc,
   WsProjectsCreateNewRpc,
   WsProjectsWriteFileRpc,

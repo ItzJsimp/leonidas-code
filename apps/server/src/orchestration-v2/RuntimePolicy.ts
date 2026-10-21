@@ -7,12 +7,16 @@ import {
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import * as ProviderInstanceRegistry from "../provider/ProviderInstanceRegistry.ts";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
+import { loadReplyStyle } from "@t3tools/provider-core/server/replyStyles";
+import * as ServerSettings from "../serverSettings.ts";
 import * as ProjectStore from "./ProjectStore.ts";
 
 /**
@@ -87,12 +91,17 @@ function providerRuntimeMode(
 export const layerFromProjectStore: Layer.Layer<
   RuntimePolicyV2,
   never,
-  ProjectStore.ProjectStoreV2 | ProviderInstanceRegistry.ProviderInstanceRegistry
+  | ProjectStore.ProjectStoreV2
+  | ProviderInstanceRegistry.ProviderInstanceRegistry
+  | ServerSettings.ServerSettingsService
+  | FileSystem.FileSystem
 > = Layer.effect(
   RuntimePolicyV2,
   Effect.gen(function* () {
     const projects = yield* ProjectStore.ProjectStoreV2;
     const providerInstances = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
+    const serverSettings = yield* ServerSettings.ServerSettingsService;
+    const fileSystem = yield* FileSystem.FileSystem;
     return RuntimePolicyV2.of({
       resolve: Effect.fn("RuntimePolicyV2.resolve")(function* (input) {
         const instance = yield* providerInstances.getInstance(input.modelSelection.instanceId);
@@ -125,10 +134,27 @@ export const layerFromProjectStore: Layer.Layer<
               }),
             ),
           ));
+        // Chat choice, then project choice, then the environment default (Leonidas).
+        const replyStyleSlug =
+          input.thread.replyStyle ??
+          (yield* serverSettings.getSettings.pipe(
+            Effect.map(
+              (settings) =>
+                resolveProjectSettings(settings, input.thread.projectId).settings.replyStyle,
+            ),
+            Effect.orElseSucceed(() => null),
+          ));
+        const replyStyle = yield* loadReplyStyle({ workspace: cwd, slug: replyStyleSlug }).pipe(
+          Effect.provideService(FileSystem.FileSystem, fileSystem),
+        );
+        if (replyStyle.notice !== undefined) {
+          yield* Effect.logWarning("Reply style preset fell back to Leonidas.", replyStyle.notice);
+        }
         return ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({
           runtimeMode: providerRuntimeMode(input.thread.runtimeMode, supportedRuntimeModes),
           interactionMode: input.thread.interactionMode,
           cwd,
+          replyStyle: replyStyle.body,
         });
       }),
     });

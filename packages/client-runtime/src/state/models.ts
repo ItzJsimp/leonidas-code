@@ -148,6 +148,7 @@ export interface EnvironmentThreadShell {
   readonly titleRegeneration?: { readonly requestId: string; readonly startedAt: string } | null;
   readonly appGoal?: OrchestrationV2ThreadShell["appGoal"];
   readonly attachedSubagent?: OrchestrationV2ThreadShell["attachedSubagent"];
+  readonly replyStyle?: OrchestrationV2ThreadShell["replyStyle"];
   readonly deletedAt: string | null;
   readonly source: OrchestrationV2ThreadShell;
 }
@@ -297,6 +298,7 @@ export function presentThreadShell(
           },
     ...(thread.appGoal === undefined ? {} : { appGoal: thread.appGoal }),
     ...(thread.attachedSubagent === undefined ? {} : { attachedSubagent: thread.attachedSubagent }),
+    ...(thread.replyStyle === undefined ? {} : { replyStyle: thread.replyStyle }),
     deletedAt: nullableIso(thread.deletedAt),
     source: thread,
   };

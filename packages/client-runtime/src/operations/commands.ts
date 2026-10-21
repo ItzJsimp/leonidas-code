@@ -140,6 +140,8 @@ export interface UpdateThreadMetadataInput extends ThreadCommandInput {
   readonly linkedPullRequest?: ThreadLinkedPullRequest | null;
   /** Attach (name) or detach (null) the subagent that receives this chat's messages. */
   readonly attachedSubagent?: string | null;
+  /** Choose (slug) or clear (null) this chat's reply style. */
+  readonly replyStyle?: string | null;
   /** Apply only while no message or run has landed on the thread. */
   readonly expectedEmpty?: boolean;
 }
@@ -581,6 +583,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
       input.regenerateTitle !== undefined ||
       input.linkedPullRequest !== undefined ||
       input.attachedSubagent !== undefined ||
+      input.replyStyle !== undefined ||
       input.limitRecovery !== undefined
     ) {
       result = yield* dispatch({
@@ -601,6 +604,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
         ...(input.attachedSubagent === undefined
           ? {}
           : { attachedSubagent: input.attachedSubagent }),
+        ...(input.replyStyle === undefined ? {} : { replyStyle: input.replyStyle }),
       });
     }
     if (input.modelSelection !== undefined) {

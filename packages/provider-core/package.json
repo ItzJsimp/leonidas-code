@@ -11,6 +11,14 @@
       "types": "./src/server/adapterDriver.ts",
       "import": "./src/server/adapterDriver.ts"
     },
+    "./server/outputStandard": {
+      "types": "./src/server/outputStandard.ts",
+      "import": "./src/server/outputStandard.ts"
+    },
+    "./server/replyStyles": {
+      "types": "./src/server/replyStyles.ts",
+      "import": "./src/server/replyStyles.ts"
+    },
     "./server/skillMentions": {
       "types": "./src/server/skillMentions.ts",
       "import": "./src/server/skillMentions.ts"

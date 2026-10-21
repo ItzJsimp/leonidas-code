@@ -126,6 +126,13 @@ export function createProjectEnvironmentAtoms<R, E>(
           (result, isCurrent) => fileMetadata.rememberEntries(input.cwd, result.entries, isCurrent),
         ),
     }),
+    /** Reply style presets for the picker: Leonidas first, broken files flagged. */
+    replyStyles: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:projects:reply-styles",
+      tag: WS_METHODS.replyStylesList,
+      staleTimeMs: 5_000,
+      execute: (input) => request(WS_METHODS.replyStylesList, input),
+    }),
     listEntries: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:projects:list-entries",
       tag: WS_METHODS.projectsListEntries,

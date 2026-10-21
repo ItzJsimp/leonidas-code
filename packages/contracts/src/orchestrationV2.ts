@@ -439,6 +439,8 @@ export const OrchestrationV2AppThread = Schema.Struct({
   appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   /** Subagent the user attached to this chat; each message routes to it until detached. */
   attachedSubagent: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  /** Reply style slug chosen for this chat; null or absent uses the project choice. */
+  replyStyle: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -2052,6 +2054,8 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   appGoal: Schema.optional(Schema.NullOr(ThreadGoal)),
   /** Subagent the user attached to this chat; each message routes to it until detached. */
   attachedSubagent: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  /** Reply style slug chosen for this chat; null or absent uses the project choice. */
+  replyStyle: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   titleRegeneration: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -2896,6 +2900,8 @@ export const OrchestrationV2Command = Schema.Union([
     linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
     /** Attach (name) or detach (null) a subagent for this chat; absent leaves it unchanged. */
     attachedSubagent: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+    /** Choose (slug) or clear (null) this chat's reply style; absent leaves it unchanged. */
+    replyStyle: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.pull-request.link"),

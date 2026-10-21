@@ -215,6 +215,8 @@ import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRe
 import * as AcpRegistryRuntimeCoordinator from "@t3tools/provider-acp-registry/server/AcpRegistryRuntimeCoordinator";
 import * as ModelManifest from "./provider/ModelManifest.ts";
 import * as ProviderLatestVersions from "@t3tools/provider-core/server/ProviderLatestVersions";
+import { LEONIDAS_REPLY_STYLE } from "@t3tools/provider-core/server/outputStandard";
+import { listReplyStyles } from "@t3tools/provider-core/server/replyStyles";
 import * as ProviderMaintenanceRunner from "./provider/providerMaintenanceRunner.ts";
 import * as ProviderAuthService from "./provider/ProviderAuthService.ts";
 import { makeProviderInstallation } from "./provider/providerInstallation.ts";
@@ -2839,6 +2841,10 @@ const layerWsRpc = (
                   cause,
                 }),
             ),
+          ),
+        [WS_METHODS.replyStylesList]: (input) =>
+          listReplyStyles(input.cwd).pipe(
+            Effect.map((presets) => ({ presets, leonidasBody: LEONIDAS_REPLY_STYLE })),
           ),
         [WS_METHODS.projectsSearchContents]: (input) =>
           workspaceEntries.searchContents(input).pipe(

@@ -1,3 +1,8 @@
+// @effect-diagnostics nodeBuiltinImport:off - synchronous node APIs set up fixtures.
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
   type ModelSelection,
@@ -16,6 +21,8 @@ import * as Stream from "effect/Stream";
 
 import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
 import * as ProviderInstanceRegistry from "../provider/ProviderInstanceRegistry.ts";
+import { LEONIDAS_REPLY_STYLE } from "@t3tools/provider-core/server/outputStandard";
+import * as ServerSettings from "../serverSettings.ts";
 import * as ProjectStore from "./ProjectStore.ts";
 import * as RuntimePolicy from "./RuntimePolicy.ts";
 
@@ -30,6 +37,7 @@ function makeThread(input: {
   readonly now: DateTime.Utc;
   readonly worktreePath: string | null;
   readonly runtimeMode?: RuntimeMode;
+  readonly replyStyle?: string;
 }): OrchestrationV2AppThread {
   const threadId = ThreadId.make("thread:runtime-policy");
   return {
@@ -44,6 +52,7 @@ function makeThread(input: {
     interactionMode: "default",
     branch: null,
     worktreePath: input.worktreePath,
+    ...(input.replyStyle === undefined ? {} : { replyStyle: input.replyStyle }),
     activeProviderThreadId: null,
     lineage: {
       parentThreadId: null,
@@ -77,6 +86,10 @@ const providerInstanceFor = (instanceId: ProviderInstanceId) =>
   }) as ProviderInstance;
 
 const layerTest = RuntimePolicy.layerFromProjectStore.pipe(
+  Layer.provide(
+    ServerSettings.layerTest({ projectSettingsOverrides: { [projectId]: { replyStyle: "team" } } }),
+  ),
+  Layer.provide(NodeServices.layer),
   Layer.provide(
     Layer.succeed(ProviderInstanceRegistry.ProviderInstanceRegistry, {
       getInstance: (instanceId) => Effect.succeed(providerInstanceFor(instanceId)),
@@ -151,6 +164,33 @@ it.layer(layerTest)("RuntimePolicyV2", (it) => {
       assert.equal(yield* modeFor(grokInstanceId, "full-access"), "full-access");
       // A provider that advertises no restriction runs every mode as stored.
       assert.equal(yield* modeFor(providerInstanceId, "auto-accept-edits"), "auto-accept-edits");
+    }),
+  );
+
+  it.effect("picks the chat reply style, then the project one, then Leonidas", () =>
+    Effect.gen(function* () {
+      const policy = yield* RuntimePolicy.RuntimePolicyV2;
+      const now = yield* DateTime.now;
+      const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "runtime-policy-"));
+      const dir = NodePath.join(root, ".agents/reply-styles");
+      NodeFS.mkdirSync(dir, { recursive: true });
+      NodeFS.writeFileSync(NodePath.join(dir, "chat.md"), "---\nname: Chat\n---\nChat style.");
+      NodeFS.writeFileSync(NodePath.join(dir, "team.md"), "---\nname: Team\n---\nTeam style.");
+      const styleFor = (replyStyle?: string) =>
+        policy
+          .resolve({
+            thread: makeThread({
+              now,
+              worktreePath: root,
+              ...(replyStyle === undefined ? {} : { replyStyle }),
+            }),
+            modelSelection,
+          })
+          .pipe(Effect.map((resolved) => resolved.replyStyle));
+
+      assert.equal(yield* styleFor("chat"), "Chat style.");
+      assert.equal(yield* styleFor(), "Team style.");
+      assert.equal(yield* styleFor("gone"), LEONIDAS_REPLY_STYLE);
     }),
   );
 });

@@ -3405,15 +3405,20 @@ export const make = Effect.fn("OpenCode2Adapter.make")(function* (instanceId: Pr
             Effect.timeout(INVENTORY_TIMEOUT),
             Effect.as(true),
             Effect.catchCause((cause) =>
-              Effect.logWarning("Could not add Leonidas Code's MCP server to OpenCode.", cause).pipe(
-                Effect.as(false),
-              ),
+              Effect.logWarning(
+                "Could not add Leonidas Code's MCP server to OpenCode.",
+                cause,
+              ).pipe(Effect.as(false)),
             ),
           );
         if (added) state.mcp = wanted;
       }
       const instructions = [
-        buildRuntimeInstructions({ harness: "OpenCode", model: turnInput.modelSelection.model }),
+        buildRuntimeInstructions({
+          harness: "OpenCode",
+          model: turnInput.modelSelection.model,
+          replyStyle: turnInput.runtimePolicy.replyStyle,
+        }),
         t3OrchestrationSystemPrompt(state.mcp !== undefined),
       ]
         .filter((part) => part !== undefined && part.length > 0)

@@ -15,6 +15,7 @@ import { assert, describe, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as ServerSettings from "../../serverSettings.ts";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
@@ -437,6 +438,8 @@ describe("Grok launch permission mode", () => {
                 get: () => Effect.die("the thread has a worktree"),
               }),
             ),
+            Layer.provide(ServerSettings.layerTest()),
+            Layer.provide(NodeServices.layer),
             Layer.provide(
               Layer.mock(ProviderInstanceRegistry.ProviderInstanceRegistry)({
                 getInstance: () =>

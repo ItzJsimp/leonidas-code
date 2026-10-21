@@ -1057,6 +1057,8 @@ export function makeClaudeQueryOptions(input: {
   readonly resume: boolean;
   readonly resumeSessionAt?: string;
   readonly cwd: string | null;
+  /** Reply style body from the runtime policy; absent means Leonidas. */
+  readonly replyStyle?: string | undefined;
   /**
    * The attachments dir grant lets the agent Read/copy pasted images at the
    * paths appended to the turn text, without an approval prompt. It is a leaf
@@ -1168,6 +1170,7 @@ export function makeClaudeQueryOptions(input: {
               buildRuntimeInstructions({
                 harness: "Claude Code",
                 ponytailPlugin: isPonytailPluginEnabled(input.environment),
+                replyStyle: input.replyStyle,
               }) + (input.mcpServers === undefined ? "" : T3_CODE_ORCHESTRATION_INSTRUCTIONS),
           },
         }
@@ -8639,6 +8642,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             resume: shouldResume,
             ...(resumeSessionAt === undefined ? {} : { resumeSessionAt }),
             cwd: turnInput.runtimePolicy.cwd,
+            replyStyle: turnInput.runtimePolicy.replyStyle,
             attachmentsDir,
             settings: adapterOptions.settings,
             environment: claudeTurnEnvironment(adapterOptions.environment, {
