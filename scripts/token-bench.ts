@@ -3,10 +3,10 @@
 // Usage: node scripts/token-bench.ts            prints the plan, spends nothing
 //        node scripts/token-bench.ts --run [--repeat 2] [--model <id>] [--out <file.json>]
 // --run starts real `claude -p` sessions in temp folders and spends subscription tokens.
-import { spawnSync } from "node:child_process";
-import * as NodeFS from "node:fs";
-import * as NodeOS from "node:os";
-import * as NodePath from "node:path";
+import { Console, DateTime, Effect, FileSystem, Path, Schema, Stream } from "effect";
+import * as ChildProcess from "effect/process/ChildProcess";
+import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 
 import { EFFICIENT_AGENT_RULES } from "../packages/provider-core/src/server/efficientAgentRules.ts";
 
@@ -30,6 +30,12 @@ export interface RunResult {
   readonly costUsd: number;
   readonly turns: number;
   readonly durationMs: number;
+}
+
+const services = Effect.provide(NodeServices.layer);
+
+function log(line: string) {
+  Effect.runSync(Console.log(line));
 }
 
 const asNumber = (value: unknown) =>
@@ -92,74 +98,97 @@ export function summarize(
   }));
 }
 
-function runOne(variant: Variant, task: BenchTask, modelOverride?: string): RunResult {
-  const dir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "token-bench-"));
-  try {
-    for (const [name, body] of Object.entries(task.files)) {
-      NodeFS.writeFileSync(NodePath.join(dir, name), body);
-    }
-    const model = variant.model ?? modelOverride;
-    const started = Date.now();
-    // The prompt goes in on stdin and the rule in a file, so the Windows shell never parses either.
-    const rulesFile = NodePath.join(dir, ".rules.txt");
-    if (variant.appendRules) NodeFS.writeFileSync(rulesFile, EFFICIENT_AGENT_RULES);
-    const run = spawnSync(
-      "claude",
-      [
-        "-p",
-        "--output-format json",
-        "--permission-mode bypassPermissions",
-        "--no-session-persistence",
-        "--setting-sources project",
-        ...(variant.appendRules ? ["--append-system-prompt-file", JSON.stringify(rulesFile)] : []),
-        ...(model ? ["--model", model] : []),
-      ],
-      { cwd: dir, input: task.prompt, encoding: "utf8", timeout: 600_000, shell: true },
-    );
-    const parsed = parseClaudeResult(run.stdout ?? "");
-    const check = spawnSync(task.check, { cwd: dir, shell: true, timeout: 60_000 });
-    return {
-      variant: variant.id,
-      task: task.id,
-      passed: check.status === 0,
-      inputTokens: parsed?.inputTokens ?? 0,
-      outputTokens: parsed?.outputTokens ?? 0,
-      costUsd: parsed?.costUsd ?? 0,
-      turns: parsed?.turns ?? 0,
-      durationMs: parsed?.durationMs ?? Date.now() - started,
-    };
-  } finally {
-    NodeFS.rmSync(dir, { recursive: true, force: true });
-  }
+async function runOne(
+  variant: Variant,
+  task: BenchTask,
+  modelOverride?: string,
+): Promise<RunResult> {
+  return await Effect.runPromise(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const paths = yield* Path.Path;
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+      const dir = yield* fs.makeTempDirectoryScoped({ prefix: "token-bench-" });
+      for (const [name, body] of Object.entries(task.files)) {
+        const target = paths.join(dir, name);
+        yield* fs.makeDirectory(paths.dirname(target), { recursive: true });
+        yield* fs.writeFileString(target, body);
+      }
+      const model = variant.model ?? modelOverride;
+      const started = DateTime.toEpochMillis(DateTime.nowUnsafe());
+      // Keep prompt data on stdin and quote the path passed through the Windows shell.
+      const rulesFile = paths.join(dir, ".rules.txt");
+      if (variant.appendRules) yield* fs.writeFileString(rulesFile, EFFICIENT_AGENT_RULES);
+      const command = ChildProcess.make(
+        "claude",
+        [
+          "-p",
+          "--output-format",
+          "json",
+          "--permission-mode bypassPermissions",
+          "--no-session-persistence",
+          "--setting-sources project",
+          ...(variant.appendRules
+            ? ["--append-system-prompt-file", `"${rulesFile.replaceAll('"', '\\"')}"`]
+            : []),
+          ...(model ? ["--model", model] : []),
+        ],
+        {
+          cwd: dir,
+          stdin: Stream.encodeText(Stream.make(task.prompt)),
+          extendEnv: true,
+          shell: true,
+        },
+      );
+      const output = yield* spawner.string(command).pipe(Effect.timeout(600_000));
+      const parsed = parseClaudeResult(output);
+      const checkCode = yield* spawner
+        .exitCode(ChildProcess.make(task.check, [], { cwd: dir, extendEnv: true, shell: true }))
+        .pipe(Effect.timeout(60_000));
+      return {
+        variant: variant.id,
+        task: task.id,
+        passed: Number(checkCode) === 0,
+        inputTokens: parsed?.inputTokens ?? 0,
+        outputTokens: parsed?.outputTokens ?? 0,
+        costUsd: parsed?.costUsd ?? 0,
+        turns: parsed?.turns ?? 0,
+        durationMs: parsed?.durationMs ?? DateTime.toEpochMillis(DateTime.nowUnsafe()) - started,
+      };
+    }).pipe(Effect.scoped, services),
+  );
 }
 
 if (import.meta.main) {
+  const path = Effect.runSync(Path.Path.pipe(Effect.provide(NodeServices.layer)));
+  const fileSystem = Effect.runSync(FileSystem.FileSystem.pipe(Effect.provide(NodeServices.layer)));
   const args = process.argv.slice(2);
   const flag = (name: string) => {
     const i = args.indexOf(name);
     return i === -1 ? undefined : args[i + 1];
   };
-  const suite = JSON.parse(
-    NodeFS.readFileSync(new URL("./token-bench/suite.json", import.meta.url), "utf8"),
+  const suitePath = await Effect.runPromise(
+    path.fromFileUrl(new URL("./token-bench/suite.json", import.meta.url)).pipe(services),
+  );
+  const suite = Schema.decodeSync(Schema.fromJsonString(Schema.Unknown))(
+    await Effect.runPromise(fileSystem.readFileString(suitePath)),
   ) as { variants: Variant[]; tasks: BenchTask[] };
   const repeat = Number(flag("--repeat") ?? 1);
   if (!args.includes("--run")) {
     const total = suite.variants.length * suite.tasks.length * repeat;
-    console.log(
+    log(
       `Plan: ${suite.variants.length} variants x ${suite.tasks.length} tasks x ${repeat} = ${total} real claude sessions.`,
     );
-    console.log("Nothing run. Add --run to spend tokens.");
+    log("Nothing run. Add --run to spend tokens.");
   } else {
     const results: RunResult[] = [];
     for (let i = 0; i < repeat; i++)
       for (const task of suite.tasks)
         for (const variant of suite.variants) {
-          const result = runOne(variant, task, flag("--model"));
+          const result = await runOne(variant, task, flag("--model"));
           results.push(result);
           const tokens = result.inputTokens + result.outputTokens;
-          console.log(
-            `${variant.id} ${task.id} ${result.passed ? "pass" : "FAIL"} ${tokens} tokens`,
-          );
+          log(`${variant.id} ${task.id} ${result.passed ? "pass" : "FAIL"} ${tokens} tokens`);
         }
     for (const s of summarize(results)) {
       const delta =
@@ -167,11 +196,12 @@ if (import.meta.main) {
           ? ""
           : ` (${(s.tokensVsBaseline * 100).toFixed(0)}% tokens vs baseline)`;
       const pass = (s.passRate * 100).toFixed(0);
-      console.log(
+      log(
         `${s.variant}: ${pass}% pass, ${Math.round(s.meanTokens)} mean tokens, $${s.meanCostUsd.toFixed(3)}${delta}`,
       );
     }
     const out = flag("--out");
-    if (out) NodeFS.writeFileSync(out, JSON.stringify(results, null, 2));
+    if (out)
+      await Effect.runPromise(fileSystem.writeFileString(out, JSON.stringify(results, null, 2)));
   }
 }

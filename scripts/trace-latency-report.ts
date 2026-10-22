@@ -1,14 +1,23 @@
 // Read-only latency report over server trace NDJSON files (live or isolated).
 // Usage: node scripts/trace-latency-report.ts [--dir <logs dir>] [--top 40] [--json <out>]
-import * as NodeFS from "node:fs";
+import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem";
+import * as NodePathLayer from "@effect/platform-node/NodePath";
+import * as Console from "effect/Console";
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
+import * as Stream from "effect/Stream";
 import * as NodeOS from "node:os";
-import * as NodePath from "node:path";
-import * as NodeReadline from "node:readline";
 import * as NodeUtil from "node:util";
+
+const fs = await Effect.runPromise(Effect.provide(FileSystem.FileSystem, NodeFileSystem.layer));
+const path = Effect.runSync(Effect.provide(Path.Path, NodePathLayer.layer));
+const log = (...args: ReadonlyArray<unknown>) => Effect.runSync(Console.log(...args));
 
 const { values } = NodeUtil.parseArgs({
   options: {
-    dir: { type: "string", default: NodePath.join(NodeOS.homedir(), ".t3", "userdata", "logs") },
+    dir: { type: "string", default: path.join(NodeOS.homedir(), ".t3", "userdata", "logs") },
     prefix: { type: "string", default: "server.trace.ndjson" },
     top: { type: "string", default: "40" },
     json: { type: "string" },
@@ -49,13 +58,15 @@ const add = (map: Map<string, Stat>, key: string, ms: number, failed: boolean) =
   if (failed) stat.errors += 1;
 };
 
-const files = NodeFS.readdirSync(values.dir)
+const files = (await Effect.runPromise(fs.readDirectory(values.dir)))
   .filter((name) => name.startsWith(values.prefix))
-  .map((name) => NodePath.join(values.dir, name));
+  .map((name) => path.join(values.dir, name));
 
 for (const file of files) {
-  bytes += NodeFS.statSync(file).size;
-  const reader = NodeReadline.createInterface({ input: NodeFS.createReadStream(file) });
+  bytes += Number((await Effect.runPromise(fs.stat(file))).size);
+  const reader = Stream.toAsyncIterable(
+    fs.stream(file).pipe(Stream.decodeText(), Stream.splitLines),
+  );
   for await (const line of reader) {
     lines += 1;
     let record: {
@@ -132,11 +143,11 @@ const spans = summarize(bySpan).filter((row) => !excluded.test(row.name));
 const sql = summarize(bySql);
 const fmt = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1));
 const table = (title: string, rows: ReturnType<typeof summarize>) => {
-  console.log(`\n## ${title}`);
+  log(`\n## ${title}`);
   // Percentiles cover written spans only; `fast` spans were under the sink threshold.
-  console.log("count  /min    p50     p95     p99     max   total_s  err   fast  name");
+  log("count  /min    p50     p95     p99     max   total_s  err   fast  name");
   for (const r of rows.slice(0, top)) {
-    console.log(
+    log(
       [
         String(r.count).padStart(5),
         fmt(r.perMin).padStart(5),
@@ -153,7 +164,7 @@ const table = (title: string, rows: ReturnType<typeof summarize>) => {
   }
 };
 
-console.log(
+log(
   `files=${files.length} MB=${(bytes / 1e6).toFixed(1)} spans=${lines} window_min=${windowMin.toFixed(1)} MB_per_min=${(bytes / 1e6 / windowMin).toFixed(2)}`,
 );
 table(
@@ -193,27 +204,31 @@ for (const focus of values.focus.split(",").filter(Boolean)) {
   );
 }
 if (values.json) {
-  NodeFS.writeFileSync(values.json, JSON.stringify({ windowMin, bytes, spans, sql }, null, 2));
+  await Effect.runPromise(
+    fs.writeFileString(values.json, JSON.stringify({ windowMin, bytes, spans, sql }, null, 2)),
+  );
 }
 if (values.snapshot) {
-  NodeFS.mkdirSync(values.snapshot, { recursive: true });
-  const previousName = NodeFS.readdirSync(values.snapshot)
+  await Effect.runPromise(fs.makeDirectory(values.snapshot, { recursive: true }));
+  const previousName = (await Effect.runPromise(fs.readDirectory(values.snapshot)))
     .filter((name) => name.endsWith(".json"))
     .toSorted()
     .at(-1);
   const snapshot = {
-    takenAt: new Date().toISOString(),
+    takenAt: DateTime.formatIso(DateTime.nowUnsafe()),
     windowMin,
     mbPerMin: bytes / 1e6 / windowMin,
     spans: spans.filter((row) => row.count >= 20),
   };
-  NodeFS.writeFileSync(
-    NodePath.join(values.snapshot, `${snapshot.takenAt.replaceAll(":", "-")}.json`),
-    JSON.stringify(snapshot),
+  await Effect.runPromise(
+    fs.writeFileString(
+      path.join(values.snapshot, `${snapshot.takenAt.replaceAll(":", "-")}.json`),
+      JSON.stringify(snapshot),
+    ),
   );
   if (previousName !== undefined) {
     const previous = JSON.parse(
-      NodeFS.readFileSync(NodePath.join(values.snapshot, previousName), "utf8"),
+      await Effect.runPromise(fs.readFileString(path.join(values.snapshot, previousName))),
     ) as typeof snapshot;
     const before = new Map(previous.spans.map((row) => [row.name, row]));
     // A move counts when p95 or rate changes by half and by a real amount.
@@ -228,12 +243,12 @@ if (values.snapshot) {
         `${p95Moved ? "SLOWER" : p95Fell ? "FASTER" : "RATE"} ${row.name}: p95 ${fmt(old.p95)} -> ${fmt(row.p95)} ms, ${fmt(old.perMin)} -> ${fmt(row.perMin)} /min`,
       ];
     });
-    console.log(`
+    log(`
 ## Changes since ${previousName}`);
-    console.log(
+    log(
       `trace MB/min ${previous.mbPerMin.toFixed(2)} -> ${snapshot.mbPerMin.toFixed(2)}, window ${previous.windowMin.toFixed(0)} -> ${windowMin.toFixed(0)} min`,
     );
-    for (const line of moved.slice(0, top)) console.log(line);
-    if (moved.length === 0) console.log("No span moved by more than the thresholds.");
+    for (const line of moved.slice(0, top)) log(line);
+    if (moved.length === 0) log("No span moved by more than the thresholds.");
   }
 }
