@@ -1,7 +1,8 @@
+// @effect-diagnostics nodeBuiltinImport:off - tests use real files in temp folders.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 
 import { lintLibrary, MANIFEST_PATH, type LibraryItem } from "./lint-library.ts";
 

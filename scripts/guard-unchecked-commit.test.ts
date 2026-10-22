@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 
 // @ts-expect-error The guard is a plain .mjs script with no type declarations.
 import { findBlockedFiles } from "./guard-unchecked-commit.mjs";

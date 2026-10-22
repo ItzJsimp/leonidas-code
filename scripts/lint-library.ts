@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalConsole:off - CLI script reads files synchronously and prints plain lines.
 // Checks the curated library in .agents/library.json: every item has an allowed
 // license that matches its SKILL.md, and every upstream item ships its LICENSE
 // file and a credit line.
