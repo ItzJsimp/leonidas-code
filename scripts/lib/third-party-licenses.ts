@@ -670,7 +670,7 @@ async function readPackageNoticeText(packageRoot: string): Promise<string | null
       directoryEntries.map(async (entry) => {
         const relativePath = NodePath.join(directory, entry.name);
         if (entry.isFile() && isNoticeTextFile(entry.name)) {
-          noticeFiles.push(relativePath);
+          noticeFiles.push(relativePath.replaceAll(NodePath.sep, "/"));
           return;
         }
         if (
