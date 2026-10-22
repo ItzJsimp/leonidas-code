@@ -3,6 +3,7 @@ import {
   createContext,
   type ReactNode,
   use,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -12,9 +13,13 @@ import {
 import { observeResize } from "~/lib/observeResize";
 import { selectPaneCount, useSplitLayoutStore } from "~/splitLayoutStore";
 
+import { CommandCenterForward } from "./CommandCenterForward";
 import { LeftRail } from "./LeftRail";
 import { RightRail } from "./RightRail";
+import { HomeCardsOutlet } from "./SlotOutlet";
+import type { ThreadPlace } from "./swapKeys";
 import { HEADER_HEIGHT, TwoStateHeader } from "./TwoStateHeader";
+import { useTwoStateStore } from "./twoStateStore";
 
 export const LEFT_RAIL_WIDTH = 272;
 export const RIGHT_RAIL_WIDTH = 304;
@@ -31,10 +36,23 @@ export const useCodeForward = () => use(CodeForwardContext);
  * State 2: the chat in the center and the Command Center in the side rails. A resize observer,
  * not a container query: a query container would anchor the header's fixed controls to it.
  */
-export function CodeForward({ children }: { readonly children: ReactNode }) {
+export function CodeForward({
+  place,
+  children,
+}: {
+  /** The open chat, so the swap key can return to it. Null for a draft. */
+  readonly place: ThreadPlace | null;
+  readonly children: ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [fits, setFits] = useState(false);
   const splitActive = useSplitLayoutStore((state) => selectPaneCount(state) > 1);
+  const split = useTwoStateStore((state) => state.split) && !splitActive;
+  const rememberThread = useTwoStateStore((state) => state.rememberThread);
+
+  useEffect(() => {
+    if (place) rememberThread(place);
+  }, [place, rememberThread]);
 
   useLayoutEffect(() => {
     const element = ref.current;
@@ -44,7 +62,7 @@ export function CodeForward({ children }: { readonly children: ReactNode }) {
     });
   }, []);
 
-  const rails = fits && !splitActive;
+  const rails = fits && !splitActive && !split;
   const value = useMemo(() => ({ rails }), [rails]);
   // The chat header's fixed controls sit below the band and, with rails, end at the right rail.
   const style = {
@@ -57,6 +75,7 @@ export function CodeForward({ children }: { readonly children: ReactNode }) {
         <TwoStateHeader />
         {/* The thread view sizes itself to the window; here it fills the row under the band. */}
         <div ref={ref} className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
+          {split ? <CommandCenterPane /> : null}
           {rails ? (
             <Rail side="left" label="Your AIOS">
               <LeftRail />
@@ -95,5 +114,22 @@ function Rail({
     >
       <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto p-3">{children}</div>
     </aside>
+  );
+}
+
+const CC_CONTEXT = { forward: "cc" } as const;
+
+/** The left half of the 50/50 split: the Command Center as it looks when forward. */
+function CommandCenterPane() {
+  return (
+    <section
+      aria-label="Command Center"
+      className="min-h-0 basis-1/2 overflow-y-auto border-r border-border/60"
+    >
+      <div className="grid gap-6 p-6">
+        <CommandCenterForward />
+        <HomeCardsOutlet context={CC_CONTEXT} />
+      </div>
+    </section>
   );
 }

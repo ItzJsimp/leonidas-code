@@ -8,9 +8,12 @@ import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWork
 import { useConnectedUsageAccounts } from "~/hooks/useConnectedUsageAccounts";
 import { useNowMinute } from "~/hooks/useNowMinute";
 
+import { isElectron } from "~/env";
+
 import { builtInStats, claudeFiveHour, type HeaderStat } from "./headerStats";
 import { slotRegistry } from "./SlotOutlet";
 import { entriesFor, type SlotContext, type StatSlotEntry } from "./slots";
+import { swapKeyLabel } from "./swapKeys";
 import { Tip } from "./Tip";
 import { useTwoStateCounts } from "./useTwoStateData";
 
@@ -40,6 +43,9 @@ export function TwoStateHeader({ leading }: { readonly leading?: ReactNode }) {
           >
             <LayoutDashboardIcon aria-hidden className="size-3.5" />
             <span className="hidden sm:inline">Command Center</span>
+            <kbd className="hidden rounded-sm border border-border/60 px-1 font-mono text-3xs text-muted-foreground lg:inline">
+              {swapKeyLabel(isElectron)}
+            </kbd>
           </Link>
         </Tip>
       </div>

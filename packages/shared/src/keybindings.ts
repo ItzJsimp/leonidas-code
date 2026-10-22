@@ -150,6 +150,11 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+u", command: "usage.open", when: "!terminalFocus" },
   { key: "mod+,", command: "settings.open", when: "!terminalFocus" },
   { key: "mod+alt+t", command: "tasks.open", when: "!terminalFocus" },
+  // Literal ctrl: Cmd+Tab is the macOS app switcher. Browsers keep Ctrl+Tab, so the web uses Ctrl+Shift+.
+  { key: "ctrl+tab", command: "layout.swap" },
+  { key: "ctrl+shift+.", command: "layout.swap" },
+  // Terminals use Ctrl+Backslash to quit a program.
+  { key: "mod+\\", command: "layout.split", when: "!terminalFocus" },
   { key: "mod+alt+a", command: "theme.select", when: "!terminalFocus" },
   { key: "mod+alt+shift+a", command: "appearance.cycle", when: "!terminalFocus" },
   { key: "mod+alt+shift+t", command: "themeEditor.toggle" },

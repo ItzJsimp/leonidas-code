@@ -6,6 +6,7 @@ import { useEffect, useMemo } from "react";
 import { isCommandPaletteOpen } from "../commandPaletteBus";
 import { ThreadRouteView } from "../components/ThreadRouteView";
 import { CodeForward } from "../components/twoState/CodeForward";
+import { TwoStateKeys } from "../components/twoState/TwoStateKeys";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { useClientSettings, useLegacySidebarEnabled } from "../hooks/useSettings";
 import { openCommandPalette } from "../commandPaletteBus";
@@ -236,8 +237,9 @@ function ChatRouteLayout() {
   return (
     <>
       <ChatRouteGlobalShortcuts />
+      <TwoStateKeys inChat={threadTarget !== null} />
       {threadTarget ? (
-        <CodeForward>
+        <CodeForward place={threadTarget.kind === "server" ? threadTarget.threadRef : null}>
           <ThreadRouteView target={threadTarget} />
         </CodeForward>
       ) : (

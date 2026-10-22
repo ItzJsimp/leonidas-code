@@ -20,9 +20,9 @@ export function CommandCenterForward() {
   return (
     <div className="grid gap-5">
       <div>
-        <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
+        <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight">
           {greetingFor(new Date())}
-        </h1>
+        </h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           {statusLine(counts).map((part, index) => (
             <span
