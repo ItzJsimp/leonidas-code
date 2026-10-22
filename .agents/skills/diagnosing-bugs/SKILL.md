@@ -11,6 +11,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-14
 source: "https://github.com/mattpocock/skills (skills/engineering/diagnosing-bugs, MIT, commit 49dd158)"
+license: MIT
 ---
 
 # Diagnosing Bugs
@@ -146,3 +147,5 @@ Required before declaring done:
 - [ ] All `[DEBUG-...]` instrumentation removed (`grep` the prefix)
 - [ ] Throwaway prototypes deleted (or moved to a clearly-marked debug location)
 - [ ] The hypothesis that turned out correct is stated in the commit / PR message, so the next debugger learns
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

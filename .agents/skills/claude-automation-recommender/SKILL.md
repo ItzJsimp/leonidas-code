@@ -5,6 +5,7 @@ category: agents
 scope: structural
 distribution: core
 tools: Read, Glob, Grep, Bash
+license: MIT
 ---
 
 # Claude Automation Recommender

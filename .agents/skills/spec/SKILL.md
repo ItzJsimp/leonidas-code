@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /spec: write the spec
@@ -40,3 +41,5 @@ Engine: `to-spec`. Step 1 (`/grill-me`) comes before it. Added from Addy Osmani'
 ## Done when
 
 - The spec card exists with every section above and the user's explicit approval recorded.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

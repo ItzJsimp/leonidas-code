@@ -13,6 +13,7 @@ owner: "shared"
 verified: "2026-10-04"
 source: "https://github.com/coreyhaines31/marketingskills (skills/marketing-plan)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Marketing Plan
@@ -318,3 +319,5 @@ That said: don't pad. Every section should be **dense, not bloated**. If a secti
 This plan is written for founders who are sharp, busy, and skeptical of marketing-speak. Write like a thoughtful colleague, not a deck-slide-writer. No jargon for jargon's sake. Direct claims, named tradeoffs, explicit assumptions. When unsure, name the open question rather than guessing.
 
 The exec summary should be short enough to read in 60 seconds. The rest should reward deep reading.
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

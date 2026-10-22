@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-14
 source: "https://github.com/mattpocock/skills (skills/engineering/to-spec, MIT, commit 49dd158)"
+license: MIT
 ---
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
@@ -83,3 +84,5 @@ A description of the things that are out of scope for this spec.
 Any further notes about the feature.
 
 </spec-template>
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

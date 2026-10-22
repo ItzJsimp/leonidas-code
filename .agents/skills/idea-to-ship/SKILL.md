@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # Idea to Ship
@@ -48,3 +49,5 @@ The conductor. It holds no phase instructions: each phase command holds its own.
 
 - Each phase that ran has met its exit condition, or the report names the phase that stopped and why.
 - Both gates have an explicit user answer recorded on the spec card.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

@@ -13,6 +13,7 @@ verified: 2026-10-12
 source: "https://github.com/effect-ts/skills (skills/effect-ts, MIT, commit 155c50c)"
 category: code
 disable-model-invocation: true
+license: MIT
 ---
 
 # Step 1: Install effect
@@ -45,3 +46,5 @@ Before writing any Effect code, first read `node_modules/effect/AGENTS.md`
 If you need to learn more about particular Effect apis and concepts that the
 guide doesn't cover, search through the source code in `node_modules/effect/src`.
 ```
+
+Credit: adapted from [effect-ts/skills](https://github.com/effect-ts/skills) (MIT). See [LICENSE](LICENSE).

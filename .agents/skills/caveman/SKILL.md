@@ -13,6 +13,7 @@ disable-model-invocation: true
 owner: "shared"
 verified: "2026-10-04"
 source: "https://github.com/juliusbrussee/caveman (skills/caveman)"
+license: Apache-2.0
 ---
 
 # caveman
@@ -95,3 +96,5 @@ Plain prose, then resume:
 2. Last sentence recaps or offers help? Delete.
 3. Every not/never/no/only present? Every code span, path, number, error verbatim?
 4. Any sentence with two readings? Make it a full sentence.
+
+Credit: adapted from [juliusbrussee/caveman](https://github.com/juliusbrussee/caveman) (Apache-2.0). Changed from the upstream: Leonidas frontmatter and edits for the AIOS. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

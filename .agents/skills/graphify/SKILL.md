@@ -14,6 +14,7 @@ verified: 2026-08-26
 related: ["context-budget", "context-engineering", "improve-codebase-architecture", "research"]
 generated: false
 disable-model-invocation: true
+license: Apache-2.0
 ---
 
 # /graphify
@@ -779,3 +780,5 @@ If vertical scrolling breaks in PowerShell after running graphify, this is cause
 - Always show token cost in the report.
 - Never hide cohesion scores behind symbols - show the raw number.
 - Never run HTML viz on a graph with more than 5,000 nodes without warning the user.
+
+Credit: adapted from [safishamsi/graphify](https://github.com/safishamsi/graphify) (Apache-2.0). Changed from the upstream: Leonidas frontmatter and edits for the AIOS. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

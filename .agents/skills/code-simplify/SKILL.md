@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /code-simplify
@@ -29,3 +30,5 @@ A short entry point to `code-simplification`.
 ## Done when
 
 - Behavior is the same (tests pass), and each change made the code shorter or clearer.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

@@ -4,6 +4,7 @@ description: "Audit and fix web accessibility: WCAG 2.2 AA, keyboard use, screen
 category: design
 scope: structural
 distribution: core
+license: MIT
 ---
 
 # Web Accessibility & WCAG Compliance

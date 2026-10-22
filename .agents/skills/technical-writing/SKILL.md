@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-08-21
 related: ["skills-index", "master-instructions", "guide"]
 generated: false
+license: MIT
 ---
 
 # NBJ Write Clearly

@@ -148,3 +148,5 @@ When shell access is unavailable, hand-place architecture SVG into `assets/templ
 ## Output
 
 Return the checked HTML path, diagram type, validation summary, specification/artifact receipt, browser-evidence status, and truthful visual-review status. Do not claim success for a non-zero command or claim visual inspection you did not perform.
+
+Credit: Archify by tt-a1i, based on Cocoon AI's architecture-diagram-generator (MIT). See [LICENSE](LICENSE).

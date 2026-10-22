@@ -5,6 +5,7 @@ category: agents
 scope: structural
 distribution: core
 disable-model-invocation: true
+license: MIT
 ---
 
 # Subagent builder

@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /build: implement slices
@@ -44,3 +45,5 @@ Engine: `implement` (it uses `tdd`). Added from Addy Osmani's `/build auto` and 
 ## Done when
 
 - Every slice in scope has a passing test and its own commit, or the report names the stop rule that fired.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

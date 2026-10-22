@@ -13,6 +13,7 @@ distribution: template
 verified: 2026-09-23
 related: ["ask-leonidas", "implement", "chat-sync", "telemetry-analyst"]
 generated: false
+license: MIT
 ---
 
 # Windows Toast Notification Skill

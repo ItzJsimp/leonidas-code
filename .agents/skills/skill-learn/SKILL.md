@@ -5,6 +5,7 @@ disable-model-invocation: true
 category: system
 scope: "structural"
 distribution: core
+license: MIT
 ---
 
 # Skill Learn

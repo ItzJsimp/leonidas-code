@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/ads, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Paid Ads
@@ -551,3 +552,5 @@ For tracking setup, see [references/conversion-tracking.md](references/conversio
 - **copywriting**: For landing page copy that converts ad traffic
 - **analytics / attribution**: Conversion tracking setup and the blended-CAC inputs behind [payback-period.md](references/payback-period.md); **pricing** sets the ARPU + plan structure that drive its Payback math (why blended LTV:CAC hides $9-vs-$999 variance)
 - **ab-testing / cro**: For landing page tests and post-click conversion rates that improve ROAS
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

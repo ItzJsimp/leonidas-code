@@ -14,6 +14,7 @@ verified: 2026-08-21
 related: ["skills-index", "system-prompt-authoring", "context-budget", "prompt-optimizer"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Context Engineering

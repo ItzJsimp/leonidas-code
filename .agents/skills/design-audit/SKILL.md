@@ -12,6 +12,7 @@ load: on-demand
 owner: leonidas
 verified: 2026-09-28
 related: ["design-build", "impeccable", "standard-design-system", "app-building-standard"]
+license: MIT
 ---
 
 # Design Audit

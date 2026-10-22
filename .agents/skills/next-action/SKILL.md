@@ -4,6 +4,7 @@ description: "Pick the best next tasks from the task folder for the current oper
 category: flow
 scope: structural
 distribution: core
+license: MIT
 ---
 
 # Next Action: Context-Aware Task Discovery & Routing Engine

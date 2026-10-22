@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /ship: decide, then release
@@ -56,3 +57,5 @@ Engines: the ship steps in `.agents/workflow-profile.md` (for example `pr`, `leo
 ## Done when
 
 - The decision is written, the user gave a clear yes, and every profile ship step ran, with its result shown.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

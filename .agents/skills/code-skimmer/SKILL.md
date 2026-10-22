@@ -4,6 +4,7 @@ description: "Read a large code file as a symbol outline, then open only the nee
 category: efficiency
 scope: structural
 distribution: core
+license: MIT
 ---
 
 # Code Skimmer: AST Symbol & File Outline Engine

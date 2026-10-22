@@ -13,6 +13,7 @@ owner: "shared"
 verified: "2026-10-04"
 source: "https://github.com/coreyhaines31/marketingskills (skills/customer-research)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Customer Research
@@ -325,3 +326,5 @@ Don't ask all five at once: lead with #1 and #2, then follow up as needed.
 | Planning content based on discovered topics                      | `content-strategy` |
 | Rolling research into a comprehensive marketing plan             | `marketing-plan`   |
 | Sizing the market (TAM/SAM/SOM) (see the market-sizing reference | `marketing-plan`   |
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

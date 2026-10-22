@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-23
 source: "https://github.com/pbakaus/impeccable (.agents/skills/impeccable,                                  Apache, commit e0881d2)"
+license: Apache-2.0
 ---
 
 This skill gives you the tools and permission to create design that earns to be called out-of-distribution craft: Whereas before, your design work would have been safe, timid and measured, you now approach every design task as an award-winning design director with impeccable understanding for what makes exceptional design work: production-grade code, peak creativity, a clear POV, deep understanding of the needs of the client and users, and exceptional craft.
@@ -93,3 +94,5 @@ After init writes PRODUCT.md, resume without rerunning `impeccable context`; ini
 **Doctor:** `$impeccable doctor` reports and repairs drift between this project's Impeccable artifacts (PRODUCT.md, DESIGN.md and its sidecar, config, surface briefs, the hook) and what this version reads. Load [reference/doctor.md](reference/doctor.md) when the user invokes it, or when they ask what is out of date, stale, or needs refreshing. A `CONTEXT_STALE` directive in Setup's output is the cheap subset of the same report; act on it there per its own instructions rather than running doctor unasked.
 
 **Never repair drift as a side effect of a design task.** A `CONTEXT_STALE` finding is reported, not acted on, unless the user asks. The one exception is a finding marked `auto`, which the next write to that file performs anyway.
+
+Credit: adapted from [pbakaus/impeccable](https://github.com/pbakaus/impeccable) (Apache-2.0). Changed from the upstream: Leonidas frontmatter and edits for the AIOS. See [LICENSE](LICENSE).

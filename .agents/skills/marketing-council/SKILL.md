@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/marketing-council, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Marketing Council
@@ -170,3 +171,5 @@ Users can extend the bench ("add my own advisor"). Create a dossier following th
 - **brand-strategy** / **marketing-psychology**: For Sharp's availability work and Sutherland's behavioral mechanics
 - **ab-testing**: When the disagreement map says "test it": Hopkins would insist
 - **deep-research**: For the live research pass, when installed
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

@@ -22,6 +22,7 @@ related:
     "code-skimmer",
   ]
 generated: false
+license: MIT
 ---
 
 # Performance Gate: Pre-Ship Audit for Every Code Change

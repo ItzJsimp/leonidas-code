@@ -5,6 +5,7 @@ category: code
 scope: "structural"
 distribution: template
 disable-model-invocation: true
+license: MIT
 ---
 
 # n8n Workflow Patterns

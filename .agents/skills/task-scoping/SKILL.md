@@ -4,6 +4,7 @@ description: "Break a spec, brief or multi-part goal into gated vertical-slice t
 category: planning
 scope: "structural"
 distribution: template
+license: MIT
 ---
 
 # Task Scoping: Spec to Vertical Slices

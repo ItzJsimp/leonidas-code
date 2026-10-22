@@ -14,6 +14,7 @@ verified: 2026-09-01
 related: ["skills-index", "antigravity-harness-reference", "harness-matrix", "claude-overlay"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Claude Harness Reference : Complete Architecture & Tool Manual

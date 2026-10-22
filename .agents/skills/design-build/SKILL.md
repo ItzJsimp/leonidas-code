@@ -19,6 +19,7 @@ related:
     "app-building-standard",
     "ai-build-protocol",
   ]
+license: MIT
 ---
 
 # Design Build

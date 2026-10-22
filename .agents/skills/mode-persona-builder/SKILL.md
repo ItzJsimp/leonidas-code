@@ -14,6 +14,7 @@ verified: 2026-09-22
 related: ["modes-index", "modes-router", "master-instructions", "system-prompt-authoring"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Mode & Persona Builder

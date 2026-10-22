@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-27
 source: "https://github.com/kepano/obsidian-skills (skills/obsidian-markdown, MIT, commit 3ccff53)"
+license: MIT
 ---
 
 # Obsidian Flavored Markdown Skill
@@ -206,3 +207,5 @@ Reviewed in [[Meeting Notes 2024-01-10#Decisions]].
 - [Embed files](https://help.obsidian.md/embeds)
 - [Callouts](https://help.obsidian.md/callouts)
 - [Properties](https://help.obsidian.md/properties)
+
+Credit: adapted from [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) (MIT). See [LICENSE](LICENSE).

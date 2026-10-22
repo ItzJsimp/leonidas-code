@@ -5,6 +5,7 @@ category: pc
 scope: personal
 distribution: private
 disable-model-invocation: true
+license: MIT
 ---
 
 <!-- package: skip (code-only) -->

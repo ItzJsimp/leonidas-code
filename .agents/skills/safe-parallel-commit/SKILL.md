@@ -11,6 +11,7 @@ related:
     "cross-session-git-collision",
     "concurrent-session-commit-collisions",
   ]
+license: MIT
 ---
 
 # Safe Parallel Commit

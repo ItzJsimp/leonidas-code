@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-10-12
 source: "https://github.com/mattpocock/skills (skills/misc/git-guardrails-claude-code, MIT, commit 49dd158)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Setup Git Guardrails
@@ -107,3 +108,5 @@ echo '{"tool_input":{"command":"git push origin main"}}' | <path-to-script>
 ```
 
 Should exit with code 2 and print a BLOCKED message to stderr.
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

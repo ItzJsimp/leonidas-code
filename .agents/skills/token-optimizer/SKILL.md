@@ -5,6 +5,7 @@ category: efficiency
 scope: structural
 distribution: template
 disable-model-invocation: true
+license: MIT
 ---
 
 # Token Optimizer: Dual-Harness Context Forensics & File Optimization
