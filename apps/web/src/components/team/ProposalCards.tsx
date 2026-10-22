@@ -8,7 +8,7 @@ import { useAtomCommand } from "~/state/use-atom-command";
 
 // Cards rise in with the same values as the Team view (design/motion-language.md).
 const ENTER =
-  "transition-[opacity,transform] duration-[240ms] ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none motion-reduce:starting:translate-y-0 motion-reduce:starting:opacity-100";
+  "transition-[opacity,transform] duration-200 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none motion-reduce:starting:translate-y-0 motion-reduce:starting:opacity-100";
 
 /**
  * Changes that widen access and wait for an Owner (ADR-0088). An Owner sees Approve and Reject.

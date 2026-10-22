@@ -1,5 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - the engine runs the git command line.
-import { execFile } from "node:child_process";
+import * as NodeChildProcess from "node:child_process";
 
 /** One git call. `out` holds stdout and stderr together, trimmed. */
 export interface GitResult {
@@ -13,7 +13,7 @@ const TIMEOUT_MS = 120_000;
 /** The computer's own git: its sign-in, its settings. LC_ALL=C keeps messages in English so they can be matched. */
 export const realGit: Git = (args, cwd) =>
   new Promise((resolve) => {
-    execFile(
+    NodeChildProcess.execFile(
       "git",
       [...args],
       {

@@ -30,9 +30,9 @@ const rise = (index: number) => ({
   transitionDelay: `${Math.min(index, STAGGER_CAP) * STAGGER_MS}ms`,
 });
 const ENTER =
-  "transition-[opacity,transform] duration-[240ms] ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none motion-reduce:starting:translate-y-0 motion-reduce:starting:opacity-100";
+  "transition-[opacity,transform] duration-200 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:transition-none motion-reduce:starting:translate-y-0 motion-reduce:starting:opacity-100";
 const NODE =
-  "rounded-md border text-left outline-none transition-[opacity,background-color,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none";
+  "rounded-md border text-left outline-none transition-[opacity,background-color,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none";
 
 type Member = WorkspaceOrg["members"][number];
 

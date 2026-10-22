@@ -23,7 +23,7 @@ type Role = WorkspaceOrg["roles"][number];
 type Row = { readonly role: Role; readonly fresh: boolean };
 
 const SELECT =
-  "h-8 w-full min-w-28 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "h-8 w-full min-w-28 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-60";
 
 // Every Role sees the whole Area, so the table only edits what a Role may do (roles.md).
 const WRITE: ReadonlyArray<readonly [Role["write"], string]> = [

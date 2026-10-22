@@ -1,5 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - test fixtures: real git repos in temp folders.
-import { execFileSync } from "node:child_process";
+import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
@@ -15,7 +15,7 @@ const ENV = {
 
 /** Sync git for fixtures only. Throws on failure so a broken fixture fails loudly. */
 export const g = (cwd: string, ...args: string[]) =>
-  execFileSync("git", args, {
+  NodeChildProcess.execFileSync("git", args, {
     cwd,
     env: ENV,
     encoding: "utf8",

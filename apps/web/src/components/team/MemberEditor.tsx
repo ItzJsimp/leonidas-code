@@ -27,7 +27,7 @@ export type EditorTarget =
   | { readonly mode: "add" };
 
 const SELECT =
-  "h-8 min-w-32 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-8 min-w-32 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 
 function RoleSelect(props: {
   readonly label: string;
@@ -38,7 +38,7 @@ function RoleSelect(props: {
   const id = useId();
   return (
     <div className="flex items-center justify-between gap-3">
-      <Label htmlFor={id} className="min-w-0 truncate text-sm">
+      <Label htmlFor={id} className="min-w-0">
         {props.label}
       </Label>
       <select
@@ -212,9 +212,7 @@ export function MemberEditor(props: {
                 </Label>
               ) : (
                 <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor={`${id}-owner`} className="text-sm">
-                    Answers to
-                  </Label>
+                  <Label htmlFor={`${id}-owner`}>Answers to</Label>
                   <select
                     id={`${id}-owner`}
                     className={SELECT}
@@ -231,9 +229,7 @@ export function MemberEditor(props: {
                 </div>
               )}
               <div className="flex items-center justify-between gap-3">
-                <Label htmlFor={`${id}-dept`} className="text-sm">
-                  Department
-                </Label>
+                <Label htmlFor={`${id}-dept`}>Department</Label>
                 <select
                   id={`${id}-dept`}
                   className={SELECT}

@@ -1,6 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - the org record is plain files in the Home area.
 // @effect-diagnostics globalDate:off - formats a timestamp the caller passes in; no clock reads.
-import { randomBytes } from "node:crypto";
+import * as NodeCrypto from "node:crypto";
 import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 
@@ -46,7 +46,7 @@ function ulid(now: number): string {
   let time = "";
   for (let rest = now, i = 0; i < 10; i += 1, rest = Math.floor(rest / 32))
     time = CROCKFORD[rest % 32]! + time;
-  const random = Array.from(randomBytes(16), (byte) => CROCKFORD[byte % 32]!).join("");
+  const random = Array.from(NodeCrypto.randomBytes(16), (byte) => CROCKFORD[byte % 32]!).join("");
   return time + random;
 }
 
