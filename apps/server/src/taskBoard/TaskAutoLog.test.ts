@@ -20,6 +20,7 @@ import {
   makeAutoLog,
   titleFromRequest,
   type AutoLogEvent,
+  type AutoLogRun,
 } from "./TaskAutoLog.ts";
 
 const message = (patch: Record<string, unknown>) =>
@@ -322,6 +323,63 @@ describe("TaskAutoLog persistence", () => {
         expect(history.filter((note) => note.includes("Run failed."))).toHaveLength(1);
         expect(history.filter((note) => note.includes("Run cancelled."))).toHaveLength(1);
         expect(task!.status).toBe("in_progress");
+      }),
+    ),
+  );
+});
+
+const HOUR = 3_600_000;
+// The test runner clock starts at 0; cards carry wall-clock times.
+// @effect-diagnostics-next-line globalDate:off
+const wallNow = Date.now();
+
+describe("TaskAutoLog sweeper", () => {
+  it.effect("moves an idle in-progress card to review and names the last chat, once", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-1"));
+        const now = wallNow + 7 * HOUR;
+        yield* log.sweep(now, () => false);
+        yield* log.sweep(now, () => false);
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks[0]!.status).toBe("review");
+        const idle = notes(tasks[0]!).filter((note) => note.includes("[idle]"));
+        expect(idle).toHaveLength(1);
+        expect(idle[0]).toContain("thread-1");
+      }),
+    ),
+  );
+
+  it.effect("leaves a recent card and a card with a live run alone", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-1"));
+        yield* log.sweep(wallNow + 5 * HOUR, () => false);
+        yield* log.sweep(wallNow + 99 * HOUR, (id) => id === "thread-1");
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks[0]!.status).toBe("in_progress");
+      }),
+    ),
+  );
+
+  it.effect("records a run that ended while the server was off, once", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        yield* newLog().handle(request("m1", "thread-1"));
+        const restarted = newLog();
+        const runs = (id: string) =>
+          Effect.succeed(
+            (id === "thread-1"
+              ? [{ id: "run-9", status: "completed" }]
+              : []) as unknown as ReadonlyArray<AutoLogRun>,
+          );
+        yield* restarted.replay(runs);
+        yield* restarted.replay(runs);
+        const { tasks } = yield* board.workspace([project]);
+        expect(notes(tasks[0]!).filter((note) => note.includes("[run run-9]"))).toHaveLength(1);
+        expect(tasks[0]!.status).toBe("review");
       }),
     ),
   );
