@@ -38,6 +38,23 @@ function log(line: string) {
   Effect.runSync(Console.log(line));
 }
 
+export function collectBenchmarkOutput<E, R>(stream: Stream.Stream<Uint8Array, E, R>) {
+  let bytes = 0;
+  return stream.pipe(
+    Stream.mapEffect((chunk) => {
+      bytes += chunk.byteLength;
+      return bytes > 1024 * 1024
+        ? Effect.fail({
+            _tag: "BenchmarkOutputLimitError" as const,
+            message: "Benchmark process output exceeded 1 MiB",
+          })
+        : Effect.succeed(chunk);
+    }),
+    Stream.decodeText(),
+    Stream.mkString,
+  );
+}
+
 const asNumber = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? value : 0;
 
@@ -140,7 +157,20 @@ async function runOne(
           shell: true,
         },
       );
-      const output = yield* spawner.string(command).pipe(Effect.timeout(600_000));
+      const output = yield* Effect.scoped(
+        Effect.gen(function* () {
+          const handle = yield* spawner.spawn(command);
+          const [stdout] = yield* Effect.all(
+            [
+              collectBenchmarkOutput(handle.stdout),
+              collectBenchmarkOutput(handle.stderr),
+              handle.exitCode,
+            ],
+            { concurrency: "unbounded" },
+          );
+          return stdout;
+        }).pipe(Effect.timeout(600_000)),
+      );
       const parsed = parseClaudeResult(output);
       const checkCode = yield* spawner
         .exitCode(ChildProcess.make(task.check, [], { cwd: dir, extendEnv: true, shell: true }))

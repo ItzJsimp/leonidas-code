@@ -23,7 +23,27 @@ describe("output standard sync", () => {
       await NodeFSP.writeFile(NodePath.join(otherAiosRoot, "CLAUDE.md"), "Personal voice\n");
       const input = { projectRoot, aiosRoots: [aiosRoot, otherAiosRoot] };
       expect(await syncOutputStandard({ ...input, check: true })).toHaveLength(7);
+      const backupPrefix = "leonidas-output-standard-";
+      const backupsBefore = new Set(
+        (await NodeFSP.readdir(NodeOS.tmpdir())).filter((name) => name.startsWith(backupPrefix)),
+      );
       expect(await syncOutputStandard(input)).toHaveLength(7);
+      const backupsAfter = (await NodeFSP.readdir(NodeOS.tmpdir())).filter(
+        (name) => name.startsWith(backupPrefix) && !backupsBefore.has(name),
+      );
+      let overlayBackupFound = false;
+      for (const name of backupsAfter) {
+        const backupDir = NodePath.join(NodeOS.tmpdir(), name);
+        if (!(await NodeFSP.readdir(backupDir)).includes(NodePath.basename(overlay))) continue;
+        if (
+          (await NodeFSP.readFile(NodePath.join(backupDir, NodePath.basename(overlay)), "utf8")) ===
+          "Personal canary\r\n"
+        ) {
+          overlayBackupFound = true;
+          break;
+        }
+      }
+      expect(overlayBackupFound).toBe(true);
       expect(await syncOutputStandard({ ...input, check: true })).toEqual([]);
       expect(await NodeFSP.readFile(overlay, "utf8")).toContain("Personal canary\r\n");
       expect(await NodeFSP.readFile(NodePath.join(aiosRoot, "AGENTS.md"), "utf8")).toContain(
