@@ -14,6 +14,7 @@ import { selectPaneCount, useSplitLayoutStore } from "~/splitLayoutStore";
 
 import { LeftRail } from "./LeftRail";
 import { RightRail } from "./RightRail";
+import { HEADER_HEIGHT, TwoStateHeader } from "./TwoStateHeader";
 
 export const LEFT_RAIL_WIDTH = 272;
 export const RIGHT_RAIL_WIDTH = 304;
@@ -45,24 +46,29 @@ export function CodeForward({ children }: { readonly children: ReactNode }) {
 
   const rails = fits && !splitActive;
   const value = useMemo(() => ({ rails }), [rails]);
-  // The chat header's fixed controls end at the right rail, not at the window edge.
-  const style = rails
-    ? ({ "--workspace-controls-right": `calc(${RIGHT_RAIL_WIDTH}px + 0.75rem)` } as CSSProperties)
-    : undefined;
+  // The chat header's fixed controls sit below the band and, with rails, end at the right rail.
+  const style = {
+    "--workspace-controls-top": `calc(env(titlebar-area-y, 0px) + ${HEADER_HEIGHT})`,
+    ...(rails ? { "--workspace-controls-right": `calc(${RIGHT_RAIL_WIDTH}px + 0.75rem)` } : {}),
+  } as CSSProperties;
   return (
     <CodeForwardContext value={value}>
-      <div ref={ref} style={style} className="flex h-svh min-h-0 min-w-0 flex-1 md:h-dvh">
-        {rails ? (
-          <Rail side="left" label="Your AIOS">
-            <LeftRail />
-          </Rail>
-        ) : null}
-        {children}
-        {rails ? (
-          <Rail side="right" label="Needs you and activity">
-            <RightRail />
-          </Rail>
-        ) : null}
+      <div style={style} className="flex h-svh min-h-0 min-w-0 flex-1 flex-col md:h-dvh">
+        <TwoStateHeader />
+        {/* The thread view sizes itself to the window; here it fills the row under the band. */}
+        <div ref={ref} className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
+          {rails ? (
+            <Rail side="left" label="Your AIOS">
+              <LeftRail />
+            </Rail>
+          ) : null}
+          {children}
+          {rails ? (
+            <Rail side="right" label="Needs you and activity">
+              <RightRail />
+            </Rail>
+          ) : null}
+        </div>
       </div>
     </CodeForwardContext>
   );
@@ -87,14 +93,7 @@ function Rail({
           : "flex shrink-0 flex-col border-l border-border/60 bg-background"
       }
     >
-      {/* Lines up with the chat header row. On desktop it also moves the window. */}
-      <div
-        aria-hidden
-        className="h-[var(--workspace-topbar-height)] shrink-0 [-webkit-app-region:drag]"
-      />
-      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto px-3 pb-3">
-        {children}
-      </div>
+      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto p-3">{children}</div>
     </aside>
   );
 }
