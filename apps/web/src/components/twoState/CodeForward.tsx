@@ -13,6 +13,7 @@ import { observeResize } from "~/lib/observeResize";
 import { selectPaneCount, useSplitLayoutStore } from "~/splitLayoutStore";
 
 import { LeftRail } from "./LeftRail";
+import { RightRail } from "./RightRail";
 
 export const LEFT_RAIL_WIDTH = 272;
 export const RIGHT_RAIL_WIDTH = 304;
@@ -44,7 +45,10 @@ export function CodeForward({ children }: { readonly children: ReactNode }) {
 
   const rails = fits && !splitActive;
   const value = useMemo(() => ({ rails }), [rails]);
-  const style = undefined;
+  // The chat header's fixed controls end at the right rail, not at the window edge.
+  const style = rails
+    ? ({ "--workspace-controls-right": `calc(${RIGHT_RAIL_WIDTH}px + 0.75rem)` } as CSSProperties)
+    : undefined;
   return (
     <CodeForwardContext value={value}>
       <div ref={ref} style={style} className="flex h-svh min-h-0 min-w-0 flex-1 md:h-dvh">
@@ -54,6 +58,11 @@ export function CodeForward({ children }: { readonly children: ReactNode }) {
           </Rail>
         ) : null}
         {children}
+        {rails ? (
+          <Rail side="right" label="Needs you and activity">
+            <RightRail />
+          </Rail>
+        ) : null}
       </div>
     </CodeForwardContext>
   );

@@ -10,6 +10,7 @@ import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardHomeQuery } from "~/state/taskBoard";
 
 import type { StatusCounts } from "./copy";
+import { isNeedsYou } from "./railFeed";
 
 const NO_EVENTS: ReadonlyArray<FoldedFeedEvent> = [];
 
@@ -32,11 +33,6 @@ export function useFeedEvents(): ReadonlyArray<FoldedFeedEvent> {
     () => (feed.data?.events ?? NO_EVENTS).filter((event) => !marks[event.id]?.dismissed),
     [feed.data, marks],
   );
-}
-
-/** Needs you holds unread `needs_you` and `failed` events. Opening one marks it read. */
-export function isNeedsYou(event: FoldedFeedEvent, read: boolean): boolean {
-  return !read && (event.level === "needs_you" || event.level === "failed");
 }
 
 /** One source for every count, so the status line, header stats and rails show the same number. */
