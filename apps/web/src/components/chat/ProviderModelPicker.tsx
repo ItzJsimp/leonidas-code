@@ -361,7 +361,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 className={cn("size-1.5 shrink-0 rounded-full", READINESS_DOT[readiness.color])}
                 aria-hidden="true"
               />
-              <span className="max-w-24 truncate">{readiness.reason}</span>
+              {/* A healthy provider shows the dot only; the words stay for a problem. */}
+              <span className={cn("max-w-24 truncate", readiness.code === "ready" && "sr-only")}>
+                {readiness.reason}
+              </span>
             </span>
           ) : null}
         </span>

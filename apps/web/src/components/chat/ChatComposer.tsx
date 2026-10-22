@@ -5862,19 +5862,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }}
         onOpenProviderSetup={onOpenProviderSetup}
       />
-      {/* Outside the resting blocks: the overflow menu would hide the style, which must stay in view. */}
-      <div data-resting-fixed className="flex shrink-0 items-center gap-1">
-        <ComposerControlSeparator size={composerControlsCollapsed ? "xs" : "sm"} />
-        <ComposerReplyStyleControl
-          threadRef={routeThreadRef}
-          serverValue={attachThreadShell?.replyStyle}
-          environmentId={routeThreadRef.environmentId}
-          projectId={savedItemsProjectId}
-          cwd={gitCwd}
-          size={composerControlsCollapsed ? "xs" : "sm"}
-        />
-      </div>
-
       <>
         {restingBlockDefs.map((def, index) => {
           const hidden = index >= restingBlockDefs.length - restingHiddenBlockCount;
@@ -5919,6 +5906,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             }
             onToggleInteractionMode={toggleInteractionMode}
             onRuntimeModeChange={handleRuntimeModeChange}
+          />
+        </div>
+        {/* After effort and the overflow menu, and outside the resting blocks: the style icon must stay in view. */}
+        <div data-resting-fixed className="flex shrink-0 items-center">
+          <ComposerReplyStyleControl
+            threadRef={routeThreadRef}
+            serverValue={attachThreadShell?.replyStyle}
+            environmentId={routeThreadRef.environmentId}
+            projectId={savedItemsProjectId}
+            cwd={gitCwd}
+            size={composerControlsCollapsed ? "xs" : "sm"}
           />
         </div>
       </>
