@@ -16,6 +16,7 @@ import {
   getNewProjectRepository,
   type NewProjectPublishTarget,
   normalizePastedCloneUrl,
+  unwrapInviteLink,
   addProjectRemoteSourceLabel,
   addProjectRemoteSourcePathHint,
   addProjectRemoteSourceProvider,
@@ -320,7 +321,7 @@ function remoteProjectInputPlaceholder(flow: AddProjectCloneFlow | null): string
   if (!flow) return null;
   if (flow.step === "confirm") return null;
   if (flow.source === "url") {
-    return "Enter Git clone URL";
+    return "Enter a Git clone URL or paste an Invite link";
   }
   return `Enter ${addProjectRemoteSourceLabel(flow.source)} repository (${addProjectRemoteSourcePathHint(flow.source)})`;
 }
@@ -2697,7 +2698,7 @@ function OpenCommandPaletteDialog(props: {
     }
 
     if (addProjectCloneFlow.step === "repository") {
-      const rawRepository = query.trim();
+      const rawRepository = unwrapInviteLink(query.trim());
       if (rawRepository.length === 0 || isRemoteProjectLookingUp) {
         return;
       }
@@ -3745,7 +3746,7 @@ function OpenCommandPaletteDialog(props: {
           ? {
               emptyStateMessage:
                 addProjectCloneFlow.source === "url"
-                  ? "Enter a Git clone URL and press Enter to continue."
+                  ? "Enter a Git clone URL, or paste an Invite link, and press Enter to continue."
                   : "Enter a repository path and press Enter to look it up.",
             }
           : addProjectCloneFlow?.step === "confirm"
