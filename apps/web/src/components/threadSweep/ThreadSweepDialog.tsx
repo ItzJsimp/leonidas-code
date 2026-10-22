@@ -1,11 +1,13 @@
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentId, ThreadId, ThreadSweepResult } from "@t3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import type { EnvironmentId, ProjectId, ThreadId, ThreadSweepResult } from "@t3tools/contracts";
 import { useRouter } from "@tanstack/react-router";
 import { ListChecksIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useComposerDraftStore } from "../../composerDraftStore";
+import { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { useThreadActions } from "../../hooks/useThreadActions";
-import { threadSweepQuery } from "../../state/threadSweep";
+import { threadHandoffQuery, threadSweepQuery } from "../../state/threadSweep";
 import { useAtomQueryRunner } from "../../state/use-atom-query-runner";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
@@ -22,6 +24,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Spinner } from "../ui/spinner";
+import { HandoffPanel } from "./HandoffPanel";
 import {
   CLASS_HINT,
   CLASS_LABEL,
@@ -29,6 +32,7 @@ import {
   DEFAULT_IDLE,
   IDLE_OPTIONS,
   groupSweepItems,
+  handoffStateFromResult,
   idleMinutes,
   initialSelection,
   sourceLabel,
@@ -36,6 +40,7 @@ import {
   sweepSummary,
   toggleSelection,
   withoutThreads,
+  type HandoffState,
   type IdleOptionId,
 } from "./threadSweep.logic";
 
@@ -81,6 +86,13 @@ function ThreadSweepDialog(props: {
   const { environmentId, cwd, onClose } = props;
   const router = useRouter();
   const { archiveThread } = useThreadActions();
+  const handleNewThread = useNewThreadHandler();
+  const runHandoff = useAtomQueryRunner(threadHandoffQuery, {
+    reportFailure: false,
+    reportDefect: false,
+    refresh: true,
+  });
+  const [handoffs, setHandoffs] = useState<Readonly<Record<string, HandoffState>>>({});
   const run = useAtomQueryRunner(threadSweepQuery, {
     reportFailure: false,
     reportDefect: false,
@@ -142,6 +154,21 @@ function ThreadSweepDialog(props: {
         : `Archived ${archived.size} of ${picked.length}. The rest could not be archived.`,
     );
     setArchiving(false);
+  };
+
+  const writeHandoff = async (threadId: ThreadId) => {
+    setHandoffs((current) => ({ ...current, [threadId]: { status: "loading" } }));
+    const response = await runHandoff({ environmentId, input: { cwd, threadId } });
+    const state = handoffStateFromResult(response._tag === "Success" ? response.value : null);
+    setHandoffs((current) => ({ ...current, [threadId]: state }));
+  };
+
+  // Opens a new chat in the same project with the prompt in the composer. Nothing is sent.
+  const continueInNewChat = async (projectId: ProjectId, prompt: string) => {
+    const created = await handleNewThread(scopeProjectRef(environmentId, projectId));
+    if (!created) return;
+    useComposerDraftStore.getState().setPrompt(created.draftId, prompt);
+    onClose();
   };
 
   const openThread = (threadId: ThreadId) => {
@@ -225,30 +252,48 @@ function ThreadSweepDialog(props: {
                     <p className="mb-1 text-xs text-muted-foreground">{CLASS_HINT[id]}</p>
                     <ul className="flex flex-col">
                       {groups[id].map((item) => (
-                        <li
-                          key={item.threadId}
-                          className="flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-accent"
-                        >
-                          {id === "done" ? (
-                            <Checkbox
-                              aria-label={`Archive ${item.title}`}
-                              checked={selected.has(item.threadId)}
-                              onCheckedChange={() =>
-                                setSelected((current) => toggleSelection(current, item.threadId))
+                        <li key={item.threadId} className="rounded-md px-1 py-1.5 hover:bg-accent">
+                          <div className="flex items-center gap-2">
+                            {id === "done" ? (
+                              <Checkbox
+                                aria-label={`Archive ${item.title}`}
+                                checked={selected.has(item.threadId)}
+                                onCheckedChange={() =>
+                                  setSelected((current) => toggleSelection(current, item.threadId))
+                                }
+                              />
+                            ) : null}
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() => openThread(item.threadId)}
+                            >
+                              <span className="block truncate text-sm">{item.title}</span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {formatRelativeTimeLabel(item.updatedAt)} ·{" "}
+                                {sourceLabel(item.source)}: {item.reason}
+                              </span>
+                            </button>
+                            {id !== "done" && handoffs[item.threadId] === undefined ? (
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                onClick={() => void writeHandoff(item.threadId)}
+                              >
+                                Handoff
+                              </Button>
+                            ) : null}
+                          </div>
+                          {handoffs[item.threadId] ? (
+                            <HandoffPanel
+                              title={item.title}
+                              state={handoffs[item.threadId]!}
+                              onRetry={() => void writeHandoff(item.threadId)}
+                              onContinue={(prompt) =>
+                                void continueInNewChat(item.projectId, prompt)
                               }
                             />
                           ) : null}
-                          <button
-                            type="button"
-                            className="min-w-0 flex-1 text-left"
-                            onClick={() => openThread(item.threadId)}
-                          >
-                            <span className="block truncate text-sm">{item.title}</span>
-                            <span className="block truncate text-xs text-muted-foreground">
-                              {formatRelativeTimeLabel(item.updatedAt)} · {sourceLabel(item.source)}
-                              : {item.reason}
-                            </span>
-                          </button>
                         </li>
                       ))}
                     </ul>

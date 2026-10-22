@@ -8,3 +8,10 @@ export const threadSweepQuery = createEnvironmentRpcQueryAtomFamily(connectionAt
   staleTimeMs: 0,
   idleTtlMs: 30_000,
 });
+
+export const threadHandoffQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:thread-sweep:handoff",
+  tag: WS_METHODS.threadSweepHandoff,
+  staleTimeMs: 0,
+  idleTtlMs: 30_000,
+});

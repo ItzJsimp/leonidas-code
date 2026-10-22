@@ -1,5 +1,23 @@
 import type { ThreadSweepClass, ThreadSweepItem, ThreadSweepResult } from "@t3tools/contracts";
 
+/** Where one chat's handoff prompt stands. Absent means the user has not asked for it. */
+export type HandoffState =
+  | { readonly status: "loading" }
+  | { readonly status: "ready"; readonly prompt: string }
+  | { readonly status: "error"; readonly message: string };
+
+/** Maps the server answer to a row state. A null prompt always carries a plain reason. */
+export function handoffStateFromResult(
+  result: { readonly prompt: string | null; readonly reason: string } | null,
+): HandoffState {
+  if (result === null) {
+    return { status: "error", message: "The prompt could not be written. Try again." };
+  }
+  return result.prompt === null
+    ? { status: "error", message: result.reason }
+    : { status: "ready", prompt: result.prompt };
+}
+
 export const IDLE_OPTIONS = [
   { id: "1h", label: "1 hour", minutes: 60 },
   { id: "12h", label: "12 hours", minutes: 12 * 60 },

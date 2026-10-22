@@ -185,7 +185,8 @@ describe("TextGeneration.make", () => {
         const supported = makeStubInstance(
           withId,
           makeStubTextGeneration({
-            assessThread: () => Effect.succeed({ verdict: "done", reason: "Finished." }),
+            assessThread: () =>
+              Effect.succeed({ verdict: "done", reason: "Finished.", handoff: "" }),
           }),
         );
         const plain = makeStubInstance(withoutId, makeStubTextGeneration({}));

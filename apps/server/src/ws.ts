@@ -44,7 +44,7 @@ import * as Duration from "effect/Duration";
 import * as Base64 from "effect/encoding/Base64";
 import * as Effect from "effect/Effect";
 import { layaStatus, startLayaInstall, wireLayaProject } from "./laya/layaSetup.ts";
-import { makeThreadSweep } from "./laya/threadSweepService.ts";
+import { makeThreadHandoff, makeThreadSweep } from "./laya/threadSweepService.ts";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -1469,11 +1469,13 @@ const layerWsRpc = (
           }
           return yield* use(project.value);
         });
-      const threadSweep = makeThreadSweep({
+      const sweepDeps = {
         threadManagement,
         textGeneration: yield* TextGeneration.TextGeneration,
         serverSettings,
-      });
+      };
+      const threadSweep = makeThreadSweep(sweepDeps);
+      const threadHandoff = makeThreadHandoff(sweepDeps);
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
       const promptSuggestion = PromptSuggestion.make(
         yield* TextGeneration.TextGeneration,
@@ -3210,6 +3212,7 @@ const layerWsRpc = (
             ),
           ),
         [WS_METHODS.threadSweepRun]: (input) => threadSweep(input),
+        [WS_METHODS.threadSweepHandoff]: (input) => threadHandoff(input),
         [WS_METHODS.layaSetup]: (input) =>
           Effect.promise(async () => {
             if (input.action === "wire") {

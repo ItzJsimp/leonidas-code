@@ -34,3 +34,17 @@ export const ThreadSweepResult = Schema.Struct({
   modelLimitHit: Schema.Boolean,
 });
 export type ThreadSweepResult = typeof ThreadSweepResult.Type;
+
+/** Writes the prompt that continues one chat in a new chat. */
+export const ThreadHandoffInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  threadId: ThreadId,
+});
+export type ThreadHandoffInput = typeof ThreadHandoffInput.Type;
+
+export const ThreadHandoffResult = Schema.Struct({
+  /** Null when no prompt could be written; `reason` then says why in plain words. */
+  prompt: Schema.NullOr(Schema.String),
+  reason: Schema.String,
+});
+export type ThreadHandoffResult = typeof ThreadHandoffResult.Type;

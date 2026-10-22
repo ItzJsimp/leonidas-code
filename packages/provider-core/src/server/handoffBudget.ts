@@ -166,7 +166,10 @@ export function historicalMessage(
       text = [
         `File search: ${item.pattern ?? ""}`,
         item.results?.length
-          ? `Results: ${item.results.map((r) => r.fileName).slice(0, 8).join(", ")}`
+          ? `Results: ${item.results
+              .map((r) => r.fileName)
+              .slice(0, 8)
+              .join(", ")}`
           : "No matches found.",
       ].join("\n");
       break;
@@ -174,7 +177,10 @@ export function historicalMessage(
       text = [
         `Web search: ${(item.patterns ?? []).join(", ")}`,
         item.results?.length
-          ? `Results: ${item.results.map((r) => r.url).slice(0, 5).join(", ")}`
+          ? `Results: ${item.results
+              .map((r) => r.url)
+              .slice(0, 5)
+              .join(", ")}`
           : "No matches found.",
       ].join("\n");
       break;
