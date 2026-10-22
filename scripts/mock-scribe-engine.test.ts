@@ -1,6 +1,8 @@
 // @effect-diagnostics nodeBuiltinImport:off - real loopback HTTP against the mock engine.
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
 import * as NodeHttp from "node:http";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "@effect/vitest";
 import { startMockScribeEngine, type MockScribeEngine } from "./mock-scribe-engine.ts";
 
 interface Reply {
@@ -60,13 +62,14 @@ function readEvents(port: number): { events: any[]; stop(): void; done: Promise<
   return { events, stop: () => stop(), done };
 }
 
-async function waitFor(check: () => boolean, ms = 3000): Promise<void> {
-  const end = Date.now() + ms;
-  while (!check()) {
-    if (Date.now() > end) throw new Error("timeout");
-    await new Promise((r) => setTimeout(r, 10));
-  }
-}
+const waitFor = (check: () => boolean, ms = 3000) =>
+  Effect.gen(function* () {
+    const end = DateTime.toEpochMillis(DateTime.nowUnsafe()) + ms;
+    while (!check()) {
+      if (DateTime.toEpochMillis(DateTime.nowUnsafe()) > end) throw new Error("timeout");
+      yield* Effect.sleep(10);
+    }
+  });
 
 describe("mock scribe engine", () => {
   let engine: MockScribeEngine | undefined;
@@ -100,7 +103,9 @@ describe("mock scribe engine", () => {
       groqKey: true,
       privateMode: false,
     });
-    expect(Date.now() - Date.parse(r.body.sampledAt)).toBeLessThan(5000);
+    expect(
+      DateTime.toEpochMillis(DateTime.nowUnsafe()) - Date.parse(r.body.sampledAt),
+    ).toBeLessThan(5000);
     expect((await call(port, "POST", "/v1/status")).status).toBe(405);
     expect((await call(port, "GET", "/v1/nope")).status).toBe(404);
   });
@@ -126,30 +131,36 @@ describe("mock scribe engine", () => {
     expect((await call(port, "GET", "/v1/status")).body.groqKey).toBe(true);
   });
 
-  it("runs a full cycle and streams state, transcript and history events", async () => {
-    const { port } = await boot();
-    const stream = readEvents(port);
-    await new Promise((r) => setTimeout(r, 50));
-    await call(port, "POST", "/v1/start", { body: '{"mode":"toggle"}' });
-    await call(port, "POST", "/v1/stop", { body: '{"paste":true}' });
-    await waitFor(() => stream.events.some((e) => e.type === "history"));
-    stream.stop();
-    await stream.done;
-    expect(stream.events.map((e) => e.state ?? e.type)).toEqual([
-      "listening",
-      "processing",
-      "ready",
-      "transcript",
-      "history",
-    ]);
-    const transcript = stream.events.find((e) => e.type === "transcript");
-    expect(transcript).toMatchObject({ engine: "groq", pasted: true, service: "leonidas-scribe" });
-    expect(typeof transcript.raw).toBe("string");
-    const item = stream.events.find((e) => e.type === "history").item;
-    expect(item.mode).toBe("toggle");
-    const page = await call(port, "GET", "/v1/history?limit=1");
-    expect(page.body.items[0].id).toBe(item.id);
-  });
+  it.live("runs a full cycle and streams state, transcript and history events", () =>
+    Effect.gen(function* () {
+      const { port } = yield* Effect.promise(() => boot());
+      const stream = readEvents(port);
+      yield* Effect.sleep(50);
+      yield* Effect.promise(() => call(port, "POST", "/v1/start", { body: '{"mode":"toggle"}' }));
+      yield* Effect.promise(() => call(port, "POST", "/v1/stop", { body: '{"paste":true}' }));
+      yield* waitFor(() => stream.events.some((e) => e.type === "history"));
+      stream.stop();
+      yield* Effect.promise(() => stream.done);
+      expect(stream.events.map((e) => e.state ?? e.type)).toEqual([
+        "listening",
+        "processing",
+        "ready",
+        "transcript",
+        "history",
+      ]);
+      const transcript = stream.events.find((e) => e.type === "transcript");
+      expect(transcript).toMatchObject({
+        engine: "groq",
+        pasted: true,
+        service: "leonidas-scribe",
+      });
+      expect(typeof transcript.raw).toBe("string");
+      const item = stream.events.find((e) => e.type === "history").item;
+      expect(item.mode).toBe("toggle");
+      const page = yield* Effect.promise(() => call(port, "GET", "/v1/history?limit=1"));
+      expect(page.body.items[0].id).toBe(item.id);
+    }),
+  );
 
   it("pages history with before and no duplicates", async () => {
     const { port } = await boot({ seed: 7 });
@@ -362,5 +373,14 @@ describe("mock scribe engine", () => {
     const stream = readEvents(port);
     await stream.done;
     expect(stream.events).toEqual([]);
+  });
+  it("closes active event streams and releases its port", async () => {
+    const first = await boot();
+    const stream = readEvents(first.port);
+    await call(first.port, "GET", "/v1/status");
+    await first.close();
+    await stream.done;
+    engine = await startMockScribeEngine({ port: first.port, empty: true });
+    expect((await call(engine.port, "GET", "/v1/history")).body.items).toEqual([]);
   });
 });
