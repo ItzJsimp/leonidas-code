@@ -8,8 +8,10 @@ import type {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
+import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
@@ -26,6 +28,9 @@ import { gitRunSummary, replyHeadOf, workedDraft } from "./TaskLedger.ts";
 const ACTOR = "Leonidas";
 const MIN_REQUEST_LENGTH = 12;
 const TITLE_LENGTH = 80;
+const IDLE_MS = 6 * 60 * 60 * 1000;
+const SWEEP_EVERY = "5 minutes";
+const IDLE_MARKER = "[idle]";
 
 /** A request is real work when a person typed it; relays, schedules and one-word replies are not. */
 export function isLoggableRequest(message: OrchestrationV2ConversationMessage): boolean {
@@ -205,7 +210,57 @@ export const makeAutoLog = (deps: {
     return Effect.void;
   };
 
-  return { handle };
+  // An in-progress card with no run for IDLE_MS is not being worked: flag it for a person to check.
+  // It never sets done. The status change is the dedupe, so a second sweep finds nothing.
+  const sweep = (now: number, isLive: (threadId: string) => boolean) =>
+    Effect.gen(function* () {
+      const projects = yield* deps.allProjects;
+      const idle = (yield* tasks(projects)).filter(
+        (task) =>
+          task.status === "in_progress" &&
+          now - task.updatedAt >= IDLE_MS &&
+          !(task.threadIds ?? []).some(isLive) &&
+          !(task.claimedAgent?.threadId !== undefined && isLive(task.claimedAgent.threadId)),
+      );
+      for (const task of idle) {
+        const last = task.claimedAgent?.threadId ?? task.threadIds?.at(-1);
+        yield* taskBoard
+          .cardUpdate(
+            {
+              taskId: task.id,
+              actor: ACTOR,
+              status: "review",
+              note: `No chat has run on this for 6 hours. Moved to review.${last ? ` Last chat: ${last}.` : ""} ${IDLE_MARKER}`,
+            },
+            projects,
+          )
+          .pipe(Effect.catchCause(skip("sweep")));
+      }
+    }).pipe(Effect.catchCause(skip("sweep")));
+
+  // Runs that ended while the server was off never reached the stream. Each goes through the same
+  // outcome path, so the [run <id>] marker keeps a repeat from logging twice.
+  const replay = (finishedRuns: (threadId: string) => Effect.Effect<ReadonlyArray<AutoLogRun>>) =>
+    Effect.gen(function* () {
+      const projects = yield* deps.allProjects;
+      const open = (yield* tasks(projects)).filter((task) => task.status !== "done");
+      const threads = new Set(
+        open.flatMap((task) => [
+          ...(task.threadIds ?? []),
+          ...(task.claimedAgent?.threadId ? [task.claimedAgent.threadId] : []),
+        ]),
+      );
+      for (const id of threads) {
+        const threadId = id as ThreadId;
+        for (const run of yield* finishedRuns(id)) {
+          if (isTerminalRunStatus(run.status)) {
+            yield* logOutcome(threadId, run).pipe(Effect.catchCause(skip("replay")));
+          }
+        }
+      }
+    }).pipe(Effect.catchCause(skip("replay")));
+
+  return { handle, sweep, replay };
 };
 
 export const make = Effect.gen(function* () {
@@ -265,7 +320,41 @@ export const make = Effect.gen(function* () {
       ),
   });
 
+  const liveThreads = projections
+    .getShellSnapshot()
+    .pipe(
+      Effect.map(
+        (snapshot) =>
+          new Set(
+            snapshot.threads
+              .filter((t) => t.activityRunStatus === "running" || t.activityRunStatus === "waiting")
+              .map((t) => t.id as string),
+          ),
+      ),
+    );
+
   const start = Effect.fn("TaskAutoLog.start")(function* () {
+    // Replay once, then sweep on a timer. A failed pass is logged by the pass itself and the
+    // timer keeps going.
+    yield* forkParked(
+      log
+        .replay((id) =>
+          projections.getThreadRecords(id as ThreadId, ["runs"]).pipe(
+            Effect.map((records) => records.runs),
+            Effect.catchCause(() => Effect.succeed([])),
+          ),
+        )
+        .pipe(
+          Effect.andThen(
+            liveThreads.pipe(
+              Effect.zip(Clock.currentTimeMillis),
+              Effect.flatMap(([live, now]) => log.sweep(now, (id) => live.has(id))),
+              Effect.catchCause(() => Effect.void),
+              Effect.repeat(Schedule.spaced(SWEEP_EVERY)),
+            ),
+          ),
+        ),
+    );
     yield* forkParked(
       Stream.runForEach(orchestrator.streamDomainEvents, (event) =>
         event.type === "message.updated"
