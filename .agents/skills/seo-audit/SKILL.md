@@ -13,6 +13,7 @@ owner: "shared"
 verified: "2026-10-04"
 source: "https://github.com/coreyhaines31/marketingskills (skills/seo-audit)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # SEO Audit
@@ -552,3 +553,5 @@ Same format as above
 - **schema**: For implementing structured data
 - **cro**: For optimizing pages for conversion (not just ranking)
 - **analytics**: For measuring SEO performance
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

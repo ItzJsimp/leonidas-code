@@ -14,6 +14,7 @@ owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # /constraints: the quality bar
@@ -42,3 +43,5 @@ Adapted from Addy Osmani's `/constraints` (constraint-driven-development). Run i
 ## Done when
 
 - `CONSTRAINTS.md` exists, each rule has a command, and a run on the current branch reported its result.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

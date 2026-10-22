@@ -14,6 +14,7 @@ owner: shared
 verified: 2026-08-22
 related: ["skills-index", "leonidas-os-audit", "ponytail-review"]
 generated: false
+license: MIT
 ---
 
 # Improve Codebase Architecture
@@ -50,3 +51,5 @@ Inspects repository code organization, directory hierarchies, module boundaries,
   - Mermaid Architecture Diagram (Current vs Proposed)
   - Ranked Refactoring Targets (File, Issue, Recommended Fix)
   - Phased Execution Checklist
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

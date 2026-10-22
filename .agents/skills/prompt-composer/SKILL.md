@@ -13,6 +13,7 @@ owner: "shared"
 verified: "2026-09-27"
 related: ["skills-index", "system-prompt-authoring", "model-router", "prompt-standard"]
 generated: false
+license: MIT
 ---
 
 # Prompt Composer: Agent Instruction & Prompt Authoring Engine

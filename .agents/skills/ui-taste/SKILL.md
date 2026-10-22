@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-28
 source: "https://uizze.sh/ (ui-taste, Apache-2.0, version 0.2.0)"
+license: Apache-2.0
 ---
 
 ![Stop Making UI Slop with UIZZE](https://uizze.com/landing/anti-ui-slop-skill-banner.png)
@@ -72,3 +73,5 @@ Build the requested scope and exercise its important states. Render and inspect 
 Fix material problems in a batch, then render and inspect again. Stop once the requested result is verified; do not keep inventing work. If a bounded pass cannot resolve an issue, report it instead of claiming a pass. When rendering is unavailable, distinguish code checks from visual verification.
 
 Keep the handoff concise: what changed, what was actually tested, and any remaining limitation. A skill does not authorize publishing, purchases, new dependencies, account changes, or destructive actions.
+
+Credit: adapted from [ui-taste](https://uizze.sh/) by uizze.sh (Apache-2.0). Changed from the upstream: Leonidas frontmatter and edits for the AIOS. See [LICENSE](LICENSE).

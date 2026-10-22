@@ -14,6 +14,7 @@ verified: "2026-10-11"
 related:
   ["skills-index", "implement", "codebase-design", "efficiency-standard", "ai-build-protocol"]
 generated: false
+license: MIT
 ---
 
 # Tiered Orchestration: Plan, Delegate, Review

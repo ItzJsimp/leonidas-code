@@ -22,6 +22,7 @@ related:
     "cole-medin-11-tips",
   ]
 generated: false
+license: MIT
 ---
 
 # Ask Leonidas: Master Skill & Flow Router

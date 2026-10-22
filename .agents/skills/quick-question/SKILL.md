@@ -13,6 +13,7 @@ distribution: template
 verified: 2026-09-22
 related: ["skills-index", "soul", "ask-leonidas"]
 generated: false
+license: MIT
 ---
 
 # Quick Question: Rapid Single-Shot Lookup Engine

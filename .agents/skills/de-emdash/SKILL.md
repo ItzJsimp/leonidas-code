@@ -14,6 +14,7 @@ verified: 2026-08-22
 related: ["skills-index", "technical-writing", "soul"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # De-Emdash : Natural Punctuation & Flow Rewriter

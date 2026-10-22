@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /test: verify with evidence
@@ -31,3 +32,5 @@ Engines: `performance-gate`, plus the verify skills named in `.agents/workflow-p
 ## Done when
 
 - Every success criterion has evidence, every profile check ran with its result shown, and `performance-gate` gave a verdict.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

@@ -13,6 +13,7 @@ verified: 2026-10-12
 source: "https://github.com/vercel-labs/agent-skills (skills/react-best-practices, , commit 063bee9)"
 category: code
 disable-model-invocation: true
+license: MIT
 ---
 
 # Vercel React Best Practices
@@ -157,3 +158,5 @@ Each rule file contains:
 ## Full Compiled Document
 
 For the complete guide with all rules expanded: `AGENTS.md`
+
+Credit: adapted from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (MIT). See [LICENSE](LICENSE).

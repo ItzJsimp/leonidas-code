@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-10-12
 source: "https://github.com/mattpocock/skills (skills/engineering/resolving-merge-conflicts, MIT, last version before upstream removed it, commit daa01d8^)"
 disable-model-invocation: true
+license: MIT
 ---
 
 1. **See the current state** of the merge/rebase. Check git history, and the conflicting files.
@@ -24,3 +25,5 @@ disable-model-invocation: true
 4. Discover the project's **automated checks** and run them, typically typecheck, then tests, then format. Fix anything the merge broke.
 
 5. **Finish the merge/rebase.** Stage everything and commit. If rebasing, continue the rebase process until all commits are rebased.
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

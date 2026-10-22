@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/ad-creative, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Ad Creative
@@ -475,3 +476,5 @@ node tools/clis/google-ads.js reports get --type ad_performance --date-range las
 - **ab-testing**: For structuring creative tests with statistical rigor
 - **marketing-psychology**: For psychological principles behind high-performing creative
 - **copy-editing**: For polishing ad copy before launch
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

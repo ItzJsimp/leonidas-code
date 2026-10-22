@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/cro, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Conversion Rate Optimization (CRO)
@@ -215,3 +216,5 @@ When recommending experiments, consider tests for:
 ## Form Optimization
 
 For detailed form CRO guidance: including field optimization, multi-step forms, error handling, and form-specific experiments (see [references/form.md](references/form.md).
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

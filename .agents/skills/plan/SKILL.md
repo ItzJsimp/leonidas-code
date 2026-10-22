@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /plan: slice the work
@@ -39,3 +40,5 @@ Engine: `task-scoping`. Added from Addy Osmani's planning-and-task-breakdown: si
 
 - Every slice is XS, S or M, and has acceptance criteria, a verify command and a `Blocked by:` line.
 - The spec card has an `## Execution` section that gives each slice a place, an order or parallel group, and a model tier.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

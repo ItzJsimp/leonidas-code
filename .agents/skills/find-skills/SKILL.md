@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-08-21
 related: ["skills-index", "system-prompt-authoring", "prompt-improver", "master-instructions"]
 generated: false
+license: MIT
 ---
 
 # Find Skills

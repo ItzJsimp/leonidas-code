@@ -15,6 +15,7 @@ verified: 2026-09-09
 related: ["skills-index", "grill-me"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 ## What this does

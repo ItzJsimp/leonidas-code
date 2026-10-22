@@ -7,6 +7,7 @@ disable-model-invocation: true
 scope: personal
 distribution: template
 owner: leonidas
+license: MIT
 ---
 
 # Handoff

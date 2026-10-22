@@ -14,6 +14,7 @@ category: flow
 related: ["chat-sync", "ai-chats-triage", "chat-naming-standard"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Chat Closeout

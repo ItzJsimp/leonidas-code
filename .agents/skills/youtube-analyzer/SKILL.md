@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-08-24
 related: ["skills-index", "mode-02", "master-instructions", "context-budget"]
 generated: false
+license: MIT
 ---
 
 **Last updated:** 2026-08-24

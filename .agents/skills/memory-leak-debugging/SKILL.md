@@ -12,6 +12,7 @@ owner: shared
 verified: 2026-10-12
 source: "https://github.com/chromedevtools/chrome-devtools-mcp (skills/memory-leak-debugging, , commit 7007680)"
 category: code
+license: Apache-2.0
 ---
 
 # Memory Leak Debugging
@@ -67,3 +68,5 @@ Use built-in MCP memory tools and filters to pinpoint specific leak categories d
   - `objectsRetainedByEventHandlers`: Identifies objects kept alive by unremoved event listeners.
   - `objectsRetainedByContexts`: Identifies objects trapped in closures or execution contexts.
   - `objectsRetainedByConsole`: Identifies objects retained by console logging.
+
+Credit: adapted from [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) (Apache-2.0). Changed from the upstream: Leonidas frontmatter and edits for the AIOS. See [LICENSE](LICENSE).

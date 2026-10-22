@@ -14,6 +14,7 @@ distribution: template
 verified: 2026-08-30
 related: ["skills-index", "memory-durable", "standard-frontmatter"]
 generated: false
+license: MIT
 ---
 
 # Chat Sync

@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/marketing-psychology, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Marketing Psychology & Mental Models
@@ -535,3 +536,5 @@ When facing a marketing challenge, consider:
 - **popups**: Use triggers and psychology in popups
 - **pricing-page optimization**: See cro for pricing psychology
 - **ab-testing**: Test psychological hypotheses
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

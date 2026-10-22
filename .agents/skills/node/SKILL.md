@@ -13,6 +13,7 @@ verified: 2026-10-12
 source: "https://github.com/mcollina/skills (skills/node, MIT, commit 72b7275)"
 category: code
 disable-model-invocation: true
+license: MIT
 ---
 
 ## When to use
@@ -106,3 +107,5 @@ Read individual rule files for detailed explanations and code examples:
 - [rules/environment.md](rules/environment.md) - Environment configuration and secrets management
 - [rules/graceful-shutdown.md](rules/graceful-shutdown.md) - Graceful shutdown and signal handling
 - [rules/typescript.md](rules/typescript.md) - TypeScript configuration and type stripping in Node.js
+
+Credit: adapted from [mcollina/skills](https://github.com/mcollina/skills) (MIT). See [LICENSE](LICENSE).

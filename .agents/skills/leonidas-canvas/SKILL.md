@@ -12,6 +12,7 @@ load: "on-demand"
 owner: "leonidas"
 verified: "2026-10-11"
 related: ["design-build", "design-audit", "impeccable", "prompt-composer"]
+license: MIT
 ---
 
 # Leonidas canvas

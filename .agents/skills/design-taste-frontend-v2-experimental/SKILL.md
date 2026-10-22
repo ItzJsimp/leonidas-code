@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-15
 source: "https://github.com/Leonxlnx/taste-skill (skills/taste-skill-v2-experimental, MIT, commit f624f37)"
+license: MIT
 ---
 
 # tasteskill: Anti-Slop Frontend Skill
@@ -1336,3 +1337,5 @@ But that is **web glassmorphism / frosted-glass approximation**, not official Ap
 ---
 
 **End of appendices.** Install commands above are reality anchors. The Apple Liquid Glass skeleton is a labeled approximation, not an Apple-issued package. For canonical docs per design system, consult the system's official docs (links in Section 2 plus Appendix B).
+
+Credit: adapted from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) (MIT). See [LICENSE](LICENSE).
