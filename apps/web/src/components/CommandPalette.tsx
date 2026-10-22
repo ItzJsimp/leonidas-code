@@ -60,6 +60,7 @@ import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
   BrainIcon,
+  BriefcaseIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   InboxIcon,
@@ -175,6 +176,8 @@ import {
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../threadRoutes";
 import { useAvailableSettingsSearchItems } from "./settings/useAvailableSettingsSearchItems";
+import { NewBusinessDialog } from "./workspace/NewBusinessDialog";
+import { openNewBusiness } from "./workspace/newBusinessStore";
 import {
   applyWslEnvironmentConfiguration,
   parseWslUncPath,
@@ -577,6 +580,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
           clearOpenIntent={clearOpenIntent}
         />
       </CommandDialog>
+      <NewBusinessDialog />
     </ComposerHandleContext>
   );
 }
@@ -1590,6 +1594,17 @@ function OpenCommandPaletteDialog(props: {
       ];
 
       if (newProjectsRootFor(environmentId) !== null) {
+        sourceItems.unshift({
+          kind: "action",
+          value: `action:add-project:${environmentId}:new-business`,
+          searchTerms: ["new business", "company", "team", "organization", "workspace"],
+          title: "New business",
+          description: "Start a business workspace with a team, from a name",
+          icon: <BriefcaseIcon className={ITEM_ICON_CLASS} />,
+          run: async () => {
+            openNewBusiness();
+          },
+        });
         sourceItems.unshift({
           kind: "action",
           value: `action:add-project:${environmentId}:new`,
