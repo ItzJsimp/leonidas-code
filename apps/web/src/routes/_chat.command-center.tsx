@@ -14,16 +14,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
-import { FinishSetupCard } from "../components/onboarding/setup/FinishSetupCard";
-import { AiosHomeCard } from "../components/taskBoard/AiosHomeCard";
-import { WorkspacePackWidgets } from "../components/taskBoard/WorkspacePackWidgets";
-import { DirectionSection } from "../components/taskBoard/DirectionSection";
-import { HomeExtraCards } from "../components/taskBoard/HomeExtraCards";
-import { LayaMonitorCard } from "../components/taskBoard/LayaMonitorCard";
-import { PonytailCard } from "../components/taskBoard/PonytailCard";
-import { ValueMeterCard } from "../components/taskBoard/ValueMeterCard";
-import { VoiceLogCard } from "../components/taskBoard/VoiceLogCard";
-import { SubagentStudio } from "../components/subagents/SubagentStudio";
+import { HomeCardsOutlet } from "../components/twoState/SlotOutlet";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { Spinner } from "../components/ui/spinner";
@@ -71,6 +62,8 @@ const SECTIONS = [
   },
 ] as const;
 
+const HOME_CONTEXT = { forward: "cc" } as const;
+
 function CommandCenterPage() {
   const threads = useThreadShells();
   const projects = useProjects();
@@ -113,14 +106,7 @@ function CommandCenterPage() {
               Live status across your connected computers. Open a chat to see or continue its work.
             </p>
           </div>
-          <FinishSetupCard />
-          <DirectionSection />
-          <AiosHomeCard />
-          <WorkspacePackWidgets />
-          <HomeExtraCards />
-          <LayaMonitorCard />
-          <PonytailCard />
-          <SubagentStudio />
+          <HomeCardsOutlet context={HOME_CONTEXT} />
           {disconnected.length > 0 ? (
             <div
               role="status"
@@ -139,8 +125,6 @@ function CommandCenterPage() {
               </Link>
             </div>
           ) : null}
-          <ValueMeterCard />
-          <VoiceLogCard />
           {isReady && environments.length > 0 ? (
             <section aria-label="Scribe status" className="grid gap-3 sm:grid-cols-2">
               {environments.map((environment) => (
