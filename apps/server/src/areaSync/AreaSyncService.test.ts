@@ -1,4 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - tests use real files and real git in temp folders.
+// @effect-diagnostics globalTimers:off - the fake git is a plain async function.
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
@@ -37,7 +38,8 @@ const markWorkspace = (root: string, id: string, type: "personal" | "business") 
   write(root, "workspace.json", JSON.stringify({ id, name: id, type, schemaVersion: 1 }));
 };
 
-const failureOf = (effect: Effect.Effect<unknown, TaskBoardOperationError>) => Effect.flip(effect);
+const failureOf = (effect: Effect.Effect<unknown, TaskBoardOperationError>) =>
+  effect.pipe(Effect.asVoid, Effect.flip, Effect.orDie);
 
 it.effect("fails for an id that no workspace has", () => {
   const { root } = makeWorkspace(tempDir("remotes-"), [["home", "active"]]);
