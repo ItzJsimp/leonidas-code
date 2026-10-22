@@ -1313,6 +1313,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
+        const hostPlatform = yield* HostProcess.Platform;
         const repoRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-kde-stage-test-" });
         const protocols = path.join(repoRoot, "native/hyprland-snap-shot/protocols");
         yield* fs.makeDirectory(protocols, { recursive: true });
@@ -1329,6 +1330,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
               `release/t3-${backend}-snap-shot`,
             );
             const stageResourcesDir = path.join(repoRoot, "stage", backend, arch);
+            const modes: Array<{ path: string; mode: number }> = [];
             const spawner = Layer.succeed(
               ChildProcessSpawner.ChildProcessSpawner,
               ChildProcessSpawner.make((command) =>
@@ -1357,13 +1359,26 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
               stageResourcesDir,
               arch,
               verbose: false,
-            }).pipe(Effect.provide(spawner));
+            }).pipe(
+              Effect.provide(spawner),
+              Effect.provideService(HostProcess.Platform, "linux"),
+              Effect.provideService(FileSystem.FileSystem, {
+                ...fs,
+                chmod: (file, mode) => {
+                  modes.push({ path: file, mode });
+                  return fs.chmod(file, mode);
+                },
+              }),
+            );
             const installed = path.join(
               stageResourcesDir,
               `${backend}-capture/t3-${backend}-snap-shot`,
             );
             assert.equal(yield* fs.readFileString(installed), `helper-${arch}`);
-            assert.equal((yield* fs.stat(installed)).mode & 0o777, 0o755);
+            assert.deepEqual(modes, [{ path: installed, mode: 0o755 }]);
+            if (hostPlatform !== "win32") {
+              assert.equal((yield* fs.stat(installed)).mode & 0o777, 0o755);
+            }
             if (backend === "hyprland")
               assert.equal(
                 yield* fs.readFileString(
@@ -1756,7 +1771,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         });
 
         assert.isFalse(
-          commands.some((command) => command.options.env?.ELECTRON_RUN_AS_NODE === "1"),
+          commands.some(
+            (command) =>
+              command.command ===
+                NodePath.join(fixture.packagedAppDir, fixture.appExecutableName) &&
+              command.options.env?.ELECTRON_RUN_AS_NODE === "1",
+          ),
         );
         assert.isTrue(
           commands.some(
