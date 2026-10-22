@@ -611,6 +611,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   // Files each user request as a task card, so the task list is the activity log.
   Layer.effectDiscard(TaskAutoLog.make.pipe(Effect.flatMap((service) => service.start()))).pipe(
     Layer.provide(ProjectionStoreV2.layer),
+    Layer.provide(ProcessRunner.layer),
   ),
   // One aios.changed event per agent turn that changed AIOS files (ADR-0087).
   Layer.effectDiscard(AiosChangeLog.make.pipe(Effect.flatMap((service) => service.start()))).pipe(
