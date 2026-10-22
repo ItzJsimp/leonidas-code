@@ -38,6 +38,12 @@ describe("areaRow", () => {
     );
   });
 
+  it("says updated just now for a change in the last minute", () => {
+    expect(areaRow({ id: "tasks", units: 2, changedAt: now - 5_000 }, now).detail).toBe(
+      "2 cards · updated just now",
+    );
+  });
+
   it("falls back to files for an area it does not know", () => {
     expect(areaRow({ id: "recipes", units: 4, changedAt: minutes(5) }, now)).toEqual({
       id: "recipes",

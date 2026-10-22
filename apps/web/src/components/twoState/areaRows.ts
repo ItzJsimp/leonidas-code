@@ -37,15 +37,15 @@ export interface AreaRow {
   readonly detail: string;
 }
 
+export const areaLabel = (id: string) =>
+  AREA_WORDS[id]?.[0] ?? id.charAt(0).toUpperCase() + id.slice(1);
+
 export function areaRow(area: TaskBoardHomeArea, now: number): AreaRow {
-  const [label, one, many] = AREA_WORDS[area.id] ?? [
-    area.id.charAt(0).toUpperCase() + area.id.slice(1),
-    "file",
-    "files",
-  ];
+  const when = changedLabel(area.changedAt, now);
+  const [label, one, many] = AREA_WORDS[area.id] ?? [areaLabel(area.id), "file", "files"];
   return {
     id: area.id,
     label,
-    detail: `${area.units} ${area.units === 1 ? one : many} · ${changedLabel(area.changedAt, now)}`,
+    detail: `${area.units} ${area.units === 1 ? one : many} · ${when === "just now" ? "updated just now" : when}`,
   };
 }

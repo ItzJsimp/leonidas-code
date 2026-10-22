@@ -15,6 +15,10 @@ import { useNowMinute } from "~/hooks/useNowMinute";
 import { cn } from "~/lib/utils";
 
 import { areaRow } from "./areaRows";
+import { useCodeForward } from "./codeForwardContext";
+import { LiveDot } from "./LiveDot";
+import { withTouched } from "./liveArea";
+import { useTwoStateStore } from "./twoStateStore";
 import { RailEmpty, RailList, RailPanel, RailRow } from "./RailParts";
 import { RailSlotSections } from "./SlotOutlet";
 import { useAiosHome } from "./useTwoStateData";
@@ -42,7 +46,9 @@ export function LeftRail() {
 
 function YourAios() {
   const home = useAiosHome().data;
-  const areas = home?.areas ?? [];
+  const touchedAt = useTwoStateStore((state) => state.touchedAt);
+  const { live } = useCodeForward();
+  const areas = withTouched(home?.areas ?? [], touchedAt);
   // The minute clock keeps "12 min ago" true without a timer per row.
   const now = Date.parse(`${useNowMinute()}Z`);
   return (
@@ -56,15 +62,30 @@ function YourAios() {
           {areas.map((area) => {
             const row = areaRow(area, now);
             const Icon = AREA_ICONS[area.id] ?? FileTextIcon;
+            const isLive = live.area === area.id;
             return (
-              <RailRow key={row.id} className="items-center">
-                <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+              <RailRow key={row.id} raised={isLive} className="items-center">
+                <span
+                  className={cn(
+                    "grid size-7 shrink-0 place-items-center rounded-md",
+                    isLive ? "bg-primary/15 text-foreground" : "bg-muted text-muted-foreground",
+                  )}
+                >
                   <Icon aria-hidden className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{row.label}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{row.detail}</span>
+                  {isLive && live.path !== null ? (
+                    <span className="block truncate font-mono text-xs text-foreground">
+                      {live.path}
+                    </span>
+                  ) : (
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {row.detail}
+                    </span>
+                  )}
                 </span>
+                {isLive ? <LiveDot /> : null}
               </RailRow>
             );
           })}

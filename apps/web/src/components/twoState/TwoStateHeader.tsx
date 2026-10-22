@@ -10,6 +10,9 @@ import { useNowMinute } from "~/hooks/useNowMinute";
 
 import { isElectron } from "~/env";
 
+import { areaLabel } from "./areaRows";
+import { useCodeForward } from "./codeForwardContext";
+import { LiveDot } from "./LiveDot";
 import { builtInStats, claudeFiveHour, type HeaderStat } from "./headerStats";
 import { slotRegistry } from "./SlotOutlet";
 import { entriesFor, type SlotContext, type StatSlotEntry } from "./slots";
@@ -34,6 +37,7 @@ export function TwoStateHeader({ leading }: { readonly leading?: ReactNode }) {
       {leading}
       <HeaderStats />
       <span className="flex-1" />
+      <WorkingIn />
       <div className="flex items-center gap-1.5 [-webkit-app-region:no-drag]">
         <EventInbox />
         <Tip text="Bring the Command Center forward">
@@ -50,6 +54,18 @@ export function TwoStateHeader({ leading }: { readonly leading?: ReactNode }) {
         </Tip>
       </div>
     </header>
+  );
+}
+
+/** "Working in Tasks" while the agent touches an AIOS area. */
+function WorkingIn() {
+  const { live } = useCodeForward();
+  if (live.area === null) return null;
+  return (
+    <span role="status" className="flex items-center gap-1.5 text-xs whitespace-nowrap">
+      <LiveDot />
+      Working in {areaLabel(live.area)}
+    </span>
   );
 }
 

@@ -1,14 +1,14 @@
 import {
   type CSSProperties,
-  createContext,
   type ReactNode,
-  use,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+import type { ScopedThreadRef } from "@t3tools/contracts";
 
 import { observeResize } from "~/lib/observeResize";
 import { selectPaneCount, useSplitLayoutStore } from "~/splitLayoutStore";
@@ -17,20 +17,16 @@ import { CommandCenterForward } from "./CommandCenterForward";
 import { LeftRail } from "./LeftRail";
 import { RightRail } from "./RightRail";
 import { HomeCardsOutlet } from "./SlotOutlet";
-import type { ThreadPlace } from "./swapKeys";
 import { HEADER_HEIGHT, TwoStateHeader } from "./TwoStateHeader";
 import { useTwoStateStore } from "./twoStateStore";
+import { CodeForwardContext } from "./codeForwardContext";
+import { useLiveArea } from "./useLiveArea";
 
 export const LEFT_RAIL_WIDTH = 272;
 export const RIGHT_RAIL_WIDTH = 304;
 /** The chat keeps at least this much width before the rails move into the drawer. */
 const MIN_CHAT_WIDTH = 560;
 export const RAILS_MIN_WIDTH = LEFT_RAIL_WIDTH + RIGHT_RAIL_WIDTH + MIN_CHAT_WIDTH;
-
-const CodeForwardContext = createContext({ rails: false });
-
-/** Whether the Command Center rails show beside this chat. False outside State 2. */
-export const useCodeForward = () => use(CodeForwardContext);
 
 /**
  * State 2: the chat in the center and the Command Center in the side rails. A resize observer,
@@ -41,7 +37,7 @@ export function CodeForward({
   children,
 }: {
   /** The open chat, so the swap key can return to it. Null for a draft. */
-  readonly place: ThreadPlace | null;
+  readonly place: ScopedThreadRef | null;
   readonly children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -63,7 +59,8 @@ export function CodeForward({
   }, []);
 
   const rails = fits && !splitActive && !split;
-  const value = useMemo(() => ({ rails }), [rails]);
+  const live = useLiveArea(place);
+  const value = useMemo(() => ({ rails, live }), [rails, live]);
   // The chat header's fixed controls sit below the band and, with rails, end at the right rail.
   const style = {
     "--workspace-controls-top": `calc(env(titlebar-area-y, 0px) + ${HEADER_HEIGHT})`,
