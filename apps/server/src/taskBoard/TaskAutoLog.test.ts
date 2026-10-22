@@ -195,7 +195,7 @@ describe("TaskAutoLog persistence", () => {
     ),
   );
 
-  it.effect("keeps the first thread when the same task is sent twice", () =>
+  it.effect("links a second chat to the same card and logs its run", () =>
     withBoard(({ board, project, newLog }) =>
       Effect.gen(function* () {
         const card = yield* newCard(board, project);
@@ -203,10 +203,25 @@ describe("TaskAutoLog persistence", () => {
         yield* log.handle(request("m1", "thread-a", sendPrompt(card)));
         yield* log.handle(request("m2", "thread-b", sendPrompt(card)));
         yield* log.handle(runEvent("thread-b", "run-b", "failed"));
+        yield* log.handle(runEvent("thread-a", "run-a", "completed"));
         const { tasks } = yield* board.workspace([project]);
         expect(tasks).toHaveLength(1);
-        expect(tasks[0]!.claimedAgent?.threadId).toBe("thread-a");
-        expect(notes(tasks[0]!).some((note) => note.includes("[run run-b]"))).toBe(false);
+        expect(tasks[0]!.threadIds).toEqual(["thread-a", "thread-b"]);
+        expect(notes(tasks[0]!).some((note) => note.includes("[run run-b]"))).toBe(true);
+        expect(notes(tasks[0]!).some((note) => note.includes("[run run-a]"))).toBe(true);
+      }),
+    ),
+  );
+
+  it.effect("does not link the same chat twice", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const card = yield* newCard(board, project);
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-a", sendPrompt(card)));
+        yield* log.handle(request("m2", "thread-a", sendPrompt(card)));
+        const { tasks } = yield* board.workspace([project]);
+        expect(tasks[0]!.threadIds).toEqual(["thread-a"]);
       }),
     ),
   );

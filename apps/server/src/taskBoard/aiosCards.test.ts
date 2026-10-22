@@ -456,6 +456,41 @@ describe("applyCardPatch", () => {
     });
   });
 
+  it("keeps every chat that worked on a card, newest as the main thread", () => {
+    const first = applyCardPatch(card(header), { ...patchBase, threadId: "t-1" }, NOW);
+    const second = applyCardPatch(first, { ...patchBase, threadId: "t-2" }, NOW);
+    const again = applyCardPatch(second, { ...patchBase, threadId: "t-2" }, NOW);
+    expect(second).toContain('thread_id: "t-2"');
+    expect(second).toContain('thread_ids: ["t-1", "t-2"]');
+    expect(again).toBe(second);
+
+    const task = cardToTask({ fileName: "a.md", raw: second, mtimeMs: NOW, now: NOW });
+    expect(task?.threadIds).toEqual(["t-1", "t-2"]);
+    expect(task?.claimedAgent?.threadId).toBe("t-2");
+  });
+
+  it("keeps the thread list when a release clears the main thread", () => {
+    const claimed = applyCardPatch(
+      card(header),
+      { ...patchBase, status: "in_progress", claimedBy: "Jake", threadId: "t-1" },
+      NOW,
+    );
+    const released = applyCardPatch(claimed, { ...patchBase, claimedBy: null }, NOW);
+    expect(released).not.toContain("thread_id:");
+    const task = cardToTask({ fileName: "a.md", raw: released, mtimeMs: NOW, now: NOW });
+    expect(task?.threadIds).toEqual(["t-1"]);
+  });
+
+  it("reads an older card with one thread_id as a one-chat list", () => {
+    const task = cardToTask({
+      fileName: "a.md",
+      raw: card(`${header}\nthread_id: "thread-1"`),
+      mtimeMs: NOW,
+      now: NOW,
+    });
+    expect(task?.threadIds).toEqual(["thread-1"]);
+  });
+
   it("keeps every untouched line byte for byte", () => {
     const raw = card(header);
     const next = applyCardPatch(raw, { ...patchBase, priority: "high" }, NOW);
@@ -514,7 +549,8 @@ describe("applyCardPatch", () => {
       NOW,
     );
     expect(released).not.toContain("claimed_by");
-    expect(released).not.toContain("thread_id");
+    expect(released).not.toContain("thread_id:");
+    expect(released).toContain('thread_ids: ["t"]');
     expect(released).not.toMatch(/^project:/m);
     const task = cardToTask({ fileName: "a.md", raw: released, mtimeMs: NOW, now: NOW });
     expect(task).toMatchObject({ status: "todo", claimedBy: null, projectSlug: null });

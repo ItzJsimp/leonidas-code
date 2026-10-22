@@ -79,6 +79,8 @@ export const TaskBoardTask = Schema.Struct({
   claimedBy: Schema.NullOr(TrimmedNonEmptyString),
   claimedAt: Schema.NullOr(Schema.Number),
   claimedAgent: Schema.NullOr(TaskBoardAgent),
+  /** Every chat that ever worked on this task, oldest first. `claimedAgent.threadId` is the newest. */
+  threadIds: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
   completedBy: Schema.NullOr(TrimmedNonEmptyString),
   completedAt: Schema.NullOr(Schema.Number),
   completionSummary: Schema.NullOr(Schema.String),

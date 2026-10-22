@@ -485,6 +485,9 @@ export function cardToTask(input: {
   const claimedBy = field(fields, "claimed_by") || null;
   const lastClaim = history.findLast((entry) => entry.action === "claimed");
   const threadId = field(fields, "thread_id");
+  const threadIds = [
+    ...new Set([...listField(fields, "thread_ids"), ...(threadId ? [threadId] : [])]),
+  ];
   const agentModel = field(fields, "claimed_agent") || lastClaim?.agent?.model || "";
   const claimedAgent: TaskBoardAgent | null =
     threadId || agentModel
@@ -535,6 +538,7 @@ export function cardToTask(input: {
     claimedBy,
     claimedAt: claimedBy ? (lastClaim?.timestamp ?? lastTouched ?? updatedAt) : null,
     claimedAgent,
+    ...(threadIds.length > 0 ? { threadIds } : {}),
     completedBy: completed
       ? (lastCompletion?.actor ??
         (claimedBy ||
@@ -892,6 +896,15 @@ export function applyCardPatch(raw: string, patch: AiosCardPatch, now: number): 
   if (threadId !== undefined && (threadId ?? "") !== was.threadId) {
     setKey("thread_id", threadId === null ? null : quote(threadId));
     changed = true;
+  }
+  // `thread_ids` is the record of every chat on the card. A release clears `thread_id`, not this.
+  if (threadId) {
+    const seen = listField(fields, "thread_ids");
+    const all = [...new Set([...seen, ...(was.threadId ? [was.threadId] : []), threadId])];
+    if (all.join("|") !== seen.join("|")) {
+      setKey("thread_ids", `[${all.map(quote).join(", ")}]`);
+      changed = true;
+    }
   }
 
   if (patch.status !== undefined && patch.status !== was.status) {
