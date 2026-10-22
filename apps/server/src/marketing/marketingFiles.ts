@@ -252,6 +252,7 @@ export type ApprovalCheck =
 /**
  * The gate every publish, send and spend path must pass first: an approved ticket for this act
  * whose hash matches the post as it is now.
+ * shortcut: trusts the approvals file, which an agent can write; the publish path adds a signed decision before anything calls this.
  */
 export function checkApproval(
   root: string,
