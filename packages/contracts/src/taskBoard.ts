@@ -519,8 +519,18 @@ export const AiosUsageShape = Schema.Struct({
 });
 export type AiosUsageShape = typeof AiosUsageShape.Type;
 
+/** One AIOS area (`tasks`, `memory`, ...): its unit count and newest file time in ms. */
+export const TaskBoardHomeArea = Schema.Struct({
+  id: Schema.String,
+  units: Schema.Number,
+  changedAt: Schema.Number,
+});
+export type TaskBoardHomeArea = typeof TaskBoardHomeArea.Type;
+
 export const TaskBoardHome = Schema.Struct({
   root: Schema.NullOr(Schema.String),
+  /** Newest change first. Optional so an older server still decodes. */
+  areas: Schema.optional(Schema.Array(TaskBoardHomeArea)),
   brief: Schema.NullOr(
     Schema.Struct({
       date: Schema.String,

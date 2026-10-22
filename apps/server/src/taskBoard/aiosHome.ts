@@ -1,10 +1,12 @@
 // @effect-diagnostics nodeBuiltinImport:off - reads brief files from the AIOS folder synchronously, like aiosCards.
 import * as NodeFS from "node:fs";
+import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 import { isRealPathInside } from "./aiosCards.ts";
 
 import type {
   TaskBoardHome,
+  TaskBoardHomeArea,
   TaskBoardHomeMove,
   TaskBoardHomePriority,
   TaskBoardTask,
@@ -113,12 +115,97 @@ export function pickNextMove(tasks: ReadonlyArray<TaskBoardTask>): TaskBoardHome
   };
 }
 
-export function buildHome(root: string | null, tasks: ReadonlyArray<TaskBoardTask>): TaskBoardHome {
+/** How each AIOS area counts its units: notes in the folder, notes in any subfolder, or folders. */
+const AREAS: ReadonlyArray<{
+  readonly id: string;
+  readonly dir: string;
+  readonly unit: "topNotes" | "notes" | "folders" | "files";
+}> = [
+  { id: "tasks", dir: "tasks", unit: "topNotes" },
+  { id: "projects", dir: "projects", unit: "folders" },
+  { id: "decisions", dir: "decisions", unit: "topNotes" },
+  { id: "memory", dir: "memory", unit: "notes" },
+  { id: "logs", dir: "logs", unit: "files" },
+  { id: "skills", dir: ".agents/skills", unit: "folders" },
+  { id: "wiki", dir: "wiki", unit: "notes" },
+];
+
+/** Files read per area at most, so a large AIOS keeps the home read cheap. */
+const AREA_WALK_CAP = 5_000;
+/** Subfolder levels read below an area folder. A project folder can hold a whole code repo. */
+const MAX_DEPTH = 2;
+
+const isNote = (name: string) => name.endsWith(".md") && !name.endsWith("-index.md");
+
+/** The AIOS areas that exist, with a unit count and the newest file time, newest first. */
+export async function readAreas(root: string, cap = AREA_WALK_CAP): Promise<TaskBoardHomeArea[]> {
+  const read = async (area: (typeof AREAS)[number]): Promise<TaskBoardHomeArea | null> => {
+    let units = 0;
+    const files: string[] = [];
+    const visit = async (dir: string, depth: number): Promise<void> => {
+      const entries = await NodeFSP.readdir(dir, { withFileTypes: true }).catch(() => []);
+      const subfolders: string[] = [];
+      for (const entry of entries) {
+        const path = NodePath.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+          if (area.unit === "folders" && depth === 0) units++;
+          if (area.unit !== "topNotes" && depth < MAX_DEPTH) subfolders.push(path);
+          continue;
+        }
+        if (files.length >= cap) continue;
+        if (area.unit !== "files" && area.unit !== "folders" && !isNote(entry.name)) continue;
+        files.push(path);
+        if (area.unit !== "folders") units++;
+      }
+      await Promise.all(subfolders.map((path) => visit(path, depth + 1)));
+    };
+    await visit(NodePath.join(root, area.dir), 0);
+    if (units === 0) return null;
+    // A file removed during the walk does not change the area time.
+    const times = await Promise.all(
+      files.map((path) =>
+        NodeFSP.stat(path).then(
+          (stat) => stat.mtimeMs,
+          () => 0,
+        ),
+      ),
+    );
+    return { id: area.id, units, changedAt: Math.max(0, ...times) };
+  };
+  const areas = await Promise.all(AREAS.map(read));
+  return areas.filter((area) => area !== null).toSorted((a, b) => b.changedAt - a.changedAt);
+}
+
+const AREAS_TTL_MS = 30_000;
+const areasCache = new Map<
+  string,
+  { readonly at: number; readonly areas: Promise<TaskBoardHomeArea[]> }
+>();
+
+/**
+ * `readAreas` with a 30 s cache per root, so opening the Command Center often costs one walk.
+ * shortcut: the times can lag 30 s; the live in-turn signal covers changes the agent makes now.
+ */
+export function cachedAreas(root: string, now: number): Promise<TaskBoardHomeArea[]> {
+  const hit = areasCache.get(root);
+  if (hit && now - hit.at < AREAS_TTL_MS) return hit.areas;
+  const areas = readAreas(root);
+  areasCache.set(root, { at: now, areas });
+  return areas;
+}
+
+export function buildHome(
+  root: string | null,
+  tasks: ReadonlyArray<TaskBoardTask>,
+  areas: ReadonlyArray<TaskBoardHomeArea> = [],
+): TaskBoardHome {
   const count = (status: TaskBoardTask["status"]) =>
     tasks.filter((task) => task.status === status).length;
   return {
     root,
     brief: root === null ? null : readBrief(root, tasks),
+    areas,
     counts: {
       todo: count("todo"),
       inProgress: count("in_progress"),

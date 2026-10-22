@@ -6,7 +6,7 @@ import * as NodePath from "node:path";
 import type { TaskBoardTask } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 
-import { buildHome, pickNextMove, readBrief } from "./aiosHome.ts";
+import { buildHome, pickNextMove, readAreas, readBrief } from "./aiosHome.ts";
 
 let root: string;
 
@@ -121,6 +121,7 @@ describe("buildHome", () => {
     expect(buildHome(null, [])).toEqual({
       root: null,
       brief: null,
+      areas: [],
       counts: { todo: 0, inProgress: 0, review: 0, blocked: 0 },
       move: expect.objectContaining({ kind: "rest" }),
     });
@@ -135,5 +136,43 @@ describe("buildHome", () => {
       task("e", "done"),
     ]);
     expect(home.counts).toEqual({ todo: 2, inProgress: 1, review: 0, blocked: 1 });
+  });
+});
+
+const writeAt = (relative: string, mtimeMs: number) => {
+  const file = NodePath.join(root, relative);
+  NodeFS.mkdirSync(NodePath.dirname(file), { recursive: true });
+  NodeFS.writeFileSync(file, "x");
+  NodeFS.utimesSync(file, mtimeMs / 1000, mtimeMs / 1000);
+};
+
+describe("readAreas", () => {
+  it("returns no areas for a missing root or a blank folder", async () => {
+    expect(await readAreas(NodePath.join(root, "missing"))).toEqual([]);
+    expect(await readAreas(root)).toEqual([]);
+  });
+
+  it("counts units per area and sorts the newest change first", async () => {
+    writeAt("tasks/a.md", 1_000_000);
+    writeAt("tasks/b.md", 2_000_000);
+    writeAt("tasks/tasks-index.md", 9_000_000);
+    writeAt("tasks/notes.txt", 9_000_000);
+    writeAt("memory/user.md", 3_000_000);
+    writeAt("memory/observed/patterns.md", 1_500_000);
+    writeAt("projects/alpha/brief.md", 500_000);
+    writeAt("projects/beta/brief.md", 600_000);
+    writeAt(".agents/skills/plan/SKILL.md", 700_000);
+    writeAt("scripts/run.ps1", 9_000_000);
+    expect(await readAreas(root)).toEqual([
+      { id: "memory", units: 2, changedAt: 3_000_000 },
+      { id: "tasks", units: 2, changedAt: 2_000_000 },
+      { id: "skills", units: 1, changedAt: 700_000 },
+      { id: "projects", units: 2, changedAt: 600_000 },
+    ]);
+  });
+
+  it("stops counting at the walk cap so a huge area stays cheap", async () => {
+    for (let index = 0; index < 5; index++) writeAt(`wiki/page-${index}.md`, 1_000_000);
+    expect(await readAreas(root, 3)).toEqual([{ id: "wiki", units: 3, changedAt: 1_000_000 }]);
   });
 });
