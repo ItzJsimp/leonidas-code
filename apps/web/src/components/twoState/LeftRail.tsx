@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   BookOpenIcon,
   BrainIcon,
@@ -17,11 +18,10 @@ import { cn } from "~/lib/utils";
 import { areaRow } from "./areaRows";
 import { useCodeForward } from "./codeForwardContext";
 import { LiveDot } from "./LiveDot";
-import { withTouched } from "./liveArea";
-import { useTwoStateStore } from "./twoStateStore";
+import { touchedFromFeed, withTouched } from "./liveArea";
 import { RailEmpty, RailList, RailPanel, RailRow } from "./RailParts";
 import { RailSlotSections } from "./SlotOutlet";
-import { useAiosHome } from "./useTwoStateData";
+import { useAiosHome, useFeedEvents } from "./useTwoStateData";
 
 const AREA_ICONS: Record<string, LucideIcon> = {
   tasks: SquareCheckIcon,
@@ -46,7 +46,8 @@ export function LeftRail() {
 
 function YourAios() {
   const home = useAiosHome().data;
-  const touchedAt = useTwoStateStore((state) => state.touchedAt);
+  const events = useFeedEvents();
+  const touchedAt = useMemo(() => touchedFromFeed(events), [events]);
   const { live } = useCodeForward();
   const areas = withTouched(home?.areas ?? [], touchedAt);
   // The minute clock keeps "12 min ago" true without a timer per row.

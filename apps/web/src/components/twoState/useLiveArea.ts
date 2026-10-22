@@ -3,14 +3,13 @@ import {
   deriveThreadRuntime,
 } from "@t3tools/client-runtime/state/thread-execution";
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import { deriveAgentActivity } from "~/agentActivity";
 import { isLatestRunSettled } from "~/session-logic";
 import { useThreadProjection } from "~/state/entities";
 
-import { type LiveArea, liveArea } from "./liveArea";
-import { useTwoStateStore } from "./twoStateStore";
+import { type LiveArea, liveArea, shellAiosFiles } from "./liveArea";
 
 export const IDLE: LiveArea = { area: null, path: null, written: [] };
 
@@ -24,31 +23,23 @@ const same = (a: LiveArea, b: LiveArea) =>
  */
 export function useLiveArea(place: ScopedThreadRef | null): LiveArea {
   const projection = useThreadProjection(place)?.projection ?? null;
-  const markTouched = useTwoStateStore((state) => state.markTouched);
   const last = useRef(IDLE);
-  const wasRunning = useRef(false);
 
-  const { live, running } = useMemo(() => {
+  return useMemo(() => {
     const run = projection === null ? null : deriveThreadActivityRun(projection);
-    if (projection === null || run === null) return { live: IDLE, running: false };
+    if (projection === null || run === null) return IDLE;
     const running = !isLatestRunSettled(run, deriveThreadRuntime(projection));
-    const files = deriveAgentActivity({
+    const tools = deriveAgentActivity({
       runId: run.runId,
       items: projection.turnItems,
       plan: null,
     }).aios;
+    const commands = projection.turnItems.flatMap((item) =>
+      item.runId === run.runId && item.type === "command_execution" ? [item.input] : [],
+    );
+    const files = [...tools, ...shellAiosFiles(commands)];
     const next = liveArea(files, running);
     if (!same(next, last.current)) last.current = next;
-    return { live: last.current, running };
+    return last.current;
   }, [projection]);
-
-  useEffect(() => {
-    // The turn just ended: its written areas say "updated just now".
-    if (wasRunning.current && !running && live.written.length > 0) {
-      markTouched(live.written, Date.now());
-    }
-    wasRunning.current = running;
-  }, [live, markTouched, running]);
-
-  return live;
 }
