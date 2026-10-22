@@ -1,4 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { assert, it } from "@effect/vitest";
 import * as Cause from "effect/Cause";
 import * as ConfigProvider from "effect/ConfigProvider";
@@ -463,6 +464,15 @@ it.layer(NodeServices.layer)("Discord release CLI and workflow", (it) => {
       const path = yield* Path.Path;
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const temp = yield* fs.makeTempDirectoryScoped({ prefix: "discord release " });
+      const platform = yield* HostProcess.Platform;
+      const environment = yield* HostProcess.Environment;
+      const bash =
+        platform === "win32"
+          ? path.join(environment.ProgramFiles ?? "C:/Program Files", "Git", "bin", "bash.exe")
+          : "bash";
+      if (platform === "win32") {
+        assert.isTrue(yield* fs.exists(bash), `Git Bash is required at ${bash}`);
+      }
       const workflow = yield* fs.readFileString(
         yield* path.fromFileUrl(new URL("../.github/workflows/release.yml", import.meta.url)),
       );
@@ -478,7 +488,7 @@ it.layer(NodeServices.layer)("Discord release CLI and workflow", (it) => {
       };
       const readStatus = yield* spawner.exitCode(
         ChildProcess.make(
-          "bash",
+          bash,
           [
             "-e",
             "-c",
@@ -504,7 +514,7 @@ it.layer(NodeServices.layer)("Discord release CLI and workflow", (it) => {
       );
       const announceStatus = yield* spawner.exitCode(
         ChildProcess.make(
-          "bash",
+          bash,
           ["-e", "-c", `node() { printf '%s\\0' "$@" > "$RUNNER_TEMP/args"; }\n${announce}`],
           { env: { RUNNER_TEMP: temp, DISCORD_MENTION_ROLE_ID: latestAnnouncement.roleId } },
         ),
@@ -527,7 +537,7 @@ it.layer(NodeServices.layer)("Discord release CLI and workflow", (it) => {
       assert.equal(yield* fs.exists(`${temp}/executed`), false);
       assert.equal(
         yield* spawner.exitCode(
-          ChildProcess.make("bash", ["-e", "-c", `gh() { return 99; }\n${read}`], {
+          ChildProcess.make(bash, ["-e", "-c", `gh() { return 99; }\n${read}`], {
             env: { ...shellEnv, RELEASE_CHANNEL: "stable" },
           }),
         ),
@@ -537,7 +547,7 @@ it.layer(NodeServices.layer)("Discord release CLI and workflow", (it) => {
       assert.equal(
         yield* spawner.exitCode(
           ChildProcess.make(
-            "bash",
+            bash,
             ["-e", "-c", `gh() { printf '%s' 'partial changelog'; return 42; }\n${read}`],
             { env: shellEnv },
           ),
