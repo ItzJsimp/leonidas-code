@@ -35,6 +35,8 @@ import { Switch } from "~/components/ui/switch";
 import { DictationTextarea } from "~/components/voice/DictationTextarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ChecklistBar, PriorityBadge, StatusBadge } from "./TaskBadges";
+import { TaskHistory } from "./TaskHistory";
+import { PresenceChips } from "./TaskPresence";
 import {
   formatDue,
   priorityLabel,
@@ -175,6 +177,7 @@ function TaskDetailBody(props: {
   const { task, context, actions, onClose } = props;
   const [note, setNote] = useState("");
   const [pressed, setPressed] = useState<ActionKey | null>(null);
+  const [tab, setTab] = useState<"details" | "history">("details");
 
   const busy = actions.isBusy(task.id);
   const closed = task.status === "done" || task.status === "parked" || task.status === "retired";
@@ -269,6 +272,7 @@ function TaskDetailBody(props: {
                 </Badge>
               ))}
             </div>
+            <PresenceChips taskId={task.id} />
           </div>
           <Button variant="ghost-muted" size="icon-sm" aria-label="Close task" onClick={onClose}>
             <XIcon />
@@ -336,7 +340,35 @@ function TaskDetailBody(props: {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+      <div
+        role="tablist"
+        aria-label="Task sections"
+        className="flex shrink-0 gap-1 border-b border-border px-3 py-1.5"
+      >
+        {(["details", "history"] as const).map((name) => (
+          <Button
+            key={name}
+            role="tab"
+            aria-selected={tab === name}
+            variant={tab === name ? "secondary" : "ghost-muted"}
+            size="sm"
+            onClick={() => setTab(name)}
+          >
+            {name === "details" ? "Details" : "History"}
+          </Button>
+        ))}
+      </div>
+
+      {tab === "history" ? (
+        <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4">
+          <TaskHistory taskId={task.id} />
+        </div>
+      ) : null}
+
+      <div
+        role="tabpanel"
+        className={`min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 ${tab === "history" ? "hidden" : "flex"}`}
+      >
         <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
           <Property label="Status">
             <Select

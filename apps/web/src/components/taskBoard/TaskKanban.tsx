@@ -16,6 +16,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { DueChip, PriorityBadge, SharedBadge, ChecklistBar } from "./TaskBadges";
 import { TasksEmpty } from "./TaskEmptyStates";
+import { PresenceChips } from "./TaskPresence";
 import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import { groupByStatus, statusLabel, type TaskView } from "./taskBoard.logic";
 import type { TaskActions, TaskContext } from "./taskBoard.types";
@@ -147,6 +148,7 @@ const KanbanCard = memo(function KanbanCard({
         <ProjectChip name={projectName} />
       </div>
       <ChecklistBar checklist={task.checklist} />
+      <PresenceChips taskId={task.id} />
       <OwnerCell task={task} team={team} />
     </article>
   );
