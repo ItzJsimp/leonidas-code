@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   groupSweepItems,
+  handoffStateFromResult,
   idleMinutes,
   initialSelection,
   sweepNotices,
@@ -78,5 +79,19 @@ describe("summary, idle and notices", () => {
     expect(sweepNotices(base)).toEqual([]);
     expect(sweepNotices({ ...base, layaAvailable: false })[0]).toContain("Laya is not installed");
     expect(sweepNotices({ ...base, modelLimitHit: true })[0]).toContain("first 12");
+  });
+});
+
+describe("handoffStateFromResult", () => {
+  it("turns a prompt into ready, and a null prompt or a failed call into a plain error", () => {
+    expect(handoffStateFromResult({ prompt: "Resume it.", reason: "" })).toEqual({
+      status: "ready",
+      prompt: "Resume it.",
+    });
+    expect(handoffStateFromResult({ prompt: null, reason: "This chat has no messages." })).toEqual({
+      status: "error",
+      message: "This chat has no messages.",
+    });
+    expect(handoffStateFromResult(null).status).toBe("error");
   });
 });

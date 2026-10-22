@@ -18,6 +18,8 @@ import {
 export const MODEL_LIMIT = 12;
 const READ_CONCURRENCY = 8;
 const MODEL_CONCURRENCY = 3;
+const MODEL_TIMEOUT = "8 seconds";
+const HANDOFF_TIMEOUT = "40 seconds";
 const TAIL_WINDOW = 60; // items read from the end of a thread; a longer tool streak reads as "no reply yet"
 const TRANSCRIPT_CLIP = 3000;
 const WAITING_STATUSES = new Set(["failed", "interrupted", "cancelled", "rolled_back"]);
@@ -159,14 +161,26 @@ export const runThreadSweep = (
 
     // The model only sees what the rules and Laya could not decide, up to a fixed limit.
     const forModel = open.slice(0, MODEL_LIMIT);
+    // After one failed call the rest are skipped, so a broken model costs one timeout, not twelve.
+    let modelBroken = false;
     const judged = yield* Effect.forEach(
       forModel,
       (row) =>
-        deps
-          .assess(
-            `User: ${row.tail.lastUser.slice(0, TRANSCRIPT_CLIP)}\n\nAssistant: ${row.tail.lastAssistant.slice(-TRANSCRIPT_CLIP)}`,
-          )
-          .pipe(Effect.map((answer) => ({ row, answer }))),
+        Effect.gen(function* () {
+          if (modelBroken) return { row, answer: null };
+          const answer = yield* deps
+            .assess(
+              `User: ${row.tail.lastUser.slice(0, TRANSCRIPT_CLIP)}
+
+Assistant: ${row.tail.lastAssistant.slice(-TRANSCRIPT_CLIP)}`,
+            )
+            .pipe(
+              Effect.timeout(MODEL_TIMEOUT),
+              Effect.orElseSucceed(() => null),
+            );
+          if (answer === null) modelBroken = true;
+          return { row, answer };
+        }),
       { concurrency: MODEL_CONCURRENCY },
     );
     for (const { row, answer } of judged) {
@@ -194,4 +208,62 @@ export const runThreadSweep = (
       layaAvailable: outcome.layaAvailable,
       modelLimitHit: open.length > MODEL_LIMIT,
     };
+  });
+
+const HANDOFF_MESSAGE_CLIP = 1500;
+const HANDOFF_BUDGET = 12000;
+const HANDOFF_WINDOW = 40; // items read from the end of the chat
+
+/** The last messages as plain text, newest kept first when the budget runs out. */
+export function transcriptFromItems(
+  items: ReadonlyArray<OrchestrationV2ProjectedTurnItem>,
+): string {
+  const lines: string[] = [];
+  let used = 0;
+  for (const { item } of items.toReversed()) {
+    if (item.type !== "user_message" && item.type !== "assistant_message") continue;
+    if (item.type === "assistant_message" && item.streaming) continue;
+    const text = item.text.trim();
+    if (text === "") continue;
+    const label = item.type === "user_message" ? "User" : "Assistant";
+    const line = `${label}: ${
+      item.type === "user_message"
+        ? text.slice(0, HANDOFF_MESSAGE_CLIP)
+        : text.slice(-HANDOFF_MESSAGE_CLIP)
+    }`;
+    if (used + line.length > HANDOFF_BUDGET) break;
+    lines.unshift(line);
+    used += line.length;
+  }
+  return lines.join("\n\n");
+}
+
+export interface HandoffDeps {
+  readonly readItems: (
+    threadId: string,
+  ) => Effect.Effect<ReadonlyArray<OrchestrationV2ProjectedTurnItem>>;
+  /** The handoff prompt from the model, or null when the model fails. */
+  readonly write: (transcript: string) => Effect.Effect<string | null>;
+}
+
+export const HANDOFF_ITEM_WINDOW = HANDOFF_WINDOW;
+
+/** One chat in, one prompt out. A null prompt always comes with a plain reason. */
+export const runThreadHandoff = (
+  deps: HandoffDeps,
+  threadId: string,
+): Effect.Effect<{ readonly prompt: string | null; readonly reason: string }> =>
+  Effect.gen(function* () {
+    const transcript = transcriptFromItems(yield* deps.readItems(threadId));
+    if (transcript === "") {
+      return { prompt: null, reason: "This chat has no messages to continue from." };
+    }
+    const written = yield* deps.write(transcript).pipe(
+      Effect.timeout(HANDOFF_TIMEOUT),
+      Effect.orElseSucceed(() => null),
+    );
+    const prompt = written?.trim() ?? "";
+    return prompt === ""
+      ? { prompt: null, reason: "The AI model could not write the prompt. Try again." }
+      : { prompt, reason: "" };
   });

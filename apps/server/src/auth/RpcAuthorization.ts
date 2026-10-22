@@ -223,6 +223,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.localModelsTokenReport]: AuthOrchestrationOperateScope,
   [WS_METHODS.localModelsDelete]: AuthOrchestrationOperateScope,
   [WS_METHODS.threadSweepRun]: AuthOrchestrationOperateScope,
+  [WS_METHODS.threadSweepHandoff]: AuthOrchestrationOperateScope,
   [WS_METHODS.projectsPromptCandidates]: AuthFilesystemReadScope,
   [WS_METHODS.projectsPredictPrompt]: AuthFilesystemReadScope,
   [WS_METHODS.projectsCancelPromptPrediction]: AuthFilesystemReadScope,

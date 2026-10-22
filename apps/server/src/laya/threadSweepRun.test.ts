@@ -5,14 +5,15 @@ import { describe, expect } from "vite-plus/test";
 
 import {
   MODEL_LIMIT,
+  runThreadHandoff,
   runThreadSweep,
   tailFromItems,
+  transcriptFromItems,
   type SweepDeps,
   type SweepThread,
 } from "./threadSweepRun.ts";
 
 const NOW = Date.parse("2026-10-20T09:00:00Z");
-const HOUR = 3_600_000;
 const OLD = "2026-10-19T13:00:00.000Z"; // 20 hours before NOW
 const RECENT = "2026-10-20T08:00:00.000Z"; // 1 hour before NOW
 
@@ -177,6 +178,32 @@ describe("runThreadSweep", () => {
     }),
   );
 
+  it.effect("stops calling the model after the first failure", () =>
+    Effect.gen(function* () {
+      const ids = Array.from({ length: 8 }, (_, i) => `t${i}`);
+      const calls: string[] = [];
+      const deps = makeDeps(
+        ids.map((id) => thread(id)),
+        Object.fromEntries(
+          ids.map((id) => [
+            id,
+            [message("user_message", "go"), message("assistant_message", OPEN_REPLY)],
+          ]),
+        ),
+        {
+          assess: (transcript) => {
+            calls.push(transcript);
+            return Effect.succeed(null);
+          },
+        },
+      );
+      const result = yield* runThreadSweep(deps, { idleMinutes: 0 });
+      expect(calls.length).toBeLessThanOrEqual(3); // only the first parallel batch started
+      expect(result.items).toHaveLength(8);
+      expect(result.items.every((item) => item.verdict === "unsure")).toBe(true);
+    }),
+  );
+
   it.effect("stops at the model limit and leaves the rest unsure", () =>
     Effect.gen(function* () {
       const ids = Array.from({ length: MODEL_LIMIT + 3 }, (_, i) => `t${i}`);
@@ -193,6 +220,80 @@ describe("runThreadSweep", () => {
       expect(deps.assessed).toHaveLength(MODEL_LIMIT);
       expect(result.modelLimitHit).toBe(true);
       expect(result.items.filter((item) => item.verdict === "unsure")).toHaveLength(3);
+    }),
+  );
+});
+
+describe("transcriptFromItems", () => {
+  it("labels messages, skips streaming and empty ones, and keeps the newest when the budget is full", () => {
+    const text = transcriptFromItems([
+      message("user_message", "first ask"),
+      message("assistant_message", "partial", true),
+      message("assistant_message", "  "),
+      message("assistant_message", "first reply"),
+    ]);
+    expect(text).toBe("User: first ask\n\nAssistant: first reply");
+
+    const big = Array.from({ length: 20 }, (_, i) =>
+      message("user_message", `${i}:${"x".repeat(1400)}`),
+    );
+    const clipped = transcriptFromItems(big);
+    expect(clipped.length).toBeLessThanOrEqual(12_000 + 2 * 20);
+    expect(clipped).toContain("19:"); // newest kept
+    expect(clipped).not.toContain("User: 0:"); // oldest dropped
+  });
+});
+
+describe("runThreadHandoff", () => {
+  const items = [message("user_message", "ship it"), message("assistant_message", "CI is running")];
+
+  it.effect("returns the model prompt for a chat with messages", () =>
+    Effect.gen(function* () {
+      const seen: string[] = [];
+      const out = yield* runThreadHandoff(
+        {
+          readItems: () => Effect.succeed(items),
+          write: (transcript) => {
+            seen.push(transcript);
+            return Effect.succeed("  Resume: confirm CI.  ");
+          },
+        },
+        "t1",
+      );
+      expect(out).toEqual({ prompt: "Resume: confirm CI.", reason: "" });
+      expect(seen[0]).toContain("Assistant: CI is running");
+    }),
+  );
+
+  it.effect("gives a plain reason, and no model call, for an empty chat", () =>
+    Effect.gen(function* () {
+      let called = false;
+      const out = yield* runThreadHandoff(
+        {
+          readItems: () => Effect.succeed([]),
+          write: () => {
+            called = true;
+            return Effect.succeed("x");
+          },
+        },
+        "t1",
+      );
+      expect(out.prompt).toBeNull();
+      expect(out.reason).toContain("no messages");
+      expect(called).toBe(false);
+    }),
+  );
+
+  it.effect("gives a plain reason when the model fails or returns blank text", () =>
+    Effect.gen(function* () {
+      for (const answer of [null, "   "]) {
+        const out = yield* runThreadHandoff(
+          { readItems: () => Effect.succeed(items), write: () => Effect.succeed(answer) },
+          "t1",
+        );
+        expect(out.prompt).toBeNull();
+        expect(out.reason).toContain("could not write");
+      }
     }),
   );
 });

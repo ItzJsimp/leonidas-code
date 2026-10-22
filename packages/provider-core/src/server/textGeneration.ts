@@ -110,8 +110,8 @@ export interface ThreadAssessmentInput {
 export interface ThreadAssessmentResult {
   verdict: "done" | "unfinished" | "unsure";
   reason: string;
-  /** Present when `want` was "handoff". */
-  handoff?: string | undefined;
+  /** The handoff prompt when `want` was "handoff"; an empty string otherwise. */
+  handoff: string;
 }
 
 /** Commit, change request, branch, and title generation backed by one provider instance. */
