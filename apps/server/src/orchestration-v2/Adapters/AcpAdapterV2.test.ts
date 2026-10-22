@@ -846,6 +846,88 @@ describe("AcpAdapterV2", () => {
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 
+  const silentStopTexts = (silentStopContinuation: string | undefined) =>
+    Effect.gen(function* () {
+      const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+      const path = yield* Path.Path;
+      const selfInvocation = yield* resolveSelfInvocation();
+      const mockAgentPath = yield* path.fromFileUrl(
+        new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
+      );
+      const markerTime = yield* Clock.currentTimeMillis;
+      const markerPath = path.join(NodeOS.tmpdir(), `acp-silent-stop-${process.pid}-${markerTime}`);
+      const instanceId = ProviderInstanceId.make("acp-test-silent-stop");
+      const adapter = yield* makeAcpAdapterV2({
+        instanceId,
+        flavor: {
+          driver: ACP_TEST_DRIVER,
+          capabilities: AcpProviderCapabilitiesV2,
+          ...(silentStopContinuation === undefined ? {} : { silentStopContinuation }),
+          makeRuntime: makeMockRuntime({
+            childProcessSpawner,
+            mockAgentPath,
+            environment: {
+              T3_ACP_SILENT_STOP_MARKER_PATH: markerPath,
+              T3_ACP_PROMPT_RESPONSE_TEXT: "continued answer",
+            },
+          }),
+        },
+        selfInvocation,
+      });
+      const threadId = ThreadId.make("thread-acp-silent-stop");
+      const modelSelection = { instanceId, model: "default" } as const;
+      const runtimePolicy = ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        cwd: process.cwd(),
+      });
+      const runtime = yield* adapter.openSession({
+        threadId,
+        providerSessionId: ProviderSessionId.make("provider-session-acp-silent-stop"),
+        modelSelection,
+        runtimePolicy,
+      });
+      const providerThread = yield* runtime.ensureThread({
+        threadId,
+        modelSelection,
+        runtimePolicy,
+      });
+      yield* runtime.startTurn(
+        makeTurnInput({
+          threadId,
+          providerThread,
+          instanceId,
+          runtimePolicy,
+          now: yield* DateTime.now,
+        }),
+      );
+      const events = Array.from(
+        yield* runtime.events.pipe(
+          Stream.takeUntil((event) => event.type === "turn.terminal"),
+          Stream.runCollect,
+        ),
+      );
+      return events.flatMap((event) =>
+        event.type === "turn_item.updated" && event.turnItem.type === "assistant_message"
+          ? [event.turnItem.text]
+          : [],
+      );
+    }).pipe(Effect.provide(layerTest), Effect.scoped);
+
+  it.live("sends one follow-up when the agent stops right after a tool call with no reply", () =>
+    Effect.gen(function* () {
+      const texts = yield* silentStopTexts("Continue and reply.");
+      assert.equal(texts.at(-1), "continued answer");
+    }),
+  );
+
+  it.live("without a continuation the same silent stop leaves the turn with no reply", () =>
+    Effect.gen(function* () {
+      const texts = yield* silentStopTexts(undefined);
+      assert.deepEqual(texts, []);
+    }),
+  );
+
   it.live("refreshes ACP prompt instructions when the interaction mode changes", () =>
     Effect.gen(function* () {
       const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
