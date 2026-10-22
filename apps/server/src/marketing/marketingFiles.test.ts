@@ -6,6 +6,7 @@ import * as NodePath from "node:path";
 
 import {
   checkApproval,
+  MAX_FILE_BYTES,
   readBrands,
   readPosts,
   readTickets,
@@ -33,12 +34,17 @@ afterEach(() => {
 });
 
 /** What the approval screen (next card) will write: a person's decision on a ticket. */
-function decide(root: string, ticketId: string, decidedBy: { kind: string; name: string }) {
+function decide(
+  root: string,
+  ticketId: string,
+  decidedBy: { kind: string; name: string },
+  status: "approved" | "rejected" = "approved",
+) {
   const ticket = readTickets(root).records.find((t) => t.id === ticketId)!;
   const file = NodePath.join(root, "marketing", "approvals", `${ticket.postId.slice(5, 12)}.jsonl`);
   NodeFS.appendFileSync(
     file,
-    `${JSON.stringify({ ...ticket, status: "approved", decidedAt: "2026-10-22T20:00:00Z", decidedBy })}\n`,
+    `${JSON.stringify({ ...ticket, status, decidedAt: "2026-10-22T20:00:00Z", decidedBy })}\n`,
   );
 }
 
@@ -61,6 +67,21 @@ describe("drafts", () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]).toMatchObject({ id: first.id, text: "New text.", createdAt: first.createdAt });
     expect(edited.id).toBe(first.id);
+    const file = NodePath.join(root, "marketing", "posts", `${first.createdAt.slice(0, 7)}.jsonl`);
+    const lines = NodeFS.readFileSync(file, "utf8").trim().split("\n");
+    expect(lines.map((line) => JSON.parse(line).id)).toEqual([first.id, first.id]);
+  });
+
+  it("reports a file over the size cap and still reads the others", () => {
+    const root = makeWorkspace();
+    const post = draft(root);
+    const big = NodePath.join(root, "marketing", "posts", "2000-01.jsonl");
+    NodeFS.writeFileSync(big, "x".repeat(MAX_FILE_BYTES + 1));
+    const { records, bad } = readPosts(root);
+    expect(records.map((p) => p.id)).toEqual([post.id]);
+    expect(bad).toEqual([
+      { file: "marketing/posts/2000-01.jsonl", reason: "the file is over 5 MB" },
+    ]);
   });
 
   it("reports a bad brand file and still reads the good one", () => {
@@ -121,6 +142,40 @@ describe("approval gate", () => {
     expect(checkApproval(root, post.id, "publish")).toEqual({ ok: false, reason: "pending" });
     decide(root, again.id, { kind: "member", name: "Owner" });
     expect(checkApproval(root, post.id, "publish")).toMatchObject({ ok: true });
+  });
+
+  it("voids the approval when the channel or the time changes", () => {
+    const root = makeWorkspace();
+    const post = draft(root);
+    const ticket = requestApproval(
+      root,
+      { postId: post.id, act: "publish", costEstimateUsd: 0 },
+      agent,
+    );
+    decide(root, ticket.id, { kind: "member", name: "Owner" });
+    const base = { id: post.id, brand: post.brand, text: post.text };
+    saveDraft(root, { ...base, channel: "discord" }, agent);
+    expect(checkApproval(root, post.id, "publish")).toEqual({
+      ok: false,
+      reason: "content_changed",
+    });
+    saveDraft(root, { ...base, channel: "x", scheduledFor: "2026-11-01T17:00:00Z" }, agent);
+    expect(checkApproval(root, post.id, "publish")).toEqual({
+      ok: false,
+      reason: "content_changed",
+    });
+  });
+
+  it("refuses a rejected ticket", () => {
+    const root = makeWorkspace();
+    const post = draft(root);
+    const ticket = requestApproval(
+      root,
+      { postId: post.id, act: "publish", costEstimateUsd: 0 },
+      agent,
+    );
+    decide(root, ticket.id, { kind: "member", name: "Owner" }, "rejected");
+    expect(checkApproval(root, post.id, "publish")).toEqual({ ok: false, reason: "rejected" });
   });
 
   it("ignores an approval line that names an agent", () => {

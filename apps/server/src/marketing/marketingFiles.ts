@@ -38,6 +38,17 @@ const rel = (root: string, file: string) => NodePath.relative(root, file).replac
 const hex = (bytes: number) => NodeCrypto.randomBytes(bytes).toString("hex");
 const nowIso = () => new Date().toISOString();
 
+/** A file over this size is reported, not read, so one huge file cannot stall the server. */
+export const MAX_FILE_BYTES = 5_000_000;
+/** Tool answers list at most this many bad records. */
+const MAX_BAD = 100;
+
+/** The file's text, or null when it is over MAX_FILE_BYTES. */
+export function readCapped(file: string): string | null {
+  return NodeFS.statSync(file).size > MAX_FILE_BYTES ? null : NodeFS.readFileSync(file, "utf8");
+}
+const TOO_BIG = `the file is over ${MAX_FILE_BYTES / 1_000_000} MB`;
+
 function decodeWith<A>(schema: Schema.Codec<A, unknown>) {
   const decode = Schema.decodeUnknownExit(schema);
   return (value: unknown): { ok: true; value: A } | { ok: false; reason: string } => {
@@ -67,25 +78,31 @@ function readFolder<A>(
   if (!NodeFS.existsSync(base)) return { records: [], bad: [] };
   const records: Array<A> = [];
   const bad: Array<MarketingBadRecord> = [];
+  const report = (record: MarketingBadRecord) => {
+    if (bad.length < MAX_BAD) bad.push(record);
+  };
   for (const name of NodeFS.readdirSync(base)
     .filter((n) => n.endsWith(".jsonl"))
     .toSorted()) {
     const file = NodePath.join(base, name);
-    NodeFS.readFileSync(file, "utf8")
-      .split("\n")
-      .forEach((line, index) => {
-        if (line.trim() === "") return;
-        let value: unknown;
-        try {
-          value = JSON.parse(line);
-        } catch {
-          bad.push({ file: rel(root, file), line: index + 1, reason: "not valid JSON" });
-          return;
-        }
-        const result = decode(value);
-        if (result.ok) records.push(result.value);
-        else bad.push({ file: rel(root, file), line: index + 1, reason: result.reason });
-      });
+    const text = readCapped(file);
+    if (text === null) {
+      report({ file: rel(root, file), reason: TOO_BIG });
+      continue;
+    }
+    text.split("\n").forEach((line, index) => {
+      if (line.trim() === "") return;
+      let value: unknown;
+      try {
+        value = JSON.parse(line);
+      } catch {
+        report({ file: rel(root, file), line: index + 1, reason: "not valid JSON" });
+        return;
+      }
+      const result = decode(value);
+      if (result.ok) records.push(result.value);
+      else report({ file: rel(root, file), line: index + 1, reason: result.reason });
+    });
   }
   return { records, bad };
 }
@@ -119,9 +136,7 @@ export function readBrands(root: string): Read<MarketingBrand> {
     .filter((n) => n.endsWith(".md"))
     .toSorted()) {
     const file = NodePath.join(base, name);
-    const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(
-      NodeFS.readFileSync(file, "utf8"),
-    );
+    const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(readCapped(file) ?? "");
     let front: Record<string, unknown> | null = null;
     try {
       front = match ? (parseYaml(match[1]!) as Record<string, unknown>) : null;
@@ -151,7 +166,9 @@ export function readConnections(root: string): MarketingConnections | MarketingB
   const file = dir(root, "connections.json");
   if (!NodeFS.existsSync(file)) return { v: 1 };
   try {
-    const result = decodeConnections(JSON.parse(NodeFS.readFileSync(file, "utf8")));
+    const text = readCapped(file);
+    if (text === null) return { file: rel(root, file), reason: TOO_BIG };
+    const result = decodeConnections(JSON.parse(text));
     return result.ok ? result.value : { file: rel(root, file), reason: result.reason };
   } catch {
     return { file: rel(root, file), reason: "not valid JSON" };
@@ -303,6 +320,8 @@ export function appendMetrics(
 /** Resolves a workspace-relative folder and refuses one that leaves the workspace. */
 export function insideRoot(root: string, relative: string): string | null {
   const full = NodePath.resolve(root, relative);
-  const back = NodePath.relative(NodePath.resolve(root), full);
+  // Real paths, so a symlink or junction inside the workspace cannot point outside it.
+  const real = (path: string) => (NodeFS.existsSync(path) ? NodeFS.realpathSync(path) : path);
+  const back = NodePath.relative(real(NodePath.resolve(root)), real(full));
   return back.startsWith("..") || NodePath.isAbsolute(back) ? null : full;
 }

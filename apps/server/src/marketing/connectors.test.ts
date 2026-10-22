@@ -4,7 +4,7 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
-import { syncMetrics } from "./connectors.ts";
+import { type MarketingConnector, syncMetrics, xDraftConnector } from "./connectors.ts";
 import { readMetrics } from "./marketingFiles.ts";
 
 const roots: Array<string> = [];
@@ -82,6 +82,33 @@ describe("X connector in draft mode", () => {
       added: 0,
       errors: [{ file: "../elsewhere", reason: "the folder is outside the workspace" }],
     });
+  });
+
+  it("refuses a junction inside the workspace that points outside it", () => {
+    const root = workspace("linked");
+    const outside = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "marketing-outside-"));
+    roots.push(outside);
+    NodeFS.symlinkSync(outside, NodePath.join(root, "linked"), "junction");
+    expect(syncMetrics(root).errors).toEqual([
+      { file: "linked", reason: "the folder is outside the workspace" },
+    ]);
+  });
+
+  it("keeps running the next connector when one throws", () => {
+    const root = workspace();
+    const broken: MarketingConnector = {
+      channel: "discord",
+      readMetrics: () => {
+        throw new Error("boom");
+      },
+    };
+    const result = syncMetrics(root, [broken, xDraftConnector]);
+    expect(result.added).toBe(2);
+    expect(result.errors[0]).toEqual({ file: "discord", reason: "Error: boom" });
+    expect(feedLines(root).map((line) => line.type)).toEqual([
+      "marketing.connector_error",
+      "marketing.connector_error",
+    ]);
   });
 
   it("reports a broken connections file and stops there", () => {

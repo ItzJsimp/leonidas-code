@@ -9,7 +9,7 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 import { appendFeedEvent } from "../events/feedFile.ts";
-import { appendMetrics, insideRoot, readConnections } from "./marketingFiles.ts";
+import { appendMetrics, insideRoot, readCapped, readConnections } from "./marketingFiles.ts";
 
 /** One network. Slice 1 has read only; publish arrives with its own approval check. */
 export interface MarketingConnector {
@@ -46,7 +46,12 @@ export const xDraftConnector: MarketingConnector = {
       const file = NodePath.relative(root, NodePath.join(folder, name)).replaceAll("\\", "/");
       let body: unknown;
       try {
-        body = JSON.parse(NodeFS.readFileSync(NodePath.join(folder, name), "utf8"));
+        const text = readCapped(NodePath.join(folder, name));
+        if (text === null) {
+          errors.push({ file, reason: "the file is over 5 MB" });
+          continue;
+        }
+        body = JSON.parse(text);
       } catch {
         errors.push({ file, reason: "not valid JSON" });
         continue;
