@@ -8,7 +8,7 @@ import {
   type ScopedThreadRef,
 } from "@t3tools/contracts";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
-import { CheckIcon, CopyIcon, MessageSquareTextIcon, PencilIcon, PinIcon } from "lucide-react";
+import { CheckIcon, EyeIcon, MessageSquareTextIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 
 import { useEnvironmentSettings, useUpdateEnvironmentSettings } from "~/hooks/useSettings";
@@ -29,6 +29,7 @@ import {
 import { Input } from "../ui/input";
 import {
   Menu,
+  MenuCheckboxItem,
   MenuItem,
   MenuPopup,
   MenuRadioGroup,
@@ -40,7 +41,7 @@ import {
 import { Textarea } from "../ui/textarea";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { ComposerControl, ComposerControlChevron, ComposerControlIcon } from "./ComposerControl";
+import { ComposerControl, ComposerControlIcon } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
 import {
   REPLY_STYLE_PROBLEM_TEXT,
@@ -67,8 +68,10 @@ function announceOnce(key: string): boolean {
 }
 
 interface EditorTarget {
-  /** Null for a new style made with "Duplicate Leonidas". */
+  /** Null for a new style, or for the read-only view of Leonidas. */
   readonly slug: string | null;
+  /** True for the Leonidas view: the text shows but cannot change. */
+  readonly readOnly?: boolean;
   readonly name: string;
   readonly description: string;
   readonly body: string;
@@ -175,8 +178,8 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
   const problemText = chip.problem
     ? `${chip.problem.name} could not load: ${REPLY_STYLE_PROBLEM_TEXT[chip.problem.reason]}. Replies use Leonidas.`
     : chip.source === "chat"
-      ? `This chat replies in the ${chip.label} style. Click to change it.`
-      : `This chat follows the project style, ${chip.label}. Click to change it.`;
+      ? `Reply style: ${chip.label}. Click to change it.`
+      : `Reply style: ${chip.label} (project default). Click to change it.`;
 
   return (
     <>
@@ -215,22 +218,13 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
                 }
               />
             )}
-            <span className="sr-only sm:not-sr-only sm:max-w-32 sm:truncate">{chip.label}</span>
-            <ComposerControlChevron size={size} className="hidden sm:block" />
           </TooltipTrigger>
           <TooltipPopup side="top" className="max-w-72">
             {problemText}
           </TooltipPopup>
         </Tooltip>
-        <MenuPopup
-          align="start"
-          side="top"
-          className="w-80 max-w-[calc(100vw-2rem)]"
-          {...menuProps}
-        >
-          <div className="px-2 py-1.5 font-medium text-muted-foreground text-xs">
-            Reply style for this chat
-          </div>
+        <MenuPopup align="end" side="top" className="w-80 max-w-[calc(100vw-2rem)]" {...menuProps}>
+          <div className="px-2 py-1.5 font-medium text-muted-foreground text-xs">Reply style</div>
           <MenuRadioGroup
             value={chip.selectedSlug}
             onValueChange={(value) => {
@@ -276,18 +270,15 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
           ) : null}
           <MenuSeparator />
           {projectId !== null && chip.problem === null ? (
-            <MenuItem
+            <MenuCheckboxItem
               className="min-h-10"
-              disabled={projectSlug === chip.selectedSlug}
-              onClick={() => setProjectStyle(chip.selectedSlug)}
+              checked={projectSlug === chip.selectedSlug}
+              onCheckedChange={(checked) =>
+                setProjectStyle(checked ? chip.selectedSlug : LEONIDAS_REPLY_STYLE_SLUG)
+              }
             >
-              <PinIcon />
-              <span className="truncate">
-                {projectSlug === chip.selectedSlug
-                  ? `${selected?.name || chip.label} is the project style`
-                  : `Use ${selected?.name || chip.selectedSlug} for this project`}
-              </span>
-            </MenuItem>
+              <span className="truncate">Default for new chats in this project</span>
+            </MenuCheckboxItem>
           ) : null}
           {editableSelected ? (
             <MenuItem
@@ -309,19 +300,28 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
           ) : null}
           <MenuItem
             className="min-h-10"
-            disabled={!list.data || !cwd}
+            disabled={!list.data}
             onClick={() =>
               list.data &&
               setEditor({
                 slug: null,
-                name: "My style",
-                description: "Leonidas, changed to fit me.",
+                readOnly: true,
+                name: "Leonidas",
+                description: "The shipped Leonidas Code reply style.",
                 body: list.data.leonidasBody,
               })
             }
           >
-            <CopyIcon />
-            Duplicate Leonidas
+            <EyeIcon />
+            View Leonidas instructions
+          </MenuItem>
+          <MenuItem
+            className="min-h-10"
+            disabled={!cwd}
+            onClick={() => setEditor({ slug: null, name: "", description: "", body: "" })}
+          >
+            <PlusIcon />
+            New style...
           </MenuItem>
         </MenuPopup>
       </Menu>
@@ -331,6 +331,7 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
         loadError={editor?.slug ? readFile.error : null}
         onClose={() => setEditor(null)}
         onSave={save}
+        onCopy={(draft) => setEditor({ ...draft, slug: null, readOnly: false, name: "My style" })}
       />
     </>
   );
@@ -343,6 +344,7 @@ function ReplyStyleEditorDialog(props: {
   loadError: string | null;
   onClose: () => void;
   onSave: (draft: EditorTarget) => Promise<boolean>;
+  onCopy: (draft: EditorTarget) => void;
 }) {
   const { target, loadedText } = props;
   // A new style starts from the target. An edit starts from the file once it loads.
@@ -355,24 +357,32 @@ function ReplyStyleEditorDialog(props: {
         ? { ...target, body: replyStyleBodyForRepair(loadedText) }
         : { slug: target.slug, ...parsed };
   }
-  const isNew = target?.slug === null;
+  const isNew = target?.slug === null && !target.readOnly;
 
   return (
     <Dialog open={target !== null} onOpenChange={(open) => (open ? undefined : props.onClose())}>
       <DialogPopup className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{isNew ? "New reply style" : `Edit ${target?.name ?? ""}`}</DialogTitle>
+          <DialogTitle>
+            {target?.readOnly
+              ? "Leonidas reply style"
+              : isNew
+                ? "New reply style"
+                : `Edit ${target?.name ?? ""}`}
+          </DialogTitle>
           <DialogDescription>
-            Saved in your project as .agents/reply-styles. Save and use picks it for this chat and
-            this project.
+            {target?.readOnly
+              ? "The built-in instructions. They cannot change, but you can copy them into your own style."
+              : "Name it and write how replies should read. It is saved in your project under .agents/reply-styles and used for this chat."}
           </DialogDescription>
         </DialogHeader>
         {initial ? (
           <ReplyStyleEditorForm
-            key={initial.slug ?? "new"}
+            key={initial.readOnly ? "view" : (initial.slug ?? "new")}
             initial={initial}
             onClose={props.onClose}
             onSave={props.onSave}
+            onCopy={props.onCopy}
           />
         ) : (
           <DialogPanel>
@@ -392,11 +402,13 @@ function ReplyStyleEditorForm(props: {
   initial: EditorTarget;
   onClose: () => void;
   onSave: (draft: EditorTarget) => Promise<boolean>;
+  onCopy: (draft: EditorTarget) => void;
 }) {
   const [draft, setDraft] = useState(props.initial);
   const [saving, setSaving] = useState(false);
   const problem = replyStyleDraftProblem(draft);
   const length = draft.body.trim().length;
+  const readOnly = props.initial.readOnly === true;
 
   return (
     <>
@@ -405,13 +417,18 @@ function ReplyStyleEditorForm(props: {
           <label className="grid gap-1">
             <span className="text-muted-foreground text-xs">Name</span>
             <Input
+              autoFocus={!readOnly}
+              readOnly={readOnly}
+              placeholder="Short and plain"
               value={draft.name}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-muted-foreground text-xs">Description</span>
+            <span className="text-muted-foreground text-xs">Description (optional)</span>
             <Input
+              readOnly={readOnly}
+              placeholder="One line shown in the menu"
               value={draft.description}
               onChange={(event) => setDraft({ ...draft, description: event.target.value })}
             />
@@ -420,6 +437,8 @@ function ReplyStyleEditorForm(props: {
             <span className="text-muted-foreground text-xs">Instructions</span>
             <Textarea
               className="min-h-56"
+              readOnly={readOnly}
+              placeholder="Tell Leonidas how to reply, for example: Short answers. Plain words. No filler."
               value={draft.body}
               onChange={(event) => setDraft({ ...draft, body: event.target.value })}
             />
@@ -439,20 +458,24 @@ function ReplyStyleEditorForm(props: {
           {length.toLocaleString("en-US")} / {REPLY_STYLE_MAX_BODY_LENGTH.toLocaleString("en-US")}
         </span>
         <Button variant="outline" onClick={props.onClose}>
-          Cancel
+          {readOnly ? "Close" : "Cancel"}
         </Button>
-        <Button
-          disabled={problem !== null || saving}
-          title={problem ?? undefined}
-          onClick={async () => {
-            setSaving(true);
-            const saved = await props.onSave(draft);
-            setSaving(false);
-            if (saved) props.onClose();
-          }}
-        >
-          Save and use
-        </Button>
+        {readOnly ? (
+          <Button onClick={() => props.onCopy(draft)}>Copy to my own style</Button>
+        ) : (
+          <Button
+            disabled={problem !== null || saving}
+            title={problem ?? undefined}
+            onClick={async () => {
+              setSaving(true);
+              const saved = await props.onSave(draft);
+              setSaving(false);
+              if (saved) props.onClose();
+            }}
+          >
+            Save and use
+          </Button>
+        )}
       </DialogFooter>
     </>
   );
