@@ -54,6 +54,10 @@ export function explicitTaskId(text: string): string | undefined {
 const messageMarker = (id: string) => `[message ${id}]`;
 const runMarker = (id: string) => `[run ${id}]`;
 
+/** A card lists every chat that worked on it; older records name only the newest one. */
+export const isLinked = (task: TaskBoardTask, threadId: string): boolean =>
+  task.threadIds?.includes(threadId) === true || task.claimedAgent?.threadId === threadId;
+
 export type AutoLogEvent =
   | { readonly type: "message.updated"; readonly payload: OrchestrationV2ConversationMessage }
   | {
@@ -89,15 +93,15 @@ export const makeAutoLog = (deps: {
       const all = yield* tasks(projects);
       const marker = messageMarker(message.id);
       const named = explicitTaskId(message.text);
-      const linked = all.find((task) => task.claimedAgent?.threadId === message.threadId);
+      const linked = all.find((task) => isLinked(task, message.threadId));
       const target =
         linked ?? (named === undefined ? undefined : all.find((task) => task.id === named));
 
       if (target !== undefined) {
         if (hasMarker(target, marker)) return;
         const starting = named === target.id;
-        // An explicit card keeps its first thread: a second thread only adds a note.
-        const adopt = starting && target.claimedAgent?.threadId === undefined;
+        // An explicit card takes every new chat that starts on it. The card records each chat.
+        const adopt = starting && !isLinked(target, message.threadId);
         yield* taskBoard.cardUpdate(
           {
             taskId: target.id,
@@ -153,7 +157,7 @@ export const makeAutoLog = (deps: {
       const projects = yield* deps.allProjects;
       const marker = runMarker(run.id);
       const linked = (yield* tasks(projects)).filter(
-        (item) => item.claimedAgent?.threadId === threadId && !hasMarker(item, marker),
+        (item) => isLinked(item, threadId) && !hasMarker(item, marker),
       );
       for (const task of linked) {
         const finishing = run.status === "completed" && task.status === "in_progress";
