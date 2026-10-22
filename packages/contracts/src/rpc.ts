@@ -68,6 +68,12 @@ import {
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
 import {
+  AreaSyncJoinResult,
+  AreaSyncScopeInput,
+  AreaSyncStatusResult,
+  AreaSyncSyncResult,
+} from "./areaSync.ts";
+import {
   HardwareAcknowledgeAlertInput,
   HardwareAlert,
   HardwareHistory,
@@ -603,6 +609,9 @@ export const WS_METHODS = {
   aiosDirection: "taskBoard.aiosDirection",
   aiosWorkspacesList: "aiosWorkspaces.list",
   aiosWorkspacesInit: "aiosWorkspaces.init",
+  areaSyncJoin: "areaSync.join",
+  areaSyncSync: "areaSync.sync",
+  areaSyncStatus: "areaSync.status",
   workspacePackWidgets: "workspacePack.widgets",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
@@ -1810,6 +1819,24 @@ const WsWorkspacePackWidgetsRpc = Rpc.make(WS_METHODS.workspacePackWidgets, {
 const WsAiosWorkspacesInitRpc = Rpc.make(WS_METHODS.aiosWorkspacesInit, {
   payload: AiosWorkspaceInitInput,
   success: AiosWorkspaceSummary,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAreaSyncJoinRpc = Rpc.make(WS_METHODS.areaSyncJoin, {
+  payload: AreaSyncScopeInput,
+  success: AreaSyncJoinResult,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAreaSyncSyncRpc = Rpc.make(WS_METHODS.areaSyncSync, {
+  payload: AreaSyncScopeInput,
+  success: AreaSyncSyncResult,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAreaSyncStatusRpc = Rpc.make(WS_METHODS.areaSyncStatus, {
+  payload: AreaSyncScopeInput,
+  success: AreaSyncStatusResult,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
@@ -3039,6 +3066,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeRpc,
   WsAiosWorkspacesListRpc,
   WsAiosWorkspacesInitRpc,
+  WsAreaSyncJoinRpc,
+  WsAreaSyncSyncRpc,
+  WsAreaSyncStatusRpc,
   WsWorkspacePackWidgetsRpc,
   WsAiosUsageShapeRpc,
   WsAiosDirectionRpc,

@@ -6,6 +6,7 @@ import * as LocalModelsService from "./localModels/LocalModelsService.ts";
 import * as TaskAutoLog from "./taskBoard/TaskAutoLog.ts";
 import * as AiosChangeLog from "./events/AiosChangeLog.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
+import * as AreaSyncService from "./areaSync/AreaSyncService.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
 import * as VoiceKeyStore from "./scribe/VoiceKeyStore.ts";
@@ -457,8 +458,12 @@ const layerWorkspaceFileSystem = WorkspaceFileSystem.layer.pipe(
   Layer.provide(layerWorkspaceEntries),
 );
 
+// One shared layer value, so the Area sync service reads the same TaskBoardService instance.
+const layerTaskBoard = TaskBoardService.layer.pipe(Layer.provide(ProcessRunner.layer));
+
 const layerWorkspace = Layer.mergeAll(
-  TaskBoardService.layer.pipe(Layer.provide(ProcessRunner.layer)),
+  layerTaskBoard,
+  AreaSyncService.layer.pipe(Layer.provide(layerTaskBoard)),
   DevPreviewService.layer,
   ImageService.layer,
   PromptPrediction.layer,
