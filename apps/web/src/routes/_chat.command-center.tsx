@@ -14,6 +14,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
+import { CommandCenterForward } from "../components/twoState/CommandCenterForward";
 import { HomeCardsOutlet } from "../components/twoState/SlotOutlet";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
@@ -101,10 +102,7 @@ function CommandCenterPage() {
       <main className="min-h-0 flex-1 overflow-y-auto">
         <WorkspacePageContainer width="wide">
           <div data-tour="command-home">
-            <h2 className="text-xl font-semibold tracking-tight">Your AI work, at a glance</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Live status across your connected computers. Open a chat to see or continue its work.
-            </p>
+            <CommandCenterForward />
           </div>
           <HomeCardsOutlet context={HOME_CONTEXT} />
           {disconnected.length > 0 ? (
