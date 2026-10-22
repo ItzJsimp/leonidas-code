@@ -1,3 +1,4 @@
+import { FeedEventError } from "@t3tools/contracts";
 import type {
   OrchestrationV2ConversationMessage,
   OrchestrationV2Run,
@@ -7,7 +8,9 @@ import type {
   ThreadId,
 } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
@@ -15,7 +18,10 @@ import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import { isTerminalRunStatus } from "../orchestration-v2/ThreadManagementService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import { forkParked } from "../serverActivation.ts";
+import { appendDraft } from "../events/eventsRpc.ts";
+import * as ProcessRunner from "../processRunner.ts";
 import { aiosSlugFor, TaskBoardService } from "./TaskBoardService.ts";
+import { gitRunSummary, replyHeadOf, workedDraft } from "./TaskLedger.ts";
 
 const ACTOR = "Leonidas";
 const MIN_REQUEST_LENGTH = 12;
@@ -58,12 +64,16 @@ const runMarker = (id: string) => `[run ${id}]`;
 export const isLinked = (task: TaskBoardTask, threadId: string): boolean =>
   task.threadIds?.includes(threadId) === true || task.claimedAgent?.threadId === threadId;
 
+/** The run fields the ledger reads; a bare id and status still log the outcome note. */
+export type AutoLogRun = Pick<OrchestrationV2Run, "id" | "status"> &
+  Partial<Pick<OrchestrationV2Run, "modelSelection" | "startedAt" | "completedAt">>;
+
 export type AutoLogEvent =
   | { readonly type: "message.updated"; readonly payload: OrchestrationV2ConversationMessage }
   | {
       readonly type: "run.updated";
       readonly threadId: ThreadId;
-      readonly payload: Pick<OrchestrationV2Run, "id" | "status">;
+      readonly payload: AutoLogRun;
     };
 
 /**
@@ -78,6 +88,12 @@ export const makeAutoLog = (deps: {
   readonly taskBoard: TaskBoardService["Service"];
   readonly allProjects: Effect.Effect<ReadonlyArray<Project>, ProjectService.ProjectOperationError>;
   readonly threadProjectId: (threadId: ThreadId) => Effect.Effect<ProjectId | undefined>;
+  /** Writes the ledger entry for one linked card. A failure leaves the card unmarked, so a replay retries. */
+  readonly worked?: (input: {
+    readonly task: TaskBoardTask;
+    readonly threadId: ThreadId;
+    readonly run: AutoLogRun;
+  }) => Effect.Effect<void, FeedEventError>;
 }) => {
   const { taskBoard } = deps;
 
@@ -152,7 +168,7 @@ export const makeAutoLog = (deps: {
   // that finished while a card is still in progress means the agent did not close it itself, so
   // the card moves to review: an honest "ready to check" rather than a guess that it is done.
   // Failed and cancelled runs stay visible as such; the agent or a person moves a card to done.
-  const logOutcome = (threadId: ThreadId, run: Pick<OrchestrationV2Run, "id" | "status">) =>
+  const logOutcome = (threadId: ThreadId, run: AutoLogRun) =>
     Effect.gen(function* () {
       const projects = yield* deps.allProjects;
       const marker = runMarker(run.id);
@@ -160,6 +176,7 @@ export const makeAutoLog = (deps: {
         (item) => isLinked(item, threadId) && !hasMarker(item, marker),
       );
       for (const task of linked) {
+        if (deps.worked) yield* deps.worked({ task, threadId, run });
         const finishing = run.status === "completed" && task.status === "in_progress";
         yield* taskBoard.cardUpdate(
           {
@@ -196,9 +213,50 @@ export const make = Effect.gen(function* () {
   const projections = yield* ProjectionStore.ProjectionStoreV2;
   const projectService = yield* ProjectService.ProjectService;
   const taskBoard = yield* TaskBoardService;
+  const runner = yield* ProcessRunner.ProcessRunner;
+  const iso = (value: DateTime.Utc | null | undefined) =>
+    value === null || value === undefined ? null : DateTime.formatIso(value);
 
   const log = makeAutoLog({
     taskBoard,
+    worked: ({ task, threadId, run }) =>
+      Effect.gen(function* () {
+        const shell = yield* projections.getThreadShell(threadId);
+        const projects = (yield* projectService.snapshot).projects;
+        const aiosRoot = yield* taskBoard.aiosRoot(projects);
+        if (!shell || aiosRoot === null) return;
+        const cwd =
+          shell.worktreePath ?? projects.find((item) => item.id === shell.projectId)?.workspaceRoot;
+        const startedAt = iso(run.startedAt);
+        const git =
+          cwd === undefined
+            ? { files: [], commits: [] }
+            : yield* gitRunSummary(runner, cwd, startedAt);
+        const selection = run.modelSelection ?? shell.modelSelection;
+        yield* appendDraft(
+          aiosRoot,
+          workedDraft({
+            task,
+            threadId,
+            runId: run.id,
+            status: run.status,
+            chatTitle: shell.title,
+            agent: selection.instanceId,
+            model: selection.model,
+            startedAt,
+            endedAt: iso(run.completedAt),
+            git,
+            replyHead:
+              shell.latestVisibleMessage?.role === "assistant"
+                ? replyHeadOf(shell.latestVisibleMessage.text)
+                : null,
+          }),
+        );
+      }).pipe(
+        Effect.mapError((error) =>
+          Schema.is(FeedEventError)(error) ? error : new FeedEventError({ message: String(error) }),
+        ),
+      ),
     allProjects: projectService.snapshot.pipe(Effect.map((snapshot) => snapshot.projects)),
     threadProjectId: (threadId) =>
       projections.getThreadShell(threadId).pipe(

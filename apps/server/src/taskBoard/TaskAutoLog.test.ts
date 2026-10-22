@@ -1,4 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - temp AIOS folders are plain Node fixtures.
+import { FeedEventError } from "@t3tools/contracts";
 import type {
   OrchestrationV2ConversationMessage,
   Project,
@@ -77,7 +78,9 @@ const withBoard = <A, E, R>(
   use: (input: {
     readonly project: Project;
     readonly board: TaskBoardServiceModule.TaskBoardService["Service"];
-    readonly newLog: () => ReturnType<typeof makeAutoLog>;
+    readonly newLog: (
+      worked?: Parameters<typeof makeAutoLog>[0]["worked"],
+    ) => ReturnType<typeof makeAutoLog>;
   }) => Effect.Effect<A, E, R>,
 ) =>
   Effect.acquireUseRelease(
@@ -101,11 +104,12 @@ const withBoard = <A, E, R>(
         return yield* use({
           project,
           board,
-          newLog: () =>
+          newLog: (worked) =>
             makeAutoLog({
               taskBoard: board,
               allProjects: Effect.succeed([project]),
               threadProjectId: () => Effect.succeed(project.id),
+              ...(worked ? { worked } : {}),
             }),
         });
       }).pipe(
@@ -257,6 +261,50 @@ describe("TaskAutoLog persistence", () => {
         const byId = new Map((yield* board.workspace([project])).tasks.map((t) => [t.id, t]));
         expect(byId.get(first.id)!.status).toBe("done");
         expect(byId.get(second.id)!.status).toBe("review");
+      }),
+    ),
+  );
+
+  it.effect("writes one ledger entry per linked card and none for a replayed run", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const first = yield* newCard(board, project);
+        const second = yield* newCard(board, project);
+        const agent = { threadId: "thread-batch" };
+        for (const card of [first, second]) {
+          yield* board.cardUpdate({ taskId: card.id, actor: "Mob", agent, status: "in_progress" }, [
+            project,
+          ]);
+        }
+        const written: Array<string> = [];
+        const log = newLog(({ task, run }) =>
+          Effect.sync(() => void written.push(`${task.id}:${run.id}`)),
+        );
+        yield* log.handle(runEvent("thread-batch", "run-1", "completed"));
+        yield* log.handle(runEvent("thread-batch", "run-1", "completed"));
+        expect(written.toSorted()).toEqual([`${first.id}:run-1`, `${second.id}:run-1`].toSorted());
+      }),
+    ),
+  );
+
+  it.effect("retries a failed ledger write on the next event for the same run", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log0 = newLog();
+        yield* log0.handle(request("m1", "thread-1"));
+        let attempts = 0;
+        const log = newLog(() =>
+          ++attempts === 1
+            ? Effect.fail(new FeedEventError({ message: "feed is locked" }))
+            : Effect.void,
+        );
+        yield* log.handle(runEvent("thread-1", "run-1", "completed"));
+        const [afterFail] = (yield* board.workspace([project])).tasks;
+        expect(notes(afterFail!).some((note) => note.includes("[run run-1]"))).toBe(false);
+        yield* log.handle(runEvent("thread-1", "run-1", "completed"));
+        const [afterRetry] = (yield* board.workspace([project])).tasks;
+        expect(notes(afterRetry!).some((note) => note.includes("[run run-1]"))).toBe(true);
+        expect(attempts).toBe(2);
       }),
     ),
   );
