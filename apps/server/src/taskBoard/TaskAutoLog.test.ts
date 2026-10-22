@@ -6,6 +6,7 @@ import type {
   TaskBoardTask,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as NodeFS from "node:fs";
@@ -375,11 +376,30 @@ describe("TaskAutoLog sweeper", () => {
               ? [{ id: "run-9", status: "completed" }]
               : []) as unknown as ReadonlyArray<AutoLogRun>,
           );
-        yield* restarted.replay(runs);
-        yield* restarted.replay(runs);
+        yield* restarted.replay(runs, wallNow);
+        yield* restarted.replay(runs, wallNow);
         const { tasks } = yield* board.workspace([project]);
         expect(notes(tasks[0]!).filter((note) => note.includes("[run run-9]"))).toHaveLength(1);
         expect(tasks[0]!.status).toBe("review");
+      }),
+    ),
+  );
+
+  it.effect("does not replay a run older than a week", () =>
+    withBoard(({ board, project, newLog }) =>
+      Effect.gen(function* () {
+        const log = newLog();
+        yield* log.handle(request("m1", "thread-1"));
+        const old = [
+          {
+            id: "run-old",
+            status: "completed",
+            completedAt: DateTime.makeUnsafe(wallNow - 8 * 24 * HOUR),
+          },
+        ] as unknown as ReadonlyArray<AutoLogRun>;
+        yield* log.replay(() => Effect.succeed(old), wallNow);
+        const { tasks } = yield* board.workspace([project]);
+        expect(notes(tasks[0]!).some((note) => note.includes("[run run-old]"))).toBe(false);
       }),
     ),
   );

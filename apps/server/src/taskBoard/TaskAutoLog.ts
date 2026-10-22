@@ -31,6 +31,8 @@ const TITLE_LENGTH = 80;
 const IDLE_MS = 6 * 60 * 60 * 1000;
 const SWEEP_EVERY = "5 minutes";
 const IDLE_MARKER = "[idle]";
+// Older unmarked runs predate the log (a claim made by hand), so replaying them would flood the ledger.
+const REPLAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** A request is real work when a person typed it; relays, schedules and one-word replies are not. */
 export function isLoggableRequest(message: OrchestrationV2ConversationMessage): boolean {
@@ -240,7 +242,10 @@ export const makeAutoLog = (deps: {
 
   // Runs that ended while the server was off never reached the stream. Each goes through the same
   // outcome path, so the [run <id>] marker keeps a repeat from logging twice.
-  const replay = (finishedRuns: (threadId: string) => Effect.Effect<ReadonlyArray<AutoLogRun>>) =>
+  const replay = (
+    finishedRuns: (threadId: string) => Effect.Effect<ReadonlyArray<AutoLogRun>>,
+    now: number,
+  ) =>
     Effect.gen(function* () {
       const projects = yield* deps.allProjects;
       const open = (yield* tasks(projects)).filter((task) => task.status !== "done");
@@ -253,7 +258,11 @@ export const makeAutoLog = (deps: {
       for (const id of threads) {
         const threadId = id as ThreadId;
         for (const run of yield* finishedRuns(id)) {
-          if (isTerminalRunStatus(run.status)) {
+          const recent =
+            run.completedAt === null ||
+            run.completedAt === undefined ||
+            now - DateTime.toEpochMillis(run.completedAt) <= REPLAY_WINDOW_MS;
+          if (recent && isTerminalRunStatus(run.status)) {
             yield* logOutcome(threadId, run).pipe(Effect.catchCause(skip("replay")));
           }
         }
@@ -321,7 +330,7 @@ export const make = Effect.gen(function* () {
   });
 
   const liveThreads = projections
-    .getShellSnapshot()
+    .getShellSnapshot({ unsettledOnly: true })
     .pipe(
       Effect.map(
         (snapshot) =>
@@ -337,11 +346,17 @@ export const make = Effect.gen(function* () {
     // Replay once, then sweep on a timer. A failed pass is logged by the pass itself and the
     // timer keeps going.
     yield* forkParked(
-      log
-        .replay((id) =>
-          projections.getThreadRecords(id as ThreadId, ["runs"]).pipe(
-            Effect.map((records) => records.runs),
-            Effect.catchCause(() => Effect.succeed([])),
+      Clock.currentTimeMillis
+        .pipe(
+          Effect.flatMap((now) =>
+            log.replay(
+              (id) =>
+                projections.getThreadRecords(id as ThreadId, ["runs"]).pipe(
+                  Effect.map((records) => records.runs),
+                  Effect.catchCause(() => Effect.succeed([])),
+                ),
+              now,
+            ),
           ),
         )
         .pipe(
