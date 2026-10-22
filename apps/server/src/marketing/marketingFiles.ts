@@ -54,7 +54,10 @@ const decodeSnapshot = decodeWith(MarketingMetricSnapshot);
 const decodeBrand = decodeWith(MarketingBrand);
 const decodeConnections = decodeWith(MarketingConnections);
 
-/** Reads every `*.jsonl` in one folder. A bad line is reported and skipped, never fatal. */
+/**
+ * Reads every `*.jsonl` in one folder. A bad line is reported and skipped, never fatal.
+ * shortcut: sync full reads of every month, fine at about 50 posts a day; read only recent months when a folder passes about 10 MB.
+ */
 function readFolder<A>(
   root: string,
   folder: string,
@@ -257,9 +260,16 @@ export function checkApproval(
 ): ApprovalCheck {
   const post = readPosts(root).records.find((candidate) => candidate.id === postId);
   if (!post) return { ok: false, reason: "no_post" };
-  const tickets = readTickets(root).records.filter(
-    (ticket) => ticket.postId === postId && ticket.act === act,
-  );
+  return approvalOf(post, act, readTickets(root).records);
+}
+
+/** The same check on records already loaded, so a list reads the files once. */
+export function approvalOf(
+  post: MarketingPost,
+  act: MarketingPublicAct,
+  allTickets: ReadonlyArray<MarketingApprovalTicket>,
+): ApprovalCheck {
+  const tickets = allTickets.filter((ticket) => ticket.postId === post.id && ticket.act === act);
   if (tickets.length === 0) return { ok: false, reason: "no_ticket" };
   const hash = contentHash(post);
   const approved = tickets.filter(

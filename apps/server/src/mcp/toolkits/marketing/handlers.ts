@@ -53,6 +53,7 @@ export const handlers = {
   marketing_posts: McpToolAccess.reads((input) =>
     onRoot((root) => {
       const { records, bad } = MarketingFiles.readPosts(root);
+      const tickets = MarketingFiles.readTickets(root).records;
       const posts = records
         .filter(
           (post) =>
@@ -61,7 +62,7 @@ export const handlers = {
             (!input.status || post.status === input.status),
         )
         .map((post) => {
-          const check = MarketingFiles.checkApproval(root, post.id, "publish");
+          const check = MarketingFiles.approvalOf(post, "publish", tickets);
           const approval = check.ok
             ? ("approved" as const)
             : check.reason === "no_ticket" || check.reason === "no_post"
