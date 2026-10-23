@@ -14,28 +14,20 @@ interface LoginProvider {
   readonly auth: { readonly status: string; readonly email?: string | undefined };
 }
 
-/** The server's signed-out message quotes the config dir as a JSON string. */
-const CONFIG_DIR_IN_MESSAGE = /CLAUDE_CONFIG_DIR set to ("(?:[^"\\]|\\.)*")/u;
+/** The server sets this failure code on an expired Claude login. Same literal in ClaudeAdapterV2. */
+const CLAUDE_SIGNED_OUT_FAILURE_CODE = "claude_signed_out";
 
-/**
- * The terminal command that signs a Claude profile back in, or null when the
- * failure is not a Claude sign-in problem. Without a config dir in the message
- * the default profile is meant, so the bare command is right.
- */
-export function signInCommandForFailure(message: string): string | null {
-  if (!message.includes("claude auth login")) return null;
-  const quoted = CONFIG_DIR_IN_MESSAGE.exec(message)?.[1];
-  if (quoted === undefined) return "claude auth login";
-  let configDir: unknown;
-  try {
-    configDir = JSON.parse(quoted);
-  } catch {
-    return "claude auth login";
-  }
-  if (typeof configDir !== "string" || configDir.length === 0) return "claude auth login";
-  return /^[A-Za-z]:[\\/]/u.test(configDir) || configDir.startsWith("\\\\")
-    ? `$env:CLAUDE_CONFIG_DIR="${configDir}"; claude auth login`
-    : `CLAUDE_CONFIG_DIR=${JSON.stringify(configDir)} claude auth login`;
+export function isClaudeSignedOutFailure(failure: { readonly code: string | null }): boolean {
+  return failure.code === CLAUDE_SIGNED_OUT_FAILURE_CODE;
+}
+
+/** The provider instance that ran the failed turn, or null when the run is unknown. */
+export function signInInstanceId(
+  runs: ReadonlyArray<{ readonly id: string; readonly providerInstanceId: string }>,
+  runId: string | null,
+): string | null {
+  if (runId === null) return null;
+  return runs.find((run) => run.id === runId)?.providerInstanceId ?? null;
 }
 
 /**
@@ -63,5 +55,5 @@ export function sharedLoginPeerNames(
 
 export function sharedLoginWarning(peerNames: ReadonlyArray<string>): string | null {
   if (peerNames.length === 0) return null;
-  return `Same account as ${peerNames.join(", ")}. If you copied one AI account from the other, they sign each other out. Give each one its own sign-in with claude auth login.`;
+  return `Same account as ${peerNames.join(", ")}. If you copied one AI account from the other, they sign each other out. Give each one its own sign-in.`;
 }

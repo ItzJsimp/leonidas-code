@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-10-12
 source: "https://github.com/github/awesome-copilot (skills/github-issues, MIT, commit 70ddff7)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # GitHub Issues
@@ -231,3 +232,5 @@ The following features require REST or GraphQL APIs beyond the basic MCP tools. 
 | Projects V2                | Project boards, progress reports, field management                                                           | [references/projects.md](references/projects.md)         |
 | Issue fields               | Custom metadata: dates, priority, text, numbers (private preview)                                            | [references/issue-fields.md](references/issue-fields.md) |
 | Images in issues           | Embedding images in issue bodies and comments via CLI                                                        | [references/images.md](references/images.md)             |
+
+Credit: adapted from [github/awesome-copilot](https://github.com/github/awesome-copilot) (MIT). See [LICENSE](LICENSE).

@@ -3,7 +3,7 @@
  * scripts/New-AiosFolders.ps1 is this output (scripts/generate-aios-folders.ts writes it);
  * a test fails when the two drift apart.
  */
-import { describeInspection, type FolderInspection } from "./folderInspection.logic";
+import { describeInspection, type FolderInspection } from "./folderInspection.logic.ts";
 
 export interface AiosFolderEntry {
   readonly path: string;

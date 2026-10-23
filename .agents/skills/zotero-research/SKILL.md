@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-09-29
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Zotero Research: Local Reference Bridge

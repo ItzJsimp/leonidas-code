@@ -1,17 +1,46 @@
 import { assert, describe, it } from "@effect/vitest";
-import type { WorkspacePackWidget } from "@t3tools/contracts";
+import type { WorkspaceOrgResult, WorkspacePackWidget } from "@t3tools/contracts";
 
 import type { AiosWorkspaceState } from "../taskBoard/aiosWorkspaces.ts";
 import { loadBusinessPack } from "./loadBusinessPack.ts";
-import { widgetsForWorkspace, type BusinessPack } from "./workspacePack.ts";
+import {
+  changeOrgForWorkspace,
+  decideOrgForWorkspace,
+  orgForWorkspace,
+  privacyForWorkspace,
+  revealPrivateTitles,
+  scaffoldForSetup,
+  teamForWorkspace,
+  widgetsForWorkspace,
+  type BusinessPack,
+} from "./workspacePack.ts";
 
 const widget: WorkspacePackWidget = {
   id: "w",
   title: "T",
   kpis: [{ label: "L", value: "1", detail: "d" }],
 };
+const view: WorkspaceOrgResult = {
+  org: { name: "Acme", departments: [], areas: [], members: [], roles: [] },
+  me: { slug: "ada", canDecide: true, invited: false },
+  proposals: [],
+  invites: [],
+};
+const seenLogin: Array<string | null> = [];
 const seen: string[] = [];
 const pack: BusinessPack = {
+  readOrgView: async (_root, login) => {
+    seenLogin.push(login);
+    return view;
+  },
+  submitChange: async () => ({ result: "applied", message: "ok" }),
+  decideProposal: async () => ({ result: "applied", message: "ok" }),
+  scaffoldBusiness: (root) => {
+    seen.push(`scaffold:${root}`);
+    return 1;
+  },
+  setCardPrivacy: async (_root, _file, _taskId, area) => (area === "home" ? "No Home." : null),
+  readPrivateTitle: async (_root, _area, taskId) => (taskId === "t-1" ? "Real title" : null),
   readWidgets: async (root) => {
     seen.push(root);
     return [widget];
@@ -59,12 +88,223 @@ describe("widgetsForWorkspace", () => {
 
   it("returns nothing when the pack throws, so the Home never fails for a widget", async () => {
     const broken: BusinessPack = {
+      ...pack,
+      readOrgView: async () => {
+        throw new Error("boom");
+      },
+      submitChange: async () => ({ result: "applied", message: "ok" }),
+      decideProposal: async () => ({ result: "applied", message: "ok" }),
       readWidgets: async () => {
         throw new Error("boom");
       },
     };
     const load = async () => broken;
     assert.deepEqual(await widgetsForWorkspace(workspaces, "simplygersi", 0, load), []);
+  });
+});
+
+describe("org actions", () => {
+  it("reads the org view of a business workspace, and nothing for personal, unknown, absent or broken", async () => {
+    assert.deepEqual(
+      await orgForWorkspace(workspaces, "simplygersi", "ada", async () => pack),
+      view,
+    );
+    assert.deepEqual(seenLogin, ["ada"]);
+    const empty = { org: null, me: null, proposals: [], invites: [] };
+    assert.deepEqual(await orgForWorkspace(workspaces, "leonidas", "ada", async () => pack), empty);
+    assert.deepEqual(await orgForWorkspace(workspaces, "nope", "ada", async () => pack), empty);
+    assert.deepEqual(
+      await orgForWorkspace(workspaces, "simplygersi", "ada", async () => null),
+      empty,
+    );
+    const broken: BusinessPack = {
+      ...pack,
+      readOrgView: async () => {
+        throw new Error("boom");
+      },
+    };
+    assert.deepEqual(
+      await orgForWorkspace(workspaces, "simplygersi", "ada", async () => broken),
+      empty,
+    );
+  });
+
+  it("sends a change and a decision to the pack for a business workspace only", async () => {
+    const change = { kind: "removeMember", member: "bo" } as const;
+    const sent = await changeOrgForWorkspace(
+      workspaces,
+      "simplygersi",
+      "ada",
+      change,
+      5,
+      async () => pack,
+    );
+    assert.strictEqual(sent.result, "applied");
+    const decided = await decideOrgForWorkspace(
+      workspaces,
+      "simplygersi",
+      "ada",
+      "p1",
+      "approve",
+      5,
+      async () => pack,
+    );
+    assert.strictEqual(decided.result, "applied");
+    const personal = await changeOrgForWorkspace(
+      workspaces,
+      "leonidas",
+      "ada",
+      change,
+      5,
+      async () => pack,
+    );
+    assert.strictEqual(personal.result, "invalid");
+    const unknown = await decideOrgForWorkspace(
+      workspaces,
+      "nope",
+      "ada",
+      "p1",
+      "reject",
+      5,
+      async () => pack,
+    );
+    assert.strictEqual(unknown.result, "invalid");
+  });
+
+  it("answers invalid, and does not throw, when the pack fails", async () => {
+    const fail = async () => {
+      throw new Error("boom");
+    };
+    const broken: BusinessPack = { ...pack, submitChange: fail, decideProposal: fail };
+    const change = { kind: "removeMember", member: "bo" } as const;
+    const a = await changeOrgForWorkspace(
+      workspaces,
+      "simplygersi",
+      "ada",
+      change,
+      5,
+      async () => broken,
+    );
+    const b = await decideOrgForWorkspace(
+      workspaces,
+      "simplygersi",
+      "ada",
+      "p1",
+      "approve",
+      5,
+      async () => broken,
+    );
+    assert.deepEqual([a.result, b.result], ["invalid", "invalid"]);
+  });
+});
+
+describe("teamForWorkspace", () => {
+  const member = (slug: string, name: string, kind: "person" | "agent", status: string) => ({
+    slug,
+    name,
+    kind,
+    status,
+    department: "general",
+    owner: "",
+    github: kind === "person" ? `${slug}-gh` : "",
+    roles: {},
+  });
+  const withMembers: BusinessPack = {
+    ...pack,
+    readOrgView: async () => ({
+      ...view,
+      org: {
+        ...view.org!,
+        members: [
+          member("ada", "Ada Owner", "person", "active"),
+          member("scout", "Scout", "agent", "active"),
+          member("gone", "Gone", "person", "removed"),
+        ],
+      },
+    }),
+  };
+
+  it("gives the business Members as the team, by slug, and leaves a removed one out", async () => {
+    const team = await teamForWorkspace(workspaces, "simplygersi", async () => withMembers);
+    assert.deepEqual(team, [
+      { name: "Ada Owner", aliases: ["ada", "ada-gh"], slug: "ada", kind: "person" },
+      { name: "Scout", aliases: ["scout"], slug: "scout", kind: "agent" },
+    ]);
+  });
+
+  it("gives no team for a personal workspace or a missing pack", async () => {
+    assert.deepEqual(await teamForWorkspace(workspaces, "leonidas", async () => withMembers), []);
+    assert.deepEqual(await teamForWorkspace(workspaces, "simplygersi", async () => null), []);
+  });
+});
+
+describe("private tasks", () => {
+  const load = async () => pack;
+  const task = (id: string, labels: string[]) => ({
+    id,
+    title: "Private task in Deals",
+    labels,
+    sourceRoot: "/r",
+  });
+
+  it("passes the Area to the pack and gives back its refusal", async () => {
+    assert.isNull(await privacyForWorkspace(workspaces, "simplygersi", "/f", "t-1", "deals", load));
+    assert.equal(
+      await privacyForWorkspace(workspaces, "simplygersi", "/f", "t-1", "home", load),
+      "No Home.",
+    );
+    assert.include(
+      (await privacyForWorkspace(workspaces, "leonidas", "/f", "t-1", "deals", load)) ?? "",
+      "business workspace",
+    );
+  });
+
+  it("shows the real title only where the Area folder is, and keeps the mask elsewhere", async () => {
+    const tasks = [
+      task("t-1", ["private", "area:deals"]),
+      task("t-2", ["private", "area:deals"]),
+      task("t-3", []),
+    ];
+    const shown = await revealPrivateTitles(tasks, load);
+    assert.deepEqual(
+      shown.map((entry) => entry.title),
+      ["Real title", "Private task in Deals", "Private task in Deals"],
+    );
+    assert.equal(await revealPrivateTitles(tasks, async () => null), tasks);
+  });
+});
+
+describe("scaffoldForSetup", () => {
+  const input = { id: "acme", name: "Acme", ownerName: "Ada" };
+  const load = async () => pack;
+
+  it("copies the template when the Owner name and a GitHub login are known", async () => {
+    seen.length = 0;
+    assert.isNull(await scaffoldForSetup("/r", input, "ada-gh", "UTC", load));
+    assert.deepEqual(seen, ["scaffold:/r"]);
+  });
+
+  it("refuses with a plain message, and writes nothing, when something is missing", async () => {
+    seen.length = 0;
+    const noName = await scaffoldForSetup("/r", { id: "a", name: "A" }, "ada", "UTC", load);
+    const noLogin = await scaffoldForSetup("/r", input, null, "UTC", load);
+    const badLogin = await scaffoldForSetup("/r", input, "a/../b", "UTC", load);
+    const noPack = await scaffoldForSetup("/r", input, "ada", "UTC", async () => null);
+    assert.isTrue([noName, noLogin, badLogin, noPack].every((text) => text !== null));
+    assert.deepEqual(seen, []);
+  });
+
+  it("turns a failed copy into a message", async () => {
+    const broken = {
+      ...pack,
+      scaffoldBusiness: () => {
+        throw new Error("EACCES");
+      },
+    };
+    assert.include(
+      (await scaffoldForSetup("/r", input, "ada", "UTC", async () => broken)) ?? "",
+      "writable",
+    );
   });
 });
 

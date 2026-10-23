@@ -1,6 +1,6 @@
 ---
 name: to-tickets
-description: "Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edges as text in one file per ticket locally, or native blocking links on a real tracker)."
+description: "Break a plan, spec or conversation into tracer-bullet tickets with declared blocking edges, published to the configured tracker. Use when a plan must become a set of tickets."
 scope: structural
 distribution: core
 category: planning
@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-14
 source: "https://github.com/mattpocock/skills (skills/engineering/to-tickets, MIT, commit 49dd158)"
+license: MIT
 ---
 
 # To Tickets
@@ -113,3 +114,5 @@ The end-to-end behaviour this ticket makes work, from the user's perspective, no
 </issue-template>
 
 In either form, avoid specific file paths or code snippets: they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts, not a working demo, just the important bits.
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-23
 source: "https://github.com/Leonxlnx/taste-skill (skills/brandkit, MIT, commit c184364)"
+license: MIT
 ---
 
 # BRANDKIT IMAGE GENERATION SKILL
@@ -863,3 +864,5 @@ The final result should be:
 - art-directed
 - implementation-friendly
 - stronger than normal AI-generated brand visuals
+
+Credit: adapted from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) (MIT). See [LICENSE](LICENSE).

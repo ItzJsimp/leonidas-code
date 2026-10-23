@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/competitor-profiling, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Competitor Profiling
@@ -477,3 +478,5 @@ Only ask if not answered by context or input:
 - **ads**: For analyzing competitor ad strategies
 - **pricing**: For deeper pricing analysis informed by competitor profiles
 - **marketing-plan**: For sizing the market (TAM/SAM/SOM) with its market-sizing reference, including competitor-led estimates
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-10-12
 source: "https://github.com/wshobson/agents (plugins/developer-essentials/skills/git-advanced-workflows, MIT, commit 46891e7)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Git Advanced Workflows
@@ -208,3 +209,5 @@ git reset --hard HEAD^
 git reflog
 git branch recovered-branch abc123
 ```
+
+Credit: adapted from [wshobson/agents](https://github.com/wshobson/agents) (MIT). See [LICENSE](LICENSE).

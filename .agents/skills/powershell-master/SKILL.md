@@ -14,6 +14,7 @@ verified: 2026-08-21
 related: ["skills-index", "windows-debloat", "pc-systems-engineer", "drive-taxonomy"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # PowerShell Master

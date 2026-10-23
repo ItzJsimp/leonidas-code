@@ -3351,10 +3351,10 @@ describe("ClaudeAdapterV2 background wake turns", () => {
       const terminal = yield* Queue.take(harness.terminalReceipts);
       assert.equal(terminal.status, "failed");
       if (terminal.status !== "failed") return;
-      assert.include(terminal.failure.message, "run `claude auth login`");
-      assert.include(terminal.failure.message, configDir);
-      // The message quotes the resolved folder, which gains a drive letter on Windows.
-      assert.include(terminal.failure.message, JSON.stringify((yield* Path.Path).resolve(cwd)));
+      // The web app keys its Sign in button on this code, not on the message text.
+      assert.equal(terminal.failure.code, "claude_signed_out");
+      assert.include(terminal.failure.message, "Sign in again");
+      assert.notInclude(terminal.failure.message, "claude auth login");
       assert.notInclude(terminal.failure.message, "repeated API errors");
     }).pipe(
       Effect.provide(

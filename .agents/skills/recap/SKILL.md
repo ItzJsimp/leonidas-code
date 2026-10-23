@@ -14,6 +14,7 @@ distribution: core
 verified: 2026-08-30
 related: ["skills-index", "system-prompt-authoring", "chat-sync", "session-handoff"]
 generated: false
+license: MIT
 ---
 
 # Recap: Instant Session Execution & Change Summary

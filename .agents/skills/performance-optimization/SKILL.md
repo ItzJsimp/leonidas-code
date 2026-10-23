@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-12
 source: "https://github.com/addyosmani/agent-skills (skills/performance-optimization, MIT, commit 1be8e34)"
+license: MIT
 ---
 
 # Performance Optimization
@@ -278,3 +279,5 @@ After any performance-related change:
 - [ ] Any new cache states what it keys on and how it goes stale
 - [ ] The measured user-facing metric has a synthetic budget or field monitor that can detect regression
 - [ ] Existing tests still pass (optimization didn't break behavior)
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

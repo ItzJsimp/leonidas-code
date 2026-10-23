@@ -2,6 +2,7 @@
 name: review-two-axis
 description: "Review a diff on two axes with parallel sub-agents: standards and spec match. Use when asked to review code, a branch, a PR or finished work against a spec or task card."
 scope: structural
+distribution: core
 category: code
 type: skill
 id: skill-review-two-axis
@@ -11,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-14
 source: "https://github.com/mattpocock/skills (skills/engineering/code-review, MIT, commit 49dd158)"
+license: MIT
 ---
 
 Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
@@ -97,3 +99,5 @@ A change can pass one axis and fail the other:
 - Code that does exactly what the issue asked but breaks the project's conventions → **Spec pass, Standards fail.**
 
 Reporting them separately stops one axis from masking the other.
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

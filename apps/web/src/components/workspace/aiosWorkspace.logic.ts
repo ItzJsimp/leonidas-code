@@ -108,3 +108,18 @@ export function workspaceFolderName(root: string): string {
       .pop() ?? root
   );
 }
+
+/** The Home repository of a new business: `owner/<id>-home`, the name the template's areas.md lists. */
+export function homeRepository(owner: string | null, workspaceId: string): string {
+  return `${owner ? `${owner}/` : ""}${workspaceId}-home`;
+}
+
+/**
+ * Where a new business folder goes: `businesses/<id>` beside the managed `projects` folder.
+ * It cannot sit inside `projects`, because the workspace scan skips a folder whose parent has that name.
+ */
+export function newBusinessFolder(newProjectsRoot: string, name: string): string {
+  const separator = newProjectsRoot.includes("\\") ? "\\" : "/";
+  const parent = newProjectsRoot.replace(/[\\/]+$/, "").replace(/[\\/][^\\/]*$/, "");
+  return `${parent}${separator}businesses${separator}${suggestWorkspaceId(name)}`;
+}

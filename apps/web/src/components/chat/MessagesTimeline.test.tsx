@@ -31,6 +31,13 @@ const activityTestState = vi.hoisted(() => ({
   subagentTooltips: false,
 }));
 
+// The real action reads server atoms; the timeline test only checks when and for whom it shows.
+vi.mock("./ClaudeSignInAction", () => ({
+  ClaudeSignInAction: ({ provider }: { provider: { instanceId: string } }) => (
+    <span data-sign-in-instance={provider.instanceId} />
+  ),
+}));
+
 // Expose tooltip contents in the renderer without requiring a browser portal.
 vi.mock("../ui/tooltip", async (importOriginal) => {
   const original = await importOriginal<typeof import("../ui/tooltip")>();
@@ -1127,7 +1134,7 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain('data-anchor-on-ready="true"');
     expect(markup).not.toContain("data-anchor-max-size=");
     expect(markup).toContain('data-content-inset-end="144"');
-    expect(markup).toContain("[overflow-anchor:none]");
+    expect(markup).toContain("messages-timeline-scroll");
     expect(markup).not.toContain('data-maintain-scroll-at-end="enabled"');
     expect(markup).toContain('data-maintain-visible-content-position="object"');
     expect(markup).toContain('data-maintain-visible-content-position-data="true"');
@@ -2289,6 +2296,78 @@ describe("MessagesTimeline", () => {
     // The failure message stays behind the row's expander.
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toContain('data-v2-event-disclosure="true"');
+  });
+
+  it("offers Sign in under a signed-out Claude failure, for the run's own account", () => {
+    activityTestState.expanded = true;
+    const renderFailure = (code: string) => {
+      const errorItem = {
+        id: "auth-error",
+        threadId: "thread-1",
+        runId: "run-1",
+        nodeId: null,
+        providerThreadId: "provider-thread-1",
+        providerTurnId: "provider-turn-1",
+        nativeItemRef: null,
+        parentItemId: null,
+        ordinal: 99,
+        status: "failed",
+        title: "Provider error",
+        startedAt: {},
+        completedAt: {},
+        updatedAt: {},
+        type: "error",
+        failure: {
+          class: "provider_error",
+          message: "Claude is signed out. Sign in again, then send your message again.",
+          code,
+          retryable: null,
+        },
+      } as const;
+      const projectedItem = {
+        position: 0,
+        visibility: "local",
+        sourceThreadId: "thread-1",
+        sourceItemId: errorItem.id,
+        item: errorItem,
+      } as const;
+      return renderToStaticMarkup(
+        <MessagesTimeline
+          {...buildProps()}
+          runs={
+            [
+              {
+                id: "run-1",
+                ordinal: 1,
+                providerInstanceId: "claude_work",
+                modelSelection: { instanceId: "claude_work", model: "claude-sonnet" },
+              },
+            ] as never
+          }
+          providerStatuses={
+            [
+              { instanceId: "claudeAgent", driver: "claudeAgent", auth: {} },
+              { instanceId: "claude_work", driver: "claudeAgent", auth: {} },
+            ] as never
+          }
+          timelineEntries={
+            [
+              {
+                id: "auth-error",
+                kind: "event",
+                createdAt: MESSAGE_CREATED_AT,
+                projectedItem,
+              },
+            ] as never
+          }
+        />,
+      );
+    };
+
+    const signedOut = renderFailure("claude_signed_out");
+    expect(signedOut).toContain('data-sign-in-instance="claude_work"');
+    expect(signedOut).not.toMatch(/terminal|claude auth login/i);
+    expect(renderFailure("api_error_403")).not.toContain("data-sign-in-instance");
   });
 
   it("keeps inherited V2 work provenance on the rendered row", async () => {

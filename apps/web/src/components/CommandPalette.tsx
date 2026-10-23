@@ -16,6 +16,7 @@ import {
   getNewProjectRepository,
   type NewProjectPublishTarget,
   normalizePastedCloneUrl,
+  unwrapInviteLink,
   addProjectRemoteSourceLabel,
   addProjectRemoteSourcePathHint,
   addProjectRemoteSourceProvider,
@@ -59,6 +60,7 @@ import * as Option from "effect/Option";
 import {
   ArrowLeftIcon,
   BrainIcon,
+  BriefcaseIcon,
   ChartNoAxesColumnIcon,
   LayoutDashboardIcon,
   InboxIcon,
@@ -174,6 +176,8 @@ import {
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../threadRoutes";
 import { useAvailableSettingsSearchItems } from "./settings/useAvailableSettingsSearchItems";
+import { NewBusinessDialog } from "./workspace/NewBusinessDialog";
+import { openNewBusiness } from "./workspace/newBusinessStore";
 import {
   applyWslEnvironmentConfiguration,
   parseWslUncPath,
@@ -320,7 +324,7 @@ function remoteProjectInputPlaceholder(flow: AddProjectCloneFlow | null): string
   if (!flow) return null;
   if (flow.step === "confirm") return null;
   if (flow.source === "url") {
-    return "Enter Git clone URL";
+    return "Enter a Git clone URL or paste an Invite link";
   }
   return `Enter ${addProjectRemoteSourceLabel(flow.source)} repository (${addProjectRemoteSourcePathHint(flow.source)})`;
 }
@@ -576,6 +580,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
           clearOpenIntent={clearOpenIntent}
         />
       </CommandDialog>
+      <NewBusinessDialog />
     </ComposerHandleContext>
   );
 }
@@ -1589,6 +1594,17 @@ function OpenCommandPaletteDialog(props: {
       ];
 
       if (newProjectsRootFor(environmentId) !== null) {
+        sourceItems.unshift({
+          kind: "action",
+          value: `action:add-project:${environmentId}:new-business`,
+          searchTerms: ["new business", "company", "team", "organization", "workspace"],
+          title: "New business",
+          description: "Start a business workspace with a team, from a name",
+          icon: <BriefcaseIcon className={ITEM_ICON_CLASS} />,
+          run: async () => {
+            openNewBusiness();
+          },
+        });
         sourceItems.unshift({
           kind: "action",
           value: `action:add-project:${environmentId}:new`,
@@ -2697,7 +2713,7 @@ function OpenCommandPaletteDialog(props: {
     }
 
     if (addProjectCloneFlow.step === "repository") {
-      const rawRepository = query.trim();
+      const rawRepository = unwrapInviteLink(query.trim());
       if (rawRepository.length === 0 || isRemoteProjectLookingUp) {
         return;
       }
@@ -3745,7 +3761,7 @@ function OpenCommandPaletteDialog(props: {
           ? {
               emptyStateMessage:
                 addProjectCloneFlow.source === "url"
-                  ? "Enter a Git clone URL and press Enter to continue."
+                  ? "Enter a Git clone URL, or paste an Invite link, and press Enter to continue."
                   : "Enter a repository path and press Enter to look it up.",
             }
           : addProjectCloneFlow?.step === "confirm"

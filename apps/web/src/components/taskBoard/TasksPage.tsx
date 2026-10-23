@@ -22,13 +22,17 @@ import { Spinner } from "~/components/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
-import { taskBoardCardCreate } from "~/state/taskBoard";
+import { usePrimaryEnvironmentId } from "~/state/environments";
+import { useEnvironmentQuery } from "~/state/query";
+import { taskBoardCardCreate, workspaceOrgQuery } from "~/state/taskBoard";
+import { privateAreaOptions } from "./privateArea.logic";
 
 import { TaskCreateDialog } from "./TaskCreateDialog";
 import { TaskDashboardView } from "./TaskDashboard";
 import { TaskDetailPanel } from "./TaskDetail";
 import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskKanbanView } from "./TaskKanban";
+import { TaskPresenceProvider } from "./TaskPresence";
 import { RoadmapEmpty } from "./TaskEmptyStates";
 import { TaskListView } from "./TaskList";
 import { TaskProjectRail, TaskProjectSelect } from "./TaskProjectRail";
@@ -134,7 +138,14 @@ export function TasksPage() {
   const practice = usePracticeActions();
   const inPractice = prefs.section === PRACTICE_SLUG;
   // A workspace file names the AIOS folder, so the old folder prompt is only for setups without one.
-  const { active: activeWorkspace } = useActiveAiosWorkspace();
+  const { active: activeWorkspace, scope, scopeReady } = useActiveAiosWorkspace();
+  const orgEnvironmentId = usePrimaryEnvironmentId();
+  const org = useEnvironmentQuery(
+    orgEnvironmentId && scopeReady
+      ? workspaceOrgQuery({ environmentId: orgEnvironmentId, input: scope })
+      : null,
+  ).data?.org;
+  const areas = useMemo(() => privateAreaOptions(org?.areas ?? []), [org]);
   const board = useTaskBoard({
     selectedSlug: prefs.section,
     prefs,
@@ -194,8 +205,9 @@ export function TasksPage() {
       now: board.now,
       aiosRoot: board.aiosRoot,
       projects: board.projects,
+      areas,
     }),
-    [board.aiosRoot, board.member, board.viewer, board.team, board.now, board.projects],
+    [board.aiosRoot, board.member, board.viewer, board.team, board.now, board.projects, areas],
   );
 
   const selectedTask = selectedId
@@ -349,200 +361,202 @@ export function TasksPage() {
   }
 
   return (
-    <SidebarInset
-      data-tasks-surface
-      className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none"
-    >
-      <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
-        <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        <h1 className="truncate text-sm font-medium">Tasks</h1>
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Refresh tasks"
-            onClick={board.refresh}
-            disabled={board.isRefreshing}
-          >
-            <RefreshCwIcon
-              aria-hidden
-              className={board.isRefreshing ? "animate-spin" : undefined}
-            />
-          </Button>
-          <Button
-            aria-label="New task"
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            disabled={!board.environmentId || !canCreate || inPractice}
-          >
-            <PlusIcon aria-hidden />
-            <span className="hidden sm:inline">New task</span>
-          </Button>
-        </div>
-      </WorkspacePageHeader>
-
-      <div className="flex min-h-0 flex-1">
-        <aside
-          style={{ width: railWidth }}
-          className="hidden shrink-0 overflow-y-auto p-2 lg:block"
-        >
-          <TaskProjectRail
-            entries={rail}
-            allOpen={allOpen}
-            selectedSlug={prefs.section}
-            onSelect={selectSection}
-            focus={prefs.focus}
-            counts={counts}
-            onFocus={selectFocus}
-          />
-        </aside>
-        {railHandle}
-
-        <main
-          className={
-            selectedTask
-              ? "hidden min-h-0 min-w-0 flex-1 flex-col lg:flex"
-              : "flex min-h-0 min-w-0 flex-1 flex-col"
-          }
-        >
-          <div className="flex flex-col gap-3 border-b border-border px-4 pt-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <h2 className="truncate text-xl font-semibold">{heading}</h2>
-              {prefs.view !== "roadmap" ? (
-                <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                  {openInLens} open
-                </span>
-              ) : null}
-              <div className="ml-auto flex shrink-0 items-center">
-                <SyncStatus
-                  state={shareState}
-                  canSync={Boolean(railEntry?.projectId)}
-                  busy={isSharingSection}
-                  onSync={() => {
-                    if (railEntry?.projectId) shareSection(railEntry.projectId);
-                  }}
-                />
-              </div>
-            </div>
-            {prefs.view !== "roadmap" ? (
-              <OwnerLensTabs
-                options={board.ownerOptions}
-                value={prefs.owner}
-                onChange={(owner) => {
-                  patchPrefs({ owner });
-                  setSelectedId(null);
-                }}
-              />
-            ) : null}
-            <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
-              <div role="tablist" aria-label="View" className="flex items-end gap-1">
-                {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
-                  <button
-                    key={view}
-                    type="button"
-                    role="tab"
-                    aria-selected={prefs.view === view}
-                    aria-label={label}
-                    data-tour={view === "roadmap" ? "tasks-roadmap-tab" : undefined}
-                    onClick={() => changeView(view)}
-                    className={cn(
-                      "-mb-px inline-flex h-9 cursor-pointer items-center gap-1.5 border-b-2 px-2 text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                      prefs.view === view
-                        ? "border-foreground font-medium text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <Icon aria-hidden className="size-4" />
-                    <span className="hidden sm:inline">{label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="flex min-w-64 flex-1 items-center justify-end gap-1 pb-1.5">
-                {prefs.view === "list" || prefs.view === "board" ? (
-                  <TaskFilterBar
-                    prefs={prefs}
-                    query={query}
-                    onQueryChange={setQuery}
-                    onPrefsChange={patchPrefs}
-                    showGroupBy={prefs.view === "list"}
-                    showClosedToggle={prefs.view === "list"}
-                    leading={picker}
-                  />
-                ) : (
-                  picker
-                )}
-              </div>
-            </div>
-          </div>
-          {activeWorkspace ? null : (
-            <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
-          )}
-          {inPractice ? (
-            <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
-              <span className="min-w-0 flex-1">
-                Practice project: sample tasks to try things on. Nothing here touches your real
-                tasks, GitHub or AI.
-              </span>
-              <Button size="sm" variant="outline" onClick={practice.reset}>
-                Reset
-              </Button>
-            </div>
-          ) : null}
-          {(prefs.view === "list" || prefs.view === "board") && !inPractice ? (
-            <TaskQuickAdd
-              key={`${prefs.section}:${prefs.focus}`}
-              environmentId={board.environmentId}
-              member={board.member}
-              projectSlug={prefs.section === "general" ? null : prefs.section}
-              defaultDue={defaultDue}
-              onCreated={board.refresh}
-            />
-          ) : null}
-
-          {board.sharedError ? (
-            <p
-              role="status"
-              className="border-b border-border px-3 py-2 text-xs text-warning-foreground"
+    <TaskPresenceProvider tasks={board.allTasks}>
+      <SidebarInset
+        data-tasks-surface
+        className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none"
+      >
+        <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
+          <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+          <h1 className="truncate text-sm font-medium">Tasks</h1>
+          <div className="ml-auto flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Refresh tasks"
+              onClick={board.refresh}
+              disabled={board.isRefreshing}
             >
-              The shared board could not be read, so only the tasks on this computer show.
-            </p>
-          ) : null}
-
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            {prefs.view === "dashboard" ? (
-              <WorkspacePageContainer width="wide">{body}</WorkspacePageContainer>
-            ) : (
-              body
-            )}
+              <RefreshCwIcon
+                aria-hidden
+                className={board.isRefreshing ? "animate-spin" : undefined}
+              />
+            </Button>
+            <Button
+              aria-label="New task"
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              disabled={!board.environmentId || !canCreate || inPractice}
+            >
+              <PlusIcon aria-hidden />
+              <span className="hidden sm:inline">New task</span>
+            </Button>
           </div>
-        </main>
+        </WorkspacePageHeader>
 
-        {selectedTask ? (
-          <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto border-l border-border lg:w-[26rem]">
-            <TaskDetailPanel
-              task={selectedTask}
-              context={context}
-              actions={actions}
-              onClose={closeDetail}
+        <div className="flex min-h-0 flex-1">
+          <aside
+            style={{ width: railWidth }}
+            className="hidden shrink-0 overflow-y-auto p-2 lg:block"
+          >
+            <TaskProjectRail
+              entries={rail}
+              allOpen={allOpen}
+              selectedSlug={prefs.section}
+              onSelect={selectSection}
+              focus={prefs.focus}
+              counts={counts}
+              onFocus={selectFocus}
             />
           </aside>
-        ) : null}
-      </div>
+          {railHandle}
 
-      <PracticeDryRunDialog
-        dryRun={practice.dryRun}
-        onClose={practice.closeDryRun}
-        onFinish={practice.finishDryRun}
-      />
-      <TaskCreateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        environmentId={board.environmentId}
-        member={board.member}
-        projects={board.projects}
-        defaultSlug={prefs.section}
-        onCreated={board.refresh}
-      />
-    </SidebarInset>
+          <main
+            className={
+              selectedTask
+                ? "hidden min-h-0 min-w-0 flex-1 flex-col lg:flex"
+                : "flex min-h-0 min-w-0 flex-1 flex-col"
+            }
+          >
+            <div className="flex flex-col gap-3 border-b border-border px-4 pt-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <h2 className="truncate text-xl font-semibold">{heading}</h2>
+                {prefs.view !== "roadmap" ? (
+                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                    {openInLens} open
+                  </span>
+                ) : null}
+                <div className="ml-auto flex shrink-0 items-center">
+                  <SyncStatus
+                    state={shareState}
+                    canSync={Boolean(railEntry?.projectId)}
+                    busy={isSharingSection}
+                    onSync={() => {
+                      if (railEntry?.projectId) shareSection(railEntry.projectId);
+                    }}
+                  />
+                </div>
+              </div>
+              {prefs.view !== "roadmap" ? (
+                <OwnerLensTabs
+                  options={board.ownerOptions}
+                  value={prefs.owner}
+                  onChange={(owner) => {
+                    patchPrefs({ owner });
+                    setSelectedId(null);
+                  }}
+                />
+              ) : null}
+              <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
+                <div role="tablist" aria-label="View" className="flex items-end gap-1">
+                  {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
+                    <button
+                      key={view}
+                      type="button"
+                      role="tab"
+                      aria-selected={prefs.view === view}
+                      aria-label={label}
+                      data-tour={view === "roadmap" ? "tasks-roadmap-tab" : undefined}
+                      onClick={() => changeView(view)}
+                      className={cn(
+                        "-mb-px inline-flex h-9 cursor-pointer items-center gap-1.5 border-b-2 px-2 text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                        prefs.view === view
+                          ? "border-foreground font-medium text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Icon aria-hidden className="size-4" />
+                      <span className="hidden sm:inline">{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex min-w-64 flex-1 items-center justify-end gap-1 pb-1.5">
+                  {prefs.view === "list" || prefs.view === "board" ? (
+                    <TaskFilterBar
+                      prefs={prefs}
+                      query={query}
+                      onQueryChange={setQuery}
+                      onPrefsChange={patchPrefs}
+                      showGroupBy={prefs.view === "list"}
+                      showClosedToggle={prefs.view === "list"}
+                      leading={picker}
+                    />
+                  ) : (
+                    picker
+                  )}
+                </div>
+              </div>
+            </div>
+            {activeWorkspace ? null : (
+              <AiosConfirmCard environmentId={board.environmentId} onConfirmed={board.refresh} />
+            )}
+            {inPractice ? (
+              <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1">
+                  Practice project: sample tasks to try things on. Nothing here touches your real
+                  tasks, GitHub or AI.
+                </span>
+                <Button size="sm" variant="outline" onClick={practice.reset}>
+                  Reset
+                </Button>
+              </div>
+            ) : null}
+            {(prefs.view === "list" || prefs.view === "board") && !inPractice ? (
+              <TaskQuickAdd
+                key={`${prefs.section}:${prefs.focus}`}
+                environmentId={board.environmentId}
+                member={board.member}
+                projectSlug={prefs.section === "general" ? null : prefs.section}
+                defaultDue={defaultDue}
+                onCreated={board.refresh}
+              />
+            ) : null}
+
+            {board.sharedError ? (
+              <p
+                role="status"
+                className="border-b border-border px-3 py-2 text-xs text-warning-foreground"
+              >
+                The shared board could not be read, so only the tasks on this computer show.
+              </p>
+            ) : null}
+
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              {prefs.view === "dashboard" ? (
+                <WorkspacePageContainer width="wide">{body}</WorkspacePageContainer>
+              ) : (
+                body
+              )}
+            </div>
+          </main>
+
+          {selectedTask ? (
+            <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto border-l border-border lg:w-[26rem]">
+              <TaskDetailPanel
+                task={selectedTask}
+                context={context}
+                actions={actions}
+                onClose={closeDetail}
+              />
+            </aside>
+          ) : null}
+        </div>
+
+        <PracticeDryRunDialog
+          dryRun={practice.dryRun}
+          onClose={practice.closeDryRun}
+          onFinish={practice.finishDryRun}
+        />
+        <TaskCreateDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          environmentId={board.environmentId}
+          member={board.member}
+          projects={board.projects}
+          defaultSlug={prefs.section}
+          onCreated={board.refresh}
+        />
+      </SidebarInset>
+    </TaskPresenceProvider>
   );
 }

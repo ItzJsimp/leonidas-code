@@ -6,6 +6,7 @@ scope: structural
 distribution: core
 disable-model-invocation: true
 argument-hint: "[brain name] [categories or existing app path]"
+license: MIT
 ---
 
 # 3D Brain
@@ -91,3 +92,5 @@ Follow [the acceptance checklist](references/acceptance.md). Check the actual ge
 Add a small route to the new app's README in the AIOS's existing project index or operating manual, following its conventions. Synchronize `AGENTS.md`/`CLAUDE.md` when required. Avoid storing private configs, graph data, or note content in a public repository. Do not deploy or push without the user's authorization.
 
 Finish with the brain name, local link, app folder, actual note/category counts, and the shortest useful instructions: **Play demo**, **Cinema**, drag to orbit, scroll to zoom. Mention source gaps if present. Never promise virality.
+
+Credit: adapted from knowledge-graph-3d by Nate Herk (MIT). See [LICENSE](LICENSE).

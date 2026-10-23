@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-28
 source: "https://github.com/mattpocock/skills (skills/engineering/tdd, MIT, commit c55ee46)"
+license: MIT
 ---
 
 # Test-Driven Development
@@ -47,3 +48,5 @@ When the shape of that interface is itself in question (how deep the module is, 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see the `code-review` skill), not the red → green implementation cycle.
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

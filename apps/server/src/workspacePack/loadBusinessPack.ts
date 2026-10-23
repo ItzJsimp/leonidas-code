@@ -1,8 +1,47 @@
-import type { WorkspacePackWidget } from "@t3tools/contracts";
+import type {
+  WorkspaceOrgActionResult,
+  WorkspaceOrgChange,
+  WorkspaceOrgResult,
+  WorkspacePackWidget,
+} from "@t3tools/contracts";
 
 /** What the core needs from the business pack. The pack itself is never imported by name. */
 export interface BusinessPack {
   readonly readWidgets: (root: string, now: number) => Promise<ReadonlyArray<WorkspacePackWidget>>;
+  readonly readOrgView: (root: string, githubLogin: string | null) => Promise<WorkspaceOrgResult>;
+  readonly submitChange: (
+    root: string,
+    githubLogin: string | null,
+    change: WorkspaceOrgChange,
+    now: number,
+  ) => Promise<WorkspaceOrgActionResult>;
+  /** Copies the business template into a new business folder. Returns the files written. */
+  readonly scaffoldBusiness: (
+    root: string,
+    input: {
+      readonly id: string;
+      readonly name: string;
+      readonly ownerName: string;
+      readonly ownerGithub: string;
+      readonly timezone: string;
+    },
+  ) => number;
+  /** Makes a Home task card private in an Area, or public with null. An error text, or null. */
+  readonly setCardPrivacy: (
+    root: string,
+    file: string,
+    taskId: string,
+    area: string | null,
+  ) => Promise<string | null>;
+  /** The real title of a private task, from its Area folder, or null when it is not here. */
+  readonly readPrivateTitle: (root: string, area: string, taskId: string) => Promise<string | null>;
+  readonly decideProposal: (
+    root: string,
+    githubLogin: string | null,
+    id: string,
+    decision: "approve" | "reject",
+    now: number,
+  ) => Promise<WorkspaceOrgActionResult>;
 }
 
 declare global {
@@ -36,7 +75,9 @@ export function loadBusinessPack(): Promise<BusinessPack | null> {
     if (!load) return null;
     try {
       const mod = (await load()) as Partial<BusinessPack>;
-      return typeof mod.readWidgets === "function" ? (mod as BusinessPack) : null;
+      return typeof mod.readWidgets === "function" && typeof mod.readOrgView === "function"
+        ? (mod as BusinessPack)
+        : null;
     } catch {
       return null;
     }

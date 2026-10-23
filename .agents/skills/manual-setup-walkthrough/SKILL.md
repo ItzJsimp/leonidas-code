@@ -14,6 +14,7 @@ verified: 2026-08-22
 related: ["skills-index", "powershell-master", "master-instructions"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Wizard Skill

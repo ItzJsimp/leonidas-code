@@ -4,6 +4,13 @@ import {
   OrchestrationV2SearchThreadResult,
 } from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
+import {
+  MarketingDecideInput,
+  MarketingDecideOutput,
+  MarketingListInput,
+  MarketingListResult,
+  MarketingRpcError,
+} from "./marketing.ts";
 import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
 import {
   McpAppCallToolInput,
@@ -57,6 +64,10 @@ import {
   AiosWorkspaceScopeInput,
   AiosWorkspacesListResult,
   WorkspacePackWidgetsResult,
+  WorkspaceOrgResult,
+  WorkspaceOrgChangeInput,
+  WorkspaceOrgDecideInput,
+  WorkspaceOrgActionResult,
   AiosWorkspaceSummary,
   AiosWorkspaceInitInput,
   TaskBoardHomeNews,
@@ -67,6 +78,12 @@ import {
   TaskBoardHomeWeather,
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
+import {
+  AreaSyncJoinResult,
+  AreaSyncScopeInput,
+  AreaSyncStatusResult,
+  AreaSyncSyncResult,
+} from "./areaSync.ts";
 import {
   HardwareAcknowledgeAlertInput,
   HardwareAlert,
@@ -191,6 +208,12 @@ import {
   FilesystemInspectFolderResult,
 } from "./filesystem.ts";
 import { LayaSetupInput, LayaSetupResult } from "./laya.ts";
+import {
+  ThreadHandoffInput,
+  ThreadHandoffResult,
+  ThreadSweepInput,
+  ThreadSweepResult,
+} from "./threadSweep.ts";
 import {
   AgentSessionImportInput,
   AgentSessionImportProjectChangedError,
@@ -603,7 +626,13 @@ export const WS_METHODS = {
   aiosDirection: "taskBoard.aiosDirection",
   aiosWorkspacesList: "aiosWorkspaces.list",
   aiosWorkspacesInit: "aiosWorkspaces.init",
+  areaSyncJoin: "areaSync.join",
+  areaSyncSync: "areaSync.sync",
+  areaSyncStatus: "areaSync.status",
   workspacePackWidgets: "workspacePack.widgets",
+  workspacePackOrg: "workspacePack.org",
+  workspacePackOrgChange: "workspacePack.orgChange",
+  workspacePackOrgDecide: "workspacePack.orgDecide",
   taskBoardHomeWeather: "taskBoard.homeWeather",
   taskBoardHomeNews: "taskBoard.homeNews",
   layaUsage: "laya.usage",
@@ -612,6 +641,8 @@ export const WS_METHODS = {
   focusSubscribe: "focus.subscribe",
   eventsSubscribe: "events.subscribe",
   eventsAppend: "events.append",
+  marketingList: "marketing.list",
+  marketingDecide: "marketing.decide",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
@@ -664,6 +695,8 @@ export const WS_METHODS = {
   filesystemGetMetadata: "filesystem.getMetadata",
   filesystemInspectFolder: "filesystem.inspectFolder",
   layaSetup: "laya.setup",
+  threadSweepRun: "threadSweep.run",
+  threadSweepHandoff: "threadSweep.handoff",
   agentSessionsScan: "agentSessions.scan",
   agentSessionsImport: "agentSessions.import",
   assetsCreateUrl: "assets.createUrl",
@@ -1807,9 +1840,45 @@ const WsWorkspacePackWidgetsRpc = Rpc.make(WS_METHODS.workspacePackWidgets, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsWorkspacePackOrgRpc = Rpc.make(WS_METHODS.workspacePackOrg, {
+  payload: AiosWorkspaceScopeInput,
+  success: WorkspaceOrgResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsWorkspacePackOrgChangeRpc = Rpc.make(WS_METHODS.workspacePackOrgChange, {
+  payload: WorkspaceOrgChangeInput,
+  success: WorkspaceOrgActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsWorkspacePackOrgDecideRpc = Rpc.make(WS_METHODS.workspacePackOrgDecide, {
+  payload: WorkspaceOrgDecideInput,
+  success: WorkspaceOrgActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsAiosWorkspacesInitRpc = Rpc.make(WS_METHODS.aiosWorkspacesInit, {
   payload: AiosWorkspaceInitInput,
   success: AiosWorkspaceSummary,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAreaSyncJoinRpc = Rpc.make(WS_METHODS.areaSyncJoin, {
+  payload: AreaSyncScopeInput,
+  success: AreaSyncJoinResult,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAreaSyncSyncRpc = Rpc.make(WS_METHODS.areaSyncSync, {
+  payload: AreaSyncScopeInput,
+  success: AreaSyncSyncResult,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAreaSyncStatusRpc = Rpc.make(WS_METHODS.areaSyncStatus, {
+  payload: AreaSyncScopeInput,
+  success: AreaSyncStatusResult,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
 });
 
@@ -1880,6 +1949,20 @@ const WsEventsAppendRpc = Rpc.make(WS_METHODS.eventsAppend, {
   payload: EventsAppendInput,
   success: Schema.Struct({ id: Schema.String }),
   error: Schema.Union([FeedEventError, EnvironmentAuthorizationError]),
+});
+
+/** Reads the Marketing screens: the queue, the posts and the metrics of the open workspace. */
+const WsMarketingListRpc = Rpc.make(WS_METHODS.marketingList, {
+  payload: MarketingListInput,
+  success: MarketingListResult,
+  error: Schema.Union([MarketingRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person approves or rejects tickets. No agent access level holds the scope this needs. */
+const WsMarketingDecideRpc = Rpc.make(WS_METHODS.marketingDecide, {
+  payload: MarketingDecideInput,
+  success: MarketingDecideOutput,
+  error: Schema.Union([MarketingRpcError, EnvironmentAuthorizationError]),
 });
 
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
@@ -2048,6 +2131,18 @@ const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
 const WsLayaSetupRpc = Rpc.make(WS_METHODS.layaSetup, {
   payload: LayaSetupInput,
   success: LayaSetupResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsThreadSweepRunRpc = Rpc.make(WS_METHODS.threadSweepRun, {
+  payload: ThreadSweepInput,
+  success: ThreadSweepResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsThreadSweepHandoffRpc = Rpc.make(WS_METHODS.threadSweepHandoff, {
+  payload: ThreadHandoffInput,
+  success: ThreadHandoffResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -3027,6 +3122,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsFocusSubscribeRpc,
   WsEventsSubscribeRpc,
   WsEventsAppendRpc,
+  WsMarketingListRpc,
+  WsMarketingDecideRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,
@@ -3039,7 +3136,13 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeRpc,
   WsAiosWorkspacesListRpc,
   WsAiosWorkspacesInitRpc,
+  WsAreaSyncJoinRpc,
+  WsAreaSyncSyncRpc,
+  WsAreaSyncStatusRpc,
   WsWorkspacePackWidgetsRpc,
+  WsWorkspacePackOrgRpc,
+  WsWorkspacePackOrgChangeRpc,
+  WsWorkspacePackOrgDecideRpc,
   WsAiosUsageShapeRpc,
   WsAiosDirectionRpc,
   WsTaskBoardHomeWeatherRpc,
@@ -3094,6 +3197,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsFilesystemGetMetadataRpc,
   WsFilesystemInspectFolderRpc,
   WsLayaSetupRpc,
+  WsThreadSweepRunRpc,
+  WsThreadSweepHandoffRpc,
   WsAgentSessionsScanRpc,
   WsAgentSessionsImportRpc,
   WsAssetsCreateUrlRpc,

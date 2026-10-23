@@ -1594,15 +1594,20 @@ export const make = (
             ELECTRON_RUN_AS_NODE: "1",
             T3_ACP_CGROUP_WRAPPER: "1",
           };
+    // A detached cmd.exe shim (a .cmd launcher) never delivers its stdio on Windows.
+    // Windows ends the tree by pid, so it does not need the detached group.
+    const detachChild =
+      options.ownDetachedProcessGroup === true &&
+      !(containedSpawnCommand.shell && (yield* HostProcess.Platform) === "win32");
     const child = yield* spawner
       .spawn(
         ChildProcess.make(containedSpawnCommand.command, containedSpawnCommand.args, {
           ...(options.spawn.cwd ? { cwd: options.spawn.cwd } : {}),
           ...(spawnEnvironment ? { env: spawnEnvironment } : {}),
           extendEnv: options.spawn.extendEnv ?? true,
-          ...(options.ownDetachedProcessGroup === undefined
-            ? {}
-            : { detached: options.ownDetachedProcessGroup }),
+          ...(options.ownDetachedProcessGroup === undefined ? {} : { detached: detachChild }),
+          // Detached children otherwise get a visible console window on Windows.
+          windowsHide: true,
           shell: containedSpawnCommand.shell,
         }),
       )

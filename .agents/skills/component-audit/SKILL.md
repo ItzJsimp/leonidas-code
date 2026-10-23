@@ -5,6 +5,7 @@ disable-model-invocation: true
 category: system
 scope: "structural"
 distribution: template
+license: MIT
 ---
 
 # Component Audit, Optimization & Architecture

@@ -13,6 +13,7 @@ owner: "shared"
 verified: "2026-10-04"
 source: "https://github.com/coreyhaines31/marketingskills (skills/cold-email)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Cold Email Writing
@@ -174,3 +175,5 @@ Use this data to inform your writing, not as a checklist to satisfy.
 - **social**: For LinkedIn and social posts
 - **product-marketing**: For establishing foundational positioning
 - **revops**: For lead scoring, routing, and pipeline management
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

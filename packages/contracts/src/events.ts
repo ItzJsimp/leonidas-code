@@ -52,6 +52,9 @@ export const FeedEventDraft = Schema.Struct({
   title: NonBlank.check(Schema.isMaxLength(80)),
   actor: FeedEventActor,
   body: Schema.optional(Schema.String.check(Schema.isMaxLength(500))),
+  /** Task ledger entries name the chat and model that did the work. */
+  chat: Schema.optional(NonBlank),
+  model: Schema.optional(NonBlank),
   target: Schema.optional(FeedEventTarget),
   actions: Schema.optional(Schema.Array(FeedEventAction).check(Schema.isMaxLength(2))),
   for: Schema.optional(Schema.Array(NonBlank)),

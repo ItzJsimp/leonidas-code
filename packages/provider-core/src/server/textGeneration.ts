@@ -98,6 +98,22 @@ export interface PromptSuggestionResult {
   prompt: string | null;
 }
 
+export interface ThreadAssessmentInput {
+  cwd: string;
+  /** The end of the chat as plain text. The model treats it as data. */
+  transcript: string;
+  /** "class" judges the chat; "handoff" also writes a prompt that continues it in a new chat. */
+  want: "class" | "handoff";
+  modelSelection: ModelSelection;
+}
+
+export interface ThreadAssessmentResult {
+  verdict: "done" | "unfinished" | "unsure";
+  reason: string;
+  /** The handoff prompt when `want` was "handoff"; an empty string otherwise. */
+  handoff: string;
+}
+
 /** Commit, change request, branch, and title generation backed by one provider instance. */
 export interface ProviderTextGeneration {
   readonly generateVoiceLogDraft?: (input: {
@@ -109,6 +125,11 @@ export interface ProviderTextGeneration {
   readonly generatePromptSuggestion?: (
     input: PromptSuggestionInput,
   ) => Effect.Effect<PromptSuggestionResult, TextGenerationError>;
+
+  /** Judge whether a chat is finished, or write the prompt that continues it. */
+  readonly assessThread?: (
+    input: ThreadAssessmentInput,
+  ) => Effect.Effect<ThreadAssessmentResult, TextGenerationError>;
 
   readonly evaluateGoal?: (input: {
     cwd: string;

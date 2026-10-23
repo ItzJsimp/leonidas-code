@@ -79,6 +79,8 @@ export const TaskBoardTask = Schema.Struct({
   claimedBy: Schema.NullOr(TrimmedNonEmptyString),
   claimedAt: Schema.NullOr(Schema.Number),
   claimedAgent: Schema.NullOr(TaskBoardAgent),
+  /** Every chat that ever worked on this task, oldest first. `claimedAgent.threadId` is the newest. */
+  threadIds: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
   completedBy: Schema.NullOr(TrimmedNonEmptyString),
   completedAt: Schema.NullOr(Schema.Number),
   completionSummary: Schema.NullOr(Schema.String),
@@ -263,6 +265,9 @@ export type TaskBoardWorkspaceProject = typeof TaskBoardWorkspaceProject.Type;
 export const TaskBoardTeamMember = Schema.Struct({
   name: TrimmedNonEmptyString,
   aliases: Schema.Array(TrimmedNonEmptyString),
+  // A business Member: the slug is what a task file stores as its assignee.
+  slug: Schema.optional(TrimmedNonEmptyString),
+  kind: Schema.optional(Schema.Literals(["person", "agent"])),
 });
 export type TaskBoardTeamMember = typeof TaskBoardTeamMember.Type;
 
@@ -310,6 +315,8 @@ export const TaskBoardCardUpdateInput = Schema.Struct({
   effort: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   // Replaces the card's tags.
   labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  // Business workspace: the Area slug that makes the task private, or `null` to make it public.
+  privateArea: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   // Appended to the card's activity log.
   note: Schema.optional(Schema.String.check(Schema.isMaxLength(4_000))),
 });
@@ -421,6 +428,8 @@ export const AiosWorkspaceInitInput = Schema.Struct({
   id: TrimmedNonEmptyString.check(Schema.isPattern(/^[a-z0-9][a-z0-9-]{0,63}$/)),
   name: TrimmedNonEmptyString.check(Schema.isMaxLength(80)),
   type: AiosWorkspaceType,
+  // The Owner of a new business. Setup copies the business template with this name.
+  ownerName: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(80))),
 });
 export type AiosWorkspaceInitInput = typeof AiosWorkspaceInitInput.Type;
 
@@ -444,6 +453,155 @@ export const WorkspacePackWidgetsResult = Schema.Struct({
   widgets: Schema.Array(WorkspacePackWidget),
 });
 export type WorkspacePackWidgetsResult = typeof WorkspacePackWidgetsResult.Type;
+
+// The org record of a business workspace (ADR-0088): Departments, Areas and Members read from the
+// Home area files. `org` is null for a personal workspace, a build with no pack, or a folder with
+// no Member yet, so the Team view can show its empty state.
+export const WorkspaceOrg = Schema.Struct({
+  name: Schema.String,
+  departments: Schema.Array(
+    Schema.Struct({
+      slug: Schema.String,
+      name: Schema.String,
+      areas: Schema.Array(Schema.String),
+      leads: Schema.Array(Schema.String),
+    }),
+  ),
+  areas: Schema.Array(
+    Schema.Struct({
+      slug: Schema.String,
+      name: Schema.String,
+      department: Schema.String,
+      sensitivity: Schema.String,
+      status: Schema.String,
+    }),
+  ),
+  members: Schema.Array(
+    Schema.Struct({
+      slug: Schema.String,
+      name: Schema.String,
+      kind: Schema.Literals(["person", "agent"]),
+      status: Schema.String,
+      department: Schema.String,
+      owner: Schema.String,
+      github: Schema.String,
+      roles: Schema.Record(Schema.String, Schema.String),
+    }),
+  ),
+  // The permission table of org/roles.md: the four Roles that ship, then the custom ones.
+  roles: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      basedOn: Schema.String,
+      write: Schema.Literals(["none", "files", "all"]),
+      approve: Schema.Literals(["none", "area", "wall"]),
+      manage: Schema.Literals(["none", "area", "org"]),
+    }),
+  ),
+});
+export type WorkspaceOrg = typeof WorkspaceOrg.Type;
+
+// A change to the org record (ADR-0088). The server decides whether it applies now (it only
+// narrows access) or waits as a proposal (it widens access).
+export const WorkspaceOrgChange = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal("setRole"),
+    member: Schema.String,
+    area: Schema.String,
+    role: Schema.NullOr(Schema.String),
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("addMember"),
+    member: Schema.Struct({
+      slug: Schema.String,
+      name: Schema.String,
+      kind: Schema.Literals(["person", "agent"]),
+      department: Schema.String,
+      owner: Schema.optional(Schema.String),
+      github: Schema.optional(Schema.String),
+      roles: Schema.Record(Schema.String, Schema.String),
+    }),
+  }),
+  Schema.Struct({ kind: Schema.Literal("removeMember"), member: Schema.String }),
+  // Only an Owner changes the permission table. `wall` and `org` stay with the Owner Role.
+  Schema.Struct({
+    kind: Schema.Literal("setRoleDef"),
+    role: Schema.Struct({
+      name: Schema.String,
+      basedOn: Schema.String,
+      write: Schema.Literals(["none", "files", "all"]),
+      approve: Schema.Literals(["none", "area"]),
+      manage: Schema.Literals(["none", "area"]),
+    }),
+  }),
+  Schema.Struct({ kind: Schema.Literal("removeRoleDef"), role: Schema.String }),
+  // The invited person accepts their own Invite. An Owner renews a closed one.
+  Schema.Struct({ kind: Schema.Literal("acceptInvite") }),
+  Schema.Struct({ kind: Schema.Literal("renewInvite"), member: Schema.String }),
+]);
+export type WorkspaceOrgChange = typeof WorkspaceOrgChange.Type;
+
+export const WorkspaceOrgProposal = Schema.Struct({
+  id: Schema.String,
+  title: Schema.String,
+  proposedBy: Schema.String,
+  proposedAt: Schema.String,
+});
+export type WorkspaceOrgProposal = typeof WorkspaceOrgProposal.Type;
+
+// `me` is the Member who uses this computer, matched by GitHub login. `proposals` are the ones
+// still waiting for an Owner.
+export const WorkspaceOrgResult = Schema.Struct({
+  org: Schema.NullOr(WorkspaceOrg),
+  me: Schema.NullOr(
+    Schema.Struct({
+      slug: Schema.String,
+      canDecide: Schema.Boolean,
+      invited: Schema.Boolean,
+    }),
+  ),
+  proposals: Schema.Array(WorkspaceOrgProposal),
+  // Open Invites with their link. Only an Owner gets them. The link holds no secret.
+  invites: Schema.Array(
+    Schema.Struct({
+      slug: Schema.String,
+      name: Schema.String,
+      github: Schema.String,
+      status: Schema.String,
+      expiresAt: Schema.String,
+      approvedBy: Schema.String,
+      link: Schema.String,
+    }),
+  ),
+});
+export type WorkspaceOrgResult = typeof WorkspaceOrgResult.Type;
+
+export const WorkspaceOrgChangeInput = Schema.Struct({
+  ...workspaceScope,
+  change: WorkspaceOrgChange,
+});
+export type WorkspaceOrgChangeInput = typeof WorkspaceOrgChangeInput.Type;
+
+export const WorkspaceOrgDecideInput = Schema.Struct({
+  ...workspaceScope,
+  id: Schema.String,
+  decision: Schema.Literals(["approve", "reject"]),
+});
+export type WorkspaceOrgDecideInput = typeof WorkspaceOrgDecideInput.Type;
+
+export const WorkspaceOrgActionResult = Schema.Struct({
+  result: Schema.Literals([
+    "applied",
+    "proposed",
+    "rejected",
+    "denied",
+    "invalid",
+    "unknown_actor",
+    "missing",
+  ]),
+  message: Schema.String,
+});
+export type WorkspaceOrgActionResult = typeof WorkspaceOrgActionResult.Type;
 
 export const TaskBoardHomePriority = Schema.Struct({
   title: Schema.String,

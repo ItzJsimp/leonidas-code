@@ -13,6 +13,7 @@ owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/coreyhaines31/marketingskills (skills/pricing, MIT, commit dda3841)"
 disable-model-invocation: true
+license: MIT
 ---
 
 # Pricing Strategy
@@ -324,3 +325,5 @@ The AI-readiness fixes are usually high-impact, low-effort (put prices in text, 
 - **ab-testing**: For testing pricing changes
 - **revops**: For deal desk processes and pipeline pricing
 - **sales-enablement**: For proposal templates and pricing presentations
+
+Credit: adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT). See [LICENSE](LICENSE).

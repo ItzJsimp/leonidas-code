@@ -13,6 +13,7 @@ verified: 2026-10-12
 source: "https://github.com/callstackincubator/agent-skills (skills/react-native-best-practices, MIT, commit 59e9d17)"
 category: code
 disable-model-invocation: true
+license: MIT
 ---
 
 # React Native Best Practices
@@ -257,3 +258,5 @@ Full documentation with code examples in [references/][references]:
 ## Attribution
 
 Based on "The Ultimate Guide to React Native Optimization" by Callstack.
+
+Credit: adapted from [callstackincubator/agent-skills](https://github.com/callstackincubator/agent-skills) (MIT). See [LICENSE](LICENSE).

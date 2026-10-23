@@ -16,7 +16,8 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react";
-import { ownerOf } from "./owner.logic";
+import { ownerOf, ownerPickerItems, ownerPickerValue } from "./owner.logic";
+import { taskPrivateArea } from "./privateArea.logic";
 import { lazy, memo, Suspense, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -35,6 +36,8 @@ import { Switch } from "~/components/ui/switch";
 import { DictationTextarea } from "~/components/voice/DictationTextarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ChecklistBar, PriorityBadge, StatusBadge } from "./TaskBadges";
+import { TaskHistory } from "./TaskHistory";
+import { PresenceChips } from "./TaskPresence";
 import {
   formatDue,
   priorityLabel,
@@ -60,6 +63,7 @@ const EDITABLE_STATUSES: ReadonlyArray<TaskBoardTaskStatus> = [
 ];
 const PRIORITIES: ReadonlyArray<TaskBoardTaskPriority> = ["critical", "high", "medium", "low"];
 const ANYONE_VALUE = "__anyone__";
+const PUBLIC_VALUE = "__public__";
 
 const HISTORY_VERBS: Record<TaskBoardHistoryEntry["action"], string> = {
   created: "created this",
@@ -175,16 +179,25 @@ function TaskDetailBody(props: {
   const { task, context, actions, onClose } = props;
   const [note, setNote] = useState("");
   const [pressed, setPressed] = useState<ActionKey | null>(null);
+  const [tab, setTab] = useState<"details" | "history">("details");
 
   const busy = actions.isBusy(task.id);
   const closed = task.status === "done" || task.status === "parked" || task.status === "retired";
   const mine = sameName(task.claimedBy, context.member);
   const owner = ownerOf(task, context.team);
-  const ownerItems = [
-    ...new Set([...context.team.map((member) => member.name), ...(owner ? [owner] : [])]),
-  ]
-    .map((name) => ({ value: name, label: name }))
-    .concat({ value: ANYONE_VALUE, label: "Anyone (available to take)" });
+  const ownerItems = ownerPickerItems(context.team, owner).concat({
+    value: ANYONE_VALUE,
+    label: "Anyone (available to take)",
+  });
+  const ownerValue = ownerPickerValue(context.team, owner);
+  const privateArea = taskPrivateArea(task);
+  const privateItems = [
+    { value: PUBLIC_VALUE, label: "No (every Member reads it)" },
+    ...context.areas.map((area) => ({ value: area.slug, label: `Private in ${area.name}` })),
+    ...(privateArea && !context.areas.some((area) => area.slug === privateArea)
+      ? [{ value: privateArea, label: `Private in ${privateArea}` }]
+      : []),
+  ];
   const canSend = actions.canSendToAgent(task);
   const canShare = actions.canShare(task);
   const linkedSlug = task.section === "general" ? null : task.section;
@@ -269,6 +282,7 @@ function TaskDetailBody(props: {
                 </Badge>
               ))}
             </div>
+            <PresenceChips taskId={task.id} />
           </div>
           <Button variant="ghost-muted" size="icon-sm" aria-label="Close task" onClick={onClose}>
             <XIcon />
@@ -336,7 +350,35 @@ function TaskDetailBody(props: {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+      <div
+        role="tablist"
+        aria-label="Task sections"
+        className="flex shrink-0 gap-1 border-b border-border px-3 py-1.5"
+      >
+        {(["details", "history"] as const).map((name) => (
+          <Button
+            key={name}
+            role="tab"
+            aria-selected={tab === name}
+            variant={tab === name ? "secondary" : "ghost-muted"}
+            size="sm"
+            onClick={() => setTab(name)}
+          >
+            {name === "details" ? "Details" : "History"}
+          </Button>
+        ))}
+      </div>
+
+      {tab === "history" ? (
+        <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4">
+          <TaskHistory taskId={task.id} />
+        </div>
+      ) : null}
+
+      <div
+        role="tabpanel"
+        className={`min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 ${tab === "history" ? "hidden" : "flex"}`}
+      >
         <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
           <Property label="Status">
             <Select
@@ -406,12 +448,12 @@ function TaskDetailBody(props: {
           </Property>
           <Property label="Owner">
             <Select
-              value={owner ?? ANYONE_VALUE}
+              value={ownerValue ?? ANYONE_VALUE}
               items={ownerItems}
               onValueChange={(value) => {
                 if (!value) return;
                 const next = value === ANYONE_VALUE ? null : value;
-                if (next !== owner) actions.setAssignee(task, next);
+                if (next !== ownerValue) actions.setAssignee(task, next);
               }}
             >
               <SelectTrigger size="sm" aria-label="Owner" disabled={busy || !actions.canEdit}>
@@ -426,6 +468,30 @@ function TaskDetailBody(props: {
               </SelectPopup>
             </Select>
           </Property>
+          {context.areas.length > 0 || privateArea ? (
+            <Property label="Private">
+              <Select
+                value={privateArea ?? PUBLIC_VALUE}
+                items={privateItems}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  const next = value === PUBLIC_VALUE ? null : value;
+                  if (next !== privateArea) actions.setPrivateArea(task, next);
+                }}
+              >
+                <SelectTrigger size="sm" aria-label="Private" disabled={busy || !actions.canEdit}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectPopup>
+                  {privateItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            </Property>
+          ) : null}
           <Property label="Taken by">
             {task.claimedBy ? (
               <div className="flex min-w-0 flex-col gap-0.5">

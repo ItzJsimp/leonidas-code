@@ -176,4 +176,47 @@ describe("TextGeneration.make", () => {
       }
     }),
   );
+  it.effect(
+    "routes assessThread to the instance, and fails plainly when it lacks the operation",
+    () =>
+      Effect.gen(function* () {
+        const withId = ProviderInstanceId.make("claudeAgent");
+        const withoutId = ProviderInstanceId.make("plain");
+        const supported = makeStubInstance(
+          withId,
+          makeStubTextGeneration({
+            assessThread: () =>
+              Effect.succeed({ verdict: "done", reason: "Finished.", handoff: "" }),
+          }),
+        );
+        const plain = makeStubInstance(withoutId, makeStubTextGeneration({}));
+        const tg = yield* TextGeneration.make.pipe(
+          Effect.provideService(
+            ProviderInstanceRegistry.ProviderInstanceRegistry,
+            makeStubRegistry([supported, plain]),
+          ),
+          Effect.provide(
+            Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
+              resolveLink: () => Effect.die("No link lookup expected"),
+            }),
+          ),
+        );
+        const input = { cwd: process.cwd(), transcript: "t", want: "class" as const };
+        const ok = yield* tg.assessThread!({
+          ...input,
+          modelSelection: createModelSelection(withId, "m"),
+        });
+        expect(ok.verdict).toBe("done");
+
+        const missing = yield* tg.assessThread!({
+          ...input,
+          modelSelection: createModelSelection(withoutId, "m"),
+        }).pipe(Effect.result);
+        expect(Result.isFailure(missing)).toBe(true);
+        if (Result.isFailure(missing)) {
+          expect(missing.failure.operation).toBe("assessThread");
+          expect(missing.failure.detail).toContain("does not support");
+        }
+      }),
+  );
 });

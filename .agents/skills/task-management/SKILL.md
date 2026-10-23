@@ -4,6 +4,7 @@ description: "Capture work as a gated task card in tasks/ and query, audit, arch
 category: flow
 scope: "structural"
 distribution: template
+license: MIT
 ---
 
 # Task Management: Capture, Route, Keep Clean

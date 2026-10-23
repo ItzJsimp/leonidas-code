@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-10-16
 source: "https://github.com/addyosmani/agent-skills (adapted from .claude/commands, MIT, commit aeac41d)"
+license: MIT
 ---
 
 # /review: spec match and code health
@@ -31,3 +32,5 @@ Engine: `review-two-axis` (a standards lane and a spec lane, in parallel). Added
 ## Done when
 
 - No Critical or Required finding remains, and each lane reported a result.
+
+Credit: adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT). See [LICENSE](LICENSE).

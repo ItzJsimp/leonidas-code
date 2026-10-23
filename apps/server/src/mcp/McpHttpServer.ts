@@ -65,6 +65,8 @@ import {
 } from "./toolkits/device/tools.ts";
 import * as HtmlHandlers from "./toolkits/html/handlers.ts";
 import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
+import * as MarketingHandlers from "./toolkits/marketing/handlers.ts";
+import { MarketingToolkit } from "./toolkits/marketing/tools.ts";
 
 /** Where an MCP client discovers how to sign in (RFC 9728), at this request's own origin. */
 const mcpResourceMetadataUrl = (request: HttpServerRequest.HttpServerRequest) =>
@@ -909,4 +911,5 @@ export const layer = Layer.mergeAll(
   toolkitRegistration(LocalVmStandardToolkit, LocalVmHandlers.layerStandard),
   imageToolRegistration(registerLocalVmScreenshot(), LocalVmHandlers.layerScreenshot),
   layerHtmlToolkit,
+  toolkitRegistration(MarketingToolkit, MarketingHandlers.layer),
 ).pipe(Layer.provideMerge(layerMcpTransport));

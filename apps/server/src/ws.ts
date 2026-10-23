@@ -9,11 +9,13 @@ import * as ImageService from "./images/ImageService.ts";
 import * as LocalModelsService from "./localModels/LocalModelsService.ts";
 import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
+import * as AreaSyncService from "./areaSync/AreaSyncService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
 import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
 import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import { appendDraft, feedStream } from "./events/eventsRpc.ts";
+import * as MarketingRpc from "./marketing/marketingRpc.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -43,6 +45,7 @@ import * as Duration from "effect/Duration";
 import * as Base64 from "effect/encoding/Base64";
 import * as Effect from "effect/Effect";
 import { layaStatus, startLayaInstall, wireLayaProject } from "./laya/layaSetup.ts";
+import { makeThreadHandoff, makeThreadSweep } from "./laya/threadSweepService.ts";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -1383,6 +1386,7 @@ const layerWsRpc = (
       const workspaceEntries = yield* WorkspaceEntries.WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem.WorkspaceFileSystem;
       const taskBoard = yield* TaskBoardService.TaskBoardService;
+      const areaSync = yield* AreaSyncService.AreaSyncService;
       const spawnApprovals = yield* SpawnApprovals;
       yield* spawnApprovals.keepStatsIn(`${config.stateDir}/subagent-stats.json`);
       const hardwareWatch = yield* HardwareWatch.HardwareWatch;
@@ -1466,6 +1470,13 @@ const layerWsRpc = (
           }
           return yield* use(project.value);
         });
+      const sweepDeps = {
+        threadManagement,
+        textGeneration: yield* TextGeneration.TextGeneration,
+        serverSettings,
+      };
+      const threadSweep = makeThreadSweep(sweepDeps);
+      const threadHandoff = makeThreadHandoff(sweepDeps);
       const promptPrediction = yield* PromptPrediction.PromptPrediction;
       const promptSuggestion = PromptSuggestion.make(
         yield* TextGeneration.TextGeneration,
@@ -2937,6 +2948,22 @@ const layerWsRpc = (
             Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
             Effect.flatMap((root) => appendDraft(root, input.event)),
           ),
+        [WS_METHODS.marketingList]: (input) =>
+          MarketingRpc.list(
+            allTaskBoardProjects.pipe(
+              Effect.orElseSucceed(() => []),
+              Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
+            ),
+          ),
+        [WS_METHODS.marketingDecide]: (input) =>
+          MarketingRpc.decide(
+            allTaskBoardProjects.pipe(
+              Effect.orElseSucceed(() => []),
+              Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
+            ),
+            input,
+            currentSession.subject,
+          ),
         // Each change made through this server pushes a fresh list; no polling.
         [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(
@@ -3102,12 +3129,33 @@ const layerWsRpc = (
               taskBoard.workspacePackWidgets(projects, input.workspaceId),
             ),
           ),
+        [WS_METHODS.workspacePackOrg]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.flatMap((projects) => taskBoard.workspacePackOrg(projects, input.workspaceId)),
+          ),
+        [WS_METHODS.workspacePackOrgChange]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.flatMap((projects) => taskBoard.workspacePackOrgChange(projects, input)),
+          ),
+        [WS_METHODS.workspacePackOrgDecide]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.orElseSucceed(() => []),
+            Effect.flatMap((projects) => taskBoard.workspacePackOrgDecide(projects, input)),
+          ),
         [WS_METHODS.aiosWorkspacesList]: () =>
           allTaskBoardProjects.pipe(Effect.flatMap(taskBoard.workspaces)),
         [WS_METHODS.aiosWorkspacesInit]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.workspaceInit(input, projects)),
           ),
+        [WS_METHODS.areaSyncJoin]: (input) =>
+          allTaskBoardProjects.pipe(Effect.flatMap((projects) => areaSync.join(projects, input))),
+        [WS_METHODS.areaSyncSync]: (input) =>
+          allTaskBoardProjects.pipe(Effect.flatMap((projects) => areaSync.sync(projects, input))),
+        [WS_METHODS.areaSyncStatus]: (input) =>
+          allTaskBoardProjects.pipe(Effect.flatMap((projects) => areaSync.status(projects, input))),
         [WS_METHODS.taskBoardAiosDetect]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.aiosDetect(input, projects)),
@@ -3180,6 +3228,8 @@ const layerWsRpc = (
                 }),
             ),
           ),
+        [WS_METHODS.threadSweepRun]: (input) => threadSweep(input),
+        [WS_METHODS.threadSweepHandoff]: (input) => threadHandoff(input),
         [WS_METHODS.layaSetup]: (input) =>
           Effect.promise(async () => {
             if (input.action === "wire") {

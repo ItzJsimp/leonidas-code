@@ -1,6 +1,6 @@
 ---
 name: "safe-parallel-commit"
-description: "Commit safely during concurrent sessions: explicit path staging only, pre-commit recovery, and scope checks."
+description: "Commit safely during concurrent sessions: explicit path staging only, pre-commit recovery, and scope checks. Use when committing while other sessions edit the same repo."
 category: code
 scope: structural
 distribution: core
@@ -11,6 +11,7 @@ related:
     "cross-session-git-collision",
     "concurrent-session-commit-collisions",
   ]
+license: MIT
 ---
 
 # Safe Parallel Commit

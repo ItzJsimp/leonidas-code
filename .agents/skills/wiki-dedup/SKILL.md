@@ -13,6 +13,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-26
 source: "https://github.com/ar9av/obsidian-wiki (.skills/wiki-dedup, MIT, commit 2f10142)"
+license: MIT
 ---
 
 ## AIOS binding (overrides the config and vault steps below)
@@ -344,3 +345,5 @@ Record one of:
 - `QMD skipped: QMD_WIKI_COLLECTION unset`
 - `QMD skipped: qmd CLI unavailable`
 - `QMD failed: <short error summary>`
+
+Credit: adapted from [ar9av/obsidian-wiki](https://github.com/ar9av/obsidian-wiki) (MIT). See [LICENSE](LICENSE).

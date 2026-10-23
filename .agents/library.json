@@ -1,0 +1,1173 @@
+{
+  "items": [
+    {
+      "name": "grilling",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/harvest-grill-memory.py"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "wayfinder",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/New-Task.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "next-action",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "task-management",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Archive-CompletedTasks.ps1",
+        "scripts/Audit-Tasks.ps1",
+        "scripts/Build-TasksIndex.ps1",
+        "scripts/Capture-Thought.ps1",
+        "scripts/Complete-Task.ps1",
+        "scripts/Get-Tasks.ps1",
+        "scripts/New-Task.ps1",
+        "scripts/Test-TaskGate.ps1",
+        "scripts/skills/task-management/Invoke-TaskManagement.ps1",
+        "scripts/task-health-sweep.py"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "task-scoping",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Audit-Substrate.ps1", "scripts/Audit-Tasks.ps1", "scripts/New-Task.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "to-spec",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/New-Task.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "to-tickets",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/New-Task.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "to-questionnaire",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "roast",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "retro",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "wait-what",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "explain-simply",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "teach",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "quick-question",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "research",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Build-Index.ps1",
+        "scripts/Find-EmDashes.ps1",
+        "scripts/Get-ResearchTelemetryStats.ps1",
+        "scripts/New-Memory.ps1",
+        "scripts/Query-Evidence.ps1",
+        "scripts/Test-DossierContradictions.ps1"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "deep-research",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "primary-research",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "defuddle",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "kepano/obsidian-skills"
+    },
+    {
+      "name": "youtube-analyzer",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "youtube-search",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "technical-writing",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "asd-ste100",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "danyuchn/asd-ste100-skill"
+    },
+    {
+      "name": "humanizer",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "blader/humanizer"
+    },
+    {
+      "name": "prompt-composer",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Build-Index.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "prompt-improver",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "writing-for-agents",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "aios-explorer",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Build-Index.ps1", "scripts/search-aios.py"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "ask-leonidas",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "chat-sync",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Build-Index.ps1",
+        "scripts/Capture-Thought.ps1",
+        "scripts/New-ADR.ps1",
+        "scripts/New-Memory.ps1",
+        "scripts/New-Task.ps1"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "chat-closeout",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Audit-Substrate.ps1",
+        "scripts/New-Task.ps1",
+        "scripts/test-project-playbooks.py"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "session-handoff",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Check-OpenHandoffs.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "recap",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Build-Index.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "component-audit",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Audit-Substrate.ps1",
+        "scripts/Build-Index.ps1",
+        "scripts/Detect-Drift.ps1",
+        "scripts/New-AiosScheduledTask.ps1",
+        "scripts/New-Memory.ps1",
+        "scripts/Set-HarnessChatName.ps1",
+        "scripts/Sync-AgentSkills.ps1",
+        "scripts/Sync-Mem0Index.ps1",
+        "scripts/track-task.py"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "context-budget",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "context-engineering",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "skill-creator",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Audit-Substrate.ps1",
+        "scripts/Build-Index.ps1",
+        "scripts/Detect-Drift.ps1",
+        "scripts/Export-UniversalAIOS.py",
+        "scripts/New-Skill.ps1",
+        "scripts/Sync-AgentSkills.ps1"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "skill-learn",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Audit-Substrate.ps1",
+        "scripts/Build-Index.ps1",
+        "scripts/Collect-SkillSignals.py",
+        "scripts/Sync-AgentSkills.ps1"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "find-skills",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Install-ExternalSkill.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "subagent-builder",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Sync-Subagents.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "system-prompt-authoring",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "mode-persona-builder",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Audit-Substrate.ps1", "scripts/Build-Index.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "automation-architect",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [
+        "scripts/Audit-Substrate.ps1",
+        "scripts/Compile-AutomationManifest.ps1",
+        "scripts/Detect-Drift.ps1",
+        "scripts/Get-AutomationSurface.ps1",
+        "scripts/New-AiosScheduledTask.ps1",
+        "scripts/Route-SystemOne.ps1",
+        "scripts/route-system-one.py"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "workflow-spec-builder",
+      "kind": "skill",
+      "pack": "core",
+      "needs": ["scripts/Capture-Thought.ps1", "scripts/Complete-Task.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "wizard",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "manual-setup-walkthrough",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "safe-parallel-commit",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "ceo",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "leonidas-canvas",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "archify",
+      "kind": "skill",
+      "pack": "core",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "tt-a1i (Archify), based on Cocoon AI"
+    },
+    {
+      "name": "idea-to-ship",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "spec",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "plan",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "build",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "test",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "review",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "ship",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "review-two-axis",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "tdd",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "diagnosing-bugs",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "code-simplify",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "code-skimmer",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": ["scripts/get-harness-tokens.py", "scripts/get-symbol-outline.py"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "codebase-design",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "improve-codebase-architecture",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "domain-modeling",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "prototype",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "constraints",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "performance-gate",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": ["scripts/Detect-Drift.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "performance-optimization",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "addyosmani/agent-skills"
+    },
+    {
+      "name": "memory-leak-debugging",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "credit": "ChromeDevTools/chrome-devtools-mcp"
+    },
+    {
+      "name": "pr",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "resolving-merge-conflicts",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "using-git-worktrees",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "obra/superpowers"
+    },
+    {
+      "name": "git-advanced-workflows",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "wshobson/agents"
+    },
+    {
+      "name": "git-guardrails-claude-code",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mattpocock/skills"
+    },
+    {
+      "name": "github-issues",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "github/awesome-copilot"
+    },
+    {
+      "name": "graphify",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "credit": "safishamsi/graphify"
+    },
+    {
+      "name": "node",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "mcollina/skills"
+    },
+    {
+      "name": "effect-ts",
+      "kind": "skill",
+      "pack": "developer",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "effect-ts/skills"
+    },
+    {
+      "name": "claude-harness-reference",
+      "kind": "skill",
+      "pack": "builder",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "claude-automation-recommender",
+      "kind": "skill",
+      "pack": "builder",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "token-optimizer",
+      "kind": "skill",
+      "pack": "builder",
+      "needs": ["scripts/Audit-AiEfficiency.ps1", "scripts/get-harness-tokens.py"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "design-build",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "design-audit",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "impeccable",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "credit": "pbakaus/impeccable"
+    },
+    {
+      "name": "ui-taste",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "credit": "uizze.sh"
+    },
+    {
+      "name": "design-taste-frontend-v2-experimental",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonxlnx/taste-skill"
+    },
+    {
+      "name": "brandkit",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonxlnx/taste-skill"
+    },
+    {
+      "name": "accessibility",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "vercel-react-best-practices",
+      "kind": "skill",
+      "pack": "design",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "vercel-labs/agent-skills"
+    },
+    {
+      "name": "react-native-best-practices",
+      "kind": "skill",
+      "pack": "mobile",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "callstackincubator/agent-skills"
+    },
+    {
+      "name": "vercel-react-native-skills",
+      "kind": "skill",
+      "pack": "mobile",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "vercel-labs/agent-skills"
+    },
+    {
+      "name": "ad-creative",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "ads",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "cold-email",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "competitor-profiling",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "copywriting",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "cro",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "customer-research",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "marketing-council",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "marketing-plan",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "marketing-psychology",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "pricing",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "product-marketing",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "seo-audit",
+      "kind": "skill",
+      "pack": "marketing",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "coreyhaines31/marketingskills"
+    },
+    {
+      "name": "obsidian-markdown",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "kepano/obsidian-skills"
+    },
+    {
+      "name": "cross-linker",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": ["scripts/Detect-Drift.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "ar9av/obsidian-wiki"
+    },
+    {
+      "name": "wiki-context-pack",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "ar9av/obsidian-wiki"
+    },
+    {
+      "name": "wiki-dedup",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": ["scripts/Detect-Drift.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "ar9av/obsidian-wiki"
+    },
+    {
+      "name": "llm-wiki-research",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "knowledge-graph-3d",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Nate Herk"
+    },
+    {
+      "name": "zotero-research",
+      "kind": "skill",
+      "pack": "knowledge",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "pc-systems-engineer",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "pc-incident-forensics",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "windows-debloat",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "peripherals-display-tuner",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "game-optimization",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "remote-streaming-sync",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "powershell-master",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "windows-toast",
+      "kind": "skill",
+      "pack": "windows-pc",
+      "needs": [
+        "scripts/Handle-ToastAction.ps1",
+        "scripts/Register-ToastProtocol.ps1",
+        "scripts/Send-TaskToast.ps1"
+      ],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "n8n-workflow-patterns",
+      "kind": "skill",
+      "pack": "automation",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "de-emdash",
+      "kind": "skill",
+      "pack": "writing-style",
+      "needs": ["scripts/Find-EmDashes.ps1"],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    },
+    {
+      "name": "caveman",
+      "kind": "skill",
+      "pack": "writing-style",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "credit": "juliusbrussee/caveman"
+    },
+    {
+      "name": "fable-mode",
+      "kind": "skill",
+      "pack": "writing-style",
+      "needs": [],
+      "version": "1.0.0",
+      "license": "MIT",
+      "credit": "Leonidas"
+    }
+  ]
+}

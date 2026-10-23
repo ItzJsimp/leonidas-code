@@ -5,6 +5,7 @@ category: planning
 scope: "structural"
 distribution: template
 disable-model-invocation: true
+license: MIT
 ---
 
 # Automation Architect

@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-09-12
 related: ["skills-index", "wiki-index", "aios-explorer", "master-instructions"]
 generated: false
+license: MIT
 ---
 
 # Research Skill

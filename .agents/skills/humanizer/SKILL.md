@@ -13,6 +13,7 @@ disable-model-invocation: true
 owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/blader/humanizer (SKILL.md, MIT, version 3.1.0)"
+license: MIT
 ---
 
 # Humanizer: remove AI writing patterns
@@ -432,3 +433,5 @@ Keep the details that carry the writer's voice unless they hurt the meaning:
 ## Source
 
 The patterns come from Wikipedia's ["Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup, and from reviews of AI-generated text on Wikipedia and elsewhere.
+
+Credit: adapted from [blader/humanizer](https://github.com/blader/humanizer) (MIT). See [LICENSE](LICENSE).

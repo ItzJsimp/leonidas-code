@@ -14,6 +14,7 @@ owner: shared
 verified: 2026-08-22
 related: ["skills-index", "soul", "technical-writing"]
 generated: false
+license: MIT
 ---
 
 # Wait What : Comprehension Reset

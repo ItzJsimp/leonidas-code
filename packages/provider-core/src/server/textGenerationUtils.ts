@@ -143,7 +143,8 @@ export function sanitizePromptSuggestion(raw: string, draft = ""): string | null
   if (draft) {
     if (!raw.startsWith(draft)) return null;
     const suffix = raw.slice(draft.length);
-    if (SUGGESTION_PLACEHOLDER.test(suffix) || SUGGESTION_RESULT_REPORT.test(suffix.trimStart())) return null;
+    if (SUGGESTION_PLACEHOLDER.test(suffix) || SUGGESTION_RESULT_REPORT.test(suffix.trimStart()))
+      return null;
     const clean = suffix.replace(/\s+/g, " ");
     return clean.length > 0 && clean.length <= MAX_PROMPT_SUGGESTION_CHARS ? draft + clean : null;
   }

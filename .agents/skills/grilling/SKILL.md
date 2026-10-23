@@ -5,6 +5,7 @@ category: planning
 scope: structural
 source: "https://github.com/mattpocock/skills (skills/productivity/grilling, MIT, adapted for the AIOS)"
 distribution: core
+license: MIT
 ---
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
@@ -33,3 +34,5 @@ Finding _facts_ is your job, never the user's. When a frontier question needs a 
 ## Done
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed. Append a synthesis to the capture file and show it in chat: the settled design, the accepted tradeoffs, and the next action. Do not act on it until the user confirms you have reached a shared understanding.
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

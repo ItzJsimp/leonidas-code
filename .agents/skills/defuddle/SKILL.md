@@ -12,6 +12,7 @@ load: "on-demand"
 owner: "shared"
 verified: 2026-10-04
 source: "https://github.com/kepano/obsidian-skills (skills/defuddle, MIT, commit 3ccff53)"
+license: MIT
 ---
 
 # Defuddle
@@ -50,3 +51,5 @@ defuddle parse <url> -p domain
 | `--json`    | JSON with both HTML and markdown |
 | (none)      | HTML                             |
 | `-p <name>` | Specific metadata property       |
+
+Credit: adapted from [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) (MIT). See [LICENSE](LICENSE).

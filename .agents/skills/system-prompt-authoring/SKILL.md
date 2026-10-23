@@ -5,6 +5,7 @@ category: agents
 scope: structural
 distribution: core
 disable-model-invocation: true
+license: MIT
 ---
 
 Reference for writing any core document an agent consumes: an `AGENTS.md` / `CLAUDE.md`, a mode definition, a standard, or a doc reached by a pointer. The packaging differs; the writing does not: the same levers make each one predictable, since the agent takes the same _process_ every run rather than producing the same output.

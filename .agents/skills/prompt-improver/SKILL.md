@@ -13,6 +13,7 @@ verified: 2026-08-21
 related: ["skills-index", "master-instructions", "research", "questions"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # Prompt Improver Skill

@@ -13,6 +13,7 @@ owner: shared
 verified: 2026-09-16
 related: ["skills-index", "research", "context-engineering", "master-instructions"]
 generated: false
+license: MIT
 ---
 
 # AIOS Explorer Skill

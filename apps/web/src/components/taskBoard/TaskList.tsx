@@ -16,6 +16,7 @@ import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/compone
 import { cn } from "~/lib/utils";
 import { ChecklistBar, DueChip, PriorityBadge, SharedBadge, StatusBadge } from "./TaskBadges";
 import { TasksEmpty } from "./TaskEmptyStates";
+import { PresenceChips } from "./TaskPresence";
 import { OwnerCell, ProjectChip, useLatest } from "./TaskRowParts";
 import {
   isOpen,
@@ -124,6 +125,9 @@ const TaskRow = memo(function TaskRow({
         </span>
         <span className="hidden shrink-0 items-center @min-[52rem]:flex">
           <ChecklistBar checklist={task.checklist} />
+        </span>
+        <span className="hidden max-w-44 shrink-0 @min-[40rem]:flex">
+          <PresenceChips taskId={task.id} />
         </span>
         <span className="hidden w-28 shrink-0 @min-[30rem]:flex">
           <OwnerCell task={task} team={team} />

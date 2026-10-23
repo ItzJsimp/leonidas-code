@@ -108,6 +108,7 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
+      const hostPlatform = yield* HostProcess.Platform;
       const fixture = yield* makeFakeArchives();
       const outputs = yield* buildNpmPlatformPackages({
         ...fixture,
@@ -155,7 +156,9 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
         "# @t3code/t3-linux-x64",
       );
       assert.isTrue(yield* fs.exists(path.join(linuxDir, "node_modules/node-pty")));
-      assert.equal(Number((yield* fs.stat(path.join(linuxDir, "t3"))).mode) & 0o111, 0o111);
+      if (hostPlatform !== "win32") {
+        assert.equal(Number((yield* fs.stat(path.join(linuxDir, "t3"))).mode) & 0o111, 0o111);
+      }
 
       const darwinManifest = yield* decodeManifest(
         yield* fs.readFileString(
@@ -187,23 +190,33 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
       // The tarball is what gets published: it must carry node_modules (which
       // `npm publish <dir>` would strip) under npm's `package/` root, with the
       // executable bit intact.
+      const sourceListing = yield* run(
+        "tar",
+        ["-tzvf", path.join(fixture.archivesDir, `t3-${VERSION}-linux-x64.tar.gz`)],
+        { cwd: fixture.archivesDir },
+      );
+      assert.equal(sourceListing.exitCode, 0, sourceListing.stderr);
+      const sourceExecutable = sourceListing.stdout
+        .split(/\r?\n/)
+        .find((line) => line.endsWith("/t3") || line.endsWith("\\t3"));
+      assert.isDefined(sourceExecutable, sourceListing.stdout);
+
       const listing = yield* run(
         "tar",
         ["-tzvf", path.join(fixture.outputDir, "@t3code/t3-linux-x64.tgz")],
         { cwd: fixture.outputDir },
       );
       assert.equal(listing.exitCode, 0, listing.stderr);
-      const lines = listing.stdout.split("\n");
+      const lines = listing.stdout.split(/\r?\n/);
       assert.isTrue(lines.some((line) => line.endsWith(" package/node_modules/node-pty/")));
       assert.isTrue(lines.some((line) => line.endsWith(" package/package.json")));
-      assert.isTrue(
-        lines.some((line) => /^-rwxr-xr-x .* package\/t3$/.test(line)),
-        listing.stdout,
-      );
+      const packagedExecutable = lines.find((line) => line.endsWith(" package/t3"));
+      assert.isDefined(packagedExecutable, listing.stdout);
+      assert.equal(packagedExecutable.slice(0, 10), sourceExecutable.slice(0, 10));
+      if (hostPlatform !== "win32") assert.equal(packagedExecutable.slice(0, 10), "-rwxr-xr-x");
 
       // NODE_PATH stands in for node_modules: require.resolve finds the
       // platform package there exactly as it would after `npm install`.
-      const hostPlatform = yield* HostProcess.Platform;
       const hostArch = yield* HostProcess.Architecture;
       const env = { ...process.env, NODE_PATH: fixture.outputDir } as Record<string, string>;
       if (KEYS.some((key) => key === `${hostPlatform}-${hostArch}`)) {
@@ -247,6 +260,39 @@ it.layer(NodeServices.layer)("build-npm-platform-packages", (it) => {
         );
         assert.equal(legacy.exitCode, 7);
       }
+
+      const launcher = path.join(launcherDir, "bin/t3.js");
+      const forwardedArgs = [
+        "__service-preflight",
+        "--database-path",
+        "a database.sqlite",
+        "--launcher-protocol",
+        "2",
+      ];
+      const launcherProbe = [
+        'const Module = require("node:module");',
+        "const originalLoad = Module._load;",
+        "Module._load = function(request, parent, isMain) {",
+        '  if (request === "node:child_process") return { spawnSync: (file, args) => {',
+        "    process.stdout.write(JSON.stringify({ file, args })); return { status: 7 };",
+        "  } };",
+        "  return originalLoad.call(this, request, parent, isMain);",
+        "};",
+        'Object.defineProperty(process, "platform", { value: "linux" });',
+        'Object.defineProperty(process, "arch", { value: "x64" });',
+        "const [entry, ...args] = process.argv.slice(1);",
+        "process.argv = [process.execPath, entry, ...args];",
+        "require(entry);",
+      ].join("\n");
+      const launcherResult = yield* run(
+        process.execPath,
+        ["-e", launcherProbe, launcher, ...forwardedArgs],
+        { cwd: launcherDir, env },
+      );
+      assert.equal(launcherResult.exitCode, 7, launcherResult.stderr);
+      const launch = JSON.parse(launcherResult.stdout) as { file: string; args: string[] };
+      assert.equal(launch?.file, path.join(fixture.outputDir, "@t3code/t3-linux-x64/t3"));
+      assert.deepStrictEqual(launch?.args, forwardedArgs);
 
       const unsupported = yield* run(process.execPath, ["bin/t3.js", "--version"], {
         cwd: launcherDir,

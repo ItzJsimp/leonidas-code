@@ -1,9 +1,16 @@
 // Mock Scribe engine: follows contract v1.1 and v1.2 (history, dictionary, suggestions, settings, devices).
 // Lets the UI be built before the Rust engine is ready.
-import * as NodeHttp from "node:http";
-import type * as NodeNet from "node:net";
-import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
+import * as Clock from "effect/Clock";
+import * as Console from "effect/Console";
+import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import type * as Fiber from "effect/Fiber";
+import {
+  startMockHttpServer,
+  type MockRequest,
+  type MockResponse,
+} from "./lib/mock-http-server.ts";
 
 export type MockFailMode = "status" | "events" | "history" | "dictionary" | "settings" | "all";
 
@@ -84,7 +91,7 @@ function makeTexts(rng: () => number): { rawText: string; cleanedText: string; w
 function makeItem(
   rng: () => number,
   id: string,
-  at: Date,
+  at: DateTime.Utc,
   mode: Mode,
   app: string,
   pasted: boolean,
@@ -94,7 +101,7 @@ function makeItem(
   const polishMs = 150 + Math.floor(rng() * 500);
   return {
     id,
-    at: at.toISOString(),
+    at: DateTime.formatIso(at),
     ...texts,
     mode,
     app,
@@ -103,7 +110,11 @@ function makeItem(
   };
 }
 
-export function buildHistory(seed: number, count: number, now = Date.now()): HistoryItem[] {
+export function buildHistory(
+  seed: number,
+  count: number,
+  now = Effect.runSync(Clock.currentTimeMillis),
+): HistoryItem[] {
   const rng = mulberry32(seed);
   const gaps: number[] = [];
   let sum = 0;
@@ -119,7 +130,14 @@ export function buildHistory(seed: number, count: number, now = Date.now()): His
     offset += (gaps[i] as number) * scale;
     const id = `h${String(count - i).padStart(5, "0")}`;
     items.push(
-      makeItem(rng, id, new Date(now - offset), pick(rng, MODES), pick(rng, APPS), rng() < 0.9),
+      makeItem(
+        rng,
+        id,
+        DateTime.makeUnsafe(Math.trunc(now - offset)),
+        pick(rng, MODES),
+        pick(rng, APPS),
+        rng() < 0.9,
+      ),
     );
   }
   return items;
@@ -269,8 +287,8 @@ export async function startMockScribeEngine(
   let groqKey = true;
   let currentMode: Mode = "hold";
   let boundPort = 0;
-  const clients = new Set<NodeHttp.ServerResponse>();
-  const timers = new Set<NodeJS.Timeout>();
+  const clients = new Set<MockResponse>();
+  const timers = new Set<Fiber.Fiber<void>>();
 
   const base = { service: "leonidas-scribe", apiVersion: 1 } as const;
 
@@ -280,13 +298,19 @@ export async function startMockScribeEngine(
   };
   const setState = (next: State) => {
     state = next;
-    emit({ type: "state", state, at: new Date().toISOString() });
+    emit({ type: "state", state, at: DateTime.formatIso(DateTime.nowUnsafe()) });
   };
   const later = (ms: number, fn: () => void) => {
-    const t = setTimeout(() => {
-      timers.delete(t);
-      fn();
-    }, ms);
+    const t = Effect.runFork(
+      Effect.sleep(ms).pipe(
+        Effect.andThen(
+          Effect.sync(() => {
+            timers.delete(t);
+            fn();
+          }),
+        ),
+      ),
+    );
     timers.add(t);
   };
 
@@ -294,7 +318,7 @@ export async function startMockScribeEngine(
     const item = makeItem(
       liveRng,
       `h${String(nextLiveId++).padStart(5, "0")}`,
-      new Date(),
+      DateTime.nowUnsafe(),
       currentMode,
       pick(liveRng, APPS),
       paste,
@@ -321,7 +345,7 @@ export async function startMockScribeEngine(
     later(processingMs, () => finishDictation(paste));
   };
 
-  const send = (res: NodeHttp.ServerResponse, status: number, body?: Record<string, unknown>) => {
+  const send = (res: MockResponse, status: number, body?: Record<string, unknown>) => {
     res.setHeader("Cache-Control", "no-store");
     if (body === undefined) {
       res.writeHead(status);
@@ -331,10 +355,9 @@ export async function startMockScribeEngine(
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ...base, ...body }));
   };
-  const fail = (res: NodeHttp.ServerResponse, status: number, error: string) =>
-    send(res, status, { error });
+  const fail = (res: MockResponse, status: number, error: string) => send(res, status, { error });
 
-  const readJson = (req: NodeHttp.IncomingMessage): Promise<Record<string, unknown> | null> =>
+  const readJson = (req: MockRequest): Promise<Record<string, unknown> | null> =>
     new Promise((resolve) => {
       const chunks: Buffer[] = [];
       req.on("data", (c: Buffer) => chunks.push(c));
@@ -343,7 +366,11 @@ export async function startMockScribeEngine(
         if (text === "") return resolve({});
         try {
           const value: unknown = JSON.parse(text);
-          resolve(value && typeof value === "object" && !Array.isArray(value) ? value : null);
+          resolve(
+            value && typeof value === "object" && !Array.isArray(value)
+              ? (value as Record<string, unknown>)
+              : null,
+          );
         } catch {
           resolve(null);
         }
@@ -351,7 +378,7 @@ export async function startMockScribeEngine(
       req.on("error", () => resolve(null));
     });
 
-  const handle = async (req: NodeHttp.IncomingMessage, res: NodeHttp.ServerResponse) => {
+  const handle = async (req: MockRequest, res: MockResponse) => {
     if (req.headers.origin !== undefined || req.headers.host !== `127.0.0.1:${boundPort}`) {
       return fail(res, 403, "forbidden");
     }
@@ -369,7 +396,7 @@ export async function startMockScribeEngine(
       if (failStatus) return fail(res, 503, "status_unavailable");
       return send(res, 200, {
         state,
-        sampledAt: new Date().toISOString(),
+        sampledAt: DateTime.formatIso(DateTime.nowUnsafe()),
         groqKey,
         privateMode: false,
       });
@@ -418,9 +445,18 @@ export async function startMockScribeEngine(
       }
       clients.add(res);
       res.write(": connected\n\n");
-      const ping = setInterval(() => res.write(": ping\n\n"), pingMs);
+      const ping = Effect.runFork(
+        Effect.sleep(pingMs).pipe(
+          Effect.andThen(
+            Effect.sync(() => {
+              res.write(": ping\n\n");
+            }),
+          ),
+          Effect.forever,
+        ),
+      );
       res.on("close", () => {
-        clearInterval(ping);
+        ping.interruptUnsafe();
         clients.delete(res);
       });
       return;
@@ -480,11 +516,11 @@ export async function startMockScribeEngine(
         const current = settings[name] as Record<string, unknown>;
         const merged = { ...current };
         for (const [key, value] of Object.entries(patch)) {
-          const check = SETTINGS_TYPES[name][key];
+          const check = SETTINGS_TYPES[name]?.[key];
           if (check === undefined || !check(value)) return fail(res, 400, "bad_request");
           merged[key] = value;
         }
-        restartRequired = RESTART_KEYS[name].some((key) => merged[key] !== current[key]);
+        restartRequired = (RESTART_KEYS[name] ?? []).some((key) => merged[key] !== current[key]);
         Object.assign(current, merged);
       }
       return send(res, 200, { section: name, values: readSection(name), restartRequired });
@@ -527,24 +563,27 @@ export async function startMockScribeEngine(
     return fail(res, 404, "not_found");
   };
 
-  const server = NodeHttp.createServer((req, res) => {
+  const server = await startMockHttpServer(options.port ?? 8766, (req, res) =>
     handle(req, res).catch(() => {
       if (!res.headersSent) fail(res, 500, "store_error");
       else res.end();
-    });
-  });
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(options.port ?? 8766, "127.0.0.1", () => resolve());
-  });
-  boundPort = (server.address() as NodeNet.AddressInfo).port;
+    }),
+  );
+  boundPort = server.port;
 
   if (options.demoSeconds && options.demoSeconds > 0) {
-    const demo = setInterval(() => {
-      if (state !== "ready") return;
-      startDictation("hold");
-      later(1500, () => stopDictation(true));
-    }, options.demoSeconds * 1000);
+    const demo = Effect.runFork(
+      Effect.sleep(options.demoSeconds * 1000).pipe(
+        Effect.andThen(
+          Effect.sync(() => {
+            if (state !== "ready") return;
+            startDictation("hold");
+            later(1500, () => stopDictation(true));
+          }),
+        ),
+        Effect.forever,
+      ),
+    );
     timers.add(demo);
   }
 
@@ -552,16 +591,12 @@ export async function startMockScribeEngine(
     port: boundPort,
     close: async () => {
       for (const t of timers) {
-        clearTimeout(t);
-        clearInterval(t);
+        t.interruptUnsafe();
       }
       timers.clear();
       for (const res of clients) res.destroy();
       clients.clear();
-      await new Promise<void>((resolve) => {
-        server.close(() => resolve());
-        server.closeAllConnections();
-      });
+      await server.close();
     },
   };
 }
@@ -592,10 +627,7 @@ function parseArgs(argv: string[]): MockScribeEngineOptions {
   return out;
 }
 
-if (
-  process.argv[1] &&
-  NodePath.resolve(process.argv[1]) === NodePath.resolve(NodeURL.fileURLToPath(import.meta.url))
-) {
+if (process.argv[1] && import.meta.url === NodeURL.pathToFileURL(process.argv[1]).href) {
   const engine = await startMockScribeEngine({ port: 8766, ...parseArgs(process.argv.slice(2)) });
-  console.log(`mock scribe engine on http://127.0.0.1:${engine.port}`);
+  Effect.runSync(Console.log(`mock scribe engine on http://127.0.0.1:${engine.port}`));
 }

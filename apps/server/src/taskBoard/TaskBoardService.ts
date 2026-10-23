@@ -39,6 +39,10 @@ import {
   type AiosWorkspaceInitInput,
   type AiosWorkspaceSummary,
   type AiosWorkspacesListResult,
+  type WorkspaceOrgActionResult,
+  type WorkspaceOrgChangeInput,
+  type WorkspaceOrgDecideInput,
+  type WorkspaceOrgResult,
   type WorkspacePackWidgetsResult,
   type AiosDirection,
 } from "@t3tools/contracts";
@@ -60,7 +64,16 @@ import { ServerSettingsService } from "../serverSettings.ts";
 import { readAiosShape, type AiosShape } from "./aiosShape.ts";
 import { detectAiosCandidates, inspectAiosCandidate } from "./aiosDetect.ts";
 import { buildDirection, readDirection } from "./aiosDirection.ts";
-import { widgetsForWorkspace } from "../workspacePack/workspacePack.ts";
+import {
+  changeOrgForWorkspace,
+  decideOrgForWorkspace,
+  orgForWorkspace,
+  privacyForWorkspace,
+  revealPrivateTitles,
+  scaffoldForSetup,
+  teamForWorkspace,
+  widgetsForWorkspace,
+} from "../workspacePack/workspacePack.ts";
 import { buildHome, cachedAreas } from "./aiosHome.ts";
 import {
   addFocusItem,
@@ -90,6 +103,7 @@ import {
 import { makeAiosCardReader } from "./aiosCardReader.ts";
 import {
   type AiosWorkspaceState,
+  isPathInRoot,
   listAiosWorkspaces,
   resolveWorkspaceRoot,
   workspaceForPath,
@@ -577,6 +591,21 @@ export class TaskBoardService extends Context.Service<
       projects: ReadonlyArray<Project>,
       workspaceId?: string,
     ) => Effect.Effect<WorkspacePackWidgetsResult>;
+    /** The org record of a business workspace (ADR-0088); `org` is null unless it has Members. */
+    readonly workspacePackOrg: (
+      projects: ReadonlyArray<Project>,
+      workspaceId?: string,
+    ) => Effect.Effect<WorkspaceOrgResult>;
+    /** A change to the org record: applied at once when it narrows access, a proposal when it widens. */
+    readonly workspacePackOrgChange: (
+      projects: ReadonlyArray<Project>,
+      input: WorkspaceOrgChangeInput,
+    ) => Effect.Effect<WorkspaceOrgActionResult>;
+    /** An Owner approves or rejects a waiting proposal. */
+    readonly workspacePackOrgDecide: (
+      projects: ReadonlyArray<Project>,
+      input: WorkspaceOrgDecideInput,
+    ) => Effect.Effect<WorkspaceOrgActionResult>;
     /** Counts about the AIOS folder for opt-in usage analytics. */
     readonly usageShape: (
       projects: ReadonlyArray<Project>,
@@ -586,6 +615,11 @@ export class TaskBoardService extends Context.Service<
     readonly workspaces: (
       projects: ReadonlyArray<Project>,
     ) => Effect.Effect<AiosWorkspacesListResult>;
+    /** The root and type of a ready workspace by id, or `null` when no ready workspace has it. */
+    readonly workspaceRoot: (
+      projects: ReadonlyArray<Project>,
+      workspaceId: string,
+    ) => Effect.Effect<{ readonly root: string; readonly type: "personal" | "business" } | null>;
     /** The setup prompt: writes workspace.json into a listed folder that has none or a bad one. */
     readonly workspaceInit: (
       input: AiosWorkspaceInitInput,
@@ -1399,9 +1433,12 @@ const make = Effect.gen(function* () {
       const now = yield* Clock.currentTimeMillis;
       const scope = scopeFor(projects, { workspaceId });
       const root = scope.root;
-      const tasks = yield* readLocalCards(projects, now, { workspaceId });
+      const masked = yield* readLocalCards(projects, now, { workspaceId });
+      const tasks = yield* Effect.promise(() => revealPrivateTitles(masked));
       // Only this workspace's projects reach the board, so no other shared board loads.
       const scoped = projects.filter(scope.inScope);
+      // A business workspace's Members are its team, so the Owner picker takes them.
+      const members = yield* Effect.promise(() => teamForWorkspace(scope.workspaces, workspaceId));
       return buildWorkspace({
         root,
         member: resolveMember(),
@@ -1410,7 +1447,7 @@ const make = Effect.gen(function* () {
         discovered: root ? discoverProjects(root) : [],
         tasks,
         roadmaps: readProjectRoadmaps(scoped),
-        team: readProjectTeams(scoped),
+        team: members.length > 0 ? [...members] : readProjectTeams(scoped),
       });
     });
 
@@ -1546,8 +1583,9 @@ const make = Effect.gen(function* () {
       });
     });
 
-  const cardUpdate = (input: TaskBoardCardUpdateInput, projects: ReadonlyArray<Project>) =>
+  const cardUpdate = (requested: TaskBoardCardUpdateInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
+      let input: TaskBoardCardUpdateInput = requested;
       const now = yield* Clock.currentTimeMillis;
       const card = (yield* readLocalCards(projects, now, input)).find(
         (candidate) => candidate.id === input.taskId,
@@ -1569,6 +1607,33 @@ const make = Effect.gen(function* () {
           });
         }
         return yield* boardCardUpdate(project, input);
+      }
+      if (requested.privateArea !== undefined) {
+        // The move rewrites the file, so the stale check runs here and not after it.
+        if (
+          requested.expectedUpdatedAt !== undefined &&
+          card.updatedAt !== requested.expectedUpdatedAt
+        ) {
+          return yield* staleRevision();
+        }
+        const { expectedUpdatedAt: _checked, ...unchecked } = requested;
+        input = unchecked;
+        const cardFile = card.sourceFile ? findCardFile(root, card.sourceFile) : null;
+        const problem = cardFile
+          ? yield* Effect.promise(() =>
+              privacyForWorkspace(
+                scope.workspaces,
+                input.workspaceId,
+                cardFile,
+                card.id,
+                input.privateArea ?? null,
+              ),
+            )
+          : "The task card file is missing.";
+        if (problem !== null) {
+          return yield* new TaskBoardOperationError({ reason: "invalid_data", message: problem });
+        }
+        cardReader.invalidate(root);
       }
       const target = mirrorTarget(
         boardProjects,
@@ -1986,6 +2051,60 @@ const make = Effect.gen(function* () {
       return { widgets };
     });
 
+  // Who is signed in to GitHub on this computer, to know which Member is using the app. A success
+  // is believed for 60 s: the lookup is a subprocess and a network call, and the Team view reads
+  // every 30 s. No `gh` or no sign-in gives null, which the Team view shows as "not a Member".
+  let viewer: { readonly at: number; readonly login: string } | null = null;
+  const viewerLogin = Effect.gen(function* () {
+    const now = yield* Clock.currentTimeMillis;
+    if (viewer && now - viewer.at < 60_000) return viewer.login;
+    const login = yield* processes
+      .run({
+        command: "gh",
+        args: ["api", "user", "--jq", ".login"],
+        timeout: "10 seconds",
+        maxOutputBytes: 4096,
+      })
+      .pipe(
+        Effect.map((result) => (result.code === 0 ? result.stdout.trim() : "")),
+        Effect.orElseSucceed(() => ""),
+      );
+    if (!login) return null;
+    viewer = { at: now, login };
+    return login;
+  });
+
+  const workspacePackOrg = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
+    Effect.gen(function* () {
+      const { workspaces: found } = scopeFor(projects, { workspaceId });
+      const login = yield* viewerLogin;
+      return yield* Effect.promise(() => orgForWorkspace(found, workspaceId, login));
+    });
+
+  const workspacePackOrgChange = (
+    projects: ReadonlyArray<Project>,
+    input: WorkspaceOrgChangeInput,
+  ) =>
+    Effect.gen(function* () {
+      const { workspaces: found } = scopeFor(projects, { workspaceId: input.workspaceId });
+      const [login, now] = [yield* viewerLogin, yield* Clock.currentTimeMillis];
+      return yield* Effect.promise(() =>
+        changeOrgForWorkspace(found, input.workspaceId, login, input.change, now),
+      );
+    });
+
+  const workspacePackOrgDecide = (
+    projects: ReadonlyArray<Project>,
+    input: WorkspaceOrgDecideInput,
+  ) =>
+    Effect.gen(function* () {
+      const { workspaces: found } = scopeFor(projects, { workspaceId: input.workspaceId });
+      const [login, now] = [yield* viewerLogin, yield* Clock.currentTimeMillis];
+      return yield* Effect.promise(() =>
+        decideOrgForWorkspace(found, input.workspaceId, login, input.id, input.decision, now),
+      );
+    });
+
   const usageShape = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.sync(() => readAiosShape(scopeFor(projects, { workspaceId }).root));
 
@@ -2012,10 +2131,50 @@ const make = Effect.gen(function* () {
       return { workspaces: found.map((state) => summarize(state, projects, defaultRoot)) };
     });
 
+  const workspaceRoot = (projects: ReadonlyArray<Project>, workspaceId: string) =>
+    Effect.sync(() => {
+      const found = listAiosWorkspaces(workspaceHints(projects)).find(
+        (state) => state.status === "ready" && state.file.id === workspaceId,
+      );
+      return found?.status === "ready" ? { root: found.root, type: found.file.type } : null;
+    });
+
+  // The Home area is a Git repo, and its first commit is what publishing pushes. A failure
+  // (say, no Git name on this computer) is soft: the folder still works and can be committed later.
+  const commitHome = (root: string, name: string) => {
+    const git = (args: ReadonlyArray<string>) =>
+      processes.run({
+        command: "git",
+        args,
+        cwd: root,
+        timeout: "30 seconds",
+        maxOutputBytes: 4096,
+      });
+    return Effect.gen(function* () {
+      if (!NodeFS.existsSync(NodePath.join(root, ".git"))) {
+        yield* git(["init", "--initial-branch=main"]);
+      }
+      yield* git(["add", "-A"]);
+      yield* git(["commit", "--message", `Set up ${name}`]);
+    }).pipe(Effect.ignore);
+  };
+
   const workspaceInit = (input: AiosWorkspaceInitInput, projects: ReadonlyArray<Project>) =>
     Effect.gen(function* () {
       const { workspaces: found } = scopeFor(projects);
-      const target = found.find((state) => state.root === input.root);
+      // A new business folder has no tasks/ yet, so the scan cannot list it. A project folder
+      // the app already holds may still be set up as a business: the template adds tasks/.
+      const target =
+        found.find((state) => state.root === input.root) ??
+        (input.type === "business" &&
+        input.ownerName !== undefined &&
+        projects.some(
+          (project) =>
+            isPathInRoot(input.root, project.workspaceRoot) &&
+            isPathInRoot(project.workspaceRoot, input.root),
+        )
+          ? ({ status: "missing", root: input.root } as const)
+          : undefined);
       if (target === undefined) return yield* storageError("The app does not list that folder.");
       if (target.status === "ready") {
         return yield* storageError("That folder already has a workspace file.");
@@ -2023,12 +2182,26 @@ const make = Effect.gen(function* () {
       if (found.some((state) => state.status === "ready" && state.file.id === input.id)) {
         return yield* storageError("Another workspace already uses that id.");
       }
+      // Only the New business dialog sends an Owner name. Setting up an existing AIOS adds no files.
+      const startsBusiness = input.type === "business" && input.ownerName !== undefined;
+      if (startsBusiness) {
+        const login = yield* viewerLogin;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const problem = yield* Effect.promise(() =>
+          scaffoldForSetup(target.root, input, login, timezone),
+        );
+        if (problem !== null) return yield* storageError(problem);
+      }
       yield* Effect.try({
         try: () => writeWorkspaceFile(target.root, input),
         catch: () => storageError("Could not write workspace.json."),
       });
+      if (startsBusiness) yield* commitHome(target.root, input.name);
       const after = scopeFor(projects);
-      const written = after.workspaces.find((state) => state.root === target.root) ?? target;
+      const written =
+        after.workspaces.find(
+          (state) => isPathInRoot(state.root, target.root) && isPathInRoot(target.root, state.root),
+        ) ?? target;
       return summarize(written, projects, after.defaultRoot);
     });
 
@@ -2066,7 +2239,11 @@ const make = Effect.gen(function* () {
     usageShape,
     direction,
     workspacePackWidgets,
+    workspacePackOrg,
+    workspacePackOrgChange,
+    workspacePackOrgDecide,
     workspaces,
+    workspaceRoot,
     workspaceInit,
     aiosDetect,
     aiosConfirm,

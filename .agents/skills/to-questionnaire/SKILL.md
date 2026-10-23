@@ -15,6 +15,7 @@ verified: 2026-08-22
 related: ["skills-index", "technical-writing", "master-instructions"]
 generated: false
 disable-model-invocation: true
+license: MIT
 ---
 
 # To Questionnaire
@@ -58,3 +59,5 @@ When a project has unresolved requirements that require input from someone else 
 
 _Default if skipped:_ [What we will assume if unselected]
 ```
+
+Credit: adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See [LICENSE](LICENSE).

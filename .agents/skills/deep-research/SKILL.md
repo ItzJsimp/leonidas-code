@@ -12,6 +12,7 @@ load: on-demand
 owner: shared
 verified: 2026-09-29
 generated: false
+license: MIT
 ---
 
 # Deep Research: Zero-Cost Discovery & Synthesis Workflow

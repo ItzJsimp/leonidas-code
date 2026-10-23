@@ -4,6 +4,7 @@ description: "Create, scaffold or refactor a skill to AIOS standards with a shar
 category: agents
 scope: structural
 distribution: core
+license: MIT
 ---
 
 # Skill Creator

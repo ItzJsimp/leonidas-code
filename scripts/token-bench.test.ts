@@ -1,6 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
+import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
 
-import { parseClaudeResult, summarize, type RunResult } from "./token-bench.ts";
+import {
+  collectBenchmarkOutput,
+  parseClaudeResult,
+  summarize,
+  type RunResult,
+} from "./token-bench.ts";
 
 const run = (variant: string, passed: boolean, tokens: number): RunResult => ({
   variant,
@@ -14,6 +21,17 @@ const run = (variant: string, passed: boolean, tokens: number): RunResult => ({
 });
 
 describe("token-bench", () => {
+  it.effect("retains the process output limit in bytes", () =>
+    Effect.gen(function* () {
+      const limit = 1024 * 1024;
+      const output = yield* collectBenchmarkOutput(Stream.make(Buffer.alloc(limit, "a")));
+      expect(output).toHaveLength(limit);
+      const error = yield* Effect.flip(
+        collectBenchmarkOutput(Stream.make(Buffer.alloc(limit), Buffer.from("x"))),
+      );
+      expect(error.message).toContain("exceeded 1 MiB");
+    }),
+  );
   it("counts cache reads and writes as input and tolerates missing fields", () => {
     const out = parseClaudeResult(
       JSON.stringify({

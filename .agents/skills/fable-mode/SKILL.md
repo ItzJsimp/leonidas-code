@@ -14,6 +14,7 @@ owner: shared
 verified: 2026-08-20
 related: ["skills-index", "system-prompt-authoring"]
 generated: false
+license: MIT
 ---
 
 # The Fable Method
