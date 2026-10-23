@@ -46,3 +46,9 @@ export function limitText(usedPercent: number, view: LimitView): string {
   const used = Math.round(Math.max(0, Math.min(100, usedPercent)));
   return view === "used" ? `${used}% used` : `${100 - used}% left`;
 }
+
+/** Bar fill 0..100: always the same number `limitText` prints, so the bar never contradicts it. */
+export function limitFill(usedPercent: number, view: LimitView): number {
+  const used = Math.round(Math.max(0, Math.min(100, usedPercent)));
+  return view === "used" ? used : 100 - used;
+}

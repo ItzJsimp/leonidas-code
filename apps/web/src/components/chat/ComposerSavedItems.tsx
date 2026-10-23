@@ -187,7 +187,7 @@ export function ComposerSavedItems(props: Props) {
             aria-label="Open saved messages"
           >
             <BookmarkPlusIcon />
-            Saved messages
+            <span data-composer-toolbar-label>Saved messages</span>
           </Button>
           {draft?.prompt.trim() ? (
             <div className="flex items-center">
