@@ -9,6 +9,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import { checkApproval } from "#server/marketing/marketingFiles.ts";
+import * as ServerSecretStore from "#server/auth/ServerSecretStore.ts";
 import * as ProjectService from "#server/project/ProjectService.ts";
 import * as TaskBoardService from "#server/taskBoard/TaskBoardService.ts";
 import * as McpHttpServer from "../../McpHttpServer.ts";
@@ -73,10 +74,17 @@ const mcpClient = McpSchema.McpServerClient.of({
   getClient: Effect.die("unused"),
 });
 
+const KEY = new Uint8Array(32).fill(7);
+
 const server = (root: string) =>
   McpHttpServer.toolkitRegistration(MarketingToolkit, MarketingHandlers.layer).pipe(
     Layer.provideMerge(McpServer.McpServer.layer),
     Layer.provideMerge(liveThreadsLayer),
+    Layer.provideMerge(
+      Layer.mock(ServerSecretStore.ServerSecretStore)({
+        getOrCreateRandom: () => Effect.succeed(KEY),
+      }),
+    ),
     Layer.provideMerge(
       Layer.mock(ProjectService.ProjectService)({
         snapshot: Effect.succeed({ projects: [] } as never),
@@ -134,14 +142,17 @@ describe("marketing tool kit", () => {
       expect(saved.json).toMatchObject({ status: "draft", author: { kind: "agent" } });
       const postId: string = saved.json.id;
 
-      expect(checkApproval(root, postId, "publish")).toEqual({ ok: false, reason: "no_ticket" });
+      expect(checkApproval(root, KEY, postId, "publish")).toEqual({
+        ok: false,
+        reason: "no_ticket",
+      });
       const ticket = yield* call("marketing_approval_request", {
         postId,
         act: "publish",
         costEstimateUsd: 0.015,
       });
       expect(ticket.json).toMatchObject({ status: "pending", postId });
-      expect(checkApproval(root, postId, "publish")).toEqual({ ok: false, reason: "pending" });
+      expect(checkApproval(root, KEY, postId, "publish")).toEqual({ ok: false, reason: "pending" });
 
       const posts = yield* call("marketing_posts", { brand: "acme-games" });
       expect(posts.json.posts).toMatchObject([{ post: { id: postId }, approval: "pending" }]);

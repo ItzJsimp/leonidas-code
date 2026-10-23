@@ -8,6 +8,9 @@ import {
   MarketingBrand,
   type MarketingChannel,
   MarketingConnections,
+  type MarketingDecideReason,
+  type MarketingDecideResult,
+  type MarketingDecision,
   MarketingMetricSnapshot,
   MarketingPost,
   type MarketingPublicAct,
@@ -266,23 +269,47 @@ export type ApprovalCheck =
       readonly reason: "no_post" | "no_ticket" | "pending" | "rejected" | "content_changed";
     };
 
+/** The HMAC input for one decision. It names the ticket, the post, the act and the exact content. */
+const signedText = (
+  ticket: Pick<MarketingApprovalTicket, "id" | "postId" | "act" | "contentHash">,
+  status: "approved" | "rejected",
+) => [ticket.id, ticket.postId, ticket.act, ticket.contentHash, status].join("|");
+
+export function signDecision(
+  key: Uint8Array,
+  ticket: Pick<MarketingApprovalTicket, "id" | "postId" | "act" | "contentHash">,
+  status: "approved" | "rejected",
+): string {
+  return NodeCrypto.createHmac("sha256", key).update(signedText(ticket, status)).digest("hex");
+}
+
+/** True for an approved ticket that a person signed with this key. A hand-written line fails. */
+export function isSignedApproval(key: Uint8Array, ticket: MarketingApprovalTicket): boolean {
+  if (ticket.status !== "approved" || ticket.decidedBy?.kind !== "member" || !ticket.signature)
+    return false;
+  const expected = Buffer.from(signDecision(key, ticket, "approved"), "hex");
+  const actual = Buffer.from(ticket.signature, "hex");
+  return actual.length === expected.length && NodeCrypto.timingSafeEqual(actual, expected);
+}
+
 /**
- * The gate every publish, send and spend path must pass first: an approved ticket for this act
- * whose hash matches the post as it is now.
- * shortcut: trusts the approvals file, which an agent can write; the publish path adds a signed decision before anything calls this.
+ * The gate every publish, send and spend path must pass first: a signed approved ticket for this
+ * act whose hash matches the post as it is now.
  */
 export function checkApproval(
   root: string,
+  key: Uint8Array,
   postId: string,
   act: MarketingPublicAct,
 ): ApprovalCheck {
   const post = readPosts(root).records.find((candidate) => candidate.id === postId);
   if (!post) return { ok: false, reason: "no_post" };
-  return approvalOf(post, act, readTickets(root).records);
+  return approvalOf(key, post, act, readTickets(root).records);
 }
 
 /** The same check on records already loaded, so a list reads the files once. */
 export function approvalOf(
+  key: Uint8Array,
   post: MarketingPost,
   act: MarketingPublicAct,
   allTickets: ReadonlyArray<MarketingApprovalTicket>,
@@ -290,14 +317,51 @@ export function approvalOf(
   const tickets = allTickets.filter((ticket) => ticket.postId === post.id && ticket.act === act);
   if (tickets.length === 0) return { ok: false, reason: "no_ticket" };
   const hash = contentHash(post);
-  const approved = tickets.filter(
-    (ticket) => ticket.status === "approved" && ticket.decidedBy?.kind === "member",
-  );
+  const approved = tickets.filter((ticket) => isSignedApproval(key, ticket));
   const match = approved.find((ticket) => ticket.contentHash === hash);
   if (match) return { ok: true, ticket: match };
   if (tickets.some((ticket) => ticket.status === "pending"))
     return { ok: false, reason: "pending" };
-  return { ok: false, reason: approved.length > 0 ? "content_changed" : "rejected" };
+  if (approved.length > 0) return { ok: false, reason: "content_changed" };
+  // An approved line with no valid signature is not a decision: it still waits for a person.
+  return tickets.some((ticket) => ticket.status === "approved")
+    ? { ok: false, reason: "pending" }
+    : { ok: false, reason: "rejected" };
+}
+
+/**
+ * Decides tickets for a person. Each ticket stands alone: one failure never stops the others.
+ * A ticket is decided once, and only while the post still matches the hash it was asked for.
+ */
+export function decideTickets(
+  root: string,
+  key: Uint8Array,
+  decisions: ReadonlyArray<{ readonly ticketId: string; readonly decision: MarketingDecision }>,
+  member: string,
+): ReadonlyArray<MarketingDecideResult> {
+  const tickets = new Map(readTickets(root).records.map((ticket) => [ticket.id, ticket]));
+  const posts = new Map(readPosts(root).records.map((post) => [post.id, post]));
+  return decisions.map(({ ticketId, decision }): MarketingDecideResult => {
+    const fail = (reason: MarketingDecideReason) => ({ ticketId, ok: false, reason });
+    const ticket = tickets.get(ticketId);
+    if (!ticket) return fail("no_ticket");
+    if (ticket.status !== "pending") return fail("already_decided");
+    const post = posts.get(ticket.postId);
+    if (!post) return fail("no_post");
+    if (post.status !== "draft") return fail("not_draft");
+    if (contentHash(post) !== ticket.contentHash) return fail("content_changed");
+    const status = decision === "approve" ? ("approved" as const) : ("rejected" as const);
+    const decided = decodeTicket({
+      ...ticket,
+      status,
+      decidedAt: nowIso(),
+      decidedBy: { kind: "member", name: member },
+      signature: signDecision(key, ticket, status),
+    });
+    if (!decided.ok) return fail("no_ticket");
+    appendLine(root, "approvals", postMonth(ticket.postId), decided.value);
+    return { ticketId, ok: true };
+  });
 }
 
 /** Appends snapshots not already saved (same channel, post and time). Returns how many were new. */

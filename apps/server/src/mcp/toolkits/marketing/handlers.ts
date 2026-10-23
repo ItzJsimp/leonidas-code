@@ -1,6 +1,7 @@
 import { type MarketingActor, OrchestratorMcpFailure } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
+import { approvalKey } from "#server/marketing/approvalKey.ts";
 import * as MarketingFiles from "#server/marketing/marketingFiles.ts";
 import { syncMetrics } from "#server/marketing/connectors.ts";
 import * as ProjectService from "#server/project/ProjectService.ts";
@@ -43,6 +44,10 @@ const onRoot = <A>(work: (root: string) => A) =>
     }),
   );
 
+const signingKey = approvalKey.pipe(
+  Effect.mapError(() => failure("orchestration_error", "Could not read the approval key.")),
+);
+
 export const handlers = {
   marketing_brands: McpToolAccess.reads(() =>
     onRoot((root) => {
@@ -51,27 +56,29 @@ export const handlers = {
     }),
   ),
   marketing_posts: McpToolAccess.reads((input) =>
-    onRoot((root) => {
-      const { records, bad } = MarketingFiles.readPosts(root);
-      const tickets = MarketingFiles.readTickets(root).records;
-      const posts = records
-        .filter(
-          (post) =>
-            (!input.brand || post.brand === input.brand) &&
-            (!input.channel || post.channel === input.channel) &&
-            (!input.status || post.status === input.status),
-        )
-        .map((post) => {
-          const check = MarketingFiles.approvalOf(post, "publish", tickets);
-          const approval = check.ok
-            ? ("approved" as const)
-            : check.reason === "no_ticket" || check.reason === "no_post"
-              ? ("none" as const)
-              : check.reason;
-          return { post, approval };
-        });
-      return { posts, bad };
-    }),
+    Effect.flatMap(signingKey, (key) =>
+      onRoot((root) => {
+        const { records, bad } = MarketingFiles.readPosts(root);
+        const tickets = MarketingFiles.readTickets(root).records;
+        const posts = records
+          .filter(
+            (post) =>
+              (!input.brand || post.brand === input.brand) &&
+              (!input.channel || post.channel === input.channel) &&
+              (!input.status || post.status === input.status),
+          )
+          .map((post) => {
+            const check = MarketingFiles.approvalOf(key, post, "publish", tickets);
+            const approval = check.ok
+              ? ("approved" as const)
+              : check.reason === "no_ticket" || check.reason === "no_post"
+                ? ("none" as const)
+                : check.reason;
+            return { post, approval };
+          });
+        return { posts, bad };
+      }),
+    ),
   ),
   marketing_metrics: McpToolAccess.reads((input) =>
     onRoot((root) => {

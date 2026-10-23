@@ -65,8 +65,32 @@ export const MarketingApprovalTicket = Schema.Struct({
   decidedAt: Schema.optional(IsoTime),
   /** Agents never approve: a decision names a person Member. */
   decidedBy: Schema.optional(Schema.Struct({ kind: Schema.Literal("member"), name: NonBlank })),
+  /** HMAC-SHA256 hex of the decision, made with a key only the server holds. Approved needs it. */
+  signature: Schema.optional(
+    Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/, { expected: "an HMAC-SHA256 hex" })),
+  ),
 });
 export type MarketingApprovalTicket = typeof MarketingApprovalTicket.Type;
+
+export const MarketingDecision = Schema.Literals(["approve", "reject"]);
+export type MarketingDecision = typeof MarketingDecision.Type;
+
+/** Why one ticket in a batch was not decided. The other tickets are not affected. */
+export const MarketingDecideReason = Schema.Literals([
+  "no_ticket",
+  "already_decided",
+  "no_post",
+  "not_draft",
+  "content_changed",
+]);
+export type MarketingDecideReason = typeof MarketingDecideReason.Type;
+
+export const MarketingDecideResult = Schema.Struct({
+  ticketId: Schema.String,
+  ok: Schema.Boolean,
+  reason: Schema.optional(MarketingDecideReason),
+});
+export type MarketingDecideResult = typeof MarketingDecideResult.Type;
 
 export const MarketingMetricSnapshot = Schema.Struct({
   v: Schema.Literal(1),

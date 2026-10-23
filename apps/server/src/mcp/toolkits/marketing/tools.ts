@@ -14,6 +14,7 @@ import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
 
 import * as ThreadManagementService from "#server/orchestration-v2/ThreadManagementService.ts";
+import * as ServerSecretStore from "#server/auth/ServerSecretStore.ts";
 import * as ProjectService from "#server/project/ProjectService.ts";
 import * as TaskBoardService from "#server/taskBoard/TaskBoardService.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
@@ -29,6 +30,8 @@ const dependencies = [
   // The workspace root comes from the task board's AIOS, like event_emit.
   ProjectService.ProjectService,
   TaskBoardService.TaskBoardService,
+  // Reads the approval key, so the approved state an agent sees is the signed one.
+  ServerSecretStore.ServerSecretStore,
 ];
 
 const PostWithApproval = Schema.Struct({
