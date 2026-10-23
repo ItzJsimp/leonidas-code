@@ -15,12 +15,11 @@ import {
   formatResetsIn,
   type LimitPace,
   paceOf,
-  remainingPercent,
 } from "@t3tools/shared/usageLimits";
 import { GaugeIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
 
-import { limitText, useLimitView } from "../../hooks/useLimitView";
+import { limitFill, limitText, useLimitView } from "../../hooks/useLimitView";
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { environmentPresentations } from "../../state/presentation";
 import { useEnvironmentScope, readEnvironmentScope } from "../../state/session";
@@ -89,7 +88,7 @@ export function PaceIcon({ pace }: { readonly pace: LimitPace }) {
 
 /**
  * One window as a full-width bar from the moment it opened to its reset.
- * The fill is the share of quota spent; the hairline is how far into the
+ * The fill is the number shown (used or left); the hairline is how far into the
  * window the clock is, which is also where even spending would have put the
  * fill. Hover for the exact figures and reset time.
  */
@@ -104,9 +103,9 @@ function WindowBar({
 }) {
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
   const [view] = useLimitView();
-  const remaining = remainingPercent(window);
+  const fill = limitFill(window.usedPercent, view);
   const elapsed = elapsedShare(window, now);
-  // The fill is quota left, so the even-spending mark is the time left.
+  // The mark is where even spending would put the fill: time spent, or time left in the left view.
   const timeLeft = elapsed === null ? null : Math.round((1 - elapsed) * 100);
   const resetsIn = formatResetsIn(window, now);
   const resetsAt = window.resetsAt
@@ -129,17 +128,17 @@ function WindowBar({
         }
       >
         <div className="absolute inset-x-0 inset-y-1.5 rounded-full bg-muted" />
-        {remaining > 0 ? (
+        {fill > 0 ? (
           <div
             className="absolute inset-y-1.5 left-0 rounded-full"
-            style={{ width: `${remaining}%`, backgroundColor: color }}
+            style={{ width: `${fill}%`, backgroundColor: color }}
           />
         ) : null}
         {timeLeft !== null ? (
           <span
             aria-hidden
             className="absolute inset-y-0.5 w-px -translate-x-1/2 bg-foreground/60"
-            style={{ left: `${timeLeft}%` }}
+            style={{ left: `${view === "used" ? 100 - timeLeft : timeLeft}%` }}
           />
         ) : null}
       </TooltipTrigger>
