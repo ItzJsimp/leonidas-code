@@ -5,6 +5,7 @@ import type { Ref } from "react";
 import { Button } from "~/components/ui/button";
 
 import { changedLabel } from "../../twoState/areaRows";
+import { plainEventCause, plainEventTitle } from "../../twoState/eventText";
 import { actionLabel } from "../../twoState/railFeed";
 import { Tip } from "../../twoState/Tip";
 import { sourceLabel } from "./inbox.logic";
@@ -32,8 +33,10 @@ export function InboxDetail({
 }) {
   const label = actionLabel(event);
   const files = event.target?.files ?? [];
+  const title = plainEventTitle(event.title);
+  const cause = plainEventCause(event);
   return (
-    <article aria-label={event.title} className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+    <article aria-label={title} className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
       {onBack ? (
         <div className="mb-3">
           <Tip text="Back to the list">
@@ -44,7 +47,7 @@ export function InboxDetail({
         </div>
       ) : null}
       <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold outline-hidden">
-        {event.title}
+        {title}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {sourceLabel(event)} · {changedLabel(Date.parse(event.ts), now)}
@@ -65,7 +68,7 @@ export function InboxDetail({
           Dismiss
         </Button>
       </div>
-      {event.body ? <p className="mt-5 text-sm leading-relaxed">{event.body}</p> : null}
+      {cause ? <p className="mt-5 text-sm leading-relaxed">{cause}</p> : null}
       {files.length > 0 ? (
         <p className="mt-3 text-xs break-words text-muted-foreground">{files.join(", ")}</p>
       ) : null}

@@ -99,7 +99,12 @@ describe("mergeRecent", () => {
 describe("engineStrip", () => {
   it("names each engine state in plain words", () => {
     expect(engineStrip(INITIAL_SCRIBE_LIVE).label).toBe("Connecting to Scribe");
-    expect(engineStrip({ ...INITIAL_SCRIBE_LIVE, connected: false }).label).toBe("Engine stopped");
+    expect(engineStrip({ ...INITIAL_SCRIBE_LIVE, connected: false }).label).toBe(
+      "Scribe is not running",
+    );
+    expect(engineStrip({ ...INITIAL_SCRIBE_LIVE, connected: false }, true).label).toBe(
+      "Engine stopped",
+    );
     expect(engineStrip({ ...INITIAL_SCRIBE_LIVE, connected: true, state: "mic_error" })).toEqual({
       label: "Microphone problem",
       tone: "warning",

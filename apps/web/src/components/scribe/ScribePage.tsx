@@ -12,6 +12,7 @@ import { ScribeHomeTab } from "./ScribeHomeTab";
 import { ScribeMeetingsTab } from "./ScribeMeetingsTab";
 import { ScribeSettingsTab } from "./ScribeSettingsTab";
 import { ScribeTranscriptsTab } from "./ScribeTranscriptsTab";
+import { useBuilderMode } from "../twoState/useBuilderMode";
 import { INITIAL_SCRIBE_LIVE, engineStrip, type ScribeLiveSnapshot } from "./scribeLive.logic";
 
 export interface ScribeTabProps {
@@ -72,7 +73,8 @@ function ScribeBody(props: {
   const live =
     useEnvironmentQuery(scribeLive({ environmentId: props.environmentId, input: {} })).data ??
     INITIAL_SCRIBE_LIVE;
-  const strip = engineStrip(live);
+  const builder = useBuilderMode();
+  const strip = engineStrip(live, builder);
   const active = TABS.find((tab) => tab.id === props.tab) ?? TABS[0];
   const Tab = active.render;
   return (

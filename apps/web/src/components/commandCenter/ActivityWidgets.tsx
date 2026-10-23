@@ -7,6 +7,7 @@ import { feedEventOpenTarget, openFeedEvent } from "~/eventFeedOpen";
 import { useEventFeedStore } from "~/eventFeedStore";
 
 import { changedLabel } from "../twoState/areaRows";
+import { plainEventBody, plainEventTitle } from "../twoState/eventText";
 import { useFeedStatus } from "../twoState/useTwoStateData";
 import { HalfGauge, ProgressBar } from "./charts";
 import { eventsToday, goalPercent } from "./commandCenter.logic";
@@ -53,10 +54,11 @@ export function RecentActivityWidget() {
           </div>
           <WidgetList>
             {feed.events.slice(0, RECENT).map((event) => {
+              const body = plainEventBody(event.body);
               const opens = feedEventOpenTarget(event) !== null;
               const title = (
                 <span className="block text-sm font-semibold break-words">
-                  {event.title}
+                  {plainEventTitle(event.title)}
                   {event.count > 1 ? (
                     <span className="font-normal text-muted-foreground"> ({event.count})</span>
                   ) : null}
@@ -76,9 +78,9 @@ export function RecentActivityWidget() {
                     ) : (
                       title
                     )}
-                    {event.body ? (
+                    {body ? (
                       <span className="block text-xs break-words text-muted-foreground">
-                        {event.body}
+                        {body}
                       </span>
                     ) : null}
                   </span>
