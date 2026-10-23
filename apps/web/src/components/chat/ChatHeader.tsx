@@ -39,6 +39,7 @@ import {
 } from "../WorkspaceBreadcrumb";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
+import { useChatHeaderTrailing } from "./ChatHeaderTrailing";
 import { useClientSettings } from "../../hooks/useSettings";
 import { LocalVmPanel } from "../localVm/LocalVmPanel";
 import { userErrorToastFields } from "~/lib/userErrorToast";
@@ -92,6 +93,7 @@ export const ChatHeader = memo(function ChatHeader({
   onOpenProjectSettings,
   goalControls,
 }: ChatHeaderProps) {
+  const trailing = useChatHeaderTrailing();
   const activeProjectName = activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
@@ -448,6 +450,7 @@ export const ChatHeader = memo(function ChatHeader({
       {isServerThread && (
         <LocalVmPanel environmentId={activeThreadEnvironmentId} threadId={activeThreadId} />
       )}
+      {trailing}
     </div>
   );
 });

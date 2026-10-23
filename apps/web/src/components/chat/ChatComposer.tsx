@@ -5908,17 +5908,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             onRuntimeModeChange={handleRuntimeModeChange}
           />
         </div>
-        {/* After effort and the overflow menu, and outside the resting blocks: the style icon must stay in view. */}
-        <div data-resting-fixed className="flex shrink-0 items-center">
-          <ComposerReplyStyleControl
-            threadRef={routeThreadRef}
-            serverValue={attachThreadShell?.replyStyle}
-            environmentId={routeThreadRef.environmentId}
-            projectId={savedItemsProjectId}
-            cwd={gitCwd}
-            size={composerControlsCollapsed ? "xs" : "sm"}
-          />
-        </div>
       </>
     </>
   );
@@ -7188,6 +7177,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               }
               onPrefsChange={(composerToolbar) => void updateClientSettings({ composerToolbar })}
               builtins={{
+                replyStyle: (
+                  <ComposerReplyStyleControl
+                    threadRef={routeThreadRef}
+                    serverValue={attachThreadShell?.replyStyle}
+                    environmentId={routeThreadRef.environmentId}
+                    projectId={savedItemsProjectId}
+                    cwd={gitCwd}
+                    size="xs"
+                  />
+                ),
                 saved: (
                   <ComposerSavedItems
                     environmentId={environmentId}
