@@ -1603,6 +1603,8 @@ export const make = (
           ...(options.ownDetachedProcessGroup === undefined
             ? {}
             : { detached: options.ownDetachedProcessGroup }),
+          // Detached children otherwise get a visible console window on Windows.
+          windowsHide: true,
           shell: containedSpawnCommand.shell,
         }),
       )
