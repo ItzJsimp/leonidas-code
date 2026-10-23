@@ -1,4 +1,138 @@
-/** Placeholder: S5 builds the tabs. */
+import type { MarketingListResult } from "@t3tools/contracts";
+import { AsyncResult } from "effect/reactivity";
+import { type KeyboardEvent, useMemo, useState } from "react";
+
+import { cn } from "~/lib/utils";
+
+import { useAtomCommand } from "../../state/use-atom-command";
+import { BatchApproval, type DecideFn } from "./BatchApproval";
+import { ContentList } from "./ContentList";
+import { contentRows } from "./marketing.logic";
+import { MetricsPanel } from "./MetricsPanel";
+import { marketingDecide, useMarketing } from "./state";
+
+const TABS = [
+  { id: "approval", label: "Needs approval" },
+  { id: "content", label: "Content" },
+  { id: "metrics", label: "Metrics" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+/** The Marketing view. A Command Center lens can host this same component later. */
+export function MarketingScreen(props: {
+  readonly list: MarketingListResult | null;
+  readonly error: string | null;
+  readonly canDecide: boolean;
+  readonly decide: DecideFn;
+  readonly onRefresh: () => void;
+}) {
+  const { list, error } = props;
+  const [tab, setTab] = useState<TabId>("approval");
+  const rows = useMemo(() => (list ? contentRows(list) : []), [list]);
+
+  const move = (event: KeyboardEvent, index: number) => {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = TABS[(index + step + TABS.length) % TABS.length]!;
+    setTab(next.id);
+    document.getElementById(`marketing-tab-${next.id}`)?.focus();
+  };
+
+  return (
+    <main className="h-full overflow-y-auto scrollbar-gutter-both">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-lg font-medium">Marketing</h1>
+          <p className="text-sm text-muted-foreground">
+            Agents write drafts. You decide what goes out.
+          </p>
+        </header>
+
+        {list?.bad.length ? (
+          <details className="rounded-md border border-border p-3 text-sm">
+            <summary className="cursor-pointer">
+              {list.bad.length} {list.bad.length === 1 ? "line was" : "lines were"} skipped
+            </summary>
+            <ul className="mt-2 list-disc pl-5 text-muted-foreground">
+              {list.bad.map((item) => (
+                <li key={`${item.file}:${item.line ?? 0}:${item.reason}`}>
+                  {item.file}
+                  {item.line ? ` line ${item.line}` : ""}: {item.reason}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+
+        <div role="tablist" aria-label="Marketing views" className="flex gap-1">
+          {TABS.map((item, index) => {
+            const selected = item.id === tab;
+            const count = item.id === "approval" ? (list?.queue.length ?? 0) : 0;
+            return (
+              <button
+                key={item.id}
+                id={`marketing-tab-${item.id}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`marketing-panel-${item.id}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setTab(item.id)}
+                onKeyDown={(event) => move(event, index)}
+                className={cn(
+                  "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm outline-none transition-colors duration-150",
+                  "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                  selected
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+              >
+                {item.label}
+                {count > 0 ? <span className="tabular-nums">{count}</span> : null}
+              </button>
+            );
+          })}
+        </div>
+
+        <div role="tabpanel" id={`marketing-panel-${tab}`} aria-labelledby={`marketing-tab-${tab}`}>
+          {list === null ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {error ? "Marketing numbers are not available now. Try again later." : "Loading..."}
+            </p>
+          ) : tab === "approval" ? (
+            <BatchApproval
+              queue={list.queue}
+              canDecide={props.canDecide}
+              decide={props.decide}
+              onDecided={props.onRefresh}
+            />
+          ) : tab === "content" ? (
+            <ContentList rows={rows} />
+          ) : (
+            <MetricsPanel metrics={list.metrics} />
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function MarketingView() {
-  return <h1 className="p-6 text-lg font-medium">Marketing</h1>;
+  const { environmentId, list, error, refresh, canDecide } = useMarketing();
+  const run = useAtomCommand(marketingDecide);
+  const decide: DecideFn = async (decisions) => {
+    if (!environmentId) return null;
+    const result = await run({ environmentId, input: { decisions: [...decisions] } });
+    return AsyncResult.isSuccess(result) ? result.value.results : null;
+  };
+  return (
+    <MarketingScreen
+      list={list}
+      error={error}
+      canDecide={canDecide}
+      decide={decide}
+      onRefresh={refresh}
+    />
+  );
 }

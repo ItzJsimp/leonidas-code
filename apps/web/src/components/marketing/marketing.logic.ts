@@ -19,6 +19,19 @@ export function groupQueueByBrand(queue: ReadonlyArray<QueueItem>) {
   return [...groups].map(([brand, items]) => ({ brand, items }));
 }
 
+/** One decision per selected ticket, in queue order. The server checks each one alone. */
+export function buildDecisions(
+  queue: ReadonlyArray<QueueItem>,
+  selected: ReadonlySet<string>,
+  decision: "approve" | "reject",
+) {
+  return queue
+    .filter(({ ticket }) => selected.has(ticket.id))
+    .map(({ ticket }) => ({ ticketId: ticket.id, decision }));
+}
+
+export const formatUsd = (value: number) => `$${value.toFixed(2)}`;
+
 /** Plain words for each reason one ticket was not decided. */
 export const DECIDE_REASON_TEXT: Record<MarketingDecideReason, string> = {
   no_ticket: "This request is gone.",
