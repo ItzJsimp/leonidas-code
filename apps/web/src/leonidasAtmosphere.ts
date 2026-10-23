@@ -5,7 +5,8 @@ import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const LEONIDAS_GRID_STORAGE_KEY = "leonidas-code:appearance-grid";
 const LEONIDAS_GLOW_STORAGE_KEY = "leonidas-code:appearance-glow";
-export const DEFAULT_LEONIDAS_GLOW_STRENGTH = 30;
+// Off by default: Jake rejected glow on the canvas (2026-10-20, 2026-10-22). People can turn it on.
+export const DEFAULT_LEONIDAS_GLOW_STRENGTH = 0;
 
 export function clampLeonidasGlowStrength(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_LEONIDAS_GLOW_STRENGTH;

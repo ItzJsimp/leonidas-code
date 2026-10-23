@@ -71,7 +71,7 @@ export function PaneDivider({
       <span
         aria-hidden
         className={cn(
-          "absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border transition-colors motion-reduce:transition-none group-hover:bg-primary group-data-[dragging=true]:bg-primary",
+          "absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border transition-colors motion-reduce:transition-none group-hover:bg-muted-foreground group-data-[dragging=true]:bg-foreground",
         )}
       />
     </div>

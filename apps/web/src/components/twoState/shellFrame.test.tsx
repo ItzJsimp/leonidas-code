@@ -22,7 +22,9 @@ vi.mock("~/hooks/useLocalStorage", async () => {
   const { EMPTY_SETUP_STATE } = await import("~/onboarding/setupState.logic");
   return { useLocalStorage: () => [EMPTY_SETUP_STATE, vi.fn()] };
 });
-vi.mock("./useInboxUnread", () => ({ useInboxUnread: () => 3 }));
+vi.mock("./useTwoStateData", () => ({
+  useTwoStateCounts: () => ({ needsYou: 3, running: 0, today: null }),
+}));
 vi.mock("./useLiveArea", async () => {
   const { IDLE } = await vi.importActual<typeof import("./useLiveArea")>("./useLiveArea");
   return { IDLE, useLiveArea: () => IDLE };
@@ -63,7 +65,7 @@ describe("shell frame", () => {
     const navs = host.querySelectorAll("nav");
     expect(navs).toHaveLength(1);
     expect(navs[0]?.querySelector("[aria-label='Today']")).not.toBeNull();
-    expect(navs[0]?.querySelector("[aria-label='Inbox, 3 unread']")).not.toBeNull();
+    expect(navs[0]?.querySelector("[aria-label='Inbox, 3 need you']")).not.toBeNull();
   });
 
   it("does not ship the old stat band", () => {

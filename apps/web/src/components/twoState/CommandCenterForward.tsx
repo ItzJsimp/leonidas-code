@@ -14,6 +14,7 @@ import { cn } from "~/lib/utils";
 import { NumberTiles } from "../commandCenter/NumberTiles";
 import { summaryItems, updatedLabel } from "../commandCenter/commandCenter.logic";
 import { useNowMs, useUpdatedAt } from "../commandCenter/useHomeReads";
+import { useCodeForward } from "./codeForwardContext";
 import { greetingFor } from "./copy";
 import { useAiosHome, useTwoStateCounts } from "./useTwoStateData";
 
@@ -22,6 +23,7 @@ const TITLE_LENGTH = 60;
 /** State 1: the greeting, one summary line, four number tiles and the Ask composer. */
 export function CommandCenterForward() {
   const counts = useTwoStateCounts();
+  const { chatBeside } = useCodeForward();
   const home = useAiosHome();
   const updatedAt = useUpdatedAt();
   const now = useNowMs();
@@ -63,7 +65,8 @@ export function CommandCenterForward() {
         </Tip>
       </div>
       <NumberTiles />
-      <AskComposer />
+      {/* One composer per screen: in the split the chat pane has it. */}
+      {chatBeside ? null : <AskComposer />}
     </div>
   );
 }

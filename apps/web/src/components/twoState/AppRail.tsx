@@ -35,7 +35,7 @@ import { resolveThreadRouteTarget } from "~/threadRoutes";
 import { activeRailId, railItems, type RailItem } from "./railItems";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
-import { useInboxUnread } from "./useInboxUnread";
+import { useTwoStateCounts } from "./useTwoStateData";
 
 const ICONS: Readonly<Record<string, LucideIcon>> = {
   "command-center": LayoutDashboardIcon,
@@ -67,7 +67,8 @@ export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
   const { active } = useActiveAiosWorkspace();
   const [setup] = useLocalStorage(SETUP_STATE_STORAGE_KEY, EMPTY_SETUP_STATE, SetupStateSchema);
   const lastThread = useTwoStateStore((state) => state.lastThread);
-  const unread = useInboxUnread();
+  // Same number as the Needs you tile and card: the badge counts what needs you.
+  const unread = useTwoStateCounts().needsYou;
   const pathname = useLocation({ select: (location) => location.pathname });
   const onChat = useParams({
     strict: false,
@@ -128,7 +129,7 @@ function RailLink({
   readonly badge: number;
 }) {
   const Icon = ICONS[item.id] ?? LayoutDashboardIcon;
-  const label = badge > 0 ? `${item.label}, ${badge} unread` : item.label;
+  const label = badge > 0 ? `${item.label}, ${badge} need you` : item.label;
   const common = {
     "aria-label": label,
     "aria-current": current ? ("page" as const) : undefined,
@@ -145,7 +146,7 @@ function RailLink({
       {badge > 0 ? (
         <span
           aria-hidden
-          className="absolute -top-1 -right-1 min-w-4 rounded-full bg-primary px-1 text-center text-3xs leading-4 font-medium text-primary-foreground tabular-nums"
+          className="absolute -top-1 -right-1 min-w-4 rounded-full bg-warning px-1 text-center text-3xs leading-4 font-semibold text-background tabular-nums"
         >
           {badgeText(badge)}
         </span>

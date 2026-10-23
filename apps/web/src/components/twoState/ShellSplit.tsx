@@ -55,9 +55,10 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
     [place, lastThread],
   );
   const live = useLiveArea(liveRef);
-  const value = useMemo(() => ({ rails: false, live }), [live]);
-
   const layout = paneLayout({ width, split, routeKind: threadTarget ? "thread" : "window" });
+  const chatBeside = layout.mode === "split";
+  const value = useMemo(() => ({ rails: false, live, chatBeside }), [live, chatBeside]);
+
   const showLeft = layout.mode === "split" || layout.show === "left";
   const showChat = layout.mode === "split" || layout.show === "chat";
   const share = clampRatio(ratio, rowWidth);
