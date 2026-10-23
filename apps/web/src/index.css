@@ -1133,7 +1133,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
   --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-700);
+  --success-foreground: var(--color-emerald-800);
   --warning: #735a1f;
   --warning-foreground: #5a4516;
   --warning-surface: #e0d5c0;
