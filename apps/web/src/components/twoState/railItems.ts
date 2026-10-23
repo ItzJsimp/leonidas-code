@@ -91,3 +91,10 @@ export function activeRailId(pathname: string, onChat: boolean): string | null {
   );
   return match?.id ?? null;
 }
+
+/** What the polite live region says when the Inbox count changes. Empty on the first load. */
+export function badgeAnnouncement(previous: number | null, next: number | null): string {
+  if (previous === null || next === null || previous === next) return "";
+  if (next === 0) return "Nothing needs you";
+  return `${next} ${next === 1 ? "needs" : "need"} you`;
+}

@@ -33,9 +33,9 @@ export function CommandCenterForward() {
     <div className="grid gap-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <h2 className="font-display text-3xl leading-tight font-bold tracking-tight">
+          <h1 className="font-display text-3xl leading-tight font-bold tracking-tight">
             {greetingFor(date)}
-          </h2>
+          </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             {" · "}
@@ -126,7 +126,7 @@ function AskComposer() {
         onChange={(event) => setPrompt(event.target.value)}
         placeholder="Ask Leonidas to change something in your AIOS..."
         disabled={sending}
-        className="h-8 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+        className="h-8 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
       <div className="flex items-center gap-1.5">
         {root !== null ? (

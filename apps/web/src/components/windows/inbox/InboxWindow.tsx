@@ -19,6 +19,7 @@ import {
   filterInbox,
   groupInbox,
   inboxCounts,
+  neighborRowId,
   rowsOf,
   searchInbox,
   unreadIds,
@@ -83,6 +84,20 @@ export function InboxWindow() {
     if (!selected || !feed.environmentId) return;
     markRead([selected.id]);
     openFeedEvent(selected, feed.environmentId, navigate);
+  };
+  // The Mark as read button leaves the page, so focus goes to the next row (narrow: the heading).
+  const markSelectedRead = () => {
+    if (!selected) return;
+    const target = neighborRowId(rows, selected.id);
+    markRead([selected.id]);
+    if (narrow || !target) {
+      requestAnimationFrame(() => heading.current?.focus());
+      return;
+    }
+    setSelectedId(target);
+    requestAnimationFrame(() =>
+      rowRefs.current.find((element) => element?.dataset.rowId === target)?.focus(),
+    );
   };
   const dismissSelected = () => {
     if (!selected) return;
@@ -173,7 +188,7 @@ export function InboxWindow() {
                 now={now}
                 onBack={narrow ? closeDetail : null}
                 onOpen={open}
-                onMarkRead={() => markRead([selected.id])}
+                onMarkRead={markSelectedRead}
                 onDismiss={dismissSelected}
                 headingRef={heading}
               />

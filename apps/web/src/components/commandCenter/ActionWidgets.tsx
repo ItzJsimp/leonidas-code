@@ -19,6 +19,7 @@ import {
 import { buildThreadRouteParams } from "~/threadRoutes";
 
 import { changedLabel } from "../twoState/areaRows";
+import { FailedTag } from "../twoState/FailedTag";
 import { plainEventCause, plainEventTitle } from "../twoState/eventText";
 import { actionLabel, splitFeed } from "../twoState/railFeed";
 import { useLiveArea } from "../twoState/useLiveArea";
@@ -67,8 +68,11 @@ export function NeedsYouWidget() {
                   )}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="sr-only">{LEVEL_TEXT[event.level]}: </span>
+                  {event.level === "failed" ? null : (
+                    <span className="sr-only">{LEVEL_TEXT[event.level]}: </span>
+                  )}
                   <span className="block text-sm font-semibold break-words">
+                    {event.level === "failed" ? <FailedTag /> : null}
                     {plainEventTitle(event.title)}
                   </span>
                   <span className="block text-xs break-words text-muted-foreground">

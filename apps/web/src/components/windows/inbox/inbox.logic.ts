@@ -92,4 +92,14 @@ export function nextRowIndex(key: string, index: number, count: number): number 
   return null;
 }
 
+/** The row to focus when row `id` leaves its place: the next row, else the previous one. */
+export function neighborRowId(
+  rows: ReadonlyArray<FoldedFeedEvent>,
+  id: string,
+): string | undefined {
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) return undefined;
+  return (rows[index + 1] ?? rows[index - 1])?.id;
+}
+
 export const sourceLabel = (event: FoldedFeedEvent): string => event.actor.name;

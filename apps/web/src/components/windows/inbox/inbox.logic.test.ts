@@ -5,6 +5,7 @@ import {
   filterInbox,
   groupInbox,
   inboxCounts,
+  neighborRowId,
   nextRowIndex,
   rowsOf,
   searchInbox,
@@ -125,5 +126,18 @@ describe("sourceLabel", () => {
     expect(
       sourceLabel(event("x", at(0, 1), { actor: { kind: "script", name: "Backup-AIOS.ps1" } })),
     ).toBe("Backup-AIOS.ps1");
+  });
+});
+
+describe("neighborRowId", () => {
+  const rows = [asks, failed, doneToday];
+  it("picks the next row, else the previous one", () => {
+    expect(neighborRowId(rows, asks.id)).toBe(failed.id);
+    expect(neighborRowId(rows, failed.id)).toBe(doneToday.id);
+    expect(neighborRowId(rows, doneToday.id)).toBe(failed.id);
+  });
+  it("has none for a lone row or an unknown id", () => {
+    expect(neighborRowId([asks], asks.id)).toBeUndefined();
+    expect(neighborRowId(rows, "nope")).toBeUndefined();
   });
 });

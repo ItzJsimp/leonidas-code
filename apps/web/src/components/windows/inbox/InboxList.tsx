@@ -14,6 +14,7 @@ import { Input } from "~/components/ui/input";
 import type { EventMark } from "~/eventFeedStore";
 import { cn } from "~/lib/utils";
 
+import { FailedTag } from "../../twoState/FailedTag";
 import { changedLabel } from "../../twoState/areaRows";
 import { plainEventTitle } from "../../twoState/eventText";
 import { isNeedsYou } from "../../twoState/railFeed";
@@ -153,6 +154,7 @@ export function InboxList({
                         ref={(element) => {
                           rowRefs.current[at] = element;
                         }}
+                        data-row-id={event.id}
                         tabIndex={at === tabStop ? 0 : -1}
                         aria-current={active ? "true" : undefined}
                         onClick={() => onOpen(event)}
@@ -181,10 +183,8 @@ export function InboxList({
                           ) : null}
                         </span>
                         <span className="min-w-0 flex-1">
-                          {needsYou ? (
-                            <span className="sr-only">
-                              {event.level === "failed" ? "Failed: " : "Needs you: "}
-                            </span>
+                          {needsYou && event.level !== "failed" ? (
+                            <span className="sr-only">Needs you: </span>
                           ) : null}
                           <span
                             className={cn(
@@ -192,6 +192,7 @@ export function InboxList({
                               read ? "text-muted-foreground" : "font-medium text-foreground",
                             )}
                           >
+                            {event.level === "failed" ? <FailedTag /> : null}
                             {plainEventTitle(event.title)}
                           </span>
                           <span className="block truncate text-xs text-muted-foreground">

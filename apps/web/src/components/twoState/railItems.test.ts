@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { activeRailId, railItems } from "./railItems";
+import { activeRailId, badgeAnnouncement, railItems } from "./railItems";
 
 const ids = (items: ReadonlyArray<{ readonly id: string }>) => items.map((item) => item.id);
 
@@ -98,5 +98,19 @@ describe("activeRailId", () => {
     expect(activeRailId("/gitlab", false)).toBeNull();
     expect(activeRailId("/brainstorm", false)).toBeNull();
     expect(activeRailId("/system-carefree", false)).toBeNull();
+  });
+});
+
+describe("badgeAnnouncement", () => {
+  it("says nothing on the first load or when the count did not change", () => {
+    expect(badgeAnnouncement(null, 3)).toBe("");
+    expect(badgeAnnouncement(null, null)).toBe("");
+    expect(badgeAnnouncement(3, 3)).toBe("");
+    expect(badgeAnnouncement(3, null)).toBe("");
+  });
+  it("says the new count after a change", () => {
+    expect(badgeAnnouncement(3, 4)).toBe("4 need you");
+    expect(badgeAnnouncement(0, 1)).toBe("1 needs you");
+    expect(badgeAnnouncement(2, 0)).toBe("Nothing needs you");
   });
 });
