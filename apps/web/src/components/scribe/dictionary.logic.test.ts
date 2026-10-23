@@ -106,7 +106,9 @@ describe("dictionaryErrorMessage", () => {
   it("names a rejected list, a failed save and an offline engine", () => {
     expect(dictionaryErrorMessage("bad_request")).toContain("did not accept");
     expect(dictionaryErrorMessage("store_error")).toContain("could not save");
-    expect(dictionaryErrorMessage("offline")).toBe("Scribe engine is not running.");
+    expect(dictionaryErrorMessage("offline")).toBe(
+      "Scribe engine is not running. Start it from the tray, or install it.",
+    );
     expect(dictionaryErrorMessage(null)).toBe("Scribe could not do that. Try again.");
   });
 });

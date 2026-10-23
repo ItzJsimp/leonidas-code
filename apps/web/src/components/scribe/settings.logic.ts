@@ -166,7 +166,7 @@ export function restartMessage(restartRequired: readonly boolean[]): string | nu
 }
 
 const SETTINGS_ERRORS: Readonly<Record<string, string>> = {
-  offline: "Scribe engine is not running.",
+  offline: "Scribe engine is not running. Start it from the tray, or install it.",
   timeout: "Scribe did not answer in time. Try again.",
   bad_request: "Scribe did not accept those settings. Check the values and try again.",
   store_error: "Scribe could not save your settings. Try again.",

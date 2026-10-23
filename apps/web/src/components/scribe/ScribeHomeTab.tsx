@@ -71,7 +71,10 @@ function DictateCard({ environmentId, live }: ScribeTabProps) {
     }
   };
 
-  const message = live.connected === false ? "Scribe engine is not running." : error;
+  const message =
+    live.connected === false
+      ? "Scribe engine is not running. Start it from the tray, or install it."
+      : error;
   return (
     <section
       aria-label="Dictate"

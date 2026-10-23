@@ -89,7 +89,7 @@ export function suggestionWhy(count: number): string {
 }
 
 const SAVE_ERRORS: Readonly<Record<string, string>> = {
-  offline: "Scribe engine is not running.",
+  offline: "Scribe engine is not running. Start it from the tray, or install it.",
   timeout: "Scribe did not answer in time. Try again.",
   bad_request: "Scribe did not accept that word list. Check the words and try again.",
   store_error: "Scribe could not save your word list. Try again.",
