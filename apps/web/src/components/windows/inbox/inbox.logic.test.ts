@@ -6,6 +6,7 @@ import {
   groupInbox,
   inboxCounts,
   linkedThreadId,
+  neighborRowId,
   nextRowIndex,
   rowsOf,
   searchInbox,
@@ -141,5 +142,18 @@ describe("linkedThreadId", () => {
   it("is null when the event has no chat", () => {
     expect(linkedThreadId(event("Done", at(0, 9)))).toBeNull();
     expect(linkedThreadId(event("Link", at(0, 9), { target: { url: "https://a.b" } }))).toBeNull();
+  });
+});
+
+describe("neighborRowId", () => {
+  const rows = [asks, failed, doneToday];
+  it("picks the next row, else the previous one", () => {
+    expect(neighborRowId(rows, asks.id)).toBe(failed.id);
+    expect(neighborRowId(rows, failed.id)).toBe(doneToday.id);
+    expect(neighborRowId(rows, doneToday.id)).toBe(failed.id);
+  });
+  it("has none for a lone row or an unknown id", () => {
+    expect(neighborRowId([asks], asks.id)).toBeUndefined();
+    expect(neighborRowId(rows, "nope")).toBeUndefined();
   });
 });

@@ -99,6 +99,11 @@ export function ChatPane({
       ref={rootRef}
       aria-label="Chat"
       role="region"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || beside || !floatingOpen) return;
+        setFloatingOpen(false);
+        rootRef.current?.querySelector<HTMLElement>("[aria-controls]")?.focus();
+      }}
       className="relative flex h-full min-h-0 min-w-0 flex-1 bg-background"
     >
       <div

@@ -5,7 +5,7 @@ import type { DoneDay, SegmentTone } from "./commandCenter.logic";
 
 const TONE_CLASS: Record<SegmentTone, string> = {
   foreground: "bg-foreground",
-  muted: "bg-muted-foreground/60",
+  muted: "bg-muted-foreground/70",
   info: "bg-info",
   warning: "bg-warning",
 };
@@ -27,10 +27,10 @@ export function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
-      className="h-1 w-full overflow-hidden rounded-full bg-muted"
+      className="h-1 w-full overflow-hidden rounded-full bg-muted-foreground/70"
     >
       <div
-        className={cn("h-full rounded-full", percent >= 100 ? "bg-success" : "bg-muted-foreground")}
+        className={cn("h-full rounded-full", percent >= 100 ? "bg-success" : "bg-foreground")}
         style={{ width: `${percent}%` }}
       />
     </div>
@@ -86,7 +86,7 @@ export function Ring({
           r={RING_RADIUS}
           fill="none"
           strokeWidth="4"
-          className="stroke-muted"
+          className="stroke-muted-foreground/70"
         />
         <circle
           cx="24"
@@ -125,7 +125,7 @@ export function HalfGauge({
           fill="none"
           strokeWidth="6"
           strokeLinecap="round"
-          className="stroke-muted"
+          className="stroke-muted-foreground/70"
         />
         <path
           d="M 8 60 A 52 52 0 0 1 112 60"
@@ -172,7 +172,7 @@ export function DoneBars({
               <div
                 className={cn(
                   "w-full rounded-t-sm",
-                  day.today ? "bg-foreground" : "bg-muted-foreground/40",
+                  day.today ? "bg-foreground" : "bg-muted-foreground/70",
                 )}
                 style={{ height: Math.max(day.count > 0 ? 3 : 1, (day.count / max) * BAR_AREA) }}
               />

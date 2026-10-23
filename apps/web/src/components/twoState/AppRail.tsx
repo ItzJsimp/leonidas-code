@@ -17,7 +17,7 @@ import {
   UsersIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { WorkspaceSwitcher } from "~/components/workspace/WorkspaceSwitcher";
@@ -32,7 +32,7 @@ import {
 } from "~/onboarding/setupState.logic";
 import { resolveThreadRouteTarget } from "~/threadRoutes";
 
-import { activeRailId, railItems, type RailItem } from "./railItems";
+import { activeRailId, badgeAnnouncement, railItems, type RailItem } from "./railItems";
 import { firstGrapheme } from "./safeText";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
@@ -70,6 +70,13 @@ export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
   const lastThread = useTwoStateStore((state) => state.lastThread);
   // Same number as the Needs you tile and card: the badge counts what needs you.
   const unread = useTwoStateCounts().needsYou;
+  const [announcement, setAnnouncement] = useState("");
+  const previousUnread = useRef<number | null>(null);
+  useEffect(() => {
+    const text = badgeAnnouncement(previousUnread.current, unread);
+    previousUnread.current = unread;
+    if (text) setAnnouncement(text);
+  }, [unread]);
   const pathname = useLocation({ select: (location) => location.pathname });
   const onChat = useParams({
     strict: false,
@@ -100,6 +107,9 @@ export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
       )}
     >
       <WorkspaceAvatar />
+      <span role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </span>
       <div
         className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-1 scrollbar-gutter-both overflow-y-auto data-[expanded=true]:items-stretch"
         data-expanded={expanded}
