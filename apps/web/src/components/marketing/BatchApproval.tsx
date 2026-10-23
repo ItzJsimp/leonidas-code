@@ -51,7 +51,10 @@ export function BatchApproval(props: {
     setBusy(true);
     setFailedToSend(false);
     try {
-      const results = await props.decide(buildDecisions(queue, selected, decision));
+      // A call that throws is the same to the person as one that did not save: nothing changed.
+      const results = await props
+        .decide(buildDecisions(queue, selected, decision))
+        .catch(() => null);
       if (results === null) {
         setFailedToSend(true);
         return;

@@ -113,6 +113,17 @@ it("shows an error and keeps the selection when the call fails", async () => {
   expect(container.querySelector("[role=alert]")?.textContent).toContain("Nothing changed");
 });
 
+it("shows the same error when the call throws", async () => {
+  const decide = vi.fn<DecideFn>(async () => {
+    throw new Error("socket closed");
+  });
+  await render({ decide });
+  await click(boxes()[0]);
+  await click(button(/^Approve/));
+  expect(container.querySelector("[role=alert]")?.textContent).toContain("Nothing changed");
+  expect((button(/^Approve/) as HTMLButtonElement).disabled).toBe(false);
+});
+
 it("cannot decide without the permission, and says why", async () => {
   const { decide } = await render({ canDecide: false });
   await click(boxes()[0]);
