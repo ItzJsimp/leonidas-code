@@ -15,6 +15,7 @@ import type { EventMark } from "~/eventFeedStore";
 import { cn } from "~/lib/utils";
 
 import { changedLabel } from "../../twoState/areaRows";
+import { plainEventTitle } from "../../twoState/eventText";
 import { isNeedsYou } from "../../twoState/railFeed";
 import {
   INBOX_FILTERS,
@@ -191,7 +192,7 @@ export function InboxList({
                               read ? "text-muted-foreground" : "font-medium text-foreground",
                             )}
                           >
-                            {event.title}
+                            {plainEventTitle(event.title)}
                           </span>
                           <span className="block truncate text-xs text-muted-foreground">
                             {sourceLabel(event)}
