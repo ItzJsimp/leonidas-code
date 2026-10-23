@@ -5817,15 +5817,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         keybindings={keybindings}
         modelOptionsByInstance={modelOptionsByInstance}
         size={composerControlsCollapsed ? "xs" : "sm"}
-        triggerClassName={
+        triggerClassName={cn(
+          // Phone width: icon only, so the model name never cuts to one letter.
+          "@max-[400px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:w-0 @max-[400px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:flex-none",
           composerControlsCollapsed
             ? cn(
-                "min-w-13 shrink text-xs! @max-[400px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:w-0 @max-[400px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:flex-none",
+                "min-w-13 shrink text-xs!",
                 !showInlineRestingControls &&
                   "@max-[640px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:w-0 @max-[640px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:flex-none",
               )
-            : "-ms-2.5 min-w-13"
-        }
+            : "-ms-2.5 min-w-13",
+        )}
         terminalOpen={terminalOpen}
         open={isComposerModelPickerOpen}
         instanceIndicatorBackground={
