@@ -38,7 +38,7 @@ export function useRailWidth() {
       aria-valuemax={RAIL_MAX}
       aria-valuenow={width}
       tabIndex={0}
-      className="hidden w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary/60 lg:block"
+      className="hidden w-1 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-primary/40 focus-visible:bg-primary/60 @4xl/tasks:block"
       onPointerDown={(event) => {
         event.preventDefault();
         const startX = event.clientX;

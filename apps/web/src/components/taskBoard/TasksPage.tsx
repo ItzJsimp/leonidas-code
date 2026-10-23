@@ -269,7 +269,7 @@ export function TasksPage() {
     prefs.focus === "all" ? "" : (defaultDueForFocus(prefs.focus, board.now) ?? "");
 
   const picker = (
-    <div className="lg:hidden">
+    <div className="@4xl/tasks:hidden">
       <TaskProjectSelect
         entries={rail}
         selectedSlug={prefs.section}
@@ -364,7 +364,8 @@ export function TasksPage() {
     <TaskPresenceProvider tasks={board.allTasks}>
       <SidebarInset
         data-tasks-surface
-        className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none"
+        // Breakpoints follow the pane, not the window: in the split the pane is half the width.
+        className="@container/tasks isolate h-dvh min-h-0 overflow-hidden overscroll-y-none"
       >
         <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
           <ListChecksIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
@@ -397,7 +398,7 @@ export function TasksPage() {
         <div className="flex min-h-0 flex-1">
           <aside
             style={{ width: railWidth }}
-            className="hidden shrink-0 overflow-y-auto p-2 lg:block"
+            className="hidden shrink-0 overflow-y-auto p-2 @4xl/tasks:block"
           >
             <TaskProjectRail
               entries={rail}
@@ -414,7 +415,7 @@ export function TasksPage() {
           <main
             className={
               selectedTask
-                ? "hidden min-h-0 min-w-0 flex-1 flex-col lg:flex"
+                ? "hidden min-h-0 min-w-0 flex-1 flex-col @4xl/tasks:flex"
                 : "flex min-h-0 min-w-0 flex-1 flex-col"
             }
           >
@@ -531,7 +532,7 @@ export function TasksPage() {
           </main>
 
           {selectedTask ? (
-            <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto border-l border-border lg:w-[26rem]">
+            <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-y-auto border-l border-border @4xl/tasks:w-[26rem]">
               <TaskDetailPanel
                 task={selectedTask}
                 context={context}
