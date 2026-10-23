@@ -9,6 +9,7 @@ import { SidebarInset } from "~/components/ui/sidebar";
 import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
 
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { BatchApproval, type DecideFn } from "./BatchApproval";
 import { ContentList } from "./ContentList";
@@ -87,28 +88,33 @@ export function MarketingScreen(props: {
               const selected = item.id === tab;
               const count = item.id === "approval" ? (list?.queueTotal ?? 0) : 0;
               return (
-                <button
-                  key={item.id}
-                  id={`marketing-tab-${item.id}`}
-                  type="button"
-                  role="tab"
-                  title={item.hint}
-                  aria-selected={selected}
-                  aria-controls={`marketing-panel-${item.id}`}
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => setTab(item.id)}
-                  onKeyDown={(event) => move(event, index)}
-                  className={cn(
-                    "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm outline-none transition-colors duration-150",
-                    "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                    selected
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  {item.label}
-                  {count > 0 ? <span className="tabular-nums">{count}</span> : null}
-                </button>
+                <Tooltip key={item.id}>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        id={`marketing-tab-${item.id}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        aria-controls={`marketing-panel-${item.id}`}
+                        tabIndex={selected ? 0 : -1}
+                        onClick={() => setTab(item.id)}
+                        onKeyDown={(event) => move(event, index)}
+                        className={cn(
+                          "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm outline-none transition-colors duration-150",
+                          "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                          selected
+                            ? "bg-foreground text-background"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                        )}
+                      >
+                        {item.label}
+                        {count > 0 ? <span className="tabular-nums">{count}</span> : null}
+                      </button>
+                    }
+                  />
+                  <TooltipPopup side="bottom">{item.hint}</TooltipPopup>
+                </Tooltip>
               );
             })}
           </div>

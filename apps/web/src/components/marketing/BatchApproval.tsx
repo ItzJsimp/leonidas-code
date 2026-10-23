@@ -3,6 +3,7 @@ import { CheckIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../ui/button";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   ACT_LABEL,
   buildDecisions,
@@ -110,25 +111,41 @@ export function BatchApproval(props: {
               {chosen.length} selected, cost if approved {formatUsd(cost)}
             </span>
             <div className="ml-auto flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!canDecide || busy || chosen.length === 0}
-                title="Reject the selected items. The agent can write a new draft."
-                onClick={() => void send("reject")}
-              >
-                <XIcon aria-hidden />
-                Reject ({chosen.length})
-              </Button>
-              <Button
-                size="sm"
-                disabled={!canDecide || busy || chosen.length === 0}
-                title="Approve the selected items. Each one is signed on its own."
-                onClick={() => void send("approve")}
-              >
-                <CheckIcon aria-hidden />
-                Approve ({chosen.length})
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!canDecide || busy || chosen.length === 0}
+                      onClick={() => void send("reject")}
+                    >
+                      <XIcon aria-hidden />
+                      Reject ({chosen.length})
+                    </Button>
+                  }
+                />
+                <TooltipPopup>
+                  Reject the selected items. The agent can write a new draft.
+                </TooltipPopup>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      disabled={!canDecide || busy || chosen.length === 0}
+                      onClick={() => void send("approve")}
+                    >
+                      <CheckIcon aria-hidden />
+                      Approve ({chosen.length})
+                    </Button>
+                  }
+                />
+                <TooltipPopup>
+                  Approve the selected items. Each one is signed on its own.
+                </TooltipPopup>
+              </Tooltip>
             </div>
           </div>
           {props.queueTotal > queue.length ? (

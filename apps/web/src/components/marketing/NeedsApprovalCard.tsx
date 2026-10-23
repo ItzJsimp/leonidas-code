@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { MegaphoneIcon } from "lucide-react";
 
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ACT_LABEL, CHANNEL_LABEL } from "./marketing.logic";
 import { isUnused, useMarketing } from "./state";
 
@@ -22,12 +23,16 @@ export function NeedsApprovalCard() {
         <MegaphoneIcon aria-hidden className="size-4 text-muted-foreground" />
         Marketing: needs approval
         {total > 0 ? (
-          <span
-            title={`${total} ${total === 1 ? "post waits" : "posts wait"} for your approval`}
-            className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium tabular-nums text-primary"
-          >
-            {total}
-          </span>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
+                  {total}
+                </span>
+              }
+            />
+            <TooltipPopup>{`${total} ${total === 1 ? "post waits" : "posts wait"} for your approval`}</TooltipPopup>
+          </Tooltip>
         ) : null}
       </h2>
       {list === null ? (
