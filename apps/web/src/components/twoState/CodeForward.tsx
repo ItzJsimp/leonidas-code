@@ -15,6 +15,8 @@ import { selectPaneCount, useSplitLayoutStore } from "~/splitLayoutStore";
 
 import { CommandCenterForward } from "./CommandCenterForward";
 import { LeftRail } from "./LeftRail";
+import { RailDrawer } from "./RailDrawer";
+import { railsMode } from "./railsMode";
 import { RightRail } from "./RightRail";
 import { HomeCardsOutlet } from "./SlotOutlet";
 import { HEADER_HEIGHT, TwoStateHeader } from "./TwoStateHeader";
@@ -58,7 +60,8 @@ export function CodeForward({
     });
   }, []);
 
-  const rails = fits && !splitActive && !split;
+  const mode = railsMode({ fits, split, splitActive });
+  const rails = mode === "rails";
   const live = useLiveArea(place);
   const value = useMemo(() => ({ rails, live }), [rails, live]);
   // The chat header's fixed controls sit below the band and, with rails, end at the right rail.
@@ -69,7 +72,7 @@ export function CodeForward({
   return (
     <CodeForwardContext value={value}>
       <div style={style} className="flex h-svh min-h-0 min-w-0 flex-1 flex-col md:h-dvh">
-        <TwoStateHeader />
+        <TwoStateHeader leading={mode === "drawer" ? <RailDrawer /> : undefined} />
         {/* The thread view sizes itself to the window; here it fills the row under the band. */}
         <div ref={ref} className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
           {split ? <CommandCenterPane /> : null}
