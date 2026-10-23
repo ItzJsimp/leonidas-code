@@ -9,6 +9,8 @@ import { useConnectedUsageAccounts } from "~/hooks/useConnectedUsageAccounts";
 import { useNowMinute } from "~/hooks/useNowMinute";
 
 import { isElectron } from "~/env";
+import { cn } from "~/lib/utils";
+import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 
 import { areaLabel } from "./areaRows";
 import { useCodeForward } from "./codeForwardContext";
@@ -32,7 +34,10 @@ export function TwoStateHeader({ leading }: { readonly leading?: ReactNode }) {
         // Clear the native window buttons on desktop.
         paddingRight: "calc(var(--workspace-native-controls-inset) + 0.75rem)",
       }}
-      className="flex shrink-0 items-center gap-3 border-b border-border/60 bg-background pl-3 [-webkit-app-region:drag]"
+      className={cn(
+        "flex shrink-0 items-center gap-3 border-b border-border/60 bg-background pl-(--workspace-gutter-start) [-webkit-app-region:drag]",
+        COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+      )}
     >
       {leading}
       <HeaderStats />
