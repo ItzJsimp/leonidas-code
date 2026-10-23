@@ -28,7 +28,7 @@ export function RailDrawer() {
           <PanelLeftIcon aria-hidden className="size-3.5" />
         </Dialog.Trigger>
       </Tip>
-      <SheetPopup side="left" className="max-w-sm">
+      <SheetPopup side="left" className="max-w-sm motion-reduce:transition-none">
         <SheetTitle className="sr-only">Command Center side panel</SheetTitle>
         <SheetDescription className="sr-only">
           Your AIOS areas, what needs you and the live activity.
