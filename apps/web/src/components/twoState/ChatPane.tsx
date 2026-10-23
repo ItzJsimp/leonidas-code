@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 
+import { ChatHeaderTrailingContext } from "~/components/chat/ChatHeaderTrailing";
 import ThreadSidebar from "~/components/Sidebar";
 import { ThreadRouteView } from "~/components/ThreadRouteView";
 import { Button } from "~/components/ui/button";
@@ -24,8 +25,11 @@ import { observeResize } from "~/lib/observeResize";
 import { useThreadShell } from "~/state/entities";
 import type { ThreadRouteTarget } from "~/threadRoutes";
 
+import { ChatPaneTools } from "./ChatPaneTools";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
+
+const tools = <ChatPaneTools />;
 
 const GuidanceCoach = lazy(() =>
   import("~/components/onboarding/GuidanceCoach").then((module) => ({
@@ -124,7 +128,7 @@ export function ChatPane({
           )}
         >
           <Sidebar collapsible="none" role="navigation" aria-label="Chats" className="w-72">
-            <ThreadSidebar />
+            <ThreadSidebar embedded />
             <Suspense fallback={null}>
               <GuidanceCoach />
             </Suspense>
@@ -132,7 +136,13 @@ export function ChatPane({
         </div>
       ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
-        {target ? <ThreadRouteView target={target} /> : <EmptyChat />}
+        {target ? (
+          <ChatHeaderTrailingContext value={tools}>
+            <ThreadRouteView target={target} />
+          </ChatHeaderTrailingContext>
+        ) : (
+          <EmptyChat />
+        )}
       </div>
     </div>
   );
