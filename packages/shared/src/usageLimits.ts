@@ -397,6 +397,16 @@ export interface LimitPool {
   readonly windows: readonly LimitPoolWindow[];
 }
 
+/** The newest limits read across the pool's accounts, or null when it has none. */
+export function poolCheckedAt(pool: LimitPool): string | null {
+  let newest: string | null = null;
+  for (const account of pool.accounts) {
+    const at = account.limits.checkedAt;
+    if (newest === null || Date.parse(at) > Date.parse(newest)) newest = at;
+  }
+  return newest;
+}
+
 /** Show Cursor's two usable pools instead of a combined percentage when both are available. */
 export function displayLimitWindows(pool: LimitPool) {
   if (pool.driver === "antigravity") {

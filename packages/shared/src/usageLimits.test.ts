@@ -22,6 +22,7 @@ import {
   formatResetsIn,
   limitsNotice,
   paceOf,
+  poolCheckedAt,
   providersWithLimits,
   remainingPercent,
   usesChatGptSharing,
@@ -1451,5 +1452,21 @@ describe("Antigravity limit presentation", () => {
       "3p-weekly",
     ]);
     expect(windows.map((window) => window.remainingPercent)).toEqual([80, 90, 10, 0]);
+  });
+});
+
+describe("poolCheckedAt", () => {
+  const account = (checkedAt: string) => ({ limits: { checkedAt } }) as unknown as LimitAccount;
+  const codex = ProviderDriverKind.make("codex");
+
+  it("is the newest check across the pooled accounts", () => {
+    const accounts = [account("2026-09-03T11:00:00.000Z"), account("2026-09-03T11:45:00.000Z")];
+    expect(poolCheckedAt({ driver: codex, accounts, windows: [] })).toBe(
+      "2026-09-03T11:45:00.000Z",
+    );
+  });
+
+  it("is null for a pool with no accounts", () => {
+    expect(poolCheckedAt({ driver: codex, accounts: [], windows: [] })).toBeNull();
   });
 });

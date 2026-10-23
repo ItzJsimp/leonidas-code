@@ -8,6 +8,7 @@ import {
   cursorUsageWindowDetails,
   displayLimitWindows,
   formatResetsIn,
+  poolCheckedAt,
   type LimitAccount,
   type LimitPool,
   type LimitPoolMember,
@@ -552,6 +553,7 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
   const color = barColor(pool.driver);
   const label = providerClients.get(pool.driver)?.label ?? String(pool.driver);
   const windows = displayLimitWindows(pool);
+  const checkedAt = poolCheckedAt(pool);
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -562,7 +564,18 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
           className="size-5"
           iconClassName="size-4 text-foreground/80"
         />
-        {label}
+        {label}{" "}
+        {checkedAt ? (
+          <span className="text-xs font-normal text-muted-foreground">
+            Checked{" "}
+            <time dateTime={checkedAt}>
+              {new Date(checkedAt).toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </time>
+          </span>
+        ) : null}
       </h2>
       {windows.map((window) => {
         const details = pool.driver === "cursor" ? cursorUsageWindowDetails(window.id) : undefined;
