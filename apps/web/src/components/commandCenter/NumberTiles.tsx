@@ -39,36 +39,39 @@ export function NumberTiles() {
   );
 
   return (
-    <ul className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3">
-      {tiles.map((tile) => {
-        const Icon = TILE_ICONS[tile.id];
-        return (
-          <li key={tile.id} className="min-w-0">
-            <Tip text={tile.tip}>
-              <div
-                tabIndex={0}
-                className="h-full rounded-xl border border-border bg-card p-3.5 shadow-xs shadow-black/30 inset-shadow-2xs inset-shadow-white/4 focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Icon aria-hidden className="size-4 shrink-0" />
-                  {tile.label}
-                </p>
-                <p className="mt-2 flex items-baseline gap-1.5">
-                  {tile.value === null ? (
-                    <Skeleton className="h-7 w-12" />
-                  ) : (
-                    <span className="font-display text-3xl leading-none font-semibold tabular-nums">
-                      {tile.value.toLocaleString("en-US")}
-                    </span>
-                  )}
-                  <span className="text-sm text-muted-foreground">{tile.unit}</span>
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">{tile.note}</p>
-              </div>
-            </Tip>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="@container">
+      {/* 1, 2 or 4 columns by the width of this pane, never 3 plus 1. */}
+      <ul className="grid grid-cols-1 gap-3 @sm:grid-cols-2 @2xl:grid-cols-4">
+        {tiles.map((tile) => {
+          const Icon = TILE_ICONS[tile.id];
+          return (
+            <li key={tile.id} className="min-w-0">
+              <Tip text={tile.tip}>
+                <div
+                  tabIndex={0}
+                  className="h-full rounded-xl border border-border bg-card p-3.5 shadow-xs shadow-black/30 inset-shadow-2xs inset-shadow-white/4 focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Icon aria-hidden className="size-4 shrink-0" />
+                    {tile.label}
+                  </p>
+                  <p className="mt-2 flex items-baseline gap-1.5">
+                    {tile.value === null ? (
+                      <Skeleton className="h-7 w-12" />
+                    ) : (
+                      <span className="font-display text-3xl leading-none font-semibold tabular-nums">
+                        {tile.value.toLocaleString("en-US")}
+                      </span>
+                    )}
+                    <span className="text-sm text-muted-foreground">{tile.unit}</span>
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">{tile.note}</p>
+                </div>
+              </Tip>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
