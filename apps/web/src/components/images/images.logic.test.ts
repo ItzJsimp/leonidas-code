@@ -12,6 +12,7 @@ import {
   parseSeedInput,
   promptHistory,
   resolveSelectedModels,
+  sourcePhase,
   toggleModel,
 } from "./images.logic";
 
@@ -150,5 +151,13 @@ describe("formatSeconds", () => {
     expect(formatSeconds(152.30000000000001)).toBe("2 min 32 s");
     expect(formatSeconds(25.7)).toBe("26 s");
     expect(formatSeconds(120)).toBe("2 min");
+  });
+});
+
+describe("sourcePhase", () => {
+  it("says checking until the first probe answers, then online or offline", () => {
+    expect(sourcePhase({ online: false, message: "Checking..." })).toBe("checking");
+    expect(sourcePhase({ online: true, message: null })).toBe("online");
+    expect(sourcePhase({ online: false, message: "Cannot reach ComfyUI at x." })).toBe("offline");
   });
 });

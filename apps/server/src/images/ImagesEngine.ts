@@ -6,7 +6,12 @@
 import * as NodeCrypto from "node:crypto";
 import * as NodePath from "node:path";
 
-import type { ImageItem, ImageSourceStatus, ImagesState } from "@t3tools/contracts";
+import {
+  IMAGE_SOURCE_CHECKING,
+  type ImageItem,
+  type ImageSourceStatus,
+  type ImagesState,
+} from "@t3tools/contracts";
 
 import { comfyModelLabel } from "./imageModels.ts";
 import { ImageQueue, expandVariations, pickRandomSeed, shouldFreeMemory } from "./imageQueue.ts";
@@ -74,7 +79,7 @@ export class ImagesEngine {
       baseUrl: options.source.address(),
       online: false,
       busy: false,
-      message: "Checking...",
+      message: IMAGE_SOURCE_CHECKING,
     };
   }
 

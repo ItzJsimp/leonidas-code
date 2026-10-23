@@ -97,6 +97,8 @@ export function CreateView(props: {
   readonly catalog: ReadonlyArray<ImageCatalogModel>;
   readonly items: ReadonlyArray<GalleryItem>;
   readonly online: boolean;
+  /** The first connection check has not answered yet. */
+  readonly checking?: boolean;
   /** False when the server ignores size, steps, guidance and the negative prompt. */
   readonly canAdjust: boolean;
   readonly onGenerate: (request: GenerateRequest) => void;
@@ -128,7 +130,9 @@ export function CreateView(props: {
     memory.negativePrompt !== "";
 
   const blocker = !props.online
-    ? "Start ComfyUI first. See the setup steps above."
+    ? props.checking
+      ? "Checking the ComfyUI connection..."
+      : "Start ComfyUI first. See the setup steps above."
     : memory.prompt.trim() === ""
       ? "Write a prompt to start."
       : selected.length === 0

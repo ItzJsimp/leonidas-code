@@ -68,6 +68,9 @@ export const ImageSourceStatus = Schema.Struct({
 });
 export type ImageSourceStatus = typeof ImageSourceStatus.Type;
 
+/** The status message before the first connection check answers. */
+export const IMAGE_SOURCE_CHECKING = "Checking...";
+
 export const ImagesState = Schema.Struct({
   source: ImageSourceStatus,
   models: Schema.Array(ImageModel),
