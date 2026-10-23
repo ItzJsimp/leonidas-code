@@ -165,6 +165,18 @@ describe("readAreas", () => {
     expect(await readAreas(root)).toEqual([]);
   });
 
+  it("skips an area folder linked in from outside the AIOS", async () => {
+    const outside = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "aios-outside-"));
+    try {
+      NodeFS.writeFileSync(NodePath.join(outside, "page.md"), "x");
+      NodeFS.symlinkSync(outside, NodePath.join(root, "wiki"), "junction");
+      writeAt("tasks/a.md", 1_000_000);
+      expect((await readAreas(root)).map((area) => area.id)).toEqual(["tasks"]);
+    } finally {
+      NodeFS.rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
   it("counts units per area and sorts the newest change first", async () => {
     writeAt("tasks/a.md", 1_000_000);
     writeAt("tasks/b.md", 2_000_000);

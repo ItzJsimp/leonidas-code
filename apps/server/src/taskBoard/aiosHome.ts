@@ -146,6 +146,8 @@ export async function readAreas(root: string, cap = AREA_WALK_CAP): Promise<Task
       const entries = await NodeFSP.readdir(dir, { withFileTypes: true }).catch(() => []);
       const subfolders: string[] = [];
       for (const entry of entries) {
+        // A link can point outside the AIOS, and `stat` would follow it.
+        if (entry.isSymbolicLink()) continue;
         const path = NodePath.join(dir, entry.name);
         if (entry.isDirectory()) {
           if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
@@ -160,7 +162,10 @@ export async function readAreas(root: string, cap = AREA_WALK_CAP): Promise<Task
       }
       await Promise.all(subfolders.map((path) => visit(path, depth + 1)));
     };
-    await visit(NodePath.join(root, area.dir), 0);
+    const top = NodePath.join(root, area.dir);
+    // An area folder linked in from another place is not this AIOS's content.
+    if (!isRealPathInside(root, top)) return null;
+    await visit(top, 0);
     if (units === 0) return null;
     // A file removed during the walk does not change the area time.
     const times = await Promise.all(
