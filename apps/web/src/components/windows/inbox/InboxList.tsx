@@ -189,7 +189,7 @@ export function InboxList({
                           <span
                             title={plainEventTitle(event.title)}
                             className={cn(
-                              "line-clamp-2 text-sm",
+                              "line-clamp-2 text-sm wrap-anywhere",
                               read ? "text-muted-foreground" : "font-medium text-foreground",
                             )}
                           >
