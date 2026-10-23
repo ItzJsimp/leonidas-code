@@ -3,7 +3,7 @@ import type { AuthSessionState } from "@t3tools/contracts";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import React, { startTransition, useEffect, useRef, useState, useCallback } from "react";
 
-import { APP_DISPLAY_NAME } from "../../branding";
+import { APP_TITLE } from "../../branding";
 import { connectPairing } from "../../connection/onboarding";
 import {
   peekPairingTokenFromUrl,
@@ -20,7 +20,7 @@ export function PairingPendingSurface() {
   return (
     <StandalonePage tone="pairing">
       <StandalonePageHeader
-        eyebrow={APP_DISPLAY_NAME}
+        eyebrow={APP_TITLE}
         title="Connecting to this computer"
         description="Checking the connection link. Please wait."
       />
@@ -89,7 +89,7 @@ export function PairingRouteSurface({
   return (
     <StandalonePage tone="pairing">
       <StandalonePageHeader
-        eyebrow={APP_DISPLAY_NAME}
+        eyebrow={APP_TITLE}
         title="Connect to this computer"
         description={describeAuthGate(auth.bootstrapMethods)}
       />
@@ -213,7 +213,7 @@ export function HostedPairingRouteSurface() {
   return (
     <StandalonePage tone="pairing">
       <StandalonePageHeader
-        eyebrow={APP_DISPLAY_NAME}
+        eyebrow={APP_TITLE}
         title={
           status === "paired"
             ? "Computer connected"

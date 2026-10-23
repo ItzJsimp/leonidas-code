@@ -17,7 +17,13 @@ import { resolveRootErrorHint } from "../lib/rootErrorHint.logic";
 import { isChunkLoadError, reloadOnceForChunkLoadError } from "../lib/chunkReloadGuard";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
-import { APP_BASE_NAME, APP_DISPLAY_NAME, APP_STAGE_LABEL, APP_VERSION } from "../branding";
+import {
+  APP_DISPLAY_NAME,
+  APP_PRODUCT_NAME,
+  APP_STAGE_LABEL,
+  APP_TITLE,
+  APP_VERSION,
+} from "../branding";
 import { resolveServerBackedAppDisplayName } from "../branding.logic";
 import { AppSidebarLayout } from "../components/AppSidebarLayout";
 import { CommandPalette } from "../components/CommandPalette";
@@ -141,7 +147,7 @@ export const Route = createRootRoute({
   errorComponent: RootRouteErrorView,
   notFoundComponent: RootRouteNotFoundView,
   head: () => ({
-    meta: [{ name: "title", content: APP_DISPLAY_NAME }],
+    meta: [{ name: "title", content: APP_TITLE }],
   }),
 });
 
@@ -151,8 +157,8 @@ function RootRouteNotFoundView() {
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         <h1 className="text-lg font-medium text-foreground">Page not found</h1>
         <p className="text-sm text-muted-foreground">
-          This link doesn't point to a page in {APP_DISPLAY_NAME}. Go home to choose a project or
-          start a thread.
+          This link doesn't point to a page in {APP_TITLE}. Go home to choose a project or start a
+          thread.
         </p>
         <Button render={<Link to="/" replace />}>Go home</Button>
       </div>
@@ -427,8 +433,8 @@ function DocumentTitleSync() {
   const primaryServerVersion =
     useAtomValue(primaryServerConfigAtom)?.environment.serverVersion ?? null;
   const title = resolveServerBackedAppDisplayName({
-    baseName: APP_BASE_NAME,
-    fallbackDisplayName: APP_DISPLAY_NAME,
+    baseName: APP_PRODUCT_NAME,
+    fallbackDisplayName: APP_TITLE,
     fallbackStageLabel: APP_STAGE_LABEL,
     primaryServerVersion,
   });
@@ -501,7 +507,7 @@ function RootRouteErrorView({ error }: ErrorComponentProps) {
   return (
     <StandalonePage tone="error">
       <StandalonePageHeader
-        eyebrow={APP_DISPLAY_NAME}
+        eyebrow={APP_TITLE}
         title={hint?.title ?? "Something went wrong."}
         description={message}
       />

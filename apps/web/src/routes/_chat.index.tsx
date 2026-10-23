@@ -20,7 +20,7 @@ import {
   useThreadShells,
 } from "../state/entities";
 import { useEnvironments } from "../state/environments";
-import { APP_DISPLAY_NAME } from "~/branding";
+import { APP_TITLE } from "~/branding";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { useWorkspaceProjects } from "../components/workspace/useWorkspaceProjects";
 
@@ -143,7 +143,7 @@ function HostedStaticOnboardingState() {
         <WorkspacePageHeader electron={isElectron} className="border-b border-border">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-foreground md:text-muted-foreground/60">
-              {APP_DISPLAY_NAME}
+              {APP_TITLE}
             </span>
           </div>
         </WorkspacePageHeader>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { APP_DISPLAY_NAME, APP_STAGE_LABEL } from "../../branding";
+import { APP_TITLE, APP_STAGE_LABEL } from "../../branding";
 import { resolveSidebarStageBackdropVariant, StageBackdropArt } from "../SidebarStageBackdrop";
 import { StandalonePage } from "../ui/standalone-page";
 
@@ -22,7 +22,7 @@ export function AuthSurfaceShell({ children }: { readonly children: ReactNode })
           ) : null}
           <div className="relative h-full p-5 sm:p-6">
             <p className="text-3xs font-semibold tracking-widest text-muted-foreground uppercase">
-              {APP_DISPLAY_NAME}
+              {APP_TITLE}
             </p>
           </div>
         </header>

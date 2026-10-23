@@ -45,7 +45,7 @@ import {
   resolveFileDiffPreviousPath,
   type RenderablePatch,
 } from "~/lib/diffRendering";
-import { APP_BASE_NAME } from "~/branding";
+import { APP_PRODUCT_NAME } from "~/branding";
 import { PREFERRED_HIGHLIGHTER } from "~/lib/syntaxHighlighting";
 import { cn } from "~/lib/utils";
 import { createPullRequestDiffFileContentsLoader } from "~/lib/diffFileContents";
@@ -1161,7 +1161,7 @@ function PullRequestCodeTab({
                 {filesViewed.viewedCount} / {files.length}
               </span>
               <span className="truncate">
-                {viewedFilesStore === "environment" ? `viewed in ${APP_BASE_NAME}` : "viewed"}
+                {viewedFilesStore === "environment" ? `viewed in ${APP_PRODUCT_NAME}` : "viewed"}
               </span>
               {viewedFilesStore === "environment" ? (
                 <Tooltip>
