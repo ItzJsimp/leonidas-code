@@ -91,8 +91,10 @@ export function tileModels(
       unit: plural(open ?? 0, "task", "tasks"),
       note: home
         ? [
-            `${home.counts.inProgress} in progress`,
-            ...(home.counts.blocked > 0 ? [`${home.counts.blocked} blocked`] : []),
+            `${home.counts.inProgress.toLocaleString("en-US")} in progress`,
+            ...(home.counts.blocked > 0
+              ? [`${home.counts.blocked.toLocaleString("en-US")} blocked`]
+              : []),
           ].join(" · ")
         : "Reading your task cards",
       tip: "Task cards that are To do, In progress, In review or Blocked.",
