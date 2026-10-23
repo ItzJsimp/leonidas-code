@@ -2801,6 +2801,9 @@ function isClaudeTaskNotificationOriginResult(message: SDKMessage): message is S
   return message.type === "result" && message.origin?.kind === "task-notification";
 }
 
+/** Failure code for an expired Claude login. The web app matches the same literal. */
+const CLAUDE_SIGNED_OUT_FAILURE_CODE = "claude_signed_out";
+
 function providerFailureFromResult(
   message: SDKResultMessage,
   completedAt: DateTime.Utc,
@@ -7918,10 +7921,14 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             const resultFailure = interrupted
               ? null
               : providerFailureFromResult(message, completedAt, failureHint, usageLimited);
+            // Marks a signed-out failure so the web app can offer a Sign in button without parsing text.
             const terminalFailure =
               resultFailure?.class === "usage_limit"
                 ? { ...resultFailure, resetAt: resetAt ?? resultFailure.resetAt ?? null }
-                : resultFailure;
+                : resultFailure !== null &&
+                    resultFailure.message === context.authenticationFailureMessage
+                  ? { ...resultFailure, code: CLAUDE_SIGNED_OUT_FAILURE_CODE }
+                  : resultFailure;
             yield* finalizeActiveTurn({
               context,
               status: interrupted ? "interrupted" : terminalStatusFromResult(message, failureHint),
