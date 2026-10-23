@@ -5,10 +5,11 @@ import { slots } from "./homeCards.slot";
 const ids = (slots.ccHome ?? []).map((entry) => entry.id);
 
 describe("built-in Command Center home cards", () => {
-  it("has one Goal progress card instead of Direction and The Focus", () => {
-    expect(ids).toContain("goal-progress");
-    expect(ids).not.toContain("direction");
-    expect(ids).not.toContain("aios-home");
+  it("leaves Goal progress to the widget and drops Voice-log and Extra cards", () => {
+    for (const id of ["goal-progress", "voice-log", "home-extras", "direction", "aios-home"]) {
+      expect(ids).not.toContain(id);
+    }
+    expect(ids).toEqual(["finish-setup", "workspace-pack", "team"]);
   });
 
   it("keeps Value meter, Helpers, Laya and Ponytail off the home page", () => {

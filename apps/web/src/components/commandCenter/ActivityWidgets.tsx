@@ -8,7 +8,7 @@ import { useEventFeedStore } from "~/eventFeedStore";
 
 import { changedLabel } from "../twoState/areaRows";
 import { plainEventBody, plainEventTitle } from "../twoState/eventText";
-import { useFeedStatus } from "../twoState/useTwoStateData";
+import { useAiosHome, useFeedStatus } from "../twoState/useTwoStateData";
 import { HalfGauge, ProgressBar } from "./charts";
 import { eventsToday, goalPercent } from "./commandCenter.logic";
 import { HomeWidget, WidgetEmpty, WidgetError, WidgetList, WidgetSkeleton } from "./HomeWidget";
@@ -100,6 +100,7 @@ export function RecentActivityWidget() {
 /** Goals from the AIOS folder. A gauge shows only when a goal's status states a real percent. */
 export function GoalsWidget() {
   const { data, error, refresh } = useGoals();
+  const focus = useAiosHome().data?.move.title;
   const goals = data?.goals ?? [];
   const gauge = goals[0] ? goalPercent(goals[0].status) : null;
   const rest = gauge === null ? goals : goals.slice(1);
@@ -123,6 +124,12 @@ export function GoalsWidget() {
         </WidgetEmpty>
       ) : (
         <div className="grid gap-3">
+          {focus ? (
+            <p className="text-sm wrap-anywhere">
+              <span className="text-muted-foreground">Focus: </span>
+              {focus}
+            </p>
+          ) : null}
           {gauge !== null && goals[0] ? (
             <div className="flex items-center gap-4">
               <HalfGauge percent={gauge} label={`${goals[0].goal}: ${gauge} percent`} />

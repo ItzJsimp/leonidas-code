@@ -30,7 +30,7 @@ describe("areaRow", () => {
   it("names the area and counts its units with the right word", () => {
     expect(areaRow({ id: "tasks", units: 118, changedAt: minutes(12) }, now)).toEqual({
       id: "tasks",
-      label: "Tasks",
+      label: "Task cards",
       detail: "118 task cards (all time) · 12 min ago",
     });
     expect(areaRow({ id: "memory", units: 1, changedAt: minutes(2) }, now).detail).toBe(
