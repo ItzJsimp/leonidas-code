@@ -26,6 +26,7 @@ import { useThreadShell } from "~/state/entities";
 import type { ThreadRouteTarget } from "~/threadRoutes";
 
 import { ChatPaneTools } from "./ChatPaneTools";
+import { ShownChatContext } from "./shownChatContext";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
 
@@ -137,9 +138,11 @@ export function ChatPane({
       ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
         {target ? (
-          <ChatHeaderTrailingContext value={tools}>
-            <ThreadRouteView target={target} />
-          </ChatHeaderTrailingContext>
+          <ShownChatContext value={target.kind === "server" ? target.threadRef : null}>
+            <ChatHeaderTrailingContext value={tools}>
+              <ThreadRouteView target={target} />
+            </ChatHeaderTrailingContext>
+          </ShownChatContext>
         ) : (
           <EmptyChat />
         )}

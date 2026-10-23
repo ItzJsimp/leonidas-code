@@ -39,6 +39,7 @@ describe("fiveHourMeter", () => {
       PHOENIX,
     );
     expect(meter).toMatchObject({ percent: 42, fill: 42, level: "normal" });
+    expect(meter?.label).toBe("Claude 42% of 5 h");
     expect(meter?.tip).toBe("Claude 5-hour window: 42 percent used, resets 1:10 AM");
   });
 

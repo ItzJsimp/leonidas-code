@@ -64,7 +64,7 @@ function Tools({ environmentId }: { readonly environmentId: EnvironmentId }) {
             data-level={meter.level}
             className="inline-flex items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground tabular-nums focus-visible:outline-2 focus-visible:outline-ring data-[level=warning]:text-warning-foreground"
           >
-            5 h{meter.level === "warning" ? ` ${meter.percent}%` : null}
+            {meter.label}
             <span aria-hidden className="h-1 w-10 overflow-hidden rounded-full bg-muted">
               <span
                 className={

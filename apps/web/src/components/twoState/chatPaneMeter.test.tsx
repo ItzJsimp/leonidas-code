@@ -82,7 +82,7 @@ describe("chat pane top bar", () => {
     const header = host(renderToStaticMarkup(<ChatPane urlTarget={target} />)).querySelector(
       "[data-chat-header]",
     );
-    expect(header?.textContent).toContain("5 h");
+    expect(header?.textContent).toContain("Claude 42% of 5 h");
     expect(header?.querySelector("[data-usage-meter]")?.getAttribute("data-level")).toBe("normal");
   });
 

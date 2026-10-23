@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { useComposerDraftStore, type ComposerThreadTarget } from "~/composerDraftStore";
 import { resolveThreadRouteTarget } from "~/threadRoutes";
 import { useThreadShell } from "~/state/entities";
+import { useRouteOrShownThreadRef } from "../twoState/shownChatContext";
 import { useProjectAiosWorkspace } from "../workspace/useProjectAiosWorkspace";
 
 import { useEnvironmentQuery } from "~/state/query";
@@ -17,7 +18,9 @@ export function useComposerSubagents(
 ): ReadonlyArray<ComposerSubagentOption> {
   const params = useParams({ strict: false });
   const route = useMemo(() => resolveThreadRouteTarget(params), [params]);
-  const resolvedTarget = target ?? (route?.kind === "server" ? route.threadRef : route?.draftId);
+  const shown = useRouteOrShownThreadRef(null);
+  const resolvedTarget =
+    target ?? (route ? (route.kind === "server" ? route.threadRef : route.draftId) : shown);
   const serverThread = useThreadShell(typeof resolvedTarget === "object" ? resolvedTarget : null);
   const draft = useComposerDraftStore((store) =>
     typeof resolvedTarget === "string"
