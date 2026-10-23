@@ -68,7 +68,7 @@ export function MarketingScreen(props: {
         <div role="tablist" aria-label="Marketing views" className="flex gap-1">
           {TABS.map((item, index) => {
             const selected = item.id === tab;
-            const count = item.id === "approval" ? (list?.queue.length ?? 0) : 0;
+            const count = item.id === "approval" ? (list?.queueTotal ?? 0) : 0;
             return (
               <button
                 key={item.id}
@@ -103,12 +103,13 @@ export function MarketingScreen(props: {
           ) : tab === "approval" ? (
             <BatchApproval
               queue={list.queue}
+              queueTotal={list.queueTotal}
               canDecide={props.canDecide}
               decide={props.decide}
               onDecided={props.onRefresh}
             />
           ) : tab === "content" ? (
-            <ContentList rows={rows} />
+            <ContentList rows={rows} total={list.postsTotal} />
           ) : (
             <MetricsPanel metrics={list.metrics} />
           )}

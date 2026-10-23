@@ -73,6 +73,40 @@ describe("marketing RPCs", () => {
     }).pipe(Effect.provide(keyLayer)),
   );
 
+  it.effect("caps the queue at one decide call and the posts at 500, with true totals", () =>
+    Effect.gen(function* () {
+      const root = makeWorkspace();
+      for (let i = 0; i < 205; i++) {
+        const post = saveDraft(
+          root,
+          { brand: "acme-games", channel: "x", text: `Draft ${i}` },
+          agent,
+        );
+        requestApproval(root, { postId: post.id, act: "publish", costEstimateUsd: 0 }, agent);
+      }
+      const out = yield* MarketingRpc.list(Effect.succeed(root));
+      expect(out.queue).toHaveLength(200);
+      expect(out.queueTotal).toBe(205);
+      expect(out.posts).toHaveLength(205);
+      expect(out.postsTotal).toBe(205);
+      // The oldest tickets come first, so deciding them makes the next ones appear.
+      const decided = yield* MarketingRpc.decide(
+        Effect.succeed(root),
+        {
+          decisions: out.queue.map((item) => ({
+            ticketId: item.ticket.id,
+            decision: "reject" as const,
+          })),
+        },
+        "Owner",
+      );
+      expect(decided.results.every((result) => result.ok)).toBe(true);
+      const next = yield* MarketingRpc.list(Effect.succeed(root));
+      expect(next.queue).toHaveLength(5);
+      expect(next.queueTotal).toBe(5);
+    }).pipe(Effect.provide(keyLayer)),
+  );
+
   it.effect("a missing workspace is a clear error", () =>
     Effect.gen(function* () {
       const error = yield* Effect.flip(MarketingRpc.list(Effect.succeed(null)));

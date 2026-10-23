@@ -155,9 +155,13 @@ export const MarketingListResult = Schema.Struct({
   brands: Schema.Array(
     Schema.Struct({ slug: MarketingBrandSlug, name: NonBlank, spendCapUsd: Schema.Number }),
   ),
-  /** Pending tickets with the post each one asks about, oldest first. */
+  /** The oldest pending tickets (at most one decide call can take) with the post each one asks about. */
   queue: Schema.Array(Schema.Struct({ ticket: MarketingApprovalTicket, post: MarketingPost })),
+  /** All pending tickets, so a screen can say how many wait beyond `queue`. */
+  queueTotal: Schema.Number,
+  /** The newest posts, newest first. */
   posts: Schema.Array(Schema.Struct({ post: MarketingPost, approval: MarketingApprovalState })),
+  postsTotal: Schema.Number,
   /** The latest snapshots, newest last. */
   metrics: Schema.Array(MarketingMetricSnapshot),
   bad: Schema.Array(MarketingBadRecord),

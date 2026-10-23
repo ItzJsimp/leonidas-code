@@ -152,6 +152,14 @@ it("renders the empty state and a 200 item queue without a crash", async () => {
   expect(container.textContent).toContain("Select all (200)");
 });
 
+it("says when the queue and the content list are cut", async () => {
+  const list = { ...fixtureList(3, 2), queueTotal: 340, postsTotal: 900 };
+  await render({ list });
+  expect(container.textContent).toContain("Showing the oldest 3 of 340.");
+  await click(container.querySelector("#marketing-tab-content"));
+  expect(container.textContent).toContain("Showing the newest 5 of 900.");
+});
+
 it("never shows the words MCP, worktree or T3", async () => {
   await render();
   expect(container.textContent).not.toMatch(/\bMCP\b|worktree|\bT3\b/i);

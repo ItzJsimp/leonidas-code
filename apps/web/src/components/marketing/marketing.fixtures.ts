@@ -65,6 +65,8 @@ export function fixtureList(drafts = 3, posted = 2): MarketingListResult {
       { slug: "pixel-pets" as never, name: "Pixel Pets", spendCapUsd: 0 },
     ],
     queue: draftPosts.map((post, i) => ({ ticket: fixtureTicket(post, i + 1), post })),
+    queueTotal: draftPosts.length,
+    postsTotal: draftPosts.length + postedPosts.length,
     posts: [
       ...draftPosts.map((post) => ({ post, approval: "pending" as const })),
       ...postedPosts.map((post) => ({ post, approval: "approved" as const })),
@@ -80,7 +82,9 @@ export function fixtureList(drafts = 3, posted = 2): MarketingListResult {
 export const EMPTY_LIST: MarketingListResult = {
   brands: [],
   queue: [],
+  queueTotal: 0,
   posts: [],
+  postsTotal: 0,
   metrics: [],
   bad: [],
 };

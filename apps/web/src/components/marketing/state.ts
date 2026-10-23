@@ -54,5 +54,5 @@ export const isUnused = (list: MarketingListResult) =>
 /** The count the header stat shows; null hides it. */
 export function useNeedsApprovalCount(): number | null {
   const { list } = useMarketing();
-  return list && list.queue.length > 0 ? list.queue.length : null;
+  return list && list.queueTotal > 0 ? list.queueTotal : null;
 }

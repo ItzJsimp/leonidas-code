@@ -11,6 +11,10 @@ import * as MarketingFiles from "./marketingFiles.ts";
 
 /** Metric snapshots sent to a screen; the rest stay in the month files. */
 const MAX_METRICS = 200;
+/** Posts sent to a screen, newest first. */
+const MAX_POSTS = 500;
+/** The queue sent to a screen: the most one decide call takes (see MarketingDecideInput). */
+const MAX_QUEUE = 200;
 /** Bad records sent to a screen. */
 const MAX_BAD = 50;
 
@@ -43,17 +47,20 @@ export function list<E>(resolveRoot: Effect.Effect<string | null, E>) {
     const tickets = MarketingFiles.readTickets(root);
     const metrics = MarketingFiles.readMetrics(root);
     const byId = new Map(posts.records.map((post) => [post.id, post]));
-    const queue = tickets.records
+    const pending = tickets.records
       .filter((ticket) => ticket.status === "pending")
       .flatMap((ticket) => {
         const post = byId.get(ticket.postId);
         return post && post.status === "draft" ? [{ ticket, post }] : [];
       })
       .toSorted((a, b) => a.ticket.requestedAt.localeCompare(b.ticket.requestedAt));
+    const newest = posts.records.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return {
       brands: brands.records.map(({ slug, name, spendCapUsd }) => ({ slug, name, spendCapUsd })),
-      queue,
-      posts: posts.records.map((post) => {
+      queue: pending.slice(0, MAX_QUEUE),
+      queueTotal: pending.length,
+      postsTotal: posts.records.length,
+      posts: newest.slice(0, MAX_POSTS).map((post) => {
         const check = MarketingFiles.approvalOf(key, post, "publish", tickets.records);
         return {
           post,

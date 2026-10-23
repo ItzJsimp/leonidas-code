@@ -12,6 +12,7 @@ export function NeedsApprovalCard() {
   // A workspace with no marketing folder shows nothing, so the home page stays quiet.
   if (list === null ? error === null : isUnused(list)) return null;
   const queue = list?.queue ?? [];
+  const total = list?.queueTotal ?? 0;
   return (
     <section
       aria-labelledby="marketing-card-title"
@@ -20,9 +21,9 @@ export function NeedsApprovalCard() {
       <h2 id="marketing-card-title" className="flex items-center gap-2 text-sm font-medium">
         <MegaphoneIcon aria-hidden className="size-4 text-muted-foreground" />
         Marketing: needs approval
-        {queue.length > 0 ? (
+        {total > 0 ? (
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
-            {queue.length}
+            {total}
           </span>
         ) : null}
       </h2>
@@ -48,7 +49,7 @@ export function NeedsApprovalCard() {
         to="/marketing"
         className="w-fit rounded-sm text-sm text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
       >
-        {queue.length > SHOWN ? `Open Marketing (${queue.length - SHOWN} more)` : "Open Marketing"}
+        {total > SHOWN ? `Open Marketing (${total - SHOWN} more)` : "Open Marketing"}
       </Link>
     </section>
   );

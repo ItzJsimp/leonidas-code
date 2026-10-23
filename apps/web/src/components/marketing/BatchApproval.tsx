@@ -22,6 +22,7 @@ export type DecideFn = (
  */
 export function BatchApproval(props: {
   readonly queue: MarketingListResult["queue"];
+  readonly queueTotal: number;
   readonly canDecide: boolean;
   readonly decide: DecideFn;
   readonly onDecided: () => void;
@@ -129,6 +130,12 @@ export function BatchApproval(props: {
               </Button>
             </div>
           </div>
+          {props.queueTotal > queue.length ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Showing the oldest {queue.length} of {props.queueTotal}. The rest appear after you
+              decide these.
+            </p>
+          ) : null}
           {canDecide ? null : (
             <p role="status" className="text-sm text-muted-foreground">
               Only a signed-in person can approve here. This session can only look.
