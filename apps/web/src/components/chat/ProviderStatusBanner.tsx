@@ -81,7 +81,7 @@ export function getProviderStatusMessage(status: ServerProvider): string {
         ? "Open AI account setup to sign in with Google."
         : "Open AI account setup to sign in.";
     }
-    return "Sign in again in a terminal.";
+    return "Sign in again to use this AI account.";
   }
   return status.status === "ready"
     ? "This AI account has no models. Open its settings to check it."

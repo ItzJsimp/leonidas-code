@@ -3,13 +3,10 @@ import type { ClaudeSettings } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import * as Schema from "effect/Schema";
 import * as FS from "node:fs";
 
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import * as HostProcess from "@t3tools/shared/HostProcess";
-
-const quotePath = Schema.encodeSync(Schema.fromJsonString(Schema.String));
 
 /**
  * Resolve the Claude config directory the CLI would use: the instance's
@@ -124,17 +121,6 @@ export const makeClaudeCapabilitiesCacheKey = Effect.fn("makeClaudeCapabilitiesC
   },
 );
 
-/**
- * Describe the spawned CLI's environment separately from the login command so
- * paths remain literal on every shell, including relative inherited values.
- */
-export const claudeSignedOutMessage = (input: {
-  readonly configDir: string | undefined;
-  readonly cwd: string;
-}): string => {
-  const configuration =
-    input.configDir !== undefined
-      ? ` from ${quotePath(input.cwd)}, with CLAUDE_CONFIG_DIR set to ${quotePath(input.configDir)}`
-      : "";
-  return `Claude could not authenticate. For subscription login, run \`claude auth login\` on this environment's machine${configuration}, then start a new thread. For API-key authentication, check this instance's configured credentials.`;
-};
+/** Shown when Claude rejects the login. The web app offers a Sign in button for it. */
+export const CLAUDE_SIGNED_OUT_MESSAGE =
+  "Claude is signed out. Sign in again, then send your message again. If you use an API key, check this account's key in Settings.";

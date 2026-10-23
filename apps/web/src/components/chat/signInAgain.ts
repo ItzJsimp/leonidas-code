@@ -30,30 +30,6 @@ export function signInInstanceId(
   return runs.find((run) => run.id === runId)?.providerInstanceId ?? null;
 }
 
-/** The server's signed-out message quotes the config dir as a JSON string. */
-const CONFIG_DIR_IN_MESSAGE = /CLAUDE_CONFIG_DIR set to ("(?:[^"\\]|\\.)*")/u;
-
-/**
- * The terminal command that signs a Claude profile back in, or null when the
- * failure is not a Claude sign-in problem. Without a config dir in the message
- * the default profile is meant, so the bare command is right.
- */
-export function signInCommandForFailure(message: string): string | null {
-  if (!message.includes("claude auth login")) return null;
-  const quoted = CONFIG_DIR_IN_MESSAGE.exec(message)?.[1];
-  if (quoted === undefined) return "claude auth login";
-  let configDir: unknown;
-  try {
-    configDir = JSON.parse(quoted);
-  } catch {
-    return "claude auth login";
-  }
-  if (typeof configDir !== "string" || configDir.length === 0) return "claude auth login";
-  return /^[A-Za-z]:[\\/]/u.test(configDir) || configDir.startsWith("\\\\")
-    ? `$env:CLAUDE_CONFIG_DIR="${configDir}"; claude auth login`
-    : `CLAUDE_CONFIG_DIR=${JSON.stringify(configDir)} claude auth login`;
-}
-
 /**
  * Names of the other enabled Claude profiles signed in as the same account.
  * Same account twice is only a risk, not proof of a copy, so callers word it
@@ -79,5 +55,5 @@ export function sharedLoginPeerNames(
 
 export function sharedLoginWarning(peerNames: ReadonlyArray<string>): string | null {
   if (peerNames.length === 0) return null;
-  return `Same account as ${peerNames.join(", ")}. If you copied one AI account from the other, they sign each other out. Give each one its own sign-in with claude auth login.`;
+  return `Same account as ${peerNames.join(", ")}. If you copied one AI account from the other, they sign each other out. Give each one its own sign-in.`;
 }
