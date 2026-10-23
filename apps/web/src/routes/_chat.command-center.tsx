@@ -1,109 +1,38 @@
-import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowUpRightIcon,
-  CirclePauseIcon,
-  LayoutDashboardIcon,
-  ShieldQuestionIcon,
-  ActivityIcon,
-} from "lucide-react";
-import { useMemo } from "react";
+import { LayoutDashboardIcon } from "lucide-react";
 
-import { groupCommandCenterThreads, type CommandCenterStatus } from "../commandCenter";
 import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
-import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { CommandCenterForward } from "../components/twoState/CommandCenterForward";
 import { TeamLensProvider } from "../components/team/TeamLensContext";
 import { useActiveAiosWorkspace } from "../components/workspace/useActiveAiosWorkspace";
 import { HomeCardsOutlet } from "../components/twoState/SlotOutlet";
 import { SidebarInset } from "../components/ui/sidebar";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
-import { Spinner } from "../components/ui/spinner";
 import { isElectron } from "../env";
-import {
-  useAllEnvironmentShellsBootstrapped,
-  useProjects,
-  useThreadShells,
-} from "../state/entities";
 import { useEnvironments } from "../state/environments";
-import { buildThreadRouteParams } from "../threadRoutes";
-import { cn } from "../lib/utils";
-
-const STATUS_LABELS: Record<CommandCenterStatus, string> = {
-  approval: "Needs permission",
-  input: "Needs your answer",
-  limited: "Usage limit reached",
-  working: "Working",
-  waiting: "Waiting for background work",
-};
-const SECTIONS = [
-  {
-    key: "attention",
-    title: "Needs attention",
-    description: "Chats that wait for your permission or your answer.",
-    empty: "Nothing needs you right now.",
-    Icon: ShieldQuestionIcon,
-    tone: "text-warning",
-  },
-  {
-    key: "limited",
-    title: "Limited",
-    description: "Chats that stopped because you reached a usage limit.",
-    empty: "No chat has reached a usage limit.",
-    Icon: CirclePauseIcon,
-    tone: "text-destructive",
-  },
-  {
-    key: "running",
-    title: "Running",
-    description: "Chats that work now, and background work.",
-    empty: "No AI is working right now.",
-    Icon: ActivityIcon,
-    tone: "text-primary",
-  },
-] as const;
 
 const HOME_CONTEXT = { forward: "cc" } as const;
 
+/**
+ * The Command Center home: the greeting and number tiles, then the widgets. Chats that need an
+ * answer or work now show in the Needs you and Running widgets, which read the same sources.
+ */
 function CommandCenterPage() {
   const { scope } = useActiveAiosWorkspace();
-  const threads = useThreadShells();
-  const projects = useProjects();
-  const bootstrapped = useAllEnvironmentShellsBootstrapped();
   const { environments, isReady } = useEnvironments();
-  const groups = useMemo(() => groupCommandCenterThreads(threads), [threads]);
-  const projectNames = useMemo(
-    () =>
-      new Map(
-        projects.map((project) => [
-          JSON.stringify([project.environmentId, project.id]),
-          project.title,
-        ]),
-      ),
-    [projects],
-  );
-  const environmentById = useMemo(
-    () => new Map(environments.map((environment) => [environment.environmentId, environment])),
-    [environments],
-  );
   const disconnected = environments.filter(
     (environment) => environment.connection.phase !== "connected",
   );
-  const total = groups.attention.length + groups.limited.length + groups.running.length;
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <WorkspacePageHeader electron={isElectron} className="border-b border-border">
         <LayoutDashboardIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <h1 className="truncate text-sm font-medium">Command Center</h1>
-        <div className="ml-auto">
-          <EventInbox />
-        </div>
       </WorkspacePageHeader>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <WorkspacePageContainer width="wide">
+        <WorkspacePageContainer width="expanded" className="max-w-[75rem] px-4 min-[1440px]:px-6">
           <div data-tour="command-home">
             <CommandCenterForward />
           </div>
@@ -138,98 +67,6 @@ function CommandCenterPage() {
               ))}
             </section>
           ) : null}
-          {!isReady || !bootstrapped ? (
-            <div
-              role="status"
-              className="flex items-center gap-2 py-12 text-sm text-muted-foreground"
-            >
-              <Spinner /> Loading chat statuses…
-            </div>
-          ) : (
-            <>
-              {total === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyTitle>
-                      {disconnected.length > 0
-                        ? "No work in the saved statuses"
-                        : "Nothing needs attention"}
-                    </EmptyTitle>
-                    <EmptyDescription>
-                      {environments.length === 0
-                        ? "Connect a computer to see its AI work here."
-                        : "Active work, permission requests and usage limits appear here by themselves."}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              ) : null}
-              {SECTIONS.map(({ key, title, description, empty, Icon, tone }) => (
-                <section key={key} aria-labelledby={`command-center-${key}`}>
-                  <div className="mb-3 flex items-start gap-3">
-                    <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", tone)} />
-                    <div className="min-w-0 flex-1">
-                      <h2 id={`command-center-${key}`} className="text-sm font-semibold">
-                        {title}{" "}
-                        <span className="ml-1 font-normal text-muted-foreground">
-                          ({groups[key].length})
-                        </span>
-                      </h2>
-                      <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-                    </div>
-                  </div>
-                  {groups[key].length === 0 ? (
-                    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      {empty}
-                    </p>
-                  ) : (
-                    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-                      {groups[key].map(({ thread, status }) => {
-                        const ref = scopeThreadRef(thread.environmentId, thread.id);
-                        const environment = environmentById.get(thread.environmentId);
-                        const stale = environment?.connection.phase !== "connected";
-                        return (
-                          <li key={scopedThreadKey(ref)}>
-                            <Link
-                              to="/$environmentId/$threadId"
-                              params={buildThreadRouteParams(ref)}
-                              title={`Open ${thread.title}`}
-                              className="flex min-w-0 items-center gap-3 p-4 transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">
-                                  {thread.title || "Untitled chat"}
-                                </p>
-                                <p className="mt-1 truncate text-xs text-muted-foreground">
-                                  {projectNames.get(
-                                    JSON.stringify([thread.environmentId, thread.projectId]),
-                                  ) ?? "Unknown project"}{" "}
-                                  · {environment?.label ?? thread.environmentId} ·{" "}
-                                  {thread.runtime?.providerName ?? thread.providerInstanceId}
-                                </p>
-                                <p
-                                  className={cn(
-                                    "mt-2 text-xs",
-                                    stale ? "text-muted-foreground" : tone,
-                                  )}
-                                >
-                                  {STATUS_LABELS[status]}
-                                  {stale ? " (saved status)" : ""}
-                                </p>
-                              </div>
-                              <ArrowUpRightIcon
-                                aria-hidden
-                                className="size-4 shrink-0 text-muted-foreground"
-                              />
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </section>
-              ))}
-            </>
-          )}
         </WorkspacePageContainer>
       </main>
     </SidebarInset>

@@ -22,17 +22,29 @@ export function useAiosHome() {
   );
 }
 
-/** Feed events the user has not dismissed, newest first. */
-export function useFeedEvents(): ReadonlyArray<FoldedFeedEvent> {
+/** The feed read: events the user has not dismissed (newest first), plus its load state. */
+export function useFeedStatus() {
   const { environmentId, scope, scopeReady } = useActiveAiosWorkspace();
   const feed = useEnvironmentQuery(
     environmentId && scopeReady ? eventFeedLive({ environmentId, input: scope }) : null,
   );
   const marks = useEventFeedStore((store) => store.marks);
-  return useMemo(
+  const events = useMemo(
     () => (feed.data?.events ?? NO_EVENTS).filter((event) => !marks[event.id]?.dismissed),
     [feed.data, marks],
   );
+  return {
+    events,
+    loaded: feed.data !== null,
+    error: feed.error,
+    updatedAt: feed.dataUpdatedAt,
+    refresh: feed.refresh,
+  };
+}
+
+/** Feed events the user has not dismissed, newest first. */
+export function useFeedEvents(): ReadonlyArray<FoldedFeedEvent> {
+  return useFeedStatus().events;
 }
 
 /** One source for every count, so the status line, header stats and rails show the same number. */
