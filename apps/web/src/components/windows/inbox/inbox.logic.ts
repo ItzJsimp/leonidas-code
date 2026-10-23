@@ -1,6 +1,7 @@
 import type { FoldedFeedEvent } from "@t3tools/contracts";
 
 import type { EventMark } from "~/eventFeedStore";
+import { feedEventOpenTarget } from "~/eventFeedOpen";
 
 import { isNeedsYou } from "../../twoState/railFeed";
 
@@ -93,3 +94,9 @@ export function nextRowIndex(key: string, index: number, count: number): number 
 }
 
 export const sourceLabel = (event: FoldedFeedEvent): string => event.actor.name;
+
+/** The chat an event links to, or null when it links to none. */
+export function linkedThreadId(event: FoldedFeedEvent): string | null {
+  const target = feedEventOpenTarget(event);
+  return target !== null && "thread" in target ? target.thread : null;
+}

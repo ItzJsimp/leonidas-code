@@ -171,6 +171,7 @@ export function InboxWindow() {
                 event={selected}
                 read={marks[selected.id]?.read === true}
                 now={now}
+                environmentId={feed.environmentId}
                 onBack={narrow ? closeDetail : null}
                 onOpen={open}
                 onMarkRead={() => markRead([selected.id])}
