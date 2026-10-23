@@ -9,6 +9,9 @@ describe("slotRegistry", () => {
       "direction",
       "aios-home",
     ]);
+    // 11 built-in cards plus the Marketing plug-in card.
     expect(slotRegistry.ccHome).toHaveLength(12);
+    expect(slotRegistry.ccHome.map((entry) => entry.id)).toContain("marketing-needs-approval");
+    expect(slotRegistry.headerStat.map((entry) => entry.id)).toContain("marketing-needs-approval");
   });
 });
