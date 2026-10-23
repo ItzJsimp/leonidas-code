@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { resolveShortcutCommand, type ShortcutEventLike } from "~/keybindings";
 
-import { swapKeyLabel, swapTarget } from "./swapKeys";
+import { swapAction, swapKeyLabel } from "./swapKeys";
 
 const press = (key: string, extra: Partial<ShortcutEventLike> = {}): ShortcutEventLike => ({
   key,
@@ -41,17 +41,41 @@ describe("swap and split keys", () => {
   });
 });
 
-describe("swapTarget", () => {
+describe("swapAction", () => {
   const last = { environmentId: "env", threadId: "thr" };
 
-  it("brings the Command Center forward from a chat or any other page", () => {
-    expect(swapTarget("code", last)).toEqual({ to: "cc" });
-    expect(swapTarget("other", null)).toEqual({ to: "cc" });
+  it("moves focus to the other pane in a split", () => {
+    expect(swapAction({ mode: "split", show: "left", focused: "chat", lastThread: last })).toEqual({
+      kind: "focus",
+      pane: "left",
+    });
+    expect(swapAction({ mode: "split", show: "left", focused: "left", lastThread: null })).toEqual({
+      kind: "focus",
+      pane: "chat",
+    });
   });
 
-  it("returns to the last chat from the Command Center, or stays without one", () => {
-    expect(swapTarget("cc", last)).toEqual({ to: "thread", ...last });
-    expect(swapTarget("cc", null)).toBeNull();
+  it("goes to the chat pane when focus is in neither pane", () => {
+    expect(swapAction({ mode: "split", show: "chat", focused: null, lastThread: null })).toEqual({
+      kind: "focus",
+      pane: "chat",
+    });
+  });
+
+  it("opens the Command Center from the chat when one pane shows", () => {
+    expect(swapAction({ mode: "single", show: "chat", focused: null, lastThread: last })).toEqual({
+      kind: "cc",
+    });
+  });
+
+  it("returns to the last chat from a rail page, or to the chat start page without one", () => {
+    expect(swapAction({ mode: "single", show: "left", focused: null, lastThread: last })).toEqual({
+      kind: "thread",
+      ...last,
+    });
+    expect(swapAction({ mode: "single", show: "left", focused: null, lastThread: null })).toEqual({
+      kind: "start",
+    });
   });
 });
 

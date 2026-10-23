@@ -34,6 +34,8 @@ import {
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { AppRail } from "./twoState/AppRail";
+import { RailDrawer } from "./twoState/RailDrawer";
+import { DRAWER_BELOW_WIDTH } from "./twoState/shellLayout";
 import { SidebarBrandWidthProbe, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { MainAppLocationTracker } from "./sidebar/mainAppLocation";
 import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
@@ -261,13 +263,16 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       ? getWindowFullscreenState()
       : false;
   });
+  // Under 728 px the rail becomes a drawer behind a menu button.
+  const railVisible = viewportWidth >= DRAWER_BELOW_WIDTH;
   const sidebarProviderStyle = {
     "--sidebar-width": `${clampThreadSidebarWidth(sidebarWidth, sidebarMinimumWidth, sidebarMaximumWidth)}px`,
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
-    "--workspace-controls-left":
-      isMacosDesktop && !isWindowFullscreen
-        ? MACOS_TRAFFIC_LIGHTS_LEFT_INSET
-        : `calc(${RAIL_WIDTH_PX}px + 0.75rem)`,
+    ...(isMacosDesktop && !isWindowFullscreen
+      ? { "--workspace-controls-left": MACOS_TRAFFIC_LIGHTS_LEFT_INSET }
+      : railVisible
+        ? { "--workspace-controls-left": `calc(${RAIL_WIDTH_PX}px + 0.75rem)` }
+        : {}),
   } as CSSProperties;
 
   useEffect(() => {
@@ -321,7 +326,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       >
         <SidebarBrandWidthProbe onWidthChange={setBrandWidth} />
         <ProjectProjectionRetention />
-        <AppRail />
+        {railVisible ? <AppRail /> : <RailDrawer />}
         {isOnSettings ? (
           <Sidebar
             side="left"
@@ -330,7 +335,11 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
             role="navigation"
             aria-label="Settings"
             // The fixed sidebar starts at the rail's right edge (52px).
-            className="left-[52px] group-data-[collapsible=offcanvas]:left-[calc(52px-var(--sidebar-width))]"
+            className={
+              railVisible
+                ? "left-[52px] group-data-[collapsible=offcanvas]:left-[calc(52px-var(--sidebar-width))]"
+                : undefined
+            }
             resizable={{
               maxWidth: sidebarMaximumWidth,
               minWidth: sidebarMinimumWidth,
@@ -347,7 +356,20 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           </Sidebar>
         ) : null}
         {children}
-        {isOnSettings ? <SidebarControl /> : null}
+        {isOnSettings ? (
+          // The menu button holds the corner in a narrow window: the settings button sits beside it.
+          <div
+            style={
+              railVisible
+                ? undefined
+                : ({
+                    "--workspace-controls-left": "calc(env(safe-area-inset-left) + 3.5rem)",
+                  } as CSSProperties)
+            }
+          >
+            <SidebarControl />
+          </div>
+        ) : null}
         <NavigationHistoryShortcuts />
         <MainAppLocationTracker />
       </SidebarProvider>

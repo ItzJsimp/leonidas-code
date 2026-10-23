@@ -67,6 +67,7 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
       <div ref={rowRef} className="flex h-svh min-h-0 min-w-0 flex-1 md:h-dvh">
         {showLeft ? (
           <div
+            data-pane="left"
             style={
               layout.mode === "split"
                 ? { width: `calc((100% - ${DIVIDER_PX}px) * ${share})` }

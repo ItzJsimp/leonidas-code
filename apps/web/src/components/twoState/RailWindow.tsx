@@ -13,6 +13,12 @@ import { Spinner } from "~/components/ui/spinner";
 import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
 
+// The design sets tab labels at 13 px, between the xs and sm tokens.
+// oxlint-disable-next-line shadcn/no-arbitrary-values
+const TAB_TEXT = "text-[13px]";
+const TAB_CLASS = `-mb-px shrink-0 rounded-sm border-b-2 py-2 ${TAB_TEXT} whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`;
+const NO_TABS: readonly WindowTab[] = [];
+
 export interface WindowTab {
   readonly id: string;
   readonly label: string;
@@ -40,7 +46,7 @@ export function nextTabIndex(key: string, index: number, count: number): number 
 export function RailWindow({
   title,
   actions,
-  tabs = [],
+  tabs = NO_TABS,
   children,
 }: {
   readonly title: string;
@@ -80,7 +86,7 @@ export function RailWindow({
     >
       <header
         className={cn(
-          "flex h-12 shrink-0 items-center justify-between gap-3 px-4",
+          "flex h-12 shrink-0 items-center justify-between gap-3 px-4 max-[727px]:pl-14",
           isElectron && "drag-region",
         )}
       >
@@ -110,7 +116,7 @@ export function RailWindow({
                 onClick={() => select(tab.id)}
                 onKeyDown={(event) => onKeyDown(event, index)}
                 className={cn(
-                  "-mb-px shrink-0 rounded-sm border-b-2 py-2 text-[13px] whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                  TAB_CLASS,
                   selected
                     ? "border-primary font-medium text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground",
@@ -163,7 +169,7 @@ export function WindowEmpty({
       {action ? (
         <Link
           to={action.to as "/"}
-          className="mt-1 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-1 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           {action.label}
         </Link>

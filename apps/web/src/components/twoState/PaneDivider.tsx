@@ -60,7 +60,7 @@ export function PaneDivider({
       tabIndex={0}
       data-dragging={dragging ? "true" : "false"}
       style={{ width: DIVIDER_PX }}
-      className="group relative shrink-0 cursor-col-resize touch-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-app-region:no-drag]"
+      className="group relative shrink-0 cursor-col-resize touch-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={stopDragging}

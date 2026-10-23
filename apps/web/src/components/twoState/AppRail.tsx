@@ -56,14 +56,14 @@ const ICONS: Readonly<Record<string, LucideIcon>> = {
 };
 
 const TARGET_CLASS =
-  "relative inline-flex size-9 items-center justify-center rounded-lg border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none [-webkit-app-region:no-drag]";
+  "relative inline-flex size-9 items-center justify-center rounded-lg border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none [-webkit-app-region:no-drag]";
 const ACTIVE_CLASS = "border-border bg-surface-raised text-foreground";
 
 /** "99+" past 99, so the badge stays small. */
 export const badgeText = (count: number) => (count > 99 ? "99+" : String(count));
 
 /** The only app navigation: one icon per page. Chat opens the last chat, else the chat start page. */
-export function AppRail() {
+export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
   const { active } = useActiveAiosWorkspace();
   const [setup] = useLocalStorage(SETUP_STATE_STORAGE_KEY, EMPTY_SETUP_STATE, SetupStateSchema);
   const lastThread = useTwoStateStore((state) => state.lastThread);
@@ -84,6 +84,7 @@ export function AppRail() {
       item={item}
       current={item.id === current}
       lastThread={lastThread}
+      expanded={expanded}
       badge={item.id === "inbox" ? unread : 0}
     />
   );
@@ -91,15 +92,24 @@ export function AppRail() {
     <nav
       aria-label="Main"
       className={cn(
-        "flex h-full w-[52px] shrink-0 flex-col items-center gap-1 border-r border-border bg-card pb-2",
+        "flex h-full shrink-0 flex-col gap-1 border-r border-border bg-card pb-2",
+        expanded ? "w-full items-stretch px-2" : "w-[52px] items-center",
         isElectron && isMacPlatform(navigator.platform) ? "pt-10" : "pt-2",
       )}
     >
       <WorkspaceAvatar />
-      <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+      <div
+        className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-1 scrollbar-gutter-both overflow-y-auto data-[expanded=true]:items-stretch"
+        data-expanded={expanded}
+      >
         {main.map(renderItem)}
       </div>
-      <div className="flex flex-col items-center gap-1">{bottom.map(renderItem)}</div>
+      <div
+        className="flex flex-col items-center gap-1 data-[expanded=true]:items-stretch"
+        data-expanded={expanded}
+      >
+        {bottom.map(renderItem)}
+      </div>
     </nav>
   );
 }
@@ -108,11 +118,13 @@ function RailLink({
   item,
   current,
   lastThread,
+  expanded,
   badge,
 }: {
   readonly item: RailItem;
   readonly current: boolean;
   readonly lastThread: ReturnType<typeof useTwoStateStore.getState>["lastThread"];
+  readonly expanded: boolean;
   readonly badge: number;
 }) {
   const Icon = ICONS[item.id] ?? LayoutDashboardIcon;
@@ -120,11 +132,16 @@ function RailLink({
   const common = {
     "aria-label": label,
     "aria-current": current ? ("page" as const) : undefined,
-    className: cn(TARGET_CLASS, current && ACTIVE_CLASS),
+    className: cn(
+      TARGET_CLASS,
+      expanded && "w-full justify-start gap-3 px-2.5",
+      current && ACTIVE_CLASS,
+    ),
   };
   const content: ReactNode = (
     <>
-      <Icon aria-hidden className="size-5" />
+      <Icon aria-hidden className="size-5 shrink-0" />
+      {expanded ? <span className="text-sm">{item.label}</span> : null}
       {badge > 0 ? (
         <span
           aria-hidden
@@ -162,8 +179,13 @@ function WorkspaceAvatar() {
     <Popover>
       <Tip text={`Workspace: ${name}`}>
         <PopoverTrigger
-          aria-label={`Workspace: ${name}. Switch workspace`}
-          className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-xs font-semibold text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring [-webkit-app-region:no-drag]"
+          render={
+            <button
+              type="button"
+              aria-label={`Workspace: ${name}. Switch workspace`}
+              className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-xs font-semibold text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
+            />
+          }
         >
           {name.slice(0, 1).toUpperCase()}
         </PopoverTrigger>

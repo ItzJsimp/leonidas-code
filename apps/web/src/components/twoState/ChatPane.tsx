@@ -97,10 +97,10 @@ export function ChatPane({
       className="relative flex h-full min-h-0 min-w-0 flex-1 bg-background"
     >
       <div
-        className={cn(
-          "flex w-8 shrink-0 flex-col items-center border-r border-border pt-2",
-          reserveTop && "pt-[calc(var(--workspace-topbar-height)+0.5rem)]",
-        )}
+        style={
+          reserveTop ? { paddingTop: "calc(var(--workspace-topbar-height) + 0.5rem)" } : undefined
+        }
+        className="flex w-8 shrink-0 flex-col items-center border-r border-border pt-2"
       >
         <Tip text={label}>
           <Button
@@ -116,21 +116,20 @@ export function ChatPane({
         </Tip>
       </div>
       {open ? (
-        <Sidebar
-          collapsible="none"
+        <div
           id={listId}
-          role="navigation"
-          aria-label="Chats"
           className={cn(
-            "w-72 shrink-0 border-r border-border",
-            !beside && "absolute inset-y-0 left-8 z-30",
+            "flex shrink-0 border-r border-border",
+            !beside && "absolute inset-y-0 left-8 z-30 bg-sidebar",
           )}
         >
-          <ThreadSidebar />
-          <Suspense fallback={null}>
-            <GuidanceCoach />
-          </Suspense>
-        </Sidebar>
+          <Sidebar collapsible="none" role="navigation" aria-label="Chats" className="w-72">
+            <ThreadSidebar />
+            <Suspense fallback={null}>
+              <GuidanceCoach />
+            </Suspense>
+          </Sidebar>
+        </div>
       ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
         {target ? <ThreadRouteView target={target} /> : <EmptyChat />}
