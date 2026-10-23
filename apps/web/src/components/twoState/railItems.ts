@@ -98,3 +98,9 @@ export function badgeAnnouncement(previous: number | null, next: number | null):
   if (next === 0) return "Nothing needs you";
   return `${next} ${next === 1 ? "needs" : "need"} you`;
 }
+
+/** A rail link's name: the page, plus how many need you when its badge shows. */
+export function railLinkLabel(label: string, badge: number): string {
+  if (badge <= 0) return label;
+  return `${label}, ${badge} ${badge === 1 ? "needs" : "need"} you`;
+}

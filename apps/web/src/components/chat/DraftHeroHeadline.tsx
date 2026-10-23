@@ -299,12 +299,14 @@ export function DraftHeroHeadline({
       <Tooltip>
         <TooltipTrigger
           render={
-            // The trigger's accessible name comes from its visible text (the
-            // project title) so the hero sentence reads naturally: an
-            // aria-label here would replace the title with an action phrase
-            // mid-sentence and baffle screen-reader users.
+            // The name is the visible project title, so the hero sentence reads
+            // naturally. A combobox takes no name from its content, so it is
+            // set here; an action phrase would baffle screen-reader users.
             <ComboboxTrigger
               render={<InlineButton tone="picker" />}
+              aria-label={
+                isScratchDraft ? "No project" : (activeProjectDisplayName ?? "Choose a project")
+              }
               data-draft-project-trigger=""
               className="pointer-events-auto max-w-64 align-baseline"
             />

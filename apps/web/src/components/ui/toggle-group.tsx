@@ -42,6 +42,8 @@ function ToggleGroup({
       data-slot="toggle-group"
       data-variant={variant}
       orientation={orientation}
+      // Base UI sets aria-orientation, which ARIA allows on a toolbar but not on a plain group.
+      role="toolbar"
       {...props}
     >
       <ToggleGroupContext value={value}>{children}</ToggleGroupContext>
