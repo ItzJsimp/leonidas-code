@@ -1,9 +1,10 @@
 import type { MarketingListResult } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
-import { MegaphoneIcon } from "lucide-react";
+import { MailIcon, MegaphoneIcon } from "lucide-react";
 import { AsyncResult } from "effect/reactivity";
 import { type KeyboardEvent, useMemo, useState } from "react";
 
+import { WindowEmpty } from "~/components/twoState/RailWindow";
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { SidebarInset } from "~/components/ui/sidebar";
 import { isElectron } from "~/env";
@@ -22,9 +23,25 @@ const formatTime = (ms: number) =>
 
 const TABS = [
   { id: "approval", label: "Needs approval", hint: "Posts that wait for your yes" },
-  { id: "content", label: "Content", hint: "Every draft and posted item" },
+  { id: "content", label: "Posts", hint: "Every draft and posted item" },
   { id: "metrics", label: "Metrics", hint: "Views, likes, replies and reposts" },
+  { id: "email", label: "Email", hint: "Email drafts for your approval" },
+  { id: "ads", label: "Ads", hint: "Ad drafts for your approval" },
 ] as const;
+
+/** Tabs with no data behind them yet: each says what will show. */
+const COMING = {
+  email: {
+    icon: MailIcon,
+    title: "No email yet",
+    line: "Email drafts are coming. Leonidas will write and queue emails for your approval here.",
+  },
+  ads: {
+    icon: MegaphoneIcon,
+    title: "No ads yet",
+    line: "Ad drafts are coming. Leonidas will write and queue ads for your approval here.",
+  },
+} as const;
 type TabId = (typeof TABS)[number]["id"];
 
 /** The Marketing view. A Command Center lens can host this same component later. */
@@ -58,7 +75,7 @@ export function MarketingScreen(props: {
     <SidebarInset className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
         <MegaphoneIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        <h1 className="truncate text-sm font-medium">Marketing</h1>
+        <h1 className="truncate text-sm font-medium">Content</h1>
       </WorkspacePageHeader>
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-both">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
@@ -83,7 +100,7 @@ export function MarketingScreen(props: {
             </details>
           ) : null}
 
-          <div role="tablist" aria-label="Marketing views" className="flex gap-1">
+          <div role="tablist" aria-label="Content views" className="flex flex-wrap gap-1">
             {TABS.map((item, index) => {
               const selected = item.id === tab;
               const count = item.id === "approval" ? (list?.queueTotal ?? 0) : 0;
@@ -124,7 +141,9 @@ export function MarketingScreen(props: {
             id={`marketing-panel-${tab}`}
             aria-labelledby={`marketing-tab-${tab}`}
           >
-            {props.noWorkspace ? (
+            {tab === "email" || tab === "ads" ? (
+              <WindowEmpty {...COMING[tab]} />
+            ) : props.noWorkspace ? (
               <p role="status" className="text-sm text-muted-foreground">
                 Marketing reads the marketing folder of your AIOS. Connect your AIOS folder on the{" "}
                 <Link to="/tasks" className="text-primary underline underline-offset-4">

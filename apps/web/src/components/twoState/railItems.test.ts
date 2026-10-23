@@ -57,6 +57,10 @@ describe("railItems", () => {
     expect(main.find((item) => item.id === "chat")?.tooltip.startsWith("Leonidas Chat")).toBe(true);
     expect(main.find((item) => item.id === "content")?.to).toBe("/marketing");
     expect(bottom.map((item) => item.to)).toEqual(["/usage", "/settings"]);
+    expect(main.find((item) => item.id === "developer")?.alsoActiveOn).toEqual([
+      "/git",
+      "/pull-requests",
+    ]);
     for (const item of [...main, ...bottom]) {
       expect(`${item.label}${item.tooltip}`).not.toMatch(/\u2014|\bcode\b|MCP|worktree|T3/i);
     }
@@ -74,6 +78,25 @@ describe("activeRailId", () => {
     expect(activeRailId("/env/thread", true)).toBe("chat");
   });
   it("marks nothing for a page the rail does not list", () => {
-    expect(activeRailId("/git", false)).toBeNull();
+    expect(activeRailId("/pair", false)).toBeNull();
+  });
+  it("marks Memory on the brain map page", () => {
+    expect(activeRailId("/brain", false)).toBe("memory");
+    expect(activeRailId("/brain/x", false)).toBe("memory");
+  });
+  it("marks Developer on the Git and pull request pages", () => {
+    expect(activeRailId("/git", false)).toBe("developer");
+    expect(activeRailId("/pull-requests", false)).toBe("developer");
+    expect(activeRailId("/developer", false)).toBe("developer");
+  });
+  it("marks Settings on This PC and on every settings page", () => {
+    expect(activeRailId("/system-care", false)).toBe("settings");
+    expect(activeRailId("/settings/appearance", false)).toBe("settings");
+    expect(activeRailId("/settings/open-source-licenses", false)).toBe("settings");
+  });
+  it("matches whole path parts only, never a longer name", () => {
+    expect(activeRailId("/gitlab", false)).toBeNull();
+    expect(activeRailId("/brainstorm", false)).toBeNull();
+    expect(activeRailId("/system-carefree", false)).toBeNull();
   });
 });

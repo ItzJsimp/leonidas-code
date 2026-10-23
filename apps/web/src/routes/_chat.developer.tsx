@@ -1,29 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { TerminalSquareIcon } from "lucide-react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { StubWindow, type StubTab } from "../components/twoState/StubWindow";
+import { TerminalsPage } from "../components/windows/developer/TerminalsPage";
 
-const TABS: readonly StubTab[] = [
-  {
-    id: "git",
-    label: "Git",
-    emptyTitle: "No Git data yet",
-    emptyLine: "Your branches and changes show here. This page is not built yet.",
-  },
-  {
-    id: "pull-requests",
-    label: "Pull requests",
-    emptyTitle: "No pull requests yet",
-    emptyLine: "Pull requests you opened or need to review show here.",
-  },
-  {
-    id: "terminals",
-    label: "Terminals",
-    emptyTitle: "No terminals yet",
-    emptyLine: "The terminals you have open show here.",
-  },
-];
-
+/** The Developer icon opens Git; the Terminals tab keeps this page. */
 export const Route = createFileRoute("/_chat/developer")({
-  component: () => <StubWindow title="Developer" icon={TerminalSquareIcon} tabs={TABS} />,
+  validateSearch: (raw: Record<string, unknown>): { tab?: "terminals" } =>
+    raw.tab === "terminals" ? { tab: "terminals" } : {},
+  beforeLoad: ({ search }) => {
+    if (search.tab !== "terminals") throw redirect({ to: "/git", replace: true });
+  },
+  component: TerminalsPage,
 });
