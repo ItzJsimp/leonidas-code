@@ -56,6 +56,8 @@ vi.mock("~/onboarding/useOnboardingChat", () => ({
 vi.mock("./useTwoStateData", () => ({
   useAiosHome: () => ({ data: null }),
   useTwoStateCounts: () => ({ needsYou: 0, running: 0, today: null }),
+  useFeedStatus: () => ({ events: [], loaded: true, error: null, updatedAt: 0, refresh: () => {} }),
+  useFeedEvents: () => [],
 }));
 vi.mock("./useLiveArea", async () => {
   const { IDLE } = await vi.importActual<typeof import("./useLiveArea")>("./useLiveArea");
