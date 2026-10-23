@@ -470,7 +470,7 @@ export function TasksPage() {
                     </button>
                   ))}
                 </div>
-                <div className="flex min-w-64 flex-1 items-center justify-end gap-1 pb-1.5">
+                <div className="flex min-w-0 flex-1 basis-64 flex-wrap items-center justify-end gap-1 pb-1.5">
                   {prefs.view === "list" || prefs.view === "board" ? (
                     <TaskFilterBar
                       prefs={prefs}

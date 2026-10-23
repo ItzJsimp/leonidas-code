@@ -100,9 +100,9 @@ function StepButton(props: {
         {props.index + 1}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{title}</span>
+        <span className="block text-sm font-medium break-words">{title}</span>
         {subtitle ? (
-          <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>
+          <span className="block text-xs break-words text-muted-foreground">{subtitle}</span>
         ) : null}
       </span>
       <span className="shrink-0 text-right">

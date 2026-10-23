@@ -5,6 +5,7 @@ import {
   filterInbox,
   groupInbox,
   inboxCounts,
+  linkedThreadId,
   nextRowIndex,
   rowsOf,
   searchInbox,
@@ -125,5 +126,20 @@ describe("sourceLabel", () => {
     expect(
       sourceLabel(event("x", at(0, 1), { actor: { kind: "script", name: "Backup-AIOS.ps1" } })),
     ).toBe("Backup-AIOS.ps1");
+  });
+});
+
+describe("linkedThreadId", () => {
+  it("names the chat an event links to", () => {
+    expect(linkedThreadId(event("Ask", at(0, 9), { target: { thread: "thr_1" } }))).toBe("thr_1");
+    expect(
+      linkedThreadId(
+        event("Ask", at(0, 9), { actions: [{ label: "Open", kind: "open_thread", ref: "thr_2" }] }),
+      ),
+    ).toBe("thr_2");
+  });
+  it("is null when the event has no chat", () => {
+    expect(linkedThreadId(event("Done", at(0, 9)))).toBeNull();
+    expect(linkedThreadId(event("Link", at(0, 9), { target: { url: "https://a.b" } }))).toBeNull();
   });
 });
