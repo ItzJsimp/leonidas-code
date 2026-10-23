@@ -33,6 +33,7 @@ import {
 import { resolveThreadRouteTarget } from "~/threadRoutes";
 
 import { activeRailId, railItems, type RailItem } from "./railItems";
+import { firstGrapheme } from "./safeText";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
 import { useTwoStateCounts } from "./useTwoStateData";
@@ -188,7 +189,7 @@ function WorkspaceAvatar() {
             />
           }
         >
-          {name.slice(0, 1).toUpperCase()}
+          {firstGrapheme(name).toUpperCase()}
         </PopoverTrigger>
       </Tip>
       <PopoverPopup side="right" align="start" className="w-64">

@@ -100,14 +100,14 @@ export function PrioritiesWidget() {
                       <span className="sr-only">{priority.done ? "Done: " : "To do: "}</span>
                       <span
                         className={cn(
-                          "block text-sm font-semibold break-words",
+                          "block text-sm font-semibold wrap-anywhere",
                           priority.done && "text-muted-foreground line-through",
                         )}
                       >
                         {priority.title}
                       </span>
                       {priority.detail ? (
-                        <span className="block text-xs break-words text-muted-foreground">
+                        <span className="block text-xs wrap-anywhere text-muted-foreground">
                           {priority.detail}
                         </span>
                       ) : null}
