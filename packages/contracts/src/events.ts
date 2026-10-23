@@ -139,6 +139,10 @@ export function completeFeedEvent(draft: FeedEventDraft, now: number = Date.now(
 export const FoldedFeedEvent = Schema.Struct({ ...FeedEvent.fields, count: Schema.Number });
 export type FoldedFeedEvent = typeof FoldedFeedEvent.Type;
 
+/** Events that wait for the user. A feed trim keeps these at any age, so Needs you never drops one. */
+export const waitsForUser = (event: { readonly level: string }): boolean =>
+  event.level === "needs_you" || event.level === "failed";
+
 export const FeedBadLine = Schema.Struct({
   file: Schema.String,
   line: Schema.Number,

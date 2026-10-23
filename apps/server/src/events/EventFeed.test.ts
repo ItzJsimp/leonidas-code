@@ -96,6 +96,28 @@ describe("event feed service", () => {
     expect(updates.at(-1)!.events).toMatchObject([{ id: first.id, count: 2 }]);
   });
 
+  it("keeps an older event that needs the user when 1,000 newer events push it past the cap", () => {
+    const root = tempRoot();
+    appendFeedEvent(root, event("backup failed, waits for you"));
+    const lines = Array.from({ length: 1_000 }, (_, index) =>
+      JSON.stringify(
+        completeFeedEvent(
+          {
+            level: "info",
+            type: "fixture.note",
+            title: `note ${index}`,
+            actor: { kind: "script", name: "t.ps1" },
+          },
+          AT + 1_000 + index,
+        ),
+      ),
+    );
+    NodeFS.appendFileSync(NodePath.join(root, "events", "2026-10.jsonl"), `${lines.join("\n")}\n`);
+    const titles = subscribe(root, fakeWatch())[0]!.events.map((e) => e.title);
+    expect(titles).toContain("backup failed, waits for you");
+    expect(titles).toHaveLength(1_001);
+  });
+
   it("starts with an empty snapshot when the folder does not exist yet", () => {
     const updates = subscribe(tempRoot(), fakeWatch());
     expect(updates).toEqual([{ kind: "snapshot", events: [], bad: [] }]);
