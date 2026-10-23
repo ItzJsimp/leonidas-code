@@ -307,3 +307,8 @@ export function summaryItems(counts: {
       : [{ lead: `${today.done} of ${today.total}`, rest: " done today" }]),
   ];
 }
+
+/** The first `limit` rows, and how many more there are, so a long list gets a "+N more" line. */
+export function capRows<T>(rows: ReadonlyArray<T>, limit: number) {
+  return { shown: rows.slice(0, limit), more: Math.max(0, rows.length - limit) };
+}

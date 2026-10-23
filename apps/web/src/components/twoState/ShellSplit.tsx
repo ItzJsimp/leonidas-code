@@ -1,8 +1,8 @@
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentId, ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 import { Outlet } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { TeamLensProvider } from "~/components/team/TeamLensContext";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 import type { ThreadRouteTarget } from "~/threadRoutes";
@@ -14,7 +14,6 @@ import { DIVIDER_PX, PaneDivider } from "./PaneDivider";
 import { clampRatio, DRAWER_BELOW_WIDTH, paneLayout } from "./shellLayout";
 import { HomeCardsOutlet } from "./SlotOutlet";
 import { useTwoStateStore } from "./twoStateStore";
-import { useLiveArea } from "./useLiveArea";
 import { useViewportWidth } from "./useViewportWidth";
 
 const CC_CONTEXT = { forward: "cc" } as const;
@@ -29,7 +28,6 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
   const split = useTwoStateStore((state) => state.split);
   const ratio = useTwoStateStore((state) => state.ratio);
   const setRatio = useTwoStateStore((state) => state.setRatio);
-  const lastThread = useTwoStateStore((state) => state.lastThread);
   const rememberThread = useTwoStateStore((state) => state.rememberThread);
   const rowRef = useRef<HTMLDivElement>(null);
   const [rowWidth, setRowWidth] = useState(0);
@@ -46,22 +44,15 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
     });
   }, []);
 
-  const liveRef: ScopedThreadRef | null = useMemo(
-    () =>
-      place ??
-      (lastThread
-        ? scopeThreadRef(lastThread.environmentId as EnvironmentId, lastThread.threadId as ThreadId)
-        : null),
-    [place, lastThread],
-  );
-  const live = useLiveArea(liveRef);
   const layout = paneLayout({ width, split, routeKind: threadTarget ? "thread" : "window" });
   const chatBeside = layout.mode === "split";
-  const value = useMemo(() => ({ rails: false, live, chatBeside }), [live, chatBeside]);
+  const value = useMemo(() => ({ rails: false, chatBeside }), [chatBeside]);
 
   const showLeft = layout.mode === "split" || layout.show === "left";
   const showChat = layout.mode === "split" || layout.show === "chat";
-  const share = clampRatio(ratio, rowWidth);
+  // While dragging the pane follows the pointer; the store gets the ratio on pointer up only.
+  const [dragRatio, setDragRatio] = useState<number | null>(null);
+  const share = clampRatio(dragRatio ?? ratio, rowWidth);
 
   return (
     <CodeForwardContext value={value}>
@@ -83,7 +74,15 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
           </div>
         ) : null}
         {layout.mode === "split" ? (
-          <PaneDivider ratio={share} containerRef={rowRef} onChange={setRatio} />
+          <PaneDivider
+            ratio={share}
+            containerRef={rowRef}
+            onDrag={setDragRatio}
+            onChange={(next) => {
+              setRatio(next);
+              setDragRatio(null);
+            }}
+          />
         ) : null}
         {showChat ? (
           <ChatPane urlTarget={threadTarget} reserveTop={width < DRAWER_BELOW_WIDTH} />
@@ -95,12 +94,15 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
 
 /** The left pane while a chat is open: the Command Center as it looks when forward. */
 function CommandCenterHome(): ReactNode {
+  const { scope } = useActiveAiosWorkspace();
   return (
-    <section aria-label="Command Center" className="min-h-0 flex-1 overflow-y-auto bg-background">
-      <div className="grid gap-6 p-6">
-        <CommandCenterForward />
-        <HomeCardsOutlet context={CC_CONTEXT} />
-      </div>
-    </section>
+    <TeamLensProvider scopeKey={JSON.stringify(scope)}>
+      <section aria-label="Command Center" className="min-h-0 flex-1 overflow-y-auto bg-background">
+        <div className="grid gap-6 p-6">
+          <CommandCenterForward />
+          <HomeCardsOutlet context={CC_CONTEXT} />
+        </div>
+      </section>
+    </TeamLensProvider>
   );
 }

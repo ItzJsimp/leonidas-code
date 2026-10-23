@@ -8,6 +8,7 @@ import { useAiosHome, useFeedStatus, useTwoStateCounts } from "../twoState/useTw
 import { oldestAt, type TileModel, tileModels } from "./commandCenter.logic";
 import { splitFeed } from "../twoState/railFeed";
 import { useEventFeedStore } from "~/eventFeedStore";
+import { WidgetError } from "./HomeWidget";
 import { useNowMs } from "./useHomeReads";
 
 const TILE_ICONS: Record<TileModel["id"], LucideIcon> = {
@@ -22,7 +23,8 @@ export function NumberTiles() {
   const counts = useTwoStateCounts();
   const feed = useFeedStatus();
   const marks = useEventFeedStore((store) => store.marks);
-  const home = useAiosHome().data;
+  const homeRead = useAiosHome();
+  const home = homeRead.data;
   const now = useNowMs();
   const tiles = useMemo(
     () =>
@@ -37,6 +39,13 @@ export function NumberTiles() {
       ),
     [counts.needsYou, counts.running, feed.events, marks, home, now],
   );
+
+  const failed =
+    (homeRead.error !== null && home === null) || (feed.error !== null && !feed.loaded);
+  const retry = () => {
+    homeRead.refresh();
+    feed.refresh();
+  };
 
   return (
     <div className="@container">
@@ -72,6 +81,11 @@ export function NumberTiles() {
           );
         })}
       </ul>
+      {failed ? (
+        <div className="mt-3">
+          <WidgetError message="Some numbers could not be read." onRetry={retry} />
+        </div>
+      ) : null}
     </div>
   );
 }
