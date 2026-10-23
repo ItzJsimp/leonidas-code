@@ -9,6 +9,6 @@ describe("slotRegistry", () => {
       "direction",
       "aios-home",
     ]);
-    expect(slotRegistry.ccHome).toHaveLength(11);
+    expect(slotRegistry.ccHome).toHaveLength(12);
   });
 });
