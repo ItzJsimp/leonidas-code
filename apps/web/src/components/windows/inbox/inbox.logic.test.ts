@@ -5,6 +5,7 @@ import {
   filterInbox,
   groupInbox,
   inboxCounts,
+  inboxEmptyText,
   linkedThreadId,
   neighborRowId,
   nextRowIndex,
@@ -155,5 +156,30 @@ describe("neighborRowId", () => {
   it("has none for a lone row or an unknown id", () => {
     expect(neighborRowId([asks], asks.id)).toBeUndefined();
     expect(neighborRowId(rows, "nope")).toBeUndefined();
+  });
+});
+
+describe("inboxEmptyText", () => {
+  it("is the plain empty state when every line was read", () => {
+    expect(inboxEmptyText([]).title).toBe("Your inbox is empty");
+  });
+
+  it("says lines were skipped, how many and where, when none could be read", () => {
+    const bad = [
+      { file: "C:\\aios\\events\\2026-10.jsonl", line: 1, reason: "x" },
+      { file: "C:\\aios\\events\\2026-10.jsonl", line: 2, reason: "x" },
+    ];
+    const text = inboxEmptyText(bad);
+    expect(text.title).toBe("No events could be read");
+    expect(text.line).toBe(
+      "Skipped 2 unreadable lines in the event files. First: 2026-10.jsonl line 1.",
+    );
+    expect(inboxEmptyText(bad.slice(0, 1)).line).toContain("Skipped 1 unreadable line in");
+    const capped = Array.from({ length: 50 }, (_, line) => ({
+      file: "2026-10.jsonl",
+      line,
+      reason: "x",
+    }));
+    expect(inboxEmptyText(capped).line).toContain("Skipped 50 or more unreadable lines");
   });
 });
