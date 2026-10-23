@@ -14,6 +14,7 @@ import { WorkspacePageContainer } from "../components/WorkspacePageContainer";
 import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
+import { TeamLensProvider } from "../components/team/TeamLensContext";
 import { HomeCardsOutlet } from "../components/twoState/SlotOutlet";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
@@ -106,7 +107,9 @@ function CommandCenterPage() {
               Live status across your connected computers. Open a chat to see or continue its work.
             </p>
           </div>
-          <HomeCardsOutlet context={HOME_CONTEXT} />
+          <TeamLensProvider>
+            <HomeCardsOutlet context={HOME_CONTEXT} />
+          </TeamLensProvider>
           {disconnected.length > 0 ? (
             <div
               role="status"
