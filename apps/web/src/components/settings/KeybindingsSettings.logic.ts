@@ -212,7 +212,15 @@ const KEYBINDING_GROUPS = [
   {
     id: "navigation",
     title: "Navigation",
-    prefixes: ["sidebar", "rightPanel", "commandPalette", "filePicker", "projectSearch", "editor"],
+    prefixes: [
+      "sidebar",
+      "rightPanel",
+      "commandPalette",
+      "filePicker",
+      "projectSearch",
+      "editor",
+      "layout",
+    ],
   },
   { id: "threads", title: "Chats", prefixes: ["thread", "chat", "pullRequest"] },
   { id: "composer", title: "Message box", prefixes: ["composer", "modelPicker"] },

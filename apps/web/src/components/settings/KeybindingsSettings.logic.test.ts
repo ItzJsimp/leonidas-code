@@ -75,7 +75,7 @@ describe("KeybindingsSettings.logic", () => {
       expect.arrayContaining(["composer.host", "modelPicker.toggle"]),
     );
     expect(groupKeybindingRows(buildKeybindingRows(DEFAULT_RESOLVED_KEYBINDINGS, "split"))).toEqual(
-      [expect.objectContaining({ id: "terminal" })],
+      [expect.objectContaining({ id: "navigation" }), expect.objectContaining({ id: "terminal" })],
     );
   });
   it("orders Usage bindings and command choices like the page", () => {
