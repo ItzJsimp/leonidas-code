@@ -14,6 +14,22 @@ interface LoginProvider {
   readonly auth: { readonly status: string; readonly email?: string | undefined };
 }
 
+/** The server sets this failure code on an expired Claude login. Same literal in ClaudeAdapterV2. */
+const CLAUDE_SIGNED_OUT_FAILURE_CODE = "claude_signed_out";
+
+export function isClaudeSignedOutFailure(failure: { readonly code: string | null }): boolean {
+  return failure.code === CLAUDE_SIGNED_OUT_FAILURE_CODE;
+}
+
+/** The provider instance that ran the failed turn, or null when the run is unknown. */
+export function signInInstanceId(
+  runs: ReadonlyArray<{ readonly id: string; readonly providerInstanceId: string }>,
+  runId: string | null,
+): string | null {
+  if (runId === null) return null;
+  return runs.find((run) => run.id === runId)?.providerInstanceId ?? null;
+}
+
 /** The server's signed-out message quotes the config dir as a JSON string. */
 const CONFIG_DIR_IN_MESSAGE = /CLAUDE_CONFIG_DIR set to ("(?:[^"\\]|\\.)*")/u;
 

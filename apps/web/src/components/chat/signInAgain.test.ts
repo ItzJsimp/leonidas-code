@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { sharedLoginPeerNames, sharedLoginWarning, signInCommandForFailure } from "./signInAgain";
+import {
+  isClaudeSignedOutFailure,
+  sharedLoginPeerNames,
+  sharedLoginWarning,
+  signInCommandForFailure,
+  signInInstanceId,
+} from "./signInAgain";
 
 const provider = (instanceId: string, email: string | undefined, overrides = {}) => ({
   instanceId,
@@ -56,5 +62,29 @@ describe("sharedLoginPeerNames", () => {
     );
     expect(sharedLoginPeerNames([provider("a", "x@y.com")], "a")).toEqual([]);
     expect(sharedLoginWarning([])).toBeNull();
+  });
+});
+
+describe("isClaudeSignedOutFailure", () => {
+  it("matches only the signed-out code the server sets", () => {
+    expect(isClaudeSignedOutFailure({ code: "claude_signed_out" })).toBe(true);
+    expect(isClaudeSignedOutFailure({ code: "api_error_403" })).toBe(false);
+    expect(isClaudeSignedOutFailure({ code: null })).toBe(false);
+  });
+});
+
+describe("signInInstanceId", () => {
+  const runs = [
+    { id: "run-1", providerInstanceId: "claudeAgent" },
+    { id: "run-2", providerInstanceId: "claude_work" },
+  ];
+
+  it("returns the provider instance of the failed run", () => {
+    expect(signInInstanceId(runs, "run-2")).toBe("claude_work");
+  });
+
+  it("returns null when the run is missing or unknown", () => {
+    expect(signInInstanceId(runs, null)).toBeNull();
+    expect(signInInstanceId(runs, "run-9")).toBeNull();
   });
 });
