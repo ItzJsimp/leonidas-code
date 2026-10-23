@@ -171,7 +171,16 @@ it("renders the empty state and a 200 item queue without a crash", async () => {
 it("shows when the list was last updated", async () => {
   await render({ updatedAt: new Date(2026, 9, 22, 19, 45).getTime() });
   expect(container.textContent).toContain("Updated 7:45 PM.");
-  expect(container.querySelectorAll("[role=tab]")).toHaveLength(3);
+  expect(container.querySelectorAll("[role=tab]")).toHaveLength(5);
+});
+
+it("is called Content and has Email and Ads tabs that say they are coming", async () => {
+  await render({ list: null, noWorkspace: true });
+  expect(container.querySelector("h1")?.textContent).toBe("Content");
+  await click(container.querySelector("#marketing-tab-email"));
+  expect(container.textContent).toContain("Email drafts are coming.");
+  await click(container.querySelector("#marketing-tab-ads"));
+  expect(container.textContent).toContain("Ad drafts are coming.");
 });
 
 it("shows brand names, not slugs", async () => {
