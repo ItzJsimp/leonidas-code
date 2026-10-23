@@ -146,7 +146,15 @@ export const TaskFilterBar = memo(function TaskFilterBar(props: {
         </MenuPopup>
       </Menu>
       <Menu>
-        <MenuTrigger render={<Button variant="ghost" size="compact" aria-label="Sort" />}>
+        <MenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="compact"
+              aria-label={`Sort by ${SORT_LABELS[prefs.sort]}`}
+            />
+          }
+        >
           <ArrowUpDownIcon />
           <span className="hidden sm:inline">{SORT_LABELS[prefs.sort]}</span>
         </MenuTrigger>

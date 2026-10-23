@@ -485,7 +485,13 @@ export function UsagePage() {
       </ToggleGroup>
       {/* Limits has no period, so the presets stay in place but disabled;
           unmounting them would shift the metric tabs. */}
-      <div className="min-w-0 max-w-full overflow-x-auto">
+      {/* Focusable so a keyboard can scroll it while its presets are disabled. */}
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Time periods"
+        className="min-w-0 max-w-full overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-ring"
+      >
         <ToggleGroup
           aria-label="Time period"
           variant="segmented"
