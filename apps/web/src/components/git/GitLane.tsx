@@ -17,14 +17,17 @@ export function GitLane(props: {
   const [openId, setOpenId] = useState<LaneStep["id"] | null>(null);
   const open = props.lane.steps.find((step) => step.id === openId) ?? null;
   return (
-    <div>
-      <ol className="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-0">
+    <div className="@container">
+      <ol className="flex flex-col gap-2 @3xl:flex-row @3xl:items-stretch @3xl:gap-0">
         {props.lane.steps.map((step, index) => (
-          <li key={step.id} className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-stretch">
+          <li
+            key={step.id}
+            className="flex min-w-0 flex-1 flex-col @3xl:flex-row @3xl:items-stretch"
+          >
             {index > 0 ? (
               <span
                 aria-hidden
-                className="mx-auto h-3 w-px bg-border sm:mx-0 sm:my-auto sm:h-px sm:w-4 sm:shrink-0"
+                className="mx-auto h-3 w-px bg-border @3xl:mx-0 @3xl:my-auto @3xl:h-px @3xl:w-4 @3xl:shrink-0"
               />
             ) : null}
             <StepButton
@@ -37,10 +40,10 @@ export function GitLane(props: {
           </li>
         ))}
         {props.lane.connectGitHub ? (
-          <li className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-stretch">
+          <li className="flex min-w-0 flex-1 flex-col @3xl:flex-row @3xl:items-stretch">
             <span
               aria-hidden
-              className="mx-auto h-3 w-px border-l border-dashed border-border sm:mx-0 sm:my-auto sm:h-px sm:w-4 sm:shrink-0 sm:border-t sm:border-l-0"
+              className="mx-auto h-3 w-px border-l border-dashed border-border @3xl:mx-0 @3xl:my-auto @3xl:h-px @3xl:w-4 @3xl:shrink-0 @3xl:border-t @3xl:border-l-0"
             />
             <button
               type="button"

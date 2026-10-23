@@ -4,12 +4,9 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
-import { PlusIcon } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Spinner } from "~/components/ui/spinner";
 import { taskBoardCardCreate } from "~/state/taskBoard";
 import { workspaceScopeInput } from "~/components/workspace/aiosWorkspace.logic";
 import { activeWorkspaceId } from "~/components/workspace/aiosWorkspaceStore";
@@ -73,6 +70,12 @@ export function TaskQuickAdd(props: {
             value={title}
             disabled={busy}
             onChange={(event) => setTitle(event.target.value)}
+            // Two fields and no submit button: the browser does not submit on Enter by itself.
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }}
           />
         </div>
         <div className="w-36">
@@ -84,15 +87,6 @@ export function TaskQuickAdd(props: {
             onChange={(event) => setDue(event.target.value)}
           />
         </div>
-        <Button
-          type="submit"
-          variant="outline"
-          size="sm"
-          disabled={busy || !title.trim() || !props.environmentId || !canCreate}
-        >
-          {busy ? <Spinner /> : <PlusIcon />}
-          Add task
-        </Button>
       </div>
       {error ? (
         <p role="alert" className="text-xs text-destructive">
