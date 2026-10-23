@@ -1,7 +1,7 @@
 import type { TaskBoardHomeArea } from "@t3tools/contracts";
 
 const AREA_WORDS: Record<string, readonly [label: string, one: string, many: string]> = {
-  tasks: ["Tasks", "task card (all time)", "task cards (all time)"],
+  tasks: ["Task cards", "task card (all time)", "task cards (all time)"],
   projects: ["Projects", "project", "projects"],
   decisions: ["Decisions", "decision", "decisions"],
   memory: ["Memory", "note", "notes"],

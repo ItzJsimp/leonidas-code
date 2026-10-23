@@ -150,7 +150,7 @@ describe("areaBars", () => {
     expect(total).toBe(383);
     expect(bars.map((bar) => [bar.label, bar.units])).toEqual([
       ["Logs", 230],
-      ["Tasks", 118],
+      ["Task cards", 118],
       ["Wiki", 35],
     ]);
     expect(bars[0]!.widthPercent).toBe(100);

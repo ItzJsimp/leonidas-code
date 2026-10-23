@@ -25,7 +25,7 @@ describe("areaCards", () => {
   it("writes the number, the unit word and the time in plain words", () => {
     expect(areaCards(AREAS, now)[0]).toEqual({
       id: "tasks",
-      label: "Tasks",
+      label: "Task cards",
       number: "118",
       unit: "task cards (all time)",
       changed: "12 min ago",
