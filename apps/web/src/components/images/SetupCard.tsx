@@ -103,7 +103,7 @@ export function SetupCard(props: {
             className="self-start"
             render={<a href={COMFY_INSTALL_URL} target="_blank" rel="noreferrer" />}
           >
-            Open the ComfyUI download page
+            Download ComfyUI
             <ExternalLinkIcon />
           </Button>
           <HelpText>Skip this step if ComfyUI is already on this PC.</HelpText>
