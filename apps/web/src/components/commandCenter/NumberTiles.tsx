@@ -41,7 +41,7 @@ export function NumberTiles() {
   return (
     <div className="@container">
       {/* 1, 2 or 4 columns by the width of this pane, never 3 plus 1. */}
-      <ul className="grid grid-cols-1 gap-3 @sm:grid-cols-2 @2xl:grid-cols-4">
+      <ul className="grid grid-cols-1 gap-3 @sm:grid-cols-2 @xl:grid-cols-4">
         {tiles.map((tile) => {
           const Icon = TILE_ICONS[tile.id];
           return (
@@ -55,7 +55,7 @@ export function NumberTiles() {
                     <Icon aria-hidden className="size-4 shrink-0" />
                     {tile.label}
                   </p>
-                  <p className="mt-2 flex items-baseline gap-1.5">
+                  <div className="mt-2 flex items-baseline gap-1.5">
                     {tile.value === null ? (
                       <Skeleton className="h-7 w-12" />
                     ) : (
@@ -64,7 +64,7 @@ export function NumberTiles() {
                       </span>
                     )}
                     <span className="text-sm text-muted-foreground">{tile.unit}</span>
-                  </p>
+                  </div>
                   <p className="mt-2 text-xs text-muted-foreground">{tile.note}</p>
                 </div>
               </Tip>
