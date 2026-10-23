@@ -230,7 +230,6 @@ function AccountLimits({
           <span className="truncate text-xs font-medium">{title}</span>
           {active ? (
             <span className="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground">
-              <span aria-hidden className="size-1.5 rounded-full bg-success" />
               Active
             </span>
           ) : null}

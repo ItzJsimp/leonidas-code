@@ -204,10 +204,6 @@ export function InboxList({
                           </span>
                           {read ? null : (
                             <>
-                              <span
-                                aria-hidden
-                                className="size-1.5 rounded-full bg-foreground/70"
-                              />
                               <span className="sr-only">Unread</span>
                             </>
                           )}

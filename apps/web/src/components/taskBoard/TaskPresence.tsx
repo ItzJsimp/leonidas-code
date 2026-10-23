@@ -47,14 +47,6 @@ export function PresenceChips({ taskId }: { readonly taskId: string }) {
         <Tooltip key={chat.threadId}>
           <TooltipTrigger render={<span className="inline-flex min-w-0" />}>
             <Badge variant="outline" size="sm" className="max-w-44">
-              <span
-                aria-hidden
-                className={
-                  chat.status === "running"
-                    ? "size-1.5 shrink-0 animate-pulse rounded-full bg-success"
-                    : "size-1.5 shrink-0 rounded-full bg-warning"
-                }
-              />
               <span className="truncate">{chat.title}</span>
               <span className="sr-only">
                 {chat.status === "running" ? "working now" : "waiting for you"}

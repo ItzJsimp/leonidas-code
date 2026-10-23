@@ -278,14 +278,14 @@ function PoolSegment({
           className="absolute inset-y-0 left-0 rounded-md opacity-35"
           style={{ width: `${remaining}%`, backgroundColor: color }}
         />
-        {/* The spent share is hatched, not blank: it is what the countdown restores. */}
+        {/* The spent share is a faint solid fill, not blank: it is what the countdown restores. */}
         {remaining < 100 && reset ? (
           <div
             aria-hidden
-            className="absolute inset-y-0 right-0 opacity-20"
+            className="absolute inset-y-0 right-0 opacity-10"
             style={{
               width: `${100 - remaining}%`,
-              backgroundImage: `repeating-linear-gradient(135deg, ${color} 0 1px, transparent 1px 5px)`,
+              backgroundColor: color,
             }}
           />
         ) : null}

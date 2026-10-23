@@ -118,7 +118,7 @@ export function RailWindow({
                 className={cn(
                   TAB_CLASS,
                   selected
-                    ? "border-primary font-medium text-foreground"
+                    ? "border-foreground font-medium text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
