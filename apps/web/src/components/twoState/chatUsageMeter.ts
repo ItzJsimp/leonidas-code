@@ -10,6 +10,8 @@ export interface FiveHourMeter {
   /** Bar fill, 0 to 100. */
   readonly fill: number;
   readonly level: "normal" | "warning";
+  /** The words beside the bar. */
+  readonly label: string;
   readonly tip: string;
 }
 
@@ -34,6 +36,7 @@ export function fiveHourMeter(
     percent,
     fill: Math.min(100, Math.max(0, percent)),
     level: percent > WARN_ABOVE ? "warning" : "normal",
+    label: `Claude ${percent}% of 5 h`,
     tip: `Claude 5-hour window: ${percent} percent used${resets}`,
   };
 }
