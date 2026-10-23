@@ -19,7 +19,6 @@ import {
 import { buildThreadRouteParams } from "~/threadRoutes";
 
 import { changedLabel } from "../twoState/areaRows";
-import { LiveDot } from "../twoState/LiveDot";
 import { actionLabel, splitFeed } from "../twoState/railFeed";
 import { useLiveArea } from "../twoState/useLiveArea";
 import { useFeedStatus } from "../twoState/useTwoStateData";
@@ -147,11 +146,6 @@ export function RunningWidget() {
                       : "border-transparent hover:bg-surface-raised",
                   )}
                 >
-                  {live ? (
-                    <span className="mt-[7px]">
-                      <LiveDot />
-                    </span>
-                  ) : null}
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold break-words">
                       {thread.title || "Untitled chat"}

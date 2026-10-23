@@ -38,7 +38,7 @@ export function DeveloperStrip() {
               "-mb-px flex shrink-0 items-center rounded-sm border-b-2 whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
               TAB_TEXT,
               tab.id === active
-                ? "border-primary font-medium text-foreground"
+                ? "border-foreground font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >

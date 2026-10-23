@@ -16,7 +16,6 @@ import { RouteIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
-import { READINESS_DOT } from "./ProviderReadinessControl";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { Badge } from "../ui/badge";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
@@ -357,10 +356,6 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground"
               role="status"
             >
-              <span
-                className={cn("size-1.5 shrink-0 rounded-full", READINESS_DOT[readiness.color])}
-                aria-hidden="true"
-              />
               {/* A healthy provider shows the dot only; the words stay for a problem. */}
               <span className={cn("max-w-24 truncate", readiness.code === "ready" && "sr-only")}>
                 {readiness.reason}

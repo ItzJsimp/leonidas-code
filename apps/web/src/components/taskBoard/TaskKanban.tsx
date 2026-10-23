@@ -28,7 +28,6 @@ import {
   projectNameFor,
   projectNameIndex,
   statusChangeForDrop,
-  statusDotClass,
 } from "./taskRows";
 
 type KanbanCardProps = {
@@ -129,10 +128,6 @@ const KanbanCard = memo(function KanbanCard({
                 <MenuGroupLabel>Move to</MenuGroupLabel>
                 {moveTargets(task.status).map((status) => (
                   <MenuItem key={status} onClick={() => onMove(task, status)}>
-                    <span
-                      aria-hidden
-                      className={cn("size-2 shrink-0 rounded-full", statusDotClass(status))}
-                    />
                     {statusLabel(status)}
                   </MenuItem>
                 ))}
@@ -209,7 +204,6 @@ function KanbanColumn({
       onDrop={(event) => onColumnDrop(event, status)}
     >
       <header className="flex items-center gap-2 px-3 py-2">
-        <span aria-hidden className={cn("size-2 shrink-0 rounded-full", statusDotClass(status))} />
         <h3 className="font-medium text-sm">{label}</h3>
         <Badge size="sm" variant="secondary">
           {tasks.length + hidden}

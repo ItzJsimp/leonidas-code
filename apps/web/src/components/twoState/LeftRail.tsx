@@ -17,7 +17,6 @@ import { cn } from "~/lib/utils";
 
 import { areaRow } from "./areaRows";
 import { useCodeForward } from "./codeForwardContext";
-import { LiveDot } from "./LiveDot";
 import { touchedFromFeed, withTouched } from "./liveArea";
 import { RailEmpty, RailList, RailPanel, RailRow } from "./RailParts";
 import { RailSlotSections } from "./SlotOutlet";
@@ -86,7 +85,6 @@ function YourAios() {
                     </span>
                   )}
                 </span>
-                {isLive ? <LiveDot /> : null}
               </RailRow>
             );
           })}

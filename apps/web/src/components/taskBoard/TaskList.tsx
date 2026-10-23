@@ -34,7 +34,6 @@ import {
   projectNameFor,
   projectNameIndex,
   sameMember,
-  statusDotClass,
   visibleTaskIds,
   type ListGroup,
   type ListItem,
@@ -101,11 +100,7 @@ const TaskRow = memo(function TaskRow({
         tabIndex={tabbable ? 0 : -1}
         type="button"
       >
-        <span
-          aria-label={statusLabel(task.status)}
-          className={cn("size-2 shrink-0 rounded-full", statusDotClass(task.status))}
-          role="img"
-        />
+        <span className="sr-only">{statusLabel(task.status)}</span>
         <span
           className={cn(
             "min-w-0 flex-1 truncate text-sm",

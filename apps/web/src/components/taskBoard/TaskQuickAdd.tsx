@@ -86,6 +86,7 @@ export function TaskQuickAdd(props: {
         </div>
         <Button
           type="submit"
+          variant="outline"
           size="sm"
           disabled={busy || !title.trim() || !props.environmentId || !canCreate}
         >
