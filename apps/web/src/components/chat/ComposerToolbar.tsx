@@ -41,7 +41,8 @@ export const ComposerToolbar = memo(function ComposerToolbar(props: {
       >
         <div
           className={cn(
-            "flex min-w-0 items-center gap-0.5 px-1",
+            // Narrow, chips show icons only, so no label cuts mid-word at the scroll edge.
+            "@container/composer-toolbar flex min-w-0 items-center gap-0.5 px-1 @max-[360px]/composer-toolbar:[&_[data-composer-toolbar-label]]:sr-only",
             // The strip is one surface: the shoulder tabs inside it lose their own.
             "[&_[data-composer-banner-surface]]:py-0 [&_[data-composer-banner-surface]]:before:hidden [&_[data-composer-banner-surface]]:after:hidden",
             props.collapsed &&

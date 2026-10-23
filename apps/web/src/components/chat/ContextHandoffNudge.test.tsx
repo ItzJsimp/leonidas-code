@@ -41,7 +41,7 @@ it("reminds once per chat across dismissals and remounts, and explains missing s
     options.actionProps.onClick();
     expect(toast.close).toHaveBeenCalledWith("nudge");
     await render("unknown", 90_000);
-    expect(container.textContent).toContain("does not say how much memory a chat has");
+    expect(container.textContent).not.toContain("does not say how much memory a chat has");
     expect(toast.add).toHaveBeenCalledTimes(1);
     await render("claude", 80_000, 100_000);
     expect(toast.add).toHaveBeenCalledTimes(1);

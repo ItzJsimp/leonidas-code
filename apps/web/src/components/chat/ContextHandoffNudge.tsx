@@ -56,11 +56,6 @@ export function ContextHandoffNudge({
     });
   }, [chatKey, shouldNudge, onHandoff]);
 
-  if (contextWindow?.maxTokens != null && contextWindow.maxTokens > 0) return null;
-  return (
-    <p className="px-4 py-1 text-2xs text-muted-foreground">
-      This AI service does not say how much memory a chat has. Reminders to start a new chat are
-      off.
-    </p>
-  );
+  // No line when the service hides its memory size: the user cannot act on it.
+  return null;
 }

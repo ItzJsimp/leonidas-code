@@ -5820,7 +5820,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         triggerClassName={
           composerControlsCollapsed
             ? cn(
-                "min-w-13 shrink text-xs!",
+                "min-w-13 shrink text-xs! @max-[400px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:w-0 @max-[400px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:flex-none",
                 !showInlineRestingControls &&
                   "@max-[640px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:w-0 @max-[640px]/composer-surface:[&_[data-chat-provider-model-picker-label]]:flex-none",
               )
