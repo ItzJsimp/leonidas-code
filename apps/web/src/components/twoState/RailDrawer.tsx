@@ -1,4 +1,6 @@
+import { useRouterState } from "@tanstack/react-router";
 import { PanelLeftIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Sheet, SheetPopup, SheetTitle, SheetDescription } from "~/components/ui/sheet";
 import { Dialog } from "@base-ui/react/dialog";
@@ -12,8 +14,12 @@ import { Tip } from "./Tip";
  * traps focus, closes on Escape and returns focus to the button.
  */
 export function RailDrawer() {
+  const [open, setOpen] = useState(false);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // Choosing a row opens another page: the drawer has done its job.
+  useEffect(() => setOpen(false), [pathname]);
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <Tip text="Show your AIOS, what needs you and the activity">
         <Dialog.Trigger
           aria-label="Open the Command Center side panel"
