@@ -2,15 +2,12 @@ import type { MarketingListResult } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
 import { MailIcon, MegaphoneIcon } from "lucide-react";
 import { AsyncResult } from "effect/reactivity";
-import { type KeyboardEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { WindowEmpty } from "~/components/twoState/RailWindow";
-import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
+import { WindowHeader } from "~/components/twoState/WindowHeader";
 import { SidebarInset } from "~/components/ui/sidebar";
-import { isElectron } from "~/env";
-import { cn } from "~/lib/utils";
 
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { BatchApproval, type DecideFn } from "./BatchApproval";
 import { ContentList } from "./ContentList";
@@ -22,11 +19,11 @@ const formatTime = (ms: number) =>
   new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
 const TABS = [
-  { id: "approval", label: "Needs approval", hint: "Posts that wait for your yes" },
-  { id: "content", label: "Posts", hint: "Every draft and posted item" },
-  { id: "metrics", label: "Metrics", hint: "Views, likes, replies and reposts" },
-  { id: "email", label: "Email", hint: "Email drafts for your approval" },
-  { id: "ads", label: "Ads", hint: "Ad drafts for your approval" },
+  { id: "approval", label: "Needs approval" },
+  { id: "content", label: "Posts" },
+  { id: "metrics", label: "Metrics" },
+  { id: "email", label: "Email" },
+  { id: "ads", label: "Ads" },
 ] as const;
 
 /** Tabs with no data behind them yet: each says what will show. */
@@ -61,22 +58,20 @@ export function MarketingScreen(props: {
     [list],
   );
   const rows = useMemo(() => (list ? contentRows(list) : []), [list]);
-
-  const move = (event: KeyboardEvent, index: number) => {
-    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (step === 0) return;
-    event.preventDefault();
-    const next = TABS[(index + step + TABS.length) % TABS.length]!;
-    setTab(next.id);
-    document.getElementById(`marketing-tab-${next.id}`)?.focus();
-  };
+  const queued = list?.queueTotal ?? 0;
+  const tabs = TABS.map((item) =>
+    item.id === "approval" && queued > 0 ? { ...item, label: `${item.label} ${queued}` } : item,
+  );
 
   return (
     <SidebarInset className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none">
-      <WorkspacePageHeader electron={isElectron} className="gap-2 border-b border-border">
-        <MegaphoneIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-        <h1 className="truncate text-sm font-medium">Content</h1>
-      </WorkspacePageHeader>
+      <WindowHeader
+        title="Content"
+        tabs={tabs}
+        active={tab}
+        onSelect={(id) => setTab(id as TabId)}
+        idBase="marketing"
+      />
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-both">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
@@ -100,47 +95,7 @@ export function MarketingScreen(props: {
             </details>
           ) : null}
 
-          <div role="tablist" aria-label="Content views" className="flex flex-wrap gap-1">
-            {TABS.map((item, index) => {
-              const selected = item.id === tab;
-              const count = item.id === "approval" ? (list?.queueTotal ?? 0) : 0;
-              return (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        id={`marketing-tab-${item.id}`}
-                        type="button"
-                        role="tab"
-                        aria-selected={selected}
-                        aria-controls={`marketing-panel-${item.id}`}
-                        tabIndex={selected ? 0 : -1}
-                        onClick={() => setTab(item.id)}
-                        onKeyDown={(event) => move(event, index)}
-                        className={cn(
-                          "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 text-sm outline-none transition-colors duration-150",
-                          "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                          selected
-                            ? "bg-foreground text-background"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                        )}
-                      >
-                        {item.label}
-                        {count > 0 ? <span className="tabular-nums">{count}</span> : null}
-                      </button>
-                    }
-                  />
-                  <TooltipPopup side="bottom">{item.hint}</TooltipPopup>
-                </Tooltip>
-              );
-            })}
-          </div>
-
-          <div
-            role="tabpanel"
-            id={`marketing-panel-${tab}`}
-            aria-labelledby={`marketing-tab-${tab}`}
-          >
+          <div role="tabpanel" id="marketing-panel" aria-labelledby={`marketing-tab-${tab}`}>
             {tab === "email" || tab === "ads" ? (
               <WindowEmpty {...COMING[tab]} />
             ) : props.noWorkspace ? (
