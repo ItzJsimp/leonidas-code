@@ -1,4 +1,9 @@
-import { AuthFilesystemWriteScope, type MarketingListResult, WS_METHODS } from "@t3tools/contracts";
+import {
+  AuthFilesystemWriteScope,
+  MARKETING_NO_WORKSPACE,
+  type MarketingListResult,
+  WS_METHODS,
+} from "@t3tools/contracts";
 import {
   createEnvironmentRpcCommand,
   createEnvironmentRpcQueryAtomFamily,
@@ -26,6 +31,8 @@ export interface MarketingView {
   readonly environmentId: ReturnType<typeof usePrimaryEnvironmentId>;
   readonly list: MarketingListResult | null;
   readonly error: string | null;
+  /** No AIOS folder is connected, so there are no marketing files to read. */
+  readonly noWorkspace: boolean;
   readonly refresh: () => void;
   /** Only a person's session holds this. An agent access level never does. */
   readonly canDecide: boolean;
@@ -42,6 +49,11 @@ export function useMarketing(): MarketingView {
     environmentId,
     list: query.data,
     error: query.error,
+    noWorkspace:
+      typeof query.failure === "object" &&
+      query.failure !== null &&
+      "message" in query.failure &&
+      query.failure.message === MARKETING_NO_WORKSPACE,
     refresh: query.refresh,
     canDecide,
   };

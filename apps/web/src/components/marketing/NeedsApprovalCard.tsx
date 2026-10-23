@@ -8,9 +8,9 @@ const SHOWN = 3;
 
 /** Command Center home card: how many posts wait for a yes, with the first few. */
 export function NeedsApprovalCard() {
-  const { list, error } = useMarketing();
-  // A workspace with no marketing folder shows nothing, so the home page stays quiet.
-  if (list === null ? error === null : isUnused(list)) return null;
+  const { list } = useMarketing();
+  // No folder, no marketing files, or a failed read: show nothing, so the home page stays quiet.
+  if (list === null || isUnused(list)) return null;
   const queue = list?.queue ?? [];
   const total = list?.queueTotal ?? 0;
   return (

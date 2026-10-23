@@ -1,4 +1,5 @@
 import {
+  MARKETING_NO_WORKSPACE,
   MarketingRpcError,
   type MarketingDecideInput,
   type MarketingDecideOutput,
@@ -25,8 +26,8 @@ const withRoot = <A, E>(
   work: (root: string, key: Uint8Array) => A,
 ) =>
   Effect.gen(function* () {
-    const root = yield* Effect.mapError(resolveRoot, () => rpcError("No workspace is open."));
-    if (root === null) return yield* rpcError("No workspace is open.");
+    const root = yield* Effect.mapError(resolveRoot, () => rpcError(MARKETING_NO_WORKSPACE));
+    if (root === null) return yield* rpcError(MARKETING_NO_WORKSPACE);
     const key = yield* Effect.mapError(approvalKey, () => rpcError("Could not read the key."));
     return yield* Effect.try({
       try: () => work(root, key),

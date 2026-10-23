@@ -186,6 +186,9 @@ export const MarketingDecideOutput = Schema.Struct({
 });
 export type MarketingDecideOutput = typeof MarketingDecideOutput.Type;
 
+/** The one error a screen shows in its own words: no AIOS folder is connected. */
+export const MARKETING_NO_WORKSPACE = "No workspace is open.";
+
 export class MarketingRpcError extends Schema.TaggedError<MarketingRpcError>()(
   "MarketingRpcError",
   { message: Schema.String },

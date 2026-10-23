@@ -4,6 +4,7 @@ import { APPROVAL_LABEL, CHANNEL_LABEL, type ContentRow, formatCount } from "./m
 export function ContentList(props: {
   readonly rows: ReadonlyArray<ContentRow>;
   readonly total: number;
+  readonly brandNames: Readonly<Record<string, string>>;
 }) {
   if (props.rows.length === 0) {
     return (
@@ -19,7 +20,7 @@ export function ContentList(props: {
           <li key={post.id} className="flex flex-col gap-1 p-3">
             <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
               <span>{CHANNEL_LABEL[post.channel]}</span>
-              <span>{post.brand}</span>
+              <span>{props.brandNames[post.brand] ?? post.brand}</span>
               <span className="font-medium text-foreground">
                 {post.status === "posted" ? "Posted" : "Draft"}
               </span>

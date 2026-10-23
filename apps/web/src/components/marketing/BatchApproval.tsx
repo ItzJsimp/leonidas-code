@@ -23,6 +23,7 @@ export type DecideFn = (
 export function BatchApproval(props: {
   readonly queue: MarketingListResult["queue"];
   readonly queueTotal: number;
+  readonly brandNames: Readonly<Record<string, string>>;
   readonly canDecide: boolean;
   readonly decide: DecideFn;
   readonly onDecided: () => void;
@@ -111,7 +112,7 @@ export function BatchApproval(props: {
             <div className="ml-auto flex gap-2">
               <Button
                 size="sm"
-                variant="destructive-outline"
+                variant="outline"
                 disabled={!canDecide || busy || chosen.length === 0}
                 title="Reject the selected items. The agent can write a new draft."
                 onClick={() => void send("reject")}
@@ -142,9 +143,13 @@ export function BatchApproval(props: {
             </p>
           )}
           {groupQueueByBrand(queue).map(({ brand, items }) => (
-            <section key={brand} aria-label={brand} className="flex flex-col gap-1">
+            <section
+              key={brand}
+              aria-label={props.brandNames[brand] ?? brand}
+              className="flex flex-col gap-1"
+            >
               <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {brand}
+                {props.brandNames[brand] ?? brand}
               </h3>
               <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
                 {items.map(({ ticket, post }) => (

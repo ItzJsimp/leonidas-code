@@ -18,6 +18,11 @@ vi.mock("../../state/query", () => ({
   useEnvironmentQuery: () => ({ data: null, error: null, refresh: () => {} }),
 }));
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, children }: { to: string; children: unknown }) => (
+    <a href={to}>{children as never}</a>
+  ),
+}));
 
 import { MarketingScreen } from "./MarketingView";
 
@@ -150,6 +155,18 @@ it("renders the empty state and a 200 item queue without a crash", async () => {
   await render({ list: fixtureList(200, 0) });
   expect(container.querySelectorAll("li")).toHaveLength(200);
   expect(container.textContent).toContain("Select all (200)");
+});
+
+it("shows brand names, not slugs", async () => {
+  await render();
+  expect(container.textContent).toContain("Acme Games");
+  expect(container.textContent).not.toContain("acme-games");
+});
+
+it("asks for an AIOS folder when none is connected", async () => {
+  await render({ list: null, noWorkspace: true, error: "No workspace is open." });
+  expect(container.textContent).toContain("Connect your AIOS folder");
+  expect(container.querySelector("a")?.getAttribute("href")).toBe("/tasks");
 });
 
 it("says when the queue and the content list are cut", async () => {

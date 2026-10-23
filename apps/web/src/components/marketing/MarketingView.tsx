@@ -1,4 +1,5 @@
 import type { MarketingListResult } from "@t3tools/contracts";
+import { Link } from "@tanstack/react-router";
 import { AsyncResult } from "effect/reactivity";
 import { type KeyboardEvent, useMemo, useState } from "react";
 
@@ -22,12 +23,17 @@ type TabId = (typeof TABS)[number]["id"];
 export function MarketingScreen(props: {
   readonly list: MarketingListResult | null;
   readonly error: string | null;
+  readonly noWorkspace?: boolean;
   readonly canDecide: boolean;
   readonly decide: DecideFn;
   readonly onRefresh: () => void;
 }) {
   const { list, error } = props;
   const [tab, setTab] = useState<TabId>("approval");
+  const brandNames = useMemo(
+    () => Object.fromEntries((list?.brands ?? []).map((brand) => [brand.slug, brand.name])),
+    [list],
+  );
   const rows = useMemo(() => (list ? contentRows(list) : []), [list]);
 
   const move = (event: KeyboardEvent, index: number) => {
@@ -96,20 +102,29 @@ export function MarketingScreen(props: {
         </div>
 
         <div role="tabpanel" id={`marketing-panel-${tab}`} aria-labelledby={`marketing-tab-${tab}`}>
-          {list === null ? (
+          {props.noWorkspace ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Marketing reads the marketing folder of your AIOS. Connect your AIOS folder on the{" "}
+              <Link to="/tasks" className="text-primary underline underline-offset-4">
+                Tasks page
+              </Link>
+              , then come back.
+            </p>
+          ) : list === null ? (
             <p role="status" className="text-sm text-muted-foreground">
               {error ? "Marketing numbers are not available now. Try again later." : "Loading..."}
             </p>
           ) : tab === "approval" ? (
             <BatchApproval
               queue={list.queue}
+              brandNames={brandNames}
               queueTotal={list.queueTotal}
               canDecide={props.canDecide}
               decide={props.decide}
               onDecided={props.onRefresh}
             />
           ) : tab === "content" ? (
-            <ContentList rows={rows} total={list.postsTotal} />
+            <ContentList rows={rows} total={list.postsTotal} brandNames={brandNames} />
           ) : (
             <MetricsPanel metrics={list.metrics} />
           )}
@@ -120,7 +135,7 @@ export function MarketingScreen(props: {
 }
 
 export function MarketingView() {
-  const { environmentId, list, error, refresh, canDecide } = useMarketing();
+  const { environmentId, list, error, noWorkspace, refresh, canDecide } = useMarketing();
   const run = useAtomCommand(marketingDecide);
   const decide: DecideFn = async (decisions) => {
     if (!environmentId) return null;
@@ -131,6 +146,7 @@ export function MarketingView() {
     <MarketingScreen
       list={list}
       error={error}
+      noWorkspace={noWorkspace}
       canDecide={canDecide}
       decide={decide}
       onRefresh={refresh}

@@ -51,9 +51,9 @@ it("renders nothing for a workspace with no marketing files", () => {
   expect(renderToStaticMarkup(<NeedsApprovalCard />)).toBe("");
 });
 
-it("shows a plain message when the numbers failed to load", () => {
-  query.error = "The computer request failed.";
-  expect(text(renderToStaticMarkup(<NeedsApprovalCard />))).toContain("not available now");
+it("renders nothing when the read failed, so the home page stays quiet", () => {
+  query.error = "No workspace is open.";
+  expect(renderToStaticMarkup(<NeedsApprovalCard />)).toBe("");
 });
 
 it("registers a home card and a header stat", () => {
