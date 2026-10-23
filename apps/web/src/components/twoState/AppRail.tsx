@@ -1,0 +1,177 @@
+import { Link, useLocation, useParams } from "@tanstack/react-router";
+import {
+  AudioLinesIcon,
+  BrainIcon,
+  ChartNoAxesColumnIcon,
+  FolderKanbanIcon,
+  ImageIcon,
+  InboxIcon,
+  LayoutDashboardIcon,
+  LibraryIcon,
+  ListChecksIcon,
+  MegaphoneIcon,
+  MessageSquareIcon,
+  SettingsIcon,
+  SunIcon,
+  TerminalSquareIcon,
+  UsersIcon,
+  type LucideIcon,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+import { WorkspaceSwitcher } from "~/components/workspace/WorkspaceSwitcher";
+import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
+import { isElectron } from "~/env";
+import { useLocalStorage } from "~/hooks/useLocalStorage";
+import { cn, isMacPlatform } from "~/lib/utils";
+import {
+  EMPTY_SETUP_STATE,
+  SETUP_STATE_STORAGE_KEY,
+  SetupStateSchema,
+} from "~/onboarding/setupState.logic";
+import { resolveThreadRouteTarget } from "~/threadRoutes";
+
+import { activeRailId, railItems, type RailItem } from "./railItems";
+import { Tip } from "./Tip";
+import { useTwoStateStore } from "./twoStateStore";
+import { useInboxUnread } from "./useInboxUnread";
+
+const ICONS: Readonly<Record<string, LucideIcon>> = {
+  "command-center": LayoutDashboardIcon,
+  chat: MessageSquareIcon,
+  scribe: AudioLinesIcon,
+  inbox: InboxIcon,
+  today: SunIcon,
+  tasks: ListChecksIcon,
+  projects: FolderKanbanIcon,
+  memory: BrainIcon,
+  library: LibraryIcon,
+  content: MegaphoneIcon,
+  images: ImageIcon,
+  team: UsersIcon,
+  developer: TerminalSquareIcon,
+  usage: ChartNoAxesColumnIcon,
+  settings: SettingsIcon,
+};
+
+const TARGET_CLASS =
+  "relative inline-flex size-9 items-center justify-center rounded-lg border border-transparent text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none [-webkit-app-region:no-drag]";
+const ACTIVE_CLASS = "border-border bg-surface-raised text-foreground";
+
+/** "99+" past 99, so the badge stays small. */
+export const badgeText = (count: number) => (count > 99 ? "99+" : String(count));
+
+/** The only app navigation: one icon per page. Chat opens the last chat, else the chat start page. */
+export function AppRail() {
+  const { active } = useActiveAiosWorkspace();
+  const [setup] = useLocalStorage(SETUP_STATE_STORAGE_KEY, EMPTY_SETUP_STATE, SetupStateSchema);
+  const lastThread = useTwoStateStore((state) => state.lastThread);
+  const unread = useInboxUnread();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const onChat = useParams({
+    strict: false,
+    select: (params) => resolveThreadRouteTarget(params) !== null,
+  });
+  const { main, bottom } = railItems({
+    business: active?.type === "business",
+    builder: setup.coder === true,
+  });
+  const current = activeRailId(pathname, onChat);
+  const renderItem = (item: RailItem) => (
+    <RailLink
+      key={item.id}
+      item={item}
+      current={item.id === current}
+      lastThread={lastThread}
+      badge={item.id === "inbox" ? unread : 0}
+    />
+  );
+  return (
+    <nav
+      aria-label="Main"
+      className={cn(
+        "flex h-full w-[52px] shrink-0 flex-col items-center gap-1 border-r border-border bg-card pb-2",
+        isElectron && isMacPlatform(navigator.platform) ? "pt-10" : "pt-2",
+      )}
+    >
+      <WorkspaceAvatar />
+      <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+        {main.map(renderItem)}
+      </div>
+      <div className="flex flex-col items-center gap-1">{bottom.map(renderItem)}</div>
+    </nav>
+  );
+}
+
+function RailLink({
+  item,
+  current,
+  lastThread,
+  badge,
+}: {
+  readonly item: RailItem;
+  readonly current: boolean;
+  readonly lastThread: ReturnType<typeof useTwoStateStore.getState>["lastThread"];
+  readonly badge: number;
+}) {
+  const Icon = ICONS[item.id] ?? LayoutDashboardIcon;
+  const label = badge > 0 ? `${item.label}, ${badge} unread` : item.label;
+  const common = {
+    "aria-label": label,
+    "aria-current": current ? ("page" as const) : undefined,
+    className: cn(TARGET_CLASS, current && ACTIVE_CLASS),
+  };
+  const content: ReactNode = (
+    <>
+      <Icon aria-hidden className="size-5" />
+      {badge > 0 ? (
+        <span
+          aria-hidden
+          className="absolute -top-1 -right-1 min-w-4 rounded-full bg-primary px-1 text-center text-3xs leading-4 font-medium text-primary-foreground tabular-nums"
+        >
+          {badgeText(badge)}
+        </span>
+      ) : null}
+    </>
+  );
+  return (
+    <Tip text={item.tooltip}>
+      {item.id === "chat" && lastThread ? (
+        <Link
+          to="/$environmentId/$threadId"
+          params={{ environmentId: lastThread.environmentId, threadId: lastThread.threadId }}
+          {...common}
+        >
+          {content}
+        </Link>
+      ) : (
+        <Link to={item.to} {...common}>
+          {content}
+        </Link>
+      )}
+    </Tip>
+  );
+}
+
+/** The round workspace avatar. It opens the workspace switcher. */
+function WorkspaceAvatar() {
+  const { active } = useActiveAiosWorkspace();
+  const name = active?.name ?? "Leonidas";
+  return (
+    <Popover>
+      <Tip text={`Workspace: ${name}`}>
+        <PopoverTrigger
+          aria-label={`Workspace: ${name}. Switch workspace`}
+          className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-xs font-semibold text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring [-webkit-app-region:no-drag]"
+        >
+          {name.slice(0, 1).toUpperCase()}
+        </PopoverTrigger>
+      </Tip>
+      <PopoverPopup side="right" align="start" className="w-64">
+        <p className="px-2 pb-1 text-sm font-medium">{name}</p>
+        <WorkspaceSwitcher />
+      </PopoverPopup>
+    </Popover>
+  );
+}

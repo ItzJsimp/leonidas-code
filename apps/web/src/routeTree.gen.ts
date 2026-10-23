@@ -36,10 +36,17 @@ import { Route as SettingsConnectionsRouteImport } from './routes/settings.conne
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as ProjectsProjectKeyRouteImport } from './routes/projects.$projectKey'
+import { Route as ChatTodayRouteImport } from './routes/_chat.today'
+import { Route as ChatTeamRouteImport } from './routes/_chat.team'
 import { Route as ChatTasksRouteImport } from './routes/_chat.tasks'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
+import { Route as ChatProjectsRouteImport } from './routes/_chat.projects'
+import { Route as ChatMemoryRouteImport } from './routes/_chat.memory'
 import { Route as ChatMarketingRouteImport } from './routes/_chat.marketing'
+import { Route as ChatLibraryRouteImport } from './routes/_chat.library'
+import { Route as ChatInboxRouteImport } from './routes/_chat.inbox'
 import { Route as ChatGitRouteImport } from './routes/_chat.git'
+import { Route as ChatDeveloperRouteImport } from './routes/_chat.developer'
 import { Route as ChatCommandCenterRouteImport } from './routes/_chat.command-center'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
@@ -179,6 +186,16 @@ const ProjectsProjectKeyRoute = ProjectsProjectKeyRouteImport.update({
   path: '/projects/$projectKey',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatTodayRoute = ChatTodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatTeamRoute = ChatTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatTasksRoute = ChatTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -189,14 +206,39 @@ const ChatPullRequestsRoute = ChatPullRequestsRouteImport.update({
   path: '/pull-requests',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatProjectsRoute = ChatProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatMemoryRoute = ChatMemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatMarketingRoute = ChatMarketingRouteImport.update({
   id: '/marketing',
   path: '/marketing',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatLibraryRoute = ChatLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatInboxRoute = ChatInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatGitRoute = ChatGitRouteImport.update({
   id: '/git',
   path: '/git',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatDeveloperRoute = ChatDeveloperRouteImport.update({
+  id: '/developer',
+  path: '/developer',
   getParentRoute: () => ChatRoute,
 } as any)
 const ChatCommandCenterRoute = ChatCommandCenterRouteImport.update({
@@ -229,10 +271,17 @@ export interface FileRoutesByFullPath {
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/developer': typeof ChatDeveloperRoute
   '/git': typeof ChatGitRoute
+  '/inbox': typeof ChatInboxRoute
+  '/library': typeof ChatLibraryRoute
   '/marketing': typeof ChatMarketingRoute
+  '/memory': typeof ChatMemoryRoute
+  '/projects': typeof ChatProjectsRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/tasks': typeof ChatTasksRoute
+  '/team': typeof ChatTeamRoute
+  '/today': typeof ChatTodayRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -263,10 +312,17 @@ export interface FileRoutesByTo {
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/developer': typeof ChatDeveloperRoute
   '/git': typeof ChatGitRoute
+  '/inbox': typeof ChatInboxRoute
+  '/library': typeof ChatLibraryRoute
   '/marketing': typeof ChatMarketingRoute
+  '/memory': typeof ChatMemoryRoute
+  '/projects': typeof ChatProjectsRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/tasks': typeof ChatTasksRoute
+  '/team': typeof ChatTeamRoute
+  '/today': typeof ChatTodayRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -300,10 +356,17 @@ export interface FileRoutesById {
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
   '/_chat/command-center': typeof ChatCommandCenterRoute
+  '/_chat/developer': typeof ChatDeveloperRoute
   '/_chat/git': typeof ChatGitRoute
+  '/_chat/inbox': typeof ChatInboxRoute
+  '/_chat/library': typeof ChatLibraryRoute
   '/_chat/marketing': typeof ChatMarketingRoute
+  '/_chat/memory': typeof ChatMemoryRoute
+  '/_chat/projects': typeof ChatProjectsRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/_chat/tasks': typeof ChatTasksRoute
+  '/_chat/team': typeof ChatTeamRoute
+  '/_chat/today': typeof ChatTodayRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -338,10 +401,17 @@ export interface FileRouteTypes {
     | '/usage'
     | '/welcome'
     | '/command-center'
+    | '/developer'
     | '/git'
+    | '/inbox'
+    | '/library'
     | '/marketing'
+    | '/memory'
+    | '/projects'
     | '/pull-requests'
     | '/tasks'
+    | '/team'
+    | '/today'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -372,10 +442,17 @@ export interface FileRouteTypes {
     | '/usage'
     | '/welcome'
     | '/command-center'
+    | '/developer'
     | '/git'
+    | '/inbox'
+    | '/library'
     | '/marketing'
+    | '/memory'
+    | '/projects'
     | '/pull-requests'
     | '/tasks'
+    | '/team'
+    | '/today'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -408,10 +485,17 @@ export interface FileRouteTypes {
     | '/usage'
     | '/welcome'
     | '/_chat/command-center'
+    | '/_chat/developer'
     | '/_chat/git'
+    | '/_chat/inbox'
+    | '/_chat/library'
     | '/_chat/marketing'
+    | '/_chat/memory'
+    | '/_chat/projects'
     | '/_chat/pull-requests'
     | '/_chat/tasks'
+    | '/_chat/team'
+    | '/_chat/today'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -638,6 +722,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_chat/today': {
+      id: '/_chat/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof ChatTodayRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/team': {
+      id: '/_chat/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof ChatTeamRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/tasks': {
       id: '/_chat/tasks'
       path: '/tasks'
@@ -652,6 +750,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatPullRequestsRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/projects': {
+      id: '/_chat/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ChatProjectsRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/memory': {
+      id: '/_chat/memory'
+      path: '/memory'
+      fullPath: '/memory'
+      preLoaderRoute: typeof ChatMemoryRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/marketing': {
       id: '/_chat/marketing'
       path: '/marketing'
@@ -659,11 +771,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatMarketingRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/library': {
+      id: '/_chat/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof ChatLibraryRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/inbox': {
+      id: '/_chat/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof ChatInboxRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/git': {
       id: '/_chat/git'
       path: '/git'
       fullPath: '/git'
       preLoaderRoute: typeof ChatGitRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/developer': {
+      id: '/_chat/developer'
+      path: '/developer'
+      fullPath: '/developer'
+      preLoaderRoute: typeof ChatDeveloperRouteImport
       parentRoute: typeof ChatRoute
     }
     '/_chat/command-center': {
@@ -692,10 +825,17 @@ declare module '@tanstack/react-router' {
 
 interface ChatRouteChildren {
   ChatCommandCenterRoute: typeof ChatCommandCenterRoute
+  ChatDeveloperRoute: typeof ChatDeveloperRoute
   ChatGitRoute: typeof ChatGitRoute
+  ChatInboxRoute: typeof ChatInboxRoute
+  ChatLibraryRoute: typeof ChatLibraryRoute
   ChatMarketingRoute: typeof ChatMarketingRoute
+  ChatMemoryRoute: typeof ChatMemoryRoute
+  ChatProjectsRoute: typeof ChatProjectsRoute
   ChatPullRequestsRoute: typeof ChatPullRequestsRoute
   ChatTasksRoute: typeof ChatTasksRoute
+  ChatTeamRoute: typeof ChatTeamRoute
+  ChatTodayRoute: typeof ChatTodayRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ChatEnvironmentIdThreadIdRoute: typeof ChatEnvironmentIdThreadIdRoute
   ChatDraftDraftIdRoute: typeof ChatDraftDraftIdRoute
@@ -703,10 +843,17 @@ interface ChatRouteChildren {
 
 const ChatRouteChildren: ChatRouteChildren = {
   ChatCommandCenterRoute: ChatCommandCenterRoute,
+  ChatDeveloperRoute: ChatDeveloperRoute,
   ChatGitRoute: ChatGitRoute,
+  ChatInboxRoute: ChatInboxRoute,
+  ChatLibraryRoute: ChatLibraryRoute,
   ChatMarketingRoute: ChatMarketingRoute,
+  ChatMemoryRoute: ChatMemoryRoute,
+  ChatProjectsRoute: ChatProjectsRoute,
   ChatPullRequestsRoute: ChatPullRequestsRoute,
   ChatTasksRoute: ChatTasksRoute,
+  ChatTeamRoute: ChatTeamRoute,
+  ChatTodayRoute: ChatTodayRoute,
   ChatIndexRoute: ChatIndexRoute,
   ChatEnvironmentIdThreadIdRoute: ChatEnvironmentIdThreadIdRoute,
   ChatDraftDraftIdRoute: ChatDraftDraftIdRoute,
