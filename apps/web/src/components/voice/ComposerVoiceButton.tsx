@@ -194,9 +194,7 @@ export function ComposerVoiceButton({
         <DialogPopup>
           <DialogHeader>
             <DialogTitle>Set up voice</DialogTitle>
-            <DialogDescription>
-              Connect your Groq key to dictate in Leonidas Code.
-            </DialogDescription>
+            <DialogDescription>Connect your Groq key to dictate in Leonidas.</DialogDescription>
           </DialogHeader>
           <DialogPanel>
             <VoiceSetup environmentId={environmentId} onReady={() => setSetup(false)} />

@@ -13,7 +13,7 @@ async function readMediaBlob(src: string): Promise<Blob> {
     response = await fetch(src);
   } catch (cause) {
     throw new Error(
-      "Leonidas Code could not load the file. The website may block it, or your internet may be down. Try again.",
+      "Leonidas could not load the file. The website may block it, or your internet may be down. Try again.",
       { cause },
     );
   }

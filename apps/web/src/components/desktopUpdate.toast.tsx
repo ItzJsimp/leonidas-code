@@ -74,7 +74,7 @@ export function showDesktopUpdateDownloadedToast(
     title: "Update ready",
     description: (
       <>
-        <span>Leonidas Code{version ? ` ${version}` : ""} is ready to install.</span>
+        <span>Leonidas{version ? ` ${version}` : ""} is ready to install.</span>
         {releaseUrl ? <ReleaseNotesLink releaseUrl={releaseUrl} shell={shell} /> : null}
       </>
     ),
@@ -126,7 +126,7 @@ export async function checkForDesktopUpdateWithFeedback(
       toastManager.add({
         type: "success",
         title: "You're up to date",
-        description: `Leonidas Code ${state.currentVersion} is the newest version.`,
+        description: `Leonidas ${state.currentVersion} is the newest version.`,
       });
     } else if (state.status === "error") {
       toastManager.add({

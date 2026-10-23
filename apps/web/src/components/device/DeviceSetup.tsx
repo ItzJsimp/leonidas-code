@@ -21,7 +21,7 @@ const platformName = (platform: DevicePlatform) => (platform === "ios" ? "iOS" :
 export const deviceHubDescription =
   "Turn this on to open simulators and emulators on this computer, or on another computer you connect to.";
 export const agentDeviceDescription =
-  "Let the AI in new chats on this computer start and control devices. Leonidas Code sets up the tools it needs.";
+  "Let the AI in new chats on this computer start and control devices. Leonidas sets up the tools it needs.";
 
 export function platformSetupStatus(state: DeviceServiceState, platform: DevicePlatform) {
   const availability = state.hosts

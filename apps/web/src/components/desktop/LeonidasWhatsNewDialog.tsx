@@ -62,7 +62,7 @@ export function LeonidasWhatsNewDialog(props: WhatsNewDialogProps) {
           <DialogDescription>
             {onRestartNow
               ? "Your update is ready. Restart to install it, or wait until the AI is done."
-              : "The newest changes and fixes in Leonidas Code."}
+              : "The newest changes and fixes in Leonidas."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel className="max-h-[55dvh]">

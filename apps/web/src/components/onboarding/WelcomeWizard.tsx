@@ -248,7 +248,7 @@ export function WelcomeWizard({
           const errorToast = {
             type: "error",
             title: "Could not finish setup",
-            description: "Leonidas Code could not save your settings. Try again.",
+            description: "Leonidas could not save your settings. Try again.",
           } as const;
           if (completionErrorToastIdRef.current === null) {
             completionErrorToastIdRef.current = toastManager.add(errorToast);
@@ -302,14 +302,12 @@ export function WelcomeWizard({
         initialFocus={() => document.getElementById("onboarding-pairing-url") ?? true}
       >
         <WizardHeader
-          title="Set up Leonidas Code"
+          title="Set up Leonidas"
           identity={
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2" role="img" aria-label="Leonidas Code">
+              <div className="flex items-center gap-2" role="img" aria-label="Leonidas">
                 <T3Wordmark className="size-6 shrink-0" aria-hidden />
-                <span className="text-xl font-medium tracking-tight text-foreground">
-                  Leonidas Code
-                </span>
+                <span className="text-xl font-medium tracking-tight text-foreground">Leonidas</span>
               </div>
               <Button
                 size="xs"
@@ -563,8 +561,8 @@ function ConnectionStep({
       ) : null}
       <div className="mt-6 flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
-          Leonidas Code collects anonymous usage data to help us improve it. To read more about how
-          your data is used and how to opt out, see our{" "}
+          Leonidas collects anonymous usage data to help us improve it. To read more about how your
+          data is used and how to opt out, see our{" "}
           <a
             className="underline underline-offset-2 hover:text-foreground"
             href={PRIVACY_POLICY_URL}
@@ -661,7 +659,7 @@ function ConnectAccountOption({
             </p>
             <CommandBlock command="npx t3 connect" className="mt-3" />
             <p className="mt-3 text-xs text-muted-foreground">
-              Keep Leonidas Code open. Then select the computers you want to set up above.
+              Keep Leonidas open. Then select the computers you want to set up above.
             </p>
           </div>
         </CollapsiblePanel>
@@ -777,7 +775,7 @@ function PairingForm({
             </p>
             <CommandBlock command="npx t3 pair" className="mt-2" />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start Leonidas Code on that computer first, or run{" "}
+              Start Leonidas on that computer first, or run{" "}
               <code className="font-mono">npx t3 serve</code>. Add{" "}
               <code className="font-mono">--tailscale</code> to use your Tailscale network.
             </p>

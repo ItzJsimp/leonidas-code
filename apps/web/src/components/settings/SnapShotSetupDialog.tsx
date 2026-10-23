@@ -174,7 +174,7 @@ export function SnapShotSetupDialog({
                       ? "Update the capture helper"
                       : "Allow snapshots",
                   description:
-                    "Leonidas Code's capture helper lets you capture other apps and return to your draft. It's included with Leonidas Code.",
+                    "Leonidas's capture helper lets you capture other apps and return to your draft. It's included with Leonidas.",
                 }
           : backend === "niri"
             ? {
@@ -355,7 +355,7 @@ export function SnapShotSetupDialog({
                     </p>
                   ))}
                   {step === "access" && (backend === "gnome" || helperBackend) ? (
-                    <p>Included with Leonidas Code. No download needed.</p>
+                    <p>Included with Leonidas. No download needed.</p>
                   ) : null}
                   {step === "access" && backend === "gnome" && extension?.status === "enabled" ? (
                     <Button

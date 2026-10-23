@@ -307,7 +307,7 @@ export function AcpSessionManagementSection(props: {
     <div className="grid gap-3">
       <SettingsRow
         title="Chats from the AI service"
-        description="Continue chats that the AI service started. They open as Leonidas Code chats."
+        description="Continue chats that the AI service started. They open as Leonidas chats."
         status={
           canList && props.projects.length === 0
             ? "No projects yet. Add a project, then import chats."

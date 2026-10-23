@@ -15,7 +15,7 @@ export function filePreviewReadErrorMessage(error: ProjectReadFileError): string
     case "path_not_file":
       return "This path is a folder or a special file, not a normal file. Pick a file.";
     case "binary_file":
-      return "This file is not text, so Leonidas Code cannot show it.";
+      return "This file is not text, so Leonidas cannot show it.";
     case "workspace_path_outside_root":
       return "This path is outside the project. Pick a file in the project.";
     case "resolved_path_outside_root":
@@ -23,8 +23,8 @@ export function filePreviewReadErrorMessage(error: ProjectReadFileError): string
     case "operation_failed":
       // A realpath failure can mean a missing path, permissions, or another I/O error.
       return error.operation === "realpath-workspace-root"
-        ? "Leonidas Code cannot open the project folder. Check that the folder exists."
-        : "Leonidas Code cannot open this file. The file may be missing. Check the path and try again.";
+        ? "Leonidas cannot open the project folder. Check that the folder exists."
+        : "Leonidas cannot open this file. The file may be missing. Check the path and try again.";
     default:
       return error.message;
   }

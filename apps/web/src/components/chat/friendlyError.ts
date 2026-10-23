@@ -5,13 +5,13 @@ const GENERIC = "Something went wrong. Copy the details and try again.";
 const KNOWN_CAUSES: ReadonlyArray<readonly [RegExp, string]> = [
   [
     /fetch failed|network|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|timed out/i,
-    "Leonidas Code could not reach the network. Check your internet connection and try again.",
+    "Leonidas could not reach the network. Check your internet connection and try again.",
   ],
   [
     /EACCES|EPERM|permission denied/i,
-    "Leonidas Code does not have permission to do this. Check the folder or file permissions.",
+    "Leonidas does not have permission to do this. Check the folder or file permissions.",
   ],
-  [/ENOENT|no such file/i, "Leonidas Code could not find that file or folder."],
+  [/ENOENT|no such file/i, "Leonidas could not find that file or folder."],
   [/\b429\b|rate.?limit/i, "Too many requests. Wait a short time and try again."],
   [/\b401\b|unauthori[sz]ed|not signed in/i, "You are not signed in. Sign in and try again."],
 ];

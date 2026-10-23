@@ -156,7 +156,7 @@ export function BrainVisualizer({
                 layer: "core",
                 area: "dev",
                 path: "areas/dev.md",
-                note: "Leonidas Code app, worktrees, and release pipelines.",
+                note: "Leonidas app, worktrees, and release pipelines.",
               },
               {
                 id: "sk-yt",

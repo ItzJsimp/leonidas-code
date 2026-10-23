@@ -286,7 +286,7 @@ export function LogsPanel() {
     <div className="flex flex-col gap-4">
       <Card
         title="Traces"
-        hint="What Leonidas Code recorded while it worked."
+        hint="What Leonidas recorded while it worked."
         action={
           <div className="flex items-center gap-1.5">
             <DiagnosticsLastChecked checkedAt={data?.readAt ?? null} />

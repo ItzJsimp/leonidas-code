@@ -37,7 +37,7 @@ export function BranchNamingSettings() {
         serverScoped
         settingKeys={["branchNamingMode"]}
         {...searchableSetting("worktree-branch-naming")}
-        description="Choose how Leonidas Code names the branch of a new separate copy. It uses your first message."
+        description="Choose how Leonidas names the branch of a new separate copy. It uses your first message."
         status={
           !modeMixed && settings.branchNamingMode === "semantic"
             ? "The model picks a prefix that describes the work, for example feat/add-search, fix/login-timeout, or refactor/auth."
@@ -125,7 +125,7 @@ export function BranchNamingSettings() {
           serverScoped
           settingKeys={["branchNameInstructions"]}
           title="Branch naming instructions"
-          description="Added to the instructions for naming. The model gives the full branch name. Leonidas Code adds no prefix or suffix."
+          description="Added to the instructions for naming. The model gives the full branch name. Leonidas adds no prefix or suffix."
           resetAction={
             instructionsMixed || settings.branchNameInstructions !== "" ? (
               <SettingResetButton

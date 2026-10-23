@@ -269,7 +269,7 @@ describe("environmentBootstrap", () => {
     expect(readPrimaryEnvironmentTarget()).toBeNull();
     expect(getPrimaryKnownEnvironment()).toBeNull();
     expect(() => resolvePrimaryEnvironmentHttpUrl("/api/auth/session")).toThrow(
-      "This computer is turned off in Leonidas Code. Turn it on in Connections.",
+      "This computer is turned off in Leonidas. Turn it on in Connections.",
     );
   });
 

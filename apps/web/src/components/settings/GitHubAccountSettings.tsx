@@ -83,7 +83,7 @@ export function GitHubAccountSettings({
     return (
       <p className="text-xs text-muted-foreground">
         Sign in with <code className="rounded bg-muted px-1 py-px text-2xs">gh auth login</code> on
-        the computer that runs Leonidas Code. Then scan again to choose accounts here.
+        the computer that runs Leonidas. Then scan again to choose accounts here.
       </p>
     );
   }
@@ -195,8 +195,7 @@ export function GitHubAccountSettings({
             {stalePin ? (
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-warning">
-                  The login you chose is no longer signed in. Leonidas Code uses the current gh
-                  login.
+                  The login you chose is no longer signed in. Leonidas uses the current gh login.
                 </p>
                 <Button
                   size="xs"

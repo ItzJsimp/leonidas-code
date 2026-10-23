@@ -185,7 +185,7 @@ function SortableRouteRow({
         {address !== null ? (
           <p className="truncate text-2xs text-muted-foreground">
             {address}
-            {isLearned(route) ? " · found by Leonidas Code" : ""}
+            {isLearned(route) ? " · found by Leonidas" : ""}
           </p>
         ) : null}
       </div>

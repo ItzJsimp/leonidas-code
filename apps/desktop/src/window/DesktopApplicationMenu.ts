@@ -74,7 +74,7 @@ const checkForUpdatesFromMenu = Effect.gen(function* () {
     yield* electronDialog.showMessageBox({
       type: "info",
       title: "You have the latest update",
-      message: `Leonidas Code ${updateState.currentVersion} is the latest version.`,
+      message: `Leonidas ${updateState.currentVersion} is the latest version.`,
       buttons: ["OK"],
     });
   } else if (updateState.status === "error") {

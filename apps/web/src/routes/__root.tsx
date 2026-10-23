@@ -329,7 +329,7 @@ function LeonidasThemeAdoptionNotice() {
       toastId = toastManager.add({
         type: "info",
         title: "A new Leonidas look",
-        description: "Leonidas Code now has its own theme.",
+        description: "Leonidas now has its own theme.",
         timeout: 15_000,
         actionProps: {
           children: "Switch back",

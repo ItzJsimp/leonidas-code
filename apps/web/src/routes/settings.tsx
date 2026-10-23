@@ -150,7 +150,7 @@ function SettingsContentLayout() {
       toastManager.add({
         type: "warning",
         title: "Settings window was blocked",
-        description: "Allow popups for Leonidas Code, then try again.",
+        description: "Allow popups for Leonidas, then try again.",
       });
       return;
     }

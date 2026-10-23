@@ -1172,7 +1172,7 @@ function PullRequestCodeTab({
                     />
                   </TooltipTrigger>
                   <TooltipPopup side="bottom">
-                    The code service does not save which files you have read, so Leonidas Code saves
+                    The code service does not save which files you have read, so Leonidas saves
                     these ticks on this computer. They show in every app connected to this computer,
                     but the website of the code service will not show them.
                   </TooltipPopup>

@@ -83,7 +83,7 @@ export class ThreadSettlementUnsupportedError extends Schema.TaggedError<ThreadS
   },
 ) {
   override get message(): string {
-    return "This computer cannot mark chats as done yet. Update Leonidas Code on that computer to use it.";
+    return "This computer cannot mark chats as done yet. Update Leonidas on that computer to use it.";
   }
 }
 
@@ -95,7 +95,7 @@ export class ThreadSnoozeUnsupportedError extends Schema.TaggedError<ThreadSnooz
   },
 ) {
   override get message(): string {
-    return "This computer cannot snooze chats yet. Update Leonidas Code on that computer to use it.";
+    return "This computer cannot snooze chats yet. Update Leonidas on that computer to use it.";
   }
 }
 
@@ -131,7 +131,7 @@ export class ThreadAutoSettleOptOutUnsupportedError extends Schema.TaggedError<T
   },
 ) {
   override get message(): string {
-    return "This computer cannot turn off “Mark as done by itself” for one chat yet. Update Leonidas Code on that computer to use it.";
+    return "This computer cannot turn off “Mark as done by itself” for one chat yet. Update Leonidas on that computer to use it.";
   }
 }
 
@@ -143,7 +143,7 @@ export class ThreadPinningUnsupportedError extends Schema.TaggedError<ThreadPinn
   },
 ) {
   override get message(): string {
-    return "This computer cannot pin chats yet. Update Leonidas Code on that computer to use it.";
+    return "This computer cannot pin chats yet. Update Leonidas on that computer to use it.";
   }
 }
 
@@ -155,7 +155,7 @@ export class ThreadPinReorderUnsupportedError extends Schema.TaggedError<ThreadP
   },
 ) {
   override get message(): string {
-    return "This computer cannot change the order of pinned chats yet. Update Leonidas Code on that computer to do it.";
+    return "This computer cannot change the order of pinned chats yet. Update Leonidas on that computer to do it.";
   }
 }
 
@@ -167,7 +167,7 @@ export class ThreadActiveReorderUnsupportedError extends Schema.TaggedError<Thre
   },
 ) {
   override get message(): string {
-    return "Update Leonidas Code on this computer to change the order of chats.";
+    return "Update Leonidas on this computer to change the order of chats.";
   }
 }
 

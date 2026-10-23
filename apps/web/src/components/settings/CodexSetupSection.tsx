@@ -579,9 +579,9 @@ function ManagedCodexSetup({
         : installation?.phase === "verifying"
           ? "Checking Codex."
           : installed
-            ? `${installation?.source === "local" ? "Using the Codex on this computer" : "Managed by Leonidas Code"}${installation?.installedVersion ? ` · v${installation.installedVersion}` : ""}.`
+            ? `${installation?.source === "local" ? "Using the Codex on this computer" : "Managed by Leonidas"}${installation?.installedVersion ? ` · v${installation.installedVersion}` : ""}.`
             : (installation?.message ??
-              "Leonidas Code downloads Codex and keeps it up to date for you.");
+              "Leonidas downloads Codex and keeps it up to date for you.");
   const accountDescription = finishingSignIn ? (
     "Finishing sign-in..."
   ) : installActive ? (
@@ -658,9 +658,7 @@ function ManagedCodexSetup({
   const callbackCompletion =
     !handoff && auth?.phase === "waiting" && url ? (
       <div className="flex w-full flex-col gap-3 text-xs leading-relaxed text-muted-foreground">
-        <p>
-          If sign-in doesn't return to Leonidas Code, paste the URL from the final localhost page.
-        </p>
+        <p>If sign-in doesn't return to Leonidas, paste the URL from the final localhost page.</p>
         <form
           className="flex flex-col gap-2 sm:flex-row sm:items-center"
           onSubmit={(event) => {
@@ -716,7 +714,7 @@ function ManagedCodexSetup({
           <details>
             <summary className="cursor-pointer">Other ways to connect</summary>
             <Button className="mt-2" size="sm" variant="outline" render={<a href={handoffUrl} />}>
-              Return to the Leonidas Code app
+              Return to the Leonidas app
             </Button>
           </details>
         ) : null}
@@ -1037,7 +1035,7 @@ export function CodexManagedRuntimeFields({
     <>
       <SettingsRow
         title="Codex file location"
-        description="Leonidas Code chose this file."
+        description="Leonidas chose this file."
         control={
           <div className="w-full sm:w-80">
             <Input

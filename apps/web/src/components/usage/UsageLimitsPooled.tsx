@@ -196,7 +196,7 @@ function SegmentPopover({
             {subscriptionEstimateSummary(window.tokenEstimate)}
             {window.tokenEstimate.capacityTokens === undefined ? null : (
               <span className="block">
-                This is an estimate. Your work and use outside Leonidas Code change it.
+                This is an estimate. Your work and use outside Leonidas change it.
               </span>
             )}
           </span>

@@ -59,7 +59,7 @@ function ensureRelayClientAvailable(
     if (status.status === "available") return;
     if (status.status === "unsupported") {
       return yield* new CloudEnvironmentLinkError({
-        message: `Leonidas Code cannot install remote access on ${status.platform}-${status.arch}. Install it yourself, then try again.`,
+        message: `Leonidas cannot install remote access on ${status.platform}-${status.arch}. Install it yourself, then try again.`,
       });
     }
 
@@ -95,7 +95,7 @@ function ensureRelayClientAvailable(
       return yield* new CloudEnvironmentLinkError({
         message:
           installedStatus.status === "unsupported"
-            ? `Leonidas Code cannot install remote access on ${installedStatus.platform}-${installedStatus.arch}. Install it yourself, then try again.`
+            ? `Leonidas cannot install remote access on ${installedStatus.platform}-${installedStatus.arch}. Install it yourself, then try again.`
             : "Remote access is still unavailable. Try again.",
       });
     }

@@ -71,7 +71,7 @@ const priceTargetsAtom = Atom.make((get): readonly UsagePriceTarget[] =>
           : settings === null
             ? "Prices did not load. Try again later."
             : environment.serverConfig?.environment.capabilities.usagePriceOverrides !== true
-              ? "Update Leonidas Code on that computer to edit prices"
+              ? "Update Leonidas on that computer to edit prices"
               : access === "pending"
                 ? "Checking permissions…"
                 : access === "denied"

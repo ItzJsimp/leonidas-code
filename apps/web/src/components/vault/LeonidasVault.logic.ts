@@ -510,7 +510,7 @@ export const STARTER_VAULT_NOTES: ReadonlyArray<VaultNote> = [
     createdAt: Date.now(),
     content: `# How Leonidas works
 
-Leonidas Code lets AI work on your computer and on your projects.
+Leonidas lets AI work on your computer and on your projects.
 
 ## What to read next
 - [[Chat speed]]: How fast the AI writes its reply.
@@ -531,7 +531,7 @@ Leonidas Code lets AI work on your computer and on your projects.
     createdAt: Date.now(),
     content: `# Chat speed
 
-Leonidas Code shows how fast the AI writes while it works. It looks at the last 5, 10 and 20 replies.
+Leonidas shows how fast the AI writes while it works. It looks at the last 5, 10 and 20 replies.
 
 - A high number means a fast reply
 - A low number means a slow reply

@@ -133,7 +133,7 @@ function ConnectedGuidanceCoach({
         runtimeMode: "approval-required",
         interactionMode: "plan",
         prompt: [
-          `Explain this Leonidas Code feature for an AI user at the ${profile.level} level.`,
+          `Explain this Leonidas feature for an AI user at the ${profile.level} level.`,
           `Feature: ${tip.title}. ${tip.text}`,
           "Give one short example and one action to try. Use fewer than 150 words.",
           "This is an explanation only. Do not change files or run commands.",

@@ -437,7 +437,7 @@ export function usePullRequestHandoffs({
       type: "warning",
       title: "Branch ready, but not on the latest commits",
       description:
-        "Leonidas Code could not update the branch to the latest commits of the pull request. The code there is older than the pull request. Unsaved work or local commits stop the update.",
+        "Leonidas could not update the branch to the latest commits of the pull request. The code there is older than the pull request. Unsaved work or local commits stop the update.",
     } as const;
     if (task === null) {
       toastManager.update(

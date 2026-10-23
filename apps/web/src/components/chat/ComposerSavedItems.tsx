@@ -76,7 +76,7 @@ import { createDraftSaver } from "./savedDraft";
 import { useProjectAiosWorkspace } from "../workspace/useProjectAiosWorkspace";
 
 /** Pasted into an agent chat, it makes the AIOS prompts folder the app reads. */
-const PROMPTS_FOLDER_SETUP = `Set up the prompts folder in my AIOS so Leonidas Code can read my saved prompts.
+const PROMPTS_FOLDER_SETUP = `Set up the prompts folder in my AIOS so Leonidas can read my saved prompts.
 1. Find my AIOS root (the folder with tasks/ and projects/). If you cannot find it, ask me.
 2. Create the folder prompts/ at that root.
 3. Add one sample file prompts/example.md. Start it with frontmatter that has type: prompt and a title, then the prompt text.

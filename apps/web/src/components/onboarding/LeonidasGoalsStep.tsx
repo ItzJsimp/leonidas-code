@@ -24,9 +24,7 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        Welcome to Leonidas Code
-      </h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome to Leonidas</h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
         What will you mostly use it for? Pick all that fit. We will pick skills and setup to match.
       </p>
@@ -55,8 +53,8 @@ export function LeonidasGoalsStep({ onContinue }: { readonly onContinue: () => v
         ) : null}
       </ScrollArea>
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        Leonidas Code collects anonymous usage data to help us improve it. To learn how we use your
-        data and how to opt out, read our{" "}
+        Leonidas collects anonymous usage data to help us improve it. To learn how we use your data
+        and how to opt out, read our{" "}
         <a
           className="underline underline-offset-2 hover:text-foreground"
           href={PRIVACY_POLICY_URL}

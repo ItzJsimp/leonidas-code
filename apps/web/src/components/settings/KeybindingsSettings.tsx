@@ -258,7 +258,7 @@ function UnknownWhenVariableWarning({
 
   return (
     <WarningTooltipIcon label={label} focusable={focusable} className="size-4.5">
-      Leonidas Code does not know this condition yet. You can still save it, but it may never match.
+      Leonidas does not know this condition yet. You can still save it, but it may never match.
     </WarningTooltipIcon>
   );
 }

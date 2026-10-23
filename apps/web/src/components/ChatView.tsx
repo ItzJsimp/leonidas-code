@@ -9493,7 +9493,7 @@ export default function ChatView(props: ChatViewProps) {
     ) {
       setThreadError(
         activeThread.id,
-        "Update Leonidas Code on this computer before you start many models.",
+        "Update Leonidas on this computer before you start many models.",
       );
       return;
     }
@@ -11756,7 +11756,7 @@ export default function ChatView(props: ChatViewProps) {
     ) : renderedRightPanelSurface?.kind === "pull-request" && !supportsPullRequests ? (
       <PullRequestsUnavailableState
         title="Pull requests unavailable"
-        error="Update Leonidas Code on this computer to browse pull requests."
+        error="Update Leonidas on this computer to browse pull requests."
       />
     ) : renderedRightPanelSurface?.kind === "pull-request" ? (
       // No onClose: the surface tab's own X owns closing here, and a second X in the header

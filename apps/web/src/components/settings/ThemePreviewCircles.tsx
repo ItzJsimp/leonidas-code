@@ -60,7 +60,7 @@ const STANDARD_THEME_PREVIEW_COLORS: Record<
 export const STANDARD_THEME_CARDS: ReadonlyArray<ThemeCardDefinition> = [
   {
     id: "default",
-    label: "Leonidas Code",
+    label: "Leonidas",
     previews: (["light", "dark"] as const).map((mode) => ({
       mode,
       colors: STANDARD_THEME_PREVIEW_COLORS[mode],

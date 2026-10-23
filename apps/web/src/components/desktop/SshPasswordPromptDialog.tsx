@@ -155,7 +155,7 @@ function ActiveSshPasswordPrompt({
         <DialogHeader>
           <DialogTitle>Enter your SSH password</DialogTitle>
           <DialogDescription>
-            Leonidas Code needs your SSH password to connect to <code>{target}</code>. It sends the
+            Leonidas needs your SSH password to connect to <code>{target}</code>. It sends the
             password to SSH on this computer for this connection only. It does not save the
             password.
           </DialogDescription>

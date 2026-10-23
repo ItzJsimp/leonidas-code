@@ -80,7 +80,7 @@ export function UsageProviderSettings({
           <SettingsRow
             id="cursor-keychain-usage"
             title="Cursor account usage"
-            description="Read your Cursor login from the macOS Keychain. Then Leonidas Code shows the history and the monthly limits of the account. macOS may ask you to allow access."
+            description="Read your Cursor login from the macOS Keychain. Then Leonidas shows the history and the monthly limits of the account. macOS may ask you to allow access."
             control={
               <Switch
                 aria-label="Cursor account usage"
@@ -153,9 +153,9 @@ function RemoveUsageProviderButton({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {label}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Leonidas Code deletes the management key of the hub from this computer. Its accounts
-              leave the Limits view. The hub itself stays as it is. To bring them back, add the hub
-              again with its URL and key.
+              Leonidas deletes the management key of the hub from this computer. Its accounts leave
+              the Limits view. The hub itself stays as it is. To bring them back, add the hub again
+              with its URL and key.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

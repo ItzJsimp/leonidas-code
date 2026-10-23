@@ -178,13 +178,13 @@ export function OnboardingSimulation() {
       >
         <WizardPopup size="wide" bottomStickOnMobile={false} showCloseButton={false}>
           <WizardHeader
-            title="Set up Leonidas Code"
+            title="Set up Leonidas"
             identity={
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2" role="img" aria-label="Leonidas Code">
+                <div className="flex items-center gap-2" role="img" aria-label="Leonidas">
                   <T3Wordmark className="size-6 shrink-0" aria-hidden />
                   <span className="text-xl font-medium tracking-tight text-foreground">
-                    Leonidas Code
+                    Leonidas
                   </span>
                 </div>
                 <Button
@@ -271,9 +271,9 @@ function PersonaPicker({
     <ScreenCard>
       <h1 className="text-2xl font-semibold tracking-tight">New-user simulation</h1>
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Walks the first-run setup exactly as someone who just installed Leonidas Code would see it.
-        AI accounts, sign-ins and projects are all fake, so nothing touches a real account, folder
-        or project. Counting starts on the first screen, and each finished run is saved.
+        Walks the first-run setup exactly as someone who just installed Leonidas would see it. AI
+        accounts, sign-ins and projects are all fake, so nothing touches a real account, folder or
+        project. Counting starts on the first screen, and each finished run is saved.
       </p>
       <div className="space-y-2">
         {(Object.keys(PERSONA_LABELS) as SimPersona[]).map((id) => (

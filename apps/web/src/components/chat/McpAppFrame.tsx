@@ -308,7 +308,7 @@ export function McpAppFrame(props: {
       // No dialog host is mounted, so nobody was asked; say so rather than
       // reporting that the user declined.
       if (approved === undefined) {
-        throw new McpAppHostRefusal("Leonidas Code could not ask you for approval here.");
+        throw new McpAppHostRefusal("Leonidas could not ask you for approval here.");
       }
       return approved;
     };

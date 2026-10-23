@@ -101,7 +101,7 @@ export function AddCodexAccountDialog({
             ) : (
               <SettingsRow
                 title="Codex"
-                description="Leonidas Code is getting Codex ready. Wait a moment."
+                description="Leonidas is getting Codex ready. Wait a moment."
               />
             )
           ) : (

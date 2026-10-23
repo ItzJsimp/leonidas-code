@@ -140,7 +140,7 @@ export function ServerUpdatesAction({
       if (desktopTargets.length > 0) {
         const confirmed =
           (await requestConfirmDialog(
-            `Update the Leonidas Code desktop apps on ${desktopTargets.map((target) => target.serverLabel).join(", ")}? They will close and relaunch on those computers.`,
+            `Update the Leonidas desktop apps on ${desktopTargets.map((target) => target.serverLabel).join(", ")}? They will close and relaunch on those computers.`,
           )) ?? true;
         if (!confirmed) return;
       }
@@ -265,7 +265,7 @@ export function ServerUpdateAction({
       // remote machine installs without asking anyone there.
       const confirmed =
         (await requestConfirmDialog(
-          `Update the Leonidas Code desktop app that runs the ${serverLabel}? It will close and open again on that computer.`,
+          `Update the Leonidas desktop app that runs the ${serverLabel}? It will close and open again on that computer.`,
         )) ?? true;
       if (!confirmed) {
         return;

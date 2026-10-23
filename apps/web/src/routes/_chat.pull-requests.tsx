@@ -1887,7 +1887,7 @@ function PullRequestsRouteView() {
       ) : !pullRequestsSupported ? (
         <PullRequestsUnavailableState
           title="Pull requests unavailable"
-          error="Update your Leonidas Code servers to browse pull requests."
+          error="Update your Leonidas servers to browse pull requests."
         />
       ) : firstLoad ? (
         <PullRequestListGhost rows={7} />

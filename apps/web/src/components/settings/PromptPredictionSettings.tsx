@@ -113,7 +113,7 @@ export function PromptPredictionSettings() {
           serverScoped
           settingKeys={["promptPredictionLocalModel"]}
           {...searchableSetting("prompt-prediction-local-model")}
-          description="Enter the name of a model that is installed in Ollama on this computer. If the model is not available, Leonidas Code uses history only."
+          description="Enter the name of a model that is installed in Ollama on this computer. If the model is not available, Leonidas uses history only."
           resetAction={
             settings.promptPredictionLocalModel ? (
               <SettingResetButton
@@ -188,7 +188,7 @@ export function PromptPredictionSettings() {
             serverScoped
             settingKeys={["promptPredictionCloudRequestLimit"]}
             {...searchableSetting("prompt-prediction-cloud-limit")}
-            description="Most online predictions per hour for all connected devices. Zero turns online predictions off. The count starts again when Leonidas Code restarts."
+            description="Most online predictions per hour for all connected devices. Zero turns online predictions off. The count starts again when Leonidas restarts."
             resetAction={
               settings.promptPredictionCloudRequestLimit !==
               DEFAULT_UNIFIED_SETTINGS.promptPredictionCloudRequestLimit ? (

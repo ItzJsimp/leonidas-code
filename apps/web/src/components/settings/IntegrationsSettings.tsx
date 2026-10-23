@@ -577,7 +577,7 @@ function BrowserRecordingFrameRateSetting({ disabled }: { readonly disabled: boo
 
 const LINK_TARGET_LABELS: Readonly<Record<BrowserLinkTarget, string>> = {
   system: "Your default browser",
-  app: "Leonidas Code",
+  app: "Leonidas",
 };
 
 function BrowserLinkTargetSetting({ disabled }: { readonly disabled: boolean }) {
@@ -1027,7 +1027,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
       toastManager.add({
         type: "error",
         title: `Could not clear ${name}'s data`,
-        description: "Leonidas Code is not connected to a computer yet. Connect one and try again.",
+        description: "Leonidas is not connected to a computer yet. Connect one and try again.",
       });
       return;
     }
@@ -1420,8 +1420,8 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove “{profilePendingRemoval?.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              Leonidas Code deletes its cookies and logins. Desktop tabs that are open in this
-              profile stay open until you close them. Browser tabs on the computer close now.
+              Leonidas deletes its cookies and logins. Desktop tabs that are open in this profile
+              stay open until you close them. Browser tabs on the computer close now.
             </AlertDialogDescription>
             {profileRemovalError ? (
               <p aria-live="polite" className="text-sm text-destructive">
@@ -1544,7 +1544,7 @@ export function IntegrationsSettingsPanel() {
       <ProjectDefaultsSettings category="integrations" />
       <SettingsSection id="browser" title="Browser">
         {previewDefaultsDisabled ? (
-          <SettingsUnavailableGroup message="Available only in the desktop app. Open Leonidas Code on your computer to use this.">
+          <SettingsUnavailableGroup message="Available only in the desktop app. Open Leonidas on your computer to use this.">
             {previewDefaults}
           </SettingsUnavailableGroup>
         ) : (

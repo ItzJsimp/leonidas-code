@@ -165,7 +165,7 @@ function ChatRouteGlobalShortcuts() {
             stackedThreadToast({
               type: "info",
               title: "Preview is desktop-only",
-              description: "Open Leonidas Code in the desktop app to use the in-app preview.",
+              description: "Open Leonidas in the desktop app to use the in-app preview.",
             }),
           );
           return;

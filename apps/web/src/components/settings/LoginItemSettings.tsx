@@ -29,7 +29,7 @@ export function LoginItemSettings() {
   return (
     <SettingsRow
       {...searchableSetting("start-with-computer")}
-      description="Open Leonidas Code when you sign in to your computer."
+      description="Open Leonidas when you sign in to your computer."
       control={
         <Switch
           checked={state.openAtLogin}

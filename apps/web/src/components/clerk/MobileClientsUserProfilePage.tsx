@@ -94,7 +94,7 @@ function EmptyMobileClients() {
       <EmptyHeader>
         <EmptyTitle>No phones yet</EmptyTitle>
         <EmptyDescription>
-          Install Leonidas Code on your phone and sign in for remote access. Then you get push
+          Install Leonidas on your phone and sign in for remote access. Then you get push
           notifications and Live Activities.
         </EmptyDescription>
       </EmptyHeader>

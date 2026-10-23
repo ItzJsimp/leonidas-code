@@ -332,7 +332,7 @@ export function ThreadPullRequestsPanel({ threadRef }: { threadRef: ScopedThread
     return (
       <PullRequestsUnavailableState
         title="Linked pull requests unavailable"
-        error="This computer does not support more than one linked pull request. Update Leonidas Code on that computer."
+        error="This computer does not support more than one linked pull request. Update Leonidas on that computer."
       />
     );
   }

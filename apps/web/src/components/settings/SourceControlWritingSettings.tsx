@@ -286,7 +286,7 @@ export function SourceControlWritingSettingsSection() {
         serverScoped
         settingKeys={["sourceControlWriterModelSelection"]}
         {...searchableSetting("source-control-writer-model")}
-        description="Model for source control text and for branch or bookmark names. When off, Leonidas Code uses the model for writing text of the computer."
+        description="Model for source control text and for branch or bookmark names. When off, Leonidas uses the model for writing text of the computer."
         control={
           !hasServerTargets ? (
             <span className="text-sm text-muted-foreground">

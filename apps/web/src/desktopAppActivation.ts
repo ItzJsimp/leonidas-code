@@ -85,7 +85,7 @@ export async function handleDesktopAppActivationRequest(
       return failure(
         request.requestId,
         "project-create-failed",
-        errorMessage(error, "Leonidas Code could not add the project."),
+        errorMessage(error, "Leonidas could not add the project."),
       );
     }
   }
@@ -99,7 +99,7 @@ export async function handleDesktopAppActivationRequest(
       return failure(
         request.requestId,
         "thread-open-failed",
-        "Leonidas Code could not open a new chat for the project.",
+        "Leonidas could not open a new chat for the project.",
       );
     }
     return {
@@ -113,7 +113,7 @@ export async function handleDesktopAppActivationRequest(
     return failure(
       request.requestId,
       "thread-open-failed",
-      errorMessage(error, "Leonidas Code could not open a new chat for the project."),
+      errorMessage(error, "Leonidas could not open a new chat for the project."),
     );
   }
 }

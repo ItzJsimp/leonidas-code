@@ -3119,7 +3119,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         pullRequestLookup.error !== null ||
         pullRequestLookup.data?.errors.some((error) => error.projectId === pullRequestProjectId)
       ) {
-        return "Leonidas Code could not read the pull requests. Check your GitHub sign-in and try again.";
+        return "Leonidas could not read the pull requests. Check your GitHub sign-in and try again.";
       }
       return composerTrigger?.query
         ? `No pull request matches ${composerTrigger.query}.`
@@ -5265,7 +5265,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           type: "warning",
           title: "This saved draft is lost if you reload",
           description:
-            "The browser cannot save it. Leonidas Code keeps the draft only until you close or reload the page.",
+            "The browser cannot save it. Leonidas keeps the draft only until you close or reload the page.",
           data: { hideCopyButton: true },
         });
       }
@@ -5300,7 +5300,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         toastManager.add({
           type: "warning",
           title: "Oldest saved draft removed",
-          description: `You can keep ${MAX_STASH_ENTRIES} saved drafts. Leonidas Code removed the oldest one to make room.`,
+          description: `You can keep ${MAX_STASH_ENTRIES} saved drafts. Leonidas removed the oldest one to make room.`,
           data: { hideCopyButton: true },
         });
       }
@@ -6127,7 +6127,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         acceptedImages.push(normalizeComposerImageFileMimeType(file));
       } else {
         if (fileStagingLimit === null) {
-          error = "This computer cannot take file attachments. Update Leonidas Code on it.";
+          error = "This computer cannot take file attachments. Update Leonidas on it.";
           continue;
         }
         if (file.size <= 0) {

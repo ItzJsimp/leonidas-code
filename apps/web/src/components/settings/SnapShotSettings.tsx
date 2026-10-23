@@ -269,7 +269,7 @@ export function SnapShotSettings() {
   const shortcutStatus = recording
     ? "Press your shortcut. Esc cancels."
     : candidateConflict
-      ? `Leonidas Code already uses this for "${commandLabel(candidateConflict)}".`
+      ? `Leonidas already uses this for "${commandLabel(candidateConflict)}".`
       : shortcutCheck.status === "checking"
         ? "Checking shortcut…"
         : shortcutCheck.availability
@@ -321,8 +321,7 @@ export function SnapShotSettings() {
     try {
       if (state?.macPermissions) {
         saveSnapShotSetupResume(wizard?.wasEnabled ?? settings.snapShotEnabled);
-        if (!bridge?.setupSnapShot)
-          throw new Error("Restart Leonidas Code to finish capture setup.");
+        if (!bridge?.setupSnapShot) throw new Error("Restart Leonidas to finish capture setup.");
         await bridge.setupSnapShot("test-mac-capture");
       }
       if (state?.mode === "direct")

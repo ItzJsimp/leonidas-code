@@ -42,7 +42,7 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
   const description = !connected
     ? "Reconnect this computer in Settings, then Connections."
     : readFailed
-      ? "Status unavailable. Check computer access and update Leonidas Code if needed."
+      ? "Status unavailable. Check computer access and update Leonidas if needed."
       : result?.status === "unavailable"
         ? "Scribe is not running. Start it from the tray, or install it."
         : available && result.snapshot.state === "mic_error"

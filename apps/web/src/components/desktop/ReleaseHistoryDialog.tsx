@@ -292,7 +292,7 @@ function ReleaseHistoryDialog({ onClose }: { readonly onClose?: () => void }) {
             {selected
               ? formatReleaseCredits(selected.meta)
                 ? `Built by ${formatReleaseCredits(selected.meta)}`
-                : "Leonidas Code"
+                : "Leonidas"
               : "Versions below 1.0 are test versions."}
           </p>
           <Button variant="ghost" onClick={handleClose}>

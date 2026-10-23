@@ -62,12 +62,12 @@ export function getArm64IntelBuildWarningDescription(state: DesktopUpdateState):
 
   const action = resolveDesktopUpdateButtonAction(state);
   if (action === "download") {
-    return "This Mac has Apple Silicon, but Leonidas Code uses the Intel build. Download the available update to switch to the Apple Silicon build.";
+    return "This Mac has Apple Silicon, but Leonidas uses the Intel build. Download the available update to switch to the Apple Silicon build.";
   }
   if (action === "install") {
-    return "This Mac has Apple Silicon, but Leonidas Code uses the Intel build. Restart to install the downloaded Apple Silicon build.";
+    return "This Mac has Apple Silicon, but Leonidas uses the Intel build. Restart to install the downloaded Apple Silicon build.";
   }
-  return "This Mac has Apple Silicon, but Leonidas Code uses the Intel build. The next update will switch it to the Apple Silicon build.";
+  return "This Mac has Apple Silicon, but Leonidas uses the Intel build. The next update will switch it to the Apple Silicon build.";
 }
 
 export function getDesktopUpdateButtonTooltip(state: DesktopUpdateState): string {
@@ -102,7 +102,7 @@ export function getDesktopUpdateInstallConfirmationMessage(
   runningChatCount = 0,
 ): string {
   const version = state.downloadedVersion ?? state.availableVersion;
-  const head = `Install update${version ? ` ${version}` : ""} and restart Leonidas Code?`;
+  const head = `Install update${version ? ` ${version}` : ""} and restart Leonidas?`;
   if (runningChatCount > 0) {
     const chats =
       runningChatCount === 1

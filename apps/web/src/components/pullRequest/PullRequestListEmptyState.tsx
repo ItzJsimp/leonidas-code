@@ -139,8 +139,8 @@ export function PullRequestListEmptyState({
             Nothing matches “{query.length > 48 ? `${query.slice(0, 48)}…` : query}”
           </EmptyTitle>
           <EmptyDescription>
-            Leonidas Code searched your code services. Try fewer words, or search by number, author
-            or branch.
+            Leonidas searched your code services. Try fewer words, or search by number, author or
+            branch.
           </EmptyDescription>
         </EmptyHeader>
         <div className="flex flex-wrap justify-center gap-2">

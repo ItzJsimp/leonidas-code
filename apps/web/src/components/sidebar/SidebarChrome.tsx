@@ -95,7 +95,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         ) : null}
         <button
           type="button"
-          title="Version of Leonidas Code. Click to see what changed in each update."
+          title="Version of Leonidas. Click to see what changed in each update."
           onClick={openReleaseHistoryDialog}
           className={cn(
             "h-7 shrink-0 rounded-md px-1 text-xs tabular-nums outline-hidden ring-ring focus-visible:ring-2 focus-visible:ring-inset",
@@ -151,8 +151,8 @@ function resolveCurrentAppName(pathname: string): string {
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname === "/usage" || pathname.startsWith("/usage/")) return "Usage";
   if (pathname === "/pull-requests" || pathname.startsWith("/pull-requests/"))
-    return "Code Reviews";
-  return "Code";
+    return "Pull requests";
+  return "Chat";
 }
 
 function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
@@ -175,7 +175,7 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
 
 function SidebarBrandMark({
   onBackdrop,
-  currentApp = "Code",
+  currentApp = "Chat",
 }: {
   onBackdrop: boolean;
   currentApp?: string;
@@ -192,7 +192,7 @@ function SidebarBrandMark({
           onBackdrop ? "text-white/50" : "text-muted-foreground/50",
         )}
       >
-        \u00b7
+        ·
       </span>
       <span
         className={cn(

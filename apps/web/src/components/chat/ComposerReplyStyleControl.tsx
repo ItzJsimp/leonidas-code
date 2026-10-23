@@ -307,7 +307,7 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
                 slug: null,
                 readOnly: true,
                 name: "Leonidas",
-                description: "The shipped Leonidas Code reply style.",
+                description: "The shipped Leonidas reply style.",
                 body: list.data.leonidasBody,
               })
             }

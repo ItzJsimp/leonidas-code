@@ -67,7 +67,7 @@ function WorktreesDirectoryRow() {
     <SettingsRow
       {...searchableSetting("storage-worktrees-location")}
       description={
-        "Folder where Leonidas Code makes new separate copies. It can be on any drive, for example D:\\worktrees or ~/worktrees. Existing separate copies stay where they are. Leave empty to use the home folder of Leonidas Code."
+        "Folder where Leonidas makes new separate copies. It can be on any drive, for example D:\\worktrees or ~/worktrees. Existing separate copies stay where they are. Leave empty to use the home folder of Leonidas."
       }
       serverScoped
       settingKeys={["worktreesDirectory"]}
@@ -437,7 +437,7 @@ export function StorageSettingsPanel() {
   ) {
     return (
       <SettingsScopeNotice target="all">
-        Update Leonidas Code on the chosen computers to set up cleanup of separate copies.
+        Update Leonidas on the chosen computers to set up cleanup of separate copies.
       </SettingsScopeNotice>
     );
   }
@@ -457,8 +457,8 @@ export function StorageSettingsPanel() {
           )
           .map((environment) => environment.environmentId)}
       >
-        Update Leonidas Code on the chosen computers to use storage cleanup, or choose a computer
-        that supports it.
+        Update Leonidas on the chosen computers to use storage cleanup, or choose a computer that
+        supports it.
       </SettingsScopeNotice>
     );
   }

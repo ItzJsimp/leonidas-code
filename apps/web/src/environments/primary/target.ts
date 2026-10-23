@@ -64,7 +64,7 @@ export class PrimaryEnvironmentDisabledError extends Schema.TaggedError<PrimaryE
   {},
 ) {
   override get message(): string {
-    return "This computer is turned off in Leonidas Code. Turn it on in Connections.";
+    return "This computer is turned off in Leonidas. Turn it on in Connections.";
   }
 }
 
