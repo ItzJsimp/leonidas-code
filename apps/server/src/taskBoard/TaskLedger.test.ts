@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalDateInEffect:off - temp folders and file dates are plain Node fixtures.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
