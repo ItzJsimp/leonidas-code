@@ -82,6 +82,14 @@ describe("readBrief", () => {
     ]);
   });
 
+  it("reads only the head of a huge brief, so one big file cannot stall the home read", () => {
+    const priorities = "- **Priorities Seeded:**\n- [ ] **Ship it:** today\n";
+    writeBrief("2026-10-14-briefing.md", `# Brief\n${priorities}${"x".repeat(2_000_000)}`);
+    expect(readBrief(root, [])?.priorities.map((item) => item.title)).toEqual(["Ship it"]);
+    writeBrief("2026-10-15-briefing.md", `# Brief\n${"x".repeat(200_000)}\n${priorities}`);
+    expect(readBrief(root, [])?.priorities).toEqual([]);
+  });
+
   it("ignores a briefings folder linked in from outside the AIOS", () => {
     const outside = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "aios-outside-"));
     try {
