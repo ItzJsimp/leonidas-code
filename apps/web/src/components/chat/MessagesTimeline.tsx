@@ -193,7 +193,8 @@ import {
 } from "./timelineScrollAnchoring";
 import { MessageCaptureButton } from "./MessageCaptureButton";
 import { MessageCopyButton } from "./MessageCopyButton";
-import { signInCommandForFailure } from "./signInAgain";
+import { ClaudeSignInAction } from "./ClaudeSignInAction";
+import { isClaudeSignedOutFailure, signInInstanceId } from "./signInAgain";
 import { RunIdentityTag } from "./RunIdentityTag";
 import { resolveRunIdentity } from "./runIdentity.logic";
 import { PierreEntryIcon } from "./PierreEntryIcon";
@@ -3304,11 +3305,15 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
   const presentation = v2EventPresentation(item);
   const Icon = presentation.icon;
   if (item.type === "error") {
-    const signInCommand =
-      item.status === "failed" ? signInCommandForFailure(item.failure.message) : null;
+    const signInProvider =
+      item.status === "failed" && isClaudeSignedOutFailure(item.failure)
+        ? ctx.providerStatuses.find(
+            (candidate) => candidate.instanceId === signInInstanceId(ctx.runs, item.runId),
+          )
+        : undefined;
     return (
       <details
-        open={signInCommand !== null || undefined}
+        open={signInProvider !== undefined || undefined}
         className={cn(
           "group rounded-md border",
           presentation.tone === "warning" && "border-warning/25 bg-warning/5",
@@ -3365,18 +3370,11 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
               />
             </div>
           ) : null}
-          {signInCommand !== null ? (
-            <div className="mt-2 grid gap-1.5 text-xs">
-              <p className="font-medium text-foreground/90">
-                Sign in again in a terminal. Then send your message again.
-              </p>
-              <div className="flex min-w-0 items-center gap-1.5">
-                <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded bg-muted px-2 py-1 font-mono text-3xs">
-                  {signInCommand}
-                </code>
-                <MessageCopyButton text={signInCommand} size="icon-xs" variant="ghost" />
-              </div>
-            </div>
+          {signInProvider !== undefined ? (
+            <ClaudeSignInAction
+              environmentId={ctx.activeThreadEnvironmentId}
+              provider={signInProvider}
+            />
           ) : null}
           {visibility === "inherited" ? (
             <p className="mt-1 font-mono text-3xs text-muted-foreground/65">
