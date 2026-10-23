@@ -1,8 +1,8 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { SystemCarePage } from "../components/systemCare/SystemCarePage";
+import { BrainVisualizer } from "../components/brain";
 
-export const Route = createFileRoute("/system-care")({
+export const Route = createFileRoute("/_chat/brain")({
   beforeLoad: async ({ context }) => {
     if (
       context.authGateState.status !== "authenticated" &&
@@ -11,5 +11,9 @@ export const Route = createFileRoute("/system-care")({
       throw redirect({ to: "/pair", replace: true });
     }
   },
-  component: SystemCarePage,
+  component: BrainPage,
 });
+
+function BrainPage() {
+  return <BrainVisualizer className="h-full w-full" />;
+}

@@ -33,11 +33,8 @@ export function TwoStateKeys({ inChat }: { readonly inChat: boolean }) {
         });
       if (command === "layout.split") {
         setSplit(!split);
-        // The split lives beside a chat, so from another page it opens the last chat.
-        if (!split && view !== "code" && lastThread) openThread(lastThread);
         return;
       }
-      setSplit(false);
       const target = swapTarget(view, lastThread);
       if (target?.to === "cc") void navigate({ to: "/command-center" });
       else if (target) openThread(target);

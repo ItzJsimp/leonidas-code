@@ -17,7 +17,7 @@ function ScribeRoute() {
   );
 }
 
-export const Route = createFileRoute("/scribe")({
+export const Route = createFileRoute("/_chat/scribe")({
   validateSearch: (raw: Record<string, unknown>): ScribeSearch =>
     isScribeTabId(raw.tab) ? { tab: raw.tab } : {},
   beforeLoad: async ({ context }) => {
