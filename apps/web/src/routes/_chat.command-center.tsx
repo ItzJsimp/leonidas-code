@@ -15,6 +15,7 @@ import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
 import { EventInbox } from "../components/EventInbox";
 import { ScribeStatusCard } from "../components/ScribeStatusCard";
 import { TeamLensProvider } from "../components/team/TeamLensContext";
+import { useActiveAiosWorkspace } from "../components/workspace/useActiveAiosWorkspace";
 import { HomeCardsOutlet } from "../components/twoState/SlotOutlet";
 import { SidebarInset } from "../components/ui/sidebar";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
@@ -66,6 +67,7 @@ const SECTIONS = [
 const HOME_CONTEXT = { forward: "cc" } as const;
 
 function CommandCenterPage() {
+  const { scope } = useActiveAiosWorkspace();
   const threads = useThreadShells();
   const projects = useProjects();
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
@@ -107,7 +109,7 @@ function CommandCenterPage() {
               Live status across your connected computers. Open a chat to see or continue its work.
             </p>
           </div>
-          <TeamLensProvider>
+          <TeamLensProvider scopeKey={JSON.stringify(scope)}>
             <HomeCardsOutlet context={HOME_CONTEXT} />
           </TeamLensProvider>
           {disconnected.length > 0 ? (
