@@ -12,11 +12,12 @@ export function MetricsPanel(props: { readonly metrics: ReadonlyArray<MarketingM
     );
   }
   const all = metricTotals(props.metrics);
+  // One channel adds nothing beyond the totals, so per-channel blocks wait for a second one.
   const channels = [...new Set(props.metrics.map((snapshot) => snapshot.channel))].toSorted();
   return (
     <div className="flex flex-col gap-4">
       <Kpis totals={all} />
-      {channels.map((channel) => (
+      {(channels.length > 1 ? channels : []).map((channel) => (
         <section key={channel} aria-label={CHANNEL_LABEL[channel]} className="flex flex-col gap-2">
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {CHANNEL_LABEL[channel]}
