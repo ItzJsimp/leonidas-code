@@ -1,6 +1,6 @@
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowUpIcon, FolderIcon } from "lucide-react";
+import { ArrowUpIcon, FolderIcon, RefreshCwIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { Spinner } from "~/components/ui/spinner";
@@ -9,32 +9,60 @@ import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWork
 import { useOnboardingChat } from "~/onboarding/useOnboardingChat";
 import { buildThreadRouteParams } from "~/threadRoutes";
 
-import { greetingFor, statusLine } from "./copy";
+import { cn } from "~/lib/utils";
+
+import { NumberTiles } from "../commandCenter/NumberTiles";
+import { summaryItems, updatedLabel } from "../commandCenter/commandCenter.logic";
+import { useNowMs, useUpdatedAt } from "../commandCenter/useHomeReads";
+import { greetingFor } from "./copy";
 import { useAiosHome, useTwoStateCounts } from "./useTwoStateData";
 
 const TITLE_LENGTH = 60;
 
-/** State 1: the greeting, one status line and the Ask composer. */
+/** State 1: the greeting, one summary line, four number tiles and the Ask composer. */
 export function CommandCenterForward() {
   const counts = useTwoStateCounts();
+  const home = useAiosHome();
+  const updatedAt = useUpdatedAt();
+  const now = useNowMs();
+  const date = new Date(now);
   return (
     <div className="grid gap-5">
-      <div>
-        <h2 className="font-display text-3xl leading-tight font-semibold tracking-tight">
-          {greetingFor(new Date())}
-        </h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {statusLine(counts).map((part, index) => (
-            <span
-              key={part.text}
-              className={part.strong ? "font-medium text-foreground" : undefined}
-            >
-              {index > 0 ? " " : null}
-              {part.text}
-            </span>
-          ))}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0">
+          <h2 className="font-display text-3xl leading-tight font-bold tracking-tight">
+            {greetingFor(date)}
+          </h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            {" · "}
+            {date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {summaryItems(counts).map((item, index) => (
+              <span key={item.rest}>
+                {index > 0 ? " · " : null}
+                <span className="font-medium text-foreground">{item.lead}</span>
+                {item.rest}
+              </span>
+            ))}
+          </p>
+        </div>
+        <Tip text="Reads your AIOS folder again. This is when the newest data on this page was read.">
+          <button
+            type="button"
+            onClick={home.refresh}
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <RefreshCwIcon
+              aria-hidden
+              className={cn("size-3.5", home.isPending && "motion-safe:animate-spin")}
+            />
+            {updatedLabel(updatedAt, now)}
+          </button>
+        </Tip>
       </div>
+      <NumberTiles />
       <AskComposer />
     </div>
   );

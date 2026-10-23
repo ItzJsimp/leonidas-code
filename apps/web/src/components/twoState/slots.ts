@@ -18,6 +18,8 @@ interface SlotBase {
 /** A Command Center home card. The card draws its own frame. */
 export interface CardSlotEntry extends SlotBase {
   readonly Component: ComponentType;
+  /** True for a small widget. Neighbouring widgets share one masonry grid; other cards run full width. */
+  readonly widget?: boolean;
 }
 
 /** A rail section. The rail draws the heading from `title`, the component draws the body. */
@@ -78,6 +80,23 @@ export function collectSlots(modules: Record<string, { readonly slots?: SlotModu
     registry[name] = entries.toSorted((a, b) => a.order - b.order || a.id.localeCompare(b.id));
   }
   return { registry: registry as unknown as SlotRegistry, duplicates };
+}
+
+export type HomeGroup =
+  | { readonly kind: "widgets"; readonly entries: ReadonlyArray<CardSlotEntry> }
+  | { readonly kind: "card"; readonly entry: CardSlotEntry };
+
+/** Neighbouring widgets share one group, so they flow in one grid. Every other card stands alone. */
+export function groupHomeEntries(entries: ReadonlyArray<CardSlotEntry>): HomeGroup[] {
+  const groups: HomeGroup[] = [];
+  for (const entry of entries) {
+    const last = groups.at(-1);
+    if (!entry.widget) groups.push({ kind: "card", entry });
+    else if (last?.kind === "widgets")
+      groups[groups.length - 1] = { ...last, entries: [...last.entries, entry] };
+    else groups.push({ kind: "widgets", entries: [entry] });
+  }
+  return groups;
 }
 
 export function entriesFor<K extends SlotName>(

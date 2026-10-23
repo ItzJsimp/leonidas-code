@@ -1,5 +1,11 @@
 import { RailPanel } from "./RailParts";
-import { collectSlots, entriesFor, type SlotContext, type SlotModule } from "./slots";
+import {
+  collectSlots,
+  entriesFor,
+  groupHomeEntries,
+  type SlotContext,
+  type SlotModule,
+} from "./slots";
 
 const CODE_CONTEXT: SlotContext = { forward: "code" };
 
@@ -15,11 +21,24 @@ if (found.duplicates.length > 0) {
 
 export const slotRegistry = found.registry;
 
-/** Draws every Command Center home card in order. */
+/**
+ * Draws every Command Center home card in order. Widgets flow down columns as wide as the room
+ * allows (one at 390 px, two in the split, three alone), so no widget is cut or hidden.
+ */
 export function HomeCardsOutlet({ context }: { readonly context: SlotContext }) {
-  return entriesFor(slotRegistry, "ccHome", context).map(({ id, Component }) => (
-    <Component key={id} />
-  ));
+  return groupHomeEntries(entriesFor(slotRegistry, "ccHome", context)).map((group) =>
+    group.kind === "card" ? (
+      <group.entry.Component key={group.entry.id} />
+    ) : (
+      <div key={group.entries[0]?.id} className="-mb-3 columns-[18.75rem] gap-3">
+        {group.entries.map(({ id, Component }) => (
+          <div key={id} className="mb-3 break-inside-avoid">
+            <Component />
+          </div>
+        ))}
+      </div>
+    ),
+  );
 }
 
 /** Plug-in rail sections, each in the shared rail frame. */
