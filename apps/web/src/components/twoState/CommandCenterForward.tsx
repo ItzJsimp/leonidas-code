@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 
 import { Skeleton } from "~/components/ui/skeleton";
 import { Spinner } from "~/components/ui/spinner";
-import { clipGraphemes } from "./safeText";
+import { clipTitle } from "./safeText";
 import { Tip } from "./Tip";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { useOnboardingChat } from "~/onboarding/useOnboardingChat";
@@ -100,7 +100,7 @@ function AskComposer() {
     const chat = project.ok
       ? await startChat({
           projectId: project.projectId,
-          title: clipGraphemes(text, TITLE_LENGTH),
+          title: clipTitle(text, TITLE_LENGTH),
           prompt: text,
         })
       : project;

@@ -21,6 +21,12 @@ describe("plainText", () => {
     expect(plainText("exit 2")).toBe("failed");
   });
 
+  it("gives both ends of a range the zone written after the range", () => {
+    expect(plainText("Run completed, 2026-10-23 09:39 to 2026-10-23 09:41 UTC.")).toBe(
+      `Run completed, ${local(Date.UTC(2026, 9, 23, 9, 39))} to ${local(Date.UTC(2026, 9, 23, 9, 41))}.`,
+    );
+  });
+
   it("writes UTC and ISO times as local 12-hour time", () => {
     expect(plainText("Ran at 2026-10-23 04:40 UTC.")).toBe(
       `Ran at ${local(Date.UTC(2026, 9, 23, 4, 40))}.`,

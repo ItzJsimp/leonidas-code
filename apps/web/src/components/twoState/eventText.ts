@@ -10,6 +10,9 @@ const clock = (date: Date) => {
 
 const TIME =
   /\b(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:\s?(UTC|Z|[+-]\d{2}:\d{2}))?/g;
+// "A to B UTC": the zone after a range belongs to both ends.
+const STAMP = String.raw`\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?`;
+const RANGE = new RegExp(`(${STAMP}) to (${STAMP})\\s?(UTC|Z|[+-]\\d{2}:\\d{2})`, "g");
 const EXIT = /(?:[,;:]?\s*(?:with\s+)?)\(?\bexit(?: code)? (\d+)\)?/gi;
 
 function localTime(
@@ -46,6 +49,7 @@ export function plainText(text: string): string {
       if (before === "") return word;
       return /(fail|error)\w*$/i.test(before) ? "" : ` (${word})`;
     })
+    .replace(RANGE, "$1 $3 to $2 $3")
     .replace(TIME, localTime);
 }
 

@@ -15,3 +15,11 @@ export function clipGraphemes(text: string, max: number): string {
   }
   return out;
 }
+
+/** A short title from free text: whole words only, and "..." when it had to cut. */
+export function clipTitle(text: string, max: number): string {
+  const clipped = clipGraphemes(text, max);
+  if (clipped === text) return text;
+  const words = clipped.replace(/\s+\S*$/, "");
+  return `${(words || clipped).trimEnd()}...`;
+}
