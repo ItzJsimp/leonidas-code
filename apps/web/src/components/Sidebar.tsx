@@ -1432,7 +1432,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     : status === "failed"
       ? "before:bg-error"
       : status === "input"
-        ? "before:bg-indigo-500"
+        ? "before:bg-input-status"
         : "before:bg-warning";
   const isWokeStatus = topStatus?.icon === "woke";
 

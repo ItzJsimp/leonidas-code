@@ -224,6 +224,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
   --color-warning-surface: var(--warning-surface);
+  --color-input-status: var(--color-indigo-500);
   --color-error-foreground: var(--error-foreground);
   --color-tool-error-icon: var(--tool-error-icon);
   --color-error: var(--error);
@@ -2288,7 +2289,7 @@ code {
 
 /* Let the sortable rows open label clearance before painting the dividers.
    This runs once per pickup; rows retain dnd-kit's normal 200ms transitions. */
-.sidebar-drag-boundary-label {
+@utility sidebar-drag-boundary-label {
   animation: sidebar-drag-label-reveal 200ms step-end;
 }
 
