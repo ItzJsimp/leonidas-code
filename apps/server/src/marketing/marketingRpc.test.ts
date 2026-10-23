@@ -1,12 +1,11 @@
 // @effect-diagnostics nodeBuiltinImport:off - tests write real marketing files in a temp folder.
-import { it as effectIt } from "@effect/vitest";
 import {
   AuthFilesystemWriteScope,
   AuthMcpClientAccess,
   clientRpcRequiredScopes,
   WS_METHODS,
 } from "@t3tools/contracts";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as NodeFS from "node:fs";
@@ -44,7 +43,7 @@ afterEach(() => {
 });
 
 describe("marketing RPCs", () => {
-  effectIt.effect("list shows the queue, and decide signs a batch the gate then accepts", () =>
+  it.effect("list shows the queue, and decide signs a batch the gate then accepts", () =>
     Effect.gen(function* () {
       const root = makeWorkspace();
       const posts = ["One.", "Two."].map((text) =>
@@ -74,7 +73,7 @@ describe("marketing RPCs", () => {
     }).pipe(Effect.provide(keyLayer)),
   );
 
-  effectIt.effect("a missing workspace is a clear error", () =>
+  it.effect("a missing workspace is a clear error", () =>
     Effect.gen(function* () {
       const error = yield* Effect.flip(MarketingRpc.list(Effect.succeed(null)));
       expect(error.message).toBe("No workspace is open.");
