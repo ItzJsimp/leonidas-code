@@ -184,6 +184,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.focusSubscribe]: "workspace",
   [WS_METHODS.eventsSubscribe]: "workspace",
   [WS_METHODS.eventsAppend]: "workspace",
+  [WS_METHODS.marketingList]: "workspace",
+  [WS_METHODS.marketingDecide]: "workspace",
   [WS_METHODS.focusUpdate]: "workspace",
   [WS_METHODS.focusAttachment]: "workspace",
   [WS_METHODS.taskBoardUpdate]: "workspace",

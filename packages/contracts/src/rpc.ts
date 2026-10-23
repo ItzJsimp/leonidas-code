@@ -4,6 +4,13 @@ import {
   OrchestrationV2SearchThreadResult,
 } from "./orchestrationV2.ts";
 import { OrchestrationDispatchCommandError } from "./orchestrationDispatch.ts";
+import {
+  MarketingDecideInput,
+  MarketingDecideOutput,
+  MarketingListInput,
+  MarketingListResult,
+  MarketingRpcError,
+} from "./marketing.ts";
 import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
 import {
   McpAppCallToolInput,
@@ -634,6 +641,8 @@ export const WS_METHODS = {
   focusSubscribe: "focus.subscribe",
   eventsSubscribe: "events.subscribe",
   eventsAppend: "events.append",
+  marketingList: "marketing.list",
+  marketingDecide: "marketing.decide",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
@@ -1942,6 +1951,20 @@ const WsEventsAppendRpc = Rpc.make(WS_METHODS.eventsAppend, {
   error: Schema.Union([FeedEventError, EnvironmentAuthorizationError]),
 });
 
+/** Reads the Marketing screens: the queue, the posts and the metrics of the open workspace. */
+const WsMarketingListRpc = Rpc.make(WS_METHODS.marketingList, {
+  payload: MarketingListInput,
+  success: MarketingListResult,
+  error: Schema.Union([MarketingRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person approves or rejects tickets. No agent access level holds the scope this needs. */
+const WsMarketingDecideRpc = Rpc.make(WS_METHODS.marketingDecide, {
+  payload: MarketingDecideInput,
+  success: MarketingDecideOutput,
+  error: Schema.Union([MarketingRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3099,6 +3122,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsFocusSubscribeRpc,
   WsEventsSubscribeRpc,
   WsEventsAppendRpc,
+  WsMarketingListRpc,
+  WsMarketingDecideRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,

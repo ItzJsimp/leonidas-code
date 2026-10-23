@@ -137,3 +137,52 @@ export const MarketingBadRecord = Schema.Struct({
   reason: Schema.String,
 });
 export type MarketingBadRecord = typeof MarketingBadRecord.Type;
+
+/** What the Marketing screens read. Brand profile text stays on the server: the screens need only the name. */
+export const MarketingApprovalState = Schema.Literals([
+  "none",
+  "pending",
+  "approved",
+  "rejected",
+  "content_changed",
+]);
+export type MarketingApprovalState = typeof MarketingApprovalState.Type;
+
+export const MarketingListInput = Schema.Struct({ workspaceId: Schema.optional(Schema.String) });
+export type MarketingListInput = typeof MarketingListInput.Type;
+
+export const MarketingListResult = Schema.Struct({
+  brands: Schema.Array(
+    Schema.Struct({ slug: MarketingBrandSlug, name: NonBlank, spendCapUsd: Schema.Number }),
+  ),
+  /** Pending tickets with the post each one asks about, oldest first. */
+  queue: Schema.Array(Schema.Struct({ ticket: MarketingApprovalTicket, post: MarketingPost })),
+  posts: Schema.Array(Schema.Struct({ post: MarketingPost, approval: MarketingApprovalState })),
+  /** The latest snapshots, newest last. */
+  metrics: Schema.Array(MarketingMetricSnapshot),
+  bad: Schema.Array(MarketingBadRecord),
+});
+export type MarketingListResult = typeof MarketingListResult.Type;
+
+export const MarketingDecideInput = Schema.Struct({
+  workspaceId: Schema.optional(Schema.String),
+  decisions: Schema.Array(
+    Schema.Struct({
+      ticketId: Schema.String.check(
+        Schema.isPattern(/^apr_[0-9a-f]{12}$/, { expected: "apr_ plus 12 hex" }),
+      ),
+      decision: MarketingDecision,
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+});
+export type MarketingDecideInput = typeof MarketingDecideInput.Type;
+
+export const MarketingDecideOutput = Schema.Struct({
+  results: Schema.Array(MarketingDecideResult),
+});
+export type MarketingDecideOutput = typeof MarketingDecideOutput.Type;
+
+export class MarketingRpcError extends Schema.TaggedError<MarketingRpcError>()(
+  "MarketingRpcError",
+  { message: Schema.String },
+) {}

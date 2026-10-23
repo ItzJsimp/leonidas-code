@@ -15,6 +15,7 @@ import { listSubagents, subagentSources } from "./subagents/subagentCatalog.ts";
 import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import { appendDraft, feedStream } from "./events/eventsRpc.ts";
+import * as MarketingRpc from "./marketing/marketingRpc.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -2946,6 +2947,22 @@ const layerWsRpc = (
             Effect.orElseSucceed(() => []),
             Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
             Effect.flatMap((root) => appendDraft(root, input.event)),
+          ),
+        [WS_METHODS.marketingList]: (input) =>
+          MarketingRpc.list(
+            allTaskBoardProjects.pipe(
+              Effect.orElseSucceed(() => []),
+              Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
+            ),
+          ),
+        [WS_METHODS.marketingDecide]: (input) =>
+          MarketingRpc.decide(
+            allTaskBoardProjects.pipe(
+              Effect.orElseSucceed(() => []),
+              Effect.flatMap((projects) => taskBoard.aiosRoot(projects, input.workspaceId)),
+            ),
+            input,
+            currentSession.subject,
           ),
         // Each change made through this server pushes a fresh list; no polling.
         [WS_METHODS.focusSubscribe]: (input) =>
