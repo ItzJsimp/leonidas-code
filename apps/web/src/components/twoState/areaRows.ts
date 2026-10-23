@@ -1,7 +1,7 @@
 import type { TaskBoardHomeArea } from "@t3tools/contracts";
 
 const AREA_WORDS: Record<string, readonly [label: string, one: string, many: string]> = {
-  tasks: ["Tasks", "card", "cards"],
+  tasks: ["Tasks", "task card (all time)", "task cards (all time)"],
   projects: ["Projects", "project", "projects"],
   decisions: ["Decisions", "decision", "decisions"],
   memory: ["Memory", "note", "notes"],
@@ -52,6 +52,6 @@ export function areaRow(area: TaskBoardHomeArea, now: number): AreaRow {
   return {
     id: area.id,
     label,
-    detail: `${area.units} ${area.units === 1 ? one : many} · ${when === "just now" ? "updated just now" : when}`,
+    detail: `${area.units.toLocaleString("en-US")} ${area.units === 1 ? one : many} · ${when === "just now" ? "updated just now" : when}`,
   };
 }

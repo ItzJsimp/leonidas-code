@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowUpIcon, FolderIcon, RefreshCwIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
+import { Skeleton } from "~/components/ui/skeleton";
 import { Spinner } from "~/components/ui/spinner";
 import { Tip } from "./Tip";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
@@ -40,15 +41,19 @@ export function CommandCenterForward() {
             {" · "}
             {date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {summaryItems(counts).map((item, index) => (
-              <span key={item.rest}>
-                {index > 0 ? " · " : null}
-                <span className="font-medium text-foreground">{item.lead}</span>
-                {item.rest}
-              </span>
-            ))}
-          </p>
+          {counts.needsYou === null || counts.running === null ? (
+            <Skeleton className="mt-1.5 h-4 w-56" />
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {summaryItems(counts).map((item, index) => (
+                <span key={item.rest}>
+                  {index > 0 ? " · " : null}
+                  <span className="font-medium text-foreground">{item.lead}</span>
+                  {item.rest}
+                </span>
+              ))}
+            </p>
+          )}
         </div>
         <Tip text="Reads your AIOS folder again. This is when the newest data on this page was read.">
           <button

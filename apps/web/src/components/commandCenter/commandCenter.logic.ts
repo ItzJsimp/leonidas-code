@@ -42,8 +42,8 @@ function sinceLabel(at: number, now: number): string {
 
 export function tileModels(
   input: {
-    readonly needsYou: number;
-    readonly running: number;
+    readonly needsYou: number | null;
+    readonly running: number | null;
     readonly oldestNeedsYouAt: number | null;
     readonly home: HomeInput | null;
   },
@@ -60,21 +60,28 @@ export function tileModels(
       id: "needs-you",
       label: "Needs you",
       value: needsYou,
-      unit: plural(needsYou, "item", "items"),
+      unit: plural(needsYou ?? 0, "item", "items"),
       note:
-        needsYou === 0
-          ? "Nothing is waiting for you"
-          : oldestNeedsYouAt === null
-            ? "Waiting for your answer"
-            : `Oldest waits since ${sinceLabel(oldestNeedsYouAt, now)}`,
+        needsYou === null
+          ? "Reading your inbox"
+          : needsYou === 0
+            ? "Nothing is waiting for you"
+            : oldestNeedsYouAt === null
+              ? "Waiting for your answer"
+              : `Oldest waits since ${sinceLabel(oldestNeedsYouAt, now)}`,
       tip: "Unread questions, permission requests and failures. The Inbox badge shows the same number.",
     },
     {
       id: "running",
       label: "Running",
       value: running,
-      unit: plural(running, "agent", "agents"),
-      note: running === 0 ? "No agent is working now" : "Working in chats right now",
+      unit: plural(running ?? 0, "agent", "agents"),
+      note:
+        running === null
+          ? "Reading your chats"
+          : running === 0
+            ? "No agent is working now"
+            : "Working in chats right now",
       tip: "Chats with an agent working now, or waiting for background work.",
     },
     {
@@ -275,18 +282,26 @@ export interface SummaryItem {
 
 /** "3 need you · 2 agents running · 2 of 5 done today", from the counts every page shares. */
 export function summaryItems(counts: {
-  readonly needsYou: number;
-  readonly running: number;
+  readonly needsYou: number | null;
+  readonly running: number | null;
   readonly today: { readonly done: number; readonly total: number } | null;
 }): SummaryItem[] {
   const { needsYou, running, today } = counts;
+  // Empty until both counts are read: the page shows a skeleton, never a false "Nothing needs you".
+  if (needsYou === null || running === null) return [];
   return [
     needsYou === 0
       ? { lead: "", rest: "Nothing needs you" }
-      : { lead: String(needsYou), rest: needsYou === 1 ? " needs you" : " need you" },
+      : {
+          lead: needsYou.toLocaleString("en-US"),
+          rest: needsYou === 1 ? " needs you" : " need you",
+        },
     running === 0
       ? { lead: "", rest: "No agents running" }
-      : { lead: String(running), rest: ` ${plural(running, "agent", "agents")} running` },
+      : {
+          lead: running.toLocaleString("en-US"),
+          rest: ` ${plural(running, "agent", "agents")} running`,
+        },
     ...(today === null || today.total === 0
       ? []
       : [{ lead: `${today.done} of ${today.total}`, rest: " done today" }]),

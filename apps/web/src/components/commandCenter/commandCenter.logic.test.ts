@@ -28,6 +28,13 @@ const tile = (id: string, input: Partial<Parameters<typeof tileModels>[0]> = {})
   ).find((entry) => entry.id === id)!;
 
 describe("tileModels", () => {
+  it("shows no number for a count that is not read yet", () => {
+    expect(tile("needs-you", { needsYou: null }).value).toBeNull();
+    expect(tile("needs-you", { needsYou: null }).note).toBe("Reading your inbox");
+    expect(tile("running", { running: null }).value).toBeNull();
+    expect(tile("running", { running: null }).note).toBe("Reading your chats");
+  });
+
   it("gives four tiles with the numbers the page already shows", () => {
     const tiles = tileModels(
       { needsYou: 3, running: 2, oldestNeedsYouAt: at(21, 21, 14), home: { counts, areas } },
@@ -247,6 +254,15 @@ describe("summaryItems", () => {
   it("reads like the line under the greeting", () => {
     expect(line({ needsYou: 3, running: 2, today: { done: 2, total: 5 } })).toBe(
       "3 need you · 2 agents running · 2 of 5 done today",
+    );
+  });
+  it("says nothing before the counts are read", () => {
+    expect(summaryItems({ needsYou: null, running: 0, today: null })).toEqual([]);
+    expect(summaryItems({ needsYou: 0, running: null, today: null })).toEqual([]);
+  });
+  it("groups thousands", () => {
+    expect(line({ needsYou: 1200, running: 0, today: null })).toBe(
+      "1,200 need you · No agents running",
     );
   });
   it("uses plain words for one and for none", () => {

@@ -27,9 +27,9 @@ describe("areaCards", () => {
       id: "tasks",
       label: "Tasks",
       number: "118",
-      unit: "cards",
+      unit: "task cards (all time)",
       changed: "12 min ago",
-      line: "118 cards · changed 12 min ago",
+      line: "118 task cards (all time) · changed 12 min ago",
     });
   });
 

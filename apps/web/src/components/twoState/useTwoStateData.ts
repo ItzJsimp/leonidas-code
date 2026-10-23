@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { groupCommandCenterThreads } from "~/commandCenter";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { useEventFeedStore } from "~/eventFeedStore";
-import { useThreadShells } from "~/state/entities";
+import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "~/state/entities";
 import { eventFeedLive } from "~/state/eventFeed";
 import { useEnvironmentQuery } from "~/state/query";
 import { taskBoardHomeQuery } from "~/state/taskBoard";
@@ -49,15 +49,23 @@ export function useFeedEvents(): ReadonlyArray<FoldedFeedEvent> {
 
 /** One source for every count, so the status line, header stats and rails show the same number. */
 export function useTwoStateCounts(): StatusCounts {
-  const events = useFeedEvents();
+  const feed = useFeedStatus();
+  const events = feed.events;
   const marks = useEventFeedStore((store) => store.marks);
   const threads = useThreadShells();
+  const threadsLoaded = useAllEnvironmentShellsBootstrapped();
   const home = useAiosHome().data;
   const needsYou = useMemo(
-    () => events.filter((event) => isNeedsYou(event, marks[event.id]?.read === true)).length,
-    [events, marks],
+    () =>
+      feed.loaded
+        ? events.filter((event) => isNeedsYou(event, marks[event.id]?.read === true)).length
+        : null,
+    [feed.loaded, events, marks],
   );
-  const running = useMemo(() => groupCommandCenterThreads(threads).running.length, [threads]);
+  const running = useMemo(
+    () => (threadsLoaded ? groupCommandCenterThreads(threads).running.length : null),
+    [threadsLoaded, threads],
+  );
   const priorities = home?.brief?.priorities;
   const today = priorities
     ? { done: priorities.filter((priority) => priority.done).length, total: priorities.length }

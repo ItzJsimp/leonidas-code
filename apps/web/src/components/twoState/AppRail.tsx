@@ -86,7 +86,7 @@ export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
       current={item.id === current}
       lastThread={lastThread}
       expanded={expanded}
-      badge={item.id === "inbox" ? unread : 0}
+      badge={item.id === "inbox" ? (unread ?? 0) : 0}
     />
   );
   return (
