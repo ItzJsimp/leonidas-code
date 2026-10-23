@@ -1,4 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - test fixtures live in a temp folder on disk.
+// @effect-diagnostics globalDate:off - formats a fixed timestamp; no clock reads.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
