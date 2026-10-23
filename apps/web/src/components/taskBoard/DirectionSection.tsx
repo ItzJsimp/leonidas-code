@@ -198,7 +198,7 @@ export function DirectionSection() {
               : "Your goals, and what you plan for each time span."}
           </p>
         </div>
-        <Button size="sm" variant={empty || stale ? "default" : "outline"} onClick={replan}>
+        <Button size="sm" variant="outline" onClick={replan}>
           <ClipboardCheckIcon aria-hidden /> {empty ? "Set my direction" : "Re-plan"}
         </Button>
       </div>
