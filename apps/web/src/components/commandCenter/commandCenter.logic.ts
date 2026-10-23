@@ -307,3 +307,8 @@ export function summaryItems(counts: {
       : [{ lead: `${today.done} of ${today.total}`, rest: " done today" }]),
   ];
 }
+
+/** The first `max` rows of a list and how many were left out. */
+export function capRows<T>(rows: readonly T[], max: number) {
+  return { shown: rows.slice(0, max), hidden: Math.max(0, rows.length - max) };
+}

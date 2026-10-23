@@ -57,7 +57,7 @@ export function RecentActivityWidget() {
               const body = plainEventBody(event.body);
               const opens = feedEventOpenTarget(event) !== null;
               const title = (
-                <span className="block text-sm font-semibold break-words">
+                <span className="block text-sm font-semibold wrap-anywhere">
                   {plainEventTitle(event.title)}
                   {event.count > 1 ? (
                     <span className="font-normal text-muted-foreground"> ({event.count})</span>
@@ -79,7 +79,7 @@ export function RecentActivityWidget() {
                       title
                     )}
                     {body ? (
-                      <span className="block text-xs break-words text-muted-foreground">
+                      <span className="block text-xs wrap-anywhere text-muted-foreground">
                         {body}
                       </span>
                     ) : null}
@@ -127,8 +127,8 @@ export function GoalsWidget() {
             <div className="flex items-center gap-4">
               <HalfGauge percent={gauge} label={`${goals[0].goal}: ${gauge} percent`} />
               <div className="min-w-0">
-                <p className="text-sm font-semibold break-words">{goals[0].goal}</p>
-                <p className="text-xs break-words text-muted-foreground">
+                <p className="text-sm font-semibold wrap-anywhere">{goals[0].goal}</p>
+                <p className="text-xs wrap-anywhere text-muted-foreground">
                   {[goals[0].status, goals[0].targetDate && `due ${goals[0].targetDate}`]
                     .filter(Boolean)
                     .join(" · ")}
@@ -142,11 +142,11 @@ export function GoalsWidget() {
                 const percent = goalPercent(goal.status);
                 return (
                   <li key={goal.id} className="grid gap-1.5 py-2">
-                    <p className="text-sm font-semibold break-words">{goal.goal}</p>
+                    <p className="text-sm font-semibold wrap-anywhere">{goal.goal}</p>
                     {percent !== null ? (
                       <ProgressBar percent={percent} label={`${goal.goal}: ${percent} percent`} />
                     ) : null}
-                    <p className="text-xs break-words text-muted-foreground">
+                    <p className="text-xs wrap-anywhere text-muted-foreground">
                       {[goal.status, goal.targetDate && `due ${goal.targetDate}`]
                         .filter(Boolean)
                         .join(" · ") || "No status yet"}

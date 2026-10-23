@@ -24,8 +24,10 @@ import { actionLabel, splitFeed } from "../twoState/railFeed";
 import { useLiveArea } from "../twoState/useLiveArea";
 import { useFeedStatus } from "../twoState/useTwoStateData";
 import { HomeWidget, WidgetEmpty, WidgetError, WidgetList, WidgetSkeleton } from "./HomeWidget";
+import { capRows } from "./commandCenter.logic";
 import { useNowMs } from "./useHomeReads";
 
+const NEEDS_YOU_ROWS = 5;
 const LEVEL_TEXT = { needs_you: "Needs you", failed: "Failed", info: "Info" } as const;
 
 /** Unread questions, permission requests and failures, each with one button that opens it. */
@@ -37,6 +39,7 @@ export function NeedsYouWidget() {
   const navigate = useNavigate();
   const now = useNowMs();
   const { needsYou } = useMemo(() => splitFeed(feed.events, marks), [feed.events, marks]);
+  const { shown, hidden } = capRows(needsYou, NEEDS_YOU_ROWS);
 
   const open = (event: FoldedFeedEvent) => {
     if (!environmentId) return;
@@ -54,7 +57,7 @@ export function NeedsYouWidget() {
         <WidgetEmpty>Nothing needs you right now.</WidgetEmpty>
       ) : (
         <WidgetList>
-          {needsYou.map((event) => {
+          {shown.map((event) => {
             const label = actionLabel(event);
             const cause = plainEventCause(event);
             return (
@@ -68,10 +71,10 @@ export function NeedsYouWidget() {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="sr-only">{LEVEL_TEXT[event.level]}: </span>
-                  <span className="block text-sm font-semibold break-words">
+                  <span className="block text-sm font-semibold wrap-anywhere">
                     {plainEventTitle(event.title)}
                   </span>
-                  <span className="block text-xs break-words text-muted-foreground">
+                  <span className="block text-xs wrap-anywhere text-muted-foreground">
                     {changedLabel(Date.parse(event.ts), now)}
                     {cause ? ` · ${cause}` : null}
                   </span>
@@ -86,6 +89,14 @@ export function NeedsYouWidget() {
           })}
         </WidgetList>
       )}
+      {hidden > 0 ? (
+        <Link
+          to="/inbox"
+          className="mt-1 inline-block rounded-sm text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          See all {needsYou.length} in the Inbox
+        </Link>
+      ) : null}
     </HomeWidget>
   );
 }
@@ -151,7 +162,7 @@ export function RunningWidget() {
                   )}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold break-words">
+                    <span className="block text-sm font-semibold wrap-anywhere">
                       {thread.title || "Untitled chat"}
                     </span>
                     <span className="block min-w-0 text-xs text-muted-foreground">

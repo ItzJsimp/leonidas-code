@@ -11,6 +11,8 @@ import { usePrimaryEnvironmentId } from "~/state/environments";
 import { fiveHourMeter } from "./chatUsageMeter";
 import { Tip } from "./Tip";
 
+const MAX_ACCOUNT_ICONS = 4;
+
 /**
  * The right end of the chat header: every connected account with the agents running on it, and
  * the Claude 5-hour meter. Shown in the chat pane only, never on the Command Center.
@@ -29,7 +31,7 @@ function Tools({ environmentId }: { readonly environmentId: EnvironmentId }) {
   if (accounts.length === 0) return null;
   return (
     <div className="flex shrink-0 items-center gap-2">
-      {accounts.map((account) => {
+      {accounts.slice(0, MAX_ACCOUNT_ICONS).map((account) => {
         const count = agentsOn(account.id);
         const label =
           count > 0
@@ -54,6 +56,23 @@ function Tools({ environmentId }: { readonly environmentId: EnvironmentId }) {
           </Tip>
         );
       })}
+      {accounts.length > MAX_ACCOUNT_ICONS ? (
+        <Tip
+          text={accounts
+            .slice(MAX_ACCOUNT_ICONS)
+            .map((account) => account.label)
+            .join(", ")}
+        >
+          <span
+            role="img"
+            tabIndex={0}
+            aria-label={`${accounts.length - MAX_ACCOUNT_ICONS} more accounts`}
+            className="inline-flex h-6 items-center rounded-md bg-muted px-1.5 text-xs text-muted-foreground tabular-nums focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            +{accounts.length - MAX_ACCOUNT_ICONS}
+          </span>
+        </Tip>
+      ) : null}
       {meter ? (
         <Tip text={meter.tip}>
           <span

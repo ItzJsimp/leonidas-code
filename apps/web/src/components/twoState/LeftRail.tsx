@@ -74,7 +74,9 @@ function YourAios() {
                   <Icon aria-hidden className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{row.label}</span>
+                  <span className="block truncate font-medium" title={row.label}>
+                    {row.label}
+                  </span>
                   {isLive && live.path !== null ? (
                     <span className="block truncate font-mono text-xs text-foreground">
                       {live.path}

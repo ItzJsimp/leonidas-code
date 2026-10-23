@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   areaBars,
+  capRows,
   doneSeries,
   eventsToday,
   goalPercent,
@@ -270,5 +271,15 @@ describe("summaryItems", () => {
     expect(line({ needsYou: 0, running: 0, today: { done: 0, total: 0 } })).toBe(
       "Nothing needs you · No agents running",
     );
+  });
+});
+
+describe("capRows", () => {
+  it("shows every row up to the cap", () => {
+    expect(capRows([1, 2, 3], 5)).toEqual({ shown: [1, 2, 3], hidden: 0 });
+  });
+
+  it("cuts to the cap and counts the rest", () => {
+    expect(capRows([1, 2, 3, 4, 5, 6, 7], 5)).toEqual({ shown: [1, 2, 3, 4, 5], hidden: 2 });
   });
 });

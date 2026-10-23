@@ -54,8 +54,11 @@ export function RightRail() {
                   />
                   <span className="min-w-0 flex-1">
                     <span className="sr-only">{LEVEL_TEXT[event.level]}: </span>
-                    <span className="block font-medium">{event.title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="block font-medium wrap-anywhere">{event.title}</span>
+                    <span
+                      className="block truncate text-xs text-muted-foreground"
+                      title={event.body || undefined}
+                    >
                       {when(event)}
                       {event.body ? ` · ${event.body}` : null}
                     </span>
@@ -80,13 +83,16 @@ export function RightRail() {
               const opens = feedEventOpenTarget(event) !== null;
               const body = (
                 <>
-                  <span className="block truncate font-medium">
+                  <span className="block truncate font-medium" title={event.title}>
                     {event.title}
                     {event.count > 1 ? (
                       <span className="text-muted-foreground"> ({event.count})</span>
                     ) : null}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span
+                    className="block truncate text-xs text-muted-foreground"
+                    title={event.body || undefined}
+                  >
                     {when(event)}
                     {event.body ? ` · ${event.body}` : null}
                   </span>
