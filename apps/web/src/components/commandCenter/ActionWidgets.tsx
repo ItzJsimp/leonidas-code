@@ -124,6 +124,7 @@ export function RunningWidget() {
   const ready = useAllEnvironmentShellsBootstrapped();
   const now = useNowMs();
   const running = useMemo(() => groupCommandCenterThreads(threads).running, [threads]);
+  const { shown, hidden: more } = capRows(running, 5);
   const projectNames = useMemo(
     () =>
       new Map(
@@ -146,7 +147,7 @@ export function RunningWidget() {
         <WidgetEmpty>No agent is working right now.</WidgetEmpty>
       ) : (
         <ul className="grid gap-1.5">
-          {running.map(({ thread, status }) => {
+          {shown.map(({ thread, status }) => {
             const ref = scopeThreadRef(thread.environmentId, thread.id);
             const live = status === "working";
             const project = projectNames.get(
@@ -184,6 +185,7 @@ export function RunningWidget() {
               </li>
             );
           })}
+          {more > 0 ? <li className="px-3 text-xs text-muted-foreground">+{more} more</li> : null}
         </ul>
       )}
     </HomeWidget>
