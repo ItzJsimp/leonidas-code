@@ -48,7 +48,7 @@ export async function writeUsagePrices(input: {
       if (target.unavailable !== null) {
         result = { status: "failed", error: target.unavailable };
       } else if (aliases.length > 0 && target.aliases === null) {
-        result = { status: "failed", error: "Update Leonidas Code on that computer to map models" };
+        result = { status: "failed", error: "Update Leonidas on that computer to map models" };
       } else {
         try {
           const saved =

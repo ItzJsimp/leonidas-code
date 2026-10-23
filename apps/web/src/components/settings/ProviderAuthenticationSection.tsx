@@ -89,7 +89,7 @@ export function ProviderAuthenticationSection({
       : isDiscovering
         ? "Looking for sign-in methods…"
         : needsExternalSetup
-          ? "This AI service has no sign-in in Leonidas Code. Follow its help pages to finish setup."
+          ? "This AI service has no sign-in in Leonidas. Follow its help pages to finish setup."
           : `Sign in on ${environmentLabel}.`;
   const statusMessage = auth?.phase === "failed" ? auth.message : null;
   const disabled = readOnly || pending || query.error !== null || isDiscovering;

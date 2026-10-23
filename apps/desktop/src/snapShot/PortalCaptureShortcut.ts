@@ -164,7 +164,7 @@ export class PortalCaptureShortcut {
       // This failed session is closing, so retry can register a fresh one.
       shortcutCanRetry: !this.managedByHyprland,
       shortcutMessage: this.managedByHyprland
-        ? "Couldn't connect to Hyprland shortcuts. Make sure xdg-desktop-portal-hyprland is running, then restart Leonidas Code."
+        ? "Couldn't connect to Hyprland shortcuts. Make sure xdg-desktop-portal-hyprland is running, then restart Leonidas."
         : error instanceof Error
           ? error.message
           : "Could not register the capture shortcut.",
@@ -327,7 +327,7 @@ export class PortalCaptureShortcut {
         shortcutPending: false,
         shortcutMessage: shortcut
           ? "Managed by Hyprland. Add the binding to your config and save it."
-          : "Hyprland did not register the capture action. Check that xdg-desktop-portal-hyprland is running, then restart Leonidas Code.",
+          : "Hyprland did not register the capture action. Check that xdg-desktop-portal-hyprland is running, then restart Leonidas.",
       });
       return;
     }

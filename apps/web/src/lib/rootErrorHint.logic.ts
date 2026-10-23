@@ -23,7 +23,7 @@ export function resolveRootErrorHint(error: unknown): RootErrorHint | null {
   const status = readStatus(error);
   if (status === null || !SERVER_DOWN_STATUS_CODES.has(status)) return null;
   return {
-    title: "Leonidas Code cannot reach its server.",
+    title: "Leonidas cannot reach its server.",
     description: `The server answered HTTP ${status}. It may be starting, or it stopped. This screen retries by itself every 3 seconds. In a dev copy, run "node scripts/dev-health.mjs" to see which part is down.`,
     autoRetry: true,
   };

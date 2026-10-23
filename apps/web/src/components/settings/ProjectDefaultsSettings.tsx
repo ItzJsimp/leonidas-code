@@ -9,6 +9,7 @@ import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { useNavigate } from "@tanstack/react-router";
 
 import { mergeEnvironmentSettings } from "../../hooks/useSettings";
+import { useBuilderMode } from "../twoState/useBuilderMode";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
   applyProviderInstanceSettings,
@@ -54,6 +55,7 @@ function isWorktreeSubmodules(value: string | null): value is WorktreeSubmodules
 }
 
 export function ProjectDefaultsSettings({ category }: { category: ProjectSettingsCategory }) {
+  const builder = useBuilderMode();
   const { scope, target, targets, connectedEnvironments } = useSettingsScope();
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
@@ -213,7 +215,9 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
       description={
         isProjectScope
           ? "Where new chats in this project start."
-          : "Where new chats start. A project or its t3.json can use a different one."
+          : builder
+            ? "Where new chats start. A project or its t3.json can use a different one."
+            : "Where new chats start. A project can use a different one."
       }
       resetAction={
         !isProjectScope && settings.defaultThreadEnvMode !== null ? (
@@ -340,52 +344,54 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             }
           />
           {workspaceRow}
-          <SettingsRow
-            serverScoped
-            settingKeys={["worktreeSubmodules"]}
-            mixed={mixedSubmodules}
-            {...searchableSetting("worktree-submodules")}
-            description={
-              isProjectScope
-                ? "How new separate copies in this project fill in git submodules."
-                : "How new separate copies fill in git submodules. A project or its t3.json can use a different one."
-            }
-            resetAction={
-              !isProjectScope && settings.worktreeSubmodules !== null ? (
-                <SettingResetButton
-                  label="submodules for separate copies"
-                  onClick={() => updateSettings({ worktreeSubmodules: null })}
-                />
-              ) : null
-            }
-            control={
-              <Select
-                value={mixedSubmodules ? null : (effective?.worktreeSubmodules ?? null)}
-                onValueChange={(value) => {
-                  if (isWorktreeSubmodules(value)) updateSettings({ worktreeSubmodules: value });
-                }}
-              >
-                <SelectTrigger size="sm" aria-label="Submodules for separate copies">
-                  <SelectValue>
-                    {(value: string | null) =>
-                      isWorktreeSubmodules(value)
-                        ? WORKTREE_SUBMODULES_LABELS[value]
-                        : unavailable
-                          ? "Unavailable"
-                          : "Mixed"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectPopup align="end" alignItemWithTrigger={false}>
-                  {WORKTREE_SUBMODULES_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {WORKTREE_SUBMODULES_LABELS[option]}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            }
-          />
+          {builder ? (
+            <SettingsRow
+              serverScoped
+              settingKeys={["worktreeSubmodules"]}
+              mixed={mixedSubmodules}
+              {...searchableSetting("worktree-submodules")}
+              description={
+                isProjectScope
+                  ? "How new separate copies in this project fill in git submodules."
+                  : "How new separate copies fill in git submodules. A project or its t3.json can use a different one."
+              }
+              resetAction={
+                !isProjectScope && settings.worktreeSubmodules !== null ? (
+                  <SettingResetButton
+                    label="submodules for separate copies"
+                    onClick={() => updateSettings({ worktreeSubmodules: null })}
+                  />
+                ) : null
+              }
+              control={
+                <Select
+                  value={mixedSubmodules ? null : (effective?.worktreeSubmodules ?? null)}
+                  onValueChange={(value) => {
+                    if (isWorktreeSubmodules(value)) updateSettings({ worktreeSubmodules: value });
+                  }}
+                >
+                  <SelectTrigger size="sm" aria-label="Submodules for separate copies">
+                    <SelectValue>
+                      {(value: string | null) =>
+                        isWorktreeSubmodules(value)
+                          ? WORKTREE_SUBMODULES_LABELS[value]
+                          : unavailable
+                            ? "Unavailable"
+                            : "Mixed"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup align="end" alignItemWithTrigger={false}>
+                    {WORKTREE_SUBMODULES_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {WORKTREE_SUBMODULES_LABELS[option]}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              }
+            />
+          ) : null}
         </>
       ) : category === "source-control" ? (
         <>

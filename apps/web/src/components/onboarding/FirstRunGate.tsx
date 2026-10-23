@@ -233,8 +233,8 @@ function FirstRunRecovery({
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {settingsReadFailed
-            ? "Leonidas Code could not load your saved settings. Select Retry."
-            : "Leonidas Code could not reach this computer. Select Reload."}
+            ? "Leonidas could not load your saved settings. Select Retry."
+            : "Leonidas could not reach this computer. Select Reload."}
         </p>
         <Button
           className="mt-5"

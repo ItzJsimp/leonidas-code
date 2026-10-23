@@ -263,7 +263,7 @@ describe("desktop update UI helpers", () => {
         availableVersion: "1.1.0",
         downloadedVersion: "1.1.1",
       }),
-    ).toContain("Install update 1.1.1 and restart Leonidas Code?");
+    ).toContain("Install update 1.1.1 and restart Leonidas?");
   });
 
   it("falls back to generic install confirmation copy when no version is available", () => {
@@ -272,7 +272,7 @@ describe("desktop update UI helpers", () => {
         availableVersion: null,
         downloadedVersion: null,
       }),
-    ).toContain("Install update and restart Leonidas Code?");
+    ).toContain("Install update and restart Leonidas?");
   });
 
   it("keeps the same install confirmation copy across desktop platforms", () => {
@@ -282,7 +282,7 @@ describe("desktop update UI helpers", () => {
         downloadedVersion: "1.1.0",
       }),
     ).toBe(
-      "Install update 1.1.0 and restart Leonidas Code?\n\nAny running chat will stop. Check that you are ready, then continue.",
+      "Install update 1.1.0 and restart Leonidas?\n\nAny running chat will stop. Check that you are ready, then continue.",
     );
   });
 });

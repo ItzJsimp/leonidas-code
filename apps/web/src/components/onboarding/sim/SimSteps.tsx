@@ -34,7 +34,7 @@ export function SimWelcomeStep({
 }) {
   return (
     <>
-      <h1 className={H1}>Welcome to Leonidas Code</h1>
+      <h1 className={H1}>Welcome to Leonidas</h1>
       <p className={LEDE}>
         What will you mostly use it for? Pick all that fit. We will pick skills and setup to match.
       </p>
@@ -58,8 +58,8 @@ export function SimWelcomeStep({
         </div>
       </ScrollArea>
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        Leonidas Code collects anonymous usage data to help us improve it. To learn how we use your
-        data and how to opt out, read our{" "}
+        Leonidas collects anonymous usage data to help us improve it. To learn how we use your data
+        and how to opt out, read our{" "}
         <a
           className="underline underline-offset-2"
           href={PRIVACY_POLICY_URL}
@@ -119,8 +119,8 @@ export function SimConnectStep({ onContinue }: { readonly onContinue: () => void
       </div>
       <div className="mt-6 flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
-          Leonidas Code collects anonymous usage data to help us improve it. To read more about how
-          your data is used and how to opt out, see our{" "}
+          Leonidas collects anonymous usage data to help us improve it. To read more about how your
+          data is used and how to opt out, see our{" "}
           <a
             className="underline underline-offset-2"
             href={PRIVACY_POLICY_URL}
@@ -161,7 +161,7 @@ export function SimAiosStep({
       <h1 className={H1}>Give your AI a memory</h1>
       <p className={LEDE}>
         This step is optional. Your AI starts every chat knowing who you are and what you work on.
-        It reads a few plain text files first (an “AIOS”). Leonidas Code can build them with you.
+        It reads a few plain text files first (an “AIOS”). Leonidas can build them with you.
       </p>
       <ScrollArea scrollFade className={SCROLL}>
         <div className="space-y-4 pr-3">
@@ -193,7 +193,7 @@ export function SimAiosStep({
             <div className="space-y-2">
               <label className="block space-y-1.5">
                 <span className="text-xs text-muted-foreground">
-                  AIOS folder (Leonidas Code creates it if missing)
+                  AIOS folder (Leonidas creates it if missing)
                 </span>
                 <Input value={folder} onChange={(event) => setFolder(event.target.value)} />
               </label>
@@ -258,8 +258,8 @@ export function SimSkillsStep({
     <>
       <h1 className={H1}>Add skills for what you build</h1>
       <p className={LEDE}>
-        You get a starter set, plus skills that match the goals you picked. Leonidas Code saves them
-        in your AIOS folder. Your AI loads them in every chat.
+        You get a starter set, plus skills that match the goals you picked. Leonidas saves them in
+        your AIOS folder. Your AI loads them in every chat.
       </p>
       <ScrollArea scrollFade className={SCROLL}>
         <div className="space-y-4 pr-3">
@@ -298,7 +298,7 @@ export function SimSkillsStep({
             <span className="text-xs font-medium">AIOS folder</span>
             <Input value={folder} onChange={(event) => setFolder(event.target.value)} />
             <span className="block text-xs text-muted-foreground">
-              Leonidas Code creates the folder if it is missing.
+              Leonidas creates the folder if it is missing.
             </span>
           </label>
         </div>

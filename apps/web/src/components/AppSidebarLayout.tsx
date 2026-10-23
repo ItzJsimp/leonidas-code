@@ -1,8 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
 import {
-  lazy,
-  Suspense,
   useEffect,
   useState,
   useSyncExternalStore,
@@ -27,15 +25,17 @@ import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../termina
 import { resolveThreadRouteRef } from "../threadRoutes";
 import { cn, isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
-import { useEnvironmentIdentificationMode, useLegacySidebarEnabled } from "../hooks/useSettings";
+import { useEnvironmentIdentificationMode } from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
   usePanelAnimationSettings,
   usePanelNavigationSuppression,
 } from "../panelAnimations";
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
-import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+import { AppRail } from "./twoState/AppRail";
+import { RailDrawer } from "./twoState/RailDrawer";
+import { DRAWER_BELOW_WIDTH } from "./twoState/shellLayout";
 import { SidebarBrandWidthProbe, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { MainAppLocationTracker } from "./sidebar/mainAppLocation";
 import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
@@ -59,11 +59,8 @@ import {
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { openCapture } from "./capture/captureStore";
 
-// The legacy sidebar is large and only used when its setting is on.
-const LegacyThreadSidebar = lazy(() => import("./LegacySidebar"));
-const GuidanceCoach = lazy(() =>
-  import("./onboarding/GuidanceCoach").then((module) => ({ default: module.GuidanceCoach })),
-);
+// The icon rail is the only app navigation; settings keeps its own nav beside it.
+const RAIL_WIDTH_PX = 52;
 
 const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "var(--desktop-window-controls-inset, 90px)";
 
@@ -233,7 +230,6 @@ function ProjectProjectionRetention() {
 
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const legacySidebarEnabled = useLegacySidebarEnabled();
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   // Settings routes show the settings nav in place of whichever thread
@@ -267,12 +263,16 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       ? getWindowFullscreenState()
       : false;
   });
+  // Under 728 px the rail becomes a drawer behind a menu button.
+  const railVisible = viewportWidth >= DRAWER_BELOW_WIDTH;
   const sidebarProviderStyle = {
     "--sidebar-width": `${clampThreadSidebarWidth(sidebarWidth, sidebarMinimumWidth, sidebarMaximumWidth)}px`,
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
     ...(isMacosDesktop && !isWindowFullscreen
       ? { "--workspace-controls-left": MACOS_TRAFFIC_LIGHTS_LEFT_INSET }
-      : {}),
+      : railVisible
+        ? { "--workspace-controls-left": `calc(${RAIL_WIDTH_PX}px + 0.75rem)` }
+        : {}),
   } as CSSProperties;
 
   useEffect(() => {
@@ -326,41 +326,50 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       >
         <SidebarBrandWidthProbe onWidthChange={setBrandWidth} />
         <ProjectProjectionRetention />
-        <Sidebar
-          side="left"
-          collapsible="offcanvas"
-          data-app-sidebar=""
-          role="navigation"
-          aria-label={isOnSettings ? "Settings" : "Chats"}
-          resizable={{
-            maxWidth: sidebarMaximumWidth,
-            minWidth: sidebarMinimumWidth,
-            shouldAcceptWidth: ({ currentWidth, nextWidth, wrapper }) =>
-              nextWidth <= currentWidth ||
-              wrapper.clientWidth - nextWidth >= THREAD_MAIN_CONTENT_MIN_WIDTH,
-            storageKey: THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
-            onResize: setSidebarWidth,
-          }}
-        >
-          {isOnSettings ? (
-            <>
-              <SidebarChromeHeader isElectron={isElectron} />
-              <SettingsSidebarNav pathname={pathname} />
-            </>
-          ) : legacySidebarEnabled ? (
-            <Suspense fallback={null}>
-              <LegacyThreadSidebar />
-            </Suspense>
-          ) : (
-            <ThreadSidebar />
-          )}
-          <Suspense fallback={null}>
-            <GuidanceCoach />
-          </Suspense>
-          <SidebarRail onDoubleClick={resetSidebarWidth} />
-        </Sidebar>
+        {railVisible ? <AppRail /> : <RailDrawer />}
+        {isOnSettings ? (
+          <Sidebar
+            side="left"
+            collapsible="offcanvas"
+            data-app-sidebar=""
+            role="navigation"
+            aria-label="Settings"
+            // The fixed sidebar starts at the rail's right edge (52px).
+            className={
+              railVisible
+                ? "left-[52px] group-data-[collapsible=offcanvas]:left-[calc(52px-var(--sidebar-width))]"
+                : undefined
+            }
+            resizable={{
+              maxWidth: sidebarMaximumWidth,
+              minWidth: sidebarMinimumWidth,
+              shouldAcceptWidth: ({ currentWidth, nextWidth, wrapper }) =>
+                nextWidth <= currentWidth ||
+                wrapper.clientWidth - nextWidth >= THREAD_MAIN_CONTENT_MIN_WIDTH,
+              storageKey: THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
+              onResize: setSidebarWidth,
+            }}
+          >
+            <SidebarChromeHeader isElectron={isElectron} />
+            <SettingsSidebarNav pathname={pathname} />
+            <SidebarRail onDoubleClick={resetSidebarWidth} />
+          </Sidebar>
+        ) : null}
         {children}
-        <SidebarControl />
+        {isOnSettings ? (
+          // The menu button holds the corner in a narrow window: the settings button sits beside it.
+          <div
+            style={
+              railVisible
+                ? undefined
+                : ({
+                    "--workspace-controls-left": "calc(env(safe-area-inset-left) + 3.5rem)",
+                  } as CSSProperties)
+            }
+          >
+            <SidebarControl />
+          </div>
+        ) : null}
         <NavigationHistoryShortcuts />
         <MainAppLocationTracker />
       </SidebarProvider>

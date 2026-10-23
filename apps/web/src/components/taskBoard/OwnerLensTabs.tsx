@@ -25,7 +25,7 @@ export const OwnerLensTabs = memo(function OwnerLensTabs(props: {
     <div
       role="tablist"
       aria-label="Whose tasks"
-      className="-mx-1 flex min-w-0 items-center gap-1 overflow-x-auto px-1 pb-0.5"
+      className="-mx-1 flex min-w-0 flex-wrap items-center gap-1 px-1 pb-0.5"
     >
       {props.options.map((option) => {
         const selected = option.lens === props.value;

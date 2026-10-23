@@ -66,8 +66,8 @@ export function ChatGptWelcomeCoordinator() {
           <OpenAI className="mb-2 size-8" aria-hidden="true" />
           <DialogTitle>Your ChatGPT plan is connected</DialogTitle>
           <DialogDescription>
-            Your ChatGPT plan pays for eligible use in Leonidas Code. To change shared usage or
-            credit settings, open ChatGPT.
+            Your ChatGPT plan pays for eligible use in Leonidas. To change shared usage or credit
+            settings, open ChatGPT.
           </DialogDescription>
           <p className="text-xs text-muted-foreground">
             {next?.providerName} on {next?.environmentLabel}

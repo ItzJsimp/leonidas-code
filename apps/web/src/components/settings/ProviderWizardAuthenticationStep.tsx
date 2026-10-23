@@ -63,7 +63,7 @@ export function ProviderWizardAuthenticationStep({
                   ? "Looking for sign-in methods…"
                   : (query.error ??
                     auth?.message ??
-                    "This AI service has no sign-in in Leonidas Code. Follow its help pages to finish setup.")
+                    "This AI service has no sign-in in Leonidas. Follow its help pages to finish setup.")
               }
               control={
                 isDiscovering ? (

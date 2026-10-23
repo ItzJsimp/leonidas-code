@@ -77,7 +77,7 @@ export function ProviderSetupSection(props: ProviderSetupSectionProps) {
       ) : props.provider?.setup === undefined ? (
         <SettingsRow
           title="Update required"
-          description="Update Leonidas Code on this computer to manage Antigravity."
+          description="Update Leonidas on this computer to manage Antigravity."
         />
       ) : (
         <ProviderSetupActions
@@ -147,7 +147,7 @@ function ProviderSetupActions({
             : usesCustomBinary
               ? enabled
                 ? "The Antigravity program is not available."
-                : "Leonidas Code has not checked the Antigravity program yet."
+                : "Leonidas has not checked the Antigravity program yet."
               : installation?.totalBytes
                 ? `${Math.ceil(installation.totalBytes / 1_000_000)} MB download.`
                 : "Not installed.";

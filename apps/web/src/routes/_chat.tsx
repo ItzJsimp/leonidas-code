@@ -1,10 +1,16 @@
 import { AuthPreviewOperateScope } from "@t3tools/contracts";
-import { Outlet, createFileRoute, redirect, useParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, useParams } from "@tanstack/react-router";
 import { useAtomValue } from "@effect/atom-react";
 import { useEffect, useMemo } from "react";
 
 import { isCommandPaletteOpen } from "../commandPaletteBus";
-import { ThreadRouteView } from "../components/ThreadRouteView";
+import { ShellSplit } from "../components/twoState/ShellSplit";
+import {
+  ShownChatContext,
+  useRememberedThreadRef,
+  useRouteOrShownThreadRef,
+} from "../components/twoState/shownChatContext";
+import { TwoStateKeys } from "../components/twoState/TwoStateKeys";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { useClientSettings, useLegacySidebarEnabled } from "../hooks/useSettings";
 import { openCommandPalette } from "../commandPaletteBus";
@@ -34,8 +40,15 @@ import { primaryServerKeybindingsAtom } from "~/state/server";
 function ChatRouteGlobalShortcuts() {
   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
   const selectedThreadKeysSize = useThreadSelectionStore((state) => state.selectedThreadKeys.size);
-  const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread, routeThreadRef } =
-    useHandleNewThread();
+  const {
+    activeDraftThread,
+    activeThread,
+    defaultProjectRef,
+    handleNewThread,
+    routeThreadRef: urlThreadRef,
+  } = useHandleNewThread();
+  // A remembered chat beside a window has no thread in the URL: use the one the pane shows.
+  const routeThreadRef = useRouteOrShownThreadRef(urlThreadRef);
   const canOperatePreview = useEnvironmentScope(
     routeThreadRef?.environmentId ?? null,
     AuthPreviewOperateScope,
@@ -163,7 +176,7 @@ function ChatRouteGlobalShortcuts() {
             stackedThreadToast({
               type: "info",
               title: "Preview is desktop-only",
-              description: "Open Leonidas Code in the desktop app to use the in-app preview.",
+              description: "Open Leonidas in the desktop app to use the in-app preview.",
             }),
           );
           return;
@@ -232,11 +245,14 @@ function ChatRouteLayout() {
     strict: false,
     select: (params) => resolveThreadRouteTarget(params),
   });
+  const remembered = useRememberedThreadRef();
+  const shown = threadTarget?.kind === "server" ? threadTarget.threadRef : remembered;
   return (
-    <>
+    <ShownChatContext value={shown}>
       <ChatRouteGlobalShortcuts />
-      {threadTarget ? <ThreadRouteView target={threadTarget} /> : <Outlet />}
-    </>
+      <TwoStateKeys inChat={threadTarget !== null} />
+      <ShellSplit threadTarget={threadTarget} />
+    </ShownChatContext>
   );
 }
 

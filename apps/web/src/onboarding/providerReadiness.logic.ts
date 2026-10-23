@@ -87,7 +87,7 @@ export function selectOnboardingProvidersByDriver(
 export const CLAUDE_WINDOWS_INSTALL_COMMAND = [
   "irm https://claude.ai/install.ps1 | iex",
   "$env:Path = [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')",
-  "Write-Host 'Claude is installed. Leonidas Code opens the sign-in page next.'",
+  "Write-Host 'Claude is installed. Leonidas opens the sign-in page next.'",
 ].join("; ");
 
 const NATIVE_INSTALL_COMMANDS = {

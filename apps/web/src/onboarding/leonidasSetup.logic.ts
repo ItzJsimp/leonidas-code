@@ -107,6 +107,6 @@ export function buildAiosSetupPrompt(
     "Ask me a few short questions (my name, what I build, how I like answers written), then fill in CLAUDE.md and AGENTS.md from my answers. Keep each file short and plain.",
     options.inCurrentFolder
       ? "When done, list what you created in one line each. Then suggest 3 to 5 extra skills that fit how I work and write each to .claude/skills/<name>/SKILL.md and .agents/skills/<name>/SKILL.md."
-      : "When done, list what you created and tell me how to open that folder in Leonidas Code.",
+      : "When done, list what you created and tell me how to open that folder in Leonidas.",
   ].join("\n\n");
 }

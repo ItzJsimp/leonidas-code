@@ -7,6 +7,7 @@ const empty = { hidden: [], order: [], custom: [] };
 describe("composer toolbar entries", () => {
   it("falls back to the team default order", () => {
     expect(resolveToolbarEntries(empty).map((e) => e.id)).toEqual([
+      "replyStyle",
       "saved",
       "stash",
       "skills",
@@ -24,6 +25,7 @@ describe("composer toolbar entries", () => {
     expect(entries.map((e) => e.id)).toEqual([
       "nextAction",
       "mine",
+      "replyStyle",
       "saved",
       "stash",
       "skills",
@@ -36,10 +38,10 @@ describe("composer toolbar entries", () => {
   it("moves an entry and stops at the ends", () => {
     const entries = resolveToolbarEntries(empty);
     expect(moveToolbarEntry(entries, "stash", -1).slice(0, 3)).toEqual([
+      "replyStyle",
       "stash",
       "saved",
-      "skills",
     ]);
-    expect(moveToolbarEntry(entries, "saved", -1)[0]).toBe("saved");
+    expect(moveToolbarEntry(entries, "replyStyle", -1)[0]).toBe("replyStyle");
   });
 });

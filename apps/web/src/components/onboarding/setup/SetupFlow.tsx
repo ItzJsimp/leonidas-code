@@ -149,7 +149,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   return (
     <Dialog open disablePointerDismissal onOpenChange={(_, event) => event.cancel()}>
       <WizardPopup size="wide" bottomStickOnMobile={false} showCloseButton={false}>
-        <WizardHeader title={voice === "builder" ? "Set up Leonidas Code" : "Set up Leonidas"}>
+        <WizardHeader title={voice === "builder" ? "Set up Leonidas" : "Set up Leonidas"}>
           <WizardSteps steps={STEPS} currentStep={step} />
         </WizardHeader>
         <WizardPanel stableHeight>

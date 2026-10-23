@@ -152,8 +152,11 @@ function HorizonRow({ horizon }: { horizon: AiosDirectionHorizon }) {
   );
 }
 
-/** The Direction view: goals with dates, the 5 horizons and a re-plan prompt. Reads files only. */
-export function DirectionSection() {
+/**
+ * The Direction view: goals with dates, the 5 horizons and a re-plan prompt. Reads files only.
+ * `bare` drops the frame so Goal progress can hold it.
+ */
+export function DirectionSection({ bare = false }: { bare?: boolean }) {
   const environmentId = usePrimaryEnvironmentId();
   const { scope, scopeReady } = useActiveAiosWorkspace();
   const query = useEnvironmentQuery(
@@ -185,20 +188,23 @@ export function DirectionSection() {
 
   const empty = isDirectionEmpty(data);
   return (
-    <section aria-labelledby="direction-title" className="rounded-lg border border-border p-5">
+    <section
+      aria-labelledby="direction-title"
+      className={cn(!bare && "rounded-lg border border-border p-5")}
+    >
       <div className="flex items-start gap-3">
         <FlagIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <h2 id="direction-title" className="text-base font-semibold">
-            Direction
-          </h2>
+          <h3 id="direction-title" className="text-base font-semibold">
+            Goals and plan
+          </h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {empty
               ? "Your AIOS has no goals yet. A 10-minute grill sets them."
               : "Your goals, and what you plan for each time span."}
           </p>
         </div>
-        <Button size="sm" variant={empty || stale ? "default" : "outline"} onClick={replan}>
+        <Button size="sm" variant="outline" onClick={replan}>
           <ClipboardCheckIcon aria-hidden /> {empty ? "Set my direction" : "Re-plan"}
         </Button>
       </div>

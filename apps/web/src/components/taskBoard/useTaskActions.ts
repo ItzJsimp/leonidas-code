@@ -172,7 +172,7 @@ export function useTaskActions(input: UseTaskActionsInput): UseTaskActionsResult
         aiosRoot: current.aiosRoot,
       });
       if (!project) {
-        report("No project to start the chat in", "Add a project to Leonidas Code first.");
+        report("No project to start the chat in", "Add a project to Leonidas first.");
         return false;
       }
       const opened = await newThread(scopeProjectRef(targetEnvironment, project.id));

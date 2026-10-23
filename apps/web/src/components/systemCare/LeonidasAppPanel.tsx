@@ -255,7 +255,7 @@ function HealthSource({ label, health }: { label: string; health: ResourceTeleme
         <div className="text-sm font-medium text-foreground">{label}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">
           {expectedInBrowser
-            ? "Available only in the Leonidas Code desktop app."
+            ? "Available only in the Leonidas desktop app."
             : Option.match(health.lastError, {
                 onNone: () => "No reported errors",
                 onSome: (error) => error,
@@ -694,8 +694,7 @@ function AttributionTable({ entries }: { entries: ReadonlyArray<ResourceAttribut
           {entries.length === 0 ? (
             <tr>
               <td colSpan={6} className="px-4 py-5 text-xs text-muted-foreground sm:px-5">
-                No read or write activity recorded yet. Use Leonidas Code for a while, then check
-                again.
+                No read or write activity recorded yet. Use Leonidas for a while, then check again.
               </td>
             </tr>
           ) : null}
@@ -875,7 +874,7 @@ export function LeonidasAppPanel({ environmentId }: { environmentId: Environment
   return (
     <div className="flex flex-col gap-4">
       <Card
-        title="Leonidas Code footprint"
+        title="Leonidas footprint"
         hint="The app, its AI services, terminals and this monitor, live."
         action={
           <div className="flex items-center gap-2">
@@ -968,7 +967,7 @@ export function LeonidasAppPanel({ environmentId }: { environmentId: Environment
 
       <Card
         title="Running processes"
-        hint="Every process Leonidas Code started, as a tree."
+        hint="Every process Leonidas started, as a tree."
         className="overflow-hidden"
       >
         <div className="-mx-5 -mb-5 max-h-128 overflow-y-auto">
@@ -983,7 +982,7 @@ export function LeonidasAppPanel({ environmentId }: { environmentId: Environment
 
       <Card
         title="Timeline"
-        hint="Processor and disk use by Leonidas Code."
+        hint="Processor and disk use by Leonidas."
         className="overflow-hidden"
         action={
           <div className="flex items-center gap-1.5">
@@ -1134,7 +1133,7 @@ export function LeonidasAppPanel({ environmentId }: { environmentId: Environment
 
       <Card
         title="App reads and writes"
-        hint="Which Leonidas Code actions read or write data. Compare with the process list to find a spike."
+        hint="Which Leonidas actions read or write data. Compare with the process list to find a spike."
         className="overflow-hidden"
       >
         <div className="-mx-5 -mb-5">

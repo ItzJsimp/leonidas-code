@@ -1428,8 +1428,8 @@ export function EnvironmentProviderSettings({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {panelName}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Leonidas Code stops using this account. Your plan and your chats stay. You can connect
-              it again later.
+              Leonidas stops using this account. Your plan and your chats stay. You can connect it
+              again later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

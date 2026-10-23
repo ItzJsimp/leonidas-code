@@ -65,7 +65,7 @@ export function useThreadFind({
       toastManager.add({
         id: "thread-find-unavailable",
         title: "You cannot search in a chat on this computer yet.",
-        description: "Update Leonidas Code on this computer to turn it on.",
+        description: "Update Leonidas on this computer to turn it on.",
       });
       return;
     }

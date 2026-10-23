@@ -41,7 +41,7 @@ export function PracticeDryRunDialog(props: {
               </li>
               <li>
                 The AI updates {count === 1 ? "the task" : "each task"} as it works. If it does not,
-                Leonidas Code moves {count === 1 ? "it" : "them"} to Review when the reply ends.
+                Leonidas moves {count === 1 ? "it" : "them"} to Review when the reply ends.
               </li>
             </ul>
             <div>

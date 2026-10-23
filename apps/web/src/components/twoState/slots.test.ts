@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { collectSlots, defineSlots, entriesFor, type SlotModule } from "./slots";
+import { collectSlots, defineSlots, entriesFor, groupHomeEntries, type SlotModule } from "./slots";
 
 const Card = () => null;
 const ctx = { forward: "cc" } as const;
@@ -74,5 +74,28 @@ describe("entriesFor", () => {
       "always",
       "codeOnly",
     ]);
+  });
+});
+
+describe("groupHomeEntries", () => {
+  it("puts neighbouring widgets in one group and keeps other cards alone", () => {
+    const entry = (id: string, widget?: true) => ({
+      id,
+      order: 0,
+      Component: Card,
+      ...(widget ? { widget } : {}),
+    });
+    const groups = groupHomeEntries([
+      entry("setup"),
+      entry("a", true),
+      entry("b", true),
+      entry("direction"),
+      entry("c", true),
+    ]);
+    expect(
+      groups.map((group) =>
+        group.kind === "card" ? group.entry.id : group.entries.map((e) => e.id).join("+"),
+      ),
+    ).toEqual(["setup", "a+b", "direction", "c"]);
   });
 });

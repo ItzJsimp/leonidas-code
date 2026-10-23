@@ -79,8 +79,8 @@ export function T3ConnectEnvironmentRow(props: {
                 “{environment.label}” will be removed from this account.
               </p>
               <p className="mt-4 max-w-xl text-xs leading-4.5 text-muted-foreground">
-                Remote access to this computer will stop. Leonidas Code removes any managed tunnel
-                and frees a space on your account. Local connections on your devices stay the same.
+                Remote access to this computer will stop. Leonidas removes any managed tunnel and
+                frees a space on your account. Local connections on your devices stay the same.
               </p>
               <div className="mt-4 flex justify-end gap-2">
                 <Button

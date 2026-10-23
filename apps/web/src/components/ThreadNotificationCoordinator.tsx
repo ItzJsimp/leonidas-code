@@ -341,7 +341,7 @@ function EnvironmentNotifications({
         type: threadEventType(kind, status, isDelegatedChild),
         title,
         body: thread.title.slice(0, 500),
-        actor: { kind: "app", name: "Leonidas Code" },
+        actor: { kind: "app", name: "Leonidas" },
         target: { thread: thread.id },
         actions: [{ label: "Open chat", kind: "open_thread", ref: thread.id }],
         // Two open clients both write the trigger; the fold keeps it to one event.

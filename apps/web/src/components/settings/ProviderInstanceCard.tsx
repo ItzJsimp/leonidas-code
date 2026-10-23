@@ -474,7 +474,7 @@ export function ProviderEnvironmentSection(props: {
             </div>
           ))}
           <p className="text-xs text-muted-foreground">
-            Secret values are saved apart. Leonidas Code never shows them again.
+            Secret values are saved apart. Leonidas never shows them again.
           </p>
         </div>
       ) : null}
@@ -955,7 +955,7 @@ export function ProviderInstanceCard({
       description={
         <span>
           This AI account uses <code className="text-foreground">{String(instance.driver)}</code>,
-          which this version of Leonidas Code does not have. Its settings stay saved.
+          which this version of Leonidas does not have. Its settings stay saved.
         </span>
       }
     />

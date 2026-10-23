@@ -139,7 +139,7 @@ function TelemetryExportForm() {
             });
             if (result._tag === "Success") {
               setDraft({});
-              setMessage("Saved. Restart Leonidas Code to use it.");
+              setMessage("Saved. Restart Leonidas to use it.");
             }
           } finally {
             setSaving(false);
@@ -147,7 +147,7 @@ function TelemetryExportForm() {
         }}
       >
         <p className="text-xs text-muted-foreground">
-          Send traces, metrics, and logs to an OTLP HTTP receiver. Restart Leonidas Code to use the
+          Send traces, metrics, and logs to an OTLP HTTP receiver. Restart Leonidas to use the
           change. Settings from environment variables win over these settings.
         </p>
         {!canEdit && (

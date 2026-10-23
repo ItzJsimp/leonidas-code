@@ -12,13 +12,12 @@ import {
   type LimitPool,
   type LimitPoolMember,
   type LimitPoolWindow,
-  remainingPercent,
 } from "@t3tools/shared/usageLimits";
 import { AlertTriangleIcon, ExternalLinkIcon, TicketIcon } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
 
 import { ensureLocalApi } from "../../localApi";
-import { limitText, useLimitView } from "../../hooks/useLimitView";
+import { limitFill, limitText, useLimitView } from "../../hooks/useLimitView";
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { formatUpcomingTimestamp } from "../../timestampFormat";
@@ -196,7 +195,7 @@ function SegmentPopover({
             {subscriptionEstimateSummary(window.tokenEstimate)}
             {window.tokenEstimate.capacityTokens === undefined ? null : (
               <span className="block">
-                This is an estimate. Your work and use outside Leonidas Code change it.
+                This is an estimate. Your work and use outside Leonidas change it.
               </span>
             )}
           </span>
@@ -256,7 +255,7 @@ function PoolSegment({
 }) {
   const [open, setOpen] = useState(false);
   const [view] = useLimitView();
-  const remaining = remainingPercent(window);
+  const fill = limitFill(window.usedPercent, view);
   const resetsIn = formatResetsIn(window, now);
   const credits = account.limits.resetCredits?.availableCount ?? 0;
   return (
@@ -276,16 +275,16 @@ function PoolSegment({
         <div
           aria-hidden
           className="absolute inset-y-0 left-0 rounded-md opacity-35"
-          style={{ width: `${remaining}%`, backgroundColor: color }}
+          style={{ width: `${fill}%`, backgroundColor: color }}
         />
-        {/* The spent share is hatched, not blank: it is what the countdown restores. */}
-        {remaining < 100 && reset ? (
+        {/* The spent share is a faint solid fill, not blank: it is what the countdown restores. */}
+        {view === "left" && fill < 100 && reset ? (
           <div
             aria-hidden
-            className="absolute inset-y-0 right-0 opacity-20"
+            className="absolute inset-y-0 right-0 opacity-10"
             style={{
-              width: `${100 - remaining}%`,
-              backgroundImage: `repeating-linear-gradient(135deg, ${color} 0 1px, transparent 1px 5px)`,
+              width: `${100 - fill}%`,
+              backgroundColor: color,
             }}
           />
         ) : null}
@@ -462,7 +461,7 @@ function RedeemableSegmentPopup({
 
 /**
  * One pooled window as equal-width segments, one per account, each filled by
- * the share of that account's quota still open. Equal widths are honest: every
+ * the share of that account's quota shown (used or left). Equal widths are honest: every
  * account contributes the same share of the pool, whatever its plan.
  *
  * Wide, each segment carries its own label. Narrow, the bar is a bare strip

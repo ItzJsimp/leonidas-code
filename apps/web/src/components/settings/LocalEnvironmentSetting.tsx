@@ -45,7 +45,7 @@ export function LocalEnvironmentSetting() {
         {...searchableSetting("local-environment")}
         description={
           enabled
-            ? "Run AI work on this computer. Turn this off to use Leonidas Code only with other computers."
+            ? "Run AI work on this computer. Turn this off to use Leonidas only with other computers."
             : "Turned off. AI work runs only on other computers."
         }
         control={
@@ -72,8 +72,8 @@ export function LocalEnvironmentSetting() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {enabled
-                ? "Leonidas Code will restart and stop AI work on this computer. Chats and terminals that run here will stop. Other devices cannot connect to this computer. Your projects, history, and other computers stay as they are."
-                : "Leonidas Code will restart and run AI work on this computer again."}
+                ? "Leonidas will restart and stop AI work on this computer. Chats and terminals that run here will stop. Other devices cannot connect to this computer. Your projects, history, and other computers stay as they are."
+                : "Leonidas will restart and run AI work on this computer again."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error ? <p className="px-6 pb-4 text-sm text-destructive">{error}</p> : null}

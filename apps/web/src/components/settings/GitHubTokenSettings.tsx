@@ -118,7 +118,7 @@ export function GitHubTokenSettings({
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {savedHosts.length === 0
-              ? "No token saved. Leonidas Code uses GH_TOKEN or the gh login."
+              ? "No token saved. Leonidas uses GH_TOKEN or the gh login."
               : `Saved for ${savedHosts.join(", ")}.`}
           </p>
           <div className="flex shrink-0 gap-2">

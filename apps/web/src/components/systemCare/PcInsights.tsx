@@ -73,7 +73,7 @@ export const PC_TABS = [
   { id: "overview", label: "Overview", icon: GaugeIcon },
   { id: "parts", label: "Your parts", icon: LayoutGridIcon },
   { id: "history", label: "History", icon: SparklesIcon },
-  { id: "app", label: "Leonidas Code", icon: ActivityIcon },
+  { id: "app", label: "Leonidas", icon: ActivityIcon },
   { id: "logs", label: "Logs and errors", icon: ScrollTextIcon },
   { id: "settings", label: "Settings", icon: WrenchIcon },
 ] as const;

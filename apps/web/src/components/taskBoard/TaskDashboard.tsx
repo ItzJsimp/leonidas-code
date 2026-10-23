@@ -315,8 +315,8 @@ const OrganizePanel = memo(function OrganizePanel(props: {
       <div className="flex items-center gap-3 px-4 py-3">
         <p className="min-w-0 flex-1 text-sm text-muted-foreground">
           {changes.length} open {changes.length === 1 ? "task has" : "tasks have"} no effort or
-          topic labels. Leonidas Code can fill them in from the title, description and checklist of
-          each task.
+          topic labels. Leonidas can fill them in from the title, description and checklist of each
+          task.
         </p>
         <Button size="sm" disabled={busy} onClick={() => props.actions.organize(changes)}>
           <TagsIcon />

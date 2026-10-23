@@ -28,7 +28,7 @@ export function UsageAnalyticsConsentDialog() {
     >
       <DialogPopup className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Help improve Leonidas Code?</DialogTitle>
+          <DialogTitle>Help improve Leonidas?</DialogTitle>
           <DialogDescription>
             Share anonymous usage counts so we can see what works and what does not.
           </DialogDescription>

@@ -74,7 +74,7 @@ import {
   teamForWorkspace,
   widgetsForWorkspace,
 } from "../workspacePack/workspacePack.ts";
-import { buildHome } from "./aiosHome.ts";
+import { buildHome, cachedAreas } from "./aiosHome.ts";
 import {
   addFocusItem,
   changeFocusItem,
@@ -2024,8 +2024,9 @@ const make = Effect.gen(function* () {
       if (root === null) return buildHome(null, []);
       const now = yield* Clock.currentTimeMillis;
       const tasks = yield* readCards(root, now);
+      const areas = yield* Effect.promise(() => cachedAreas(root, now));
       return yield* Effect.try({
-        try: () => buildHome(root, tasks),
+        try: () => buildHome(root, tasks, areas),
         catch: (cause) => new TaskBoardReadError({ reason: "request_failed", cause }),
       });
     });

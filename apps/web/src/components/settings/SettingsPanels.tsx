@@ -460,7 +460,7 @@ function AboutVersionSection() {
               title: "Could not check for updates",
               description:
                 result.state.message ??
-                "This version of Leonidas Code cannot update by itself. Download the new version from the website.",
+                "This version of Leonidas cannot update by itself. Download the new version from the website.",
             }),
           );
         }
@@ -494,7 +494,7 @@ function AboutVersionSection() {
   const description =
     action === "download" || action === "install"
       ? "Update available."
-      : "This is the current version of Leonidas Code.";
+      : "This is the current version of Leonidas.";
 
   return (
     <>
@@ -1435,7 +1435,7 @@ export function AppearanceSettingsPanel() {
         <SettingsRow
           {...searchableSetting("setting-leonidas-grid")}
           aria-disabled={!isLeonidasTheme}
-          description="Show the grid behind the work area in the Leonidas Code theme."
+          description="Show the grid behind the work area in the Leonidas theme."
           control={
             <Switch
               aria-label="Show Leonidas grid"
@@ -1449,7 +1449,7 @@ export function AppearanceSettingsPanel() {
         <SettingsRow
           {...searchableSetting("setting-leonidas-glow")}
           aria-disabled={!isLeonidasTheme}
-          description="Change the red glow in the Leonidas Code theme."
+          description="Change the red glow in the Leonidas theme."
           resetAction={
             glowStrength !== DEFAULT_LEONIDAS_GLOW_STRENGTH ? (
               <SettingResetButton
@@ -1491,7 +1491,7 @@ export function AppearanceSettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("setting-leonidas-reset")}
-          description="Return to the Leonidas Code theme with the grid on and the crimson glow at its default. Light or dark mode stays as it is."
+          description="Return to the Leonidas theme with the grid on and the crimson glow at its default. Light or dark mode stays as it is."
           control={
             <Button
               size="xs"
@@ -1510,7 +1510,7 @@ export function AppearanceSettingsPanel() {
         {showEnvironmentIdentification ? (
           <SettingsRow
             {...searchableSetting("environment-identification")}
-            description="Choose how Leonidas Code shows that this is a Dev or Nightly build."
+            description="Choose how Leonidas shows that this is a Dev or Nightly build."
             resetAction={
               settings.environmentIdentificationMode !== DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE ? (
                 <SettingResetButton
@@ -2327,7 +2327,7 @@ function LegacyFeaturesSection() {
           <SettingsGroup>
             <SettingsRow
               {...searchableSetting("legacy-plan-mode")}
-              description="Bring back Build/Plan, /plan, /default, and Shift+Tab. When off, Leonidas Code uses build mode."
+              description="Bring back Build/Plan, /plan, /default, and Shift+Tab. When off, Leonidas uses build mode."
               control={
                 <Switch
                   checked={settings.planModeEnabled}
@@ -2827,7 +2827,7 @@ export function GeneralSettingsPanel() {
 
         <SettingsRow
           {...searchableSetting("archive-confirmation")}
-          description="Ask for a second click on the archive button before Leonidas Code archives a chat."
+          description="Ask for a second click on the archive button before Leonidas archives a chat."
           resetAction={
             settings.confirmThreadArchive !== DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive ? (
               <SettingResetButton
@@ -3669,14 +3669,14 @@ export function GeneralSettingsPanel() {
             <SettingsRow
               id={searchableSetting("app-version").id}
               title={<AboutVersionTitle />}
-              description="This is the current version of Leonidas Code."
+              description="This is the current version of Leonidas."
             />
             {IS_NIGHTLY_BUILD ? <NightlyMobileBetaRow /> : null}
           </>
         )}
         <SettingsRow
           {...searchableSetting("privacy-policy")}
-          description="How we handle your data, including the anonymous usage data Leonidas Code collects."
+          description="How we handle your data, including the anonymous usage data Leonidas collects."
           control={
             <Button
               render={<a href={PRIVACY_POLICY_URL} target="_blank" rel="noreferrer noopener" />}
@@ -3720,7 +3720,7 @@ export function GeneralSettingsPanel() {
       <SettingsSection title="About">
         <SettingsRow
           {...searchableSetting("open-source-licenses")}
-          description="Notices for the parts, images, and extra tools that Leonidas Code uses."
+          description="Notices for the parts, images, and extra tools that Leonidas uses."
           control={
             <Button
               render={<Link to="/settings/open-source-licenses" />}

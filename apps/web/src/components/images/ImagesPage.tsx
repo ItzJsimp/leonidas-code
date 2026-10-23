@@ -10,6 +10,7 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Spinner } from "../ui/spinner";
 import { Switch } from "../ui/switch";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
+import { WindowHeader } from "../twoState/WindowHeader";
 import { ASPECTS, SIZES, dimensionsFor } from "./catalog.logic";
 import { CreateView } from "./CreateView";
 import { GalleryView } from "./GalleryView";
@@ -172,49 +173,66 @@ function ImagesPageBody() {
     onLockSeed: lockSeed,
   };
 
+  const tabs = VIEWS.map((view) =>
+    view.id === "gallery" && doneCount > 0
+      ? { ...view, label: `${view.label} ${doneCount}` }
+      : view,
+  );
+
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background scrollbar-gutter-both">
-        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 p-4 max-md:pt-14 sm:p-6">
-          <header className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-semibold tracking-tight">Images</h1>
-              <p className="text-sm text-muted-foreground">
-                Make pictures on your own PC. Give many models the same prompt and compare them.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {sample ? (
-                <Badge variant="outline" size="lg">
-                  Sample data
-                </Badge>
-              ) : null}
-              {api.projects.length > 1 ? (
-                <Select
-                  value={api.projectId ?? ""}
-                  onValueChange={(value) => value && api.setProjectId(value)}
-                >
-                  <SelectTrigger aria-label="Project" className="w-48">
-                    <SelectValue>
-                      {api.projects.find((project) => project.id === api.projectId)?.title ??
-                        "Choose a project"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectPopup alignItemWithTrigger={false}>
-                    {api.projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.title}
-                      </SelectItem>
-                    ))}
-                  </SelectPopup>
-                </Select>
-              ) : null}
-              <ConnectionBadge api={api} />
-              {import.meta.env.DEV ? (
-                <PreviewMenu preview={sampleApi.preview} onChange={sampleApi.patchPreview} />
-              ) : null}
-            </div>
-          </header>
+      <WindowHeader
+        title="Images"
+        actions={
+          <>
+            {sample ? (
+              <Badge variant="outline" size="lg">
+                Sample data
+              </Badge>
+            ) : null}
+            <ConnectionBadge api={api} />
+            {import.meta.env.DEV ? (
+              <PreviewMenu preview={sampleApi.preview} onChange={sampleApi.patchPreview} />
+            ) : null}
+          </>
+        }
+        tabs={tabs}
+        active={memory.view}
+        onSelect={(view) => patch({ view: view as ImagesView })}
+        idBase="images"
+      />
+      <div
+        role="tabpanel"
+        id="images-panel"
+        aria-labelledby={`images-tab-${memory.view}`}
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background scrollbar-gutter-both"
+      >
+        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <p className="min-w-0 flex-1 text-sm text-muted-foreground">
+              Make pictures on your own PC. Give many models the same prompt and compare them.
+            </p>
+            {api.projects.length > 1 ? (
+              <Select
+                value={api.projectId ?? ""}
+                onValueChange={(value) => value && api.setProjectId(value)}
+              >
+                <SelectTrigger aria-label="Project" className="w-48">
+                  <SelectValue>
+                    {api.projects.find((project) => project.id === api.projectId)?.title ??
+                      "Choose a project"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectPopup alignItemWithTrigger={false}>
+                  {api.projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            ) : null}
+          </div>
 
           {api.ready && !api.source.online ? (
             <SetupCard
@@ -224,25 +242,6 @@ function ImagesPageBody() {
               onSaveAddress={api.setBaseUrl}
             />
           ) : null}
-
-          <ToggleGroup
-            aria-label="Images view"
-            className="w-full *:flex-1 *:pointer-coarse:min-h-11 sm:w-auto sm:*:min-w-28"
-            value={[memory.view]}
-            onValueChange={(next) => {
-              const view = next[0] as ImagesView | undefined;
-              if (view) patch({ view });
-            }}
-          >
-            {VIEWS.map((view) => (
-              <Toggle key={view.id} value={view.id}>
-                {view.label}
-                {view.id === "gallery" && doneCount > 0 ? (
-                  <span className="text-xs text-muted-foreground tabular-nums">{doneCount}</span>
-                ) : null}
-              </Toggle>
-            ))}
-          </ToggleGroup>
 
           <ImagesQueueBar queue={queue} clockSkew={api.clockSkew} onCancel={api.cancel} />
 

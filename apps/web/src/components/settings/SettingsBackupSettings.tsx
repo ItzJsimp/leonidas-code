@@ -31,8 +31,7 @@ export function SettingsBackupSettings() {
       toastManager.add({
         type: "error",
         title: "Not a settings file",
-        description:
-          "This is not a settings file. Choose a file that you saved from Leonidas Code.",
+        description: "This is not a settings file. Choose a file that you saved from Leonidas.",
       });
       return;
     }

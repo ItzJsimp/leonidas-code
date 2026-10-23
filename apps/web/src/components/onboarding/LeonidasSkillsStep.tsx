@@ -194,8 +194,8 @@ export function LeonidasSkillsStep({
         Add skills for what you build
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        You get a starter set, plus skills that match the goals you picked. Leonidas Code saves them
-        in your AIOS folder. Your AI loads them in every chat.
+        You get a starter set, plus skills that match the goals you picked. Leonidas saves them in
+        your AIOS folder. Your AI loads them in every chat.
       </p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">
         <div className="space-y-4 pr-3">
@@ -229,7 +229,7 @@ export function LeonidasSkillsStep({
               spellCheck={false}
             />
             <span className="block text-xs text-muted-foreground">
-              Leonidas Code creates the folder if it is missing.
+              Leonidas creates the folder if it is missing.
             </span>
           </label>
           {pendingLines ? (

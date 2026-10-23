@@ -231,8 +231,8 @@ function GuestViewer({
         <p>No virtual computers found. In VirtualBox, create a Windows one and start it first.</p>
       )}
       <p className="text-xs text-muted-foreground">
-        You need VirtualBox and your own copy of Windows with a license. Leonidas Code does not set
-        it up for you.
+        You need VirtualBox and your own copy of Windows with a license. Leonidas does not set it up
+        for you.
       </p>
     </aside>
   );

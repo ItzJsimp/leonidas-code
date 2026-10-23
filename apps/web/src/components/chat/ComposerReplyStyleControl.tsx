@@ -218,6 +218,9 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
                 }
               />
             )}
+            {chip.problem ? null : (
+              <span className="max-w-28 truncate text-foreground/80">{chip.label}</span>
+            )}
           </TooltipTrigger>
           <TooltipPopup side="top" className="max-w-72">
             {problemText}
@@ -307,7 +310,7 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
                 slug: null,
                 readOnly: true,
                 name: "Leonidas",
-                description: "The shipped Leonidas Code reply style.",
+                description: "The shipped Leonidas reply style.",
                 body: list.data.leonidasBody,
               })
             }

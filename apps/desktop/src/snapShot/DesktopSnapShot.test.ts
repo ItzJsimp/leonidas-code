@@ -1676,7 +1676,7 @@ it.effect(
         const warning = logs.find(
           (message) =>
             Array.isArray(message) &&
-            message[0] === "The compositor could not activate Leonidas Code after the snapshot",
+            message[0] === "The compositor could not activate Leonidas after the snapshot",
         );
         assert.strictEqual(Array.isArray(warning) ? warning[1] : undefined, activationFailure);
         const pending = yield* decodePendingMetadata(saved);
@@ -3207,7 +3207,7 @@ it.effect("flags revoked macOS permissions on read and re-registers once they re
       const revoked = yield* service.state;
       assert.equal(
         revoked.message,
-        "Allow Screen Recording in System Settings, then restart Leonidas Code.",
+        "Allow Screen Recording in System Settings, then restart Leonidas.",
       );
       assert.deepEqual(revoked.macPermissions, { screenRecording: false, accessibility: true });
 
@@ -3220,7 +3220,7 @@ it.effect("flags revoked macOS permissions on read and re-registers once they re
       const blocked = yield* service.state;
       assert.equal(
         blocked.message,
-        "Allow Screen Recording in System Settings, then restart Leonidas Code.",
+        "Allow Screen Recording in System Settings, then restart Leonidas.",
       );
       assert.isFalse(blocked.shortcutRegistered);
 

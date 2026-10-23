@@ -10,15 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
-import { Route as UsageRouteImport } from './routes/usage'
-import { Route as SystemCareRouteImport } from './routes/system-care'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ScribeRouteImport } from './routes/scribe'
 import { Route as PairRouteImport } from './routes/pair'
-import { Route as ImagesRouteImport } from './routes/images'
 import { Route as ConnectAgentRouteImport } from './routes/connect-agent'
 import { Route as ConnectRouteImport } from './routes/connect'
-import { Route as BrainRouteImport } from './routes/brain'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsStorageRouteImport } from './routes/settings.storage'
@@ -36,11 +31,23 @@ import { Route as SettingsConnectionsRouteImport } from './routes/settings.conne
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as ProjectsProjectKeyRouteImport } from './routes/projects.$projectKey'
+import { Route as ChatUsageRouteImport } from './routes/_chat.usage'
+import { Route as ChatTodayRouteImport } from './routes/_chat.today'
+import { Route as ChatTeamRouteImport } from './routes/_chat.team'
 import { Route as ChatTasksRouteImport } from './routes/_chat.tasks'
+import { Route as ChatSystemCareRouteImport } from './routes/_chat.system-care'
+import { Route as ChatScribeRouteImport } from './routes/_chat.scribe'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
+import { Route as ChatProjectsRouteImport } from './routes/_chat.projects'
+import { Route as ChatMemoryRouteImport } from './routes/_chat.memory'
 import { Route as ChatMarketingRouteImport } from './routes/_chat.marketing'
+import { Route as ChatLibraryRouteImport } from './routes/_chat.library'
+import { Route as ChatInboxRouteImport } from './routes/_chat.inbox'
+import { Route as ChatImagesRouteImport } from './routes/_chat.images'
 import { Route as ChatGitRouteImport } from './routes/_chat.git'
+import { Route as ChatDeveloperRouteImport } from './routes/_chat.developer'
 import { Route as ChatCommandCenterRouteImport } from './routes/_chat.command-center'
+import { Route as ChatBrainRouteImport } from './routes/_chat.brain'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
 
@@ -49,34 +56,14 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsageRoute = UsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SystemCareRoute = SystemCareRouteImport.update({
-  id: '/system-care',
-  path: '/system-care',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScribeRoute = ScribeRouteImport.update({
-  id: '/scribe',
-  path: '/scribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PairRoute = PairRouteImport.update({
   id: '/pair',
   path: '/pair',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImagesRoute = ImagesRouteImport.update({
-  id: '/images',
-  path: '/images',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectAgentRoute = ConnectAgentRouteImport.update({
@@ -87,11 +74,6 @@ const ConnectAgentRoute = ConnectAgentRouteImport.update({
 const ConnectRoute = ConnectRouteImport.update({
   id: '/connect',
   path: '/connect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BrainRoute = BrainRouteImport.update({
-  id: '/brain',
-  path: '/brain',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -179,9 +161,34 @@ const ProjectsProjectKeyRoute = ProjectsProjectKeyRouteImport.update({
   path: '/projects/$projectKey',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatUsageRoute = ChatUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatTodayRoute = ChatTodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatTeamRoute = ChatTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatTasksRoute = ChatTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatSystemCareRoute = ChatSystemCareRouteImport.update({
+  id: '/system-care',
+  path: '/system-care',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatScribeRoute = ChatScribeRouteImport.update({
+  id: '/scribe',
+  path: '/scribe',
   getParentRoute: () => ChatRoute,
 } as any)
 const ChatPullRequestsRoute = ChatPullRequestsRouteImport.update({
@@ -189,9 +196,34 @@ const ChatPullRequestsRoute = ChatPullRequestsRouteImport.update({
   path: '/pull-requests',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatProjectsRoute = ChatProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatMemoryRoute = ChatMemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatMarketingRoute = ChatMarketingRouteImport.update({
   id: '/marketing',
   path: '/marketing',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatLibraryRoute = ChatLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatInboxRoute = ChatInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatImagesRoute = ChatImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
   getParentRoute: () => ChatRoute,
 } as any)
 const ChatGitRoute = ChatGitRouteImport.update({
@@ -199,9 +231,19 @@ const ChatGitRoute = ChatGitRouteImport.update({
   path: '/git',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatDeveloperRoute = ChatDeveloperRouteImport.update({
+  id: '/developer',
+  path: '/developer',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatCommandCenterRoute = ChatCommandCenterRouteImport.update({
   id: '/command-center',
   path: '/command-center',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatBrainRoute = ChatBrainRouteImport.update({
+  id: '/brain',
+  path: '/brain',
   getParentRoute: () => ChatRoute,
 } as any)
 const ChatDraftDraftIdRoute = ChatDraftDraftIdRouteImport.update({
@@ -218,21 +260,28 @@ const ChatEnvironmentIdThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
-  '/brain': typeof BrainRoute
   '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
-  '/images': typeof ImagesRoute
   '/pair': typeof PairRoute
-  '/scribe': typeof ScribeRoute
   '/settings': typeof SettingsRouteWithChildren
-  '/system-care': typeof SystemCareRoute
-  '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
+  '/brain': typeof ChatBrainRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/developer': typeof ChatDeveloperRoute
   '/git': typeof ChatGitRoute
+  '/images': typeof ChatImagesRoute
+  '/inbox': typeof ChatInboxRoute
+  '/library': typeof ChatLibraryRoute
   '/marketing': typeof ChatMarketingRoute
+  '/memory': typeof ChatMemoryRoute
+  '/projects': typeof ChatProjectsRoute
   '/pull-requests': typeof ChatPullRequestsRoute
+  '/scribe': typeof ChatScribeRoute
+  '/system-care': typeof ChatSystemCareRoute
   '/tasks': typeof ChatTasksRoute
+  '/team': typeof ChatTeamRoute
+  '/today': typeof ChatTodayRoute
+  '/usage': typeof ChatUsageRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -252,21 +301,28 @@ export interface FileRoutesByFullPath {
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
 export interface FileRoutesByTo {
-  '/brain': typeof BrainRoute
   '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
-  '/images': typeof ImagesRoute
   '/pair': typeof PairRoute
-  '/scribe': typeof ScribeRoute
   '/settings': typeof SettingsRouteWithChildren
-  '/system-care': typeof SystemCareRoute
-  '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
+  '/brain': typeof ChatBrainRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/developer': typeof ChatDeveloperRoute
   '/git': typeof ChatGitRoute
+  '/images': typeof ChatImagesRoute
+  '/inbox': typeof ChatInboxRoute
+  '/library': typeof ChatLibraryRoute
   '/marketing': typeof ChatMarketingRoute
+  '/memory': typeof ChatMemoryRoute
+  '/projects': typeof ChatProjectsRoute
   '/pull-requests': typeof ChatPullRequestsRoute
+  '/scribe': typeof ChatScribeRoute
+  '/system-care': typeof ChatSystemCareRoute
   '/tasks': typeof ChatTasksRoute
+  '/team': typeof ChatTeamRoute
+  '/today': typeof ChatTodayRoute
+  '/usage': typeof ChatUsageRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -289,21 +345,28 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_chat': typeof ChatRouteWithChildren
-  '/brain': typeof BrainRoute
   '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
-  '/images': typeof ImagesRoute
   '/pair': typeof PairRoute
-  '/scribe': typeof ScribeRoute
   '/settings': typeof SettingsRouteWithChildren
-  '/system-care': typeof SystemCareRoute
-  '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
+  '/_chat/brain': typeof ChatBrainRoute
   '/_chat/command-center': typeof ChatCommandCenterRoute
+  '/_chat/developer': typeof ChatDeveloperRoute
   '/_chat/git': typeof ChatGitRoute
+  '/_chat/images': typeof ChatImagesRoute
+  '/_chat/inbox': typeof ChatInboxRoute
+  '/_chat/library': typeof ChatLibraryRoute
   '/_chat/marketing': typeof ChatMarketingRoute
+  '/_chat/memory': typeof ChatMemoryRoute
+  '/_chat/projects': typeof ChatProjectsRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
+  '/_chat/scribe': typeof ChatScribeRoute
+  '/_chat/system-care': typeof ChatSystemCareRoute
   '/_chat/tasks': typeof ChatTasksRoute
+  '/_chat/team': typeof ChatTeamRoute
+  '/_chat/today': typeof ChatTodayRoute
+  '/_chat/usage': typeof ChatUsageRoute
   '/projects/$projectKey': typeof ProjectsProjectKeyRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
@@ -327,21 +390,28 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/brain'
     | '/connect'
     | '/connect-agent'
-    | '/images'
     | '/pair'
-    | '/scribe'
     | '/settings'
-    | '/system-care'
-    | '/usage'
     | '/welcome'
+    | '/brain'
     | '/command-center'
+    | '/developer'
     | '/git'
+    | '/images'
+    | '/inbox'
+    | '/library'
     | '/marketing'
+    | '/memory'
+    | '/projects'
     | '/pull-requests'
+    | '/scribe'
+    | '/system-care'
     | '/tasks'
+    | '/team'
+    | '/today'
+    | '/usage'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -361,21 +431,28 @@ export interface FileRouteTypes {
     | '/draft/$draftId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/brain'
     | '/connect'
     | '/connect-agent'
-    | '/images'
     | '/pair'
-    | '/scribe'
     | '/settings'
-    | '/system-care'
-    | '/usage'
     | '/welcome'
+    | '/brain'
     | '/command-center'
+    | '/developer'
     | '/git'
+    | '/images'
+    | '/inbox'
+    | '/library'
     | '/marketing'
+    | '/memory'
+    | '/projects'
     | '/pull-requests'
+    | '/scribe'
+    | '/system-care'
     | '/tasks'
+    | '/team'
+    | '/today'
+    | '/usage'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -397,21 +474,28 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_chat'
-    | '/brain'
     | '/connect'
     | '/connect-agent'
-    | '/images'
     | '/pair'
-    | '/scribe'
     | '/settings'
-    | '/system-care'
-    | '/usage'
     | '/welcome'
+    | '/_chat/brain'
     | '/_chat/command-center'
+    | '/_chat/developer'
     | '/_chat/git'
+    | '/_chat/images'
+    | '/_chat/inbox'
+    | '/_chat/library'
     | '/_chat/marketing'
+    | '/_chat/memory'
+    | '/_chat/projects'
     | '/_chat/pull-requests'
+    | '/_chat/scribe'
+    | '/_chat/system-care'
     | '/_chat/tasks'
+    | '/_chat/team'
+    | '/_chat/today'
+    | '/_chat/usage'
     | '/projects/$projectKey'
     | '/settings/appearance'
     | '/settings/archived'
@@ -434,15 +518,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
-  BrainRoute: typeof BrainRoute
   ConnectRoute: typeof ConnectRoute
   ConnectAgentRoute: typeof ConnectAgentRoute
-  ImagesRoute: typeof ImagesRoute
   PairRoute: typeof PairRoute
-  ScribeRoute: typeof ScribeRoute
   SettingsRoute: typeof SettingsRouteWithChildren
-  SystemCareRoute: typeof SystemCareRoute
-  UsageRoute: typeof UsageRoute
   WelcomeRoute: typeof WelcomeRoute
   ProjectsProjectKeyRoute: typeof ProjectsProjectKeyRoute
 }
@@ -456,20 +535,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/usage': {
-      id: '/usage'
-      path: '/usage'
-      fullPath: '/usage'
-      preLoaderRoute: typeof UsageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/system-care': {
-      id: '/system-care'
-      path: '/system-care'
-      fullPath: '/system-care'
-      preLoaderRoute: typeof SystemCareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -477,25 +542,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scribe': {
-      id: '/scribe'
-      path: '/scribe'
-      fullPath: '/scribe'
-      preLoaderRoute: typeof ScribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/pair': {
       id: '/pair'
       path: '/pair'
       fullPath: '/pair'
       preLoaderRoute: typeof PairRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/images': {
-      id: '/images'
-      path: '/images'
-      fullPath: '/images'
-      preLoaderRoute: typeof ImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect-agent': {
@@ -510,13 +561,6 @@ declare module '@tanstack/react-router' {
       path: '/connect'
       fullPath: '/connect'
       preLoaderRoute: typeof ConnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/brain': {
-      id: '/brain'
-      path: '/brain'
-      fullPath: '/brain'
-      preLoaderRoute: typeof BrainRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_chat': {
@@ -638,11 +682,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_chat/usage': {
+      id: '/_chat/usage'
+      path: '/usage'
+      fullPath: '/usage'
+      preLoaderRoute: typeof ChatUsageRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/today': {
+      id: '/_chat/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof ChatTodayRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/team': {
+      id: '/_chat/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof ChatTeamRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/tasks': {
       id: '/_chat/tasks'
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof ChatTasksRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/system-care': {
+      id: '/_chat/system-care'
+      path: '/system-care'
+      fullPath: '/system-care'
+      preLoaderRoute: typeof ChatSystemCareRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/scribe': {
+      id: '/_chat/scribe'
+      path: '/scribe'
+      fullPath: '/scribe'
+      preLoaderRoute: typeof ChatScribeRouteImport
       parentRoute: typeof ChatRoute
     }
     '/_chat/pull-requests': {
@@ -652,11 +731,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatPullRequestsRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/projects': {
+      id: '/_chat/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ChatProjectsRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/memory': {
+      id: '/_chat/memory'
+      path: '/memory'
+      fullPath: '/memory'
+      preLoaderRoute: typeof ChatMemoryRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/marketing': {
       id: '/_chat/marketing'
       path: '/marketing'
       fullPath: '/marketing'
       preLoaderRoute: typeof ChatMarketingRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/library': {
+      id: '/_chat/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof ChatLibraryRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/inbox': {
+      id: '/_chat/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof ChatInboxRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/images': {
+      id: '/_chat/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof ChatImagesRouteImport
       parentRoute: typeof ChatRoute
     }
     '/_chat/git': {
@@ -666,11 +780,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatGitRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/developer': {
+      id: '/_chat/developer'
+      path: '/developer'
+      fullPath: '/developer'
+      preLoaderRoute: typeof ChatDeveloperRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/command-center': {
       id: '/_chat/command-center'
       path: '/command-center'
       fullPath: '/command-center'
       preLoaderRoute: typeof ChatCommandCenterRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/brain': {
+      id: '/_chat/brain'
+      path: '/brain'
+      fullPath: '/brain'
+      preLoaderRoute: typeof ChatBrainRouteImport
       parentRoute: typeof ChatRoute
     }
     '/_chat/draft/$draftId': {
@@ -691,22 +819,46 @@ declare module '@tanstack/react-router' {
 }
 
 interface ChatRouteChildren {
+  ChatBrainRoute: typeof ChatBrainRoute
   ChatCommandCenterRoute: typeof ChatCommandCenterRoute
+  ChatDeveloperRoute: typeof ChatDeveloperRoute
   ChatGitRoute: typeof ChatGitRoute
+  ChatImagesRoute: typeof ChatImagesRoute
+  ChatInboxRoute: typeof ChatInboxRoute
+  ChatLibraryRoute: typeof ChatLibraryRoute
   ChatMarketingRoute: typeof ChatMarketingRoute
+  ChatMemoryRoute: typeof ChatMemoryRoute
+  ChatProjectsRoute: typeof ChatProjectsRoute
   ChatPullRequestsRoute: typeof ChatPullRequestsRoute
+  ChatScribeRoute: typeof ChatScribeRoute
+  ChatSystemCareRoute: typeof ChatSystemCareRoute
   ChatTasksRoute: typeof ChatTasksRoute
+  ChatTeamRoute: typeof ChatTeamRoute
+  ChatTodayRoute: typeof ChatTodayRoute
+  ChatUsageRoute: typeof ChatUsageRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ChatEnvironmentIdThreadIdRoute: typeof ChatEnvironmentIdThreadIdRoute
   ChatDraftDraftIdRoute: typeof ChatDraftDraftIdRoute
 }
 
 const ChatRouteChildren: ChatRouteChildren = {
+  ChatBrainRoute: ChatBrainRoute,
   ChatCommandCenterRoute: ChatCommandCenterRoute,
+  ChatDeveloperRoute: ChatDeveloperRoute,
   ChatGitRoute: ChatGitRoute,
+  ChatImagesRoute: ChatImagesRoute,
+  ChatInboxRoute: ChatInboxRoute,
+  ChatLibraryRoute: ChatLibraryRoute,
   ChatMarketingRoute: ChatMarketingRoute,
+  ChatMemoryRoute: ChatMemoryRoute,
+  ChatProjectsRoute: ChatProjectsRoute,
   ChatPullRequestsRoute: ChatPullRequestsRoute,
+  ChatScribeRoute: ChatScribeRoute,
+  ChatSystemCareRoute: ChatSystemCareRoute,
   ChatTasksRoute: ChatTasksRoute,
+  ChatTeamRoute: ChatTeamRoute,
+  ChatTodayRoute: ChatTodayRoute,
+  ChatUsageRoute: ChatUsageRoute,
   ChatIndexRoute: ChatIndexRoute,
   ChatEnvironmentIdThreadIdRoute: ChatEnvironmentIdThreadIdRoute,
   ChatDraftDraftIdRoute: ChatDraftDraftIdRoute,
@@ -754,15 +906,10 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
-  BrainRoute: BrainRoute,
   ConnectRoute: ConnectRoute,
   ConnectAgentRoute: ConnectAgentRoute,
-  ImagesRoute: ImagesRoute,
   PairRoute: PairRoute,
-  ScribeRoute: ScribeRoute,
   SettingsRoute: SettingsRouteWithChildren,
-  SystemCareRoute: SystemCareRoute,
-  UsageRoute: UsageRoute,
   WelcomeRoute: WelcomeRoute,
   ProjectsProjectKeyRoute: ProjectsProjectKeyRoute,
 }

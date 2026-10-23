@@ -17,6 +17,7 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { vcsEnvironment } from "~/state/vcs";
 import { Button } from "../ui/button";
 import { SidebarInset } from "../ui/sidebar";
+import { DeveloperStrip } from "../windows/developer/DeveloperStrip";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { toastManager } from "../ui/toast";
 import { GitLane } from "./GitLane";
@@ -44,6 +45,7 @@ export function GitDashboardPage() {
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
+      <DeveloperStrip />
       <div className="scrollbar-gutter-both flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
           <header className="flex flex-wrap items-start justify-between gap-3">

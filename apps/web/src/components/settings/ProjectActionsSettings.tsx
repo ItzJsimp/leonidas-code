@@ -8,6 +8,7 @@ import {
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { useBuilderMode } from "../twoState/useBuilderMode";
 import { useT3ProjectFileState } from "../../hooks/useT3ProjectFileScripts";
 import { useEnvironments } from "../../state/environments";
 import {
@@ -41,6 +42,7 @@ import { useSettingsScope } from "./SettingsScopeContext";
  * binding on an environment.
  */
 export function ProjectActionsSettings() {
+  const builder = useBuilderMode();
   const { scope, targets, target } = useSettingsScope();
   const { environments } = useEnvironments();
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
@@ -162,7 +164,9 @@ export function ProjectActionsSettings() {
                 </MenuTrigger>
                 <MenuPopup align="end">
                   <MenuGroup>
-                    <MenuGroupLabel>Import from t3.json</MenuGroupLabel>
+                    <MenuGroupLabel>
+                      {builder ? "Import from t3.json" : "Import from this folder"}
+                    </MenuGroupLabel>
                     <p className="px-2 pb-2 text-pretty text-sm text-muted-foreground">
                       Add the actions that this folder lists. You do not need to edit them first.
                     </p>
@@ -210,10 +214,10 @@ export function ProjectActionsSettings() {
           onEdit={(script) => setRequest(editorRequestForScript(script, keybindings))}
         />
       )}
-      {t3File.status === "invalid" ? (
+      {builder && t3File.status === "invalid" ? (
         <SettingsRow
           title="t3.json is invalid"
-          description="A t3.json file exists in this folder, but Leonidas Code cannot read it. It ignores every action and icon in it. Check the JSON text and the icon names."
+          description="A t3.json file exists in this folder, but Leonidas cannot read it. It ignores every action and icon in it. Check the JSON text and the icon names."
           className="text-warning"
         />
       ) : null}

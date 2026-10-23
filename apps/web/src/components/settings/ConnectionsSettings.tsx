@@ -2694,8 +2694,7 @@ export function ConnectionsSettings() {
         : {
             type: "success",
             title: "Computer added",
-            description:
-              "Leonidas Code saved this computer. It connects again when the app starts.",
+            description: "Leonidas saved this computer. It connects again when the app starts.",
           },
     );
     setIsAddingSavedBackend(false);
@@ -3510,7 +3509,7 @@ export function ConnectionsSettings() {
         {desktopWslState.enabled ? (
           <SettingsRow
             title="WSL only"
-            description="Run only WSL. Leonidas Code restarts when you change this."
+            description="Run only WSL. Leonidas restarts when you change this."
             className="bg-muted/20 pl-7 sm:pl-8"
             control={
               <Switch
@@ -3617,7 +3616,7 @@ export function ConnectionsSettings() {
         desktopBridge
           ? "This connection cannot see or change network access."
           : currentAuthPolicy === "remote-reachable"
-            ? "Remote access is already set up. Change network access where Leonidas Code starts."
+            ? "Remote access is already set up. Change network access where Leonidas starts."
             : currentAuthPolicy === "loopback-browser"
               ? "Only this computer can connect. To let other devices connect, restart with a network address that is not local."
               : "Network access information is not available."
@@ -3638,8 +3637,7 @@ export function ConnectionsSettings() {
               }
             />
             <TooltipPopup side="top">
-              A change to network access restarts Leonidas Code. Make this change where Leonidas
-              Code starts.
+              A change to network access restarts Leonidas. Make this change where Leonidas starts.
             </TooltipPopup>
           </Tooltip>
         ) : undefined
@@ -3834,8 +3832,8 @@ export function ConnectionsSettings() {
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {pendingDesktopServerExposureMode === "network-accessible"
-                    ? "Let your other devices connect to Leonidas Code over the network. Use a connect link to give a device access. Leonidas Code will restart."
-                    : "Devices on your local network will disconnect. Remote access and Tailscale HTTPS keep working. Leonidas Code will restart."}
+                    ? "Let your other devices connect to Leonidas over the network. Use a connect link to give a device access. Leonidas will restart."
+                    : "Devices on your local network will disconnect. Remote access and Tailscale HTTPS keep working. Leonidas will restart."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -3891,15 +3889,15 @@ export function ConnectionsSettings() {
                 <AlertDialogDescription>
                   {pendingWslChange?.kind === "disable"
                     ? pendingWslChange.wasWslOnly
-                      ? "Leonidas Code will restart and run on Windows. Chats and projects that use WSL stay safe in the distro. They work again when you turn WSL on."
-                      : "WSL will stop. Chats and projects that use WSL stay safe in the distro. You cannot use them in Leonidas Code until you turn WSL on."
+                      ? "Leonidas will restart and run on Windows. Chats and projects that use WSL stay safe in the distro. They work again when you turn WSL on."
+                      : "WSL will stop. Chats and projects that use WSL stay safe in the distro. You cannot use them in Leonidas until you turn WSL on."
                     : pendingWslChange?.kind === "distro"
-                      ? "Leonidas Code will restart WSL on the new distro. Work that runs on the current distro will stop."
+                      ? "Leonidas will restart WSL on the new distro. Work that runs on the current distro will stop."
                       : pendingWslChange?.kind === "enable"
                         ? "Run WSL next to Windows, or stop Windows and use only WSL? You can change this later in Settings."
                         : pendingWslChange?.nextValue
-                          ? "Leonidas Code will restart and use only WSL. You cannot use your Windows projects until you turn this off."
-                          : "Leonidas Code will restart and run on Windows next to WSL."}
+                          ? "Leonidas will restart and use only WSL. You cannot use your Windows projects until you turn this off."
+                          : "Leonidas will restart and run on Windows next to WSL."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -3985,7 +3983,7 @@ export function ConnectionsSettings() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Disable Tailscale HTTPS?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Leonidas Code will restart without Tailscale Serve.
+                  Leonidas will restart without Tailscale Serve.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -4023,8 +4021,8 @@ export function ConnectionsSettings() {
               <DialogHeader>
                 <DialogTitle>Set up Tailscale HTTPS?</DialogTitle>
                 <DialogDescription>
-                  Leonidas Code will restart with Tailscale Serve on. It will ask Tailscale to pass
-                  HTTPS traffic to this computer.
+                  Leonidas will restart with Tailscale Serve on. It will ask Tailscale to pass HTTPS
+                  traffic to this computer.
                 </DialogDescription>
               </DialogHeader>
               <DialogPanel>

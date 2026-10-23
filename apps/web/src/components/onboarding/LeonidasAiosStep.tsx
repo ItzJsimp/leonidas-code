@@ -133,7 +133,7 @@ export function LeonidasAiosStep({
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
         This step is optional. Your AI starts every chat knowing who you are and what you work on.
-        It reads a few plain text files first (an “AIOS”). Leonidas Code can build them with you.
+        It reads a few plain text files first (an “AIOS”). Leonidas can build them with you.
       </p>
       <p className="mt-2 text-sm font-medium text-foreground">{OWN_YOUR_BRAIN_LINE}</p>
       <ScrollArea scrollFade className="mt-5 h-auto max-h-[min(32rem,55dvh)]">

@@ -177,7 +177,7 @@ describe("manual desktop update feedback", () => {
       expect.objectContaining({
         type: "success",
         title: "You're up to date",
-        description: "Leonidas Code 1.0.7 is the newest version.",
+        description: "Leonidas 1.0.7 is the newest version.",
       }),
     );
     expect(unsubscribe).toHaveBeenCalledOnce();

@@ -87,6 +87,8 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "usage.open",
   "settings.open",
   "tasks.open",
+  "layout.swap",
+  "layout.split",
   "theme.select",
   "appearance.cycle",
   "themeEditor.toggle",

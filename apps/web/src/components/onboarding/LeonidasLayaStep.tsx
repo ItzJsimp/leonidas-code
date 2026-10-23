@@ -90,7 +90,7 @@ export function LeonidasLayaStep({
       setResult(
         value ?? {
           status: "error",
-          message: "Leonidas Code could not reach this computer. Try again.",
+          message: "Leonidas could not reach this computer. Try again.",
           missingPackages: [],
         },
       );
@@ -99,8 +99,7 @@ export function LeonidasLayaStep({
 
   const wire = async () => {
     const value = await call("wire", false, folder.trim());
-    if (alive.current)
-      setWireMessage(value?.message ?? "Leonidas Code could not reach this computer.");
+    if (alive.current) setWireMessage(value?.message ?? "Leonidas could not reach this computer.");
   };
 
   const ready = result?.status === "ready";
@@ -131,7 +130,7 @@ export function LeonidasLayaStep({
               Install {result.missingPackages.join(", ")} with pip for your user
             </span>
             <span className="block text-xs text-muted-foreground">
-              Leonidas Code asks first. It installs nothing without this tick.
+              Leonidas asks first. It installs nothing without this tick.
             </span>
           </span>
         </label>

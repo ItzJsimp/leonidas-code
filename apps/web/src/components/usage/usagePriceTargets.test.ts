@@ -169,7 +169,7 @@ describe("model price writes", () => {
     });
     expect(onResult).toHaveBeenCalledWith("old", {
       status: "failed",
-      error: "Update Leonidas Code on that computer to map models",
+      error: "Update Leonidas on that computer to map models",
     });
   });
 });

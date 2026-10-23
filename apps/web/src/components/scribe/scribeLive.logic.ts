@@ -91,12 +91,16 @@ export function mergeRecent(
 export type EngineTone = "success" | "info" | "warning" | "error" | "muted";
 
 /** The one-line engine strip on every Scribe tab. */
-export function engineStrip(snapshot: ScribeLiveSnapshot): {
+export function engineStrip(
+  snapshot: ScribeLiveSnapshot,
+  builder = false,
+): {
   readonly label: string;
   readonly tone: EngineTone;
 } {
   if (snapshot.connected === null) return { label: "Connecting to Scribe", tone: "muted" };
-  if (!snapshot.connected) return { label: "Engine stopped", tone: "error" };
+  if (!snapshot.connected)
+    return { label: builder ? "Engine stopped" : "Scribe is not running", tone: "error" };
   switch (snapshot.state) {
     case "listening":
       return { label: "Listening", tone: "info" };

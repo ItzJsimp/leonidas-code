@@ -32,7 +32,7 @@ export function resolveEnvironmentIconPickerLock(input: {
     return "Connect to this computer to change its icon.";
   }
   if (input.serverConfig.environment.capabilities.environmentIcon !== true) {
-    return "Leonidas Code on this computer is too old to keep an icon. Update it, then choose an icon.";
+    return "Leonidas on this computer is too old to keep an icon. Update it, then choose an icon.";
   }
   if (input.operateAccess !== "granted") {
     return "You cannot change the settings of this computer with this connection.";

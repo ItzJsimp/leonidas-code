@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { useBuilderMode } from "../twoState/useBuilderMode";
 import { Spinner } from "../ui/spinner";
 import { HelpText } from "./catalogBadges";
 import { COMFY_INSTALL_URL, COMFY_START_COMMAND } from "./images.mock";
@@ -72,6 +73,7 @@ export function SetupCard(props: {
   readonly onRecheck: () => Promise<boolean>;
   readonly onSaveAddress: (baseUrl: string) => Promise<boolean>;
 }) {
+  const builder = useBuilderMode();
   const [copied, setCopied] = useState(false);
   const [lastCheck, setLastCheck] = useState<"none" | "failed">("none");
   const copy = () => {
@@ -107,15 +109,21 @@ export function SetupCard(props: {
           <HelpText>Skip this step if ComfyUI is already on this PC.</HelpText>
         </Step>
         <Step n={2} title="Start ComfyUI">
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-muted/50 py-1 ps-3 pe-1">
-            <code className="min-w-0 flex-1 truncate font-mono text-xs">{COMFY_START_COMMAND}</code>
-            <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy the start command">
-              {copied ? <CheckIcon /> : <ClipboardCopyIcon />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-          </div>
+          {builder ? (
+            <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-muted/50 py-1 ps-3 pe-1">
+              <code className="min-w-0 flex-1 truncate font-mono text-xs">
+                {COMFY_START_COMMAND}
+              </code>
+              <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy the start command">
+                {copied ? <CheckIcon /> : <ClipboardCopyIcon />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          ) : null}
           <HelpText>
-            Run this command in the ComfyUI folder. The desktop app of ComfyUI starts by itself.
+            {builder
+              ? "Run this command in the ComfyUI folder. The desktop app of ComfyUI starts by itself."
+              : "Open ComfyUI on this PC and wait until its page shows."}
           </HelpText>
         </Step>
         <Step n={3} title="Check the connection">

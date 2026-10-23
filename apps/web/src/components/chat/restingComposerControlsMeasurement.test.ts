@@ -6,12 +6,7 @@ import {
 } from "../composerFooterLayout";
 import { measureRestingComposerControls } from "./restingComposerControlsMeasurement";
 
-function measurePicker(input: {
-  clientWidth: number;
-  flexGrow: string;
-  maxWidth?: string;
-  pinnedWidth?: number;
-}) {
+function measurePicker(input: { clientWidth: number; flexGrow: string; maxWidth?: string }) {
   const label = { clientWidth: input.clientWidth, scrollWidth: 160 };
   const picker = {
     getBoundingClientRect: () => ({ width: 52 }),
@@ -22,9 +17,6 @@ function measurePicker(input: {
       if (selector === "[data-chat-provider-model-picker]") return picker;
       if (selector === "[data-resting-controls-overflow]") {
         return { getBoundingClientRect: () => ({ width: 24 }) };
-      }
-      if (selector === "[data-resting-fixed]" && input.pinnedWidth !== undefined) {
-        return { getBoundingClientRect: () => ({ width: input.pinnedWidth }) };
       }
       return null;
     },
@@ -57,13 +49,6 @@ describe("measureRestingComposerControls", () => {
       iconOnlyCount: 0,
       visible: true,
     });
-  });
-
-  it("counts a pinned control as fixed width so the blocks fold first", () => {
-    const measurement = measurePicker({ clientWidth: 0, flexGrow: "0", pinnedWidth: 90 });
-
-    expect(measurement.naturalFixedWidth).toBe(52 + 90 + 4);
-    expect(measurement.minimumFixedWidth).toBe(52 + 90 + 4);
   });
 
   it("recovers truncated text while the model label is flexible", () => {

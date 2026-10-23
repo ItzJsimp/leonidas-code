@@ -9,7 +9,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, EllipsisIcon } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -22,6 +22,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { isTrailingDoubleClick } from "../Sidebar.logic";
+import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
@@ -39,6 +40,7 @@ import {
 } from "../WorkspaceBreadcrumb";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
+import { useChatHeaderTrailing } from "./ChatHeaderTrailing";
 import { useClientSettings } from "../../hooks/useSettings";
 import { LocalVmPanel } from "../localVm/LocalVmPanel";
 import { userErrorToastFields } from "~/lib/userErrorToast";
@@ -72,6 +74,13 @@ export function resolveRenameCommit(input: {
   return { action: "commit", title: trimmed };
 }
 
+/** Below this header width the secondary controls share one overflow menu. */
+const COMPACT_HEADER_BELOW = 728;
+
+/** Null until the header has a measured width. */
+export const isCompactChatHeader = (width: number | null) =>
+  width !== null && width < COMPACT_HEADER_BELOW;
+
 // How long a click on the thread title waits before opening the action menu,
 // so a double-click-to-rename can cancel it first. Only the native desktop
 // menu needs this: it swallows input while open, so the wait must cover the
@@ -92,11 +101,21 @@ export const ChatHeader = memo(function ChatHeader({
   onOpenProjectSettings,
   goalControls,
 }: ChatHeaderProps) {
+  const trailing = useChatHeaderTrailing();
   const activeProjectName = activeProject?.title;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
   const breadcrumbContainerRef = useRef<HTMLDivElement>(null);
   const [collapseParentTitle, setCollapseParentTitle] = useState(false);
+  const [headerWidth, setHeaderWidth] = useState<number | null>(null);
+  const compact = isCompactChatHeader(headerWidth);
+  useEffect(() => {
+    const element = breadcrumbContainerRef.current;
+    if (!element) return;
+    return observeResize(element, ([entry]) => {
+      if (entry) setHeaderWidth(entry.target.getBoundingClientRect().width);
+    });
+  }, []);
   const activeThreadRef = useMemo(
     () => scopeThreadRef(activeThreadEnvironmentId, activeThreadId),
     [activeThreadEnvironmentId, activeThreadId],
@@ -302,6 +321,15 @@ export const ChatHeader = memo(function ChatHeader({
     },
     [commitRename],
   );
+  const secondaryControls = (
+    <>
+      {goalControls}
+      {isServerThread && (
+        <LocalVmPanel environmentId={activeThreadEnvironmentId} threadId={activeThreadId} />
+      )}
+      {trailing}
+    </>
+  );
   return (
     <div
       ref={breadcrumbContainerRef}
@@ -380,7 +408,7 @@ export const ChatHeader = memo(function ChatHeader({
             </WorkspaceBreadcrumbSeparator>
           </>
         ) : null}
-        <WorkspaceBreadcrumbItem current className="min-w-10 flex-1">
+        <WorkspaceBreadcrumbItem current className="min-w-24 flex-1">
           {renamingTitle !== null ? (
             <input
               autoFocus
@@ -444,9 +472,20 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
-      {goalControls}
-      {isServerThread && (
-        <LocalVmPanel environmentId={activeThreadEnvironmentId} threadId={activeThreadId} />
+      {compact ? (
+        <Menu>
+          <MenuTrigger
+            aria-label="More chat controls"
+            className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <EllipsisIcon aria-hidden className="size-4" />
+          </MenuTrigger>
+          <MenuPopup align="end" className="flex-col items-stretch gap-2 p-2">
+            {secondaryControls}
+          </MenuPopup>
+        </Menu>
+      ) : (
+        secondaryControls
       )}
     </div>
   );

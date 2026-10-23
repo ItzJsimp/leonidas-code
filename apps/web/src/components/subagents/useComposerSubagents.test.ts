@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("react", () => ({ useMemo: (fn: () => unknown) => fn() }));
 vi.mock("@tanstack/react-router", () => ({ useParams: () => ({}) }));
+vi.mock("../twoState/shownChatContext", () => ({ useRouteOrShownThreadRef: () => null }));
 vi.mock("~/state/environments", () => ({ usePrimaryEnvironmentId: () => "primary" }));
 vi.mock("~/state/entities", () => ({ useThreadShell: () => state.thread }));
 vi.mock("~/composerDraftStore", () => ({

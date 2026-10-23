@@ -159,11 +159,9 @@ function SidebarUpdateControl() {
       : showCheckIcon
         ? "Checking for updates…"
         : state?.status === "up-to-date"
-          ? "Leonidas Code is up to date. Click to check again."
+          ? "Leonidas is up to date. Click to check again."
           : "Check for updates";
-  const tooltip = state
-    ? `${actionTooltip} · Leonidas Code ${state.currentVersion}`
-    : actionTooltip;
+  const tooltip = state ? `${actionTooltip} · Leonidas ${state.currentVersion}` : actionTooltip;
   const disabled = showCheckIcon
     ? true
     : showUpdateDetails
@@ -288,7 +286,7 @@ function SidebarUpdateControl() {
             type: "error",
             title: "Could not check for updates",
             description:
-              result.state.message ?? "Updates are not available in this copy of Leonidas Code.",
+              result.state.message ?? "Updates are not available in this copy of Leonidas.",
           }),
         );
       })

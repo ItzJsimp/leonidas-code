@@ -56,7 +56,7 @@ export function CliCommandSettingsRow() {
     return (
       <SettingsRow
         {...searchableSetting("cli-command")}
-        description="For advanced users. Runs Leonidas Code from a terminal."
+        description="For advanced users. Runs Leonidas from a terminal."
         control={
           <Button size="sm" variant="outline" onClick={() => setShowAdvanced(true)}>
             Show
@@ -67,9 +67,9 @@ export function CliCommandSettingsRow() {
   }
   const installed = state.installedPath !== null;
   const description = state.shadowedBy
-    ? `Another t3 at ${state.shadowedBy} runs first in a new terminal. Remove it to use Leonidas Code's.`
+    ? `Another t3 at ${state.shadowedBy} runs first in a new terminal. Remove it to use Leonidas's.`
     : !installed
-      ? "Run Leonidas Code's CLI as `t3` from any terminal."
+      ? "Run Leonidas's CLI as `t3` from any terminal."
       : state.onPath
         ? `Installed at ${state.installedPath}. Open a new terminal to use it.`
         : `Installed at ${state.installedPath}, which is not on your PATH yet. Add its folder to your PATH to run \`t3\`.`;

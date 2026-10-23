@@ -179,7 +179,7 @@ export function shouldOpenDefaultBrowserProfileFromMenuClick(
 }
 
 const SURFACE_DISABLED_REASONS = {
-  browser: "Browser previews are only available in the Leonidas Code desktop app.",
+  browser: "Browser previews are only available in the Leonidas desktop app.",
   terminal: "The terminal is only available in a chat that has a project.",
   files: "Files are only available when a project is open.",
   diff: "Changes are only available for chats in Git projects.",

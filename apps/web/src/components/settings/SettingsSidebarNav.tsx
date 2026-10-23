@@ -21,8 +21,12 @@ import {
   HardDriveIcon,
   PanelsTopLeftIcon,
   KeyboardIcon,
+  LifeBuoyIcon,
   Link2Icon,
+  MessageSquareWarningIcon,
+  MonitorIcon,
   PaletteIcon,
+  ScrollTextIcon,
   SearchIcon,
   Settings2Icon,
   XIcon,
@@ -43,6 +47,10 @@ import {
   SidebarInput,
 } from "../ui/sidebar";
 import { SidebarUpdatePill } from "../sidebar/SidebarUpdatePill";
+import { openStuck, STUCK_ENABLED } from "../community/stuckStore";
+import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
+import { FEEDBACK_ENABLED } from "../feedback/feedbackRelay";
+import { openFeedback } from "../feedback/feedbackStore";
 import { useNavigateToMainApp } from "../sidebar/mainAppLocation";
 import { scrollToSettingsTarget } from "./settingsLayout";
 import {
@@ -218,6 +226,13 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
       });
     },
     [isMobile, navigate, setOpenMobile],
+  );
+  const runExtra = useCallback(
+    (action: () => void) => {
+      if (isMobile) setOpenMobile(false);
+      action();
+    },
+    [isMobile, setOpenMobile],
   );
   const clearSearch = useCallback(() => {
     setQuery("");
@@ -406,10 +421,52 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                             </SidebarMenuItem>
                           );
                         })}
+                        {group.label === "System" ? (
+                          <SidebarMenuItem>
+                            <SidebarMenuButton
+                              isActive={pathname === "/system-care"}
+                              onClick={() => runExtra(() => void navigate({ to: "/system-care" }))}
+                            >
+                              <MonitorIcon />
+                              <span className="truncate">This PC</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ) : null}
                       </SidebarMenu>
                     </div>
                   );
                 })}
+                <div className="flex flex-col gap-0.5">
+                  <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground/70 uppercase">
+                    Help
+                  </p>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={() => runExtra(openReleaseHistoryDialog)}>
+                        <ScrollTextIcon />
+                        <span className="truncate">What changed</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    {STUCK_ENABLED ? (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => runExtra(() => openStuck("button"))}>
+                          <LifeBuoyIcon />
+                          <span className="truncate">I&apos;m stuck</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ) : null}
+                    {FEEDBACK_ENABLED ? (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => runExtra(() => openFeedback({ source: "sidebar" }))}
+                        >
+                          <MessageSquareWarningIcon />
+                          <span className="truncate">Send feedback</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ) : null}
+                  </SidebarMenu>
+                </div>
               </>
             )}
           </div>

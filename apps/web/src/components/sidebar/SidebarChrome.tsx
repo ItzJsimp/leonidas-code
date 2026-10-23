@@ -1,29 +1,9 @@
-import {
-  ArrowLeftIcon,
-  ActivityIcon,
-  ChartNoAxesColumnIcon,
-  GitBranchIcon,
-  ImageIcon,
-  ListChecksIcon,
-  RadarIcon,
-  LifeBuoyIcon,
-  MessageSquareWarningIcon,
-  ScrollTextIcon,
-  SettingsIcon,
-  AudioLinesIcon,
-} from "lucide-react";
-import type { ReactNode } from "react";
-import type { KeybindingCommand } from "@t3tools/contracts";
-import { useAtomValue } from "@effect/atom-react";
 import { memo, useCallback } from "react";
-import { shortcutLabelForCommand } from "../../keybindings";
-import { primaryServerKeybindingsAtom } from "../../state/server";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 
 import { APP_VERSION_LABEL } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { usePrimaryEnvironment, usePullRequestsSupported } from "../../state/environments";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
@@ -31,25 +11,11 @@ import {
   useEnvironmentStageLabel,
 } from "../SidebarStageBackdrop";
 import { Badge } from "../ui/badge";
-import {
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
-} from "../ui/sidebar";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
-import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
+import { SidebarFooter, SidebarMenu, SidebarTrigger } from "../ui/sidebar";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
-import { FEEDBACK_ENABLED } from "../feedback/feedbackRelay";
-import { openStuck, STUCK_ENABLED } from "../community/stuckStore";
-import { openFeedback } from "../feedback/feedbackStore";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { openReleaseHistoryDialog } from "../desktop/ReleaseHistoryDialog";
-import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { observeResize } from "~/lib/observeResize";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
@@ -95,7 +61,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         ) : null}
         <button
           type="button"
-          title="Version of Leonidas Code. Click to see what changed in each update."
+          title="Version of Leonidas. Click to see what changed in each update."
           onClick={openReleaseHistoryDialog}
           className={cn(
             "h-7 shrink-0 rounded-md px-1 text-xs tabular-nums outline-hidden ring-ring focus-visible:ring-2 focus-visible:ring-inset",
@@ -151,8 +117,8 @@ function resolveCurrentAppName(pathname: string): string {
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname === "/usage" || pathname.startsWith("/usage/")) return "Usage";
   if (pathname === "/pull-requests" || pathname.startsWith("/pull-requests/"))
-    return "Code Reviews";
-  return "Code";
+    return "Pull requests";
+  return "Chat";
 }
 
 function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
@@ -175,7 +141,7 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
 
 function SidebarBrandMark({
   onBackdrop,
-  currentApp = "Code",
+  currentApp = "Chat",
 }: {
   onBackdrop: boolean;
   currentApp?: string;
@@ -192,7 +158,7 @@ function SidebarBrandMark({
           onBackdrop ? "text-white/50" : "text-muted-foreground/50",
         )}
       >
-        \u00b7
+        ·
       </span>
       <span
         className={cn(
@@ -206,241 +172,15 @@ function SidebarBrandMark({
   );
 }
 
-function SidebarUtilityItem({
-  icon,
-  label,
-  tourId,
-  usageId,
-  shortcutCommand,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  /** Command whose shortcut is appended to the tooltip. */
-  shortcutCommand?: KeybindingCommand;
-  /** Feature tour anchor, see `features/tour/tourTargets.ts`. */
-  tourId?: string;
-  /** Usage analytics id; must be in USAGE_UI_ELEMENT_IDS. */
-  usageId?: string;
-  onClick: () => void;
-}) {
-  const keybindings = useAtomValue(primaryServerKeybindingsAtom);
-  const shortcutLabel = shortcutCommand
-    ? shortcutLabelForCommand(keybindings, shortcutCommand)
-    : null;
-  return (
-    <SidebarMenuItem className="flex w-8 min-w-0 shrink justify-center">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <SidebarMenuButton
-              aria-label={label}
-              data-tour={tourId}
-              data-usage-id={usageId}
-              onClick={onClick}
-              size="icon"
-              className="w-full max-w-8"
-            >
-              {icon}
-            </SidebarMenuButton>
-          }
-        />
-        <TooltipPopup side="top">
-          {shortcutLabel ? `${label} (${shortcutLabel})` : label}
-        </TooltipPopup>
-      </Tooltip>
-    </SidebarMenuItem>
-  );
-}
-
-const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
-  const navigate = useNavigate();
-  const navigateToMainApp = useNavigateToMainApp();
-  const { isMobile, setOpenMobile } = useSidebar();
-  const isOnUtilityPage = useLocation({
-    select: (location) => isSidebarUtilityPage(location.pathname),
-  });
-  const pullRequestsSupported = usePullRequestsSupported();
-  // The Scribe engine runs on Windows only. The server host decides, not this browser.
-  const scribeSupported =
-    usePrimaryEnvironment()?.serverConfig?.environment.platform.os === "windows";
-
-  const closeMobileSidebar = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  }, [isMobile, setOpenMobile]);
-  const handlePullRequestsClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({
-      to: "/pull-requests",
-      search: readPullRequestListPreferences(),
-    });
-  }, [closeMobileSidebar, navigate]);
-  const handleSettingsClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/settings" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleCommandCenterClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/command-center" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleGitClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/git" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleTasksClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/tasks" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleUsageClick = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    void navigate({ to: "/usage" });
-  }, [isMobile, navigate, setOpenMobile]);
-
-  const handleScribeClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/scribe" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleImagesClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/images" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleSystemCareClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/system-care" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleUpdateHistoryClick = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    openReleaseHistoryDialog();
-  }, [isMobile, setOpenMobile]);
-
-  const handleFeedbackClick = useCallback(() => {
-    closeMobileSidebar();
-    openFeedback({ source: "sidebar" });
-  }, [closeMobileSidebar]);
-
-  const handleStuckClick = useCallback(() => {
-    closeMobileSidebar();
-    openStuck("button");
-  }, [closeMobileSidebar]);
-
-  const handleBackClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigateToMainApp();
-  }, [closeMobileSidebar, navigateToMainApp]);
-
-  return (
-    <SidebarMenu className="flex-row flex-nowrap items-center">
-      {isOnUtilityPage ? (
-        <SidebarMenuItem className="min-w-0 flex-1">
-          <SidebarMenuButton onClick={handleBackClick}>
-            <ArrowLeftIcon />
-            <span>Back</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ) : (
-        // One row at every width. Buttons keep a fixed size and gap, so dragging the
-        // sidebar never spreads them; they only shrink when the sidebar is too narrow.
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-0.5">
-          <SidebarUtilityItem
-            icon={<SettingsIcon />}
-            label="Settings"
-            usageId="open_settings"
-            shortcutCommand="settings.open"
-            onClick={handleSettingsClick}
-          />
-          <SidebarUtilityItem
-            icon={<RadarIcon />}
-            label="Command Center"
-            usageId="open_command_center"
-            tourId="sidebar-command-center"
-            onClick={handleCommandCenterClick}
-          />
-          <SidebarUtilityItem
-            icon={<ListChecksIcon />}
-            label="Tasks"
-            usageId="open_tasks"
-            shortcutCommand="tasks.open"
-            tourId="sidebar-tasks"
-            onClick={handleTasksClick}
-          />
-          <SidebarUtilityItem icon={<GitBranchIcon />} label="Git" onClick={handleGitClick} />
-          {scribeSupported ? (
-            <SidebarUtilityItem
-              icon={<AudioLinesIcon />}
-              label="Scribe"
-              usageId="open_scribe"
-              onClick={handleScribeClick}
-            />
-          ) : null}
-          {pullRequestsSupported ? (
-            <SidebarUtilityItem
-              icon={<PullRequestGlyph.pullRequest />}
-              label="Pull requests"
-              onClick={handlePullRequestsClick}
-            />
-          ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label="Usage"
-            usageId="open_usage"
-            shortcutCommand="usage.open"
-            tourId="sidebar-usage"
-            onClick={handleUsageClick}
-          />
-          <SidebarUtilityItem icon={<ImageIcon />} label="Images" onClick={handleImagesClick} />
-          <SidebarUtilityItem
-            icon={<ActivityIcon />}
-            label="PC Tuning"
-            onClick={handleSystemCareClick}
-          />
-          <SidebarUtilityItem
-            icon={<ScrollTextIcon />}
-            label="Update history"
-            tourId="sidebar-updates"
-            onClick={handleUpdateHistoryClick}
-          />
-          {STUCK_ENABLED ? (
-            <SidebarUtilityItem
-              icon={<LifeBuoyIcon />}
-              label="I'm stuck"
-              onClick={handleStuckClick}
-            />
-          ) : null}
-          {FEEDBACK_ENABLED ? (
-            <SidebarUtilityItem
-              icon={<MessageSquareWarningIcon />}
-              label="Send feedback"
-              usageId="send_feedback"
-              onClick={handleFeedbackClick}
-            />
-          ) : null}
-        </div>
-      )}
-      <SidebarUpdatePill />
-    </SidebarMenu>
-  );
-});
-
 export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
   return (
     <SidebarFooter>
       <SidebarThreadUndoNotice />
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu />
+      <SidebarMenu>
+        <SidebarUpdatePill />
+      </SidebarMenu>
     </SidebarFooter>
   );
 });

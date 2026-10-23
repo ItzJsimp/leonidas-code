@@ -128,7 +128,9 @@ describe("macAppBundlePath", () => {
       "/Applications/Leonidas Code.app",
     );
     expect(macAppBundlePath("/usr/local/bin/electron")).toBeUndefined();
-    expect(macAppBundlePath("/Applications/Leonidas Code.app/other/MacOS/Leonidas Code")).toBeUndefined();
+    expect(
+      macAppBundlePath("/Applications/Leonidas Code.app/other/MacOS/Leonidas Code"),
+    ).toBeUndefined();
   });
 });
 it("drags the running app bundle only for the helper's own renderer", async () => {
@@ -168,7 +170,7 @@ it("does not open for a permission already granted", async () => {
 });
 it("does not show a helper with a missing packaged icon", async () => {
   mocks.createFromPath.mockReturnValueOnce({ isEmpty: () => true });
-  await expect(open()).rejects.toThrow("packaged Leonidas Code icon is missing");
+  await expect(open()).rejects.toThrow("packaged Leonidas icon is missing");
   expect(windows).toHaveLength(0);
 });
 it("cleans up when the helper page fails to load", async () => {

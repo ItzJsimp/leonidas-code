@@ -150,8 +150,8 @@ const handleFatalStartupError = Effect.fn("desktop.startup.handleFatalStartupErr
   const wasQuitting = yield* Ref.getAndSet(state.quitting, true);
   if (!wasQuitting) {
     yield* electronDialog.showErrorBox(
-      "Leonidas Code could not start",
-      `Restart Leonidas Code. If the problem continues, send this report to support.\n\nStage: ${stage}\n${message}${detail}`,
+      "Leonidas could not start",
+      `Restart Leonidas. If the problem continues, send this report to support.\n\nStage: ${stage}\n${message}${detail}`,
     );
   }
   yield* shutdown.request;

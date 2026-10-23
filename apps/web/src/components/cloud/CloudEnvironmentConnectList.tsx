@@ -489,7 +489,7 @@ export function CloudEnvironmentConnectRows({
                 </Button>
               </TooltipTrigger>
               <TooltipPopup>
-                {unsupportedDetail ?? "This app version is not supported. Update Leonidas Code."}
+                {unsupportedDetail ?? "This app version is not supported. Update Leonidas."}
               </TooltipPopup>
             </Tooltip>
           ) : savedConnection ? (

@@ -132,7 +132,7 @@ function HostedStaticOnboardingState() {
   const cloudEnabled = hasCloudPublicConfig();
   const localEnvironmentOff = isLocalEnvironmentDisabled();
   const description = localEnvironmentOff
-    ? "This computer is turned off in Leonidas Code. Connect another computer, or turn this one back on in Connections."
+    ? "This computer is turned off in Leonidas. Connect another computer, or turn this one back on in Connections."
     : cloudEnabled
       ? "Turn on remote access on that computer. Then open Connections here and sign in with the same account. You can also add the computer with a connection link."
       : "Open Connections and add that computer with its connection link. This app must be able to reach it.";
@@ -154,11 +154,10 @@ function HostedStaticOnboardingState() {
               <div className="mx-auto mb-5 flex size-11 items-center justify-center rounded-xl border border-border/70 bg-background/70 text-muted-foreground">
                 <LinkIcon className="size-5" />
               </div>
-              <EmptyTitle>Connect to a computer running Leonidas Code</EmptyTitle>
+              <EmptyTitle>Connect to a computer running Leonidas</EmptyTitle>
               <EmptyDescription>
-                This app connects to Leonidas Code running on your computer or a server. Start the
-                Leonidas Code desktop app or command-line server on that machine and keep it
-                running.
+                This app connects to Leonidas running on your computer or a server. Start the
+                Leonidas desktop app or command-line server on that machine and keep it running.
               </EmptyDescription>
               <EmptyDescription>{description}</EmptyDescription>
               <div className="mt-6 flex justify-center">

@@ -41,6 +41,7 @@ import {
   buildThreadRouteParams,
   resolveThreadRouteTarget,
 } from "../threadRoutes";
+import { useRememberedThreadRef } from "./twoState/shownChatContext";
 import { toastManager } from "./ui/toast";
 import { userErrorToastFields } from "~/lib/userErrorToast";
 
@@ -61,12 +62,16 @@ export function ReopenClosedViewShortcut() {
   const draft = useComposerDraftStore((state) =>
     target?.kind === "draft" ? state.getDraftSession(target.draftId) : null,
   );
+  const remembered = useRememberedThreadRef();
+  // With no thread in the URL (a window beside a remembered chat), the shown chat is the one.
   const threadRef =
     target?.kind === "server"
       ? target.threadRef
       : draft
         ? (draft.promotedTo ?? scopeThreadRef(draft.environmentId, draft.threadId))
-        : null;
+        : target === null
+          ? remembered
+          : null;
   const terminalOpen = useTerminalUiStateStore(
     (state) =>
       selectThreadTerminalUiState(state.terminalUiStateByThreadKey, threadRef).terminalOpen,

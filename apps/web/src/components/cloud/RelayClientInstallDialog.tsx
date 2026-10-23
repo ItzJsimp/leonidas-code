@@ -69,8 +69,8 @@ export function RelayClientInstallDialog() {
           </DialogTitle>
           <DialogDescription>
             {isInstalling
-              ? "Leonidas Code is getting this computer ready for safe remote access."
-              : "Leonidas Code needs the remote access tool to let your other devices use this computer."}
+              ? "Leonidas is getting this computer ready for safe remote access."
+              : "Leonidas needs the remote access tool to let your other devices use this computer."}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel scrollFade={false}>
@@ -91,14 +91,14 @@ export function RelayClientInstallDialog() {
                 value={activeStepIndex + 1}
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Keep Leonidas Code open while it installs the remote access tool.
+                Keep Leonidas open while it installs the remote access tool.
               </p>
             </div>
           ) : (
             <div className="rounded-xl border border-border/70 bg-muted/35 p-3">
               <p className="text-sm font-medium text-foreground">Remote access tool</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Leonidas Code will download and install version{" "}
+                Leonidas will download and install version{" "}
                 {view.status === "confirming" ? view.version : ""} on this computer.
               </p>
             </div>

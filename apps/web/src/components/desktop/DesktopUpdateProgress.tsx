@@ -35,13 +35,13 @@ export function DesktopUpdateProgress({ state }: { state: DesktopUpdateState | n
   const stale = progress && elapsed - progress.elapsedSeconds > 5;
   return (
     <section
-      aria-label="Leonidas Code update"
+      aria-label="Leonidas update"
       className="fixed top-16 right-4 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-lg"
     >
       <p role="status" className="text-sm font-semibold">
         {failed
           ? "The update download failed"
-          : `Downloading Leonidas Code ${state.availableVersion ?? "update"}`}
+          : `Downloading Leonidas ${state.availableVersion ?? "update"}`}
       </p>
       {failed ? (
         <>

@@ -45,7 +45,7 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
       headline: "Off",
       detail:
         provider.message ??
-        "This AI service is installed but turned off in Leonidas Code. Turn it on to use it.",
+        "This AI service is installed but turned off in Leonidas. Turn it on to use it.",
     };
   }
   if (!provider.installed) {
@@ -53,7 +53,7 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
       headline: "Not found",
       detail:
         provider.message ??
-        "Leonidas Code did not find this program on the computer. Install it, then refresh.",
+        "Leonidas did not find this program on the computer. Install it, then refresh.",
     };
   }
   if (provider.auth.status === "unauthenticated") {
@@ -67,8 +67,7 @@ export function getProviderSummary(provider: ServerProvider | undefined) {
     return {
       headline: "Needs attention",
       detail:
-        provider.message ??
-        "The AI service is installed, but Leonidas Code could not check it fully.",
+        provider.message ?? "The AI service is installed, but Leonidas could not check it fully.",
     };
   }
   if (provider.status === "error") {

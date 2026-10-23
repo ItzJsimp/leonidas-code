@@ -2582,7 +2582,8 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
   );
 });
 
-export default function Sidebar() {
+/** With `embedded` the chat pane hosts the list, so the brand header and workspace switcher stay out. */
+export default function Sidebar({ embedded = false }: { readonly embedded?: boolean } = {}) {
   const allProjects = useProjects();
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const allThreads = useThreadShells();
@@ -5333,8 +5334,12 @@ export default function Sidebar() {
   return (
     <>
       <ThreadContextDragGhost />
-      <SidebarChromeHeader isElectron={isElectron} />
-      <WorkspaceSwitcher />
+      {embedded ? null : (
+        <>
+          <SidebarChromeHeader isElectron={isElectron} />
+          <WorkspaceSwitcher />
+        </>
+      )}
       <div className="flex min-h-0 flex-1">
         {sidebarView.showRail && projectGroups.length > 1 ? (
           <SidebarProjectRail
