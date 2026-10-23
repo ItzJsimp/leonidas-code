@@ -300,13 +300,13 @@ function PoolSegment({
               account={account}
               className="min-w-0 truncate font-medium text-foreground"
             />
-          ) : null}
+          ) : null}{" "}
           <span className="shrink-0 font-semibold text-foreground tabular-nums">
             {limitText(window.usedPercent, view)}
-          </span>
+          </span>{" "}
           {/* Countdown and badge get their own plate: fill and hatching run under them otherwise. */}
           <span className="ms-auto flex shrink-0 items-center gap-1.5 rounded-sm bg-background/85 px-1.5 py-0.5 text-2xs text-foreground tabular-nums">
-            {resetsIn?.replace("resets in ", "↻ ") ?? ""}
+            {resetsIn ?? ""}
             {credits ? (
               <>
                 {resetsIn ? (
