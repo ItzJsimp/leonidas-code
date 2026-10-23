@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { railsMode } from "./railsMode";
+import { railsMode, splitFits } from "./railsMode";
+
+describe("splitFits", () => {
+  it("keeps the split only when each half has room", () => {
+    expect(splitFits(1152)).toBe(true);
+    expect(splitFits(900)).toBe(true);
+    expect(splitFits(728)).toBe(false);
+    expect(splitFits(390)).toBe(false);
+  });
+});
 
 describe("railsMode", () => {
   it("shows the rails when the chat keeps its width", () => {

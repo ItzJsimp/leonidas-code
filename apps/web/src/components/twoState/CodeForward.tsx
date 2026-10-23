@@ -16,7 +16,7 @@ import { selectPaneCount, useSplitLayoutStore } from "~/splitLayoutStore";
 import { CommandCenterForward } from "./CommandCenterForward";
 import { LeftRail } from "./LeftRail";
 import { RailDrawer } from "./RailDrawer";
-import { railsMode } from "./railsMode";
+import { railsMode, splitFits } from "./railsMode";
 import { RightRail } from "./RightRail";
 import { HomeCardsOutlet } from "./SlotOutlet";
 import { HEADER_HEIGHT, TwoStateHeader } from "./TwoStateHeader";
@@ -45,7 +45,8 @@ export function CodeForward({
   const ref = useRef<HTMLDivElement>(null);
   const [fits, setFits] = useState(false);
   const splitActive = useSplitLayoutStore((state) => selectPaneCount(state) > 1);
-  const split = useTwoStateStore((state) => state.split) && !splitActive;
+  const [roomy, setRoomy] = useState(false);
+  const split = useTwoStateStore((state) => state.split) && !splitActive && roomy;
   const rememberThread = useTwoStateStore((state) => state.rememberThread);
 
   useEffect(() => {
@@ -56,7 +57,9 @@ export function CodeForward({
     const element = ref.current;
     if (!element) return;
     return observeResize(element, ([entry]) => {
-      if (entry) setFits(entry.contentRect.width >= RAILS_MIN_WIDTH);
+      if (!entry) return;
+      setFits(entry.contentRect.width >= RAILS_MIN_WIDTH);
+      setRoomy(splitFits(entry.contentRect.width));
     });
   }, []);
 

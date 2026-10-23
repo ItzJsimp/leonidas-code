@@ -9,3 +9,7 @@ export function railsMode(input: {
   if (input.split || input.splitActive) return "none";
   return input.fits ? "rails" : "drawer";
 }
+
+/** Below this width each half of the split is too small for the chat header and the cards. */
+export const SPLIT_MIN_WIDTH = 900;
+export const splitFits = (width: number) => width >= SPLIT_MIN_WIDTH;
