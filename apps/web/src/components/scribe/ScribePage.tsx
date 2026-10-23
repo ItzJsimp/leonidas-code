@@ -6,10 +6,10 @@ import { useEnvironmentQuery } from "~/state/query";
 import { scribeLive } from "~/state/scribe";
 import { Badge } from "../ui/badge";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
-import { SidebarInset } from "../ui/sidebar";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { ScribeDictionaryTab } from "./ScribeDictionaryTab";
 import { ScribeHomeTab } from "./ScribeHomeTab";
+import { ScribeMeetingsTab } from "./ScribeMeetingsTab";
 import { ScribeSettingsTab } from "./ScribeSettingsTab";
 import { ScribeTranscriptsTab } from "./ScribeTranscriptsTab";
 import { INITIAL_SCRIBE_LIVE, engineStrip, type ScribeLiveSnapshot } from "./scribeLive.logic";
@@ -25,6 +25,7 @@ const TABS = [
   { id: "transcripts", label: "Transcripts", render: ScribeTranscriptsTab },
   { id: "dictionary", label: "Dictionary", render: ScribeDictionaryTab },
   { id: "settings", label: "Settings", render: ScribeSettingsTab },
+  { id: "meetings", label: "Meetings", render: ScribeMeetingsTab },
 ] as const;
 
 export type ScribeTabId = (typeof TABS)[number]["id"];
@@ -39,9 +40,9 @@ export function ScribePage(props: {
 }) {
   const environmentId = usePrimaryEnvironmentId();
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
+    <div className="isolate flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden overscroll-y-none">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background scrollbar-gutter-both">
-        <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 p-4 max-md:pt-14 sm:p-6">
+        <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 p-4 max-[727px]:pt-14 sm:p-6">
           {environmentId ? (
             <ScribeBody environmentId={environmentId} {...props} />
           ) : (
@@ -59,7 +60,7 @@ export function ScribePage(props: {
           )}
         </div>
       </div>
-    </SidebarInset>
+    </div>
   );
 }
 
