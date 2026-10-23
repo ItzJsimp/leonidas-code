@@ -76,7 +76,8 @@ export function InboxDetail({
         </Button>
       </div>
       {cause ? <p className="mt-5 text-sm leading-relaxed">{cause}</p> : null}
-      {threadId && environmentId ? (
+      {/* The link only adds a way in when the main button does something other than open the chat. */}
+      {threadId && environmentId && label !== "Open chat" ? (
         <Link
           to="/$environmentId/$threadId"
           params={buildThreadRouteParams(scopeThreadRef(environmentId, threadId as ThreadId))}

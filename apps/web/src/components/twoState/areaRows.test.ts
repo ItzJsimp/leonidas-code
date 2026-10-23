@@ -31,7 +31,7 @@ describe("areaRow", () => {
     expect(areaRow({ id: "tasks", units: 118, changedAt: minutes(12) }, now)).toEqual({
       id: "tasks",
       label: "Task cards",
-      detail: "118 task cards (all time) · 12 min ago",
+      detail: "118 cards · 12 min ago",
     });
     expect(areaRow({ id: "memory", units: 1, changedAt: minutes(2) }, now).detail).toBe(
       "1 note · 2 min ago",
@@ -40,7 +40,7 @@ describe("areaRow", () => {
 
   it("says updated just now for a change in the last minute", () => {
     expect(areaRow({ id: "tasks", units: 2, changedAt: now - 5_000 }, now).detail).toBe(
-      "2 task cards (all time) · updated just now",
+      "2 cards · updated just now",
     );
   });
 
