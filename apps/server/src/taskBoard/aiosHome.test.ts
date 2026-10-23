@@ -204,9 +204,9 @@ describe("readAreas", () => {
     ]);
   });
 
-  it("stops counting at the walk cap so a huge area stays cheap", async () => {
+  it("counts every note but reads times for at most the walk cap, so a huge area stays cheap", async () => {
     for (let index = 0; index < 5; index++) writeAt(`wiki/page-${index}.md`, 1_000_000);
-    expect(await readAreas(root, 3)).toEqual([{ id: "wiki", units: 3, changedAt: 1_000_000 }]);
+    expect(await readAreas(root, 3)).toEqual([{ id: "wiki", units: 5, changedAt: 1_000_000 }]);
   });
 
   it("reads two folder levels below an area and no deeper, so a code repo stays cheap", async () => {

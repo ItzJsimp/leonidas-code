@@ -169,10 +169,11 @@ export async function readAreas(root: string, cap = AREA_WALK_CAP): Promise<Task
           if (area.unit !== "topNotes" && depth < MAX_DEPTH) subfolders.push(path);
           continue;
         }
-        if (files.length >= cap) continue;
         if (area.unit !== "files" && area.unit !== "folders" && !isNote(entry.name)) continue;
-        files.push(path);
         if (area.unit !== "folders") units++;
+        // The count is free (the folder is already read). The stat calls below are the cost, so cap those.
+        // shortcut: the area time comes from the first `cap` files only, upgrade if a huge area shows a stale time.
+        if (files.length < cap) files.push(path);
       }
       await Promise.all(subfolders.map((path) => visit(path, depth + 1)));
     };
