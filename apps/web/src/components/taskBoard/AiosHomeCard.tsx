@@ -14,8 +14,11 @@ import { useLensWork } from "~/components/team/useLensWork";
 const localDate = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-/** The AIOS Home: one next move, today's brief priorities and open-task counts. Reads files only. */
-export function AiosHomeCard() {
+/**
+ * The AIOS Home: one next move and today's brief priorities. Reads files only. Task counts live in
+ * the number tiles. `bare` drops the frame so Goal progress can hold it.
+ */
+export function AiosHomeCard({ bare = false }: { bare?: boolean }) {
   const environmentId = usePrimaryEnvironmentId();
   const { scope, scopeReady } = useActiveAiosWorkspace();
   const home = useEnvironmentQuery(
@@ -65,20 +68,22 @@ export function AiosHomeCard() {
   }
 
   const { brief } = data;
-  const counts = filtered?.counts ?? data.counts;
   const move = filtered?.move ?? data.move;
   const done = brief?.priorities.filter((priority) => priority.done).length ?? 0;
   return (
-    <section aria-labelledby="aios-home-title" className="rounded-lg border border-border p-5">
+    <section
+      aria-labelledby="aios-home-title"
+      className={cn(!bare && "rounded-lg border border-border p-5")}
+    >
       <div className="flex items-start gap-3">
         <CompassIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             The focus
           </p>
-          <h2 id="aios-home-title" className="mt-1 text-base font-semibold">
+          <h3 id="aios-home-title" className="mt-1 text-base font-semibold">
             {move.title}
-          </h2>
+          </h3>
           <p className="mt-1 text-sm text-muted-foreground">{move.reason}</p>
         </div>
         <Button size="sm" variant="ghost" onClick={refresh} aria-label="Refresh Home">
@@ -86,23 +91,7 @@ export function AiosHomeCard() {
         </Button>
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {(
-          [
-            ["To do", counts.todo],
-            ["In progress", counts.inProgress],
-            ["In review", counts.review],
-            ["Blocked", counts.blocked],
-          ] as const
-        ).map(([label, value]) => (
-          <div key={label} className="rounded-md bg-muted/40 px-3 py-2">
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="text-lg font-semibold tabular-nums">{value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-5">
+      <div className="mt-4">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="text-sm font-semibold">Today's priorities</h3>
           {brief && brief.priorities.length > 0 ? (
