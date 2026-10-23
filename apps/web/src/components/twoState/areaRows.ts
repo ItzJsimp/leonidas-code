@@ -40,6 +40,12 @@ export interface AreaRow {
 export const areaLabel = (id: string) =>
   AREA_WORDS[id]?.[0] ?? id.charAt(0).toUpperCase() + id.slice(1);
 
+/** "card" or "cards" for a count; "file" or "files" for an area the list does not know. */
+export function areaUnitWord(id: string, units: number): string {
+  const [, one, many] = AREA_WORDS[id] ?? [areaLabel(id), "file", "files"];
+  return units === 1 ? one : many;
+}
+
 export function areaRow(area: TaskBoardHomeArea, now: number): AreaRow {
   const when = changedLabel(area.changedAt, now);
   const [label, one, many] = AREA_WORDS[area.id] ?? [areaLabel(area.id), "file", "files"];
