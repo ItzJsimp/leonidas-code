@@ -91,9 +91,9 @@ function Priorities() {
         </p>
       </div>
       <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-        {priorities.map((priority, index) => (
+        {priorities.map((priority) => (
           <li
-            key={`${priority.taskId ?? ""}:${index}`}
+            key={`${priority.title}|${priority.detail}`}
             className="flex items-start gap-3 px-4 py-3"
           >
             {priority.done ? (

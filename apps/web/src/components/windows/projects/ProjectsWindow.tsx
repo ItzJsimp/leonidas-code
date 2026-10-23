@@ -31,7 +31,7 @@ import {
 
 const addProject = () => openCommandPalette({ open: "add-project" });
 const BUTTON_LINK =
-  "inline-flex h-7 items-center rounded-md border border-border px-2 text-xs font-medium hover:bg-surface-raised focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:h-6";
+  "inline-flex h-7 items-center rounded-md border border-border px-2 text-xs font-medium hover:bg-surface-raised focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:h-6";
 
 /** The projects of the active workspace, grouped the way the chat list groups them. */
 function useProjectRows(): { readonly rows: ProjectRow[] | null } {

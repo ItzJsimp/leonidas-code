@@ -4,7 +4,6 @@ import {
   EyeIcon,
   MessageSquareIcon,
   PuzzleIcon,
-  SearchIcon,
   TerminalSquareIcon,
   UserIcon,
   type LucideIcon,
@@ -98,20 +97,13 @@ export function InboxList({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-col gap-2 p-3">
-        <div className="relative">
-          <SearchIcon
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            type="search"
-            aria-label="Search the inbox"
-            placeholder="Search the inbox"
-            value={query}
-            onChange={(event) => onQuery(event.target.value)}
-            className="pl-8"
-          />
-        </div>
+        <Input
+          type="search"
+          aria-label="Search the inbox"
+          placeholder="Search the inbox"
+          value={query}
+          onChange={(event) => onQuery(event.target.value)}
+        />
         <div role="group" aria-label="Show" className="flex flex-wrap gap-1.5">
           {INBOX_FILTERS.map((item) => (
             <button
@@ -120,7 +112,7 @@ export function InboxList({
               aria-pressed={filter === item.id}
               onClick={() => onFilter(item.id)}
               className={cn(
-                "rounded-full border px-2.5 py-0.5 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                "rounded-full border px-2.5 py-0.5 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
                 filter === item.id
                   ? "border-border bg-surface-raised font-medium text-foreground"
                   : "border-border/60 text-muted-foreground hover:text-foreground",

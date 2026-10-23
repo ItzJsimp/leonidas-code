@@ -132,7 +132,6 @@ export function InboxWindow() {
         />
       ) : (
         // The window body pads its content; the two panes sit flush against its edges.
-        // oxlint-disable-next-line shadcn/no-arbitrary-values
         <div
           ref={setFrame}
           onKeyDown={(event) => {
