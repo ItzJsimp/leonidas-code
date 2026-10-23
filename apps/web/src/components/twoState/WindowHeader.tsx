@@ -6,7 +6,7 @@ import { cn } from "~/lib/utils";
 // The design sets tab labels at 13 px, between the xs and sm tokens.
 // oxlint-disable-next-line shadcn/no-arbitrary-values
 const TAB_TEXT = "text-[13px]";
-const TAB_CLASS = `-mb-px shrink-0 rounded-sm border-b-2 py-2 ${TAB_TEXT} whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`;
+const TAB_CLASS = `-mb-px shrink-0 rounded-t-sm border-b-2 py-2 ${TAB_TEXT} whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`;
 const NO_TABS: readonly WindowTab[] = [];
 
 export interface WindowTab {
