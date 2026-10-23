@@ -81,6 +81,19 @@ describe("readBrief", () => {
       { title: "Call", detail: "phone the bank", done: false, taskId: null },
     ]);
   });
+
+  it("ignores a briefings folder linked in from outside the AIOS", () => {
+    const outside = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "aios-outside-"));
+    try {
+      NodeFS.writeFileSync(NodePath.join(outside, "2026-10-14-briefing.md"), "# Brief\n");
+      NodeFS.mkdirSync(NodePath.join(root, "logs"), { recursive: true });
+      // A junction needs no admin rights on Windows and is a plain symlink elsewhere.
+      NodeFS.symlinkSync(outside, NodePath.join(root, "logs", "briefings"), "junction");
+      expect(readBrief(root, [])).toBeNull();
+    } finally {
+      NodeFS.rmSync(outside, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("pickNextMove", () => {
