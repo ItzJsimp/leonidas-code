@@ -187,6 +187,7 @@ export function InboxList({
                             <span className="sr-only">Needs you: </span>
                           ) : null}
                           <span
+                            title={plainEventTitle(event.title)}
                             className={cn(
                               "line-clamp-2 text-sm",
                               read ? "text-muted-foreground" : "font-medium text-foreground",
@@ -195,7 +196,10 @@ export function InboxList({
                             {event.level === "failed" ? <FailedTag /> : null}
                             {plainEventTitle(event.title)}
                           </span>
-                          <span className="block truncate text-xs text-muted-foreground">
+                          <span
+                            title={sourceLabel(event)}
+                            className="block truncate text-xs text-muted-foreground"
+                          >
                             {sourceLabel(event)}
                           </span>
                         </span>
