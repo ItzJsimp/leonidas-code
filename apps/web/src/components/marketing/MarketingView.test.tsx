@@ -157,6 +157,14 @@ it("renders the empty state and a 200 item queue without a crash", async () => {
   expect(container.textContent).toContain("Select all (200)");
 });
 
+it("shows when the list was last updated, and explains each tab", async () => {
+  await render({ updatedAt: new Date(2026, 9, 22, 19, 45).getTime() });
+  expect(container.textContent).toContain("Updated 7:45 PM.");
+  const tabs = [...container.querySelectorAll("[role=tab]")];
+  expect(tabs).toHaveLength(3);
+  expect(tabs.every((tab) => (tab.getAttribute("title") ?? "").length > 0)).toBe(true);
+});
+
 it("shows brand names, not slugs", async () => {
   await render();
   expect(container.textContent).toContain("Acme Games");

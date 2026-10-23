@@ -34,6 +34,8 @@ export interface MarketingView {
   /** No AIOS folder is connected, so there are no marketing files to read. */
   readonly noWorkspace: boolean;
   readonly refresh: () => void;
+  /** When the list last arrived, in ms since 1970. 0 before the first answer. */
+  readonly updatedAt: number;
   /** Only a person's session holds this. An agent access level never does. */
   readonly canDecide: boolean;
 }
@@ -55,6 +57,7 @@ export function useMarketing(): MarketingView {
       "message" in query.failure &&
       query.failure.message === MARKETING_NO_WORKSPACE,
     refresh: query.refresh,
+    updatedAt: query.dataUpdatedAt,
     canDecide,
   };
 }

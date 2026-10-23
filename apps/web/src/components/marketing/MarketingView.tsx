@@ -16,10 +16,13 @@ import { contentRows } from "./marketing.logic";
 import { MetricsPanel } from "./MetricsPanel";
 import { marketingDecide, useMarketing } from "./state";
 
+const formatTime = (ms: number) =>
+  new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
 const TABS = [
-  { id: "approval", label: "Needs approval" },
-  { id: "content", label: "Content" },
-  { id: "metrics", label: "Metrics" },
+  { id: "approval", label: "Needs approval", hint: "Posts that wait for your yes" },
+  { id: "content", label: "Content", hint: "Every draft and posted item" },
+  { id: "metrics", label: "Metrics", hint: "Views, likes, replies and reposts" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -28,6 +31,7 @@ export function MarketingScreen(props: {
   readonly list: MarketingListResult | null;
   readonly error: string | null;
   readonly noWorkspace?: boolean;
+  readonly updatedAt?: number;
   readonly canDecide: boolean;
   readonly decide: DecideFn;
   readonly onRefresh: () => void;
@@ -59,6 +63,7 @@ export function MarketingScreen(props: {
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
             Agents write drafts. You decide what goes out.
+            {props.updatedAt ? ` Updated ${formatTime(props.updatedAt)}.` : ""}
           </p>
 
           {list?.bad.length ? (
@@ -87,6 +92,7 @@ export function MarketingScreen(props: {
                   id={`marketing-tab-${item.id}`}
                   type="button"
                   role="tab"
+                  title={item.hint}
                   aria-selected={selected}
                   aria-controls={`marketing-panel-${item.id}`}
                   tabIndex={selected ? 0 : -1}
@@ -146,7 +152,7 @@ export function MarketingScreen(props: {
 }
 
 export function MarketingView() {
-  const { environmentId, list, error, noWorkspace, refresh, canDecide } = useMarketing();
+  const { environmentId, list, error, noWorkspace, refresh, canDecide, updatedAt } = useMarketing();
   const run = useAtomCommand(marketingDecide);
   const decide: DecideFn = async (decisions) => {
     if (!environmentId) return null;
@@ -158,6 +164,7 @@ export function MarketingView() {
       list={list}
       error={error}
       noWorkspace={noWorkspace}
+      updatedAt={updatedAt}
       canDecide={canDecide}
       decide={decide}
       onRefresh={refresh}

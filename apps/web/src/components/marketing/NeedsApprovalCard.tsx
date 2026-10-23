@@ -22,7 +22,10 @@ export function NeedsApprovalCard() {
         <MegaphoneIcon aria-hidden className="size-4 text-muted-foreground" />
         Marketing: needs approval
         {total > 0 ? (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
+          <span
+            title={`${total} ${total === 1 ? "post waits" : "posts wait"} for your approval`}
+            className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium tabular-nums text-primary"
+          >
             {total}
           </span>
         ) : null}
