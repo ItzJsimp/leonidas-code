@@ -60,7 +60,7 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
           className={cn(
             "text-xs font-medium",
             available && result.snapshot.state !== "mic_error"
-              ? "text-success"
+              ? "text-success-foreground"
               : "text-muted-foreground",
           )}
         >
