@@ -9,7 +9,7 @@ import {
   Trash2Icon,
   ZapIcon,
 } from "lucide-react";
-import { memo, useState, type ReactNode } from "react";
+import { memo, useRef, useState, type ReactNode } from "react";
 
 import { cn, randomUUID } from "~/lib/utils";
 import { Button } from "../ui/button";
@@ -17,6 +17,7 @@ import { Input } from "../ui/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { ComposerBanner } from "./ComposerBanner";
 import { moveToolbarEntry, resolveToolbarEntries } from "./composerToolbar.logic";
+import { useIconsOnly } from "./toolbarLabels";
 
 /**
  * Button bar above the prompt. Built-in buttons come from the caller as nodes keyed by id; the
@@ -33,6 +34,9 @@ export const ComposerToolbar = memo(function ComposerToolbar(props: {
 }) {
   const entries = resolveToolbarEntries(props.prefs);
   const customById = new Map(props.prefs.custom.map((button) => [button.id, button]));
+  const roomRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const iconsOnly = useIconsOnly(roomRef, contentRef);
   return (
     <ComposerBanner.Attachment data-chat-composer-toolbar="true">
       <ComposerBanner.Root
@@ -40,49 +44,55 @@ export const ComposerToolbar = memo(function ComposerToolbar(props: {
         className={cn(props.collapsed && "[--composer-banner-padding-block:--spacing(0.5)]")}
       >
         <div
+          data-icons-only={iconsOnly}
           className={cn(
-            // Narrow, chips show icons only, so no label cuts mid-word at the scroll edge.
-            "@container/composer-toolbar flex min-w-0 items-center gap-0.5 px-1 @max-[360px]/composer-toolbar:[&_[data-composer-toolbar-label]]:sr-only @max-[360px]/composer-toolbar:[&_[data-slot=composer-banner-content]]:sr-only",
+            // When the labels do not fit, chips show icons only, so no label cuts mid-word.
+            "flex min-w-0 items-center gap-0.5 px-1 data-[icons-only=true]:[&_[data-composer-toolbar-label]]:sr-only data-[icons-only=true]:[&_[data-slot=composer-banner-content]]:sr-only",
             // The strip is one surface: the shoulder tabs inside it lose their own.
             "[&_[data-composer-banner-surface]]:py-0 [&_[data-composer-banner-surface]]:before:hidden [&_[data-composer-banner-surface]]:after:hidden",
             props.collapsed &&
               "[&_[data-composer-banner-surface]]:[--composer-banner-icon-column:--spacing(4)] [&_[data-slot=composer-banner-content]]:sr-only [&_svg]:size-3",
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {entries.map((entry) => {
-              if (entry.hidden) return null;
-              const custom = customById.get(entry.id);
-              if (!custom) {
+          <div
+            ref={roomRef}
+            className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <div ref={contentRef} className="flex w-max shrink-0 items-center gap-0.5">
+              {entries.map((entry) => {
+                if (entry.hidden) return null;
+                const custom = customById.get(entry.id);
+                if (!custom) {
+                  return (
+                    <div key={entry.id} className="contents">
+                      {props.builtins[entry.id]}
+                    </div>
+                  );
+                }
                 return (
-                  <div key={entry.id} className="contents">
-                    {props.builtins[entry.id]}
-                  </div>
-                );
-              }
-              return (
-                <ComposerBanner.Root
-                  key={entry.id}
-                  density="comfortable"
-                  width="content"
-                  data-composer-shoulder-tab
-                >
-                  <ComposerBanner.Row
-                    render={<button type="button" />}
-                    aria-label={custom.label}
-                    title={custom.label}
-                    className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={() => props.onFillPrompt(custom.prompt)}
+                  <ComposerBanner.Root
+                    key={entry.id}
+                    density="comfortable"
+                    width="content"
+                    data-composer-shoulder-tab
                   >
-                    <ComposerBanner.Icon>
-                      <ZapIcon />
-                    </ComposerBanner.Icon>
-                    <ComposerBanner.Content>{custom.label}</ComposerBanner.Content>
-                  </ComposerBanner.Row>
-                </ComposerBanner.Root>
-              );
-            })}
+                    <ComposerBanner.Row
+                      render={<button type="button" />}
+                      aria-label={custom.label}
+                      title={custom.label}
+                      className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                      onPointerDown={(event) => event.preventDefault()}
+                      onClick={() => props.onFillPrompt(custom.prompt)}
+                    >
+                      <ComposerBanner.Icon>
+                        <ZapIcon />
+                      </ComposerBanner.Icon>
+                      <ComposerBanner.Content>{custom.label}</ComposerBanner.Content>
+                    </ComposerBanner.Row>
+                  </ComposerBanner.Root>
+                );
+              })}
+            </div>
           </div>
           <CustomizePopover prefs={props.prefs} onPrefsChange={props.onPrefsChange} />
           <ComposerBanner.Root density="comfortable" width="content" data-composer-shoulder-tab>
