@@ -1,12 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
-import { InboxIcon, RefreshCwIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { BellIcon, RefreshCwIcon } from "lucide-react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { openFeedEvent } from "~/eventFeedOpen";
 import { useEventFeedStore } from "~/eventFeedStore";
 import { useNowMinute } from "~/hooks/useNowMinute";
+import { RightPanelResizeHandle } from "~/components/preview/RightPanelResizeHandle";
+import { RESIZABLE_WIDTH_PROPERTY, useResizableWidth } from "~/hooks/useResizableWidth";
 import { observeResize } from "~/lib/observeResize";
 
 import { changedLabel } from "../../twoState/areaRows";
@@ -106,6 +108,15 @@ export function InboxWindow() {
     if (narrow) closeDetail();
   };
 
+  // Long titles are cut at the default width, so the list column can be dragged wider.
+  const list = useResizableWidth({
+    storageKey: "leonidas.notifications.listWidth",
+    defaultWidth: 360,
+    minWidth: 260,
+    maxWidth: 720,
+    edge: "right",
+  });
+
   const actions = (
     <>
       {feed.updatedAt > 0 ? (
@@ -128,20 +139,20 @@ export function InboxWindow() {
   );
 
   return (
-    <RailWindow title="Inbox" actions={actions}>
+    <RailWindow title="Notifications" actions={actions}>
       {feed.loading ? (
-        <div role="status" aria-label="Loading your inbox" className="flex flex-col gap-3">
+        <div role="status" aria-label="Loading your notifications" className="flex flex-col gap-3">
           {[0, 1, 2, 3, 4].map((key) => (
             <Skeleton key={key} className="h-12 w-full" shape="card" />
           ))}
         </div>
       ) : feed.failed ? (
         <WindowError
-          message="Your inbox did not load. Check that Leonidas is running, then try again."
+          message="Your notifications did not load. Check that Leonidas is running, then try again."
           onRetry={feed.refresh}
         />
       ) : feed.events.length === 0 ? (
-        <WindowEmpty icon={InboxIcon} {...inboxEmptyText(feed.bad)} />
+        <WindowEmpty icon={BellIcon} {...inboxEmptyText(feed.bad)} />
       ) : (
         // The window body pads its content; the two panes sit flush against its edges.
         <div
@@ -152,12 +163,21 @@ export function InboxWindow() {
           className="-m-4 flex h-[calc(100%+2rem)] min-h-0 border-t border-border"
         >
           <div
+            // The detail keeps at least 20rem however wide the list is dragged.
+            style={
+              showList && !narrow
+                ? ({
+                    [RESIZABLE_WIDTH_PROPERTY]: `${list.width}px`,
+                    width: `min(var(${RESIZABLE_WIDTH_PROPERTY}), calc(100% - 20rem))`,
+                  } as CSSProperties)
+                : undefined
+            }
             className={
               !showList
                 ? "hidden"
                 : narrow
                   ? "flex min-h-0 w-full flex-col"
-                  : "flex min-h-0 w-80 shrink-0 flex-col border-r border-border"
+                  : "relative flex min-h-0 shrink-0 flex-col border-r border-border"
             }
           >
             <InboxList
@@ -175,6 +195,9 @@ export function InboxWindow() {
               now={now}
               rowRefs={rowRefs}
             />
+            {showList && !narrow ? (
+              <RightPanelResizeHandle handlers={list.handlers} className="-right-1 left-auto" />
+            ) : null}
           </div>
           {showDetail ? (
             selected ? (
