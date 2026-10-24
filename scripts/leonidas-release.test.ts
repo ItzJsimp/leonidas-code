@@ -84,6 +84,19 @@ describe("Leonidas release policy", () => {
     expect(notes).not.toContain("cache Rust");
     expect(notes).not.toContain("status");
   });
+  it("treats a Release-Note of none as no note", () => {
+    const notes = releaseNotes(
+      [
+        { subject: "test: mock a step", body: "Release-Note: none" },
+        { subject: "feat: list", body: "Release-Note: Added a list of past updates" },
+      ],
+      "0.2.0",
+      true,
+      "a".repeat(40),
+    );
+    expect(notes).toContain("# 0.2.0 · Development\n\n- Added a list of past updates\n");
+    expect(notes).not.toMatch(/^- none$/im);
+  });
   it("caps highlights at five and moves overflow and Release-Detail lines under Details", () => {
     const notes = releaseNotes(
       [

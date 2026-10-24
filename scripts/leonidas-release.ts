@@ -146,7 +146,10 @@ export function releaseNotes(
         ? 1
         : 2;
   const trailerValues = (body: string, key: string) =>
-    [...body.matchAll(new RegExp(`^${key}:\\s*(.+)$`, "gim"))].map((match) => match[1]!.trim());
+    [...body.matchAll(new RegExp(`^${key}:\\s*(.+)$`, "gim"))]
+      .map((match) => match[1]!.trim())
+      // Agents write `none` to say a commit has no user-visible change.
+      .filter((text) => !/^none\.?$/i.test(text));
   const trailers: Array<{ rank: number; text: string }> = [];
   const details: string[] = [];
   for (const { subject, body } of commits) {
