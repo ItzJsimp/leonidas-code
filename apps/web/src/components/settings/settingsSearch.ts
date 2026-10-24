@@ -274,6 +274,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["transparent transparency solid menus dialogs composer"],
   },
   {
+    id: "setting-wallpaper",
+    title: "Wallpaper",
+    to: "/settings/appearance",
+    searchTerms: ["background image picture photo upload blur brightness contrast"],
+  },
+  {
     id: "setting-leonidas-grid",
     title: "Leonidas grid",
     to: "/settings/appearance",
