@@ -63,6 +63,18 @@ describe("release notes check", () => {
     }
   });
 
+  it("ignores a Release-Note of none", () => {
+    const result = checkReleaseNotes({
+      commits: [
+        { subject: "docs: note", body: "Release-Note: none" },
+        { subject: "fix(web): fix a menu", body: GOOD },
+      ],
+      kind: "patch",
+      root: project({}),
+    });
+    expect(result).toEqual({ ok: true, internalOnly: false, reasons: [] });
+  });
+
   it("passes when one commit in the range carries a good trailer", () => {
     const result = checkReleaseNotes({
       commits: [

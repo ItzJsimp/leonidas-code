@@ -100,7 +100,9 @@ export function checkReleaseNotes(input: {
 }): NotesCheck {
   const reasons: string[] = [];
   const internalOnly = !input.commits.some(({ subject }) => isUserVisible(subject));
-  const notes = input.commits.flatMap(({ body }) => trailers(body, "Release-Note"));
+  const notes = input.commits
+    .flatMap(({ body }) => trailers(body, "Release-Note"))
+    .filter((note) => note.toLowerCase() !== "none");
   if (!internalOnly && notes.length === 0) {
     reasons.push("User-visible feat or fix commits have no Release-Note trailer");
   }
