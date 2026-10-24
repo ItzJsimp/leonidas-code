@@ -26,6 +26,8 @@ import {
   type TaskBoardCardCreateInput,
   type TaskBoardCardUpdateInput,
   type TaskBoardHome,
+  type AiosFolderList,
+  type AiosFolderListInput,
   type TaskBoardHomePriorityToggleInput,
   type TaskBoardHomePriorityToggleResult,
   type TaskBoardReleaseInput,
@@ -78,6 +80,7 @@ import {
 } from "../workspacePack/workspacePack.ts";
 import { buildHome, cachedAreas } from "./aiosHome.ts";
 import { BRIEF_PATH, toggleBriefLine } from "./briefPriorityToggle.ts";
+import { cachedFolder } from "./aiosFolders.ts";
 import {
   addFocusItem,
   changeFocusItem,
@@ -580,6 +583,11 @@ export class TaskBoardService extends Context.Service<
       projects: ReadonlyArray<Project>,
       workspaceId?: string,
     ) => Effect.Effect<TaskBoardHome, TaskBoardReadError>;
+    /** The notes in one AIOS folder (decisions, logs, wiki), newest first. */
+    readonly folderList: (
+      projects: ReadonlyArray<Project>,
+      input: AiosFolderListInput,
+    ) => Effect.Effect<AiosFolderList, TaskBoardReadError>;
     /** Ticks or clears one priority line in the brief file; refuses when that line changed. */
     readonly homePriorityToggle: (
       input: TaskBoardHomePriorityToggleInput,
@@ -2040,6 +2048,17 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const folderList = (projects: ReadonlyArray<Project>, input: AiosFolderListInput) =>
+    Effect.gen(function* () {
+      const root = scopeFor(projects, { workspaceId: input.workspaceId }).root;
+      if (root === null) return { root, folder: input.folder, items: [], total: 0 };
+      const now = yield* Clock.currentTimeMillis;
+      return yield* Effect.tryPromise({
+        try: () => cachedFolder(root, input.folder, now),
+        catch: (cause) => new TaskBoardReadError({ reason: "request_failed", cause }),
+      });
+    });
+
   const homePriorityToggle = (
     input: TaskBoardHomePriorityToggleInput,
     projects: ReadonlyArray<Project>,
@@ -2279,6 +2298,7 @@ const make = Effect.gen(function* () {
     list,
     home,
     homePriorityToggle,
+    folderList,
     aiosRoot: (projects: ReadonlyArray<Project>, workspaceId?: string) =>
       Effect.sync(() => scopeFor(projects, { workspaceId }).root),
     usageShape,
