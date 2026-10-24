@@ -2,7 +2,7 @@ import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environ
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import type { FoldedFeedEvent } from "@t3tools/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarIcon } from "lucide-react";
+import { CalendarAgenda } from "~/components/calendar/CalendarAgenda";
 import { useMemo } from "react";
 
 import { groupCommandCenterThreads } from "~/commandCenter";
@@ -196,25 +196,11 @@ export function RunningWidget() {
   );
 }
 
-/** No calendar read exists yet, so this says so instead of showing made-up meetings. */
+/** The next calendar events, or the way to connect a calendar. */
 export function UpNextWidget() {
   return (
     <HomeWidget title="Up next" count="no calendar">
-      <div className="flex items-start gap-3 rounded-xl border border-dashed border-border p-4">
-        <CalendarIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 text-sm">
-          <p className="font-semibold">No calendar connected</p>
-          <p className="mt-0.5 text-muted-foreground">
-            Connect a calendar and your next meetings show here.
-          </p>
-          <Link
-            to="/settings/integrations"
-            className="mt-2 inline-block rounded-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            Connect a calendar
-          </Link>
-        </div>
-      </div>
+      <CalendarAgenda variant="upNext" />
     </HomeWidget>
   );
 }

@@ -1,5 +1,6 @@
-import { CalendarIcon, CheckIcon, CircleIcon, FileTextIcon, ListChecksIcon } from "lucide-react";
+import { CheckIcon, CircleIcon, FileTextIcon, ListChecksIcon } from "lucide-react";
 
+import { CalendarAgenda } from "~/components/calendar/CalendarAgenda";
 import { Skeleton } from "~/components/ui/skeleton";
 import { cn } from "~/lib/utils";
 
@@ -128,12 +129,7 @@ export function TodayWindow() {
     <RailWindow title="Today" tabs={TABS}>
       {(tab) =>
         tab === "schedule" ? (
-          <WindowEmpty
-            icon={CalendarIcon}
-            title="No calendar connected"
-            line="Your events for today show here once a calendar is connected."
-            action={{ label: "Connect a calendar", to: "/settings/integrations" }}
-          />
+          <CalendarAgenda variant="today" />
         ) : tab === "briefing" ? (
           <WindowEmpty
             icon={FileTextIcon}
