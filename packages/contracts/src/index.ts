@@ -70,6 +70,7 @@ export * from "./taskBoard.ts";
 export * from "./areaSync.ts";
 export * from "./laya.ts";
 export * from "./hardwareWatch.ts";
+export * from "./calendar.ts";
 export * from "./events.ts";
 export * from "./marketing.ts";
 export * from "./savedItem.ts";

@@ -282,6 +282,7 @@ import * as UsageService from "./usage/UsageService.ts";
 import { HttpClient } from "effect/http";
 import { testApiKey } from "./apiKeys/testApiKey.ts";
 import * as ModelBenchmarks from "./benchmarks/ModelBenchmarks.ts";
+import * as Calendar from "./calendar/Calendar.ts";
 import { readModelRunStats } from "./benchmarks/ModelRunStats.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
 import * as PullRequestService from "./pullRequest/PullRequestService.ts";
@@ -1345,6 +1346,7 @@ const layerWsRpc = (
             );
       const usage = yield* UsageService.UsageService;
       const modelBenchmarks = yield* ModelBenchmarks.ModelBenchmarks;
+      const calendar = yield* Calendar.Calendar;
       const apiKeyHttpClient = yield* HttpClient.HttpClient;
       const usageLimitSources = yield* UsageLimitSources.UsageLimitSources;
       const projectSetupScriptRunner = yield* ProjectSetupScriptRunner.ProjectSetupScriptRunner;
@@ -3039,6 +3041,13 @@ const layerWsRpc = (
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
         [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
+        [WS_METHODS.calendarEvents]: (input) => calendar.events(input),
+        [WS_METHODS.calendarTestLink]: (input) => calendar.testLink(input.url),
+        [WS_METHODS.calendarAddLink]: (input) => calendar.addLink(input),
+        [WS_METHODS.calendarRemove]: (input) => calendar.remove(input.id),
+        [WS_METHODS.calendarGoogleSetClient]: (input) => calendar.googleSetClient(input),
+        [WS_METHODS.calendarGoogleConnect]: () => calendar.googleConnect,
+        [WS_METHODS.calendarGoogleSelect]: (input) => calendar.googleSelect(input.calendars),
         [WS_METHODS.ponytailUsage]: () =>
           Effect.gen(function* () {
             const now = yield* Clock.currentTimeMillis;
