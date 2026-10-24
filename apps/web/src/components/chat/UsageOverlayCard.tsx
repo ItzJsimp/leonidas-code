@@ -25,7 +25,7 @@ import {
   accountTitle,
   compactWindowLabel,
   contextWindowFigures,
-  extraWindowSummaries,
+  extraUsageWindows,
   formatResetCountdown,
   formatTokenCount,
   glanceLimitRows,
@@ -300,7 +300,7 @@ function InlineWindowRow({
   }
   const countdown = formatResetCountdown(window.resetsAt, now, true);
   const fullReset = formatResetCountdown(window.resetsAt, now, false);
-  const leftPct = percentText(window.usedPercent, FIXED_LIMIT_VIEW);
+  const usedText = percentText(window.usedPercent, FIXED_LIMIT_VIEW);
   const resetDisplay = countdown
     ? countdown === "now"
       ? "resets now"
@@ -318,18 +318,18 @@ function InlineWindowRow({
         <UsageBar
           fill={FIXED_LIMIT_VIEW}
           usedPercent={window.usedPercent}
-          label={`${label}: ${leftPct}`}
+          label={`${label}: ${usedText}`}
           className="h-1"
         />
         <span className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
-          {leftPct}
+          {usedText}
         </span>
         <span className="whitespace-nowrap text-right tabular-nums text-muted-foreground">
           {resetDisplay}
         </span>
       </TooltipTrigger>
       <TooltipPopup side="top">
-        {label}: {leftPct}
+        {label}: {usedText}
         {fullReset ? ` · ${fullReset}` : ""}
       </TooltipPopup>
     </Tooltip>
@@ -358,7 +358,7 @@ function ProviderAccountCard({
   const rows = glanceLimitRows(primary.limits.windows, now);
   const notice = limitsNotice(primary.limits);
   const ageLabel = accountFreshnessLabel(primary.limits.checkedAt, now);
-  const extras = extraWindowSummaries(primary.limits.windows, rows, FIXED_LIMIT_VIEW, now);
+  const extras = extraUsageWindows(primary.limits.windows, rows, now);
   const siblingSummaries = useMemo(
     () =>
       siblings.map((sibling) => siblingAccountSummary(sibling, driverLabel, FIXED_LIMIT_VIEW, now)),
@@ -368,7 +368,7 @@ function ProviderAccountCard({
     primary.limits.resetCredits && primary.limits.resetCredits.availableCount > 0
       ? resetCreditsSummary(primary.limits.resetCredits, now, true)
       : null;
-  const hasSubPill = siblingSummaries.length > 0 || extras.length > 0 || creditsText !== null;
+  const hasSubPill = siblingSummaries.length > 0 || creditsText !== null;
   const nextSibling = siblings[0] ?? null;
 
   return (
@@ -427,22 +427,18 @@ function ProviderAccountCard({
           {rows.map((row) => (
             <InlineWindowRow key={row.key} label={row.label} window={row.window} now={now} />
           ))}
+          {extras.map((extra) => (
+            <InlineWindowRow key={extra.id} label={extra.label} window={extra} now={now} />
+          ))}
         </div>
       )}
 
-      {/* Compact Bottom Sub-Pill (Sibling accounts, extra model pools, reset credits) */}
+      {/* Compact Bottom Sub-Pill (Sibling accounts, reset credits) */}
       {hasSubPill ? (
         <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-md border border-border/40 bg-background/60 px-2 py-1 text-3xs text-muted-foreground tabular-nums">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 truncate">
-            {extras.map((extra) => (
-              <span key={extra.id} className="shrink-0">
-                {extra.label}{" "}
-                <strong className="font-semibold text-foreground">{extra.value} left</strong>
-              </span>
-            ))}
             {siblingSummaries.length > 0 ? (
               <span className="truncate">
-                {extras.length > 0 ? "· " : ""}
                 {siblingSummaries.map((sib, idx) => (
                   <span key={sib.id}>
                     {idx > 0 ? " · " : ""}
@@ -454,7 +450,7 @@ function ProviderAccountCard({
             ) : null}
             {creditsText ? (
               <span className="truncate">
-                {extras.length > 0 || siblingSummaries.length > 0 ? "· " : ""}
+                {siblingSummaries.length > 0 ? "· " : ""}
                 <strong className="font-semibold text-foreground">{creditsText}</strong>
               </span>
             ) : null}

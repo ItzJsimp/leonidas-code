@@ -10,7 +10,7 @@ import {
   contextWindowFigures,
   contextWindowTokensForModel,
   expireElapsedWindow,
-  extraWindowSummaries,
+  extraUsageWindows,
   formatResetCountdown,
   formatResetLabel,
   formatTokenCount,
@@ -225,7 +225,7 @@ describe("glance and panel helpers", () => {
     expect(compactPercentNumber(38.4, "left")).toBe("62%");
   });
 
-  it("formats compact window labels and extra window summaries", () => {
+  it("formats compact window labels and lists extra windows", () => {
     const session = window("s", "session", "Session", { windowDurationMins: 300 });
     const weekly = window("w", "weekly", "Weekly");
     const fable = window("w_fable", "weekly", "Weekly · Fable", { usedPercent: 0 });
@@ -233,9 +233,7 @@ describe("glance and panel helpers", () => {
     expect(compactWindowLabel(weekly, "Weekly limit")).toBe("Weekly");
     expect(compactWindowLabel(fable, "Weekly limit")).toBe("Fable wk");
     const primary = glanceLimitRows([fable, weekly, session]);
-    expect(extraWindowSummaries([fable, weekly, session], primary, "used")).toEqual([
-      { id: "w_fable", label: "Fable wk", value: "0%" },
-    ]);
+    expect(extraUsageWindows([fable, weekly, session], primary)).toEqual([fable]);
   });
 
   it("counts reset time down in plain and compact form", () => {

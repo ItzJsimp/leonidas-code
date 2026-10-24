@@ -359,25 +359,19 @@ export function glanceLimitRows(
 
 /**
  * Extra quota windows not shown in the primary 2 rows (e.g. `Weekly · Fable` or secondary
- * model pools), formatted for the compact bottom sub-pill (`Fable wk 0%`).
+ * model pools). The card draws them as normal rows so their numbers line up.
  */
-export function extraWindowSummaries(
+export function extraUsageWindows(
   windows: ReadonlyArray<ServerProviderUsageWindow>,
   primaryRows: ReadonlyArray<GlanceLimitRow>,
-  mode: "used" | "left" = "used",
   now?: number,
-): ReadonlyArray<{ readonly id: string; readonly label: string; readonly value: string }> {
+): ReadonlyArray<ServerProviderUsageWindow> {
   const shownIds = new Set(primaryRows.flatMap((row) => (row.window ? [row.window.id] : [])));
   const current =
     now === undefined ? windows : windows.map((window) => expireElapsedWindow(window, now));
   return orderPlanWindows(current)
     .filter((window) => !shownIds.has(window.id))
-    .slice(0, 2)
-    .map((window) => ({
-      id: window.id,
-      label: compactWindowLabel(window, window.label),
-      value: compactPercentNumber(window.usedPercent, mode),
-    }));
+    .slice(0, 2);
 }
 
 /**

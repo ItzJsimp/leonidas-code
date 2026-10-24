@@ -1548,7 +1548,7 @@ function UsageEnvironmentFilter({
   return (
     <Menu>
       <MenuTrigger render={<InlineButton />} className="group/usage-environment min-w-0 max-w-full">
-        <WorkspaceBreadcrumbText>{label}</WorkspaceBreadcrumbText>
+        <WorkspaceBreadcrumbText title={label}>{label}</WorkspaceBreadcrumbText>
         <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
           {showUsageStatus && hasIssue ? (
             <CircleAlertIcon
@@ -1556,10 +1556,7 @@ function UsageEnvironmentFilter({
               aria-label="Some computers could not report usage"
             />
           ) : (
-            <ChevronDownIcon
-              className="size-3.5 opacity-0 transition-opacity group-hover/usage-environment:opacity-100 group-focus-visible/usage-environment:opacity-100 group-data-popup-open/usage-environment:opacity-100"
-              aria-hidden
-            />
+            <ChevronDownIcon className="size-3.5" aria-hidden />
           )}
         </span>
       </MenuTrigger>
