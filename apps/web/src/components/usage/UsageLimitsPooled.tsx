@@ -21,7 +21,7 @@ import { ensureLocalApi } from "../../localApi";
 import { limitFill, limitText, useLimitView } from "../../hooks/useLimitView";
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { formatUpcomingTimestamp } from "../../timestampFormat";
+import { formatDayAwareTimestamp, formatUpcomingTimestamp } from "../../timestampFormat";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { providerClients } from "../settings/providerDriverMeta";
 import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
@@ -568,12 +568,7 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
         {checkedAt ? (
           <span className="text-xs font-normal text-muted-foreground">
             Checked{" "}
-            <time dateTime={checkedAt}>
-              {new Date(checkedAt).toLocaleTimeString("en-US", {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </time>
+            <time dateTime={checkedAt}>{formatDayAwareTimestamp(checkedAt, "12-hour", now)}</time>
           </span>
         ) : null}
       </h2>
