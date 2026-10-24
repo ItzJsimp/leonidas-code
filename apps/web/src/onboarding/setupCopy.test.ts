@@ -14,6 +14,8 @@ import {
   visibleChoices,
   tourStops,
   voiceFor,
+  aiNameSuggestions,
+  surpriseName,
 } from "./setupCopy";
 import { SETUP_ITEMS } from "./setupState.logic";
 
@@ -166,5 +168,25 @@ describe("buildImportedMemoryFile safety", () => {
   it("caps very long pastes", () => {
     const file = buildImportedMemoryFile("x".repeat(50_000), "s");
     expect(file.contents.length).toBeLessThan(21_000);
+  });
+});
+
+describe("aiNameSuggestions", () => {
+  it("offers the user's own name first", () => {
+    const names = aiNameSuggestions(" Jake ");
+    expect(names[0]).toBe("Jake's AI");
+    expect(names).toContain("Leonidas");
+  });
+
+  it("skips the possessive name when the user gave no name", () => {
+    expect(aiNameSuggestions("").some((name) => name.endsWith("'s AI"))).toBe(false);
+  });
+});
+
+describe("surpriseName", () => {
+  it("never returns the current name", () => {
+    for (let index = 0; index < 50; index += 1) {
+      expect(surpriseName("Nova")).not.toBe("Nova");
+    }
   });
 });

@@ -8,6 +8,7 @@ import {
   normalizeGoalIds,
   selectVisibleGoals,
   toggleGoal,
+  aiosFolderFromPick,
 } from "./leonidasSetup.logic";
 
 describe("leonidasSetup.logic", () => {
@@ -53,5 +54,22 @@ describe("leonidasSetup.logic", () => {
     const prompt = buildAiosSetupPrompt([], { inCurrentFolder: true });
     expect(prompt).toContain("Leave them alone");
     expect(prompt).toContain("ask me before you change it");
+  });
+});
+
+describe("aiosFolderFromPick", () => {
+  it("puts a Leonidas AIOS folder inside a plain Windows folder", () => {
+    expect(aiosFolderFromPick("C:\\Users\\Jake\\Documents")).toBe(
+      "C:\\Users\\Jake\\Documents\\Leonidas AIOS",
+    );
+  });
+
+  it("keeps a folder that is already an AIOS", () => {
+    expect(aiosFolderFromPick("D:\\Leonidas AIOS")).toBe("D:\\Leonidas AIOS");
+    expect(aiosFolderFromPick("/home/sam/my-aios")).toBe("/home/sam/my-aios");
+  });
+
+  it("joins with a forward slash on macOS and Linux, without a double slash", () => {
+    expect(aiosFolderFromPick("/Users/sam/")).toBe("/Users/sam/Leonidas AIOS");
   });
 });

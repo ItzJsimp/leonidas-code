@@ -9,6 +9,7 @@ import { SetupBasicsScreen, type SetupBasics } from "./SetupBasicsScreen";
 let root: Root;
 let container: HTMLDivElement;
 const onContinue = vi.fn<(basics: SetupBasics) => void>();
+const onReturning = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,9 +24,23 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-async function render(editorIds: readonly string[] = []) {
+async function render(
+  options: {
+    editorIds?: readonly string[];
+    pickFolder?: () => Promise<string | null>;
+    resolveFolder?: (folder: string) => Promise<string>;
+  } = {},
+) {
   await act(async () =>
-    root.render(<SetupBasicsScreen editorIds={editorIds} onContinue={onContinue} />),
+    root.render(
+      <SetupBasicsScreen
+        editorIds={options.editorIds ?? []}
+        onContinue={onContinue}
+        onReturning={onReturning}
+        pickFolder={options.pickFolder}
+        resolveFolder={options.resolveFolder}
+      />,
+    ),
   );
 }
 
@@ -54,13 +69,10 @@ async function type(control: HTMLInputElement, value: string) {
   });
 }
 
-it("prefills the AI name and the folder, and explains the folder in one sentence", async () => {
+it("asks no coder question, so the words never change", async () => {
   await render();
-  expect(input("Name your AI").value).toBe("Leonidas");
-  expect(container.textContent).toContain("never explain twice");
-  expect(
-    [...container.querySelectorAll("input")].some((node) => node.value === DEFAULT_AIOS_FOLDER),
-  ).toBe(true);
+  expect(container.textContent).not.toContain("build software");
+  expect(container.querySelector('[role="radio"]')).toBeNull();
 });
 
 it("continues with every default when the user changes nothing", async () => {
@@ -74,17 +86,47 @@ it("continues with every default when the user changes nothing", async () => {
   });
 });
 
+it("takes the tour depth from installed code editors without asking", async () => {
+  await render({ editorIds: ["vscode"] });
+  await act(async () => button("Continue").click());
+  expect(onContinue.mock.calls[0]?.[0].coder).toBe(true);
+});
+
+it("shows a first-name placeholder and offers the user's own AI name as one click", async () => {
+  await render();
+  expect(input("Your first name").placeholder).toBe("Your first name");
+  await type(input("Your first name"), "Jake");
+  await act(async () => button("Jake's AI").click());
+  expect(input("Name your AI").value).toBe("Jake's AI");
+});
+
 it("needs an AI name to continue", async () => {
   await render();
   await type(input("Name your AI"), "  ");
   expect(button("Continue").disabled).toBe(true);
 });
 
-it("preselects yes when a code editor is installed, and switches to builder words", async () => {
-  await render(["vscode"]);
-  const checked = container.querySelector('[role="radio"][aria-checked="true"]');
-  expect(checked?.closest("label")?.textContent).toContain("Yes");
-  expect(container.textContent).toContain("Markdown");
+it("shows the real folder path from the computer", async () => {
+  await render({ resolveFolder: async () => "C:\\Users\\Jake\\Leonidas AIOS" });
+  expect(container.textContent).toContain("C:\\Users\\Jake\\Leonidas AIOS");
+});
+
+it("opens the folder picker and keeps an AIOS folder inside the chosen place", async () => {
+  await render({ pickFolder: async () => "C:\\Users\\Jake\\Documents" });
+  await act(async () => button("Change").click());
   await act(async () => button("Continue").click());
-  expect(onContinue.mock.calls[0]?.[0].coder).toBe(true);
+  expect(onContinue.mock.calls[0]?.[0].folder).toBe("C:\\Users\\Jake\\Documents\\Leonidas AIOS");
+});
+
+it("keeps the old folder when the picker is closed", async () => {
+  await render({ pickFolder: async () => null });
+  await act(async () => button("Change").click());
+  await act(async () => button("Continue").click());
+  expect(onContinue.mock.calls[0]?.[0].folder).toBe(DEFAULT_AIOS_FOLDER);
+});
+
+it("offers a way in for people who already use Leonidas", async () => {
+  await render();
+  await act(async () => button("Already use Leonidas on another computer?").click());
+  expect(onReturning).toHaveBeenCalledOnce();
 });

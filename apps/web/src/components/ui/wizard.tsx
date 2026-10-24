@@ -147,7 +147,8 @@ export function WizardSteps({
 }
 
 const WIZARD_STABLE_CONTENT_CLASS =
-  "flex min-h-[35rem] flex-col [&>:last-child]:mt-auto [&>:last-child]:pt-6";
+  // Short laptop windows keep the buttons on screen: the floor never passes the window height.
+  "flex min-h-[min(35rem,calc(100dvh-12rem))] flex-col [&>:last-child]:mt-auto [&>:last-child]:pt-6";
 
 export function WizardPanel({
   children,

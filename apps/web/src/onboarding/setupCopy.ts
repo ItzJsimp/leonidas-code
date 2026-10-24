@@ -12,14 +12,6 @@ export function voiceFor(coder: boolean | null): SetupVoice {
 }
 
 interface SetupCopy {
-  readonly basicsTitle: string;
-  readonly basicsLead: string;
-  readonly aiNameLabel: string;
-  readonly userNameLabel: string;
-  readonly folderLabel: string;
-  readonly folderWhy: string;
-  readonly coderQuestion: string;
-  readonly coderHint: string;
   readonly accountTitle: string;
   readonly accountLead: string;
   readonly questionsTitle: string;
@@ -33,15 +25,6 @@ interface SetupCopy {
 
 export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
   everyday: {
-    basicsTitle: "Meet your AI",
-    basicsLead: "Three short steps, then you are in. You can skip anything but the name.",
-    aiNameLabel: "Name your AI",
-    userNameLabel: "What should your AI call you?",
-    folderLabel: "Where your AI keeps its notes",
-    folderWhy:
-      "This folder is your AI's notebook. It saves what it learns about you, so you never explain twice.",
-    coderQuestion: "Do you build software?",
-    coderHint: "This only changes how we explain things. You get every feature either way.",
     accountTitle: "Connect one AI account",
     accountLead: AI_STEP_DESCRIPTION,
     questionsTitle: "5 quick questions",
@@ -53,15 +36,6 @@ export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
     meterLabel: "Brain strength",
   },
   builder: {
-    basicsTitle: "Set up your AI",
-    basicsLead: "Three short steps, then you are in. Only the name is required.",
-    aiNameLabel: "Name your AI",
-    userNameLabel: "What should your AI call you?",
-    folderLabel: "AIOS folder",
-    folderWhy:
-      "Your AIOS is a folder of Markdown files your AI reads every session: memory, tasks, projects and rules. Git keeps its history.",
-    coderQuestion: "Do you build software?",
-    coderHint: "This changes the words and the tour depth only. Every feature stays on.",
     accountTitle: "Connect one AI account",
     accountLead: AI_STEP_DESCRIPTION,
     questionsTitle: "5 quick questions",
@@ -73,6 +47,45 @@ export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
     meterLabel: "Brain strength",
   },
 };
+
+/** Screen 1 words. They are the same for every user, so nothing on the screen shifts. */
+export const BASICS_COPY = {
+  title: "Set up your AI",
+  lead: "3 short steps, then you are in. You can skip everything.",
+  userNameLabel: "Your first name",
+  aiNameLabel: "Name your AI",
+  folderLabel: "Your AI's folder",
+  folderWhy: "Your AI keeps its memory, tasks and notes here as plain files.",
+  returning: "Already use Leonidas on another computer?",
+} as const;
+
+const AI_NAME_IDEAS = ["Leonidas", "Atlas", "Nova", "Sage"] as const;
+const SURPRISE_NAMES = [
+  ...AI_NAME_IDEAS,
+  "Orion",
+  "Echo",
+  "Juno",
+  "Max",
+  "Iris",
+  "Cosmo",
+  "Pixel",
+  "Athena",
+  "Kai",
+  "Luna",
+  "Remy",
+  "Scout",
+] as const;
+
+/** One-click names for the AI. The user's own name comes first, since most people pick it. */
+export function aiNameSuggestions(userName: string): readonly string[] {
+  const name = userName.trim();
+  return name === "" ? AI_NAME_IDEAS : [`${name}'s AI`, ...AI_NAME_IDEAS];
+}
+
+export function surpriseName(current: string): string {
+  const options = SURPRISE_NAMES.filter((name) => name !== current);
+  return options[Math.floor(Math.random() * options.length)] ?? "Leonidas";
+}
 
 export interface TourStop {
   readonly id: string;

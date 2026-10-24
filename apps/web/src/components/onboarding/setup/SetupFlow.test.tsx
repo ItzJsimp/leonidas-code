@@ -34,6 +34,10 @@ vi.mock("../../../state/environments", () => ({
   usePrimaryEnvironment: () => primary.current,
 }));
 vi.mock("../../../state/server", () => ({ primaryServerAvailableEditorsAtom: {} }));
+vi.mock("../../../onboarding/useFolderInspection", () => ({
+  useFolderInspection: () => async () => ({ _tag: "unknown" }),
+}));
+vi.mock("../../../localApi", () => ({ ensureLocalApi: () => ({ dialogs: {} }) }));
 vi.mock("../WelcomeWizard", () => ({ WelcomeWizard: () => <p>old wizard</p> }));
 vi.mock("../AgentsStep", () => ({
   AgentsStep: (props: { onContinue: (ready: boolean) => void }) => (

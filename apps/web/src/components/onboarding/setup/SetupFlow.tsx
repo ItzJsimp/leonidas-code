@@ -1,7 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId, ScopedProjectRef } from "@t3tools/contracts";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import {
@@ -31,6 +31,9 @@ import {
   markDone,
 } from "../../../onboarding/setupState.logic";
 import { useAiosFileWriter } from "../../../onboarding/useAiosFileWriter";
+import { resolvedFolderPath } from "../../../onboarding/folderInspection.logic";
+import { useFolderInspection } from "../../../onboarding/useFolderInspection";
+import { ensureLocalApi } from "../../../localApi";
 import { usePrimaryEnvironment } from "../../../state/environments";
 import { primaryServerAvailableEditorsAtom } from "../../../state/server";
 import * as Schema from "effect/Schema";
@@ -43,7 +46,10 @@ import { SetupBasicsScreen, type SetupBasics } from "./SetupBasicsScreen";
 import { SetupPreviewBar } from "./SetupPreviewBar";
 import { SetupQuestionsScreen } from "./SetupQuestionsScreen";
 
-const STEPS = ["You", "AI account", "Questions"] as const;
+const STEPS = ["You", "AI account", "About you"] as const;
+
+// The system folder picker exists only in the desktop app; a browser types the path instead.
+const pickFolder = window.desktopBridge ? () => ensureLocalApi().dialogs.pickFolder() : undefined;
 type Step = 0 | 1 | 2;
 
 /**
@@ -91,6 +97,11 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
   // True once the user saw the "folder has other files" note or a write succeeded.
   const [folderConfirmed, setFolderConfirmed] = useState(false);
   const voice = voiceFor(basics?.coder ?? state.coder);
+  const inspectFolder = useFolderInspection(environmentId);
+  const resolveFolder = useCallback(
+    async (folder: string) => resolvedFolderPath(await inspectFolder(folder, []), folder),
+    [inspectFolder],
+  );
 
   const writeAios = async (folder: string, files: readonly PlannedFile[]) => {
     const result = await write(folder, files, { allowExisting: folderConfirmed });
@@ -158,6 +169,8 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
             <SetupBasicsScreen
               editorIds={editorIds}
               initial={basics ?? undefined}
+              pickFolder={pickFolder}
+              resolveFolder={resolveFolder}
               onContinue={(next) => {
                 setBasics(next);
                 if (next.folder !== basics?.folder) setFolderConfirmed(false);

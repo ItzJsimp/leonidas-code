@@ -110,3 +110,15 @@ export function buildAiosSetupPrompt(
       : "When done, list what you created and tell me how to open that folder in Leonidas.",
   ].join("\n\n");
 }
+
+/**
+ * The folder picker chooses where the AIOS goes. A plain folder like Documents gets a
+ * `Leonidas AIOS` folder inside it; a folder already named like an AIOS is used as is.
+ */
+export function aiosFolderFromPick(picked: string): string {
+  const trimmed = picked.replace(/[\/]+$/, "");
+  const name = trimmed.split(/[\/]/).pop() ?? "";
+  if (/aios/i.test(name)) return trimmed;
+  const separator = trimmed.includes("\\") ? "\\" : "/";
+  return `${trimmed}${separator}${DEFAULT_AIOS_NAME}`;
+}
