@@ -35,24 +35,3 @@ export function areaCards(areas: readonly TaskBoardHomeArea[], now: number): Are
     .sort((a, b) => b.units - a.units || areaLabel(a.id).localeCompare(areaLabel(b.id)))
     .map((area) => toCard(area, now));
 }
-
-export function areaCard(
-  areas: readonly TaskBoardHomeArea[],
-  id: string,
-  now: number,
-): AreaCard | null {
-  const area = areas.find((candidate) => candidate.id === id);
-  return area ? toCard(area, now) : null;
-}
-
-/** The count line for a tab that has no list yet: what is kept and when it changed. */
-export function folderAreaLine(
-  areas: readonly TaskBoardHomeArea[],
-  id: string,
-  now: number,
-): string {
-  const card = areaCard(areas, id, now);
-  return card
-    ? `Leonidas keeps ${card.number} ${card.unit}. Last change ${card.changed}.`
-    : "Nothing is counted here yet.";
-}

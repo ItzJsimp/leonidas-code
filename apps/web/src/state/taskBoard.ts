@@ -84,6 +84,20 @@ export const taskBoardHomeQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 60_000,
 });
 
+/** Ticks or clears one priority line in today's brief file. */
+export const taskBoardHomePriorityToggle = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:task-board:home-priority-toggle",
+  tag: WS_METHODS.taskBoardHomePriorityToggle,
+});
+
+/** The notes in one AIOS folder (decisions, logs, wiki), newest first. */
+export const aiosFolderListQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:task-board:aios-folder-list",
+  tag: WS_METHODS.aiosFolderList,
+  staleTimeMs: 30_000,
+  idleTtlMs: 5 * 60_000,
+});
+
 export const aiosUsageShapeQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:task-board:aios-usage-shape",
   tag: WS_METHODS.aiosUsageShape,

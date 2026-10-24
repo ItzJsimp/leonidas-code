@@ -608,8 +608,53 @@ export const TaskBoardHomePriority = Schema.Struct({
   detail: Schema.String,
   done: Schema.Boolean,
   taskId: Schema.NullOr(Schema.String),
+  /** The checkbox line as it is in the brief file. The toggle sends it back. Absent on older servers. */
+  line: Schema.optional(Schema.String),
 });
 export type TaskBoardHomePriority = typeof TaskBoardHomePriority.Type;
+
+/**
+ * Ticks or clears one priority in the brief file. `line` is the line the caller last read: when
+ * the file no longer holds that exact line once, the toggle fails with `stale_revision`.
+ */
+export const TaskBoardHomePriorityToggleInput = Schema.Struct({
+  ...workspaceScope,
+  file: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
+  line: Schema.String.check(Schema.isMaxLength(4_000)),
+  done: Schema.Boolean,
+});
+export type TaskBoardHomePriorityToggleInput = typeof TaskBoardHomePriorityToggleInput.Type;
+
+/** The AIOS note folders the Memory page lists. */
+export const AiosNoteFolder = Schema.Literals(["decisions", "logs", "wiki"]);
+export type AiosNoteFolder = typeof AiosNoteFolder.Type;
+
+export const AiosFolderListInput = Schema.Struct({ ...workspaceScope, folder: AiosNoteFolder });
+export type AiosFolderListInput = typeof AiosFolderListInput.Type;
+
+/** One note: its AIOS-relative path, a title, the date it names and a one-line summary. */
+export const AiosFolderItem = Schema.Struct({
+  path: Schema.String,
+  title: Schema.String,
+  /** `YYYY-MM-DD` from the frontmatter or the file name; null when the note names none. */
+  date: Schema.NullOr(Schema.String),
+  summary: Schema.String,
+  changedAt: Schema.Number,
+});
+export type AiosFolderItem = typeof AiosFolderItem.Type;
+
+/** Newest first, at most a few hundred. `total` counts every note in the folder. */
+export const AiosFolderList = Schema.Struct({
+  root: Schema.NullOr(Schema.String),
+  folder: AiosNoteFolder,
+  items: Schema.Array(AiosFolderItem),
+  total: Schema.Number,
+});
+export type AiosFolderList = typeof AiosFolderList.Type;
+
+/** The line as it is in the file after the toggle. */
+export const TaskBoardHomePriorityToggleResult = Schema.Struct({ line: Schema.String });
+export type TaskBoardHomePriorityToggleResult = typeof TaskBoardHomePriorityToggleResult.Type;
 
 export const TaskBoardHomeMove = Schema.Struct({
   kind: Schema.Literals(["review", "finish", "unblock", "focus", "rest"]),

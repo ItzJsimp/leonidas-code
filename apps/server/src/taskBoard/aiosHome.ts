@@ -70,6 +70,7 @@ export function readBrief(
       detail: (match[3] ?? "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").trim(),
       done: match[1] === "x" || task?.status === "done",
       taskId: task?.id ?? null,
+      line: match[0].trim(),
     });
   }
   return { date: file.slice(0, 10), file: `logs/briefings/${file}`, priorities };

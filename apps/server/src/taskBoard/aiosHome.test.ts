@@ -76,9 +76,27 @@ describe("readBrief", () => {
     expect(brief?.date).toBe("2026-10-14");
     expect(brief?.file).toBe("logs/briefings/2026-10-14-briefing.md");
     expect(brief?.priorities).toEqual([
-      { title: "Ship it", detail: "finish the card today", done: true, taskId: "ship" },
-      { title: "Rest", detail: "sleep by midnight", done: true, taskId: null },
-      { title: "Call", detail: "phone the bank", done: false, taskId: null },
+      {
+        title: "Ship it",
+        detail: "finish the card today",
+        done: true,
+        taskId: "ship",
+        line: "- [ ] **Ship it:** finish [the card](../../tasks/ship.md) today",
+      },
+      {
+        title: "Rest",
+        detail: "sleep by midnight",
+        done: true,
+        taskId: null,
+        line: "- [x] **Rest:** sleep by midnight",
+      },
+      {
+        title: "Call",
+        detail: "phone the bank",
+        done: false,
+        taskId: null,
+        line: "- [ ] **Call:** phone the bank",
+      },
     ]);
   });
 
