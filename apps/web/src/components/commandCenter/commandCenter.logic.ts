@@ -69,7 +69,7 @@ export function tileModels(
       unit: plural(needsYou ?? 0, "item", "items"),
       note:
         needsYou === null
-          ? "Reading your inbox"
+          ? "Reading your notifications"
           : needsYou === 0
             ? "Nothing is waiting for you"
             : oldestNeedsYouAt === null

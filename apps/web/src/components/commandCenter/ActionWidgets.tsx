@@ -103,7 +103,7 @@ export function NeedsYouWidget() {
           to="/inbox"
           className="mt-1 inline-block rounded-sm text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
         >
-          See all {needsYou.length} in the Inbox
+          See all {needsYou.length} in Notifications
         </Link>
       ) : null}
     </HomeWidget>

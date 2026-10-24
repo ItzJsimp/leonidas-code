@@ -31,7 +31,7 @@ const tile = (id: string, input: Partial<Parameters<typeof tileModels>[0]> = {})
 describe("tileModels", () => {
   it("shows no number for a count that is not read yet", () => {
     expect(tile("needs-you", { needsYou: null }).value).toBeNull();
-    expect(tile("needs-you", { needsYou: null }).note).toBe("Reading your inbox");
+    expect(tile("needs-you", { needsYou: null }).note).toBe("Reading your notifications");
     expect(tile("running", { running: null }).value).toBeNull();
     expect(tile("running", { running: null }).note).toBe("Reading your chats");
   });
