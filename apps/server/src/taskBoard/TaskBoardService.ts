@@ -26,6 +26,8 @@ import {
   type TaskBoardCardCreateInput,
   type TaskBoardCardUpdateInput,
   type TaskBoardHome,
+  type TaskBoardHomePriorityToggleInput,
+  type TaskBoardHomePriorityToggleResult,
   type TaskBoardReleaseInput,
   type TaskBoardShareInput,
   type TaskBoardSnapshot,
@@ -75,6 +77,7 @@ import {
   widgetsForWorkspace,
 } from "../workspacePack/workspacePack.ts";
 import { buildHome, cachedAreas } from "./aiosHome.ts";
+import { BRIEF_PATH, toggleBriefLine } from "./briefPriorityToggle.ts";
 import {
   addFocusItem,
   changeFocusItem,
@@ -94,6 +97,7 @@ import {
   discoverProjects,
   cardToTask,
   findCardFile,
+  isRealPathInside,
   readAiosCardFile,
   readAiosTasks,
   resolveMember,
@@ -576,6 +580,11 @@ export class TaskBoardService extends Context.Service<
       projects: ReadonlyArray<Project>,
       workspaceId?: string,
     ) => Effect.Effect<TaskBoardHome, TaskBoardReadError>;
+    /** Ticks or clears one priority line in the brief file; refuses when that line changed. */
+    readonly homePriorityToggle: (
+      input: TaskBoardHomePriorityToggleInput,
+      projects: ReadonlyArray<Project>,
+    ) => Effect.Effect<TaskBoardHomePriorityToggleResult, TaskBoardOperationError>;
     /** The AIOS folder of a workspace (default: the first ready one); null when none or unknown. */
     readonly aiosRoot: (
       projects: ReadonlyArray<Project>,
@@ -2031,6 +2040,41 @@ const make = Effect.gen(function* () {
       });
     });
 
+  const homePriorityToggle = (
+    input: TaskBoardHomePriorityToggleInput,
+    projects: ReadonlyArray<Project>,
+  ) =>
+    Effect.gen(function* () {
+      const root = scopeFor(projects, { workspaceId: input.workspaceId }).root;
+      if (root === null) return yield* storageError("No AIOS folder is connected.");
+      if (!BRIEF_PATH.test(input.file)) {
+        return yield* new TaskBoardOperationError({
+          reason: "invalid_data",
+          message: "Only a daily brief in logs/briefings can be changed.",
+        });
+      }
+      const path = NodePath.join(root, input.file);
+      return yield* Effect.try({
+        try: () => {
+          // A brief linked in from outside the AIOS is not this workspace's file.
+          if (!isRealPathInside(root, path)) throw storageError("That brief is not in this AIOS.");
+          const result = toggleBriefLine(NodeFS.readFileSync(path, "utf8"), input.line, input.done);
+          if (!result.ok) {
+            throw new TaskBoardOperationError({
+              reason: "stale_revision",
+              message:
+                result.reason === "line_ambiguous"
+                  ? "The brief has this priority more than once. Change it in the file."
+                  : "The brief changed since it was read. The list has been refreshed.",
+            });
+          }
+          writeCardAtomically(path, result.text);
+          return { line: result.line };
+        },
+        catch: cardWriteFailure,
+      });
+    });
+
   const direction = (projects: ReadonlyArray<Project>, workspaceId?: string) =>
     Effect.gen(function* () {
       const root = scopeFor(projects, { workspaceId }).root;
@@ -2234,6 +2278,7 @@ const make = Effect.gen(function* () {
   return TaskBoardService.of({
     list,
     home,
+    homePriorityToggle,
     aiosRoot: (projects: ReadonlyArray<Project>, workspaceId?: string) =>
       Effect.sync(() => scopeFor(projects, { workspaceId }).root),
     usageShape,

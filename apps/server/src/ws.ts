@@ -3113,6 +3113,10 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.home(projects, input.workspaceId)),
           ),
+        [WS_METHODS.taskBoardHomePriorityToggle]: (input) =>
+          allTaskBoardProjects.pipe(
+            Effect.flatMap((projects) => taskBoard.homePriorityToggle(input, projects)),
+          ),
         [WS_METHODS.aiosUsageShape]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.orElseSucceed(() => []),

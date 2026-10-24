@@ -61,6 +61,8 @@ import {
   TaskBoardAiosDetectResult,
   TaskBoardHome,
   TaskBoardHomeInput,
+  TaskBoardHomePriorityToggleInput,
+  TaskBoardHomePriorityToggleResult,
   AiosWorkspaceScopeInput,
   AiosWorkspacesListResult,
   WorkspacePackWidgetsResult,
@@ -622,6 +624,7 @@ export const WS_METHODS = {
   taskBoardAiosDetect: "taskBoard.aiosDetect",
   taskBoardAiosConfirm: "taskBoard.aiosConfirm",
   taskBoardHome: "taskBoard.home",
+  taskBoardHomePriorityToggle: "taskBoard.homePriorityToggle",
   aiosUsageShape: "taskBoard.aiosUsageShape",
   aiosDirection: "taskBoard.aiosDirection",
   aiosWorkspacesList: "aiosWorkspaces.list",
@@ -1888,6 +1891,12 @@ const WsTaskBoardHomeRpc = Rpc.make(WS_METHODS.taskBoardHome, {
   error: Schema.Union([TaskBoardReadError, EnvironmentAuthorizationError]),
 });
 
+const WsTaskBoardHomePriorityToggleRpc = Rpc.make(WS_METHODS.taskBoardHomePriorityToggle, {
+  payload: TaskBoardHomePriorityToggleInput,
+  success: TaskBoardHomePriorityToggleResult,
+  error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
 const WsAiosUsageShapeRpc = Rpc.make(WS_METHODS.aiosUsageShape, {
   payload: AiosWorkspaceScopeInput,
   success: AiosUsageShape,
@@ -3134,6 +3143,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardAiosDetectRpc,
   WsTaskBoardAiosConfirmRpc,
   WsTaskBoardHomeRpc,
+  WsTaskBoardHomePriorityToggleRpc,
   WsAiosWorkspacesListRpc,
   WsAiosWorkspacesInitRpc,
   WsAreaSyncJoinRpc,

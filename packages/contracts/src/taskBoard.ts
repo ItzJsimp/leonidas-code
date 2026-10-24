@@ -608,8 +608,26 @@ export const TaskBoardHomePriority = Schema.Struct({
   detail: Schema.String,
   done: Schema.Boolean,
   taskId: Schema.NullOr(Schema.String),
+  /** The checkbox line as it is in the brief file. The toggle sends it back. Absent on older servers. */
+  line: Schema.optional(Schema.String),
 });
 export type TaskBoardHomePriority = typeof TaskBoardHomePriority.Type;
+
+/**
+ * Ticks or clears one priority in the brief file. `line` is the line the caller last read: when
+ * the file no longer holds that exact line once, the toggle fails with `stale_revision`.
+ */
+export const TaskBoardHomePriorityToggleInput = Schema.Struct({
+  ...workspaceScope,
+  file: TrimmedNonEmptyString.check(Schema.isMaxLength(256)),
+  line: Schema.String.check(Schema.isMaxLength(4_000)),
+  done: Schema.Boolean,
+});
+export type TaskBoardHomePriorityToggleInput = typeof TaskBoardHomePriorityToggleInput.Type;
+
+/** The line as it is in the file after the toggle. */
+export const TaskBoardHomePriorityToggleResult = Schema.Struct({ line: Schema.String });
+export type TaskBoardHomePriorityToggleResult = typeof TaskBoardHomePriorityToggleResult.Type;
 
 export const TaskBoardHomeMove = Schema.Struct({
   kind: Schema.Literals(["review", "finish", "unblock", "focus", "rest"]),

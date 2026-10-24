@@ -878,3 +878,45 @@ it.effect("retries a mirror after a GitHub sha conflict and keeps the collaborat
     }),
   ).pipe(Effect.provide(boardLayer(github.runner)));
 });
+
+it.effect("ticks one brief priority in place and refuses a line that changed", () =>
+  withAios({ "one.md": cardFile("task-one", "First card") }, (root, project) =>
+    Effect.gen(function* () {
+      const board = yield* TaskBoardService.TaskBoardService;
+      const dir = NodePath.join(root, "logs", "briefings");
+      NodeFS.mkdirSync(dir, { recursive: true });
+      const file = "logs/briefings/2026-10-23-briefing.md";
+      const before =
+        "# Brief\r\n- **Priorities Seeded:**\r\n- [ ] **Ship:** today\r\n- [ ] **Call:** bank\r\n";
+      NodeFS.writeFileSync(NodePath.join(root, file), before);
+
+      const home = yield* board.home([project]);
+      const ship = home.brief?.priorities.find((priority) => priority.title === "Ship");
+      expect(ship?.line).toBe("- [ ] **Ship:** today");
+      const ticked = yield* board.homePriorityToggle({ file, line: ship!.line!, done: true }, [
+        project,
+      ]);
+      expect(ticked.line).toBe("- [x] **Ship:** today");
+      expect(NodeFS.readFileSync(NodePath.join(root, file), "utf8")).toBe(
+        before.replace("- [ ] **Ship:**", "- [x] **Ship:**"),
+      );
+
+      // The caller still holds the old line: the file changed, so nothing is written.
+      const stale = yield* Effect.result(
+        board.homePriorityToggle({ file, line: ship!.line!, done: true }, [project]),
+      );
+      expect(stale._tag).toBe("Failure");
+      if (stale._tag === "Failure")
+        expect(stale.failure).toMatchObject({ reason: "stale_revision" });
+
+      const outside = yield* Effect.result(
+        board.homePriorityToggle({ file: "tasks/one.md", line: "- [ ] **x:** y", done: true }, [
+          project,
+        ]),
+      );
+      expect(outside._tag).toBe("Failure");
+      if (outside._tag === "Failure")
+        expect(outside.failure).toMatchObject({ reason: "invalid_data" });
+    }),
+  ).pipe(Effect.provide(boardLayer(noGithub))),
+);
