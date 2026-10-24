@@ -7,6 +7,8 @@ import {
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
 import * as LocalModelsService from "./localModels/LocalModelsService.ts";
+import * as AttachmentArchive from "./files/AttachmentArchive.ts";
+import * as SubagentRuns from "./subagents/SubagentRuns.ts";
 import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as AreaSyncService from "./areaSync/AreaSyncService.ts";
@@ -1453,6 +1455,8 @@ const layerWsRpc = (
         });
       const images = yield* ImageService.ImageService;
       const localModels = yield* LocalModelsService.LocalModelsService;
+      const attachmentArchive = yield* AttachmentArchive.AttachmentArchive;
+      const subagentRuns = yield* SubagentRuns.SubagentRuns;
       const withImagesProject = <A, E, R>(
         projectId: ProjectId,
         use: (project: Project) => Effect.Effect<A, E, R>,
@@ -3015,6 +3019,9 @@ const layerWsRpc = (
         [WS_METHODS.localModelsComparePick]: (input) => localModels.comparePick(input),
         [WS_METHODS.localModelsTokenReport]: (input) => localModels.tokenReport(input),
         [WS_METHODS.localModelsDelete]: (input) => localModels.remove(input),
+        [WS_METHODS.filesList]: (input) => attachmentArchive.list(input),
+        [WS_METHODS.filesDelete]: (input) => attachmentArchive.remove(input),
+        [WS_METHODS.subagentRunsList]: (input) => subagentRuns.list(input),
         [WS_METHODS.taskBoardWorkspace]: (input) =>
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.workspace(projects, input.workspaceId)),

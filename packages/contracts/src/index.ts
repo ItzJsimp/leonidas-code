@@ -86,3 +86,4 @@ export * from "./replyStyle.ts";
 export * from "./subagentSpawn.ts";
 export * from "./threadSweep.ts";
 export * from "./clientRpcPermissions.ts";
+export * from "./archive.ts";

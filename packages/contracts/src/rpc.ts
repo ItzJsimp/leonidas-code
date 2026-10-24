@@ -103,6 +103,16 @@ import {
 } from "./hardwareWatch.ts";
 import { DevPreviewError, DevPreviewInput, DevPreviewState } from "./devPreview.ts";
 import {
+  FilesDeleteInput,
+  FilesDeleteResult,
+  FilesError,
+  FilesListInput,
+  FilesListResult,
+  SubagentRunsError,
+  SubagentRunsInput,
+  SubagentRunsResult,
+} from "./archive.ts";
+import {
   ImagesCancelInput,
   ImagesError,
   ImagesGenerateInput,
@@ -676,6 +686,9 @@ export const WS_METHODS = {
   localModelsComparePick: "localModels.comparePick",
   localModelsTokenReport: "localModels.tokenReport",
   localModelsDelete: "localModels.delete",
+  filesList: "files.list",
+  filesDelete: "files.delete",
+  subagentRunsList: "subagentRuns.list",
   projectsPromptCandidates: "projects.promptCandidates",
   projectsPredictPrompt: "projects.predictPrompt",
   projectsCancelPromptPrediction: "projects.cancelPromptPrediction",
@@ -1790,6 +1803,27 @@ const WsLocalModelsDeleteRpc = Rpc.make(WS_METHODS.localModelsDelete, {
   payload: LocalModelsModelInput,
   success: LocalModelsActionResult,
   error: LocalModelsRpcError,
+});
+
+/** Lists the files the app keeps for chats: attachments, uploads and rendered pages. */
+const WsFilesListRpc = Rpc.make(WS_METHODS.filesList, {
+  payload: FilesListInput,
+  success: FilesListResult,
+  error: Schema.Union([FilesError, EnvironmentAuthorizationError]),
+});
+
+/** Deletes one stored file. A file that a chat still shows stays. */
+const WsFilesDeleteRpc = Rpc.make(WS_METHODS.filesDelete, {
+  payload: FilesDeleteInput,
+  success: FilesDeleteResult,
+  error: Schema.Union([FilesError, EnvironmentAuthorizationError]),
+});
+
+/** Every subagent run: live ones and history, from the stored run events. */
+const WsSubagentRunsListRpc = Rpc.make(WS_METHODS.subagentRunsList, {
+  payload: SubagentRunsInput,
+  success: SubagentRunsResult,
+  error: Schema.Union([SubagentRunsError, EnvironmentAuthorizationError]),
 });
 
 const WsTaskBoardCardUpdateRpc = Rpc.make(WS_METHODS.taskBoardCardUpdate, {
@@ -3182,6 +3216,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsLocalModelsComparePickRpc,
   WsLocalModelsTokenReportRpc,
   WsLocalModelsDeleteRpc,
+  WsFilesListRpc,
+  WsFilesDeleteRpc,
+  WsSubagentRunsListRpc,
   WsProjectsPromptCandidatesRpc,
   WsProjectsPredictPromptRpc,
   WsProjectsCancelPromptPredictionRpc,
