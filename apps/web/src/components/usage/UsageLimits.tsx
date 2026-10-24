@@ -19,8 +19,8 @@ import {
 import { GaugeIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
 
-import { limitFill, limitText, useLimitView } from "../../hooks/useLimitView";
 import { usePrimarySettings } from "../../hooks/useSettings";
+import { percentText, usedPercentLabel } from "../../lib/usageLimitsPopover";
 import { environmentPresentations } from "../../state/presentation";
 import { useEnvironmentScope, readEnvironmentScope } from "../../state/session";
 import { serverEnvironment } from "../../state/server";
@@ -102,16 +102,15 @@ function WindowBar({
   readonly now: number;
 }) {
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
-  const [view] = useLimitView();
-  const fill = limitFill(window.usedPercent, view);
+  const fill = usedPercentLabel(window.usedPercent);
   const elapsed = elapsedShare(window, now);
-  // The mark is where even spending would put the fill: time spent, or time left in the left view.
+  // The mark is where even spending would put the fill: the share of the period spent.
   const timeLeft = elapsed === null ? null : Math.round((1 - elapsed) * 100);
   const resetsIn = formatResetsIn(window, now);
   const resetsAt = window.resetsAt
     ? formatUpcomingTimestamp(window.resetsAt, timestampFormat, now)
     : null;
-  const summary = `${window.label}: ${limitText(window.usedPercent, view)}${
+  const summary = `${window.label}: ${percentText(window.usedPercent)}${
     timeLeft === null ? "" : `, ${timeLeft}% of the period left`
   }${resetsIn ? `, ${resetsIn}` : ""}`;
 
@@ -138,14 +137,14 @@ function WindowBar({
           <span
             aria-hidden
             className="absolute inset-y-0.5 w-px -translate-x-1/2 bg-foreground/60"
-            style={{ left: `${view === "used" ? 100 - timeLeft : timeLeft}%` }}
+            style={{ left: `${100 - timeLeft}%` }}
           />
         ) : null}
       </TooltipTrigger>
       <TooltipPopup side="top">
         <div className="flex flex-col gap-0.5">
           <span className="text-foreground">
-            {limitText(window.usedPercent, view)}
+            {percentText(window.usedPercent)}
             {timeLeft !== null ? ` · ${timeLeft}% of the period left` : ""}
           </span>
           {timeLeft !== null ? (
@@ -179,7 +178,6 @@ export function LimitWindows({
   readonly compact?: boolean;
 }) {
   const color = barColor(driver);
-  const [view] = useLimitView();
   return (
     <div
       className={
@@ -196,7 +194,7 @@ export function LimitWindows({
             <span className="flex min-w-0 items-center gap-2 text-xs">
               <span className="truncate text-muted-foreground">{window.label}</span>
               <span className="ms-auto shrink-0 font-medium text-foreground tabular-nums">
-                {limitText(window.usedPercent, view)}
+                {percentText(window.usedPercent)}
               </span>
             </span>
             <WindowBar color={color} window={window} now={now} />

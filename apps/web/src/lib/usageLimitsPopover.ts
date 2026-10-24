@@ -186,10 +186,9 @@ export function withKnownContextWindow(
   };
 }
 
-/** `38% used` or `62% left`: the word is always spelled out so a newcomer never guesses. */
-export function percentText(usedPercent: number, mode: "used" | "left" = "used"): string {
-  const used = usedPercentLabel(usedPercent);
-  return mode === "used" ? `${used}% used` : `${100 - used}% left`;
+/** `38% used`: the word is always spelled out so a newcomer never guesses. */
+export function percentText(usedPercent: number): string {
+  return `${usedPercentLabel(usedPercent)}% used`;
 }
 
 /**

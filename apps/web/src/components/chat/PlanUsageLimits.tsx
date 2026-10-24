@@ -16,22 +16,18 @@ const SEVERITY_STROKE: Record<UsageSeverity, string> = {
 };
 
 /**
- * A quota bar coloured by severity. It drains: the fill is what is left, so a nearly spent
- * window is a small sliver. `fill="used"` fills with consumption instead (the context window).
+ * A quota bar coloured by severity. It fills with the part used.
  */
 export function UsageBar({
   usedPercent,
   label,
   className,
-  fill = "left",
 }: {
   readonly usedPercent: number;
   readonly label: string;
   readonly className?: string;
-  readonly fill?: "left" | "used";
 }) {
-  const used = usedPercentLabel(usedPercent);
-  const shown = fill === "left" ? 100 - used : used;
+  const shown = usedPercentLabel(usedPercent);
   return (
     <div
       role="progressbar"
@@ -43,7 +39,7 @@ export function UsageBar({
     >
       {shown > 0 ? (
         <div
-          className={cn("h-full min-w-1 rounded-full", SEVERITY_FILL[usageSeverity(used)])}
+          className={cn("h-full min-w-1 rounded-full", SEVERITY_FILL[usageSeverity(shown)])}
           style={{ width: `${shown}%` }}
         />
       ) : null}
@@ -59,9 +55,7 @@ export function UsageRing({
   severity,
   className,
   children,
-  fill: fillMode = "left",
 }: {
-  readonly fill?: "left" | "used";
   readonly percent: number | null;
   readonly size: number;
   readonly strokeWidth: number;
@@ -72,7 +66,7 @@ export function UsageRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const used = percent === null ? null : Math.max(0, Math.min(100, percent));
-  const fill = used === null ? 0 : fillMode === "left" ? 100 - used : used;
+  const fill = used ?? 0;
   const circle = {
     cx: size / 2,
     cy: size / 2,

@@ -2,11 +2,11 @@ import type { ServerProvider } from "@t3tools/contracts";
 import { limitsNotice } from "@t3tools/shared/usageLimits";
 import { InfoIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
-import { limitText, useLimitView } from "../../hooks/useLimitView";
 import {
   expireElapsedWindow,
   formatResetCountdown,
   orderPlanWindows,
+  percentText,
   planWindowLabel,
 } from "../../lib/usageLimitsPopover";
 import { UsageBar } from "./PlanUsageLimits";
@@ -43,7 +43,6 @@ export function ProviderLimitTooltip({
   readonly provider: ServerProvider;
   readonly now: number;
 }) {
-  const [view] = useLimitView();
   const limits = provider.usageLimits;
   if (!limits) {
     return (
@@ -93,12 +92,11 @@ export function ProviderLimitTooltip({
             <div key={window.id} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between gap-2 text-xs">
                 <span className="truncate font-medium">{label}</span>
-                <span className="shrink-0 tabular-nums">{limitText(window.usedPercent, view)}</span>
+                <span className="shrink-0 tabular-nums">{percentText(window.usedPercent)}</span>
               </div>
               <UsageBar
-                fill={view}
                 usedPercent={window.usedPercent}
-                label={`${label}: ${limitText(window.usedPercent, view)}`}
+                label={`${label}: ${percentText(window.usedPercent)}`}
                 className="h-1"
               />
               {countdown ? (
