@@ -2,6 +2,7 @@ import type { FoldedFeedEvent } from "@t3tools/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 
+import { useOpenAiosFile } from "~/components/aiosFile/useOpenAiosFile";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { feedEventOpenTarget, openFeedEvent } from "~/eventFeedOpen";
 import { useEventFeedStore } from "~/eventFeedStore";
@@ -103,6 +104,9 @@ export function RecentActivityWidget() {
 /** Goals from the AIOS folder. A gauge shows only when a goal's status states a real percent. */
 export function GoalsWidget() {
   const { data, error, refresh } = useGoals();
+  const { open, root } = useOpenAiosFile();
+  // Every goal is a row in one file; a click opens it to read or change the goal.
+  const openGoals = root === null ? undefined : () => void open(GOALS_FILE);
   const focus = useAiosHome().data?.move.title;
   const goals = data?.goals ?? [];
   const gauge = goals[0] ? goalPercent(goals[0].status) : null;
@@ -137,7 +141,7 @@ export function GoalsWidget() {
             <div className="flex items-center gap-4">
               <HalfGauge percent={gauge} label={`${goals[0].goal}: ${gauge} percent`} />
               <div className="min-w-0">
-                <p className="text-sm font-semibold wrap-anywhere">{goals[0].goal}</p>
+                <GoalTitle goal={goals[0].goal} onOpen={openGoals} />
                 <p className="text-xs wrap-anywhere text-muted-foreground">
                   {[goals[0].status, goals[0].targetDate && `due ${goals[0].targetDate}`]
                     .filter(Boolean)
@@ -152,7 +156,7 @@ export function GoalsWidget() {
                 const percent = goalPercent(goal.status);
                 return (
                   <li key={goal.id} className="grid min-w-0 grid-cols-1 gap-1.5 py-2">
-                    <p className="text-sm font-semibold wrap-anywhere">{goal.goal}</p>
+                    <GoalTitle goal={goal.goal} onOpen={openGoals} />
                     {percent !== null ? (
                       <ProgressBar percent={percent} label={`${goal.goal}: ${percent} percent`} />
                     ) : null}
@@ -169,5 +173,28 @@ export function GoalsWidget() {
         </div>
       )}
     </HomeWidget>
+  );
+}
+
+const GOALS_FILE = "ideal-state/goals.md";
+
+/** A goal name that opens the goals file, or plain text when no AIOS folder is connected. */
+function GoalTitle({
+  goal,
+  onOpen,
+}: {
+  readonly goal: string;
+  readonly onOpen?: (() => void) | undefined;
+}) {
+  if (!onOpen) return <p className="text-sm font-semibold wrap-anywhere">{goal}</p>;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title={`${goal}. Opens ${GOALS_FILE}.`}
+      className="block rounded-sm text-left text-sm font-semibold wrap-anywhere underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      {goal}
+    </button>
   );
 }

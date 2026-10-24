@@ -54,6 +54,8 @@ vi.mock("./settingsLayout", async (importOriginal) => ({
 // The scoped agent-access rows need the settings layout's scope provider;
 // this test covers the device-local browser sections only.
 vi.mock("./ProjectDefaultsSettings", () => ({ ProjectDefaultsSettings: () => null }));
+// The calendar section has its own tests and runs a live clock this node test has no window for.
+vi.mock("../calendar/CalendarSettingsSection", () => ({ CalendarSettingsSection: () => null }));
 vi.mock("./SettingsScopeContext", () => ({
   useSettingsScope: () => ({
     scope: { kind: "all", environmentIds: [] },
