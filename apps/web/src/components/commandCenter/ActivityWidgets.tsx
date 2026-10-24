@@ -11,7 +11,7 @@ import { changedLabel } from "../twoState/areaRows";
 import { plainEventBody, plainEventTitle } from "../twoState/eventText";
 import { useAiosHome, useFeedStatus } from "../twoState/useTwoStateData";
 import { HalfGauge, ProgressBar } from "./charts";
-import { eventsToday, goalPercent } from "./commandCenter.logic";
+import { eventsToday, goalMeta, goalPercent } from "./commandCenter.logic";
 import { HomeWidget, WidgetEmpty, WidgetError, WidgetList, WidgetSkeleton } from "./HomeWidget";
 import { useGoals, useNowMs } from "./useHomeReads";
 
@@ -142,11 +142,7 @@ export function GoalsWidget() {
               <HalfGauge percent={gauge} label={`${goals[0].goal}: ${gauge} percent`} />
               <div className="min-w-0">
                 <GoalTitle goal={goals[0].goal} onOpen={openGoals} />
-                <p className="text-xs wrap-anywhere text-muted-foreground">
-                  {[goals[0].status, goals[0].targetDate && `due ${goals[0].targetDate}`]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
+                <p className="text-xs wrap-anywhere text-muted-foreground">{goalMeta(goals[0])}</p>
               </div>
             </div>
           ) : null}
@@ -161,9 +157,7 @@ export function GoalsWidget() {
                       <ProgressBar percent={percent} label={`${goal.goal}: ${percent} percent`} />
                     ) : null}
                     <p className="text-xs wrap-anywhere text-muted-foreground">
-                      {[goal.status, goal.targetDate && `due ${goal.targetDate}`]
-                        .filter(Boolean)
-                        .join(" · ") || "No status yet"}
+                      {goalMeta(goal) || "No status yet"}
                     </p>
                   </li>
                 );

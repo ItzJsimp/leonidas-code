@@ -5,6 +5,7 @@ import {
   capRows,
   doneSeries,
   eventsToday,
+  goalMeta,
   goalPercent,
   oldestAt,
   ringPercent,
@@ -283,5 +284,17 @@ describe("capRows", () => {
 
   it("cuts to the cap and counts the rest", () => {
     expect(capRows([1, 2, 3, 4, 5, 6, 7], 5)).toEqual({ shown: [1, 2, 3, 4, 5], hidden: 2 });
+  });
+});
+
+describe("goalMeta", () => {
+  it("shows due only for a real date", () => {
+    expect(goalMeta({ status: "On track", targetDate: "2026-12-31" })).toBe(
+      "On track · due 2026-12-31",
+    );
+    expect(goalMeta({ status: "", targetDate: "Dec 31, 2026" })).toBe("due Dec 31, 2026");
+    expect(goalMeta({ status: "Active", targetDate: "Ongoing" })).toBe("Active · Ongoing");
+    expect(goalMeta({ status: "Active", targetDate: "2026-13-45" })).toBe("Active · 2026-13-45");
+    expect(goalMeta({ status: "", targetDate: "" })).toBe("");
   });
 });

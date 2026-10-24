@@ -320,3 +320,14 @@ export function summaryItems(counts: {
 export function capRows<T>(rows: readonly T[], max: number) {
   return { shown: rows.slice(0, max), hidden: Math.max(0, rows.length - max) };
 }
+
+const GOAL_DATE = /^(\d{4}-\d{2}-\d{2}|[A-Za-z]{3,9}\.? \d{1,2},? \d{4})$/;
+
+/** The goal's status and target in one line. "due X" shows only when the target is a real date. */
+export function goalMeta(goal: { status: string; targetDate: string }): string {
+  const target = goal.targetDate.trim();
+  const isDate = GOAL_DATE.test(target) && Number.isFinite(Date.parse(target));
+  return [goal.status.trim(), target && (isDate ? `due ${target}` : target)]
+    .filter(Boolean)
+    .join(" · ");
+}

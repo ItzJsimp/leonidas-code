@@ -21,6 +21,7 @@ import {
   WidgetError,
   WidgetSkeleton,
 } from "~/components/commandCenter/HomeWidget";
+import { goalMeta } from "~/components/commandCenter/commandCenter.logic";
 import { useGoals, useNowMs, useTaskCards } from "~/components/commandCenter/useHomeReads";
 import { DueChip, PriorityBadge } from "~/components/taskBoard/TaskBadges";
 import { usePlacePrompt } from "~/components/taskBoard/DirectionSection";
@@ -88,26 +89,49 @@ function Stat({
   value,
   unit,
   tip,
+  to,
+  anchor,
 }: {
   readonly label: string;
   readonly value: ReactNode;
   readonly unit?: string;
   readonly tip: string;
+  /** Opens this page. */
+  readonly to?: "/tasks";
+  /** Scrolls to the element with this id on this page. */
+  readonly anchor?: string;
 }) {
+  const className =
+    "block min-w-0 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:border-ring/40 hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-ring";
+  const body = (
+    <>
+      <div className="truncate text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="font-display text-2xl leading-none font-semibold tabular-nums">
+          {value}
+        </span>
+        {unit ? <span className="truncate text-sm text-muted-foreground">{unit}</span> : null}
+      </div>
+    </>
+  );
   return (
     <Tip text={tip}>
-      <div
-        tabIndex={0}
-        className="min-w-0 rounded-xl border border-border bg-card px-4 py-3 focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        <div className="truncate text-xs text-muted-foreground">{label}</div>
-        <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="font-display text-2xl leading-none font-semibold tabular-nums">
-            {value}
-          </span>
-          {unit ? <span className="truncate text-sm text-muted-foreground">{unit}</span> : null}
-        </div>
-      </div>
+      {to ? (
+        <Link to={to} className={className}>
+          {body}
+        </Link>
+      ) : (
+        <a
+          href={`#${anchor}`}
+          className={className}
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById(anchor ?? "")?.scrollIntoView({ block: "start" });
+          }}
+        >
+          {body}
+        </a>
+      )}
     </Tip>
   );
 }
@@ -297,18 +321,20 @@ function GoalRow({
   readonly goal: AiosDirectionGoal;
   readonly onOpen: () => void;
 }) {
+  const meta = goalMeta(goal);
   return (
     <li className="py-1">
       <Tip text={`${goal.goal}. Opens ideal-state/goals.md.`}>
         <button
           type="button"
           onClick={onOpen}
-          className="grid w-full min-w-0 grid-cols-[1fr_auto] items-baseline gap-x-2 rounded-md px-1 py-1.5 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+          className="grid w-full min-w-0 gap-0.5 rounded-md px-1 py-1.5 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
         >
           <span className="truncate text-sm">{goal.goal}</span>
-          <span className="text-xs text-muted-foreground tabular-nums">{goal.targetDate}</span>
-          {goal.status ? (
-            <span className="col-span-2 truncate text-xs text-muted-foreground">{goal.status}</span>
+          {meta ? (
+            <span title={meta} className="truncate text-xs text-muted-foreground">
+              {meta}
+            </span>
           ) : null}
         </button>
       </Tip>
@@ -422,29 +448,35 @@ function Overview() {
           value={summary.total > 0 ? summary.done : "None"}
           {...(summary.total > 0 ? { unit: `of ${summary.total}` } : {})}
           tip="Priorities ticked in today's brief, out of all of them."
+          anchor="today-priorities"
         />
         <Stat
           label="Due today"
           value={due ?? <Skeleton className="inline-block h-6 w-6 align-middle" />}
           unit={due === 1 ? "task" : "tasks"}
           tip="Open task cards due today or late."
+          to="/tasks"
         />
         <Stat
           label="In progress"
           value={data.counts.inProgress}
           unit={data.counts.inProgress === 1 ? "task" : "tasks"}
           tip="Task cards marked In progress."
+          to="/tasks"
         />
         <Stat
           label="Waiting for review"
           value={data.counts.review}
           unit={data.counts.review === 1 ? "task" : "tasks"}
           tip="Finished work that waits for your sign-off."
+          to="/tasks"
         />
       </div>
       <div className="grid items-start gap-4 @3xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="grid min-w-0 gap-4">
-          <PrioritiesCard today={today} />
+          <div id="today-priorities" className="scroll-mt-4">
+            <PrioritiesCard today={today} />
+          </div>
           <DueCard today={today} />
         </div>
         <div className="grid min-w-0 gap-4">
