@@ -11,6 +11,13 @@ import { useEnvironmentQuery } from "../../state/query";
 import { aiosUsageShapeQuery } from "../../state/taskBoard";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { UsageAnalyticsConsentDialog } from "./UsageAnalyticsConsentDialog";
+import { shouldAskUsageConsent } from "./usageConsentGate";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import {
+  EMPTY_SETUP_STATE,
+  SETUP_STATE_STORAGE_KEY,
+  SetupStateSchema,
+} from "../../onboarding/setupState.logic";
 
 /** Sends the five core usage events once the user has said Yes. */
 export function UsageAnalyticsCoordinator() {
@@ -18,6 +25,7 @@ export function UsageAnalyticsCoordinator() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const hydrated = useClientSettingsHydrationStatus() === "ready";
   const onboardingCompletedAt = useClientSettings((settings) => settings.onboardingCompletedAt);
+  const [setup] = useLocalStorage(SETUP_STATE_STORAGE_KEY, EMPTY_SETUP_STATE, SetupStateSchema);
   const lastFeature = useRef<string | null>(null);
   const environmentId = usePrimaryEnvironmentId();
   const { scope, scopeReady } = useActiveAiosWorkspace();
@@ -132,5 +140,12 @@ export function UsageAnalyticsCoordinator() {
     sendUsageEvent("feature_used", { feature });
   }, [consent, pathname]);
 
-  return <UsageAnalyticsConsentDialog />;
+  const ask = shouldAskUsageConsent({
+    consent,
+    hydrated,
+    onboardingCompletedAt: onboardingCompletedAt === null ? null : String(onboardingCompletedAt),
+    setupStarted: setup.startedAt !== null,
+    tourSeen: setup.tourSeen,
+  });
+  return ask ? <UsageAnalyticsConsentDialog /> : null;
 }
