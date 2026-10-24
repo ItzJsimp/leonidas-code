@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { isCompactChatHeader, resolveRenameCommit } from "./ChatHeader";
+import { resolveRenameCommit } from "./ChatHeader";
 
 describe("resolveRenameCommit", () => {
   it("commits a trimmed changed title", () => {
@@ -19,17 +19,5 @@ describe("resolveRenameCommit", () => {
     expect(resolveRenameCommit({ title: " Old ", originalTitle: "Old" })).toEqual({
       action: "noop",
     });
-  });
-});
-
-describe("isCompactChatHeader", () => {
-  it("is compact only below 728 px", () => {
-    expect(isCompactChatHeader(390)).toBe(true);
-    expect(isCompactChatHeader(727)).toBe(true);
-    expect(isCompactChatHeader(728)).toBe(false);
-  });
-
-  it("is not compact before the width is known", () => {
-    expect(isCompactChatHeader(null)).toBe(false);
   });
 });

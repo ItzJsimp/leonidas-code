@@ -130,6 +130,7 @@ import { isElectron } from "../env";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { PanelLayoutControls } from "../components/chat/PanelLayoutControls";
+import { ShellCornerControls } from "../components/shellCorner/ShellCornerControls";
 import { Button } from "../components/ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../components/ui/menu";
 import { SidebarInset } from "../components/ui/sidebar";
@@ -1872,6 +1873,7 @@ function PullRequestsRouteView() {
       data-workspace-titlebar-controls
     >
       {panelToggleControls}
+      <ShellCornerControls claim />
     </div>
   );
   // The rows carried over from the last filters can also narrow to nothing one step further on,

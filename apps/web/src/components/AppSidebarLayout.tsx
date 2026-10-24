@@ -35,6 +35,7 @@ import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { AppRail } from "./twoState/AppRail";
 import { RailDrawer } from "./twoState/RailDrawer";
+import { ShellCornerFallback } from "./shellCorner/ShellCornerControls";
 import { DRAWER_BELOW_WIDTH } from "./twoState/shellLayout";
 import { SidebarBrandWidthProbe, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { MainAppLocationTracker } from "./sidebar/mainAppLocation";
@@ -356,6 +357,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
           </Sidebar>
         ) : null}
         {children}
+        <ShellCornerFallback />
         {isOnSettings ? (
           // The menu button holds the corner in a narrow window: the settings button sits beside it.
           <div

@@ -266,3 +266,47 @@ describe("buildDraftActionMenuItems", () => {
     expect(items.at(-1)).toMatchObject({ label: "Discard draft", destructive: true });
   });
 });
+
+describe("chat header menu items", () => {
+  const header = {
+    projectName: "Leonidas AIOS",
+    parentTitle: "Plan the week",
+    hasGoal: false,
+    aiDesktopOpen: false,
+  };
+
+  it("leads with the main chat and the project, and holds the goal and AI Desktop", () => {
+    const items = buildThreadActionMenuItems({ ...baseState, header });
+    expect(items.slice(0, 2).map((item) => item.label)).toEqual([
+      "Open main chat: Plan the week",
+      "New chat in Leonidas AIOS",
+    ]);
+    expect(items.find((item) => item.id === "goal")?.label).toBe("Set a goal…");
+    expect(items.find((item) => item.id === "ai-desktop")?.label).toBe("Show AI Desktop");
+  });
+
+  it("names the goal and AI Desktop by their state", () => {
+    const items = buildThreadActionMenuItems({
+      ...baseState,
+      header: { ...header, hasGoal: true, aiDesktopOpen: true },
+    });
+    expect(items.find((item) => item.id === "goal")?.label).toBe("Change the goal…");
+    expect(items.find((item) => item.id === "ai-desktop")?.label).toBe("Hide AI Desktop");
+  });
+
+  it("leaves out what the chat does not have, and the sidebar gets none of it", () => {
+    const empty = { projectName: null, parentTitle: null, hasGoal: null, aiDesktopOpen: null };
+    const header = ["open-parent-chat", "new-chat-in-project", "goal", "ai-desktop"];
+    expect(ids({ ...baseState, header: empty }).filter((id) => header.includes(id))).toEqual([]);
+    expect(ids(baseState).filter((id) => header.includes(id))).toEqual([]);
+  });
+
+  it("keeps navigation and AI Desktop for read-only clients, not the goal", () => {
+    const items = buildThreadActionMenuItems({ ...baseState, canOperate: false, header });
+    const disabled = (id: string) => items.find((item) => item.id === id)?.disabled === true;
+    expect(disabled("open-parent-chat")).toBe(false);
+    expect(disabled("new-chat-in-project")).toBe(false);
+    expect(disabled("ai-desktop")).toBe(false);
+    expect(disabled("goal")).toBe(true);
+  });
+});

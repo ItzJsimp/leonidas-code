@@ -22,29 +22,11 @@ vi.mock("~/components/ui/sidebar", () => ({
 vi.mock("~/hooks/useHandleNewThread", () => ({ useHandleNewThread: () => ({}) }));
 vi.mock("~/lib/chatThreadActions", () => ({ startNewThreadFromContext: vi.fn() }));
 vi.mock("~/state/entities", () => ({ useThreadShell: () => null }));
-vi.mock("~/state/environments", () => ({ usePrimaryEnvironmentId: () => "env-1" }));
-vi.mock("~/hooks/useNowMinute", () => ({ useNowMinute: () => "2026-10-22T07:00" }));
-vi.mock("~/hooks/useActiveAgentCounts", () => ({
-  useActiveAgentCounts: () => (id: string) => (id === "env-1:claude-a" ? 2 : 0),
-}));
-vi.mock("~/hooks/useConnectedUsageAccounts", () => ({
-  useConnectedUsageAccounts: () => ({
-    active: [],
-    others: [
-      {
-        id: "env-1:claude-a",
-        driver: "claudeAgent",
-        label: "Claude A",
-        limits: { windows: [{ id: "five_hour", kind: "session", label: "S", usedPercent: 42 }] },
-      },
-    ],
-  }),
-}));
 // The real chat view draws the header; this stand-in draws the same slot the real header does.
 vi.mock("~/components/ThreadRouteView", async () => {
-  const { useChatHeaderTrailing } = await import("~/components/chat/ChatHeaderTrailing");
+  const { useChatHeaderLeading } = await import("~/components/chat/ChatHeaderLeading");
   return {
-    ThreadRouteView: () => <header data-chat-header>{useChatHeaderTrailing()}</header>,
+    ThreadRouteView: () => <header data-chat-header>{useChatHeaderLeading()}</header>,
   };
 });
 vi.mock("~/components/workspace/useActiveAiosWorkspace", () => ({
@@ -67,7 +49,6 @@ vi.mock("./useViewportWidth", () => ({ useViewportWidth: () => 1440 }));
 vi.mock("./SlotOutlet", () => ({ HomeCardsOutlet: () => null }));
 
 import { ChatPane } from "./ChatPane";
-import { CommandCenterForward } from "./CommandCenterForward";
 import { ShellSplit } from "./ShellSplit";
 
 const target = { kind: "server", threadRef: { environmentId: "env-1", threadId: "t-1" } } as never;
@@ -77,38 +58,27 @@ const host = (html: string) => {
   return element;
 };
 
-describe("chat pane top bar", () => {
-  it("shows the 5-hour meter inside the chat header", () => {
+describe("chat pane", () => {
+  it("puts the chat list toggle in the chat header, with no column of its own", () => {
+    const pane = host(renderToStaticMarkup(<ChatPane urlTarget={target} />));
+    const toggles = pane.querySelectorAll("[aria-controls]");
+    expect(toggles).toHaveLength(1);
+    expect(toggles[0]?.closest("[data-chat-header]")).not.toBeNull();
+    expect(toggles[0]?.getAttribute("aria-label")).toBe("Show the chat list");
+  });
+
+  it("keeps the toggle when no chat is open", () => {
+    const pane = host(renderToStaticMarkup(<ChatPane urlTarget={null} />));
+    expect(pane.textContent).toContain("No chat is open");
+    expect(pane.querySelector("[aria-label='Show the chat list']")).not.toBeNull();
+  });
+
+  it("shows no usage meter or account icons in the chat header", () => {
     const header = host(renderToStaticMarkup(<ChatPane urlTarget={target} />)).querySelector(
       "[data-chat-header]",
     );
-    expect(header?.textContent).toContain("Claude 42% of 5 h");
-    expect(header?.querySelector("[data-usage-meter]")?.getAttribute("data-level")).toBe("normal");
-  });
-
-  it("shows each account with the count of agents running on it", () => {
-    const header = host(renderToStaticMarkup(<ChatPane urlTarget={target} />)).querySelector(
-      "[data-chat-header]",
-    );
-    expect(header?.querySelector("[aria-label='Claude A, 2 active helpers']")).not.toBeNull();
-  });
-});
-
-describe("the meter stays out of the left pane", () => {
-  it("has no 5-hour meter on the Command Center", () => {
-    const html = renderToStaticMarkup(<CommandCenterForward />);
-    expect(html).not.toContain("5 h");
-    expect(html).not.toContain("Claude 5h");
-    expect(html).not.toContain("data-usage-meter");
-  });
-
-  it("has none in the left pane of the shell frame", () => {
-    const left = host(renderToStaticMarkup(<ShellSplit threadTarget={target} />)).querySelector(
-      "[data-pane='left']",
-    );
-    expect(left).not.toBeNull();
-    expect(left?.textContent).not.toMatch(/5 h|Claude 5h/);
-    expect(left?.querySelector("[data-usage-meter]")).toBeNull();
+    expect(header?.textContent).not.toMatch(/% of 5 h|helpers/);
+    expect(header?.querySelector("[data-usage-meter]")).toBeNull();
   });
 
   it("marks both panes, so Ctrl+Tab and Ctrl+Shift+. can move focus between them", () => {

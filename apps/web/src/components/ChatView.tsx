@@ -4,6 +4,8 @@ import { reportMessageSent } from "../lib/usageAnalytics/reportMessageSent";
 import { setFeedbackActiveModel } from "./feedback/feedbackContext";
 import { deriveVelocitySummary } from "./chat/AgentVelocityMeter.logic";
 import { ThreadGoalControls } from "./chat/ThreadGoalControls";
+import { GoalBannerActions } from "./chat/GoalBannerActions";
+import { ShellCornerControls } from "./shellCorner/ShellCornerControls";
 import { parseThreadGoalCommand } from "@t3tools/shared/threadGoalCommand";
 import type { ThreadGoalControl } from "@t3tools/contracts";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
@@ -7839,6 +7841,18 @@ export default function ChatView(props: ChatViewProps) {
     ],
   );
   const activeGoal = activeThreadShell?.goal ?? null;
+  const goalControlsDisabled =
+    !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope) ||
+    activeEnvironmentUnavailable;
+  const openGoalDialog = useCallback(() => {
+    if (!activeThread) return;
+    setGoalRequest({
+      action: "start",
+      condition: "",
+      nonce: Date.now(),
+      threadId: activeThread.id,
+    });
+  }, [activeThread]);
   const goalBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
     if (!activeThread) return null;
     if (appGoal)
@@ -7849,6 +7863,21 @@ export default function ChatView(props: ChatViewProps) {
         icon: <TargetIcon />,
         title: `Goal ${appGoal.status} · ${appGoal.turns}/${appGoal.maxTurns} turns · ${appGoal.tokensUsed} tokens`,
         description: `${appGoal.condition}${appGoal.lastReason ? ` · ${appGoal.lastReason}` : ""}`,
+        actions: (
+          <GoalBannerActions
+            goal={appGoal}
+            disabled={goalControlsDisabled}
+            onControl={handleGoalControl}
+            onResume={() =>
+              setGoalRequest({
+                action: "resume",
+                condition: "",
+                nonce: Date.now(),
+                threadId: activeThread.id,
+              })
+            }
+          />
+        ),
       };
     if (activeGoal === null) return null;
     const presentation = presentProviderGoal(activeGoal, isWorking);
@@ -7884,7 +7913,15 @@ export default function ChatView(props: ChatViewProps) {
         </>
       ),
     };
-  }, [appGoal, activeGoal, activeThread, isWorking, sendStandaloneCommand]);
+  }, [
+    appGoal,
+    activeGoal,
+    activeThread,
+    goalControlsDisabled,
+    handleGoalControl,
+    isWorking,
+    sendStandaloneCommand,
+  ]);
 
   const backgroundWorkBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
     const presentation = presentPendingBackgroundWork(activeBackgroundTasks);
@@ -11950,11 +11987,15 @@ export default function ChatView(props: ChatViewProps) {
     onToggleRightPanel: toggleRightPanel,
   } satisfies PanelLayoutControlsProps;
   const panelToggleControls = (
-    <PanelLayoutControls
-      {...panelToggleControlProps}
-      showThreadPanelControl={!inlineRightPanelOwnsTitleBar}
-      showSplitLayoutControl
-    />
+    <div className="flex h-full shrink-0 items-center gap-1">
+      <PanelLayoutControls
+        {...panelToggleControlProps}
+        showThreadPanelControl={!inlineRightPanelOwnsTitleBar}
+        showSplitLayoutControl
+      />
+      {/* Only the chat at the window's top-right corner holds the bell and split toggle. */}
+      {reserveTitleBarControlInset ? <ShellCornerControls claim /> : null}
+    </div>
   );
   const threadPanelHeaderControl = (
     <div
@@ -12090,6 +12131,9 @@ export default function ChatView(props: ChatViewProps) {
             activeThreadId={activeThread.id}
             isServerThread={isServerThread}
             activeThreadTitle={activeThread.title}
+            hasGoal={appGoal !== null}
+            {...(isServerThread ? { onOpenGoal: openGoalDialog } : {})}
+            hostsShellCorner={reserveTitleBarControlInset}
             activeProject={activeProject ?? null}
             parentThreadLink={parentThreadLink}
             onOpenThread={onOpenRelatedThread}

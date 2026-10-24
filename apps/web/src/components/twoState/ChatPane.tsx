@@ -11,9 +11,10 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
-import { ChatHeaderTrailingContext } from "~/components/chat/ChatHeaderTrailing";
+import { ChatHeaderLeadingContext } from "~/components/chat/ChatHeaderLeading";
 import ThreadSidebar from "~/components/Sidebar";
 import { ThreadRouteView } from "~/components/ThreadRouteView";
 import { Button } from "~/components/ui/button";
@@ -25,12 +26,9 @@ import { observeResize } from "~/lib/observeResize";
 import { useThreadShell } from "~/state/entities";
 import type { ThreadRouteTarget } from "~/threadRoutes";
 
-import { ChatPaneTools } from "./ChatPaneTools";
 import { ShownChatContext } from "./shownChatContext";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
-
-const tools = <ChatPaneTools />;
 
 const GuidanceCoach = lazy(() =>
   import("~/components/onboarding/GuidanceCoach").then((module) => ({
@@ -51,7 +49,7 @@ export function ChatPane({
 }: {
   /** The chat or draft in the URL, or null on a rail window page. */
   readonly urlTarget: ThreadRouteTarget | null;
-  /** Leave room under the pinned menu button when the rail is a drawer. */
+  /** Clear the pinned menu button when the rail is a drawer (empty chat only; the chat header does it). */
   readonly reserveTop?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -93,6 +91,23 @@ export function ChatPane({
   const toggle = () => (beside ? setChatListOpen(!chatListOpen) : setFloatingOpen(!floatingOpen));
   const ToggleIcon = open ? PanelLeftCloseIcon : PanelLeftOpenIcon;
   const label = open ? "Hide the chat list" : "Show the chat list";
+  // Lives at the left end of the chat header, which already clears the pinned menu button.
+  const listToggle = (
+    <span className="flex shrink-0">
+      <Tip text={label}>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label={label}
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={toggle}
+        >
+          <ToggleIcon />
+        </Button>
+      </Tip>
+    </span>
+  );
 
   return (
     <div
@@ -103,35 +118,18 @@ export function ChatPane({
       onKeyDown={(event) => {
         if (event.key !== "Escape" || beside || !floatingOpen) return;
         setFloatingOpen(false);
-        rootRef.current?.querySelector<HTMLElement>("[aria-controls]")?.focus();
+        rootRef.current?.querySelector<HTMLElement>(`[aria-controls="${listId}"]`)?.focus();
       }}
       className="relative flex h-full min-h-0 min-w-0 flex-1 bg-background"
     >
-      <div
-        style={
-          reserveTop ? { paddingTop: "calc(var(--workspace-topbar-height) + 0.5rem)" } : undefined
-        }
-        className="flex w-8 shrink-0 flex-col items-center border-r border-border pt-2"
-      >
-        <Tip text={label}>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            aria-label={label}
-            aria-expanded={open}
-            aria-controls={listId}
-            onClick={toggle}
-          >
-            <ToggleIcon />
-          </Button>
-        </Tip>
-      </div>
       {open ? (
         <div
           id={listId}
           className={cn(
             "flex shrink-0 border-r border-border",
-            !beside && "absolute inset-y-0 left-8 z-30 bg-sidebar",
+            // Floating, it starts under the chat header so the toggle stays in reach.
+            !beside &&
+              "absolute top-[var(--workspace-topbar-height)] bottom-0 left-0 z-40 bg-sidebar",
           )}
         >
           <Sidebar collapsible="none" role="navigation" aria-label="Chats" className="w-72">
@@ -145,12 +143,12 @@ export function ChatPane({
       <div className="flex min-h-0 min-w-0 flex-1 [&>main]:h-full">
         {target ? (
           <ShownChatContext value={target.kind === "server" ? target.threadRef : null}>
-            <ChatHeaderTrailingContext value={tools}>
+            <ChatHeaderLeadingContext value={listToggle}>
               <ThreadRouteView target={target} />
-            </ChatHeaderTrailingContext>
+            </ChatHeaderLeadingContext>
           </ShownChatContext>
         ) : (
-          <EmptyChat />
+          <EmptyChat listToggle={listToggle} reserveTop={reserveTop} />
         )}
       </div>
     </div>
@@ -158,7 +156,13 @@ export function ChatPane({
 }
 
 /** No chat is open and none is remembered. */
-function EmptyChat() {
+function EmptyChat({
+  listToggle,
+  reserveTop,
+}: {
+  readonly listToggle: ReactNode;
+  readonly reserveTop: boolean;
+}) {
   const navigate = useNavigate();
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
@@ -173,7 +177,16 @@ function EmptyChat() {
     if (!started) void navigate({ to: "/" });
   };
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+    <div className="relative flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+      {/* Under 728 px the toggle clears the pinned menu button. */}
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 flex h-[var(--workspace-topbar-height)] items-center px-3 sm:px-5",
+          reserveTop && "pl-14",
+        )}
+      >
+        {listToggle}
+      </div>
       <MessageSquareIcon aria-hidden className="size-6 text-muted-foreground" />
       <p className="max-w-xs text-sm text-muted-foreground">
         No chat is open. Start one to talk with Leonidas.
