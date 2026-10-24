@@ -26,6 +26,15 @@ function strings(value: unknown): string[] {
   return [];
 }
 
+describe("account step lead", () => {
+  it("names the paid plan and the free OpenRouter path in every voice", () => {
+    for (const copy of Object.values(SETUP_COPY)) {
+      expect(copy.accountLead).toMatch(/\$20/);
+      expect(copy.accountLead).toMatch(/OpenRouter/);
+    }
+  });
+});
+
 describe("voiceFor", () => {
   it("uses the builder voice only for a clear yes", () => {
     expect(voiceFor(true)).toBe("builder");

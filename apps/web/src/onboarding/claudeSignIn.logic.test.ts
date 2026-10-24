@@ -1,7 +1,18 @@
 import { ProviderDriverKind, ProviderInstanceId, type ProviderAuthState } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { getClaudeInstallView, getClaudeSignInView } from "./claudeSignIn.logic";
+import {
+  CLAUDE_WAITING_MESSAGE,
+  getClaudeInstallView,
+  getClaudeSignInView,
+} from "./claudeSignIn.logic";
+
+describe("CLAUDE_WAITING_MESSAGE", () => {
+  it("tells the user to click Authorize and that the app comes back", () => {
+    expect(CLAUDE_WAITING_MESSAGE).toMatch(/Authorize/);
+    expect(CLAUDE_WAITING_MESSAGE).toMatch(/comes back/);
+  });
+});
 
 const state = (patch: Partial<ProviderAuthState>): ProviderAuthState => ({
   instanceId: ProviderInstanceId.make("claudeAgent"),

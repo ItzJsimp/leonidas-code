@@ -29,7 +29,7 @@ import {
 } from "../../onboarding/providerReadiness.logic";
 import { randomUUID } from "../../lib/utils";
 
-import { useEnvironments } from "../../state/environments";
+import { useEnvironments, usePrimaryEnvironment } from "../../state/environments";
 
 import { serverEnvironment } from "../../state/server";
 import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
@@ -88,6 +88,7 @@ export function AgentsStep({
   readonly description?: string;
 }) {
   const { environments } = useEnvironments();
+  const primaryEnvironmentId = usePrimaryEnvironment()?.environmentId;
   const [readyIds, setReadyIds] = useState<ReadonlySet<EnvironmentId>>(new Set());
   const reportReady = useCallback((environmentId: EnvironmentId, ready: boolean) => {
     setReadyIds((current) => {
@@ -109,9 +110,12 @@ export function AgentsStep({
               key={environmentId}
               environmentId={environmentId}
               onReadyChange={reportReady}
+              // Only this computer: its name (DESKTOP-ABC123) only confuses new users.
               machineLabel={
-                environments.find((environment) => environment.environmentId === environmentId)
-                  ?.label ?? "Computer"
+                environmentIds.length === 1 && environmentId === primaryEnvironmentId
+                  ? null
+                  : (environments.find((environment) => environment.environmentId === environmentId)
+                      ?.label ?? "Computer")
               }
             />
           ))}
@@ -145,7 +149,7 @@ function ConnectedAgentsStep({
   onReadyChange,
 }: {
   readonly environmentId: EnvironmentId;
-  readonly machineLabel: string;
+  readonly machineLabel: string | null;
   readonly onReadyChange: (environmentId: EnvironmentId, ready: boolean) => void;
 }) {
   const providers = useAtomValue(serverEnvironment.providersValueAtom(environmentId));
@@ -200,7 +204,7 @@ function ConnectedAgentsStep({
   }
   return (
     <section>
-      <h2 className="mb-2 text-sm font-medium">{machineLabel}</h2>
+      {machineLabel ? <h2 className="mb-2 text-sm font-medium">{machineLabel}</h2> : null}
       {!canOperateTerminal ? (
         <p className="mb-2 text-sm text-muted-foreground">
           This connection cannot use the terminal. Connect to a different computer.

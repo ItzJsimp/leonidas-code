@@ -3,6 +3,7 @@
  * The everyday voice keeps tech words out (setupCopy.test.ts checks the list).
  */
 import { QUICK_QUESTION_IDS, type InterviewAnswers, type PlannedFile } from "./aiosInterview.logic";
+import { AI_STEP_DESCRIPTION } from "./openRouterSignIn.logic";
 
 export type SetupVoice = "everyday" | "builder";
 
@@ -42,8 +43,7 @@ export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
     coderQuestion: "Do you build software?",
     coderHint: "This only changes how we explain things. You get every feature either way.",
     accountTitle: "Connect one AI account",
-    accountLead:
-      "Your AI needs one account to think with. Sign in with the account you already use.",
+    accountLead: AI_STEP_DESCRIPTION,
     questionsTitle: "5 quick questions",
     questionsLead: "Your answers go into your AI's notebook. Skip any you like.",
     importLead: "Already use ChatGPT or Claude? Bring what it knows about you.",
@@ -63,7 +63,7 @@ export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
     coderQuestion: "Do you build software?",
     coderHint: "This changes the words and the tour depth only. Every feature stays on.",
     accountTitle: "Connect one AI account",
-    accountLead: "Sign in to Claude or Codex. You can add more accounts later in Settings.",
+    accountLead: AI_STEP_DESCRIPTION,
     questionsTitle: "5 quick questions",
     questionsLead: "Answers become your identity file in the AIOS. Skip any you like.",
     importLead: "Import memory from ChatGPT, Claude or another AI into your AIOS.",

@@ -1,6 +1,7 @@
 import type { ProviderAuthState, ProviderInstallState } from "@t3tools/contracts";
 
-export const CLAUDE_WAITING_MESSAGE = "Finish signing in in your browser.";
+export const CLAUDE_WAITING_MESSAGE =
+  "In your browser, sign in, then click Authorize. Leonidas comes back by itself.";
 export const CLAUDE_FINISHING_MESSAGE = "Finishing sign-in...";
 export const CLAUDE_FAILED_FALLBACK_MESSAGE = "Claude sign-in did not finish. Try again.";
 
