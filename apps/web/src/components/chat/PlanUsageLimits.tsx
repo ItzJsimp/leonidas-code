@@ -16,18 +16,31 @@ const SEVERITY_STROKE: Record<UsageSeverity, string> = {
 };
 
 /**
- * A quota bar coloured by severity. It fills with the part used.
+ * A quota bar coloured by severity. It drains: the fill is what is left, so a nearly spent
+ * window is a small sliver. `fill="used"` fills with consumption instead (the context window).
+ * Optional `elapsedMarkerPercent` draws a subtle vertical tick on the bar track (like Reference 1).
  */
 export function UsageBar({
   usedPercent,
   label,
   className,
+  fill = "left",
+  elapsedMarkerPercent = null,
 }: {
   readonly usedPercent: number;
   readonly label: string;
   readonly className?: string;
+  readonly fill?: "left" | "used";
+  readonly elapsedMarkerPercent?: number | null | undefined;
 }) {
-  const shown = usedPercentLabel(usedPercent);
+  const used = usedPercentLabel(usedPercent);
+  const shown = fill === "left" ? 100 - used : used;
+  const marker =
+    elapsedMarkerPercent !== null &&
+    elapsedMarkerPercent !== undefined &&
+    Number.isFinite(elapsedMarkerPercent)
+      ? Math.max(2, Math.min(98, Math.round(elapsedMarkerPercent)))
+      : null;
   return (
     <div
       role="progressbar"
@@ -35,12 +48,19 @@ export function UsageBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={shown}
-      className={cn("h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
+      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
     >
       {shown > 0 ? (
         <div
-          className={cn("h-full min-w-1 rounded-full", SEVERITY_FILL[usageSeverity(shown)])}
+          className={cn("h-full min-w-1 rounded-full", SEVERITY_FILL[usageSeverity(used)])}
           style={{ width: `${shown}%` }}
+        />
+      ) : null}
+      {marker !== null ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-foreground/35"
+          style={{ left: `${marker}%` }}
         />
       ) : null}
     </div>
@@ -55,7 +75,9 @@ export function UsageRing({
   severity,
   className,
   children,
+  fill: fillMode = "left",
 }: {
+  readonly fill?: "left" | "used";
   readonly percent: number | null;
   readonly size: number;
   readonly strokeWidth: number;
@@ -66,7 +88,7 @@ export function UsageRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const used = percent === null ? null : Math.max(0, Math.min(100, percent));
-  const fill = used ?? 0;
+  const fill = used === null ? 0 : fillMode === "left" ? 100 - used : used;
   const circle = {
     cx: size / 2,
     cy: size / 2,
