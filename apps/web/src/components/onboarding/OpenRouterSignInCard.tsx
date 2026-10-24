@@ -103,6 +103,16 @@ export function OpenRouterSignInCard({
       .catch(() => setError("Could not open the browser. Click Open sign-in page."));
   }, [requested, url]);
 
+  // Sign-in ends in the browser: bring the app back in front, once per sign-in.
+  const revealedFlow = useRef<string | null>(null);
+  const auth = authQuery.data;
+  useEffect(() => {
+    if (!requested || auth?.phase !== "succeeded" || !auth.flowId) return;
+    if (revealedFlow.current === auth.flowId) return;
+    revealedFlow.current = auth.flowId;
+    void window.desktopBridge?.revealMainWindow?.().catch(() => undefined);
+  }, [requested, auth?.phase, auth?.flowId]);
+
   const detail =
     error ??
     (view.kind === "ready"

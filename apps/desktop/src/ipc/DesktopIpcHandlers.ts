@@ -1,6 +1,10 @@
 import * as Effect from "effect/Effect";
 
-import { receiveProviderAuthCallback, cancelProviderAuthCallback } from "./methods/providerAuth.ts";
+import {
+  receiveProviderAuthCallback,
+  cancelProviderAuthCallback,
+  revealMainWindow,
+} from "./methods/providerAuth.ts";
 import * as DesktopIpc from "./DesktopIpc.ts";
 import { getLoginItemState, setLoginItemOpenAtLogin } from "./methods/loginItem.ts";
 import { setScribeWorkspace } from "./methods/scribeWorkspace.ts";
@@ -155,6 +159,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(openExternal);
   yield* ipc.handle(receiveProviderAuthCallback);
   yield* ipc.handle(cancelProviderAuthCallback);
+  yield* ipc.handle(revealMainWindow);
   yield* ipc.handle(openSystemSettings);
   yield* ipc.handle(checkSystemPermission);
   yield* ipc.handle(pasteAsText);

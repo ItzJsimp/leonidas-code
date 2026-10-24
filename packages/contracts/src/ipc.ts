@@ -1239,6 +1239,8 @@ export interface DesktopBridge {
   /** Receives a local OAuth code for a sign-in owned by a remote environment. */
   receiveProviderAuthCallback?: (authorizationUrl: string) => Promise<string>;
   cancelProviderAuthCallback?: (authorizationUrl: string) => Promise<void>;
+  /** Brings the app window in front after a browser sign-in. */
+  revealMainWindow?: () => Promise<void>;
   openExternal: (url: string) => Promise<boolean>;
   /**
    * Open a System Settings pane by identifier. Optional: older desktop builds

@@ -168,7 +168,9 @@ export function ClaudeSignInCard({
     }
     refreshedFlow.current = auth.flowId;
     void refreshProviders({ environmentId, input: {} });
-  }, [auth?.phase, auth?.flowId, refreshProviders, environmentId]);
+    // Sign-in ends in the browser: bring the app back in front when this click started it.
+    if (requested) void window.desktopBridge?.revealMainWindow?.().catch(() => undefined);
+  }, [auth?.phase, auth?.flowId, refreshProviders, environmentId, requested]);
 
   const needsInstall = !provider.installed;
   const installedElsewhere = needsInstall && installView.kind === "installed" && installProbed;

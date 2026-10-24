@@ -47,3 +47,18 @@ export const cancelProviderAuthCallback = DesktopIpc.makeIpcMethod({
       catch: () => new CodexAuthCallbackError({ detail: "Invalid ChatGPT sign-in request." }),
     }),
 });
+
+/** Brings Leonidas back in front of the browser after a sign-in finishes there. */
+export const revealMainWindow = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.REVEAL_MAIN_WINDOW_CHANNEL,
+  payload: Schema.Void,
+  result: Schema.Void,
+  handler: Effect.fn("desktop.ipc.providerAuth.revealMainWindow")(function* () {
+    const windows = yield* ElectronWindow.ElectronWindow;
+    const window = yield* windows.currentMainOrFirst;
+    if (Option.isNone(window)) return;
+    // Windows only lets the browser give up focus when the switch is prepared first.
+    yield* windows.prepareReveal(window.value);
+    yield* windows.reveal(window.value);
+  }),
+});
