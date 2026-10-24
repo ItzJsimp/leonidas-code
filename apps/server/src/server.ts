@@ -3,6 +3,8 @@ import type { RelayManagedEndpointRuntimeConfig } from "@t3tools/contracts/relay
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
 import * as LocalModelsService from "./localModels/LocalModelsService.ts";
+import * as AttachmentArchive from "./files/AttachmentArchive.ts";
+import * as SubagentRuns from "./subagents/SubagentRuns.ts";
 import * as TaskAutoLog from "./taskBoard/TaskAutoLog.ts";
 import * as AiosChangeLog from "./events/AiosChangeLog.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
@@ -653,6 +655,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(layerOrchestrationApplication),
   Layer.provideMerge(Layer.merge(layerSavedItems, layerSavedItemWorker)),
   Layer.provideMerge(layerLocalModels),
+  Layer.provideMerge(Layer.merge(AttachmentArchive.layer, SubagentRuns.layer)),
   Layer.provideMerge(RuntimeLayer.layerEventInfrastructure),
   Layer.provideMerge(Layer.merge(ProjectStore.layer, ThreadSearch.layer)),
   Layer.provideMerge(layerServerSettings),
