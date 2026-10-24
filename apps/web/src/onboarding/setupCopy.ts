@@ -27,7 +27,7 @@ export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
   everyday: {
     accountTitle: "Connect one AI account",
     accountLead: AI_STEP_DESCRIPTION,
-    questionsTitle: "5 quick questions",
+    questionsTitle: "4 quick questions",
     questionsLead: "Your answers go into your AI's notebook. Skip any you like.",
     importLead: "Already use ChatGPT or Claude? Bring what it knows about you.",
     tourIntro: "Here is a quick look around. Each stop takes a few seconds.",
@@ -38,7 +38,7 @@ export const SETUP_COPY: Record<SetupVoice, SetupCopy> = {
   builder: {
     accountTitle: "Connect one AI account",
     accountLead: AI_STEP_DESCRIPTION,
-    questionsTitle: "5 quick questions",
+    questionsTitle: "4 quick questions",
     questionsLead: "Answers become your identity file in the AIOS. Skip any you like.",
     importLead: "Import memory from ChatGPT, Claude or another AI into your AIOS.",
     tourIntro: "A quick tour of the AIOS. Each stop shows what it is and why it matters.",
@@ -284,9 +284,4 @@ export function buildQuickAnswersFile(answers: InterviewAnswers, stamp: string):
 
 export function fileStamp(now: Date): string {
   return now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
-}
-
-/** Everyday users never see tech words, so chips like "A code editor" are left out for them. */
-export function visibleChoices(choices: readonly string[], voice: SetupVoice): readonly string[] {
-  return voice === "builder" ? choices : choices.filter((choice) => !/\bcode\b/i.test(choice));
 }

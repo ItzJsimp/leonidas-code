@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildAiosFiles, INTERVIEW_QUESTIONS, QUICK_QUESTION_IDS } from "./aiosInterview.logic";
+import {
+  buildAiosFiles,
+  INTERVIEW_QUESTIONS,
+  QUICK_QUESTION_IDS,
+  quickAnswerCount,
+} from "./aiosInterview.logic";
 import {
   IMPORT_MEMORY_PROMPT,
   SETUP_COPY,
@@ -11,13 +16,12 @@ import {
   firstTaskFrom,
   memoryPreviewFrom,
   tourExtras,
-  visibleChoices,
   tourStops,
   voiceFor,
   aiNameSuggestions,
   surpriseName,
 } from "./setupCopy";
-import { SETUP_ITEMS } from "./setupState.logic";
+import { QUICK_QUESTION_COUNT, SETUP_ITEMS } from "./setupState.logic";
 
 const BANNED_FOR_EVERYDAY = /\b(code|coding|mcp|worktree|t3|repo|git)\b/i;
 
@@ -74,10 +78,31 @@ describe("tourStops", () => {
 });
 
 describe("quick questions", () => {
-  it("are 5 real interview questions", () => {
+  it("are 4 real interview questions, without the answer-style question", () => {
     const ids = new Set(INTERVIEW_QUESTIONS.map((question) => question.id));
-    expect(QUICK_QUESTION_IDS).toHaveLength(5);
+    expect(QUICK_QUESTION_IDS).toHaveLength(4);
+    expect(QUICK_QUESTION_IDS).not.toContain("style");
     for (const id of QUICK_QUESTION_IDS) expect(ids.has(id)).toBe(true);
+  });
+
+  it("count the default answer style, so 4 answers fill the meter", () => {
+    expect(quickAnswerCount({})).toBe(1);
+    expect(quickAnswerCount({ work: "I study", goal: "Research", tools: "x", avoid: "y" })).toBe(
+      QUICK_QUESTION_COUNT,
+    );
+  });
+
+  it("let a user pick many roles, with no catch-all chip", () => {
+    const work = INTERVIEW_QUESTIONS.find((question) => question.id === "work");
+    expect(work?.kind).toBe("multi");
+    expect(work?.choices).not.toContain("A mix of these");
+  });
+
+  it("still write the default answer style into the identity file", () => {
+    const identity = buildAiosFiles({ name: "Sam" }, "Nova").find(
+      (file) => file.relativePath === "CLAUDE.md",
+    );
+    expect(identity?.contents).toContain("Short and direct");
   });
 });
 
@@ -147,14 +172,6 @@ describe("buildQuickAnswersFile", () => {
 
   it("stamps files by second", () => {
     expect(fileStamp(new Date("2026-10-20T22:15:09Z"))).toBe("2026-10-20-22-15-09");
-  });
-});
-
-describe("visibleChoices", () => {
-  it("hides tech chips from everyday users only", () => {
-    const work = INTERVIEW_QUESTIONS.flatMap((question) => question.choices ?? []);
-    expect(visibleChoices(work, "everyday").join(" ")).not.toMatch(BANNED_FOR_EVERYDAY);
-    expect(visibleChoices(work, "builder")).toEqual(work);
   });
 });
 

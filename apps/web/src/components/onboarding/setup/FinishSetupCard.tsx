@@ -4,7 +4,7 @@ import * as Schema from "effect/Schema";
 import { useState } from "react";
 
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
-import { QUICK_QUESTION_IDS } from "../../../onboarding/aiosInterview.logic";
+import { quickAnswerCount } from "../../../onboarding/aiosInterview.logic";
 import {
   AIOS_FOLDER_STORAGE_KEY,
   DEFAULT_AIOS_FOLDER,
@@ -236,7 +236,7 @@ function ItemPanel({
           onSave={async (answers) => {
             const error = await writeOne(buildQuickAnswersFile(answers, fileStamp(new Date())));
             if (error === null) {
-              onDone(QUICK_QUESTION_IDS.filter((id) => (answers[id] ?? "").trim() !== "").length);
+              onDone(quickAnswerCount(answers));
             }
             return error;
           }}

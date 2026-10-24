@@ -28,6 +28,7 @@ export interface SetupItem {
 }
 
 export const QUESTION_POINTS = 5;
+/** The 4 asked quick questions plus the default answer style (quickAnswerCount). */
 export const QUICK_QUESTION_COUNT = 5;
 
 /** Checklist order. Weights settled by Jake on 2026-10-20; they sum to 100 with the questions. */
@@ -41,7 +42,7 @@ export const SETUP_ITEMS: readonly SetupItem[] = [
   { id: "account", label: "Connect an AI account", ability: "I can't think yet.", points: 20 },
   {
     id: "questions",
-    label: "Answer 5 quick questions",
+    label: "Answer 4 quick questions",
     ability: "I don't know what you want from me yet.",
     points: 0,
   },

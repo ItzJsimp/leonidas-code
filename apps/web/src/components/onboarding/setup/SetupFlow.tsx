@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 
 import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import {
-  QUICK_QUESTION_IDS,
+  quickAnswerCount,
   buildAiosFiles,
   type InterviewAnswers,
   type PlannedFile,
@@ -172,7 +172,7 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
       ...(firstTask ? [buildFirstTaskFile(firstTask)] : []),
     ]);
     if (!result.ok) return result.message;
-    const answered = QUICK_QUESTION_IDS.filter((id) => (answers[id] ?? "").trim() !== "").length;
+    const answered = quickAnswerCount(answers);
     setState((current) => ({
       ...current,
       questionsAnswered: answered,

@@ -27,6 +27,9 @@ export interface InterviewQuestion {
   readonly defaults?: readonly string[];
 }
 
+/** Every new identity file gets this style until the user asks for another one in chat. */
+export const DEFAULT_ANSWER_STYLE = "Short and direct";
+
 export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
   {
     id: "name",
@@ -38,16 +41,16 @@ export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
   {
     id: "work",
     label: "What best describes you?",
-    hint: "Pick one.",
+    hint: "Pick all that fit.",
     required: false,
-    kind: "single",
+    kind: "multi",
     choices: [
       "I run a business",
-      "I build software",
       "I create content",
       "I study",
       "I work a job",
-      "A mix of these",
+      "I freelance",
+      "I build software",
     ],
   },
   {
@@ -72,7 +75,7 @@ export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
     required: false,
     kind: "single",
     choices: ["Short and direct", "Step by step with reasons", "Detailed and thorough"],
-    defaults: ["Short and direct"],
+    defaults: [DEFAULT_ANSWER_STYLE],
   },
   {
     id: "tools",
@@ -121,14 +124,21 @@ export const INTERVIEW_QUESTIONS: readonly InterviewQuestion[] = [
 ];
 
 /** The answers a user has before touching anything: the chips marked as defaults. */
-/** The 5 quick questions on the first-run screen. The rest wait for the first chat. */
+/**
+ * The 4 quick questions on the first-run screen. The rest wait for the first chat. The answer
+ * style is not asked: it starts as "Short and direct" and changes in chat.
+ */
 export const QUICK_QUESTION_IDS: readonly InterviewQuestionId[] = [
   "work",
   "goal",
-  "style",
   "tools",
   "avoid",
 ];
+
+/** Answered quick questions plus the default answer style, so 4 answers fill the meter. */
+export function quickAnswerCount(answers: InterviewAnswers): number {
+  return QUICK_QUESTION_IDS.filter((id) => cleanAnswer(answers[id] ?? "").length > 0).length + 1;
+}
 
 export function defaultAnswers(): InterviewAnswers {
   const out: Partial<Record<InterviewQuestionId, string>> = {};
@@ -199,7 +209,7 @@ function identityFile(answers: InterviewAnswers, aiName: string | undefined): st
     ...(ai ? [`Your AI is called ${ai}.`, ""] : []),
     ...section("Who I am", answers.work),
     ...section("Main goal", answers.goal),
-    ...section("How to answer me", answers.style),
+    ...section("How to answer me", answers.style || DEFAULT_ANSWER_STYLE),
     ...section("Tools I use", answers.tools),
     ...section("Never do this", answers.avoid),
     ...section("My rhythm", answers.rhythm),

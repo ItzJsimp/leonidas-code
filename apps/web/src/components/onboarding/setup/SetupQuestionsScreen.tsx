@@ -7,16 +7,35 @@ import {
   choicesFromAnswer,
   defaultAnswers,
   type InterviewAnswers,
+  type InterviewQuestionId,
 } from "../../../onboarding/aiosInterview.logic";
-import { SETUP_COPY, visibleChoices, type SetupVoice } from "../../../onboarding/setupCopy";
+import { SETUP_COPY, type SetupVoice } from "../../../onboarding/setupCopy";
 import { cn } from "~/lib/utils";
 import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
 import { Spinner } from "../../ui/spinner";
 import { MemoryImportPanel } from "./MemoryImportPanel";
 
 const QUICK_QUESTIONS = INTERVIEW_QUESTIONS.filter((question) =>
   QUICK_QUESTION_IDS.includes(question.id),
 );
+
+const CHIP =
+  "rounded-full px-3 py-1 text-xs ring-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+
+/** Each answer is its chips in list order, then the user's own words. */
+function withOtherAnswers(
+  answers: InterviewAnswers,
+  others: Partial<Record<InterviewQuestionId, string>>,
+): InterviewAnswers {
+  return Object.fromEntries(
+    QUICK_QUESTIONS.map((question) => {
+      const own = (others[question.id] ?? "").trim();
+      const chips = choicesFromAnswer(question, answers[question.id] ?? "");
+      return [question.id, answerFromChoices(own ? [...chips, own] : chips)];
+    }),
+  );
+}
 
 /**
  * Screen 3 of 3. Chips only, all optional; Skip still enters the app.
@@ -41,6 +60,8 @@ export function SetupQuestionsScreen({
     const defaults = defaultAnswers();
     return Object.fromEntries(QUICK_QUESTION_IDS.map((id) => [id, defaults[id] ?? ""]));
   });
+  // Typed "Other" text per question; a key is present while its field is open.
+  const [others, setOthers] = useState<Partial<Record<InterviewQuestionId, string>>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +82,7 @@ export function SetupQuestionsScreen({
               </span>
             </legend>
             <div className="flex flex-wrap gap-1.5">
-              {visibleChoices(question.choices ?? [], voice).map((choice) => {
+              {(question.choices ?? []).map((choice) => {
                 const on = chosen.includes(choice);
                 return (
                   <button
@@ -69,7 +90,7 @@ export function SetupQuestionsScreen({
                     type="button"
                     aria-pressed={on}
                     className={cn(
-                      "rounded-full px-3 py-1 text-xs ring-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                      CHIP,
                       on
                         ? "bg-primary/10 text-primary ring-primary/40"
                         : "bg-card text-muted-foreground ring-black/10 hover:text-foreground dark:ring-white/10",
@@ -93,7 +114,38 @@ export function SetupQuestionsScreen({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                aria-pressed={others[question.id] !== undefined}
+                className={cn(
+                  CHIP,
+                  others[question.id] !== undefined
+                    ? "bg-primary/10 text-primary ring-primary/40"
+                    : "bg-card text-muted-foreground ring-black/10 hover:text-foreground dark:ring-white/10",
+                )}
+                onClick={() =>
+                  setOthers((current) => {
+                    const { [question.id]: open, ...rest } = current;
+                    return open === undefined ? { ...current, [question.id]: "" } : rest;
+                  })
+                }
+              >
+                Other
+              </button>
             </div>
+            {others[question.id] !== undefined ? (
+              <Input
+                autoFocus
+                maxLength={200}
+                aria-label={`Other: ${question.label}`}
+                placeholder="In your own words"
+                value={others[question.id]}
+                onChange={(event) => {
+                  const text = event.currentTarget.value;
+                  setOthers((current) => ({ ...current, [question.id]: text }));
+                }}
+              />
+            ) : null}
           </fieldset>
         );
       })}
@@ -118,7 +170,7 @@ export function SetupQuestionsScreen({
             disabled={saving}
             onClick={async () => {
               setSaving(true);
-              setError(await onSave(answers));
+              setError(await onSave(withOtherAnswers(answers, others)));
               setSaving(false);
             }}
           >

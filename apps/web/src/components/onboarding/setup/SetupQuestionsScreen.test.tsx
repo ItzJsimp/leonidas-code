@@ -46,9 +46,12 @@ function button(name: string): HTMLButtonElement {
   return found;
 }
 
-it("asks exactly 5 questions", async () => {
+it("asks exactly 4 questions and shows every chip to every user", async () => {
   await render();
-  expect(container.querySelectorAll("fieldset")).toHaveLength(5);
+  expect(container.querySelectorAll("fieldset")).toHaveLength(4);
+  expect(container.textContent).toContain("4 quick questions");
+  expect(container.textContent).not.toContain("How should answers look");
+  expect(container.textContent).toContain("A code editor");
 });
 
 it("skips without saving", async () => {
@@ -58,11 +61,31 @@ it("skips without saving", async () => {
   expect(onSave).not.toHaveBeenCalled();
 });
 
-it("saves only the 5 quick answers", async () => {
+it("saves only the 4 quick answers", async () => {
   await render();
   await act(async () => button("Save answers").click());
   const answers = onSave.mock.calls[0]?.[0] ?? {};
-  expect(Object.keys(answers).sort()).toEqual(["avoid", "goal", "style", "tools", "work"]);
+  expect(Object.keys(answers).sort()).toEqual(["avoid", "goal", "tools", "work"]);
+});
+
+it("lets the user pick many roles and add their own words", async () => {
+  await render();
+  await act(async () => button("I study").click());
+  await act(async () => button("I create content").click());
+  const others = [...container.querySelectorAll("button")].filter(
+    (node) => node.textContent?.trim() === "Other",
+  );
+  expect(others).toHaveLength(4);
+  await act(async () => others[0]?.click());
+  const field = container.querySelector('input[aria-label="Other: What best describes you?"]');
+  if (!(field instanceof HTMLInputElement)) throw new Error("no Other field");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(field, "I coach soccer");
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => button("Save answers").click());
+  expect(onSave.mock.calls[0]?.[0].work).toBe("- I create content\n- I study\n- I coach soccer");
 });
 
 it("offers a way on when saving fails, so setup never blocks", async () => {
