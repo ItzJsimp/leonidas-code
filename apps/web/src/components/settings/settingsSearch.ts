@@ -262,9 +262,9 @@ export const SETTINGS_SEARCH_ITEMS = [
   {
     // Prefixed because the slider control already owns the `appearance-contrast` id.
     id: "setting-appearance-contrast",
-    title: "Contrast",
+    title: "Interface contrast",
     to: "/settings/appearance",
-    searchTerms: ["colors borders interface"],
+    searchTerms: ["colors borders interface contrast"],
   },
   {
     // Prefixed because the slider control already owns the `glass-opacity` id.
@@ -277,7 +277,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "setting-wallpaper",
     title: "Wallpaper",
     to: "/settings/appearance",
-    searchTerms: ["background image picture photo upload blur brightness contrast"],
+    searchTerms: ["background image picture photo upload blur brightness image contrast"],
   },
   {
     id: "setting-leonidas-grid",

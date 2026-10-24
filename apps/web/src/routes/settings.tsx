@@ -167,6 +167,7 @@ function SettingsContentLayout() {
               <Button
                 size="xs"
                 variant="ghost"
+                className="gap-1.5"
                 onClick={() => void navigateToMainApp()}
                 aria-label="Back to chat"
               >

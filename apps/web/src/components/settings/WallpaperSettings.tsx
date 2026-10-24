@@ -197,7 +197,7 @@ export function WallpaperSettings() {
         update={update}
       />
       <WallpaperSlider
-        label="Contrast"
+        label="Image contrast"
         unit="%"
         settingKey="contrast"
         range={WALLPAPER_CONTRAST}

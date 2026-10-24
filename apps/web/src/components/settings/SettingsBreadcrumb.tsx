@@ -2,6 +2,7 @@ import {
   WorkspaceBreadcrumb,
   WorkspaceBreadcrumbItem,
   WorkspaceBreadcrumbSeparator,
+  WorkspaceBreadcrumbText,
 } from "../WorkspaceBreadcrumb";
 import { SETTINGS_SECTION_LABELS } from "./settingsSearch";
 
@@ -26,12 +27,14 @@ export function SettingsBreadcrumb({ pathname }: { pathname: string }) {
     <WorkspaceBreadcrumb ariaLabel="Settings breadcrumb">
       {sectionLabel ? (
         <>
-          <WorkspaceBreadcrumbItem>Settings</WorkspaceBreadcrumbItem>
-          <WorkspaceBreadcrumbSeparator />
+          <WorkspaceBreadcrumbItem className="hidden sm:flex">Settings</WorkspaceBreadcrumbItem>
+          <WorkspaceBreadcrumbSeparator className="hidden sm:flex" />
         </>
       ) : null}
-      <WorkspaceBreadcrumbItem current className="truncate">
-        {sectionLabel ?? "Settings"}
+      <WorkspaceBreadcrumbItem current>
+        <WorkspaceBreadcrumbText title={sectionLabel ?? "Settings"}>
+          {sectionLabel ?? "Settings"}
+        </WorkspaceBreadcrumbText>
       </WorkspaceBreadcrumbItem>
     </WorkspaceBreadcrumb>
   );

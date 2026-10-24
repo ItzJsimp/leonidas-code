@@ -645,7 +645,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(!followSystem ? ["Follow system"] : []),
       ...(themeHalves !== null ? ["Theme mix"] : []),
       ...(settings.appearanceContrast !== DEFAULT_UNIFIED_SETTINGS.appearanceContrast
-        ? ["Contrast"]
+        ? ["Interface contrast"]
         : []),
       ...(settings.glassOpacity !== DEFAULT_UNIFIED_SETTINGS.glassOpacity ? ["Glass opacity"] : []),
       ...(settings.diffColorScheme !== DEFAULT_UNIFIED_SETTINGS.diffColorScheme
@@ -1347,7 +1347,7 @@ export function AppearanceSettingsPanel() {
           resetAction={
             settings.appearanceContrast !== DEFAULT_UNIFIED_SETTINGS.appearanceContrast ? (
               <SettingResetButton
-                label="contrast"
+                label="interface contrast"
                 onClick={() =>
                   updateSettings({
                     appearanceContrast: DEFAULT_UNIFIED_SETTINGS.appearanceContrast,
@@ -1365,7 +1365,7 @@ export function AppearanceSettingsPanel() {
                 {settings.appearanceContrast}%
               </output>
               <input
-                aria-label="Contrast"
+                aria-label="Interface contrast"
                 className="settings-slider min-w-0 flex-1"
                 id="appearance-contrast"
                 max={MAX_APPEARANCE_CONTRAST}
