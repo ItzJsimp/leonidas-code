@@ -22,6 +22,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { WorkspaceSwitcher } from "~/components/workspace/WorkspaceSwitcher";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
+import { useWorkspacePictures, WorkspacePicture } from "~/components/workspace/WorkspacePicture";
 import { isElectron } from "~/env";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { cn, isMacPlatform } from "~/lib/utils";
@@ -39,7 +40,6 @@ import {
   railLinkLabel,
   type RailItem,
 } from "./railItems";
-import { firstGrapheme } from "./safeText";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
 import { useTwoStateCounts } from "./useTwoStateData";
@@ -192,6 +192,7 @@ function RailLink({
 /** The round workspace avatar. It opens the workspace switcher. */
 function WorkspaceAvatar() {
   const { active } = useActiveAiosWorkspace();
+  const { pictures } = useWorkspacePictures();
   const name = active?.name ?? "Leonidas";
   return (
     <Popover>
@@ -201,16 +202,21 @@ function WorkspaceAvatar() {
             <button
               type="button"
               aria-label={`Workspace: ${name}. Switch workspace`}
-              className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised text-xs font-semibold text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
+              className="inline-flex size-[30px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-raised text-xs font-semibold text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [-webkit-app-region:no-drag]"
             />
           }
         >
-          {firstGrapheme(name).toUpperCase()}
+          <WorkspacePicture
+            workspaceId={active?.id}
+            name={name}
+            pictures={pictures}
+            className="size-full text-xs"
+          />
         </PopoverTrigger>
       </Tip>
       <PopoverPopup side="right" align="start" className="w-64">
         <p className="px-2 pb-1 text-sm font-medium">{name}</p>
-        <WorkspaceSwitcher />
+        <WorkspaceSwitcher editPictures />
       </PopoverPopup>
     </Popover>
   );

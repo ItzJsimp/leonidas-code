@@ -79,6 +79,12 @@ import {
   TaskBoardHomeWeatherInput,
 } from "./taskBoard.ts";
 import {
+  WorkspacePictureError,
+  WorkspacePictureRemoveInput,
+  WorkspacePicturesListResult,
+  WorkspacePictureSetInput,
+} from "./workspacePictures.ts";
+import {
   AreaSyncJoinResult,
   AreaSyncScopeInput,
   AreaSyncStatusResult,
@@ -626,6 +632,9 @@ export const WS_METHODS = {
   aiosDirection: "taskBoard.aiosDirection",
   aiosWorkspacesList: "aiosWorkspaces.list",
   aiosWorkspacesInit: "aiosWorkspaces.init",
+  aiosWorkspacePicturesList: "aiosWorkspaces.picturesList",
+  aiosWorkspacePictureSet: "aiosWorkspaces.pictureSet",
+  aiosWorkspacePictureRemove: "aiosWorkspaces.pictureRemove",
   areaSyncJoin: "areaSync.join",
   areaSyncSync: "areaSync.sync",
   areaSyncStatus: "areaSync.status",
@@ -1862,6 +1871,24 @@ const WsAiosWorkspacesInitRpc = Rpc.make(WS_METHODS.aiosWorkspacesInit, {
   payload: AiosWorkspaceInitInput,
   success: AiosWorkspaceSummary,
   error: Schema.Union([TaskBoardReadError, TaskBoardOperationError, EnvironmentAuthorizationError]),
+});
+
+const WsAiosWorkspacePicturesListRpc = Rpc.make(WS_METHODS.aiosWorkspacePicturesList, {
+  payload: Schema.Struct({}),
+  success: WorkspacePicturesListResult,
+  error: Schema.Union([WorkspacePictureError, EnvironmentAuthorizationError]),
+});
+
+const WsAiosWorkspacePictureSetRpc = Rpc.make(WS_METHODS.aiosWorkspacePictureSet, {
+  payload: WorkspacePictureSetInput,
+  success: Schema.Void,
+  error: Schema.Union([WorkspacePictureError, EnvironmentAuthorizationError]),
+});
+
+const WsAiosWorkspacePictureRemoveRpc = Rpc.make(WS_METHODS.aiosWorkspacePictureRemove, {
+  payload: WorkspacePictureRemoveInput,
+  success: Schema.Void,
+  error: Schema.Union([WorkspacePictureError, EnvironmentAuthorizationError]),
 });
 
 const WsAreaSyncJoinRpc = Rpc.make(WS_METHODS.areaSyncJoin, {
@@ -3136,6 +3163,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeRpc,
   WsAiosWorkspacesListRpc,
   WsAiosWorkspacesInitRpc,
+  WsAiosWorkspacePicturesListRpc,
+  WsAiosWorkspacePictureSetRpc,
+  WsAiosWorkspacePictureRemoveRpc,
   WsAreaSyncJoinRpc,
   WsAreaSyncSyncRpc,
   WsAreaSyncStatusRpc,
