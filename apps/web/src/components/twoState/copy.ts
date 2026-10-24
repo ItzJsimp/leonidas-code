@@ -11,6 +11,8 @@ export interface StatusCounts {
   readonly needsYou: number | null;
   /** Null until the chat list is read. */
   readonly running: number | null;
+  /** Chats that are not archived. Null until the chat list is read. */
+  readonly openChats: number | null;
   /** Today's brief priorities. Null when the AIOS has no brief for today. */
   readonly today: { readonly done: number; readonly total: number } | null;
 }

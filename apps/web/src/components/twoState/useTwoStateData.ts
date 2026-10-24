@@ -1,7 +1,7 @@
 import type { FoldedFeedEvent } from "@t3tools/contracts";
 import { useMemo } from "react";
 
-import { groupCommandCenterThreads } from "~/commandCenter";
+import { countOpenChats, groupCommandCenterThreads } from "~/commandCenter";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
 import { useEventFeedStore } from "~/eventFeedStore";
 import { useAllEnvironmentShellsBootstrapped, useThreadShells } from "~/state/entities";
@@ -66,9 +66,13 @@ export function useTwoStateCounts(): StatusCounts {
     () => (threadsLoaded ? groupCommandCenterThreads(threads).running.length : null),
     [threadsLoaded, threads],
   );
+  const openChats = useMemo(
+    () => (threadsLoaded ? countOpenChats(threads) : null),
+    [threadsLoaded, threads],
+  );
   const priorities = home?.brief?.priorities;
   const today = priorities
     ? { done: priorities.filter((priority) => priority.done).length, total: priorities.length }
     : null;
-  return { needsYou, running, today };
+  return { needsYou, running, openChats, today };
 }

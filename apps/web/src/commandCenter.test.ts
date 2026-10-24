@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EnvironmentId, ProviderInstanceId, RunId, ThreadId } from "@t3tools/contracts";
 import { makeThreadFixture } from "./test-fixtures";
-import { groupCommandCenterThreads } from "./commandCenter";
+import { countOpenChats, groupCommandCenterThreads } from "./commandCenter";
 
 const runtime = (status: "running" | "failed" | "idle") => ({
   status,
@@ -72,6 +72,7 @@ describe("Command Center live thread grouping", () => {
     const newer = makeThreadFixture({
       id: ThreadId.make("newer"),
       runtime: runtime("idle"),
+      pendingBackgroundTasks: [{ kind: "background_task", taskId: "bash-1" }],
       updatedAt: "2026-10-10T12:00:00Z",
     });
     expect(
@@ -80,6 +81,22 @@ describe("Command Center live thread grouping", () => {
       [newer.id, "waiting"],
       [older.id, "working"],
     ]);
+  });
+
+  it("does not count an idle chat with no background work as running", () => {
+    const idle = makeThreadFixture({ runtime: runtime("idle") });
+    expect(groupCommandCenterThreads([idle]).running).toEqual([]);
+  });
+
+  it("counts open chats, not archived or deleted ones", () => {
+    expect(
+      countOpenChats([
+        makeThreadFixture({ id: ThreadId.make("a") }),
+        makeThreadFixture({ id: ThreadId.make("b"), runtime: runtime("idle") }),
+        makeThreadFixture({ id: ThreadId.make("c"), archivedAt: "2026-10-10T12:00:00Z" }),
+        makeThreadFixture({ id: ThreadId.make("d"), deletedAt: "2026-10-10T12:00:00Z" }),
+      ]),
+    ).toBe(2);
   });
 
   it("moves a thread between groups when the live shell changes without mutating input", () => {

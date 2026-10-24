@@ -40,7 +40,7 @@ export function RecentActivityWidget() {
       ) : feed.events.length === 0 ? (
         <WidgetEmpty>No activity yet. Agents, scripts and the app write here.</WidgetEmpty>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Events today</p>
             <p className="mt-0.5 flex items-baseline gap-1.5">
@@ -126,7 +126,7 @@ export function GoalsWidget() {
             : "Your AIOS has no goals yet. A 10-minute planning chat sets them."}
         </WidgetEmpty>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {focus ? (
             <p className="text-sm wrap-anywhere">
               <span className="text-muted-foreground">Focus: </span>
@@ -151,7 +151,7 @@ export function GoalsWidget() {
               {rest.map((goal) => {
                 const percent = goalPercent(goal.status);
                 return (
-                  <li key={goal.id} className="grid gap-1.5 py-2">
+                  <li key={goal.id} className="grid min-w-0 grid-cols-1 gap-1.5 py-2">
                     <p className="text-sm font-semibold wrap-anywhere">{goal.goal}</p>
                     {percent !== null ? (
                       <ProgressBar percent={percent} label={`${goal.goal}: ${percent} percent`} />

@@ -116,7 +116,10 @@ function WorkingIn({ thread }: { readonly thread: EnvironmentThreadShell }) {
     <>Working now</>
   ) : (
     <>
-      Working in <span className="block truncate font-mono text-foreground">{path}</span>
+      Working in{" "}
+      <span title={path} className="block truncate font-mono text-foreground">
+        {path}
+      </span>
     </>
   );
 }
@@ -150,7 +153,7 @@ export function RunningWidget() {
       ) : running.length === 0 ? (
         <WidgetEmpty>No agent is working right now.</WidgetEmpty>
       ) : (
-        <ul className="grid gap-1.5">
+        <ul className="grid grid-cols-1 gap-1.5">
           {shown.map(({ thread, status }) => {
             const ref = scopeThreadRef(thread.environmentId, thread.id);
             const live = status === "working";
@@ -158,7 +161,7 @@ export function RunningWidget() {
               JSON.stringify([thread.environmentId, thread.projectId]),
             );
             return (
-              <li key={scopedThreadKey(ref)}>
+              <li key={scopedThreadKey(ref)} className="min-w-0">
                 <Link
                   to="/$environmentId/$threadId"
                   params={buildThreadRouteParams(ref)}

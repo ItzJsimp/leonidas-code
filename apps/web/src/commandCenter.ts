@@ -19,10 +19,19 @@ export function groupCommandCenterThreads(threads: ReadonlyArray<EnvironmentThre
     const status = resolveSidebarThreadStatus(thread);
     if (status === "approval" || status === "input") groups.attention.push({ thread, status });
     else if (status === "limited") groups.limited.push({ thread, status });
-    else if (status === "working" || status === "waiting") groups.running.push({ thread, status });
+    else if (status === "working") groups.running.push({ thread, status });
+    // An idle session alone is an open chat, not work. It runs only while background work is pending.
+    else if (status === "waiting" && thread.pendingBackgroundTasks.length > 0) {
+      groups.running.push({ thread, status });
+    }
   }
   for (const rows of Object.values(groups)) {
     rows.sort((a, b) => b.thread.updatedAt.localeCompare(a.thread.updatedAt));
   }
   return groups;
+}
+
+/** Chats the user has not archived or deleted. */
+export function countOpenChats(threads: ReadonlyArray<EnvironmentThreadShell>): number {
+  return threads.filter((thread) => thread.archivedAt === null && thread.deletedAt === null).length;
 }

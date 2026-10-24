@@ -44,12 +44,18 @@ export function tileModels(
   input: {
     readonly needsYou: number | null;
     readonly running: number | null;
+    /** Chats that are not archived. Undefined when the caller does not count them. */
+    readonly openChats?: number | null;
     readonly oldestNeedsYouAt: number | null;
     readonly home: HomeInput | null;
   },
   now: number,
 ): TileModel[] {
   const { needsYou, running, oldestNeedsYouAt, home } = input;
+  const openChats =
+    input.openChats === undefined || input.openChats === null
+      ? ""
+      : ` · ${input.openChats.toLocaleString("en-US")} open ${plural(input.openChats, "chat", "chats")}`;
   const open = home
     ? home.counts.todo + home.counts.inProgress + home.counts.review + home.counts.blocked
     : null;
@@ -69,7 +75,7 @@ export function tileModels(
             : oldestNeedsYouAt === null
               ? "Waiting for your answer"
               : `Oldest waits since ${sinceLabel(oldestNeedsYouAt, now)}`,
-      tip: "Unread questions, permission requests and failures. The Inbox badge shows the same number.",
+      tip: "Unread questions, permission requests and failures. The Notifications badge shows the same number.",
     },
     {
       id: "running",
@@ -80,9 +86,9 @@ export function tileModels(
         running === null
           ? "Reading your chats"
           : running === 0
-            ? "No agent is working now"
-            : "Working in chats right now",
-      tip: "Chats with an agent working now, or waiting for background work.",
+            ? `No agent is working now${openChats}`
+            : `Working right now${openChats}`,
+      tip: "Chats with an agent working now, or waiting for background work it started. Open chats are chats you have not archived.",
     },
     {
       id: "open-tasks",
