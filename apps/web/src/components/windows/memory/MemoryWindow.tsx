@@ -182,7 +182,9 @@ function NoteRow({
         )}
       >
         <span className="flex min-w-0 items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.title}</span>
+          <span className="line-clamp-2 min-w-0 flex-1 text-sm font-medium wrap-anywhere">
+            {item.title}
+          </span>
           <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
             {folderLabel ? `${folderLabel} ` : ""}
             {noteDate(item)}
@@ -358,7 +360,7 @@ function AreaTile({
   const trend = areaTrend(history, card.id, today);
   const change =
     trend.delta === null || trend.since === null
-      ? "The change shows from tomorrow"
+      ? "Trend starts tomorrow"
       : trend.delta === 0
         ? `No change since ${shortDay(trend.since)}`
         : `${trend.delta > 0 ? "+" : ""}${trend.delta.toLocaleString("en-US")} since ${shortDay(trend.since)}`;
@@ -374,8 +376,8 @@ function AreaTile({
         </span>
         <span className="truncate text-sm text-muted-foreground">{card.unit}</span>
       </span>
-      <span className="truncate text-xs text-muted-foreground">{change}</span>
-      <span className="truncate text-xs text-muted-foreground">Changed {card.changed}</span>
+      <span className="text-xs text-muted-foreground">{change}</span>
+      <span className="text-xs text-muted-foreground">Changed {card.changed}</span>
     </>
   );
   const tile =
@@ -504,7 +506,8 @@ function SearchResults({ query }: { readonly query: string }) {
   return (
     <ListAndDetail
       list={list}
-      selected={file !== null && folderOf(file) !== null ? file : null}
+      // A note left in the address from another tab shows only when it is one of the results.
+      selected={file !== null && results.some((item) => item.path === file) ? file : null}
       onBack={() => go("overview", null)}
       placeholder="Pick a note to read it."
     />
@@ -595,7 +598,7 @@ export function MemoryWindow() {
             type="search"
             size="sm"
             value={query}
-            placeholder="Search decisions, logs, wiki"
+            placeholder="Search memory"
             aria-label="Search decisions, logs and wiki"
             onChange={(event) => setQuery(event.target.value)}
           />

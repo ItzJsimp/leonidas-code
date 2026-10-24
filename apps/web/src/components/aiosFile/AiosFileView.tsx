@@ -1,6 +1,8 @@
 import { ExternalLinkIcon } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 
+import { resolvePathLinkTarget } from "@t3tools/shared/fileLinks";
+
 import { Button } from "~/components/ui/button";
 import { MiddleTruncate } from "~/components/ui/middle-truncate";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
@@ -31,6 +33,9 @@ export function AiosFileView({
       ? projectEnvironment.readFile({ environmentId, input: { cwd: root, relativePath: path } })
       : null,
   );
+  // Relative links and images in a note point from its own folder, not the AIOS root.
+  const slash = path.lastIndexOf("/");
+  const baseDir = root && slash > 0 ? resolvePathLinkTarget(path.slice(0, slash), root) : root;
   const text = useMemo(
     () => (file.data ? withoutFrontmatter(file.data.contents) : null),
     [file.data],
@@ -51,6 +56,7 @@ export function AiosFileView({
           <ChatMarkdown
             text={text}
             cwd={root ?? undefined}
+            {...(baseDir ? { imageBaseDir: baseDir } : {})}
             environmentId={environmentId ?? undefined}
             className="pt-3 text-sm"
           />

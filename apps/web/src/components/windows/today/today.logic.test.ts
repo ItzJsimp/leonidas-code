@@ -93,6 +93,7 @@ describe("dueRows", () => {
         task("none", {}),
       ],
       "2026-10-24",
+      "/aios",
     );
     expect(rows.map((row) => row.id)).toEqual(["late", "today-high", "today-low"]);
     expect(rows[0]).toMatchObject({ overdue: true, path: "tasks/late.md" });
@@ -100,7 +101,15 @@ describe("dueRows", () => {
   });
 
   it("gives no file path for a card outside this AIOS", () => {
-    expect(taskCardPath({ source: "aios_card", sourceFile: "a.md", sourceRoot: "/x" })).toBeNull();
-    expect(taskCardPath({ source: "board", sourceFile: null })).toBeNull();
+    expect(
+      taskCardPath({ source: "aios_card", sourceFile: "a.md", sourceRoot: "/x" }, "/aios"),
+    ).toBeNull();
+    expect(
+      taskCardPath(
+        { source: "aios_card", sourceFile: "a.md", sourceRoot: "D:\\AIOS\\" },
+        "d:/aios",
+      ),
+    ).toBe("tasks/a.md");
+    expect(taskCardPath({ source: "board", sourceFile: null }, "/aios")).toBeNull();
   });
 });

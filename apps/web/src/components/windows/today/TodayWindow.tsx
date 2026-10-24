@@ -100,13 +100,13 @@ function Stat({
         tabIndex={0}
         className="min-w-0 rounded-xl border border-border bg-card px-4 py-3 focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
-        <p className="mt-1 flex items-baseline gap-1.5">
+        <div className="truncate text-xs text-muted-foreground">{label}</div>
+        <div className="mt-1 flex items-baseline gap-1.5">
           <span className="font-display text-2xl leading-none font-semibold tabular-nums">
             {value}
           </span>
           {unit ? <span className="truncate text-sm text-muted-foreground">{unit}</span> : null}
-        </p>
+        </div>
       </div>
     </Tip>
   );
@@ -114,14 +114,14 @@ function Stat({
 
 function PrioritiesCard({ today }: { readonly today: string }) {
   const { brief, priorities, toggle } = usePriorities();
-  const { open } = useOpenAiosFile();
+  const { open, root } = useOpenAiosFile();
   const cards = useTaskCards().data?.tasks;
   const { place, notice } = usePlacePrompt();
   const summary = prioritySummary(priorities);
   const cardPath = useMemo(() => {
-    const byId = new Map((cards ?? []).map((task) => [task.id, taskCardPath(task)]));
+    const byId = new Map((cards ?? []).map((task) => [task.id, taskCardPath(task, root)]));
     return (taskId: string) => byId.get(taskId) ?? null;
-  }, [cards]);
+  }, [cards, root]);
   const plan = (
     <Button size="xs" variant="outline" onClick={() => void place(planTodayPrompt(today))}>
       <SparklesIcon aria-hidden />
@@ -197,10 +197,10 @@ function PrioritiesCard({ today }: { readonly today: string }) {
 function DueCard({ today }: { readonly today: string }) {
   const cards = useTaskCards();
   const now = useNowMs();
-  const { open } = useOpenAiosFile();
+  const { open, root } = useOpenAiosFile();
   const rows = useMemo(
-    () => (cards.data ? dueRows(cards.data.tasks, today) : null),
-    [cards.data, today],
+    () => (cards.data ? dueRows(cards.data.tasks, today, root) : null),
+    [cards.data, today, root],
   );
   const overdue = rows?.filter((row) => row.overdue).length ?? 0;
   return (
@@ -230,7 +230,13 @@ function DueCard({ today }: { readonly today: string }) {
         <ul className="-my-1 divide-y divide-border/60">
           {rows.slice(0, 8).map((row) => (
             <li key={row.id} className="py-1">
-              <Tip text={row.path ? `Open ${row.path}` : "This card is not in your AIOS folder."}>
+              <Tip
+                text={
+                  row.path
+                    ? `${row.title}. Opens ${row.path}.`
+                    : `${row.title}. This card is not in your AIOS folder.`
+                }
+              >
                 <button
                   type="button"
                   disabled={row.path === null}
@@ -257,9 +263,9 @@ function DueCard({ today }: { readonly today: string }) {
 
 function NextMoveCard({ home }: { readonly home: TaskBoardHome }) {
   const cards = useTaskCards().data?.tasks;
-  const { open } = useOpenAiosFile();
+  const { open, root } = useOpenAiosFile();
   const task = home.move.taskId ? cards?.find((card) => card.id === home.move.taskId) : undefined;
-  const path = task ? taskCardPath(task) : null;
+  const path = task ? taskCardPath(task, root) : null;
   return (
     <HomeWidget title="Next move">
       <div className="flex items-start gap-3">
@@ -377,7 +383,10 @@ function Overview() {
   const now = useNowMs();
   const today = localDay(now);
   const cards = useTaskCards().data;
-  const due = useMemo(() => (cards ? dueRows(cards.tasks, today).length : null), [cards, today]);
+  const due = useMemo(
+    () => (cards ? dueRows(cards.tasks, today, null).length : null),
+    [cards, today],
+  );
   const data = home.data;
   if (data === null && home.error !== null) {
     return (

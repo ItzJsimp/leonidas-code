@@ -6,7 +6,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { toastManager } from "~/components/ui/toast";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
-import { userErrorToastFields } from "~/lib/userErrorToast";
+import { failureText } from "~/components/taskBoard/useTaskActions.logic";
 import { taskBoardHomePriorityToggle } from "~/state/taskBoard";
 import { useAtomCommand } from "~/state/use-atom-command";
 
@@ -75,7 +75,10 @@ export function usePriorities() {
             title: done
               ? `Could not tick "${priority.title}"`
               : `Could not clear "${priority.title}"`,
-            ...userErrorToastFields(squashAtomCommandFailure(result)),
+            description: failureText(
+              squashAtomCommandFailure(result),
+              "The brief file could not be saved. Try again.",
+            ),
           });
         }
       }

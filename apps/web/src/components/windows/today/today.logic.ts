@@ -104,7 +104,11 @@ export interface DueRow {
 }
 
 /** Open tasks due today or earlier: oldest due date first, then the most urgent. */
-export function dueRows(tasks: ReadonlyArray<TaskBoardTask>, today: string): DueRow[] {
+export function dueRows(
+  tasks: ReadonlyArray<TaskBoardTask>,
+  today: string,
+  root: string | null,
+): DueRow[] {
   return tasks
     .filter(
       (task): task is TaskBoardTask & { due: string } =>
@@ -126,15 +130,21 @@ export function dueRows(tasks: ReadonlyArray<TaskBoardTask>, today: string): Due
       due: task.due,
       overdue: task.due < today,
       status: task.status,
-      path: taskCardPath(task),
+      path: taskCardPath(task, root),
     }));
 }
 
-/** The AIOS-relative file of a task card, or null when the card lives elsewhere. */
+const sameFolder = (a: string, b: string) =>
+  a.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase() ===
+  b.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
+
+/** The file of a task card relative to `root`, or null when the card lives in another folder. */
 export function taskCardPath(
   task: Pick<TaskBoardTask, "source" | "sourceFile" | "sourceRoot">,
+  root: string | null,
 ): string | null {
-  return task.source === "aios_card" && task.sourceFile && !task.sourceRoot
+  if (task.source !== "aios_card" || !task.sourceFile || root === null) return null;
+  return task.sourceRoot === undefined || sameFolder(task.sourceRoot, root)
     ? `tasks/${task.sourceFile}`
     : null;
 }

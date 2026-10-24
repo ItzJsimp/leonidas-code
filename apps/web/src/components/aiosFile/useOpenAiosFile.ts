@@ -8,6 +8,7 @@ import { useOpenInPreferredEditor } from "~/editorPreferences";
 import { userErrorToastFields } from "~/lib/userErrorToast";
 import { primaryServerAvailableEditorsAtom } from "~/state/server";
 
+import { useAiosHome } from "../twoState/useTwoStateData";
 import { aiosFilePath } from "./aiosFile.logic";
 
 /**
@@ -18,7 +19,8 @@ export function useOpenAiosFile() {
   const { environmentId, active } = useActiveAiosWorkspace();
   const editors = useAtomValue(primaryServerAvailableEditorsAtom);
   const openInEditor = useOpenInPreferredEditor(environmentId, editors);
-  const root = active?.root ?? null;
+  // The root the home read resolved, so a path opens in the same folder its data came from.
+  const root = useAiosHome().data?.root ?? active?.root ?? null;
   const open = useCallback(
     async (relativePath: string) => {
       if (root === null) {
