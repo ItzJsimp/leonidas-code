@@ -59,7 +59,11 @@ describe("railItems", () => {
     expect(
       main.find((item) => item.id === "chat")?.tooltip.startsWith("Leonidas Code / Chat"),
     ).toBe(true);
-    expect(main.find((item) => item.id === "content")?.to).toBe("/marketing");
+    expect(main.find((item) => item.id === "content")).toMatchObject({
+      to: "/marketing",
+      label: "Marketing",
+      tooltip: "Marketing: posts and campaigns",
+    });
     expect(bottom.map((item) => item.to)).toEqual(["/usage", "/settings"]);
     expect(main.find((item) => item.id === "developer")?.alsoActiveOn).toEqual([
       "/git",

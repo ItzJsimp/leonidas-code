@@ -66,7 +66,7 @@ export function MarketingScreen(props: {
   return (
     <SidebarInset className="isolate h-dvh min-h-0 overflow-hidden overscroll-y-none">
       <WindowHeader
-        title="Content"
+        title="Marketing"
         tabs={tabs}
         active={tab}
         onSelect={(id) => setTab(id as TabId)}

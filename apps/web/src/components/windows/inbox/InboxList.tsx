@@ -101,8 +101,8 @@ export function InboxList({
       <div className="flex flex-col gap-2 p-3">
         <Input
           type="search"
-          aria-label="Search the inbox"
-          placeholder="Search the inbox"
+          aria-label="Search notifications"
+          placeholder="Search notifications"
           value={query}
           onChange={(event) => onQuery(event.target.value)}
         />

@@ -176,7 +176,7 @@ it("shows when the list was last updated", async () => {
 
 it("is called Content and has Email and Ads tabs that say they are coming", async () => {
   await render({ list: null, noWorkspace: true });
-  expect(container.querySelector("h1")?.textContent).toBe("Content");
+  expect(container.querySelector("h1")?.textContent).toBe("Marketing");
   await click(container.querySelector("#marketing-tab-email"));
   expect(container.textContent).toContain("Email drafts are coming.");
   await click(container.querySelector("#marketing-tab-ads"));

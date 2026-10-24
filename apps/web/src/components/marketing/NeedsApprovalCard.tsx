@@ -55,7 +55,7 @@ export function NeedsApprovalCard() {
       )}
       <Link
         to="/marketing"
-        className="w-fit rounded-sm text-sm text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+        className="w-fit rounded-sm text-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
       >
         {total > SHOWN ? `Open Marketing (${total - SHOWN} more)` : "Open Marketing"}
       </Link>

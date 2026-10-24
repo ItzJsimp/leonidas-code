@@ -57,7 +57,7 @@ const BEFORE_EXTRAS: readonly RailItem[] = [
   item("projects", "Projects", "/projects", "the projects you work on"),
   item("memory", "Memory", "/memory", "what Leonidas knows and remembers", ["/brain"]),
   item("library", "Library", "/library", "skills, helpers, reply styles and rules"),
-  item("content", "Content", "/marketing", "posts and campaigns"),
+  item("content", "Marketing", "/marketing", "posts and campaigns"),
   item("images", "Images", "/images", "make and keep pictures"),
   item("files", "Files", "/files", "every attachment, screenshot and upload"),
   item("subagents", "Subagents", "/subagents", "helpers your chats run, live and past"),

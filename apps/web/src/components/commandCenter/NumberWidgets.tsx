@@ -219,7 +219,7 @@ export function DonePerDayWidget() {
         <div className="grid gap-3">
           <div className="grid grid-cols-3 gap-2">
             <Stat
-              label="Done today"
+              label="Tasks closed today"
               value={series.today}
               unit={series.today === 1 ? "task" : "tasks"}
               tip="Task cards moved to done today."
