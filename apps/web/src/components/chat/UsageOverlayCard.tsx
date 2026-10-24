@@ -29,7 +29,6 @@ import {
   formatResetCountdown,
   formatTokenCount,
   glanceLimitRows,
-  groupAccountsByProvider,
   limitsFreshness,
   percentText,
   type ProviderAccountGroup,
@@ -62,7 +61,7 @@ import { UsageBenchmarks } from "./UsageBenchmarks";
 
 type Account = UsageLimitsReport["accounts"][number];
 
-const FIXED_LIMIT_VIEW: LimitView = "left";
+const FIXED_LIMIT_VIEW: LimitView = "used";
 
 /** How often the open card re-reads account limits; the server caches probes inside this. */
 const LIMITS_REFRESH_MS = 5 * 60_000;
@@ -277,7 +276,7 @@ function ContextSegments({
 }
 
 /**
- * Single inline quota row (Label | Bar | % left | Reset) with full non-truncated reset countdown.
+ * Single inline quota row (Label | Bar | % used | Reset) with full non-truncated reset countdown.
  */
 function InlineWindowRow({
   label,
@@ -291,7 +290,7 @@ function InlineWindowRow({
   const shortLabel = compactWindowLabel(window, label);
   if (!window) {
     return (
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto_auto] items-center gap-1.5 text-2xs text-muted-foreground">
+      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem_5.75rem] items-center gap-1.5 text-2xs text-muted-foreground">
         <span className="truncate">{shortLabel}</span>
         <div className="h-1 w-full rounded-full bg-muted/60" />
         <span className="whitespace-nowrap text-right tabular-nums">–</span>
@@ -312,7 +311,7 @@ function InlineWindowRow({
     <Tooltip>
       <TooltipTrigger
         render={
-          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto_auto] items-center gap-1.5 text-2xs leading-tight" />
+          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_4.25rem_5.75rem] items-center gap-1.5 text-2xs leading-tight" />
         }
       >
         <span className="truncate text-muted-foreground">{shortLabel}</span>
@@ -340,7 +339,7 @@ function InlineWindowRow({
 /**
  * Sleek inset provider card:
  * Provider header with plan/account qualifier and per-card updated age,
- * inline 4-column quota bars (% left + full reset countdown), and a bottom sub-pill for sibling accounts.
+ * inline 4-column quota bars (% used + full reset countdown), and a bottom sub-pill for sibling accounts.
  */
 function ProviderAccountCard({
   group,
@@ -560,9 +559,16 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const primary = active[0] ?? null;
   const activeIds = useMemo(() => new Set(active.map((account) => account.id)), [active]);
   const accounts = useMemo(() => [...active, ...others], [active, others]);
+  // One card per account, active ones first, so every signed-in account shows its own limits.
   const providerGroups = useMemo(
-    () => groupAccountsByProvider(accounts, activeIds, selectedPrimaryByDriver),
-    [accounts, activeIds, selectedPrimaryByDriver],
+    () =>
+      accounts.map((account) => ({
+        driver: account.driver,
+        primary: account,
+        siblings: [],
+        hasActive: activeIds.has(account.id),
+      })),
+    [accounts, activeIds],
   );
   const refreshNow = async () => {
     if (refreshing) return;
@@ -824,7 +830,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
           <div className="flex flex-col gap-1.5">
             {providerGroups.map((group) => (
               <ProviderAccountCard
-                key={group.driver}
+                key={group.primary.id}
                 group={group}
                 activeIds={activeIds}
                 now={now}

@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
   refreshUsageLimits: vi.fn(),
   accounts: [] as ReadonlyArray<unknown>,
 }));
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn(), useParams: () => ({}) }));
 vi.mock("@t3tools/client-runtime/state/usage", () => ({
   refreshUsageLimits: state.refreshUsageLimits,
 }));
@@ -18,7 +18,10 @@ vi.mock("../../hooks/useConnectedUsageAccounts", () => ({
 }));
 vi.mock("../../hooks/useLimitView", () => ({ useLimitView: () => ["used", vi.fn()] }));
 vi.mock("../../hooks/useNowMinute", () => ({ useNowMinute: () => "2026-10-20T12:00" }));
-vi.mock("../../hooks/useSettings", () => ({ useUpdateClientSettings: () => vi.fn() }));
+vi.mock("../../hooks/useSettings", () => ({
+  useUpdateClientSettings: () => vi.fn(),
+  useEnvironmentSettings: () => ({}),
+}));
 vi.mock("../../state/server", () => ({ serverEnvironment: { refreshProviders: null } }));
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => vi.fn() }));
 vi.mock("../../state/queries", () => ({ useThreadContextBreakdown: () => ({}) }));

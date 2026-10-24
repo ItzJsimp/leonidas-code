@@ -400,7 +400,7 @@ const formatSeconds = (seconds: number) =>
 function quotaText(quota: BenchmarkQuota): string {
   if (quota.kind === "metered") return "Pay as you use";
   if (quota.kind === "unknown") return "Unknown";
-  if (quota.leftPercent > 0) return `${quota.leftPercent}% left`;
+  if (quota.leftPercent > 0) return `${100 - quota.leftPercent}% used`;
   return quota.resetsAt ? `Out until ${formatRelativeTimeLabel(quota.resetsAt)}` : "Out";
 }
 

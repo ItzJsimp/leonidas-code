@@ -24,7 +24,7 @@ export function UsageBar({
   usedPercent,
   label,
   className,
-  fill = "left",
+  fill = "used",
   elapsedMarkerPercent = null,
 }: {
   readonly usedPercent: number;
@@ -75,7 +75,7 @@ export function UsageRing({
   severity,
   className,
   children,
-  fill: fillMode = "left",
+  fill: fillMode = "used",
 }: {
   readonly fill?: "left" | "used";
   readonly percent: number | null;
