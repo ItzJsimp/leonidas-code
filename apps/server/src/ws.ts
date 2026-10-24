@@ -8,6 +8,7 @@ import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
 import * as ImageService from "./images/ImageService.ts";
 import * as LocalModelsService from "./localModels/LocalModelsService.ts";
 import { isPathInRoot } from "./taskBoard/aiosWorkspaces.ts";
+import * as WorkspacePictures from "./taskBoard/workspacePictures.ts";
 import * as TaskBoardService from "./taskBoard/TaskBoardService.ts";
 import * as AreaSyncService from "./areaSync/AreaSyncService.ts";
 import { SpawnApprovals } from "./subagents/SpawnApprovals.ts";
@@ -3159,6 +3160,11 @@ const layerWsRpc = (
           allTaskBoardProjects.pipe(
             Effect.flatMap((projects) => taskBoard.workspaceInit(input, projects)),
           ),
+        [WS_METHODS.aiosWorkspacePicturesList]: () => WorkspacePictures.listWorkspacePictures(),
+        [WS_METHODS.aiosWorkspacePictureSet]: (input) =>
+          WorkspacePictures.setWorkspacePicture(input),
+        [WS_METHODS.aiosWorkspacePictureRemove]: (input) =>
+          WorkspacePictures.removeWorkspacePicture(input),
         [WS_METHODS.areaSyncJoin]: (input) =>
           allTaskBoardProjects.pipe(Effect.flatMap((projects) => areaSync.join(projects, input))),
         [WS_METHODS.areaSyncSync]: (input) =>

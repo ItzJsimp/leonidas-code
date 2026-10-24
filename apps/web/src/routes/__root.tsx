@@ -85,6 +85,7 @@ import {
 import { useUiStateStore } from "../uiStateStore";
 import { readThemeHalvesRaw, syncBrowserChromeTheme, useTheme } from "../hooks/useTheme";
 import { useLeonidasAtmosphere } from "../leonidasAtmosphere";
+import { WallpaperLayer } from "../wallpaper/WallpaperLayer";
 import {
   LEONIDAS_THEME_NOTICE_STORAGE_KEY,
   shouldShowLeonidasThemeNotice,
@@ -209,6 +210,7 @@ function RootRouteView() {
           <GlassAppearanceSync />
           <FontAppearanceSync />
           <LeonidasAtmosphereSync />
+          <WallpaperLayer />
           <ProviderAuthCallbackCoordinator />
           <CustomSnoozeDialogHost />
           <CaptureDialogHost />
@@ -255,6 +257,7 @@ function RootRouteView() {
         <GlassAppearanceSync />
         <FontAppearanceSync />
         <LeonidasAtmosphereSync />
+        <WallpaperLayer />
         <ProviderAuthCallbackCoordinator />
         <ChatGptWelcomeCoordinator />
         <UsageAnalyticsCoordinator />

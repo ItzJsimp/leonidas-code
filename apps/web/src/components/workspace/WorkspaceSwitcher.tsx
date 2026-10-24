@@ -1,5 +1,5 @@
 import type { AiosWorkspaceSummary, AiosWorkspaceType } from "@t3tools/contracts";
-import { BriefcaseIcon, FolderCogIcon, UserIcon } from "lucide-react";
+import { FolderCogIcon } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -27,24 +27,31 @@ import { useAtomCommand } from "~/state/use-atom-command";
 
 import { suggestWorkspaceId, workspaceFolderName } from "./aiosWorkspace.logic";
 import { useActiveAiosWorkspace } from "./useActiveAiosWorkspace";
+import { WorkspacePictureEditor } from "./WorkspacePictureEditor";
+import { useWorkspacePictures, WorkspacePicture } from "./WorkspacePicture";
 
 /**
  * Picks the AIOS workspace this window shows, and offers setup for a folder with no valid
- * workspace.json. Hidden when there is one ready workspace and nothing to set up.
+ * workspace.json. Hidden when there is one ready workspace and nothing to set up, unless
+ * `editPictures` asks for the picture editor (the rail avatar menu).
  */
-export function WorkspaceSwitcher() {
+export function WorkspaceSwitcher(props: { readonly editPictures?: boolean }) {
   const { environmentId, workspaces, active, choose, refresh } = useActiveAiosWorkspace();
+  const { pictures } = useWorkspacePictures();
   const [setupRoot, setSetupRoot] = useState<string | null>(null);
   const ready = workspaces.filter((workspace) => workspace.status === "ready");
   const needsSetup = workspaces.filter((workspace) => workspace.status !== "ready");
-  if (environmentId === null || (ready.length <= 1 && needsSetup.length === 0)) return null;
+  const editPictures = props.editPictures === true && ready.length > 0;
+  if (environmentId === null || (ready.length <= 1 && needsSetup.length === 0 && !editPictures)) {
+    return null;
+  }
 
   const setupTarget = needsSetup.find((workspace) => workspace.root === setupRoot) ?? null;
   const items = ready.map((workspace) => ({ value: workspace.id!, label: workspace.name! }));
 
   return (
     <div className="flex flex-col gap-1.5 px-2 pb-1">
-      {ready.length > 0 ? (
+      {ready.length > 1 || (ready.length === 1 && !editPictures) ? (
         <Select
           modal={false}
           value={active?.id ?? null}
@@ -55,7 +62,12 @@ export function WorkspaceSwitcher() {
         >
           <SelectTrigger size="sm" aria-label="Workspace" className="w-full">
             <span className="flex min-w-0 items-center gap-1.5">
-              <WorkspaceIcon type={active?.type ?? null} />
+              <WorkspacePicture
+                workspaceId={active?.id}
+                name={active?.name ?? ""}
+                pictures={pictures}
+                className="size-4 text-3xs"
+              />
               <SelectValue />
             </span>
           </SelectTrigger>
@@ -63,7 +75,12 @@ export function WorkspaceSwitcher() {
             {ready.map((workspace) => (
               <SelectItem key={workspace.id} value={workspace.id}>
                 <span className="flex items-center gap-1.5">
-                  <WorkspaceIcon type={workspace.type} />
+                  <WorkspacePicture
+                    workspaceId={workspace.id}
+                    name={workspace.name ?? ""}
+                    pictures={pictures}
+                    className="size-4 text-3xs"
+                  />
                   {workspace.name}
                 </span>
               </SelectItem>
@@ -71,6 +88,7 @@ export function WorkspaceSwitcher() {
           </SelectPopup>
         </Select>
       ) : null}
+      {editPictures ? <WorkspacePictureEditor workspaces={ready} pictures={pictures} /> : null}
       {needsSetup.map((workspace) => (
         <button
           key={workspace.root}
@@ -104,11 +122,6 @@ export function WorkspaceSwitcher() {
       </Dialog>
     </div>
   );
-}
-
-function WorkspaceIcon(props: { readonly type: AiosWorkspaceType | null }) {
-  const Icon = props.type === "business" ? BriefcaseIcon : UserIcon;
-  return <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />;
 }
 
 function WorkspaceSetupForm(props: {

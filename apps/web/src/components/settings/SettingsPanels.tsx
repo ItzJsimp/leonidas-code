@@ -76,6 +76,7 @@ import { APP_VERSION_LABEL, HOSTED_APP_CHANNEL, HOSTED_APP_CHANNEL_LABEL } from 
 import { IS_NIGHTLY_BUILD, NightlyMobileBetaRow } from "../NightlyMobileBeta";
 import { CliCommandSettingsRow } from "./CliCommandSettingsRow";
 import { VoiceSettingsRow } from "./VoiceSettingsRow";
+import { WallpaperSettings } from "./WallpaperSettings";
 import {
   canCheckForUpdate,
   getDesktopUpdateButtonTooltip,
@@ -1336,6 +1337,8 @@ export function AppearanceSettingsPanel() {
           />
         </div>
       </SettingsSection>
+
+      <WallpaperSettings />
 
       <SettingsSection id="appearance-interface" title="Interface">
         <SettingsRow

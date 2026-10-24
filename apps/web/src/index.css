@@ -2456,3 +2456,32 @@ html[data-theme-id="leonidas"].dark:not([data-leonidas-grid="true"]) [data-slot=
 @utility messages-timeline-scroll {
   overflow-anchor: none;
 }
+
+/* Wallpaper (Settings > Appearance, `src/wallpaper/`). One fixed layer sits behind the shell.
+   Page fills turn transparent so its solved scrim is the one surface page text sits on; cards,
+   menus and sticky or positioned fills stay solid because they cover other content. */
+/* !important: a wallpaper is a mode switch over every theme rule that paints these fills. */
+html[data-wallpaper] body {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html[data-wallpaper]
+  :is(.bg-background, [data-slot="sidebar-inset"]):not(.sticky, .absolute, .fixed) {
+  background-color: transparent !important;
+}
+
+/* Muted text moves toward body text so it keeps WCAG AA over the scrim. Keep the 40% in sync
+   with MUTED_TEXT_LIFT in wallpaper.logic.ts. */
+html[data-theme-id]:not([data-theme-id=""])[data-wallpaper] {
+  --muted-foreground: color-mix(
+    in srgb,
+    var(--app-theme-text) 40%,
+    var(--app-theme-muted-foreground)
+  );
+  --secondary-label: color-mix(
+    in srgb,
+    var(--app-theme-text) 40%,
+    var(--app-theme-secondary-label)
+  );
+}
