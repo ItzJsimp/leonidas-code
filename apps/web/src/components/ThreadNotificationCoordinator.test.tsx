@@ -24,7 +24,7 @@ const state = vi.hoisted(() => ({
   appended: [] as unknown[],
   appendOk: false,
   scopeReady: true,
-  feed: null as { fresh: unknown[] } | null,
+  feed: null as { fresh: unknown[]; events: { id: string }[] } | null,
   add: vi.fn(
     (_toast: { title: string; description: string; actionProps: { onClick: () => void } }) =>
       "toast-1",
@@ -148,6 +148,7 @@ vi.mock("./ui/toast", () => ({
 }));
 
 import { ThreadNotificationCoordinator } from "./ThreadNotificationCoordinator";
+import { useEventFeedStore } from "../eventFeedStore";
 
 let renderer: ReactTestRenderer | undefined;
 
@@ -415,17 +416,29 @@ describe("thread notifications through the event feed", () => {
       }),
     ]);
     const { event } = (state.appended[0] as { input: { event: object } }).input;
-    state.feed = { fresh: [{ v: 1, id: "evt_1", ts: "2026-09-13T10:00:00Z", count: 1, ...event }] };
+    state.feed = {
+      events: [{ id: "evt_1" }],
+      fresh: [{ v: 1, id: "evt_1", ts: "2026-09-13T10:00:00Z", count: 1, ...event }],
+    };
     await render();
     expect(state.add).toHaveBeenCalledTimes(1);
+    const store = useEventFeedStore.getState();
+    store.dismiss("evt_1");
+    store.markRead(Array.from({ length: 2000 }, (_, i) => `evt_z${i}`));
+    expect(useEventFeedStore.getState().marks.evt_1?.dismissed).toBe(true);
     expect(state.add).toHaveBeenLastCalledWith(
       expect.objectContaining({ title: "Chat completed" }),
     );
+    await act(() => renderer?.unmount());
+    renderer = undefined;
+    store.markRead(["evt_zz"]);
+    expect(useEventFeedStore.getState().marks.evt_1).toBeUndefined();
   });
 
   it("does not pop info events from scripts or agents", async () => {
     await render();
     state.feed = {
+      events: [{ id: "evt_2" }],
       fresh: [
         {
           v: 1,

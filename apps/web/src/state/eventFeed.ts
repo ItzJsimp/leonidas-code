@@ -25,9 +25,14 @@ export const EMPTY_FEED_VIEW: FeedView = { events: [], bad: [], fresh: [] };
 /** The inbox keeps this many events in memory; older ones stay in the month files. */
 const FEED_VIEW_MAX = 500;
 
-/** The newest events up to the cap, plus every older one that still waits for the user. */
-const trim = (events: ReadonlyArray<FoldedFeedEvent>): FoldedFeedEvent[] =>
-  events.filter((event, index) => index < FEED_VIEW_MAX || waitsForUser(event));
+/** Keep recent events and at most the newest 1000 events that need the user. */
+const trim = (events: ReadonlyArray<FoldedFeedEvent>): FoldedFeedEvent[] => {
+  let waiters = 0;
+  return events.filter((event, index) => {
+    const waiting = waitsForUser(event) && ++waiters <= 1_000;
+    return index < FEED_VIEW_MAX || waiting;
+  });
+};
 
 export function applyFeedUpdate(view: FeedView, update: FeedUpdate): FeedView {
   if (update.kind === "snapshot") {

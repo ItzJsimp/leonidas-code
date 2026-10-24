@@ -61,6 +61,30 @@ function subscribe(root: string, fake: ReturnType<typeof fakeWatch>) {
 }
 
 describe("event feed service", () => {
+  it("keeps only the newest 1000 waiters on the first scan and later scans", async () => {
+    const root = tempRoot();
+    const file = appendFeedEvent(root, event("wait 0"));
+    NodeFS.appendFileSync(
+      file,
+      Array.from({ length: 1000 }, (_, i) =>
+        JSON.stringify(event(`wait ${i + 1}`, AT + i + 1)),
+      ).join("\n") + "\n",
+    );
+    const fake = fakeWatch();
+    const feed = makeEventFeed({ watch: fake.watch, debounceMs: 0 });
+    cleanups.push(feed.close);
+    const snapshots: FeedUpdate[] = [];
+    cleanups.push(feed.subscribe(root, (update) => snapshots.push(update)));
+    expect(snapshots[0]!.events).toHaveLength(1000);
+    expect(snapshots[0]!.events[0]!.title).toBe("wait 1");
+    appendFeedEvent(root, event("new wait", AT + 2000));
+    fake.fire();
+    await settle();
+    const later: FeedUpdate[] = [];
+    cleanups.push(feed.subscribe(root, (update) => later.push(update)));
+    expect(later[0]!.events).toHaveLength(1000);
+    expect(later[0]!.events[0]!.title).toBe("wait 2");
+  });
   it("sends lines written while the app was closed in the first snapshot", () => {
     const root = tempRoot();
     appendFeedEvent(root, event("old month", Date.UTC(2026, 8, 10)));

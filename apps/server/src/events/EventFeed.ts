@@ -104,7 +104,14 @@ export function makeEventFeed(
     state.events.push(...added);
     if (state.events.length > FEED_MAX_EVENTS) {
       const cut = state.events.length - FEED_MAX_EVENTS;
-      state.events = state.events.filter((event, index) => index >= cut || waitsForUser(event));
+      let waiters = 0;
+      const kept = new Set<string>();
+      for (let index = state.events.length - 1; index >= 0; index--) {
+        const event = state.events[index]!;
+        const waiting = waitsForUser(event) && ++waiters <= 1_000;
+        if (index >= cut || waiting) kept.add(event.id);
+      }
+      state.events = state.events.filter((event) => kept.has(event.id));
     }
     const folded = foldDedupe(state.events);
     const changed = folded.filter((event) => state.counts.get(event.id) !== event.count);

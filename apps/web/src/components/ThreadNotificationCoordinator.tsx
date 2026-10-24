@@ -262,6 +262,16 @@ function EnvironmentNotifications({
   );
   const feed = useEnvironmentQuery(feedAtom);
 
+  useEffect(() => {
+    if (feed.data) {
+      useEventFeedStore.getState().setFeedIds(
+        environmentId,
+        feed.data.events.map((event) => event.id),
+      );
+    }
+    return () => useEventFeedStore.getState().setFeedIds(environmentId, null);
+  }, [environmentId, feed.data]);
+
   // Thread triggers go through the feed. With no AIOS to write to, or no feed listening yet
   // (workspace still loading), they also show directly so none is lost.
   const emit = useCallback(

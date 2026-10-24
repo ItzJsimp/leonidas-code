@@ -42,6 +42,15 @@ describe("applyFeedUpdate", () => {
 });
 
 describe("feed trim", () => {
+  it("keeps only the newest 1000 waiters through snapshots and upserts", () => {
+    const waiting = Array.from({ length: 1001 }, (_, i) => event(`wait ${i}`));
+    const view = applyFeedUpdate(EMPTY_FEED_VIEW, { kind: "snapshot", events: waiting, bad: [] });
+    expect(view.events).toHaveLength(1000);
+    expect(view.events.at(-1)?.title).toBe("wait 1");
+    const next = applyFeedUpdate(view, { kind: "upsert", events: [event("new wait")], bad: [] });
+    expect(next.events).toHaveLength(1000);
+    expect(next.events.at(-1)?.title).toBe("wait 2");
+  });
   const note = (index: number): FoldedFeedEvent => ({
     ...completeFeedEvent({
       level: "info",
