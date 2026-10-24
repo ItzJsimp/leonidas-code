@@ -64,7 +64,7 @@ export class SubagentRuns extends Context.Service<
   }
 >()("t3/subagents/SubagentRuns") {}
 
-export const toSubagentRun = (row: RunRow): SubagentRun => {
+const toSubagentRun = (row: RunRow): SubagentRun => {
   const status: SubagentRunStatus = runStatus(row.status);
   const kind: SubagentRunKind = runKind({
     origin: row.origin,

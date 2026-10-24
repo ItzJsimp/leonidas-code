@@ -36,6 +36,7 @@ import { Route as ChatTodayRouteImport } from './routes/_chat.today'
 import { Route as ChatTeamRouteImport } from './routes/_chat.team'
 import { Route as ChatTasksRouteImport } from './routes/_chat.tasks'
 import { Route as ChatSystemCareRouteImport } from './routes/_chat.system-care'
+import { Route as ChatSubagentsRouteImport } from './routes/_chat.subagents'
 import { Route as ChatScribeRouteImport } from './routes/_chat.scribe'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
 import { Route as ChatProjectsRouteImport } from './routes/_chat.projects'
@@ -45,6 +46,7 @@ import { Route as ChatLibraryRouteImport } from './routes/_chat.library'
 import { Route as ChatInboxRouteImport } from './routes/_chat.inbox'
 import { Route as ChatImagesRouteImport } from './routes/_chat.images'
 import { Route as ChatGitRouteImport } from './routes/_chat.git'
+import { Route as ChatFilesRouteImport } from './routes/_chat.files'
 import { Route as ChatDeveloperRouteImport } from './routes/_chat.developer'
 import { Route as ChatCommandCenterRouteImport } from './routes/_chat.command-center'
 import { Route as ChatBrainRouteImport } from './routes/_chat.brain'
@@ -186,6 +188,11 @@ const ChatSystemCareRoute = ChatSystemCareRouteImport.update({
   path: '/system-care',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatSubagentsRoute = ChatSubagentsRouteImport.update({
+  id: '/subagents',
+  path: '/subagents',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatScribeRoute = ChatScribeRouteImport.update({
   id: '/scribe',
   path: '/scribe',
@@ -231,6 +238,11 @@ const ChatGitRoute = ChatGitRouteImport.update({
   path: '/git',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatFilesRoute = ChatFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ChatDeveloperRoute = ChatDeveloperRouteImport.update({
   id: '/developer',
   path: '/developer',
@@ -268,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/brain': typeof ChatBrainRoute
   '/command-center': typeof ChatCommandCenterRoute
   '/developer': typeof ChatDeveloperRoute
+  '/files': typeof ChatFilesRoute
   '/git': typeof ChatGitRoute
   '/images': typeof ChatImagesRoute
   '/inbox': typeof ChatInboxRoute
@@ -277,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ChatProjectsRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/scribe': typeof ChatScribeRoute
+  '/subagents': typeof ChatSubagentsRoute
   '/system-care': typeof ChatSystemCareRoute
   '/tasks': typeof ChatTasksRoute
   '/team': typeof ChatTeamRoute
@@ -309,6 +323,7 @@ export interface FileRoutesByTo {
   '/brain': typeof ChatBrainRoute
   '/command-center': typeof ChatCommandCenterRoute
   '/developer': typeof ChatDeveloperRoute
+  '/files': typeof ChatFilesRoute
   '/git': typeof ChatGitRoute
   '/images': typeof ChatImagesRoute
   '/inbox': typeof ChatInboxRoute
@@ -318,6 +333,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ChatProjectsRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/scribe': typeof ChatScribeRoute
+  '/subagents': typeof ChatSubagentsRoute
   '/system-care': typeof ChatSystemCareRoute
   '/tasks': typeof ChatTasksRoute
   '/team': typeof ChatTeamRoute
@@ -353,6 +369,7 @@ export interface FileRoutesById {
   '/_chat/brain': typeof ChatBrainRoute
   '/_chat/command-center': typeof ChatCommandCenterRoute
   '/_chat/developer': typeof ChatDeveloperRoute
+  '/_chat/files': typeof ChatFilesRoute
   '/_chat/git': typeof ChatGitRoute
   '/_chat/images': typeof ChatImagesRoute
   '/_chat/inbox': typeof ChatInboxRoute
@@ -362,6 +379,7 @@ export interface FileRoutesById {
   '/_chat/projects': typeof ChatProjectsRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/_chat/scribe': typeof ChatScribeRoute
+  '/_chat/subagents': typeof ChatSubagentsRoute
   '/_chat/system-care': typeof ChatSystemCareRoute
   '/_chat/tasks': typeof ChatTasksRoute
   '/_chat/team': typeof ChatTeamRoute
@@ -398,6 +416,7 @@ export interface FileRouteTypes {
     | '/brain'
     | '/command-center'
     | '/developer'
+    | '/files'
     | '/git'
     | '/images'
     | '/inbox'
@@ -407,6 +426,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/pull-requests'
     | '/scribe'
+    | '/subagents'
     | '/system-care'
     | '/tasks'
     | '/team'
@@ -439,6 +459,7 @@ export interface FileRouteTypes {
     | '/brain'
     | '/command-center'
     | '/developer'
+    | '/files'
     | '/git'
     | '/images'
     | '/inbox'
@@ -448,6 +469,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/pull-requests'
     | '/scribe'
+    | '/subagents'
     | '/system-care'
     | '/tasks'
     | '/team'
@@ -482,6 +504,7 @@ export interface FileRouteTypes {
     | '/_chat/brain'
     | '/_chat/command-center'
     | '/_chat/developer'
+    | '/_chat/files'
     | '/_chat/git'
     | '/_chat/images'
     | '/_chat/inbox'
@@ -491,6 +514,7 @@ export interface FileRouteTypes {
     | '/_chat/projects'
     | '/_chat/pull-requests'
     | '/_chat/scribe'
+    | '/_chat/subagents'
     | '/_chat/system-care'
     | '/_chat/tasks'
     | '/_chat/team'
@@ -717,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatSystemCareRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/subagents': {
+      id: '/_chat/subagents'
+      path: '/subagents'
+      fullPath: '/subagents'
+      preLoaderRoute: typeof ChatSubagentsRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/scribe': {
       id: '/_chat/scribe'
       path: '/scribe'
@@ -780,6 +811,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatGitRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/files': {
+      id: '/_chat/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof ChatFilesRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/_chat/developer': {
       id: '/_chat/developer'
       path: '/developer'
@@ -822,6 +860,7 @@ interface ChatRouteChildren {
   ChatBrainRoute: typeof ChatBrainRoute
   ChatCommandCenterRoute: typeof ChatCommandCenterRoute
   ChatDeveloperRoute: typeof ChatDeveloperRoute
+  ChatFilesRoute: typeof ChatFilesRoute
   ChatGitRoute: typeof ChatGitRoute
   ChatImagesRoute: typeof ChatImagesRoute
   ChatInboxRoute: typeof ChatInboxRoute
@@ -831,6 +870,7 @@ interface ChatRouteChildren {
   ChatProjectsRoute: typeof ChatProjectsRoute
   ChatPullRequestsRoute: typeof ChatPullRequestsRoute
   ChatScribeRoute: typeof ChatScribeRoute
+  ChatSubagentsRoute: typeof ChatSubagentsRoute
   ChatSystemCareRoute: typeof ChatSystemCareRoute
   ChatTasksRoute: typeof ChatTasksRoute
   ChatTeamRoute: typeof ChatTeamRoute
@@ -845,6 +885,7 @@ const ChatRouteChildren: ChatRouteChildren = {
   ChatBrainRoute: ChatBrainRoute,
   ChatCommandCenterRoute: ChatCommandCenterRoute,
   ChatDeveloperRoute: ChatDeveloperRoute,
+  ChatFilesRoute: ChatFilesRoute,
   ChatGitRoute: ChatGitRoute,
   ChatImagesRoute: ChatImagesRoute,
   ChatInboxRoute: ChatInboxRoute,
@@ -854,6 +895,7 @@ const ChatRouteChildren: ChatRouteChildren = {
   ChatProjectsRoute: ChatProjectsRoute,
   ChatPullRequestsRoute: ChatPullRequestsRoute,
   ChatScribeRoute: ChatScribeRoute,
+  ChatSubagentsRoute: ChatSubagentsRoute,
   ChatSystemCareRoute: ChatSystemCareRoute,
   ChatTasksRoute: ChatTasksRoute,
   ChatTeamRoute: ChatTeamRoute,

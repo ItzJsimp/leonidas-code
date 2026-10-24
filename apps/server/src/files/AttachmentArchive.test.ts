@@ -41,8 +41,8 @@ it.effect(
       const write = (name: string, body: string, ageSeconds: number) => {
         const path = NodePath.join(config.attachmentsDir, name);
         NodeFS.writeFileSync(path, body);
-        const time = new Date(Date.now() - ageSeconds * 1000);
-        NodeFS.utimesSync(path, time, time);
+        const mtime = NodeFS.statSync(path).mtimeMs / 1000 - ageSeconds;
+        NodeFS.utimesSync(path, mtime, mtime);
       };
       write(`${shot}.png`, "png", 30);
       write(`${doc}.pdf`, "pdf-bytes", 20);
