@@ -1,14 +1,17 @@
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, MinusIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from "lucide-react";
 import { type ReactNode, useMemo } from "react";
 
 import { cn } from "~/lib/utils";
 
 import { areaRow } from "../twoState/areaRows";
+import { PriorityChecklist } from "../windows/today/PriorityChecklist";
+import { usePriorities } from "../windows/today/usePriorities";
 import { Tip } from "../twoState/Tip";
 import { useAiosHome } from "../twoState/useTwoStateData";
 import { DoneBars, Ring, SegmentBar, toneClass } from "./charts";
 import { areaBars, doneSeries, ringPercent, statusSegments } from "./commandCenter.logic";
-import { HomeWidget, WidgetEmpty, WidgetError, WidgetList, WidgetSkeleton } from "./HomeWidget";
+import { HomeWidget, WidgetEmpty, WidgetError, WidgetSkeleton } from "./HomeWidget";
 import { useNowMs, useTaskCards } from "./useHomeReads";
 
 /** A label over a number: the number-first block inside a widget. */
@@ -57,17 +60,27 @@ function HomeBody({
   return children(data);
 }
 
-/** Today's priorities from the daily brief: a 4 px ring (done of all) and one row each. */
+/** Today's priorities from the daily brief: a 4 px ring (done of all) and one tick box each. */
 export function PrioritiesWidget() {
+  const { priorities, toggle } = usePriorities();
   return (
     <HomeWidget title="Today's priorities">
       <HomeBody>
-        {(home) => {
-          const priorities = home.brief?.priorities ?? [];
+        {() => {
           const done = priorities.filter((priority) => priority.done).length;
           const percent = ringPercent(done, priorities.length);
           if (percent === null) {
-            return <WidgetEmpty>No priorities for today. The daily brief sets them.</WidgetEmpty>;
+            return (
+              <WidgetEmpty>
+                No priorities for today.{" "}
+                <Link
+                  to="/today"
+                  className="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  Plan today
+                </Link>
+              </WidgetEmpty>
+            );
           }
           return (
             <div className="grid gap-4">
@@ -79,42 +92,14 @@ export function PrioritiesWidget() {
                   label="Done today"
                   value={done}
                   unit={`of ${priorities.length}`}
-                  tip="Priorities marked done in today's daily brief, out of all priorities in it."
+                  tip="Priorities ticked in today's daily brief, out of all priorities in it."
                 />
               </div>
-              <WidgetList>
-                {priorities.map((priority) => (
-                  <li key={priority.title} className="flex min-w-0 items-start gap-3 py-2">
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "mt-px grid size-[18px] shrink-0 place-items-center rounded-md border",
-                        priority.done
-                          ? "border-transparent bg-muted text-muted-foreground"
-                          : "border-border",
-                      )}
-                    >
-                      {priority.done ? <CheckIcon className="size-3" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="sr-only">{priority.done ? "Done: " : "To do: "}</span>
-                      <span
-                        className={cn(
-                          "block text-sm font-semibold wrap-anywhere",
-                          priority.done && "text-muted-foreground line-through",
-                        )}
-                      >
-                        {priority.title}
-                      </span>
-                      {priority.detail ? (
-                        <span className="block text-xs wrap-anywhere text-muted-foreground">
-                          {priority.detail}
-                        </span>
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
-              </WidgetList>
+              <PriorityChecklist
+                dense
+                priorities={priorities}
+                onToggle={(priority) => void toggle(priority)}
+              />
             </div>
           );
         }}
