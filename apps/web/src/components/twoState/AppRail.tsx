@@ -1,11 +1,11 @@
 import { Link, useLocation, useParams } from "@tanstack/react-router";
 import {
   AudioLinesIcon,
+  BellIcon,
   BrainIcon,
   ChartNoAxesColumnIcon,
   FolderKanbanIcon,
   ImageIcon,
-  InboxIcon,
   LayoutDashboardIcon,
   LibraryIcon,
   ListChecksIcon,
@@ -48,7 +48,7 @@ const ICONS: Readonly<Record<string, LucideIcon>> = {
   "command-center": LayoutDashboardIcon,
   chat: MessageSquareIcon,
   scribe: AudioLinesIcon,
-  inbox: InboxIcon,
+  inbox: BellIcon,
   today: SunIcon,
   tasks: ListChecksIcon,
   projects: FolderKanbanIcon,

@@ -7,6 +7,12 @@ import type { ThreadPlace } from "./swapKeys";
 
 export const SHELL_LAYOUT_STORAGE_KEY = "leonidas:shell-layout:v1";
 
+/** A rail page the left pane shows: its path and its open tab. */
+export interface LeftPage {
+  readonly path: string;
+  readonly tab: string | null;
+}
+
 interface TwoStateState {
   /** Command Center (or a rail window) beside the chat when the window is wide enough. */
   readonly split: boolean;
@@ -16,19 +22,23 @@ interface TwoStateState {
   readonly chatListOpen: boolean;
   /** The chat the rail's Chat icon and the swap key return to. */
   readonly lastThread: ThreadPlace | null;
+  /** The last rail page, so the left pane of the split keeps it while a chat is open. */
+  readonly leftPage: LeftPage | null;
   readonly setSplit: (split: boolean) => void;
   readonly setRatio: (ratio: number) => void;
   readonly setChatListOpen: (open: boolean) => void;
   readonly rememberThread: (place: ThreadPlace) => void;
+  readonly rememberLeftPage: (page: LeftPage) => void;
 }
 
 export const useTwoStateStore = create<TwoStateState>()(
   persist(
     (set) => ({
-      split: true,
+      split: false,
       ratio: 0.5,
       chatListOpen: true,
       lastThread: null,
+      leftPage: null,
       setSplit: (split) => set({ split }),
       setRatio: (ratio) => set({ ratio }),
       setChatListOpen: (chatListOpen) => set({ chatListOpen }),
@@ -39,18 +49,28 @@ export const useTwoStateStore = create<TwoStateState>()(
             ? state
             : { lastThread: place },
         ),
+      rememberLeftPage: (page) =>
+        set((state) =>
+          state.leftPage?.path === page.path && state.leftPage.tab === page.tab
+            ? state
+            : { leftPage: page },
+        ),
     }),
     {
       name: SHELL_LAYOUT_STORAGE_KEY,
-      version: 1,
+      version: 2,
+      // Version 1 opened split by default. The app now opens on one full page, so reset it once.
+      migrate: (persisted, version) =>
+        version < 2 ? { ...(persisted as object), split: false } : persisted,
       storage: createJSONStorage(() =>
         resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
       ),
-      partialize: ({ split, ratio, chatListOpen, lastThread }) => ({
+      partialize: ({ split, ratio, chatListOpen, lastThread, leftPage }) => ({
         split,
         ratio,
         chatListOpen,
         lastThread,
+        leftPage,
       }),
     },
   ),

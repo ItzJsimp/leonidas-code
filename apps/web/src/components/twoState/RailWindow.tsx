@@ -4,6 +4,7 @@ import { useId, type ComponentType, type ReactNode, type SVGProps } from "react"
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 
+import { useDetachedTab } from "./detachedTab";
 import { WindowHeader, type WindowTab } from "./WindowHeader";
 
 export { nextTabIndex, type WindowTab } from "./WindowHeader";
@@ -32,18 +33,21 @@ export function RailWindow({
 }) {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { readonly tab?: unknown };
-  const active = resolveWindowTab(tabs, search.tab);
+  const detached = useDetachedTab();
+  const active = resolveWindowTab(tabs, detached ? detached.tab : search.tab);
   const base = useId();
 
   const select = (id: string) =>
-    void navigate({
-      to: ".",
-      search: ((previous: Record<string, unknown>) => ({
-        ...previous,
-        tab: id === tabs[0]?.id ? undefined : id,
-      })) as never,
-      replace: true,
-    });
+    detached
+      ? detached.setTab(id === tabs[0]?.id ? null : id)
+      : void navigate({
+          to: ".",
+          search: ((previous: Record<string, unknown>) => ({
+            ...previous,
+            tab: id === tabs[0]?.id ? undefined : id,
+          })) as never,
+          replace: true,
+        });
   return (
     <section
       aria-label={title}

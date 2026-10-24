@@ -1,6 +1,6 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { scopeProjectRef } from "@t3tools/client-runtime/environment";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { LinkIcon, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -125,6 +125,11 @@ export const Route = createFileRoute("/_chat/")({
     guidePrompt:
       typeof search.guidePrompt === "string" ? search.guidePrompt.slice(0, 1200) : undefined,
   }),
+  // The app opens on the Command Center. Later visits to the chat start page stay here.
+  beforeLoad: ({ search }) => {
+    if (search.guidePrompt || !firstLandingThisSession()) return;
+    throw redirect({ to: "/command-center", replace: true });
+  },
   component: ChatIndexRouteView,
 });
 
@@ -172,4 +177,15 @@ function HostedStaticOnboardingState() {
       </div>
     </SidebarInset>
   );
+}
+
+// Route options load with the route tree at app start, so this is the path the app opened on.
+const START_PATH = typeof window === "undefined" ? null : window.location.pathname;
+let startHandled = false;
+
+/** True once: when the app opened on the chat start page. A reload there counts as opening. */
+function firstLandingThisSession(): boolean {
+  const first = !startHandled && START_PATH === "/";
+  startHandled = true;
+  return first;
 }

@@ -52,17 +52,21 @@ describe("railItems", () => {
     const { main, bottom } = railItems({ business: true, builder: true });
     expect(main.find((item) => item.id === "inbox")).toMatchObject({
       to: "/inbox",
-      tooltip: "Inbox: everything that needs you or finished",
+      tooltip: "Notifications: what needs you and what finished",
     });
-    expect(main.find((item) => item.id === "chat")?.tooltip.startsWith("Leonidas Chat")).toBe(true);
+    expect(
+      main.find((item) => item.id === "chat")?.tooltip.startsWith("Leonidas Code / Chat"),
+    ).toBe(true);
     expect(main.find((item) => item.id === "content")?.to).toBe("/marketing");
     expect(bottom.map((item) => item.to)).toEqual(["/usage", "/settings"]);
     expect(main.find((item) => item.id === "developer")?.alsoActiveOn).toEqual([
       "/git",
       "/pull-requests",
     ]);
+    // Jake named the chat item "Leonidas Code / Chat" (2026-10-23). Other items stay plain.
     for (const item of [...main, ...bottom]) {
-      expect(`${item.label}${item.tooltip}`).not.toMatch(/\u2014|\bcode\b|MCP|worktree|T3/i);
+      const text = `${item.label}${item.tooltip}`.replaceAll("Code / Chat", "");
+      expect(text).not.toMatch(/—|\bcode\b|MCP|worktree|T3/i);
     }
   });
 });

@@ -1,4 +1,4 @@
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { TeamLensProvider } from "~/components/team/TeamLensContext";
@@ -12,6 +12,7 @@ import { CodeForwardContext } from "./codeForwardContext";
 import { CommandCenterForward } from "./CommandCenterForward";
 import { DIVIDER_PX, PaneDivider } from "./PaneDivider";
 import { clampRatio, DRAWER_BELOW_WIDTH, paneLayout } from "./shellLayout";
+import { isLeftPagePath, LeftPagePane } from "./leftPages";
 import { HomeCardsOutlet } from "./SlotOutlet";
 import { useTwoStateStore } from "./twoStateStore";
 import { useViewportWidth } from "./useViewportWidth";
@@ -29,6 +30,12 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
   const ratio = useTwoStateStore((state) => state.ratio);
   const setRatio = useTwoStateStore((state) => state.setRatio);
   const rememberThread = useTwoStateStore((state) => state.rememberThread);
+  const leftPage = useTwoStateStore((state) => state.leftPage);
+  const rememberLeftPage = useTwoStateStore((state) => state.rememberLeftPage);
+  const path = useLocation({ select: (location) => location.pathname });
+  const tab = useLocation({
+    select: (location) => (location.search as { readonly tab?: unknown }).tab,
+  });
   const rowRef = useRef<HTMLDivElement>(null);
   const [rowWidth, setRowWidth] = useState(0);
 
@@ -36,6 +43,14 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
   useEffect(() => {
     if (place) rememberThread(place);
   }, [place, rememberThread]);
+  // The rail page in the URL is the left pane's page. A chat opened next keeps it on the left.
+  const windowPath = threadTarget ? null : path;
+  const windowTab = typeof tab === "string" ? tab : null;
+  useEffect(() => {
+    if (windowPath !== null && isLeftPagePath(windowPath)) {
+      rememberLeftPage({ path: windowPath, tab: windowTab });
+    }
+  }, [windowPath, windowTab, rememberLeftPage]);
   useLayoutEffect(() => {
     const element = rowRef.current;
     if (!element) return;
@@ -70,7 +85,13 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
               layout.mode === "split" ? "shrink-0" : "flex-1",
             )}
           >
-            {threadTarget ? <CommandCenterHome /> : <Outlet />}
+            {!threadTarget ? (
+              <Outlet />
+            ) : leftPage && leftPage.path !== "/command-center" ? (
+              <LeftPagePane page={leftPage} />
+            ) : (
+              <CommandCenterHome />
+            )}
           </div>
         ) : null}
         {layout.mode === "split" ? (
