@@ -97,6 +97,7 @@ export function ChatPane({
   return (
     <div
       ref={rootRef}
+      data-pane="chat"
       aria-label="Chat"
       role="region"
       onKeyDown={(event) => {
