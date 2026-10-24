@@ -182,7 +182,10 @@ function NoteRow({
         )}
       >
         <span className="flex min-w-0 items-baseline gap-2">
-          <span className="line-clamp-2 min-w-0 flex-1 text-sm font-medium wrap-anywhere">
+          <span
+            title={item.title}
+            className="line-clamp-2 min-w-0 flex-1 text-sm font-medium wrap-anywhere"
+          >
             {item.title}
           </span>
           <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
@@ -191,7 +194,9 @@ function NoteRow({
           </span>
         </span>
         {item.summary ? (
-          <span className="line-clamp-2 text-xs text-muted-foreground">{item.summary}</span>
+          <span title={item.summary} className="line-clamp-2 text-xs text-muted-foreground">
+            {item.summary}
+          </span>
         ) : (
           <span className="truncate font-mono text-xs text-muted-foreground">{item.path}</span>
         )}
@@ -260,10 +265,12 @@ function ListAndDetail({
             <ArrowLeftIcon aria-hidden />
             Back to the list
           </Button>
-          <AiosFileView key={selected} path={selected} />
+          <div className="max-w-prose">
+            <AiosFileView key={selected} path={selected} />
+          </div>
         </div>
       ) : (
-        <div className="hidden min-h-48 place-items-center rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground @3xl:grid">
+        <div className="sticky top-0 hidden min-h-48 self-start place-items-center rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground @3xl:grid">
           {placeholder}
         </div>
       )}
@@ -593,7 +600,7 @@ export function MemoryWindow() {
       title="Memory"
       tabs={TABS}
       actions={
-        <div className="w-44 sm:w-60">
+        <div data-window-search className="w-44 sm:w-60">
           <Input
             type="search"
             size="sm"
