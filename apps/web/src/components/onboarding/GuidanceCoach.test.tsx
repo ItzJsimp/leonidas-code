@@ -43,6 +43,7 @@ vi.mock("../ui/dialog", () => ({
   DialogPanel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 import { GuidanceCoach } from "./GuidanceCoach";
+import { openGuide } from "./guideEvents";
 let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
@@ -79,7 +80,7 @@ async function click(text: string) {
 }
 it("runs no AI explanation until the user confirms the named model", async () => {
   await render();
-  await click("Guide");
+  await act(async () => openGuide());
   await click("Explain with AI");
   expect(container.textContent).toContain("test-model");
   expect(mocks.start).not.toHaveBeenCalled();
@@ -116,7 +117,7 @@ it("does not start an explanation if its profile closes during preparation", asy
     }),
   );
   await render();
-  await click("Guide");
+  await act(async () => openGuide());
   await click("Explain with AI");
   await click("Start AI explanation");
   await act(async () => root.render(null));

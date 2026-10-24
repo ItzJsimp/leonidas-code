@@ -86,6 +86,7 @@ import {
   SettingsIcon,
   SparklesIcon,
   GaugeIcon,
+  GraduationCapIcon,
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
@@ -262,6 +263,7 @@ import type { Project } from "../types";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "~/components/pullRequest/pullRequestListPreferences";
 import { userErrorToastFields } from "~/lib/userErrorToast";
+import { openGuide } from "~/components/onboarding/guideEvents";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 
@@ -2267,6 +2269,17 @@ function OpenCommandPaletteDialog(props: {
     icon: <LayoutDashboardIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
       await navigate({ to: "/command-center" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:guide",
+    searchTerms: ["guide", "learn", "tips", "ai level", "daily challenge", "help"],
+    title: "Open the learning guide",
+    icon: <GraduationCapIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      openGuide();
     },
   });
 

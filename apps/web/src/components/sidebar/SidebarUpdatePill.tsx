@@ -370,6 +370,9 @@ function SidebarUpdateControl() {
     </button>
   );
 
+  // Jake removed the idle check-for-updates icon (2026-10-23). It shows only when an update is on its way.
+  if (!showUpdateDetails) return null;
+
   return (
     <SidebarMenuItem className="ml-auto shrink-0">
       <Popover

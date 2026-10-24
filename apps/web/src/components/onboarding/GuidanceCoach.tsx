@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+
+import { OPEN_GUIDE_EVENT } from "./guideEvents";
 import { useAiLevelServerSync } from "../../onboarding/aiLevelSync";
 import { EnvironmentId } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
@@ -79,6 +81,11 @@ function ConnectedGuidanceCoach({
   const [profile, setProfile] = useGuidanceProfile(environmentId);
   useAiLevelServerSync(environmentId, profile, setProfile);
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_GUIDE_EVENT, show);
+    return () => window.removeEventListener(OPEN_GUIDE_EVENT, show);
+  }, []);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmExplain, setConfirmExplain] = useState(false);
   const [answers, setAnswers] = useState<number[]>([]);
@@ -160,9 +167,10 @@ function ConnectedGuidanceCoach({
   };
   return (
     <>
-      <aside aria-label="Learning guide" className="shrink-0 border-t p-2">
-        {tip && dismissedDay !== day && !open && (
-          <div className="mb-2 space-y-2 p-2 text-sm">
+      {/* Only the daily tip shows here. A standing Guide button left an empty strip under the list. */}
+      {tip && dismissedDay !== day && !open ? (
+        <aside aria-label="Learning guide" className="shrink-0 border-t p-2">
+          <div className="space-y-2 p-2 text-sm">
             <p className="font-medium">{tip.title}</p>
             <p className="text-muted-foreground">{tip.text}</p>
             <div className="flex justify-between gap-2">
@@ -174,16 +182,8 @@ function ConnectedGuidanceCoach({
               </Button>
             </div>
           </div>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          title="Open your AI level, daily challenge, and learning controls"
-          onClick={() => setOpen(true)}
-        >
-          Guide
-        </Button>
-      </aside>
+        </aside>
+      ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogPopup>
           <DialogHeader>
