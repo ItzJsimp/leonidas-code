@@ -3,6 +3,7 @@ import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/model
 import type { FoldedFeedEvent } from "@t3tools/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CalendarAgenda } from "~/components/calendar/CalendarAgenda";
+import { useUpNextCount } from "~/components/calendar/useCalendar";
 import { useMemo } from "react";
 
 import { groupCommandCenterThreads } from "~/commandCenter";
@@ -198,8 +199,9 @@ export function RunningWidget() {
 
 /** The next calendar events, or the way to connect a calendar. */
 export function UpNextWidget() {
+  const count = useUpNextCount();
   return (
-    <HomeWidget title="Up next" count="no calendar">
+    <HomeWidget title="Up next" count={count}>
       <CalendarAgenda variant="upNext" />
     </HomeWidget>
   );

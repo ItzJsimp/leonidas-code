@@ -1,4 +1,5 @@
 import { DeviceHostUpdates } from "../device/DeviceHostUpdates";
+import { CalendarSettingsSection } from "../calendar/CalendarSettingsSection";
 import { DeviceToolVersions } from "../device/DeviceToolVersions";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { ScopedSwitch } from "./ScopedSwitch";
@@ -1551,6 +1552,7 @@ export function IntegrationsSettingsPanel() {
           previewDefaults
         )}
       </SettingsSection>
+      <CalendarSettingsSection />
       <DeviceIntegrationSettings />
     </SettingsPageContainer>
   );
