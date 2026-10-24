@@ -90,7 +90,7 @@ export const SplitLayoutMenu = memo(function SplitLayoutMenu() {
         >
           <Columns2Icon className="size-4" />
         </TooltipTrigger>
-        <TooltipPopup side="bottom">Split and layout</TooltipPopup>
+        <TooltipPopup side="bottom">Chat panes: split and layout</TooltipPopup>
       </Tooltip>
       <MenuPopup align="end" sideOffset={6}>
         <MenuItem
