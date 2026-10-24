@@ -16,15 +16,17 @@ const BASE = [
   "library",
   "content",
   "images",
+  "files",
+  "subagents",
 ];
 
 describe("railItems", () => {
-  it("shows 11 main icons by default, in order", () => {
+  it("shows 13 main icons by default, in order", () => {
     const { main } = railItems({ business: false, builder: false });
     expect(ids(main)).toEqual(BASE);
   });
 
-  it("adds Team after Images for a business workspace", () => {
+  it("adds Team after Subagents for a business workspace", () => {
     const { main } = railItems({ business: true, builder: false });
     expect(ids(main)).toEqual([...BASE, "team"]);
   });
@@ -37,7 +39,7 @@ describe("railItems", () => {
   it("shows both extras, Team first", () => {
     const { main } = railItems({ business: true, builder: true });
     expect(ids(main)).toEqual([...BASE, "team", "developer"]);
-    expect(main).toHaveLength(13);
+    expect(main).toHaveLength(15);
   });
 
   it("always has Usage then Settings at the bottom", () => {

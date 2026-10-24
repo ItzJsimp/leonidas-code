@@ -10,6 +10,8 @@ export type RailTo =
   | "/library"
   | "/marketing"
   | "/images"
+  | "/files"
+  | "/subagents"
   | "/team"
   | "/developer"
   | "/usage"
@@ -57,6 +59,8 @@ const BEFORE_EXTRAS: readonly RailItem[] = [
   item("library", "Library", "/library", "skills, helpers, reply styles and rules"),
   item("content", "Content", "/marketing", "posts and campaigns"),
   item("images", "Images", "/images", "make and keep pictures"),
+  item("files", "Files", "/files", "every attachment, screenshot and upload"),
+  item("subagents", "Subagents", "/subagents", "helpers your chats run, live and past"),
 ];
 const TEAM = item("team", "Team", "/team", "members, roles and areas");
 const DEVELOPER = item("developer", "Developer", "/developer", "Git, pull requests and terminals", [
