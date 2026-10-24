@@ -13,6 +13,8 @@ const TIME =
 // "A to B UTC": the zone after a range belongs to both ends.
 const STAMP = String.raw`\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?`;
 const RANGE = new RegExp(`(${STAMP}) to (${STAMP})\\s?(UTC|Z|[+-]\\d{2}:\\d{2})`, "g");
+// Colour codes from a terminal: the real escape byte, or the text "\033[" or "\x1b[" a log wrote out.
+const ANSI = new RegExp(String.raw`(?:\u001b|\\033|\\x1[bB])\[[0-9;]*m`, "g");
 const EXIT = /(?:[,;:]?\s*(?:with\s+)?)\(?\bexit(?: code)? (\d+)\)?/gi;
 
 function localTime(
@@ -42,6 +44,7 @@ function localTime(
 /** Cleans one piece of event text. */
 export function plainText(text: string): string {
   return text
+    .replace(ANSI, "")
     .replaceAll("`", "")
     .replace(EXIT, (_match, code: string, at: number, whole: string) => {
       const word = Number(code) === 0 ? "finished" : "failed";

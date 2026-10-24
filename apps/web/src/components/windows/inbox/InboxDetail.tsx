@@ -75,7 +75,7 @@ export function InboxDetail({
           Dismiss
         </Button>
       </div>
-      {cause ? <p className="mt-5 text-sm leading-relaxed">{cause}</p> : null}
+      {cause ? <p className="mt-5 max-w-prose text-sm leading-relaxed">{cause}</p> : null}
       {/* The link only adds a way in when the main button does something other than open the chat. */}
       {threadId && environmentId && label !== "Open chat" ? (
         <Link

@@ -14,6 +14,14 @@ describe("plainText", () => {
     expect(plainText("Run `pnpm test` first")).toBe("Run pnpm test first");
   });
 
+  it("removes terminal colour codes, real or written out", () => {
+    expect(plainText("\u001b[31mBuild failed\u001b[0m in 3s")).toBe("Build failed in 3s");
+    expect(plainText(String.raw`\033[1;32mDone\033[0m and \x1b[33mwarn\x1b[0m`)).toBe(
+      "Done and warn",
+    );
+    expect(plainText("Keep [1] and [0m")).toBe("Keep [1] and [0m");
+  });
+
   it("turns an exit code into plain words", () => {
     expect(plainText("Backup stopped (exit 1)")).toBe("Backup stopped (failed)");
     expect(plainText("Nightly backup failed (exit 1)")).toBe("Nightly backup failed");
