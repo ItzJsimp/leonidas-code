@@ -41,8 +41,16 @@ import { Dialog } from "../../ui/dialog";
 import { Spinner } from "../../ui/spinner";
 import { WizardHeader, WizardPanel, WizardPopup, WizardSteps } from "../../ui/wizard";
 import { AgentsStep } from "../AgentsStep";
-import { WelcomeWizard } from "../WelcomeWizard";
-import { SetupBasicsScreen, type SetupBasics } from "./SetupBasicsScreen";
+import { PairingForm, WelcomeWizard } from "../WelcomeWizard";
+import { ReturningDevicePanel } from "./ReturningDevicePanel";
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import { sourceControlEnvironment } from "../../../state/sourceControl";
+import { useAtomCommand } from "../../../state/use-atom-command";
+import { QUICK_QUESTION_COUNT, coderPreselect } from "../../../onboarding/setupState.logic";
+import { DEFAULT_AI_NAME, SetupBasicsScreen, type SetupBasics } from "./SetupBasicsScreen";
 import { SetupPreviewBar } from "./SetupPreviewBar";
 import { SetupQuestionsScreen } from "./SetupQuestionsScreen";
 
@@ -102,6 +110,46 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
     async (folder: string) => resolvedFolderPath(await inspectFolder(folder, []), folder),
     [inspectFolder],
   );
+  // The returning-user path: its target folder (null while the panel is closed).
+  const [returningFolder, setReturningFolder] = useState<string | null>(null);
+  // A returning user already has an AIOS, so the questions are skipped.
+  const [cameBack, setCameBack] = useState(false);
+  const [isPairing, setIsPairing] = useState(false);
+  const [paired, setPaired] = useState(false);
+  const cloneRepository = useAtomCommand(sourceControlEnvironment.cloneRepository, {
+    reportFailure: false,
+  });
+
+  const cloneAios = async (remoteUrl: string) => {
+    if (!returningFolder) return "Choose a folder first.";
+    const result = await cloneRepository({
+      environmentId,
+      input: { remoteUrl, destinationPath: returningFolder },
+    });
+    if (result._tag === "Failure") {
+      if (isAtomCommandInterrupted(result)) return "Copy stopped. Try again.";
+      const cause = squashAtomCommandFailure(result);
+      return cause instanceof Error ? cause.message : "Could not copy the AIOS. Check the link.";
+    }
+    setStoredFolder(returningFolder);
+    return null;
+  };
+
+  const finishReturning = (cloned: boolean) => {
+    const folder = returningFolder ?? DEFAULT_AIOS_FOLDER;
+    setBasics({ aiName: DEFAULT_AI_NAME, userName: "", folder, coder: coderPreselect(editorIds) });
+    setCameBack(true);
+    setReturningFolder(null);
+    setState((current) => {
+      const next = markDone(
+        { ...current, startedAt: current.startedAt ?? new Date().toISOString() },
+        "basics",
+      );
+      // A copied AIOS already holds the identity file the questions would write.
+      return cloned ? { ...next, questionsAnswered: QUICK_QUESTION_COUNT } : next;
+    });
+    setStep(1);
+  };
 
   const writeAios = async (folder: string, files: readonly PlannedFile[]) => {
     const result = await write(folder, files, { allowExisting: folderConfirmed });
@@ -165,8 +213,31 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
         </WizardHeader>
         <WizardPanel stableHeight>
           <SetupPreviewBar />
-          {step === 0 ? (
+          {step === 0 && returningFolder !== null ? (
+            <ReturningDevicePanel
+              folder={returningFolder}
+              cloneAios={cloneAios}
+              pairingForm={
+                paired ? (
+                  <p className="text-sm text-success-foreground" role="status">
+                    Connected. Its chats show in the sidebar.
+                  </p>
+                ) : (
+                  <PairingForm
+                    isPairing={isPairing}
+                    setIsPairing={setIsPairing}
+                    onPaired={() => setPaired(true)}
+                  />
+                )
+              }
+              onBack={() => setReturningFolder(null)}
+              onDone={finishReturning}
+            />
+          ) : step === 0 ? (
             <SetupBasicsScreen
+              onReturning={() =>
+                void resolveFolder(basics?.folder ?? DEFAULT_AIOS_FOLDER).then(setReturningFolder)
+              }
               editorIds={editorIds}
               initial={basics ?? undefined}
               pickFolder={pickFolder}
@@ -196,7 +267,8 @@ function LocalSetupFlow({ environmentId }: { readonly environmentId: Environment
               onBack={() => setStep(0)}
               onContinue={(ready) => {
                 if (ready) setState((current) => markDone(current, "account"));
-                setStep(2);
+                if (cameBack) void finish();
+                else setStep(2);
               }}
             />
           ) : (

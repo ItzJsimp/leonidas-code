@@ -133,7 +133,7 @@ export function markDone(state: SetupState, id: SetupItemId): SetupState {
   return state.done.includes(id) ? state : { ...state, done: [...state.done, id] };
 }
 
-/** A code editor on this machine suggests "Yes" to "Do you build software?". Never guess "No". */
+/** A code editor on this machine means a builder: setup uses the deeper tour. Never guess "No". */
 export function coderPreselect(editorIds: readonly string[]): boolean | null {
   return editorIds.some((id) => id !== "file-manager") ? true : null;
 }

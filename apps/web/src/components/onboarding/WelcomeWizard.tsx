@@ -673,7 +673,7 @@ function ConnectAccountOption({
 /**
  * Register a computer in this browser using a server-minted pairing link.
  */
-function PairingForm({
+export function PairingForm({
   isPairing,
   setIsPairing,
   onPaired,

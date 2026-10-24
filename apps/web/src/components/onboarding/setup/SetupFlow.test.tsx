@@ -16,6 +16,7 @@ const primary = vi.hoisted(() => ({
 const agentReady = vi.hoisted(() => ({ current: false }));
 const navigate = vi.fn(async (_options: unknown) => undefined);
 const completeOnboarding = vi.fn(async () => undefined);
+const clone = vi.fn(async (_request: unknown) => ({ _tag: "Success" as const, value: {} }));
 const write = vi.fn(async (_folder: string, _files: readonly { relativePath: string }[]) => ({
   ok: true as const,
   created: [],
@@ -38,7 +39,14 @@ vi.mock("../../../onboarding/useFolderInspection", () => ({
   useFolderInspection: () => async () => ({ _tag: "unknown" }),
 }));
 vi.mock("../../../localApi", () => ({ ensureLocalApi: () => ({ dialogs: {} }) }));
-vi.mock("../WelcomeWizard", () => ({ WelcomeWizard: () => <p>old wizard</p> }));
+vi.mock("../WelcomeWizard", () => ({
+  WelcomeWizard: () => <p>old wizard</p>,
+  PairingForm: () => <p>pairing form</p>,
+}));
+vi.mock("../../../state/sourceControl", () => ({
+  sourceControlEnvironment: { cloneRepository: "clone" },
+}));
+vi.mock("../../../state/use-atom-command", () => ({ useAtomCommand: () => clone }));
 vi.mock("../AgentsStep", () => ({
   AgentsStep: (props: { onContinue: (ready: boolean) => void }) => (
     <button type="button" onClick={() => props.onContinue(agentReady.current)}>
@@ -147,4 +155,34 @@ it("marks the account done when an AI is ready", async () => {
   agentReady.current = true;
   await reachQuestions();
   expect(openSetupItems(storedState()).map((item) => item.id)).not.toContain("account");
+});
+
+it("lets a returning user copy the AIOS, then skips the questions", async () => {
+  agentReady.current = true;
+  await act(async () => root.render(<SetupFlow localAvailable onDone={() => {}} />));
+  await act(async () => button("Already use Leonidas on another computer?").click());
+  expect(document.body.textContent).toContain("pairing form");
+
+  const field = document.body.querySelector('input[aria-label="GitHub link to your AIOS"]');
+  if (!(field instanceof HTMLInputElement)) throw new Error("no GitHub field");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setter?.call(field, "https://github.com/jake/leonidas-aios");
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => button("Get my AIOS").click());
+  expect(clone).toHaveBeenCalledWith({
+    environmentId: "local",
+    input: {
+      remoteUrl: "https://github.com/jake/leonidas-aios",
+      destinationPath: "~/Leonidas AIOS",
+    },
+  });
+
+  await act(async () => button("Continue").click());
+  await act(async () => button("Continue without an AI").click());
+  expect(navigate).toHaveBeenCalledWith({ to: "/command-center", replace: true });
+  expect(write).not.toHaveBeenCalled();
+  const open = openSetupItems(storedState()).map((item) => item.id);
+  expect(open).not.toContain("questions");
 });
