@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { TargetIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { ThreadGoal, ThreadGoalControl } from "@t3tools/contracts";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -14,6 +13,10 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 
+/**
+ * The goal dialog. The chat title menu and /goal open it through `request`; the goal banner over
+ * the composer shows its state and holds pause, resume and clear.
+ */
 export function ThreadGoalControls({
   goal,
   disabled,
@@ -32,8 +35,11 @@ export function ThreadGoalControls({
   const [budget, setBudget] = useState("");
   const [command, setCommand] = useState("");
   const [busy, setBusy] = useState(false);
+  // A request opens the dialog once; a later goal change must not reopen it.
+  const handledNonce = useRef<number | null>(null);
   useEffect(() => {
-    if (!request) return;
+    if (!request || handledNonce.current === request.nonce) return;
+    handledNonce.current = request.nonce;
     setResuming(request.action === "resume");
     setCondition(request.condition || goal?.condition || "");
     setOpen(true);
@@ -46,62 +52,8 @@ export function ThreadGoalControls({
       setBusy(false);
     }
   };
-  const active = goal?.status === "active" || goal?.status === "evaluating";
-  const canResume =
-    goal?.status === "paused" &&
-    goal.turns < goal.maxTurns &&
-    (goal.tokenBudget === undefined || goal.tokensUsed < goal.tokenBudget);
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={disabled || busy}
-          onClick={() => {
-            setResuming(false);
-            setCondition(goal?.condition ?? "");
-            setOpen(true);
-          }}
-          aria-label="Set a goal for this chat"
-        >
-          <TargetIcon aria-hidden="true" />
-          Goal
-        </Button>
-        {active ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={disabled || busy}
-            onClick={() => void run({ action: "pause" })}
-          >
-            Pause goal
-          </Button>
-        ) : null}
-        {canResume ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={disabled || busy}
-            onClick={() => {
-              setResuming(true);
-              setOpen(true);
-            }}
-          >
-            Resume goal
-          </Button>
-        ) : null}
-        {goal ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={disabled || busy}
-            onClick={() => void run({ action: "clear" })}
-          >
-            Clear goal
-          </Button>
-        ) : null}
-      </div>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogPopup>
           <AlertDialogHeader>

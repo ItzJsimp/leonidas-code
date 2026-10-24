@@ -20,6 +20,7 @@ import {
   buildThreadActionMenuItems,
   threadActionRequiresOperate,
   type ThreadActionMenuId,
+  type ThreadActionMenuState,
 } from "../components/threadActionMenu.logic";
 import { openRegenerateTitleHint } from "../components/RegenerateTitleHintDialog";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
@@ -50,6 +51,12 @@ import { useClientSettings } from "./useSettings";
 import { useThreadActions } from "./useThreadActions";
 import { userErrorToastFields } from "~/lib/userErrorToast";
 
+export type ThreadActionMenuHeader = NonNullable<ThreadActionMenuState["header"]> & {
+  readonly onAction: (
+    action: "open-parent-chat" | "new-chat-in-project" | "goal" | "ai-desktop",
+  ) => void;
+};
+
 function failureToast(title: string, error: unknown) {
   toastManager.add(
     stackedThreadToast({
@@ -75,8 +82,10 @@ export function useThreadActionMenu(input: {
   /** Fallback for "Copy path" when the thread has no worktree. */
   readonly projectCwd: string | null;
   readonly onStartRename: () => void;
+  /** Chat header items: the chat's place and tools. The sidebar leaves this out. */
+  readonly header?: ThreadActionMenuHeader;
 }) {
-  const { threadRef, projectCwd, onStartRename } = input;
+  const { threadRef, projectCwd, onStartRename, header } = input;
   const router = useRouter();
   const projects = useProjects();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -162,6 +171,7 @@ export function useThreadActionMenu(input: {
           isRunning: !threadRuntimeCanArchive(thread.runtime),
           supports,
           snoozePresets,
+          ...(header ? { header } : {}),
         });
         const clicked = await settlePromise(() => api.contextMenu.show(items, position));
         if (clicked._tag === "Failure" || clicked.value === null) return;
@@ -198,6 +208,12 @@ export function useThreadActionMenu(input: {
           }
         };
         switch (action) {
+          case "open-parent-chat":
+          case "new-chat-in-project":
+          case "goal":
+          case "ai-desktop":
+            header?.onAction(action);
+            return;
           case "project-settings": {
             const project = projects.find(
               (candidate) =>
@@ -358,6 +374,7 @@ export function useThreadActionMenu(input: {
       copyThreadIdToClipboard,
       deleteThread,
       handleNewThread,
+      header,
       logicalProjectKeyByPhysicalKey,
       markThreadUnread,
       onStartRename,

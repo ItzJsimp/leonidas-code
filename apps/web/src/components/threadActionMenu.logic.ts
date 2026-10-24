@@ -7,6 +7,10 @@ import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled"
  * remains data-driven.
  */
 export type ThreadActionMenuId =
+  | "open-parent-chat"
+  | "new-chat-in-project"
+  | "goal"
+  | "ai-desktop"
   | "new-thread-on-branch"
   | "filter-by-project"
   | "project-settings"
@@ -100,11 +104,21 @@ export interface ThreadActionMenuState {
     readonly titleRegeneration: boolean;
   };
   readonly snoozePresets: ReadonlyArray<SnoozePreset>;
+  /** Chat header only: where the chat lives and its tools. Null hides an item. */
+  readonly header?: {
+    readonly projectName: string | null;
+    readonly parentTitle: string | null;
+    readonly hasGoal: boolean | null;
+    readonly aiDesktopOpen: boolean | null;
+  };
 }
 
 /** Local navigation, read markers, and copying remain available to read-only clients. */
 export function threadActionRequiresOperate(action: ThreadActionMenuId): boolean {
   return ![
+    "open-parent-chat",
+    "new-chat-in-project",
+    "ai-desktop",
     "new-thread-on-branch",
     "project-settings",
     "mark-unread",
@@ -123,7 +137,26 @@ export function threadActionRequiresOperate(action: ThreadActionMenuId): boolean
 export function buildThreadActionMenuItems(
   state: ThreadActionMenuState,
 ): ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> {
+  const header = state.header;
   const items: ReadonlyArray<ContextMenuItem<ThreadActionMenuId>> = [
+    ...(header?.parentTitle
+      ? [
+          {
+            id: "open-parent-chat" as const,
+            label: `Open main chat: ${header.parentTitle}`,
+            icon: "corner-up-left",
+          },
+        ]
+      : []),
+    ...(header?.projectName
+      ? [
+          {
+            id: "new-chat-in-project" as const,
+            label: `New chat in ${header.projectName}`,
+            icon: "message-square-plus",
+          },
+        ]
+      : []),
     ...(state.branch
       ? [
           {
@@ -167,6 +200,26 @@ export function buildThreadActionMenuItems(
                   { id: "snooze:custom" as const, label: "Custom…", separatorBefore: true },
                 ],
               },
+        ]
+      : []),
+    ...(header && header.hasGoal !== null
+      ? [
+          {
+            id: "goal" as const,
+            label: header.hasGoal ? "Change the goal…" : "Set a goal…",
+            icon: "target",
+            separatorBefore: true,
+          },
+        ]
+      : []),
+    ...(header && header.aiDesktopOpen !== null
+      ? [
+          {
+            id: "ai-desktop" as const,
+            label: header.aiDesktopOpen ? "Hide AI Desktop" : "Show AI Desktop",
+            icon: "monitor",
+            separatorBefore: header.hasGoal === null,
+          },
         ]
       : []),
     { id: "rename", label: "Rename chat", icon: "pencil", separatorBefore: true },

@@ -219,3 +219,26 @@ describe("thread menu permissions", () => {
     expect(state.effects).toEqual([effect]);
   });
 });
+
+describe("chat header items", () => {
+  it.each(["open-parent-chat", "new-chat-in-project", "ai-desktop"] as const)(
+    "hands %s to the header",
+    async (action) => {
+      state.show.mockResolvedValue(action);
+      useThreadActionMenu({
+        threadRef: target,
+        projectCwd: "/project",
+        onStartRename: () => recordEffect("rename"),
+        header: {
+          projectName: "Project",
+          parentTitle: "Main",
+          hasGoal: false,
+          aiDesktopOpen: false,
+          onAction: (picked) => recordEffect(picked),
+        },
+      }).openMenu(position);
+      await state.completed.promise;
+      expect(state.effects).toEqual([action]);
+    },
+  );
+});

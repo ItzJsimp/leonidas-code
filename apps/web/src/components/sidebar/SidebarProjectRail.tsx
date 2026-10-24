@@ -78,7 +78,7 @@ export function SidebarProjectRail<P extends RailProject>(props: {
     <nav
       aria-label="Projects"
       data-tour="sidebar-projects"
-      className="flex w-10 shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-sidebar-border/70 py-1.5 [scrollbar-width:none]"
+      className="flex w-10 shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-sidebar-border/70 pt-2.5 pb-2 [scrollbar-width:none]"
     >
       <RailButton
         label="All projects"
@@ -88,7 +88,7 @@ export function SidebarProjectRail<P extends RailProject>(props: {
       >
         <span className="text-3xs font-semibold">All</span>
       </RailButton>
-      <span aria-hidden className="my-0.5 h-px w-5 bg-sidebar-border/70" />
+      <span aria-hidden className="my-1 h-px w-6 shrink-0 bg-sidebar-border/70" />
       {props.projects.map((project) => (
         <RailButton
           key={project.projectKey}

@@ -6,45 +6,14 @@ import type {
   LocalVmScreenshotResult,
 } from "@t3tools/contracts";
 import { useEffect, useState } from "react";
-import { Monitor, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { localVmEnvironment } from "~/state/localVm";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { formatEnvironmentQueryError } from "~/state/query";
 
-/** Nonmodal guest viewer: the user can keep chatting while watching AI input. */
+/** Nonmodal guest viewer: the user can keep chatting while watching AI input. Opened from the chat title menu. */
 export function LocalVmPanel({
-  environmentId,
-  threadId,
-}: {
-  environmentId: EnvironmentId;
-  threadId: ThreadId;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <>
-      <Button
-        className="shrink-0"
-        variant="ghost"
-        size="sm"
-        onClick={() => setVisible(!visible)}
-        aria-expanded={visible}
-      >
-        <Monitor /> AI Desktop
-      </Button>
-      {visible && (
-        <GuestViewer
-          key={`${environmentId}:${threadId}`}
-          environmentId={environmentId}
-          threadId={threadId}
-          onClose={() => setVisible(false)}
-        />
-      )}
-    </>
-  );
-}
-
-function GuestViewer({
   environmentId,
   threadId,
   onClose,

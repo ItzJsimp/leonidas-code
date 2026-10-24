@@ -9,7 +9,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import { ChevronDownIcon, EllipsisIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -22,31 +22,26 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { isTrailingDoubleClick } from "../Sidebar.logic";
-import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { readLocalApi } from "~/localApi";
 import { threadEnvironment } from "../../state/threads";
-import { useAtomCommand } from "../../state/use-atom-command";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
-import { ProjectFavicon } from "../ProjectFavicon";
-import {
-  WorkspaceBreadcrumb,
-  WorkspaceBreadcrumbItem,
-  WorkspaceBreadcrumbSeparator,
-  WorkspaceBreadcrumbText,
-} from "../WorkspaceBreadcrumb";
-import { observeResize } from "~/lib/observeResize";
+import { WorkspaceBreadcrumbText } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
-import { useChatHeaderTrailing } from "./ChatHeaderTrailing";
-import { useClientSettings } from "../../hooks/useSettings";
+import { useChatHeaderLeading } from "./ChatHeaderLeading";
 import { LocalVmPanel } from "../localVm/LocalVmPanel";
 import { userErrorToastFields } from "~/lib/userErrorToast";
 
 interface ChatHeaderProps {
+  /** The goal dialog; the title menu opens it through `onOpenGoal`. */
   goalControls?: ReactNode;
+  hasGoal?: boolean;
+  onOpenGoal?: (() => void) | undefined;
+  /** True when this header's layout cluster also holds the bell and split toggle. */
+  hostsShellCorner?: boolean;
   activeThreadEnvironmentId: EnvironmentId;
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -74,13 +69,6 @@ export function resolveRenameCommit(input: {
   return { action: "commit", title: trimmed };
 }
 
-/** Below this header width the secondary controls share one overflow menu. */
-const COMPACT_HEADER_BELOW = 728;
-
-/** Null until the header has a measured width. */
-export const isCompactChatHeader = (width: number | null) =>
-  width !== null && width < COMPACT_HEADER_BELOW;
-
 // How long a click on the thread title waits before opening the action menu,
 // so a double-click-to-rename can cancel it first. Only the native desktop
 // menu needs this: it swallows input while open, so the wait must cover the
@@ -100,22 +88,14 @@ export const ChatHeader = memo(function ChatHeader({
   onNewThreadInProject,
   onOpenProjectSettings,
   goalControls,
+  hasGoal = false,
+  onOpenGoal,
+  hostsShellCorner = false,
 }: ChatHeaderProps) {
-  const trailing = useChatHeaderTrailing();
-  const activeProjectName = activeProject?.title;
+  const leading = useChatHeaderLeading();
+  const activeProjectName = activeProject?.title ?? null;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
-  const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
-  const breadcrumbContainerRef = useRef<HTMLDivElement>(null);
-  const [collapseParentTitle, setCollapseParentTitle] = useState(false);
-  const [headerWidth, setHeaderWidth] = useState<number | null>(null);
-  const compact = isCompactChatHeader(headerWidth);
-  useEffect(() => {
-    const element = breadcrumbContainerRef.current;
-    if (!element) return;
-    return observeResize(element, ([entry]) => {
-      if (entry) setHeaderWidth(entry.target.getBoundingClientRect().width);
-    });
-  }, []);
+  const [aiDesktopOpen, setAiDesktopOpen] = useState(false);
   const activeThreadRef = useMemo(
     () => scopeThreadRef(activeThreadEnvironmentId, activeThreadId),
     [activeThreadEnvironmentId, activeThreadId],
@@ -149,43 +129,6 @@ export const ChatHeader = memo(function ChatHeader({
     renaming.environmentId === activeThreadEnvironmentId
       ? renaming.title
       : null;
-  // Leaving rename swaps the input back for the title, which needs a fresh fit.
-  const isRenamingTitle = renamingTitle !== null;
-  useEffect(() => {
-    const list = breadcrumbContainerRef.current?.querySelector("ol");
-    if (!list || !parentThreadLink) return;
-    // Measure the untruncated labels, including a collapsed parent's hidden
-    // text, so expanding and collapsing never change the fit calculation.
-    // Width-capped labels (the project) never grow, so their overflow is skipped.
-    const measure = () => {
-      const gap = Number.parseFloat(getComputedStyle(list).columnGap) || 0;
-      const width = Array.from(list.children).reduce(
-        (total, item) => {
-          const label = item.querySelector('[data-slot="workspace-breadcrumb-text"]');
-          const ellipsis = item.querySelector("[data-parent-breadcrumb-ellipsis]");
-          return (
-            total +
-            (item.firstElementChild?.getBoundingClientRect().width ?? 0) +
-            (label && getComputedStyle(label).maxWidth === "none"
-              ? label.scrollWidth - label.clientWidth
-              : 0) -
-            (ellipsis?.getBoundingClientRect().width ?? 0)
-          );
-        },
-        gap * (list.children.length - 1),
-      );
-      setCollapseParentTitle(width > list.clientWidth);
-    };
-    measure();
-    const frame = requestAnimationFrame(measure);
-    document.fonts.addEventListener("loadingdone", measure);
-    const stopObserving = observeResize(list, measure);
-    return () => {
-      cancelAnimationFrame(frame);
-      document.fonts.removeEventListener("loadingdone", measure);
-      stopObserving();
-    };
-  }, [activeProjectName, activeThreadTitle, parentThreadLink, interfaceFont, isRenamingTitle]);
   const renameCommittedRef = useRef(false);
   const startRename = useCallback(() => {
     if (
@@ -230,6 +173,19 @@ export const ChatHeader = memo(function ChatHeader({
     threadRef: isServerThread ? activeThreadRef : null,
     projectCwd: activeProjectCwd,
     onStartRename: startRename,
+    header: {
+      projectName: activeProjectName,
+      parentTitle: parentThreadLink?.title ?? null,
+      hasGoal: onOpenGoal ? hasGoal : null,
+      aiDesktopOpen: isServerThread ? aiDesktopOpen : null,
+      onAction: (action) => {
+        if (action === "open-parent-chat" && parentThreadLink) {
+          onOpenThread(parentThreadLink.threadId);
+        } else if (action === "new-chat-in-project") onNewThreadInProject();
+        else if (action === "goal") onOpenGoal?.();
+        else if (action === "ai-desktop") setAiDesktopOpen((open) => !open);
+      },
+    },
   });
   const titleButtonRef = useRef<HTMLButtonElement | null>(null);
   const titleMenuTimerRef = useRef<number | null>(null);
@@ -321,172 +277,95 @@ export const ChatHeader = memo(function ChatHeader({
     },
     [commitRename],
   );
-  const secondaryControls = (
-    <>
-      {goalControls}
-      {isServerThread && (
-        <LocalVmPanel environmentId={activeThreadEnvironmentId} threadId={activeThreadId} />
-      )}
-      {trailing}
-    </>
-  );
   return (
     <div
-      ref={breadcrumbContainerRef}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-2 sm:gap-3",
-        // pr-44 clears the five-button layout cluster (split, usage, thread, terminal, panel).
-        rightPanelOpen ? "pr-10" : "pr-44",
+        "flex min-w-0 flex-1 items-center gap-1",
+        // Clears the fixed layout cluster: five buttons, or seven with the bell and split toggle.
+        rightPanelOpen ? "pr-10" : hostsShellCorner ? "pr-56" : "pr-44",
       )}
       onContextMenu={handleHeaderContextMenu}
     >
-      <WorkspaceBreadcrumb
-        ariaLabel="Chat location"
-        className="flex-1 overflow-clip [overflow-clip-margin:2px]"
-      >
-        {/* The project always leads the header: knowing which project a
-            thread lives in is priority zero, and the thread title alone
-            doesn't answer it. */}
-        {activeProject ? (
-          <>
-            <WorkspaceBreadcrumbItem className="shrink">
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label={`Start a new chat in ${activeProjectName}`}
-                      onClick={onNewThreadInProject}
-                      className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                    />
-                  }
-                >
-                  <ProjectFavicon project={activeProject} className="size-3.5" />
-                  <WorkspaceBreadcrumbText className="max-w-40">
-                    {activeProjectName}
-                  </WorkspaceBreadcrumbText>
-                </TooltipTrigger>
-                <TooltipPopup side="top">Start a new chat in {activeProjectName}</TooltipPopup>
-              </Tooltip>
-            </WorkspaceBreadcrumbItem>
-            <WorkspaceBreadcrumbSeparator>
-              <WorkspaceBreadcrumbText>/</WorkspaceBreadcrumbText>
-            </WorkspaceBreadcrumbSeparator>
-          </>
-        ) : null}
-        {parentThreadLink ? (
-          <>
-            <WorkspaceBreadcrumbItem>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label={`Open main chat: ${parentThreadLink.title}`}
-                      onClick={() => onOpenThread(parentThreadLink.threadId)}
-                      className="inline-flex min-w-0 max-w-full cursor-pointer items-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                    />
-                  }
-                >
-                  <WorkspaceBreadcrumbText
-                    aria-hidden
-                    className={collapseParentTitle ? "w-0" : undefined}
-                  >
-                    {parentThreadLink.title}
-                  </WorkspaceBreadcrumbText>
-                  {collapseParentTitle ? (
-                    <span aria-hidden data-parent-breadcrumb-ellipsis>
-                      ...
-                    </span>
-                  ) : null}
-                </TooltipTrigger>
-                <TooltipPopup side="top">{parentThreadLink.title}</TooltipPopup>
-              </Tooltip>
-            </WorkspaceBreadcrumbItem>
-            <WorkspaceBreadcrumbSeparator>
-              <WorkspaceBreadcrumbText>/</WorkspaceBreadcrumbText>
-            </WorkspaceBreadcrumbSeparator>
-          </>
-        ) : null}
-        <WorkspaceBreadcrumbItem current className="min-w-24 flex-1">
-          {renamingTitle !== null ? (
-            <input
-              autoFocus
-              aria-label="Chat name"
-              className="min-w-0 flex-1 rounded-sm bg-transparent text-sm font-medium text-foreground outline-none ring-1 ring-inset ring-ring/50 focus:ring-ring"
-              defaultValue={renamingTitle}
-              onBlur={(event) => {
-                if (renameCommittedRef.current) return;
-                // Focus landing on a navigation button means the rename was
-                // abandoned — discard it rather than persisting a half-draft.
-                if (
-                  event.relatedTarget instanceof HTMLElement &&
-                  event.relatedTarget.closest("button")
-                ) {
-                  setRenaming(null);
-                  return;
-                }
-                commitRename(event.currentTarget.value);
-              }}
-              onFocus={(event) => event.currentTarget.select()}
-              onKeyDown={handleRenameKeyDown}
-            />
-          ) : isServerThread ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    ref={titleButtonRef}
-                    type="button"
-                    aria-label={`Open chat actions for ${activeThreadTitle}`}
-                    aria-haspopup="menu"
-                    onClick={openMenuFromTitle}
-                    onDoubleClick={canOperateThread ? handleTitleDoubleClick : undefined}
-                    onBlur={cancelPendingTitleMenu}
-                    className="group/thread-title inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  />
-                }
-              >
-                <h2 className="min-w-0 font-display">
-                  <WorkspaceBreadcrumbText>{activeThreadTitle}</WorkspaceBreadcrumbText>
-                </h2>
-                <ChevronDownIcon
-                  aria-hidden
-                  data-thread-title-chevron
-                  className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/thread-title:opacity-100 group-focus-visible/thread-title:opacity-100"
+      {leading}
+      {/* Sized to the text, so the empty header around it still drags the window. */}
+      <div className="flex min-w-0 items-center text-sm font-medium text-foreground">
+        {renamingTitle !== null ? (
+          <input
+            autoFocus
+            aria-label="Chat name"
+            className="w-80 max-w-full min-w-0 rounded-sm bg-transparent px-1 text-sm font-medium text-foreground outline-none ring-1 ring-inset ring-ring/50 focus:ring-ring"
+            defaultValue={renamingTitle}
+            onBlur={(event) => {
+              if (renameCommittedRef.current) return;
+              // Focus landing on a navigation button means the rename was
+              // abandoned, so discard it rather than persisting a half-draft.
+              if (
+                event.relatedTarget instanceof HTMLElement &&
+                event.relatedTarget.closest("button")
+              ) {
+                setRenaming(null);
+                return;
+              }
+              commitRename(event.currentTarget.value);
+            }}
+            onFocus={(event) => event.currentTarget.select()}
+            onKeyDown={handleRenameKeyDown}
+          />
+        ) : isServerThread ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  ref={titleButtonRef}
+                  type="button"
+                  aria-label={`Open chat actions for ${activeThreadTitle}`}
+                  aria-haspopup="menu"
+                  onClick={openMenuFromTitle}
+                  onDoubleClick={canOperateThread ? handleTitleDoubleClick : undefined}
+                  onBlur={cancelPendingTitleMenu}
+                  className="group/thread-title inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-sm px-1 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 />
-              </TooltipTrigger>
-              <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
-            </Tooltip>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <h2 aria-label={activeThreadTitle} className="min-w-0 flex-1 font-display" />
-                }
-              >
+              }
+            >
+              <h2 className="min-w-0 font-display">
                 <WorkspaceBreadcrumbText>{activeThreadTitle}</WorkspaceBreadcrumbText>
-              </TooltipTrigger>
-              <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
-            </Tooltip>
-          )}
-        </WorkspaceBreadcrumbItem>
-      </WorkspaceBreadcrumb>
-      {compact ? (
-        <Menu>
-          <MenuTrigger
-            aria-label="More chat controls"
-            className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <EllipsisIcon aria-hidden className="size-4" />
-          </MenuTrigger>
-          <MenuPopup align="end" className="flex-col items-stretch gap-2 p-2">
-            {secondaryControls}
-          </MenuPopup>
-        </Menu>
-      ) : (
-        secondaryControls
-      )}
+              </h2>
+              <ChevronDownIcon
+                aria-hidden
+                data-thread-title-chevron
+                className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/thread-title:opacity-100 group-focus-visible/thread-title:opacity-100"
+              />
+            </TooltipTrigger>
+            <TooltipPopup side="bottom">
+              {activeProjectName
+                ? `${activeThreadTitle} in ${activeProjectName}`
+                : activeThreadTitle}
+            </TooltipPopup>
+          </Tooltip>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger
+              render={<h2 aria-label={activeThreadTitle} className="min-w-0 px-1 font-display" />}
+            >
+              <WorkspaceBreadcrumbText>{activeThreadTitle}</WorkspaceBreadcrumbText>
+            </TooltipTrigger>
+            <TooltipPopup side="bottom">
+              {activeProjectName
+                ? `${activeThreadTitle} in ${activeProjectName}`
+                : activeThreadTitle}
+            </TooltipPopup>
+          </Tooltip>
+        )}
+      </div>
+      {goalControls}
+      {isServerThread && aiDesktopOpen ? (
+        <LocalVmPanel
+          key={`${activeThreadEnvironmentId}:${activeThreadId}`}
+          environmentId={activeThreadEnvironmentId}
+          threadId={activeThreadId}
+          onClose={() => setAiDesktopOpen(false)}
+        />
+      ) : null}
     </div>
   );
 });

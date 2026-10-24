@@ -10,6 +10,20 @@ const ICON_PATHS: Record<string, ReadonlyArray<{ tag: string; attrs: Record<stri
     { tag: "path", attrs: { d: "M10 12h4" } },
   ],
   check: [{ tag: "path", attrs: { d: "M20 6 9 17l-5-5" } }],
+  "corner-up-left": [
+    { tag: "path", attrs: { d: "M20 20v-7a4 4 0 0 0-4-4H4" } },
+    { tag: "path", attrs: { d: "M9 14 4 9l5-5" } },
+  ],
+  monitor: [
+    { tag: "rect", attrs: { width: "20", height: "14", x: "2", y: "3", rx: "2" } },
+    { tag: "line", attrs: { x1: "8", x2: "16", y1: "21", y2: "21" } },
+    { tag: "line", attrs: { x1: "12", x2: "12", y1: "17", y2: "21" } },
+  ],
+  target: [
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "10" } },
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "6" } },
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "2" } },
+  ],
   timer: [
     { tag: "line", attrs: { x1: "10", x2: "14", y1: "2", y2: "2" } },
     { tag: "line", attrs: { x1: "12", x2: "15", y1: "14", y2: "11" } },
