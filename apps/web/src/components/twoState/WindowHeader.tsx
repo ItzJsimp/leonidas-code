@@ -74,7 +74,9 @@ export function WindowHeader({
           )}
         </div>
         {actions ? (
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:[&>[data-window-search]]:order-first max-sm:[&>[data-window-search]]:w-full">
+            {actions}
+          </div>
         ) : null}
       </header>
       {tabs.length > 0 ? (

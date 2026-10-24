@@ -91,7 +91,7 @@ export function FilesWindow() {
 
   const actions = (
     <>
-      <div className="w-48 max-[727px]:w-full sm:w-56">
+      <div data-window-search className="w-48 max-[727px]:w-full sm:w-56">
         <Input
           type="search"
           size="compact"
