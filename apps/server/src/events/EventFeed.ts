@@ -1,6 +1,11 @@
 // @effect-diagnostics nodeBuiltinImport:off - file watching is a Node API.
 // @effect-diagnostics globalTimers:off - a short debounce and a rescan timer, owned by this plain module.
-import type { FeedBadLine, FeedEvent, FeedUpdate } from "@t3tools/contracts";
+import {
+  type FeedBadLine,
+  type FeedEvent,
+  type FeedUpdate,
+  waitsForUser,
+} from "@t3tools/contracts";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
@@ -97,7 +102,17 @@ export function makeEventFeed(
 
   const refold = (state: RootState, added: ReadonlyArray<FeedEvent>) => {
     state.events.push(...added);
-    if (state.events.length > FEED_MAX_EVENTS) state.events = state.events.slice(-FEED_MAX_EVENTS);
+    if (state.events.length > FEED_MAX_EVENTS) {
+      const cut = state.events.length - FEED_MAX_EVENTS;
+      let waiters = 0;
+      const kept = new Set<string>();
+      for (let index = state.events.length - 1; index >= 0; index--) {
+        const event = state.events[index]!;
+        const waiting = waitsForUser(event) && ++waiters <= 1_000;
+        if (index >= cut || waiting) kept.add(event.id);
+      }
+      state.events = state.events.filter((event) => kept.has(event.id));
+    }
     const folded = foldDedupe(state.events);
     const changed = folded.filter((event) => state.counts.get(event.id) !== event.count);
     state.counts = new Map(folded.map((event) => [event.id, event.count]));

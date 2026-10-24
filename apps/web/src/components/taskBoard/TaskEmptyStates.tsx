@@ -20,11 +20,11 @@ export function TasksEmpty(props: { icon: ReactNode; onClearFilters: (() => void
     <Empty>
       <EmptyHeader>
         <EmptyMedia variant="icon">{props.icon}</EmptyMedia>
-        <EmptyTitle>{filtered ? "No task matches your filters" : "No tasks yet"}</EmptyTitle>
+        <EmptyTitle>{filtered ? "No task matches your filters" : "No tasks here"}</EmptyTitle>
         <EmptyDescription>
           {filtered
             ? "Clear the filters to see all your tasks again."
-            : "Type a task in the box above and press Enter to add your first one."}
+            : "Type a task in the box above and press Enter to add one."}
         </EmptyDescription>
       </EmptyHeader>
       {props.onClearFilters ? (

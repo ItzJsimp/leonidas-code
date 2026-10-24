@@ -16,7 +16,21 @@ const BRIEF_FILE = /^\d{4}-\d{2}-\d{2}-briefing\.md$/;
 const TASK_LINK = /\]\((?:\.\.\/)*tasks\/([^)]+\.md)\)/;
 const PRIORITY_RANK = { critical: 3, high: 2, medium: 1, low: 0 } as const;
 
+/** A brief's priorities sit near the top. Reading more only costs time on every home read. */
+const BRIEF_READ_BYTES = 64 * 1024;
+
 const freshestFirst = (a: TaskBoardTask, b: TaskBoardTask) => b.updatedAt - a.updatedAt;
+
+/** The first `max` bytes of a file as text. A character cut at the end does not matter here. */
+function readHead(path: string, max: number): string {
+  const fd = NodeFS.openSync(path, "r");
+  try {
+    const buffer = Buffer.alloc(max);
+    return buffer.toString("utf8", 0, NodeFS.readSync(fd, buffer, 0, max, 0));
+  } finally {
+    NodeFS.closeSync(fd);
+  }
+}
 
 /**
  * Reads the newest `logs/briefings/YYYY-MM-DD-briefing.md` and its "Priorities Seeded" checklist.
@@ -41,7 +55,7 @@ export function readBrief(
   if (file === undefined || !isRealPathInside(root, NodePath.join(dir, file))) return null;
   let text: string;
   try {
-    text = NodeFS.readFileSync(NodePath.join(dir, file), "utf8");
+    text = readHead(NodePath.join(dir, file), BRIEF_READ_BYTES);
   } catch {
     return null;
   }
@@ -155,10 +169,11 @@ export async function readAreas(root: string, cap = AREA_WALK_CAP): Promise<Task
           if (area.unit !== "topNotes" && depth < MAX_DEPTH) subfolders.push(path);
           continue;
         }
-        if (files.length >= cap) continue;
         if (area.unit !== "files" && area.unit !== "folders" && !isNote(entry.name)) continue;
-        files.push(path);
         if (area.unit !== "folders") units++;
+        // The count is free (the folder is already read). The stat calls below are the cost, so cap those.
+        // shortcut: the area time comes from the first `cap` files only, upgrade if a huge area shows a stale time.
+        if (files.length < cap) files.push(path);
       }
       await Promise.all(subfolders.map((path) => visit(path, depth + 1)));
     };

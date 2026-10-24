@@ -29,6 +29,14 @@ describe("aiosChangedDraft", () => {
     expect(decodeFeedEvent(completeFeedEvent(draft!)).ok).toBe(true);
   });
 
+  it("leaves out the app's own feed, so a read-only turn writes no event", () => {
+    const base = { aiosRoot: ROOT, cwd: ROOT, threadId: "thr_1", runId: "run_1" };
+    expect(aiosChangedDraft({ ...base, files: ["events/2026-10.jsonl"] })).toBeNull();
+    expect(
+      aiosChangedDraft({ ...base, files: ["events\\2026-10.jsonl", "tasks/a.md"] })?.target?.files,
+    ).toEqual(["tasks/a.md"]);
+  });
+
   it("maps paths from a project folder inside the AIOS", () => {
     const draft = aiosChangedDraft({
       aiosRoot: ROOT,

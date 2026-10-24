@@ -783,6 +783,8 @@ export function BranchToolbarBranchSelector({
                 <ComposerControl size="xs" />
               )
             }
+            // A combobox takes no name from its content: give it the visible branch.
+            aria-label={`Branch: ${triggerLabel}`}
             className="min-w-0 max-w-full active:scale-100"
             disabled={isInitialBranchesLoadPending || isBranchActionPending}
           >

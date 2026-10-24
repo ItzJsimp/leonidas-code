@@ -3,11 +3,40 @@ import { CHIPPED_SLASH_COMMANDS } from "./composerInlineTokens.ts";
 
 export type InlineSkill = Pick<ServerProviderSkill, "name" | "displayName">;
 
+// Words a skill slug spells in lower case that people write in capitals.
+const ACRONYMS = new Set([
+  "ai",
+  "aios",
+  "api",
+  "asd",
+  "ceo",
+  "cli",
+  "css",
+  "gh",
+  "html",
+  "llm",
+  "mcp",
+  "pdf",
+  "pr",
+  "seo",
+  "sql",
+  "ste",
+  "tdd",
+  "ui",
+  "ux",
+]);
+
 function titleCaseWords(value: string): string {
   const words: string[] = [];
   for (const segment of value.split(/[\s:_-]+/)) {
     if (segment.length === 0) continue;
-    words.push(segment.charAt(0).toUpperCase() + segment.slice(1));
+    const lower = segment.toLowerCase();
+    // A letters-then-digits code (ste100, p2) is a name, not a word.
+    words.push(
+      ACRONYMS.has(lower) || /^[a-z]+\d+$/.test(lower)
+        ? segment.toUpperCase()
+        : segment.charAt(0).toUpperCase() + segment.slice(1),
+    );
   }
   return words.join(" ");
 }

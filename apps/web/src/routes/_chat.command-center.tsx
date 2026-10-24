@@ -51,7 +51,7 @@ function CommandCenterPage() {
               </p>
               <Link
                 to="/settings/connections"
-                className="mt-2 inline-block rounded-sm text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                className="mt-2 inline-block rounded-sm text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 Open connections
               </Link>

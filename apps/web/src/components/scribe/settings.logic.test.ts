@@ -185,7 +185,9 @@ describe("messages", () => {
   it("names a rejected, failed or unreachable save", () => {
     expect(settingsErrorMessage("bad_request")).toContain("did not accept");
     expect(settingsErrorMessage("store_error")).toContain("could not save");
-    expect(settingsErrorMessage("offline")).toBe("Scribe engine is not running.");
+    expect(settingsErrorMessage("offline")).toBe(
+      "Scribe engine is not running. Start it from the tray, or install it.",
+    );
     expect(settingsErrorMessage(null)).toBe("Scribe could not do that. Try again.");
   });
 });

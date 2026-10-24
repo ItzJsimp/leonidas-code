@@ -60,7 +60,7 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
           className={cn(
             "text-xs font-medium",
             available && result.snapshot.state !== "mic_error"
-              ? "text-success"
+              ? "text-success-foreground"
               : "text-muted-foreground",
           )}
         >
@@ -72,7 +72,11 @@ export function ScribeStatusCard({ environment }: { environment: EnvironmentPres
         <p className="mt-2 text-xs text-muted-foreground">
           Updated{" "}
           <time dateTime={result.snapshot.sampledAt}>
-            {result.snapshot.sampledAt.slice(11, 19)} UTC
+            {new Date(result.snapshot.sampledAt).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
           </time>
         </p>
       ) : null}

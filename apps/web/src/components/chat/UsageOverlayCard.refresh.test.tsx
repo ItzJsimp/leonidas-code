@@ -11,7 +11,6 @@ vi.mock("@t3tools/client-runtime/state/usage", () => ({
 vi.mock("../../hooks/useConnectedUsageAccounts", () => ({
   useConnectedUsageAccounts: () => ({ active: [], others: [] }),
 }));
-vi.mock("../../hooks/useLimitView", () => ({ useLimitView: () => ["used", vi.fn()] }));
 vi.mock("../../hooks/useNowMinute", () => ({ useNowMinute: () => "2026-10-20T12:00" }));
 vi.mock("../../hooks/useSettings", () => ({ useUpdateClientSettings: () => vi.fn() }));
 vi.mock("../../state/server", () => ({ serverEnvironment: { refreshProviders: null } }));
@@ -65,4 +64,23 @@ it("refreshes once per click and ignores a click while the refresh runs", async 
   expect(state.refreshProviders).toHaveBeenCalledTimes(1);
   await act(async () => state.release());
   expect(button().props.disabled).toBe(false);
+});
+
+it("shows percent used only, with no switch to percent left", async () => {
+  await act(async () => {
+    renderer = create(
+      <UsageOverlayCard
+        environmentId={EnvironmentId.make("test")}
+        threadId={null}
+        instanceId={null}
+        modelLabel="Model"
+        effortLabel={null}
+        contextWindow={null}
+        providerEntries={[]}
+        onStartChat={null}
+        onStartArena={null}
+      />,
+    );
+  });
+  expect(JSON.stringify(renderer.toJSON())).not.toMatch(/% left|percent left/);
 });

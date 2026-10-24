@@ -1,3 +1,7 @@
+// @effect-diagnostics nodeBuiltinImport:off - one stat per dirty file, at run end only.
+import * as NodeFS from "node:fs";
+import * as NodePath from "node:path";
+
 import type { FeedEventDraft, TaskBoardTask } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
@@ -70,6 +74,26 @@ export function workedDraft(input: WorkedInput): FeedEventDraft {
 export const replyHeadOf = (text: string | undefined) =>
   text === undefined || text.trim() === "" ? null : clip(text.trim(), REPLY_HEAD);
 
+const RUN_START_SLACK_MS = 2_000;
+
+/**
+ * A dirty file belongs to the run when it changed at or after the run start. Files that were
+ * already dirty do not count, and the app's own feed (`events/`) is not the agent's work.
+ * shortcut: another chat that edits the same folder at the same time still counts; use the run
+ * checkpoint's file list once the ledger can wait for the checkpoint.
+ */
+function changedInRun(cwd: string, path: string, since: string | null): boolean {
+  if (path.startsWith("events/")) return false;
+  const start = since === null ? Number.NaN : Date.parse(since);
+  if (Number.isNaN(start)) return true;
+  try {
+    return NodeFS.statSync(NodePath.join(cwd, path)).mtimeMs >= start - RUN_START_SLACK_MS;
+  } catch {
+    // Deleted or renamed: no date to check, so it counts.
+    return true;
+  }
+}
+
 /**
  * Files and commits the run left in its worktree: commits since the run started plus uncommitted
  * changes. Empty on any Git failure, so the ledger entry is never blocked by a missing repo.
@@ -93,11 +117,12 @@ export const gitRunSummary = (
       since === null
         ? []
         : lines(yield* git(["log", ...sinceArgs, "--pretty=format:@%h %s", "--name-only"]));
-    const status = lines(yield* git(["status", "--porcelain"]));
+    // One line per file, not per untracked folder, so each file can be dated.
+    const status = lines(yield* git(["status", "--porcelain", "--untracked-files=all"]));
     const commits = logged.filter((line) => line.startsWith("@")).map((line) => line.slice(1));
     const files = new Set([
       ...logged.filter((line) => !line.startsWith("@")),
-      ...status.map((line) => line.slice(3)),
+      ...status.map((line) => line.slice(3)).filter((path) => changedInRun(cwd, path, since)),
     ]);
     return { files: [...files], commits };
   });

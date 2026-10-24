@@ -26,7 +26,7 @@ export function shouldRetryHistory(
 }
 
 const COMMAND_MESSAGES: Readonly<Record<string, string>> = {
-  offline: "Scribe engine is not running.",
+  offline: "Scribe engine is not running. Start it from the tray, or install it.",
   timeout: "Scribe did not answer in time. Try again.",
   invalid_state: "Scribe is busy. Wait for it to finish, then try again.",
   invalid_response: "Scribe sent an answer the app cannot read. Try again.",

@@ -103,7 +103,7 @@ export function SetupCard(props: {
             className="self-start"
             render={<a href={COMFY_INSTALL_URL} target="_blank" rel="noreferrer" />}
           >
-            Open the ComfyUI download page
+            Download ComfyUI
             <ExternalLinkIcon />
           </Button>
           <HelpText>Skip this step if ComfyUI is already on this PC.</HelpText>
@@ -111,7 +111,7 @@ export function SetupCard(props: {
         <Step n={2} title="Start ComfyUI">
           {builder ? (
             <div className="flex min-w-0 items-center gap-2 rounded-lg border bg-muted/50 py-1 ps-3 pe-1">
-              <code className="min-w-0 flex-1 truncate font-mono text-xs">
+              <code className="min-w-0 flex-1 font-mono text-xs break-words">
                 {COMFY_START_COMMAND}
               </code>
               <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy the start command">

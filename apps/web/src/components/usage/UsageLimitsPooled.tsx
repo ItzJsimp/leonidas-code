@@ -8,6 +8,7 @@ import {
   cursorUsageWindowDetails,
   displayLimitWindows,
   formatResetsIn,
+  poolCheckedAt,
   type LimitAccount,
   type LimitPool,
   type LimitPoolMember,
@@ -17,10 +18,10 @@ import { AlertTriangleIcon, ExternalLinkIcon, TicketIcon } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
 
 import { ensureLocalApi } from "../../localApi";
-import { limitFill, limitText, useLimitView } from "../../hooks/useLimitView";
 import { usePrimarySettings } from "../../hooks/useSettings";
+import { percentText, usedPercentLabel } from "../../lib/usageLimitsPopover";
 import { cn } from "../../lib/utils";
-import { formatUpcomingTimestamp } from "../../timestampFormat";
+import { formatDayAwareTimestamp, formatUpcomingTimestamp } from "../../timestampFormat";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { providerClients } from "../settings/providerDriverMeta";
 import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
@@ -155,7 +156,6 @@ function SegmentPopover({
   readonly onRedeem: () => void;
 }) {
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
-  const [view] = useLimitView();
   const resetsIn = formatResetsIn(window, now);
   const where =
     account.environments.length > 0
@@ -189,7 +189,7 @@ function SegmentPopover({
         ) : null}
       </div>
       <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
-        <Row label="Limit used">{limitText(window.usedPercent, view)}</Row>
+        <Row label="Limit used">{percentText(window.usedPercent)}</Row>
         {window.tokenEstimate ? (
           <span className="text-xs text-muted-foreground">
             {subscriptionEstimateSummary(window.tokenEstimate)}
@@ -254,8 +254,7 @@ function PoolSegment({
   readonly showAccountName: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [view] = useLimitView();
-  const fill = limitFill(window.usedPercent, view);
+  const fill = usedPercentLabel(window.usedPercent);
   const resetsIn = formatResetsIn(window, now);
   const credits = account.limits.resetCredits?.availableCount ?? 0;
   return (
@@ -266,7 +265,7 @@ function PoolSegment({
           <button
             type="button"
             style={{ gridColumn: index, gridRow: 1 }}
-            aria-label={`${account.displayName ?? (account.email ? accountInitials(account.email) : account.driver)}: ${limitText(window.usedPercent, view)}${resetsIn ? `, ${resetsIn}` : ""}${credits ? `, ${credits} reset ${credits === 1 ? "credit" : "credits"} saved` : ""}`}
+            aria-label={`${index} ${account.displayName ?? (account.email ? accountInitials(account.email) : account.driver)}: ${percentText(window.usedPercent)}${resetsIn ? `, ${resetsIn}` : ""}${credits ? `, ${credits} reset ${credits === 1 ? "credit" : "credits"} saved` : ""}`}
             className="relative h-5 min-w-0 cursor-pointer overflow-hidden rounded-md bg-muted text-start outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[popup-open]:ring-1 data-[popup-open]:ring-inset data-[popup-open]:ring-border @2xl/pool:h-8"
           />
         }
@@ -277,17 +276,6 @@ function PoolSegment({
           className="absolute inset-y-0 left-0 rounded-md opacity-35"
           style={{ width: `${fill}%`, backgroundColor: color }}
         />
-        {/* The spent share is a faint solid fill, not blank: it is what the countdown restores. */}
-        {view === "left" && fill < 100 && reset ? (
-          <div
-            aria-hidden
-            className="absolute inset-y-0 right-0 opacity-10"
-            style={{
-              width: `${100 - fill}%`,
-              backgroundColor: color,
-            }}
-          />
-        ) : null}
         <span
           aria-hidden
           className="absolute inset-0 flex items-center justify-center text-3xs leading-none font-semibold text-foreground/80 tabular-nums @2xl/pool:hidden"
@@ -300,13 +288,13 @@ function PoolSegment({
               account={account}
               className="min-w-0 truncate font-medium text-foreground"
             />
-          ) : null}
+          ) : null}{" "}
           <span className="shrink-0 font-semibold text-foreground tabular-nums">
-            {limitText(window.usedPercent, view)}
-          </span>
+            {percentText(window.usedPercent)}
+          </span>{" "}
           {/* Countdown and badge get their own plate: fill and hatching run under them otherwise. */}
           <span className="ms-auto flex shrink-0 items-center gap-1.5 rounded-sm bg-background/85 px-1.5 py-0.5 text-2xs text-foreground tabular-nums">
-            {resetsIn?.replace("resets in ", "↻ ") ?? ""}
+            {resetsIn ?? ""}
             {credits ? (
               <>
                 {resetsIn ? (
@@ -367,7 +355,6 @@ function LegendRow({
   readonly now: number;
   readonly index: number;
 }) {
-  const [view] = useLimitView();
   const resetsIn = formatResetsIn(window, now);
   const credits = account.limits.resetCredits?.availableCount ?? 0;
   return (
@@ -387,7 +374,7 @@ function LegendRow({
       </span>
       <AccountName account={account} className="min-w-0 truncate font-medium text-foreground" />
       <span className="shrink-0 font-semibold text-foreground tabular-nums">
-        {limitText(window.usedPercent, view)}
+        {percentText(window.usedPercent)}
       </span>
       <span className="ms-auto flex shrink-0 items-center gap-1.5 text-2xs text-muted-foreground tabular-nums">
         {resetsIn?.replace("resets in ", "↻ ") ?? ""}
@@ -520,7 +507,6 @@ function PoolWindowCard({
   readonly label?: string | undefined;
   readonly description?: string | undefined;
 }) {
-  const [view] = useLimitView();
   // The soonest reset that hands anything back; an untouched account resets to no effect.
   const nextRefill = pool.resets.find((reset) => reset.restoresPercent > 0);
   return (
@@ -529,9 +515,9 @@ function PoolWindowCard({
         <span className="text-sm font-medium text-foreground">{label ?? pool.label}</span>
         <span className="flex items-baseline gap-2">
           <span className="text-3xl font-semibold text-foreground tabular-nums">
-            {view === "used" ? pool.usedPercent : pool.remainingPercent}%
+            {pool.usedPercent}%
           </span>
-          <span className="text-sm text-muted-foreground">{view}</span>
+          <span className="text-sm text-muted-foreground">used</span>
           {pool.pace ? <PaceIcon pace={pool.pace} /> : null}
         </span>
         {nextRefill && pool.columns.length > 1 ? (
@@ -552,6 +538,7 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
   const color = barColor(pool.driver);
   const label = providerClients.get(pool.driver)?.label ?? String(pool.driver);
   const windows = displayLimitWindows(pool);
+  const checkedAt = poolCheckedAt(pool);
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -562,7 +549,13 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
           className="size-5"
           iconClassName="size-4 text-foreground/80"
         />
-        {label}
+        {label}{" "}
+        {checkedAt ? (
+          <span className="text-xs font-normal text-muted-foreground">
+            Checked{" "}
+            <time dateTime={checkedAt}>{formatDayAwareTimestamp(checkedAt, "12-hour", now)}</time>
+          </span>
+        ) : null}
       </h2>
       {windows.map((window) => {
         const details = pool.driver === "cursor" ? cursorUsageWindowDetails(window.id) : undefined;

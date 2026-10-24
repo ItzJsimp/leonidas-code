@@ -19,6 +19,7 @@ import {
   filterInbox,
   groupInbox,
   inboxCounts,
+  inboxEmptyText,
   neighborRowId,
   rowsOf,
   searchInbox,
@@ -140,11 +141,7 @@ export function InboxWindow() {
           onRetry={feed.refresh}
         />
       ) : feed.events.length === 0 ? (
-        <WindowEmpty
-          icon={InboxIcon}
-          title="Your inbox is empty"
-          line="When a chat needs you or finishes something, it shows here."
-        />
+        <WindowEmpty icon={InboxIcon} {...inboxEmptyText(feed.bad)} />
       ) : (
         // The window body pads its content; the two panes sit flush against its edges.
         <div

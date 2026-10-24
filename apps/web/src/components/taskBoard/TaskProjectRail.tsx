@@ -47,7 +47,9 @@ function RailRow(props: {
           <TooltipPopup>Can be shared with collaborators</TooltipPopup>
         </Tooltip>
       ) : null}
-      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{props.count}</span>
+      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+        {props.count.toLocaleString("en-US")}
+      </span>
     </Button>
   );
 }

@@ -110,4 +110,10 @@ describe("the meter stays out of the left pane", () => {
     expect(left?.textContent).not.toMatch(/5 h|Claude 5h/);
     expect(left?.querySelector("[data-usage-meter]")).toBeNull();
   });
+
+  it("marks both panes, so Ctrl+Tab and Ctrl+Shift+. can move focus between them", () => {
+    const frame = host(renderToStaticMarkup(<ShellSplit threadTarget={target} />));
+    expect(frame.querySelector("[data-pane='left']")).not.toBeNull();
+    expect(frame.querySelector("[data-pane='chat']")).not.toBeNull();
+  });
 });

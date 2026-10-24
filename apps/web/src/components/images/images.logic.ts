@@ -1,4 +1,10 @@
-import type { ImageCommercialUse, ImageItem, ImageModel } from "@t3tools/contracts";
+import {
+  IMAGE_SOURCE_CHECKING,
+  type ImageCommercialUse,
+  type ImageItem,
+  type ImageModel,
+  type ImageSourceStatus,
+} from "@t3tools/contracts";
 
 export const MAX_VARIATIONS = 12;
 
@@ -102,4 +108,12 @@ export function resolveSelectedModels(
 
 export function toggleModel(chosen: ReadonlyArray<string>, id: string): string[] {
   return chosen.includes(id) ? chosen.filter((value) => value !== id) : [...chosen, id];
+}
+
+/** Online, offline, or not checked yet. Before the first check, ComfyUI is not "not found". */
+export function sourcePhase(
+  source: Pick<ImageSourceStatus, "online" | "message">,
+): "checking" | "online" | "offline" {
+  if (source.online) return "online";
+  return source.message === IMAGE_SOURCE_CHECKING ? "checking" : "offline";
 }

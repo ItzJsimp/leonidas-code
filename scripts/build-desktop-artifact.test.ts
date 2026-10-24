@@ -1,5 +1,6 @@
 // @effect-diagnostics nodeBuiltinImport:off - Tests use Node's glob matcher to verify electron-builder exclusions.
 import * as NodeCrypto from "node:crypto";
+import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -2682,4 +2683,33 @@ it("ignores trailing separators", () => {
     ancestorNodeModulesPaths("C:\\tmp\\probe\\app\\", "\\"),
     ancestorNodeModulesPaths("C:\\tmp\\probe\\app", "\\"),
   );
+});
+
+// The staged release install resolves version ranges fresh, with no lockfile. A range like `^1.2.0-beta.15`
+// picks up a newer release, the patch for the old version goes unused, and pnpm fails the build.
+it("pins every patched staged dependency to its exact patched version", () => {
+  const root = NodePath.resolve(import.meta.dirname, "..");
+  const workspace = NodeFS.readFileSync(NodePath.join(root, "pnpm-workspace.yaml"), "utf8");
+  const block = workspace.split(/^patchedDependencies:\n/m)[1]?.split(/^\S/m)[0] ?? "";
+  const patched = [...block.matchAll(/^\s+"?(.+?)@([^@"]+)"?:/gm)].map(([, name, version]) => ({
+    name: name!,
+    version: version!,
+  }));
+  const loose: Array<string> = [];
+  for (const app of ["apps/server", "apps/desktop"]) {
+    const manifest = JSON.parse(
+      NodeFS.readFileSync(NodePath.join(root, app, "package.json"), "utf8"),
+    );
+    for (const { name, version } of patched) {
+      const raw = manifest.dependencies?.[name];
+      // `catalog:` resolves to the workspace catalog's exact version during staging.
+      const spec =
+        raw === "catalog:"
+          ? workspace.match(new RegExp(`^  "?${name}"?: "?([^"\n]+)"?$`, "m"))?.[1]
+          : raw;
+      if (spec !== undefined && spec !== version)
+        loose.push(`${app}: ${name} ${spec} (patch is for ${version})`);
+    }
+  }
+  assert.deepStrictEqual(loose, []);
 });

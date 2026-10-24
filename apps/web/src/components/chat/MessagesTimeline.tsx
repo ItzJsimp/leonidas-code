@@ -1691,7 +1691,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
     }
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground/30">
+        <p className="text-sm text-muted-foreground">
           No messages yet. Type a message below to start.
         </p>
       </div>

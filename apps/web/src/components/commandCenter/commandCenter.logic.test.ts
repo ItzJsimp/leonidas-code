@@ -86,6 +86,8 @@ describe("tileModels", () => {
     expect(tile("open-tasks", { home: { counts: { ...counts, blocked: 0 }, areas } }).note).toBe(
       "6 in progress",
     );
+    const big = { counts: { ...counts, inProgress: 1001, blocked: 1001 }, areas };
+    expect(tile("open-tasks", { home: big }).note).toBe("1,001 in progress · 1,001 blocked");
   });
 
   it("explains exactly what each number counts", () => {

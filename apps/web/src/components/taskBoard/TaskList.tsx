@@ -102,6 +102,7 @@ const TaskRow = memo(function TaskRow({
       >
         <span className="sr-only">{statusLabel(task.status)}</span>
         <span
+          title={task.title}
           className={cn(
             "min-w-0 flex-1 truncate text-sm",
             done && "text-muted-foreground line-through",

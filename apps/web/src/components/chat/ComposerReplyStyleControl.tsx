@@ -219,7 +219,9 @@ export const ComposerReplyStyleControl = memo(function ComposerReplyStyleControl
               />
             )}
             {chip.problem ? null : (
-              <span className="max-w-28 truncate text-foreground/80">{chip.label}</span>
+              <span data-composer-toolbar-label className="max-w-28 truncate text-foreground/80">
+                {chip.label}
+              </span>
             )}
           </TooltipTrigger>
           <TooltipPopup side="top" className="max-w-72">

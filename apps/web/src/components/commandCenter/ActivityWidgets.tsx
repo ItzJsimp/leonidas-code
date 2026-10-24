@@ -79,7 +79,10 @@ export function RecentActivityWidget() {
                       title
                     )}
                     {body ? (
-                      <span className="block text-xs wrap-anywhere text-muted-foreground">
+                      <span
+                        title={body}
+                        className="line-clamp-2 text-xs wrap-anywhere text-muted-foreground"
+                      >
                         {body}
                       </span>
                     ) : null}

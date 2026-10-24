@@ -6,7 +6,7 @@ import { cn } from "~/lib/utils";
 // The design sets tab labels at 13 px, between the xs and sm tokens.
 // oxlint-disable-next-line shadcn/no-arbitrary-values
 const TAB_TEXT = "text-[13px]";
-const TAB_CLASS = `-mb-px shrink-0 rounded-sm border-b-2 py-2 ${TAB_TEXT} whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`;
+const TAB_CLASS = `-mb-px shrink-0 rounded-t-sm border-b-2 py-2 ${TAB_TEXT} whitespace-nowrap transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none`;
 const NO_TABS: readonly WindowTab[] = [];
 
 export interface WindowTab {
@@ -60,17 +60,20 @@ export function WindowHeader({
     <>
       <header
         className={cn(
-          "flex h-12 shrink-0 items-center justify-between gap-3 px-4 max-[727px]:pl-14",
+          // A narrow pane wraps the actions under the title instead of cutting the title.
+          "flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2 max-[727px]:pl-14",
           isElectron && "drag-region",
         )}
       >
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h1 className="min-w-0 truncate text-base font-semibold">{title}</h1>
+        <div className="flex shrink-0 items-baseline gap-2">
+          <h1 className="text-base font-semibold whitespace-nowrap">{title}</h1>
           {count === undefined ? null : (
             <span className="shrink-0 text-sm text-muted-foreground tabular-nums">{count}</span>
           )}
         </div>
-        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>
+        ) : null}
       </header>
       {tabs.length > 0 ? (
         <div

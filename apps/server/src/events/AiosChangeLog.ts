@@ -45,9 +45,10 @@ export function aiosChangedDraft(input: {
   const path = input.aiosRoot.includes("\\") ? NodePath.win32 : NodePath.posix;
   const prefix = path.relative(input.aiosRoot, input.cwd).replaceAll("\\", "/");
   if (prefix.startsWith("..") || path.isAbsolute(prefix)) return null;
-  const files = input.files.map((file) =>
-    [prefix, file.replaceAll("\\", "/")].filter((part) => part !== "").join("/"),
-  );
+  const files = input.files
+    .map((file) => [prefix, file.replaceAll("\\", "/")].filter((part) => part !== "").join("/"))
+    // The app appends to its own feed during a turn: that is not the agent's work.
+    .filter((file) => !file.startsWith("events/"));
   if (files.length === 0) return null;
 
   const folders = [...new Set(files.map((file) => file.split("/")[0]!))];

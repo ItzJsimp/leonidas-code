@@ -71,7 +71,10 @@ function DictateCard({ environmentId, live }: ScribeTabProps) {
     }
   };
 
-  const message = live.connected === false ? "Scribe engine is not running." : error;
+  const message =
+    live.connected === false
+      ? "Scribe engine is not running. Start it from the tray, or install it."
+      : error;
   return (
     <section
       aria-label="Dictate"
@@ -117,7 +120,12 @@ function RecentList(props: {
   }, []);
   if (props.items.length === 0 && props.loading) {
     return (
-      <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading dictations">
+      <div
+        className="flex flex-col gap-2"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading dictations"
+      >
         {[0, 1, 2].map((key) => (
           <div key={key} className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <Skeleton className="h-4 w-3/4" />

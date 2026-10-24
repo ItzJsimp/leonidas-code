@@ -118,7 +118,7 @@ export function ScribeDictionaryTab({ environmentId, live }: ScribeTabProps) {
         <div className="flex flex-col items-start gap-2 text-sm" role="alert">
           <p>
             {live.connected === false
-              ? "Scribe engine is not running."
+              ? "Scribe engine is not running. Start it from the tray, or install it."
               : "Could not load your word list."}
           </p>
           <Button size="sm" variant="outline" onClick={dictionaryQuery.refresh}>

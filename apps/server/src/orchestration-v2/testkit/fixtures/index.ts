@@ -1690,12 +1690,13 @@ export const ORCHESTRATOR_REPLAY_FIXTURES: ReadonlyArray<OrchestratorReplayFixtu
   },
 ];
 
-// TODO(claude-v2/context-transfer): add provider-switch handoff and return fixtures when portable
+// Task: add-claude-orchestration-v2-provider-switch-and-context-transfer-test-fixtures
+// Add provider-switch handoff and return fixtures when portable
 // context handoff is implemented. Cross-reference docs/orchestration-v2/provider-switching-and-context.md
 // and docs/orchestration-v2/thread-lineage-and-context-transfer.md. The return fixture should
 // prefer a delta handoff into an existing Claude provider thread.
 
-// TODO(claude-v2/context-transfer-fixtures): register provider-switch, merge-back, and cross-provider
+// Register provider-switch, merge-back, and cross-provider
 // fork fixtures after each path has a real provider transcript. Cross-reference
 // docs/orchestration-v2/provider-switching-and-context.md and
 // docs/orchestration-v2/thread-lineage-and-context-transfer.md.

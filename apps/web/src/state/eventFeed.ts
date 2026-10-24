@@ -2,6 +2,7 @@ import {
   type FeedBadLine,
   type FeedUpdate,
   type FoldedFeedEvent,
+  waitsForUser,
   WS_METHODS,
 } from "@t3tools/contracts";
 import {
@@ -24,10 +25,19 @@ export const EMPTY_FEED_VIEW: FeedView = { events: [], bad: [], fresh: [] };
 /** The inbox keeps this many events in memory; older ones stay in the month files. */
 const FEED_VIEW_MAX = 500;
 
+/** Keep recent events and at most the newest 1000 events that need the user. */
+const trim = (events: ReadonlyArray<FoldedFeedEvent>): FoldedFeedEvent[] => {
+  let waiters = 0;
+  return events.filter((event, index) => {
+    const waiting = waitsForUser(event) && ++waiters <= 1_000;
+    return index < FEED_VIEW_MAX || waiting;
+  });
+};
+
 export function applyFeedUpdate(view: FeedView, update: FeedUpdate): FeedView {
   if (update.kind === "snapshot") {
     return {
-      events: update.events.toReversed().slice(0, FEED_VIEW_MAX),
+      events: trim(update.events.toReversed()),
       bad: update.bad,
       fresh: [],
     };
@@ -37,7 +47,7 @@ export function applyFeedUpdate(view: FeedView, update: FeedUpdate): FeedView {
   const fresh = update.events.filter((event) => !known.has(event.id));
   const kept = view.events.filter((event) => !changed.has(event.id));
   return {
-    events: [...update.events.toReversed(), ...kept].slice(0, FEED_VIEW_MAX),
+    events: trim([...update.events.toReversed(), ...kept]),
     bad: update.bad.length === 0 ? view.bad : [...view.bad, ...update.bad].slice(-50),
     fresh,
   };

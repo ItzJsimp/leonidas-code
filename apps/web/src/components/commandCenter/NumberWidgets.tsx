@@ -135,11 +135,14 @@ export function OpenTasksWidget() {
             <div className="grid gap-3">
               <Stat
                 label="Open now"
-                value={total}
+                value={total.toLocaleString("en-US")}
                 unit={total === 1 ? "task" : "tasks"}
                 tip="Task cards that are To do, In progress, In review or Blocked."
               />
-              <SegmentBar segments={segments} label={`${total} open tasks by status`} />
+              <SegmentBar
+                segments={segments}
+                label={`${total.toLocaleString("en-US")} open tasks by status`}
+              />
               <ul className="grid gap-1.5 text-sm">
                 {legend.map((row) => (
                   <li key={row.key} className="flex items-center gap-2">
@@ -148,7 +151,9 @@ export function OpenTasksWidget() {
                       className={cn("size-2 shrink-0 rounded-xs", toneClass(row.tone))}
                     />
                     <span className="min-w-0 flex-1 text-muted-foreground">{row.label}</span>
-                    <span className="font-medium tabular-nums">{row.value}</span>
+                    <span className="font-medium tabular-nums">
+                      {row.value.toLocaleString("en-US")}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -185,7 +190,7 @@ export function MemoryWidget() {
                   const detail = area ? areaRow(area, now).detail : bar.label;
                   return (
                     <Tip key={bar.id} text={detail}>
-                      <li className="grid grid-cols-[4.5rem_1fr_2.5rem] items-center gap-2">
+                      <li className="grid grid-cols-[4.5rem_1fr_3.5rem] items-center gap-2">
                         <span className="truncate text-muted-foreground">{bar.label}</span>
                         <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
                           <span
@@ -193,7 +198,9 @@ export function MemoryWidget() {
                             style={{ width: `${bar.widthPercent}%` }}
                           />
                         </span>
-                        <span className="text-right font-medium tabular-nums">{bar.units}</span>
+                        <span className="text-right font-medium tabular-nums">
+                          {bar.units.toLocaleString("en-US")}
+                        </span>
                       </li>
                     </Tip>
                   );

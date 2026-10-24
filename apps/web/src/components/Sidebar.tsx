@@ -866,9 +866,7 @@ function SidebarGroupHeading(props: { label: string; count: number }) {
       className="flex list-none items-center gap-2 px-2.5 pt-3 pb-1 text-2xs font-semibold text-sidebar-muted-foreground first:pt-1"
     >
       <span>{props.label}</span>
-      <span className="font-normal tabular-nums text-sidebar-muted-foreground/60">
-        {props.count}
-      </span>
+      <span className="font-normal tabular-nums text-sidebar-muted-foreground">{props.count}</span>
       <span aria-hidden className="h-px flex-1 bg-sidebar-border/70" />
     </li>
   );

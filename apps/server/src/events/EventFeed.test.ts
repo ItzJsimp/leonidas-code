@@ -61,6 +61,30 @@ function subscribe(root: string, fake: ReturnType<typeof fakeWatch>) {
 }
 
 describe("event feed service", () => {
+  it("keeps only the newest 1000 waiters on the first scan and later scans", async () => {
+    const root = tempRoot();
+    const file = appendFeedEvent(root, event("wait 0"));
+    NodeFS.appendFileSync(
+      file,
+      Array.from({ length: 1000 }, (_, i) =>
+        JSON.stringify(event(`wait ${i + 1}`, AT + i + 1)),
+      ).join("\n") + "\n",
+    );
+    const fake = fakeWatch();
+    const feed = makeEventFeed({ watch: fake.watch, debounceMs: 0 });
+    cleanups.push(feed.close);
+    const snapshots: FeedUpdate[] = [];
+    cleanups.push(feed.subscribe(root, (update) => snapshots.push(update)));
+    expect(snapshots[0]!.events).toHaveLength(1000);
+    expect(snapshots[0]!.events[0]!.title).toBe("wait 1");
+    appendFeedEvent(root, event("new wait", AT + 2000));
+    fake.fire();
+    await settle();
+    const later: FeedUpdate[] = [];
+    cleanups.push(feed.subscribe(root, (update) => later.push(update)));
+    expect(later[0]!.events).toHaveLength(1000);
+    expect(later[0]!.events[0]!.title).toBe("wait 2");
+  });
   it("sends lines written while the app was closed in the first snapshot", () => {
     const root = tempRoot();
     appendFeedEvent(root, event("old month", Date.UTC(2026, 8, 10)));
@@ -94,6 +118,28 @@ describe("event feed service", () => {
     fake.fire();
     await settle();
     expect(updates.at(-1)!.events).toMatchObject([{ id: first.id, count: 2 }]);
+  });
+
+  it("keeps an older event that needs the user when 1,000 newer events push it past the cap", () => {
+    const root = tempRoot();
+    appendFeedEvent(root, event("backup failed, waits for you"));
+    const lines = Array.from({ length: 1_000 }, (_, index) =>
+      JSON.stringify(
+        completeFeedEvent(
+          {
+            level: "info",
+            type: "fixture.note",
+            title: `note ${index}`,
+            actor: { kind: "script", name: "t.ps1" },
+          },
+          AT + 1_000 + index,
+        ),
+      ),
+    );
+    NodeFS.appendFileSync(NodePath.join(root, "events", "2026-10.jsonl"), `${lines.join("\n")}\n`);
+    const titles = subscribe(root, fakeWatch())[0]!.events.map((e) => e.title);
+    expect(titles).toContain("backup failed, waits for you");
+    expect(titles).toHaveLength(1_001);
   });
 
   it("starts with an empty snapshot when the folder does not exist yet", () => {

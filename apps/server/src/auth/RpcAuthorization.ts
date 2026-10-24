@@ -217,7 +217,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.inboxDrop]: AuthOrchestrationOperateScope,
   [WS_METHODS.inboxUndo]: AuthOrchestrationOperateScope,
   [WS_METHODS.devPreviewStatus]: AuthOrchestrationReadScope,
-  [WS_METHODS.devPreviewStart]: AuthOrchestrationOperateScope,
+  // Starting runs the project's own dev script, which is shell access.
+  [WS_METHODS.devPreviewStart]: AuthTerminalOperateScope,
   [WS_METHODS.devPreviewStop]: AuthOrchestrationOperateScope,
   [WS_METHODS.imagesSubscribe]: AuthOrchestrationReadScope,
   [WS_METHODS.imagesGenerate]: AuthOrchestrationOperateScope,

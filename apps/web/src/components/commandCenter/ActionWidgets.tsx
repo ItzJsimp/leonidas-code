@@ -78,7 +78,11 @@ export function NeedsYouWidget() {
                     {event.level === "failed" ? <FailedTag /> : null}
                     {plainEventTitle(event.title)}
                   </span>
-                  <span className="block text-xs wrap-anywhere text-muted-foreground">
+                  {/* An error body can be a long URL or trace: two lines here, all of it in the Inbox. */}
+                  <span
+                    title={cause ?? undefined}
+                    className="line-clamp-2 text-xs wrap-anywhere text-muted-foreground"
+                  >
                     {changedLabel(Date.parse(event.ts), now)}
                     {cause ? ` · ${cause}` : null}
                   </span>

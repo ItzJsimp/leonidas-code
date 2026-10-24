@@ -3,6 +3,7 @@ import {
   classifyRelease,
   coAuthorNames,
   nextReleaseVersion,
+  previousRelease,
   releaseMetaComment,
   releaseNotes,
 } from "./leonidas-release.ts";
@@ -36,18 +37,25 @@ describe("Leonidas release policy", () => {
     expect(nextReleaseVersion("0.2.0", "launch", true)).toBe("1.0.0");
     expect(() => nextReleaseVersion("1.0.16", "patch", true)).toThrow();
   });
-  it("selects the highest change category and handles breaking trailers", () => {
+  it("defaults to PATCH and moves MINOR only for a finished ladder step", () => {
     expect(
       classifyRelease([
         { subject: "fix: counter", body: "" },
         { subject: "feat: history", body: "" },
       ]),
-    ).toBe("minor");
-    expect(classifyRelease([{ subject: "Build: Add history", body: "" }])).toBe("minor");
-    expect(classifyRelease([{ subject: "fix!: format", body: "" }])).toBe("major");
-    expect(classifyRelease([{ subject: "fix: format", body: "BREAKING CHANGE: new format" }])).toBe(
-      "major",
+    ).toBe("patch");
+    expect(classifyRelease([{ subject: "Build: Add history", body: "" }])).toBe("patch");
+    expect(classifyRelease([{ subject: "feat: step", body: "Release-Size: big" }])).toBe("minor");
+    expect(classifyRelease([{ subject: "feat: step", body: "release-size: Big " }])).toBe("minor");
+    expect(classifyRelease([{ subject: "feat: step", body: "Release-Size: bigger" }])).toBe(
+      "patch",
     );
+    // Before launch a breaking change is still sized by the ladder.
+    expect(classifyRelease([{ subject: "fix!: format", body: "" }])).toBe("patch");
+    expect(classifyRelease([{ subject: "fix!: format", body: "" }], false)).toBe("major");
+    expect(
+      classifyRelease([{ subject: "fix: format", body: "BREAKING CHANGE: new format" }], false),
+    ).toBe("major");
     expect(nextReleaseVersion("1.2.3", "major", false)).toBe("2.0.0");
     expect(() => nextReleaseVersion("1.2.3", "launch", false)).toThrow();
     expect(() => nextReleaseVersion("01.2.3", "patch", false)).toThrow();
@@ -75,6 +83,19 @@ describe("Leonidas release policy", () => {
     expect(notes).not.toContain("internal implementation");
     expect(notes).not.toContain("cache Rust");
     expect(notes).not.toContain("status");
+  });
+  it("treats a Release-Note of none as no note", () => {
+    const notes = releaseNotes(
+      [
+        { subject: "test: mock a step", body: "Release-Note: none" },
+        { subject: "feat: list", body: "Release-Note: Added a list of past updates" },
+      ],
+      "0.2.0",
+      true,
+      "a".repeat(40),
+    );
+    expect(notes).toContain("# 0.2.0 · Development\n\n- Added a list of past updates\n");
+    expect(notes).not.toMatch(/^- none$/im);
   });
   it("caps highlights at five and moves overflow and Release-Detail lines under Details", () => {
     const notes = releaseNotes(
@@ -163,5 +184,20 @@ describe("Leonidas release policy", () => {
     expect(releaseMetaComment({ commit: "", authors: [], coAuthors: [] })).toBe(
       '<!-- leonidas-release {"commit":"","authors":[],"coAuthors":[]} -->',
     );
+  });
+  it("takes the highest published version as the previous release, not the newest created", () => {
+    const releases = [
+      { tag_name: "v0.1.0", draft: false, prerelease: false },
+      { tag_name: "v0.5.9", draft: true, prerelease: false },
+      { tag_name: "v0.5.8", draft: false, prerelease: false },
+      { tag_name: "v0.10.0", draft: false, prerelease: true },
+      { tag_name: "archive/v0.115.0", draft: false, prerelease: false },
+      { tag_name: "v1.0.16", draft: false, prerelease: false },
+      { tag_name: "v0.5.10-nightly.1", draft: false, prerelease: false },
+      { tag_name: "v0.4.12", draft: false, prerelease: false },
+    ];
+    expect(previousRelease(releases, true)?.tag_name).toBe("v0.5.8");
+    expect(previousRelease(releases, false)?.tag_name).toBe("v1.0.16");
+    expect(previousRelease([], true)).toBeUndefined();
   });
 });

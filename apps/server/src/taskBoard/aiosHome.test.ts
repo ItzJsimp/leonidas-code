@@ -6,7 +6,7 @@ import * as NodePath from "node:path";
 import type { TaskBoardTask } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 
-import { buildHome, pickNextMove, readAreas, readBrief } from "./aiosHome.ts";
+import { buildHome, cachedAreas, pickNextMove, readAreas, readBrief } from "./aiosHome.ts";
 
 let root: string;
 
@@ -80,6 +80,14 @@ describe("readBrief", () => {
       { title: "Rest", detail: "sleep by midnight", done: true, taskId: null },
       { title: "Call", detail: "phone the bank", done: false, taskId: null },
     ]);
+  });
+
+  it("reads only the head of a huge brief, so one big file cannot stall the home read", () => {
+    const priorities = "- **Priorities Seeded:**\n- [ ] **Ship it:** today\n";
+    writeBrief("2026-10-14-briefing.md", `# Brief\n${priorities}${"x".repeat(2_000_000)}`);
+    expect(readBrief(root, [])?.priorities.map((item) => item.title)).toEqual(["Ship it"]);
+    writeBrief("2026-10-15-briefing.md", `# Brief\n${"x".repeat(200_000)}\n${priorities}`);
+    expect(readBrief(root, [])?.priorities).toEqual([]);
   });
 
   it("ignores a briefings folder linked in from outside the AIOS", () => {
@@ -196,8 +204,28 @@ describe("readAreas", () => {
     ]);
   });
 
-  it("stops counting at the walk cap so a huge area stays cheap", async () => {
+  it("counts every note but reads times for at most the walk cap, so a huge area stays cheap", async () => {
     for (let index = 0; index < 5; index++) writeAt(`wiki/page-${index}.md`, 1_000_000);
-    expect(await readAreas(root, 3)).toEqual([{ id: "wiki", units: 3, changedAt: 1_000_000 }]);
+    expect(await readAreas(root, 3)).toEqual([{ id: "wiki", units: 5, changedAt: 1_000_000 }]);
+  });
+
+  it("reads two folder levels below an area and no deeper, so a code repo stays cheap", async () => {
+    writeAt("wiki/top.md", 1_000_000);
+    writeAt("wiki/a/one.md", 2_000_000);
+    writeAt("wiki/a/b/two.md", 3_000_000);
+    writeAt("wiki/a/b/c/three.md", 9_000_000);
+    expect(await readAreas(root)).toEqual([{ id: "wiki", units: 3, changedAt: 3_000_000 }]);
+  });
+});
+
+describe("cachedAreas", () => {
+  it("reuses one walk for 30 s per folder, then walks again", async () => {
+    writeAt("wiki/one.md", 1_000_000);
+    const first = await cachedAreas(root, 100_000);
+    writeAt("wiki/two.md", 2_000_000);
+    expect(await cachedAreas(root, 129_999)).toBe(first);
+    expect(await cachedAreas(root, 130_000)).toEqual([
+      { id: "wiki", units: 2, changedAt: 2_000_000 },
+    ]);
   });
 });

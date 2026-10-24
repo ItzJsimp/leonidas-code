@@ -24,6 +24,15 @@ export const APP_STAGE_LABEL =
 export const APP_DISPLAY_NAME =
   injectedDesktopAppBranding?.displayName ??
   formatAppDisplayName({ baseName: APP_BASE_NAME, stageLabel: APP_STAGE_LABEL });
+/**
+ * The name people read: window title, start page, pairing screens. `APP_BASE_NAME` stays the app
+ * identity (user data folders, OS names) until the identity rename ships with a data migration.
+ */
+export const APP_PRODUCT_NAME = "Leonidas";
+export const APP_TITLE = formatAppDisplayName({
+  baseName: APP_PRODUCT_NAME,
+  stageLabel: APP_STAGE_LABEL,
+});
 export const APP_VERSION = import.meta.env.APP_VERSION || "0.0.0";
 /**
  * What people see as "the version". Equals `APP_VERSION` in installed builds; a dev copy shows the

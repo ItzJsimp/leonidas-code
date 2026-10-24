@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { activeRailId, badgeAnnouncement, railItems } from "./railItems";
+import { activeRailId, badgeAnnouncement, railItems, railLinkLabel } from "./railItems";
 
 const ids = (items: ReadonlyArray<{ readonly id: string }>) => items.map((item) => item.id);
 
@@ -112,5 +112,13 @@ describe("badgeAnnouncement", () => {
     expect(badgeAnnouncement(3, 4)).toBe("4 need you");
     expect(badgeAnnouncement(0, 1)).toBe("1 needs you");
     expect(badgeAnnouncement(2, 0)).toBe("Nothing needs you");
+  });
+});
+
+describe("railLinkLabel", () => {
+  it("names the page and, with a badge, how many need you in correct grammar", () => {
+    expect(railLinkLabel("Inbox", 0)).toBe("Inbox");
+    expect(railLinkLabel("Inbox", 1)).toBe("Inbox, 1 needs you");
+    expect(railLinkLabel("Inbox", 3)).toBe("Inbox, 3 need you");
   });
 });

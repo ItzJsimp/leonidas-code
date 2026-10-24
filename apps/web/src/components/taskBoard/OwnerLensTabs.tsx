@@ -62,7 +62,7 @@ export const OwnerLensTabs = memo(function OwnerLensTabs(props: {
             <span
               className={cn(
                 "tabular-nums text-xs",
-                selected ? "text-background/70" : "text-muted-foreground/80",
+                selected ? "text-background/70" : "text-muted-foreground",
               )}
             >
               {option.count}

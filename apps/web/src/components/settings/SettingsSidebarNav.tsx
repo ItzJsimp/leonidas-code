@@ -396,7 +396,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                   if (items.length === 0) return null;
                   return (
                     <div key={group.label} className="flex flex-col gap-0.5">
-                      <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground/70 uppercase">
+                      <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground uppercase">
                         {group.label}
                       </p>
                       <SidebarMenu>
@@ -437,7 +437,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                   );
                 })}
                 <div className="flex flex-col gap-0.5">
-                  <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground/70 uppercase">
+                  <p className="px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground uppercase">
                     Help
                   </p>
                   <SidebarMenu>

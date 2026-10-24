@@ -15,7 +15,7 @@ import { ASPECTS, SIZES, dimensionsFor } from "./catalog.logic";
 import { CreateView } from "./CreateView";
 import { GalleryView } from "./GalleryView";
 import { ImagesQueueBar } from "./ImagesQueueBar";
-import { describeQueue } from "./images.logic";
+import { describeQueue, sourcePhase } from "./images.logic";
 import type { GalleryItem } from "./images.mock";
 import { ModelsView } from "./ModelsView";
 import { AddressField, SetupCard } from "./SetupCard";
@@ -88,8 +88,15 @@ function PreviewMenu(props: {
   );
 }
 
+const BADGE = {
+  checking: { variant: "secondary", text: "Checking ComfyUI..." },
+  online: { variant: "success", text: "ComfyUI connected" },
+  offline: { variant: "warning", text: "ComfyUI not found" },
+} as const;
+
 function ConnectionBadge(props: { readonly api: ImagesApi }) {
   const { source } = props.api;
+  const phase = sourcePhase(source);
   return (
     <Popover>
       <PopoverTrigger
@@ -100,8 +107,8 @@ function ConnectionBadge(props: { readonly api: ImagesApi }) {
           />
         }
       >
-        <Badge variant={source.online ? "success" : "warning"} size="lg">
-          {source.online ? "ComfyUI connected" : "ComfyUI not found"}
+        <Badge variant={BADGE[phase].variant} size="lg">
+          {BADGE[phase].text}
         </Badge>
       </PopoverTrigger>
       <PopoverPopup className="w-80">
@@ -234,7 +241,7 @@ function ImagesPageBody() {
             ) : null}
           </div>
 
-          {api.ready && !api.source.online ? (
+          {api.ready && sourcePhase(api.source) === "offline" ? (
             <SetupCard
               source={api.source}
               checking={api.checking}
@@ -253,6 +260,7 @@ function ImagesPageBody() {
                 catalog={catalog}
                 items={items}
                 online={api.source.online}
+                checking={sourcePhase(api.source) === "checking"}
                 canAdjust={api.canAdjust}
                 onGenerate={(request) => void api.generate(request)}
                 onOpenModels={() => patch({ view: "models" })}

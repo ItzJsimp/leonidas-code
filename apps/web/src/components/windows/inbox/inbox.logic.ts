@@ -1,4 +1,4 @@
-import type { FoldedFeedEvent } from "@t3tools/contracts";
+import type { FeedBadLine, FoldedFeedEvent } from "@t3tools/contracts";
 
 import type { EventMark } from "~/eventFeedStore";
 import { feedEventOpenTarget } from "~/eventFeedOpen";
@@ -109,4 +109,23 @@ export const sourceLabel = (event: FoldedFeedEvent): string => event.actor.name;
 export function linkedThreadId(event: FoldedFeedEvent): string | null {
   const target = feedEventOpenTarget(event);
   return target !== null && "thread" in target ? target.thread : null;
+}
+
+/** The empty inbox text. When every ledger line was rejected, say so instead of "empty". */
+export function inboxEmptyText(bad: ReadonlyArray<FeedBadLine>): {
+  readonly title: string;
+  readonly line: string;
+} {
+  const first = bad[0];
+  if (!first) {
+    return {
+      title: "Your inbox is empty",
+      line: "When a chat needs you or finishes something, it shows here.",
+    };
+  }
+  return {
+    title: "No events could be read",
+    // The server sends at most 50 bad lines (FEED_MAX_BAD), so 50 means "at least 50".
+    line: `Skipped ${bad.length >= 50 ? "50 or more" : bad.length} unreadable ${bad.length === 1 ? "line" : "lines"} in the event files. First: ${first.file.split(/[\\/]/).pop()} line ${first.line}.`,
+  };
 }

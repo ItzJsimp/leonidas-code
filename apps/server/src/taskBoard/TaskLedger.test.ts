@@ -1,6 +1,13 @@
-import { describe, expect, it } from "@effect/vitest";
+// @effect-diagnostics nodeBuiltinImport:off globalDateInEffect:off - temp folders and file dates are plain Node fixtures.
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 
-import { replyHeadOf, workedDraft } from "./TaskLedger.ts";
+import { describe, expect, it } from "@effect/vitest";
+import * as Effect from "effect/Effect";
+
+import type * as ProcessRunner from "../processRunner.ts";
+import { gitRunSummary, replyHeadOf, workedDraft } from "./TaskLedger.ts";
 
 const input = {
   task: { id: "task-1", title: "Persist task identity", assignee: "ItzJsimp" },
@@ -42,4 +49,46 @@ describe("workedDraft", () => {
     expect(replyHeadOf("y".repeat(500))!.length).toBe(160);
     expect(replyHeadOf("  ")).toBeNull();
   });
+});
+
+describe("gitRunSummary", () => {
+  // A fake Git: `status` lists what the folder shows, `log` lists no commits.
+  const fakeGit = (status: string): ProcessRunner.ProcessRunner["Service"] => ({
+    run: (input) =>
+      Effect.succeed({
+        stdout: input.args?.[0] === "status" ? status : "",
+        stderr: "",
+        code: 0 as never,
+        timedOut: false,
+        stdoutTruncated: false,
+        stderrTruncated: false,
+        stdoutInvalidUtf8: false,
+        stderrInvalidUtf8: false,
+      }),
+  });
+
+  it.effect("counts only files changed after the run started, not files already dirty", () =>
+    Effect.gen(function* () {
+      const dir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "ledger-"));
+      NodeFS.mkdirSync(NodePath.join(dir, "tasks"));
+      NodeFS.mkdirSync(NodePath.join(dir, "events"));
+      for (const file of ["old.md", "tasks/old-card.md", "new.md", "events/2026-10.jsonl"]) {
+        NodeFS.writeFileSync(NodePath.join(dir, file), "x");
+      }
+      const before = new Date("2026-01-01T00:00:00Z");
+      NodeFS.utimesSync(NodePath.join(dir, "old.md"), before, before);
+      NodeFS.utimesSync(NodePath.join(dir, "tasks/old-card.md"), before, before);
+      const since = new Date(Date.now() - 60_000).toISOString();
+
+      const summary = yield* gitRunSummary(
+        fakeGit("?? old.md\n?? tasks/old-card.md\n?? new.md\n?? events/2026-10.jsonl\n"),
+        dir,
+        since,
+      );
+
+      // The app's own feed file is not the agent's work.
+      expect(summary.files).toEqual(["new.md"]);
+      NodeFS.rmSync(dir, { recursive: true, force: true });
+    }),
+  );
 });

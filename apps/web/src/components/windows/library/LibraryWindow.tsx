@@ -101,8 +101,12 @@ function Skills() {
         <ul className="divide-y divide-border rounded-xl border border-border bg-card">
           {rows.map((row) => (
             <li key={row.key} className="flex flex-col gap-0.5 px-4 py-2.5">
-              <span className="truncate text-sm font-medium">{row.name}</span>
-              <span className="line-clamp-2 text-xs text-muted-foreground">{row.line}</span>
+              <span title={row.name} className="truncate text-sm font-medium">
+                {row.name}
+              </span>
+              <span title={row.line} className="line-clamp-2 text-xs text-muted-foreground">
+                {row.line}
+              </span>
             </li>
           ))}
         </ul>
@@ -159,7 +163,9 @@ function Packs() {
               {pack.skills.map((skill) => (
                 <li key={skill.name} className="flex flex-col">
                   <span className="text-sm">{skill.name}</span>
-                  <span className="line-clamp-2 text-xs text-muted-foreground">{skill.line}</span>
+                  <span title={skill.line} className="line-clamp-2 text-xs text-muted-foreground">
+                    {skill.line}
+                  </span>
                 </li>
               ))}
             </ul>

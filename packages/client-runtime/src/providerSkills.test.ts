@@ -57,6 +57,13 @@ describe("formatProviderSkillDisplayName", () => {
       }),
     ).toBe("Review Follow Up");
   });
+
+  it("keeps known acronyms and letter-digit codes in capitals", () => {
+    expect(formatProviderSkillDisplayName({ name: "asd-ste100" })).toBe("ASD STE100");
+    expect(formatProviderSkillDisplayName({ name: "aios-explorer" })).toBe("AIOS Explorer");
+    expect(formatProviderSkillDisplayName({ name: "ux-heuristics" })).toBe("UX Heuristics");
+    expect(formatProviderSkillDisplayName({ name: "gh-cli" })).toBe("GH CLI");
+  });
 });
 
 describe("dedupeProviderSkillsByName", () => {

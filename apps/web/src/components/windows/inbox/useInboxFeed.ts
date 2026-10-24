@@ -14,6 +14,7 @@ export function useInboxFeed() {
   return {
     environmentId,
     events,
+    bad: feed.data?.events.length === 0 ? feed.data.bad : [],
     loading: environmentId !== null && feed.data === null && feed.error === null,
     failed: feed.data === null && feed.error !== null,
     updatedAt: feed.dataUpdatedAt,

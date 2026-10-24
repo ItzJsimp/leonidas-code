@@ -12,20 +12,52 @@ export interface ReleaseCommit {
   author?: string;
 }
 
-/** Features advance minor; breaking changes advance major only after public launch. */
-export function classifyRelease(commits: ReadonlyArray<ReleaseCommit>): ReleaseKind {
+/**
+ * Before launch every release is PATCH unless it finishes a ladder step (`Release-Size: big`).
+ * After launch a breaking change advances MAJOR.
+ */
+export function classifyRelease(
+  commits: ReadonlyArray<ReleaseCommit>,
+  development = true,
+): ReleaseKind {
   if (
+    !development &&
     commits.some(
       ({ subject, body }) =>
         /^[a-z]+(?:\([^)]*\))?!:/.test(subject) || /^BREAKING CHANGE:/m.test(body),
     )
   )
     return "major";
-  if (
-    commits.some(({ subject }) => /^feat(?:\([^)]*\))?:/i.test(subject) || /^Build:/i.test(subject))
-  )
-    return "minor";
+  if (commits.some(({ body }) => /^Release-Size:\s*big\s*$/im.test(body))) return "minor";
   return "patch";
+}
+
+interface PublishedRelease {
+  tag_name: string;
+  draft: boolean;
+  prerelease: boolean;
+}
+
+/** The highest published plain version; GitHub lists releases by creation, not by version. */
+export function previousRelease<T extends PublishedRelease>(
+  releases: ReadonlyArray<T>,
+  development: boolean,
+): T | undefined {
+  const parts = (tag: string) => tag.slice(1).split(".").map(Number) as [number, number, number];
+  return releases
+    .filter(
+      (release) =>
+        !release.draft &&
+        !release.prerelease &&
+        /^v\d+\.\d+\.\d+$/.test(release.tag_name) &&
+        (!development || release.tag_name.startsWith("v0.")),
+    )
+    .reduce<T | undefined>((best, release) => {
+      if (!best) return release;
+      const [a, b] = [parts(release.tag_name), parts(best.tag_name)];
+      const order = a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+      return order > 0 ? release : best;
+    }, undefined);
 }
 
 export function nextReleaseVersion(
@@ -114,7 +146,10 @@ export function releaseNotes(
         ? 1
         : 2;
   const trailerValues = (body: string, key: string) =>
-    [...body.matchAll(new RegExp(`^${key}:\\s*(.+)$`, "gim"))].map((match) => match[1]!.trim());
+    [...body.matchAll(new RegExp(`^${key}:\\s*(.+)$`, "gim"))]
+      .map((match) => match[1]!.trim())
+      // Agents write `none` to say a commit has no user-visible change.
+      .filter((text) => !/^none\.?$/i.test(text));
   const trailers: Array<{ rank: number; text: string }> = [];
   const details: string[] = [];
   for (const { subject, body } of commits) {
@@ -190,6 +225,18 @@ function run(command: string, args: string[]): string {
   }).trim();
 }
 
+/** Commits in a git range, oldest first, without merges. */
+export function readCommits(range: string): ReleaseCommit[] {
+  return run("git", ["log", range, "--no-merges", "--reverse", "--format=%an%x1f%s%x1f%b%x1e"])
+    .split("\x1e")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [author = "", subject = "", body = ""] = entry.split("\x1f");
+      return { author, subject, body };
+    });
+}
+
 function main() {
   const repo = process.env.GITHUB_REPOSITORY;
   if (!repo) throw new Error("GITHUB_REPOSITORY is required");
@@ -199,26 +246,16 @@ function main() {
   };
   if (!["development", "public"].includes(config.stage)) throw new Error("Unknown release stage");
   const development = config.stage === "development";
-  const releases = JSON.parse(run("gh", ["api", `repos/${repo}/releases?per_page=100`])) as Array<{
-    tag_name: string;
-    draft: boolean;
-    prerelease: boolean;
-  }>;
+  // --slurp returns one array per page; read every page so no release is missed.
+  const releases = (
+    JSON.parse(
+      run("gh", ["api", "--paginate", "--slurp", `repos/${repo}/releases?per_page=100`]),
+    ) as PublishedRelease[][]
+  ).flat();
   // Legacy 1.0.x builds predate the development policy. Never use those as the 0.x baseline.
-  const previous = releases.find(
-    (release) =>
-      !release.draft &&
-      !release.prerelease &&
-      /^v\d+\.\d+\.\d+$/.test(release.tag_name) &&
-      (!development || release.tag_name.startsWith("v0.")),
-  );
+  const previous = previousRelease(releases, development);
   // The first 0.x release still describes changes since the last legacy install.
-  const notesBaseline =
-    previous ??
-    releases.find(
-      (release) =>
-        !release.draft && !release.prerelease && /^v\d+\.\d+\.\d+$/.test(release.tag_name),
-    );
+  const notesBaseline = previous ?? previousRelease(releases, false);
   let range = "-1";
   if (notesBaseline) {
     run("git", [
@@ -237,26 +274,14 @@ function main() {
       throw new Error("Previous release is not an ancestor of this build");
     range = `${notesBaseline.tag_name}..HEAD`;
   }
-  const raw = run("git", [
-    "log",
-    range,
-    "--no-merges",
-    "--reverse",
-    "--format=%an%x1f%s%x1f%b%x1e",
-  ]);
-  const commits = raw
-    .split("\x1e")
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const [author = "", subject = "", body = ""] = entry.split("\x1f");
-      return { author, subject, body };
-    });
+  const commits = readCommits(range);
   const override = process.env.RELEASE_KIND;
   if (override && !["auto", "patch", "minor", "major", "launch"].includes(override))
     throw new Error("Unknown release kind");
   const kind =
-    override && override !== "auto" ? (override as ReleaseKind) : classifyRelease(commits);
+    override && override !== "auto"
+      ? (override as ReleaseKind)
+      : classifyRelease(commits, development);
   const version = nextReleaseVersion(
     previous?.tag_name.slice(1) ?? config.initialVersion,
     kind,

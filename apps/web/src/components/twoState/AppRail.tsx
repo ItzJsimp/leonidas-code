@@ -32,7 +32,13 @@ import {
 } from "~/onboarding/setupState.logic";
 import { resolveThreadRouteTarget } from "~/threadRoutes";
 
-import { activeRailId, badgeAnnouncement, railItems, type RailItem } from "./railItems";
+import {
+  activeRailId,
+  badgeAnnouncement,
+  railItems,
+  railLinkLabel,
+  type RailItem,
+} from "./railItems";
 import { firstGrapheme } from "./safeText";
 import { Tip } from "./Tip";
 import { useTwoStateStore } from "./twoStateStore";
@@ -140,7 +146,7 @@ function RailLink({
   readonly badge: number;
 }) {
   const Icon = ICONS[item.id] ?? LayoutDashboardIcon;
-  const label = badge > 0 ? `${item.label}, ${badge} need you` : item.label;
+  const label = railLinkLabel(item.label, badge);
   const common = {
     "aria-label": label,
     "aria-current": current ? ("page" as const) : undefined,

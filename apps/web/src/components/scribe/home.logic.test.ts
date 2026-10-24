@@ -42,7 +42,9 @@ describe("commandErrorMessage", () => {
     expect(commandErrorMessage({ reason: "invalid_state" })).toBe(
       "Scribe is busy. Wait for it to finish, then try again.",
     );
-    expect(commandErrorMessage({ reason: "offline" })).toBe("Scribe engine is not running.");
+    expect(commandErrorMessage({ reason: "offline" })).toBe(
+      "Scribe engine is not running. Start it from the tray, or install it.",
+    );
   });
   it("falls back for unknown input", () => {
     expect(commandErrorMessage({ reason: "zzz" })).toBe("Scribe could not do that. Try again.");

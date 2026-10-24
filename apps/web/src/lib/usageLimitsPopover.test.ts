@@ -215,10 +215,10 @@ describe("glance and panel helpers", () => {
     ]);
   });
 
-  it("says used or left explicitly", () => {
+  it("says used explicitly and clamps", () => {
     expect(percentText(38.4)).toBe("38% used");
-    expect(percentText(38.4, "left")).toBe("62% left");
-    expect(percentText(120, "left")).toBe("0% left");
+    expect(percentText(120)).toBe("100% used");
+    expect(percentText(-5)).toBe("0% used");
   });
 
   it("counts reset time down in plain and compact form", () => {

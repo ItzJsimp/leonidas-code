@@ -12,7 +12,6 @@ import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 
 import { useConnectedUsageAccounts } from "../../hooks/useConnectedUsageAccounts";
-import { type LimitView, useLimitView } from "../../hooks/useLimitView";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useUpdateClientSettings } from "../../hooks/useSettings";
 import { connectedBenchmarkCandidates } from "../../lib/modelBenchmarks";
@@ -202,17 +201,15 @@ function ContextSegments({
   );
 }
 
-/** One connected account: name, active marker, then its session and weekly bars (draining). */
+/** One connected account: name, active marker, then its session and weekly bars. */
 function AccountLimits({
   account,
   active,
   now,
-  view,
 }: {
   readonly account: Account;
   readonly active: boolean;
   readonly now: number;
-  readonly view: LimitView;
 }) {
   const title = titleOf(account);
   const rows = glanceLimitRows(account.limits.windows, now);
@@ -250,7 +247,7 @@ function AccountLimits({
               );
             }
             const countdown = formatResetCountdown(row.window.resetsAt, now, true);
-            const leftText = percentText(row.window.usedPercent, view);
+            const leftText = percentText(row.window.usedPercent);
             return (
               <div key={row.key} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-2xs">
@@ -260,7 +257,6 @@ function AccountLimits({
                   </span>
                 </div>
                 <UsageBar
-                  fill={view}
                   usedPercent={row.window.usedPercent}
                   label={`${row.label}: ${leftText}`}
                   className="h-1"
@@ -308,7 +304,6 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
   const updateSettings = useUpdateClientSettings();
   const { active, others } = useConnectedUsageAccounts(environmentId, instanceId);
   const [expanded, setExpanded] = useState(false);
-  const [view, toggleView] = useLimitView();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const minute = useNowMinute();
@@ -401,16 +396,11 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          aria-label="Show memory and accounts"
+          // Starts with the visible text, so a voice user can say what they see.
+          aria-label={`${percent === null ? "Context" : `${percent}%`}: show memory and accounts`}
           className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-background/90 py-1 pr-3 pl-1.5 text-xs shadow-sm backdrop-blur transition-colors hover:bg-muted/60 @7xl:hidden"
         >
-          <UsageRing
-            fill="used"
-            percent={percent}
-            size={20}
-            strokeWidth={2.5}
-            severity={severity}
-          />
+          <UsageRing percent={percent} size={20} strokeWidth={2.5} severity={severity} />
           <span className="tabular-nums font-medium">
             {percent === null ? "Context" : `${percent}%`}
           </span>
@@ -436,7 +426,6 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2.5">
             <UsageRing
-              fill="used"
               percent={percent}
               size={34}
               strokeWidth={3}
@@ -465,11 +454,7 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             </Button>
           </div>
           {threadId && figures.state === "reported" ? null : (
-            <UsageBar
-              fill="used"
-              usedPercent={percent ?? 0}
-              label={`Chat memory: ${percent ?? 0}% used`}
-            />
+            <UsageBar usedPercent={percent ?? 0} label={`Chat memory: ${percent ?? 0}% used`} />
           )}
           <div className="flex items-center justify-between text-2xs tabular-nums text-muted-foreground">
             <span>{figures.state === "reported" ? `${contextLine} tokens` : contextLine}</span>
@@ -494,7 +479,6 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
                 account={account}
                 active={activeIds.has(account.id)}
                 now={now}
-                view={view}
               />
             ))}
           </div>
@@ -530,14 +514,6 @@ export const UsageOverlayCard = memo(function UsageOverlayCard({
             className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
           >
             See all usage
-          </button>
-          <button
-            type="button"
-            onClick={toggleView}
-            aria-label={`Showing percent ${view}. Switch to percent ${view === "used" ? "left" : "used"}`}
-            className="ms-auto me-1 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Show {view === "used" ? "% left" : "% used"}
           </button>
           <Button
             size="icon-xs"
