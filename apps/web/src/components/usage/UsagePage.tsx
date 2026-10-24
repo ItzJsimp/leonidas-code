@@ -1668,11 +1668,10 @@ function UsageProviderFilter({
   return (
     <Menu>
       <MenuTrigger render={<InlineButton />} className="group/usage-provider min-w-0 max-w-full">
-        <span className="min-w-0 truncate">{label}</span>
-        <ChevronDownIcon
-          className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/usage-provider:opacity-100 group-focus-visible/usage-provider:opacity-100 group-data-popup-open/usage-provider:opacity-100"
-          aria-hidden
-        />
+        <span title={label} className="min-w-0 truncate">
+          {label}
+        </span>
+        <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
       </MenuTrigger>
       <MenuPopup align="start">
         <MenuCheckboxItem
