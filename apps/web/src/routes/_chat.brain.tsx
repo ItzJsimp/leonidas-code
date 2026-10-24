@@ -1,19 +1,8 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { BrainVisualizer } from "../components/brain";
-
+// The brain map lives on the Memory page now. Old links land on its tab.
 export const Route = createFileRoute("/_chat/brain")({
-  beforeLoad: async ({ context }) => {
-    if (
-      context.authGateState.status !== "authenticated" &&
-      context.authGateState.status !== "hosted-static"
-    ) {
-      throw redirect({ to: "/pair", replace: true });
-    }
+  beforeLoad: () => {
+    throw redirect({ to: "/memory", search: { tab: "brain-map" } as never, replace: true });
   },
-  component: BrainPage,
 });
-
-function BrainPage() {
-  return <BrainVisualizer className="h-full w-full" />;
-}

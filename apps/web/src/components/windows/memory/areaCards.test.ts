@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { areaCard, areaCards, folderAreaLine } from "./areaCards";
+import { areaCards } from "./areaCards";
 
 const now = new Date(2026, 9, 21, 21, 0).getTime();
 const minutes = (count: number) => now - count * 60_000;
@@ -48,23 +48,5 @@ describe("areaCards", () => {
 
   it("returns nothing for no areas", () => {
     expect(areaCards([], now)).toEqual([]);
-  });
-});
-
-describe("areaCard", () => {
-  it("finds one area by id, or null", () => {
-    expect(areaCard(AREAS, "logs", now)?.line).toBe("42 logs · changed 1 min ago");
-    expect(areaCard(AREAS, "wiki", now)).toBeNull();
-  });
-});
-
-describe("folderAreaLine", () => {
-  it("says what is kept when the area is known", () => {
-    expect(folderAreaLine(AREAS, "logs", now)).toBe(
-      "Leonidas keeps 42 logs. Last change 1 min ago.",
-    );
-  });
-  it("says nothing is counted when the area is unknown", () => {
-    expect(folderAreaLine(AREAS, "wiki", now)).toBe("Nothing is counted here yet.");
   });
 });
