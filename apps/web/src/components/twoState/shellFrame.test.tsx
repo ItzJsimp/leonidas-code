@@ -65,7 +65,7 @@ describe("shell frame", () => {
     const navs = host.querySelectorAll("nav");
     expect(navs).toHaveLength(1);
     expect(navs[0]?.querySelector("[aria-label='Today']")).not.toBeNull();
-    expect(navs[0]?.querySelector("[aria-label='Inbox, 3 need you']")).not.toBeNull();
+    expect(navs[0]?.querySelector("[aria-label='Notifications, 3 need you']")).not.toBeNull();
   });
 
   it("does not ship the old stat band", () => {

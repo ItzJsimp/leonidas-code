@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { renderToStaticMarkup } from "react-dom/server";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -21,7 +23,12 @@ vi.mock("~/components/ui/sidebar", () => ({
 }));
 vi.mock("~/hooks/useHandleNewThread", () => ({ useHandleNewThread: () => ({}) }));
 vi.mock("~/lib/chatThreadActions", () => ({ startNewThreadFromContext: vi.fn() }));
-vi.mock("~/state/entities", () => ({ useThreadShell: () => null }));
+vi.mock("~/state/entities", () => ({
+  useThreadShell: () => null,
+  useThreadShells: () => [],
+  useProjects: () => [],
+  useAllEnvironmentShellsBootstrapped: () => true,
+}));
 // The real chat view draws the header; this stand-in draws the same slot the real header does.
 vi.mock("~/components/ThreadRouteView", async () => {
   const { useChatHeaderLeading } = await import("~/components/chat/ChatHeaderLeading");
@@ -50,6 +57,7 @@ vi.mock("./SlotOutlet", () => ({ HomeCardsOutlet: () => null }));
 
 import { ChatPane } from "./ChatPane";
 import { ShellSplit } from "./ShellSplit";
+import { useTwoStateStore } from "./twoStateStore";
 
 const target = { kind: "server", threadRef: { environmentId: "env-1", threadId: "t-1" } } as never;
 const host = (html: string) => {
@@ -81,9 +89,15 @@ describe("chat pane", () => {
     expect(header?.querySelector("[data-usage-meter]")).toBeNull();
   });
 
-  it("marks both panes, so Ctrl+Tab and Ctrl+Shift+. can move focus between them", () => {
-    const frame = host(renderToStaticMarkup(<ShellSplit threadTarget={target} />));
-    expect(frame.querySelector("[data-pane='left']")).not.toBeNull();
-    expect(frame.querySelector("[data-pane='chat']")).not.toBeNull();
+  it("marks both panes, so Ctrl+Tab and Ctrl+Shift+. can move focus between them", async () => {
+    // The split is off by default. A client render sees the store change; static markup does not.
+    useTwoStateStore.setState({ split: true });
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    await act(async () => root.render(<ShellSplit threadTarget={target} />));
+    expect(container.querySelector("[data-pane='left']")).not.toBeNull();
+    expect(container.querySelector("[data-pane='chat']")).not.toBeNull();
+    act(() => root.unmount());
+    useTwoStateStore.setState({ split: false });
   });
 });

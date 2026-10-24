@@ -1,8 +1,12 @@
 import { Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { LayoutDashboardIcon } from "lucide-react";
+
 import { TeamLensProvider } from "~/components/team/TeamLensContext";
+import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { useActiveAiosWorkspace } from "~/components/workspace/useActiveAiosWorkspace";
+import { isElectron } from "~/env";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 import type { ThreadRouteTarget } from "~/threadRoutes";
@@ -118,8 +122,13 @@ function CommandCenterHome(): ReactNode {
   const { scope } = useActiveAiosWorkspace();
   return (
     <TeamLensProvider scopeKey={JSON.stringify(scope)}>
-      <section aria-label="Command Center" className="min-h-0 flex-1 overflow-y-auto bg-background">
-        <div className="grid gap-6 p-6">
+      <section aria-label="Command Center" className="flex min-h-0 flex-1 flex-col bg-background">
+        {/* The same top bar as the full page, so the window drags from here too. */}
+        <WorkspacePageHeader electron={isElectron} reserveNativeControls={false}>
+          <LayoutDashboardIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+          <p className="truncate text-sm font-medium">Command Center</p>
+        </WorkspacePageHeader>
+        <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto p-6">
           <CommandCenterForward />
           <HomeCardsOutlet context={CC_CONTEXT} />
         </div>

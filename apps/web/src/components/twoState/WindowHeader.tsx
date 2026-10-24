@@ -62,6 +62,8 @@ export function WindowHeader({
         className={cn(
           // A narrow pane wraps the actions under the title instead of cutting the title.
           "flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2 max-[727px]:pl-14",
+          // The top-right corner buttons sit over the page when no chat claims them.
+          "[[data-shell-corner]_&]:pr-[calc(var(--workspace-controls-right)+4.5rem)]!",
           isElectron && "drag-region",
         )}
       >

@@ -108,6 +108,8 @@ export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
       aria-label="Main"
       className={cn(
         "flex h-full shrink-0 flex-col gap-1 border-r border-border bg-card pb-2",
+        // Empty rail space moves the window, as a title bar does. Its links and buttons stay clickable.
+        isElectron && "drag-region",
         expanded ? "w-full items-stretch px-2" : "w-[52px] items-center",
         isElectron && isMacPlatform(navigator.platform) ? "pt-10" : "pt-2",
       )}
