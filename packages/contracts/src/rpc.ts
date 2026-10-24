@@ -467,6 +467,17 @@ import {
 import { UsagePricing, UsageReadError, UsageSummary, UsageSummaryInput } from "./usage.ts";
 import { TestApiKeyInput, TestApiKeyResult } from "./apiKeys.ts";
 import {
+  CalendarActionResult,
+  CalendarAddLinkInput,
+  CalendarEventsInput,
+  CalendarEventsResult,
+  CalendarGoogleClientInput,
+  CalendarGoogleConnectResult,
+  CalendarGoogleSelectInput,
+  CalendarLinkInput,
+  CalendarRemoveInput,
+} from "./calendar.ts";
+import {
   ModelBenchmarkCatalog,
   ModelBenchmarkReport,
   ModelBenchmarkReportInput,
@@ -637,6 +648,13 @@ export const WS_METHODS = {
   taskBoardHomeNews: "taskBoard.homeNews",
   layaUsage: "laya.usage",
   ponytailUsage: "ponytail.usage",
+  calendarEvents: "calendar.events",
+  calendarTestLink: "calendar.testLink",
+  calendarAddLink: "calendar.addLink",
+  calendarRemove: "calendar.remove",
+  calendarGoogleSetClient: "calendar.googleSetClient",
+  calendarGoogleConnect: "calendar.googleConnect",
+  calendarGoogleSelect: "calendar.googleSelect",
   ponytailCodexHooks: "ponytail.codexHooks",
   focusSubscribe: "focus.subscribe",
   eventsSubscribe: "events.subscribe",
@@ -1912,6 +1930,48 @@ const WsTaskBoardHomeNewsRpc = Rpc.make(WS_METHODS.taskBoardHomeNews, {
   error: EnvironmentAuthorizationError,
 });
 
+const WsCalendarEventsRpc = Rpc.make(WS_METHODS.calendarEvents, {
+  payload: CalendarEventsInput,
+  success: CalendarEventsResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCalendarTestLinkRpc = Rpc.make(WS_METHODS.calendarTestLink, {
+  payload: CalendarLinkInput,
+  success: CalendarActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCalendarAddLinkRpc = Rpc.make(WS_METHODS.calendarAddLink, {
+  payload: CalendarAddLinkInput,
+  success: CalendarActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCalendarRemoveRpc = Rpc.make(WS_METHODS.calendarRemove, {
+  payload: CalendarRemoveInput,
+  success: CalendarActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCalendarGoogleSetClientRpc = Rpc.make(WS_METHODS.calendarGoogleSetClient, {
+  payload: CalendarGoogleClientInput,
+  success: CalendarActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCalendarGoogleConnectRpc = Rpc.make(WS_METHODS.calendarGoogleConnect, {
+  payload: Schema.Struct({}),
+  success: CalendarGoogleConnectResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCalendarGoogleSelectRpc = Rpc.make(WS_METHODS.calendarGoogleSelect, {
+  payload: CalendarGoogleSelectInput,
+  success: CalendarActionResult,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsPonytailUsageRpc = Rpc.make(WS_METHODS.ponytailUsage, {
   payload: Schema.Struct({}),
   success: PonytailUsage,
@@ -3149,6 +3209,13 @@ export const WsRpcGroup = RpcGroup.make(
   WsTaskBoardHomeNewsRpc,
   WsLayaUsageRpc,
   WsPonytailUsageRpc,
+  WsCalendarEventsRpc,
+  WsCalendarTestLinkRpc,
+  WsCalendarAddLinkRpc,
+  WsCalendarRemoveRpc,
+  WsCalendarGoogleSetClientRpc,
+  WsCalendarGoogleConnectRpc,
+  WsCalendarGoogleSelectRpc,
   WsPonytailCodexHooksRpc,
   WsHardwareGetInventoryRpc,
   WsHardwareGetHistoryRpc,

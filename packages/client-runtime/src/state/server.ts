@@ -1311,6 +1311,36 @@ export function createServerEnvironmentAtoms<R, E>(
       tag: WS_METHODS.serverGetModelBenchmarkCatalog,
       staleTimeMs: 10 * 60_000,
     }),
+    // The server caches calendars for 15 minutes; the page decides when to ask again.
+    calendarEvents: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:calendar:events",
+      tag: WS_METHODS.calendarEvents,
+      staleTimeMs: 60_000,
+    }),
+    calendarTestLink: createEnvironmentRpcCommand(runtime, {
+      label: "calendar:calendarTestLink",
+      tag: WS_METHODS.calendarTestLink,
+    }),
+    calendarAddLink: createEnvironmentRpcCommand(runtime, {
+      label: "calendar:calendarAddLink",
+      tag: WS_METHODS.calendarAddLink,
+    }),
+    calendarRemove: createEnvironmentRpcCommand(runtime, {
+      label: "calendar:calendarRemove",
+      tag: WS_METHODS.calendarRemove,
+    }),
+    calendarGoogleSetClient: createEnvironmentRpcCommand(runtime, {
+      label: "calendar:calendarGoogleSetClient",
+      tag: WS_METHODS.calendarGoogleSetClient,
+    }),
+    calendarGoogleConnect: createEnvironmentRpcCommand(runtime, {
+      label: "calendar:calendarGoogleConnect",
+      tag: WS_METHODS.calendarGoogleConnect,
+    }),
+    calendarGoogleSelect: createEnvironmentRpcCommand(runtime, {
+      label: "calendar:calendarGoogleSelect",
+      tag: WS_METHODS.calendarGoogleSelect,
+    }),
     resourceTelemetryHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:resource-telemetry-history",
       tag: WS_METHODS.serverGetResourceTelemetryHistory,
