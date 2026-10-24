@@ -21,8 +21,8 @@ const SKILLS = [
 describe("skillRows", () => {
   it("lists each usable skill once with a name and one line", () => {
     expect(skillRows(SKILLS, "")).toEqual([
-      { key: "tdd", name: "Tdd", line: "Red, green, refactor." },
-      { key: "ux-copy", name: "Ux Copy", line: "Write labels and empty states." },
+      { key: "tdd", name: "TDD", line: "Red, green, refactor." },
+      { key: "ux-copy", name: "UX Copy", line: "Write labels and empty states." },
       { key: "bare", name: "Bare", line: "No description yet." },
     ]);
   });
