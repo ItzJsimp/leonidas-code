@@ -13,10 +13,8 @@ import { MAX_SKILLS_PER_TASK, SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.
 describe("buildRuntimeInstructions", () => {
   it("requires explicit registration of every PR and stack layer", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex" });
-    expect(instructions).toContain("When the t3-code MCP server exposes link_pull_request");
-    expect(instructions).toContain("with the full PR URL immediately after creating a PR");
-    expect(instructions).toContain("for every layer of a stack");
-    expect(instructions).toContain("call list_thread_pull_requests and link any missing PR");
+    expect(instructions).toContain("one link_pull_request per PR, full URL, every stack layer");
+    expect(instructions).toContain("Host tools do not link for you");
   });
 
   it("asks the agent to say what finished when a wait ends", () => {

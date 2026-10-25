@@ -34,6 +34,7 @@ import * as McpToolAccessTestkit from "./McpToolAccess.testkit.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as McpSessionRegistry from "./McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
+import { OrchestratorToolkit } from "./toolkits/orchestrator/tools.ts";
 
 const environmentId = EnvironmentId.make("environment-mcp-test");
 const threadId = ThreadId.make("thread-mcp-test");
@@ -476,6 +477,15 @@ it.effect("reports a tagged error when the screenshot cannot be saved", () =>
   ).pipe(Effect.provide(layerTest)),
 );
 
+it("keeps cross-tool routing out of the delegate_task description", () => {
+  const description = OrchestratorToolkit.tools.delegate_task.description ?? "";
+  expect(description).toContain("Start one child agent with only `task`");
+  // Review rounds, follow-ups, and polling are routed in the system text.
+  expect(description).not.toContain("t3_thread_send");
+  expect(description).not.toContain("Do not poll");
+  expect(description).not.toContain("Prefer native");
+});
+
 it.effect(
   "registers the pull request toolkit and surfaces a missing capability as a tool error",
   () =>
@@ -492,7 +502,8 @@ it.effect(
       const linkTool = server.tools.find(({ tool }) => tool.name === "link_pull_request");
       expect(linkTool?.tool.annotations?.idempotentHint).toBe(true);
       expect(linkTool?.tool.annotations?.openWorldHint).toBe(false);
-      expect(linkTool?.tool.description).toContain("Register every pull request you open");
+      expect(linkTool?.tool.description).toContain("Link a PR to this thread");
+      expect(linkTool?.tool.description).toContain("settles the thread on merge");
 
       const denied = yield* server
         .callTool({ name: "list_thread_pull_requests", arguments: {} })
@@ -890,7 +901,6 @@ it.effect("registers annotated tools and preserves authenticated request context
       expect(clickTool?.tool.outputSchema).toMatchObject({
         type: "object",
         additionalProperties: true,
-        description: "The preview action completed successfully.",
       });
 
       const navigateTool = server.tools.find(({ tool }) => tool.name === "preview_navigate");
