@@ -576,7 +576,9 @@ import {
   ScribeDevices,
   ScribeDictionary,
   ScribeEngineError,
+  ScribeGoals,
   ScribeHistoryPage,
+  ScribeInsights,
   ScribeListHistoryInput,
   ScribeLiveEvent,
   ScribeRejectSuggestionInput,
@@ -586,6 +588,7 @@ import {
   ScribeSetGroqKeyInput,
   ScribeSettings,
   ScribeStartInput,
+  ScribeStatsInput,
   ScribeStopInput,
   ScribeSuggestionList,
 } from "./scribe.ts";
@@ -614,6 +617,8 @@ export const WS_METHODS = {
   voiceLogMemoryApprove: "voiceLogMemory.approve",
   scribeListHistory: "scribe.listHistory",
   scribeDeleteHistory: "scribe.deleteHistory",
+  scribeGetInsights: "scribe.getInsights",
+  scribeGetGoals: "scribe.getGoals",
   scribeGetDictionary: "scribe.getDictionary",
   scribePutDictionary: "scribe.putDictionary",
   scribeListSuggestions: "scribe.listSuggestions",
@@ -2622,6 +2627,18 @@ const WsScribeDeleteHistoryRpc = Rpc.make(WS_METHODS.scribeDeleteHistory, {
 
 const ScribeRpcError = Schema.Union([ScribeEngineError, EnvironmentAuthorizationError]);
 
+const WsScribeGetInsightsRpc = Rpc.make(WS_METHODS.scribeGetInsights, {
+  payload: ScribeStatsInput,
+  success: ScribeInsights,
+  error: ScribeRpcError,
+});
+
+const WsScribeGetGoalsRpc = Rpc.make(WS_METHODS.scribeGetGoals, {
+  payload: ScribeStatsInput,
+  success: ScribeGoals,
+  error: ScribeRpcError,
+});
+
 const WsScribeGetDictionaryRpc = Rpc.make(WS_METHODS.scribeGetDictionary, {
   payload: Schema.Struct({}),
   success: ScribeDictionary,
@@ -3125,6 +3142,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsVoiceLogMemoryApproveRpc,
   WsScribeListHistoryRpc,
   WsScribeDeleteHistoryRpc,
+  WsScribeGetInsightsRpc,
+  WsScribeGetGoalsRpc,
   WsScribeGetDictionaryRpc,
   WsScribePutDictionaryRpc,
   WsScribeListSuggestionsRpc,

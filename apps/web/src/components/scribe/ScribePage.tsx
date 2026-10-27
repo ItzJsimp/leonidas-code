@@ -9,6 +9,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "..
 import { ScribeDictionaryTab } from "./ScribeDictionaryTab";
 import { ScribeHomeTab } from "./ScribeHomeTab";
 import { ScribeMeetingsTab } from "./ScribeMeetingsTab";
+import { ScribeRewriteTab } from "./ScribeRewriteTab";
 import { ScribeSettingsTab } from "./ScribeSettingsTab";
 import { ScribeTranscriptsTab } from "./ScribeTranscriptsTab";
 import { useBuilderMode } from "../twoState/useBuilderMode";
@@ -25,6 +26,7 @@ const TABS = [
   { id: "home", label: "Home", render: ScribeHomeTab },
   { id: "transcripts", label: "Transcripts", render: ScribeTranscriptsTab },
   { id: "dictionary", label: "Dictionary", render: ScribeDictionaryTab },
+  { id: "rewrite", label: "Rewrite", render: ScribeRewriteTab },
   { id: "settings", label: "Settings", render: ScribeSettingsTab },
   { id: "meetings", label: "Meetings", render: ScribeMeetingsTab },
 ] as const;
@@ -106,7 +108,7 @@ function ScribeBody(props: {
       >
         <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-5 p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
-            Speak instead of type. Scribe writes what you say into the window you use.
+            Speak instead of typing, and rewrite any text you select.
           </p>
           <Tab environmentId={props.environmentId} live={live} />
         </div>
