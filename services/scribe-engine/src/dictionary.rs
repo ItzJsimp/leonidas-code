@@ -522,7 +522,7 @@ mod tests {
     #[test]
     fn builtins_apply_under_the_user_file_and_never_leave_it() {
         let user =
-            Dictionary::with_builtins(vec![("clawd".into(), "Clawd".into())], vec!["Gersi".into()]);
+            Dictionary::with_builtins(vec![("clawd".into(), "Clawd".into())], vec!["Quillfeather".into()]);
         assert_eq!(
             user.apply("open router and United Scribe"),
             "OpenRouter and Leonidas Scribe"
@@ -530,9 +530,9 @@ mod tests {
         // The user's identity entry wins over the built-in Clawd -> Claude rule.
         assert_eq!(user.apply("Clawd"), "Clawd");
         assert_eq!(user.body().replacements.len(), 1);
-        assert_eq!(user.body().vocabulary, vec!["Gersi".to_owned()]);
+        assert_eq!(user.body().vocabulary, vec!["Quillfeather".to_owned()]);
         let prompt = user.vocabulary_prompt();
-        assert!(prompt.starts_with("Gersi, Leonidas"));
+        assert!(prompt.starts_with("Quillfeather, Leonidas"));
         assert!(Dictionary::new(vec![], vec![])
             .vocabulary_prompt()
             .is_empty());
