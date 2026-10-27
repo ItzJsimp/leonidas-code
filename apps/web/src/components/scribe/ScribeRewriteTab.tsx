@@ -231,7 +231,7 @@ export function ScribeRewriteTab({ environmentId, live }: ScribeTabProps) {
         </div>
 
         {draft.length === 0 ? (
-          <Empty size="compact" className="rounded-lg border border-dashed">
+          <Empty size="compact">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <WandSparklesIcon />
@@ -393,10 +393,7 @@ function PresetRow(props: {
       data-invalid={invalid || undefined}
     >
       <div className="flex items-center gap-1 p-2 pl-3">
-        <Kbd
-          aria-hidden
-          className="h-6 min-w-6 border border-border bg-background text-foreground tabular-nums"
-        >
+        <Kbd aria-hidden className="h-6 min-w-6">
           {index + 1}
         </Kbd>
         <button
@@ -405,7 +402,7 @@ function PresetRow(props: {
           aria-expanded={props.open}
           aria-controls={panel}
           onClick={() => props.onOpen(!props.open)}
-          className="flex min-w-0 flex-1 items-start gap-2 rounded-md px-2 py-1.5 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-start gap-2 rounded-md px-2 py-1.5 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <span className="min-w-0 flex-1">
             <span className="sr-only">Key {index + 1}: </span>

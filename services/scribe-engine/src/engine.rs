@@ -275,6 +275,8 @@ impl Engine {
                                     total_ms: millis(started.elapsed()),
                                 },
                                 pasted: true,
+                                // Selected text is not dictation, so it stays off the public feed.
+                                private: true,
                                 at_ms,
                             })
                         });

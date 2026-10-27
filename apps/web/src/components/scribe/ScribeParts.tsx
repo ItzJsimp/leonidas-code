@@ -16,9 +16,7 @@ export function KeyCaps(props: { readonly binding: string; readonly className?: 
         {bindingKeys(props.binding).map((key, index) => (
           <Fragment key={`${index}-${key}`}>
             {index > 0 ? <span className="text-xs text-muted-foreground">+</span> : null}
-            <Kbd className="h-6 min-w-6 border border-border bg-background px-1.5 text-foreground shadow-xs/5">
-              {key}
-            </Kbd>
+            <Kbd className="h-6 min-w-6">{key}</Kbd>
           </Fragment>
         ))}
       </KbdGroup>

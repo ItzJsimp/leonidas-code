@@ -361,7 +361,7 @@ function DaySection(props: {
         type="button"
         aria-expanded={!props.collapsed}
         onClick={props.onToggleCollapsed}
-        className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md px-1 py-1 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md px-1 py-1 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         {props.collapsed ? (
           <ChevronRightIcon aria-hidden className="size-4" />
