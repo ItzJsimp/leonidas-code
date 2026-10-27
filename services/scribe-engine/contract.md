@@ -217,3 +217,9 @@ Server-sent events (`text/event-stream`). One JSON object per `data:` line. Each
 ## Budgets
 
 Hotkey to recording under 50 ms. Idle RAM under 30 MB. CI fails the build on a miss.
+
+# v1.4 (additive)
+
+The `hotkeys` settings section includes `rewrite` bindings. History items can have
+`mode: "rewrite"` and an optional `preset` name. The engine reads
+`presets.rewrite` as an array of `{name, instruction}` objects.

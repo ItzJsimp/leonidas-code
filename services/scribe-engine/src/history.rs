@@ -17,6 +17,7 @@ pub struct NewItem {
     pub app: String,
     pub raw_text: String,
     pub cleaned_text: String,
+    pub preset: Option<String>,
     pub metrics: HistoryMetrics,
     pub pasted: bool,
     pub private: bool,
@@ -73,6 +74,7 @@ impl History {
             words: new.cleaned_text.split_whitespace().count() as u32,
             raw_text: new.raw_text,
             cleaned_text: new.cleaned_text,
+            preset: new.preset,
             metrics: new.metrics,
             pasted: new.pasted,
             private: Some(new.private),
@@ -176,6 +178,7 @@ mod tests {
             app: String::new(),
             raw_text: text.to_lowercase(),
             cleaned_text: text.into(),
+            preset: None,
             metrics: HistoryMetrics {
                 transcribe_ms: 700,
                 polish_ms: 50,
