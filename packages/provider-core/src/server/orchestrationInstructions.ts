@@ -7,8 +7,8 @@ export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
 Ordinary coding tasks need no \`t3-code\` tools.
 
 - Subagents: use your native tool only for same-provider work with a model it offers. Use \`delegate_task\` for another provider, a model the native tool lacks, or Leonidas-owned child work. Keep each \`taskId\` for \`task_status\` and \`task_cancel\`. \`childThreadId\` is storage, not a target.
-- Before \`delegate_task\`, call \`orchestrator_capabilities\` once. Pick an advertised provider instance and model. Settings go in \`target.options\`. Target unavailable: say so. Never switch models unasked.
-- Every delegate review round is a new \`delegate_task\` with its own \`taskId\` and a \`clientRequestId\` that stays the same on retries. Include the brief, prior findings, responses, and open objections. Never continue a review with \`t3_thread_send\` on \`childThreadId\`.
+- Call \`orchestrator_capabilities\` once per thread, before the first \`delegate_task\`. Pick an advertised provider instance and model. Settings go in \`target.options\`. Target unavailable: say so. Never switch models unasked.
+- Every delegate review round is a new \`delegate_task\` with its own \`taskId\` and a \`clientRequestId\` that stays the same on retries. Include the brief, prior findings, responses, and open objections. Never continue a review with \`t3_thread_send\` on \`childThreadId\`. When told to proceed without a delegate, or to run fewer, \`task_cancel\` the extras. Start no replacement.
 - If you are a subagent or child, do the work yourself.
 
 - \`t3_thread_launch\` and \`create_threads\` make new top-level threads, only when the user asks for a separate, new, or top-level thread. "Subagent", "delegate", and "parallel" never mean one.

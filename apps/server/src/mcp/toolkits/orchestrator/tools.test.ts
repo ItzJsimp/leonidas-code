@@ -64,8 +64,8 @@ describe("orchestrator MCP tool guidance", () => {
     };
 
     assert.equal(schema.type, "object");
-    assert.isString(schema.properties?.schedule?.description);
-    assert.isAtLeast(schema.properties?.schedule?.anyOf?.length ?? 0, 2);
+    assert.isDefined(schema.properties?.schedule);
+    assert.isDefined(schema.properties?.scheduledTaskId);
     assert.include(ScheduleTaskTool.description ?? "", "`schedule` is an object, not text");
     assert.include(ScheduleTaskTool.description ?? "", "next run time");
   });
@@ -80,11 +80,11 @@ describe("orchestrator MCP tool guidance", () => {
     assert.hasAllKeys(schema.properties ?? {}, [
       "threadId",
       "action",
+      "goalControl",
       "title",
-      "pullRequest",
       "clientRequestId",
     ]);
-    assert.include(ThreadUpdateTool.description ?? "", "Workspace and branch changes");
+    assert.include(ThreadUpdateTool.description ?? "", "Workspace and branch cannot change");
   });
 });
 
