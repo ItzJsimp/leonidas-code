@@ -45,3 +45,15 @@ One entry per benchmark run, newest last. Data: [benchmarks.jsonl](./benchmarks.
 - Before -> after (two runs, affected steps): _chat 1485 -> 1454 KB (-2.1%). JS total 29891 -> 29897 KB (+0.02%). build_web 56649 -> 57364 and 56359 ms (+1.3% and -0.5%). boot_web 13603 -> 13599 and 13606 ms. typecheck_web 1219 -> 22459 and 1171 ms (cold-cache noise).
 - Kept or reverted: reverted. No run beat the baseline by 5%, and JS total rose slightly. Branch perf/2026-10-26-lazy-benchmark-explorer deleted.
 - Next idea: the main chunk (708 KB) is the largest chunk that loads at boot. Find its largest modules with the source map (same method as the _chat check) and lazy-load one that boot does not need. A 2% chunk cut cannot pass the 5% gate alone, so pick a module of 50 KB or more.
+
+## 2026-10-28: scheduled run (commit 695902ef06, origin/main)
+
+- Setup: switched to perf/harness and rebased onto origin/main (695902ef06). The rebase was clean. pnpm-lock.yaml did not change, so no install.
+- Steps (2026-10-26 17:03 run -> now): typecheck_web 1219 -> 12006 ms, typecheck_server 19106 -> 15990 ms (0 errors), test_web 2805 -> 2446 ms (51 pass), test_desktop 2413 -> 2319 ms (21 pass), build_web 56649 -> 52616 ms, server_live 18430 -> 17186 ms (idle 352 MB), boot_web 13603 -> 13592 ms.
+- Total: 114606 -> 116412 ms. Failures: none.
+- Bundle: total 127486 KB, JS 29891 -> 29920 KB (+0.1%). Largest JS chunk unchanged at 2925 KB (heic-to, dynamic import).
+- Regressions: typecheck_web 12006 ms against a median of 1934 ms. This is cold cache noise, the same pattern as the 10-24 and 10-26 runs. It is not a code change. Not rerun, so it stays flagged. Idle memory and JS size are under the gates.
+- Target: the largest chunk is not a target. Slowest step is build_web (52.6 s). Journal idea: lazy-load a module of 50 KB or more from the main chunk (main-C5J6TrB7.js, 725 KB).
+- Change tried: none. Candidates checked from the main chunk source map: CommandPalette.tsx (134 KB source, always mounted in __root.tsx, 2500 lines, not a small change) and ui/qr-code.tsx (used in two settings and nightly views, small gain). Neither fits a 1 to 3 file change that can clear the 5% gate. Build time noise (about 10%) is larger than the gain a chunk cut of this size can give.
+- Kept or reverted: nothing to keep or revert.
+- Next idea: split CommandPalette so the palette body loads on first open (keep children rendered in __root.tsx). Measure with build_web and boot_web, twice each. Expect a 2 to 5% main chunk cut, so the gate may still fail. Consider raising the build time target instead.
