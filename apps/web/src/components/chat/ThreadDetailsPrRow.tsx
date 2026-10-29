@@ -384,7 +384,8 @@ export function ThreadDetailsPrRow({
       </Tooltip>
     ) : null;
 
-  const openRow = (text: string, part: "row" | "primary") => (
+  // The title row wraps to two lines; a conventional-commit prefix eats most of one line.
+  const openRow = (text: string, part: "row" | "primary", wrap = false) => (
     <Tooltip>
       <TooltipTrigger
         render={
@@ -393,13 +394,22 @@ export function ThreadDetailsPrRow({
             variant="ghost"
             size="sm"
             part={part}
+            multiline={wrap}
+            className={wrap ? "items-start [&>svg]:mt-0.5" : undefined}
             aria-label={openAriaLabel}
             onClick={onOpen}
           />
         }
       >
         {icon}
-        <span className={cn("min-w-0 flex-1 truncate text-left", THREAD_DETAILS_PANEL_LABEL_CLASS)}>
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-left",
+            wrap
+              ? "line-clamp-2 whitespace-normal leading-4.5"
+              : cn("truncate", THREAD_DETAILS_PANEL_LABEL_CLASS),
+          )}
+        >
           {text}
         </span>
       </TooltipTrigger>
@@ -412,12 +422,9 @@ export function ThreadDetailsPrRow({
   return (
     <>
       {detail !== null && (showChecks || trailingAction !== null || watching) ? (
-        // Two lines so the title keeps the full row width: the number, checks, watch, and the
-        // next action sit underneath, aligned with the title text. The second line hugs its title
-        // and the block keeps space below, so stacked pull requests read as separate pairs.
-        <div className="pb-2">
-          {openRow(detail.title, "row")}
-          <div className="-mt-1 flex h-6 min-w-0 items-center gap-0.5 ps-9 pe-1 text-xs text-muted-foreground">
+        <div className="pb-1.5">
+          {openRow(detail.title, "row", true)}
+          <div className="flex h-5 min-w-0 items-center gap-0.5 ps-9 pe-2.5 text-xs text-muted-foreground">
             <span className="me-1 shrink-0 tabular-nums">#{number}</span>
             {showChecks && checksRollup !== null ? (
               <PullRequestChecksPopover

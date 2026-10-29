@@ -124,8 +124,8 @@ it.each<[PullRequestCheck["status"], PullRequestCheck["status"], string]>([
   ["success", "skipped", ""],
   ["failure", "cancelled", ""],
   ["success", "action-required", ""],
-  ["success", "pending", "1/2"],
-  ["failure", "pending", "1/2"],
+  ["success", "pending", "1/2 checks"],
+  ["failure", "pending", "1/2 checks"],
 ])("shows a count only while checks run (%s, %s)", (status, extraStatus, count) => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   state.status = status;
@@ -147,5 +147,5 @@ it.each<[PullRequestCheck["status"], PullRequestCheck["status"], string]>([
   const text = renderer.root
     .findAllByType("span")
     .map((span) => span.children.filter((child) => typeof child === "string").join(""));
-  expect(text.filter((value) => /^\d+\/\d+$/.test(value))).toEqual(count ? [count] : []);
+  expect(text.filter((value) => /^\d+\/\d+ checks$/.test(value))).toEqual(count ? [count] : []);
 });
