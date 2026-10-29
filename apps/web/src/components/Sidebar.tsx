@@ -64,6 +64,7 @@ import {
 import type { TimestampFormat } from "@t3tools/contracts/settings";
 import {
   AlarmClockIcon,
+  ChevronDownIcon,
   ArchiveIcon,
   AlarmClockOffIcon,
   ArrowRightLeftIcon,
@@ -335,6 +336,19 @@ const WORKING_SHELF_EXPANDED_KEY = "t3code:sidebar:working-expanded";
 // Working beta: when this client saw each thread leave the Working shelf.
 // Module scope keeps the inbox order across routes that unmount the sidebar.
 const inboxReturns = createInboxReturnTracker();
+
+function ProjectScopeRowIcon(props: { isSelected: boolean; children: ReactNode }) {
+  return (
+    <span className="relative flex shrink-0">
+      {props.children}
+      {props.isSelected ? (
+        <span className="pointer-events-none absolute -right-1 -bottom-1 grid size-3 place-items-center rounded-full bg-primary ring-2 ring-popover">
+          <CheckIcon className="size-2 text-primary-foreground" strokeWidth={4} aria-hidden />
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 function canOperateThreads(
   threads: ReadonlyArray<Pick<SidebarThreadSummary, "environmentId">>,
@@ -831,6 +845,8 @@ function SidebarDragBoundary(props: {
 function SidebarSectionHeader(props: {
   marker: "working-header" | "snoozed-header" | "settled-header";
   label: string;
+  /** A muted trailing count, shown open or closed. */
+  count: number;
   className?: string;
   // While dragging, the settled header reads at full strength and takes the
   // accent while the lifted row is over it.
@@ -844,7 +860,6 @@ function SidebarSectionHeader(props: {
       : props.marker === "snoozed-header"
         ? "snoozed"
         : "settled";
-  const snoozed = shelf === "snoozed";
   return (
     <SortableSidebarMarker
       marker={props.marker}
@@ -854,9 +869,8 @@ function SidebarSectionHeader(props: {
       <CollapsibleSectionHeader
         onClick={props.toggle.onToggle}
         expanded={props.toggle.expanded}
-        tone={
-          props.isDropTarget ? "accent" : props.dragging ? "emphasized" : snoozed ? "info" : "muted"
-        }
+        tone={props.isDropTarget ? "accent" : props.dragging ? "emphasized" : "muted"}
+        accessory={<span className="font-normal tabular-nums">{props.count}</span>}
         data-testid={`sidebar-${shelf}-shelf-toggle`}
       >
         {props.label}
@@ -1377,7 +1391,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           icon: "working" as const,
           // No shimmer: a label that animates forever is noise in a sidebar
           // full of them (and repaints every vsync on high-refresh displays).
-          className: "text-info",
+          className: "text-info-foreground",
         }
       : status === "waiting"
         ? {
@@ -1403,25 +1417,25 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               ? {
                   label: "Limited",
                   icon: "failed" as const,
-                  className: "text-warning",
+                  className: "text-warning-foreground",
                 }
               : status === "failed"
                 ? {
                     label: "Failed",
                     icon: "failed" as const,
-                    className: "text-error",
+                    className: "text-error-foreground",
                   }
                 : isWoke
                   ? {
                       label: "Woke",
                       icon: "woke" as const,
-                      className: "text-warning",
+                      className: "text-warning-foreground",
                     }
                   : isUnread
                     ? {
                         label: "Done",
                         icon: "done" as const,
-                        className: "text-success",
+                        className: "text-success-foreground",
                       }
                     : // Seen completions keep a quiet Done, so a finished chat
                       // never reads like one that has not started.
@@ -1675,11 +1689,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // content; surface is reserved for interaction (hover, multi-select, route).
   const rowSurfaceClassName = cn(
     "group/sidebar-row relative w-full cursor-pointer overflow-hidden rounded-md text-left outline-none select-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-    variantAction === "unsettle" && "[&:not(:hover):not(:focus-within)_*]:text-secondary-label/70",
+    variantAction === "unsettle" &&
+      !props.isActive &&
+      "[&:not(:hover):not(:focus-within)_*]:text-secondary-label",
     props.isActive
-      ? "bg-sidebar-row-active text-sidebar-foreground"
+      ? "bg-sidebar-row-active text-sidebar-foreground light:ring-1 light:ring-inset light:ring-sidebar-border/70"
       : isSelected || props.sweepAction !== null
-        ? "bg-sidebar-row-selected text-sidebar-foreground"
+        ? "bg-sidebar-row-selected text-sidebar-foreground light:ring-1 light:ring-inset light:ring-sidebar-border/70"
         : hasUnsentDraft
           ? cn(draftSurfaceClassName, "text-sidebar-foreground")
           : shouldRecede
@@ -1771,17 +1787,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             ? cn(
                 "truncate",
                 shouldRecede
-                  ? "text-secondary-label"
-                  : isUnread || isWoke || status === "input"
-                    ? "text-foreground"
-                    : status === "failed"
-                      ? "text-foreground/95"
-                      : "text-foreground/90",
+                  ? "text-foreground/75 group-hover/sidebar-row:text-foreground group-focus-visible/sidebar-row:text-foreground"
+                  : status === "failed" && !isUnread && !isWoke
+                    ? "text-foreground/95"
+                    : "text-foreground",
               )
             : cn(
                 "truncate group-focus-within/sidebar-row:text-foreground group-hover/sidebar-row:text-foreground",
                 shouldRecede
-                  ? "text-secondary-label/70"
+                  ? "text-secondary-label"
                   : props.isActive || isWoke || status === "input"
                     ? "text-foreground"
                     : isUnread
@@ -1949,10 +1963,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 Regenerating title
               </span>
             ) : null}
-            {/* The PR badge stays outside the hover-fading slot: it must
-              remain visible AND clickable while the row is hovered. Only
-              the time/jump label yields to the settle affordance. */}
-            {prBadge}
+            {/* Shelf rows are one line, so the title takes the room a PR number would. */}
             {sortable?.isDragging ? (
               dragDestination
             ) : (
@@ -1971,7 +1982,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   {variantAction === "unsnooze" && props.snoozeWakeLabelText !== null ? (
                     // Snoozed rows show when they come BACK, not when they were
                     // last touched — the return ticket is the row's whole story.
-                    <span className="text-xs text-info-foreground tabular-nums">
+                    <span className="inline-flex items-center gap-1 text-xs text-info-foreground tabular-nums">
+                      {/* The clock tells a wake time from an age at a glance. */}
+                      <AlarmClockIcon aria-hidden className="size-3" />
                       {props.snoozeWakeLabelText}
                     </span>
                   ) : isWoke ? (
@@ -2066,6 +2079,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   }
 
   const diff = latestRunDiff(thread);
+  // Only the provider icon would remain, so the row drops the line instead of leaving it blank.
+  const metaLineEmpty =
+    !thread.branch &&
+    !showsScratchMachine &&
+    prBadge === null &&
+    diff === null &&
+    !isRemote &&
+    runningTerminalIds.length === 0;
 
   return (
     <li
@@ -2076,7 +2097,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
         "list-none py-0.5 [content-visibility:auto]",
         visibleActivityLine
           ? "[contain-intrinsic-size:auto_100px]"
-          : "[contain-intrinsic-size:auto_78px]",
+          : metaLineEmpty
+            ? "[contain-intrinsic-size:auto_58px]"
+            : "[contain-intrinsic-size:auto_78px]",
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -2107,7 +2130,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           <div
             className={cn(
               "relative z-10 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
-              visibleActivityLine ? "min-h-[6.25rem]" : "h-[4.875rem]",
+              metaLineEmpty ? "h-auto" : visibleActivityLine ? "min-h-[6.25rem]" : "h-[4.875rem]",
             )}
           >
             <div className="flex h-5 min-w-0 items-center gap-1.5">
@@ -2149,7 +2172,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       isWokeStatus
                         ? "pointer-events-auto"
                         : "pointer-events-none group-has-[:focus-visible]/sidebar-status-slot:absolute group-has-[:focus-visible]/sidebar-status-slot:right-0 group-has-[:focus-visible]/sidebar-status-slot:opacity-0 group-any-hover/sidebar-row:absolute group-any-hover/sidebar-row:right-0 group-any-hover/sidebar-row:opacity-0",
-                      "flex items-center self-center justify-self-end tabular-nums text-secondary-label transition-opacity",
+                      "flex items-center self-center justify-self-end tabular-nums text-secondary-label",
                       snoozeMenuOpen && "pointer-events-none absolute right-0 opacity-0",
                     )}
                   >
@@ -2213,7 +2236,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                         // would keep the controls pinned over the status label
                         // once the pointer moves away (e.g. after a failed
                         // settle) instead of cross-fading back.
-                        "pointer-events-none absolute inset-y-0 right-0 flex items-stretch opacity-0 transition-opacity has-[:focus-visible]:pointer-events-auto has-[:focus-visible]:static has-[:focus-visible]:opacity-100 group-any-hover/sidebar-row:pointer-events-auto group-any-hover/sidebar-row:static group-any-hover/sidebar-row:opacity-100",
+                        "pointer-events-none absolute inset-y-0 right-0 flex items-stretch opacity-0 has-[:focus-visible]:pointer-events-auto has-[:focus-visible]:static has-[:focus-visible]:opacity-100 group-any-hover/sidebar-row:pointer-events-auto group-any-hover/sidebar-row:static group-any-hover/sidebar-row:opacity-100",
                         snoozeMenuOpen && "pointer-events-auto static opacity-100",
                       )}
                     >
@@ -2289,6 +2312,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   Regenerating title
                 </span>
               ) : null}
+              {metaLineEmpty ? (
+                <span aria-hidden className="inline-flex shrink-0 self-center pl-1.5">
+                  <SidebarProviderStack
+                    thread={thread}
+                    providerEntryByInstanceId={props.providerEntryByInstanceId}
+                  />
+                </span>
+              ) : null}
             </div>
             {visibleActivityLine ? (
               <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
@@ -2303,7 +2334,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 ) : null}
               </div>
             ) : null}
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
+            <div
+              className={cn(
+                "mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs",
+                metaLineEmpty && "hidden",
+              )}
+            >
               {/* The branch remains independent of the live plan step. */}
               {thread.branch ? (
                 <>
@@ -2340,11 +2376,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   <EnvironmentMachineIcon
                     aria-hidden
                     kind={props.environmentMachine}
-                    className="size-3 shrink-0 text-muted-foreground/40"
+                    className="size-3 shrink-0"
                   />
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground/40">
-                    {props.scratchMachineLabel}
-                  </span>
+                  <span className="min-w-0 flex-1 truncate">{props.scratchMachineLabel}</span>
                 </>
               ) : (
                 <span className="flex-1" />
@@ -2815,7 +2849,9 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
   // The selection lives in the persisted UI store next to the other sidebar
   // project preferences, so routes that unmount the sidebar (Settings) and
   // app restarts keep it.
-  const projectScopeKey = useUiStateStore((store) => store.sidebarProjectScopeKey);
+  const projectScopeKeys = useUiStateStore((store) => store.sidebarProjectScopeKeys);
+  // One string for resets and deps; several keys join so a change compares by value.
+  const projectScopeKey = projectScopeKeys.length === 0 ? null : projectScopeKeys.join("\n");
   const sidebarView = useSidebarViewStore((store) => store.view);
   useArchiveMerge();
   // Date and status views order rows by time, so manual drag order is off.
@@ -2823,7 +2859,13 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
   const threadSortOrder = useClientSettings((s) => s.sidebarThreadSortOrder);
   const updateClientSettings = useUpdateClientSettings();
   const lastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
-  const setProjectScopeKey = useUiStateStore((store) => store.setSidebarProjectScopeKey);
+  const setProjectScopeKeys = useUiStateStore((store) => store.setSidebarProjectScopeKeys);
+  const toggleProjectScopeKey = (key: string) =>
+    setProjectScopeKeys(
+      projectScopeKeys.includes(key)
+        ? projectScopeKeys.filter((candidate) => candidate !== key)
+        : [...projectScopeKeys, key],
+    );
   // {value, label} items let Base UI drive the combobox selection contract
   // while the popup search filters the same collection.
   const projectScopeItems = useMemo(
@@ -2863,9 +2905,11 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
   );
   const selectedProjectScopeItem = useMemo(
     () =>
-      projectScopeItems.find((item) => item.value === (projectScopeKey ?? "all")) ??
-      projectScopeItems[0]!,
-    [projectScopeItems, projectScopeKey],
+      projectScopeKeys.length > 1
+        ? null
+        : (projectScopeItems.find((item) => item.value === (projectScopeKeys[0] ?? "all")) ??
+          projectScopeItems[0]!),
+    [projectScopeItems, projectScopeKeys],
   );
   const [projectScopeMenuState, dispatchProjectScopeMenu] = useReducer(
     reduceSidebarProjectScopeMenuState,
@@ -2888,12 +2932,9 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
       }),
     [projectScopeFilter, projectScopeItems, projectScopeMenuState.query],
   );
-  const scopedProjectGroup = useMemo(
-    () =>
-      projectScopeKey === null
-        ? null
-        : (projectGroups.find((project) => project.projectKey === projectScopeKey) ?? null),
-    [projectGroups, projectScopeKey],
+  const scopedProjectGroups = useMemo(
+    () => projectGroups.filter((project) => projectScopeKeys.includes(project.projectKey)),
+    [projectGroups, projectScopeKeys],
   );
   const needsYouByProject = useMemo(() => {
     void nowMinute;
@@ -2918,24 +2959,27 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
   }, [nowMinute, projectGroups, threads]);
   const scopedProjectKeys = useMemo(
     () =>
-      scopedProjectGroup === null
+      scopedProjectGroups.length === 0
         ? null
         : new Set(
-            scopedProjectGroup.memberProjectRefs.map(
-              (projectRef) => `${projectRef.environmentId}:${projectRef.projectId}`,
+            scopedProjectGroups.flatMap((project) =>
+              project.memberProjectRefs.map(
+                (projectRef) => `${projectRef.environmentId}:${projectRef.projectId}`,
+              ),
             ),
           ),
-    [scopedProjectGroup],
+    [scopedProjectGroups],
   );
-  // A persisted scope whose project is gone falls back to all projects, but
-  // only after every catalog environment has a live project snapshot. Cached
-  // or disconnected environments cannot establish that the project is gone.
+  // A persisted scope key whose project is gone drops out (all projects once
+  // none is left), but only after every catalog environment has a live project
+  // snapshot. Cached or disconnected environments cannot establish that.
   const allProjectSnapshotsReady = useAllEnvironmentProjectSnapshotsReady();
   useEffect(() => {
-    if (projectScopeKey !== null && allProjectSnapshotsReady && scopedProjectGroup === null) {
-      setProjectScopeKey(null);
+    if (!allProjectSnapshotsReady || scopedProjectGroups.length === projectScopeKeys.length) {
+      return;
     }
-  }, [allProjectSnapshotsReady, projectScopeKey, scopedProjectGroup, setProjectScopeKey]);
+    setProjectScopeKeys(scopedProjectGroups.map((project) => project.projectKey));
+  }, [allProjectSnapshotsReady, projectScopeKeys, scopedProjectGroups, setProjectScopeKeys]);
   // Count-only subscription: the parent needs "are there draft rows" for the
   // empty state, while SidebarDraftBlock owns the per-keystroke content
   // subscription. Selecting a number keeps typing in a draft composer from
@@ -4076,9 +4120,25 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
   const activeGroups = useMemo(() => {
     if (!groupedSidebar) return [];
     void nowMinute;
+    const projectKeyByRef =
+      sidebarView.groupBy === "project"
+        ? new Map(
+            projectGroups.flatMap((project) =>
+              project.memberProjectRefs.map(
+                (ref) => [`${ref.environmentId}:${ref.projectId}`, project.projectKey] as const,
+              ),
+            ),
+          )
+        : null;
     return groupSidebarThreads(activeThreads, {
       groupBy: sidebarView.groupBy,
       now: new Date(),
+      projects: projectGroups.map((project) => ({
+        key: project.projectKey,
+        label: project.displayName,
+      })),
+      projectKeyOf: (thread) =>
+        projectKeyByRef?.get(`${thread.environmentId}:${thread.projectId}`) ?? null,
       timeOf: (thread) =>
         threadSortOrder === "created_at"
           ? thread.createdAt
@@ -4104,6 +4164,7 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
     groupedSidebar,
     lastVisitedAtById,
     nowMinute,
+    projectGroups,
     sidebarView.groupBy,
     snoozeNow,
     threadSortOrder,
@@ -4994,7 +5055,7 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
               projectFilter: threadProjectGroup
                 ? {
                     label: threadProjectGroup.displayName,
-                    isActive: projectScopeKey === threadProjectGroup.projectKey,
+                    isActive: projectScopeKeys.includes(threadProjectGroup.projectKey),
                   }
                 : null,
               isPinned,
@@ -5036,10 +5097,10 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
             // This item is the only scope control here, so picking the
             // already-scoped project again is the way back to all projects.
             if (threadProjectGroup) {
-              setProjectScopeKey(
-                projectScopeKey === threadProjectGroup.projectKey
-                  ? null
-                  : threadProjectGroup.projectKey,
+              setProjectScopeKeys(
+                projectScopeKeys.includes(threadProjectGroup.projectKey)
+                  ? []
+                  : [threadProjectGroup.projectKey],
               );
             }
             return;
@@ -5228,10 +5289,10 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
       handleMultiSelectContextMenu,
       markThreadUnread,
       openProjectSettings,
-      projectScopeKey,
+      projectScopeKeys,
       projectByKey,
       serverConfigs,
-      setProjectScopeKey,
+      setProjectScopeKeys,
       setThreadAutoSettle,
       startThreadRename,
       updateThreadMetadata,
@@ -5369,9 +5430,9 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
         {sidebarView.showRail && projectGroups.length > 1 ? (
           <SidebarProjectRail
             projects={projectGroups}
-            selectedKey={projectScopeKey}
+            selectedKey={projectScopeKeys.length === 1 ? projectScopeKeys[0]! : null}
             needsYouByProject={needsYouByProject}
-            onSelect={setProjectScopeKey}
+            onSelect={(key) => setProjectScopeKeys(key === null ? [] : [key])}
             onProjectContextMenu={(project, position) =>
               void handleRailProjectContextMenu(project, position)
             }
@@ -5418,7 +5479,8 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                       itemToStringLabel={(item) => item.label}
                       isItemEqualToValue={(a, b) => a.value === b.value}
                       open={projectScopeMenuState.open}
-                      onOpenChange={(open) => {
+                      onOpenChange={(open, eventDetails) => {
+                        if (eventDetails.isCanceled) return;
                         if (open) suppressNextScopeChangeRef.current = false;
                         dispatchProjectScopeMenu({ type: "open-changed", open });
                       }}
@@ -5426,31 +5488,52 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                         highlightedProjectScopeKeyRef.current = item?.value ?? null;
                       }}
                       value={selectedProjectScopeItem}
-                      onValueChange={(item) => {
+                      onValueChange={(item, eventDetails) => {
                         if (suppressNextScopeChangeRef.current) {
                           suppressNextScopeChangeRef.current = false;
                           return;
                         }
                         if (!item) return;
-                        setProjectScopeKey(item.value === "all" ? null : item.value);
+                        if (item.value === "all") {
+                          setProjectScopeKeys([]);
+                        } else if (
+                          eventDetails.event instanceof MouseEvent &&
+                          eventDetails.event.shiftKey
+                        ) {
+                          // Canceling skips Base UI's commit, which would freeze the search query, and its close.
+                          eventDetails.cancel();
+                          toggleProjectScopeKey(item.value);
+                        } else {
+                          setProjectScopeKeys([item.value]);
+                        }
                       }}
                     >
                       <ComboboxTrigger
                         render={
                           <SidebarHeaderIconButton
                             label={
-                              scopedProjectGroup
-                                ? `Filter chats by project: ${scopedProjectGroup.displayName}`
+                              scopedProjectGroups.length > 0
+                                ? `Filter chats by project: ${scopedProjectGroups.map((project) => project.displayName).join(", ")}`
                                 : "Filter chats by project"
                             }
                           />
                         }
                       >
-                        {scopedProjectGroup ? (
+                        {scopedProjectGroups.length > 1 ? (
+                          <span className="flex shrink-0 -space-x-1.5">
+                            {scopedProjectGroups.slice(0, 2).map((project) => (
+                              <ProjectFavicon
+                                key={project.projectKey}
+                                project={project}
+                                className="size-3.5"
+                              />
+                            ))}
+                          </span>
+                        ) : scopedProjectGroups[0] ? (
                           // Wrapped so the button's direct-child svg color rule cannot override
                           // a project's own icon color.
                           <span className="flex shrink-0">
-                            <ProjectFavicon project={scopedProjectGroup} className="size-4" />
+                            <ProjectFavicon project={scopedProjectGroups[0]} className="size-4" />
                           </span>
                         ) : (
                           <ListFilterIcon className="size-4" />
@@ -5473,11 +5556,10 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                             if (
                               event.defaultPrevented ||
                               event.nativeEvent.isComposing ||
+                              event.keyCode === 229 ||
                               event.ctrlKey ||
                               event.altKey ||
-                              event.metaKey ||
-                              (event.key !== "ContextMenu" &&
-                                !(event.shiftKey && event.key === "F10"))
+                              event.metaKey
                             ) {
                               return;
                             }
@@ -5485,6 +5567,18 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                             // stay on this input, not on the highlighted option.
                             const scopeKey = highlightedProjectScopeKeyRef.current;
                             const project = scopeKey ? projectGroupByScopeKey.get(scopeKey) : null;
+                            if (event.shiftKey && event.key === "Enter") {
+                              if (!project) return;
+                              event.preventDefault();
+                              toggleProjectScopeKey(project.projectKey);
+                              return;
+                            }
+                            if (
+                              event.key !== "ContextMenu" &&
+                              !(event.shiftKey && event.key === "F10")
+                            ) {
+                              return;
+                            }
                             if (project) handleProjectSettings(event, project);
                           }}
                           onChange={(event) =>
@@ -5495,23 +5589,31 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                           }
                         />
                         <ComboboxEmpty>No matching projects.</ComboboxEmpty>
-                        <ComboboxList>
+                        <ComboboxList aria-multiselectable>
                           {(item: (typeof projectScopeItems)[number]) => {
                             const project = projectGroupByScopeKey.get(item.value) ?? null;
+                            const isSelected = project
+                              ? projectScopeKeys.includes(item.value)
+                              : projectScopeKeys.length === 0;
                             return (
                               <ComboboxItem
                                 key={item.value}
                                 hideIndicator
                                 value={item}
+                                aria-selected={isSelected}
+                                // The icon badge marks selection; Base UI's single value would shade one row.
+                                data-selected={undefined}
                                 onContextMenu={(event) => {
                                   if (project) handleProjectSettings(event, project);
                                 }}
                               >
-                                {project ? (
-                                  <ProjectFavicon project={project} className="size-4 shrink-0" />
-                                ) : (
-                                  <FolderIcon className="size-4 shrink-0" />
-                                )}
+                                <ProjectScopeRowIcon isSelected={isSelected}>
+                                  {project ? (
+                                    <ProjectFavicon project={project} className="size-4 shrink-0" />
+                                  ) : (
+                                    <FolderIcon className="size-4 shrink-0" />
+                                  )}
+                                </ProjectScopeRowIcon>
                                 <span className="min-w-0 flex-1 truncate text-sm">
                                   {item.label}
                                 </span>
@@ -5769,7 +5871,7 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                                   null
                                 }
                                 projectDisplayName={
-                                  sidebarView.showProject && projectScopeKey === null
+                                  sidebarView.showProject && projectScopeKeys.length !== 1
                                     ? (projectDisplayNameByKey.get(
                                         `${thread.environmentId}:${thread.projectId}`,
                                       ) ?? null)
@@ -5902,11 +6004,8 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                                     key="working-shelf-header"
                                     marker="working-header"
                                     className="mt-auto"
-                                    label={
-                                      workingShelfExpanded
-                                        ? "Working"
-                                        : `Working (${workingThreads.length})`
-                                    }
+                                    label="Working"
+                                    count={workingThreads.length}
                                     toggle={{
                                       expanded: workingShelfExpanded,
                                       onToggle: toggleWorkingShelf,
@@ -5920,11 +6019,8 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                                     key="snoozed-shelf-header"
                                     marker="snoozed-header"
                                     className={cn(workingThreads.length === 0 && "mt-auto")}
-                                    label={
-                                      snoozedShelfExpanded
-                                        ? "Snoozed"
-                                        : `Snoozed (${snoozedThreads.length})`
-                                    }
+                                    label="Snoozed"
+                                    count={snoozedThreads.length}
                                     toggle={{
                                       expanded: snoozedShelfExpanded,
                                       onToggle: toggleSnoozedShelf,
@@ -5941,11 +6037,8 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                                       workingThreads.length + snoozedThreads.length === 0 &&
                                         "mt-auto",
                                     )}
-                                    label={
-                                      settledShelfExpanded
-                                        ? "Archive"
-                                        : `Archive (${settledThreads.length})`
-                                    }
+                                    label="Archive"
+                                    count={settledThreads.length}
                                     dragging={from !== null}
                                     isDropTarget={dragTargetSection === "settled"}
                                     toggle={{
@@ -5982,9 +6075,10 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                             <button
                               type="button"
                               onClick={showMoreSettled}
-                              className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-sidebar-muted-foreground/55 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+                              className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
                             >
-                              <PlusIcon aria-hidden className="size-4 shrink-0" />
+                              {/* Plus means "add"; a chevron reveals more. */}
+                              <ChevronDownIcon aria-hidden className="size-4 shrink-0" />
                               Show {Math.min(hiddenSettledCount, SETTLED_TAIL_PAGE_COUNT)} more
                             </button>
                           </li>
@@ -6015,8 +6109,10 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                         Add project
                       </button>
                     </>
-                  ) : scopedProjectGroup ? (
-                    `No chats in ${scopedProjectGroup.displayName} yet`
+                  ) : scopedProjectGroups.length > 1 ? (
+                    "No chats in these projects yet"
+                  ) : scopedProjectGroups[0] ? (
+                    `No chats in ${scopedProjectGroups[0].displayName} yet`
                   ) : (
                     "No chats yet"
                   )}
