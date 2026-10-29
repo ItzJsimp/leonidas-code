@@ -12,14 +12,17 @@ import {
 
 describe("T3 orchestration provider instructions", () => {
   it("distinguishes delegated subagents from ordinary top-level threads", () => {
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "use `delegate_task`");
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "ordinary top-level T3 conversations");
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Never use them merely");
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "cross-provider");
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "call `delegate_task` again");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "`delegate_task` for another provider");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "make new top-level threads");
     assert.include(
       T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-      "Do not use `t3_thread_send` on `childThreadId`",
+      '"Subagent", "delegate", and "parallel" never mean one',
+    );
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "another provider");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "is a new `delegate_task`");
+    assert.include(
+      T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+      "Never continue a review with `t3_thread_send` on `childThreadId`",
     );
   });
 
@@ -27,22 +30,16 @@ describe("T3 orchestration provider instructions", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Tiered orchestration");
     assert.include(
       T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-      "The selected model for the current thread is the orchestrator",
+      "Keep planning, architecture, integration, and final review",
     );
-    assert.include(
-      T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-      "Discover child targets at run time with orchestrator_capabilities",
-    );
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Track every delegated task by taskId");
-    assert.include(
-      T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-      "Judge economics from total worker and orchestrator requests",
-    );
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "from `orchestrator_capabilities`");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Track every delegated task by `taskId`");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Report checks that could not run");
   });
 
   it("keeps parallel decision exploration read-only and closes the frontend verification loop", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "two independent, read-only");
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "delegated children share the workspace");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Children share the workspace");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "separate worktrees");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "preview_status");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "inspect it again");
@@ -51,11 +48,11 @@ describe("T3 orchestration provider instructions", () => {
   it("tells the lead agent to delegate simple work to cheaper or faster models", () => {
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "You lead the AI accounts");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "cheaper or faster model");
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "review what it returns");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "Inspect its diff");
   });
 
   it("documents structured schedules instead of JSON strings", () => {
-    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "structured object, never as JSON text");
+    assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "is an object, never JSON text");
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, '"everyMs":3600000');
     assert.include(T3_CODE_ORCHESTRATION_INSTRUCTIONS, "bindToCurrentThread=false");
   });
@@ -92,7 +89,7 @@ describe("T3 orchestration provider instructions", () => {
     });
 
     assert.include(injected, "Leonidas Code interaction mode: Default");
-    assert.include(injected, "Leonidas Code collaborative browser");
+    assert.include(injected, "Leonidas Code browser");
     assert.include(injected, "Leonidas Code orchestration");
     assert.include(injected, "<user_request>\nInspect the repository.\n</user_request>");
   });
@@ -127,8 +124,8 @@ describe("T3 orchestration provider instructions", () => {
         prompt: "x",
         state: { interactionMode: "default", hasT3Mcp: true, hasBrowserTools },
       });
-    assert.include(build(true), "Leonidas Code collaborative browser");
-    assert.notInclude(build(false), "Leonidas Code collaborative browser");
+    assert.include(build(true), "Leonidas Code browser");
+    assert.notInclude(build(false), "Leonidas Code browser");
     assert.include(build(false), "Leonidas Code orchestration");
   });
 
@@ -176,7 +173,7 @@ describe("T3 orchestration provider instructions", () => {
       state: { interactionMode: "default", hasT3Mcp: false },
     });
     assert.include(withoutMcp, "Leonidas Code interaction mode: Default");
-    assert.notInclude(withoutMcp, "Leonidas Code collaborative browser");
+    assert.notInclude(withoutMcp, "Leonidas Code browser");
     assert.notInclude(withoutMcp, "Leonidas Code orchestration");
   });
 });
