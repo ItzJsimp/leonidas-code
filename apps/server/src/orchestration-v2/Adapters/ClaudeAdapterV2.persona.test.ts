@@ -55,7 +55,7 @@ describe("ClaudeAdapterV2 persona start (ADR-0082)", () => {
     // Every other app tool is hidden so its definition does not load into the child.
     assert.notInclude(shape.disallowedTools ?? [], "mcp__t3-code__preview_open");
     assert.include(shape.disallowedTools ?? [], "mcp__t3-code__delegate_task");
-    assert.include(shape.disallowedTools ?? [], "mcp__t3-code__preview_click");
+    assert.include(shape.disallowedTools ?? [], "mcp__t3-code__preview_act");
   });
 
   it("narrows persona tools to a read-only policy", () => {

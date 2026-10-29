@@ -15,7 +15,7 @@ tools:
     mcp__t3-code__preview_open,
     mcp__t3-code__preview_navigate,
     mcp__t3-code__preview_snapshot,
-    mcp__t3-code__preview_click,
+    mcp__t3-code__preview_act,
     mcp__t3-code__preview_resize,
   ]
 context: []
