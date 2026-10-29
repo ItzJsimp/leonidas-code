@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { SETTINGS_NAV_GROUPS } from "./settingsSearch";
 
@@ -64,18 +64,26 @@ const EXPECTED_MARKER: Readonly<Record<string, string>> = {
 
 let container: HTMLDivElement | undefined;
 
+// Without this flag act() does not flush the render, so every page reads as empty.
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+});
+
 afterEach(() => {
   container?.remove();
   container = undefined;
+  vi.unstubAllGlobals();
 });
 
 describe("settings routes", () => {
   it.each(NAV_PATHS)("%s renders its page", async (path) => {
     const slug = path.replace("/settings/", "");
     const { Route } = (await import(`../../routes/_chat.settings.${slug}.tsx`)) as {
-      Route: { options: { component: () => ReactNode } };
+      Route: { options: { component: (() => ReactNode) & { preload?: () => Promise<unknown> } } };
     };
     const Page = Route.options.component;
+    // The router plugin splits route components into lazy chunks; load it before the render.
+    await Page.preload?.();
     container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
