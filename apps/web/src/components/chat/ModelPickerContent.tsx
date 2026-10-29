@@ -425,6 +425,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   const isLocked = props.lockedProvider !== null;
   const isSearching = searchQuery.trim().length > 0;
+  // Inside one provider's tab the provider line repeats the selected rail icon on every row.
+  const rowsMixProviders = isSearching || selectedInstanceId === "favorites";
   const lockedDisabledInstanceIds = useMemo(() => {
     if (!isLocked) {
       return undefined;
@@ -1017,8 +1019,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                           className="group w-full cursor-pointer"
                         >
                           <div className="min-w-0 flex-1 text-left">
-                            <div className="text-xs font-medium leading-snug">Legacy models</div>
-                            <div className="mt-1 text-xs font-normal leading-snug text-muted-foreground/70">
+                            <div className="text-sm font-normal leading-snug">Legacy models</div>
+                            <div className="mt-1 text-xs font-normal leading-snug text-muted-foreground">
                               {legacySection.legacyModels.length} models
                             </div>
                           </div>
@@ -1056,8 +1058,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                             ? selectedModelKeySet.has(modelKey)
                             : modelKey === activeModelKey
                         }
-                        showSelection={selectedModelKeys !== undefined}
-                        showProvider
+                        showSelection
+                        showProvider={rowsMixProviders || Boolean(model.subProvider)}
                         preferShortName={!isLocked}
                         useTriggerLabel={false}
                         showNewBadge={model.badge === "new"}

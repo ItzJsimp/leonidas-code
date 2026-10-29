@@ -17,7 +17,7 @@ import {
   normalizeModelSlug,
 } from "@t3tools/shared/model";
 import { memo, useCallback } from "react";
-import { BrainIcon } from "lucide-react";
+import { GaugeIcon } from "lucide-react";
 import {
   Menu,
   MenuGroup,
@@ -32,12 +32,7 @@ import { getProviderModelCapabilities } from "../../providerModels";
 import { cn } from "~/lib/utils";
 import { Badge } from "../ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import {
-  ComposerControl,
-  ComposerControlChevron,
-  ComposerControlIcon,
-  type ComposerControlSize,
-} from "./ComposerControl";
+import { ComposerControl, ComposerControlIcon, type ComposerControlSize } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
 import { useComposerMenuState } from "./useComposerMenuState";
 
@@ -662,17 +657,23 @@ export const TraitsPicker = memo(function TraitsPicker({
                 size === "xs" ? "gap-1" : "gap-1.5",
               )}
             >
-              <ComposerControlIcon icon={BrainIcon} size={size} />
+              <ComposerControlIcon
+                icon={GaugeIcon}
+                size={size}
+                className="hidden [[data-composer-block-icon-only=true]_&]:block"
+              />
               <span data-composer-control-label className="min-w-0 truncate">
                 {triggerLabel}
               </span>
-              <ComposerControlChevron size={size} />
             </span>
           ) : (
             <>
-              <ComposerControlIcon icon={BrainIcon} size={size} />
+              <ComposerControlIcon
+                icon={GaugeIcon}
+                size={size}
+                className="hidden [[data-composer-block-icon-only=true]_&]:block"
+              />
               <span data-composer-control-label>{triggerLabel}</span>
-              <ComposerControlChevron size={size} />
             </>
           )}
         </TooltipTrigger>
