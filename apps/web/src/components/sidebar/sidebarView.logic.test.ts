@@ -98,6 +98,25 @@ describe("groupSidebarThreads", () => {
     ]);
   });
 
+  it("groups by project in project order, drops empty projects, and keeps unmatched chats", () => {
+    const projectOf = { a: "web", b: "api", c: "web", d: null } as const;
+    const groups = groupSidebarThreads(threads, {
+      ...options,
+      groupBy: "project",
+      projects: [
+        { key: "api", label: "API" },
+        { key: "empty", label: "Empty" },
+        { key: "web", label: "Web" },
+      ],
+      projectKeyOf: (thread) => projectOf[thread.id as keyof typeof projectOf],
+    });
+    expect(groups.map((group) => [group.label, group.items.map((item) => item.id)])).toEqual([
+      ["API", ["b"]],
+      ["Web", ["c", "a"]],
+      ["Other", ["d"]],
+    ]);
+  });
+
   it("returns one unlabeled group in classic mode and keeps the input order", () => {
     const groups = groupSidebarThreads(threads, { ...options, groupBy: "classic" });
     expect(groups).toEqual([{ id: "all", label: null, items: threads }]);

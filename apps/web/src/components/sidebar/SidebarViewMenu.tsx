@@ -71,6 +71,7 @@ export function SidebarViewMenu(props: {
             options={[
               ["date", "Date", "Today, Yesterday, This week"],
               ["status", "Status", "Needs you, Running, Ready, Recent"],
+              ["project", "Project", "One group for each project with chats"],
               ["classic", "Manual", "One list in the order you drag"],
             ]}
             onChange={(groupBy) => setView({ groupBy })}

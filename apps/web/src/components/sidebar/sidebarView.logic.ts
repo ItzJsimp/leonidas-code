@@ -3,11 +3,11 @@
 
 import type { SidebarThreadStatus } from "../Sidebar.logic";
 
-export type SidebarGroupBy = "date" | "status" | "classic";
+export type SidebarGroupBy = "date" | "status" | "project" | "classic";
 export type SidebarDensity = "comfortable" | "compact";
 
 export interface SidebarView {
-  /** date = timeline, status = lanes, classic = the old inbox with drag order. */
+  /** date = timeline, status = lanes, project = one group per project, classic = drag order. */
   readonly groupBy: SidebarGroupBy;
   readonly density: SidebarDensity;
   /** Project icons down the left edge; one click scopes the list. */
@@ -31,6 +31,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 const GROUP_BY_VALUES: ReadonlySet<unknown> = new Set<SidebarGroupBy>([
   "date",
   "status",
+  "project",
   "classic",
 ]);
 const DENSITY_VALUES: ReadonlySet<unknown> = new Set<SidebarDensity>(["comfortable", "compact"]);
@@ -140,11 +141,35 @@ export function groupSidebarThreads<T>(
     readonly now: Date;
     readonly timeOf: (item: T) => string | null;
     readonly laneOf: (item: T) => SidebarStatusLane;
+    /** Project order and names for groupBy "project" (upstream #21039, #26387). */
+    readonly projects?: ReadonlyArray<{ readonly key: string; readonly label: string }>;
+    readonly projectKeyOf?: (item: T) => string | null;
   },
 ): SidebarThreadGroup<T>[] {
   if (items.length === 0) return [];
   if (options.groupBy === "classic") return [{ id: "all", label: null, items }];
   const sorted = byTimeDesc(items, options.timeOf);
+  if (options.groupBy === "project") {
+    const buckets = new Map<string | null, T[]>();
+    for (const item of sorted) {
+      const key = options.projectKeyOf?.(item) ?? null;
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push(item);
+      else buckets.set(key, [item]);
+    }
+    // Projects with no chats get no group. Chats outside every listed project
+    // stay visible in a last group instead of disappearing.
+    const groups: SidebarThreadGroup<T>[] = [];
+    for (const project of options.projects ?? []) {
+      const bucket = buckets.get(project.key);
+      if (!bucket) continue;
+      groups.push({ id: `project:${project.key}`, label: project.label, items: bucket });
+      buckets.delete(project.key);
+    }
+    const rest = byTimeDesc([...buckets.values()].flat(), options.timeOf);
+    if (rest.length > 0) groups.push({ id: "project:other", label: "Other", items: rest });
+    return groups;
+  }
   const keyOf =
     options.groupBy === "date"
       ? (item: T) => sidebarDateBucket(options.timeOf(item), options.now)

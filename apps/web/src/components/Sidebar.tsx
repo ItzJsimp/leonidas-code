@@ -4120,9 +4120,25 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
   const activeGroups = useMemo(() => {
     if (!groupedSidebar) return [];
     void nowMinute;
+    const projectKeyByRef =
+      sidebarView.groupBy === "project"
+        ? new Map(
+            projectGroups.flatMap((project) =>
+              project.memberProjectRefs.map(
+                (ref) => [`${ref.environmentId}:${ref.projectId}`, project.projectKey] as const,
+              ),
+            ),
+          )
+        : null;
     return groupSidebarThreads(activeThreads, {
       groupBy: sidebarView.groupBy,
       now: new Date(),
+      projects: projectGroups.map((project) => ({
+        key: project.projectKey,
+        label: project.displayName,
+      })),
+      projectKeyOf: (thread) =>
+        projectKeyByRef?.get(`${thread.environmentId}:${thread.projectId}`) ?? null,
       timeOf: (thread) =>
         threadSortOrder === "created_at"
           ? thread.createdAt
@@ -4148,6 +4164,7 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
     groupedSidebar,
     lastVisitedAtById,
     nowMinute,
+    projectGroups,
     sidebarView.groupBy,
     snoozeNow,
     threadSortOrder,
