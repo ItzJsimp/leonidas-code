@@ -9,6 +9,7 @@ import * as Stream from "effect/Stream";
 import { vi } from "vite-plus/test";
 
 import { ProviderEventLoggers } from "@t3tools/provider-core/server/ProviderEventLoggers";
+import * as PortScanner from "../../preview/PortScanner.ts";
 import {
   CLAUDE_AGENT_SDK_QUERY_PROTOCOL,
   ClaudeAgentSdkQueryRunner,
@@ -61,6 +62,7 @@ it.effect("logs successful task stops for replay and omits failed stops", () =>
     }).pipe(
       Effect.provide(
         layerQueryRunner.pipe(
+          Layer.provide(PortScanner.layerTest),
           Layer.provide(
             Layer.succeed(ProviderEventLoggers, {
               native: {
@@ -123,6 +125,7 @@ it.effect("stores how long the CLI took to send its first message", () =>
     }).pipe(
       Effect.provide(
         layerQueryRunner.pipe(
+          Layer.provide(PortScanner.layerTest),
           Layer.provide(
             Layer.succeed(ProviderEventLoggers, {
               native: {

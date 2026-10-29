@@ -256,7 +256,12 @@ import {
   useLinkedThreadPullRequest,
   ThreadSearchPullRequestNumber,
 } from "./ThreadStatusIndicators";
-import { resolveSnoozePresets, snoozeWakeLabel, type SnoozePreset } from "./Sidebar.snooze";
+import {
+  pickSnoozePreset,
+  resolveSnoozePresets,
+  snoozeWakeLabel,
+  type SnoozePreset,
+} from "./Sidebar.snooze";
 import { ProjectFavicon, type ProjectFaviconProject } from "./ProjectFavicon";
 import { threadTopicGlyph, threadActivityLine } from "@t3tools/shared/threadIdentity";
 import { ThreadSearchMatchExcerpt } from "./ThreadSearchMatch";
@@ -610,13 +615,14 @@ function SnoozeMenuButton(props: {
   onOpenChange: (open: boolean) => void;
   onSnooze: (preset: Pick<SnoozePreset, "snoozedUntil">) => void;
   timestampFormat: TimestampFormat;
+  environmentId: EnvironmentId;
 }) {
-  const { open, onOpenChange, onSnooze, timestampFormat } = props;
+  const { open, onOpenChange, onSnooze, timestampFormat, environmentId } = props;
   // Presets resolve at open time so "In 1 hour" is relative to the click,
   // not to when the row mounted.
   const presets = useMemo(
-    () => (open ? resolveSnoozePresets(new Date(), timestampFormat) : []),
-    [open, timestampFormat],
+    () => (open ? resolveSnoozePresets(new Date(), timestampFormat, environmentId) : []),
+    [open, timestampFormat, environmentId],
   );
   return (
     <Menu open={open} onOpenChange={onOpenChange}>
@@ -646,14 +652,15 @@ function SnoozeMenuButton(props: {
             key={preset.id}
             onClick={(event) => {
               event.stopPropagation();
-              onSnooze(preset);
+              const picked = pickSnoozePreset(presets, preset.id, timestampFormat, environmentId);
+              if (picked) onSnooze(picked);
             }}
           >
             {preset.label}
             <MenuShortcut>{preset.whenLabel}</MenuShortcut>
           </MenuItem>
         ))}
-        <MenuSeparator />
+        {presets.length > 0 ? <MenuSeparator /> : null}
         <MenuItem
           onClick={async (event) => {
             event.stopPropagation();
@@ -2233,6 +2240,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                           onOpenChange={setSnoozeMenuOpen}
                           onSnooze={handleSnoozePreset}
                           timestampFormat={props.timestampFormat}
+                          environmentId={thread.environmentId}
                         />
                       ) : null}
                       {props.settlementSupported ? (
@@ -4643,7 +4651,12 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
       const unpinMenuItem = buildBulkUnpinContextMenuItem({
         pinnedCount: pinnedSelectedThreads.length,
       });
-      const snoozePresets = resolveSnoozePresets(new Date(), timestampFormat);
+      // Presets sync across environments, so the first selected thread's stand for all.
+      const snoozePresets = resolveSnoozePresets(
+        new Date(),
+        timestampFormat,
+        selectedThreads[0]!.environmentId,
+      );
       const clicked = await settlePromise(() =>
         api.contextMenu.show(
           [
@@ -4670,7 +4683,7 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
                       {
                         id: "snooze:custom",
                         label: "Custom…",
-                        separatorBefore: true,
+                        separatorBefore: snoozePresets.length > 0,
                         disabled: !canOperateThreads(selectedThreads),
                       },
                     ],
@@ -4718,7 +4731,12 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
         const preset =
           clicked.value === "snooze:custom"
             ? await requestCustomSnooze()
-            : snoozePresets.find((candidate) => `snooze:${candidate.id}` === clicked.value);
+            : pickSnoozePreset(
+                snoozePresets,
+                clicked.value.slice("snooze:".length),
+                timestampFormat,
+                selectedThreads[0]!.environmentId,
+              );
         if (preset) {
           // Post-snooze navigation must skip threads snoozing in this same
           // batch — they are all leaving the card block together.
@@ -4952,7 +4970,11 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
         const isSnoozed = snoozedThreadKeysRef.current.has(threadKey);
         const isPinned = thread.pinnedAt != null;
         // Presets resolve at menu-open time (same as the popover).
-        const snoozePresets = resolveSnoozePresets(new Date(), timestampFormat);
+        const snoozePresets = resolveSnoozePresets(
+          new Date(),
+          timestampFormat,
+          thread.environmentId,
+        );
         const threadProjectGroup =
           projectGroupsRef.current.find((project) =>
             project.memberProjectRefs.some(
@@ -5000,7 +5022,12 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
           const preset =
             clicked.value === "snooze:custom"
               ? await requestCustomSnooze()
-              : snoozePresets.find((candidate) => `snooze:${candidate.id}` === clicked.value);
+              : pickSnoozePreset(
+                  snoozePresets,
+                  clicked.value.slice("snooze:".length),
+                  timestampFormat,
+                  thread.environmentId,
+                );
           if (preset) attemptSnooze(threadRef, preset);
           return;
         }

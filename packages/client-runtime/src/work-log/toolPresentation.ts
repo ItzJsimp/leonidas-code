@@ -1,4 +1,4 @@
-import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
+import { isWorkspaceImagePreviewPath } from "@t3tools/shared/mediaPreview";
 import type {
   ToolActivityIcon,
   ToolActivityNativeAppReference,

@@ -68,6 +68,8 @@ export interface ThreadTitleGenerationInput {
   /** Optional user focus for a regenerated title. */
   hint?: string | undefined;
   attachments?: ReadonlyArray<ChatAttachment> | undefined;
+  /** User instructions for how titles are written. */
+  instructions?: string | undefined;
   /** What model and provider to use for generation. */
   modelSelection: ModelSelection;
 }

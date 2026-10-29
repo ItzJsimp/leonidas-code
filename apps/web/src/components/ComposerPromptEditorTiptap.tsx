@@ -1,5 +1,6 @@
 import { createPromptPredictionPlugin, promptPredictionKey } from "./promptPredictionPlugin";
 import type { PromptCandidate } from "@t3tools/shared/promptPrediction";
+import { documentIconColorForFileName } from "~/pierre-icons";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { Extension, InputRule, Node, wrappingInputRule, type JSONContent } from "@tiptap/core";
 import { BotIcon } from "lucide-react";
@@ -39,6 +40,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -287,9 +289,11 @@ function ComposerMentionNodeView({ node }: NodeViewProps) {
       </NodeViewWrapper>
     );
   }
+  const accent = documentIconColorForFileName(path);
   const chip = (
     <ContextChip
       kind="mention"
+      style={accent ? ({ "--context-chip-accent": accent } as CSSProperties) : undefined}
       render={<button type="button" />}
       onClick={() => actions.openMention(path)}
       aria-label={`Preview ${path}`}

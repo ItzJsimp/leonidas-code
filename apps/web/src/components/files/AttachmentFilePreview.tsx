@@ -1,8 +1,12 @@
 import { filePreviewDelimiter } from "@t3tools/shared/delimitedPreview";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { AssetResource, EnvironmentId } from "@t3tools/contracts";
 import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
 import { readFilePreviewResponse } from "@t3tools/client-runtime/file-preview";
-import { filePreviewKind, FILE_TEXT_PREVIEW_MAX_BYTES } from "@t3tools/shared/filePreview";
+import {
+  filePreviewKind,
+  officePreviewKind,
+  FILE_TEXT_PREVIEW_MAX_BYTES,
+} from "@t3tools/shared/filePreview";
 import { ChevronRightIcon, DownloadIcon, Trash2Icon, WrapTextIcon, XIcon } from "lucide-react";
 import { Check, Code2, Copy, Eye, Table2 } from "lucide";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +20,8 @@ import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useClientSettings, useUpdateClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
 
+import { BinaryFilePreview } from "./BinaryFilePreview";
+import { PreviewImage } from "./PreviewImage";
 import { AudioPreview } from "./AudioPreview";
 import { BrowserDocumentFrame } from "./BrowserDocumentFrame";
 import { DelimitedTablePreview } from "./DelimitedTablePreview";
@@ -27,6 +33,20 @@ import {
   FileSurfaceNotice,
 } from "./fileSurfaceChrome";
 import { userErrorToastFields } from "~/lib/userErrorToast";
+
+const LargeTextViewer = lazy(() => import("./LargeTextViewer"));
+
+const OfficeFilePreview = lazy(() =>
+  import("./OfficeFilePreview").then((module) => ({ default: module.OfficeFilePreview })),
+);
+
+const FontFilePreview = lazy(() =>
+  import("./FontFilePreview").then((module) => ({ default: module.FontFilePreview })),
+);
+
+const MermaidFilePreview = lazy(() =>
+  import("./MermaidFilePreview").then((module) => ({ default: module.MermaidFilePreview })),
+);
 
 const SourcePreview = lazy(() => import("./ReadOnlySourcePreview"));
 
@@ -42,7 +62,11 @@ export function ReadOnlySourcePreview(props: { name: string; text: string }) {
   );
 }
 
-function renderedToggleLabel(mode: "markdown" | "html" | "table", rendered: boolean): string {
+function renderedToggleLabel(
+  mode: "markdown" | "mermaid" | "html" | "table",
+  rendered: boolean,
+): string {
+  if (mode === "mermaid") return rendered ? "Show Mermaid source" : "Show rendered diagram";
   if (mode === "markdown") return rendered ? "Show markdown source" : "Show rendered markdown";
   if (mode === "table") return rendered ? "Show source" : "Show table";
   return rendered ? "Show HTML source" : "Show rendered page";
@@ -59,7 +83,12 @@ export function AttachmentFilePreview(props: {
   /** Zero when unknown. */
   sizeBytes: number;
   file?: Blob | null;
-  asset?: { environmentId: EnvironmentId; attachmentId: string };
+  asset?:
+    | { environmentId: EnvironmentId; attachmentId: string }
+    | {
+        environmentId: EnvironmentId;
+        resource: Extract<AssetResource, { _tag: "media-file" | "draft-workspace-file" }>;
+      };
   /** An agent's HTML render, shown in the app theme. */
   htmlRender?: boolean;
   /** First crumb: where the file comes from. */
@@ -68,14 +97,26 @@ export function AttachmentFilePreview(props: {
   onClose?: () => void;
 }) {
   const kind = filePreviewKind(props);
+  const officeKind = officePreviewKind(props);
   const delimiter = filePreviewDelimiter(props);
   const renderedMode =
-    kind === "markdown" ? "markdown" : kind === "html" ? "html" : delimiter ? "table" : null;
-  const attachmentId = props.asset?.attachmentId;
+    kind === "mermaid"
+      ? "mermaid"
+      : kind === "markdown"
+        ? "markdown"
+        : kind === "html"
+          ? "html"
+          : delimiter
+            ? "table"
+            : null;
+  const attachmentId =
+    props.asset && "attachmentId" in props.asset ? props.asset.attachmentId : undefined;
+  const mediaResource = props.asset && "resource" in props.asset ? props.asset.resource : null;
   const { copyToClipboard, isCopied } = useCopyToClipboard({ target: props.name });
   const resource = useMemo(
     () =>
-      attachmentId
+      mediaResource ??
+      (attachmentId
         ? {
             _tag: "attachment" as const,
             attachmentId,
@@ -83,15 +124,20 @@ export function AttachmentFilePreview(props: {
             mimeType: props.mimeType,
             disposition: "inline" as const,
           }
-        : null,
-    [attachmentId, props.name, props.mimeType],
+        : null),
+    [attachmentId, mediaResource, props.name, props.mimeType],
   );
   const refresh = useAssetUrlRefresh(
     props.file ? null : (props.asset?.environmentId ?? null),
     props.file ? null : resource,
   );
   const downloadResource = useMemo(
-    () => (resource ? { ...resource, disposition: "attachment" as const } : null),
+    () =>
+      resource
+        ? resource._tag === "draft-workspace-file"
+          ? resource
+          : { ...resource, disposition: "attachment" as const }
+        : null,
     [resource],
   );
   const prepareDownload = useAssetUrlRefresh(props.asset?.environmentId ?? null, downloadResource);
@@ -105,6 +151,7 @@ export function AttachmentFilePreview(props: {
   // Reading source is a separate failure from loading the file: a rendered HTML page can be
   // fine while its bytes are not UTF-8, and switching back to the page must not stay stuck.
   const [contentError, setContentError] = useState<string | null>(null);
+  const copyContents = useRef<(() => Promise<string>) | null>(null);
   const authorizedAt = useRef(0);
   useEffect(() => {
     if (!props.file) return;
@@ -141,9 +188,14 @@ export function AttachmentFilePreview(props: {
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Retry must reauthorize the remote file.
   }, [props.file, refresh, revision]);
   const url = props.file ? localUrl : remoteUrl;
-  const needsText = kind === "text" || kind === "markdown" || (kind === "html" && !rendered);
+  const streamsText =
+    kind === "text" &&
+    (props.sizeBytes > FILE_TEXT_PREVIEW_MAX_BYTES ||
+      (props.sizeBytes === 0 && (!resource || resource._tag === "attachment")));
+  const needsText =
+    kind === "text" || kind === "markdown" || kind === "mermaid" || (kind === "html" && !rendered);
   useEffect(() => {
-    if (!needsText || !url) return;
+    if (!needsText || streamsText || !url) return;
     const controller = new AbortController();
     // oxlint-disable-next-line react/set-state-in-effect -- A new external resource must clear the previous response before loading.
     setContent(null);
@@ -181,7 +233,7 @@ export function AttachmentFilePreview(props: {
         );
     });
     return () => controller.abort();
-  }, [url, needsText, revision, props.sizeBytes, props.file, refresh]);
+  }, [url, needsText, streamsText, revision, props.sizeBytes, props.file, refresh]);
   const failure = error ?? (needsText ? contentError : null);
   const wordWrap = useClientSettings((settings) => settings.wordWrap);
   const updateClientSettings = useUpdateClientSettings();
@@ -190,9 +242,9 @@ export function AttachmentFilePreview(props: {
   const showsRawText =
     failure === null &&
     needsText &&
-    content !== null &&
+    (content !== null || streamsText) &&
     !(delimiter && rendered) &&
-    !(kind === "markdown" && rendered);
+    !((kind === "markdown" || kind === "mermaid") && rendered);
 
   const save = () => {
     setSaving(true);
@@ -239,11 +291,27 @@ export function AttachmentFilePreview(props: {
         setRevision((value) => value + 1);
       }}
     />
+  ) : streamsText && url ? (
+    <Suspense fallback={<FileSurfaceLoading />}>
+      <LargeTextViewer
+        key={`${url}:${rendered}:${revision}`}
+        name={props.name}
+        src={url}
+        sizeBytes={props.sizeBytes}
+        onRetry={() => setRevision((value) => value + 1)}
+        delimiter={rendered ? delimiter : null}
+        copyContents={copyContents}
+      />
+    </Suspense>
   ) : !url || (needsText && !content) ? (
     <FileSurfaceLoading />
   ) : needsText && content ? (
     delimiter && rendered ? (
       <DelimitedTablePreview name={props.name} text={content.text} delimiter={delimiter} />
+    ) : kind === "mermaid" && rendered ? (
+      <Suspense fallback={<FileSurfaceLoading />}>
+        <MermaidFilePreview text={content.text} />
+      </Suspense>
     ) : kind === "markdown" && rendered ? (
       <ScrollArea className="min-h-0 flex-1">
         <ChatMarkdown text={content.text} cwd={undefined} className="mx-auto max-w-4xl px-6 py-5" />
@@ -251,6 +319,27 @@ export function AttachmentFilePreview(props: {
     ) : (
       <ReadOnlySourcePreview name={props.name} text={content.text} />
     )
+  ) : kind === "archive" || kind === "sqlite" ? (
+    <BinaryFilePreview
+      key={revision}
+      src={url}
+      name={props.name}
+      kind={kind}
+      onRetry={() => setRevision((value) => value + 1)}
+    />
+  ) : kind === "font" ? (
+    <Suspense fallback={<FileSurfaceLoading />}>
+      <FontFilePreview src={url} name={props.name} />
+    </Suspense>
+  ) : officeKind ? (
+    <Suspense fallback={<FileSurfaceLoading />}>
+      <OfficeFilePreview
+        src={url}
+        name={props.name}
+        kind={officeKind}
+        sizeBytes={props.sizeBytes}
+      />
+    </Suspense>
   ) : kind === "pdf" || kind === "html" ? (
     <BrowserDocumentFrame
       src={url}
@@ -276,15 +365,13 @@ export function AttachmentFilePreview(props: {
       />
     </div>
   ) : kind === "image" ? (
-    // oxlint-disable-next-line t3code/require-centered-scroll-gutter -- The image is capped at max-h-full max-w-full, so this never scrolls.
-    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
-      <img
-        src={url}
-        alt={props.name}
-        className="max-h-full max-w-full object-contain"
-        onError={() => setError("Could not load the image. Try again.")}
-      />
-    </div>
+    <PreviewImage
+      key={url}
+      src={url}
+      name={props.name}
+      mimeType={props.mimeType}
+      onError={() => setError("Unable to load image.")}
+    />
   ) : (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-6 text-center">
       <p className="text-sm font-medium">No preview for this file</p>
@@ -333,10 +420,33 @@ export function AttachmentFilePreview(props: {
             <WrapTextIcon className="size-3.5" />
           </FileSurfaceAction>
         ) : null}
-        {content ? (
+        {content || streamsText ? (
           <FileSurfaceAction
-            label={isCopied ? "Copied" : content.truncated ? "Copy preview" : "Copy contents"}
-            onPress={() => copyToClipboard(content.text, undefined)}
+            label={isCopied ? "Copied" : content?.truncated ? "Copy preview" : "Copy contents"}
+            onPress={() => {
+              if (content) {
+                void copyToClipboard(content.text, undefined);
+                return;
+              }
+              const copy = copyContents.current;
+              if (!copy) {
+                toastManager.add({
+                  type: "error",
+                  title: "Could not copy file",
+                  description: "Wait for the file to finish loading before copying.",
+                });
+                return;
+              }
+              void copy()
+                .then((text) => copyToClipboard(text, undefined))
+                .catch((cause: unknown) =>
+                  toastManager.add({
+                    type: "error",
+                    title: "Could not copy file",
+                    description: cause instanceof Error ? cause.message : "Try again.",
+                  }),
+                );
+            }}
           >
             <MorphIcon className="size-3.5" icon={isCopied ? Check : Copy} />
           </FileSurfaceAction>

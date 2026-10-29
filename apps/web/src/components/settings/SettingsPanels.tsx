@@ -115,6 +115,8 @@ import { useScopedModelDisabledReason } from "./useScopedModelAvailability";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
 import { PromptPredictionSettings } from "./PromptPredictionSettings";
+import { SnoozePresetsRow } from "./SnoozePresetsSettings";
+import { ThreadTitleInstructionsSettings } from "./ThreadTitleInstructionsSettings";
 import { useThreadActions } from "../../hooks/useThreadActions";
 import { useDesktopUpdateState, useUpdateWhenSafeStore } from "../../state/desktopUpdate";
 import {
@@ -700,6 +702,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.snoozeLimitedThreads !== DEFAULT_UNIFIED_SETTINGS.snoozeLimitedThreads
         ? ["Pause chats that reach a usage limit"]
         : []),
+      ...(!Equal.equals(settings.snoozePresets, DEFAULT_UNIFIED_SETTINGS.snoozePresets)
+        ? ["Snooze options"]
+        : []),
       ...(settings.wordWrap !== DEFAULT_UNIFIED_SETTINGS.wordWrap ? ["Word wrap"] : []),
       ...(settings.persistComposerContextStrip !==
       DEFAULT_UNIFIED_SETTINGS.persistComposerContextStrip
@@ -769,6 +774,9 @@ export function useSettingsRestore(onRestored?: () => void) {
         : []),
       ...(settings.confirmQuit !== DEFAULT_UNIFIED_SETTINGS.confirmQuit ? ["Quit shortcut"] : []),
       ...(isTextGenerationModelDirty ? ["Model for writing text"] : []),
+      ...(settings.threadTitleInstructions !== DEFAULT_UNIFIED_SETTINGS.threadTitleInstructions
+        ? ["Thread title instructions"]
+        : []),
       ...(isPromptPredictionDirty ? ["Prediction source and limit"] : []),
       ...getChangedBrowserSettingLabels(settings),
       ...(settings.enableAgentBrowserAccess !== DEFAULT_UNIFIED_SETTINGS.enableAgentBrowserAccess
@@ -827,6 +835,8 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.sidebarAutoSettleOnMerge,
       settings.autoResumeLimitedThreads,
       settings.snoozeLimitedThreads,
+      settings.snoozePresets,
+      settings.threadTitleInstructions,
       settings.sidebarProjectGroupingMode,
       settings.sidebarProjectSortOrder,
       settings.sidebarWorkingShelfEnabled,
@@ -940,6 +950,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       sidebarAutoSettleOnMerge: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge,
       autoResumeLimitedThreads: DEFAULT_UNIFIED_SETTINGS.autoResumeLimitedThreads,
       snoozeLimitedThreads: DEFAULT_UNIFIED_SETTINGS.snoozeLimitedThreads,
+      snoozePresets: DEFAULT_UNIFIED_SETTINGS.snoozePresets,
       responseStreamingMode: DEFAULT_UNIFIED_SETTINGS.responseStreamingMode,
       enableProviderUpdateChecks: DEFAULT_UNIFIED_SETTINGS.enableProviderUpdateChecks,
       continueThreadsAfterServerUpdate:
@@ -956,6 +967,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       confirmThreadUnpin: DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin,
       confirmQuit: DEFAULT_UNIFIED_SETTINGS.confirmQuit,
       textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
+      threadTitleInstructions: DEFAULT_UNIFIED_SETTINGS.threadTitleInstructions,
       promptPredictionMode: DEFAULT_UNIFIED_SETTINGS.promptPredictionMode,
       promptPredictionLocalModel: DEFAULT_UNIFIED_SETTINGS.promptPredictionLocalModel,
       promptPredictionModelSelection: DEFAULT_UNIFIED_SETTINGS.promptPredictionModelSelection,
@@ -3184,6 +3196,7 @@ function SettingsPagePanel({ page }: { readonly page: SettingsPage }) {
                 />
               }
             />
+            <SnoozePresetsRow />
             {supportsAutoSettlement ? (
               <>
                 <SettingsRow
@@ -3457,6 +3470,7 @@ function SettingsPagePanel({ page }: { readonly page: SettingsPage }) {
                 )
               }
             />
+            <ThreadTitleInstructionsSettings />
             <AdvancedSettings
               targetIds={[
                 searchableSetting("route-light-delegated-tasks").id,

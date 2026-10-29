@@ -250,6 +250,8 @@ export const make = Effect.gen(function* () {
       pullRequestStackActions: true,
       threadPullRequestLinking: true,
       serverResolvedCommandContext: true,
+      threadStop: true,
+      ...(hostPlatform === "win32" ? {} : { localServerStop: true }),
       environmentIcon: true,
       projectCloneTracking: true,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),

@@ -6,6 +6,7 @@ import {
   AuthFilesystemWriteScope,
   AuthSettingsWriteScope,
   AuthSourceControlWriteScope,
+  AuthTerminalOperateScope,
   type AuthEnvironmentScope,
 } from "./auth.ts";
 import { ORCHESTRATION_V2_WS_METHODS } from "./orchestrationV2.ts";
@@ -38,6 +39,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.savedItemsSchedule]: AuthOrchestrationOperateScope,
   [WS_METHODS.savedItemsSaveTask]: AuthOrchestrationOperateScope,
   [WS_METHODS.projectsCancelPromptPrediction]: AuthFilesystemReadScope,
+  // Stopping a server signals its processes, as closing a terminal does.
+  [WS_METHODS.previewStopLocalServer]: AuthTerminalOperateScope,
   [WS_METHODS.serverRunStorageCleanup]: AuthSettingsWriteScope,
   // Endpoint checks exist to configure exports, so they need the same grant as saving them.
   [WS_METHODS.serverCheckOtlpEndpoint]: AuthSettingsWriteScope,

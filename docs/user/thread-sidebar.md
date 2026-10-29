@@ -139,6 +139,10 @@ To generate a fresh title from the conversation, open a thread's menu and choose
 **Regenerate title**. The action is unavailable while title generation is in progress
 or when the connected environment needs a server update.
 
+To change how titles are written, add **Thread title instructions** in **Settings → General →
+Text generation**, such as a length limit or an identifier to put first. They apply to new and
+regenerated titles. Select a project to give it its own instructions.
+
 Agents connected through Leonidas Code can use the same server-owned metadata workflow to
 rename a thread, regenerate its title, or link and unlink a pull request. These changes
 appear on web, desktop, and mobile without requiring the originating browser to remain
@@ -257,7 +261,20 @@ Expand a tool call in the conversation to see its full command and output.
 Summaries shorten shell wrappers and can still describe the latest call after it
 finishes; the call's own result shows its status.
 
+On web and desktop, the thread details card lists the web servers that the
+thread's terminals or its Claude agent started, with their ports. A server the
+agent started stays listed after the agent's turn ends.
+Select a server to open it in the browser panel. **Stop** ends the server's job
+and keeps the agent, the terminal, and T3 Code running. Stop needs terminal
+access to the environment and is not available on Windows.
+
 ## Snooze until later
+
+To change the choices in the snooze menu, open **Settings → General → Chats → Snooze options**.
+Each option is a duration, such as 3 hours, or a time on a day, such as 9:00 PM
+tomorrow. A weekday means the next one after today. Menus list the options soonest
+first and hide a today option after its time passes. Saved with **All environments**
+selected, the options apply to every connected environment, and the mobile app uses them too.
 
 Choose **Snooze → Custom…** from a thread's menu to pick a date and time in your
 local time zone, or a duration in minutes, hours, or days. Durations start when

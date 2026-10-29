@@ -7,10 +7,12 @@ import {
   hostPreviewMimeTypeFromExtension,
   isWorkspaceAudioPreviewPath,
   isWorkspaceBrowserPreviewPath,
+  isWorkspaceFontPreviewPath,
   isWorkspaceImagePreviewPath,
   isWorkspacePreviewEntryPath,
   isWorkspaceVideoPreviewPath,
   mediaKindFromPath,
+  officePreviewKind,
 } from "./filePreview.ts";
 
 describe("workspace file previews", () => {
@@ -69,6 +71,20 @@ describe("media path parsing", () => {
     ["images/result.png%23secret.txt", null],
     ["images/result.png%3Fsecret.txt", null],
     ["/tmp/100%.png", "image"],
+    ["/tmp/tone.MP3", "audio"],
+    ["./tone.wav", "audio"],
+    ["tone.ogg", "audio"],
+    ["tone.m4a", "audio"],
+    ["tone.flac", "audio"],
+    ["tone.aac", "audio"],
+    ["tone.opus", "audio"],
+    ["tone.webm-audio", "audio"],
+    ["tone.webm", "video"],
+    ["https://example.com/tone%2Emp3?download=1", "audio"],
+    ["data.csv", null],
+    ["report.pdf", null],
+    ["report.docx", null],
+    ["archive.zip", null],
   ])("classifies the decoded pathname of %s", (source, kind) => {
     expect(mediaKindFromPath(source)).toBe(kind);
   });
@@ -92,10 +108,12 @@ describe("attachment preview classification", () => {
     ["report.pdf", "application/pdf", "pdf"],
     ["page.HTML", "", "html"],
     ["recording.mp3", "", "audio"],
+    ["recording.webm-audio", "", "audio"],
+    ["recording.webm", "audio/webm", "audio"],
     ["payload", "application/problem+json", "text"],
-    ["archive.zip", "application/zip", "unsupported"],
+    ["archive.zip", "application/zip", "archive"],
     ["misleading.json", "application/pdf", "pdf"],
-    ["misleading.pdf", "application/zip", "unsupported"],
+    ["misleading.pdf", "application/zip", "archive"],
   ])("classifies %s (%s) as %s", (name, mimeType, expected) => {
     expect(filePreviewKind({ name, mimeType })).toBe(expected);
   });
@@ -111,5 +129,102 @@ describe("attachment preview classification", () => {
     expect(preview.truncated).toBe(true);
     expect(preview.text.endsWith("�")).toBe(false);
     expect(preview.text.length).toBe(FILE_TEXT_PREVIEW_MAX_BYTES - 1);
+  });
+});
+
+describe("office, font and mermaid previews", () => {
+  it.each(["ttf", "otf", "woff", "woff2"])(
+    "previews %s fonts through signed host assets",
+    (extension) => {
+      expect(
+        filePreviewKind({ name: `sample.${extension}`, mimeType: "application/octet-stream" }),
+      ).toBe("font");
+      expect(filePreviewKind({ name: "download", mimeType: `font/${extension}` })).toBe("font");
+      expect(isWorkspaceFontPreviewPath(`/tmp/sample.${extension.toUpperCase()}`)).toBe(true);
+      expect(isWorkspacePreviewEntryPath(`sample.${extension}`)).toBe(true);
+      expect(hostPreviewMimeTypeFromExtension(`.${extension}`)).toBe(`font/${extension}`);
+      expect(isWorkspaceFontPreviewPath(`sample.${extension}?download=1`)).toBe(false);
+      expect(filePreviewKind({ name: `sample.${extension}`, mimeType: "application/zip" })).toBe(
+        "archive",
+      );
+    },
+  );
+
+  it.each([
+    [
+      "quarterly-report.DOCX",
+      "docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ],
+    [
+      "finance#q4/operating-plan.xlsx",
+      "xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ],
+    [
+      "slides?review/quarterly-review.pptx",
+      "pptx",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ],
+    ["notes.odt", "odt", "application/vnd.oasis.opendocument.text"],
+    ["budget.ods", "ods", "application/vnd.oasis.opendocument.spreadsheet"],
+    ["deck.odp", "odp", "application/vnd.oasis.opendocument.presentation"],
+    ["notes.rtf", "rtf", "application/rtf"],
+    ["guide.epub", "epub", "application/epub+zip"],
+    ["analysis.ipynb", "ipynb", "application/x-ipynb+json"],
+  ])("recognizes Office assets at literal path %s", (name, kind, mimeType) => {
+    expect(officePreviewKind({ name })).toBe(kind);
+    expect(filePreviewKind({ name, mimeType: "application/octet-stream" })).toBe(kind);
+    expect(isWorkspacePreviewEntryPath(name)).toBe(true);
+    expect(hostPreviewMimeTypeFromExtension(`.${kind}`)).toBe(mimeType);
+    expect(filePreviewKind({ name: "download", mimeType })).toBe(kind);
+    expect(filePreviewKind({ name, mimeType: "application/zip" })).toBe("archive");
+  });
+
+  it.each([
+    ["diagram.mmd", "", "mermaid"],
+    ["diagram.MERMAID", "text/plain", "mermaid"],
+    ["download", "text/vnd.mermaid", "mermaid"],
+    ["source-code.otf", "application/vnd.oasis.opendocument.formula-template", "font"],
+    ["notes.rtf", "application/rtf", "rtf"],
+    ["notes.rtf", "", "rtf"],
+    ["download", "text/rtf", "rtf"],
+    ["analysis.IPYNB", "application/json", "ipynb"],
+    ["image.bmp", "application/octet-stream", "image"],
+    ["photo.heic", "application/octet-stream", "image"],
+    ["scan.tiff", "application/octet-stream", "image"],
+  ])("classifies %s (%s) as %s", (name, mimeType, kind) => {
+    expect(filePreviewKind({ name, mimeType })).toBe(kind);
+  });
+
+  it("falls back to plain kinds when rich documents are off", () => {
+    expect(filePreviewKind({ name: "report.docx" }, { richDocuments: false })).toBe("unsupported");
+  });
+
+  it.each([
+    "report.docx#notes.txt",
+    "report.xlsx?download=1",
+    "slides%2Epptx",
+    "report.docm",
+    "slides.ppt",
+    "guide.epub?download=1",
+    "analysis.ipynb#notes.txt",
+    "report.odt.ts",
+  ])("rejects non-preview path %s", (path) => {
+    expect(isWorkspacePreviewEntryPath(path)).toBe(false);
+  });
+});
+
+describe("archive and sqlite previews", () => {
+  it.each([
+    ["archive.zip", "application/zip", "archive"],
+    ["lib.jar", "application/octet-stream", "archive"],
+    ["bundle.tgz", "", "archive"],
+    ["data.sqlite", "", "sqlite"],
+    ["data.db", "application/octet-stream", "sqlite"],
+    ["download", "application/vnd.sqlite3", "sqlite"],
+    ["backup.7z", "application/x-7z-compressed", "unsupported"],
+  ])("classifies %s (%s) as %s", (name, mimeType, kind) => {
+    expect(filePreviewKind({ name, mimeType })).toBe(kind);
   });
 });

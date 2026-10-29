@@ -680,6 +680,9 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   // through this layer. Built-in drivers come from `BUILT_IN_DRIVERS`;
   // hydration adds their default instances to `providerInstances` on boot.
   Layer.provideMerge(ProviderInstanceRegistryHydration.layer),
+  // Provider hydration builds the Claude runner, which reports agents to the same scanner the
+  // terminal and preview layers share.
+  Layer.provideMerge(layerPortScanner),
   Layer.provideMerge(
     Layer.mergeAll(
       AntigravityInstallation.AntigravityInstallation.layer,

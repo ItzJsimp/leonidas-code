@@ -5,7 +5,9 @@ import {
   readHtmlRenderContentHeight,
   readHtmlRenderLinkRequest,
 } from "@t3tools/shared/htmlRender";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isElectron } from "~/env";
+import { FileSurfaceLoading } from "./fileSurfaceChrome";
 
 import { useHtmlRenderTheme } from "~/hooks/useHtmlRenderTheme";
 import { cn } from "~/lib/utils";
@@ -21,11 +23,37 @@ const PDF_VIEWER_FRAGMENT = "#toolbar=0&view=FitH";
 export const isPdfPreviewFile = (path: string): boolean =>
   /\.pdf$/i.test(path.split(/[?#]/, 1)[0] ?? "");
 
+const PdfViewer = lazy(() => import("./PdfViewer"));
+
+function PdfDocument(props: { src: string; title: string }) {
+  const [src] = useState(props.src);
+  // The Electron shell does not enable PDF plugins. WebKit embeds on iOS
+  // expose only the first page, even when pdfViewerEnabled reports support.
+  const native =
+    !isElectron &&
+    navigator.pdfViewerEnabled &&
+    !/iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return native ? (
+    // oxlint-disable-next-line react/iframe-missing-sandbox -- Chromium's PDF plugin requires an unsandboxed frame; src is an exact-file asset grant.
+    <iframe
+      src={`${src.split("#", 1)[0]}${PDF_VIEWER_FRAGMENT}`}
+      title={props.title}
+      className="block h-full min-h-0 w-full flex-1 border-0 bg-white"
+    />
+  ) : (
+    <Suspense fallback={<FileSurfaceLoading />}>
+      <PdfViewer src={src} title={props.title} />
+    </Suspense>
+  );
+}
+
 /**
  * Renders an HTML or PDF document from its URL. HTML runs in a sandboxed frame
  * with an opaque origin, so a page cannot reach the app's session or storage.
  * The built-in PDF viewer needs an unsandboxed frame; a PDF runs no scripts.
  * An agent's HTML render also wears the app theme.
+ * PDFs use the native viewer or the lazy PDF.js fallback.
  */
 export function BrowserDocumentFrame(props: {
   readonly src: string;
@@ -35,13 +63,7 @@ export function BrowserDocumentFrame(props: {
 }) {
   const className = "min-h-0 flex-1 border-0 bg-white";
   return props.pdf ? (
-    // oxlint-disable-next-line react/iframe-missing-sandbox -- the built-in PDF viewer needs an unsandboxed frame.
-    <iframe
-      key={props.src}
-      src={`${props.src}${PDF_VIEWER_FRAGMENT}`}
-      title={props.title}
-      className={className}
-    />
+    <PdfDocument key={props.src} src={props.src} title={props.title} />
   ) : props.htmlRender ? (
     <HtmlRenderDocument
       key={props.src}

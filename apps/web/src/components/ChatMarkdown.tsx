@@ -73,7 +73,8 @@ import {
   markdownImageSourceFragment,
 } from "@t3tools/client-runtime/markdown-images";
 import { mediaFileReference, mediaUrlReference } from "@t3tools/client-runtime/media-reference";
-import { mediaKindFromPath, mediaMimeTypeFromExtension } from "@t3tools/shared/filePreview";
+import { mediaKindFromPath, mediaMimeTypeFromExtension } from "@t3tools/shared/mediaPreview";
+import { InlineAudioPreview } from "./files/InlineAudioPreview";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import React, {
@@ -1077,7 +1078,7 @@ function MarkdownMermaidCodeBlock({
               </div>
             }
           >
-            <MermaidDiagram source={code} theme={theme} onExpand={onExpand} />
+            <MermaidDiagram source={code} onExpand={onExpand} />
           </Suspense>
           {/* Find counts the source; a selected match here switches to it. */}
           {searching ? (
@@ -1353,9 +1354,14 @@ function expandableMarkdownImageProps(
 
 function ChatMarkdownMediaUnavailableLabel(props: {
   readonly alt: string;
-  readonly kind?: "image" | "video" | undefined;
+  readonly kind?: "image" | "video" | "audio" | undefined;
 }) {
-  const label = props.kind === "video" ? "Video unavailable" : "Image unavailable";
+  const label =
+    props.kind === "audio"
+      ? "Audio unavailable"
+      : props.kind === "video"
+        ? "Video unavailable"
+        : "Image unavailable";
   return (
     // Find indexes no image text, so this fallback must not highlight either.
     <span data-thread-find-ignore className="inline-flex items-center gap-1.5">
@@ -1369,7 +1375,7 @@ function ChatMarkdownMediaUnavailableLabel(props: {
 function ChatMarkdownImageFallback(props: {
   readonly alt: string;
   readonly copyMarkdown?: string | undefined;
-  readonly kind?: "image" | "video";
+  readonly kind?: "image" | "video" | "audio";
   readonly actionsSource?: MediaActionSource | undefined;
 }) {
   const content = (
@@ -3011,6 +3017,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
               href &&
               faviconHost !== null &&
               mediaKindFromPath(href) !== null &&
+              mediaKindFromPath(href) !== "audio" &&
               !event.defaultPrevented &&
               !event.metaKey &&
               !event.ctrlKey &&
@@ -3210,6 +3217,7 @@ const CHAT_MARKDOWN_COMPONENTS = {
       imageBaseDir,
       threadRef,
       renderContextReference,
+      fileLinkChip,
     } = use(ChatMarkdownRendererContext);
     const imageExpand = use(MarkdownLinkContext) ? undefined : expandMedia;
     const contextReference = typeof src === "string" ? parseComposerContextHref(src) : null;
@@ -3235,7 +3243,42 @@ const CHAT_MARKDOWN_COMPONENTS = {
     const { className, style: _style, width, height, ...imageProps } = props;
     const authoredSizeStyle = authoredImageSizeStyle(width, height);
     const imageSource = classifyMarkdownImageSource(classifiedSrc, imageBaseDir ?? cwd);
-    const kind = mediaKindFromPath(classifiedSrc) ?? "image";
+    const mediaKind = mediaKindFromPath(classifiedSrc);
+    if (mediaKind === "audio") {
+      const filePath = imageSource._tag === "WorkspaceFile" ? imageSource.path : null;
+      const name =
+        (filePath ?? classifiedSrc.split(/[?#]/, 1)[0] ?? "").split(/[\\/]/).at(-1) ||
+        altText ||
+        "Audio";
+      if (imageSource._tag !== "Direct" && !(filePath && threadRef)) {
+        return <ChatMarkdownImageFallback alt={altText} copyMarkdown={copyMarkdown} kind="audio" />;
+      }
+      return (
+        <InlineAudioPreview
+          key={classifiedSrc}
+          name={name}
+          copyMarkdown={copyMarkdown}
+          {...(filePath && threadRef
+            ? {
+                environmentId: threadRef.environmentId,
+                resource: {
+                  _tag: "media-file" as const,
+                  threadId: threadRef.threadId,
+                  path: filePath,
+                },
+                onOpen: () => useRightPanelStore.getState().openFile(threadRef, filePath),
+              }
+            : imageSource._tag === "Direct"
+              ? { src: resolveProtocolRelativeMediaUrl(imageSource.uri) }
+              : {})}
+        />
+      );
+    }
+    if (mediaKind === null && imageSource._tag === "WorkspaceFile") {
+      const fileLinkMeta = resolveMarkdownFileLinkMeta(srcString, cwd, imageBaseDir ?? cwd);
+      if (fileLinkMeta) return fileLinkChip(fileLinkMeta, copyMarkdown, srcString);
+    }
+    const kind = mediaKind ?? "image";
     const directUri = imageSource._tag === "Direct" ? imageSource.uri : null;
     const githubMediaUrl =
       directUri === null ? null : githubMediaFetchUrl(resolveProtocolRelativeMediaUrl(directUri));

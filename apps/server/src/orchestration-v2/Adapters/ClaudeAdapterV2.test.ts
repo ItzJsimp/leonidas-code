@@ -88,6 +88,7 @@ import { ThreadToolkit } from "../../mcp/toolkits/thread/tools.ts";
 import { OrchestratorToolkit } from "../../mcp/toolkits/orchestrator/tools.ts";
 import { ClaudeExecutableFileCheck } from "../../provider/Drivers/ClaudeExecutable.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
+import * as PortScanner from "../../preview/PortScanner.ts";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import type * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
@@ -2078,7 +2079,7 @@ describe("ClaudeAdapterV2 MCP credential channel", () => {
         },
       });
     }).pipe(
-      Effect.provide(ClaudeAdapterV2.layerQueryRunner),
+      Effect.provide(ClaudeAdapterV2.layerQueryRunner.pipe(Layer.provide(PortScanner.layerTest))),
       Effect.provideService(
         ProviderEventLoggers.ProviderEventLoggers,
         ProviderEventLoggers.NoOpProviderEventLoggers,

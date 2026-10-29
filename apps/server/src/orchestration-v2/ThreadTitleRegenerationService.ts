@@ -179,6 +179,7 @@ const make = Effect.gen(function* () {
                   message: context.message,
                   ...(input.kind.type === "regenerate" ? { previousTitle } : {}),
                   ...(hint.length > 0 ? { hint } : {}),
+                  instructions: settings.threadTitleInstructions,
                 }).prompt,
               }),
             )
@@ -191,6 +192,7 @@ const make = Effect.gen(function* () {
           attachments: context.attachments,
           ...(input.kind.type === "regenerate" ? { previousTitle } : {}),
           ...(hint.length > 0 ? { hint } : {}),
+          instructions: settings.threadTitleInstructions,
           modelSelection: settings.textGenerationModelSelection,
         })).title
       ).trim();

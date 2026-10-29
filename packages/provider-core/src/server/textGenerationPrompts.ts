@@ -235,7 +235,7 @@ export interface ThreadTitlePromptInput {
   /** Optional user focus for a regenerated title. */
   hint?: string | undefined;
   attachments?: ReadonlyArray<ChatAttachment> | undefined;
-  policy?: TextGenerationPolicy | undefined;
+  instructions?: string | undefined;
 }
 
 // Keep shared editorial rules in these two prompts in sync. Regeneration
@@ -309,7 +309,7 @@ function preserveMessageEnd(message: string): string {
 }
 
 function threadTitlePromptSuffix(input: ThreadTitlePromptInput): string {
-  const additionalInstructions = policyInstruction(input.policy?.threadTitleInstructions);
+  const additionalInstructions = policyInstruction(input.instructions);
   const attachmentLines = (input.attachments ?? []).map(
     (attachment) => `- ${attachment.name} (${attachment.mimeType}, ${attachment.sizeBytes} bytes)`,
   );

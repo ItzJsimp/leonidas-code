@@ -438,6 +438,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["sort projects sidebar manual created recent"],
   },
   {
+    id: "snooze-options",
+    title: "Snooze options",
+    to: "/settings/general",
+    searchTerms: ["snooze presets times later tonight tomorrow next week remind"],
+    environmentOnly: true,
+    scope: "environment-defaults",
+  },
+  {
     id: "snooze-limited-threads",
     title: "Pause chats that reach a usage limit",
     to: "/settings/threads",
@@ -776,6 +784,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [
       "text generation model generated thread titles source control content default provider",
     ],
+  },
+  {
+    id: "thread-title-instructions",
+    title: "Thread title instructions",
+    to: "/settings/general",
+    scope: "project-defaults",
+    searchTerms: ["generated thread titles prompt custom style naming rename regenerate"],
   },
   {
     id: "app-version",
