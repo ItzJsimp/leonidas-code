@@ -921,6 +921,28 @@ describe("AssetAccess", () => {
     }).pipe(Effect.provide(layerTest)),
   );
 
+  it.effect("issues exact workspace URLs for every non-HTML preview", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const root = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-asset-exact-" });
+      for (const name of ["report.pdf", "plan.docx", "sheet.xlsx", "deck.pptx", "face.woff2"]) {
+        const filePath = path.join(root, name);
+        yield* fileSystem.writeFileString(filePath, "preview fixture");
+        yield* fileSystem.writeFileString(path.join(root, `other-${name}`), "sibling");
+        const canonicalFile = yield* fileSystem.realPath(filePath);
+        const result = yield* issueAssetUrl({
+          resource: { _tag: "workspace-file", threadId: ThreadId.make("thread-1"), path: filePath },
+          workspaceRoot: root,
+        });
+        const suffix = result.relativeUrl.slice(`${ASSET_ROUTE_PREFIX}/`.length);
+        const token = suffix.slice(0, suffix.indexOf("/"));
+        expect(yield* resolveAsset(token, name)).toEqual({ kind: "file", path: canonicalFile });
+        expect(yield* resolveAsset(token, `other-${name}`)).toBeNull();
+      }
+    }).pipe(Effect.provide(layerTest)),
+  );
+
   it.effect("previews workspace files with literal fragment characters in their paths", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
