@@ -31,11 +31,7 @@ import {
   getTriggerDisplayModelName,
 } from "./providerIconUtils";
 import { shouldShowInstanceBadge, type ProviderInstanceEntry } from "../../providerInstances";
-import {
-  ComposerControl,
-  ComposerControlChevron,
-  type ComposerControlSize,
-} from "./ComposerControl";
+import { ComposerControl, type ComposerControlSize } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
 import { shortcutLabelForCommand } from "../../keybindings";
 
@@ -362,9 +358,6 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               </span>
             </span>
           ) : null}
-        </span>
-        <span aria-hidden="true" className="flex items-center">
-          <ComposerControlChevron size={size} />
         </span>
       </PopoverTrigger>
       <PopoverPopup
