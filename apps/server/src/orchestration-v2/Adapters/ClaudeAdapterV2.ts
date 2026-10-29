@@ -120,6 +120,7 @@ import {
   type CompiledClaudeModelSelection,
 } from "../../claudeModelOptions.ts";
 import * as ServerConfig from "../../config.ts";
+import * as PortScanner from "../../preview/PortScanner.ts";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import {
   CLAUDE_SIGNED_OUT_MESSAGE,
@@ -683,13 +684,15 @@ export function makeClaudeAgentSdkProtocolLogger(input: {
 export const layerQueryRunner: Layer.Layer<
   ClaudeAgentSdkQueryRunner,
   never,
-  Crypto.Crypto | ProviderEventLoggers.ProviderEventLoggers
+  Crypto.Crypto | PortScanner.PortDiscovery | ProviderEventLoggers.ProviderEventLoggers
 > = Layer.effect(
   ClaudeAgentSdkQueryRunner,
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto;
     const { native: nativeEventLogger } = yield* ProviderEventLoggers.ProviderEventLoggers;
     const agentScope = yield* AgentScope;
+    const hostEnvironment = yield* HostProcess.Environment;
+    const portDiscovery = yield* PortScanner.PortDiscovery;
 
     return ClaudeAgentSdkQueryRunner.of({
       allocateSessionId: crypto.randomUUIDv4.pipe(
@@ -718,7 +721,15 @@ export const layerQueryRunner: Layer.Layer<
         // which every local user can read. They go over the CLI's stdin control
         // channel instead, so header credentials stay out of its argv and out
         // of the environment every command the agent runs inherits.
-        const { mcpServers, ...queryOptions } = input.options;
+        const { mcpServers, ...sdkOptions } = input.options;
+        // Jobs the agent starts inherit the thread, so port discovery can attribute their servers.
+        const queryOptions = {
+          ...sdkOptions,
+          env: {
+            ...(sdkOptions.env ?? hostEnvironment),
+            [PortScanner.AGENT_THREAD_ENV]: input.threadId,
+          },
+        };
         // The SDK spawns a native binary as `path ...executableArgs ...sdkArgs`,
         // which lets the agent scope wrapper go in front of the CLI while the
         // SDK keeps its own stderr capture and exit reporting. The SDK runs a
@@ -745,6 +756,8 @@ export const layerQueryRunner: Layer.Layer<
               };
         // The CLI is running once query() returns, so it is closed if anything
         // before the session is handed out fails or is interrupted.
+        // The open session counts as a running agent until its message stream ends or open fails.
+        const releaseAgent = portDiscovery.trackAgent();
         const queryRuntime = yield* Effect.uninterruptibleMask((restore) =>
           Effect.try({
             try: () => query({ prompt, options }),
@@ -800,12 +813,13 @@ export const layerQueryRunner: Layer.Layer<
               ),
             ),
           ),
-        );
+        ).pipe(Effect.onError(() => Effect.sync(releaseAgent)));
 
         return {
           messages: Stream.fromAsyncIterable(claudeQueryMessages(queryRuntime), (cause) =>
             queryRunnerError(cause, "fromAsyncIterable"),
           ).pipe(
+            Stream.ensuring(Effect.sync(releaseAgent)),
             Stream.tap((message) =>
               logProtocolEvent({
                 direction: "incoming",
