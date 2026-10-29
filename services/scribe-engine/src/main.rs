@@ -207,16 +207,28 @@ fn run() -> Result<(), String> {
                             return;
                         };
                         let presets = scribe_engine::rewrite::presets(&settings.current());
-                        let names: Vec<String> = presets.iter().map(|p| p.name.clone()).collect();
-                        if let Some(index) = scribe_engine::hud::picker::pick(&names) {
+                        let items: Vec<(String, String)> = presets
+                            .iter()
+                            .map(|p| (p.name.clone(), scribe_engine::rewrite::summary(p)))
+                            .collect();
+                        let chars = text.chars().count();
+                        if let Some(index) = scribe_engine::hud::picker::pick(&items, chars) {
                             scribe_engine::paste::restore_focus(hwnd);
-                            let _ = engine.rewrite(
+                            let started = engine.rewrite(
                                 text,
                                 presets[index].clone(),
                                 app,
                                 settings.current().private_mode,
                                 move || scribe_engine::paste::restore_focus(hwnd),
                             );
+                            if started.is_ok() && engine.rewriting() {
+                                // Shown until the result is pasted; the 30 s cap is inside status().
+                                let _status =
+                                    scribe_engine::hud::picker::status(&presets[index].name);
+                                while engine.rewriting() {
+                                    std::thread::sleep(std::time::Duration::from_millis(50));
+                                }
+                            }
                         }
                     });
                     continue;
