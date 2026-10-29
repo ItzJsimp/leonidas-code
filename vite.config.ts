@@ -334,9 +334,9 @@ export default defineConfig({
                 // Inline chips size in em so they scale with the text they sit in
                 // (the composer honours the prompt font-size preference).
                 "gap-[0.33em]",
-                "px-[0.5em]",
-                "rounded-[0.5em]",
-                "text-[0.86em]",
+                "gap-[0.2em]",
+                "leading-[normal]",
+                "underline-offset-[0.2em]",
                 // Project icons render from 14px to 48px and keep one proportional corner.
                 "rounded-[25%]",
                 // An emoji project icon fills its container, whatever size the parent gives it.
