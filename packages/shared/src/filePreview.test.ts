@@ -7,10 +7,12 @@ import {
   hostPreviewMimeTypeFromExtension,
   isWorkspaceAudioPreviewPath,
   isWorkspaceBrowserPreviewPath,
+  isWorkspaceFontPreviewPath,
   isWorkspaceImagePreviewPath,
   isWorkspacePreviewEntryPath,
   isWorkspaceVideoPreviewPath,
   mediaKindFromPath,
+  officePreviewKind,
 } from "./filePreview.ts";
 
 describe("workspace file previews", () => {
@@ -127,5 +129,76 @@ describe("attachment preview classification", () => {
     expect(preview.truncated).toBe(true);
     expect(preview.text.endsWith("�")).toBe(false);
     expect(preview.text.length).toBe(FILE_TEXT_PREVIEW_MAX_BYTES - 1);
+  });
+});
+
+describe("office, font and mermaid previews", () => {
+  it.each(["ttf", "otf", "woff", "woff2"])(
+    "previews %s fonts through signed host assets",
+    (extension) => {
+      expect(
+        filePreviewKind({ name: `sample.${extension}`, mimeType: "application/octet-stream" }),
+      ).toBe("font");
+      expect(filePreviewKind({ name: "download", mimeType: `font/${extension}` })).toBe("font");
+      expect(isWorkspaceFontPreviewPath(`/tmp/sample.${extension.toUpperCase()}`)).toBe(true);
+      expect(isWorkspacePreviewEntryPath(`sample.${extension}`)).toBe(true);
+      expect(hostPreviewMimeTypeFromExtension(`.${extension}`)).toBe(`font/${extension}`);
+      expect(isWorkspaceFontPreviewPath(`sample.${extension}?download=1`)).toBe(false);
+      expect(filePreviewKind({ name: `sample.${extension}`, mimeType: "application/zip" })).toBe(
+        "unsupported",
+      );
+    },
+  );
+
+  it.each([
+    [
+      "quarterly-report.DOCX",
+      "docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ],
+    [
+      "finance#q4/operating-plan.xlsx",
+      "xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ],
+    [
+      "slides?review/quarterly-review.pptx",
+      "pptx",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ],
+  ])("recognizes Office assets at literal path %s", (name, kind, mimeType) => {
+    expect(officePreviewKind({ name })).toBe(kind);
+    expect(filePreviewKind({ name, mimeType: "application/octet-stream" })).toBe(kind);
+    expect(isWorkspacePreviewEntryPath(name)).toBe(true);
+    expect(hostPreviewMimeTypeFromExtension(`.${kind}`)).toBe(mimeType);
+    expect(filePreviewKind({ name: "download", mimeType })).toBe(kind);
+    expect(filePreviewKind({ name, mimeType: "application/zip" })).toBe("unsupported");
+  });
+
+  it.each([
+    ["diagram.mmd", "", "mermaid"],
+    ["diagram.MERMAID", "text/plain", "mermaid"],
+    ["download", "text/vnd.mermaid", "mermaid"],
+    ["source-code.otf", "application/vnd.oasis.opendocument.formula-template", "font"],
+    ["notes.rtf", "application/rtf", "text"],
+    ["image.bmp", "application/octet-stream", "image"],
+    ["photo.heic", "application/octet-stream", "image"],
+    ["scan.tiff", "application/octet-stream", "image"],
+  ])("classifies %s (%s) as %s", (name, mimeType, kind) => {
+    expect(filePreviewKind({ name, mimeType })).toBe(kind);
+  });
+
+  it("falls back to plain kinds when rich documents are off", () => {
+    expect(filePreviewKind({ name: "report.docx" }, { richDocuments: false })).toBe("unsupported");
+  });
+
+  it.each([
+    "report.docx#notes.txt",
+    "report.xlsx?download=1",
+    "slides%2Epptx",
+    "report.docm",
+    "slides.ppt",
+  ])("rejects non-preview path %s", (path) => {
+    expect(isWorkspacePreviewEntryPath(path)).toBe(false);
   });
 });
