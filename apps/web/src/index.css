@@ -1857,6 +1857,13 @@ code {
   }
 }
 
+/* A diff header's copy button shows on file hover or focus. */
+@media (hover: hover) {
+  diffs-container:not(:hover) [data-diff-copy-path]:not(:focus-within) {
+    opacity: 0;
+  }
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: var(--app-scrollbar-width);
