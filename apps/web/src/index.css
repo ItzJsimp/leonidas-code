@@ -2166,7 +2166,11 @@ code {
   border-collapse: collapse;
   overflow-wrap: normal;
   word-break: normal;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.chat-markdown :is(td, th) {
+  text-wrap: pretty;
 }
 
 .chat-markdown th,
