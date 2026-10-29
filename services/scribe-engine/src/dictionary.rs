@@ -521,8 +521,10 @@ mod tests {
 
     #[test]
     fn builtins_apply_under_the_user_file_and_never_leave_it() {
-        let user =
-            Dictionary::with_builtins(vec![("clawd".into(), "Clawd".into())], vec!["Quillfeather".into()]);
+        let user = Dictionary::with_builtins(
+            vec![("clawd".into(), "Clawd".into())],
+            vec!["Quillfeather".into()],
+        );
         assert_eq!(
             user.apply("open router and United Scribe"),
             "OpenRouter and Leonidas Scribe"

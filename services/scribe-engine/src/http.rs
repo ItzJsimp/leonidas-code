@@ -873,7 +873,11 @@ mod tests {
         assert_eq!(first.body["items"][0]["cleanedText"], "Hi.");
         let public = server.request("GET", "/v1/history/public?limit=2", "");
         assert_eq!(public.status, 200);
-        assert!(public.body["items"].as_array().unwrap().iter().all(|item| item["private"] == false));
+        assert!(public.body["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["private"] == false));
 
         let second = server.request("GET", "/v1/history?limit=2&before=d2", "");
         assert_eq!(second.body["items"][0]["id"], "d1");
