@@ -667,7 +667,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.provideMerge(Layer.mergeAll(layerTerminal, layerPreview, layerDevice, layerLocalVm)),
   Layer.provideMerge(ScribeSupervisor.layer),
   Layer.provideMerge(Layer.merge(ScribeStatus.layer, ScribeEngine.layer)),
-  Layer.provideMerge(VoiceDictation.layer.pipe(Layer.provide(VoiceKeyStore.layer))),
+  Layer.provideMerge(VoiceDictation.layer.pipe(Layer.provideMerge(VoiceKeyStore.layer))),
   Layer.provideMerge(layerPersistence),
   // Both read a user-owned file out of the state directory and stream changes
   // to clients; neither depends on the other.

@@ -23,6 +23,7 @@ import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
 import * as VoiceDictation from "./scribe/VoiceDictation.ts";
+import * as VoiceKeyStore from "./scribe/VoiceKeyStore.ts";
 import * as ScribeEngine from "./scribe/ScribeEngine.ts";
 import * as VoiceLogMemory from "./scribe/VoiceLogMemory.ts";
 import * as ScribeStats from "./scribe/scribeStats.ts";
@@ -1329,6 +1330,7 @@ const layerWsRpc = (
       const voiceLogMemory = yield* VoiceLogMemory.VoiceLogMemory;
       const scribeSupervisor = yield* ScribeSupervisor.ScribeSupervisor;
       const voice = yield* VoiceDictation.VoiceDictation;
+      const voiceKeys = yield* VoiceKeyStore.VoiceKeyStore;
       const deviceService = yield* DeviceService.DeviceService;
       const deviceHostContext =
         yield* Effect.context<Effect.Services<ReturnType<typeof remoteSshDeviceHosts>>>();
@@ -2637,6 +2639,15 @@ const layerWsRpc = (
             const settings = yield* providerInstanceMutation === undefined
               ? serverSettings.updateSettings(nextPatch)
               : serverSettings.updateProviderInstance(providerInstanceMutation, nextPatch);
+            const groqKey = patch.groqApiKey?.trim();
+            if (groqKey !== undefined && !groqKey.includes("•")) {
+              // One Groq key for all of Leonidas: Scribe dictation and rewrite read the shared vault entry.
+              yield* (groqKey ? voiceKeys.set(groqKey) : voiceKeys.remove).pipe(
+                Effect.catch(() =>
+                  Effect.logWarning("Could not copy the Groq key to the shared vault"),
+                ),
+              );
+            }
             return ServerSettings.redactServerSettingsForClient(settings);
           }),
         [WS_METHODS.serverDiscoverSourceControl]: (_input) => sourceControlDiscovery.discover,
