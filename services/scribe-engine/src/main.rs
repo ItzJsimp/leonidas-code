@@ -197,7 +197,7 @@ fn run() -> Result<(), String> {
                             }
                         }
                         let _reset = Reset(picker_open);
-                        if engine.state() != State::Ready {
+                        if engine.rewriting() {
                             return;
                         }
                         let hwnd = scribe_engine::paste::foreground_window();

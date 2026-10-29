@@ -3,7 +3,7 @@
 
 use crate::contract::{now_iso, Event, HistoryMetrics, Mode, State, SttEngine};
 use crate::history::{History, NewItem};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -114,6 +114,8 @@ struct Shared {
     history: Option<Arc<History>>,
     /// v1.2: reads the app in front for the history `app` field.
     foreground: Box<dyn Fn() -> String + Send + Sync>,
+    /// A rewrite runs beside dictation, so it has its own flag and never touches `state`.
+    rewriting: AtomicBool,
 }
 
 /// Cheap to clone; all clones drive the same engine.
@@ -146,6 +148,7 @@ impl Engine {
             min_record_ms: AtomicU64::new(min_record_ms),
             history,
             foreground: Box::new(String::new),
+            rewriting: AtomicBool::new(false),
         }))
     }
 
@@ -241,17 +244,13 @@ impl Engine {
         private: bool,
         focus: impl FnOnce() -> bool + Send + 'static,
     ) -> Result<State, EngineError> {
-        let mut inner = self.0.inner.lock().unwrap();
-        if inner.state != State::Ready {
-            return Err(EngineError::InvalidState(inner.state));
-        }
         if private {
-            drop(inner);
             self.report_error("Rewrite needs the cloud. Turn off private mode.");
-            return Ok(State::Ready);
+            return Ok(self.state());
         }
-        Self::set_state(&self.0, &mut inner, State::Processing);
-        drop(inner);
+        if self.0.rewriting.swap(true, Ordering::AcqRel) {
+            return Err(EngineError::InvalidState(State::Processing));
+        }
         let engine = self.clone();
         std::thread::spawn(move || {
             let started = Instant::now();
@@ -309,10 +308,14 @@ impl Engine {
                 Ok(_) => engine.report_error("Rewrite returned empty text."),
                 Err(message) => engine.report_error(&message),
             }
-            let mut inner = shared.inner.lock().unwrap();
-            Self::set_state(shared, &mut inner, State::Ready);
+            shared.rewriting.store(false, Ordering::Release);
         });
-        Ok(State::Processing)
+        Ok(self.state())
+    }
+
+    /// True while a rewrite runs. Dictation state is separate.
+    pub fn rewriting(&self) -> bool {
+        self.0.rewriting.load(Ordering::Acquire)
     }
 
     /// Start recording. Allowed in `ready` and `mic_error`.
@@ -674,6 +677,48 @@ mod tests {
         );
         wait_ready(&engine);
         assert_eq!(*copier.0.lock().unwrap(), ["rewritten text"]);
+    }
+
+    #[test]
+    fn rewrite_runs_while_dictation_records() {
+        struct Slow;
+        impl Polisher for Slow {
+            fn polish(&self, raw: &str) -> String {
+                raw.into()
+            }
+            fn rewrite(&self, text: &str, _: &str) -> Result<String, String> {
+                std::thread::sleep(Duration::from_millis(100));
+                Ok(format!("rewritten {text}"))
+            }
+        }
+        let paster = Arc::new(FakePaster::default());
+        let engine = Engine::new(
+            Box::new(FakeRecorder::default()),
+            Box::new(FakeStt(Ok("spoken".into()))),
+            Box::new(Slow),
+            Box::new(paster.clone()),
+            250,
+            None,
+        );
+        let rx = engine.subscribe();
+        assert_eq!(engine.start(Mode::Toggle, None), Ok(State::Listening));
+        let preset = crate::rewrite::Preset {
+            name: "Shorter".into(),
+            instruction: "Shorten".into(),
+        };
+        assert_eq!(
+            engine.rewrite("text".into(), preset.clone(), String::new(), false, || true),
+            Ok(State::Listening)
+        );
+        assert!(engine
+            .rewrite("again".into(), preset, String::new(), false, || true)
+            .is_err());
+        assert!(matches!(
+            next_transcript_or_error(&rx),
+            Event::Transcript { pasted: true, .. }
+        ));
+        assert_eq!(engine.state(), State::Listening);
+        assert_eq!(*paster.0.lock().unwrap(), ["rewritten text"]);
     }
 
     #[test]

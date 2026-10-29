@@ -230,7 +230,7 @@ impl Matcher {
         {
             (HotkeyEvent::Cancel, None, Suppression::Cancel)
         } else if self.held.is_none() {
-            if !active && self.rewrite.iter().find(matches).is_some() {
+            if self.rewrite.iter().find(matches).is_some() {
                 (
                     HotkeyEvent::Rewrite(at),
                     self.rewrite.iter().find(matches).copied(),
@@ -540,7 +540,7 @@ mod tests {
     }
 
     #[test]
-    fn rewrite_fires_once_only_when_inactive_and_suppresses_trigger() {
+    fn rewrite_fires_once_also_during_dictation_and_suppresses_trigger() {
         let mut m = Matcher::new(&Bindings::default(), false).unwrap();
         let at = Instant::now();
         key(&mut m, 0x11, true, at);
@@ -553,7 +553,7 @@ mod tests {
         assert_eq!(key(&mut m, 0x41, false, at), (None, true));
         assert_eq!(
             m.feed(Input::Key(0x41), true, false, at, true),
-            (None, false)
+            (Some(HotkeyEvent::Rewrite(at)), true)
         );
     }
 
