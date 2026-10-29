@@ -447,7 +447,7 @@ unsafe extern "system" fn status_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM
             SelectObject(dc, small as _);
             text(
                 dc,
-                "Rewriting\u{2026}",
+                "Rewriting\u{2026}  Esc cancels",
                 &mut n,
                 MUTED,
                 DT_VCENTER | DT_RIGHT,

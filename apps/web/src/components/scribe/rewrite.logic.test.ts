@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   DEFAULT_REWRITE_PRESETS,
+  MAX_DESCRIPTION,
   MAX_REWRITE_PRESETS,
   cleanPresets,
   hasPresetErrors,
@@ -87,5 +88,29 @@ describe("cleanPresets and samePresets", () => {
     expect(cleanPresets(a)).toEqual([{ name: "A", instruction: "Do." }]);
     expect(samePresets(a, [{ name: "A", instruction: "Do." }])).toBe(true);
     expect(samePresets(a, [{ name: "B", instruction: "Do." }])).toBe(false);
+  });
+});
+
+describe("preset descriptions", () => {
+  it("keeps a description on read and save, and drops an empty one", () => {
+    const { list } = readRewritePresets({
+      rewrite: [
+        { name: "Formal", instruction: "Make it formal.", description: " For clients. " },
+        { name: "Plain", instruction: "Use plain words.", description: "   " },
+        { name: "Bad", instruction: "x", description: 3 },
+      ],
+    });
+    expect(list).toHaveLength(2);
+    expect(cleanPresets(list)).toEqual([
+      { name: "Formal", instruction: "Make it formal.", description: "For clients." },
+      { name: "Plain", instruction: "Use plain words." },
+    ]);
+  });
+
+  it("gives every built-in style a short description", () => {
+    for (const preset of DEFAULT_REWRITE_PRESETS) {
+      expect(preset.description?.length ?? 0).toBeGreaterThan(0);
+      expect(preset.description!.length).toBeLessThanOrEqual(MAX_DESCRIPTION);
+    }
   });
 });

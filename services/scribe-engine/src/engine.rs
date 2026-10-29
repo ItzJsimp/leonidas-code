@@ -116,6 +116,8 @@ struct Shared {
     foreground: Box<dyn Fn() -> String + Send + Sync>,
     /// A rewrite runs beside dictation, so it has its own flag and never touches `state`.
     rewriting: AtomicBool,
+    /// Bumped by `cancel_rewrite`, so a cancelled rewrite never pastes.
+    rewrite_gen: AtomicU64,
 }
 
 /// Cheap to clone; all clones drive the same engine.
@@ -149,6 +151,7 @@ impl Engine {
             history,
             foreground: Box::new(String::new),
             rewriting: AtomicBool::new(false),
+            rewrite_gen: AtomicU64::new(0),
         }))
     }
 
@@ -251,11 +254,16 @@ impl Engine {
         if self.0.rewriting.swap(true, Ordering::AcqRel) {
             return Err(EngineError::InvalidState(State::Processing));
         }
+        let gen = self.0.rewrite_gen.load(Ordering::Acquire);
         let engine = self.clone();
         std::thread::spawn(move || {
             let started = Instant::now();
             let shared = &*engine.0;
-            match shared.polisher.rewrite(&text, &preset.instruction) {
+            let outcome = shared.polisher.rewrite(&text, &preset.instruction);
+            if shared.rewrite_gen.load(Ordering::Acquire) != gen {
+                return; // Cancelled with Esc: drop the result.
+            }
+            match outcome {
                 Ok(result) if !result.trim().is_empty() => {
                     if focus() && shared.paster.paste(&result) {
                         let at_ms = crate::contract::unix_ms_now();
@@ -311,6 +319,17 @@ impl Engine {
             shared.rewriting.store(false, Ordering::Release);
         });
         Ok(self.state())
+    }
+
+    /// Stops a running rewrite: its result is dropped. Returns false when none runs.
+    pub fn cancel_rewrite(&self) -> bool {
+        if !self.0.rewriting.load(Ordering::Acquire) {
+            return false;
+        }
+        // Bump first, so a rewrite that starts right after this reads the new value.
+        self.0.rewrite_gen.fetch_add(1, Ordering::AcqRel);
+        self.0.rewriting.store(false, Ordering::Release);
+        true
     }
 
     /// True while a rewrite runs. Dictation state is separate.
@@ -614,6 +633,7 @@ mod tests {
         let preset = crate::rewrite::Preset {
             name: "Shorter".into(),
             instruction: "Shorten".into(),
+            description: None,
         };
         engine
             .rewrite("text".into(), preset.clone(), "app".into(), true, || true)
@@ -668,6 +688,7 @@ mod tests {
         let preset = crate::rewrite::Preset {
             name: "Shorter".into(),
             instruction: "Shorten".into(),
+            description: None,
         };
         engine
             .rewrite("text".into(), preset, String::new(), false, || false)
@@ -705,6 +726,7 @@ mod tests {
         let preset = crate::rewrite::Preset {
             name: "Shorter".into(),
             instruction: "Shorten".into(),
+            description: None,
         };
         assert_eq!(
             engine.rewrite("text".into(), preset.clone(), String::new(), false, || true),
@@ -722,12 +744,53 @@ mod tests {
     }
 
     #[test]
+    fn cancelled_rewrite_never_pastes_and_a_new_one_works() {
+        struct Slow;
+        impl Polisher for Slow {
+            fn polish(&self, raw: &str) -> String {
+                raw.into()
+            }
+            fn rewrite(&self, text: &str, _: &str) -> Result<String, String> {
+                std::thread::sleep(Duration::from_millis(150));
+                Ok(format!("rewritten {text}"))
+            }
+        }
+        let paster = Arc::new(FakePaster::default());
+        let engine = Engine::new(
+            Box::new(FakeRecorder::default()),
+            Box::new(FakeStt(Ok(String::new()))),
+            Box::new(Slow),
+            Box::new(paster.clone()),
+            250,
+            None,
+        );
+        let preset = crate::rewrite::Preset {
+            name: "Shorter".into(),
+            instruction: "Shorten".into(),
+            description: None,
+        };
+        assert!(!engine.cancel_rewrite());
+        engine
+            .rewrite("old".into(), preset.clone(), String::new(), false, || true)
+            .unwrap();
+        assert!(engine.cancel_rewrite());
+        assert!(!engine.rewriting());
+        engine
+            .rewrite("new".into(), preset, String::new(), false, || true)
+            .unwrap();
+        std::thread::sleep(Duration::from_millis(400));
+        assert_eq!(*paster.0.lock().unwrap(), ["rewritten new"]);
+        assert!(!engine.rewriting());
+    }
+
+    #[test]
     fn rewrite_failure_does_not_paste() {
         let (engine, paster) = engine(FakeRecorder::default(), Ok(""));
         let rx = engine.subscribe();
         let preset = crate::rewrite::Preset {
             name: "test".into(),
             instruction: "test".into(),
+            description: None,
         };
         engine
             .rewrite("text".into(), preset, String::new(), false, || true)
