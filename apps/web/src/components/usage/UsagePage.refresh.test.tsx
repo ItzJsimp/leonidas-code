@@ -68,7 +68,7 @@ vi.mock("../ui/select", () => ({
   SelectTrigger: "div",
   SelectValue: "span",
 }));
-vi.mock("../ui/sidebar", () => ({ SidebarInset: "div" }));
+vi.mock("../AppRouteModal", () => ({ AppRouteModal: "div", AppRouteModalClose: () => null }));
 vi.mock("../ui/toggle-group", () => ({ Toggle: "button", ToggleGroup: "div" }));
 vi.mock("../ui/tooltip", () => ({ Tooltip: "div", TooltipPopup: "div", TooltipTrigger: "div" }));
 vi.mock("../ui/popover", () => ({ Popover: "div", PopoverPopup: "div", PopoverTrigger: "div" }));

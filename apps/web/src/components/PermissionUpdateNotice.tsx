@@ -57,7 +57,7 @@ function EnvironmentPermissionNotice({
         children: "Open Connections",
         onClick: () => {
           dismiss();
-          void navigate({ to: "/settings/connections" });
+          void navigate({ to: "/settings/environments" });
         },
       },
       data: {

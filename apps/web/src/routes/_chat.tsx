@@ -1,9 +1,10 @@
 import { AuthPreviewOperateScope } from "@t3tools/contracts";
-import { createFileRoute, redirect, useParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, useMatches, useParams } from "@tanstack/react-router";
 import { useAtomValue } from "@effect/atom-react";
 import { useEffect, useMemo } from "react";
 
 import { isCommandPaletteOpen } from "../commandPaletteBus";
+import { isAppModalPage } from "../components/sidebar/mainAppLocation";
 import { ShellSplit } from "../components/twoState/ShellSplit";
 import {
   ShownChatContext,
@@ -247,11 +248,16 @@ function ChatRouteLayout() {
   });
   const remembered = useRememberedThreadRef();
   const shown = threadTarget?.kind === "server" ? threadTarget.threadRef : remembered;
+  // Settings and Usage render over the shell as a modal, so the shell keeps its last panes
+  // and the page-level shortcuts stay quiet while the modal owns the keyboard.
+  const modalOpen = useMatches({
+    select: (matches) => matches.some((match) => isAppModalPage(match.pathname)),
+  });
   return (
     <ShownChatContext value={shown}>
-      <ChatRouteGlobalShortcuts />
-      <TwoStateKeys inChat={threadTarget !== null} />
-      <ShellSplit threadTarget={threadTarget} />
+      {modalOpen ? null : <ChatRouteGlobalShortcuts />}
+      {modalOpen ? null : <TwoStateKeys inChat={threadTarget !== null} />}
+      <ShellSplit threadTarget={threadTarget} modalOpen={modalOpen} />
     </ShownChatContext>
   );
 }

@@ -68,7 +68,7 @@ export function NightlyMobileBetaNotice() {
         children: "Get the beta app",
         onClick: () => {
           toastManager.close(toastId);
-          void navigate({ to: "/settings/general", hash: ROW_ID });
+          void navigate({ to: "/settings/about", hash: ROW_ID });
         },
       },
       data: {

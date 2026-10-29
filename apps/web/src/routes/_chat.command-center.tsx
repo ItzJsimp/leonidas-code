@@ -50,7 +50,7 @@ function CommandCenterPage() {
                 statuses may be out of date.
               </p>
               <Link
-                to="/settings/connections"
+                to="/settings/environments"
                 className="mt-2 inline-block rounded-sm text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 Open connections

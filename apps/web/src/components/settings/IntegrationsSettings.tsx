@@ -1522,7 +1522,7 @@ function BrowserProfilesSetting({ disabled }: { readonly disabled: boolean }) {
   );
 }
 
-export function IntegrationsSettingsPanel() {
+export function IntegrationsSettingsPanel({ view }: { readonly view: "browser" | "devices" }) {
   // Client-local preview defaults are editable only where the preview exists.
   const previewDefaultsDisabled = !isElectron;
   const previewDefaults = (
@@ -1540,20 +1540,25 @@ export function IntegrationsSettingsPanel() {
 
   return (
     <SettingsPageContainer>
-      {/* Server-authoritative agent access is scoped by the header selection;
-          the preview defaults below are device-local and ignore it. */}
-      <ProjectDefaultsSettings category="integrations" />
-      <SettingsSection id="browser" title="Browser">
-        {previewDefaultsDisabled ? (
-          <SettingsUnavailableGroup message="Available only in the desktop app. Open Leonidas on your computer to use this.">
-            {previewDefaults}
-          </SettingsUnavailableGroup>
-        ) : (
-          previewDefaults
-        )}
-      </SettingsSection>
-      <CalendarSettingsSection />
-      <DeviceIntegrationSettings />
+      {view === "browser" ? (
+        <>
+          {/* Server-authoritative agent access is scoped by the header selection;
+              the preview defaults below are device-local and ignore it. */}
+          <ProjectDefaultsSettings category="integrations" />
+          <SettingsSection id="browser" title="Browser">
+            {previewDefaultsDisabled ? (
+              <SettingsUnavailableGroup message="Available only in the desktop app. Open Leonidas on your computer to use this.">
+                {previewDefaults}
+              </SettingsUnavailableGroup>
+            ) : (
+              previewDefaults
+            )}
+          </SettingsSection>
+          <CalendarSettingsSection />
+        </>
+      ) : (
+        <DeviceIntegrationSettings />
+      )}
     </SettingsPageContainer>
   );
 }

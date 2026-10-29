@@ -28,7 +28,14 @@ const CC_CONTEXT = { forward: "cc" } as const;
  * right, with a divider. Below 1280 px one pane shows and the rail switches panes. The chat
  * pane keeps one slot in this tree, so it does not remount when the left pane changes.
  */
-export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRouteTarget | null }) {
+export function ShellSplit({
+  threadTarget,
+  modalOpen = false,
+}: {
+  readonly threadTarget: ThreadRouteTarget | null;
+  /** A Settings or Usage modal is open: keep the last panes behind it and render it from the outlet. */
+  readonly modalOpen?: boolean;
+}) {
   const width = useViewportWidth();
   const split = useTwoStateStore((state) => state.split);
   const ratio = useTwoStateStore((state) => state.ratio);
@@ -89,7 +96,7 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
               layout.mode === "split" ? "shrink-0" : "flex-1",
             )}
           >
-            {!threadTarget ? (
+            {!threadTarget && !modalOpen ? (
               <Outlet />
             ) : leftPage && leftPage.path !== "/command-center" ? (
               <LeftPagePane page={leftPage} />
@@ -113,6 +120,7 @@ export function ShellSplit({ threadTarget }: { readonly threadTarget: ThreadRout
           <ChatPane urlTarget={threadTarget} reserveTop={width < DRAWER_BELOW_WIDTH} />
         ) : null}
       </div>
+      {modalOpen ? <Outlet /> : null}
     </CodeForwardContext>
   );
 }

@@ -166,7 +166,7 @@ function HostedStaticOnboardingState() {
               </EmptyDescription>
               <EmptyDescription>{description}</EmptyDescription>
               <div className="mt-6 flex justify-center">
-                <Button render={<Link to="/settings/connections" />} size="sm">
+                <Button render={<Link to="/settings/environments" />} size="sm">
                   <PlusIcon className="size-4" />
                   Open Connections
                 </Button>

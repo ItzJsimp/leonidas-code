@@ -84,9 +84,10 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-async function openSettings() {
+async function openSettings(view: "browser" | "devices" = "browser") {
+  const Page = () => <IntegrationsSettingsPanel view={view} />;
   const router = createRouter({
-    routeTree: createRootRoute({ component: IntegrationsSettingsPanel }),
+    routeTree: createRootRoute({ component: Page }),
     history: createMemoryHistory(),
   });
   await router.load();
@@ -110,13 +111,20 @@ describe("Integrations browser discovery", () => {
     expect(listBrowserImportSources).not.toHaveBeenCalled();
   });
 
-  it("places device settings directly after browser settings", async () => {
-    await openSettings();
-    const sections = renderer!.root
-      .findAll((node) => node.type === "section")
-      .map((node) => node.props.id)
-      .filter(Boolean);
-    expect(sections.indexOf("devices")).toBeGreaterThan(sections.indexOf("browser"));
+  it("keeps browser and device settings on their own pages", async () => {
+    const sectionIds = () =>
+      renderer!.root
+        .findAll((node) => node.type === "section")
+        .map((node) => node.props.id)
+        .filter(Boolean);
+    await openSettings("browser");
+    expect(sectionIds()).toContain("browser");
+    expect(sectionIds()).not.toContain("devices");
+
+    await act(() => renderer?.unmount());
+    await openSettings("devices");
+    expect(sectionIds()).toContain("devices");
+    expect(sectionIds()).not.toContain("browser");
   });
 });
 

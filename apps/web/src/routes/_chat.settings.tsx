@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute, redirect, useLocation } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { ArrowLeftIcon, ExternalLinkIcon, PanelsTopLeftIcon, RotateCcwIcon } from "lucide-react";
+import { ExternalLinkIcon, PanelsTopLeftIcon, RotateCcwIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../components/ui/tooltip";
 import { toastManager } from "../components/ui/toast";
@@ -8,11 +8,10 @@ import { SETTINGS_DOCK_MESSAGE, SETTINGS_WINDOW_NAME } from "../components/setti
 import { useSettingsRestore } from "../components/settings/SettingsPanels";
 
 import { SettingsBreadcrumb } from "../components/settings/SettingsBreadcrumb";
-import { SidebarInset, useSidebar } from "../components/ui/sidebar";
+import { AppRouteModal, AppRouteModalClose } from "../components/AppRouteModal";
+import { SettingsSidebarNav } from "../components/settings/SettingsSidebarNav";
+import { resolveLegacySettingsRedirect } from "../components/settings/legacySettingsRoutes";
 import { useNavigateToMainApp } from "../components/sidebar/mainAppLocation";
-import { WorkspacePageHeader } from "../components/WorkspacePageHeader";
-import { isElectron } from "../env";
-import { useEscapeToGoBack } from "../hooks/useNavigateBack";
 import {
   SettingsScopeProvider,
   useSettingsScope,
@@ -117,8 +116,6 @@ function SettingsScopeBoundary({ pathname, children }: { pathname: string; child
 function SettingsContentLayout() {
   const location = useLocation();
   const navigateToMainApp = useNavigateToMainApp();
-  const { open, isMobile } = useSidebar();
-  useEscapeToGoBack(navigateToMainApp);
   const { search, environment } = useSettingsScope();
   const contentScopeKey =
     location.pathname === "/settings/providers"
@@ -159,22 +156,11 @@ function SettingsContentLayout() {
   };
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
-        <WorkspacePageHeader electron={isElectron && !detached}>
-          <div className="flex w-full items-center gap-3">
-            {!open || isMobile ? (
-              <Button
-                size="xs"
-                variant="ghost"
-                className="gap-1.5"
-                onClick={() => void navigateToMainApp()}
-                aria-label="Back to chat"
-              >
-                <ArrowLeftIcon className="size-3.5" />
-                Back
-              </Button>
-            ) : null}
+    <AppRouteModal label="Settings" fullWindow={detached}>
+      <div className="relative flex min-h-0 flex-1">
+        <SettingsSidebarNav pathname={location.pathname} />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="flex h-12 shrink-0 items-center gap-3 border-b ps-5 pe-2">
             <div className="min-w-0 flex-1 overflow-hidden">
               <SettingsBreadcrumb pathname={location.pathname} />
             </div>
@@ -210,23 +196,21 @@ function SettingsContentLayout() {
                 </TooltipPopup>
               </Tooltip>
               {location.pathname === "/settings/general" ? (
-                <div className="flex shrink-0 items-center">
-                  <RestoreDeviceDefaultsButton
-                    onRestored={() => setRestoreSignal((value) => value + 1)}
-                  />
-                </div>
+                <RestoreDeviceDefaultsButton
+                  onRestored={() => setRestoreSignal((value) => value + 1)}
+                />
               ) : null}
+              {detached ? null : <AppRouteModalClose />}
             </div>
+          </header>
+          <div key={`${contentScopeKey}:${restoreSignal}`} className="min-h-0 flex flex-1 flex-col">
+            <SettingsScopeBoundary pathname={location.pathname}>
+              <Outlet />
+            </SettingsScopeBoundary>
           </div>
-        </WorkspacePageHeader>
-
-        <div key={`${contentScopeKey}:${restoreSignal}`} className="min-h-0 flex flex-1 flex-col">
-          <SettingsScopeBoundary pathname={location.pathname}>
-            <Outlet />
-          </SettingsScopeBoundary>
         </div>
       </div>
-    </SidebarInset>
+    </AppRouteModal>
   );
 }
 
@@ -258,19 +242,20 @@ function SettingsRouteLayout() {
   );
 }
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_chat/settings")({
   validateSearch: validateSettingsRouteSearch,
   search: { middlewares: [retainSettingsScope] },
-  beforeLoad: async ({ context, location }) => {
-    if (
-      context.authGateState.status !== "authenticated" &&
-      context.authGateState.status !== "hosted-static"
-    ) {
-      throw redirect({ to: "/pair", replace: true });
-    }
-
+  beforeLoad: ({ location }) => {
     if (location.pathname === "/settings") {
       throw redirect({ to: "/settings/general", replace: true });
+    }
+    // Old pages were split by concern: keep their links working, with the search and hash.
+    const legacyTarget = resolveLegacySettingsRedirect(location.pathname, location.hash);
+    if (legacyTarget) {
+      throw redirect({
+        href: `${legacyTarget}${location.searchStr}${location.hash ? `#${location.hash.replace(/^#/, "")}` : ""}`,
+        replace: true,
+      });
     }
   },
   component: SettingsRouteLayout,

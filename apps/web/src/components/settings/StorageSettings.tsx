@@ -30,7 +30,6 @@ import {
 } from "../ui/number-field";
 import {
   SettingResetButton,
-  SettingsPageContainer,
   SettingsRow,
   SettingsSection,
   useRelativeTimeTick,
@@ -396,7 +395,11 @@ function CleanupSection() {
   );
 }
 
-export function StorageSettingsPanel() {
+/**
+ * Storage rules, split across two pages: separate copies (worktrees) and maintenance (artifacts,
+ * logs, cleanup). Renders sections only, so a page can add its own rows around them.
+ */
+export function StorageSections({ view }: { readonly view: "worktrees" | "maintenance" }) {
   const { scope, connectedEnvironments, targets, target } = useSettingsScope();
   const scopedSettings = useScopedSettings();
   const isProjectScope = scope.kind === "project" || scope.kind === "checkout";
@@ -428,7 +431,11 @@ export function StorageSettingsPanel() {
       ? updateSettings({ worktreeCleanup: { mode: "custom", rules: patch } })
       : update(patch);
 
+  // Artifacts, logs and cleanup run per computer, so a project selection has nothing to show.
+  if (view === "maintenance" && isProjectScope) return null;
+
   if (
+    view === "worktrees" &&
     isProjectScope &&
     connectedEnvironments.some(
       (environment) =>
@@ -464,154 +471,156 @@ export function StorageSettingsPanel() {
   }
 
   return (
-    <SettingsPageContainer>
-      <SettingsSection id="storage-worktrees" title="Separate copies">
-        {!isProjectScope && <WorktreesDirectoryRow />}
-        {isProjectScope && (
-          <SettingsRow
-            title="Automatic cleanup of separate copies"
-            description={
-              mode === "off"
-                ? "Keep the separate copies of this project until you delete them."
-                : mode === "custom"
-                  ? "Use these rules for this project."
-                  : "Use the cleanup settings of each computer."
-            }
-            serverScoped
-            settingKeys={["worktreeCleanup"]}
-            mixed={mixedModes}
-            control={
-              <Select
-                value={mixedModes ? null : mode}
-                onValueChange={(next) => {
-                  if (next === "inherit") clearSettings(["worktreeCleanup"]);
-                  else if (next === "off") updateSettings({ worktreeCleanup: { mode: "off" } });
-                  else if (next === "custom")
-                    updateSettings({ worktreeCleanup: { mode: "custom", rules: {} } });
-                }}
-              >
-                <SelectTrigger size="sm" aria-label="Automatic cleanup of separate copies">
-                  <SelectValue>
-                    {mixedModes
-                      ? "Mixed"
-                      : mode === "inherit"
-                        ? "Inherit"
-                        : mode === "off"
-                          ? "Off"
-                          : "Custom"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectPopup align="end" alignItemWithTrigger={false}>
-                  <SelectItem value="inherit">Inherit</SelectItem>
-                  <SelectItem value="off">Off</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectPopup>
-              </Select>
-            }
-          />
-        )}
-        {(!isProjectScope || (!mixedModes && mode === "custom")) && (
-          <>
+    <>
+      {view === "worktrees" ? (
+        <SettingsSection id="storage-worktrees" title="Separate copies">
+          {!isProjectScope && <WorktreesDirectoryRow />}
+          {isProjectScope && (
             <SettingsRow
-              title="Delete separate copies with deleted chats"
-              status={ruleStatus("worktreeOnDelete")}
-              description="Remove unused separate copies when active or archived chats are deleted. Separate copies that have changes stay."
-              serverScoped={!isProjectScope}
+              title="Automatic cleanup of separate copies"
+              description={
+                mode === "off"
+                  ? "Keep the separate copies of this project until you delete them."
+                  : mode === "custom"
+                    ? "Use these rules for this project."
+                    : "Use the cleanup settings of each computer."
+              }
+              serverScoped
+              settingKeys={["worktreeCleanup"]}
+              mixed={mixedModes}
               control={
-                <Switch
-                  aria-label="Delete separate copies with deleted chats"
-                  checked={settings.worktreeOnDelete}
-                  onCheckedChange={(worktreeOnDelete) => updateWorktree({ worktreeOnDelete })}
-                />
+                <Select
+                  value={mixedModes ? null : mode}
+                  onValueChange={(next) => {
+                    if (next === "inherit") clearSettings(["worktreeCleanup"]);
+                    else if (next === "off") updateSettings({ worktreeCleanup: { mode: "off" } });
+                    else if (next === "custom")
+                      updateSettings({ worktreeCleanup: { mode: "custom", rules: {} } });
+                  }}
+                >
+                  <SelectTrigger size="sm" aria-label="Automatic cleanup of separate copies">
+                    <SelectValue>
+                      {mixedModes
+                        ? "Mixed"
+                        : mode === "inherit"
+                          ? "Inherit"
+                          : mode === "off"
+                            ? "Off"
+                            : "Custom"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectPopup align="end" alignItemWithTrigger={false}>
+                    <SelectItem value="inherit">Inherit</SelectItem>
+                    <SelectItem value="off">Off</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectPopup>
+                </Select>
               }
             />
-            <SettingsRow
-              title="Delete inactive separate copies"
-              status={ruleStatus("worktreeAfterDays")}
-              description="Remove separate copies when their chats have had no activity for this many days. Branches and chat history stay."
-              serverScoped={!isProjectScope}
-              control={
-                <RetentionControl
-                  label="Delete inactive separate copies"
-                  value={settings.worktreeAfterDays}
-                  onChange={(worktreeAfterDays) => updateWorktree({ worktreeAfterDays })}
-                />
-              }
-            />
-            <SettingsRow
-              title="Delete merged separate copies"
-              status={ruleStatus("worktreeOnMerge")}
-              description="Remove separate copies when their pull request is merged and the default branch has all their commits."
-              serverScoped={!isProjectScope}
-              control={
-                <Switch
-                  aria-label="Delete merged separate copies"
-                  checked={settings.worktreeOnMerge}
-                  onCheckedChange={(worktreeOnMerge) => updateWorktree({ worktreeOnMerge })}
-                />
-              }
-            />
-            <SettingsRow
-              title="Delete unchanged separate copies"
-              status={ruleStatus("worktreeUnchanged")}
-              description="Remove separate copies that have no commits that the default branch does not have."
-              serverScoped={!isProjectScope}
-              control={
-                <Switch
-                  aria-label="Delete unchanged separate copies"
-                  checked={settings.worktreeUnchanged}
-                  onCheckedChange={(worktreeUnchanged) => updateWorktree({ worktreeUnchanged })}
-                />
-              }
-            />
-            {connectedEnvironments.every(
-              (environment) =>
-                environment.serverConfig?.environment.capabilities.storageCleanupRun === true,
-            ) && (
+          )}
+          {(!isProjectScope || (!mixedModes && mode === "custom")) && (
+            <>
               <SettingsRow
-                {...searchableSetting("storage-worktree-keep-when")}
-                status={ruleStatus("worktreeKeepWhen")}
-                description={
-                  settings.worktreeKeepWhen === "any-local-files"
-                    ? "Includes ignored files, except node_modules."
-                    : settings.worktreeKeepWhen === "tracked-changes"
-                      ? "Deletes untracked and ignored files, including .env."
-                      : "Keeps edits and untracked files. Deletes ignored files, including .env."
-                }
+                title="Delete separate copies with deleted chats"
+                status={ruleStatus("worktreeOnDelete")}
+                description="Remove unused separate copies when active or archived chats are deleted. Separate copies that have changes stay."
                 serverScoped={!isProjectScope}
                 control={
-                  <Select
-                    value={ruleStatus("worktreeKeepWhen") ? null : settings.worktreeKeepWhen}
-                    onValueChange={(next) => {
-                      if (
-                        next === "any-local-files" ||
-                        next === "uncommitted-changes" ||
-                        next === "tracked-changes"
-                      )
-                        updateWorktree({ worktreeKeepWhen: next });
-                    }}
-                  >
-                    <SelectTrigger size="sm" aria-label="Keep separate copies that have changes">
-                      <SelectValue>
-                        {ruleStatus("worktreeKeepWhen")
-                          ? "Mixed"
-                          : KEEP_WHEN_LABELS[settings.worktreeKeepWhen]}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectPopup align="end" alignItemWithTrigger={false}>
-                      <SelectItem value="any-local-files">Any local files</SelectItem>
-                      <SelectItem value="uncommitted-changes">Uncommitted changes</SelectItem>
-                      <SelectItem value="tracked-changes">Edited tracked files</SelectItem>
-                    </SelectPopup>
-                  </Select>
+                  <Switch
+                    aria-label="Delete separate copies with deleted chats"
+                    checked={settings.worktreeOnDelete}
+                    onCheckedChange={(worktreeOnDelete) => updateWorktree({ worktreeOnDelete })}
+                  />
                 }
               />
-            )}
-          </>
-        )}
-      </SettingsSection>
+              <SettingsRow
+                title="Delete inactive separate copies"
+                status={ruleStatus("worktreeAfterDays")}
+                description="Remove separate copies when their chats have had no activity for this many days. Branches and chat history stay."
+                serverScoped={!isProjectScope}
+                control={
+                  <RetentionControl
+                    label="Delete inactive separate copies"
+                    value={settings.worktreeAfterDays}
+                    onChange={(worktreeAfterDays) => updateWorktree({ worktreeAfterDays })}
+                  />
+                }
+              />
+              <SettingsRow
+                title="Delete merged separate copies"
+                status={ruleStatus("worktreeOnMerge")}
+                description="Remove separate copies when their pull request is merged and the default branch has all their commits."
+                serverScoped={!isProjectScope}
+                control={
+                  <Switch
+                    aria-label="Delete merged separate copies"
+                    checked={settings.worktreeOnMerge}
+                    onCheckedChange={(worktreeOnMerge) => updateWorktree({ worktreeOnMerge })}
+                  />
+                }
+              />
+              <SettingsRow
+                title="Delete unchanged separate copies"
+                status={ruleStatus("worktreeUnchanged")}
+                description="Remove separate copies that have no commits that the default branch does not have."
+                serverScoped={!isProjectScope}
+                control={
+                  <Switch
+                    aria-label="Delete unchanged separate copies"
+                    checked={settings.worktreeUnchanged}
+                    onCheckedChange={(worktreeUnchanged) => updateWorktree({ worktreeUnchanged })}
+                  />
+                }
+              />
+              {connectedEnvironments.every(
+                (environment) =>
+                  environment.serverConfig?.environment.capabilities.storageCleanupRun === true,
+              ) && (
+                <SettingsRow
+                  {...searchableSetting("storage-worktree-keep-when")}
+                  status={ruleStatus("worktreeKeepWhen")}
+                  description={
+                    settings.worktreeKeepWhen === "any-local-files"
+                      ? "Includes ignored files, except node_modules."
+                      : settings.worktreeKeepWhen === "tracked-changes"
+                        ? "Deletes untracked and ignored files, including .env."
+                        : "Keeps edits and untracked files. Deletes ignored files, including .env."
+                  }
+                  serverScoped={!isProjectScope}
+                  control={
+                    <Select
+                      value={ruleStatus("worktreeKeepWhen") ? null : settings.worktreeKeepWhen}
+                      onValueChange={(next) => {
+                        if (
+                          next === "any-local-files" ||
+                          next === "uncommitted-changes" ||
+                          next === "tracked-changes"
+                        )
+                          updateWorktree({ worktreeKeepWhen: next });
+                      }}
+                    >
+                      <SelectTrigger size="sm" aria-label="Keep separate copies that have changes">
+                        <SelectValue>
+                          {ruleStatus("worktreeKeepWhen")
+                            ? "Mixed"
+                            : KEEP_WHEN_LABELS[settings.worktreeKeepWhen]}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectPopup align="end" alignItemWithTrigger={false}>
+                        <SelectItem value="any-local-files">Any local files</SelectItem>
+                        <SelectItem value="uncommitted-changes">Uncommitted changes</SelectItem>
+                        <SelectItem value="tracked-changes">Edited tracked files</SelectItem>
+                      </SelectPopup>
+                    </Select>
+                  }
+                />
+              )}
+            </>
+          )}
+        </SettingsSection>
+      ) : null}
 
-      {!isProjectScope && (
+      {view === "maintenance" && !isProjectScope && (
         <SettingsSection id="storage-artifacts" title="Artifacts and logs">
           <SettingsRow
             title="Delete old browser artifacts"
@@ -641,7 +650,7 @@ export function StorageSettingsPanel() {
           />
         </SettingsSection>
       )}
-      {!isProjectScope && <CleanupSection />}
-    </SettingsPageContainer>
+      {view === "maintenance" && !isProjectScope && <CleanupSection />}
+    </>
   );
 }

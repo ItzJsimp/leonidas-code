@@ -1,6 +1,6 @@
 import { EnvironmentId, UsageDay, USAGE_CONTRACT_VERSION } from "@t3tools/contracts";
 import { mergeUsage } from "@t3tools/shared/usageMerge";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -24,7 +24,12 @@ vi.mock("../ui/select", () => ({
   SelectTrigger: "div",
   SelectValue: "div",
 }));
-vi.mock("../ui/sidebar", () => ({ SidebarInset: "div" }));
+vi.mock("../AppRouteModal", () => ({
+  AppRouteModal: ({ label, children }: { label: string; children: ReactNode }) => (
+    <section aria-label={label}>{children}</section>
+  ),
+  AppRouteModalClose: () => <button aria-label="Close" />,
+}));
 vi.mock("../ui/toggle-group", () => ({ Toggle: "button", ToggleGroup: "div" }));
 vi.mock("../WorkspaceBreadcrumb", () => ({
   WorkspaceBreadcrumb: "div",
@@ -82,15 +87,11 @@ beforeEach(() => {
   });
 });
 
-describe("UsagePage Escape navigation", () => {
+describe("UsagePage modal", () => {
   let renderer: Root;
   let container: HTMLDivElement;
-  let back: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
-    back = vi.spyOn(window.history, "back").mockImplementation(() => {});
-    testState.navigate.mockClear();
-    testState.canGoBack = true;
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     container = document.createElement("div");
     document.body.append(container);
@@ -103,53 +104,12 @@ describe("UsagePage Escape navigation", () => {
   afterEach(async () => {
     await act(() => renderer.unmount());
     container.remove();
-    back.mockRestore();
     vi.unstubAllGlobals();
   });
 
-  function escape(properties: { repeat?: boolean; isComposing?: boolean } = {}) {
-    return new KeyboardEvent("keydown", {
-      bubbles: true,
-      cancelable: true,
-      key: "Escape",
-      ...properties,
-    });
-  }
-
-  it("returns to the previous page on Escape", () => {
-    document.body.dispatchEvent(escape());
-    expect(back).toHaveBeenCalledOnce();
-    expect(testState.navigate).not.toHaveBeenCalled();
-  });
-
-  it("returns home when there is no previous app page", async () => {
-    testState.canGoBack = false;
-    await act(() => renderer.render(<UsagePage />));
-
-    document.body.dispatchEvent(escape());
-    expect(testState.navigate).toHaveBeenCalledWith({ to: "/" });
-    expect(back).not.toHaveBeenCalled();
-  });
-
-  it("closes the environment menu before Escape navigates back", async () => {
-    const trigger = container.querySelector<HTMLButtonElement>('[data-slot="menu-trigger"]')!;
-    await act(() => trigger.click());
-    expect(document.querySelector('[role="menu"]')).not.toBeNull();
-
-    await act(() => {
-      document.activeElement!.dispatchEvent(escape());
-    });
-    expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(back).not.toHaveBeenCalled();
-
-    document.body.dispatchEvent(escape());
-    expect(back).toHaveBeenCalledOnce();
-  });
-
-  it.each([{ repeat: true }, { isComposing: true }])("ignores Escape with %j", (properties) => {
-    document.body.dispatchEvent(escape(properties));
-    expect(back).not.toHaveBeenCalled();
-    expect(testState.navigate).not.toHaveBeenCalled();
+  it("opens as a modal over the page and offers a close button", () => {
+    expect(container.querySelector('section[aria-label="Usage"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Close"]')).not.toBeNull();
   });
 });
 

@@ -763,7 +763,7 @@ function WebhookDeliveryMode({ environmentId }: { readonly environmentId: Enviro
       {cloudLink.data.holdWebhooksWhileOffline
         ? "Kept for up to 24 hours while this computer is offline. "
         : "Sent at once. Requests fail while this computer is offline. "}
-      <Link to="/settings/connections" className="underline underline-offset-2">
+      <Link to="/settings/environments" className="underline underline-offset-2">
         Change in Connections
       </Link>
     </p>

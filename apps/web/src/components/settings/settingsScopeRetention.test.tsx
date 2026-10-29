@@ -47,22 +47,19 @@ vi.mock("./SettingsScopeContext", async () => {
   };
 });
 vi.mock("../../state/environments", () => ({ useEnvironments: () => ({ environments: [] }) }));
-vi.mock("../ui/sidebar", () => ({
-  SidebarInset: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  useSidebar: () => ({ open: true, isMobile: false }),
+vi.mock("../AppRouteModal", () => ({
+  AppRouteModal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AppRouteModalClose: () => null,
 }));
-vi.mock("../WorkspacePageHeader", () => ({
-  WorkspacePageHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+vi.mock("./SettingsSidebarNav", () => ({ SettingsSidebarNav: () => null }));
 vi.mock("./settingsLayout", () => ({
   SettingsPageContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock("./SettingsBreadcrumb", () => ({ SettingsBreadcrumb: () => null }));
 vi.mock("../sidebar/mainAppLocation", () => ({ useNavigateToMainApp: () => vi.fn() }));
-vi.mock("../../hooks/useNavigateBack", () => ({ useEscapeToGoBack: () => undefined }));
 vi.mock("./SettingsPanels", () => ({ useSettingsRestore: () => ({ changedSettingLabels: [] }) }));
 
-import { Route } from "../../routes/settings";
+import { Route } from "../../routes/_chat.settings";
 
 function StatefulContent() {
   const [value, setValue] = useState(0);
@@ -123,4 +120,23 @@ it.each([
   await render(after);
 
   expect(retainedValue()).toBe(expected);
+});
+
+it.each([
+  ["/settings/integrations", "", "?machine=m1", "/settings/browser?machine=m1"],
+  ["/settings/storage", "", "", "/settings/maintenance"],
+  ["/settings/connections", "network-access", "", "/settings/access#network-access"],
+  ["/settings", "", "", null],
+])("%s%s redirects old links", async (pathname, hash, searchStr, href) => {
+  const { redirect } = await import("@tanstack/react-router");
+  vi.mocked(redirect).mockClear();
+  try {
+    Route.options.beforeLoad?.({ location: { pathname, hash, searchStr } } as never);
+  } catch {
+    // The mocked redirect returns nothing, so the throw carries no payload.
+  }
+  expect(redirect).toHaveBeenCalledTimes(1);
+  expect(redirect).toHaveBeenCalledWith(
+    href === null ? { to: "/settings/general", replace: true } : { href, replace: true },
+  );
 });
