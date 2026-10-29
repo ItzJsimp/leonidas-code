@@ -1167,8 +1167,8 @@ describe("AssetAccess", () => {
       const config = yield* ServerConfig.ServerConfig;
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const attachmentId = "thread-1-00000000-0000-4000-8000-000000000002-zip";
-      const attachmentPath = path.join(config.attachmentsDir, `${attachmentId}.zip`);
+      const attachmentId = "thread-1-00000000-0000-4000-8000-000000000002-7z";
+      const attachmentPath = path.join(config.attachmentsDir, `${attachmentId}.7z`);
       yield* fileSystem.makeDirectory(config.attachmentsDir, { recursive: true });
       yield* fileSystem.writeFile(attachmentPath, new Uint8Array([1, 2, 3]));
 
@@ -1176,7 +1176,7 @@ describe("AssetAccess", () => {
         resource: {
           _tag: "attachment",
           attachmentId,
-          fileName: "archive.zip",
+          fileName: "archive.7z",
           mimeType: "text/html",
           disposition: "inline",
         },

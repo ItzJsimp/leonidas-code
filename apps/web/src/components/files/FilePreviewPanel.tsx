@@ -16,6 +16,7 @@ import {
   isWorkspaceFontPreviewPath,
   isWorkspaceVideoPreviewPath,
   officePreviewKind,
+  binaryPreviewKind,
 } from "@t3tools/shared/filePreview";
 import {
   DEFAULT_TOKENIZE_MAX_LENGTH,
@@ -79,6 +80,7 @@ import { AttachmentFilePreview } from "./AttachmentFilePreview";
 import { AudioPreview } from "./AudioPreview";
 import { BrowserDocumentFrame, isPdfPreviewFile } from "./BrowserDocumentFrame";
 import { DelimitedTablePreview } from "./DelimitedTablePreview";
+import { PreviewImage } from "./PreviewImage";
 import FileBrowserPanel from "./FileBrowserPanel";
 import { FileBreadcrumbs } from "./FileBreadcrumbs";
 import { FileMarkdownPreview } from "./FileMarkdownPreview";
@@ -176,7 +178,6 @@ function WorkspaceImagePreview(props: {
     [props.threadRef, props.draft, props.workspaceRoot, props.absolutePath],
   );
   const assetUrl = useAssetUrlState(props.environmentId, resource);
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const revisionSuffix =
     props.workspaceMutationId === null
       ? ""
@@ -190,7 +191,7 @@ function WorkspaceImagePreview(props: {
     asset: { environmentId: props.environmentId, resource },
   };
 
-  if (assetUrl._tag === "Failure" || (imageUrl !== null && failedUrl === imageUrl)) {
+  if (assetUrl._tag === "Failure") {
     return (
       <MediaActions source={actionsSource}>
         <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-xs leading-relaxed text-destructive">
@@ -201,17 +202,11 @@ function WorkspaceImagePreview(props: {
   }
 
   return assetUrl._tag === "Success" && imageUrl !== null ? (
-    // oxlint-disable-next-line t3code/require-centered-scroll-gutter -- The image is capped at max-h-full max-w-full, so this never scrolls.
-    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
-      <MediaActions source={actionsSource}>
-        <img
-          className="max-h-full max-w-full object-contain"
-          src={imageUrl}
-          alt={props.alt}
-          onError={() => setFailedUrl(imageUrl)}
-        />
-      </MediaActions>
-    </div>
+    <MediaActions source={actionsSource}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PreviewImage key={imageUrl} src={imageUrl} name={props.alt} />
+      </div>
+    </MediaActions>
   ) : (
     <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
       <Spinner size="lg" />
@@ -1080,7 +1075,8 @@ export default function FilePreviewPanel({
   const isPdf = relativePath !== null && isPdfPreviewFile(relativePath);
   const isDocument =
     relativePath !== null &&
-    (officePreviewKind({ name: relativePath }) !== null ||
+    (binaryPreviewKind({ name: relativePath }) !== null ||
+      officePreviewKind({ name: relativePath }) !== null ||
       isWorkspaceFontPreviewPath(relativePath));
   const isHtml = relativePath !== null && !isPdf && isBrowserPreviewFile(relativePath);
   // A file outside the workspace (an absolute path) is shown, never edited.

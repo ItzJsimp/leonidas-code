@@ -111,9 +111,9 @@ describe("attachment preview classification", () => {
     ["recording.webm-audio", "", "audio"],
     ["recording.webm", "audio/webm", "audio"],
     ["payload", "application/problem+json", "text"],
-    ["archive.zip", "application/zip", "unsupported"],
+    ["archive.zip", "application/zip", "archive"],
     ["misleading.json", "application/pdf", "pdf"],
-    ["misleading.pdf", "application/zip", "unsupported"],
+    ["misleading.pdf", "application/zip", "archive"],
   ])("classifies %s (%s) as %s", (name, mimeType, expected) => {
     expect(filePreviewKind({ name, mimeType })).toBe(expected);
   });
@@ -145,7 +145,7 @@ describe("office, font and mermaid previews", () => {
       expect(hostPreviewMimeTypeFromExtension(`.${extension}`)).toBe(`font/${extension}`);
       expect(isWorkspaceFontPreviewPath(`sample.${extension}?download=1`)).toBe(false);
       expect(filePreviewKind({ name: `sample.${extension}`, mimeType: "application/zip" })).toBe(
-        "unsupported",
+        "archive",
       );
     },
   );
@@ -172,7 +172,7 @@ describe("office, font and mermaid previews", () => {
     expect(isWorkspacePreviewEntryPath(name)).toBe(true);
     expect(hostPreviewMimeTypeFromExtension(`.${kind}`)).toBe(mimeType);
     expect(filePreviewKind({ name: "download", mimeType })).toBe(kind);
-    expect(filePreviewKind({ name, mimeType: "application/zip" })).toBe("unsupported");
+    expect(filePreviewKind({ name, mimeType: "application/zip" })).toBe("archive");
   });
 
   it.each([
@@ -200,5 +200,19 @@ describe("office, font and mermaid previews", () => {
     "slides.ppt",
   ])("rejects non-preview path %s", (path) => {
     expect(isWorkspacePreviewEntryPath(path)).toBe(false);
+  });
+});
+
+describe("archive and sqlite previews", () => {
+  it.each([
+    ["archive.zip", "application/zip", "archive"],
+    ["lib.jar", "application/octet-stream", "archive"],
+    ["bundle.tgz", "", "archive"],
+    ["data.sqlite", "", "sqlite"],
+    ["data.db", "application/octet-stream", "sqlite"],
+    ["download", "application/vnd.sqlite3", "sqlite"],
+    ["backup.7z", "application/x-7z-compressed", "unsupported"],
+  ])("classifies %s (%s) as %s", (name, mimeType, kind) => {
+    expect(filePreviewKind({ name, mimeType })).toBe(kind);
   });
 });
