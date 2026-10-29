@@ -1078,7 +1078,7 @@ function MarkdownMermaidCodeBlock({
               </div>
             }
           >
-            <MermaidDiagram source={code} theme={theme} onExpand={onExpand} />
+            <MermaidDiagram source={code} onExpand={onExpand} />
           </Suspense>
           {/* Find counts the source; a selected match here switches to it. */}
           {searching ? (

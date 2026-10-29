@@ -1,12 +1,10 @@
 import { useState } from "react";
 
-import { useTheme } from "~/hooks/useTheme";
 import { MermaidDiagram } from "../chat/MermaidDiagram";
 import { ExpandedImageDialog } from "../chat/ExpandedImageDialog";
 
 export default function MermaidViewer(props: { readonly text: string }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const { resolvedTheme } = useTheme();
   // Mermaid lays out DOM before sanitizing its SVG. Refuse resource and config
   // syntax before that pass so standalone files cannot initiate requests. Node
   // metadata is YAML, whose escaped/aliased image keys cannot be checked lexically.
@@ -23,7 +21,7 @@ export default function MermaidViewer(props: { readonly text: string }) {
     );
   return (
     <div className="scrollbar-gutter-both min-h-0 flex-1 overflow-auto p-6 [&_*]:animate-none!">
-      <MermaidDiagram source={props.text} theme={resolvedTheme} onExpand={setExpanded} />
+      <MermaidDiagram source={props.text} onExpand={setExpanded} />
       {expanded ? (
         <ExpandedImageDialog
           preview={{ images: [{ src: expanded, name: "Mermaid diagram" }], index: 0 }}
