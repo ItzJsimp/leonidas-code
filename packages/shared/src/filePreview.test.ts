@@ -166,6 +166,12 @@ describe("office, font and mermaid previews", () => {
       "pptx",
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ],
+    ["notes.odt", "odt", "application/vnd.oasis.opendocument.text"],
+    ["budget.ods", "ods", "application/vnd.oasis.opendocument.spreadsheet"],
+    ["deck.odp", "odp", "application/vnd.oasis.opendocument.presentation"],
+    ["notes.rtf", "rtf", "application/rtf"],
+    ["guide.epub", "epub", "application/epub+zip"],
+    ["analysis.ipynb", "ipynb", "application/x-ipynb+json"],
   ])("recognizes Office assets at literal path %s", (name, kind, mimeType) => {
     expect(officePreviewKind({ name })).toBe(kind);
     expect(filePreviewKind({ name, mimeType: "application/octet-stream" })).toBe(kind);
@@ -180,7 +186,10 @@ describe("office, font and mermaid previews", () => {
     ["diagram.MERMAID", "text/plain", "mermaid"],
     ["download", "text/vnd.mermaid", "mermaid"],
     ["source-code.otf", "application/vnd.oasis.opendocument.formula-template", "font"],
-    ["notes.rtf", "application/rtf", "text"],
+    ["notes.rtf", "application/rtf", "rtf"],
+    ["notes.rtf", "", "rtf"],
+    ["download", "text/rtf", "rtf"],
+    ["analysis.IPYNB", "application/json", "ipynb"],
     ["image.bmp", "application/octet-stream", "image"],
     ["photo.heic", "application/octet-stream", "image"],
     ["scan.tiff", "application/octet-stream", "image"],
@@ -198,6 +207,9 @@ describe("office, font and mermaid previews", () => {
     "slides%2Epptx",
     "report.docm",
     "slides.ppt",
+    "guide.epub?download=1",
+    "analysis.ipynb#notes.txt",
+    "report.odt.ts",
   ])("rejects non-preview path %s", (path) => {
     expect(isWorkspacePreviewEntryPath(path)).toBe(false);
   });
