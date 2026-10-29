@@ -3,6 +3,8 @@ import type {
   OrchestrationV2ThreadProjection,
 } from "@t3tools/contracts";
 
+import { restoreSnapshotBodies } from "./orchestrationV2DedupedBodies.ts";
+
 /** Local timeline rows also carry their item in `projection.turnItems`. */
 function isLocalTimelineRow(
   projection: Pick<OrchestrationV2ThreadProjection, "thread">,
@@ -47,12 +49,14 @@ export function restoreLocalVisibleTurnItems(
   return { ...projection, turnItems: [...local, ...projection.turnItems] };
 }
 
-/** The usable projection of a decoded bounded snapshot, compact or not. */
+/** Undoes both opt-in compactions; bodies carry their own markers, so they need no flag. */
 export function boundedSnapshotProjection(snapshot: {
   readonly projection: OrchestrationV2ThreadProjection;
   readonly turnItemsOmitLocalVisible?: true | undefined;
 }): OrchestrationV2ThreadProjection {
-  return snapshot.turnItemsOmitLocalVisible === true
-    ? restoreLocalVisibleTurnItems(snapshot.projection)
-    : snapshot.projection;
+  return restoreSnapshotBodies(
+    snapshot.turnItemsOmitLocalVisible === true
+      ? restoreLocalVisibleTurnItems(snapshot.projection)
+      : snapshot.projection,
+  );
 }

@@ -5,6 +5,11 @@ import type {
   OrchestrationV2TurnItem,
 } from "@t3tools/contracts";
 import {
+  restoreSubagentBodies,
+  restoreTurnItemBodies,
+  type DedupedBodySource,
+} from "@t3tools/shared/orchestrationV2DedupedBodies";
+import {
   createOrchestrationV2TurnItemVisibility,
   isOrchestrationV2TurnItemVisible,
 } from "@t3tools/shared/orchestrationV2Timeline";
@@ -13,6 +18,17 @@ export type ApplyOrchestrationV2ProjectionEventOptions = {
   readonly partialTimeline?: boolean;
   readonly latestLocalTurnOrdinal?: number | null;
 };
+
+// shortcut: plain copy-and-replace; upstream also records the replacement for ordering scans (#24264), which is not ported yet.
+function replaceProjectionArrayItem<T>(
+  items: ReadonlyArray<T>,
+  index: number,
+  item: T,
+): ReadonlyArray<T> {
+  const next = items.slice();
+  next[index] = item;
+  return next;
+}
 
 function upsertEntity<T extends { readonly id: unknown }>(
   items: ReadonlyArray<T>,
@@ -23,6 +39,16 @@ function upsertEntity<T extends { readonly id: unknown }>(
   const next = [...items];
   next[index] = item;
   return next;
+}
+
+// A deduped item repeats a record the stream just sent, so search newest first.
+function latestBodies(projection: OrchestrationV2ThreadProjection): DedupedBodySource {
+  return {
+    messageText: (id) => projection.messages.findLast((message) => message.id === id)?.text,
+    checkpointFiles: (id) =>
+      projection.checkpoints.findLast((checkpoint) => checkpoint.id === id)?.files,
+    subagent: (id) => projection.subagents.findLast((subagent) => subagent.id === id),
+  };
 }
 
 function removeVisibleItem(
@@ -271,7 +297,16 @@ export function applyOrchestrationV2ProjectionEvent(
     case "node.updated":
       return { ...base, nodes: upsertEntity(base.nodes, event.payload) };
     case "subagent.updated":
-      return { ...base, subagents: upsertEntity(base.subagents, event.payload) };
+      return {
+        ...base,
+        subagents: upsertEntity(
+          base.subagents,
+          restoreSubagentBodies(
+            event.payload,
+            base.subagents.find((subagent) => subagent.id === event.payload.id),
+          ),
+        ),
+      };
     case "provider-session.attached":
     case "provider-session.updated":
       return {
@@ -319,26 +354,36 @@ export function applyOrchestrationV2ProjectionEvent(
     case "plan.updated":
       return { ...base, plans: upsertEntity(base.plans, event.payload) };
     case "turn-item.updated": {
+      const payload = restoreTurnItemBodies(event.payload, latestBodies(projection));
+      // Streamed updates land on the newest items, so search from the end.
+      let itemIndex = projection.turnItems.length - 1;
+      while (itemIndex >= 0 && projection.turnItems[itemIndex]!.id !== payload.id) {
+        itemIndex -= 1;
+      }
       if (
         partialTimeline &&
-        !projection.turnItems.some((candidate) => candidate.id === event.payload.id) &&
-        shouldDropMissingPartialTurnItem(projection, event.payload, latestLocalTurnOrdinal)
+        itemIndex === -1 &&
+        shouldDropMissingPartialTurnItem(projection, payload, latestLocalTurnOrdinal)
       ) {
         return projection;
       }
-      const next = { ...base, turnItems: upsertEntity(base.turnItems, event.payload) };
+      const turnItems =
+        itemIndex === -1
+          ? [...projection.turnItems, payload]
+          : replaceProjectionArrayItem(projection.turnItems, itemIndex, payload);
+      const next = { ...base, turnItems };
       // Only interrupt requests can change another item's visibility. Streaming
       // text/tool updates must not recheck every row against every run.
-      const previous = projection.turnItems.find((item) => item.id === event.payload.id);
+      const previous = itemIndex === -1 ? undefined : projection.turnItems[itemIndex];
       const visible =
-        event.payload.type === "run_interrupt_request" || previous?.type === "run_interrupt_request"
+        payload.type === "run_interrupt_request" || previous?.type === "run_interrupt_request"
           ? { ...next, visibleTurnItems: activeVisibleTurnItems(next) }
           : next;
       return {
         ...next,
-        visibleTurnItems: shouldShowLocalTurnItem(next, event.payload)
-          ? upsertVisibleTurnItem(visible, event.payload, partialTimeline, latestLocalTurnOrdinal)
-          : removeVisibleItem(visible.visibleTurnItems, event.payload.id),
+        visibleTurnItems: shouldShowLocalTurnItem(next, payload)
+          ? upsertVisibleTurnItem(visible, payload, partialTimeline, latestLocalTurnOrdinal)
+          : removeVisibleItem(visible.visibleTurnItems, payload.id),
       };
     }
     case "checkpoint-scope.created":
