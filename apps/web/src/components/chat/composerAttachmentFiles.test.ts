@@ -61,15 +61,38 @@ describe("composer attachment files", () => {
   });
 
   it("rejects unsupported image types instead of attaching them as generic files", () => {
-    expect(classifyComposerAttachmentFile({ name: "diagram.svg", type: "image/svg+xml" })).toBe(
-      "unsupported-image",
-    );
     expect(classifyComposerAttachmentFile({ name: "photo.tiff", type: "image/tiff" })).toBe(
       "unsupported-image",
     );
     expect(classifyComposerAttachmentFile({ name: "report.pdf", type: "application/pdf" })).toBe(
       "file",
     );
+  });
+
+  it("attaches SVG as a file and rejects other unsupported images", () => {
+    expect(classifyComposerAttachmentFile({ name: "diagram.svg", type: "image/svg+xml" })).toBe(
+      "file",
+    );
+    expect(classifyComposerAttachmentFile({ name: "diagram.SVG", type: "" })).toBe("file");
+    expect(
+      classifyComposerAttachmentFile({ name: "diagram.svg", type: "application/octet-stream" }),
+    ).toBe("file");
+    expect(classifyComposerAttachmentFile({ name: "photo.tiff", type: "image/tiff" })).toBe(
+      "unsupported-image",
+    );
+  });
+
+  it("claims SVG and unsupported image pastes even when text is present", () => {
+    const images = [
+      new File(["svg"], "diagram.svg", { type: "image/svg+xml" }),
+      new File(["tiff"], "photo.tiff", { type: "image/tiff" }),
+    ];
+
+    for (const image of images) {
+      expect(
+        shouldHandleComposerAttachmentPaste({ files: [image], plainText: "Image caption" }),
+      ).toBe(true);
+    }
   });
 
   it("preserves text paste when an application adds a synthetic generic file", () => {
