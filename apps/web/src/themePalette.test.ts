@@ -168,7 +168,7 @@ describe("theme files", () => {
 
   it("uses Obsidian surfaces and crimson action roles for the Leonidas dark palette", () => {
     expectThemeColors(getStandardThemeColors("dark"), {
-      canvas: "#07070a",
+      canvas: "#000000",
       surface: "#15151b",
       surfaceRaised: "#1d1d25",
       surfaceOverlay: "#1d1d25",
@@ -186,7 +186,7 @@ describe("theme files", () => {
       messageAction: "#a8221b",
     });
     expectThemeColors(getStandardThemeColors("dark"), {
-      canvas: "#07070a",
+      canvas: "#000000",
       sidebar: "#111116",
       accent: "#d92626",
       messageAction: "#d92626",

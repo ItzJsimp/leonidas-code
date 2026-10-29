@@ -84,7 +84,7 @@ describe("mobile theme runtime variables", () => {
           expect(ios["--color-drawer"]).toBe(
             getMobileThemeVariables(DEFAULT_MOBILE_THEME_ID, appearance)["--color-drawer"],
           );
-          expect(ios["--color-thread-canvas"]).toBe("#07070a");
+          expect(ios["--color-thread-canvas"]).toBe("#000000");
         }
         expect(themeColorWithAlpha(ios["--color-thread-hover"], 1)).not.toBe(
           themeColorWithAlpha(ios["--color-drawer"], 1),

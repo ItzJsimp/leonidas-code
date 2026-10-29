@@ -6,14 +6,14 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#07070a" />
+    <meta name="theme-color" content="#000000" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <script>
       (() => {
         const LIGHT_BACKGROUND = "#eee6d6";
-        const DARK_BACKGROUND = "#07070a";
+        const DARK_BACKGROUND = "#000000";
         const CUSTOM_THEMES_STORAGE_KEY = "t3code:themes:v1";
         const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "t3code:theme-follow-system";
         const THEME_APPEARANCE_MODE_STORAGE_KEY = "t3code:theme-appearance-mode";
@@ -25,7 +25,7 @@
             accent: "#a8221b",
           },
           dark: {
-            background: "#07070a",
+            background: "#000000",
             foreground: "#f4f4f5",
             accent: "#d92626",
           },
@@ -42,7 +42,7 @@
             chrome: "oklch(0.912037 0.02596 84.593)",
           },
           dark: {
-            background: "oklch(0.130254 0.007338 285.337)",
+            background: "oklch(0 0 0)",
             foreground: "oklch(0.967434 0.001326 286.375)",
             accent: "oklch(0.571638 0.212497 27.274)",
             chrome: "oklch(0.165663 0.008323 285.456)",
@@ -59,7 +59,7 @@
               chrome: "#eae1cf",
             },
             dark: {
-              background: "#07070a",
+              background: "#000000",
               foreground: "#f4f4f5",
               accent: "#d92626",
               chrome: "#0e0e12",
@@ -454,6 +454,7 @@
           "Geist",
           -apple-system,
           BlinkMacSystemFont,
+          "Inter Variable",
           "Segoe UI",
           system-ui,
           sans-serif;

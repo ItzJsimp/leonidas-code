@@ -15,7 +15,7 @@ export const STANDARD_THEME_PREVIEW_COLORS: Readonly<Record<ThemeAppearance, The
       messageAction: "#a8221b",
     },
     dark: {
-      canvas: "#07070a",
+      canvas: "#000000",
       accent: "#200b0d",
       messageAction: "#d92626",
     },
@@ -60,7 +60,7 @@ export const THEME_PREVIEW_RENDER_SPECS: Readonly<Record<ThemeAppearance, ThemeP
       blurAt56Px: 3,
     },
     dark: {
-      baseTarget: "#07070a",
+      baseTarget: "#000000",
       baseWeight: 0.8,
       accent: {
         center: [0.28, 0.78],

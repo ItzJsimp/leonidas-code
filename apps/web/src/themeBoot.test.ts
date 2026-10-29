@@ -381,8 +381,8 @@ describe("index.html boot script", () => {
     (dark) => {
       const boot = runBootScript({ storage: {}, prefersDark: dark });
       expect(boot.isDark).toBe(true);
-      expect(boot.backgroundColor).toBe("#07070a");
-      expect(boot.metaContent).toBe("#07070a");
+      expect(boot.backgroundColor).toBe("#000000");
+      expect(boot.metaContent).toBe("#000000");
     },
   );
 
@@ -530,8 +530,8 @@ describe("index.html boot script", () => {
 
     expect(boot.themeId).toBeUndefined();
     expect(boot.themeSelected).toBeUndefined();
-    expect(boot.backgroundColor).toBe("#07070a");
-    expect(boot.metaContent).toBe("#07070a");
+    expect(boot.backgroundColor).toBe("#000000");
+    expect(boot.metaContent).toBe("#000000");
   });
 
   it("leaves unknown preferences unthemed so the runtime default applies", () => {

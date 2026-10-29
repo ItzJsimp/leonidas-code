@@ -56,7 +56,7 @@ describe("generate mobile Uniwind themes", () => {
     expect(variables.dark).toEqual(readDefaultMobileThemeVariables("dark"));
     expect(variables.light["--color-screen"]).toBe("#eee6d6");
     expect(variables.light["--color-drawer"]).toBe("#e9e0cf");
-    expect(variables.dark["--color-screen"]).toBe("#07070a");
+    expect(variables.dark["--color-screen"]).toBe("#000000");
     expect(variables.dark["--color-drawer"]).toBe("#111116");
     expect(Object.keys(variables.light)).toEqual(Object.keys(variables.dark));
   });
