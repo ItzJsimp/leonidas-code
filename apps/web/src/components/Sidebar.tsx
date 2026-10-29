@@ -5430,7 +5430,7 @@ export default function Sidebar({ embedded = false }: { readonly embedded?: bool
         {sidebarView.showRail && projectGroups.length > 1 ? (
           <SidebarProjectRail
             projects={projectGroups}
-            selectedKey={projectScopeKeys.length === 1 ? projectScopeKeys[0]! : null}
+            selectedKeys={projectScopeKeys}
             needsYouByProject={needsYouByProject}
             onSelect={(key) => setProjectScopeKeys(key === null ? [] : [key])}
             onProjectContextMenu={(project, position) =>

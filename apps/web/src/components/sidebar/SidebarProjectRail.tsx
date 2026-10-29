@@ -67,7 +67,8 @@ function RailButton(props: {
  */
 export function SidebarProjectRail<P extends RailProject>(props: {
   projects: readonly P[];
-  selectedKey: string | null;
+  /** Empty means all projects. A click picks one project; the filter menu adds more. */
+  selectedKeys: readonly string[];
   needsYouByProject: ReadonlyMap<string, number>;
   onSelect: (projectKey: string | null) => void;
   /** Right-click on a project: change its icon and other quick actions. */
@@ -82,8 +83,8 @@ export function SidebarProjectRail<P extends RailProject>(props: {
     >
       <RailButton
         label="All projects"
-        selected={props.selectedKey === null}
-        needsYou={props.selectedKey === null ? 0 : totalNeedsYou}
+        selected={props.selectedKeys.length === 0}
+        needsYou={props.selectedKeys.length === 0 ? 0 : totalNeedsYou}
         onClick={() => props.onSelect(null)}
       >
         <span className="text-3xs font-semibold">All</span>
@@ -93,10 +94,14 @@ export function SidebarProjectRail<P extends RailProject>(props: {
         <RailButton
           key={project.projectKey}
           label={project.displayName}
-          selected={props.selectedKey === project.projectKey}
+          selected={props.selectedKeys.includes(project.projectKey)}
           needsYou={props.needsYouByProject.get(project.projectKey) ?? 0}
           onClick={() =>
-            props.onSelect(props.selectedKey === project.projectKey ? null : project.projectKey)
+            props.onSelect(
+              props.selectedKeys.length === 1 && props.selectedKeys[0] === project.projectKey
+                ? null
+                : project.projectKey,
+            )
           }
           {...(props.onProjectContextMenu
             ? {
