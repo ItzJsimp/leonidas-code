@@ -16,8 +16,9 @@ $ErrorActionPreference = 'Stop'
 $taskName = 'Leonidas Mirror Files'
 $root = if (Test-Path -LiteralPath 'C:/lcw/dev-live/scripts/Mirror-Files.ps1') { 'C:/lcw/dev-live' } else { Split-Path -Parent $PSScriptRoot }
 $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
-$action = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $root `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root/scripts/Mirror-Files.ps1`" -Laptop $Laptop -LoopSeconds 55$(if ($Config) { " -Config `"$Config`"" })"
+$arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root/scripts/Mirror-Files.ps1`" -Laptop $Laptop -LoopSeconds 55"
+if ($Config) { $arguments += " -Config `"$Config`"" }
+$action = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $root -Argument $arguments
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
     -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
