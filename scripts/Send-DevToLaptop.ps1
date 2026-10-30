@@ -43,18 +43,29 @@ if ($sources.Count -eq 0) { return }
 $signature = ($sources | ForEach-Object { "$($_.Name)=$($_.Sha)" }) -join "`n"
 if (-not $Force -and (Test-Path -LiteralPath $sigFile) -and ((Get-Content -LiteralPath $sigFile -Raw) -eq $signature)) { return }
 
+# A hidden scheduled task has a short PATH, so look for ssh and scp in the usual places.
+function Find-Tool([string]$Name) {
+    $found = Get-Command $Name -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) { return $found.Source }
+    foreach ($dir in 'C:/Windows/System32/OpenSSH', 'C:/Program Files/Git/usr/bin') {
+        if (Test-Path -LiteralPath "$dir/$Name.exe") { return "$dir/$Name.exe" }
+    }
+    throw "$Name not found"
+}
+$ssh = Find-Tool 'ssh'
+$scp = Find-Tool 'scp'
 $sshOptions = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10')
 $remoteDir = 'C:/lcw/dev-sync'
 $receiver = "powershell -NoProfile -ExecutionPolicy Bypass -File $remoteDir/Receive-DevBundle.ps1"
 $bundle = Join-Path ([IO.Path]::GetTempPath()) 'leonidas-dev-sync.bundle'
 try {
-    & ssh @sshOptions $Laptop "powershell -NoProfile -Command New-Item -ItemType Directory -Force $remoteDir" *> $null
+    & $ssh @sshOptions $Laptop "powershell -NoProfile -Command New-Item -ItemType Directory -Force $remoteDir" *> $null
     if ($LASTEXITCODE -ne 0) { return }   # laptop asleep or off the network: try again next minute
-    & scp -q @sshOptions (Join-Path $PSScriptRoot 'Receive-DevBundle.ps1') "${Laptop}:$remoteDir/Receive-DevBundle.ps1"
+    & $scp -q @sshOptions (Join-Path $PSScriptRoot 'Receive-DevBundle.ps1') "${Laptop}:$remoteDir/Receive-DevBundle.ps1"
     if ($LASTEXITCODE -ne 0) { Write-SyncLog 'could not copy the receiver'; return }
 
     # The bundle leaves out every commit the laptop already holds, so it stays small.
-    $held = @(& ssh @sshOptions $Laptop "$receiver -Mode List" | Where-Object { $_ -match '^[0-9a-f]{40}$' })
+    $held = @(& $ssh @sshOptions $Laptop "$receiver -Mode List" | Where-Object { $_ -match '^[0-9a-f]{40}$' })
     $known = @($held | git -C $repo cat-file --batch-check='%(objectname) %(objecttype)' | Where-Object { $_ -match ' commit$' } |
             ForEach-Object { $_.Split(' ')[0] })
     $spec = @($sources | ForEach-Object { "refs/heads/$($_.Name)" }) + @($known | ForEach-Object { "^$_" })
@@ -65,9 +76,9 @@ try {
         return
     }
 
-    & scp -q @sshOptions $bundle "${Laptop}:$remoteDir/in.bundle"
+    & $scp -q @sshOptions $bundle "${Laptop}:$remoteDir/in.bundle"
     if ($LASTEXITCODE -ne 0) { Write-SyncLog 'could not copy the bundle'; return }
-    $result = @(& ssh @sshOptions $Laptop "$receiver -Mode Apply")
+    $result = @(& $ssh @sshOptions $Laptop "$receiver -Mode Apply")
     if ($LASTEXITCODE -ne 0) { Write-SyncLog "laptop refused the bundle: $($result -join ' ')"; return }
     Set-Content -LiteralPath $sigFile -Value $signature -NoNewline
     Write-SyncLog "sent $($sources.Count) branches: $($result -join '; ')"
