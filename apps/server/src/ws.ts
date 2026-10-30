@@ -3015,6 +3015,7 @@ const layerWsRpc = (
         [WS_METHODS.contentMove]: (input) => ContentRpc.move(contentRoot(input.workspaceId), input),
         [WS_METHODS.contentSaveScript]: (input) =>
           ContentRpc.saveScript(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentSync]: (input) => ContentRpc.sync(contentRoot(input.workspaceId)),
         [WS_METHODS.contentDecideDeal]: (input) =>
           ContentRpc.decideDeal(contentRoot(input.workspaceId), input),
         [WS_METHODS.contentCreateDeal]: (input) =>

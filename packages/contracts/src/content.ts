@@ -198,6 +198,27 @@ export const ContentDealWriteResult = Schema.Struct({
 });
 export type ContentDealWriteResult = typeof ContentDealWriteResult.Type;
 
+export const ContentSyncInput = Schema.Struct(WorkspaceRef);
+export type ContentSyncInput = typeof ContentSyncInput.Type;
+
+/** How one Sync ended. `conflict` keeps both versions of the files it names. */
+export const ContentSyncResult = Schema.Struct({
+  state: Schema.Literals([
+    "synced",
+    "pushed",
+    "pulled",
+    "conflict",
+    "merging",
+    "locked",
+    "offline",
+    "error",
+  ]),
+  detail: Schema.String,
+  conflicts: Schema.Array(Schema.String),
+  committed: Schema.Boolean,
+});
+export type ContentSyncResult = typeof ContentSyncResult.Type;
+
 /** A person's answer to a proposed deal: `confirm` starts the deal, `dismiss` drops the proposal. */
 export const ContentDecideDealInput = Schema.Struct({
   ...WorkspaceRef,

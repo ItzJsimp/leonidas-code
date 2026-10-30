@@ -18,6 +18,7 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.marketingDecide]: AuthFilesystemWriteScope,
   [WS_METHODS.contentMove]: AuthFilesystemWriteScope,
   [WS_METHODS.contentSaveScript]: AuthFilesystemWriteScope,
+  [WS_METHODS.contentSync]: AuthFilesystemWriteScope,
   [WS_METHODS.contentDecideDeal]: AuthFilesystemWriteScope,
   [WS_METHODS.contentCreateDeal]: AuthFilesystemWriteScope,
   [WS_METHODS.voiceSetGroqKey]: AuthSettingsWriteScope,

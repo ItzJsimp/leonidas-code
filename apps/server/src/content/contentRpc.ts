@@ -11,12 +11,14 @@ import {
   type ContentMoveInput,
   ContentRpcError,
   type ContentSaveScriptInput,
+  type ContentSyncResult,
   type ContentVideo,
   type ContentWriteResult,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
 import { realGit } from "../areaSync/engine/git.ts";
+import { syncArea } from "../areaSync/engine/sync.ts";
 import { contentApprovalKey } from "./approvalKey.ts";
 import * as ContentFiles from "./contentFiles.ts";
 import { recordChange, scriptHistory, videoRel } from "./contentGit.ts";
@@ -106,6 +108,34 @@ export function createDeal<E>(
       { actor, what: "deal", deal: deal.slug },
     );
     return { deal, recorded: committed, detail };
+  });
+}
+
+/** Files changed in the workspace that are not under `deals/`: saved or new. */
+async function changesOutsideDeals(root: string): Promise<ReadonlyArray<string>> {
+  const tracked = await realGit(["diff", "--name-only", "-z", "HEAD"], root);
+  const fresh = await realGit(["ls-files", "--others", "--exclude-standard", "-z"], root);
+  return [tracked, fresh]
+    .flatMap((run) => (run.code === 0 ? run.out.split("\0") : []))
+    .filter((path) => path !== "" && !path.startsWith(`${ContentFiles.DEALS_DIR}/`));
+}
+
+/**
+ * A person shares the deal files: save, pull, push, through the area sync engine. That engine
+ * saves every change in the folder, so Sync refuses when any file outside `deals/` changed.
+ * The caller's scope check is what keeps agents out.
+ */
+export function sync<E>(resolveRoot: Effect.Effect<string | null, E>) {
+  return withRoot(resolveRoot, async (root): Promise<ContentSyncResult> => {
+    const others = await changesOutsideDeals(root);
+    if (others.length > 0) {
+      const more = others.length > 1 ? ` and ${others.length - 1} more` : "";
+      throw new ContentFiles.ContentError(
+        `Other files changed, so Sync did not run: ${others[0]}${more}. Sync shares deal files only. Save the other files first.`,
+      );
+    }
+    const { state, detail, conflicts, committed } = await syncArea({ dir: root, git: realGit });
+    return { state, detail, conflicts: [...conflicts], committed };
   });
 }
 

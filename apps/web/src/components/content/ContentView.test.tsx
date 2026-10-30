@@ -52,6 +52,7 @@ const render = async (props: Partial<Parameters<typeof ContentScreen>[0]> = {}) 
         loadHistory={vi.fn(async () => null)}
         createDeal={vi.fn(async () => "not used")}
         decideDeal={vi.fn(async () => null)}
+        sync={vi.fn(async () => "not used")}
         onRefresh={vi.fn()}
         {...props}
       />,
@@ -318,5 +319,58 @@ describe("proposed deals", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(
       "A deal for lumen-lamp-2 already exists.",
     );
+  });
+});
+
+describe("sync", () => {
+  const syncButton = () =>
+    [...container.querySelectorAll("button")].find((b) => b.textContent?.trim().startsWith("Sync"));
+  const done = (state: string, extra: object = {}) => ({
+    state,
+    detail: "",
+    conflicts: [] as string[],
+    committed: false,
+    ...extra,
+  });
+
+  it("shows Sync to a person only", async () => {
+    await render();
+    expect(syncButton()).toBeDefined();
+    await render({ canAct: false });
+    expect(syncButton()).toBeUndefined();
+  });
+
+  it("syncs, refreshes the board and says what happened in plain words", async () => {
+    const sync = vi.fn(async () => done("pulled") as never);
+    const onRefresh = vi.fn();
+    await render({ sync, onRefresh });
+    await act(async () => syncButton()!.click());
+    expect(sync).toHaveBeenCalledOnce();
+    expect(onRefresh).toHaveBeenCalled();
+    expect(container.querySelector('[role="status"]')?.textContent).toBe(
+      "Got new changes from the shared copy.",
+    );
+  });
+
+  it("names the files when both people changed the same lines", async () => {
+    const sync = vi.fn(
+      async () => done("conflict", { conflicts: ["deals/acme-cases/01-drop-test.md"] }) as never,
+    );
+    await render({ sync });
+    await act(async () => syncButton()!.click());
+    const alert = container.querySelector('[role="alert"]')?.textContent ?? "";
+    expect(alert).toContain("deals/acme-cases/01-drop-test.md");
+    expect(alert).toContain("Both versions are kept.");
+  });
+
+  it("shows the server's words when Sync did not run, and a plain line when offline", async () => {
+    await render({ sync: vi.fn(async () => "Other files changed, so Sync did not run: a.md.") });
+    await act(async () => syncButton()!.click());
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      "Other files changed, so Sync did not run: a.md.",
+    );
+    await render({ sync: vi.fn(async () => done("offline") as never) });
+    await act(async () => syncButton()!.click());
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("You are offline.");
   });
 });

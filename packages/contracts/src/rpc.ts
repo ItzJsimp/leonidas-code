@@ -19,9 +19,11 @@ import {
   ContentMoveInput,
   ContentRpcError,
   ContentSaveScriptInput,
+  ContentSyncInput,
   ContentDecideDealInput,
   ContentCreateDealInput,
   ContentWriteResult,
+  ContentSyncResult,
   ContentDecideDealResult,
   ContentDealWriteResult,
 } from "./content.ts";
@@ -713,6 +715,7 @@ export const WS_METHODS = {
   contentHistory: "content.history",
   contentMove: "content.move",
   contentSaveScript: "content.saveScript",
+  contentSync: "content.sync",
   contentDecideDeal: "content.decideDeal",
   contentCreateDeal: "content.createDeal",
   focusUpdate: "focus.update",
@@ -2176,6 +2179,13 @@ const WsContentDecideDealRpc = Rpc.make(WS_METHODS.contentDecideDeal, {
   error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
 });
 
+/** A person shares the deal files with the other computer: save, pull, push. No agent access level holds this scope. */
+const WsContentSyncRpc = Rpc.make(WS_METHODS.contentSync, {
+  payload: ContentSyncInput,
+  success: ContentSyncResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3365,6 +3375,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsContentHistoryRpc,
   WsContentMoveRpc,
   WsContentSaveScriptRpc,
+  WsContentSyncRpc,
   WsContentDecideDealRpc,
   WsContentCreateDealRpc,
   WsFocusUpdateRpc,

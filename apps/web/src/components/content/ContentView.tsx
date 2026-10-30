@@ -30,6 +30,7 @@ import { useAtomCommand } from "../../state/use-atom-command";
 
 import { type CreateDealFn, NewDealButton } from "./NewDealDialog";
 import { type DecideDealFn, ProposedDeals } from "./ProposedDeals";
+import { type SyncFn, SyncButton, syncMessage } from "./SyncButton";
 import {
   ALL_DEALS,
   attention,
@@ -47,6 +48,7 @@ import {
   contentHistory,
   contentMove,
   contentSaveScript,
+  contentSync,
   useContent,
 } from "./state";
 import { VideoPanel } from "./VideoPanel";
@@ -285,6 +287,7 @@ export function ContentScreen(props: {
   readonly loadHistory: LoadHistoryFn;
   readonly createDeal: CreateDealFn;
   readonly decideDeal: DecideDealFn;
+  readonly sync: SyncFn;
   readonly onRefresh: () => void;
   /** The deal the filter starts on. */
   readonly initialDeal?: string;
@@ -296,7 +299,7 @@ export function ContentScreen(props: {
   const next = filmNext(rows);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [started, setStarted] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [undo, setUndo] = useState<{
     readonly label: string;
     readonly action: ContentAction;
@@ -308,7 +311,7 @@ export function ContentScreen(props: {
   const run = async (action: ContentAction, undoLabel?: string, back?: ContentStage) => {
     setBusy(true);
     setProblem(null);
-    setStarted(null);
+    setNotice(null);
     const result = await props.act(action);
     setBusy(false);
     if (typeof result === "string") {
@@ -340,14 +343,28 @@ export function ContentScreen(props: {
   const decide = async (proposal: ContentProposal, decision: "confirm" | "dismiss") => {
     setBusy(true);
     setProblem(null);
-    setStarted(null);
+    setNotice(null);
     const refused = await props.decideDeal(proposal.slug, decision);
     setBusy(false);
     if (refused !== null) {
       setProblem(refused);
       return;
     }
-    if (decision === "confirm") setStarted(proposal.brand);
+    if (decision === "confirm") setNotice(`Started ${proposal.brand}.`);
+    props.onRefresh();
+  };
+  const runSync = async () => {
+    setBusy(true);
+    setProblem(null);
+    setNotice(null);
+    const result = await props.sync();
+    setBusy(false);
+    if (typeof result === "string") {
+      setProblem(result);
+      return;
+    }
+    const { ok, text } = syncMessage(result);
+    (ok ? setNotice : setProblem)(text);
     props.onRefresh();
   };
 
@@ -402,13 +419,16 @@ export function ContentScreen(props: {
           list && (props.canAct || list.deals.length > 1) ? (
             <div className="flex items-center gap-2">
               {props.canAct ? (
-                <NewDealButton
-                  create={props.createDeal}
-                  onCreated={(brand) => {
-                    setStarted(brand);
-                    props.onRefresh();
-                  }}
-                />
+                <>
+                  <SyncButton busy={busy} onSync={() => void runSync()} />
+                  <NewDealButton
+                    create={props.createDeal}
+                    onCreated={(brand) => {
+                      setNotice(`Started ${brand}.`);
+                      props.onRefresh();
+                    }}
+                  />
+                </>
               ) : null}
               {list.deals.length > 1 ? (
                 <DealFilter list={list} value={deal} onChange={setDeal} />
@@ -450,9 +470,9 @@ export function ContentScreen(props: {
               {problem}
             </p>
           ) : null}
-          {started ? (
+          {notice ? (
             <p role="status" className="rounded-md border px-3 py-2 text-sm">
-              Started {started}.
+              {notice}
             </p>
           ) : null}
           {undo ? (
@@ -506,6 +526,7 @@ export function ContentView() {
   const runHistory = useAtomCommand(contentHistory);
   const runCreateDeal = useAtomCommand(contentCreateDeal);
   const runDecideDeal = useAtomCommand(contentDecideDeal);
+  const runSyncCommand = useAtomCommand(contentSync);
   const act: ActFn = async (action) => {
     if (!environmentId) return "No workspace is open.";
     const ref = { deal: action.deal, file: action.file };
@@ -537,6 +558,13 @@ export function ContentView() {
     const result = await runDecideDeal({ environmentId, input: { slug, decision } });
     return AsyncResult.isSuccess(result) ? null : messageOf(squashAtomCommandFailure(result));
   };
+  const sync: SyncFn = async () => {
+    if (!environmentId) return "No workspace is open.";
+    const result = await runSyncCommand({ environmentId, input: {} });
+    return AsyncResult.isSuccess(result)
+      ? result.value
+      : messageOf(squashAtomCommandFailure(result));
+  };
   return (
     <ContentScreen
       list={list}
@@ -548,6 +576,7 @@ export function ContentView() {
       loadHistory={loadHistory}
       createDeal={createDeal}
       decideDeal={decideDeal}
+      sync={sync}
       onRefresh={refresh}
     />
   );

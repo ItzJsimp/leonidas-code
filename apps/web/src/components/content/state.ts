@@ -42,6 +42,11 @@ export const contentDecideDeal = createEnvironmentRpcCommand(connectionAtomRunti
   tag: WS_METHODS.contentDecideDeal,
 });
 
+export const contentSync = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:content:sync",
+  tag: WS_METHODS.contentSync,
+});
+
 export const contentHistory = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:content:history",
   tag: WS_METHODS.contentHistory,
