@@ -54,7 +54,12 @@ export function resolveProviderInstanceDisplayName(
  * two words. Iterates by code point so an emoji never splits into surrogates.
  */
 export function providerInstanceInitials(label: string): string {
-  const words = label.replace(/[_-]+/g, " ").split(/\s+/u).filter(Boolean);
+  // Punctuation is dropped so "Antigravity (SimplyGersi)" gives "AS", not "A(".
+  const words = label
+    .replace(/[_-]+/g, " ")
+    .replace(/\p{P}+/gu, "")
+    .split(/\s+/u)
+    .filter(Boolean);
   if (words.length === 0) return "";
   if (words.length === 1) return Array.from(words[0]!).slice(0, 2).join("").toUpperCase();
   return words
@@ -68,6 +73,16 @@ export function normalizeProviderAccentColor(value: string | undefined): string 
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return /^#[0-9a-fA-F]{6}$/u.test(trimmed) ? trimmed : undefined;
+}
+
+/** True when white text on this `#rrggbb` accent would be hard to read (WCAG relative luminance). */
+export function isLightAccentColor(hex: string): boolean {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const channel = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  // Above 0.179, black text has more contrast than white text.
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b! > 0.179;
 }
 
 /**
