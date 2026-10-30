@@ -20,7 +20,10 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 export const PONYTAIL_PLUGIN_ID = "ponytail@ponytail";
-const PONYTAIL_MARKETPLACE = "DietrichGebert/ponytail";
+/** Pinned to a release tag: a later push to the third-party repo must not reach users. */
+const PONYTAIL_MARKETPLACE = "DietrichGebert/ponytail#v5.3.3";
+/** Third-party plugin code runs on every Claude turn, so the install is opt-in. */
+export const PONYTAIL_INSTALL_OPT_IN_ENV = "LEONIDAS_INSTALL_PONYTAIL_PLUGIN";
 const COMMAND_TIMEOUT_MS = 120_000;
 /** Wait before the first install so it never competes with server start. */
 const START_DELAY_MS = 30_000;
@@ -70,6 +73,7 @@ export async function ensureClaudePonytail(input: {
   readonly binaryPath: string;
   readonly env: NodeJS.ProcessEnv;
 }): Promise<"installed" | "present" | "skipped" | "failed"> {
+  if (input.env[PONYTAIL_INSTALL_OPT_IN_ENV] !== "1") return "skipped";
   const configDir = claudeConfigDirOf(input.env);
   if (attempted.has(configDir)) return "skipped";
   attempted.add(configDir);

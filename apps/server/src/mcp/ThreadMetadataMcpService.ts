@@ -128,6 +128,18 @@ const make = Effect.gen(function* () {
       );
     }
 
+    // An agent cannot approve its own shell command. A goal check comes only from the app.
+    if (
+      input.action === "goal" &&
+      input.goalControl?.action === "start" &&
+      input.goalControl.check !== undefined
+    ) {
+      return yield* failure(
+        "capability_denied",
+        "Set a goal check command in the app. MCP callers cannot approve shell commands.",
+      );
+    }
+
     const threadId = input.threadId ?? scope.thread?.threadId;
     if (threadId === undefined) {
       return yield* failure(
