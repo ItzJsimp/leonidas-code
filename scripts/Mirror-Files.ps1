@@ -14,7 +14,7 @@
   A laptop edit is never overwritten. When both sides changed, the laptop file is saved aside as
   <name>.conflict-laptop-<time>. For a git root the laptop git head then follows the desktop head
   (only forward; files stay as they are).
-  Safety stops: more than 50 deletions or more than 500 MB in one tick stop that root.
+  Safety stops: more than -MaxDeletes (50) deletions or more than 500 MB in one tick stop that root.
   shortcut: tar names must be plain text and empty folders stay behind, until someone needs more.
 #>
 [CmdletBinding()]
@@ -26,8 +26,10 @@ param(
     [switch]$DryRun,
     [switch]$Local,            # test mode: the "laptop" is this machine, see Mirror-Files.test.ps1
     [int]$QuietSeconds = 2,
+    [int]$MaxDeletes = 50,     # raise it once, after reading a dry run, for the first sync of a stale laptop copy
     [int]$LoopSeconds = 0,     # 0 = one tick. The scheduled task starts this script every minute.
-    [int]$IntervalSeconds = 10
+    [int]$IntervalSeconds = 10,
+    [int]$Show = 15            # how many files each list prints in a dry run
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Mirror-Files.lib.ps1')
@@ -38,7 +40,6 @@ if (-not $StateDir) { $StateDir = Join-Path $common 'leonidas-mirror' }
 $stage = Join-Path $StateDir 'stage'
 $logFile = Join-Path $StateDir 'mirror.log'
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
-$maxDeletes = 50
 $maxBytes = 500MB
 
 function Write-MirrorLog([string]$Text) {
@@ -123,14 +124,16 @@ function Invoke-MirrorRoot($Root, $Answer) {
     $bytes = 0L
     foreach ($p in $plan.Push) { $bytes += (Get-Item -LiteralPath (Join-Path $Root.desktop $p)).Length }
     $summary = "$name`: push $($plan.Push.Count), delete $($plan.Delete.Count), conflict copies $($plan.Aside.Count), laptop edits kept $($plan.Held), skipped (still being written) $($plan.Unstable)"
-    if ($plan.Delete.Count -gt $maxDeletes -or $bytes -gt $maxBytes) { Write-MirrorLog "$summary. STOPPED: too many deletions or too much data for one tick"; return }
+    $tooMuch = $plan.Delete.Count -gt $MaxDeletes -or $bytes -gt $maxBytes
     if ($DryRun) {
-        Write-MirrorLog "$summary (dry run, nothing copied)"
-        foreach ($p in ($plan.Push | Select-Object -First 15)) { Write-Host "  push   $p" }
-        foreach ($p in ($plan.Delete | Select-Object -First 15)) { Write-Host "  delete $p" }
-        foreach ($p in ($plan.Aside | Select-Object -First 15)) { Write-Host "  aside  $p" }
+        $note = if ($tooMuch) { ' WOULD STOP: raise -MaxDeletes to allow it' } else { '' }
+        Write-MirrorLog "$summary (dry run, nothing copied).$note"
+        foreach ($p in ($plan.Push | Select-Object -First $Show)) { Write-Host "  push   $p" }
+        foreach ($p in ($plan.Delete | Select-Object -First $Show)) { Write-Host "  delete $p" }
+        foreach ($p in ($plan.Aside | Select-Object -First $Show)) { Write-Host "  aside  $p" }
         return
     }
+    if ($tooMuch) { Write-MirrorLog "$summary. STOPPED: more than $MaxDeletes deletions or more than 500 MB in one tick"; return }
 
     $failed = @()
     if ($plan.Push.Count -or $plan.Delete.Count -or $plan.Aside.Count) {
