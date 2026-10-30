@@ -166,7 +166,48 @@ it("shows rank, level, today, quests and achievements on the Goals tab", async (
   expect(text).toContain("12 days · best 19");
   expect(text).toContain("1 of 2 done");
   expect(text).toContain("1 of 2 unlocked");
-  expect(container.querySelectorAll("[role=progressbar]").length).toBeGreaterThan(3);
+  expect(text).toContain("412 of 750");
+  expect(text).toContain("Unlocked");
+  expect(text).toContain("100 or more words");
+  // Only the level bar is read aloud. Every other bar repeats text beside it.
+  expect(container.querySelectorAll("[role=progressbar]")).toHaveLength(1);
+});
+
+it("keeps every Today row a valid dt and dd pair", async () => {
+  mocks.result.data = goals();
+  await draw(<ScribeGoalsTab {...props} />);
+  const dl = container.querySelector("dl");
+  for (const row of dl?.children ?? []) {
+    expect([...row.children].map((child) => child.tagName)).toEqual(["DT", "DD"]);
+  }
+});
+
+it("shows 6 achievements on a phone until Show all is pressed", async () => {
+  const many = Array.from({ length: 8 }, (_, i) => ({ ...goals().achievements[1]!, id: `a${i}` }));
+  mocks.result.data = goals({ achievements: many });
+  await draw(<ScribeGoalsTab {...props} />);
+  const hidden = () => container.querySelectorAll("li.max-sm\\:hidden").length;
+  expect(hidden()).toBe(2);
+  const button = [...container.querySelectorAll("button")].find((b) =>
+    b.textContent?.startsWith("Show all"),
+  );
+  expect(button?.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => button?.click());
+  expect(hidden()).toBe(0);
+  expect(button?.getAttribute("aria-expanded")).toBe("true");
+  expect(button?.textContent).toBe("Show fewer");
+});
+
+it("refetches once when a new dictation is saved", async () => {
+  mocks.result.data = goals();
+  // Its own environment, so the remembered newest id does not leak into other tests.
+  const own = { ...props, environmentId: EnvironmentId.make("env-refresh") };
+  const item = { id: "h1" } as (typeof INITIAL_SCRIBE_LIVE.saved)[number];
+  await draw(<ScribeGoalsTab {...own} />);
+  expect(mocks.result.refresh).not.toHaveBeenCalled();
+  await draw(<ScribeGoalsTab {...own} live={{ ...INITIAL_SCRIBE_LIVE, saved: [item] }} />);
+  await draw(<ScribeGoalsTab {...own} live={{ ...INITIAL_SCRIBE_LIVE, saved: [item] }} />);
+  expect(mocks.result.refresh).toHaveBeenCalledTimes(1);
 });
 
 it("asks a new user to dictate and hides quests on the Goals tab", async () => {
@@ -194,7 +235,11 @@ it("shows the headline, figures, day bars and apps on the Insights tab", async (
   expect(text).toContain("0.2 s faster");
   expect(text).toContain("96 days since 20 Jul");
   expect(text).toContain("Hearing 0.6 s");
-  expect(container.querySelectorAll("ul[aria-label='Words per day this week'] li").length).toBe(3);
+  expect(text).toContain("Hearing turns your speech into text.");
+  const days = container.querySelectorAll("ul[aria-label='Words per day this week'] li");
+  expect(days.length).toBe(3);
+  // The day is read before its value.
+  expect(days[0]?.textContent).toBe("Fri3,410");
   expect(text).toContain("WindowsTerminal-Preview (Administrator)");
 });
 

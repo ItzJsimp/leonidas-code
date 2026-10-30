@@ -7,6 +7,7 @@ import {
   formatSeconds,
   hasNoStats,
   levelModel,
+  needsRefresh,
   nextAchievement,
   percentOf,
   unlockedCount,
@@ -172,5 +173,21 @@ describe("level and achievements", () => {
     expect(unlockedCount(goals().achievements)).toBe(1);
     expect(nextAchievement(goals().achievements)?.id).toBe("c");
     expect(nextAchievement(goals().achievements.slice(0, 1))).toBeNull();
+  });
+});
+
+describe("needsRefresh", () => {
+  it("records the first look without a refetch, then refetches once per new dictation", () => {
+    const shown = new Map<string, string | undefined>();
+    expect(needsRefresh(shown, "goals", "a")).toBe(false);
+    expect(needsRefresh(shown, "goals", "a")).toBe(false);
+    expect(needsRefresh(shown, "goals", "b")).toBe(true);
+    expect(needsRefresh(shown, "goals", "b")).toBe(false);
+  });
+
+  it("keeps each tab apart", () => {
+    const shown = new Map<string, string | undefined>([["goals", "a"]]);
+    expect(needsRefresh(shown, "insights", "b")).toBe(false);
+    expect(needsRefresh(shown, "goals", "b")).toBe(true);
   });
 });

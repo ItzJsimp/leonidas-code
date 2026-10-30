@@ -31,8 +31,8 @@ const TABS = [
   { id: "rewrite", label: "Rewrite", render: ScribeRewriteTab },
   { id: "goals", label: "Goals", render: ScribeGoalsTab },
   { id: "insights", label: "Insights", render: ScribeInsightsTab },
-  { id: "settings", label: "Settings", render: ScribeSettingsTab },
   { id: "meetings", label: "Meetings", render: ScribeMeetingsTab },
+  { id: "settings", label: "Settings", render: ScribeSettingsTab },
 ] as const;
 
 export type ScribeTabId = (typeof TABS)[number]["id"];

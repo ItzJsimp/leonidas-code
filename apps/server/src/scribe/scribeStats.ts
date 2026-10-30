@@ -41,6 +41,41 @@ export const readAllHistory = (listHistory: StatsEngine["listHistory"]) =>
     }
   });
 
+type HistoryRead = Effect.Success<ReturnType<typeof readAllHistory>>;
+
+/** A full read is reused this long. A newer dictation ends it early. */
+export const HISTORY_CACHE_MS = 30_000;
+
+/**
+ * One history read shared by Goals and Insights. A one-row probe checks the newest id,
+ * so a new dictation always shows and an unchanged history costs one call, not ten.
+ * shortcut: a deleted older row can show for up to 30 s, and two calls at the same moment
+ * can both do a full read. Upgrade to an engine change counter if either matters.
+ */
+export const cachedHistory = (listHistory: StatsEngine["listHistory"]) => {
+  let cached: { readonly at: number; readonly read: HistoryRead } | null = null;
+  return Effect.gen(function* () {
+    const now = yield* Clock.currentTimeMillis;
+    if (cached !== null && now - cached.at < HISTORY_CACHE_MS) {
+      const probe = yield* listHistory({ limit: 1 });
+      if (probe.items[0]?.id === cached.read.items[0]?.id) return cached.read;
+    }
+    const read = yield* readAllHistory(listHistory);
+    cached = { at: now, read };
+    // Free up to 5,000 rows when the window ends. A later call reads again anyway.
+    yield* Effect.forkDetach(
+      Effect.sleep(HISTORY_CACHE_MS).pipe(
+        Effect.andThen(
+          Effect.sync(() => {
+            if (cached?.at === now) cached = null;
+          }),
+        ),
+      ),
+    );
+    return read;
+  });
+};
+
 /** A bad zone name from a client must not fail the call: fall back to the server zone. */
 const validTimeZone = (timeZone: string | undefined): string | undefined => {
   if (timeZone === undefined) return undefined;
@@ -52,30 +87,31 @@ const validTimeZone = (timeZone: string | undefined): string | undefined => {
   }
 };
 
-export const getInsights = (
-  engine: StatsEngine,
-  input: ScribeStatsInput,
-): Effect.Effect<ScribeInsights, ScribeEngineError> =>
-  Effect.gen(function* () {
-    const { items, truncated } = yield* readAllHistory(engine.listHistory);
-    const now = yield* Clock.currentTimeMillis;
-    return { ...computeInsights(items, now, validTimeZone(input.timeZone)), truncated };
-  });
+/** Goals and Insights for one engine. Make it once, so both share the cached history read. */
+export const makeScribeStats = (engine: StatsEngine) => {
+  const history = cachedHistory(engine.listHistory);
 
-/** The fixed daily goal comes from the engine `goals` settings section (`dailyWords`), if set. */
-export const getGoals = (
-  engine: StatsEngine,
-  input: ScribeStatsInput,
-): Effect.Effect<ScribeGoals, ScribeEngineError> =>
-  Effect.gen(function* () {
-    const { items, truncated } = yield* readAllHistory(engine.listHistory);
-    const now = yield* Clock.currentTimeMillis;
-    const settings = yield* engine.getSettings.pipe(Effect.option);
-    const fixed =
-      settings._tag === "Some" ? settings.value.sections.goals["dailyWords"] : undefined;
-    const dailyWords = typeof fixed === "number" && fixed > 0 ? fixed : undefined;
-    return {
-      ...computeGoals(items, now, validTimeZone(input.timeZone), { dailyWords }),
-      truncated,
-    };
-  });
+  const getInsights = (input: ScribeStatsInput): Effect.Effect<ScribeInsights, ScribeEngineError> =>
+    Effect.gen(function* () {
+      const { items, truncated } = yield* history;
+      const now = yield* Clock.currentTimeMillis;
+      return { ...computeInsights(items, now, validTimeZone(input.timeZone)), truncated };
+    });
+
+  /** The fixed daily goal comes from the engine `goals` settings section (`dailyWords`), if set. */
+  const getGoals = (input: ScribeStatsInput): Effect.Effect<ScribeGoals, ScribeEngineError> =>
+    Effect.gen(function* () {
+      const { items, truncated } = yield* history;
+      const now = yield* Clock.currentTimeMillis;
+      const settings = yield* engine.getSettings.pipe(Effect.option);
+      const fixed =
+        settings._tag === "Some" ? settings.value.sections.goals["dailyWords"] : undefined;
+      const dailyWords = typeof fixed === "number" && fixed > 0 ? fixed : undefined;
+      return {
+        ...computeGoals(items, now, validTimeZone(input.timeZone), { dailyWords }),
+        truncated,
+      };
+    });
+
+  return { getInsights, getGoals };
+};

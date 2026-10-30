@@ -4,7 +4,13 @@ import { cn } from "~/lib/utils";
 import { useEnvironmentQuery } from "~/state/query";
 import { scribeInsightsQuery } from "~/state/scribe";
 import type { ScribeTabProps } from "./ScribePage";
-import { Clip, EmptyNote, StatsPlaceholder, StatsSection } from "./StatsParts";
+import {
+  Clip,
+  EmptyNote,
+  StatsPlaceholder,
+  StatsSection,
+  useRefreshOnDictation,
+} from "./StatsParts";
 import {
   STATS_INPUT,
   countRows,
@@ -17,8 +23,9 @@ import {
   weekHeadline,
 } from "./stats.logic";
 
-export function ScribeInsightsTab({ environmentId }: ScribeTabProps) {
+export function ScribeInsightsTab({ environmentId, live }: ScribeTabProps) {
   const query = useEnvironmentQuery(scribeInsightsQuery({ environmentId, input: STATS_INPUT }));
+  useRefreshOnDictation(`insights:${environmentId}`, live, query.refresh);
   const insights = query.data;
   if (insights === null) {
     return <StatsPlaceholder failed={query.error !== null} onRetry={query.refresh} />;
@@ -105,16 +112,17 @@ function DayBars({ days }: { readonly days: ScribeInsights["weekly"]["days"] }) 
     >
       {bars.map((bar) => (
         <li key={bar.day} className="flex h-full flex-col items-center justify-end gap-1.5">
+          {/* The day comes first in reading order and sits under its bar on screen. */}
+          <span className="order-last text-xs text-muted-foreground">{bar.label}</span>
           <span className="text-xs tabular-nums">{formatCount(bar.words)}</span>
           <span
             aria-hidden
             className={cn(
               "w-full max-w-11 rounded-t-md rounded-b-sm",
-              bar.busiest ? "bg-primary" : "bg-muted",
+              bar.busiest ? "bg-primary" : "bg-muted-foreground/70",
             )}
             style={{ height: `${bar.percent}%` }}
           />
-          <span className="text-xs text-muted-foreground">{bar.label}</span>
         </li>
       ))}
     </ul>
@@ -154,6 +162,9 @@ function WherePerf({ insights }: { readonly insights: ScribeInsights }) {
           Polish {formatSeconds(insights.polishP50)}
         </span>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Hearing turns your speech into text. Polish cleans up the words.
+      </p>
     </StatsSection>
   );
 }
@@ -175,7 +186,7 @@ function Apps({ insights }: { readonly insights: ScribeInsights }) {
             </span>
             <span aria-hidden className="col-span-2 h-1 overflow-hidden rounded-full bg-muted">
               <span
-                className="block h-full rounded-full bg-primary"
+                className="block h-full rounded-full bg-muted-foreground/70"
                 style={{ width: `${row.percent}%` }}
               />
             </span>

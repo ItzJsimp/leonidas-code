@@ -123,6 +123,24 @@ export function nextAchievement(
   return locked.reduce((best, a) => (a.have / a.need > best.have / best.need ? a : best));
 }
 
+/** A phone shows this many achievements until "Show all" is pressed. */
+export const ACHIEVEMENTS_ON_PHONE = 6;
+
+/**
+ * Whether a stats tab must refetch for the newest saved dictation. `shown` keeps the id each
+ * tab last showed, across tab switches. The first look only records it: that fetch is fresh.
+ */
+export function needsRefresh(
+  shown: Map<string, string | undefined>,
+  key: string,
+  newest: string | undefined,
+): boolean {
+  const first = !shown.has(key);
+  const changed = shown.get(key) !== newest;
+  shown.set(key, newest);
+  return !first && changed;
+}
+
 /** The zone is sent so "today" and the day bars match the reader's clock, not the server's. */
 const readTimeZone = (): string | undefined => {
   try {
