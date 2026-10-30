@@ -1,0 +1,30 @@
+<#
+.SYNOPSIS
+  Laptop side of Send-DevToLaptop.ps1. Copied to the laptop by the sender; do not run it by hand.
+.DESCRIPTION
+  -Mode List   prints every commit id the laptop repo already holds (branches and origin).
+  -Mode Apply  loads each branch of the bundle into the laptop repo. A branch moves only forward:
+               a laptop branch with its own commits stays as it is. Desktop `main` arrives as
+               `desk/main`, because the laptop's own `main` is checked out and must not move.
+#>
+param(
+    [Parameter(Mandatory)][ValidateSet('List', 'Apply')][string]$Mode,
+    [string]$Bundle = 'C:/lcw/dev-sync/in.bundle',
+    [string]$Repo = 'D:/Leonidas AIOS/projects/leonidas-code'
+)
+$ErrorActionPreference = 'Continue'   # git writes progress to stderr; check exit codes instead
+
+if ($Mode -eq 'List') {
+    git -C $Repo for-each-ref --format='%(objectname)' refs/heads refs/remotes/origin
+    return
+}
+
+git -C $Repo bundle verify $Bundle 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { Write-Output 'error: bundle does not fit this repo'; exit 1 }
+foreach ($line in (git -C $Repo bundle list-heads $Bundle)) {
+    $ref = ($line -split ' ', 2)[1]
+    if ($ref -notmatch '^refs/heads/(?<name>.+)$') { continue }
+    $dest = if ($Matches['name'] -eq 'main') { 'desk/main' } else { $Matches['name'] }
+    $out = git -C $Repo fetch --no-tags --quiet $Bundle "${ref}:refs/heads/$dest" 2>&1
+    if ($LASTEXITCODE -eq 0) { Write-Output "ok $dest" } else { Write-Output "skip $dest : $($out -join ' ')" }
+}
