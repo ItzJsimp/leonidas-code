@@ -11,6 +11,16 @@ import {
   MarketingListResult,
   MarketingRpcError,
 } from "./marketing.ts";
+import {
+  ContentHistoryInput,
+  ContentHistoryResult,
+  ContentListInput,
+  ContentListResult,
+  ContentMoveInput,
+  ContentRpcError,
+  ContentSaveScriptInput,
+  ContentWriteResult,
+} from "./content.ts";
 import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
 import {
   McpAppCallToolInput,
@@ -695,6 +705,10 @@ export const WS_METHODS = {
   eventsAppend: "events.append",
   marketingList: "marketing.list",
   marketingDecide: "marketing.decide",
+  contentList: "content.list",
+  contentHistory: "content.history",
+  contentMove: "content.move",
+  contentSaveScript: "content.saveScript",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
@@ -2114,6 +2128,34 @@ const WsMarketingDecideRpc = Rpc.make(WS_METHODS.marketingDecide, {
   error: Schema.Union([MarketingRpcError, EnvironmentAuthorizationError]),
 });
 
+/** Reads the Content screen: every folder deal and its videos in the open workspace. */
+const WsContentListRpc = Rpc.make(WS_METHODS.contentList, {
+  payload: ContentListInput,
+  success: ContentListResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** The latest agent draft of one video, to show beside the script as it is now. */
+const WsContentHistoryRpc = Rpc.make(WS_METHODS.contentHistory, {
+  payload: ContentHistoryInput,
+  success: ContentHistoryResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person moves a video: approve, request changes, mark filmed or undo. No agent access level holds this scope. */
+const WsContentMoveRpc = Rpc.make(WS_METHODS.contentMove, {
+  payload: ContentMoveInput,
+  success: ContentWriteResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person edits a script. No agent access level holds this scope. */
+const WsContentSaveScriptRpc = Rpc.make(WS_METHODS.contentSaveScript, {
+  payload: ContentSaveScriptInput,
+  success: ContentWriteResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3299,6 +3341,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsEventsAppendRpc,
   WsMarketingListRpc,
   WsMarketingDecideRpc,
+  WsContentListRpc,
+  WsContentHistoryRpc,
+  WsContentMoveRpc,
+  WsContentSaveScriptRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,

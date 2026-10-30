@@ -16,6 +16,8 @@ import { WS_METHODS } from "./rpc.ts";
 export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.voiceLogMemoryApprove]: AuthFilesystemWriteScope,
   [WS_METHODS.marketingDecide]: AuthFilesystemWriteScope,
+  [WS_METHODS.contentMove]: AuthFilesystemWriteScope,
+  [WS_METHODS.contentSaveScript]: AuthFilesystemWriteScope,
   [WS_METHODS.voiceSetGroqKey]: AuthSettingsWriteScope,
   [WS_METHODS.voiceClearGroqKey]: AuthSettingsWriteScope,
   [WS_METHODS.voiceTranscribe]: AuthOrchestrationOperateScope,

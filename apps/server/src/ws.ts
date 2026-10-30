@@ -20,6 +20,7 @@ import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import { appendDraft, feedStream } from "./events/eventsRpc.ts";
 import * as MarketingRpc from "./marketing/marketingRpc.ts";
+import * as ContentRpc from "./content/contentRpc.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -1460,6 +1461,12 @@ const layerWsRpc = (
         Effect.map((snapshot) => snapshot.projects),
         Effect.mapError((cause) => new TaskBoardReadError({ reason: "project_not_found", cause })),
       );
+      /** The workspace that holds `deals/`, found the same way as Marketing. */
+      const contentRoot = (workspaceId: string | undefined) =>
+        allTaskBoardProjects.pipe(
+          Effect.orElseSucceed(() => []),
+          Effect.flatMap((projects) => taskBoard.aiosRoot(projects, workspaceId)),
+        );
       const devPreview = yield* DevPreviewService.DevPreviewService;
       const withDevPreviewProject = <A, E, R>(
         projectId: ProjectId,
@@ -3002,6 +3009,12 @@ const layerWsRpc = (
             input,
             currentSession.subject,
           ),
+        [WS_METHODS.contentList]: (input) => ContentRpc.list(contentRoot(input.workspaceId)),
+        [WS_METHODS.contentHistory]: (input) =>
+          ContentRpc.history(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentMove]: (input) => ContentRpc.move(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentSaveScript]: (input) =>
+          ContentRpc.saveScript(contentRoot(input.workspaceId), input),
         // Each change made through this server pushes a fresh list; no polling.
         [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(

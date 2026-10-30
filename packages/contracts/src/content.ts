@@ -110,3 +110,46 @@ export const CONTENT_NO_WORKSPACE = "No workspace is open.";
 export class ContentRpcError extends Schema.TaggedError<ContentRpcError>()("ContentRpcError", {
   message: Schema.String,
 }) {}
+
+const WorkspaceRef = { workspaceId: Schema.optional(Schema.String) };
+const VideoRef = { ...WorkspaceRef, deal: ContentSlug, file: ContentVideoFile };
+
+export const ContentListInput = Schema.Struct(WorkspaceRef);
+export type ContentListInput = typeof ContentListInput.Type;
+
+export const ContentListResult = Schema.Struct({
+  deals: Schema.Array(ContentDeal),
+  bad: Schema.Array(ContentBadRecord),
+});
+export type ContentListResult = typeof ContentListResult.Type;
+
+export const ContentHistoryInput = Schema.Struct(VideoRef);
+export type ContentHistoryInput = typeof ContentHistoryInput.Type;
+
+/** The latest agent draft, the "before" side. The video itself holds the script as it is now. */
+export const ContentHistoryResult = Schema.Struct({
+  baseline: Schema.NullOr(Schema.String),
+  baselineCommit: Schema.NullOr(Schema.String),
+});
+export type ContentHistoryResult = typeof ContentHistoryResult.Type;
+
+export const ContentMoveInput = Schema.Struct({
+  ...VideoRef,
+  to: ContentStage,
+  note: Schema.optional(Schema.String.check(Schema.isMaxLength(2_000))),
+});
+export type ContentMoveInput = typeof ContentMoveInput.Type;
+
+export const ContentSaveScriptInput = Schema.Struct({
+  ...VideoRef,
+  script: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(20_000)),
+});
+export type ContentSaveScriptInput = typeof ContentSaveScriptInput.Type;
+
+/** A saved video, and whether its Git commit went in. `detail` says why not. */
+export const ContentWriteResult = Schema.Struct({
+  video: ContentVideo,
+  recorded: Schema.Boolean,
+  detail: Schema.String,
+});
+export type ContentWriteResult = typeof ContentWriteResult.Type;
