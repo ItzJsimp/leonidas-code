@@ -7,7 +7,9 @@ import { scribeLive } from "~/state/scribe";
 import { Badge } from "../ui/badge";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../ui/empty";
 import { ScribeDictionaryTab } from "./ScribeDictionaryTab";
+import { ScribeGoalsTab } from "./ScribeGoalsTab";
 import { ScribeHomeTab } from "./ScribeHomeTab";
+import { ScribeInsightsTab } from "./ScribeInsightsTab";
 import { ScribeMeetingsTab } from "./ScribeMeetingsTab";
 import { ScribeRewriteTab } from "./ScribeRewriteTab";
 import { ScribeSettingsTab } from "./ScribeSettingsTab";
@@ -27,8 +29,10 @@ const TABS = [
   { id: "transcripts", label: "Transcripts", render: ScribeTranscriptsTab },
   { id: "dictionary", label: "Dictionary", render: ScribeDictionaryTab },
   { id: "rewrite", label: "Rewrite", render: ScribeRewriteTab },
-  { id: "settings", label: "Settings", render: ScribeSettingsTab },
+  { id: "goals", label: "Goals", render: ScribeGoalsTab },
+  { id: "insights", label: "Insights", render: ScribeInsightsTab },
   { id: "meetings", label: "Meetings", render: ScribeMeetingsTab },
+  { id: "settings", label: "Settings", render: ScribeSettingsTab },
 ] as const;
 
 export type ScribeTabId = (typeof TABS)[number]["id"];

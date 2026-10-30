@@ -8,6 +8,7 @@ import {
   bindingKeys,
   checkGroqKey,
   clampMaxRecordSeconds,
+  copyKeyTemporarily,
   diffDraft,
   modelChoices,
   removeBinding,
@@ -196,6 +197,52 @@ describe("numbers, models and keys", () => {
     expect(checkGroqKey("")).toEqual({ ok: false, message: "Paste your Groq key first." });
     expect(checkGroqKey("sk-other").ok).toBe(false);
     expect(checkGroqKey("gsk_a b").ok).toBe(false);
+  });
+});
+
+describe("copyKeyTemporarily", () => {
+  const fakeClipboard = (initial = "", readable = true) => {
+    const box = { text: initial };
+    const clipboard = {
+      writeText: async (value: string) => void (box.text = value),
+      readText: async () => {
+        if (!readable) throw new Error("denied");
+        return box.text;
+      },
+    };
+    const timers: Array<() => void> = [];
+    const schedule = (run: () => void, ms: number) => {
+      expect(ms).toBe(30_000);
+      timers.push(run);
+    };
+    return { box, clipboard, schedule, fire: () => timers.forEach((run) => run()) };
+  };
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("copies the key, then empties the clipboard after 30 seconds", async () => {
+    const c = fakeClipboard();
+    await copyKeyTemporarily("gsk_abc", c.clipboard, c.schedule);
+    expect(c.box.text).toBe("gsk_abc");
+    c.fire();
+    await settle();
+    expect(c.box.text).toBe("");
+  });
+
+  it("keeps text the user copied in the meantime", async () => {
+    const c = fakeClipboard();
+    await copyKeyTemporarily("gsk_abc", c.clipboard, c.schedule);
+    c.box.text = "something else";
+    c.fire();
+    await settle();
+    expect(c.box.text).toBe("something else");
+  });
+
+  it("empties a clipboard it cannot read", async () => {
+    const c = fakeClipboard("", false);
+    await copyKeyTemporarily("gsk_abc", c.clipboard, c.schedule);
+    c.fire();
+    await settle();
+    expect(c.box.text).toBe("");
   });
 });
 

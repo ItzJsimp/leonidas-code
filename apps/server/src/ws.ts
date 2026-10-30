@@ -2,6 +2,7 @@ import {
   DevPreviewError,
   ImagesError,
   OrchestrationDispatchCommandError,
+  ScribeEngineError,
   TaskBoardReadError,
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
@@ -1344,6 +1345,7 @@ const layerWsRpc = (
       const localVmService = yield* LocalVmService.LocalVmService;
       const scribeStatus = yield* ScribeStatus.ScribeStatus;
       const scribeEngine = yield* ScribeEngine.ScribeEngine;
+      const scribeStats = ScribeStats.makeScribeStats(scribeEngine);
       const voiceLogMemory = yield* VoiceLogMemory.VoiceLogMemory;
       const scribeSupervisor = yield* ScribeSupervisor.ScribeSupervisor;
       const voice = yield* VoiceDictation.VoiceDictation;
@@ -3532,8 +3534,8 @@ const layerWsRpc = (
         [WS_METHODS.voiceLogMemoryApprove]: (input) => voiceLogMemory.approve(input),
         [WS_METHODS.scribeListHistory]: (input) => scribeEngine.listHistory(input),
         [WS_METHODS.scribeDeleteHistory]: (input) => scribeEngine.deleteHistory(input),
-        [WS_METHODS.scribeGetInsights]: (input) => ScribeStats.getInsights(scribeEngine, input),
-        [WS_METHODS.scribeGetGoals]: (input) => ScribeStats.getGoals(scribeEngine, input),
+        [WS_METHODS.scribeGetInsights]: (input) => scribeStats.getInsights(input),
+        [WS_METHODS.scribeGetGoals]: (input) => scribeStats.getGoals(input),
         [WS_METHODS.scribeGetDictionary]: () => scribeEngine.getDictionary,
         [WS_METHODS.scribePutDictionary]: (input) => scribeEngine.putDictionary(input),
         [WS_METHODS.scribeListSuggestions]: () => scribeEngine.listSuggestions,
@@ -3541,6 +3543,16 @@ const layerWsRpc = (
         [WS_METHODS.scribeGetSettings]: () => scribeEngine.getSettings,
         [WS_METHODS.scribePatchSettings]: (input) => scribeEngine.patchSettings(input),
         [WS_METHODS.scribeListDevices]: () => scribeEngine.listDevices,
+        [WS_METHODS.scribeGetGroqKey]: () =>
+          voiceKeys.get.pipe(
+            Effect.mapError(() => new ScribeEngineError({ reason: "store_error" })),
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.fail(new ScribeEngineError({ reason: "not_found" })),
+                onSome: (key) => Effect.succeed({ key }),
+              }),
+            ),
+          ),
         [WS_METHODS.scribeSetGroqKey]: (input) => Effect.as(scribeEngine.setGroqKey(input), {}),
         [WS_METHODS.scribeClearGroqKey]: () => Effect.as(scribeEngine.clearGroqKey, {}),
         [WS_METHODS.scribeSubscribeEvents]: () =>

@@ -11,11 +11,21 @@ import { useEnvironmentQuery } from "~/state/query";
 import {
   scribeClearGroqKey,
   scribeDevicesQuery,
+  scribeGetGroqKey,
   scribePatchSettings,
   scribeSetGroqKey,
   scribeSettingsQuery,
 } from "~/state/scribe";
 import { useAtomCommand } from "~/state/use-atom-command";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -33,6 +43,7 @@ import {
   bindingFromMouse,
   checkGroqKey,
   clampMaxRecordSeconds,
+  copyKeyTemporarily,
   diffDraft,
   modelChoices,
   removeBinding,
@@ -67,6 +78,7 @@ export function ScribeSettingsTab({ environmentId, live }: ScribeTabProps) {
   const runPatch = useAtomCommand(scribePatchSettings, { reportFailure: false });
   const runSetKey = useAtomCommand(scribeSetGroqKey, { reportFailure: false });
   const runClearKey = useAtomCommand(scribeClearGroqKey, { reportFailure: false });
+  const runGetKey = useAtomCommand(scribeGetGroqKey, { reportFailure: false });
   const [saved, setSaved] = useState<ScribeSettings | null>(null);
   // `edits` holds the page's changes; null means nothing is edited, so a refresh never wipes one.
   const [edits, setEdits] = useState<SettingsDraft | null>(null);
@@ -162,6 +174,22 @@ export function ScribeSettingsTab({ environmentId, live }: ScribeTabProps) {
     if (result._tag !== "Success") return fail(result);
     showKey(false);
     toastManager.add({ type: "info", title: "Groq key removed." });
+  };
+
+  const copyKey = async () => {
+    setBusy(true);
+    const result = await runGetKey({ environmentId, input: {} });
+    setBusy(false);
+    if (result._tag !== "Success") return fail(result);
+    try {
+      await copyKeyTemporarily(result.value.key, navigator.clipboard);
+      toastManager.add({
+        type: "success",
+        title: "Key copied. The clipboard is emptied in 30 seconds.",
+      });
+    } catch {
+      toastManager.add({ type: "error", title: "The browser did not allow copying. Try again." });
+    }
   };
 
   if (settings === null || draft === null) {
@@ -341,6 +369,7 @@ export function ScribeSettingsTab({ environmentId, live }: ScribeTabProps) {
         busy={busy}
         onSet={setKey}
         onClear={clearKey}
+        onCopy={copyKey}
       />
 
       <div className="sticky bottom-0 -mx-1 flex items-center gap-3 border-t bg-background/95 p-3 backdrop-blur">
@@ -531,7 +560,7 @@ function HotkeyRow(props: {
         <Input
           className="w-56"
           aria-label={`Add a shortcut for ${props.label}`}
-          placeholder="Ctrl + Shift + T"
+          placeholder="Type keys or press Record"
           value={text}
           onChange={(event) => setText(event.target.value)}
         />
@@ -557,8 +586,10 @@ function GroqKeySection(props: {
   busy: boolean;
   onSet: (key: string) => Promise<boolean>;
   onClear: () => Promise<void>;
+  onCopy: () => Promise<void>;
 }) {
   const [key, setKey] = useState("");
+  const [confirmCopy, setConfirmCopy] = useState(false);
   return (
     <Section
       title="Groq key"
@@ -588,17 +619,54 @@ function GroqKeySection(props: {
             {props.isSet ? "Replace key" : "Save key"}
           </Button>
           {props.isSet ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={props.busy}
-              onClick={() => void props.onClear()}
-            >
-              Remove key
-            </Button>
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={props.busy}
+                onClick={() => setConfirmCopy(true)}
+              >
+                Copy key
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={props.busy}
+                onClick={() => void props.onClear()}
+              >
+                Remove key
+              </Button>
+            </>
           ) : null}
         </form>
+        <AlertDialog open={confirmCopy} onOpenChange={setConfirmCopy}>
+          <AlertDialogPopup>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Copy your Groq key?</AlertDialogTitle>
+              <AlertDialogDescription>
+                The key goes to your clipboard, so any app can read it. Leonidas empties the
+                clipboard after 30 seconds. Paste it only where you trust.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogClose render={<Button variant="outline" size="sm" />}>
+                Cancel
+              </AlertDialogClose>
+              <Button
+                size="sm"
+                disabled={props.busy}
+                onClick={() => {
+                  setConfirmCopy(false);
+                  void props.onCopy();
+                }}
+              >
+                Copy key
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogPopup>
+        </AlertDialog>
       </div>
     </Section>
   );

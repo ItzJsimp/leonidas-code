@@ -310,6 +310,10 @@ export const ScribeSetGroqKeyInput = Schema.Struct({
 });
 export type ScribeSetGroqKeyInput = typeof ScribeSetGroqKeyInput.Type;
 
+/** The saved Groq key, read from the shared vault entry. Only the Copy key button asks for it. */
+export const ScribeGroqKey = Schema.Struct({ key: Schema.String });
+export type ScribeGroqKey = typeof ScribeGroqKey.Type;
+
 export const ScribeEngineErrorReason = Schema.Literals([
   "offline",
   "timeout",

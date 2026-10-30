@@ -95,6 +95,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.scribeGetSettings]: "scribe",
   [WS_METHODS.scribePatchSettings]: "scribe",
   [WS_METHODS.scribeListDevices]: "scribe",
+  [WS_METHODS.scribeGetGroqKey]: "scribe",
   [WS_METHODS.scribeSetGroqKey]: "scribe",
   [WS_METHODS.scribeClearGroqKey]: "scribe",
   [WS_METHODS.scribeSubscribeEvents]: "scribe",

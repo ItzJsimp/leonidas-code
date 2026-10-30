@@ -1,10 +1,17 @@
 import { describe, expect, it } from "@effect/vitest";
 import type { ScribeHistoryItem } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as TestClock from "effect/testing/TestClock";
 
 import { computeGoals, dailyGoal, levelForXp, xpForLevel } from "./goals.ts";
 import { computeInsights } from "./insights.ts";
-import { MAX_STATS_ITEMS, getInsights, readAllHistory } from "./scribeStats.ts";
+import {
+  HISTORY_CACHE_MS,
+  MAX_STATS_ITEMS,
+  cachedHistory,
+  makeScribeStats,
+  readAllHistory,
+} from "./scribeStats.ts";
 import { parityFixture as fx } from "./scribeStats.fixture.ts";
 import { addDays, countWords, makeDayOf } from "./statsDays.ts";
 
@@ -184,14 +191,59 @@ describe("readAllHistory", () => {
 
   it.effect("falls back to the server zone for a bad zone name", () =>
     Effect.gen(function* () {
-      const out = yield* getInsights(
-        {
-          listHistory: () => Effect.succeed({ items: [], next: null }),
-          getSettings: Effect.never,
-        },
-        { timeZone: "Not/AZone" },
-      );
+      const out = yield* makeScribeStats({
+        listHistory: () => Effect.succeed({ items: [], next: null }),
+        getSettings: Effect.never,
+      }).getInsights({ timeZone: "Not/AZone" });
       expect(out).toMatchObject({ words: 0, truncated: false });
+    }),
+  );
+});
+
+describe("cachedHistory", () => {
+  const engineWith = (newest: { id: string }) => {
+    const calls: Array<number | undefined> = [];
+    const listHistory = (input: { readonly limit?: number | undefined }) => {
+      calls.push(input.limit);
+      return Effect.succeed({
+        items: [item("2026-10-26T10:00:00Z", { id: newest.id })],
+        next: null,
+      });
+    };
+    return { calls, listHistory };
+  };
+
+  it.effect("reuses the read while the newest row is the same", () =>
+    Effect.gen(function* () {
+      const engine = engineWith({ id: "a" });
+      const history = cachedHistory(engine.listHistory);
+      yield* history;
+      yield* history;
+      expect(engine.calls).toEqual([500, 1]);
+    }),
+  );
+
+  it.effect("reads again when a new dictation is the newest row", () =>
+    Effect.gen(function* () {
+      const newest = { id: "a" };
+      const engine = engineWith(newest);
+      const history = cachedHistory(engine.listHistory);
+      yield* history;
+      newest.id = "b";
+      const read = yield* history;
+      expect(engine.calls).toEqual([500, 1, 500]);
+      expect(read.items[0]?.id).toBe("b");
+    }),
+  );
+
+  it.effect("reads again without a probe after the cache time", () =>
+    Effect.gen(function* () {
+      const engine = engineWith({ id: "a" });
+      const history = cachedHistory(engine.listHistory);
+      yield* history;
+      yield* TestClock.adjust(HISTORY_CACHE_MS);
+      yield* history;
+      expect(engine.calls).toEqual([500, 500]);
     }),
   );
 });

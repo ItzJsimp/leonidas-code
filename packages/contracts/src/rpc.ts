@@ -579,6 +579,7 @@ import {
   ScribeDictionary,
   ScribeEngineError,
   ScribeGoals,
+  ScribeGroqKey,
   ScribeHistoryPage,
   ScribeInsights,
   ScribeListHistoryInput,
@@ -628,6 +629,7 @@ export const WS_METHODS = {
   scribeGetSettings: "scribe.getSettings",
   scribePatchSettings: "scribe.patchSettings",
   scribeListDevices: "scribe.listDevices",
+  scribeGetGroqKey: "scribe.getGroqKey",
   scribeSetGroqKey: "scribe.setGroqKey",
   scribeClearGroqKey: "scribe.clearGroqKey",
   scribeSubscribeEvents: "scribe.subscribeEvents",
@@ -2689,6 +2691,12 @@ const WsScribeListDevicesRpc = Rpc.make(WS_METHODS.scribeListDevices, {
   error: ScribeRpcError,
 });
 
+const WsScribeGetGroqKeyRpc = Rpc.make(WS_METHODS.scribeGetGroqKey, {
+  payload: Schema.Struct({}),
+  success: ScribeGroqKey,
+  error: ScribeRpcError,
+});
+
 const WsScribeSetGroqKeyRpc = Rpc.make(WS_METHODS.scribeSetGroqKey, {
   payload: ScribeSetGroqKeyInput,
   success: Schema.Struct({}),
@@ -3159,6 +3167,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsScribeGetSettingsRpc,
   WsScribePatchSettingsRpc,
   WsScribeListDevicesRpc,
+  WsScribeGetGroqKeyRpc,
   WsScribeSetGroqKeyRpc,
   WsScribeClearGroqKeyRpc,
   WsScribeSubscribeEventsRpc,

@@ -28,6 +28,7 @@ import { useWorkspacePictures, WorkspacePicture } from "~/components/workspace/W
 import { isElectron } from "~/env";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { cn, isMacPlatform } from "~/lib/utils";
+import { usePrimaryEnvironment } from "~/state/environments";
 import {
   EMPTY_SETUP_STATE,
   SETUP_STATE_STORAGE_KEY,
@@ -92,9 +93,12 @@ export function AppRail({ expanded = false }: { readonly expanded?: boolean }) {
     strict: false,
     select: (params) => resolveThreadRouteTarget(params) !== null,
   });
+  const scribeSupported =
+    usePrimaryEnvironment()?.serverConfig?.environment.platform.os === "windows";
   const { main, bottom } = railItems({
     business: active?.type === "business",
     builder: setup.coder === true,
+    scribe: scribeSupported,
   });
   const current = activeRailId(pathname, onChat);
   const renderItem = (item: RailItem) => (
