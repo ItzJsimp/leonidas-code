@@ -24,6 +24,9 @@ const layerSetup = Layer.effectDiscard(
     yield* sql`PRAGMA synchronous = NORMAL;`;
     // 32 MB page cache (default is 2 MB) so projection reads stop re-reading pages from disk.
     yield* sql`PRAGMA cache_size = -32768;`;
+    // Keep statement journals and sort spills off the main thread's disk path.
+    // Large statements and open savepoints can increase peak memory use.
+    yield* sql`PRAGMA temp_store = MEMORY;`;
     // PASSIVE checkpoints never shrink the -wal file, so it otherwise keeps its
     // largest size until the last connection closes.
     yield* sql.unsafe(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES};`);
