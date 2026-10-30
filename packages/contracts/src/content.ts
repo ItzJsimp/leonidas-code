@@ -1,0 +1,112 @@
+import * as Schema from "effect/Schema";
+
+/**
+ * Content files: each contracted deal is a folder `deals/<deal>/` with `deal.md` and one file
+ * per video, `NN-<slug>.md`. Files are the truth and Git is the history.
+ * Agents draft scripts; only a person approves one.
+ */
+
+const NonBlank = Schema.String.check(
+  Schema.makeFilter((value: string) => value.trim().length > 0, { expected: "a non-blank string" }),
+);
+export const ContentSlug = Schema.String.check(
+  Schema.isPattern(/^[a-z0-9][a-z0-9-]{0,62}$/, { expected: "a lowercase slug" }),
+);
+/** A video file name without `.md`: two digits, a dash and a slug. */
+export const ContentVideoFile = Schema.String.check(
+  Schema.isPattern(/^\d{2}-[a-z0-9][a-z0-9-]{0,62}$/, { expected: "NN-<slug>" }),
+);
+
+export const CONTENT_STAGES = [
+  "idea",
+  "scripting",
+  "script_review",
+  "ready_to_film",
+  "filmed",
+  "cut_review",
+  "revision_1",
+  "revision_2",
+  "delivered",
+  "paid",
+] as const;
+export const ContentStage = Schema.Literals(CONTENT_STAGES);
+export type ContentStage = typeof ContentStage.Type;
+
+export const ContentActor = Schema.Struct({
+  kind: Schema.Literals(["agent", "member"]),
+  name: NonBlank,
+});
+export type ContentActor = typeof ContentActor.Type;
+
+/**
+ * The approval as the server checked it. `unsigned`: the file says approved, but no person
+ * signed it. `content_changed`: the script changed after a person approved it.
+ */
+export const ContentApproval = Schema.Literals(["none", "approved", "unsigned", "content_changed"]);
+export type ContentApproval = typeof ContentApproval.Type;
+
+/** Why a draft passed or failed. The server counts words and rule hits; agents give the rest. */
+export const ContentScorecard = Schema.Struct({
+  hookScore: Schema.optional(Schema.Number),
+  spokenSeconds: Schema.Number,
+  targetSeconds: Schema.optional(Schema.Number),
+  bannedWords: Schema.Array(Schema.String),
+  doNotHits: Schema.Array(Schema.String),
+  writerModel: Schema.optional(Schema.String),
+  criticModel: Schema.optional(Schema.String),
+  /** Blocks the move to script review: a banned word or a brand do-not. */
+  blocks: Schema.Array(Schema.String),
+  /** Shows on the card and does not block: a low hook score or a wrong length. */
+  warnings: Schema.Array(Schema.String),
+});
+export type ContentScorecard = typeof ContentScorecard.Type;
+
+export const ContentVideo = Schema.Struct({
+  deal: ContentSlug,
+  file: ContentVideoFile,
+  id: Schema.String,
+  title: NonBlank,
+  /** The stage the lens uses. An unsigned approval reads as `script_review`. */
+  stage: ContentStage,
+  stageChanged: Schema.optional(Schema.String),
+  pen: Schema.optional(Schema.String),
+  approval: ContentApproval,
+  approvedBy: Schema.optional(Schema.String),
+  approvedAt: Schema.optional(Schema.String),
+  revision: Schema.Number,
+  hookType: Schema.optional(Schema.String),
+  lengthS: Schema.optional(Schema.Number),
+  due: Schema.optional(Schema.String),
+  /** Google Drive file ids. */
+  footage: Schema.Array(Schema.String),
+  idea: Schema.String,
+  script: Schema.String,
+  shotList: Schema.String,
+  notes: Schema.String,
+  scorecard: ContentScorecard,
+});
+export type ContentVideo = typeof ContentVideo.Type;
+
+export const ContentDeal = Schema.Struct({
+  slug: ContentSlug,
+  brand: NonBlank,
+  stage: Schema.optional(Schema.String),
+  driveFolderId: Schema.optional(Schema.String),
+  productReceived: Schema.optional(Schema.String),
+  brief: Schema.optional(Schema.String),
+  /** Brand do-nots. A script that says one cannot go to script review. */
+  doNot: Schema.Array(Schema.String),
+  videos: Schema.Array(ContentVideo),
+});
+export type ContentDeal = typeof ContentDeal.Type;
+
+/** A file the reader skipped, so one bad file never hides the rest. */
+export const ContentBadRecord = Schema.Struct({ file: Schema.String, reason: Schema.String });
+export type ContentBadRecord = typeof ContentBadRecord.Type;
+
+/** The one error a screen shows in its own words: no AIOS folder is connected. */
+export const CONTENT_NO_WORKSPACE = "No workspace is open.";
+
+export class ContentRpcError extends Schema.TaggedError<ContentRpcError>()("ContentRpcError", {
+  message: Schema.String,
+}) {}
