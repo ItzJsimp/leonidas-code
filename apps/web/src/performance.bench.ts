@@ -8,8 +8,12 @@ import {
 import { formatHourShort, formatRelativeHourShort } from "@t3tools/shared/usageFormat";
 import { describe, test } from "vite-plus/test";
 
-import { makeThreadProjectionFixture } from "./test-fixtures";
-import { deriveActivePlanState } from "./session-logic";
+import { makeStreamingTimelineFixture, makeThreadProjectionFixture } from "./test-fixtures";
+import {
+  deriveActivePlanState,
+  deriveTimelineEntriesFromVisibleTurnItems,
+  deriveTimelineEntriesFromVisibleTurnItemsWithState,
+} from "./session-logic";
 
 const projectId = ProjectId.make("benchmark-project");
 const runId = RunId.make("benchmark-run");
@@ -39,6 +43,28 @@ const projection = {
     steps: [{ id: "check", text: "Run checks", status: "running" as const }],
   })),
 };
+// 200 copies of the 6-item fixture make a long thread of 1,200 turn items.
+const timelineFixture = makeStreamingTimelineFixture("Partial");
+const longTimelineItems = Array.from({ length: 200 }, (_, copy) =>
+  timelineFixture.visibleTurnItems.map((row) => ({
+    ...row,
+    sourceItemId: `${row.sourceItemId}-${copy}`,
+    item: {
+      ...row.item,
+      id: `${row.item.id}-${copy}`,
+      ...("messageId" in row.item ? { messageId: `${row.item.messageId}-${copy}` } : {}),
+    },
+  })),
+).flat() as typeof timelineFixture.visibleTurnItems;
+const timelineInput = { visibleTurnItems: longTimelineItems, optimisticMessages: [] };
+const lastToolIndex = longTimelineItems.findLastIndex((row) => row.item.type === "dynamic_tool");
+const updatedTimelineInput = {
+  ...timelineInput,
+  visibleTurnItems: longTimelineItems.map((row, index) =>
+    index === lastToolIndex ? { ...row, item: { ...row.item, output: "Updated" } } : row,
+  ) as typeof longTimelineItems,
+};
+const previousTimeline = deriveTimelineEntriesFromVisibleTurnItemsWithState(timelineInput);
 const hours = Array.from({ length: 24 }, (_, index) =>
   new Date(start + index * 3_600_000).toISOString(),
 );
@@ -76,6 +102,16 @@ describe("client performance", () => {
         formatHourShort(hour, "America/New_York"),
         formatRelativeHourShort(hour, referenceTime, "America/New_York"),
       ]);
+    }).run();
+  });
+  test("derive 1200 timeline entries from scratch", async ({ bench }) => {
+    await bench("derive", () => {
+      deriveTimelineEntriesFromVisibleTurnItems(timelineInput);
+    }).run();
+  });
+  test("update one tool in a 1200 item timeline", async ({ bench }) => {
+    await bench("update", () => {
+      deriveTimelineEntriesFromVisibleTurnItemsWithState(updatedTimelineInput, previousTimeline);
     }).run();
   });
 });
