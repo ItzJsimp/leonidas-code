@@ -2,7 +2,7 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { EMPTY_LIST, fixtureList } from "./content.fixtures";
 
@@ -114,4 +114,100 @@ it("explains the empty, no-workspace, loading and error states", async () => {
   expect(text()).toContain("Loading");
   await render({ list: null, error: "boom" });
   expect(text()).toContain("Content is not available now.");
+});
+
+describe("video panel", () => {
+  const card = (ref: string) => container.querySelector<HTMLElement>(`[data-video="${ref}"]`)!;
+  const press = async (name: string) => {
+    const target = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === name,
+    );
+    if (!target) throw new Error(`no button ${name}`);
+    await act(async () => target.click());
+  };
+  const panel = () => container.querySelector<HTMLElement>('[aria-label="Video"]');
+
+  it("opens a video with its script, scorecard and stage actions", async () => {
+    await render();
+    await act(async () => card("acme-cases/02-pocket-check-with-keys").click());
+    expect(panel()?.querySelector("h2")?.textContent).toBe("Pocket check with keys");
+    expect(panel()?.textContent).toContain("Three floors. Not one crack.");
+    expect(panel()?.textContent).toContain("Hook score 8/10");
+    await act(async () =>
+      container.querySelector<HTMLElement>('button[aria-label="Close"]')!.click(),
+    );
+    expect(panel()).toBeNull();
+  });
+
+  it("approves, then undo puts the video back in review", async () => {
+    const actFn = vi.fn(async () => fixtureList().deals[0]!.videos[1]!);
+    await render({ act: actFn });
+    await act(async () => card("acme-cases/02-pocket-check-with-keys").click());
+    await press("Approve script");
+    expect(actFn).toHaveBeenLastCalledWith({
+      kind: "move",
+      deal: "acme-cases",
+      file: "02-pocket-check-with-keys",
+      to: "ready_to_film",
+    });
+    expect(container.textContent).toContain("Approved.");
+    await press("Undo");
+    expect(actFn).toHaveBeenLastCalledWith({
+      kind: "move",
+      deal: "acme-cases",
+      file: "02-pocket-check-with-keys",
+      to: "script_review",
+    });
+  });
+
+  it("sends a script back with a note", async () => {
+    const actFn = vi.fn(async () => fixtureList().deals[0]!.videos[1]!);
+    await render({ act: actFn });
+    await act(async () => card("acme-cases/02-pocket-check-with-keys").click());
+    await press("Request changes");
+    const note = container.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="What to change"]',
+    )!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+        note,
+        "Shorter hook.",
+      );
+      note.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await press("Send back");
+    expect(actFn).toHaveBeenLastCalledWith({
+      kind: "move",
+      deal: "acme-cases",
+      file: "02-pocket-check-with-keys",
+      to: "scripting",
+      note: "Shorter hook.",
+    });
+  });
+
+  it("marks the Film next video filmed, and undo restores it", async () => {
+    const actFn = vi.fn(async () => fixtureList().deals[1]!.videos[0]!);
+    await render({ act: actFn });
+    await press("Mark filmed");
+    expect(actFn).toHaveBeenLastCalledWith(expect.objectContaining({ to: "filmed" }));
+    await press("Undo");
+    expect(actFn).toHaveBeenLastCalledWith(expect.objectContaining({ to: "ready_to_film" }));
+  });
+
+  it("shows a refusal in plain words", async () => {
+    await render({ act: vi.fn(async () => "Only a person approves a script.") });
+    await act(async () => card("acme-cases/02-pocket-check-with-keys").click());
+    await press("Approve script");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      "Only a person approves a script.",
+    );
+  });
+
+  it("reader mode shows the spoken lines in big text", async () => {
+    await render();
+    await act(async () => card("acme-cases/01-drop-test-on-the-stairs").click());
+    await press("Reader mode");
+    const reader = container.querySelector<HTMLElement>('[data-reader="true"]');
+    expect(reader?.className).toContain("text-2xl");
+  });
 });

@@ -39,6 +39,7 @@ import {
   stageLabel,
 } from "./content.logic";
 import { contentHistory, contentMove, contentSaveScript, useContent } from "./state";
+import { VideoPanel } from "./VideoPanel";
 
 /** One thing a person does to a video. */
 export type ContentAction =
@@ -272,11 +273,47 @@ export function ContentScreen(props: {
   const [selected, setSelected] = useState<string | null>(null);
   const rows = useMemo(() => (list ? boardRows(list, deal) : []), [list, deal]);
   const next = filmNext(rows);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{
+    readonly label: string;
+    readonly action: ContentAction;
+  } | null>(null);
   const open = (video: ContentVideo) => setSelected(refOf(video));
-  const markFilmed = (video: ContentVideo) =>
-    void props
-      .act({ kind: "move", deal: video.deal, file: video.file, to: "filmed" })
-      .then(() => props.onRefresh());
+  const current = rows.find((row) => refOf(row.video) === selected) ?? null;
+
+  /** Runs one action. A move that a person may regret leaves an Undo that moves it back. */
+  const run = async (action: ContentAction, undoLabel?: string, back?: ContentStage) => {
+    setBusy(true);
+    setProblem(null);
+    const result = await props.act(action);
+    setBusy(false);
+    if (typeof result === "string") {
+      setProblem(result);
+      return;
+    }
+    setUndo(
+      undoLabel && back
+        ? {
+            label: undoLabel,
+            action: { kind: "move", deal: action.deal, file: action.file, to: back },
+          }
+        : null,
+    );
+    props.onRefresh();
+  };
+  const DONE: Partial<Record<ContentStage, string>> = {
+    ready_to_film: "Approved.",
+    filmed: "Marked filmed.",
+    scripting: "Sent back to Scripting.",
+  };
+  const move = (video: ContentVideo, to: ContentStage, note?: string) =>
+    void run(
+      { kind: "move", deal: video.deal, file: video.file, to, ...(note ? { note } : {}) },
+      DONE[to],
+      video.stage,
+    );
+  const markFilmed = (video: ContentVideo) => move(video, "filmed");
 
   const body = props.noWorkspace ? (
     <p role="status" className="text-sm text-muted-foreground">
@@ -304,6 +341,19 @@ export function ContentScreen(props: {
     <>
       <FilmNext row={next} canAct={props.canAct} onOpen={open} onFilmed={markFilmed} />
       <Board rows={rows} selected={selected} onOpen={open} />
+      {current ? (
+        <VideoPanel
+          key={refOf(current.video)}
+          video={current.video}
+          brand={current.brand}
+          canAct={props.canAct}
+          busy={busy}
+          onMove={(to, note) => move(current.video, to, note)}
+          onSave={(action) => void run(action)}
+          loadHistory={props.loadHistory}
+          onClose={() => setSelected(null)}
+        />
+      ) : null}
     </>
   );
 
@@ -337,6 +387,34 @@ export function ContentScreen(props: {
                 ))}
               </ul>
             </details>
+          ) : null}
+          {problem ? (
+            <p
+              role="alert"
+              className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive-foreground"
+            >
+              {problem}
+            </p>
+          ) : null}
+          {undo ? (
+            <p
+              role="status"
+              className="flex items-center gap-3 rounded-md border px-3 py-2 text-sm"
+            >
+              {undo.label}
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  const back = undo.action;
+                  setUndo(null);
+                  void run(back);
+                }}
+              >
+                Undo
+              </Button>
+            </p>
           ) : null}
           {body}
         </div>
