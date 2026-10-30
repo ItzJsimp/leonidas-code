@@ -12,6 +12,8 @@ New-Item -ItemType Directory -Force -Path $devHome | Out-Null
 $pwsh = (Get-Process -Id $PID).Path
 . (Join-Path $PSScriptRoot 'lib/DevRuntime.ps1')
 $webFrozenSeconds = 90    # a cold compile can block Vite for tens of seconds; longer than that is a freeze
+$webFrozenMaxSeconds = 600 # each freeze restart in a row doubles the wait up to this, so a slow machine can finish a cold compile
+$script:freezeStreak = 0
 $startGraceSeconds = 180   # first start can take a while (install repair, cold caches)
 $downRestartSeconds = 60  # longer than a normal hot-reload restart
 
@@ -197,12 +199,15 @@ while ($true) {
         if (((Get-Date) - $startedAt).TotalSeconds -ge 30 -and $webPort) {
             $webOk = $false
             try { $null = Invoke-WebRequest -Uri "http://127.0.0.1:$webPort/" -UseBasicParsing -TimeoutSec 5; $webOk = $true } catch { }
-            if ($webOk) { $webSilentSince = $null }
+            $frozenLimit = [Math]::Min($webFrozenMaxSeconds, $webFrozenSeconds * [Math]::Pow(2, $script:freezeStreak))
+            if ($webOk) { $webSilentSince = $null; $script:freezeStreak = 0 }
             elseif (-not $webSilentSince) { $webSilentSince = Get-Date }
-            elseif (((Get-Date) - $webSilentSince).TotalSeconds -ge $webFrozenSeconds) {
-                Add-Content -LiteralPath $log -Value "[supervisor] web page on port $webPort silent for $webFrozenSeconds s (frozen Vite); restarting with a clean cache at $(Get-Date -Format o)"
+            elseif (((Get-Date) - $webSilentSince).TotalSeconds -ge $frozenLimit) {
+                Add-Content -LiteralPath $log -Value "[supervisor] web page on port $webPort silent for $frozenLimit s (frozen Vite); restarting at $(Get-Date -Format o)"
                 & taskkill.exe /PID $proc.Id /T /F *> $null
-                Remove-Item -LiteralPath (Join-Path $repoRoot "apps/web/node_modules/.vite-$webPort") -Recurse -Force -ErrorAction SilentlyContinue
+                # Only the first freeze in a row wipes the cache. A wipe makes the next start a cold compile, the slowest start.
+                if ($script:freezeStreak -eq 0) { Remove-Item -LiteralPath (Join-Path $repoRoot "apps/web/node_modules/.vite-$webPort") -Recurse -Force -ErrorAction SilentlyContinue }
+                $script:freezeStreak++
                 break
             }
         }
