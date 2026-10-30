@@ -6,6 +6,7 @@ import type { ScribeHistoryItem } from "@t3tools/contracts";
 import { ChevronDownIcon, ChevronRightIcon, MicIcon, Trash2Icon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { cn } from "~/lib/utils";
 import { scribeDeleteHistory, scribeListHistoryPage } from "~/state/scribe";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { Badge } from "../ui/badge";
@@ -22,6 +23,7 @@ import {
   dayLabel,
   daySummary,
   groupByDay,
+  isLongTranscript,
   mergeTranscripts,
   moreDaysLabel,
   rewriteLabel,
@@ -405,6 +407,8 @@ function TranscriptCard(props: {
   const text =
     props.showRaw && rewrite === null ? item.rawText || item.cleanedText : item.cleanedText;
   const noun = rewrite === null ? "dictation" : "rewrite";
+  const long = isLongTranscript(text);
+  const [expanded, setExpanded] = useState(false);
   const meta = [
     timeLabel(item.at),
     item.app.trim(),
@@ -415,7 +419,20 @@ function TranscriptCard(props: {
   return (
     <li className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm whitespace-pre-wrap">{text}</p>
+        <p className={cn("text-sm whitespace-pre-wrap", long && !expanded && "line-clamp-4")}>
+          {text}
+        </p>
+        {long ? (
+          <Button
+            size="xs"
+            variant="link"
+            className="-ml-2"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "Show less" : "Show more"}
+          </Button>
+        ) : null}
         {rewrite !== null && item.rawText.trim() ? (
           <div className="mt-2 rounded-md bg-muted/50 px-2.5 py-2">
             <p className="text-xs font-medium text-muted-foreground">Original</p>

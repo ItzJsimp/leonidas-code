@@ -89,7 +89,8 @@ export function Meter(props: {
     <div
       {...a11y}
       className={cn(
-        "w-full overflow-hidden rounded-full bg-muted",
+        // The track is quiet but visible on both themes (1.33:1). Plain muted is 1.06:1 on cream.
+        "w-full overflow-hidden rounded-full bg-muted-foreground/20",
         props.size === "md" ? "h-2" : "h-1.5",
       )}
     >

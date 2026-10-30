@@ -224,6 +224,15 @@ it("asks a new user to dictate and hides quests on the Goals tab", async () => {
   expect(text).not.toContain("Daily quests");
 });
 
+it("shows no bar for an achievement with no progress yet", async () => {
+  const zero = { ...goals().achievements[1]!, have: 0 };
+  mocks.result.data = goals({ achievements: [zero] });
+  await draw(<ScribeGoalsTab {...props} />);
+  const text = container.textContent ?? "";
+  expect(text).not.toContain("0 of 750");
+  expect(text).toContain("Locked");
+});
+
 it("shows the headline, figures, day bars and apps on the Insights tab", async () => {
   mocks.result.data = insights();
   await draw(<ScribeInsightsTab {...props} />);

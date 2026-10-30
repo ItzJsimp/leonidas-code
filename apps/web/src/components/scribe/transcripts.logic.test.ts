@@ -8,6 +8,7 @@ import {
   dayLabel,
   daySummary,
   groupByDay,
+  isLongTranscript,
   mergeTranscripts,
   moreDaysLabel,
   rewriteLabel,
@@ -175,5 +176,12 @@ describe("timeLabel", () => {
   });
   it("is empty for an unreadable time", () => {
     expect(timeLabel("nope")).toBe("");
+  });
+});
+
+describe("isLongTranscript", () => {
+  it("clamps only text that runs past 4 lines on a wide screen", () => {
+    expect(isLongTranscript("word ".repeat(100).trim())).toBe(false);
+    expect(isLongTranscript("word ".repeat(120))).toBe(true);
   });
 });
