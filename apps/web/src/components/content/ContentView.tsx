@@ -216,15 +216,24 @@ function Board(props: {
   readonly onOpen: (video: ContentVideo) => void;
 }) {
   return (
-    // Below 1100 px the groups scroll sideways and snap, so a phone swipes one group at a time.
-    <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:px-6 min-[1100px]:mx-0 min-[1100px]:grid min-[1100px]:grid-cols-5 min-[1100px]:overflow-visible min-[1100px]:px-0">
+    // Below 1100 px, or while the side panel is open, the groups scroll sideways and snap, so a phone swipes one group at a time.
+    <div
+      className={cn(
+        "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-px-4 px-4 pb-2 sm:-mx-6 sm:scroll-px-6 sm:px-6",
+        !props.selected &&
+          "min-[1100px]:mx-0 min-[1100px]:grid min-[1100px]:grid-cols-5 min-[1100px]:overflow-visible min-[1100px]:px-0",
+      )}
+    >
       {GROUPS.map((group) => {
         const rows = rowsIn(props.rows, group.id);
         return (
           <section
             key={group.id}
             aria-label={group.label}
-            className="flex w-[min(85vw,18rem)] shrink-0 snap-start flex-col rounded-xl border bg-muted/40 min-[1100px]:w-auto"
+            className={cn(
+              "flex w-[min(85vw,18rem)] shrink-0 snap-start flex-col rounded-xl border bg-muted/40",
+              !props.selected && "min-[1100px]:w-auto",
+            )}
           >
             <header className="flex items-center gap-2 px-3 py-2">
               <h3 className="font-medium text-sm">{group.label}</h3>
@@ -369,7 +378,12 @@ export function ContentScreen(props: {
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-both">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 p-4 sm:p-6">
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-[1400px] flex-col gap-4 p-4 sm:p-6",
+            selected && "min-[1100px]:pr-124",
+          )}
+        >
           <p className="text-sm text-muted-foreground">
             Agents draft scripts. Only a person approves them.
             {props.updatedAt ? ` Updated ${formatTime(props.updatedAt)}.` : ""}

@@ -173,7 +173,14 @@ export function VideoPanel(props: {
           </p>
         </div>
         <Tip label="Close the video and go back to the board">
-          <Button size="icon-sm" variant="ghost" aria-label="Close" onClick={props.onClose}>
+          {/* From 1100 px the app's own controls sit over the panel's top right corner. */}
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Close"
+            className="min-[1100px]:mr-24"
+            onClick={props.onClose}
+          >
             <XIcon />
           </Button>
         </Tip>
