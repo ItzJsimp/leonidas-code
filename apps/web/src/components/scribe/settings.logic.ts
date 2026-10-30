@@ -182,6 +182,31 @@ export function checkGroqKey(
   return { ok: true, key };
 }
 
+/** How long a copied key stays on the clipboard. */
+export const KEY_CLIPBOARD_MS = 30_000;
+
+/**
+ * Copies the key, then empties the clipboard after `KEY_CLIPBOARD_MS`. The timer is not tied to the page,
+ * so closing the tab does not leave the key behind. shortcut: a clipboard that cannot be read is emptied
+ * anyway, which may drop text the user copied meanwhile; upgrade if the browser gains a safe compare.
+ */
+export async function copyKeyTemporarily(
+  key: string,
+  clipboard: Pick<Clipboard, "readText" | "writeText">,
+  schedule: (run: () => void, ms: number) => unknown = setTimeout,
+): Promise<void> {
+  await clipboard.writeText(key);
+  schedule(() => {
+    void clipboard
+      .readText()
+      .then(
+        (now) => (now === key ? clipboard.writeText("") : undefined),
+        () => clipboard.writeText(""),
+      )
+      .catch(() => undefined);
+  }, KEY_CLIPBOARD_MS);
+}
+
 export function restartMessage(restartRequired: readonly boolean[]): string | null {
   return restartRequired.some(Boolean)
     ? "Saved. Model and overlay changes apply the next time the Scribe engine starts."
@@ -193,6 +218,7 @@ const SETTINGS_ERRORS: Readonly<Record<string, string>> = {
   timeout: "Scribe did not answer in time. Try again.",
   bad_request: "Scribe did not accept those settings. Check the values and try again.",
   store_error: "Scribe could not save your settings. Try again.",
+  not_found: "No Groq key is saved.",
 };
 
 export function settingsErrorMessage(reason: string | null): string {

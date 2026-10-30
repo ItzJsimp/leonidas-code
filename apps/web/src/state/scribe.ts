@@ -89,6 +89,11 @@ export const scribePatchSettings = createEnvironmentRpcCommand(connectionAtomRun
   tag: WS_METHODS.scribePatchSettings,
 });
 
+export const scribeGetGroqKey = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:scribe:get-groq-key",
+  tag: WS_METHODS.scribeGetGroqKey,
+});
+
 export const scribeSetGroqKey = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:scribe:set-groq-key",
   tag: WS_METHODS.scribeSetGroqKey,

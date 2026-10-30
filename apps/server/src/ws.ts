@@ -2,6 +2,7 @@ import {
   DevPreviewError,
   ImagesError,
   OrchestrationDispatchCommandError,
+  ScribeEngineError,
   TaskBoardReadError,
 } from "@t3tools/contracts";
 import * as DevPreviewService from "./devPreview/DevPreviewService.ts";
@@ -3541,6 +3542,16 @@ const layerWsRpc = (
         [WS_METHODS.scribeGetSettings]: () => scribeEngine.getSettings,
         [WS_METHODS.scribePatchSettings]: (input) => scribeEngine.patchSettings(input),
         [WS_METHODS.scribeListDevices]: () => scribeEngine.listDevices,
+        [WS_METHODS.scribeGetGroqKey]: () =>
+          voiceKeys.get.pipe(
+            Effect.mapError(() => new ScribeEngineError({ reason: "store_error" })),
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.fail(new ScribeEngineError({ reason: "not_found" })),
+                onSome: (key) => Effect.succeed({ key }),
+              }),
+            ),
+          ),
         [WS_METHODS.scribeSetGroqKey]: (input) => Effect.as(scribeEngine.setGroqKey(input), {}),
         [WS_METHODS.scribeClearGroqKey]: () => Effect.as(scribeEngine.clearGroqKey, {}),
         [WS_METHODS.scribeSubscribeEvents]: () =>
