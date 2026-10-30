@@ -8,12 +8,11 @@ import type {
   RuntimeRequestId,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
-import type { AtomCommandResult } from "./runtime.ts";
 
 export type ApprovalResponder = (
   requestId: RuntimeRequestId,
   decision: ProviderApprovalDecision,
-) => Promise<AtomCommandResult<unknown, unknown> | undefined>;
+) => Promise<{ readonly _tag: string } | undefined>;
 
 /** Declines every approval a redirect replaces; any one still pending would block the agent. */
 export async function declinePendingApprovals(
