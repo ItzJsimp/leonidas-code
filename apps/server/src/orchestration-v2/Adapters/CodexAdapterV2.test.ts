@@ -533,11 +533,11 @@ describe("CodexAdapterV2 runtime policy", () => {
       assert.equal(params.collaborationMode?.mode, "default");
       assert.include(
         params.additionalContext?.t3_code_orchestration?.value ?? "",
-        "otherwise use `delegate_task`",
+        "Use `delegate_task` for another provider",
       );
       assert.include(
         params.additionalContext?.t3_code_orchestration?.value ?? "",
-        "structured object, never as JSON text",
+        "is an object, never JSON text",
       );
     }),
   );
