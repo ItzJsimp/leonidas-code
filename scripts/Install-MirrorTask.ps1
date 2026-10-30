@@ -16,6 +16,8 @@ $ErrorActionPreference = 'Stop'
 $taskName = 'Leonidas Mirror Files'
 $root = if (Test-Path -LiteralPath 'C:/lcw/dev-live/scripts/Mirror-Files.ps1') { 'C:/lcw/dev-live' } else { Split-Path -Parent $PSScriptRoot }
 $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
+# Store updates change the versioned path; the WindowsApps alias survives them.
+if ($pwsh -match 'WindowsApps\\Microsoft\.PowerShell_') { $pwsh = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\pwsh.exe' }
 $arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root/scripts/Mirror-Files.ps1`" -Laptop $Laptop -LoopSeconds 55"
 if ($Config) { $arguments += " -Config `"$Config`"" }
 $action = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $root -Argument $arguments
