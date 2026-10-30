@@ -23,10 +23,12 @@ if ($Mode -eq 'Manifest') {
         $files = @{}
         $manifest = Get-MirrorManifest -Root $r.Root -Mode $r.Mode -Deny @($r.Deny) -CachePath $r.Cache
         foreach ($k in $manifest.Keys) { $files[$k] = $manifest[$k].Hash }
-        $entry = @{ Files = $files; Head = $null; Branch = $null; Clean = $false }
+        $entry = @{ Files = $files; Head = $null; Branch = $null; Clean = $false; HeadTime = 0; Known = @() }
         if ($r.IsGit) {
             $entry.Head = "$(git -C $r.Root rev-parse -q --verify HEAD 2>$null)".Trim()
             $entry.Branch = "$(git -C $r.Root symbolic-ref --short -q HEAD 2>$null)".Trim()
+            $entry.HeadTime = [long]("0$(git -C $r.Root log -1 --format=%ct 2>$null)")
+            $entry.Known = @(git -C $r.Root for-each-ref --format='%(objectname)' refs/heads refs/remotes/origin 2>$null)
             if ($r.NeedClean) { $entry.Clean = -not (git -C $r.Root status --porcelain 2>$null) }
         }
         $result[$r.Name] = $entry
@@ -56,18 +58,21 @@ if ($Mode -eq 'Apply') {
     return
 }
 
-# Head: only a fast-forward. A laptop commit that the desktop lacks is left alone and reported.
+# Head: a fast-forward, or (Force) a replacement of a laptop commit that is older than the desktop head.
+# A replaced laptop head stays on a backup branch.
 $message = 'not applied'
 git -C $req.Root fetch --no-tags -q $req.Bundle 'HEAD:refs/desk-sync/mirror-head' 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
     $message = 'bundle fetch failed'
 } else {
     git -C $req.Root merge-base --is-ancestor HEAD $req.Sha 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    $forward = ($LASTEXITCODE -eq 0)
+    if (-not $forward -and -not $req.Force) {
         $message = 'laptop head is not behind the desktop head: history needs a rule'
     } else {
+        if (-not $forward) { git -C $req.Root branch -f $req.Backup HEAD 2>&1 | Out-Null }
         git -C $req.Root reset --mixed -q $req.Sha 2>&1 | Out-Null
-        $message = if ($LASTEXITCODE -eq 0) { 'moved' } else { 'reset failed' }
+        $message = if ($LASTEXITCODE -ne 0) { 'reset failed' } elseif ($forward) { 'moved' } else { "moved; the older laptop commit is kept on branch $($req.Backup)" }
     }
 }
 Write-MirrorJson $Output @{ Message = $message }

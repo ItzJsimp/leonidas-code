@@ -98,13 +98,24 @@ function Sync-MirrorHead($Root, $Answer) {
     if ((Test-Path -LiteralPath $headFile) -and ((Get-Content -LiteralPath $headFile -Raw).Trim() -eq $attempt) -and
         ((Get-Date) - (Get-Item -LiteralPath $headFile).LastWriteTime).TotalMinutes -lt 5) { return }
     Set-Content -LiteralPath $headFile -Value $attempt
+
+    # Last committer wins. A laptop head that the desktop lacks is replaced only when it is older than the desktop head.
     git -C $Root.desktop cat-file -e "$($Answer.Head)^{commit}" 2>$null
-    if ($LASTEXITCODE -ne 0) { Write-MirrorLog "$($Root.name): laptop head $($Answer.Head.Substring(0, 8)) is not on the desktop: history needs a rule"; return }
+    $force = $false
+    if ($LASTEXITCODE -ne 0) {
+        $desktopTime = [long]"$(git -C $Root.desktop log -1 --format=%ct)".Trim()
+        if ([long]$Answer.HeadTime -gt $desktopTime) { Write-MirrorLog "$($Root.name): the laptop commit is newer than the desktop head; waiting for phase 2"; return }
+        $force = $true
+    }
+    # The bundle leaves out every commit the laptop already holds and the desktop knows.
+    $known = @(@($Answer.Known) | Where-Object { $_ } | git -C $Root.desktop cat-file --batch-check='%(objectname) %(objecttype)' |
+            Where-Object { $_ -match ' commit$' } | ForEach-Object { $_.Split(' ')[0] })
     $bundle = Join-Path $stage "head-$($Root.name).bundle"
-    git -C $Root.desktop bundle create $bundle HEAD "^$($Answer.Head)" 2>&1 | Out-Null
+    (@('HEAD') + @($known | ForEach-Object { "^$_" })) | git -C $Root.desktop bundle create $bundle --stdin 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { Write-MirrorLog "$($Root.name): head bundle not created"; return }
     Copy-ToLaptop $bundle "$RemoteDir/head-$($Root.name).bundle"
-    $result = Invoke-Remote 'Head' "head-$($Root.name)" @{ Root = $Root.laptop; Sha = $desktopHead; Bundle = "$RemoteDir/head-$($Root.name).bundle" }
+    $backup = "laptop/$branch-$(([string]$Answer.Head).Substring(0, 8))"
+    $result = Invoke-Remote 'Head' "head-$($Root.name)" @{ Root = $Root.laptop; Sha = $desktopHead; Bundle = "$RemoteDir/head-$($Root.name).bundle"; Force = $force; Backup = $backup }
     Write-MirrorLog "$($Root.name): git head $($result.Message)"
     Remove-Item -LiteralPath $bundle -Force -ErrorAction SilentlyContinue
 }

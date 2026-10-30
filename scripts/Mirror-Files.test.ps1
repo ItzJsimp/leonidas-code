@@ -103,6 +103,17 @@ try {
     $out = Tick
     Assert ($out -match 'STOPPED' -and (Test-Path "$manyLap/f1.txt")) 'mass delete should be stopped'
 
+    # 9. Last committer wins: an older laptop-only commit is replaced and kept on a backup branch.
+    Put "$lap/laptop-only.md" 'from the laptop'
+    G $lap add laptop-only.md; G $lap commit -q -m 'laptop commit'
+    $oldLap = (git -C $lap rev-parse HEAD).Trim()
+    Start-Sleep -Seconds 2
+    Put "$desk/later.md" 'later'
+    G $desk add later.md; G $desk commit -q -m 'newer desktop commit'
+    $out = Tick
+    Assert ((git -C $lap rev-parse HEAD) -eq (git -C $desk rev-parse HEAD)) "laptop head should follow the newer desktop commit, got: $out"
+    Assert ((git -C $lap rev-parse "laptop/main-$($oldLap.Substring(0, 8))") -eq $oldLap) 'the replaced laptop commit must stay on a backup branch'
+
     Write-Host 'PASS: all Mirror-Files scenarios' -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
