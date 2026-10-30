@@ -11,7 +11,7 @@ export const videoRel = (deal: string, file: string) => `${DEALS_DIR}/${deal}/${
 export type Change =
   | {
       readonly actor: ContentActor;
-      readonly what: "script";
+      readonly what: "script" | "video";
       readonly deal: string;
       readonly file: string;
     }
@@ -52,6 +52,7 @@ async function messageFor(git: Git, root: string, change: Change): Promise<Array
   if (change.what === "deal")
     return ["-m", `Content(${who(change.actor)}): new deal ${change.deal}`];
   const ref = `${change.deal}/${change.file}`;
+  if (change.what === "video") return ["-m", `Content(${who(change.actor)}): new video ${ref}`];
   if (change.what === "stage")
     return ["-m", `Content(${who(change.actor)}): ${ref} to ${change.to}`];
   if (change.actor.kind === "member") return ["-m", `Script(${change.actor.name}): ${ref}`];

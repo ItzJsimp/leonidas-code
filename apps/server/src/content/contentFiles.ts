@@ -541,3 +541,73 @@ export function saveScript(
   );
   return saved;
 }
+
+/** The deal card body (brief, terms, notes) for agents that draft for this deal. */
+export function dealCard(root: string, slug: string): string {
+  if (!isDealFolder(root, slug)) throw new ContentError(`No deal ${slug}. Read the deals first.`);
+  const text = readCapped(NodePath.join(dealDir(root, slug), "deal.md")) ?? "";
+  return parseFile(text)?.body.trim() ?? "";
+}
+
+const MAX_VIDEOS = 99;
+
+/** A file slug from a title: lower case, dashes, at most 50 characters. */
+const slugOf = (title: string) =>
+  title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50)
+    .replace(/-+$/, "") || "video";
+
+/** Adds a video in `idea` as the next numbered file of the deal. */
+export function createVideo(
+  root: string,
+  key: Uint8Array,
+  input: { readonly deal: string; readonly title: string; readonly idea: string },
+  actor: ContentActor,
+  now: string,
+): ContentVideo {
+  if (!isDealFolder(root, input.deal)) {
+    throw new ContentError(`No deal ${input.deal}. Read the deals first.`);
+  }
+  const numbers = NodeFS.readdirSync(dealDir(root, input.deal))
+    .map((name) => Number(VIDEO_FILE.exec(name)?.[1]?.slice(0, 2) ?? 0))
+    .filter((n) => n > 0);
+  const next = Math.max(0, ...numbers) + 1;
+  if (next > MAX_VIDEOS) throw new ContentError(`A deal holds at most ${MAX_VIDEOS} videos.`);
+  const nn = String(next).padStart(2, "0");
+  const file = `${nn}-${slugOf(input.title)}`;
+  const front = [
+    "type: video",
+    `id: ${JSON.stringify(`video-${input.deal}-${nn}`)}`,
+    `deal: ${input.deal}`,
+    `title: ${JSON.stringify(input.title.trim())}`,
+    "stage: idea",
+    `stage_changed: ${JSON.stringify(now)}`,
+    `pen: ${JSON.stringify(actor.kind === "agent" ? "agent" : actor.name.toLowerCase())}`,
+    "revision: 0",
+    "footage: []",
+  ];
+  const body = [
+    "## Idea",
+    "",
+    input.idea.trim(),
+    "",
+    "## Script",
+    "",
+    "## Shot list",
+    "",
+    "## Notes",
+    "",
+  ];
+  // `wx` refuses to replace a file that appeared since the directory read.
+  NodeFS.writeFileSync(
+    videoPath(root, input.deal, file),
+    `---\n${front.join("\n")}\n---\n${body.join("\n")}`,
+    {
+      flag: "wx",
+    },
+  );
+  return findVideo(root, key, input.deal, file);
+}
