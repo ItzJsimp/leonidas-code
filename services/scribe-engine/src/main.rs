@@ -54,6 +54,7 @@ fn run() -> Result<(), String> {
         .parent()
         .map(PathBuf::from)
         .unwrap_or_else(Config::default_dir);
+    scribe_engine::errlog::redirect_stderr(&config_dir);
     let cfg = Config::load(&config_path)?;
 
     let keys: Arc<dyn KeyStore> = Arc::new(OsKeyStore::new()?);
