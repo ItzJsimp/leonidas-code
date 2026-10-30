@@ -46,6 +46,7 @@ describe("V2 preview upgrade", () => {
         [63, "ThreadFailureLookupIndex"],
         [64, "DelegatedTaskLedger"],
         [65, "DelegatedTaskAcceptance"],
+        [66, "ActiveTurnItemIndexes"],
       ]);
       assert.deepStrictEqual(yield* runMigrations(), []);
       assert.deepStrictEqual(yield* sql`SELECT * FROM orchestration_v2_legacy_imports`, imports);
@@ -134,6 +135,7 @@ describe("V2 preview upgrade", () => {
         [63, "ThreadFailureLookupIndex"],
         [64, "DelegatedTaskLedger"],
         [65, "DelegatedTaskAcceptance"],
+        [66, "ActiveTurnItemIndexes"],
       ]);
     }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
   );

@@ -79,6 +79,7 @@ import Migration0062 from "./Migrations/062_PullRequestReviewGuides.ts";
 import Migration0063 from "./Migrations/063_ThreadFailureLookupIndex.ts";
 import Migration0064 from "./Migrations/064_DelegatedTaskLedger.ts";
 import Migration0065 from "./Migrations/065_DelegatedTaskAcceptance.ts";
+import Migration0066 from "./Migrations/066_ActiveTurnItemIndexes.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -161,6 +162,7 @@ export const migrationEntries = [
   [63, "ThreadFailureLookupIndex", Migration0063],
   [64, "DelegatedTaskLedger", Migration0064],
   [65, "DelegatedTaskAcceptance", Migration0065],
+  [66, "ActiveTurnItemIndexes", Migration0066],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);
