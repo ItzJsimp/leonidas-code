@@ -73,10 +73,15 @@ const BOTTOM: readonly RailItem[] = [
 ];
 
 /** The rail icons. Team shows for a business workspace and Developer for a builder. */
-export function railItems(input: { readonly business: boolean; readonly builder: boolean }) {
+export function railItems(input: {
+  readonly business: boolean;
+  readonly builder: boolean;
+  /** The Scribe engine runs on Windows only. The server host decides, not this browser. */
+  readonly scribe: boolean;
+}) {
   return {
     main: [
-      ...BEFORE_EXTRAS,
+      ...BEFORE_EXTRAS.filter((entry) => input.scribe || entry.id !== "scribe"),
       ...(input.business ? [TEAM] : []),
       ...(input.builder ? [DEVELOPER] : []),
     ],
@@ -87,7 +92,7 @@ export function railItems(input: { readonly business: boolean; readonly builder:
 /** The icon that shows as the current page. Every chat page belongs to the Chat icon. */
 export function activeRailId(pathname: string, onChat: boolean): string | null {
   if (onChat || pathname === "/") return "chat";
-  const all = railItems({ business: true, builder: true });
+  const all = railItems({ business: true, builder: true, scribe: true });
   const match = [...all.main, ...all.bottom].find(
     (entry) =>
       (entry.to !== "/" && under(pathname, entry.to)) ||

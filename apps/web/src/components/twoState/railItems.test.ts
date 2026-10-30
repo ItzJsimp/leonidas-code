@@ -22,36 +22,44 @@ const BASE = [
 
 describe("railItems", () => {
   it("shows 13 main icons by default, in order", () => {
-    const { main } = railItems({ business: false, builder: false });
+    const { main } = railItems({ business: false, builder: false, scribe: true });
     expect(ids(main)).toEqual(BASE);
   });
 
   it("adds Team after Subagents for a business workspace", () => {
-    const { main } = railItems({ business: true, builder: false });
+    const { main } = railItems({ business: true, builder: false, scribe: true });
     expect(ids(main)).toEqual([...BASE, "team"]);
   });
 
   it("adds Developer for a builder", () => {
-    const { main } = railItems({ business: false, builder: true });
+    const { main } = railItems({ business: false, builder: true, scribe: true });
     expect(ids(main)).toEqual([...BASE, "developer"]);
   });
 
   it("shows both extras, Team first", () => {
-    const { main } = railItems({ business: true, builder: true });
+    const { main } = railItems({ business: true, builder: true, scribe: true });
     expect(ids(main)).toEqual([...BASE, "team", "developer"]);
     expect(main).toHaveLength(15);
+  });
+
+  it("hides the Scribe icon when the server is not Windows", () => {
+    const { main } = railItems({ business: true, builder: true, scribe: false });
+    expect(ids(main)).toEqual(BASE.filter((id) => id !== "scribe").concat("team", "developer"));
   });
 
   it("always has Usage then Settings at the bottom", () => {
     for (const business of [false, true]) {
       for (const builder of [false, true]) {
-        expect(ids(railItems({ business, builder }).bottom)).toEqual(["usage", "settings"]);
+        expect(ids(railItems({ business, builder, scribe: true }).bottom)).toEqual([
+          "usage",
+          "settings",
+        ]);
       }
     }
   });
 
   it("points each icon at its page and gives a plain tooltip", () => {
-    const { main, bottom } = railItems({ business: true, builder: true });
+    const { main, bottom } = railItems({ business: true, builder: true, scribe: true });
     expect(main.find((item) => item.id === "inbox")).toMatchObject({
       to: "/inbox",
       tooltip: "Notifications: what needs you and what finished",
