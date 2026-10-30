@@ -223,6 +223,25 @@ const resolveResourceMonitorPath = Effect.fn(
   return Option.none<string>();
 });
 
+// The installed app bundles the Scribe engine; the server supervises it when this path is set.
+// A path the user already set (a dev engine) wins.
+const resolveScribeEnginePath = Effect.fn("desktop.backendConfiguration.resolveScribeEnginePath")(
+  function* () {
+    const environment = yield* DesktopEnvironment.DesktopEnvironment;
+    const fileSystem = yield* FileSystem.FileSystem;
+    if (!environment.isPackaged || environment.platform !== "win32") return Option.none<string>();
+    if (process.env.LEONIDAS_SCRIBE_ENGINE_BIN?.trim()) return Option.none<string>();
+    const candidate = environment.path.join(
+      environment.resourcesPath,
+      "scribe-engine",
+      "scribe-engine.exe",
+    );
+    return (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false)))
+      ? Option.some(candidate)
+      : Option.none<string>();
+  },
+);
+
 const readPersistedBackendObservabilitySettings = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
@@ -548,6 +567,7 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
   function* (
     input: SharedBootstrapInput & {
       readonly resourceMonitorPath: Option.Option<string>;
+      readonly scribeEnginePath: Option.Option<string>;
       readonly cliPath: Option.Option<string>;
     },
   ): Effect.fn.Return<
@@ -603,6 +623,10 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
         ELECTRON_RUN_AS_NODE: "1",
         // The server names this launcher in commands it asks a person to run.
         T3CODE_CLI_PATH: Option.getOrUndefined(input.cliPath),
+        ...Option.match(input.scribeEnginePath, {
+          onNone: () => ({}),
+          onSome: (scribeEnginePath) => ({ LEONIDAS_SCRIBE_ENGINE_BIN: scribeEnginePath }),
+        }),
       },
       // Primary wants process.env (PATH, dev-runner's T3CODE_HOME, etc.).
       extendEnv: true,
@@ -920,11 +944,20 @@ export const make = Effect.gen(function* () {
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
     );
+    const scribeEnginePath = yield* resolveScribeEnginePath().pipe(
+      Effect.provideService(FileSystem.FileSystem, fileSystem),
+      Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
+    );
     const cliPath = yield* DesktopCliShim.install.pipe(
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
     );
-    return yield* resolvePrimaryStartConfig({ ...shared, resourceMonitorPath, cliPath }).pipe(
+    return yield* resolvePrimaryStartConfig({
+      ...shared,
+      resourceMonitorPath,
+      scribeEnginePath,
+      cliPath,
+    }).pipe(
       Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
       Effect.provideService(DesktopServerExposure.DesktopServerExposure, serverExposure),
     );
