@@ -54,6 +54,7 @@ fn run() -> Result<(), String> {
         .parent()
         .map(PathBuf::from)
         .unwrap_or_else(Config::default_dir);
+    scribe_engine::errlog::redirect_stderr(&config_dir);
     let cfg = Config::load(&config_path)?;
 
     let keys: Arc<dyn KeyStore> = Arc::new(OsKeyStore::new()?);
@@ -104,6 +105,8 @@ fn run() -> Result<(), String> {
 
     // `active` lets Escape pass through to apps when no dictation is running.
     let active = Arc::new(AtomicBool::new(false));
+    #[cfg(windows)]
+    let rewrite_active = active.clone();
     let (hotkey_tx, hotkey_rx) = mpsc::channel();
     let hooks = hotkeys::spawn(
         &cfg.bindings,
@@ -189,6 +192,7 @@ fn run() -> Result<(), String> {
                     let engine = engine.clone();
                     let settings = settings.clone();
                     let picker_open = picker_open.clone();
+                    let active = rewrite_active.clone();
                     std::thread::spawn(move || {
                         struct Reset(Arc<AtomicBool>);
                         impl Drop for Reset {
@@ -197,7 +201,7 @@ fn run() -> Result<(), String> {
                             }
                         }
                         let _reset = Reset(picker_open);
-                        if engine.state() != State::Ready {
+                        if engine.rewriting() {
                             return;
                         }
                         let hwnd = scribe_engine::paste::foreground_window();
@@ -207,16 +211,34 @@ fn run() -> Result<(), String> {
                             return;
                         };
                         let presets = scribe_engine::rewrite::presets(&settings.current());
-                        let names: Vec<String> = presets.iter().map(|p| p.name.clone()).collect();
-                        if let Some(index) = scribe_engine::hud::picker::pick(&names) {
+                        let items: Vec<(String, String)> = presets
+                            .iter()
+                            .map(|p| (p.name.clone(), scribe_engine::rewrite::summary(p)))
+                            .collect();
+                        let chars = text.chars().count();
+                        if let Some(index) = scribe_engine::hud::picker::pick(&items, chars) {
                             scribe_engine::paste::restore_focus(hwnd);
-                            let _ = engine.rewrite(
+                            let started = engine.rewrite(
                                 text,
                                 presets[index].clone(),
                                 app,
                                 settings.current().private_mode,
                                 move || scribe_engine::paste::restore_focus(hwnd),
                             );
+                            if started.is_ok() && engine.rewriting() {
+                                // Shown until the result is pasted; the 30 s cap is inside status().
+                                let _status =
+                                    scribe_engine::hud::picker::status(&presets[index].name);
+                                // Esc counts as cancel only while `active` is set.
+                                active.store(true, Ordering::Relaxed);
+                                while engine.rewriting() {
+                                    std::thread::sleep(std::time::Duration::from_millis(50));
+                                }
+                                active.store(
+                                    matches!(engine.state(), State::Listening | State::Processing),
+                                    Ordering::Relaxed,
+                                );
+                            }
                         }
                     });
                     continue;
@@ -263,7 +285,11 @@ fn on_hotkey(engine: &Engine, event: HotkeyEvent, warm: impl Fn()) {
             }
             State::Processing => {}
         },
-        HotkeyEvent::Cancel => engine.cancel(),
+        HotkeyEvent::Cancel => {
+            if !engine.cancel_rewrite() {
+                engine.cancel();
+            }
+        }
         HotkeyEvent::Rewrite(_) => {}
     }
 }
@@ -281,7 +307,7 @@ fn watch_events(
         match events.recv_timeout(Duration::from_millis(500)) {
             Ok(Event::State { state, .. }) => {
                 active.store(
-                    matches!(state, State::Listening | State::Processing),
+                    matches!(state, State::Listening | State::Processing) || engine.rewriting(),
                     Ordering::Relaxed,
                 );
                 let left_listening = listening_since.is_some() && state != State::Listening;

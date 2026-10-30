@@ -7,6 +7,7 @@ pub mod contract;
 pub mod credentials;
 pub mod dictionary;
 pub mod engine;
+pub mod errlog;
 pub mod foreground;
 pub mod groq;
 pub mod history;

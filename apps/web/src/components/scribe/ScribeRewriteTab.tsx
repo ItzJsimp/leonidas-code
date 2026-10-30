@@ -34,6 +34,7 @@ import { toastManager } from "../ui/toast";
 import { commandErrorReason } from "./home.logic";
 import {
   DEFAULT_REWRITE_PRESETS,
+  MAX_DESCRIPTION,
   MAX_REWRITE_PRESETS,
   cleanPresets,
   hasPresetErrors,
@@ -409,7 +410,7 @@ function PresetRow(props: {
             <span className="block truncate text-sm font-medium">{name}</span>
             {props.open ? null : (
               <span className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
-                {row.instruction.trim() || "No instruction yet."}
+                {row.description?.trim() || row.instruction.trim() || "No instruction yet."}
               </span>
             )}
           </span>
@@ -468,6 +469,16 @@ function PresetRow(props: {
                 {errors.name}
               </p>
             ) : null}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${row.id}-description`}>Short description</Label>
+            <Input
+              id={`${row.id}-description`}
+              maxLength={MAX_DESCRIPTION}
+              placeholder="Shown under the name in the rewrite menu"
+              value={row.description ?? ""}
+              onChange={(event) => props.onChange({ description: event.target.value })}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`${row.id}-instruction`}>Instruction</Label>

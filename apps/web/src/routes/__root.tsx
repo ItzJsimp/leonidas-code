@@ -58,6 +58,7 @@ import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToas
 import { ChatGptWelcomeCoordinator } from "../components/settings/ChatGptWelcomeCoordinator";
 import { sendUsageEvent } from "../lib/usageAnalytics/sendUsageEvent";
 import { UsageAnalyticsCoordinator } from "../components/usageAnalytics/UsageAnalyticsCoordinator";
+import { LimitsFocusRefresh } from "../components/usage/LimitsFocusRefresh";
 import { ProviderAuthCallbackCoordinator } from "../components/settings/ProviderAuthCallbackCoordinator";
 import { ThemeEditorHost } from "../components/settings/ThemeEditorHost";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
@@ -261,6 +262,7 @@ function RootRouteView() {
         <ProviderAuthCallbackCoordinator />
         <ChatGptWelcomeCoordinator />
         <UsageAnalyticsCoordinator />
+        <LimitsFocusRefresh />
         <FirstRunGate
           enabled={primaryEnvironmentAuthenticated}
           hostedStatic={authGateState.status === "hosted-static"}

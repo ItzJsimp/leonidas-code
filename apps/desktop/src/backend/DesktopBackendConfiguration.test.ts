@@ -1485,6 +1485,45 @@ describe("DesktopBackendConfiguration", () => {
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("points the server at the bundled Scribe engine in a packaged Windows build", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const baseDir = yield* fileSystem.makeTempDirectoryScoped({
+        prefix: "t3-desktop-backend-config-test-",
+      });
+      const resourcesPath = path.join(baseDir, "resources");
+      const dirname = `${resourcesPath}/app.asar/apps/desktop/dist-electron`;
+      const enginePath = path.join(resourcesPath, "scribe-engine/scribe-engine.exe");
+      yield* fileSystem.makeDirectory(path.dirname(enginePath), { recursive: true });
+      yield* fileSystem.writeFileString(enginePath, "binary");
+
+      yield* Effect.gen(function* () {
+        const configuration = yield* DesktopBackendConfiguration.DesktopBackendConfiguration;
+        const config = yield* configuration.resolvePrimary;
+        assert.equal(config.env.LEONIDAS_SCRIBE_ENGINE_BIN, enginePath);
+      }).pipe(
+        Effect.provide(
+          DesktopBackendConfiguration.layer.pipe(
+            Layer.provideMerge(layerServerExposure),
+            Layer.provideMerge(DesktopAppSettings.layerTest()),
+            Layer.provideMerge(DesktopWslServerTree.layerTest()),
+            Layer.provideMerge(DesktopWslEnvironment.layerTest()),
+            Layer.provideMerge(
+              layerEnvironment(baseDir, {
+                appPath: `${resourcesPath}/app.asar`,
+                dirname,
+                isPackaged: true,
+                platform: "win32",
+                resourcesPath,
+              }),
+            ),
+          ),
+        ),
+      );
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("prefers the release resource monitor when both development builds exist", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
