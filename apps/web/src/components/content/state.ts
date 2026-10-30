@@ -47,6 +47,16 @@ export const contentSync = createEnvironmentRpcCommand(connectionAtomRuntime, {
   tag: WS_METHODS.contentSync,
 });
 
+export const contentPairingStart = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:content:pairing-start",
+  tag: WS_METHODS.contentPairingStart,
+});
+
+export const contentPairingAccept = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:content:pairing-accept",
+  tag: WS_METHODS.contentPairingAccept,
+});
+
 export const contentHistory = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:content:history",
   tag: WS_METHODS.contentHistory,

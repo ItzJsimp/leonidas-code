@@ -29,6 +29,7 @@ import { cn } from "~/lib/utils";
 import { useAtomCommand } from "../../state/use-atom-command";
 
 import { type CreateDealFn, NewDealButton } from "./NewDealDialog";
+import { type PairingAcceptFn, type PairingStartFn, PairComputer } from "./PairComputer";
 import { type DecideDealFn, ProposedDeals } from "./ProposedDeals";
 import { type SyncFn, SyncButton, syncMessage } from "./SyncButton";
 import {
@@ -47,6 +48,8 @@ import {
   contentDecideDeal,
   contentHistory,
   contentMove,
+  contentPairingAccept,
+  contentPairingStart,
   contentSaveScript,
   contentSync,
   useContent,
@@ -288,6 +291,8 @@ export function ContentScreen(props: {
   readonly createDeal: CreateDealFn;
   readonly decideDeal: DecideDealFn;
   readonly sync: SyncFn;
+  readonly pairingStart: PairingStartFn;
+  readonly pairingAccept: PairingAcceptFn;
   readonly onRefresh: () => void;
   /** The deal the filter starts on. */
   readonly initialDeal?: string;
@@ -504,6 +509,9 @@ export function ContentScreen(props: {
             />
           ) : null}
           {body}
+          {props.canAct && list ? (
+            <PairComputer start={props.pairingStart} accept={props.pairingAccept} />
+          ) : null}
         </div>
       </div>
     </SidebarInset>
@@ -527,6 +535,8 @@ export function ContentView() {
   const runCreateDeal = useAtomCommand(contentCreateDeal);
   const runDecideDeal = useAtomCommand(contentDecideDeal);
   const runSyncCommand = useAtomCommand(contentSync);
+  const runPairingStart = useAtomCommand(contentPairingStart);
+  const runPairingAccept = useAtomCommand(contentPairingAccept);
   const act: ActFn = async (action) => {
     if (!environmentId) return "No workspace is open.";
     const ref = { deal: action.deal, file: action.file };
@@ -565,6 +575,20 @@ export function ContentView() {
       ? result.value
       : messageOf(squashAtomCommandFailure(result));
   };
+  const pairingStart: PairingStartFn = async () => {
+    if (!environmentId) return "No workspace is open.";
+    const result = await runPairingStart({ environmentId, input: {} });
+    return AsyncResult.isSuccess(result)
+      ? result.value
+      : messageOf(squashAtomCommandFailure(result));
+  };
+  const pairingAccept: PairingAcceptFn = async (input) => {
+    if (!environmentId) return "No workspace is open.";
+    const result = await runPairingAccept({ environmentId, input });
+    return AsyncResult.isSuccess(result)
+      ? result.value
+      : messageOf(squashAtomCommandFailure(result));
+  };
   return (
     <ContentScreen
       list={list}
@@ -577,6 +601,8 @@ export function ContentView() {
       createDeal={createDeal}
       decideDeal={decideDeal}
       sync={sync}
+      pairingStart={pairingStart}
+      pairingAccept={pairingAccept}
       onRefresh={refresh}
     />
   );

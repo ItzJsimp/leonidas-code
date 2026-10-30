@@ -53,6 +53,8 @@ const render = async (props: Partial<Parameters<typeof ContentScreen>[0]> = {}) 
         createDeal={vi.fn(async () => "not used")}
         decideDeal={vi.fn(async () => null)}
         sync={vi.fn(async () => "not used")}
+        pairingStart={vi.fn(async () => "not used")}
+        pairingAccept={vi.fn(async () => "not used")}
         onRefresh={vi.fn()}
         {...props}
       />,
@@ -372,5 +374,78 @@ describe("sync", () => {
     await render({ sync: vi.fn(async () => done("offline") as never) });
     await act(async () => syncButton()!.click());
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("You are offline.");
+  });
+});
+
+describe("pair another computer", () => {
+  const open = async () => {
+    const trigger = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === "Pair another computer",
+    );
+    await act(async () => trigger!.click());
+  };
+  const body = (label: string) =>
+    document.body.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[aria-label="${label}"]`)!;
+  const type = async (label: string, value: string) => {
+    const field = body(label);
+    const proto = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(proto.prototype, "value")!.set!.call(field, value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  const press = async (name: string) => {
+    const target = [...document.body.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === name,
+    );
+    await act(async () => target!.click());
+  };
+
+  it("is offered to a person only", async () => {
+    await render({ canAct: false });
+    expect(container.textContent).not.toContain("Pair another computer");
+    await render();
+    expect(container.textContent).toContain("Pair another computer");
+  });
+
+  it("makes a code and shows the code and the PIN to send by two routes", async () => {
+    const pairingStart = vi.fn(async () => ({
+      blob: "BLOBBLOB",
+      pin: "7K3M-9QXP",
+      expiresAt: "2026-10-30T20:10:00.000Z",
+    }));
+    await render({ pairingStart });
+    await open();
+    await press("Make a code");
+    expect(pairingStart).toHaveBeenCalledOnce();
+    expect(body("Code to copy").value).toBe("BLOBBLOB");
+    expect(document.body.querySelector('[aria-label="PIN to tell"]')?.textContent).toBe(
+      "7K3M-9QXP",
+    );
+  });
+
+  it("accepts a code from the other computer and warns about old approvals", async () => {
+    const pairingAccept = vi.fn(async () => ({ replacedKey: true }));
+    await render({ pairingAccept });
+    await open();
+    await type("Code from the other computer", "BLOBBLOB");
+    await type("PIN from the other computer", "7K3M-9QXP");
+    await press("Pair this computer");
+    expect(pairingAccept).toHaveBeenCalledWith({ blob: "BLOBBLOB", pin: "7K3M-9QXP" });
+    expect(document.body.textContent).toContain("Paired.");
+    expect(document.body.textContent).toContain("show as unsigned");
+  });
+
+  it("shows the server's words when the code is wrong, and keeps what was typed", async () => {
+    const pairingAccept = vi.fn(async () => "That code does not match.");
+    await render({ pairingAccept });
+    await open();
+    await type("Code from the other computer", "BLOBBLOB");
+    await type("PIN from the other computer", "0000-0000");
+    await press("Pair this computer");
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+      "That code does not match.",
+    );
+    expect(body("Code from the other computer").value).toBe("BLOBBLOB");
   });
 });

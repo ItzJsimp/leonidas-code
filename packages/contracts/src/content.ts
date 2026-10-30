@@ -198,6 +198,29 @@ export const ContentDealWriteResult = Schema.Struct({
 });
 export type ContentDealWriteResult = typeof ContentDealWriteResult.Type;
 
+export const ContentPairingStartInput = Schema.Struct(WorkspaceRef);
+export type ContentPairingStartInput = typeof ContentPairingStartInput.Type;
+
+/** A pairing code: `blob` is copied to the other computer, `pin` is told to its person. */
+export const ContentPairingCode = Schema.Struct({
+  blob: Schema.String,
+  pin: Schema.String,
+  /** When the code stops working, as an ISO time. */
+  expiresAt: Schema.String,
+});
+export type ContentPairingCode = typeof ContentPairingCode.Type;
+
+export const ContentPairingAcceptInput = Schema.Struct({
+  ...WorkspaceRef,
+  blob: NonBlank.check(Schema.isMaxLength(400)),
+  pin: NonBlank.check(Schema.isMaxLength(20)),
+});
+export type ContentPairingAcceptInput = typeof ContentPairingAcceptInput.Type;
+
+/** `replacedKey` is true when this computer had a different key: its old approvals now read as unsigned. */
+export const ContentPairingAcceptResult = Schema.Struct({ replacedKey: Schema.Boolean });
+export type ContentPairingAcceptResult = typeof ContentPairingAcceptResult.Type;
+
 export const ContentSyncInput = Schema.Struct(WorkspaceRef);
 export type ContentSyncInput = typeof ContentSyncInput.Type;
 

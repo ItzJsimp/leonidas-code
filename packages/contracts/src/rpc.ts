@@ -19,10 +19,14 @@ import {
   ContentMoveInput,
   ContentRpcError,
   ContentSaveScriptInput,
+  ContentPairingAcceptInput,
+  ContentPairingStartInput,
   ContentSyncInput,
   ContentDecideDealInput,
   ContentCreateDealInput,
   ContentWriteResult,
+  ContentPairingAcceptResult,
+  ContentPairingCode,
   ContentSyncResult,
   ContentDecideDealResult,
   ContentDealWriteResult,
@@ -715,6 +719,8 @@ export const WS_METHODS = {
   contentHistory: "content.history",
   contentMove: "content.move",
   contentSaveScript: "content.saveScript",
+  contentPairingAccept: "content.pairingAccept",
+  contentPairingStart: "content.pairingStart",
   contentSync: "content.sync",
   contentDecideDeal: "content.decideDeal",
   contentCreateDeal: "content.createDeal",
@@ -2186,6 +2192,20 @@ const WsContentSyncRpc = Rpc.make(WS_METHODS.contentSync, {
   error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
 });
 
+/** A person makes a pairing code so another computer can verify approvals. No agent access level holds this scope. */
+const WsContentPairingStartRpc = Rpc.make(WS_METHODS.contentPairingStart, {
+  payload: ContentPairingStartInput,
+  success: ContentPairingCode,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person enters a pairing code from another computer. No agent access level holds this scope. */
+const WsContentPairingAcceptRpc = Rpc.make(WS_METHODS.contentPairingAccept, {
+  payload: ContentPairingAcceptInput,
+  success: ContentPairingAcceptResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3375,6 +3395,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsContentHistoryRpc,
   WsContentMoveRpc,
   WsContentSaveScriptRpc,
+  WsContentPairingAcceptRpc,
+  WsContentPairingStartRpc,
   WsContentSyncRpc,
   WsContentDecideDealRpc,
   WsContentCreateDealRpc,

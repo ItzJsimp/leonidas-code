@@ -10,19 +10,25 @@ import {
   type ContentListResult,
   type ContentMoveInput,
   ContentRpcError,
+  type ContentPairingAcceptInput,
+  type ContentPairingAcceptResult,
+  type ContentPairingCode,
   type ContentSaveScriptInput,
   type ContentSyncResult,
   type ContentVideo,
   type ContentWriteResult,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 
 import { realGit } from "../areaSync/engine/git.ts";
+import * as Secrets from "../auth/ServerSecretStore.ts";
 import { syncArea } from "../areaSync/engine/sync.ts";
-import { contentApprovalKey } from "./approvalKey.ts";
+import { CONTENT_APPROVAL_KEY_NAME, contentApprovalKey } from "./approvalKey.ts";
 import * as ContentFiles from "./contentFiles.ts";
 import { recordChange, scriptHistory, videoRel } from "./contentGit.ts";
 import { decideProposal, listProposals } from "./contentIntake.ts";
+import { makePairing, openPairing } from "./contentPairing.ts";
 
 const rpcError = (message: string) => new ContentRpcError({ message });
 
@@ -108,6 +114,53 @@ export function createDeal<E>(
       { actor, what: "deal", deal: deal.slug },
     );
     return { deal, recorded: committed, detail };
+  });
+}
+
+/** Codes this server already opened. shortcut: kept in memory, so a restart inside the 10 minutes forgets them. */
+const usedCodes = new Set<string>();
+
+/**
+ * A person makes a pairing code from this computer's approval key. The caller's scope check is
+ * what keeps agents out.
+ */
+export function pairingStart(): Effect.Effect<
+  ContentPairingCode,
+  ContentRpcError,
+  Secrets.ServerSecretStore
+> {
+  return Effect.map(
+    Effect.mapError(contentApprovalKey, () => rpcError("Could not read the key.")),
+    (key) => {
+      const { blob, pin, expiresAt } = makePairing(key, new Date().getTime());
+      return { blob, pin, expiresAt: new Date(expiresAt).toISOString() };
+    },
+  );
+}
+
+/**
+ * A person enters a code from another computer: this computer then signs and checks approvals
+ * with that computer's key. Wrong, expired and used codes change nothing.
+ */
+export function pairingAccept(
+  input: ContentPairingAcceptInput,
+): Effect.Effect<ContentPairingAcceptResult, ContentRpcError, Secrets.ServerSecretStore> {
+  const now = new Date().getTime();
+  return Effect.gen(function* () {
+    const opened = yield* Effect.try({
+      try: () => openPairing(input.blob, input.pin, now),
+      catch: failed,
+    });
+    if (usedCodes.has(opened.id)) return yield* rpcError("That code was used already.");
+    const store = yield* Secrets.ServerSecretStore;
+    const failure = () => rpcError("Could not save the key.");
+    const current = yield* Effect.mapError(store.get(CONTENT_APPROVAL_KEY_NAME), failure);
+    yield* Effect.mapError(store.set(CONTENT_APPROVAL_KEY_NAME, opened.key), failure);
+    usedCodes.add(opened.id);
+    return {
+      replacedKey:
+        Option.isNone(current) || !Buffer.from(current.value).equals(Buffer.from(opened.key)),
+    };
   });
 }
 
