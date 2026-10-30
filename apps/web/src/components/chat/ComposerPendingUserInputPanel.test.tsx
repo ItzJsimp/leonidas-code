@@ -71,4 +71,50 @@ describe("ComposerPendingUserInputPanel", () => {
     expect(markup).toContain("Incremental");
     expect(markup).toContain("Big bang");
   });
+
+  it("keeps Skip as its own button, outside the disclosure button", () => {
+    const markup = renderPanel();
+    const toggleStart = markup.search(/<button[^>]*data-pending-user-input-toggle/);
+    const toggleEnd = markup.indexOf("</button>", toggleStart);
+    expect(markup.slice(toggleStart, toggleEnd)).not.toContain("Skip");
+    expect(markup).toMatch(/<button[^>]*data-pending-user-input-skip/);
+  });
+
+  it("says that Send is still needed when a typed note may go with the option", () => {
+    expect(renderPanel()).toContain("then press Send");
+    const choiceOnly = renderPanel({
+      ...prompt,
+      questions: [{ ...prompt.questions[0]!, allowCustomAnswer: false }],
+    });
+    expect(choiceOnly).not.toContain("then press Send");
+  });
+
+  it("uses crimson only for the recommended pill", () => {
+    const recommended = renderPanel({
+      ...prompt,
+      questions: [
+        {
+          ...prompt.questions[0]!,
+          options: [
+            { label: "Incremental (Recommended)", description: "Move one module at a time" },
+            { label: "Big bang", description: "Move everything in one release" },
+          ],
+        },
+      ],
+    });
+    expect(recommended.match(/\btext-primary\b/g)).toHaveLength(1);
+    expect(renderPanel().match(/\btext-primary\b/g)).toBeNull();
+  });
+
+  it("shows explanations at a readable size and hides key hints on phones", () => {
+    const markup = renderPanel();
+    expect(markup).toMatch(/text-sm[^"]*">Move one module at a time</);
+    expect(markup).toMatch(/<kbd[^>]*max-sm:hidden/);
+  });
+
+  it("draws a border on each option so it reads as tappable", () => {
+    const options = renderPanel().match(/<button[^>]*class="group [^"]*"/g) ?? [];
+    expect(options).toHaveLength(2);
+    for (const option of options) expect(option).toMatch(/\bborder\b/);
+  });
 });
