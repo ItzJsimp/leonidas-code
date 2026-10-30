@@ -12101,7 +12101,8 @@ export default function ChatView(props: ChatViewProps) {
       <PanelLayoutControls
         {...panelToggleControlProps}
         showThreadPanelControl={!inlineRightPanelOwnsTitleBar}
-        showSplitLayoutControl
+        // Two panes on a phone are too narrow to read; the space goes to the chat title.
+        showSplitLayoutControl={!isMobileViewport}
       />
       {/* Only the chat at the window's top-right corner holds the bell and split toggle. */}
       {reserveTitleBarControlInset ? <ShellCornerControls claim /> : null}
