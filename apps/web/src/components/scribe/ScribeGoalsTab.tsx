@@ -177,7 +177,8 @@ function Achievements({ achievements }: { readonly achievements: ScribeGoals["ac
               </span>
               <span className="text-xs text-pretty text-muted-foreground">{achievement.how}</span>
               <span className="col-start-2 mt-1 grid min-h-4 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                {locked ? (
+                {/* No bar at zero: a new user would see a column of empty bars. */}
+                {locked && achievement.have > 0 ? (
                   <>
                     <Meter tone="neutral" percent={percentOf(achievement.have, achievement.need)} />
                     <span className="text-xs text-muted-foreground tabular-nums">
@@ -185,7 +186,7 @@ function Achievements({ achievements }: { readonly achievements: ScribeGoals["ac
                     </span>
                   </>
                 ) : (
-                  <span className="sr-only">Unlocked</span>
+                  <span className="sr-only">{locked ? "Locked" : "Unlocked"}</span>
                 )}
               </span>
             </li>

@@ -184,7 +184,10 @@ function Apps({ insights }: { readonly insights: ScribeInsights }) {
             <span className="text-muted-foreground tabular-nums">
               {formatCount(row.count)} dictations
             </span>
-            <span aria-hidden className="col-span-2 h-1 overflow-hidden rounded-full bg-muted">
+            <span
+              aria-hidden
+              className="col-span-2 h-1 overflow-hidden rounded-full bg-muted-foreground/20"
+            >
               <span
                 className="block h-full rounded-full bg-muted-foreground/70"
                 style={{ width: `${row.percent}%` }}

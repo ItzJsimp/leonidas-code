@@ -414,10 +414,11 @@ function PresetRow(props: {
               </span>
             )}
           </span>
+          {/* Centred, so it lines up with the move and delete buttons beside the row. */}
           {props.open ? (
-            <ChevronDownIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <ChevronDownIcon aria-hidden className="size-4 shrink-0 self-center" />
           ) : (
-            <ChevronRightIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <ChevronRightIcon aria-hidden className="size-4 shrink-0 self-center" />
           )}
         </button>
         <Button

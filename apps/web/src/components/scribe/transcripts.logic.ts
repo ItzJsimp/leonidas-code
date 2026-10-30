@@ -143,3 +143,13 @@ export function timeLabel(at: string): string {
   const hours = time.getHours();
   return `${hours % 12 === 0 ? 12 : hours % 12}:${pad(time.getMinutes())} ${hours < 12 ? "AM" : "PM"}`;
 }
+
+/**
+ * A transcript this long passes 4 lines even at the widest layout (about 140 characters a
+ * line), so it starts clamped with a Show more button. Shorter text never clamps.
+ */
+export const CLAMP_CHARS = 560;
+
+export function isLongTranscript(text: string): boolean {
+  return text.length > CLAMP_CHARS;
+}
