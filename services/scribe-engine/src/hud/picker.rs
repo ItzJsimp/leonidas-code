@@ -2,7 +2,7 @@
 //! plus a no-focus status popup that shows while a rewrite runs.
 //! Look: Leonidas Code dark theme, design direction A (`projects/leonidas-scribe/design/rewrite-picker-directions.html`).
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     ptr::{null, null_mut},
     sync::{
         atomic::{AtomicIsize, Ordering},
@@ -10,6 +10,10 @@ use std::{
     },
 };
 use windows_sys::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+use windows_sys::Win32::UI::HiDpi::{
+    GetDpiForMonitor, SetThreadDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
+    MDT_EFFECTIVE_DPI,
+};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::SetFocus;
 use windows_sys::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
@@ -37,10 +41,27 @@ const PRIMARY: u32 = 0x002626d9; // #d92626
 const KEYCAP: u32 = 0x00372c2c; // #2c2c37
 const WHITE: u32 = 0x00ffffff;
 
+thread_local! { static SCALE: Cell<f32> = const { Cell::new(1.0) }; }
+/// `v` design pixels in device pixels at this thread's DPI scale.
+fn px(v: i32) -> i32 {
+    (v as f32 * SCALE.get()).round() as i32
+}
+/// Makes this thread DPI aware, so Windows does not stretch the window (blurry text), and reads
+/// the scale of the monitor under the cursor. Windows made on this thread keep the setting.
+unsafe fn init_dpi() {
+    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    let mut cursor: POINT = std::mem::zeroed();
+    GetCursorPos(&mut cursor);
+    let monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
+    let (mut dx, mut dy) = (96u32, 96u32);
+    GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &mut dx, &mut dy);
+    SCALE.set(dx.max(96) as f32 / 96.0);
+}
+
 fn row_at(y: i32, count: usize) -> Option<usize> {
-    let top = HEAD + PAD;
+    let top = px(HEAD + PAD);
     (y >= top)
-        .then_some(((y - top) / ROW) as usize)
+        .then_some(((y - top) / px(ROW)) as usize)
         .filter(|&i| i < count)
 }
 fn digit_index(key: u32, count: usize) -> Option<usize> {
@@ -50,7 +71,7 @@ fn digit_index(key: u32, count: usize) -> Option<usize> {
         .filter(|&i| i < count)
 }
 fn picker_height(count: usize) -> i32 {
-    HEAD + PAD * 2 + ROW * count as i32 + FOOTER
+    px(HEAD + PAD * 2 + ROW * count as i32 + FOOTER)
 }
 
 struct Picker {
@@ -64,15 +85,31 @@ fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain([0]).collect()
 }
 
-/// Segoe UI at `px` height and `weight`, ClearType.
-unsafe fn font(px: i32, weight: i32) -> HFONT {
+/// Segoe UI at `size` design px and `weight`, ClearType.
+unsafe fn font(size: i32, weight: i32) -> HFONT {
     let face = wide("Segoe UI");
-    CreateFontW(-px, 0, 0, 0, weight, 0, 0, 0, 0, 0, 0, 5, 0, face.as_ptr())
+    CreateFontW(
+        -px(size),
+        0,
+        0,
+        0,
+        weight,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        face.as_ptr(),
+    )
 }
 unsafe fn fill_round(dc: HDC, r: &RECT, color: u32, radius: i32) {
     let brush = CreateSolidBrush(color);
     let old_brush = SelectObject(dc, brush as _);
     let old_pen = SelectObject(dc, GetStockObject(NULL_PEN));
+    let radius = px(radius);
     RoundRect(dc, r.left, r.top, r.right + 1, r.bottom + 1, radius, radius);
     SelectObject(dc, old_pen);
     SelectObject(dc, old_brush);
@@ -101,8 +138,8 @@ unsafe fn panel(dc: HDC, hwnd: HWND) -> RECT {
         0,
         rect.right + 1,
         rect.bottom + 1,
-        RADIUS * 2,
-        RADIUS * 2,
+        px(RADIUS * 2),
+        px(RADIUS * 2),
     );
     let border = CreateSolidBrush(BORDER);
     FrameRgn(dc, edge, border, 1, 1);
@@ -116,8 +153,8 @@ unsafe fn keycap(dc: HDC, x: i32, y: i32, label: &str, selected: bool) {
     let r = RECT {
         left: x,
         top: y,
-        right: x + 20,
-        bottom: y + 20,
+        right: x + px(20),
+        bottom: y + px(20),
     };
     fill_round(dc, &r, if selected { PRIMARY } else { KEYCAP }, 10);
     let mut t = r;
@@ -136,10 +173,10 @@ unsafe fn paint_picker(dc: HDC, hwnd: HWND, p: &Picker) {
     let name_font = font(14, 600);
     let old = SelectObject(dc, small as _);
     let mut head = RECT {
-        left: 14,
+        left: px(14),
         top: 0,
-        right: rect.right - 14,
-        bottom: HEAD,
+        right: rect.right - px(14),
+        bottom: px(HEAD),
     };
     text(dc, "Rewrite selection", &mut head, MUTED, DT_VCENTER);
     text(
@@ -150,46 +187,52 @@ unsafe fn paint_picker(dc: HDC, hwnd: HWND, p: &Picker) {
         DT_VCENTER | DT_RIGHT,
     );
     for (i, (name, summary)) in p.items.iter().enumerate() {
-        let top = HEAD + PAD + i as i32 * ROW;
+        let top = px(HEAD + PAD) + i as i32 * px(ROW);
         let row = RECT {
-            left: PAD,
+            left: px(PAD),
             top,
-            right: WIDTH - PAD,
-            bottom: top + ROW - 2,
+            right: px(WIDTH - PAD),
+            bottom: top + px(ROW) - px(2),
         };
         let selected = i == p.selected;
         if selected {
             fill_round(dc, &row, SELECTED, 14);
             let bar = RECT {
-                left: PAD,
-                top: top + 8,
-                right: PAD + 2,
-                bottom: top + ROW - 10,
+                left: px(PAD),
+                top: top + px(8),
+                right: px(PAD + 2),
+                bottom: top + px(ROW) - px(10),
             };
             let red = CreateSolidBrush(PRIMARY);
             FillRect(dc, &bar, red);
             DeleteObject(red as _);
         }
         SelectObject(dc, small as _);
-        keycap(dc, PAD + 10, top + 7, &(i + 1).to_string(), selected);
+        keycap(
+            dc,
+            px(PAD + 10),
+            top + px(7),
+            &(i + 1).to_string(),
+            selected,
+        );
         SelectObject(dc, name_font as _);
         let mut n = RECT {
-            left: PAD + 40,
-            top: top + 5,
-            right: row.right - 10,
-            bottom: top + 25,
+            left: px(PAD + 40),
+            top: top + px(5),
+            right: row.right - px(10),
+            bottom: top + px(25),
         };
         text(dc, name, &mut n, FG, DT_VCENTER);
         SelectObject(dc, small as _);
         let mut d = RECT {
-            left: PAD + 40,
-            top: top + 24,
-            right: row.right - 10,
-            bottom: top + 42,
+            left: px(PAD + 40),
+            top: top + px(24),
+            right: row.right - px(10),
+            bottom: top + px(42),
         };
         text(dc, summary, &mut d, MUTED, DT_VCENTER);
     }
-    let foot_top = rect.bottom - FOOTER;
+    let foot_top = rect.bottom - px(FOOTER);
     let line = RECT {
         left: 1,
         top: foot_top,
@@ -200,9 +243,9 @@ unsafe fn paint_picker(dc: HDC, hwnd: HWND, p: &Picker) {
     FillRect(dc, &line, border);
     DeleteObject(border as _);
     let mut foot = RECT {
-        left: 14,
+        left: px(14),
         top: foot_top,
-        right: rect.right - 14,
+        right: rect.right - px(14),
         bottom: rect.bottom,
     };
     text(
@@ -330,6 +373,7 @@ pub fn pick(items: &[(String, String)], chars: usize) -> Option<usize> {
     if items.is_empty() {
         return None;
     }
+    unsafe { init_dpi() };
     PICKER.with(|p| {
         *p.borrow_mut() = Some(Picker {
             items: items.to_vec(),
@@ -350,7 +394,8 @@ pub fn pick(items: &[(String, String)], chars: usize) -> Option<usize> {
         };
         RegisterClassW(&wc);
         let height = picker_height(items.len());
-        let point = place(WIDTH, height);
+        let width = px(WIDTH);
+        let point = place(width, height);
         let hwnd = CreateWindowExW(
             WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             class.as_ptr(),
@@ -358,7 +403,7 @@ pub fn pick(items: &[(String, String)], chars: usize) -> Option<usize> {
             WS_POPUP,
             point.x,
             point.y,
-            WIDTH,
+            width,
             height,
             null_mut(),
             null_mut(),
@@ -366,7 +411,8 @@ pub fn pick(items: &[(String, String)], chars: usize) -> Option<usize> {
             null(),
         );
         if !hwnd.is_null() {
-            let region = CreateRoundRectRgn(0, 0, WIDTH + 1, height + 1, RADIUS * 2, RADIUS * 2);
+            let region =
+                CreateRoundRectRgn(0, 0, width + 1, height + 1, px(RADIUS * 2), px(RADIUS * 2));
             SetWindowRgn(hwnd, region, 1);
             ShowWindow(hwnd, SW_SHOW);
             // A background process may not take the foreground. Sharing the input state of
@@ -421,16 +467,21 @@ unsafe extern "system" fn status_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM
             let rect = panel(dc, hwnd);
             let (name, step) = STATUS.with(|s| s.borrow().clone());
             // 8 dots on a ring; the lit dot moves one place each tick.
-            let (cx, cy) = (24.0_f32, rect.bottom as f32 / 2.0);
+            let scale = SCALE.get();
+            let (cx, cy) = (24.0 * scale, rect.bottom as f32 / 2.0);
             for i in 0..8u32 {
                 let a = i as f32 * std::f32::consts::TAU / 8.0;
-                let (x, y) = ((cx + 7.0 * a.cos()) as i32, (cy + 7.0 * a.sin()) as i32);
+                let (x, y) = (
+                    (cx + 7.0 * scale * a.cos()) as i32,
+                    (cy + 7.0 * scale * a.sin()) as i32,
+                );
                 let color = if i == step % 8 { PRIMARY } else { KEYCAP };
+                let r = px(2);
                 let dot = RECT {
-                    left: x - 2,
-                    top: y - 2,
-                    right: x + 2,
-                    bottom: y + 2,
+                    left: x - r,
+                    top: y - r,
+                    right: x + r,
+                    bottom: y + r,
                 };
                 fill_round(dc, &dot, color, 4);
             }
@@ -438,9 +489,9 @@ unsafe extern "system" fn status_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM
             let small = font(12, 400);
             let old = SelectObject(dc, name_font as _);
             let mut n = RECT {
-                left: 42,
+                left: px(42),
                 top: 0,
-                right: rect.right - 14,
+                right: rect.right - px(14),
                 bottom: rect.bottom,
             };
             text(dc, &name, &mut n, FG, DT_VCENTER);
@@ -486,6 +537,7 @@ pub fn status(name: &str) -> Status {
     let _ = std::thread::Builder::new()
         .name("scribe-rewrite-status".into())
         .spawn(move || unsafe {
+            init_dpi();
             STATUS.with(|s| *s.borrow_mut() = (name, 0));
             let instance = GetModuleHandleW(null());
             let class = wide("LeonidasScribeRewriteStatus");
@@ -497,7 +549,8 @@ pub fn status(name: &str) -> Status {
                 ..std::mem::zeroed()
             };
             RegisterClassW(&wc);
-            let point = place(WIDTH, STATUS_HEIGHT);
+            let (width, height) = (px(WIDTH), px(STATUS_HEIGHT));
+            let point = place(width, height);
             let hwnd = CreateWindowExW(
                 WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                 class.as_ptr(),
@@ -505,8 +558,8 @@ pub fn status(name: &str) -> Status {
                 WS_POPUP,
                 point.x,
                 point.y,
-                WIDTH,
-                STATUS_HEIGHT,
+                width,
+                height,
                 null_mut(),
                 null_mut(),
                 instance,
@@ -516,7 +569,7 @@ pub fn status(name: &str) -> Status {
                 return;
             }
             let region =
-                CreateRoundRectRgn(0, 0, WIDTH + 1, STATUS_HEIGHT + 1, RADIUS * 2, RADIUS * 2);
+                CreateRoundRectRgn(0, 0, width + 1, height + 1, px(RADIUS * 2), px(RADIUS * 2));
             SetWindowRgn(hwnd, region, 1);
             SetTimer(hwnd, 1, SPIN_MS, None);
             SetTimer(hwnd, 2, STATUS_TIMEOUT_MS, None);
@@ -552,5 +605,19 @@ mod tests {
         assert_eq!(digit_index(0x32, 2), Some(1));
         assert_eq!(digit_index(0x33, 2), None);
         assert_eq!(picker_height(6), HEAD + PAD * 2 + ROW * 6 + FOOTER);
+    }
+
+    /// Shows the real picker at the cursor for 30 s: run by hand with `--ignored` and take a screenshot.
+    #[test]
+    #[ignore]
+    fn shows_the_picker_for_a_screenshot() {
+        let items: Vec<(String, String)> = [
+            ("Clarity", "One reading per sentence. Same facts."),
+            ("Shorter", "Fewer words, same voice."),
+            ("Friendly", "Warm note to a client or friend."),
+        ]
+        .map(|(n, d)| (n.to_owned(), d.to_owned()))
+        .to_vec();
+        pick(&items, 776);
     }
 }
