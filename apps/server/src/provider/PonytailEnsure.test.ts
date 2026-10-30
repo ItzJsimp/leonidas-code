@@ -8,6 +8,7 @@ import {
   codexPonytailState,
   ensureClaudePonytail,
   isPonytailPluginEnabled,
+  PONYTAIL_INSTALL_OPT_IN_ENV,
 } from "./PonytailEnsure.ts";
 
 const tempDir = () => NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "pt-"));
@@ -28,19 +29,28 @@ describe("PonytailEnsure", () => {
     expect(claudeConfigDirOf({})).toBe(NodePath.join(NodeOS.homedir(), ".claude"));
   });
 
+  const optIn = (dir: string) => ({ CLAUDE_CONFIG_DIR: dir, [PONYTAIL_INSTALL_OPT_IN_ENV]: "1" });
+
+  it("does nothing until the user opts in", async () => {
+    const dir = tempDir();
+    expect(
+      await ensureClaudePonytail({ binaryPath: "no-such-claude", env: { CLAUDE_CONFIG_DIR: dir } }),
+    ).toBe("skipped");
+  });
+
   it("leaves a user's choice alone, on or off", async () => {
     const dir = tempDir();
     writeSettings(dir, { enabledPlugins: { "ponytail@ponytail": false } });
-    expect(
-      await ensureClaudePonytail({ binaryPath: "no-such-claude", env: { CLAUDE_CONFIG_DIR: dir } }),
-    ).toBe("present");
+    expect(await ensureClaudePonytail({ binaryPath: "no-such-claude", env: optIn(dir) })).toBe(
+      "present",
+    );
   });
 
   it("reports failure without throwing when the CLI is missing", async () => {
     const dir = tempDir();
-    expect(
-      await ensureClaudePonytail({ binaryPath: "no-such-claude", env: { CLAUDE_CONFIG_DIR: dir } }),
-    ).toBe("failed");
+    expect(await ensureClaudePonytail({ binaryPath: "no-such-claude", env: optIn(dir) })).toBe(
+      "failed",
+    );
   });
 
   it("reads the Codex plugin state from config.toml text", () => {
