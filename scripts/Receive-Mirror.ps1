@@ -61,9 +61,14 @@ if ($Mode -eq 'Apply') {
 # Head: a fast-forward, or (Force) a replacement of a laptop commit that is older than the desktop head.
 # A replaced laptop head stays on a backup branch.
 $message = 'not applied'
-git -C $req.Root fetch --no-tags -q $req.Bundle 'HEAD:refs/desk-sync/mirror-head' 2>&1 | Out-Null
+if ($req.Bundle) {
+    git -C $req.Root fetch --no-tags -q $req.Bundle 'HEAD:refs/desk-sync/mirror-head' 2>&1 | Out-Null
+} else {
+    # No bundle: the laptop already holds the commit (for example from the dev branch sync).
+    git -C $req.Root cat-file -e "$($req.Sha)^{commit}" 2>&1 | Out-Null
+}
 if ($LASTEXITCODE -ne 0) {
-    $message = 'bundle fetch failed'
+    $message = 'commit not on the laptop'
 } else {
     git -C $req.Root merge-base --is-ancestor HEAD $req.Sha 2>&1 | Out-Null
     $forward = ($LASTEXITCODE -eq 0)

@@ -114,6 +114,13 @@ try {
     Assert ((git -C $lap rev-parse HEAD) -eq (git -C $desk rev-parse HEAD)) "laptop head should follow the newer desktop commit, got: $out"
     Assert ((git -C $lap rev-parse "laptop/main-$($oldLap.Substring(0, 8))") -eq $oldLap) 'the replaced laptop commit must stay on a backup branch'
 
+    # 10. The laptop already holds the desktop commit (no bundle needed): only the head moves.
+    Put "$desk/third.md" 'third'
+    G $desk add third.md; G $desk commit -q -m 'third desktop commit'
+    G $lap fetch -q $desk 'main:refs/heads/desk-copy'
+    $out = Tick
+    Assert ((git -C $lap rev-parse HEAD) -eq (git -C $desk rev-parse HEAD)) "laptop head should move without a bundle, got: $out"
+
     Write-Host 'PASS: all Mirror-Files scenarios' -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

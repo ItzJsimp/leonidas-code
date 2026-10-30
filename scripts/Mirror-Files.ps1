@@ -112,10 +112,16 @@ function Sync-MirrorHead($Root, $Answer) {
             Where-Object { $_ -match ' commit$' } | ForEach-Object { $_.Split(' ')[0] })
     $bundle = Join-Path $stage "head-$($Root.name).bundle"
     (@('HEAD') + @($known | ForEach-Object { "^$_" })) | git -C $Root.desktop bundle create $bundle --stdin 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Write-MirrorLog "$($Root.name): head bundle not created"; return }
-    Copy-ToLaptop $bundle "$RemoteDir/head-$($Root.name).bundle"
+    $remoteBundle = "$RemoteDir/head-$($Root.name).bundle"
+    if ($LASTEXITCODE -ne 0) {
+        # An empty bundle means the laptop already holds every commit, so only the head must move.
+        if (@($Answer.Known) -notcontains $desktopHead) { Write-MirrorLog "$($Root.name): head bundle not created"; return }
+        $remoteBundle = ''
+    } else {
+        Copy-ToLaptop $bundle $remoteBundle
+    }
     $backup = "laptop/$branch-$(([string]$Answer.Head).Substring(0, 8))"
-    $result = Invoke-Remote 'Head' "head-$($Root.name)" @{ Root = $Root.laptop; Sha = $desktopHead; Bundle = "$RemoteDir/head-$($Root.name).bundle"; Force = $force; Backup = $backup }
+    $result = Invoke-Remote 'Head' "head-$($Root.name)" @{ Root = $Root.laptop; Sha = $desktopHead; Bundle = $remoteBundle; Force = $force; Backup = $backup }
     Write-MirrorLog "$($Root.name): git head $($result.Message)"
     Remove-Item -LiteralPath $bundle -Force -ErrorAction SilentlyContinue
 }
