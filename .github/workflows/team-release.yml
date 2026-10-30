@@ -20,6 +20,54 @@ permissions:
   issues: write
 
 jobs:
+  # Runs beside the installer build, not before it: the slowest step used to
+  # add 125 s to the release. Publish still waits for it to pass.
+  checks:
+    name: Types and fast tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    concurrency:
+      group: team-release-checks
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: false
+          run-install: false
+
+      - name: Locate dependency cache
+        id: dependencies
+        run: echo "path=$(vp pm cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore desktop dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.dependencies.outputs.path }}
+          key: desktop-deps-${{ runner.os }}-x64-${{ hashFiles('pnpm-lock.yaml', '.github/workflows/team-release.yml') }}
+
+      - name: Install desktop build dependencies
+        run: vp install --frozen-lockfile --filter @t3tools/monorepo --filter @t3tools/desktop... --filter t3... --filter @t3tools/web... --filter @t3tools/scripts...
+
+      # Stops a release on a type error or a failed test. Tests cover only the
+      # packages that pass on Windows today; provider-core and server still hold
+      # Windows-only test failures, so add them once they are green.
+      - name: Check types and fast tests
+        run: |
+          (cd packages/shared && vp run typecheck)
+          (cd packages/client-runtime && vp run typecheck && vp test run)
+          (cd packages/provider-core && vp run typecheck)
+          (cd apps/server && vp run typecheck)
+          (cd apps/web && vp run typecheck)
+          (cd packages/shared && vp test run src/usageLimits.test.ts src/promptPrediction.test.ts src/harnessReliability.test.ts src/hardwareWatch.test.ts src/turnLedger.test.ts)
+
   windows:
     name: Windows x64 installer
     runs-on: windows-latest
@@ -95,18 +143,6 @@ jobs:
 
       - name: Set release version
         run: node scripts/update-release-package-versions.ts "${{ steps.release.outputs.version }}"
-
-      # Stops a release on a type error or a failed test. Tests cover only the
-      # packages that pass on Windows today; provider-core and server still hold
-      # Windows-only test failures, so add them once they are green.
-      - name: Check types and fast tests
-        run: |
-          (cd packages/shared && vp run typecheck)
-          (cd packages/client-runtime && vp run typecheck && vp test run)
-          (cd packages/provider-core && vp run typecheck)
-          (cd apps/server && vp run typecheck)
-          (cd apps/web && vp run typecheck)
-          (cd packages/shared && vp test run src/usageLimits.test.ts src/promptPrediction.test.ts src/harnessReliability.test.ts src/hardwareWatch.test.ts src/turnLedger.test.ts)
 
       - name: Build JS bundle
         env:
@@ -249,9 +285,9 @@ jobs:
 
   publish:
     name: Publish complete release
-    needs: [windows, mac]
-    # Publish Windows even when the Mac build fails.
-    if: ${{ always() && !cancelled() && needs.windows.result == 'success' }}
+    needs: [windows, mac, checks]
+    # Publish Windows even when the Mac build fails, but never when the checks fail.
+    if: ${{ always() && !cancelled() && needs.windows.result == 'success' && needs.checks.result == 'success' }}
     outputs:
       published: ${{ steps.publish.outputs.published }}
     runs-on: ubuntu-latest
