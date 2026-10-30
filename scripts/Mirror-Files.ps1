@@ -99,9 +99,9 @@ function Sync-MirrorHead($Root, $Answer) {
         ((Get-Date) - (Get-Item -LiteralPath $headFile).LastWriteTime).TotalMinutes -lt 5) { return }
     Set-Content -LiteralPath $headFile -Value $attempt
 
-    # Last committer wins. A laptop head that the desktop lacks is replaced only when it is older than the desktop head.
-    git -C $Root.desktop cat-file -e "$($Answer.Head)^{commit}" 2>$null
+    # Last committer wins. A laptop head that is not behind the desktop head (or that the desktop lacks) is replaced only when it is older.
     $force = $false
+    git -C $Root.desktop merge-base --is-ancestor $Answer.Head $desktopHead 2>$null
     if ($LASTEXITCODE -ne 0) {
         $desktopTime = [long]"$(git -C $Root.desktop log -1 --format=%ct)".Trim()
         if ([long]$Answer.HeadTime -gt $desktopTime) { Write-MirrorLog "$($Root.name): the laptop commit is newer than the desktop head; waiting for phase 2"; return }
