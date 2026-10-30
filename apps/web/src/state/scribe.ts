@@ -23,6 +23,21 @@ export const scribeHistoryQuery = createEnvironmentRpcQueryAtomFamily(connection
   idleTtlMs: 5 * 60_000,
 });
 
+/** Goals and insights are computed from history, so a short cache keeps tab switches cheap. */
+export const scribeGoalsQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:scribe:goals",
+  tag: WS_METHODS.scribeGetGoals,
+  staleTimeMs: 30_000,
+  idleTtlMs: 5 * 60_000,
+});
+
+export const scribeInsightsQuery = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
+  label: "environment-data:scribe:insights",
+  tag: WS_METHODS.scribeGetInsights,
+  staleTimeMs: 30_000,
+  idleTtlMs: 5 * 60_000,
+});
+
 export const scribeStart = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:scribe:start",
   tag: WS_METHODS.scribeStart,
