@@ -16,7 +16,7 @@ const FORWARD: Readonly<Record<ContentStage, ReadonlyArray<ContentStage>>> = {
 };
 
 /** Agents draft. They never approve, deliver or mark paid. */
-const AGENT_MOVES: ReadonlyArray<string> = ["idea>scripting", "scripting>script_review"];
+const AGENT_MOVES: ReadonlySet<string> = new Set(["idea>scripting", "scripting>script_review"]);
 
 export type MoveCheck =
   | { readonly ok: true; readonly undo: boolean }
@@ -30,7 +30,7 @@ export function canMove(
 ): MoveCheck {
   if (from === to) return { ok: false, reason: `The video is already in ${to}.` };
   if (actor === "agent") {
-    return AGENT_MOVES.includes(`${from}>${to}`)
+    return AGENT_MOVES.has(`${from}>${to}`)
       ? { ok: true, undo: false }
       : {
           ok: false,

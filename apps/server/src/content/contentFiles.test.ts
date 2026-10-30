@@ -11,6 +11,7 @@ import {
   sections,
   setSection,
   readDeal,
+  saveScript,
   scriptHash,
   signApproval,
 } from "./contentFiles.ts";
@@ -337,5 +338,85 @@ describe("setSection", () => {
 
   it("adds a missing section at the end", () => {
     expect(sections(setSection(text, "Shot list", "- Wide")).get("shot list")).toBe("- Wide");
+  });
+});
+
+describe("scorecard gate and saveScript", () => {
+  const agent = { kind: "agent", name: "thread t1" } as const;
+  const gersi = { kind: "member", name: "Gersi" } as const;
+  const NOW = "2026-10-29T21:00:00.000Z";
+  const ref = { deal: "acme-cases", file: "01-drop-test" } as const;
+
+  function scripting(): string {
+    const root = workspace();
+    write(root, "deals/acme-cases/deal.md", DEAL);
+    write(root, "deals/_lens/voice-bible.md", '---\nbanned_words:\n  - "game changer"\n---\n');
+    write(root, "deals/acme-cases/01-drop-test.md", video("stage: scripting\nlength_s: 10"));
+    return root;
+  }
+
+  it("refuses the move to review on a banned word and names the rule", () => {
+    const root = scripting();
+    saveScript(root, KEY, { ...ref, script: 'SPOKEN: "A game changer."' }, agent, NOW);
+    expect(() => moveStage(root, KEY, { ...ref, to: "script_review" }, agent, NOW)).toThrow(
+      'Banned word: "game changer"',
+    );
+    expect(() => moveStage(root, KEY, { ...ref, to: "script_review" }, gersi, NOW)).toThrow(
+      "breaks a rule",
+    );
+  });
+
+  it("refuses a brand do-not, and only warns on a low hook score", () => {
+    const root = scripting();
+    saveScript(root, KEY, { ...ref, script: 'SPOKEN: "So cheap."', hookScore: 3 }, agent, NOW);
+    expect(() => moveStage(root, KEY, { ...ref, to: "script_review" }, agent, NOW)).toThrow(
+      'Brand do-not: "cheap"',
+    );
+    saveScript(root, KEY, { ...ref, script: 'SPOKEN: "Built to last."', hookScore: 3 }, agent, NOW);
+    const moved = moveStage(root, KEY, { ...ref, to: "script_review" }, agent, NOW);
+    expect(moved.stage).toBe("script_review");
+    expect(moved.scorecard.warnings).toContain("Hook score 3 is under 7.");
+  });
+
+  it("writes the scorecard section and the pen", () => {
+    const root = scripting();
+    const saved = saveScript(
+      root,
+      KEY,
+      { ...ref, script: 'SPOKEN: "Built to last."', hookScore: 8, writerModel: "model-a" },
+      agent,
+      NOW,
+    );
+    expect(saved).toMatchObject({ pen: "agent", script: 'SPOKEN: "Built to last."' });
+    expect(saved.scorecard).toMatchObject({ hookScore: 8, writerModel: "model-a", blocks: [] });
+    const text = NodeFS.readFileSync(
+      NodePath.join(root, "deals/acme-cases/01-drop-test.md"),
+      "utf8",
+    );
+    expect(text).toContain("## Scorecard\n\n- Hook score: 8/10");
+    expect(text).toContain("## Notes\n\nFilm outside.");
+  });
+
+  it("keeps an agent out of a script after review", () => {
+    const root = scripting();
+    saveScript(root, KEY, { ...ref, script: 'SPOKEN: "Built to last."' }, agent, NOW);
+    moveStage(root, KEY, { ...ref, to: "script_review" }, agent, NOW);
+    expect(() => saveScript(root, KEY, { ...ref, script: "SPOKEN: changed" }, agent, NOW)).toThrow(
+      ContentError,
+    );
+  });
+
+  it("a person's edit of an approved script keeps it approved under their name", () => {
+    const root = scripting();
+    saveScript(root, KEY, { ...ref, script: 'SPOKEN: "Built to last."' }, agent, NOW);
+    moveStage(root, KEY, { ...ref, to: "script_review" }, agent, NOW);
+    moveStage(root, KEY, { ...ref, to: "ready_to_film" }, { kind: "member", name: "Jake" }, NOW);
+    const edited = saveScript(root, KEY, { ...ref, script: 'SPOKEN: "Built tough."' }, gersi, NOW);
+    expect(edited).toMatchObject({
+      stage: "ready_to_film",
+      approval: "approved",
+      approvedBy: "Gersi",
+      pen: "gersi",
+    });
   });
 });

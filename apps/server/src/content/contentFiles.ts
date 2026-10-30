@@ -421,29 +421,21 @@ export function moveStage(
   const approving = current.stage === "script_review" && input.to === "ready_to_film";
   if (approving && actor.kind !== "member")
     throw new ContentError("Only a person approves a script.");
-  const fields: Record<string, FrontValue> = { stage: input.to, stage_changed: now };
-  if (approving) {
-    const hash = scriptHash(current.script);
-    Object.assign(fields, {
-      approved_by: actor.name,
-      approved_at: now,
-      script_hash: hash,
-      approval_sig: signApproval(key, {
-        deal: input.deal,
-        file: input.file,
-        scriptHash: hash,
-        approvedBy: actor.name,
-        approvedAt: now,
-      }),
-    });
-  } else if (CONTENT_STAGES.indexOf(input.to) <= REVIEW) {
-    Object.assign(fields, {
-      approved_by: null,
-      approved_at: null,
-      script_hash: null,
-      approval_sig: null,
-    });
+  const blocks = current.scorecard.blocks;
+  if (input.to === "script_review" && !check.undo && blocks.length > 0) {
+    throw new ContentError(
+      `This script breaks a rule: ${blocks.join("; ")}. Change the script, then move it again.`,
+    );
   }
+  const fields: Record<string, FrontValue> = {
+    stage: input.to,
+    stage_changed: now,
+    ...(approving
+      ? approvalFields(key, input, current.script, actor.name, now)
+      : CONTENT_STAGES.indexOf(input.to) <= REVIEW
+        ? NO_APPROVAL
+        : {}),
+  };
   const path = videoPath(root, input.deal, input.file);
   let text = setFront(NodeFS.readFileSync(path, "utf8"), fields);
   const note = input.note?.trim();
@@ -453,4 +445,99 @@ export function moveStage(
   }
   NodeFS.writeFileSync(path, text);
   return findVideo(root, key, input.deal, input.file);
+}
+
+const NO_APPROVAL: Record<string, FrontValue> = {
+  approved_by: null,
+  approved_at: null,
+  script_hash: null,
+  approval_sig: null,
+};
+
+/** A person's signed approval of this exact script. */
+function approvalFields(
+  key: Uint8Array,
+  ref: { readonly deal: string; readonly file: string },
+  script: string,
+  approvedBy: string,
+  approvedAt: string,
+): Record<string, FrontValue> {
+  const hash = scriptHash(script);
+  return {
+    approved_by: approvedBy,
+    approved_at: approvedAt,
+    script_hash: hash,
+    approval_sig: signApproval(key, { ...ref, scriptHash: hash, approvedBy, approvedAt }),
+  };
+}
+
+/** The scorecard as readable lines, for people who open the file outside the app. */
+function renderScorecard(card: ContentScorecard): string {
+  const none = (items: ReadonlyArray<string>) => (items.length ? items.join(", ") : "none");
+  return [
+    `- Hook score: ${card.hookScore === undefined ? "not given" : `${card.hookScore}/10`}`,
+    `- Spoken: ${card.spokenSeconds} s${card.targetSeconds ? ` (target ${card.targetSeconds} s)` : ""}`,
+    `- Banned words: ${none(card.bannedWords)}`,
+    `- Brand do-nots: ${none(card.doNotHits)}`,
+    `- Writer: ${card.writerModel ?? "not given"}. Critic: ${card.criticModel ?? "not given"}.`,
+    ...card.warnings.map((warning) => `- Warning: ${warning}`),
+  ].join("\n");
+}
+
+export interface ScriptInput {
+  readonly deal: string;
+  readonly file: string;
+  readonly script: string;
+  /** Agent drafts only: the critic's hook score from 0 to 10 and the models used. */
+  readonly hookScore?: number | undefined;
+  readonly writerModel?: string | undefined;
+  readonly criticModel?: string | undefined;
+}
+
+/** Agents edit a script only before review. A person may edit it at any stage. */
+const AGENT_EDIT_STAGES: ReadonlySet<ContentStage> = new Set(["idea", "scripting"]);
+
+/**
+ * Saves a script and its scorecard. A person's edit of an approved script stays approved under
+ * their name, because a person may approve. Any other edit after approval voids it.
+ */
+export function saveScript(
+  root: string,
+  key: Uint8Array,
+  input: ScriptInput,
+  actor: ContentActor,
+  now: string,
+): ContentVideo {
+  const current = findVideo(root, key, input.deal, input.file);
+  if (actor.kind === "agent" && !AGENT_EDIT_STAGES.has(current.stage)) {
+    throw new ContentError(
+      `Agents edit a script only in idea or scripting. This video is in ${current.stage}.`,
+    );
+  }
+  const script = input.script.replaceAll("\r\n", "\n").trim();
+  if (script === "") throw new ContentError("The script is empty.");
+  const fields: Record<string, FrontValue> = {
+    pen: actor.kind === "agent" ? "agent" : actor.name.toLowerCase(),
+    ...(actor.kind === "agent"
+      ? {
+          hook_score: input.hookScore ?? null,
+          writer_model: input.writerModel ?? null,
+          critic_model: input.criticModel ?? null,
+        }
+      : {}),
+    ...(actor.kind === "member" && current.approval === "approved"
+      ? approvalFields(key, input, script, actor.name, now)
+      : {}),
+  };
+  const path = videoPath(root, input.deal, input.file);
+  NodeFS.writeFileSync(
+    path,
+    setSection(setFront(NodeFS.readFileSync(path, "utf8"), fields), "Script", script),
+  );
+  const saved = findVideo(root, key, input.deal, input.file);
+  NodeFS.writeFileSync(
+    path,
+    setSection(NodeFS.readFileSync(path, "utf8"), "Scorecard", renderScorecard(saved.scorecard)),
+  );
+  return saved;
 }
