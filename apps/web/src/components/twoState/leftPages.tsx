@@ -23,6 +23,7 @@ const PAGES: Readonly<Record<string, ComponentType>> = {
   "/library": named(() => import("~/components/windows/library/LibraryWindow"), "LibraryWindow"),
   "/images": named(() => import("~/components/images/ImagesPage"), "ImagesPage"),
   "/marketing": named(() => import("~/components/marketing/MarketingView"), "MarketingView"),
+  "/content": named(() => import("~/components/content/ContentView"), "ContentView"),
   "/files": named(() => import("~/components/windows/files/FilesWindow"), "FilesWindow"),
   "/subagents": named(
     () => import("~/components/windows/subagents/SubagentsWindow"),
