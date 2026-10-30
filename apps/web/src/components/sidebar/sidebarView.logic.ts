@@ -22,7 +22,7 @@ export interface SidebarView {
 export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
   groupBy: "date",
   density: "comfortable",
-  showRail: true,
+  showRail: false,
   showProject: true,
   showReason: true,
   showTime: true,

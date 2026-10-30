@@ -25,9 +25,9 @@ describe("parseSidebarView", () => {
     expect(view).toEqual({ ...DEFAULT_SIDEBAR_VIEW, groupBy: "status", showTime: false });
   });
 
-  it("defaults to the timeline with the project rail on", () => {
+  it("defaults to the timeline with the project rail off", () => {
     expect(DEFAULT_SIDEBAR_VIEW.groupBy).toBe("date");
-    expect(DEFAULT_SIDEBAR_VIEW.showRail).toBe(true);
+    expect(DEFAULT_SIDEBAR_VIEW.showRail).toBe(false);
   });
 });
 
