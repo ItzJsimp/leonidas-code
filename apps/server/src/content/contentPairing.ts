@@ -62,7 +62,7 @@ export function openPairing(
   blob: string,
   pin: string,
   now: number,
-): { readonly key: Uint8Array; readonly id: string } {
+): { readonly key: Uint8Array; readonly id: string; readonly expiresAt: number } {
   const bytes = Buffer.from(blob.trim(), "base64url");
   if (bytes.length !== LENGTH || bytes[0] !== VERSION || normalPin(pin).length !== 8) {
     throw new ContentError(MISMATCH);
@@ -84,7 +84,11 @@ export function openPairing(
       decipher.update(bytes.subarray(SEALED_AT, SEALED_AT + KEY_BYTES)),
       decipher.final(),
     ]);
-    return { key: new Uint8Array(key), id: nonce.toString("hex") };
+    return {
+      key: new Uint8Array(key),
+      id: nonce.toString("hex"),
+      expiresAt: Number(head.readBigUInt64BE()),
+    };
   } catch {
     throw new ContentError(MISMATCH);
   }

@@ -117,8 +117,8 @@ export function createDeal<E>(
   });
 }
 
-/** Codes this server already opened. shortcut: kept in memory, so a restart inside the 10 minutes forgets them. */
-const usedCodes = new Set<string>();
+/** Codes this server already opened, with when each expires (an expired code is refused anyway, so it is dropped). shortcut: kept in memory, so a restart inside the 10 minutes forgets them. */
+const usedCodes = new Map<string, number>();
 
 /**
  * A person makes a pairing code from this computer's approval key. The caller's scope check is
@@ -156,7 +156,8 @@ export function pairingAccept(
     const failure = () => rpcError("Could not save the key.");
     const current = yield* Effect.mapError(store.get(CONTENT_APPROVAL_KEY_NAME), failure);
     yield* Effect.mapError(store.set(CONTENT_APPROVAL_KEY_NAME, opened.key), failure);
-    usedCodes.add(opened.id);
+    for (const [id, expiresAt] of usedCodes) if (expiresAt < now) usedCodes.delete(id);
+    usedCodes.set(opened.id, opened.expiresAt);
     return {
       replacedKey:
         Option.isNone(current) || !Buffer.from(current.value).equals(Buffer.from(opened.key)),

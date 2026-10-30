@@ -14,6 +14,7 @@ describe("pairing code", () => {
     expect(openPairing(code.blob, code.pin, NOW + 1_000)).toEqual({
       key: KEY,
       id: expect.any(String),
+      expiresAt: code.expiresAt,
     });
   });
 
