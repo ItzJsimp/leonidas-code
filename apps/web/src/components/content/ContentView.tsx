@@ -27,6 +27,7 @@ import { cn } from "~/lib/utils";
 
 import { useAtomCommand } from "../../state/use-atom-command";
 
+import { type CreateDealFn, NewDealButton } from "./NewDealDialog";
 import {
   ALL_DEALS,
   attention,
@@ -38,7 +39,13 @@ import {
   rowsIn,
   stageLabel,
 } from "./content.logic";
-import { contentHistory, contentMove, contentSaveScript, useContent } from "./state";
+import {
+  contentCreateDeal,
+  contentHistory,
+  contentMove,
+  contentSaveScript,
+  useContent,
+} from "./state";
 import { VideoPanel } from "./VideoPanel";
 
 /** One thing a person does to a video. */
@@ -273,6 +280,7 @@ export function ContentScreen(props: {
   readonly canAct: boolean;
   readonly act: ActFn;
   readonly loadHistory: LoadHistoryFn;
+  readonly createDeal: CreateDealFn;
   readonly onRefresh: () => void;
   /** The deal the filter starts on. */
   readonly initialDeal?: string;
@@ -284,6 +292,7 @@ export function ContentScreen(props: {
   const next = filmNext(rows);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [started, setStarted] = useState<string | null>(null);
   const [undo, setUndo] = useState<{
     readonly label: string;
     readonly action: ContentAction;
@@ -295,6 +304,7 @@ export function ContentScreen(props: {
   const run = async (action: ContentAction, undoLabel?: string, back?: ContentStage) => {
     setBusy(true);
     setProblem(null);
+    setStarted(null);
     const result = await props.act(action);
     setBusy(false);
     if (typeof result === "string") {
@@ -372,8 +382,21 @@ export function ContentScreen(props: {
         title="Content"
         {...(list ? { count: rows.length } : {})}
         actions={
-          list && list.deals.length > 1 ? (
-            <DealFilter list={list} value={deal} onChange={setDeal} />
+          list && (props.canAct || list.deals.length > 1) ? (
+            <div className="flex items-center gap-2">
+              {props.canAct ? (
+                <NewDealButton
+                  create={props.createDeal}
+                  onCreated={(brand) => {
+                    setStarted(brand);
+                    props.onRefresh();
+                  }}
+                />
+              ) : null}
+              {list.deals.length > 1 ? (
+                <DealFilter list={list} value={deal} onChange={setDeal} />
+              ) : null}
+            </div>
           ) : undefined
         }
       />
@@ -408,6 +431,11 @@ export function ContentScreen(props: {
               className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive-foreground"
             >
               {problem}
+            </p>
+          ) : null}
+          {started ? (
+            <p role="status" className="rounded-md border px-3 py-2 text-sm">
+              Started {started}.
             </p>
           ) : null}
           {undo ? (
@@ -451,6 +479,7 @@ export function ContentView() {
   const runMove = useAtomCommand(contentMove);
   const runScript = useAtomCommand(contentSaveScript);
   const runHistory = useAtomCommand(contentHistory);
+  const runCreateDeal = useAtomCommand(contentCreateDeal);
   const act: ActFn = async (action) => {
     if (!environmentId) return "No workspace is open.";
     const ref = { deal: action.deal, file: action.file };
@@ -470,6 +499,13 @@ export function ContentView() {
     const result = await runHistory({ environmentId, input: ref });
     return AsyncResult.isSuccess(result) ? result.value : null;
   };
+  const createDeal: CreateDealFn = async (input) => {
+    if (!environmentId) return "No workspace is open.";
+    const result = await runCreateDeal({ environmentId, input });
+    return AsyncResult.isSuccess(result)
+      ? result.value.deal
+      : messageOf(squashAtomCommandFailure(result));
+  };
   return (
     <ContentScreen
       list={list}
@@ -479,6 +515,7 @@ export function ContentView() {
       canAct={canAct}
       act={act}
       loadHistory={loadHistory}
+      createDeal={createDeal}
       onRefresh={refresh}
     />
   );

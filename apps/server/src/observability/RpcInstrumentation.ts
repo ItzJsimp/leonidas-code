@@ -193,6 +193,7 @@ const RPC_AGGREGATES = {
   [WS_METHODS.contentHistory]: "workspace",
   [WS_METHODS.contentMove]: "workspace",
   [WS_METHODS.contentSaveScript]: "workspace",
+  [WS_METHODS.contentCreateDeal]: "workspace",
   [WS_METHODS.focusUpdate]: "workspace",
   [WS_METHODS.focusAttachment]: "workspace",
   [WS_METHODS.taskBoardUpdate]: "workspace",

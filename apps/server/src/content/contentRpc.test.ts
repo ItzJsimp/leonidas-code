@@ -80,6 +80,29 @@ describe("content web actions", () => {
     }).pipe(Effect.provide(keyLayer)),
   );
 
+  it.effect(
+    "a person starts a deal, it is committed, and a second try with the same brand fails",
+    () =>
+      Effect.gen(function* () {
+        const root = workspace();
+        const made = yield* ContentRpc.createDeal(Effect.succeed(root), {
+          brand: "Lumen Lamp",
+          deadline: "2026-12-01",
+        });
+        expect(made).toMatchObject({
+          recorded: true,
+          deal: { slug: "lumen-lamp", stage: "contracted" },
+        });
+        expect(g(root, "log", "-1", "--format=%s")).toBe("Content(Gersi): new deal lumen-lamp");
+        const list = yield* ContentRpc.list(Effect.succeed(root));
+        expect(list.deals.map((deal) => deal.slug)).toEqual(["acme-cases", "lumen-lamp"]);
+        const error = yield* Effect.flip(
+          ContentRpc.createDeal(Effect.succeed(root), { brand: "lumen lamp" }),
+        );
+        expect(error.message).toBe("A deal for lumen-lamp already exists.");
+      }).pipe(Effect.provide(keyLayer)),
+  );
+
   it.effect("a rule break comes back as a plain message", () =>
     Effect.gen(function* () {
       const root = workspace();
@@ -100,7 +123,11 @@ describe("content web actions", () => {
 
 describe("who can approve", () => {
   it("move and script edits need filesystem:write, which no agent access level holds", () => {
-    for (const method of [WS_METHODS.contentMove, WS_METHODS.contentSaveScript]) {
+    for (const method of [
+      WS_METHODS.contentMove,
+      WS_METHODS.contentSaveScript,
+      WS_METHODS.contentCreateDeal,
+    ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthFilesystemWriteScope);
       expect(clientRpcRequiredScopes(method, undefined)).toEqual([AuthFilesystemWriteScope]);
     }

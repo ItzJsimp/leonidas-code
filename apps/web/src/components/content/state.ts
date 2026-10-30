@@ -32,6 +32,11 @@ export const contentSaveScript = createEnvironmentRpcCommand(connectionAtomRunti
   tag: WS_METHODS.contentSaveScript,
 });
 
+export const contentCreateDeal = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "environment-data:content:create-deal",
+  tag: WS_METHODS.contentCreateDeal,
+});
+
 export const contentHistory = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "environment-data:content:history",
   tag: WS_METHODS.contentHistory,

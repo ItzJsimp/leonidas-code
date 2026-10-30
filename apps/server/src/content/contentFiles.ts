@@ -611,3 +611,79 @@ export function createVideo(
   );
   return findVideo(root, key, input.deal, file);
 }
+
+export interface DealInput {
+  readonly brand: string;
+  readonly contact?: string | undefined;
+  /** Free text, kept as written in the deal body. */
+  readonly terms?: string | undefined;
+  /** `YYYY-MM-DD`. */
+  readonly deadline?: string | undefined;
+  /** A Drive folder link or its id. */
+  readonly driveFolder?: string | undefined;
+  readonly briefLink?: string | undefined;
+}
+
+/** One line of text: any line break or run of spaces becomes a single space. */
+const oneLine = (text: string | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+const DRIVE_FOLDER_LINK = /\/folders\/([A-Za-z0-9_-]+)/;
+const DRIVE_FOLDER_ID = /^[A-Za-z0-9_-]{6,}$/;
+
+/**
+ * Starts a contracted deal by hand: `deals/<slug>/deal.md`. It never replaces a deal, and every
+ * value is one quoted line, so no text can add a frontmatter key or leave the `deals/` folder.
+ */
+export function createDeal(
+  root: string,
+  key: Uint8Array,
+  input: DealInput,
+  now: string,
+): ContentDeal {
+  const brand = oneLine(input.brand);
+  if (!brand) throw new ContentError("Type the brand name.");
+  if (!/[a-z0-9]/i.test(brand)) throw new ContentError("Use letters or numbers in the brand name.");
+  const deadline = oneLine(input.deadline);
+  if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+    throw new ContentError("Write the deadline as YYYY-MM-DD.");
+  }
+  const briefLink = oneLine(input.briefLink);
+  if (briefLink && !/^https?:\/\/\S+$/i.test(briefLink)) {
+    throw new ContentError("The brief must be a web link that starts with http or https.");
+  }
+  const drive = oneLine(input.driveFolder);
+  const driveId = DRIVE_FOLDER_LINK.exec(drive)?.[1] ?? (DRIVE_FOLDER_ID.test(drive) ? drive : "");
+  if (drive && !driveId) {
+    throw new ContentError("Paste a Drive folder link, or its id.");
+  }
+  const slug = slugOf(brand);
+  const contact = oneLine(input.contact);
+  const front = [
+    `id: ${JSON.stringify(`deal-${slug}`)}`,
+    "type: deal",
+    `brand: ${JSON.stringify(brand)}`,
+    'stage: "contracted"',
+    ...(contact ? [`contact: ${JSON.stringify(contact)}`] : []),
+    ...(deadline ? [`deadline: ${JSON.stringify(deadline)}`] : []),
+    ...(driveId ? [`drive_folder_id: ${JSON.stringify(driveId)}`] : []),
+    ...(briefLink ? [`brief: ${JSON.stringify(briefLink)}`] : []),
+    `created: ${JSON.stringify(now.slice(0, 10))}`,
+  ];
+  const terms = (input.terms ?? "").replaceAll("\r\n", "\n").trim();
+  NodeFS.mkdirSync(NodePath.join(root, DEALS_DIR), { recursive: true });
+  try {
+    NodeFS.mkdirSync(dealDir(root, slug));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new ContentError(`A deal for ${slug} already exists.`);
+    }
+    throw error;
+  }
+  NodeFS.writeFileSync(
+    NodePath.join(dealDir(root, slug), "deal.md"),
+    `---\n${front.join("\n")}\n---\n# ${brand}\n\n## Terms\n\n${terms}\n\n## Notes\n\n`,
+    { flag: "wx" },
+  );
+  const deal = readDeal(root, key, slug);
+  if (!deal) throw new ContentError("The new deal could not be read back.");
+  return deal;
+}

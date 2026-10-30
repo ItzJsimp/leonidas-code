@@ -2,6 +2,8 @@
 import {
   CONTENT_NO_WORKSPACE,
   type ContentActor,
+  type ContentCreateDealInput,
+  type ContentDealWriteResult,
   type ContentHistoryInput,
   type ContentListResult,
   type ContentMoveInput,
@@ -80,6 +82,23 @@ export function move<E>(resolveRoot: Effect.Effect<string | null, E>, input: Con
     const actor = await member(root);
     const video = ContentFiles.moveStage(root, key, input, actor, new Date().toISOString());
     return written(root, video, actor, "stage");
+  });
+}
+
+/** A person starts a deal by hand. The caller's scope check is what keeps agents out. */
+export function createDeal<E>(
+  resolveRoot: Effect.Effect<string | null, E>,
+  input: ContentCreateDealInput,
+) {
+  return withRoot(resolveRoot, async (root, key): Promise<ContentDealWriteResult> => {
+    const actor = await member(root);
+    const deal = ContentFiles.createDeal(root, key, input, new Date().toISOString());
+    const { committed, detail } = await recordChange(
+      root,
+      `${ContentFiles.DEALS_DIR}/${deal.slug}/deal.md`,
+      { actor, what: "deal", deal: deal.slug },
+    );
+    return { deal, recorded: committed, detail };
   });
 }
 

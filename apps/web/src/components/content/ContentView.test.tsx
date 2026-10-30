@@ -50,6 +50,7 @@ const render = async (props: Partial<Parameters<typeof ContentScreen>[0]> = {}) 
         canAct
         act={vi.fn(async () => "not used")}
         loadHistory={vi.fn(async () => null)}
+        createDeal={vi.fn(async () => "not used")}
         onRefresh={vi.fn()}
         {...props}
       />,
@@ -209,5 +210,59 @@ describe("video panel", () => {
     await press("Reader mode");
     const reader = container.querySelector<HTMLElement>('[data-reader="true"]');
     expect(reader?.className).toContain("text-2xl");
+  });
+});
+
+describe("new deal", () => {
+  const dialog = () => document.body.querySelector<HTMLElement>('[role="dialog"]');
+  const button = (name: string) =>
+    [...document.body.querySelectorAll("button")].find((b) => b.textContent?.trim() === name);
+  const type = async (label: string, value: string) => {
+    const field = document.body.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      `[aria-label="${label}"]`,
+    )!;
+    const proto = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(proto.prototype, "value")!.set!.call(field, value);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+
+  it("shows the button to a person, on the board and on the empty screen", async () => {
+    await render();
+    expect(button("New deal")).toBeDefined();
+    await render({ list: EMPTY_LIST });
+    expect(button("New deal")).toBeDefined();
+    await render({ canAct: false });
+    expect(button("New deal")).toBeUndefined();
+  });
+
+  it("starts a deal from the form, sends only the filled fields, and closes", async () => {
+    const createDeal = vi.fn(async () => fixtureList().deals[0]!);
+    const onRefresh = vi.fn();
+    await render({ createDeal, onRefresh });
+    await act(async () => button("New deal")!.click());
+    expect(button("Start deal")?.hasAttribute("disabled")).toBe(true);
+    await type("Brand", "Acme Cases");
+    await type("Deadline", "2026-12-01");
+    await act(async () => button("Start deal")!.click());
+    expect(createDeal).toHaveBeenCalledWith({ brand: "Acme Cases", deadline: "2026-12-01" });
+    expect(onRefresh).toHaveBeenCalled();
+    expect(dialog()).toBeNull();
+    expect(container.textContent).toContain("Started Acme Cases.");
+  });
+
+  it("keeps the form open with the server's words when the deal is refused", async () => {
+    const createDeal = vi.fn(async () => "A deal for acme-cases already exists.");
+    await render({ createDeal });
+    await act(async () => button("New deal")!.click());
+    await type("Brand", "Acme Cases");
+    await act(async () => button("Start deal")!.click());
+    expect(dialog()?.querySelector('[role="alert"]')?.textContent).toBe(
+      "A deal for acme-cases already exists.",
+    );
+    expect((document.body.querySelector('[aria-label="Brand"]') as HTMLInputElement).value).toBe(
+      "Acme Cases",
+    );
   });
 });

@@ -19,7 +19,9 @@ import {
   ContentMoveInput,
   ContentRpcError,
   ContentSaveScriptInput,
+  ContentCreateDealInput,
   ContentWriteResult,
+  ContentDealWriteResult,
 } from "./content.ts";
 import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
 import {
@@ -709,6 +711,7 @@ export const WS_METHODS = {
   contentHistory: "content.history",
   contentMove: "content.move",
   contentSaveScript: "content.saveScript",
+  contentCreateDeal: "content.createDeal",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
@@ -2156,6 +2159,13 @@ const WsContentSaveScriptRpc = Rpc.make(WS_METHODS.contentSaveScript, {
   error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
 });
 
+/** A person starts a deal by hand. No agent access level holds this scope. */
+const WsContentCreateDealRpc = Rpc.make(WS_METHODS.contentCreateDeal, {
+  payload: ContentCreateDealInput,
+  success: ContentDealWriteResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3345,6 +3355,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsContentHistoryRpc,
   WsContentMoveRpc,
   WsContentSaveScriptRpc,
+  WsContentCreateDealRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,

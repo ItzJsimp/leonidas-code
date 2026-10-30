@@ -153,3 +153,25 @@ export const ContentWriteResult = Schema.Struct({
   detail: Schema.String,
 });
 export type ContentWriteResult = typeof ContentWriteResult.Type;
+
+const Line = (max: number) => Schema.String.check(Schema.isMaxLength(max));
+
+/** The New deal form. Only the brand is needed; the rest is checked by the server. */
+export const ContentCreateDealInput = Schema.Struct({
+  ...WorkspaceRef,
+  brand: NonBlank.check(Schema.isMaxLength(120)),
+  contact: Schema.optional(Line(200)),
+  terms: Schema.optional(Line(5_000)),
+  deadline: Schema.optional(Line(10)),
+  driveFolder: Schema.optional(Line(300)),
+  briefLink: Schema.optional(Line(500)),
+});
+export type ContentCreateDealInput = typeof ContentCreateDealInput.Type;
+
+/** A saved deal, and whether its Git commit went in. `detail` says why not. */
+export const ContentDealWriteResult = Schema.Struct({
+  deal: ContentDeal,
+  recorded: Schema.Boolean,
+  detail: Schema.String,
+});
+export type ContentDealWriteResult = typeof ContentDealWriteResult.Type;
