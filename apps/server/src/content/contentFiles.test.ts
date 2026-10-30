@@ -8,6 +8,8 @@ import {
   ContentError,
   listDeals,
   moveStage,
+  sections,
+  setSection,
   readDeal,
   scriptHash,
   signApproval,
@@ -299,8 +301,8 @@ describe("moveStage", () => {
     const root = reviewWorkspace();
     const moved = move(root, "scripting", jake, "Make the hook shorter.");
     expect(moved.stage).toBe("scripting");
-    expect(moved.notes).toContain("Film outside.");
-    expect(moved.notes).toContain("Jake: Make the hook shorter.");
+    expect(moved.notes).toBe("Film outside.\n- 2026-10-29 Jake: Make the hook shorter.");
+    expect(moved.shotList).toBe("- Wide shot");
   });
 
   it("keeps CRLF files CRLF", () => {
@@ -317,5 +319,23 @@ describe("moveStage", () => {
     expect(() =>
       moveStage(root, KEY, { deal: "acme-cases", file: "09-none", to: "scripting" }, jake, NOW),
     ).toThrow("No video acme-cases/09-none.");
+  });
+});
+
+describe("setSection", () => {
+  const text =
+    "---\na: 1\n---\n## Idea\n\nsays this\n\n## Script\n\nold script\n\n## Notes\n\nkeep notes\n";
+
+  it("replaces a middle section and keeps the others", () => {
+    const parts = sections(setSection(text, "script", "new script\nSPOKEN: hi"));
+    expect([...parts.entries()]).toEqual([
+      ["idea", "says this"],
+      ["script", "new script\nSPOKEN: hi"],
+      ["notes", "keep notes"],
+    ]);
+  });
+
+  it("adds a missing section at the end", () => {
+    expect(sections(setSection(text, "Shot list", "- Wide")).get("shot list")).toBe("- Wide");
   });
 });

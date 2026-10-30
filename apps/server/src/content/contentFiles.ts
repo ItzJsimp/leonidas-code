@@ -359,12 +359,15 @@ export function setFront(text: string, fields: Readonly<Record<string, FrontValu
   const lines = match[1]!.split("\n");
   for (const [key, value] of Object.entries(fields)) {
     const at = lines.findIndex((line) => line.startsWith(`${key}:`));
-    let span = 1;
-    // A list or map value goes on in the indented or dash lines below the key.
-    while (at >= 0 && at + span < lines.length && /^(\s|-\s)/.test(lines[at + span]!)) span += 1;
     const line = value === null ? [] : [`${key}: ${yamlScalar(value)}`];
-    if (at >= 0) lines.splice(at, span, ...line);
-    else lines.push(...line);
+    if (at < 0) {
+      lines.push(...line);
+      continue;
+    }
+    // A list or map value goes on in the indented or dash lines below the key.
+    let span = 1;
+    while (at + span < lines.length && /^(\s|-\s)/.test(lines[at + span]!)) span += 1;
+    lines.splice(at, span, ...line);
   }
   return `---\n${lines.join("\n")}${match[2]}`.replaceAll("\n", eol);
 }
@@ -374,7 +377,7 @@ export function setSection(text: string, heading: string, content: string): stri
   const eol = eolOf(text);
   const lf = text.replaceAll("\r\n", "\n");
   const pattern = new RegExp(
-    `(^## +${escape(heading)}[ \t]*\n)([\s\S]*?)(?=^## |(?![\s\S]))`,
+    String.raw`(^## +${escape(heading)}[ \t]*\n)([\s\S]*?)(?=^## |(?![\s\S]))`,
     "mi",
   );
   const next = pattern.test(lf)
