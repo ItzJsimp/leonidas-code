@@ -59,7 +59,7 @@ it("keeps the notice visible and persists dismissal, with a route to pairing set
   expect(notice.timeout).toBe(0);
   expect(state.save).not.toHaveBeenCalled();
   notice.actionProps.onClick();
-  expect(state.navigate).toHaveBeenCalledWith({ to: "/settings/connections" });
+  expect(state.navigate).toHaveBeenCalledWith({ to: "/settings/environments" });
   expect(state.close).toHaveBeenCalledWith("notice");
   expect(state.save).toHaveBeenCalledWith(
     `t3code:permission-update:v1:env-${state.id}`,
