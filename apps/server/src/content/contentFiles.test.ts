@@ -4,7 +4,14 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
-import { listDeals, readDeal, signApproval, scriptHash } from "./contentFiles.ts";
+import {
+  ContentError,
+  listDeals,
+  moveStage,
+  readDeal,
+  scriptHash,
+  signApproval,
+} from "./contentFiles.ts";
 
 const KEY = new Uint8Array(32).fill(7);
 const roots: Array<string> = [];
@@ -235,5 +242,80 @@ describe("scorecard", () => {
       video("stage: idea", 'SPOKEN: "Add it today."'),
     );
     expect(readDeal(root, KEY, "acme-cases")!.videos[0]!.scorecard.doNotHits).toEqual([]);
+  });
+});
+
+describe("moveStage", () => {
+  const jake = { kind: "member", name: "Jake" } as const;
+  const agent = { kind: "agent", name: "thread t1" } as const;
+  const NOW = "2026-10-29T21:00:00.000Z";
+
+  function reviewWorkspace(stage = "script_review") {
+    const root = workspace();
+    write(root, "deals/acme-cases/deal.md", DEAL);
+    write(root, "deals/acme-cases/01-drop-test.md", video(`stage: ${stage}\nrevision: 0`));
+    return root;
+  }
+  const move = (root: string, to: string, actor: typeof jake | typeof agent, note?: string) =>
+    moveStage(
+      root,
+      KEY,
+      { deal: "acme-cases", file: "01-drop-test", to: to as never, ...(note ? { note } : {}) },
+      actor,
+      NOW,
+    );
+  const file = (root: string) =>
+    NodeFS.readFileSync(NodePath.join(root, "deals/acme-cases/01-drop-test.md"), "utf8");
+
+  it("a person's approval is signed and survives a fresh read", () => {
+    const root = reviewWorkspace();
+    const moved = move(root, "ready_to_film", jake);
+    expect(moved).toMatchObject({
+      stage: "ready_to_film",
+      approval: "approved",
+      approvedBy: "Jake",
+    });
+    expect(readDeal(root, KEY, "acme-cases")!.videos[0]!.stage).toBe("ready_to_film");
+    expect(file(root)).toContain(`stage_changed: "${NOW}"`);
+    expect(file(root)).toContain("revision: 0");
+  });
+
+  it("refuses an agent approval and leaves the file as it was", () => {
+    const root = reviewWorkspace();
+    const before = file(root);
+    expect(() => move(root, "ready_to_film", agent)).toThrow(ContentError);
+    expect(file(root)).toBe(before);
+  });
+
+  it("undo of an approval clears the approver", () => {
+    const root = reviewWorkspace();
+    move(root, "ready_to_film", jake);
+    const undone = move(root, "script_review", jake);
+    expect(undone).toMatchObject({ stage: "script_review", approval: "none" });
+    expect(file(root)).not.toContain("approval_sig");
+  });
+
+  it("request changes goes back to scripting with the note", () => {
+    const root = reviewWorkspace();
+    const moved = move(root, "scripting", jake, "Make the hook shorter.");
+    expect(moved.stage).toBe("scripting");
+    expect(moved.notes).toContain("Film outside.");
+    expect(moved.notes).toContain("Jake: Make the hook shorter.");
+  });
+
+  it("keeps CRLF files CRLF", () => {
+    const root = workspace();
+    write(root, "deals/acme-cases/deal.md", DEAL);
+    write(root, "deals/acme-cases/01-drop-test.md", video("stage: idea").replaceAll("\n", "\r\n"));
+    move(root, "scripting", agent);
+    expect(file(root)).toContain("stage: scripting\r\n");
+    expect(file(root).replaceAll("\r\n", "")).not.toContain("\n");
+  });
+
+  it("a missing video is a clear error", () => {
+    const root = reviewWorkspace();
+    expect(() =>
+      moveStage(root, KEY, { deal: "acme-cases", file: "09-none", to: "scripting" }, jake, NOW),
+    ).toThrow("No video acme-cases/09-none.");
   });
 });

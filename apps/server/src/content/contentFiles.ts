@@ -7,6 +7,7 @@ import {
   type ContentScorecard,
   type ContentStage,
   ContentVideo,
+  type ContentActor,
 } from "@t3tools/contracts";
 import * as Exit from "effect/Exit";
 import * as Schema from "effect/Schema";
@@ -14,6 +15,8 @@ import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import { parse as parseYaml } from "yaml";
+
+import { canMove } from "./stages.ts";
 
 /** Each contracted deal is `deals/<slug>/deal.md`. A `_` folder (like `_lens`) is never a deal. */
 export const DEALS_DIR = "deals";
@@ -331,4 +334,120 @@ export function listDeals(root: string, key: Uint8Array): Read<ContentDeal> {
 export function readDeal(root: string, key: Uint8Array, slug: string): ContentDeal | null {
   if (!isDealFolder(root, slug)) return null;
   return readDealIn(root, key, slug, readVoiceBible(root).bannedWords).deal;
+}
+
+type FrontValue = string | number | null;
+
+/** The file's line ending, so a write keeps CRLF files CRLF. */
+const eolOf = (text: string) => (text.includes("\r\n") ? "\r\n" : "\n");
+
+/** A plain word like `scripting` stays bare; anything YAML could misread is quoted. */
+const yamlScalar = (value: string | number) =>
+  typeof value === "number" ||
+  (/^[a-z][a-z0-9_]*$/.test(value) && !/^(true|false|yes|no|on|off|null|y|n)$/.test(value))
+    ? String(value)
+    : JSON.stringify(value);
+
+/**
+ * Sets top-level frontmatter keys in place; `null` removes one. Other lines and the body stay
+ * byte for byte, so Git shows only the real change.
+ */
+export function setFront(text: string, fields: Readonly<Record<string, FrontValue>>): string {
+  const eol = eolOf(text);
+  const match = /^---\n([\s\S]*?)(\n---[\s\S]*)$/.exec(text.replaceAll("\r\n", "\n"));
+  if (!match) throw new ContentError("The file has no frontmatter.");
+  const lines = match[1]!.split("\n");
+  for (const [key, value] of Object.entries(fields)) {
+    const at = lines.findIndex((line) => line.startsWith(`${key}:`));
+    let span = 1;
+    // A list or map value goes on in the indented or dash lines below the key.
+    while (at >= 0 && at + span < lines.length && /^(\s|-\s)/.test(lines[at + span]!)) span += 1;
+    const line = value === null ? [] : [`${key}: ${yamlScalar(value)}`];
+    if (at >= 0) lines.splice(at, span, ...line);
+    else lines.push(...line);
+  }
+  return `---\n${lines.join("\n")}${match[2]}`.replaceAll("\n", eol);
+}
+
+/** Replaces the text under one `## ` heading, or adds the section at the end. */
+export function setSection(text: string, heading: string, content: string): string {
+  const eol = eolOf(text);
+  const lf = text.replaceAll("\r\n", "\n");
+  const pattern = new RegExp(
+    `(^## +${escape(heading)}[ \t]*\n)([\s\S]*?)(?=^## |(?![\s\S]))`,
+    "mi",
+  );
+  const next = pattern.test(lf)
+    ? lf.replace(pattern, (_all, head: string, _old: string, offset: number) => {
+        const last = !/^## /m.test(lf.slice(offset + head.length));
+        return `${head}\n${content}\n${last ? "" : "\n"}`;
+      })
+    : `${lf.trimEnd()}\n\n## ${heading}\n\n${content}\n`;
+  return next.replaceAll("\n", eol);
+}
+
+/** One video as the lens reads it. A bad or missing file is a clear error. */
+export function findVideo(root: string, key: Uint8Array, deal: string, file: string): ContentVideo {
+  const video = readDeal(root, key, deal)?.videos.find((candidate) => candidate.file === file);
+  if (!video) throw new ContentError(`No video ${deal}/${file}.`);
+  return video;
+}
+
+export interface MoveInput {
+  readonly deal: string;
+  readonly file: string;
+  readonly to: ContentStage;
+  /** Added to Notes, for example the change a person asks for. */
+  readonly note?: string | undefined;
+}
+
+/**
+ * Moves a video one stage under the stage rules. A person's approval is signed over the exact
+ * script; a move back to review or earlier clears it.
+ */
+export function moveStage(
+  root: string,
+  key: Uint8Array,
+  input: MoveInput,
+  actor: ContentActor,
+  now: string,
+): ContentVideo {
+  const current = findVideo(root, key, input.deal, input.file);
+  const check = canMove(current.stage, input.to, actor.kind);
+  if (!check.ok) throw new ContentError(check.reason);
+  const approving = current.stage === "script_review" && input.to === "ready_to_film";
+  if (approving && actor.kind !== "member")
+    throw new ContentError("Only a person approves a script.");
+  const fields: Record<string, FrontValue> = { stage: input.to, stage_changed: now };
+  if (approving) {
+    const hash = scriptHash(current.script);
+    Object.assign(fields, {
+      approved_by: actor.name,
+      approved_at: now,
+      script_hash: hash,
+      approval_sig: signApproval(key, {
+        deal: input.deal,
+        file: input.file,
+        scriptHash: hash,
+        approvedBy: actor.name,
+        approvedAt: now,
+      }),
+    });
+  } else if (CONTENT_STAGES.indexOf(input.to) <= REVIEW) {
+    Object.assign(fields, {
+      approved_by: null,
+      approved_at: null,
+      script_hash: null,
+      approval_sig: null,
+    });
+  }
+  const path = videoPath(root, input.deal, input.file);
+  let text = setFront(NodeFS.readFileSync(path, "utf8"), fields);
+  const note = input.note?.trim();
+  if (note) {
+    const line = `- ${now.slice(0, 10)} ${actor.name}: ${note}`;
+    text = setSection(text, "Notes", current.notes ? `${current.notes}\n${line}` : line);
+  }
+  NodeFS.writeFileSync(path, text);
+  return findVideo(root, key, input.deal, input.file);
 }
