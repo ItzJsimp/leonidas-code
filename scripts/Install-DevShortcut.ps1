@@ -21,6 +21,8 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $taskName = 'Leonidas Code Dev Server'
 $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
+# Store updates change the versioned path; the WindowsApps alias survives them.
+if ($pwsh -match 'WindowsApps\\Microsoft\.PowerShell_') { $pwsh = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\pwsh.exe' }
 
 $envFile = Join-Path $repoRoot '.env'
 if (-not ((Test-Path -LiteralPath $envFile) -and (Select-String -LiteralPath $envFile -Pattern '^T3CODE_DEV_AUTH_TOKEN=' -Quiet))) {

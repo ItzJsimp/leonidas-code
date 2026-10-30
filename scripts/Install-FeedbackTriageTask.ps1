@@ -7,6 +7,8 @@
 $ErrorActionPreference = 'Stop'
 $taskName = 'Leonidas Feedback Triage'
 $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
+# Store updates change the versioned path; the WindowsApps alias survives them.
+if ($pwsh -match 'WindowsApps\\Microsoft\.PowerShell_') { $pwsh = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\pwsh.exe' }
 # Invoke-FeedbackTriage.ps1 deletes and refreshes its own worktree. A task that points inside it
 # loses its script (0x8007010B). Register only from a stable checkout.
 $workDir = 'C:/lcw/triage'
