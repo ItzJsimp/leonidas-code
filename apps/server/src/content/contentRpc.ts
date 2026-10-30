@@ -165,11 +165,15 @@ export function pairingAccept(
   });
 }
 
-/** Files changed in the workspace that are not under `deals/`: saved or new. */
+/**
+ * Files that Sync would share and that are not under `deals/`: changed or new on disk, or in a
+ * commit that is not pushed yet. With no upstream branch the last list is empty.
+ */
 async function changesOutsideDeals(root: string): Promise<ReadonlyArray<string>> {
   const tracked = await realGit(["diff", "--name-only", "-z", "HEAD"], root);
   const fresh = await realGit(["ls-files", "--others", "--exclude-standard", "-z"], root);
-  return [tracked, fresh]
+  const unpushed = await realGit(["diff", "--name-only", "-z", "@{upstream}...HEAD"], root);
+  return [tracked, fresh, unpushed]
     .flatMap((run) => (run.code === 0 ? run.out.split("\0") : []))
     .filter((path) => path !== "" && !path.startsWith(`${ContentFiles.DEALS_DIR}/`));
 }

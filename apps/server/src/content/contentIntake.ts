@@ -65,7 +65,7 @@ function readProposal(root: string, slug: string): ContentProposal | null {
   }
 }
 
-/** The proposed deals, oldest name first. An unreadable file is left out. */
+/** The proposed deals, in name order. An unreadable file is left out. */
 export function listProposals(root: string): ReadonlyArray<ContentProposal> {
   const dir = NodePath.dirname(proposalPath(root, "x"));
   if (!NodeFS.existsSync(dir)) return [];
@@ -76,6 +76,9 @@ export function listProposals(root: string): ReadonlyArray<ContentProposal> {
       return isSlug(slug) ? (readProposal(root, slug) ?? []) : [];
     });
 }
+
+/** Waiting proposals an agent may leave. A person clears the list by confirming or dismissing. */
+const MAX_PROPOSALS = 50;
 
 export interface Proposed {
   readonly intake: ContentIntake;
@@ -104,6 +107,11 @@ export function proposeDeal(
   const clean = normalizeDeal(input);
   if (NodeFS.existsSync(dealDir(root, clean.slug))) {
     throw new ContentError(`A deal for ${clean.slug} already exists.`);
+  }
+  if (listProposals(root).length >= MAX_PROPOSALS) {
+    throw new ContentError(
+      `There are ${MAX_PROPOSALS} proposed deals waiting. A person must confirm or dismiss some first.`,
+    );
   }
   const source = oneLine(input.source);
   const front = [

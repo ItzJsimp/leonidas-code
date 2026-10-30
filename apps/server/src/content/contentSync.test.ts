@@ -116,6 +116,24 @@ describe("content sync", () => {
     }),
   );
 
+  it.effect("refuses when an unpushed commit touches files outside deals/", () =>
+    Effect.gen(function* () {
+      const { bare, gersi } = pair();
+      const before = g(bare, "rev-parse", "main");
+      write(gersi, "notes/private.md", "committed on this computer only\n");
+      g(gersi, "add", "-A");
+      g(gersi, "commit", "-m", "private note");
+      write(
+        gersi,
+        "deals/acme-cases/01-drop-test.md",
+        VIDEO.replace("Built to last.", "Built tough."),
+      );
+      const error = yield* Effect.flip(sync(gersi));
+      expect(error.message).toContain("notes/private.md");
+      expect(g(bare, "rev-parse", "main")).toBe(before);
+    }),
+  );
+
   it.effect("says so when the folder is not a Git repo or no workspace is open", () =>
     Effect.gen(function* () {
       const plain = tempDir("content-sync-plain-");

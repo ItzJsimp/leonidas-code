@@ -111,6 +111,16 @@ describe("proposeDeal", () => {
     );
   });
 
+  it("stops at 50 waiting proposals, so an agent cannot flood the list", () => {
+    const root = workspace("propose");
+    for (let i = 0; i < 50; i++) proposeDeal(root, KEY, { brand: `Brand ${i}` }, AGENT, NOW);
+    expect(() => proposeDeal(root, KEY, { brand: "One more" }, AGENT, NOW)).toThrow(/50 proposed/);
+    decideProposal(root, KEY, "brand-0", "dismiss", NOW);
+    expect(proposeDeal(root, KEY, { brand: "One more" }, AGENT, NOW).proposal?.slug).toBe(
+      "one-more",
+    );
+  });
+
   it("keeps hostile text on its own line", () => {
     const root = workspace("propose");
     proposeDeal(root, KEY, { brand: "Evil", contact: "x\ntype: deal", source: "a\nb" }, AGENT, NOW);
