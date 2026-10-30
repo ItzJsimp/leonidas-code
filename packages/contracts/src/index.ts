@@ -73,6 +73,7 @@ export * from "./hardwareWatch.ts";
 export * from "./calendar.ts";
 export * from "./events.ts";
 export * from "./marketing.ts";
+export * from "./content.ts";
 export * from "./savedItem.ts";
 export * from "./devPreview.ts";
 export * from "./images.ts";

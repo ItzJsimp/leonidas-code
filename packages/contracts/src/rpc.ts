@@ -11,6 +11,26 @@ import {
   MarketingListResult,
   MarketingRpcError,
 } from "./marketing.ts";
+import {
+  ContentHistoryInput,
+  ContentHistoryResult,
+  ContentListInput,
+  ContentListResult,
+  ContentMoveInput,
+  ContentRpcError,
+  ContentSaveScriptInput,
+  ContentPairingAcceptInput,
+  ContentPairingStartInput,
+  ContentSyncInput,
+  ContentDecideDealInput,
+  ContentCreateDealInput,
+  ContentWriteResult,
+  ContentPairingAcceptResult,
+  ContentPairingCode,
+  ContentSyncResult,
+  ContentDecideDealResult,
+  ContentDealWriteResult,
+} from "./content.ts";
 import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
 import {
   McpAppCallToolInput,
@@ -695,6 +715,15 @@ export const WS_METHODS = {
   eventsAppend: "events.append",
   marketingList: "marketing.list",
   marketingDecide: "marketing.decide",
+  contentList: "content.list",
+  contentHistory: "content.history",
+  contentMove: "content.move",
+  contentSaveScript: "content.saveScript",
+  contentPairingAccept: "content.pairingAccept",
+  contentPairingStart: "content.pairingStart",
+  contentSync: "content.sync",
+  contentDecideDeal: "content.decideDeal",
+  contentCreateDeal: "content.createDeal",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
   hardwareGetInventory: "hardware.getInventory",
@@ -2114,6 +2143,69 @@ const WsMarketingDecideRpc = Rpc.make(WS_METHODS.marketingDecide, {
   error: Schema.Union([MarketingRpcError, EnvironmentAuthorizationError]),
 });
 
+/** Reads the Content screen: every folder deal and its videos in the open workspace. */
+const WsContentListRpc = Rpc.make(WS_METHODS.contentList, {
+  payload: ContentListInput,
+  success: ContentListResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** The latest agent draft of one video, to show beside the script as it is now. */
+const WsContentHistoryRpc = Rpc.make(WS_METHODS.contentHistory, {
+  payload: ContentHistoryInput,
+  success: ContentHistoryResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person moves a video: approve, request changes, mark filmed or undo. No agent access level holds this scope. */
+const WsContentMoveRpc = Rpc.make(WS_METHODS.contentMove, {
+  payload: ContentMoveInput,
+  success: ContentWriteResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person edits a script. No agent access level holds this scope. */
+const WsContentSaveScriptRpc = Rpc.make(WS_METHODS.contentSaveScript, {
+  payload: ContentSaveScriptInput,
+  success: ContentWriteResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person starts a deal by hand. No agent access level holds this scope. */
+const WsContentCreateDealRpc = Rpc.make(WS_METHODS.contentCreateDeal, {
+  payload: ContentCreateDealInput,
+  success: ContentDealWriteResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person confirms or dismisses a proposed deal. No agent access level holds this scope. */
+const WsContentDecideDealRpc = Rpc.make(WS_METHODS.contentDecideDeal, {
+  payload: ContentDecideDealInput,
+  success: ContentDecideDealResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person shares the deal files with the other computer: save, pull, push. No agent access level holds this scope. */
+const WsContentSyncRpc = Rpc.make(WS_METHODS.contentSync, {
+  payload: ContentSyncInput,
+  success: ContentSyncResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person makes a pairing code so another computer can verify approvals. No agent access level holds this scope. */
+const WsContentPairingStartRpc = Rpc.make(WS_METHODS.contentPairingStart, {
+  payload: ContentPairingStartInput,
+  success: ContentPairingCode,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
+/** A person enters a pairing code from another computer. No agent access level holds this scope. */
+const WsContentPairingAcceptRpc = Rpc.make(WS_METHODS.contentPairingAccept, {
+  payload: ContentPairingAcceptInput,
+  success: ContentPairingAcceptResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3299,6 +3391,15 @@ export const WsRpcGroup = RpcGroup.make(
   WsEventsAppendRpc,
   WsMarketingListRpc,
   WsMarketingDecideRpc,
+  WsContentListRpc,
+  WsContentHistoryRpc,
+  WsContentMoveRpc,
+  WsContentSaveScriptRpc,
+  WsContentPairingAcceptRpc,
+  WsContentPairingStartRpc,
+  WsContentSyncRpc,
+  WsContentDecideDealRpc,
+  WsContentCreateDealRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
   WsTaskBoardUpdateRpc,

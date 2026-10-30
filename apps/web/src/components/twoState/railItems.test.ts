@@ -15,13 +15,14 @@ const BASE = [
   "memory",
   "library",
   "content",
+  "deals",
   "images",
   "files",
   "subagents",
 ];
 
 describe("railItems", () => {
-  it("shows 13 main icons by default, in order", () => {
+  it("shows 14 main icons by default, in order", () => {
     const { main } = railItems({ business: false, builder: false, scribe: true });
     expect(ids(main)).toEqual(BASE);
   });
@@ -39,7 +40,7 @@ describe("railItems", () => {
   it("shows both extras, Team first", () => {
     const { main } = railItems({ business: true, builder: true, scribe: true });
     expect(ids(main)).toEqual([...BASE, "team", "developer"]);
-    expect(main).toHaveLength(15);
+    expect(main).toHaveLength(16);
   });
 
   it("hides the Scribe icon when the server is not Windows", () => {
@@ -72,6 +73,11 @@ describe("railItems", () => {
       label: "Marketing",
       tooltip: "Marketing: posts and campaigns",
     });
+    expect(main.find((item) => item.id === "deals")).toMatchObject({
+      to: "/content",
+      label: "Content",
+      tooltip: "Content: deals, scripts and what to film",
+    });
     expect(bottom.map((item) => item.to)).toEqual(["/usage", "/settings"]);
     expect(main.find((item) => item.id === "developer")?.alsoActiveOn).toEqual([
       "/git",
@@ -90,6 +96,7 @@ describe("activeRailId", () => {
     expect(activeRailId("/inbox", false)).toBe("inbox");
     expect(activeRailId("/settings/general", false)).toBe("settings");
     expect(activeRailId("/marketing", false)).toBe("content");
+    expect(activeRailId("/content", false)).toBe("deals");
   });
   it("marks Chat for the index page and for any chat", () => {
     expect(activeRailId("/", false)).toBe("chat");

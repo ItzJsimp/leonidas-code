@@ -34,6 +34,7 @@ import { Route as ChatImagesRouteImport } from './routes/_chat.images'
 import { Route as ChatGitRouteImport } from './routes/_chat.git'
 import { Route as ChatFilesRouteImport } from './routes/_chat.files'
 import { Route as ChatDeveloperRouteImport } from './routes/_chat.developer'
+import { Route as ChatContentRouteImport } from './routes/_chat.content'
 import { Route as ChatCommandCenterRouteImport } from './routes/_chat.command-center'
 import { Route as ChatBrainRouteImport } from './routes/_chat.brain'
 import { Route as ChatSettingsWorktreesRouteImport } from './routes/_chat.settings.worktrees'
@@ -186,6 +187,11 @@ const ChatFilesRoute = ChatFilesRouteImport.update({
 const ChatDeveloperRoute = ChatDeveloperRouteImport.update({
   id: '/developer',
   path: '/developer',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatContentRoute = ChatContentRouteImport.update({
+  id: '/content',
+  path: '/content',
   getParentRoute: () => ChatRoute,
 } as any)
 const ChatCommandCenterRoute = ChatCommandCenterRouteImport.update({
@@ -348,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/brain': typeof ChatBrainRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/content': typeof ChatContentRoute
   '/developer': typeof ChatDeveloperRoute
   '/files': typeof ChatFilesRoute
   '/git': typeof ChatGitRoute
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/brain': typeof ChatBrainRoute
   '/command-center': typeof ChatCommandCenterRoute
+  '/content': typeof ChatContentRoute
   '/developer': typeof ChatDeveloperRoute
   '/files': typeof ChatFilesRoute
   '/git': typeof ChatGitRoute
@@ -459,6 +467,7 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/_chat/brain': typeof ChatBrainRoute
   '/_chat/command-center': typeof ChatCommandCenterRoute
+  '/_chat/content': typeof ChatContentRoute
   '/_chat/developer': typeof ChatDeveloperRoute
   '/_chat/files': typeof ChatFilesRoute
   '/_chat/git': typeof ChatGitRoute
@@ -517,6 +526,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/brain'
     | '/command-center'
+    | '/content'
     | '/developer'
     | '/files'
     | '/git'
@@ -571,6 +581,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/brain'
     | '/command-center'
+    | '/content'
     | '/developer'
     | '/files'
     | '/git'
@@ -627,6 +638,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/_chat/brain'
     | '/_chat/command-center'
+    | '/_chat/content'
     | '/_chat/developer'
     | '/_chat/files'
     | '/_chat/git'
@@ -860,6 +872,13 @@ declare module '@tanstack/react-router' {
       path: '/developer'
       fullPath: '/developer'
       preLoaderRoute: typeof ChatDeveloperRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/content': {
+      id: '/_chat/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ChatContentRouteImport
       parentRoute: typeof ChatRoute
     }
     '/_chat/command-center': {
@@ -1131,6 +1150,7 @@ const ChatSettingsRouteWithChildren = ChatSettingsRoute._addFileChildren(
 interface ChatRouteChildren {
   ChatBrainRoute: typeof ChatBrainRoute
   ChatCommandCenterRoute: typeof ChatCommandCenterRoute
+  ChatContentRoute: typeof ChatContentRoute
   ChatDeveloperRoute: typeof ChatDeveloperRoute
   ChatFilesRoute: typeof ChatFilesRoute
   ChatGitRoute: typeof ChatGitRoute
@@ -1157,6 +1177,7 @@ interface ChatRouteChildren {
 const ChatRouteChildren: ChatRouteChildren = {
   ChatBrainRoute: ChatBrainRoute,
   ChatCommandCenterRoute: ChatCommandCenterRoute,
+  ChatContentRoute: ChatContentRoute,
   ChatDeveloperRoute: ChatDeveloperRoute,
   ChatFilesRoute: ChatFilesRoute,
   ChatGitRoute: ChatGitRoute,
