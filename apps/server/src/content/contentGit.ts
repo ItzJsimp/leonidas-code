@@ -22,7 +22,13 @@ export type Change =
       readonly file: string;
       readonly to: ContentStage;
     }
-  | { readonly actor: ContentActor; readonly what: "deal"; readonly deal: string };
+  | { readonly actor: ContentActor; readonly what: "deal"; readonly deal: string }
+  | {
+      readonly actor: ContentActor;
+      readonly what: "proposal";
+      readonly deal: string;
+      readonly outcome: "proposed" | "dismissed";
+    };
 
 export interface Recorded {
   readonly committed: boolean;
@@ -51,6 +57,10 @@ const baselineCount = async (git: Git, root: string, rel: string) => {
 async function messageFor(git: Git, root: string, change: Change): Promise<Array<string>> {
   if (change.what === "deal")
     return ["-m", `Content(${who(change.actor)}): new deal ${change.deal}`];
+  if (change.what === "proposal") {
+    const verb = change.outcome === "proposed" ? "proposed" : "dismissed proposed";
+    return ["-m", `Content(${who(change.actor)}): ${verb} deal ${change.deal}`];
+  }
   const ref = `${change.deal}/${change.file}`;
   if (change.what === "video") return ["-m", `Content(${who(change.actor)}): new video ${ref}`];
   if (change.what === "stage")
@@ -61,23 +71,24 @@ async function messageFor(git: Git, root: string, change: Change): Promise<Array
 }
 
 /**
- * Commits one file, and only that file: other staged or changed files stay as they are. Hooks
- * run as usual. A failure keeps the saved file and says why it is not in the history yet.
+ * Commits the named file, or files, and only those: other staged or changed files stay as they
+ * are. Hooks run as usual. A failure keeps the saved file and says why it is not in the history yet.
  */
 export function recordChange(
   root: string,
-  rel: string,
+  paths: string | ReadonlyArray<string>,
   change: Change,
   git: Git = realGit,
 ): Promise<Recorded> {
+  const rels = typeof paths === "string" ? [paths] : paths;
   return serial(root, async () => {
     const inside = await git(["rev-parse", "--is-inside-work-tree"], root);
     if (inside.code !== 0) return { committed: false, detail: "The workspace is not a Git repo." };
-    const add = await git(["add", "--", rel], root);
+    const add = await git(["add", "--", ...rels], root);
     if (add.code !== 0) return { committed: false, detail: add.out };
     const message = await messageFor(git, root, change);
     const identity = await identityArgs(git, root);
-    const commit = await git([...identity, "commit", "-q", ...message, "--", rel], root);
+    const commit = await git([...identity, "commit", "-q", ...message, "--", ...rels], root);
     return commit.code === 0
       ? { committed: true, detail: "" }
       : { committed: false, detail: commit.out };

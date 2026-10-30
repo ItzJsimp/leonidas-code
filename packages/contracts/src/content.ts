@@ -117,9 +117,31 @@ const VideoRef = { ...WorkspaceRef, deal: ContentSlug, file: ContentVideoFile };
 export const ContentListInput = Schema.Struct(WorkspaceRef);
 export type ContentListInput = typeof ContentListInput.Type;
 
+/** Who may start a deal: `manual` only a person; `ask` and `propose` let an agent propose one; `auto` lets it start one. */
+export const CONTENT_INTAKES = ["manual", "ask", "propose", "auto"] as const;
+export const ContentIntake = Schema.Literals(CONTENT_INTAKES);
+export type ContentIntake = typeof ContentIntake.Type;
+
+/** A deal an agent found. It is a file in `deals/_lens/proposed/`, never a deal, until a person confirms it. */
+export const ContentProposal = Schema.Struct({
+  slug: ContentSlug,
+  brand: NonBlank,
+  contact: Schema.optional(Schema.String),
+  terms: Schema.String,
+  deadline: Schema.optional(Schema.String),
+  driveFolderId: Schema.optional(Schema.String),
+  briefLink: Schema.optional(Schema.String),
+  /** Where the agent found it, in its own words. */
+  source: Schema.optional(Schema.String),
+  proposedBy: Schema.String,
+  created: Schema.String,
+});
+export type ContentProposal = typeof ContentProposal.Type;
+
 export const ContentListResult = Schema.Struct({
   deals: Schema.Array(ContentDeal),
   bad: Schema.Array(ContentBadRecord),
+  proposals: Schema.Array(ContentProposal),
 });
 export type ContentListResult = typeof ContentListResult.Type;
 
@@ -175,3 +197,19 @@ export const ContentDealWriteResult = Schema.Struct({
   detail: Schema.String,
 });
 export type ContentDealWriteResult = typeof ContentDealWriteResult.Type;
+
+/** A person's answer to a proposed deal: `confirm` starts the deal, `dismiss` drops the proposal. */
+export const ContentDecideDealInput = Schema.Struct({
+  ...WorkspaceRef,
+  slug: ContentSlug,
+  decision: Schema.Literals(["confirm", "dismiss"]),
+});
+export type ContentDecideDealInput = typeof ContentDecideDealInput.Type;
+
+/** The deal a `confirm` started. A `dismiss` has none. */
+export const ContentDecideDealResult = Schema.Struct({
+  deal: Schema.optional(ContentDeal),
+  recorded: Schema.Boolean,
+  detail: Schema.String,
+});
+export type ContentDecideDealResult = typeof ContentDecideDealResult.Type;

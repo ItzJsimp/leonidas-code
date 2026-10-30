@@ -1,6 +1,7 @@
 import type {
   ContentHistoryResult,
   ContentListResult,
+  ContentProposal,
   ContentStage,
   ContentVideo,
 } from "@t3tools/contracts";
@@ -28,6 +29,7 @@ import { cn } from "~/lib/utils";
 import { useAtomCommand } from "../../state/use-atom-command";
 
 import { type CreateDealFn, NewDealButton } from "./NewDealDialog";
+import { type DecideDealFn, ProposedDeals } from "./ProposedDeals";
 import {
   ALL_DEALS,
   attention,
@@ -41,6 +43,7 @@ import {
 } from "./content.logic";
 import {
   contentCreateDeal,
+  contentDecideDeal,
   contentHistory,
   contentMove,
   contentSaveScript,
@@ -281,6 +284,7 @@ export function ContentScreen(props: {
   readonly act: ActFn;
   readonly loadHistory: LoadHistoryFn;
   readonly createDeal: CreateDealFn;
+  readonly decideDeal: DecideDealFn;
   readonly onRefresh: () => void;
   /** The deal the filter starts on. */
   readonly initialDeal?: string;
@@ -333,6 +337,19 @@ export function ContentScreen(props: {
       video.stage,
     );
   const markFilmed = (video: ContentVideo) => move(video, "filmed");
+  const decide = async (proposal: ContentProposal, decision: "confirm" | "dismiss") => {
+    setBusy(true);
+    setProblem(null);
+    setStarted(null);
+    const refused = await props.decideDeal(proposal.slug, decision);
+    setBusy(false);
+    if (refused !== null) {
+      setProblem(refused);
+      return;
+    }
+    if (decision === "confirm") setStarted(proposal.brand);
+    props.onRefresh();
+  };
 
   const body = props.noWorkspace ? (
     <p role="status" className="text-sm text-muted-foreground">
@@ -458,6 +475,14 @@ export function ContentScreen(props: {
               </Button>
             </p>
           ) : null}
+          {list?.proposals.length ? (
+            <ProposedDeals
+              proposals={list.proposals}
+              canAct={props.canAct}
+              busy={busy}
+              onDecide={(proposal, decision) => void decide(proposal, decision)}
+            />
+          ) : null}
           {body}
         </div>
       </div>
@@ -480,6 +505,7 @@ export function ContentView() {
   const runScript = useAtomCommand(contentSaveScript);
   const runHistory = useAtomCommand(contentHistory);
   const runCreateDeal = useAtomCommand(contentCreateDeal);
+  const runDecideDeal = useAtomCommand(contentDecideDeal);
   const act: ActFn = async (action) => {
     if (!environmentId) return "No workspace is open.";
     const ref = { deal: action.deal, file: action.file };
@@ -506,6 +532,11 @@ export function ContentView() {
       ? result.value.deal
       : messageOf(squashAtomCommandFailure(result));
   };
+  const decideDeal: DecideDealFn = async (slug, decision) => {
+    if (!environmentId) return "No workspace is open.";
+    const result = await runDecideDeal({ environmentId, input: { slug, decision } });
+    return AsyncResult.isSuccess(result) ? null : messageOf(squashAtomCommandFailure(result));
+  };
   return (
     <ContentScreen
       list={list}
@@ -516,6 +547,7 @@ export function ContentView() {
       act={act}
       loadHistory={loadHistory}
       createDeal={createDeal}
+      decideDeal={decideDeal}
       onRefresh={refresh}
     />
   );

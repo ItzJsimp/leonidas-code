@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { EMPTY_LIST, fixtureList } from "./content.fixtures";
+import { EMPTY_LIST, fixtureList, PROPOSAL } from "./content.fixtures";
 
 vi.mock("@t3tools/client-runtime/state/runtime", () => ({
   createEnvironmentRpcQueryAtomFamily: () => () => null,
@@ -51,6 +51,7 @@ const render = async (props: Partial<Parameters<typeof ContentScreen>[0]> = {}) 
         act={vi.fn(async () => "not used")}
         loadHistory={vi.fn(async () => null)}
         createDeal={vi.fn(async () => "not used")}
+        decideDeal={vi.fn(async () => null)}
         onRefresh={vi.fn()}
         {...props}
       />,
@@ -263,6 +264,59 @@ describe("new deal", () => {
     );
     expect((document.body.querySelector('[aria-label="Brand"]') as HTMLInputElement).value).toBe(
       "Acme Cases",
+    );
+  });
+});
+
+describe("proposed deals", () => {
+  const withProposal = (list = fixtureList()) => ({ ...list, proposals: [PROPOSAL] });
+  const press = async (name: string) => {
+    const target = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === name,
+    );
+    if (!target) throw new Error(`no button ${name}`);
+    await act(async () => target.click());
+  };
+  const section = () => container.querySelector<HTMLElement>('[aria-label="Proposed deals"]');
+
+  it("lists a proposal above the board with where it came from, and it is not on the board", async () => {
+    await render({ list: withProposal() });
+    expect(section()?.textContent).toContain("Lumen Lamp Two");
+    expect(section()?.textContent).toContain("Email from Alex, Oct 28");
+    expect(section()?.textContent).toContain("thread t1");
+    expect(container.querySelector('[aria-label="Writing"] [data-deal="lumen-lamp-2"]')).toBeNull();
+  });
+
+  it("shows nothing when there is no proposal, and shows it on the empty screen too", async () => {
+    await render();
+    expect(section()).toBeNull();
+    await render({ list: { ...EMPTY_LIST, proposals: [PROPOSAL] } });
+    expect(section()?.textContent).toContain("Lumen Lamp Two");
+  });
+
+  it("gives Confirm and Dismiss to a person only", async () => {
+    await render({ list: withProposal(), canAct: false });
+    expect(section()?.textContent).toContain("Lumen Lamp Two");
+    expect(section()?.querySelectorAll("button").length).toBe(0);
+  });
+
+  it("confirms with one tap, refreshes and says so", async () => {
+    const decideDeal = vi.fn(async () => null);
+    const onRefresh = vi.fn();
+    await render({ list: withProposal(), decideDeal, onRefresh });
+    await press("Confirm");
+    expect(decideDeal).toHaveBeenCalledWith("lumen-lamp-2", "confirm");
+    expect(onRefresh).toHaveBeenCalled();
+    expect(container.textContent).toContain("Started Lumen Lamp Two.");
+  });
+
+  it("dismisses, and shows a refusal in the server's words", async () => {
+    const decideDeal = vi.fn(async () => "A deal for lumen-lamp-2 already exists.");
+    await render({ list: withProposal(), decideDeal });
+    await press("Dismiss");
+    expect(decideDeal).toHaveBeenCalledWith("lumen-lamp-2", "dismiss");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      "A deal for lumen-lamp-2 already exists.",
     );
   });
 });

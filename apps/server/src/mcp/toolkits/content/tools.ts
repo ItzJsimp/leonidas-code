@@ -1,6 +1,8 @@
 import {
   ContentBadRecord,
   ContentDeal,
+  ContentIntake,
+  ContentProposal,
   ContentSlug,
   ContentStage,
   ContentVideo,
@@ -127,8 +129,39 @@ export const ContentStageMoveTool = Tool.make("content_stage_move", {
   .annotate(Tool.Destructive, false)
   .annotate(Tool.OpenWorld, false);
 
+const Line = (max: number) => Schema.String.check(Schema.isMaxLength(max));
+
+export const ContentDealProposeTool = Tool.make("content_deal_propose", {
+  description:
+    "Propose a new deal you found, for example from an email. A person confirms it in the Content screen. It is refused when deal intake is manual. Fill only what the source says.",
+  parameters: Schema.Struct({
+    brand: Line(120),
+    contact: Schema.optional(Line(200)),
+    terms: Schema.optional(Line(5_000)),
+    deadline: Schema.optional(Line(10)),
+    driveFolder: Schema.optional(Line(300)),
+    briefLink: Schema.optional(Line(500)),
+    source: Schema.optional(Line(300)),
+  }),
+  success: Schema.Struct({
+    intake: ContentIntake,
+    proposal: Schema.optional(ContentProposal),
+    deal: Schema.optional(ContentDeal),
+    recorded: Schema.Boolean,
+    detail: Schema.String,
+  }),
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies,
+})
+  .annotate(Tool.Title, "Propose a deal")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.OpenWorld, false);
+
 export const ContentToolkit = Toolkit.make(
   ContentReadTool,
+  ContentDealProposeTool,
   ContentVideoCreateTool,
   ContentScriptSaveTool,
   ContentStageMoveTool,

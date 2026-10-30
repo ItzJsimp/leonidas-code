@@ -3015,6 +3015,8 @@ const layerWsRpc = (
         [WS_METHODS.contentMove]: (input) => ContentRpc.move(contentRoot(input.workspaceId), input),
         [WS_METHODS.contentSaveScript]: (input) =>
           ContentRpc.saveScript(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentDecideDeal]: (input) =>
+          ContentRpc.decideDeal(contentRoot(input.workspaceId), input),
         [WS_METHODS.contentCreateDeal]: (input) =>
           ContentRpc.createDeal(contentRoot(input.workspaceId), input),
         // Each change made through this server pushes a fresh list; no polling.

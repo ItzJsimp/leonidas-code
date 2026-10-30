@@ -1,4 +1,9 @@
-import type { ContentListResult, ContentStage, ContentVideo } from "@t3tools/contracts";
+import type {
+  ContentListResult,
+  ContentProposal,
+  ContentStage,
+  ContentVideo,
+} from "@t3tools/contracts";
 
 /** Made-up deals for tests and screenshots. No real brand or deal data. */
 export const video = (
@@ -87,6 +92,18 @@ export const fixtureList = (): ContentListResult => ({
     },
   ],
   bad: [],
+  proposals: [],
 });
 
-export const EMPTY_LIST: ContentListResult = { deals: [], bad: [] };
+export const PROPOSAL: ContentProposal = {
+  slug: "lumen-lamp-2",
+  brand: "Lumen Lamp Two",
+  contact: "Alex <alex@example.invalid>",
+  terms: "Two videos.",
+  deadline: "2026-12-01",
+  source: "Email from Alex, Oct 28",
+  proposedBy: "thread t1",
+  created: "2026-10-30",
+};
+
+export const EMPTY_LIST: ContentListResult = { deals: [], bad: [], proposals: [] };

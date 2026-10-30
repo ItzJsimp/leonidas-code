@@ -14,11 +14,15 @@ import { cleanTemp, g, tempDir, write } from "../areaSync/engine/testRepos.ts";
 import { mcpClientScopes } from "../auth/EnvironmentAuth.ts";
 import { requiredScopeForRpcMethod } from "../auth/RpcAuthorization.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
+import { proposalRel, proposeDeal } from "./contentIntake.ts";
+import { recordChange } from "./contentGit.ts";
 import * as ContentRpc from "./contentRpc.ts";
 
 const keyLayer = Layer.mock(ServerSecretStore.ServerSecretStore)({
   getOrCreateRandom: () => Effect.succeed(new Uint8Array(32).fill(7)),
 });
+
+const KEY = new Uint8Array(32).fill(7);
 
 afterEach(cleanTemp);
 
@@ -103,6 +107,66 @@ describe("content web actions", () => {
       }).pipe(Effect.provide(keyLayer)),
   );
 
+  it.effect("a person confirms a proposed deal: one commit holds the deal and the removal", () =>
+    Effect.gen(function* () {
+      const root = workspace();
+      write(root, "deals/_lens/settings.json", '{"deal_intake":"propose"}');
+      const agent = { kind: "agent", name: "thread t1" } as const;
+      const found = proposeDeal(root, KEY, { brand: "Lumen Lamp" }, agent, "2026-10-30T20:00:00Z");
+      yield* Effect.promise(() =>
+        recordChange(root, proposalRel("lumen-lamp"), {
+          actor: agent,
+          what: "proposal",
+          deal: "lumen-lamp",
+          outcome: "proposed",
+        }),
+      );
+      expect(found.proposal?.slug).toBe("lumen-lamp");
+      const list = yield* ContentRpc.list(Effect.succeed(root));
+      expect(list.proposals.map((proposal) => proposal.slug)).toEqual(["lumen-lamp"]);
+      expect(list.deals.map((deal) => deal.slug)).toEqual(["acme-cases"]);
+      const done = yield* ContentRpc.decideDeal(Effect.succeed(root), {
+        slug: "lumen-lamp",
+        decision: "confirm",
+      });
+      expect(done).toMatchObject({ recorded: true, deal: { slug: "lumen-lamp" } });
+      expect(g(root, "log", "-1", "--format=%s")).toBe("Content(Gersi): new deal lumen-lamp");
+      expect(g(root, "show", "--name-status", "--format=", "HEAD").split("\n").toSorted()).toEqual([
+        "A\tdeals/lumen-lamp/deal.md",
+        "D\tdeals/_lens/proposed/lumen-lamp.md",
+      ]);
+      const after = yield* ContentRpc.list(Effect.succeed(root));
+      expect(after.proposals).toEqual([]);
+    }).pipe(Effect.provide(keyLayer)),
+  );
+
+  it.effect("a person dismisses a proposed deal, and the history says so", () =>
+    Effect.gen(function* () {
+      const root = workspace();
+      write(root, "deals/_lens/settings.json", '{"deal_intake":"ask"}');
+      const agent = { kind: "agent", name: "thread t1" } as const;
+      proposeDeal(root, KEY, { brand: "Lumen Lamp" }, agent, "2026-10-30T20:00:00Z");
+      yield* Effect.promise(() =>
+        recordChange(root, proposalRel("lumen-lamp"), {
+          actor: agent,
+          what: "proposal",
+          deal: "lumen-lamp",
+          outcome: "proposed",
+        }),
+      );
+      expect(g(root, "log", "-1", "--format=%s")).toBe("Content(agent): proposed deal lumen-lamp");
+      const done = yield* ContentRpc.decideDeal(Effect.succeed(root), {
+        slug: "lumen-lamp",
+        decision: "dismiss",
+      });
+      expect(done).toMatchObject({ recorded: true });
+      expect(done.deal).toBeUndefined();
+      expect(g(root, "log", "-1", "--format=%s")).toBe(
+        "Content(Gersi): dismissed proposed deal lumen-lamp",
+      );
+    }).pipe(Effect.provide(keyLayer)),
+  );
+
   it.effect("a rule break comes back as a plain message", () =>
     Effect.gen(function* () {
       const root = workspace();
@@ -127,6 +191,7 @@ describe("who can approve", () => {
       WS_METHODS.contentMove,
       WS_METHODS.contentSaveScript,
       WS_METHODS.contentCreateDeal,
+      WS_METHODS.contentDecideDeal,
     ]) {
       expect(requiredScopeForRpcMethod(method)).toBe(AuthFilesystemWriteScope);
       expect(clientRpcRequiredScopes(method, undefined)).toEqual([AuthFilesystemWriteScope]);

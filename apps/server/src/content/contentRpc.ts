@@ -4,6 +4,8 @@ import {
   type ContentActor,
   type ContentCreateDealInput,
   type ContentDealWriteResult,
+  type ContentDecideDealInput,
+  type ContentDecideDealResult,
   type ContentHistoryInput,
   type ContentListResult,
   type ContentMoveInput,
@@ -18,6 +20,7 @@ import { realGit } from "../areaSync/engine/git.ts";
 import { contentApprovalKey } from "./approvalKey.ts";
 import * as ContentFiles from "./contentFiles.ts";
 import { recordChange, scriptHistory, videoRel } from "./contentGit.ts";
+import { decideProposal, listProposals } from "./contentIntake.ts";
 
 const rpcError = (message: string) => new ContentRpcError({ message });
 
@@ -65,7 +68,11 @@ async function written(
 export function list<E>(resolveRoot: Effect.Effect<string | null, E>) {
   return withRoot(resolveRoot, async (root, key): Promise<ContentListResult> => {
     const { records, bad } = ContentFiles.listDeals(root, key);
-    return { deals: [...records], bad: [...bad] };
+    return {
+      deals: [...records],
+      bad: [...bad],
+      proposals: [...listProposals(root)],
+    };
   });
 }
 
@@ -99,6 +106,31 @@ export function createDeal<E>(
       { actor, what: "deal", deal: deal.slug },
     );
     return { deal, recorded: committed, detail };
+  });
+}
+
+/** A person confirms or dismisses a proposed deal. The caller's scope check keeps agents out. */
+export function decideDeal<E>(
+  resolveRoot: Effect.Effect<string | null, E>,
+  input: ContentDecideDealInput,
+) {
+  return withRoot(resolveRoot, async (root, key): Promise<ContentDecideDealResult> => {
+    const actor = await member(root);
+    const { deal, paths } = decideProposal(
+      root,
+      key,
+      input.slug,
+      input.decision,
+      new Date().toISOString(),
+    );
+    const { committed, detail } = await recordChange(
+      root,
+      paths,
+      deal
+        ? { actor, what: "deal", deal: deal.slug }
+        : { actor, what: "proposal", deal: input.slug, outcome: "dismissed" },
+    );
+    return { ...(deal ? { deal } : {}), recorded: committed, detail };
   });
 }
 

@@ -625,20 +625,33 @@ export interface DealInput {
 }
 
 /** One line of text: any line break or run of spaces becomes a single space. */
-const oneLine = (text: string | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+export const oneLine = (text: string | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
 const DRIVE_FOLDER_LINK = /\/folders\/([A-Za-z0-9_-]+)/;
 const DRIVE_FOLDER_ID = /^[A-Za-z0-9_-]{6,}$/;
 
-/**
- * Starts a contracted deal by hand: `deals/<slug>/deal.md`. It never replaces a deal, and every
- * value is one quoted line, so no text can add a frontmatter key or leave the `deals/` folder.
- */
-export function createDeal(
-  root: string,
-  key: Uint8Array,
-  input: DealInput,
-  now: string,
-): ContentDeal {
+export interface CleanDeal {
+  readonly slug: string;
+  readonly brand: string;
+  readonly contact: string;
+  readonly terms: string;
+  readonly deadline: string;
+  readonly driveId: string;
+  readonly briefLink: string;
+}
+
+/** `key: "value"` lines for the filled fields. Every value is one quoted line, so no text adds a key. */
+export const dealFront = (clean: CleanDeal): Array<string> => [
+  `brand: ${JSON.stringify(clean.brand)}`,
+  ...(clean.contact ? [`contact: ${JSON.stringify(clean.contact)}`] : []),
+  ...(clean.deadline ? [`deadline: ${JSON.stringify(clean.deadline)}`] : []),
+  ...(clean.driveId ? [`drive_folder_id: ${JSON.stringify(clean.driveId)}`] : []),
+  ...(clean.briefLink ? [`brief: ${JSON.stringify(clean.briefLink)}`] : []),
+];
+
+export const isSlug = (text: string) => SLUG.test(text);
+
+/** Checks and cleans what a person or an agent typed for a deal. Throws a plain message. */
+export function normalizeDeal(input: DealInput): CleanDeal {
   const brand = oneLine(input.brand);
   if (!brand) throw new ContentError("Type the brand name.");
   if (!/[a-z0-9]/i.test(brand)) throw new ContentError("Use letters or numbers in the brand name.");
@@ -655,20 +668,36 @@ export function createDeal(
   if (drive && !driveId) {
     throw new ContentError("Paste a Drive folder link, or its id.");
   }
-  const slug = slugOf(brand);
-  const contact = oneLine(input.contact);
+  return {
+    slug: slugOf(brand),
+    brand,
+    contact: oneLine(input.contact),
+    terms: (input.terms ?? "").replaceAll("\r\n", "\n").trim(),
+    deadline,
+    driveId,
+    briefLink,
+  };
+}
+
+/**
+ * Starts a contracted deal: `deals/<slug>/deal.md`. It never replaces a deal, and no text can
+ * add a frontmatter key or leave the `deals/` folder.
+ */
+export function createDeal(
+  root: string,
+  key: Uint8Array,
+  input: DealInput,
+  now: string,
+): ContentDeal {
+  const clean = normalizeDeal(input);
+  const { slug, brand, terms } = clean;
   const front = [
     `id: ${JSON.stringify(`deal-${slug}`)}`,
     "type: deal",
-    `brand: ${JSON.stringify(brand)}`,
+    ...dealFront(clean),
     'stage: "contracted"',
-    ...(contact ? [`contact: ${JSON.stringify(contact)}`] : []),
-    ...(deadline ? [`deadline: ${JSON.stringify(deadline)}`] : []),
-    ...(driveId ? [`drive_folder_id: ${JSON.stringify(driveId)}`] : []),
-    ...(briefLink ? [`brief: ${JSON.stringify(briefLink)}`] : []),
     `created: ${JSON.stringify(now.slice(0, 10))}`,
   ];
-  const terms = (input.terms ?? "").replaceAll("\r\n", "\n").trim();
   NodeFS.mkdirSync(NodePath.join(root, DEALS_DIR), { recursive: true });
   try {
     NodeFS.mkdirSync(dealDir(root, slug));

@@ -118,6 +118,7 @@ describe("content tool kit", () => {
   it("holds read and draft tools only", () => {
     const names = Object.keys(ContentToolkit.tools).toSorted();
     expect(names).toEqual([
+      "content_deal_propose",
       "content_read",
       "content_script_save",
       "content_stage_move",
@@ -177,6 +178,25 @@ describe("content tool kit", () => {
         to: "script_review",
       });
       expect(moved.json.video.stage).toBe("script_review");
+    }).pipe(Effect.provide(server(root)));
+  });
+
+  it.effect("proposes a deal only when intake allows it, and a proposal is not a deal", () => {
+    const root = workspace();
+    const brand = { brand: "Lumen Lamp", source: "Email from Alex, Oct 28" };
+    return Effect.gen(function* () {
+      const refused = yield* call("content_deal_propose", brand);
+      expect(refused.isError).toBe(true);
+      expect(refused.json.message).toContain("manual");
+      put(root, "deals/_lens/settings.json", '{"deal_intake":"propose"}');
+      const made = yield* call("content_deal_propose", brand);
+      expect(made.json).toMatchObject({
+        intake: "propose",
+        proposal: { slug: "lumen-lamp", source: "Email from Alex, Oct 28" },
+      });
+      expect(made.json.deal).toBeUndefined();
+      const list = yield* call("content_read");
+      expect(list.json.deals.map((deal: { slug: string }) => deal.slug)).toEqual(["acme-cases"]);
     }).pipe(Effect.provide(server(root)));
   });
 

@@ -19,8 +19,10 @@ import {
   ContentMoveInput,
   ContentRpcError,
   ContentSaveScriptInput,
+  ContentDecideDealInput,
   ContentCreateDealInput,
   ContentWriteResult,
+  ContentDecideDealResult,
   ContentDealWriteResult,
 } from "./content.ts";
 import { EventsAppendInput, EventsSubscribeInput, FeedEventError, FeedUpdate } from "./events.ts";
@@ -711,6 +713,7 @@ export const WS_METHODS = {
   contentHistory: "content.history",
   contentMove: "content.move",
   contentSaveScript: "content.saveScript",
+  contentDecideDeal: "content.decideDeal",
   contentCreateDeal: "content.createDeal",
   focusUpdate: "focus.update",
   focusAttachment: "focus.attachment",
@@ -2166,6 +2169,13 @@ const WsContentCreateDealRpc = Rpc.make(WS_METHODS.contentCreateDeal, {
   error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
 });
 
+/** A person confirms or dismisses a proposed deal. No agent access level holds this scope. */
+const WsContentDecideDealRpc = Rpc.make(WS_METHODS.contentDecideDeal, {
+  payload: ContentDecideDealInput,
+  success: ContentDecideDealResult,
+  error: Schema.Union([ContentRpcError, EnvironmentAuthorizationError]),
+});
+
 const WsFocusSubscribeRpc = Rpc.make(WS_METHODS.focusSubscribe, {
   payload: FocusSubscribeInput,
   success: FocusSnapshot,
@@ -3355,6 +3365,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsContentHistoryRpc,
   WsContentMoveRpc,
   WsContentSaveScriptRpc,
+  WsContentDecideDealRpc,
   WsContentCreateDealRpc,
   WsFocusUpdateRpc,
   WsFocusAttachmentRpc,
