@@ -560,7 +560,7 @@ function HotkeyRow(props: {
         <Input
           className="w-56"
           aria-label={`Add a shortcut for ${props.label}`}
-          placeholder="Ctrl + Shift + T"
+          placeholder="Type keys or press Record"
           value={text}
           onChange={(event) => setText(event.target.value)}
         />

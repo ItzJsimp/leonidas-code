@@ -235,7 +235,7 @@ function FixesPane(props: {
   return (
     <div className="flex flex-col gap-3">
       <form
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
@@ -249,7 +249,8 @@ function FixesPane(props: {
             onChange={(event) => setWrong(event.target.value)}
           />
         </div>
-        <span aria-hidden className="text-muted-foreground">
+        {/* On a phone the fields stack, and an arrow alone on a line reads as a stray mark. */}
+        <span aria-hidden className="text-muted-foreground max-sm:hidden">
           →
         </span>
         <div className="min-w-48 flex-1">
