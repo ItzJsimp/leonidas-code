@@ -14,6 +14,8 @@ $ErrorActionPreference = 'Stop'
 $taskName = 'Leonidas Dev Laptop Sync'
 $root = if (Test-Path -LiteralPath 'C:/lcw/dev-live/scripts/Send-DevToLaptop.ps1') { 'C:/lcw/dev-live' } else { Split-Path -Parent $PSScriptRoot }
 $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
+# Store updates change the versioned path; the WindowsApps alias survives them.
+if ($pwsh -match 'WindowsApps\\Microsoft\.PowerShell_') { $pwsh = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\pwsh.exe' }
 $action = New-ScheduledTaskAction -Execute $pwsh -WorkingDirectory $root `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$root/scripts/Send-DevToLaptop.ps1`" -Laptop $Laptop"
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
