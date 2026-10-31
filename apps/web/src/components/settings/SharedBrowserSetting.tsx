@@ -77,21 +77,25 @@ export function SharedBrowserSetting() {
       settingKeys={["enableSharedBrowser"]}
       title="Shared browser"
       description={
-        <div className="space-y-2">
-          <p>
+        <span className="block space-y-2">
+          <span className="block">
             Use one website login profile on {target?.label ?? "the selected computer"}. Sign-ins
             stay on that server, including when you connect from a phone.
-          </p>
-          <p>Disconnect keeps saved logins. Your normal Chrome profile stays separate.</p>
-          <p>
+          </span>
+          <span className="block">
+            Disconnect keeps saved logins. Your normal Chrome profile stays separate.
+          </span>
+          <span className="block">
             Provider support requires Leonidas Code Preview tools. Providers without those tools
             cannot use this connection.
-          </p>
+          </span>
           {!browserAccess ? (
-            <p>AI browser access is off. Turn it on above to let agents use this profile.</p>
+            <span className="block">
+              AI browser access is off. Turn it on above to let agents use this profile.
+            </span>
           ) : null}
           {!environmentScope ? (
-            <p>Select a computer in Settings to change this connection.</p>
+            <span className="block">Select a computer in Settings to change this connection.</span>
           ) : null}
           {enabled ? (
             <Button
@@ -104,15 +108,17 @@ export function SharedBrowserSetting() {
             </Button>
           ) : null}
           {enabled && !thread ? (
-            <p>Create a thread on the selected server, then open the shared browser.</p>
+            <span className="block">
+              Create a thread on the selected server, then open the shared browser.
+            </span>
           ) : null}
-          <p role="status">
+          <span className="block" role="status">
             {result ??
               (enabled
                 ? "Enabled for AI access. Open the browser to sign in or check a site."
                 : "Disconnected. AI accounts cannot use this profile.")}
-          </p>
-        </div>
+          </span>
+        </span>
       }
       control={
         <Switch
