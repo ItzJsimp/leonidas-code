@@ -40,6 +40,7 @@ import {
   isPonytailPluginEnabled,
   readCodexPonytailState,
 } from "./provider/PonytailEnsure.ts";
+import { readReleaseStatus } from "./releaseStatus/releaseStatus.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -3099,6 +3100,7 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeWeather]: (input) =>
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
+        [WS_METHODS.releaseStatusRuns]: () => Effect.promise(() => readReleaseStatus()),
         [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
         [WS_METHODS.calendarEvents]: (input) => calendar.events(input),
         [WS_METHODS.calendarTestLink]: (input) => calendar.testLink(input.url),

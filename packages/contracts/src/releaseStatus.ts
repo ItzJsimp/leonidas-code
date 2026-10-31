@@ -28,5 +28,9 @@ export const ReleaseRun = Schema.Struct({
 export type ReleaseRun = typeof ReleaseRun.Type;
 
 /** The newest release workflow runs, newest first. Read-only, behind `release:read`. */
-export const ReleaseStatus = Schema.Struct({ runs: Schema.Array(ReleaseRun) });
+/** `error` is set when `gh` could not be read, so a broken read never looks like "no releases". */
+export const ReleaseStatus = Schema.Struct({
+  runs: Schema.Array(ReleaseRun),
+  error: Schema.NullOr(Schema.String),
+});
 export type ReleaseStatus = typeof ReleaseStatus.Type;
