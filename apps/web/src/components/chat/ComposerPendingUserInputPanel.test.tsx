@@ -24,9 +24,10 @@ const prompt: PendingUserInput = {
   dismissible: true,
 };
 
-function renderPanel(pendingUserInput: PendingUserInput = prompt) {
+function renderPanel(pendingUserInput: PendingUserInput = prompt, cacheNote: string | null = null) {
   return renderToStaticMarkup(
     <ComposerPendingUserInputPanel
+      cacheNote={cacheNote}
       pendingUserInputs={[pendingUserInput]}
       respondingRequestIds={[]}
       answers={{}}
@@ -51,6 +52,13 @@ describe("ComposerPendingUserInputPanel", () => {
     const controlledId = toggle?.match(/aria-controls="([^"]+)"/)?.[1];
     expect(controlledId).toBeDefined();
     expect(markup).toMatch(new RegExp(`<div[^>]*\\sid="${controlledId}"`));
+  });
+
+  it("shows the cache note only when one is given", () => {
+    expect(renderPanel()).not.toContain("Cache ended");
+    expect(
+      renderPanel(prompt, "Cache ended while this waited. Your answer may cost more."),
+    ).toContain("Cache ended while this waited.");
   });
 
   it("offers a visible Skip control for live and async questions", () => {
