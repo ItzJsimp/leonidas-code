@@ -2968,7 +2968,6 @@ function AttemptFoldTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "at
 
 function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" }> }) {
   const ctx = use(TimelineRowCtx);
-  const activity = use(TimelineRowActivityCtx);
   const aiLevel =
     useAtomValue(serverEnvironment.settingsValueAtom(ctx.activeThreadEnvironmentId))?.aiLevel ??
     "new";
@@ -2999,11 +2998,6 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
             <AssistantOutput
               onReply={ctx.onDockReply}
               simple={aiLevel !== "builder"}
-              onUndo={
-                undoTarget && !activity.isWorking && !activity.isRevertingCheckpoint
-                  ? () => ctx.onRevertToTurnCount(undoTarget.turnCount, undoTarget.messageId)
-                  : undefined
-              }
               text={messageText}
               cwd={ctx.markdownCwd}
               threadRef={ctx.threadRef ?? undefined}

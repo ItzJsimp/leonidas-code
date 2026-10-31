@@ -1,7 +1,10 @@
+import { ChevronRightIcon } from "lucide-react";
 import { useMemo, type ComponentProps } from "react";
-import { parseOutputDock, type DockSection } from "@t3tools/shared/outputDock";
+import { parseOutputDock, type DockSection, type DockStatus } from "@t3tools/shared/outputDock";
 import ChatMarkdown from "../ChatMarkdown";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 
 /** Actions prepare a draft; the composer remains the only place that sends it. */
 /** Fixed reply for the "Explain simpler" button. */
@@ -11,14 +14,11 @@ export const EXPLAIN_SIMPLER_REPLY =
 export function OutputDock({
   sections,
   onReply,
-  onUndo,
   simple = false,
   renderMarkdown,
 }: {
   sections: DockSection[];
   onReply?: ((text: string) => void) | undefined;
-  /** Reverts the files and chat to before this turn; absent when the turn has no checkpoint. */
-  onUndo?: (() => void) | undefined;
   /** Below the builder level: hide Next Actions and show the Explain simpler button. */
   simple?: boolean | undefined;
   renderMarkdown: (text: string) => React.ReactNode;
@@ -82,30 +82,15 @@ export function OutputDock({
           </div>
         </section>
       ))}
-      {onUndo || (simple && onReply) ? (
-        <div className="flex flex-wrap gap-2">
-          {onUndo ? (
-            <Button
-              type="button"
-              size="xs"
-              variant="outline"
-              onClick={onUndo}
-              title="Your files and this chat go back to before this turn"
-            >
-              Undo this turn
-            </Button>
-          ) : null}
-          {simple && onReply ? (
-            <Button
-              type="button"
-              size="xs"
-              variant="outline"
-              onClick={() => onReply(EXPLAIN_SIMPLER_REPLY)}
-            >
-              Explain simpler
-            </Button>
-          ) : null}
-        </div>
+      {simple && onReply ? (
+        <Button
+          type="button"
+          size="xs"
+          variant="outline"
+          onClick={() => onReply(EXPLAIN_SIMPLER_REPLY)}
+        >
+          Explain simpler
+        </Button>
       ) : null}
       {onReply ? (
         <p className="text-xs text-muted-foreground">
@@ -116,14 +101,59 @@ export function OutputDock({
   );
 }
 
+const STATUS = {
+  done: { label: "Done", variant: "success" },
+  "need-you": { label: "Need you", variant: "warning" },
+  blocked: { label: "Blocked", variant: "error" },
+} as const;
+const ATTENTION = { none: "No thought needed", glance: "Quick look", think: "Needs thought" };
+
+/** Status pills above the reply, and the body folded under Details past 3 lines. */
+export function ReplyBody({
+  status,
+  body,
+  renderMarkdown,
+}: {
+  status?: DockStatus | undefined;
+  body: string;
+  renderMarkdown: (text: string) => React.ReactNode;
+}) {
+  const lines = body.split("\n").filter((line) => line.trim()).length;
+  return (
+    <>
+      {status ? (
+        <div data-status-bar className="mb-3 flex flex-wrap items-center gap-2">
+          <Badge variant={STATUS[status.state].variant}>{STATUS[status.state].label}</Badge>
+          <Badge variant="outline">{ATTENTION[status.attention]}</Badge>
+          {status.place ? (
+            <span className="min-w-0 truncate text-xs text-muted-foreground">{status.place}</span>
+          ) : null}
+        </div>
+      ) : null}
+      {lines > 3 ? (
+        <Collapsible>
+          <CollapsibleTrigger className="group/details flex min-h-8 items-center gap-1.5 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
+            <ChevronRightIcon
+              aria-hidden
+              className="size-3.5 shrink-0 transition-transform duration-200 group-data-panel-open/details:rotate-90"
+            />
+            Details
+          </CollapsibleTrigger>
+          <CollapsiblePanel>{renderMarkdown(body)}</CollapsiblePanel>
+        </Collapsible>
+      ) : lines > 0 ? (
+        renderMarkdown(body)
+      ) : null}
+    </>
+  );
+}
+
 export function AssistantOutput({
   onReply,
-  onUndo,
   simple,
   ...props
 }: ComponentProps<typeof ChatMarkdown> & {
   onReply?: ((text: string) => void) | undefined;
-  onUndo?: (() => void) | undefined;
   simple?: boolean | undefined;
 }) {
   const dock = useMemo(
@@ -133,11 +163,14 @@ export function AssistantOutput({
   if (!dock) return <ChatMarkdown {...props} />;
   return (
     <>
-      <ChatMarkdown {...props} text={dock.body} />
+      <ReplyBody
+        status={dock.status}
+        body={dock.body}
+        renderMarkdown={(text) => <ChatMarkdown {...props} text={text} />}
+      />
       <OutputDock
         sections={dock.sections}
         onReply={onReply}
-        onUndo={onUndo}
         simple={simple}
         renderMarkdown={(text) => <ChatMarkdown {...props} text={text} />}
       />
