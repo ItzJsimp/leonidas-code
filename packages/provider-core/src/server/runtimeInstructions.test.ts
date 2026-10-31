@@ -106,6 +106,16 @@ describe("user question instructions", () => {
     expect(instructions).toContain('end its label with " (Recommended)"');
     expect(instructions).toContain("whole frontier in one call");
   });
+
+  it("keeps option descriptions to one short sentence, with the win and flip cues", () => {
+    const instructions = buildRuntimeInstructions({ harness: "Codex", aiLevel: "builder" });
+    expect(instructions).toContain("at most 20 words");
+    expect(instructions).toContain("Wins when:");
+    expect(instructions).toContain("Why:");
+    expect(instructions).toContain("Flips if:");
+    // The old rule asked for a "full explanation", which produced 40-word blocks.
+    expect(instructions).not.toContain("full explanation");
+  });
 });
 
 describe("AI level", () => {
