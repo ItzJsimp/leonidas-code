@@ -2358,6 +2358,35 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
 
+    it.effect("Changes totals follow a checkout made between two status reads", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+        yield* git(cwd, ["checkout", "-b", "feature/totals"]);
+        yield* writeTextFile(cwd, "feature.txt", "a\nb\nc\n");
+        yield* git(cwd, ["add", "feature.txt"]);
+        yield* git(cwd, ["commit", "-m", "feature work"]);
+
+        // The first read caches the repository paths while feature/totals is checked out.
+        const onFeature = yield* driver.statusDetailsLocal(cwd, { includeBranchChanges: true });
+        assert.deepStrictEqual(onFeature.branchChanges, {
+          baseRef: initialBranch,
+          insertions: 3,
+          deletions: 0,
+        });
+
+        yield* git(cwd, ["checkout", initialBranch]);
+        const onBase = yield* driver.statusDetailsLocal(cwd, { includeBranchChanges: true });
+        assert.strictEqual(onBase.branch, initialBranch);
+        assert.deepStrictEqual(onBase.branchChanges, {
+          baseRef: null,
+          insertions: 0,
+          deletions: 0,
+        });
+      }),
+    );
+
     it.effect("Changes does not show newer base commits as deletions", () =>
       Effect.gen(function* () {
         const cwd = yield* makeTmpDir();
