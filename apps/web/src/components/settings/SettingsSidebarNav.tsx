@@ -211,11 +211,12 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
       void navigate({
         to,
         hash: "",
-        replace: true,
+        // From the phone list, push so back returns to the list.
+        replace: pathname !== "/settings",
         hashScrollIntoView: false,
       });
     },
-    [navigate],
+    [navigate, pathname],
   );
   const clearSearch = useCallback(() => {
     setQuery("");
@@ -233,7 +234,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
       void navigate({
         to: item.to,
         hash: targetId,
-        replace: true,
+        replace: pathname !== "/settings",
         hashScrollIntoView: false,
         state: { settingsTargetHighlight: true },
       });
@@ -267,15 +268,21 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
     },
     [activeResultIndex, clearSearch, handleSearchResultClick, isSearching, results],
   );
-  const labelClassName = cn("truncate", !compactSearchOpen && "max-md:sr-only");
+  // Below md `/settings` is the full-width labeled list; a section hides the nav.
+  const onPhoneList = pathname === "/settings";
+  const expanded = compactSearchOpen || onPhoneList;
+  const labelClassName = cn("truncate", !expanded && "max-md:sr-only");
   return (
     <nav
       aria-label="Settings sections"
       data-settings-nav=""
       className={cn(
-        "flex w-60 shrink-0 flex-col border-e bg-sidebar text-sidebar-foreground max-md:w-14",
-        compactSearchOpen &&
-          "max-md:absolute max-md:inset-y-0 max-md:start-0 max-md:z-10 max-md:w-full",
+        "flex w-60 shrink-0 flex-col border-e bg-sidebar text-sidebar-foreground",
+        onPhoneList
+          ? "max-md:w-full max-md:border-e-0"
+          : compactSearchOpen
+            ? "max-md:absolute max-md:inset-y-0 max-md:start-0 max-md:z-10 max-md:w-full"
+            : "max-md:hidden",
       )}
     >
       <SidebarContent className="overflow-x-hidden">
@@ -284,7 +291,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
             <div
               className={cn(
                 "flex h-8 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground",
-                !compactSearchOpen && "max-md:hidden",
+                !expanded && "max-md:hidden",
               )}
             >
               <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
@@ -375,7 +382,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
               </SidebarMenu>
             ) : (
               <>
-                {compactSearchOpen ? null : (
+                {expanded ? null : (
                   <SidebarMenu className="md:hidden">
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -397,7 +404,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                       <p
                         className={cn(
                           "px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground uppercase",
-                          !compactSearchOpen && "max-md:hidden",
+                          !expanded && "max-md:hidden",
                         )}
                       >
                         {group.heading}
@@ -439,7 +446,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                   <p
                     className={cn(
                       "px-2 pt-2 pb-1 text-2xs font-medium tracking-wide text-sidebar-muted-foreground uppercase",
-                      !compactSearchOpen && "max-md:hidden",
+                      !expanded && "max-md:hidden",
                     )}
                   >
                     Help
