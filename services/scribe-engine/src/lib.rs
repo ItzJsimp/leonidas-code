@@ -6,6 +6,7 @@ pub mod config;
 pub mod contract;
 pub mod credentials;
 pub mod dictionary;
+pub mod dictionary_sync;
 pub mod engine;
 pub mod errlog;
 pub mod foreground;
