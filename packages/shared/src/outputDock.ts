@@ -8,12 +8,36 @@ export const DOCK_HEADINGS = {
 type DockKind = (typeof DOCK_HEADINGS)[keyof typeof DOCK_HEADINGS];
 export type DockItem =
   | { kind: "markdown"; text: string }
-  | { kind: "action"; text: string; checked: boolean }
   | { kind: "option"; text: string; letter: string; reply: string }
   | { kind: "replies"; replies: string[] }
-  /** Choices the agent made without asking; each one is a chip the user can tap to change. */
-  | { kind: "assumptions"; choices: string[] };
+  /** The next best move of a finished session; its button fills the composer. */
+  | { kind: "start"; text: string; reply: string };
 export type DockSection = { kind: DockKind; heading: string; items: DockItem[] };
+export type DockStatus = {
+  state: "done" | "need-you" | "blocked";
+  attention: "none" | "glance" | "think";
+  place?: string;
+};
+
+/** Exact first line of a reply with a Dock: status, attention, then where the chat stands. */
+const STATUS_BAR = /^(✅ Done|⏸️? Need you|❌ Blocked) · 🧠 (None|Glance|Think)(?: · 📍 (\S.*))?$/u;
+
+function splitStatusBar(body: string): { body: string; status?: DockStatus } {
+  const text = body.trimStart();
+  const firstLine = text.split("\n", 1)[0]!;
+  const match = STATUS_BAR.exec(firstLine.trim());
+  if (!match) return { body };
+  const status: DockStatus = {
+    state: match[1]!.endsWith("Done")
+      ? "done"
+      : match[1]!.endsWith("Need you")
+        ? "need-you"
+        : "blocked",
+    attention: match[2]!.toLowerCase() as DockStatus["attention"],
+    ...(match[3] ? { place: match[3].trim() } : {}),
+  };
+  return { status, body: text.slice(firstLine.length).trim() };
+}
 
 function fencedLineIndexes(lines: string[]) {
   const excluded = new Set<number>();
@@ -40,6 +64,8 @@ export function withoutFencedCode(text: string) {
 /** Short name of a Dock option: the text before its "Wins when" note and first colon or period. */
 function optionTitle(text: string): string {
   const head = text.split(" *(")[0]!.replaceAll("**", "").trim();
+  // A Continue option is only useful with the step it continues.
+  if (/^Continue:\s/.test(head)) return head.replace(/[.\s]+$/, "");
   const title = head.split(/[:.](?:\s|$)/)[0]!.trim();
   return title || head;
 }
@@ -82,24 +108,22 @@ export function parseOutputDock(text: string) {
         block.push(line);
         continue;
       }
-      const action = h.kind === "actions" ? /^- \[([ xX])\] ((?:🤖|👤) .+)$/.exec(line) : null;
+      // Old replies list Next Actions as task items; they now read as plain lines.
+      const action = h.kind === "actions" ? /^- \[[ xX]\] ((?:🤖|👤) .+)$/.exec(line) : null;
       const option = h.kind === "decisions" ? /^- \*\*([A-Z])\)\*\* (.+)$/.exec(line) : null;
       const quick = h.kind === "decisions" ? /^💬 Quick Replies: (.+)$/.exec(line) : null;
-      const assumed = h.kind === "summary" ? /^🔁 Assumed: (.+)$/.exec(line) : null;
-      const choices = assumed ? quotedList(assumed[1]!) : undefined;
-      if (choices) {
+      const move = h.kind === "complete" ? /Next best move:\s*(.+?)\.?\s*$/.exec(line) : null;
+      if (action) block.push(`- ${action[1]}`);
+      else if (move) {
         flush();
-        items.push({ kind: "assumptions", choices });
-      } else if (action) {
-        flush();
-        items.push({ kind: "action", checked: action[1] !== " ", text: action[2]! });
+        items.push({ kind: "start", text: line.trim(), reply: `Start: ${move[1]}` });
       } else if (option) {
         flush();
         const letter = option[1]!;
         items.push({
           kind: "option",
           letter,
-          reply: `I choose option ${letter}: ${optionTitle(option[2]!)}`,
+          reply: `Option ${letter}: ${optionTitle(option[2]!)}`,
           text: `**${letter})** ${option[2]}`,
         });
       } else if (quick) {
@@ -116,14 +140,14 @@ export function parseOutputDock(text: string) {
     flush();
     sections.push({ kind: h.kind, heading: h.heading.slice(4), items });
   }
-  return {
-    body: lines
+  const { body, status } = splitStatusBar(
+    lines
       .slice(0, headings[0]!.index)
       .join("\n")
       .replace(/\n---\s*$/, "")
       .trimEnd(),
-    sections,
-  };
+  );
+  return { body, sections, ...(status ? { status } : {}) };
 }
 
 export function workedForMs(start: string | null | undefined, end: string | null | undefined) {

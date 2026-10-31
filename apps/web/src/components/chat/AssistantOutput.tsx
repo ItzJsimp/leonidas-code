@@ -2,7 +2,6 @@ import { useMemo, type ComponentProps } from "react";
 import { parseOutputDock, type DockSection } from "@t3tools/shared/outputDock";
 import ChatMarkdown from "../ChatMarkdown";
 import { Button } from "../ui/button";
-import { Checkbox } from "../ui/checkbox";
 
 /** Actions prepare a draft; the composer remains the only place that sends it. */
 /** Fixed reply for the "Explain simpler" button. */
@@ -32,27 +31,7 @@ export function OutputDock({
           <h3 className="mb-2 text-sm font-semibold text-foreground">{section.heading}</h3>
           <div className="space-y-2">
             {section.items.map((item, index) => {
-              const key = `${item.kind}:${index}:${item.kind === "replies" ? item.replies.join("|") : item.kind === "assumptions" ? item.choices.join("|") : item.text}`;
-              if (item.kind === "assumptions")
-                return (
-                  <div key={key} className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">I chose:</span>
-                    {item.choices.map((choice, i) => (
-                      <Button
-                        key={`${choice}:${i}`}
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        disabled={!onReply}
-                        aria-label={`Change this choice: ${choice}`}
-                        title="Tap to change this choice"
-                        onClick={() => onReply?.(`Change this: "${choice}". Use this instead: `)}
-                      >
-                        {choice}
-                      </Button>
-                    ))}
-                  </div>
-                );
+              const key = `${item.kind}:${index}:${item.kind === "replies" ? item.replies.join("|") : item.text}`;
               if (item.kind === "markdown") return <div key={key}>{renderMarkdown(item.text)}</div>;
               if (item.kind === "replies")
                 return (
@@ -87,19 +66,16 @@ export function OutputDock({
                   </div>
                 );
               return (
-                <div key={key} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3">
-                  <div className="flex min-h-6 items-center">
-                    <Checkbox
-                      size="touch"
-                      checked={item.checked}
-                      disabled={item.checked || !onReply}
-                      aria-label={`Add action to composer: ${item.text.replaceAll("**", "")}`}
-                      onCheckedChange={() =>
-                        onReply?.(item.text.replace(/^(?:🤖|👤) \*\*[^*]+:\*\*\s*/, ""))
-                      }
-                    />
-                  </div>
+                <div key={key} className="flex flex-wrap items-center gap-3">
                   <div className="min-w-0 flex-1">{renderMarkdown(item.text)}</div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!onReply}
+                    onClick={() => onReply?.(item.reply)}
+                  >
+                    Start
+                  </Button>
                 </div>
               );
             })}
