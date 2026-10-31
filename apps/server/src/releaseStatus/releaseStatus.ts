@@ -55,6 +55,10 @@ export function makeReleaseStatusReader(gh: Gh = runGh, ttlMs = 10_000) {
           return { ...row, jobs };
         }),
       );
+      // Only the listed runs can come back, so forget the rest and the map stays at 10 entries.
+      for (const id of finishedJobs.keys()) {
+        if (!rows.some((row) => row.databaseId === id)) finishedJobs.delete(id);
+      }
       value = { runs: mapRuns(runs), error: null };
     } catch (error) {
       // Not held, so the next read retries at once.
