@@ -1494,6 +1494,8 @@ export interface ChatComposerHandle {
     text: string,
     options?: { ensureLeadingBoundary?: boolean; clipboardData?: DataTransfer },
   ) => boolean;
+  /** Insert at the caret and focus right after the new text. Never sends. */
+  insertTextAtCursor: (text: string, options?: { ensureLeadingBoundary?: boolean }) => boolean;
   /** Apply large-paste folding for text redirected from a blurred composer. */
   pasteTextAtEnd: (text: string, options?: { bypassAutoAttachment?: boolean }) => boolean;
   citeAssistantText: (
@@ -6485,6 +6487,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     [expandMobileComposer, insertComposerText, isComposerCollapsedMobile],
   );
 
+  const insertComposerTextAtCursor = useCallback<ChatComposerHandle["insertTextAtCursor"]>(
+    (text, options) => {
+      const inserted = insertComposerText(text, "cursor", options);
+      if (inserted && isComposerCollapsedMobile) expandMobileComposer();
+      return inserted;
+    },
+    [expandMobileComposer, insertComposerText, isComposerCollapsedMobile],
+  );
+
   // Context produced by other panels (diff comments, preview picks) asks the store to place
   // its chip; while this composer is mounted for the draft, that means the caret.
   const insertContextReferencesAtCaret = useCallback(
@@ -6690,6 +6701,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       hasPendingAttachments: () =>
         (pendingImageCompressionsRef.current.get(attachmentTargetKey) ?? 0) > 0,
       insertTextAtEnd: insertComposerTextAtEnd,
+      insertTextAtCursor: insertComposerTextAtCursor,
       pasteTextAtEnd: (text: string, options) => {
         const bypassAutoAttachment =
           options?.bypassAutoAttachment === true ||
@@ -6869,6 +6881,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       insertComposerDraftTerminalContext,
       insertComposerText,
       insertComposerTextAtEnd,
+      insertComposerTextAtCursor,
       promptRef,
       composerImagesRef,
       composerFilesRef,
