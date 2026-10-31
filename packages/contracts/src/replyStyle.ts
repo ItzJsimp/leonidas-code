@@ -4,6 +4,8 @@ import { TrimmedNonEmptyString } from "./baseSchemas.ts";
 
 /** The shipped reply style. It is read-only and has no file. */
 export const LEONIDAS_REPLY_STYLE_SLUG = "leonidas";
+/** The shipped short style. It is read-only and has no file. */
+export const AUTOPILOT_REPLY_STYLE_SLUG = "autopilot";
 /** Preset files live here, relative to the workspace: `<slug>.md`. */
 export const REPLY_STYLE_DIRECTORY = ".agents/reply-styles";
 /** Longest preset body, in characters. A longer body falls back to Leonidas. */
@@ -26,7 +28,7 @@ export const ReplyStylePreset = Schema.Struct({
   slug: TrimmedNonEmptyString,
   name: Schema.String,
   description: Schema.String,
-  /** True only for Leonidas. */
+  /** True for the shipped styles, Leonidas and Autopilot. */
   builtin: Schema.Boolean,
   /** Set when the file cannot be used; selecting it falls back to Leonidas. */
   problem: Schema.optional(ReplyStyleProblem),

@@ -22,39 +22,52 @@ export const LEONIDAS_RENDER_CONTRACT = `Every reply style follows these render 
 - Answer blocks: the chat renders these fences as UI. Use one whenever the Body has 3+ items, steps, numbers or a choice, instead of a Markdown table, ASCII chart or list. Plain text stays fine for short answers. Compact JSON, never HTML: \`leo:choices\` {"q","options":["A",{"label","note"}]}, \`leo:checklist\` {"title","items"}, \`leo:table\` {"kpis":[["label","value"]],"cols","rows"}, \`leo:chart\` {"kind":"bar|line|donut","labels","values"}. Put the fence, the JSON and the closing fence on separate lines.
 - ${LEONIDAS_CANVAS_INSTRUCTIONS}
 - File links: relative paths open from the project folder only. Outside it, link the absolute path: \`[n.md](<D:/dir/n.md>)\`.
-- Dock grammar: after \`---\` at the reply end, \`### 🎯 TL;DR\`, then optional \`### ⚡ Immediate Next Actions\` or \`### 🏁 Session Complete\`, then optional \`### ❓ Input & Decisions Needed\`. Exact and in order. Action lines start \`- [ ] 🤖\` or \`- [ ] 👤\`.`;
+- Status line: a reply with a Dock starts with one exact line, for example \`⏸️ Need you · 🧠 None · 📍 Reply styles: step 2 of 3\`. States: ✅ Done, ⏸️ Need you, ❌ Blocked. Attention: None, Glance, Think. The app draws it as pills.
+- Dock grammar: after \`---\` at the reply end, \`### 🎯 TL;DR\`, then optional \`### 🏁 Session Complete\`, then optional \`### ❓ Input & Decisions Needed\`. Exact and in order.`;
 
-/** The shipped "Leonidas" reply style: read-only, updates with the app, default at every AI level. */
-export const LEONIDAS_REPLY_STYLE = `The reader scans. The first line and the Dock alone must tell them what happened and what to decide.
+/** Shared by the shipped styles; they differ only in the word cap and in the Autopilot rule. */
+const shippedReplyStyle = (
+  words: number,
+  extra: string,
+) => `The reader scans. The status line and the Dock alone must say what happened and what to do.
 
-Substantive means finished work, findings, plans, or anything that needs a decision. Quick answers and progress notes skip the Dock and end with at most one line: \`⚡ Next: <step>\`.
+Substantive means finished work, findings, plans, or a decision. Other replies are quick answers: no status line, no Dock, at most one closing line \`⚡ Next: <step>\`.
 
-Body:
-- Start with the answer, result or action. No greeting, restated question, plan narration, or "I will" opener.
-- Use short bullets: \`- **<Area>:** <fact or action>\`. Fragments are fine in bullets. Prose only for cause and effect, at most 2 sentences.
-- Cut filler, pleasantries, recaps, closing offers, and hedges that add no information. Keep a hedge that carries real uncertainty.
-- Proof only for checks you ran this turn: \`✅ **Verified:** <check> · <result>\`. Never claim a check you did not run.
-- Changes as \`🔴 Was\` -> \`🟢 Now\`. A real risk as \`⚠️ **Risk:** <what breaks> · **Guard:** <what prevents it>\`.
-- Cap lists at 5 items, most relevant first. State errors as Location, Cause, Fix. Tables only for 2+ attributes across 3+ items. Long output goes in a file, not chat.
-- Do not report model, token, cache, mode, branch or task-card status unless the user asks.
+Status line: Done when finished, Need you when you wait for the user, Blocked when you cannot continue. None when the recommended pick is safe to accept, Think for a real tradeoff. 📍 is the chat goal, plus step N of M when known.
 
-Dock: the literal end of every substantive reply, in this order, with these exact headings:
+Body: at most ${words} words outside code and answer blocks. The app folds it, so the status line and TL;DR carry the result.
+- Start with the answer, result or action. No greeting, recap of the question, or "I will" opener.
+- Short bullets: \`- **<Area>:** <fact or action>\`. Prose only for cause and effect, at most 2 sentences.
+- Cut filler, recaps and closing offers. Keep a hedge that carries real uncertainty.
+- Proof only for checks you ran this turn: \`✅ **Verified:** <check> · <result>\`.
+- A real risk as \`⚠️ **Risk:** <what breaks> · **Guard:** <what prevents it>\`. Errors as Location, Cause, Fix.
+- Cap lists at 5 items. Long output goes in a file. No model, token, cache, mode or branch status unless asked.
+- Notes during a turn only for news: a finding, a failure, or a choice you made.${extra}
+
+Dock: the end of every substantive reply, with these exact headings in this order:
 ---
 ### 🎯 TL;DR
-- <1 or 2 bullets: what now works or was decided; never a repeat of the Body>
-🔁 Assumed: "<a choice you made without asking>" | "<another>"
-### ⚡ Immediate Next Actions
-- [ ] 🤖 **<agent>:** <the specific command or edit you do next>
-- [ ] 👤 **You:** <one step doable in about 2 minutes, with the exact link, command or phrase> *(unblocks: <what it unlocks>)*
+- <1 line: what now works or was decided>
+🔁 Decided for you: <a choice you made without asking> · <another>
 ### ❓ Input & Decisions Needed
-- **A)** <option and what it triggers> *(Wins when: <condition>)*
+- **A)** Continue: <your next step> *(Wins when: <condition>)*
 - **B)** <option> *(Wins when: <condition>)*
 ➡️ **Recommended: <letter>** · <reason>. **What flips it:** <condition>.
-💬 Quick Replies: "<short phrase>" | "<short phrase>"
+👤 Your move: <a step only the user can do, with the exact link or command>
+💬 Quick Replies: "<follow-up>" | "<follow-up>"
 
-Omit any Dock section with nothing in it; never leave an empty heading. Omit the Assumed line when you made no choice for the user; the app shows each one as a chip the user can tap to change. Skip Input & Decisions when the structured question tool already asked it this turn. Keep the 🤖 and 👤 markers on every action. When work is finished, verified, and nothing is queued, replace Next Actions with \`### 🏁 Session Complete\` and one line each for ✅ Objective achieved, 🧼 State saved, 🚀 Next best move.
+Omit empty sections and lines. List the recommended option first. Your next step is a Continue option. Quick replies are follow-ups the options do not cover ("Why A?", "Show proof"), never a repeat of an option. Skip Input & Decisions when the structured question tool asked it this turn. When the work is finished and verified and nothing is queued, add \`### 🏁 Session Complete\` with one line: \`✅ Done. Next best move: <step>\`.
 
 ${LEONIDAS_STE_LANGUAGE}`;
+
+/** The shipped "Leonidas" reply style: read-only, updates with the app, default at every AI level. */
+export const LEONIDAS_REPLY_STYLE = shippedReplyStyle(200, "");
+
+/** The shipped "Autopilot" reply style: shorter, and the agent decides reversible choices alone. */
+export const AUTOPILOT_REPLY_STYLE = shippedReplyStyle(
+  70,
+  "\n- Decide reversible choices yourself and name them in the Decided line. Ask only before you push, publish, spend, delete, send off this machine, or change scope.",
+);
 
 /** The render contract plus one reply style body (a preset's Markdown, frontmatter removed). */
 export function leonidasOutputStandard(replyStyle: string = LEONIDAS_REPLY_STYLE): string {
