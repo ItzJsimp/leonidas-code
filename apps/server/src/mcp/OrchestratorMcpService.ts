@@ -76,6 +76,11 @@ import {
 } from "@t3tools/contracts";
 import { appendDraft } from "../events/eventsRpc.ts";
 import { confirmDelegatedSpawn, confirmPersonaSpawn } from "../subagents/confirmPersonaSpawn.ts";
+import {
+  describeAccountUsage,
+  modelSelectionEffort,
+  spawnApprovalId,
+} from "../subagents/spawnCardDetails.ts";
 import { instanceForModel } from "../subagents/instanceForModel.ts";
 import { personaEngineSupport } from "../subagents/personaEngines.ts";
 import { loadSubagentPersona } from "../subagents/subagentPersona.ts";
@@ -2591,6 +2596,21 @@ const make = Effect.gen(function* () {
         if (quotaBlock !== null) {
           return yield* failure("provider_unavailable", quotaBlock);
         }
+        // The same id on a retry, so a call that timed out on the client joins its open card.
+        const approvalId = spawnApprovalId({
+          threadId: scope.thread.threadId,
+          clientRequestId: input.clientRequestId,
+          task: input.task,
+          instanceId: target.modelSelection.instanceId,
+          model: target.modelSelection.model,
+        });
+        const cardDetails = {
+          effort: modelSelectionEffort(target.modelSelection),
+          runtimeMode,
+          workspace: yield* parentCwd,
+          task: input.task,
+          accountUsage: describeAccountUsage(targetProvider),
+        };
         if (persona === undefined) {
           yield* confirmDelegatedSpawn({
             parent,
@@ -2600,7 +2620,8 @@ const make = Effect.gen(function* () {
             account: targetProvider?.displayName ?? target.modelSelection.instanceId,
             reason: input.title ?? input.task,
             appFreeModels: delegationSettings.subagentFreeTierModels,
-            approvalId: yield* crypto.randomUUIDv4.pipe(Effect.orDie),
+            approvalId,
+            details: cardDetails,
           });
         } else {
           yield* confirmPersonaSpawn({
@@ -2613,7 +2634,8 @@ const make = Effect.gen(function* () {
                 ?.displayName ?? target.modelSelection.instanceId,
             reason: input.title ?? input.task,
             appFreeModels: delegationSettings.subagentFreeTierModels,
-            approvalId: yield* crypto.randomUUIDv4.pipe(Effect.orDie),
+            approvalId,
+            details: cardDetails,
           });
         }
         const key = yield* requestKey(input.clientRequestId);

@@ -16,7 +16,7 @@ import { useEnvironmentIds } from "~/state/environments";
 import { useEnvironmentQuery } from "~/state/query";
 import { subagentRespondSpawnApproval, subagentSpawnApprovalsLive } from "~/state/subagents";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { formatStartCost, modelDisplayName } from "./spawnApproval.logic";
+import { formatLabel, formatStartCost, modelDisplayName } from "./spawnApproval.logic";
 
 const TIER_SOURCE_LABEL: Record<SubagentSpawnApproval["tierSource"], string> = {
   app: "app map",
@@ -110,8 +110,32 @@ function SpawnApprovalCard(props: {
         <dd className="truncate" title={approval.model}>
           {model}
         </dd>
+        {approval.effort === undefined ? null : (
+          <>
+            <dt className="text-muted-foreground">Effort</dt>
+            <dd>{formatLabel(approval.effort)}</dd>
+          </>
+        )}
         <dt className="text-muted-foreground">Account</dt>
         <dd className="truncate">{approval.account}</dd>
+        {approval.accountUsage === undefined ? null : (
+          <>
+            <dt className="text-muted-foreground">Usage</dt>
+            <dd className="break-words">{approval.accountUsage}</dd>
+          </>
+        )}
+        {approval.runtimeMode === undefined ? null : (
+          <>
+            <dt className="text-muted-foreground">Access</dt>
+            <dd>{formatLabel(approval.runtimeMode)}</dd>
+          </>
+        )}
+        {approval.workspace === undefined ? null : (
+          <>
+            <dt className="text-muted-foreground">Folder</dt>
+            <dd className="break-all font-mono text-2xs">{approval.workspace}</dd>
+          </>
+        )}
         <dt className="text-muted-foreground">Start cost</dt>
         <dd className="tabular-nums">
           {formatStartCost(approval.estimatedStartTokens)} · {approval.toolCount}{" "}
@@ -138,6 +162,12 @@ function SpawnApprovalCard(props: {
         </dd>
         <dt className="text-muted-foreground">Reason</dt>
         <dd className="line-clamp-3 break-words">{approval.reason}</dd>
+        {approval.task === undefined || approval.task === approval.reason ? null : (
+          <>
+            <dt className="text-muted-foreground">Task</dt>
+            <dd className="line-clamp-4 break-words">{approval.task}</dd>
+          </>
+        )}
       </dl>
 
       <p className="text-xs text-muted-foreground">

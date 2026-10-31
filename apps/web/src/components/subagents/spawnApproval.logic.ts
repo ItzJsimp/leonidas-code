@@ -15,14 +15,8 @@ export function modelDisplayName(model: string): string {
   return model;
 }
 
-/** Settings text "a, b , ,c" to unique model ids ["a", "b", "c"]. */
-export function parseModelIdList(value: string): string[] {
-  return [
-    ...new Set(
-      value
-        .split(/[,\n]/)
-        .map((id) => id.trim())
-        .filter((id) => id.length > 0),
-    ),
-  ];
+/** "full-access" to "Full access", "high" to "High": card values read as words. */
+export function formatLabel(value: string): string {
+  const words = value.replace(/[-_]+/g, " ").trim();
+  return words.length === 0 ? value : `${words[0]!.toUpperCase()}${words.slice(1)}`;
 }

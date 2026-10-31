@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseOutputDock, workedForMs } from "./outputDock.ts";
+import { parseOutputDock } from "./outputDock.ts";
 
 const reply = `🎯 **Focus:** \`Code\` · **Step:** \`Build\`
 
@@ -22,9 +22,9 @@ describe("output Dock", () => {
     expect(dock.body).toContain("Built it.");
     expect(dock.body).not.toContain("TL;DR");
     expect(dock.sections.map((s) => s.kind)).toEqual(["summary", "actions", "decisions"]);
+    // Old replies keep their Next Actions as plain lines, never checkboxes.
     expect(dock.sections[1]!.items).toEqual([
-      { kind: "action", text: "🤖 **Leonidas:** Run tests.", checked: false },
-      { kind: "action", text: "👤 **You:** Review changes.", checked: true },
+      { kind: "markdown", text: "- 🤖 **Leonidas:** Run tests.\n- 👤 **You:** Review changes." },
     ]);
     expect(dock.sections[2]!.items.map((i) => i.kind)).toEqual([
       "option",
@@ -45,9 +45,9 @@ describe("output Dock", () => {
     expect(first).toMatchObject({
       kind: "option",
       letter: "A",
-      reply: "I choose option A: Vitest",
+      reply: "Option A: Vitest",
     });
-    expect(second).toMatchObject({ letter: "B", reply: "I choose option B: Extend it" });
+    expect(second).toMatchObject({ letter: "B", reply: "Option B: Extend it" });
   });
   it("handles CRLF, omitted sections and completion", () => {
     expect(parseOutputDock(reply.replaceAll("\n", "\r\n"))?.sections).toEqual(
@@ -83,25 +83,48 @@ describe("output Dock", () => {
     const dock = parseOutputDock(
       "Body\n### 🎯 TL;DR\n- Ready\n### ⚡ Immediate Next Actions\n\n````md\n```\n~~~\n- [ ] 🤖 **Leonidas:** Do not run\n`````\n- [ ] 👤 **You:** Review",
     )!;
-    expect(dock.sections[1]!.items.map((item) => item.kind)).toEqual(["markdown", "action"]);
-  });
-  it("uses finished run timestamps only", () => {
-    expect(workedForMs("2026-10-13T00:00:00Z", "2026-10-13T00:01:12Z")).toBe(72000);
-    expect(workedForMs(null, "2026-10-13T00:01:12Z")).toBeNull();
-    expect(workedForMs("bad", "bad")).toBeNull();
-    expect(workedForMs("2026-10-13T00:01:12Z", "2026-10-13T00:00:00Z")).toBeNull();
+    const item = dock.sections[1]!.items[0]!;
+    // The fenced example stays as written; only the real line loses its checkbox.
+    expect(item).toMatchObject({ kind: "markdown" });
+    expect(item.kind === "markdown" && item.text).toContain("- [ ] 🤖 **Leonidas:** Do not run");
+    expect(item.kind === "markdown" && item.text).toMatch(/\n- 👤 \*\*You:\*\* Review$/);
   });
 });
 
 describe("slim Dock", () => {
-  it("parses the Assumed line as chips and allows a Dock with only a TL;DR", () => {
+  it("keeps an old Assumed line as text and allows a Dock with only a TL;DR", () => {
     const dock = parseOutputDock(
       'Done. Your site is live.\n---\n### 🎯 TL;DR\n- Open index.html to see it.\n🔁 Assumed: "Blue theme" | "One page"',
     )!;
     expect(dock.sections.map((s) => s.kind)).toEqual(["summary"]);
     expect(dock.sections[0]!.items).toEqual([
-      { kind: "markdown", text: "- Open index.html to see it." },
-      { kind: "assumptions", choices: ["Blue theme", "One page"] },
+      {
+        kind: "markdown",
+        text: '- Open index.html to see it.\n🔁 Assumed: "Blue theme" | "One page"',
+      },
+    ]);
+  });
+
+  it("keeps the step of a Continue option in its reply", () => {
+    const dock = parseOutputDock(
+      "Built.\n---\n### 🎯 TL;DR\n- Ready.\n### ❓ Input & Decisions Needed\n- **A)** Continue: run the web tests. *(Wins when: you trust it)*\n- **B)** Stop here.",
+    )!;
+    expect(dock.sections[1]!.items[0]).toMatchObject({
+      kind: "option",
+      reply: "Option A: Continue: run the web tests",
+    });
+  });
+
+  it("turns the next best move of a finished session into a Start item", () => {
+    const dock = parseOutputDock(
+      "Shipped.\n---\n### 🎯 TL;DR\n- Live.\n### 🏁 Session Complete\n✅ Done. Next best move: retire jake.md.",
+    )!;
+    expect(dock.sections[1]!.items).toEqual([
+      {
+        kind: "start",
+        text: "✅ Done. Next best move: retire jake.md.",
+        reply: "Start: retire jake.md",
+      },
     ]);
   });
 
@@ -109,4 +132,37 @@ describe("slim Dock", () => {
     const dock = parseOutputDock("Done.\n---\n### 🎯 TL;DR\n- Ready.\n🔁 Assumed: blue theme")!;
     expect(dock.sections[0]!.items.map((i) => i.kind)).toEqual(["markdown"]);
   });
+});
+
+describe("status bar", () => {
+  const withStatus = (line: string) => `${line}\n\nBuilt it.\n---\n### 🎯 TL;DR\n- Ready.`;
+
+  it("lifts an exact first line out of the body", () => {
+    const dock = parseOutputDock(withStatus("✅ Done · 🧠 None · 📍 Reply styles: step 2 of 7"))!;
+    expect(dock.status).toEqual({
+      state: "done",
+      attention: "none",
+      place: "Reply styles: step 2 of 7",
+    });
+    expect(dock.body).toBe("Built it.");
+  });
+
+  it("accepts every state, the variation selector and a missing place", () => {
+    expect(parseOutputDock(withStatus("⏸️ Need you · 🧠 Glance"))!.status).toEqual({
+      state: "need-you",
+      attention: "glance",
+    });
+    expect(parseOutputDock(withStatus("❌ Blocked · 🧠 Think · 📍 Release"))!.status).toMatchObject(
+      { state: "blocked", attention: "think" },
+    );
+  });
+
+  it.each(["✅ Finished · 🧠 None", "Done · 🧠 None", "✅ Done · 🧠 Maybe", "Built it."])(
+    "leaves a line in any other form in the body: %s",
+    (line) => {
+      const dock = parseOutputDock(withStatus(line))!;
+      expect(dock.status).toBeUndefined();
+      expect(dock.body.startsWith(line)).toBe(true);
+    },
+  );
 });

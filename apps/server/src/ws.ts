@@ -20,6 +20,7 @@ import { subagentWorkspaceProjects } from "./subagents/workspaceProjects.ts";
 import { createStudioSubagent, updateStudioSubagent } from "./subagents/subagentStudioWrites.ts";
 import { appendDraft, feedStream } from "./events/eventsRpc.ts";
 import * as MarketingRpc from "./marketing/marketingRpc.ts";
+import * as ContentRpc from "./content/contentRpc.ts";
 import * as HardwareWatch from "./hardwareWatch/HardwareWatch.ts";
 import * as SystemCare from "./hardwareWatch/SystemCare.ts";
 import * as PromptPrediction from "./workspace/PromptPrediction.ts";
@@ -39,6 +40,7 @@ import {
   isPonytailPluginEnabled,
   readCodexPonytailState,
 } from "./provider/PonytailEnsure.ts";
+import { readReleaseStatus } from "./releaseStatus/releaseStatus.ts";
 import { homeNews, homeWeather } from "./taskBoard/homeFeeds.ts";
 import * as PromptSuggestion from "./workspace/PromptSuggestion.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -1460,6 +1462,12 @@ const layerWsRpc = (
         Effect.map((snapshot) => snapshot.projects),
         Effect.mapError((cause) => new TaskBoardReadError({ reason: "project_not_found", cause })),
       );
+      /** The workspace that holds `deals/`, found the same way as Marketing. */
+      const contentRoot = (workspaceId: string | undefined) =>
+        allTaskBoardProjects.pipe(
+          Effect.orElseSucceed(() => []),
+          Effect.flatMap((projects) => taskBoard.aiosRoot(projects, workspaceId)),
+        );
       const devPreview = yield* DevPreviewService.DevPreviewService;
       const withDevPreviewProject = <A, E, R>(
         projectId: ProjectId,
@@ -3002,6 +3010,19 @@ const layerWsRpc = (
             input,
             currentSession.subject,
           ),
+        [WS_METHODS.contentList]: (input) => ContentRpc.list(contentRoot(input.workspaceId)),
+        [WS_METHODS.contentHistory]: (input) =>
+          ContentRpc.history(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentMove]: (input) => ContentRpc.move(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentSaveScript]: (input) =>
+          ContentRpc.saveScript(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentPairingAccept]: (input) => ContentRpc.pairingAccept(input),
+        [WS_METHODS.contentPairingStart]: () => ContentRpc.pairingStart(),
+        [WS_METHODS.contentSync]: (input) => ContentRpc.sync(contentRoot(input.workspaceId)),
+        [WS_METHODS.contentDecideDeal]: (input) =>
+          ContentRpc.decideDeal(contentRoot(input.workspaceId), input),
+        [WS_METHODS.contentCreateDeal]: (input) =>
+          ContentRpc.createDeal(contentRoot(input.workspaceId), input),
         // Each change made through this server pushes a fresh list; no polling.
         [WS_METHODS.focusSubscribe]: (input) =>
           taskBoard.focusChanges.pipe(
@@ -3079,6 +3100,7 @@ const layerWsRpc = (
         [WS_METHODS.taskBoardHomeWeather]: (input) =>
           Effect.promise(() => homeWeather(input.place)),
         [WS_METHODS.taskBoardHomeNews]: () => Effect.promise(() => homeNews()),
+        [WS_METHODS.releaseStatusRuns]: () => Effect.promise(() => readReleaseStatus()),
         [WS_METHODS.layaUsage]: () => Effect.promise(() => readLayaUsage()),
         [WS_METHODS.calendarEvents]: (input) => calendar.events(input),
         [WS_METHODS.calendarTestLink]: (input) => calendar.testLink(input.url),
@@ -3515,7 +3537,12 @@ const layerWsRpc = (
               (unsubscribe) => Effect.sync(unsubscribe),
             ),
           ),
-        [WS_METHODS.previewOpen]: (input) => previewManager.open(input),
+        [WS_METHODS.previewOpen]: (input) =>
+          Effect.gen(function* () {
+            if (input.profileId === "leonidas-shared-browser")
+              yield* serverBrowser.checkSharedBrowser();
+            return yield* previewManager.open(input);
+          }),
         [WS_METHODS.previewNavigate]: (input) => previewManager.navigate(input),
         [WS_METHODS.previewResize]: (input) => previewManager.resize(input),
         [WS_METHODS.previewAdjust]: (input) => previewManager.adjust(input),

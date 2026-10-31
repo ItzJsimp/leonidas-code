@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatStartCost, modelDisplayName, parseModelIdList } from "./spawnApproval.logic";
+import { formatLabel, formatStartCost, modelDisplayName } from "./spawnApproval.logic";
 
 describe("spawn approval card text", () => {
   it("rounds the start cost to the hundred", () => {
@@ -15,9 +15,9 @@ describe("spawn approval card text", () => {
   });
 });
 
-describe("parseModelIdList", () => {
-  it("splits, trims and drops empty and repeated ids", () => {
-    expect(parseModelIdList("a, b , ,c,a")).toEqual(["a", "b", "c"]);
-    expect(parseModelIdList("  ")).toEqual([]);
+describe("formatLabel", () => {
+  it("turns ids into words", () => {
+    expect(formatLabel("full-access")).toBe("Full access");
+    expect(formatLabel("high")).toBe("High");
   });
 });

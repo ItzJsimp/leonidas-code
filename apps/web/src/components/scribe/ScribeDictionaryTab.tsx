@@ -33,6 +33,7 @@ import {
 } from "./dictionary.logic";
 import { commandErrorReason } from "./home.logic";
 import type { ScribeTabProps } from "./ScribePage";
+import { WordSyncRow } from "./WordSyncRow";
 
 type Pane = "fixes" | "words" | "suggestions";
 
@@ -208,6 +209,7 @@ export function ScribeDictionaryTab({ environmentId, live }: ScribeTabProps) {
           onReject={(item) => void rejectSuggestion(item.wrong)}
         />
       ) : null}
+      <WordSyncRow environmentId={environmentId} />
     </div>
   );
 }

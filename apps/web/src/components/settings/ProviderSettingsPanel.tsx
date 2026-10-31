@@ -1362,7 +1362,7 @@ export function EnvironmentProviderSettings({
         open={accountPanel?.kind === "settings" && panelRow !== undefined}
         onOpenChange={(open) => (open ? undefined : closeAccountPanel())}
       >
-        <SheetPopup className="w-full max-w-2xl">
+        <SheetPopup elevated className="w-full max-w-2xl">
           <SheetHeader>
             <SheetTitle>{panelName} settings</SheetTitle>
             <SheetDescription>

@@ -12,6 +12,7 @@ import { cn } from "~/lib/utils";
 import { ComposerBanner } from "./ComposerBanner";
 
 interface PendingUserInputPanelProps {
+  cacheNote?: string | null;
   pendingUserInputs: PendingUserInput[];
   disabled?: boolean;
   respondingRequestIds: RuntimeRequestId[];
@@ -23,6 +24,7 @@ interface PendingUserInputPanelProps {
 }
 
 export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserInputPanel({
+  cacheNote = null,
   pendingUserInputs,
   disabled = false,
   respondingRequestIds,
@@ -40,6 +42,7 @@ export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserIn
     <ComposerPendingUserInputCard
       key={activePrompt.requestId}
       prompt={activePrompt}
+      cacheNote={cacheNote}
       disabled={disabled}
       isResponding={respondingRequestIds.includes(activePrompt.requestId)}
       answers={answers}
@@ -53,6 +56,7 @@ export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserIn
 
 const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard({
   prompt,
+  cacheNote,
   disabled,
   isResponding,
   answers,
@@ -62,6 +66,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   onDismiss,
 }: {
   prompt: PendingUserInput;
+  cacheNote: string | null;
   disabled: boolean;
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
@@ -194,25 +199,38 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
         setCollapsedQuestionId(open ? null : activeQuestion.id);
       }}
     >
-      <CollapsibleTrigger
-        render={<ComposerBanner.Row render={<button type="button" />} />}
-        title={
-          isCollapsed ? "Show the question and its options" : "Hide the question and its options"
-        }
-        data-pending-user-input-toggle={isCollapsed ? "collapsed" : "expanded"}
-      >
+      <ComposerBanner.Row>
         <ComposerBanner.Icon />
         <ComposerBanner.Content>
-          <span className="shrink-0 font-medium text-muted-foreground">
-            {activeQuestion.header}
-          </span>
-          {isCollapsed ? (
-            <span className="min-w-0 flex-1 truncate text-secondary-label">
-              {presentation.question}
+          {/* Only the title is the disclosure, so Skip can be a real button beside it. */}
+          <CollapsibleTrigger
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md text-start focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+            title={
+              isCollapsed
+                ? "Show the question and its options"
+                : "Hide the question and its options"
+            }
+            data-pending-user-input-toggle={isCollapsed ? "collapsed" : "expanded"}
+          >
+            <span className="shrink-0 font-medium text-muted-foreground">
+              {activeQuestion.header}
             </span>
-          ) : (
-            <span className="text-3xs text-primary">Waiting on your answer</span>
-          )}
+            {isCollapsed ? (
+              <span className="min-w-0 flex-1 truncate text-secondary-label">
+                {presentation.question}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-2xs text-muted-foreground">
+                Waiting on your answer
+              </span>
+            )}
+            <ComposerBanner.ToggleIcon expanded={!isCollapsed} />
+          </CollapsibleTrigger>
+          {cacheNote ? (
+            <span className="min-w-0 truncate text-3xs text-warning" title={cacheNote}>
+              {cacheNote}
+            </span>
+          ) : null}
         </ComposerBanner.Content>
         <ComposerBanner.Actions>
           {prompt.questions.length > 1 ? (
@@ -220,42 +238,36 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
               {questionIndex + 1}/{prompt.questions.length}
             </span>
           ) : null}
-          <ComposerBanner.ToggleIcon expanded={!isCollapsed} />
           {prompt.dismissible || canRespond ? (
-            // Sits inside the trigger button, so stop the click from toggling
-            // the disclosure. Skip releases the agent without choosing an option.
+            // Skip releases the agent without choosing an option.
             <ComposerBanner.Dismiss
-              render={<span role="button" tabIndex={0} />}
               aria-label="Skip this question and let the agent decide"
               title="Skip this question and let the agent decide"
               className="w-auto px-1.5 text-xs"
               disabled={isResponding}
               data-pending-user-input-skip
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onDismiss(prompt.requestId);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                event.stopPropagation();
-                onDismiss(prompt.requestId);
-              }}
+              onClick={() => onDismiss(prompt.requestId)}
             >
               Skip
             </ComposerBanner.Dismiss>
           ) : null}
         </ComposerBanner.Actions>
-      </CollapsibleTrigger>
+      </ComposerBanner.Row>
       <CollapsiblePanel>
         <ComposerBanner.Scroll>
           <ComposerBanner.Body className="pe-1 pb-1 wrap-anywhere">
             <p className="text-sm text-foreground/85">{presentation.question}</p>
-            {activeQuestion.multiSelect ? (
+            {/* Above the options: the body scrolls on phones, so a line below them goes unseen.
+                With a note allowed, a click only marks the option, so Send is still needed. */}
+            {activeQuestion.allowCustomAnswer !== false ? (
+              <p className="mt-1 text-secondary-label text-xs">
+                {activeQuestion.multiSelect ? "Pick your options" : "Pick an option"}, then press
+                Send. You can type a note to go with it.
+              </p>
+            ) : activeQuestion.multiSelect ? (
               <p className="mt-1 text-secondary-label text-xs">Select one or more options.</p>
             ) : null}
-            <div className="mt-2 space-y-0.5">
+            <div className="mt-2 space-y-1">
               {presentation.options.map((option, index) => {
                 const optionValue = option.value;
                 const isOptimisticallySelected =
@@ -266,10 +278,10 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                 const shortcutKey = index < 9 ? index + 1 : null;
                 const { label: optionLabel, recommended } = option;
                 const className = cn(
-                  "group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
+                  "group flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
                   isSelected
-                    ? "bg-muted/55 text-foreground"
-                    : "bg-transparent text-foreground/85 hover:bg-muted/30",
+                    ? "border-foreground/30 bg-muted/55 text-foreground"
+                    : "border-border bg-transparent text-foreground/85 hover:bg-muted/30",
                   (disabled || isResponding) && "opacity-50 cursor-not-allowed",
                   !disabled && !isResponding && "cursor-pointer",
                 );
@@ -277,7 +289,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   <>
                     <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                       <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
-                        <span className="shrink-0 text-primary">{option.letter}</span>
+                        <span className="shrink-0 text-muted-foreground">{option.letter}</span>
                         <span>{optionLabel}</span>
                         {recommended ? (
                           <span
@@ -289,17 +301,14 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                         ) : null}
                       </span>
                       {option.description && option.description !== option.label ? (
-                        <span className="text-secondary-label text-2xs">{option.description}</span>
+                        <span className="text-secondary-label text-sm">{option.description}</span>
                       ) : null}
                     </div>
                     {isSelected ? (
-                      <CheckIcon className="size-3.5 shrink-0 text-primary" />
+                      <CheckIcon className="size-3.5 shrink-0 text-foreground" />
                     ) : shortcutKey !== null ? (
-                      <kbd
-                        className={cn(
-                          "flex size-5 shrink-0 items-center justify-center text-3xs font-medium text-muted-foreground tabular-nums",
-                        )}
-                      >
+                      // Number keys pick an option; phones have none, so the hint hides there.
+                      <kbd className="flex size-5 shrink-0 items-center justify-center rounded border border-border text-3xs font-medium text-muted-foreground tabular-nums max-sm:hidden">
                         {shortcutKey}
                       </kbd>
                     ) : null}

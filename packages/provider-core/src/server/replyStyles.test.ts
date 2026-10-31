@@ -66,7 +66,7 @@ it.effect("falls back with an unreadable notice when the preset path is a folder
   }),
 );
 
-it.effect("lists Leonidas first and flags broken presets", () =>
+it.effect("lists Leonidas, then Autopilot, and flags broken presets", () =>
   Effect.gen(function* () {
     const root = workspace({ "terse.md": good, "broken.md": "", "notes.txt": "skip" });
     const presets = yield* listReplyStyles(root).pipe(Effect.provide(NodeServices.layer));
@@ -74,6 +74,7 @@ it.effect("lists Leonidas first and flags broken presets", () =>
       presets.map((preset) => [preset.slug, preset.builtin, preset.problem]),
       [
         ["leonidas", true, undefined],
+        ["autopilot", true, undefined],
         ["broken", false, "empty"],
         ["terse", false, undefined],
       ],
@@ -93,3 +94,13 @@ it("round-trips the file Duplicate writes", () => {
     body: LEONIDAS_REPLY_STYLE,
   });
 });
+
+it.effect("loads the shipped Autopilot style, and a workspace file cannot replace it", () =>
+  Effect.gen(function* () {
+    const style = yield* load(workspace({ "autopilot.md": good }), "autopilot");
+    assert.strictEqual(style.slug, "autopilot");
+    assert.strictEqual(style.name, "Autopilot");
+    assert.include(style.body, "at most 70 words");
+    assert.isUndefined(style.notice);
+  }),
+);

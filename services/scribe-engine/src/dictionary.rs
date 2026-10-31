@@ -2,6 +2,7 @@
 //! Shared by speech-to-text (vocabulary prompt) and polish (replacements).
 
 use crate::contract::{DictionaryBody, Replacement};
+use crate::dictionary_sync::{merge, record, to_body, SyncState};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -272,13 +273,73 @@ impl SharedDictionary {
     }
 
     /// v1.2 `PUT /v1/dictionary`. Replaces `replacements` and `vocabulary` and keeps every
-    /// other top-level key, so a Python Scribe file keeps its own data.
+    /// other top-level key, so a Python Scribe file keeps its own data. Also stamps each
+    /// changed word under `sync`, which word sync needs.
     pub fn save(&self, body: &DictionaryBody) -> Result<Arc<Dictionary>, String> {
-        let mut doc = std::fs::read_to_string(&self.path)
+        // The lock covers the read and the write, so a sync cannot slip an edit in between.
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let doc = self.read_doc();
+        let sync = record(&sync_state(&doc), body, now_ms());
+        self.write(&mut state, doc, body, &sync)
+    }
+
+    /// Word sync: merge the words other computers left in `dir`, then publish ours as
+    /// `<dir>/<device>.json`. Each computer writes only its own file, so git never has to
+    /// merge text. Returns true when this computer's words changed.
+    /// shortcut: `device` is the computer name, so two computers with one name share a file;
+    /// upgrade to a stored random id if that happens.
+    pub fn sync_with(&self, dir: &Path, device: &str) -> Result<bool, String> {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let doc = self.read_doc();
+        let prev = sync_state(&doc);
+        let local = record(&prev, &Dictionary::load(&self.path).body(), now_ms());
+        let own = format!("{device}.json");
+        let mut merged = local.clone();
+        for file in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let path = file.path();
+            if path.extension().is_none_or(|e| e != "json")
+                || file.file_name().to_string_lossy() == own
+            {
+                continue;
+            }
+            let theirs = std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|text| serde_json::from_str::<SyncState>(&text).ok());
+            if let Some(theirs) = theirs {
+                merged = merge(&merged, &theirs);
+            }
+        }
+        let body = to_body(&merged);
+        let changed = body != to_body(&local);
+        if changed || merged != prev {
+            self.write(&mut state, doc, &body, &merged)?;
+        }
+        let bytes = serde_json::to_vec_pretty(&merged).map_err(|e| e.to_string())?;
+        let own_path = dir.join(&own);
+        if std::fs::read(&own_path).ok().as_deref() != Some(bytes.as_slice()) {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+            crate::config::write_atomic(&own_path, &bytes).map_err(|e| e.to_string())?;
+        }
+        Ok(changed)
+    }
+
+    fn read_doc(&self) -> serde_json::Map<String, serde_json::Value> {
+        std::fs::read_to_string(&self.path)
             .ok()
             .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
             .and_then(|v| v.as_object().cloned())
-            .unwrap_or_default();
+            .unwrap_or_default()
+    }
+
+    /// Writes the file while the caller holds the lock, so a reader never caches the old
+    /// file with the new time.
+    fn write(
+        &self,
+        state: &mut (Option<SystemTime>, Arc<Dictionary>),
+        mut doc: serde_json::Map<String, serde_json::Value>,
+        body: &DictionaryBody,
+        sync: &SyncState,
+    ) -> Result<Arc<Dictionary>, String> {
         let replacements: serde_json::Map<String, serde_json::Value> = body
             .replacements
             .iter()
@@ -286,9 +347,11 @@ impl SharedDictionary {
             .collect();
         doc.insert("replacements".into(), replacements.into());
         doc.insert("vocabulary".into(), body.vocabulary.clone().into());
+        doc.insert(
+            "sync".into(),
+            serde_json::to_value(sync).map_err(|e| e.to_string())?,
+        );
         let bytes = serde_json::to_vec_pretty(&doc).map_err(|e| e.to_string())?;
-        // Hold the lock across the write, so a reader never caches the old file with the new time.
-        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         crate::config::write_atomic(&self.path, &bytes).map_err(|e| e.to_string())?;
         let mtime = std::fs::metadata(&self.path)
             .and_then(|m| m.modified())
@@ -296,6 +359,18 @@ impl SharedDictionary {
         *state = (mtime, Arc::new(Dictionary::load(&self.path)));
         Ok(state.1.clone())
     }
+}
+
+fn sync_state(doc: &serde_json::Map<String, serde_json::Value>) -> SyncState {
+    doc.get("sync")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default()
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
 }
 
 impl Dictionary {
@@ -518,6 +593,85 @@ pub(crate) fn normalize_pause_ellipses(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("scribe-wsync-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn put(d: &SharedDictionary, replacements: &[(&str, &str)], vocabulary: &[&str]) {
+        d.save(&DictionaryBody {
+            replacements: replacements
+                .iter()
+                .map(|(w, c)| Replacement {
+                    wrong: (*w).into(),
+                    correct: (*c).into(),
+                })
+                .collect(),
+            vocabulary: vocabulary.iter().map(|t| (*t).into()).collect(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn words_travel_between_two_computers_through_the_sync_folder() {
+        let root = scratch("travel");
+        let shared = root.join("aios-scribe");
+        let laptop = SharedDictionary::new(root.join("laptop.json"));
+        let desktop = SharedDictionary::new(root.join("desktop.json"));
+
+        put(&laptop, &[("btw", "by the way")], &[]);
+        put(&desktop, &[], &["Gersi"]);
+        // Both edited offline. After both sync twice, both hold both words.
+        for _ in 0..2 {
+            laptop.sync_with(&shared, "LAPTOP").unwrap();
+            desktop.sync_with(&shared, "DESKTOP").unwrap();
+        }
+        for d in [&laptop, &desktop] {
+            let body = d.current().body();
+            assert_eq!(body.replacements.len(), 1);
+            assert_eq!(body.vocabulary, ["Gersi"]);
+        }
+
+        // Deleting "Gersi" on the desktop reaches the laptop and the word does not come back.
+        put(&desktop, &[("btw", "by the way")], &[]);
+        desktop.sync_with(&shared, "DESKTOP").unwrap();
+        assert!(laptop.sync_with(&shared, "LAPTOP").unwrap());
+        laptop.sync_with(&shared, "LAPTOP").unwrap();
+        desktop.sync_with(&shared, "DESKTOP").unwrap();
+        for d in [&laptop, &desktop] {
+            let body = d.current().body();
+            assert_eq!(body.replacements.len(), 1);
+            assert!(body.vocabulary.is_empty());
+        }
+        // Built-in words never reach the shared files.
+        let files: String = std::fs::read_dir(&shared)
+            .unwrap()
+            .map(|f| std::fs::read_to_string(f.unwrap().path()).unwrap())
+            .collect();
+        assert!(!files.contains("Leonidas"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_sync_with_no_other_computer_changes_no_words_and_keeps_other_keys() {
+        let root = scratch("alone");
+        let file = root.join("dictionary.json");
+        std::fs::write(
+            &file,
+            r#"{"replacements":{"btw":"by the way"},"vocabulary":[],"pythonKey":7}"#,
+        )
+        .unwrap();
+        let only = SharedDictionary::new(file.clone());
+        assert!(!only.sync_with(&root.join("shared"), "SOLO").unwrap());
+        let doc: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(doc["pythonKey"], 7);
+        assert_eq!(doc["replacements"]["btw"], "by the way");
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn builtins_apply_under_the_user_file_and_never_leave_it() {

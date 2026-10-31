@@ -1557,6 +1557,39 @@ describe("deriveMessagesTimelineRows", () => {
     expect(rows.map((row) => row.id)).toEqual(["turn-fold:turn-1", "assistant-final-entry"]);
   });
 
+  it("keeps a reply with a Dock visible when a hook continues the same turn", () => {
+    const message = (id: string, second: number, text: string) => ({
+      id: `${id}-entry`,
+      kind: "message" as const,
+      createdAt: `2026-01-01T00:00:0${second}Z`,
+      message: {
+        id: id as never,
+        role: "assistant" as const,
+        text,
+        runId: "turn-1" as never,
+        createdAt: `2026-01-01T00:00:0${second}Z`,
+        updatedAt: `2026-01-01T00:00:0${second + 1}Z`,
+        streaming: false,
+      },
+    });
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [
+        message("assistant-work", 1, "Reading the files."),
+        message("assistant-reply", 3, "Built it.\n---\n### 🎯 TL;DR\n- Ready."),
+        message("assistant-hook", 5, "The hook asked me to log the session. Logged."),
+      ],
+      isWorking: false,
+      activeTurnStartedAt: null,
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+
+    const ids = rows.map((row) => row.id);
+    expect(ids).toContain("assistant-reply-entry");
+    expect(ids).toContain("assistant-hook-entry");
+    expect(ids).not.toContain("assistant-work-entry");
+  });
+
   it("derives a sane duration for a steer-superseded turn with one instant commentary message", () => {
     // A steer ends the previous turn early: its only message completes the
     // instant it is created, and trailing work entries land after it. The

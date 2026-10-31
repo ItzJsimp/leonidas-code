@@ -1,6 +1,9 @@
 import { type CSSProperties, memo } from "react";
 
-import { providerInstanceInitials } from "@t3tools/client-runtime/state/provider-instance-display";
+import {
+  isLightAccentColor,
+  providerInstanceInitials,
+} from "@t3tools/client-runtime/state/provider-instance-display";
 
 import { ProviderDriverKind } from "@t3tools/contracts";
 import { AntigravityIcon, ClaudeAI, Icon, OpenAI, OpenRouterIcon } from "../Icons";
@@ -129,7 +132,10 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
           className={cn(
             "pointer-events-none absolute right-0 bottom-0 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border px-0.5 text-4xs font-semibold leading-none shadow-sm",
             props.accentColor
-              ? "bg-(--provider-accent) text-white"
+              ? cn(
+                  "bg-(--provider-accent)",
+                  isLightAccentColor(props.accentColor) ? "text-black" : "text-white",
+                )
               : "bg-card text-muted-foreground",
             props.badgeClassName,
           )}

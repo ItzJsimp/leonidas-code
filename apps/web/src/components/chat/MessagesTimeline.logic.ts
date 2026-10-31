@@ -714,6 +714,8 @@ export function resolveAssistantMessageCopyState({
 
 function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<TimelineEntry>) {
   const lastAssistantMessageIdByResponseKey = new Map<string, string>();
+  // A reply that ends in a Dock is a final reply even when a hook continues the same run.
+  const dockReplyIds: string[] = [];
   let nullTurnResponseIndex = 0;
 
   for (const timelineEntry of timelineEntries) {
@@ -733,9 +735,12 @@ function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<Timeli
       ? `turn:${message.runId}`
       : `unkeyed:${nullTurnResponseIndex}`;
     lastAssistantMessageIdByResponseKey.set(responseKey, message.id);
+    // shortcut: a plain substring check, not a full Dock parse, so this stays cheap on long
+    // threads; a quoted Dock example only keeps one extra message visible.
+    if (!message.streaming && message.text.includes("### 🎯 TL;DR")) dockReplyIds.push(message.id);
   }
 
-  return new Set(lastAssistantMessageIdByResponseKey.values());
+  return new Set([...lastAssistantMessageIdByResponseKey.values(), ...dockReplyIds]);
 }
 
 interface TurnFold {
@@ -1123,7 +1128,10 @@ function deriveTurnFolds(input: {
       ? group.entries.findIndex((entry) => entry.id === group.terminalEntry?.id)
       : group.entries.length;
     for (const [index, entry] of group.entries.entries()) {
-      if (entry.id === group.terminalEntry?.id) {
+      if (
+        entry.id === group.terminalEntry?.id ||
+        (entry.kind === "message" && input.terminalAssistantMessageIds.has(entry.message.id))
+      ) {
         continue;
       }
       const isCompaction =

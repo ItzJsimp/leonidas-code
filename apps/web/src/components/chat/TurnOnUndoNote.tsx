@@ -5,9 +5,9 @@ import { useVcsInitAction } from "~/state/sourceControlActions";
 import { vcsEnvironment } from "~/state/vcs";
 import { Button } from "../ui/button";
 
-export const TURN_ON_UNDO_TEXT = "Undo needs a saved history. Turn it on?";
+export const TURN_ON_UNDO_TEXT = "Going back to a turn needs a saved history. Turn it on?";
 
-/** Shown under a reply when the project folder has no git, so "Undo this turn" cannot work yet. */
+/** Shown under a reply when the project folder has no git, so "Go back to here" cannot work yet. */
 export function TurnOnUndoNote({
   environmentId,
   cwd,
@@ -23,7 +23,7 @@ export function TurnOnUndoNote({
   if (turnedOn) {
     return (
       <p className="mt-2 text-xs text-muted-foreground" role="status">
-        Saved history is on. You can undo your next turn.
+        Saved history is on. You can go back to your next turn.
       </p>
     );
   }

@@ -2,6 +2,7 @@ import { ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  isLightAccentColor,
   normalizeProviderAccentColor,
   providerInstanceInitials,
   resolveProviderInstanceDisplayName,
@@ -63,6 +64,25 @@ describe("providerInstanceInitials", () => {
   it("keeps an emoji whole instead of splitting its surrogate pair", () => {
     expect(providerInstanceInitials("😀 Work")).toBe("😀W");
     expect(providerInstanceInitials("😀")).toBe("😀");
+  });
+
+  it("skips punctuation so a bracketed account name gives letters", () => {
+    expect(providerInstanceInitials("Antigravity (SimplyGersi)")).toBe("AS");
+    expect(providerInstanceInitials("Codex (work)")).toBe("CW");
+    expect(providerInstanceInitials("(Personal)")).toBe("PE");
+  });
+});
+
+describe("isLightAccentColor", () => {
+  it("treats white and yellow as light", () => {
+    expect(isLightAccentColor("#ffffff")).toBe(true);
+    expect(isLightAccentColor("#FACC15")).toBe(true);
+  });
+
+  it("treats dark and saturated colors as dark", () => {
+    expect(isLightAccentColor("#000000")).toBe(false);
+    expect(isLightAccentColor("#D92626")).toBe(false);
+    expect(isLightAccentColor("#2563eb")).toBe(false);
   });
 });
 

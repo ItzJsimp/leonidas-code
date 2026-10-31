@@ -31,17 +31,24 @@ export function useComposerOutputActions(
     (text: string) => {
       const composer = composerRef.current;
       if (!composer) return;
-      if (!composer.insertTextAtEnd(text, { ensureLeadingBoundary: true })) {
+      // shortcut: a caret at 0 in a non-empty draft counts as no caret, so the text goes to
+      // the end; track real caret placement if someone needs inserts at the very start.
+      const { value, expandedCursor } = composer.readSnapshot();
+      const options = { ensureLeadingBoundary: true };
+      // The insert itself focuses the editor right after the new text.
+      const inserted =
+        value.length > 0 && expandedCursor === 0
+          ? composer.insertTextAtEnd(text, options)
+          : composer.insertTextAtCursor(text, options);
+      if (!inserted) {
         toastManager.add({
           type: "error",
           title: "Unable to add reply",
           description: "The composer is busy; try again once it is ready.",
         });
-        return;
       }
-      scheduleComposerFocus();
     },
-    [composerRef, scheduleComposerFocus],
+    [composerRef],
   );
   return { useArtifactTemplate, fillDockReply };
 }

@@ -61,6 +61,21 @@ fn run() -> Result<(), String> {
     let dictionary = Arc::new(SharedDictionary::new(cfg.dictionary_path(&config_dir)));
     let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary.clone());
     let settings = Arc::new(Settings::new(config_path.clone(), cfg.clone()));
+    // Word sync: every 30 s, merge with the other computers' files while the app has set
+    // `features.wordSyncDir`. The folder is read each time, so a change needs no restart.
+    {
+        let (dictionary, settings) = (dictionary.clone(), settings.clone());
+        let device = scribe_engine::dictionary_sync::device_name();
+        std::thread::spawn(move || loop {
+            let features = settings.current().features.clone();
+            if let Some(dir) = scribe_engine::dictionary_sync::sync_dir(&features) {
+                if let Err(e) = dictionary.sync_with(&dir, &device) {
+                    eprintln!("word sync: {e}");
+                }
+            }
+            std::thread::sleep(Duration::from_secs(30));
+        });
+    }
     let polisher = Arc::new(GroqPolisher::new(groq.clone(), &cfg.effective_polish()));
     // Cloud first. The local model serves private mode and a cloud that cannot answer.
     let local = Arc::new(WhisperLocal::new(&config_dir.join("models")));

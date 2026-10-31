@@ -90,6 +90,7 @@ import {
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { requestThreadAction } from "./chat/threadActionBus";
 import { requestThreadFindOpen } from "./chat/threadFindActionBus";
@@ -178,6 +179,7 @@ import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../termina
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../threadRoutes";
 import { useAvailableSettingsSearchItems } from "./settings/useAvailableSettingsSearchItems";
 import { NewBusinessDialog } from "./workspace/NewBusinessDialog";
+import { useRemoveProject } from "./workspace/useRemoveProject";
 import { openNewBusiness } from "./workspace/newBusinessStore";
 import {
   applyWslEnvironmentConfiguration,
@@ -738,6 +740,7 @@ function OpenCommandPaletteDialog(props: {
   }, [activeThreadReferenceCopyTarget]);
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const threads = useThreadShells();
+  const removeProject = useRemoveProject(threads);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const {
     theme,
@@ -1319,6 +1322,24 @@ function OpenCommandPaletteDialog(props: {
           );
         },
         icon: projectFaviconIcon,
+        renderTrailingContent: (project) => (
+          <Button
+            variant="ghost-destructive"
+            size="icon-xs"
+            aria-label={`Remove project ${project.displayName}`}
+            title="Remove project (files stay on disk)"
+            className="ml-auto shrink-0"
+            onClick={(event) => {
+              event.stopPropagation();
+              void removeProject(
+                project,
+                projectEnvironmentLocationById.get(project.environmentId)?.label,
+              );
+            }}
+          >
+            <Trash2Icon aria-hidden className="size-3.5" />
+          </Button>
+        ),
         runProject: async (project) => {
           const group = projectGroupByTargetKey.get(`${project.environmentId}:${project.id}`);
           const contextualRefBelongsToGroup =
@@ -1362,6 +1383,7 @@ function OpenCommandPaletteDialog(props: {
     pickerProjects,
     projectEnvironmentLocationById,
     projectGroupByTargetKey,
+    removeProject,
     scratchTargetEnvironmentId,
     scratchWorkspaceRootFor,
     startScratchThread,

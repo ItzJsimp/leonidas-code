@@ -9,6 +9,7 @@ export type RailTo =
   | "/memory"
   | "/library"
   | "/marketing"
+  | "/content"
   | "/images"
   | "/files"
   | "/subagents"
@@ -58,6 +59,7 @@ const BEFORE_EXTRAS: readonly RailItem[] = [
   item("memory", "Memory", "/memory", "what Leonidas knows and remembers", ["/brain"]),
   item("library", "Library", "/library", "skills, helpers, reply styles and rules"),
   item("content", "Marketing", "/marketing", "posts and campaigns"),
+  item("deals", "Content", "/content", "deals, scripts and what to film"),
   item("images", "Images", "/images", "make and keep pictures"),
   item("files", "Files", "/files", "every attachment, screenshot and upload"),
   item("subagents", "Subagents", "/subagents", "helpers your chats run, live and past"),

@@ -78,3 +78,35 @@ it.effect("keeps calling-thread storage failures as orchestration errors", () =>
     expect(error.code).toBe("orchestration_error");
   }),
 );
+
+const startGoal = (check?: { readonly command: string; readonly approved: true }) =>
+  Effect.gen(function* () {
+    const service = yield* ThreadMetadataMcp.ThreadMetadataMcpService;
+    return yield* service.update(scope, {
+      action: "goal",
+      goalControl: { action: "start", condition: "tests pass", spendingApproved: true, check },
+      clientRequestId: "goal-check-approval",
+    });
+  });
+
+it.effect("refuses a goal shell check from an MCP caller before touching any thread", () =>
+  Effect.gen(function* () {
+    const error = yield* startGoal({ command: "echo pwned", approved: true }).pipe(
+      Effect.provide(layerService(() => Effect.die("thread must not load"))),
+      Effect.flip,
+    );
+
+    expect(error.code).toBe("capability_denied");
+  }),
+);
+
+it.effect("still lets an MCP caller start a goal without a shell check", () =>
+  Effect.gen(function* () {
+    const error = yield* startGoal().pipe(
+      Effect.provide(layerService(() => Effect.succeed(null))),
+      Effect.flip,
+    );
+
+    expect(error.code).toBe("thread_not_found");
+  }),
+);
