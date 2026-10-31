@@ -1,6 +1,7 @@
 import { isAtomCommandInterrupted } from "@t3tools/client-runtime/state/runtime";
 import { useState } from "react";
 
+import { ensureLocalApi } from "~/localApi";
 import { useEnvironmentQuery } from "~/state/query";
 import { scribePatchSettings, scribeSettingsQuery } from "~/state/scribe";
 import { useAtomCommand } from "~/state/use-atom-command";
@@ -49,6 +50,14 @@ export function WordSyncRow({ environmentId }: Pick<ScribeTabProps, "environment
     }
   };
 
+  // Only the desktop app can open the system folder dialog; the browser keeps the typed path.
+  const choose = async () => {
+    const picked = await ensureLocalApi()
+      .dialogs.pickFolder({ initialPath: current || null })
+      .catch(() => null);
+    if (picked) void save(picked);
+  };
+
   return (
     <form
       className="flex flex-col gap-2 border-t pt-4"
@@ -72,6 +81,11 @@ export function WordSyncRow({ environmentId }: Pick<ScribeTabProps, "environment
           value={value}
           onChange={(event) => setDraft(event.target.value)}
         />
+        {window.desktopBridge ? (
+          <Button type="button" variant="outline" disabled={busy} onClick={() => void choose()}>
+            Choose folder
+          </Button>
+        ) : null}
         <Button type="submit" disabled={!canSave}>
           Save folder
         </Button>
