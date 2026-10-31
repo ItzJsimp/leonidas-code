@@ -7,10 +7,27 @@ import {
   QUESTION_BUDGET_REPLY,
   questionBudgetAllows,
   setAiLevelSetting,
+  setSharedBrowserAccess,
 } from "./runtimeInstructions.ts";
 import { MAX_SKILLS_PER_TASK, SKILL_ROUTING_INSTRUCTIONS } from "./skillRouting.ts";
 
 describe("buildRuntimeInstructions", () => {
+  it("routes logged-in sites across providers only while shared access is enabled", () => {
+    try {
+      setSharedBrowserAccess(false);
+      expect(buildRuntimeInstructions({ harness: "Codex" })).not.toContain("<shared_browser>");
+      setSharedBrowserAccess(true);
+      for (const harness of ["Codex", "Claude Code", "ACP"]) {
+        const prompt = buildRuntimeInstructions({ harness });
+        expect(prompt).toContain('profileId="leonidas-shared-browser"');
+        expect(prompt).toContain("Whop course");
+        expect(prompt).toContain("development servers and public pages in ordinary Preview");
+        expect(prompt).toContain("Ask before any action that buys, posts, or sends");
+      }
+    } finally {
+      setSharedBrowserAccess(false);
+    }
+  });
   it("requires explicit registration of every PR and stack layer", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex" });
     expect(instructions).toContain("one link_pull_request per PR, full URL, every stack layer");
