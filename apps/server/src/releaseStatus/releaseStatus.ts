@@ -1,4 +1,5 @@
-import { execFile } from "node:child_process";
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off - a plain async reader that shells out to gh and keeps a 10 s cache.
+import * as NodeChildProcess from "node:child_process";
 
 import type { ReleaseStatus } from "@t3tools/contracts";
 
@@ -13,8 +14,12 @@ type Gh = (args: ReadonlyArray<string>) => Promise<string>;
 
 const runGh: Gh = (args) =>
   new Promise((resolve, reject) => {
-    execFile("gh", [...args], { timeout: 20_000, windowsHide: true }, (error, stdout, stderr) =>
-      error ? reject(new Error(stderr.trim() || error.message)) : resolve(stdout),
+    NodeChildProcess.execFile(
+      "gh",
+      [...args],
+      { timeout: 20_000, windowsHide: true },
+      (error, stdout, stderr) =>
+        error ? reject(new Error(stderr.trim() || error.message)) : resolve(stdout),
     );
   });
 
