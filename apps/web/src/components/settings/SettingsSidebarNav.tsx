@@ -128,6 +128,9 @@ function SettingsSectionIcon({ to }: { to: SettingsPath }) {
   return <Icon className="mt-0.5 size-3.5 shrink-0 text-sidebar-muted-foreground/60" />;
 }
 
+// 44 px touch rows on phones, where `/settings` is the section list.
+const ROW_CLASS_NAME = "max-md:h-11";
+
 export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   const navigate = useNavigate();
   const currentHash = useLocation({ select: (location) => location.hash });
@@ -418,6 +421,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                           <SidebarMenuItem key={to}>
                             <SidebarMenuButton
                               data-settings-section={to}
+                              className={ROW_CLASS_NAME}
                               isActive={isActive}
                               aria-current={isActive ? "page" : undefined}
                               onClick={() => handleSectionClick(to)}
@@ -431,6 +435,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                       {index === navGroups.length - 1 ? (
                         <SidebarMenuItem>
                           <SidebarMenuButton
+                            className={ROW_CLASS_NAME}
                             isActive={pathname === "/system-care"}
                             onClick={() => void navigate({ to: "/system-care" })}
                           >
@@ -453,14 +458,20 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                   </p>
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={openReleaseHistoryDialog}>
+                      <SidebarMenuButton
+                        className={ROW_CLASS_NAME}
+                        onClick={openReleaseHistoryDialog}
+                      >
                         <ScrollTextIcon />
                         <span className={labelClassName}>What changed</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     {STUCK_ENABLED ? (
                       <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => openStuck("button")}>
+                        <SidebarMenuButton
+                          className={ROW_CLASS_NAME}
+                          onClick={() => openStuck("button")}
+                        >
                           <LifeBuoyIcon />
                           <span className={labelClassName}>I&apos;m stuck</span>
                         </SidebarMenuButton>
@@ -468,7 +479,10 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                     ) : null}
                     {FEEDBACK_ENABLED ? (
                       <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => openFeedback({ source: "sidebar" })}>
+                        <SidebarMenuButton
+                          className={ROW_CLASS_NAME}
+                          onClick={() => openFeedback({ source: "sidebar" })}
+                        >
                           <MessageSquareWarningIcon />
                           <span className={labelClassName}>Send feedback</span>
                         </SidebarMenuButton>
