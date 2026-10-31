@@ -90,6 +90,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 - **A new required field in `WorkspaceOrg` breaks three fixtures:** the contract in `packages/contracts/src/taskBoard.ts`, `apps/server/src/workspacePack/workspacePack.test.ts` and `apps/web/src/components/team/teamView.logic.test.ts` each build an org by hand. Grep `members: \[` before you run tsc.
 - **The Bash token guard blocks Python heredocs over 20 lines:** write the script with the Write tool and run it by path, or use Edit. A `\n` inside a heredoc string became a real newline in a TS test and broke the parse.
 - **`git commit --only -- <paths>` skips a new file until you `git add` it first** (pathspec error). The pre-commit hook then runs a formatter, so a file may change on disk after commit.
+- **Cache awareness has two halves:** the server sets `promptCacheTtlMs` and `promptCacheAnchorAt` per provider (`ClaudeContextUsage.ts`, `codexProviderTurnTokenUsage` in `CodexAdapterV2.ts`). The web side only reads them (`cacheAwareness.ts`, `CacheAwareness.tsx`). A provider that sends no TTL gets no countdown and no notice. Codex uses the documented 30m default because the 12h option is opt-in and not reported. Do not hard-code 12h. Self-test: `CacheAwareness.test.tsx`, `CodexAdapterV2.test.ts`.
 
 ## 6. Why it is this way
 
@@ -103,6 +104,7 @@ Full list and session notes: [project/agent-gotchas.md](./project/agent-gotchas.
 
 ## 7. Session notes
 
+- **2026-10-31:** A chat waiting on a question now shows a cache warning on the card (`usePendingCacheNote`, `ComposerPendingUserInputPanel.tsx`) and one toast when the cache ends while the card is open. Codex chats now report a 30m TTL. Not committed, not pushed. Open: no toast for chats you are not viewing, because the app does not track pending questions per chat.
 - **2026-10-27 (Scribe rewrite, later):** engine rewrite key and picker `db4dcd3d58`, Rewrite tab and Goals and Insights server stats `00b925942d`, local, not pushed. Open: hand test of `Ctrl+Shift+A`, and the Goals and Insights web tabs (no web caller of `scribe.getInsights` or `scribe.getGoals` yet).
 - **2026-10-27 (Scribe rewrite and built-in words):** built-in words committed (`5180d90f49`). Jake's 90 Python Scribe words are merged into his own engine `dictionary.json` only (backup `.bak-20261027-153407`). In flight at this note: the engine rewrite key (`Ctrl + Shift + A`) with a native picker (`src/rewrite.rs`, `src/hud/picker.rs`), the Rewrite tab, and the Goals and Insights tabs. Card: AIOS `tasks/add-the-scribe-rewrite-hotkey-with-a-preset-picker-built-in-words-and-the-goals-and-insights-tabs.md`.
 
