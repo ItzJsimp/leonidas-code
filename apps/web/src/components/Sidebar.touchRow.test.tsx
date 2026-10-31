@@ -121,7 +121,9 @@ it("mouse and pen pointers never start a touch gesture", () => {
 });
 
 it("the row drag sensor ignores touch pointers and keeps mouse", () => {
-  const [{ handler }] = SidebarPointerSensor.activators;
+  const activator = SidebarPointerSensor.activators[0];
+  if (!activator) throw new Error("the sensor has no activator");
+  const { handler } = activator;
   const event = (pointerType: string) =>
     ({ nativeEvent: { isPrimary: true, button: 0, pointerType } }) as never;
   expect(handler(event("touch"))).toBe(false);
