@@ -478,16 +478,20 @@ const CLIPBOARD_SCRIPT = `(() => {
   };
 })();`;
 
+const isSharedBrowserSetupError = Schema.is(SharedBrowserSetupError);
+
 const make = Effect.gen(function* () {
   const config = yield* ServerConfig.ServerConfig;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
-  const sharedBrowserEnabled = async () =>
-    (await Effect.runPromise(serverSettings.getSettings)).enableSharedBrowser;
+  const sharedBrowserEnabled = async () => {
+    const settings = await Effect.runPromise(serverSettings.getSettings);
+    return settings.enableSharedBrowser && settings.enableAgentBrowserAccess;
+  };
   const assertSharedBrowserAccess = async (profileId: string | undefined) => {
     if (profileId === SHARED_BROWSER_PROFILE_ID && !(await sharedBrowserEnabled()))
       throw new ServerBrowserPage.ServerBrowserOperationError(
         "SharedBrowserDisabledError",
-        "Shared browser access is off. Enable Shared browser in Settings > Integrations.",
+        "Shared browser access is off. Enable Shared browser and AI browser access in Settings > Browser.",
       );
   };
   const host = { platform: yield* HostProcess.Platform, arch: yield* HostProcess.Architecture };
@@ -2534,7 +2538,7 @@ const make = Effect.gen(function* () {
           await contexts.contextFor(SHARED_BROWSER_PROFILE_ID);
         },
         catch: (cause) => {
-          if (cause instanceof SharedBrowserSetupError) return cause;
+          if (isSharedBrowserSetupError(cause)) return cause;
           const reason = cause instanceof Error ? cause.message : String(cause);
           const locked = /ProcessSingleton|SingletonLock|profile.*in use/i.test(reason);
           const disconnected = /closed|disconnected/i.test(reason);

@@ -72,18 +72,13 @@ describe("buildRuntimeInstructions", () => {
     expect(instructions).not.toContain("reasoning effort");
   });
 
-  it("appends the Leonidas output standard with the Dock and no status ritual", () => {
+  it("appends the current render contract and builder output standard", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex", aiLevel: "builder" });
+    expect(instructions).toContain(LEONIDAS_RENDER_CONTRACT);
     expect(instructions).toContain("<leonidas_output_standard>");
     expect(instructions).not.toContain("**Focus:**");
-    expect(instructions).toContain("Do not report model, token, cache, mode");
-    expect(instructions).toContain("leonidas-canvas");
-    expect(instructions).toContain("html_render");
-    expect(instructions).not.toContain("over 400 words");
-    expect(instructions).toContain("actually read the available leonidas-canvas/SKILL.md");
-    expect(instructions).toContain("skillLoaded:true");
+    expect(instructions).toContain("leo:choices");
     expect(instructions).toContain("### 🎯 TL;DR");
-    expect(instructions).toContain("### ⚡ Immediate Next Actions");
     expect(instructions).toContain("### ❓ Input & Decisions Needed");
     expect(instructions).toContain("</leonidas_output_standard>");
   });
@@ -162,7 +157,7 @@ describe("AI level", () => {
 
   it("keeps the full Dock and the grill-style questions for builders", () => {
     const text = forLevel("builder");
-    expect(text).toContain("### ⚡ Immediate Next Actions");
+    expect(text).toContain("### 🏁 Session Complete");
     expect(text).toContain("whole frontier in one call");
     expect(text).not.toContain("Act first and report after.");
   });

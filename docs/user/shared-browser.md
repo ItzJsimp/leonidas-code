@@ -6,7 +6,7 @@ It does not need the Claude in Chrome extension or a matching Claude account.
 
 ## Connect
 
-1. Open **Settings > Browser and devices**.
+1. Open **Settings > Browser**.
 2. Select the computer that will run the browser.
 3. Turn on **Shared browser** under **Website logins**.
 4. Select **Open shared browser**. The app checks browser startup and opens the browser in a chat.

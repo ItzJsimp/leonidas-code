@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - Expected paths must use the host separators, like the browser pool.
 import * as NodePath from "node:path";
 import * as NodeEvents from "node:events";
 

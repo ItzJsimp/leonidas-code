@@ -323,9 +323,20 @@ it.live(
           { profileId: "leonidas-shared-browser", isolated: false },
           { profileId: "leonidas-shared-browser", isolated: false },
         ]);
+        yield* settings.updateSettings({ enableAgentBrowserAccess: false });
+        const globallyDisabled = yield* broker
+          .invoke<string>({
+            scope,
+            tabId: PreviewTabId.make(first.tabId!),
+            operation: "evaluate",
+            input: { expression: "document.title" },
+          })
+          .pipe(Effect.flip);
+        expect(globallyDisabled.message).toContain("Shared browser access is off");
+        yield* settings.updateSettings({ enableAgentBrowserAccess: true });
         yield* settings.updateSettings({ enableSharedBrowser: false });
         const rejected = yield* broker
-          .invoke({
+          .invoke<string>({
             scope,
             tabId: PreviewTabId.make(first.tabId!),
             operation: "evaluate",
