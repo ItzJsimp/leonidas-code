@@ -127,7 +127,6 @@ import {
 import { PREFERRED_HIGHLIGHTER } from "../../lib/syntaxHighlighting";
 import ChatMarkdown, { ChatMarkdownAssetImage } from "../ChatMarkdown";
 import { AssistantOutput } from "./AssistantOutput";
-import { workedForMs } from "@t3tools/shared/outputDock";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Root, RootContent } from "mdast";
@@ -2973,20 +2972,11 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
     "new";
   const undoTarget = row.undoTarget;
   const messageText = row.message.text || (row.message.streaming ? "" : "(empty response)");
-  const run = ctx.runs.find((candidate) => candidate.id === row.message.runId);
-  const start = run?.workStartedAt ?? run?.startedAt;
-  const elapsed =
-    row.showAssistantMeta && start && run?.completedAt
-      ? workedForMs(DateTime.formatIso(start), DateTime.formatIso(run.completedAt))
-      : null;
 
   return (
     <>
       <div className="relative min-w-0 px-1 py-0.5">
         <MessageAuthorHeading>Leonidas</MessageAuthorHeading>
-        {elapsed !== null ? (
-          <p className="mb-2 text-xs text-muted-foreground">Worked for {formatDuration(elapsed)}</p>
-        ) : null}
         <div data-thread-find-text="true">
           <AssistantCitationSource
             messageId={row.message.id}

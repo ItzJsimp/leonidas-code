@@ -936,6 +936,33 @@ describe("MessagesTimeline", () => {
     expect(fadedMarkup).toContain("topbar-scroll-fade");
   });
 
+  it("shows the work time only in the fold row, never as a second line under the author", async () => {
+    const { DateTime } = await import("effect");
+    const runId = RunId.make("run-timed");
+    const markup = renderToStaticMarkup(
+      <MessagesTimeline
+        {...buildProps()}
+        runs={[
+          {
+            id: runId,
+            providerInstanceId: "codex",
+            modelSelection: { instanceId: "codex", model: "gpt-5" },
+            startedAt: DateTime.makeUnsafe("2026-01-01T00:00:00Z"),
+            completedAt: DateTime.makeUnsafe("2026-01-01T00:01:52Z"),
+          } as never,
+        ]}
+        timelineEntries={[
+          {
+            ...buildAssistantTimelineEntry("Done."),
+            message: { ...buildAssistantTimelineEntry("Done.").message, runId },
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).not.toContain("Worked for 1m 52s</p>");
+  });
+
   it("keeps assistant changed-files headers sticky below the thread header", () => {
     const assistantMessageId = MessageId.make("message-assistant-with-files");
     const runId = RunId.make("run-with-files");

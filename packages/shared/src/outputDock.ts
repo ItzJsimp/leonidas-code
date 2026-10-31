@@ -149,9 +149,3 @@ export function parseOutputDock(text: string) {
   );
   return { body, sections, ...(status ? { status } : {}) };
 }
-
-export function workedForMs(start: string | null | undefined, end: string | null | undefined) {
-  if (!start || !end) return null;
-  const elapsed = Date.parse(end) - Date.parse(start);
-  return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : null;
-}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { parseOutputDock, workedForMs } from "./outputDock.ts";
+import { parseOutputDock } from "./outputDock.ts";
 
 const reply = `🎯 **Focus:** \`Code\` · **Step:** \`Build\`
 
@@ -88,12 +88,6 @@ describe("output Dock", () => {
     expect(item).toMatchObject({ kind: "markdown" });
     expect(item.kind === "markdown" && item.text).toContain("- [ ] 🤖 **Leonidas:** Do not run");
     expect(item.kind === "markdown" && item.text).toMatch(/\n- 👤 \*\*You:\*\* Review$/);
-  });
-  it("uses finished run timestamps only", () => {
-    expect(workedForMs("2026-10-13T00:00:00Z", "2026-10-13T00:01:12Z")).toBe(72000);
-    expect(workedForMs(null, "2026-10-13T00:01:12Z")).toBeNull();
-    expect(workedForMs("bad", "bad")).toBeNull();
-    expect(workedForMs("2026-10-13T00:01:12Z", "2026-10-13T00:00:00Z")).toBeNull();
   });
 });
 
