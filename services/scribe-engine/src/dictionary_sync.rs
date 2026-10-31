@@ -229,6 +229,16 @@ mod tests {
     }
 
     #[test]
+    fn the_sync_folder_comes_from_the_app_setting_and_blank_means_off() {
+        let features = |v: serde_json::Value| v.as_object().unwrap().clone();
+        let set = features(serde_json::json!({ "wordSyncDir": "  D:\\AIOS\\scribe\\words " }));
+        assert_eq!(sync_dir(&set), Some("D:\\AIOS\\scribe\\words".into()));
+        assert_eq!(sync_dir(&features(serde_json::json!({ "wordSyncDir": "  " }))), None);
+        assert_eq!(sync_dir(&features(serde_json::json!({ "wordSyncDir": 5 }))), None);
+        assert_eq!(sync_dir(&features(serde_json::json!({}))), None);
+    }
+
+    #[test]
     fn a_device_name_cannot_leave_the_sync_folder() {
         assert_eq!(clean_device("JAKE-PC"), "JAKE-PC");
         assert_eq!(clean_device("..\\evil/name.json"), "evilnamejson");
@@ -243,6 +253,12 @@ pub fn device_name() -> String {
         .or_else(|_| std::env::var("HOSTNAME"))
         .unwrap_or_default();
     clean_device(&raw)
+}
+
+/// The sync folder the app set in `features.wordSyncDir`. Blank or not a string means off.
+pub fn sync_dir(features: &serde_json::Map<String, serde_json::Value>) -> Option<std::path::PathBuf> {
+    let dir = features.get("wordSyncDir")?.as_str()?.trim();
+    (!dir.is_empty()).then(|| dir.into())
 }
 
 fn clean_device(name: &str) -> String {

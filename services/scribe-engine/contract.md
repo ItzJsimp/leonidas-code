@@ -121,7 +121,7 @@ Reply 200 `{"deleted":true}`, or 404 `not_found` for an unknown id, or 500 `stor
 - 400 `bad_request`: a missing or unknown field, an empty `wrong`, or more than 800 vocabulary items. The file is not written. 500 `store_error` when the write fails.
 - A save applies to the next dictation. The body limit is 64 KB.
 - A save also stamps each changed word under a top-level `sync` key in `dictionary.json` (change time, deletion marker). Word sync needs it; an older engine ignores it.
-- Word sync: with `polish.dictionarySyncDir` set in the engine config, the engine merges the other computers' files in that folder every 30 s and writes its own `<computer name>.json` there. It never writes built-in words.
+- Word sync: while `features.wordSyncDir` holds a folder (set with `PATCH /v1/settings`), the engine merges the other computers' files in that folder every 30 s and writes its own `<computer name>.json` there. It reads the setting each time, so a change needs no restart. It never writes built-in words.
 
 ### `GET /v1/dictionary/suggestions` (v1.2)
 

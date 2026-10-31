@@ -133,9 +133,6 @@ pub struct PolishConfig {
     pub instructions: Option<String>,
     /// Python Scribe `dictionary.json` format; `None` uses `<config dir>/dictionary.json`.
     pub dictionary_path: Option<PathBuf>,
-    /// A folder in the user's AIOS. Each computer keeps its words there in its own file, so
-    /// the AIOS git sync carries them to the other computers. `None` turns word sync off.
-    pub dictionary_sync_dir: Option<PathBuf>,
 }
 
 impl Default for PolishConfig {
@@ -144,7 +141,6 @@ impl Default for PolishConfig {
             enabled: true,
             instructions: None,
             dictionary_path: None,
-            dictionary_sync_dir: None,
         }
     }
 }
