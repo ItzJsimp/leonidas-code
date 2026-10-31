@@ -1,3 +1,4 @@
+// @effect-diagnostics globalFetch:off globalConsole:off globalConsoleInEffect:off preferSchemaOverJson:off globalDateInEffect:off - Host-side bench client that prints raw JSON results for scripts/server-bench.mjs.
 // WebSocket half of scripts/server-bench.mjs. Connects like the app does and either
 // times git status (--mode status) or holds the same subscriptions open (--mode hold).
 //   node apps/server/scripts/server-bench-ws.ts --origin http://127.0.0.1:PORT --token <bearer> --cwd <repo> --mode status --runs 9
