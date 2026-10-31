@@ -5,9 +5,11 @@ import * as NodePath from "node:path";
 
 import { describe, expect, it } from "@effect/vitest";
 import { ThreadId, type SubagentSpawnApproval } from "@t3tools/contracts";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Stream from "effect/Stream";
+import * as TestClock from "effect/testing/TestClock";
 
 import { makeSpawnApprovals, parseSavedCounts } from "./SpawnApprovals.ts";
 
@@ -76,6 +78,64 @@ describe("SpawnApprovals", () => {
         .respond({ id: "c", decision: { kind: "allow_once" } })
         .pipe(Effect.flip);
       expect(late._tag).toBe("SubagentSpawnApprovalError");
+    }),
+  );
+});
+
+describe("SpawnApprovals with a short call wait", () => {
+  it.effect("keeps the card open when the call gives up, and a retry takes the late answer", () =>
+    Effect.gen(function* () {
+      const broker = yield* makeSpawnApprovals;
+      const first = yield* Effect.forkChild(
+        broker.request(approval("d"), { waitFor: Duration.seconds(45) }),
+      );
+      yield* Effect.yieldNow;
+      yield* TestClock.adjust(Duration.seconds(46));
+      expect(yield* Fiber.join(first)).toEqual({ kind: "still_waiting" });
+      // The card is still open for the user.
+      expect(yield* openIds(broker)).toEqual(["d"]);
+
+      yield* broker.respond({ id: "d", decision: { kind: "allow_once" } });
+      expect(yield* openIds(broker)).toEqual([]);
+
+      // The retry opens no second card and gets the answer at once.
+      const retry = yield* broker.request(approval("d"), { waitFor: Duration.seconds(45) });
+      expect(retry).toEqual({ kind: "allow_once" });
+      expect(yield* openIds(broker)).toEqual([]);
+      expect((yield* broker.stats).waitedToday).toBe(1);
+    }),
+  );
+
+  it.effect("lets a retry join the open card and wait for the answer", () =>
+    Effect.gen(function* () {
+      const broker = yield* makeSpawnApprovals;
+      const first = yield* Effect.forkChild(
+        broker.request(approval("e"), { waitFor: Duration.seconds(45) }),
+      );
+      yield* Effect.yieldNow;
+      yield* TestClock.adjust(Duration.seconds(46));
+      yield* Fiber.join(first);
+      const retry = yield* Effect.forkChild(
+        broker.request(approval("e"), { waitFor: Duration.seconds(45) }),
+      );
+      yield* Effect.yieldNow;
+      expect(yield* openIds(broker)).toEqual(["e"]);
+      yield* broker.respond({ id: "e", decision: { kind: "deny" } });
+      expect(yield* Fiber.join(retry)).toEqual({ kind: "deny" });
+    }),
+  );
+
+  it.effect("drops an unanswered card after 15 minutes", () =>
+    Effect.gen(function* () {
+      const broker = yield* makeSpawnApprovals;
+      const first = yield* Effect.forkChild(
+        broker.request(approval("f"), { waitFor: Duration.seconds(45) }),
+      );
+      yield* Effect.yieldNow;
+      yield* TestClock.adjust(Duration.seconds(46));
+      yield* Fiber.join(first);
+      yield* TestClock.adjust(Duration.minutes(16));
+      expect(yield* openIds(broker)).toEqual([]);
     }),
   );
 });

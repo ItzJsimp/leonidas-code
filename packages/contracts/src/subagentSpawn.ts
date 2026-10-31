@@ -38,6 +38,16 @@ export const SubagentSpawnApproval = Schema.Struct({
   goodFor: Schema.String,
   /** Set when the engine starts a persona larger than the estimate (Codex loads AGENTS.md). */
   engineNote: Schema.optional(Schema.String),
+  /** Reasoning effort the child runs at, when the model has one. */
+  effort: Schema.optional(Schema.String),
+  /** What the child may do on this machine, for example "full-access". */
+  runtimeMode: Schema.optional(Schema.String),
+  /** The project folder the child works in. */
+  workspace: Schema.optional(Schema.String),
+  /** The task text the child receives, cut to a short preview. */
+  task: Schema.optional(Schema.String),
+  /** The account's quota use now, for example "5-hour 41% used, weekly 40% used". */
+  accountUsage: Schema.optional(Schema.String),
   requestedAt: Schema.String,
 });
 export type SubagentSpawnApproval = typeof SubagentSpawnApproval.Type;
