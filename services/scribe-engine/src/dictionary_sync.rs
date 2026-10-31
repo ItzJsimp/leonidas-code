@@ -227,4 +227,32 @@ mod tests {
         let text = serde_json::to_string(&s).unwrap();
         assert_eq!(serde_json::from_str::<SyncState>(&text).unwrap(), s);
     }
+
+    #[test]
+    fn a_device_name_cannot_leave_the_sync_folder() {
+        assert_eq!(clean_device("JAKE-PC"), "JAKE-PC");
+        assert_eq!(clean_device("..\\evil/name.json"), "evilnamejson");
+        assert_eq!(clean_device(""), "this-computer");
+    }
+}
+
+/// The file name stem for this computer: its name without anything but letters, digits,
+/// `-` and `_`, so it can never point outside the sync folder.
+pub fn device_name() -> String {
+    let raw = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_default();
+    clean_device(&raw)
+}
+
+fn clean_device(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if cleaned.is_empty() {
+        "this-computer".into()
+    } else {
+        cleaned
+    }
 }

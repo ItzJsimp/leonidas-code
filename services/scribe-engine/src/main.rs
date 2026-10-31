@@ -59,6 +59,17 @@ fn run() -> Result<(), String> {
 
     let keys: Arc<dyn KeyStore> = Arc::new(OsKeyStore::new()?);
     let dictionary = Arc::new(SharedDictionary::new(cfg.dictionary_path(&config_dir)));
+    // Word sync: merge with the other computers' files every 30 s while a sync folder is set.
+    if let Some(dir) = cfg.polish.dictionary_sync_dir.clone() {
+        let dictionary = dictionary.clone();
+        let device = scribe_engine::dictionary_sync::device_name();
+        std::thread::spawn(move || loop {
+            if let Err(e) = dictionary.sync_with(&dir, &device) {
+                eprintln!("word sync: {e}");
+            }
+            std::thread::sleep(Duration::from_secs(30));
+        });
+    }
     let groq = GroqClient::new(&cfg.groq, keys.clone(), dictionary.clone());
     let settings = Arc::new(Settings::new(config_path.clone(), cfg.clone()));
     let polisher = Arc::new(GroqPolisher::new(groq.clone(), &cfg.effective_polish()));
