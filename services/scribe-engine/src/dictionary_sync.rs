@@ -115,6 +115,35 @@ pub fn to_body(state: &SyncState) -> DictionaryBody {
     body
 }
 
+/// The file name stem for this computer: its name without anything but letters, digits,
+/// `-` and `_`, so it can never point outside the sync folder.
+pub fn device_name() -> String {
+    let raw = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_default();
+    clean_device(&raw)
+}
+
+/// The sync folder the app set in `features.wordSyncDir`. Blank or not a string means off.
+pub fn sync_dir(
+    features: &serde_json::Map<String, serde_json::Value>,
+) -> Option<std::path::PathBuf> {
+    let dir = features.get("wordSyncDir")?.as_str()?.trim();
+    (!dir.is_empty()).then(|| dir.into())
+}
+
+fn clean_device(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if cleaned.is_empty() {
+        "this-computer".into()
+    } else {
+        cleaned
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,8 +262,14 @@ mod tests {
         let features = |v: serde_json::Value| v.as_object().unwrap().clone();
         let set = features(serde_json::json!({ "wordSyncDir": "  D:\\AIOS\\scribe\\words " }));
         assert_eq!(sync_dir(&set), Some("D:\\AIOS\\scribe\\words".into()));
-        assert_eq!(sync_dir(&features(serde_json::json!({ "wordSyncDir": "  " }))), None);
-        assert_eq!(sync_dir(&features(serde_json::json!({ "wordSyncDir": 5 }))), None);
+        assert_eq!(
+            sync_dir(&features(serde_json::json!({ "wordSyncDir": "  " }))),
+            None
+        );
+        assert_eq!(
+            sync_dir(&features(serde_json::json!({ "wordSyncDir": 5 }))),
+            None
+        );
         assert_eq!(sync_dir(&features(serde_json::json!({}))), None);
     }
 
@@ -243,32 +278,5 @@ mod tests {
         assert_eq!(clean_device("JAKE-PC"), "JAKE-PC");
         assert_eq!(clean_device("..\\evil/name.json"), "evilnamejson");
         assert_eq!(clean_device(""), "this-computer");
-    }
-}
-
-/// The file name stem for this computer: its name without anything but letters, digits,
-/// `-` and `_`, so it can never point outside the sync folder.
-pub fn device_name() -> String {
-    let raw = std::env::var("COMPUTERNAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_default();
-    clean_device(&raw)
-}
-
-/// The sync folder the app set in `features.wordSyncDir`. Blank or not a string means off.
-pub fn sync_dir(features: &serde_json::Map<String, serde_json::Value>) -> Option<std::path::PathBuf> {
-    let dir = features.get("wordSyncDir")?.as_str()?.trim();
-    (!dir.is_empty()).then(|| dir.into())
-}
-
-fn clean_device(name: &str) -> String {
-    let cleaned: String = name
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if cleaned.is_empty() {
-        "this-computer".into()
-    } else {
-        cleaned
     }
 }

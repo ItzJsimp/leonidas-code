@@ -297,7 +297,9 @@ impl SharedDictionary {
         let mut merged = local.clone();
         for file in std::fs::read_dir(dir).into_iter().flatten().flatten() {
             let path = file.path();
-            if path.extension().is_none_or(|e| e != "json") || file.file_name().to_string_lossy() == own {
+            if path.extension().is_none_or(|e| e != "json")
+                || file.file_name().to_string_lossy() == own
+            {
                 continue;
             }
             let theirs = std::fs::read_to_string(&path)
@@ -603,7 +605,10 @@ mod tests {
         d.save(&DictionaryBody {
             replacements: replacements
                 .iter()
-                .map(|(w, c)| Replacement { wrong: (*w).into(), correct: (*c).into() })
+                .map(|(w, c)| Replacement {
+                    wrong: (*w).into(),
+                    correct: (*c).into(),
+                })
                 .collect(),
             vocabulary: vocabulary.iter().map(|t| (*t).into()).collect(),
         })
