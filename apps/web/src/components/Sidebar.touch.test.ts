@@ -28,6 +28,9 @@ it("opens the menu after a still long press and swallows the release click", () 
   gesture.up();
   expect(gesture.takeClickSuppression()).toBe(true);
   expect(gesture.takeClickSuppression()).toBe(false);
+  expect(gesture.openedMenuWithin(1000)).toBe(true);
+  vi.advanceTimersByTime(1000);
+  expect(gesture.openedMenuWithin(1000)).toBe(false);
 });
 
 it("cancels the long press when the finger moves past the slop", () => {
@@ -61,6 +64,19 @@ it("a leftward swipe past 40 percent of the width commits", () => {
   expect(handlers.onSwipeEnd).toHaveBeenCalledWith(true);
   expect(handlers.onLongPress).not.toHaveBeenCalled();
   expect(gesture.takeClickSuppression()).toBe(true);
+});
+
+it("a swipe that grows in small steps still starts", () => {
+  const { gesture, handlers } = setup();
+  gesture.down(250, 50);
+  gesture.move(241, 50);
+  expect(handlers.onSwipeMove).not.toHaveBeenCalled();
+  gesture.move(236, 51);
+  expect(handlers.onSwipeMove).toHaveBeenLastCalledWith(-14);
+  gesture.move(230, 51);
+  expect(handlers.onSwipeMove).toHaveBeenLastCalledWith(-20);
+  vi.advanceTimersByTime(LONG_PRESS_MS * 2);
+  expect(handlers.onLongPress).not.toHaveBeenCalled();
 });
 
 it("a short slow swipe springs back", () => {
